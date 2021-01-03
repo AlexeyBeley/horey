@@ -1,3 +1,6 @@
+# Sencitive information- passwords, corporate data.
+ignore/*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
