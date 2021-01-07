@@ -1,0 +1,5 @@
+horey.configuration>=1.0.0
+horey.h_logger>=1.0.0
+horey.text_block>=1.0.0
+horey.common_utils>=1.0.0
+
