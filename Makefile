@@ -7,7 +7,6 @@ BUILD_TMP_DIR= ${BUILD_DIR}/_build
 VENV_DIR= ${BUILD_TMP_DIR}/_venv
 
 REQUIREMENTS=~/private/IP
-
 ALL_PACKAGES := $(wildcard *)
 
 EXCLUSIONS := LICENSE Makefile README.md build dns_map docker terraform security_group_map pypi_infra h_flow network
@@ -19,19 +18,17 @@ init_venv_dir:
 	pip3 install wheel
 
 prepare_package_wheel-%: init_venv_dir
-	cp -r ${ROOT_DIR}/$(subst prepare_package_wheel-,,$@) ${BUILD_TMP_DIR} \
-	cd ${BUILD_TMP_DIR}/ 
-	rm -rf $$VARIABLE\dist; \
-	python3 setup.py sdist bdist_wheel; \
+	${BUILD_DIR}/create_wheel.sh $(subst prepare_package_wheel-,,$@)
+
+install_required_packages-%:
+	cd ${BUILD_DIR} &&\
+	python3 generate_local_requirements.py --package_dir ${BUILD_TMP_DIR}/$(subst install_required_packages-,,$@) --output_file ${REQUIRED_HOREY_PACKAGES_FILE_NAME}
 
 
-install_common_utils: prepare_package_wheel-common_utils
-	cd ${BUILD_TMP_DIR} && \
+recursive_install_from_source-%:
+	source ${VENV_DIR}/bin/activate &&\
+	${BUILD_DIR}/recursive_install_from_source.sh --root_dir ${ROOT_DIR} --package_name horey.$(subst recursive_install_from_source-,,$@)
 
-
-install-%: init_venv_dir install_common_utils
-	cd ${BUILD_TMP_DIR} && \
-	python3 generate_local_requirements
 
 package_source_requirements: init_venv_dir
 	for VARIABLE in ${REQUIREMENTS}; do \
@@ -46,17 +43,13 @@ source_requirements: package_source_requirements
 	pip3 install dist/*.whl; \
 	done
 
-invoke: install_source_requirements
-	source ${VENV_DIR}/bin/activate &&\
-	python3 invoke_me.py
-
+invoke: install_source_requirements raw_invoke
 raw_invoke:
 	source ${VENV_DIR}/bin/activate &&\
 	python3 invoke_me.py
 
 
 pylint: init_venv_dir pylint_raw
-
 raw_pylint:
 	source ${VENV_DIR}/bin/activate &&\
 	pylint ${ROOT_DIR}/aws_api/src/aws_api.py

@@ -1,4 +1,5 @@
 
 
-aws_api_cleanup:
-	pass
+
+aws_api-cleanup:
+	echo 1
