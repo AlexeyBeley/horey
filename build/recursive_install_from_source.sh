@@ -11,7 +11,7 @@ while read LINE; do
    "${CURRENT_SCRIPT_FULL_PATH}/create_wheel.sh" "${LINE}"
    echo "After create_wheel.sh ${LINE}"
 
-   pip3 install $(find "${CURRENT_SCRIPT_FULL_PATH}/_build/${LINE}/dist" -name "*.whl")
+   pip3 install --force-reinstall $(find "${CURRENT_SCRIPT_FULL_PATH}/_build/${LINE}/dist" -name "*.whl")
    echo "After pip3 install ${LINE}"
 
 done <"${CURRENT_SCRIPT_FULL_PATH}/required_horey_packages.txt"

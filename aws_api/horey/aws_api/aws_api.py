@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(
 
 
 from collections import defaultdict
-from ip import IP
+from horey.network.ip import IP
 
 from boto3_client import Boto3Client
 

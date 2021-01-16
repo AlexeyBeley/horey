@@ -1,12 +1,8 @@
 """
 Classic Loadbalancer module.
 """
-import sys
-import os
-from dns import DNS
 
-sys.path.insert(0, os.path.join(os.path.abspath("../.."), "IP", "ip", "src"))
-
+from horey.network.dns import DNS
 from aws_object import AwsObject
 
 

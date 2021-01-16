@@ -8,7 +8,7 @@ import time
 from sessions_manager import SessionsManager
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "base_entities" ))
 
-from h_logger import get_logger
+from horey.h_logger import get_logger
 
 logger = get_logger()
 

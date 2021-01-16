@@ -3,10 +3,7 @@ Class to represent ec2 instance
 """
 import pdb
 
-import sys
-import os
-sys.path.insert(0, os.path.join(os.path.abspath("../.."), "IP", "ip", "src"))
-from ip import IP
+from horey.network.ip import IP
 from aws_object import AwsObject
 
 

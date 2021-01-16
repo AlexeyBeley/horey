@@ -1,16 +1,13 @@
 """
 AWS iam client to handle iam service API requests.
 """
-import os
-import sys
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "aws_services_entities"))
 from iam_user import IamUser
 from iam_access_key import IamAccessKey
 from iam_policy import IamPolicy
 from boto3_client import Boto3Client
 from iam_role import IamRole
-from common_utils import CommonUtils
-import pdb
+from horey.common_utils import CommonUtils
+
 
 class IamClient(Boto3Client):
     """
