@@ -45,7 +45,7 @@ class Package:
         for line in lines:
             if line == "":
                 continue
-            dependency_name, dependency_restriction, version = self._split_dependency_line(line)
+            dependency_name, dependency_restriction, version = self.split_dependency_line(line)
             version_restriction = Package.VersionRestriction()
             version_restriction.add_restriction(dependency_restriction, version)
             dependency_package = Package(self.root_dir, dependency_name, version_restriction=version_restriction)
@@ -61,7 +61,7 @@ class Package:
         return lines
 
     @staticmethod
-    def _split_dependency_line(line):
+    def split_dependency_line(line):
         """
 
         :param line:
@@ -157,14 +157,32 @@ class Package:
             raise ValueError(restriction_key)
 
 
+def split(requirements):
+    horey_req, global_req = [], []
+    for req in requirements:
+        if req.startswith("horey."):
+            dependency_name, _, _ = Package.split_dependency_line(req)
+            horey_req.append(dependency_name[len("horey."):])
+        else:
+            global_req.append(req)
+    return horey_req, global_req
+
+
 if __name__ == "__main__":
     description = "Compose project's requirements"
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("--root_dir", required=True, type=str, help="Domain name")
     parser.add_argument("--package_name", required=True, type=str, help="Domain name")
-    parser.add_argument("--output_file", required=True, type=str, help="Key to use")
+    parser.add_argument("--output_horey_file", required=True, type=str, help="Key to use")
+    parser.add_argument("--output_requirements_file", required=True, type=str, help="Key to use")
     arguments = parser.parse_args()
     packages_tree = Package(arguments.root_dir, arguments.package_name)
 
-    with open(arguments.output_file, "w+") as file_handler:
-        file_handler.write("\n".join(packages_tree.order_requirements()))
+    requirements = packages_tree.order_requirements()
+    horey_req, global_req = split(requirements)
+
+    with open(arguments.output_horey_file, "w+") as file_handler:
+        file_handler.write("\n".join(horey_req) + "\n")
+
+    with open(arguments.output_requirements_file, "w+") as file_handler:
+        file_handler.write("\n".join(global_req) + "\n")
