@@ -5,8 +5,6 @@ import sys
 import os
 import pdb
 
-sys.path.insert(0, os.path.join(os.path.abspath("../.."), "IP", "ip", "src"))
-
 from aws_object import AwsObject
 
 

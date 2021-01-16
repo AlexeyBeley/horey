@@ -6,7 +6,7 @@ from iam_access_key import IamAccessKey
 from iam_policy import IamPolicy
 from boto3_client import Boto3Client
 from iam_role import IamRole
-from horey.common_utils import CommonUtils
+from horey.common_utils.common_utils import CommonUtils
 
 
 class IamClient(Boto3Client):

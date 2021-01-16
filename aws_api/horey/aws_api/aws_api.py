@@ -51,13 +51,13 @@ from iam_role import IamRole
 from cloud_watch_logs_client import CloudWatchLogsClient
 from cloud_watch_log_group import CloudWatchLogGroup
 
-from common_utils import CommonUtils
-from dns import DNS
+from horey.common_utils.common_utils import CommonUtils
+from horey.network.dns import DNS
 
-from h_logger import get_logger
-from text_block import TextBlock
+from horey.h_logger import get_logger
+from horey.common_utils.text_block import TextBlock
 
-from dns_map import DNSMap
+from horey.network.dns_map import DNSMap
 
 
 logger = get_logger()
