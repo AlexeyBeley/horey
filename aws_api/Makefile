@@ -10,3 +10,8 @@ aws_api_cleanup-%:
 	export PYTHONPATH=${AWS_API_DIR} &&\
 	python3 ${AWS_API_DIR}/aws_api_actor.py --action cleanup --target $(subst aws_api_cleanup-,,$@) --accounts_file_path ${ACCOUNTS_FILE_PATH}
 
+aws_api_cache-%:
+	source ${VENV_DIR}/activate &&\
+	export PYTHONPATH=${AWS_API_DIR} &&\
+	python3 ${AWS_API_DIR}/aws_api_actor.py --action init_and_cache --target $(subst aws_api_cache-,,$@) --configuration_file_path ${ACCOUNTS_FILE_PATH}
+
