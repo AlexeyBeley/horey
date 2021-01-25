@@ -19,17 +19,18 @@ init_venv_dir:
 prepare_package_wheel-%: init_venv_dir
 	${BUILD_DIR}/create_wheel.sh $(subst prepare_package_wheel-,,$@)
 
-recursive_install_from_source-%:
+recursive_install_from_source_local_venv-%:
 	source ${VENV_DIR}/bin/activate &&\
-	${BUILD_DIR}/recursive_install_from_source.sh --root_dir ${ROOT_DIR} --package_name horey.$(subst recursive_install_from_source-,,$@)
+	${BUILD_DIR}/recursive_install_from_source.sh --root_dir ${ROOT_DIR} --package_name horey.$(subst recursive_install_from_source_local_venv-,,$@)
 
 package_source-%:
 	${BUILD_DIR}/create_wheel.sh $(subst package_source-,,$@)
 install_from_source-%: package_source-% init_venv_dir
 	source ${VENV_DIR}/bin/activate &&\
 	pip3 install --force-reinstall ${BUILD_TMP_DIR}/$(subst install_from_source-,,$@)/dist/*.whl
-	#echo $(find "${BUILD_TMP_DIR}/$(subst install_from_source-,,$@)/dist" -name "*.whl")
 
+recursive_install_from_source-%:
+	${BUILD_DIR}/recursive_install_from_source.sh --root_dir ${ROOT_DIR} --package_name horey.$(subst recursive_install_from_source-,,$@)
 
 pylint: init_venv_dir pylint_raw
 raw_pylint:

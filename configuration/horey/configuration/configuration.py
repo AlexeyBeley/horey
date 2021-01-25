@@ -2,15 +2,12 @@ import pdb
 import os
 import logging
 import json
-import yaml
+import importlib
+import sys
+#import yaml
 
-
-handler = logging.StreamHandler()
-formatter = logging.Formatter("[%(asctime)s] %(levelname)s:%(name)s:%(message)s")
-handler.setFormatter(formatter)
-logger = logging.getLogger()
-logger.setLevel("INFO")
-logger.addHandler(handler)
+from horey.h_logger import get_logger
+logger = get_logger()
 
 
 class Configuration:
@@ -25,7 +22,31 @@ class Configuration:
     ENVIRON_ATTRIBUTE_PREFIX = "horey_"
 
     def __init__(self):
-        pass
+        """
+        Save all the files used to configure - used for prints in
+        """
+        self._configuration_file_full_path = []
+    
+    @property
+    def configuration_file_full_path(self):
+        if len(self._configuration_file_full_path) > 0:
+            return self._configuration_file_full_path[-1]
+        return None
+    
+    @configuration_file_full_path.setter
+    def configuration_file_full_path(self, value):
+        if not os.path.exists(value):
+            raise ValueError(f"File does not exist: {value}")
+
+        self._configuration_file_full_path.append(value)
+
+    @property
+    def configuration_files_history(self):
+        return self._configuration_file_full_path
+
+    @configuration_files_history.setter
+    def configuration_files_history(self, _):
+        raise ValueError("Readonly property")
 
     def _set_attribute_value(self, attribute_name, attribute_value):
         if not hasattr(self, f"_{attribute_name}"):
@@ -51,7 +72,6 @@ class Configuration:
                 log_line = custom_source_log.format(key)
             else:
                 log_line = f"Init attribute '{key}' from dictionary"
-
             logger.info(log_line)
             self._set_attribute_value(key, value)
 
@@ -65,6 +85,27 @@ class Configuration:
                 logger.info(log_line)
 
                 self._set_attribute_value(key, value)
+
+    def init_from_file(self):
+        if self.configuration_file_full_path is None:
+            raise ValueError("Configuration file was not set")
+
+        if self.configuration_file_full_path.endswith(".py"):
+            return self.init_from_python_file()
+
+    def init_from_python_file(self):
+        module_path = os.path.dirname(self.configuration_file_full_path)
+        sys.path.insert(0, module_path)
+        module_name = os.path.basename(self.configuration_file_full_path).strip(".py")
+        module = importlib.import_module(module_name)
+        module = importlib.reload(module)
+        main_func = getattr(module, "main")
+        config = main_func()
+
+        if sys.path.pop(0) != module_path:
+            raise RuntimeError(f"System Path must not be changed while importing configuration: {self.configuration_file_full_path}")
+
+        self.init_from_dictionary(config.__dict__, custom_source_log="Init attribute '{}' from python file: '" + self.configuration_file_full_path + "'")
 
     def init_from_json_file(self, file_path):
         with open(file_path) as file_handler:

@@ -5,7 +5,7 @@ import logging
 
 
 handler = logging.StreamHandler()
-formatter = logging.Formatter("[%(asctime)s] %(levelname)s:%(name)s:%(message)s")
+formatter = logging.Formatter("[%(asctime)s] %(levelname)s:%(filename)s:%(lineno)s: %(message)s")
 handler.setFormatter(formatter)
 _logger = logging.getLogger()
 _logger.setLevel("INFO")

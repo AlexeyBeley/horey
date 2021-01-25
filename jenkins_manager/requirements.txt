@@ -1,0 +1,4 @@
+python-jenkins==1.7.0
+horey.configuration>=1.0.0
+requests
+horey.common_utils>=1.0.0
