@@ -1,5 +1,5 @@
 import logging
-from grade_configuration import GradeConfiguration
+from grade_configuration_policy import GradeConfiguration
 
 handler = logging.StreamHandler()
 formatter = logging.Formatter("[%(asctime)s] %(levelname)s:%(name)s:%(message)s")

@@ -78,7 +78,7 @@ def test_execute_jobs():
 
 def test_get_job_config():
     """
-    Test get single job configuration.
+    Test get single job configuration_policy.
     :return:
     """
     job = JenkinsJob("Horey_Test_Project_1", {})
@@ -88,7 +88,7 @@ def test_get_job_config():
 
 def test_save_job_config():
     """
-    Test get single job configuration.
+    Test get single job configuration_policy.
     :return:
     """
     job = JenkinsJob("Horey_Test_Project_1", {})

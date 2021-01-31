@@ -1,13 +1,13 @@
 import sys
 import os
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "src"))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "horey", "configuration_policy"))
 
 
-from configuration import Configuration
+from configuration_policy import ConfigurationPolicy
 
 
-class EnvironmentConfiguration(Configuration):
+class EnvironmentConfigurationPolicy(ConfigurationPolicy):
     def __init__(self):
         super().__init__()
         self._name = None

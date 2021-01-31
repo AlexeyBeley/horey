@@ -1,6 +1,6 @@
 from enum import Enum
 
-from environment_configuration import EnvironmentConfiguration
+from environment_configuration_policy import EnvironmentConfiguration
 
 
 class GradeConfiguration(EnvironmentConfiguration):

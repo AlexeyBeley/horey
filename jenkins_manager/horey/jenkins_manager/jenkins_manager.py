@@ -298,7 +298,7 @@ class JenkinsManager:
 
     def get_job_config(self, job_name):
         """
-        Fetch job's configuration. XML string returned
+        Fetch job's configuration_policy. XML string returned
         :param job_name:
         :return:
         """
@@ -307,7 +307,7 @@ class JenkinsManager:
 
     def save_job_config(self, job_name, file_output):
         """
-        Fetch job's configuration and save it to file.
+        Fetch job's configuration_policy and save it to file.
         :param job_name:
         :param file_output:
         :return:

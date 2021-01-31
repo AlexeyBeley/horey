@@ -4,14 +4,13 @@ from unittest import mock
 import argparse
 
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src"))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "configuration_policies"))
 
-
-from configuration import Configuration
+from jenkins_deploy_configuration import JenkinsDeployConfiguration
 
 
 def test_init():
-    assert isinstance(Configuration(), Configuration)
+    assert isinstance(JenkinsDeployConfiguration(), JenkinsDeployConfiguration)
 
 #@pytest.mark.skip(reason="No way of currently testing this")
 def test_init_from_command_line():
@@ -22,3 +21,5 @@ def test_init_from_command_line():
     with mock.patch("sys.argv", testargs):
         config = Configuration()
         config.init_from_command_line(parser)
+
+test_init()

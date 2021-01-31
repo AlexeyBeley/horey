@@ -1,7 +1,7 @@
 from enum import Enum
 
 
-from infrastructure_configuration import InfrastructureConfiguration
+from infrastructure_configuration_policy import InfrastructureConfiguration
 
 
 class AWSConfiguration(InfrastructureConfiguration):

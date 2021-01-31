@@ -4,13 +4,12 @@ import logging
 import json
 import importlib
 import sys
-#import yaml
 
 from horey.h_logger import get_logger
 logger = get_logger()
 
 
-class Configuration:
+class ConfigurationPolicy:
     """
     1) No methods. Configuration is a static data - you can set or get values.
     2) Configuration context is immutable - once you set context rules, ancestors can not change the rules.
@@ -103,16 +102,11 @@ class Configuration:
         config = main_func()
 
         if sys.path.pop(0) != module_path:
-            raise RuntimeError(f"System Path must not be changed while importing configuration: {self.configuration_file_full_path}")
+            raise RuntimeError(f"System Path must not be changed while importing configuration_policy: {self.configuration_file_full_path}")
 
         self.init_from_dictionary(config.__dict__, custom_source_log="Init attribute '{}' from python file: '" + self.configuration_file_full_path + "'")
 
-    def init_from_json_file(self, file_path):
-        with open(file_path) as file_handler:
+    def init_from_json_file(self):
+        with open(self.configuration_file_full_path) as file_handler:
             dict_arguments = json.load(file_handler)
-        self.init_from_dictionary(dict_arguments, custom_source_log="Init attribute '{}' from json file: '" + file_path + "'")
-
-    def init_from_yaml_file(self, file_path):
-        with open(file_path) as file_handler:
-            dict_arguments = yaml.load(file_handler)
-        self.init_from_dictionary(dict_arguments, custom_source_log="Init attribute '{}' from yaml file: '" + file_path + "'")
+        self.init_from_dictionary(dict_arguments, custom_source_log="Init attribute '{}' from json file: '" + self.configuration_file_full_path + "'")

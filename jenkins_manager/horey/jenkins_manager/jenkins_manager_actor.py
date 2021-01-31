@@ -3,7 +3,7 @@ import argparse
 import json
 
 from jenkins_manager import JenkinsManager
-from jenkins_configuration import JenkinsConfiguration
+from jenkins_configuration_policy import JenkinsConfigurationPolicy
 from jenkins_job import JenkinsJob
 
 from horey.common_utils.actions_manager import ActionsManager
@@ -21,14 +21,14 @@ def run_job_parser():
 
 
 def run_job(arguments, configs_dict) -> None:
-    configuration = JenkinsConfiguration()
+    configuration = JenkinsConfigurationPolicy()
     configuration.init_from_dictionary(configs_dict)
     configuration.init_from_file()
 
     manager = JenkinsManager(configuration)
     with open(arguments.build_info_file) as file_handler:
         build_info = json.load(file_handler)
-    job = JenkinsJob(build_info["job_name"], build_info["parameters"])
+    job = JenkinsJob(build_info["job_name"], build_info.get("parameters"))
     manager.execute_jobs([job])
 
 
@@ -47,7 +47,7 @@ def backup_jobs_parser():
 
 
 def backup_jobs(arguments, configs_dict) -> None:
-    configuration = JenkinsConfiguration()
+    configuration = JenkinsConfigurationPolicy()
     configuration.init_from_dictionary(configs_dict)
     configuration.init_from_file()
 
@@ -71,7 +71,7 @@ def create_jobs_parser():
 
 
 def create_jobs(arguments, configs_dict) -> None:
-    configuration = JenkinsConfiguration()
+    configuration = JenkinsConfigurationPolicy()
     configuration.init_from_dictionary(configs_dict)
     configuration.init_from_file()
 
