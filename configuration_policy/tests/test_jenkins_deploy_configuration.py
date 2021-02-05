@@ -12,7 +12,7 @@ from jenkins_deploy_configuration import JenkinsDeployConfiguration
 def test_init():
     assert isinstance(JenkinsDeployConfiguration(), JenkinsDeployConfiguration)
 
-#@pytest.mark.skip(reason="No way of currently testing this")
+
 def test_init_from_command_line():
     testargs = ["prog", "--output_file_name", "/home/fenton/project/setup.py"]
     description = "Fetch"

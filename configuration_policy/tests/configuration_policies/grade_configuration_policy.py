@@ -1,9 +1,10 @@
 from enum import Enum
+import pdb
 
-from environment_configuration_policy import EnvironmentConfiguration
+from environment_configuration_policy import EnvironmentConfigurationPolicy
 
 
-class GradeConfiguration(EnvironmentConfiguration):
+class GradeConfigurationPolicy(EnvironmentConfigurationPolicy):
     def __init__(self):
         self._grade = None
         super().__init__()
@@ -14,12 +15,12 @@ class GradeConfiguration(EnvironmentConfiguration):
 
     @grade.setter
     def grade(self, value):
-        if value not in self.GradeValue.__members__:
+        if value not in self.GradeValue.__members__.keys():
             raise ValueError(value)
 
         if self._grade is not None:
-            if value < self._grade:
-                raise ValueError("Can not downgrade")
+            if getattr(self.GradeValue, value).value < getattr(self.GradeValue, self._grade).value:
+                raise ValueError(f"Can not downgrade from {self._grade} to {value}")
 
         self._grade = value
 
@@ -28,4 +29,3 @@ class GradeConfiguration(EnvironmentConfiguration):
         QA = 1
         STG = 2
         PROD = 3
-

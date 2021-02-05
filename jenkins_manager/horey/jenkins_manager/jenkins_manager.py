@@ -4,20 +4,15 @@ Module to handle jenkins server.
 import os
 import datetime
 import time
-import logging
 import threading
 from collections import defaultdict
 import jenkins
 import requests
 from jenkins_job import JenkinsJob
+from horey.h_logger import get_logger
+import pdb
 
-
-handler = logging.StreamHandler()
-formatter = logging.Formatter("[%(asctime)s] %(levelname)s:%(name)s:%(message)s")
-handler.setFormatter(formatter)
-logger = logging.getLogger()
-logger.setLevel("INFO")
-logger.addHandler(handler)
+logger = get_logger()
 
 
 def retry_on_errors(exceptions_to_catch, count=5, timeout=5):
@@ -376,7 +371,7 @@ class JenkinsManager:
             except jenkins.NotFoundException as exception_received:
                 logger.info(repr(exception_received))
 
-    def cleanup(self):
+    def cleanup(self, output_file=None):
         """
         Bonus function - if you get many dirty jobs (qa/stg) this function can help you.
         1) Jobs not being executed for 30 days or more.
@@ -414,10 +409,15 @@ class JenkinsManager:
                     if self.BUILDS_PER_JOB[job["name"]][build["number"]]["result"] == "SUCCESS":
                         break
                 else:
-                    lst_ret.append(f"{job['name']}: last {len(job_info['builds'])} build were not SUCCESS")
+                    lst_ret.append(f"{job['name']}: last {len(job_info['builds'])} builds were not SUCCESS")
 
         lst_ret = [x[0] for x in sorted(lst_ret_exceeded_time, key=lambda x: x[1], reverse=True)] + lst_ret
-        return "\n".join(lst_ret)
+        report = "\n".join(lst_ret)
+        if output_file:
+            with open(output_file, "w+") as file_handler:
+                file_handler.write(report)
+
+        return report
 
     @retry_on_errors((requests.exceptions.ConnectionError,), count=5, timeout=5)
     def get_all_jobs(self):
@@ -430,9 +430,10 @@ class JenkinsManager:
 
     def backup_jobs(self, backups_dir, jobs_names=None):
         """
-        Save all jobs' cnfigs in separate files.
+        Save all jobs' configs in separate files.
 
         :param backups_dir:
+        :param jobs_names:
         :return:
         """
         os.makedirs(backups_dir, exist_ok=True)
@@ -443,6 +444,23 @@ class JenkinsManager:
         for job in self.get_all_jobs():
             if jobs_names is not None and job["name"] not in jobs_names:
                 continue
+
             logger.info(f"Start backing up job {job['name']}")
             self.save_job_config(job["name"], os.path.join(backup_dir_path, f"{job['name']}.xml"))
             logger.info(f"End backing up job '{job['name']}'")
+
+    @staticmethod
+    def load_job_names_from_file(jobs_file_path):
+        with open(jobs_file_path) as file_handler:
+            lines = file_handler.readlines()
+
+        return [line.strip() for line in lines]
+
+    def disable_jobs_from_file(self, jobs_file_path):
+        for job_name in self.load_job_names_from_file(jobs_file_path):
+            logger.info(f"Disabling job: '{job_name}'")
+            self.server.disable_job(job_name)
+
+    def delete_jobs_from_file(self, jobs_file_path):
+        jobs = [JenkinsJob(job_name, {}, ) for job_name in self.load_job_names_from_file(jobs_file_path)]
+        self.delete_jobs(jobs)
