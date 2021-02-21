@@ -24,6 +24,10 @@ class GradeConfigurationPolicy(EnvironmentConfigurationPolicy):
 
         self._grade = value
 
+    @property
+    def int_grade(self):
+        return getattr(self.GradeValue, self._grade).value
+
     class GradeValue(Enum):
         LOCAL = 0
         QA = 1

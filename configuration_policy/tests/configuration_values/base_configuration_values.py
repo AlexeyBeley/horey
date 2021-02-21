@@ -1,9 +1,9 @@
-class Configuration:
+class ConfigurationValues:
     def __init__(self):
         self.component1 = "value1"
 
 
 def main():
-    configs = Configuration()
+    configs = ConfigurationValues()
     return configs
 

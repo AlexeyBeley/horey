@@ -1,0 +1,4 @@
+{
+  "grade" : "LOCAL",
+  "jenkins_host": "local_venv_name"
+}

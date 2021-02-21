@@ -9,7 +9,7 @@ logger.setLevel("INFO")
 logger.addHandler(handler)
 
 
-class InfrastructureConfiguration(GradeConfiguration):
+class InfrastructureConfigurationPolicy(GradeConfiguration):
     def __init__(self):
         super().__init__()
         self._jenkins_host_name = None

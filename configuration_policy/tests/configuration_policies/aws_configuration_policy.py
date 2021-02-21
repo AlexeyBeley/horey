@@ -1,11 +1,12 @@
 from enum import Enum
 
 
-from infrastructure_configuration_policy import InfrastructureConfiguration
+from infrastructure_configuration_policy import InfrastructureConfigurationPolicy
 
 
-class AWSConfiguration(InfrastructureConfiguration):
+class AWSConfigurationPolicy(InfrastructureConfigurationPolicy):
     def __init__(self):
+        super().__init__()
         self._region_mark = None
         self._logs_bucket_name = None
 
