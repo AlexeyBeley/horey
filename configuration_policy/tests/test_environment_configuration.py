@@ -10,6 +10,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "con
 
 from environment_configuration_policy import EnvironmentConfigurationPolicy
 
+configuration_values_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "configuration_values")
+
 
 def test_init():
     assert isinstance(EnvironmentConfigurationPolicy(), EnvironmentConfigurationPolicy)
@@ -35,7 +37,7 @@ def test_init_from_dictionary():
 
 # @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_from_json_file():
-    file_path = "configuration_values/environment_configuration_values.json"
+    file_path = os.path.join(configuration_values_dir, "environment_configuration_values.json")
 
     config_values = {
         "configuration_file_full_path": file_path}
@@ -43,13 +45,3 @@ def test_init_from_json_file():
     config = EnvironmentConfigurationPolicy()
     config.init_from_dictionary(config_values)
     config.init_from_json_file()
-
-
-def test_init_from_environ():
-    raise NotImplemented()
-    os.environ[f"{EnvironmentConfigurationPolicy.ENVIRON_ATTRIBUTE_PREFIX.upper()}NAME"] = "Production"
-    config = EnvironmentConfigurationPolicy()
-    config.init_from_environ()
-
-
-test_init_from_json_file()

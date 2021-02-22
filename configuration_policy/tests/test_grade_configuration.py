@@ -1,7 +1,8 @@
 import os
 import sys
 from pytest import raises
-
+import pytest
+import pdb
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "configuration_policies"))
 
@@ -9,25 +10,32 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "con
 from grade_configuration_policy import GradeConfigurationPolicy
 
 
+configuration_values_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "configuration_values")
+
+
 def test_init():
     assert isinstance(GradeConfigurationPolicy(), GradeConfigurationPolicy)
 
 
-def test_leverage_grade():
-    config = GradeConfigurationPolicy()
-    config.grade = "STG"
-    config.grade = "PROD"
+@pytest.fixture
+def configuration_policy():
+    configuration_policy = GradeConfigurationPolicy()
+    configuration_policy.grade = "STG"
+    return configuration_policy
 
 
-def test_wrong_leverage_grade():
-    config = GradeConfigurationPolicy()
-    config.grade = "STG"
+def test_leverage_grade(configuration_policy):
+    configuration_policy.grade = GradeConfigurationPolicy.GradeValue.PROD.name
+    assert configuration_policy.grade == GradeConfigurationPolicy.GradeValue.PROD.name
+
+
+def test_wrong_leverage_grade(configuration_policy):
     with raises(ValueError):
-        config.grade = "QA"
+        configuration_policy.grade = GradeConfigurationPolicy.GradeValue.QA.name
 
 
 def test_init_from_json_file():
-    file_path = "configuration_values/grade_configuration_prod_with_name.json"
+    file_path = os.path.join(configuration_values_dir, "grade_configuration_prod_with_name.json")
     config_values = {
         "configuration_file_full_path": file_path}
 

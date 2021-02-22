@@ -9,9 +9,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 
 from configuration_policy import ConfigurationPolicy
 
+configuration_values_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "configuration_values")
+
 
 def test_init():
-    assert isinstance(ConfigurationPolicy(), Configuration)
+    assert isinstance(ConfigurationPolicy(), ConfigurationPolicy)
 
 
 # @pytest.mark.skip(reason="No way of currently testing this")
@@ -70,7 +72,7 @@ class ConfigurationSon(ConfigurationPolicy):
 # @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_from_python_file():
     config_values = {
-        "configuration_file_full_path": "./configuration_policies/base_configuration_values.py"}
+        "configuration_file_full_path": os.path.join(configuration_values_dir, "base_configuration_values.py")}
 
     config = ConfigurationSon()
     config.init_from_dictionary(config_values)
@@ -80,11 +82,8 @@ def test_init_from_python_file():
 # @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_from_json_file():
     config_values = {
-        "configuration_file_full_path": "./configuration_policies/base_configuration_values.json"}
+        "configuration_file_full_path": os.path.join(configuration_values_dir, "base_configuration_values.json")}
 
     config = ConfigurationSon()
     config.init_from_dictionary(config_values)
     config.init_from_json_file()
-
-
-test_init_from_json_file()
