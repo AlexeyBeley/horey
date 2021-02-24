@@ -24,20 +24,19 @@ def configuration_policy():
     return configuration_policy
 
 
-def test_leverage_grade(configuration_policy):
+def test_increasing_stg_grade_to_prod(configuration_policy):
     configuration_policy.grade = GradeConfigurationPolicy.GradeValue.PROD.name
     assert configuration_policy.grade == GradeConfigurationPolicy.GradeValue.PROD.name
 
 
-def test_wrong_leverage_grade(configuration_policy):
+def test_raising_decreasing_stg_grade_to_qa(configuration_policy):
     with raises(ValueError):
         configuration_policy.grade = GradeConfigurationPolicy.GradeValue.QA.name
 
 
 def test_init_from_json_file():
     file_path = os.path.join(configuration_values_dir, "grade_configuration_prod_with_name.json")
-    config_values = {
-        "configuration_file_full_path": file_path}
+    config_values = {"configuration_file_full_path": file_path}
 
     config = GradeConfigurationPolicy()
     config.init_from_dictionary(config_values)

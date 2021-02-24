@@ -37,7 +37,12 @@ raw_pylint:
 	source ${VENV_DIR}/bin/activate &&\
 	pylint ${ROOT_DIR}/aws_api/src/aws_api.py
 
-test-%: recursive_install_from_source_local_venv-% raw_test-%
+
+install_test_deps-%: init_venv_dir
+	source ${VENV_DIR}/bin/activate &&\
+	pip3 install -r ${ROOT_DIR}/$(subst install_test_deps-,,$@)/tests/requirements.txt
+
+test-%: recursive_install_from_source_local_venv-% install_test_deps-% raw_test-%
 raw_test-%:
 	source ${VENV_DIR}/bin/activate &&\
 	pytest ${ROOT_DIR}/$(subst raw_test-,,$@)/tests/*.py -s

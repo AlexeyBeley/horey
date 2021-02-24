@@ -19,7 +19,8 @@ class GradeConfigurationPolicy(EnvironmentConfigurationPolicy):
             raise ValueError(value)
 
         if self._grade is not None:
-            if getattr(self.GradeValue, value).value < getattr(self.GradeValue, self._grade).value:
+            candidate_int_grade = getattr(self.GradeValue, value).value
+            if candidate_int_grade < self.int_grade:
                 raise ValueError(f"Can not downgrade from {self._grade} to {value}")
 
         self._grade = value
