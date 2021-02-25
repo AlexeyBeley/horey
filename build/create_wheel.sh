@@ -15,6 +15,7 @@ cd "${PACKAGE_TMP_DIR_FULL_PATH}"
 
 if [ -d ${PACKAGE_TMP_DIR_FULL_PATH}/dist ]
 then
+ echo "Removing old package before creating new wheel: ${PACKAGE_TMP_DIR_FULL_PATH}"
  rm -rf ${PACKAGE_TMP_DIR_FULL_PATH}/dist/*
 fi
 

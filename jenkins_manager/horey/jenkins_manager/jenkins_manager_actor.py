@@ -2,10 +2,7 @@ import pdb
 import argparse
 import json
 
-from jenkins_manager import JenkinsManager
-from jenkins_configuration_policy import JenkinsConfigurationPolicy
-from jenkins_job import JenkinsJob
-
+from horey.jenkins_manager import JenkinsManager, JenkinsConfigurationPolicy, JenkinsJob
 from horey.common_utils.actions_manager import ActionsManager
 
 action_manager = ActionsManager()
@@ -35,6 +32,30 @@ def run_job(arguments, configs_dict) -> None:
 action_manager.register_action("run_job", run_job_parser, run_job)
 # endregion
 
+
+# region run_job
+def run_jobs_parser():
+    description = "Run list of jobs"
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument("--cached_jobs_file_path", required=True, type=str, help="Json list of cached jobs")
+
+    return parser
+
+
+def run_jobs(arguments, configs_dict) -> None:
+    configuration = JenkinsConfigurationPolicy()
+    configuration.init_from_dictionary(configs_dict)
+    configuration.init_from_file()
+    manager = JenkinsManager(configuration)
+
+    with open(arguments.cached_jobs_file_path) as file_handler:
+        lst_dict_jobs = json.load(file_handler)
+    lst_jobs = [JenkinsJob(None, None, cache_dict=dict_job) for dict_job in lst_dict_jobs]
+    print(manager.execute_jobs(lst_jobs))
+
+
+action_manager.register_action("run_jobs", run_jobs_parser, run_jobs)
+# endregion
 
 # region backup_jobs
 def backup_jobs_parser():

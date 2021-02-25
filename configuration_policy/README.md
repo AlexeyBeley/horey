@@ -1,4 +1,30 @@
-# Configuration
+# Configuration Policy
+
+
+## ConfigurationPolicy
+This is the base class to perform actions on the configuration.
+It presents common methods to parse values from different sources.
+
+### First rule of ConfigurationPolicy
+Never ever redefine properties at other levels. You need to redefine a property->
+it means you need another behavior -> it means you need another property! Do not be afraid to have alike values for
+different properties - remember this is the place to put your UGLY but necessary code!
+
+### Main concept
+ConfigurationPolicy should be capt slim. No complex rules. In case you need to generate a helper function for the value validation - sounds like you are doing something wrong.
+  Try to split it to multiple properties. I believe this will greatly improve bugs hunting time as you won't need to 
+  simulate the environment to run the code.
+
+### Avoid unnecessary inheritance
+You may think it's easier to make a large configuration policy from multiple distinct smaller than handling an
+array of them. However, in this case you block further inheritance and code reuse in different environments.
+"Flat is better than nested."(c) 
+"Sparse is better than dense."(c)
+
+* No 
+ 
+
+
 
 ## Avoid unneeded inharitance. For example:
 Jenkins_Deployment_configuration:

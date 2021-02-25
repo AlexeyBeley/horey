@@ -8,7 +8,7 @@ import threading
 from collections import defaultdict
 import jenkins
 import requests
-from jenkins_job import JenkinsJob
+from .jenkins_job import JenkinsJob
 from horey.h_logger import get_logger
 import pdb
 

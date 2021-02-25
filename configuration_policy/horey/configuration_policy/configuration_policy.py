@@ -1,6 +1,5 @@
 import pdb
 import os
-import logging
 import json
 import importlib
 import sys
@@ -13,11 +12,9 @@ logger = get_logger()
 
 class ConfigurationPolicy:
     """
-    1) No methods. Configuration is a static data - you can set or get values.
-    2) Configuration context is immutable - once you set context rules, ancestors can not change the rules.
-    3) Every value being set must be defined in a property.
-    * Property can be defined only at one level of inheritance.
-    * Set attribute with name "attribute_name" only when self has "_attribute_name" attribute.
+    Base class to handle Configuration Policies.
+    Should be capt as simple as possible as it should run in various environments.
+    ENVIRON_ATTRIBUTE_PREFIX - prefix used to specify which environ values should be used to init configuration.
     """
 
     ENVIRON_ATTRIBUTE_PREFIX = "horey_"

@@ -3,6 +3,9 @@ set +ex
 
 CURRENT_SCRIPT_FULL_PATH="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 pip3 install wheel
+
+echo "Generating composed requirements.txt file"
+
 python3 "${CURRENT_SCRIPT_FULL_PATH}/recursive_compose_requirements.py" "$@" --output_horey_file "${CURRENT_SCRIPT_FULL_PATH}/required_horey_packages.txt" --output_requirements_file "${CURRENT_SCRIPT_FULL_PATH}/requirements.txt"
 
 echo "Created recursive_compose_requirements"

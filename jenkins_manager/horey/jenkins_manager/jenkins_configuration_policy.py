@@ -1,7 +1,7 @@
-from horey.configuration.configuration import Configuration
+from horey.configuration_policy import ConfigurationPolicy
 
 
-class JenkinsConfigurationPolicy(Configuration):
+class JenkinsConfigurationPolicy(ConfigurationPolicy):
     def __init__(self):
         super().__init__()
         self._jenkins_host = None

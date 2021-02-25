@@ -2,24 +2,47 @@ import argparse
 import sys
 import os
 import pdb
+from enum import Enum
 
 
 class Package:
     PROJECT_PACKAGES = {}
+    PACKAGE_VERSION_POLICY = 0
 
     def __init__(self, root_dir, package_name, version_restriction=None):
-        if package_name in Package.PROJECT_PACKAGES:
-            raise NotImplementedError(f"Circular dependency not yet implemented: {package_name}")
-        else:
-            Package.PROJECT_PACKAGES[package_name] = self
-
         self.version_restriction = version_restriction
         self.name = package_name
         self.root_dir = root_dir
         self.dependencies = []
 
-        if self.name.startswith("horey"):
-            self._init_horey_dependencies()
+        if package_name in Package.PROJECT_PACKAGES:
+            Package.PROJECT_PACKAGES[package_name].version_restriction = self.select_package_version_restriction(self.version_restriction, Package.PROJECT_PACKAGES[package_name].version_restriction)
+        else:
+            Package.PROJECT_PACKAGES[package_name] = self
+            if self.name.startswith("horey"):
+                self._init_horey_dependencies()
+
+    @staticmethod
+    def select_package_version_restriction(first, second):
+        if str(first) == str(second):
+            return first
+
+        first_lower_limit = "0.0.0" if first.lower_limit is None else first.lower_limit
+        second_lower_limit = "0.0.0" if second.lower_limit is None else second.lower_limit
+        first_upper_limit = "100000.0.0" if first.lower_limit is None else first.lower_limit
+        second_upper_limit = "100000.0.0" if second.lower_limit is None else second.lower_limit
+
+        if Package.PACKAGE_VERSION_POLICY == Package.PackageVersionPolicy.UPGRADE:
+            restriction = Package.VersionRestriction()
+            restriction.lower_limit = max(first_lower_limit, second_lower_limit)
+            restriction.contains_lower_limit = first.contains_lower_limit if restriction.lower_limit == first.lower_limit else second.contains_lower_limit
+
+            restriction.upper_limit = max(first_upper_limit, second_upper_limit)
+            restriction.contains_upper_limit = first.contains_upper_limit if restriction.upper_limit == first.upper_limit else second.contains_upper_limit
+            raise NotImplementedError('min("2.2.3", "10.0.0") = 10.0.0')
+            return restriction
+
+        raise NotImplementedError("Unknown version restriction")
 
     def init_requirement_line(self):
         line = self.name
@@ -155,6 +178,11 @@ class Package:
                 return
 
             raise ValueError(restriction_key)
+
+    class PackageVersionPolicy(Enum):
+        UPGRADE = 0
+        DOWNGRADE = 1
+        RAISE_EXCEPTION = 2
 
 
 def split(requirements):
