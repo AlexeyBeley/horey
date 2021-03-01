@@ -8,6 +8,7 @@ import logging
 logger = logging.Logger(__name__)
 from base_entities.aws_account import AWSAccount
 
+from horey.aws_api import AWSAPI, AWSAPIConfigurationPolicy
 from horey.common_utils.actions_manager import ActionsManager
 
 #AWSAccount.set_aws_account(ignore_me.acc_default)
@@ -46,6 +47,21 @@ def init_and_cache(arguments) -> None:
 
 
 action_manager.register_action("init_and_cache", init_and_cache_parser, init_and_cache)
+# endregion
+
+# region create_ec2_from_lambda
+def create_ec2_from_lambda_parser():
+    description = "Create ec2 instance like lambda"
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument("--lambda_arn", required=True, type=str, help="Lambda arn")
+    return parser
+
+
+def create_ec2_from_lambda(arguments) -> None:
+    aws_api.create_ec2_from_lambda(arguments.lambda_arn)
+    
+
+action_manager.register_action("create_ec2_from_lambda", create_ec2_from_lambda_parser, create_ec2_from_lambda)
 # endregion
 
 if __name__ == "__main__":

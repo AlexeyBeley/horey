@@ -4,14 +4,8 @@ Module to handle cross service interaction
 import json
 import os
 import socket
-import sys
 import datetime
 import pdb
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "base_entities")))
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "aws_services_entities")))
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "aws_clients")))
-
 
 from collections import defaultdict
 from horey.network.ip import IP
@@ -997,3 +991,15 @@ class AWSAPI:
         print("todo: init address from dns: {}".format(dns))
         ip = IP("1.1.1.1")
         return ip
+
+    def create_ec2_from_lambda(self, aws_lambda_arn):
+        aws_lambda = self.lambda_client.get_lambda(aws_lambda_arn)
+        pdb.set_trace()
+        #  copy vpc and subnets
+        #  copy security groups and add port ssh to it
+        #  copy role
+        #  create environment
+        #  copy code
+
+
+
