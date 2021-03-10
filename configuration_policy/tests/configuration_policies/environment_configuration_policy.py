@@ -1,10 +1,4 @@
-import sys
-import os
-
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "horey", "configuration_policy"))
-
-
-from configuration_policy import ConfigurationPolicy
+from horey.configuration_policy.configuration_policy import ConfigurationPolicy
 
 
 class EnvironmentConfigurationPolicy(ConfigurationPolicy):
