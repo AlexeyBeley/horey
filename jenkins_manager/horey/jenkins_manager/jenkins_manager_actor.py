@@ -2,7 +2,9 @@ import pdb
 import argparse
 import json
 
-from horey.jenkins_manager import JenkinsManager, JenkinsConfigurationPolicy, JenkinsJob
+from horey.jenkins_manager.jenkins_manager import JenkinsManager, JenkinsConfigurationPolicy, JenkinsJob
+from horey.jenkins_manager.jenkins_configuration_policy import JenkinsConfigurationPolicy
+from horey.jenkins_manager.jenkins_job import JenkinsJob
 from horey.common_utils.actions_manager import ActionsManager
 
 action_manager = ActionsManager()
