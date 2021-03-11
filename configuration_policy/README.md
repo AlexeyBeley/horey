@@ -31,17 +31,14 @@ array of them. However, in this case you block further inheritance and code reus
 "Sparse is better than dense."(c)
 
 
+## Clarity 
+Each value assignment must be logged the most comfort for understanding way:
+if there were N files applied, at the end there should be complete list of files' full paths.
 
-each step of configuration components change must be logged the most comfort for understanding way:
-if there were N files applied at the end there should be complete list of files' full paths.
-
-Policy rules examples:
+## Value restriction examples 
 * Static value
-* Auto formated value - raise exception if required components' values were not set.
+* Auto formatted value - raise exception dependencies were not set.
   e.g. dns_name = "{host_name}-{environment_grade}.{environment_name}.{domain}.com"
-  if host_name is None: raise
+  if host_name is None: raise exception
 * Restricted by number of possibilities: Enum
-* Type/Regex/range restrictions
-* Custom rules: see more detailed examples below.
-* Sanity check - check whether all configs were set.  
-* Aliases - if the same thing has multiple names
+* Type/Regex/Range restrictions

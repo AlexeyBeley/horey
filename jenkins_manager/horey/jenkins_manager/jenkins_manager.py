@@ -464,3 +464,11 @@ class JenkinsManager:
     def delete_jobs_from_file(self, jobs_file_path):
         jobs = [JenkinsJob(job_name, {}, ) for job_name in self.load_job_names_from_file(jobs_file_path)]
         self.delete_jobs(jobs)
+
+    def find_build(self, jobs_names, search_string):
+        for job_name in jobs_names:
+            job_info = self.get_job_info(job_name)
+            for build in job_info["builds"]:
+                self.update_build_status(job_name, build["number"])
+                if str(self.BUILDS_PER_JOB[job_name][build["number"]]).find(search_string) > -1:
+                    logger.info(f"Found in Job: '{job_name}' Build: '{build['number']}'")

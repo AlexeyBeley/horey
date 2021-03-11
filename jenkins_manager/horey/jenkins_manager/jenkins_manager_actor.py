@@ -2,7 +2,7 @@ import pdb
 import argparse
 import json
 
-from horey.jenkins_manager.jenkins_manager import JenkinsManager, JenkinsConfigurationPolicy, JenkinsJob
+from horey.jenkins_manager.jenkins_manager import JenkinsManager
 from horey.jenkins_manager.jenkins_configuration_policy import JenkinsConfigurationPolicy
 from horey.jenkins_manager.jenkins_job import JenkinsJob
 from horey.common_utils.actions_manager import ActionsManager
@@ -58,6 +58,7 @@ def run_jobs(arguments, configs_dict) -> None:
 
 action_manager.register_action("run_jobs", run_jobs_parser, run_jobs)
 # endregion
+
 
 # region backup_jobs
 def backup_jobs_parser():
@@ -174,6 +175,29 @@ def delete_jobs(arguments, configs_dict) -> None:
 
 
 action_manager.register_action("delete_jobs", delete_jobs_parser, delete_jobs)
+# endregion
+
+
+# region find_build
+def find_build_parser():
+    description = "Create jobs"
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument("--jobs_names", required=True, type=str, help="comma separated jobs' names")
+    parser.add_argument("--search_string", required=True, type=str, help="string to search for")
+
+    return parser
+
+
+def find_build(arguments, configs_dict) -> None:
+    configuration = JenkinsConfigurationPolicy()
+    configuration.init_from_dictionary(configs_dict)
+    configuration.init_from_file()
+
+    manager = JenkinsManager(configuration)
+    manager.find_build(arguments.jobs_names.split(","), arguments.search_string)
+
+
+action_manager.register_action("find_build", find_build_parser, find_build)
 # endregion
 
 
