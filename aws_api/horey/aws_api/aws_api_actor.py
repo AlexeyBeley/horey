@@ -8,7 +8,8 @@ import logging
 logger = logging.Logger(__name__)
 from base_entities.aws_account import AWSAccount
 
-from horey.aws_api import AWSAPI, AWSAPIConfigurationPolicy
+from horey.aws_api.aws_api import AWSAPI
+from horey.aws_api.aws_api_configuration_policy import AWSAPIConfigurationPolicy
 from horey.common_utils.actions_manager import ActionsManager
 
 #AWSAccount.set_aws_account(ignore_me.acc_default)
@@ -59,7 +60,7 @@ def create_ec2_from_lambda_parser():
 
 def create_ec2_from_lambda(arguments) -> None:
     aws_api.create_ec2_from_lambda(arguments.lambda_arn)
-    
+
 
 action_manager.register_action("create_ec2_from_lambda", create_ec2_from_lambda_parser, create_ec2_from_lambda)
 # endregion

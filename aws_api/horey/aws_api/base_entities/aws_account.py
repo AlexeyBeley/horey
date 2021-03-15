@@ -2,7 +2,7 @@
 AWS account management module - defines how to connect to an account in order to run API calls in in.
 """
 from enum import Enum
-from base_entities.region import Region
+from horey.aws_api.base_entities.region import Region
 
 
 class AWSAccount:

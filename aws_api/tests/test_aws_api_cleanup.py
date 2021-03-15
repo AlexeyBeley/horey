@@ -2,16 +2,12 @@ import os
 import sys
 import pdb
 
-sys.path.insert(0, os.path.abspath("../src"))
-sys.path.insert(0, "/Users/alexeybe/private/IP/ip")
-sys.path.insert(0, "/Users/alexeybe/private/aws_api/ignore")
-sys.path.insert(0, "/Users/alexeybe/private/aws_api/src/base_entities")
 
-from aws_api import AWSAPI
-import ignore_me
-import logging
-logger = logging.Logger(__name__)
-from aws_account import AWSAccount
+from horey.aws_api.aws_api import AWSAPI
+import accounts.ignore_me
+from horey.h_logger import get_logger
+logger = get_logger()
+from horey.aws_api.base_entities.aws_account import AWSAccount
 
 #tested_account = ignore_me.acc_rnd
 tested_account = ignore_me.acc_prod_eu

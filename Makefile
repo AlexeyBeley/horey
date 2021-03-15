@@ -50,3 +50,7 @@ raw_test-%:
 
 clear:
 	rm -rf ${BUILD_TMP_DIR}/*
+
+test_aws_api: recursive_install_from_source_local_venv-aws_api install_test_deps-aws_api
+	source ${VENV_DIR}/bin/activate &&\
+	pytest ${ROOT_DIR}/aws_api/tests/test_aws_api_cleanup.py

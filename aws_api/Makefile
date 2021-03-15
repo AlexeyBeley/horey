@@ -7,8 +7,7 @@ VENV_DIR := ${ROOT_DIR}/../build/_build/_venv/bin
 
 aws_api_cleanup-%:
 	source ${VENV_DIR}/activate &&\
-	export PYTHONPATH=${AWS_API_DIR} &&\
-	python3 ${AWS_API_DIR}/aws_api_actor.py --action cleanup --target $(subst aws_api_cleanup-,,$@) --accounts_file_path ${ACCOUNTS_FILE_PATH}
+	python3 ${AWS_API_DIR}/aws_api_actor.py --action cleanup --target $(subst aws_api_cleanup-,,$@) --accounts_file_path ${ACCOUNTS_FILE_PATH} --account_id 0 --regions all
 
 aws_api_cache-%:
 	source ${VENV_DIR}/activate &&\
