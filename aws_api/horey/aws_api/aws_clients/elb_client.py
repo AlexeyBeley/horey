@@ -1,9 +1,9 @@
 """
 AWS elb client to handle elb service API requests.
 """
-from boto3_client import Boto3Client
-from elb_load_balancer import ClassicLoadBalancer
-from aws_account import AWSAccount
+from horey.aws_api.aws_clients.boto3_client import Boto3Client
+from horey.aws_api.aws_services_entities.elb_load_balancer import ClassicLoadBalancer
+from horey.aws_api.base_entities.aws_account import AWSAccount
 
 
 class ELBClient(Boto3Client):

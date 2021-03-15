@@ -1,8 +1,8 @@
 """
 AWS rds client to handle rds service API requests.
 """
-from boto3_client import Boto3Client
-from rds_db_instance import DBInstance
+from horey.aws_api.aws_clients.boto3_client import Boto3Client
+from horey.aws_api.aws_services_entities.rds_db_instance import DBInstance
 
 
 class RDSClient(Boto3Client):

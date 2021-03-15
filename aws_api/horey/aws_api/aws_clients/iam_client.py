@@ -1,11 +1,11 @@
 """
 AWS iam client to handle iam service API requests.
 """
-from iam_user import IamUser
-from iam_access_key import IamAccessKey
-from iam_policy import IamPolicy
-from boto3_client import Boto3Client
-from iam_role import IamRole
+from horey.aws_api.aws_services_entities.iam_user import IamUser
+from horey.aws_api.aws_services_entities.iam_access_key import IamAccessKey
+from horey.aws_api.aws_services_entities.iam_policy import IamPolicy
+from horey.aws_api.aws_clients.boto3_client import Boto3Client
+from horey.aws_api.aws_services_entities.iam_role import IamRole
 from horey.common_utils.common_utils import CommonUtils
 
 

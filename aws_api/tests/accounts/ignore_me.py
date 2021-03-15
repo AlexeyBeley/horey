@@ -2,8 +2,8 @@ import sys
 import os
 import pdb
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src", "base_entities")))
-from aws_account import AWSAccount
-from region import Region
+from horey.aws_api.base_entities.aws_account import AWSAccount
+from horey.aws_api.base_entities.region import Region
 
 # DEFAULT
 acc_default = AWSAccount()

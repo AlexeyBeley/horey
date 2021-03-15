@@ -1,8 +1,8 @@
 """
 AWS s3 client to handle s3 service API requests.
 """
-from boto3_client import Boto3Client
-from s3_bucket import S3Bucket
+from horey.aws_api.aws_clients.boto3_client import Boto3Client
+from horey.aws_api.aws_services_entities.s3_bucket import S3Bucket
 
 
 class S3Client(Boto3Client):

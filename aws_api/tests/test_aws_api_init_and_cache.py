@@ -10,7 +10,7 @@ sys.path.insert(0, "~/private/aws_api/src/base_entities")
 from aws_api import AWSAPI
 import ignore_me
 from h_logger import get_logger
-from aws_account import AWSAccount
+from horey.aws_api.base_entities.aws_account import AWSAccount
 
 logger = get_logger()
 # Set account here:

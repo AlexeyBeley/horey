@@ -10,8 +10,7 @@ import boto3
 import botocore
 from dateutil.tz import tzlocal
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "base_entities"))
-from aws_account import AWSAccount
+from horey.aws_api.base_entities.aws_account import AWSAccount
 
 
 class LockAcquiringFailError(Exception):

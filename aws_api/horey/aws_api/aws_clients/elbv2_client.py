@@ -1,11 +1,11 @@
 """
 AWS elb-v2 client to handle elb-v2 service API requests.
 """
-from boto3_client import Boto3Client
+from horey.aws_api.aws_clients.boto3_client import Boto3Client
 
-from elbv2_load_balancer import LoadBalancer
-from elbv2_target_group import ELBV2TargetGroup
-from aws_account import AWSAccount
+from horey.aws_api.aws_services_entities.elbv2_load_balancer import LoadBalancer
+from horey.aws_api.aws_services_entities.elbv2_target_group import ELBV2TargetGroup
+from horey.aws_api.base_entities.aws_account import AWSAccount
 
 
 class ELBV2Client(Boto3Client):

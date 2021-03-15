@@ -4,7 +4,7 @@ Class to represent ec2 instance
 import pdb
 
 from horey.network.ip import IP
-from aws_object import AwsObject
+from horey.aws_api.aws_services_entities.aws_object import AwsObject
 
 
 class EC2Instance(AwsObject):

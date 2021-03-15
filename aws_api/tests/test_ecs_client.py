@@ -8,12 +8,12 @@ sys.path.insert(0, "/Users/alexeybe/private/aws_api/ignore")
 sys.path.insert(0, "/Users/alexeybe/private/aws_api/src/base_entities")
 sys.path.insert(0, "/Users/alexeybe/private/aws_api/src/aws_clients")
 
-from ecs_client import ECSClient
+from horey.aws_api.aws_clients.ecs_client import ECSClient
 import ignore_me
 import logging
 
 logger = logging.Logger(__name__)
-from aws_account import AWSAccount
+from horey.aws_api.base_entities.aws_account import AWSAccount
 
 tested_account = ignore_me.acc_default
 AWSAccount.set_aws_account(tested_account)

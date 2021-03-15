@@ -8,7 +8,7 @@ import ignore_me
 from route53_client import Route53Client
 import logging
 logger = logging.Logger(__name__)
-from aws_account import AWSAccount
+from horey.aws_api.base_entities.aws_account import AWSAccount
 
 from actions_manager import ActionsManager
 

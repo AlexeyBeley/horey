@@ -12,7 +12,7 @@ from terraform_parser import TerraformParser
 import ignore_me
 import logging
 logger = logging.Logger(__name__)
-from aws_account import AWSAccount
+from horey.aws_api.base_entities.aws_account import AWSAccount
 
 tested_account = ignore_me.acc_prod_eu
 

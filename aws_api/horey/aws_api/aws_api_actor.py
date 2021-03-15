@@ -6,7 +6,7 @@ import json
 from aws_api import AWSAPI
 import logging
 logger = logging.Logger(__name__)
-from base_entities.aws_account import AWSAccount
+from horey.aws_api.base_entities.aws_account import AWSAccount
 
 from horey.aws_api.aws_api import AWSAPI
 from horey.aws_api.aws_api_configuration_policy import AWSAPIConfigurationPolicy

@@ -16,34 +16,33 @@ from horey.aws_api.aws_clients.ec2_client import EC2Client
 from horey.aws_api.aws_services_entities.ec2_instance import EC2Instance
 from horey.aws_api.aws_services_entities.ec2_security_group import EC2SecurityGroup
 
-from ecs_client import ECSClient
+from horey.aws_api.aws_clients.ecs_client import ECSClient
+from horey.aws_api.aws_clients.s3_client import S3Client
+from horey.aws_api.aws_services_entities.s3_bucket import S3Bucket
 
-from s3_client import S3Client
-from s3_bucket import S3Bucket
+from horey.aws_api.aws_clients.elbv2_client import ELBV2Client
+from horey.aws_api.aws_services_entities.elbv2_load_balancer import LoadBalancer
+from horey.aws_api.aws_services_entities.elbv2_target_group import ELBV2TargetGroup
 
-from elbv2_client import ELBV2Client
-from elbv2_load_balancer import LoadBalancer
-from elbv2_target_group import ELBV2TargetGroup
+from horey.aws_api.aws_clients.elb_client import ELBClient
+from horey.aws_api.aws_services_entities.elb_load_balancer import ClassicLoadBalancer
 
-from elb_client import ELBClient
-from elb_load_balancer import ClassicLoadBalancer
+from horey.aws_api.aws_clients.lambda_client import LambdaClient
+from horey.aws_api.aws_services_entities.aws_lambda import AWSLambda
 
-from lambda_client import LambdaClient
-from aws_lambda import AWSLambda
+from horey.aws_api.aws_clients.route53_client import Route53Client
+from horey.aws_api.aws_services_entities.route53_hosted_zone import HostedZone
 
-from route53_client import Route53Client
-from route53_hosted_zone import HostedZone
+from horey.aws_api.aws_clients.rds_client import RDSClient
+from horey.aws_api.aws_services_entities.rds_db_instance import DBInstance
 
-from rds_client import RDSClient
-from rds_db_instance import DBInstance
+from horey.aws_api.aws_clients.iam_client import IamClient
+from horey.aws_api.aws_services_entities.iam_policy import IamPolicy
+from horey.aws_api.aws_services_entities.iam_user import IamUser
+from horey.aws_api.aws_services_entities.iam_role import IamRole
 
-from iam_client import IamClient
-from iam_policy import IamPolicy
-from iam_user import IamUser
-from iam_role import IamRole
-
-from cloud_watch_logs_client import CloudWatchLogsClient
-from cloud_watch_log_group import CloudWatchLogGroup
+from horey.aws_api.aws_clients.cloud_watch_logs_client import CloudWatchLogsClient
+from horey.aws_api.aws_services_entities.cloud_watch_log_group import CloudWatchLogGroup
 
 from horey.common_utils.common_utils import CommonUtils
 from horey.network.dns import DNS

@@ -2,8 +2,8 @@
 AWS lambda client to handle lambda service API requests.
 """
 import pdb
-from boto3_client import Boto3Client
-from aws_account import AWSAccount
+from horey.aws_api.aws_clients.boto3_client import Boto3Client
+from horey.aws_api.base_entities.aws_account import AWSAccount
 
 
 class ECSClient(Boto3Client):

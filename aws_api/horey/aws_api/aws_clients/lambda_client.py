@@ -1,9 +1,9 @@
 """
 AWS lambda client to handle lambda service API requests.
 """
-from boto3_client import Boto3Client
-from aws_lambda import AWSLambda
-from aws_account import AWSAccount
+from horey.aws_api.aws_clients.boto3_client import Boto3Client
+from horey.aws_api.aws_services_entities.aws_lambda import AWSLambda
+from horey.aws_api.base_entities.aws_account import AWSAccount
 
 
 class LambdaClient(Boto3Client):

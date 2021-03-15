@@ -4,7 +4,7 @@ AWS ec2 client to handle ec2 service API requests.
 
 from horey.aws_api.aws_services_entities.ec2_instance import EC2Instance
 from horey.aws_api.aws_services_entities.ec2_security_group import EC2SecurityGroup
-from boto3_client import Boto3Client
+from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.base_entities.aws_account import AWSAccount
 
 

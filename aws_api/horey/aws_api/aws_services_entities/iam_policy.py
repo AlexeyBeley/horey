@@ -2,7 +2,7 @@
 Module handling AWS Iam Policy object
 """
 from enum import Enum
-from aws_object import AwsObject
+from horey.aws_api.aws_services_entities.aws_object import AwsObject
 
 
 class IamPolicy(AwsObject):
