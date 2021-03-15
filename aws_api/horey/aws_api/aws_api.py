@@ -13,8 +13,8 @@ from horey.network.ip import IP
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 
 from horey.aws_api.aws_clients.ec2_client import EC2Client
-from ec2_instance import EC2Instance
-from ec2_security_group import EC2SecurityGroup
+from horey.aws_api.aws_services_entities.ec2_instance import EC2Instance
+from horey.aws_api.aws_services_entities.ec2_security_group import EC2SecurityGroup
 
 from ecs_client import ECSClient
 
