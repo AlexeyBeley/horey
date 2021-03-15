@@ -4,7 +4,6 @@ AWS route-53 client to handle route-53 service API requests.
 import sys
 import os
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "aws_services_entities"))
 from horey.aws_api.aws_services_entities.route53_hosted_zone import HostedZone
 import pdb
 

@@ -10,7 +10,7 @@ sys.path.insert(0, "/Users/alexeybe/private/aws_api/ignore")
 import logging
 logger = logging.Logger(__name__)
 
-from actions_manager import ActionsManager
+from horey.common_utils.actions_manager import ActionsManager
 
 docker_client = docker.from_env()
 action_manager = ActionsManager()

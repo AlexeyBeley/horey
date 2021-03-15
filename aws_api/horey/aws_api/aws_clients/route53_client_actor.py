@@ -1,17 +1,15 @@
 import sys
 import argparse
 
-sys.path.insert(0, "/Users/alexeybe/private/aws_api/src/aws_clients")
-sys.path.insert(0, "/Users/alexeybe/private/aws_api/ignore")
 
 import ignore_me
 from route53_client import Route53Client
-import logging
-logger = logging.Logger(__name__)
+from horey.h_logger import get_logger
+
 from horey.aws_api.base_entities.aws_account import AWSAccount
+from horey.common_utils.actions_manager import ActionsManager
 
-from actions_manager import ActionsManager
-
+logger = get_logger()
 AWSAccount.set_aws_account(ignore_me.acc_mgmt)
 action_manager = ActionsManager()
 

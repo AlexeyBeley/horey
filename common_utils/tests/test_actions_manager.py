@@ -8,7 +8,7 @@ import argparse
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "horey", "common_utils"))
 
-from actions_manager import ActionsManager
+from horey.common_utils.actions_manager import ActionsManager
 
 def test_call_action_do_not_pass_unknown_args():
     actions_manager = ActionsManager()

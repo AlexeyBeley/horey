@@ -3,16 +3,14 @@ import pdb
 import argparse
 import json
 
-sys.path.insert(0, "/Users/alexeybe/private/aws_api/src/aws_clients")
-sys.path.insert(0, "/Users/alexeybe/private/aws_api/ignore")
 
 import ignore_me
 from kms_client import KMSClient
-import logging
-logger = logging.Logger(__name__)
+from horey.h_logger import get_logger
+logger = get_logger()
 from horey.aws_api.base_entities.aws_account import AWSAccount
 
-from actions_manager import ActionsManager
+from horey.common_utils.actions_manager import ActionsManager
 
 AWSAccount.set_aws_account(ignore_me.acc_mgmt)
 action_manager = ActionsManager()

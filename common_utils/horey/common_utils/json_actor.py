@@ -5,7 +5,7 @@ import json
 
 import logging
 
-from actions_manager import ActionsManager
+from horey.common_utils.actions_manager import ActionsManager
 logger = logging.Logger(__name__)
 
 action_manager = ActionsManager()
