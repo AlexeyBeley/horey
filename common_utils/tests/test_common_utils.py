@@ -1,7 +1,6 @@
 import sys
 import pdb
 import datetime
-sys.path.insert(0, "/Users/alexeybe/private/aws_api/src/base_entities")
 
 from common_utils import CommonUtils
 

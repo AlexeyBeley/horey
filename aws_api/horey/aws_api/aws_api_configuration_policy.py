@@ -1,4 +1,4 @@
-from horey.configuration_policy import ConfigurationPolicy
+from horey.configuration_policy.configuration_policy import ConfigurationPolicy
 
 
 class AWSAPIConfigurationPolicy(ConfigurationPolicy):

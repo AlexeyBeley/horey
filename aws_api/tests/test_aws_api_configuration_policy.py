@@ -3,29 +3,16 @@ import sys
 import pdb
 import pytest
 
-from horey.aws_api.aws_api import AWSAPI
 
 from horey.h_logger import get_logger
 logger = get_logger()
-from horey.aws_api.base_entities.aws_account import AWSAccount
-from configuration_values import SECURITY_GROUPS_CACHE_FILE, LAMBDAS_CACHE_FILE, CLEANUP_LAMBDAS_REPORT, ACCOUNT
+from horey.aws_api.aws_api_configuration_policy import AWSAPIConfigurationPolicy
 
-AWSAccount.set_aws_account(ACCOUNT)
-aws_api = AWSAPI()
-
-
-@pytest.mark.skip(reason="No way of currently testing this")
-def test_init_from_cache_and_cleanup_s3_buckets():
-    for dict_environ in ignore_me.aws_accounts:
-        env = AWSAccount()
-        env.init_from_dict(dict_environ)
-        AWSAccount.set_aws_account(env)
-
-        aws_api.init_s3_buckets(from_cache=True, cache_file=buckets_cache_json_file)
-
-        aws_api.generate_summarised_s3_cleanup_data(S3_PER_BUCKET_OBJECTS_DIR, summarised_data_file)
-        aws_api.cleanup_report_s3_buckets_objects(summarised_data_file)
-
+#@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_aws_api_configuration_policy():
+    configuration = AWSAPIConfigurationPolicy()
+    configuration.configuration_file_full_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "configuration_values.py")
+    configuration.init_from_file()
 
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_cleanup_report_iam_roles():

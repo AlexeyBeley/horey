@@ -7,6 +7,7 @@ import argparse
 
 
 from horey.h_logger import get_logger
+from horey.common_utils.common_utils import CommonUtils
 logger = get_logger()
 
 
@@ -100,17 +101,7 @@ class ConfigurationPolicy:
             return self.init_from_python_file()
 
     def init_from_python_file(self):
-        module_path = os.path.dirname(self.configuration_file_full_path)
-        sys.path.insert(0, module_path)
-        module_name = os.path.basename(self.configuration_file_full_path).strip(".py")
-        module = importlib.import_module(module_name)
-        module = importlib.reload(module)
-        main_func = getattr(module, "main")
-        config = main_func()
-
-        if sys.path.pop(0) != module_path:
-            raise RuntimeError(f"System Path must not be changed while importing configuration_policy: {self.configuration_file_full_path}")
-
+        config = CommonUtils.load_object_from_module(self.configuration_file_full_path, "main")
         self.init_from_dictionary(config.__dict__, custom_source_log="Init attribute '{}' from python file: '" + self.configuration_file_full_path + "'")
 
     def init_from_json_file(self):

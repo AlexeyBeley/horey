@@ -382,8 +382,10 @@ class AWSAPI:
 
         :return:
         """
+
+        tb_ret = TextBlock("Lambdas' security groups report")
         tb_ret_open_ingress = TextBlock("Lambdas with open ingress security groups - no need to open a port into lambda")
-        tb_ret_nonexistent_security_groups = TextBlock("Lambdas with deleted security group")
+        tb_ret_nonexistent_security_groups = TextBlock("Security groups being assigned to lambdas, but were deleted.")
 
         for aws_lambda in self.lambdas:
             lst_str_sgs = aws_lambda.get_assinged_security_group_ids()
@@ -399,7 +401,6 @@ class AWSAPI:
                     line = f"{aws_lambda.name}: {security_group.name}"
                     tb_ret_open_ingress.lines.append(line)
 
-        tb_ret = TextBlock("Lambdas' security groups report")
         if len(tb_ret_open_ingress.lines) > 0:
             tb_ret.blocks.append(tb_ret_open_ingress)
         if len(tb_ret_nonexistent_security_groups.lines) > 0:
@@ -411,15 +412,18 @@ class AWSAPI:
         Big code lambdas - over 100MiB size code.
         :return:
         """
-        tb_ret = TextBlock("Large lambdas: As for the maximum size is 250 MiB")
+        tb_ret = TextBlock("Large lambdas: Maximum size is 250 MiB")
         limit = 100 * 1024 * 1024
         lst_names_sizes = []
         for aws_lambda in self.lambdas:
             if aws_lambda.code_size >= limit:
                 lst_names_sizes.append([aws_lambda.name, aws_lambda.code_size])
 
-        lst_names_sizes = sorted(lst_names_sizes, key=lambda x: x[1], reverse=True)
-        tb_ret.lines = [f"{CommonUtils.bytes_to_str(code_size)} - {name}" for name, code_size in lst_names_sizes]
+        if len(lst_names_sizes) > 0:
+            lst_names_sizes = sorted(lst_names_sizes, key=lambda x: x[1], reverse=True)
+            tb_ret.lines = [f"Lambda '{name}' size:{CommonUtils.bytes_to_str(code_size)}" for name, code_size in lst_names_sizes]
+        else:
+            tb_ret.lines = [f"No lambdas found with size over {CommonUtils.bytes_to_str(limit)}"]
         return tb_ret
 
     def cleanup_report_lambdas_old_code(self):
@@ -427,23 +431,27 @@ class AWSAPI:
         Find all lambdas, which code wasn't updated for a year or more.
         :return:
         """
-
-        tb_ret = TextBlock("Large lambdas")
-        year_ago = datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(days=365)
+        days_limit = 365
+        tb_ret = TextBlock(f"Lambdas with code older than {days_limit} days")
+        time_limit = datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(days=days_limit)
         lst_names_dates = []
         for aws_lambda in self.lambdas:
-            if aws_lambda.last_modified < year_ago:
+            if aws_lambda.last_modified < time_limit:
                 lst_names_dates.append([aws_lambda.name, aws_lambda.last_modified])
 
         lst_names_dates = sorted(lst_names_dates, key=lambda x: x[1])
-        tb_ret.lines = [f"{update_date.strftime('%Y-%m-%d %H:%M')} - {name}" for name, update_date in lst_names_dates]
+        tb_ret.lines = [f"Lambda {name} was last update: {update_date.strftime('%Y-%m-%d %H:%M')}" for name, update_date in lst_names_dates]
         return tb_ret
 
-    def cleanup_report_lambdas(self):
-        tb_ret = TextBlock("Lambdas cleanup")
+    def cleanup_report_lambdas(self, report_file_path):
+        tb_ret = TextBlock("AWS Lambdas cleanup")
         tb_ret.blocks.append(self.cleanup_report_lambdas_large_size())
         tb_ret.blocks.append(self.cleanup_report_lambdas_security_group())
         tb_ret.blocks.append(self.cleanup_report_lambdas_old_code())
+
+        with open(report_file_path, "w+") as file_handler:
+            file_handler.write(str(tb_ret))
+
         return tb_ret
 
     def cleanup_report_s3_buckets_objects(self, summarised_data_file):
@@ -528,19 +536,6 @@ class AWSAPI:
         #raise NotImplementedError("Replacement of pdb.set_trace")
         return tb_ret
 
-
-    def cleanup_report_s3_buckets(self):
-        raise NotImplementedError()
-        tb_ret = TextBlock("All buckets' keys")
-        for bucket in self.s3_buckets:
-            print(bucket.name)
-            bucket_objects = list(self.s3_client.yield_bucket_objects(bucket))
-
-            print(f"{bucket.name}: {len(bucket_objects)}")
-            tb_ret.lines.append(f"{bucket.name}: {len(bucket_objects)}")
-
-        raise NotImplementedError("Replacement of pdb.set_trace")
-        return tb_ret
 
     def account_id_from_arn(self, arn):
         if isinstance(arn, list):

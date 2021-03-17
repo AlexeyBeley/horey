@@ -2,6 +2,9 @@
 Some reusable stuff.
 """
 import datetime
+import importlib
+import os
+import sys
 
 
 class CommonUtils:
@@ -97,3 +100,21 @@ class CommonUtils:
         :return:
         """
         return datetime.datetime.fromtimestamp(timestamp)
+
+    @staticmethod
+    def load_object_from_module(module_full_path, callback_function_name):
+        module_path = os.path.dirname(module_full_path)
+        sys.path.insert(0, module_path)
+        module_name = os.path.basename(module_full_path).strip(".py")
+        module = importlib.import_module(module_name)
+        module = importlib.reload(module)
+        main_func = getattr(module, callback_function_name)
+        ret_object = main_func()
+
+        popped_path = sys.path.pop(0)
+        if popped_path != module_path:
+            raise RuntimeError(f"System Path must not be changed while importing configuration_policy: {module_full_path}. "
+                               f"Changed from {module_path} to {popped_path}")
+
+        return ret_object
+

@@ -40,6 +40,7 @@ class AWSLambda(AwsObject):
             "Layers": self.init_default_attr,
             "DeadLetterConfig": self.init_default_attr,
             "KMSKeyArn": self.init_default_attr,
+            "PackageType": self.init_default_attr,
                         }
 
         self.init_attrs(dict_src, init_options)

@@ -1,7 +1,6 @@
 import sys
 import os
 import pdb
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src", "base_entities")))
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.base_entities.region import Region
 
@@ -13,6 +12,9 @@ cs1 = AWSAccount.ConnectionStep({"profile": "default", "region_mark": "us-east-1
 acc_default.connection_steps.append(cs1)
 reg = Region()
 reg.region_mark = "us-east-1"
+acc_default.regions[reg.region_mark] = reg
+reg = Region()
+reg.region_mark = "us-west-2"
 acc_default.regions[reg.region_mark] = reg
 
 # STAGING
