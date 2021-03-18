@@ -5,20 +5,21 @@ import accounts.ignore_me
 from horey.aws_api.aws_api import AWSAPI
 from horey.h_logger import get_logger
 from horey.aws_api.base_entities.aws_account import AWSAccount
-from configuration_values import SECURITY_GROUPS_CACHE_FILE, LAMBDAS_CACHE_FILE
+from horey.aws_api.aws_api_configuration_policy import AWSAPIConfigurationPolicy
 
 logger = get_logger()
-# Set account here:
-tested_account = accounts.ignore_me.acc_default
-AWSAccount.set_aws_account(tested_account)
 
-aws_api = AWSAPI()
+configuration = AWSAPIConfigurationPolicy()
+configuration.configuration_file_full_path = "/Users/alexeybe/Desktop/tmp/configuration_values.py"
+configuration.init_from_file()
+
+aws_api = AWSAPI(configuration=configuration)
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_ec2instances():
     aws_api.init_ec2_instances()
-    aws_api.cache_objects(aws_api.ec2_instances, ec2_instances_cache_file)
+    aws_api.cache_objects(aws_api.ec2_instances, configuration.aws_api_ec2_instances_cache_file)
     print(f"len(instances) = {len(aws_api.ec2_instances)}")
     assert isinstance(aws_api.ec2_instances, list)
 
@@ -49,14 +50,6 @@ def test_init_and_cache_raw_large_cloud_watch_log_groups():
     aws_api.init_and_cache_raw_large_cloud_watch_log_groups(cloudwatch_log_groups_dir)
     print(f"len(cloud_watch_log_groups) = {len(aws_api.cloud_watch_log_groups)}")
     assert isinstance(aws_api.cloud_watch_log_groups, list)
-
-
-@pytest.mark.skip(reason="No way of currently testing this")
-def test_init_and_cache_lambdas():
-    aws_api.init_lambdas()
-    aws_api.cache_objects(aws_api.lambdas, LAMBDAS_CACHE_FILE)
-    logger.info(f"len(lambdas) = {len(aws_api.lambdas)}")
-    assert isinstance(aws_api.lambdas, list)
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
@@ -112,22 +105,13 @@ def test_init_and_cache_load_balancers():
 #@pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_security_groups():
     aws_api.init_security_groups()
-    aws_api.cache_objects(aws_api.security_groups, SECURITY_GROUPS_CACHE_FILE)
+    aws_api.cache_objects(aws_api.security_groups, configuration.aws_api_ec2_security_groups_cache_file)
     logger.info(f"len(security_groups) = {len(aws_api.security_groups)}")
     assert len(aws_api.security_groups) > 0
 
-
-if __name__ == "__main__":
-    pass
-    #test_init_and_cache_ec2instances()
-    #test_init_and_cache_s3_buckets()
-    #test_init_and_cache_lambdas()
-    #test_init_and_cache_iam_policies()
-    #test_init_and_cache_iam_roles()
-    #test_init_and_cache_hosted_zones()
-    #test_init_and_cache_classic_load_balancers()
-    #test_init_and_cache_load_balancers()
-    #test_init_and_cache_security_groups()
-    #test_init_and_cache_s3_bucket_objects()
-    #test_init_and_cache_raw_large_cloud_watch_log_groups()
-    #test_init_and_cache_cloudwatch_logs()
+#@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_lambdas():
+    aws_api.init_lambdas()
+    aws_api.cache_objects(aws_api.lambdas, configuration.aws_api_lambdas_cache_file)
+    logger.info(f"len(lambdas) = {len(aws_api.lambdas)}")
+    assert isinstance(aws_api.lambdas, list)

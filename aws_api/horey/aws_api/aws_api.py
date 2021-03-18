@@ -51,14 +51,15 @@ from horey.h_logger import get_logger
 from horey.common_utils.text_block import TextBlock
 
 from horey.network.dns_map import DNSMap
-
+from horey.aws_api.base_entities.aws_account import AWSAccount
 
 logger = get_logger()
 
 
 # pylint: disable=R0904
 class AWSAPI:
-    def __init__(self):
+
+    def __init__(self, configuration=None):
         self.ec2_client = EC2Client()
         self.lambda_client = LambdaClient()
         self.iam_client = IamClient()
@@ -83,6 +84,17 @@ class AWSAPI:
         self.lambdas = []
         self.iam_roles = []
         self.cloud_watch_log_groups = []
+        self.configuration = configuration
+        self.init_configuration()
+
+    def init_configuration(self):
+        """
+        Sets current active account from configuration
+        """
+        if self.configuration is None:
+            return
+        accounts = CommonUtils.load_object_from_module(self.configuration.accounts_file, "main")
+        AWSAccount.set_aws_account(accounts[self.configuration.aws_api_account])
 
     def init_ec2_instances(self, from_cache=False, cache_file=None):
         if from_cache:

@@ -7,11 +7,13 @@ from horey.aws_api.aws_api import AWSAPI
 
 from horey.h_logger import get_logger
 logger = get_logger()
-from horey.aws_api.base_entities.aws_account import AWSAccount
-from configuration_values import SECURITY_GROUPS_CACHE_FILE, LAMBDAS_CACHE_FILE, CLEANUP_LAMBDAS_REPORT, ACCOUNT
 
-AWSAccount.set_aws_account(ACCOUNT)
-aws_api = AWSAPI()
+from horey.aws_api.aws_api_configuration_policy import AWSAPIConfigurationPolicy
+configuration = AWSAPIConfigurationPolicy()
+configuration.configuration_file_full_path = "/Users/alexeybe/Desktop/tmp/configuration_values.py"
+configuration.init_from_file()
+
+aws_api = AWSAPI(configuration=configuration)
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
@@ -42,9 +44,9 @@ def test_cleanup_report_iam_roles():
 
 #@pytest.mark.skip(reason="No way of currently testing this")
 def test_init_from_cache_and_cleanup_lambdas():
-    aws_api.init_security_groups(from_cache=True, cache_file=SECURITY_GROUPS_CACHE_FILE)
-    aws_api.init_lambdas(from_cache=True, cache_file=LAMBDAS_CACHE_FILE)
-    tb_ret = aws_api.cleanup_report_lambdas(CLEANUP_LAMBDAS_REPORT)
+    aws_api.init_security_groups(from_cache=True, cache_file=configuration.aws_api_ec2_security_groups_cache_file)
+    aws_api.init_lambdas(from_cache=True, cache_file=configuration.aws_api_lambdas_cache_file)
+    tb_ret = aws_api.cleanup_report_lambdas(configuration.aws_api_cleanups_lambda_file)
     assert tb_ret is not None
 
 

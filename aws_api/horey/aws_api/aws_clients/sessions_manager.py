@@ -4,6 +4,7 @@ Manages sessions towards multiple AWS accounts and regions.
 import threading
 import sys
 import os
+import pdb
 import datetime
 from typing import Any
 import boto3
@@ -146,7 +147,6 @@ class SessionsManager:
 
         if session is None:
             raise RuntimeError(f"Could not establish session for aws_account {aws_account.id}")
-
         return session
 
     @staticmethod

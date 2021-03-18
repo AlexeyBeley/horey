@@ -88,8 +88,13 @@ class Boto3Client:
                     if starting_token is None:
                         return
             except Exception as exception_instance:
+                if retry_counter == self.EXECUTION_RETRY_COUNT - 1:
+                    raise
+
                 time.sleep(1)
                 logger.warning(f"Retrying '{func_command.__name__}' attempt {retry_counter}/{self.EXECUTION_RETRY_COUNT} Error: {exception_instance}")
+        else:
+            raise
 
     def execute(self, func_command, return_string, filters_req=None, raw_data=False):
         """

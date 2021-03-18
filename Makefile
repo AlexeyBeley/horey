@@ -54,6 +54,5 @@ clear:
 #test_aws_api: install_from_source-aws_api install_test_deps-aws_api
 test_aws_api: recursive_install_from_source_local_venv-aws_api install_test_deps-aws_api
 	source ${VENV_DIR}/bin/activate &&\
-	pytest ${ROOT_DIR}/aws_api/tests/test_aws_api_configuration_policy.py
-	#pytest ${ROOT_DIR}/aws_api/tests/test_aws_api_cleanup.py
-	#pytest ${ROOT_DIR}/aws_api/tests/test_aws_api_init_and_cache.py
+	pytest ${ROOT_DIR}/aws_api/tests/test_aws_api_init_and_cache.py &&\
+	pytest ${ROOT_DIR}/aws_api/tests/test_aws_api_cleanup.py
