@@ -17,4 +17,6 @@ aws_api_cache-%:
 
 aws_api_sts_set:
 	source ${VENV_DIR}/activate &&\
-	python3 ${AWS_API_CLIENTS_DIR}/session_manager_actor.py --action set_session_credentials --profile_name blabla --configuration_file_full_path ${ACCOUNTS_FILE_PATH}
+	python3 ${AWS_API_CLIENTS_DIR}/session_manager_actor.py --action set_session_credentials --profile_name current --configuration_file_full_path ${ACCOUNTS_FILE_PATH}
+
+#export AWS_PROFILE=current

@@ -16,6 +16,21 @@ configuration.init_from_file()
 aws_api = AWSAPI(configuration=configuration)
 
 
+# region done
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_from_cache_and_cleanup_lambdas():
+    aws_api.init_security_groups(from_cache=True, cache_file=configuration.aws_api_ec2_security_groups_cache_file)
+    aws_api.init_lambdas(from_cache=True, cache_file=configuration.aws_api_lambdas_cache_file)
+    tb_ret = aws_api.cleanup_report_lambdas(configuration.aws_api_cleanups_lambda_file)
+    assert tb_ret is not None
+# endregion
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_cleanup_report_cloud_watch_logs():
+    aws_api.cleanup_report_cloud_watch_log_groups(configuration.aws_api_cloudwatch_cache_dir)
+
+
+
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_from_cache_and_cleanup_s3_buckets():
     for dict_environ in ignore_me.aws_accounts:
@@ -42,27 +57,10 @@ def test_cleanup_report_iam_roles():
         aws_api.cleanup_report_iam_roles()
 
 
-#@pytest.mark.skip(reason="No way of currently testing this")
-def test_init_from_cache_and_cleanup_lambdas():
-    aws_api.init_security_groups(from_cache=True, cache_file=configuration.aws_api_ec2_security_groups_cache_file)
-    aws_api.init_lambdas(from_cache=True, cache_file=configuration.aws_api_lambdas_cache_file)
-    tb_ret = aws_api.cleanup_report_lambdas(configuration.aws_api_cleanups_lambda_file)
-    assert tb_ret is not None
-
-
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_cleanup_report_iam_policies():
     aws_api.init_iam_policies(from_cache=True, cache_file=IAM_POLICIES_CACHE_FILE)
     aws_api.cleanup_report_iam_policies()
-
-
-cloud_watch_cache = "cloud_watch_log_groups.json"
-cloud_watch_streams = "cloudwatch_log_groups_rnd"
-
-@pytest.mark.skip(reason="No way of currently testing this")
-def test_cleanup_report_cloud_watch_logs():
-    aws_api.cleanup_report_cloud_watch_log_groups(cloudwatch_log_groups_dir)
-
 
 
 @pytest.mark.skip(reason="No way of currently testing this")

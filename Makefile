@@ -12,8 +12,8 @@ EXCLUSIONS := LICENSE Makefile README.md build dns_map docker terraform security
 SRC_FILES := $(filter-out $(EXCLUSIONS), $(ALL_PACKAGES))
 
 init_venv_dir:
-	mkdir -p ${BUILD_TMP_DIR}
-	python3 -m venv ${VENV_DIR} && \
+	mkdir -p ${BUILD_TMP_DIR} &&\
+	python3 -m venv ${VENV_DIR} &&\
 	pip3 install wheel
 
 prepare_package_wheel-%: init_venv_dir
@@ -54,5 +54,5 @@ clear:
 #test_aws_api: install_from_source-aws_api install_test_deps-aws_api
 test_aws_api: recursive_install_from_source_local_venv-aws_api install_test_deps-aws_api
 	source ${VENV_DIR}/bin/activate &&\
-	pytest ${ROOT_DIR}/aws_api/tests/test_aws_api_init_and_cache.py &&\
-	pytest ${ROOT_DIR}/aws_api/tests/test_aws_api_cleanup.py
+	pytest ${ROOT_DIR}/aws_api/tests/test_aws_api_init_and_cache.py
+	#pytest ${ROOT_DIR}/aws_api/tests/test_aws_api_cleanup.py

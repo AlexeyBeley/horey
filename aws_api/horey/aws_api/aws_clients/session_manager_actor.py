@@ -33,14 +33,30 @@ def set_session_credentials(arguments, configs_dict) -> None:
     credentials = session.get_credentials()
     credentials = credentials.get_frozen_credentials()
 
-    ret = f"[{arguments.profile_name}]"
-    ret += f"\n{credentials.token}"
-    ret += f"\n{credentials.access_key}"
-    ret += f"\n{credentials.secret_key}"
+    ret = f"\n\n[{arguments.profile_name}]"
+    ret += f"\naws_access_key_id = {credentials.access_key}"
+    ret += f"\naws_secret_access_key = {credentials.secret_key}"
+    ret += f"\naws_session_token = {credentials.token}"
 
     with open("/Users/alexeybe/.aws/credentials") as file_handler:
         contents = file_handler.read()
-    pdb.set_trace()
+
+    if arguments.profile_name in contents:
+        start_index = contents.index(f"[{arguments.profile_name}]")
+
+        try:
+            end_index = contents.index("[", start_index+1)
+            tail_string = "\n\n" + contents[end_index:].strip("\n")
+        except ValueError:
+            tail_string = ""
+
+        new_contents = contents[:start_index].strip("\n") + ret + tail_string
+        with open("/Users/alexeybe/.aws/credentials", "w+") as file_handler:
+            file_handler.write(new_contents)
+
+    else:
+        with open("/Users/alexeybe/.aws/credentials", "a+") as file_handler:
+            file_handler.write(ret)
 
 action_manager.register_action("set_session_credentials", set_session_credentials_parser, set_session_credentials)
 # endregion

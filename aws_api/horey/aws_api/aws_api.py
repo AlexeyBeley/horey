@@ -137,10 +137,10 @@ class AWSAPI:
         self.cloud_watch_log_groups = objects
 
     def init_and_cache_raw_large_cloud_watch_log_groups(self, cache_dir):
+        cache_dir = os.path.join(cache_dir, "streams")
         os.makedirs(cache_dir, exist_ok=True)
         log_groups = self.cloud_watch_logs_client.get_cloud_watch_log_groups(full_information=False)
         for log_group in log_groups:
-            raise NotImplementedError("Replacement of pdb.set_trace")
             sub_dir = os.path.join(cache_dir, log_group.name.lower().replace("/", "_"))
             os.makedirs(sub_dir, exist_ok=True)
             logger.info(f"Starting collecting from bucket: {sub_dir}")
