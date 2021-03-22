@@ -3,6 +3,7 @@ Module handling S3 buckets
 """
 import json
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
+from horey.aws_api.base_entities.region import Region
 
 
 class S3Bucket(AwsObject):
@@ -13,6 +14,7 @@ class S3Bucket(AwsObject):
         self.acl = None
         self.policy = None
         self.bucket_objects = []
+        self.region = None
 
         super().__init__(dict_src)
         if from_cache:
@@ -33,12 +35,17 @@ class S3Bucket(AwsObject):
         :return:
         """
         options = {
-                   'creation_date':  self.init_date_attr_from_formatted_string,
-                   'acl':  self._init_acl_from_cache,
-                   'policy':  self._init_policy_from_cache,
+                   "creation_date":  self.init_date_attr_from_formatted_string,
+                   "acl":  self._init_acl_from_cache,
+                   "policy":  self._init_policy_from_cache,
+                   "region": self._init_region_from_cache,
                    }
 
         self._init_from_cache(dict_src, options)
+
+    def _init_region_from_cache(self, _, dict_src):
+        self.region = Region()
+        self.region.init_from_dict(dict_src)
 
     def _init_acl_from_cache(self, _, dict_src):
         """

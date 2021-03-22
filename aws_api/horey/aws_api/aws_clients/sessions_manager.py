@@ -10,9 +10,10 @@ from typing import Any
 import boto3
 import botocore
 from dateutil.tz import tzlocal
+from horey.h_logger import get_logger
 
 from horey.aws_api.base_entities.aws_account import AWSAccount
-
+logger = get_logger()
 
 class LockAcquiringFailError(Exception):
     """
@@ -45,7 +46,7 @@ class SessionsManager:
             """
             aws_region = AWSAccount.get_aws_region()
             region_mark = aws_region.region_mark if aws_region is not None else self.session.region_name
-
+            logger.info(f"region_mark: {region_mark} client: {client_name}")
             if region_mark not in self.clients or client_name not in self.clients[region_mark]:
                 self.connect_client(region_mark, client_name)
 

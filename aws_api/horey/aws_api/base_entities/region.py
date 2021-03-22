@@ -44,3 +44,10 @@ class Region:
         :return:
         """
         self._region_name = value
+
+    def convert_to_dict(self):
+        return {"region_mark": self._region_mark, "region_name": self._region_name}
+
+    def init_from_dict(self, dict_src):
+        for attr, value in dict_src.items():
+            setattr(self, attr, value)

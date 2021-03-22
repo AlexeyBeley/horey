@@ -30,10 +30,9 @@ def test_init_and_cache_lambdas():
     aws_api.cache_objects(aws_api.lambdas, configuration.aws_api_lambdas_cache_file)
     logger.info(f"len(lambdas) = {len(aws_api.lambdas)}")
     assert isinstance(aws_api.lambdas, list)
-# endregion
 
 
-#@pytest.mark.skip(reason="No way of currently testing this")
+@pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_raw_large_cloud_watch_log_groups():
     aws_api.init_and_cache_raw_large_cloud_watch_log_groups(configuration.aws_api_cloudwatch_log_groups_cache_dir)
     print(f"len(cloud_watch_log_groups) = {len(aws_api.cloud_watch_log_groups)}")
@@ -49,32 +48,30 @@ def test_init_and_cache_cloudwatch_logs():
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_s3_buckets():
+    aws_api.init_s3_buckets()
+    aws_api.cache_objects(aws_api.s3_buckets, configuration.aws_api_s3_buckets_cache_file)
+    print(f"len(s3_buckets) = {len(aws_api.s3_buckets)}")
+    assert isinstance(aws_api.s3_buckets, list)
+
+
+#@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_all_s3_bucket_objects():
+    aws_api.init_s3_buckets(from_cache=True,
+                            cache_file=configuration.aws_api_s3_buckets_cache_file)
+
+    aws_api.init_and_cache_all_s3_bucket_objects(configuration.aws_api_s3_bucket_objects_cache_dir)
+    print(f"len(s3_buckets) = {len(aws_api.s3_buckets)}")
+    assert isinstance(aws_api.s3_buckets, list)
+# endregion
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_ec2instances():
     aws_api.init_ec2_instances()
     aws_api.cache_objects(aws_api.ec2_instances, configuration.aws_api_ec2_instances_cache_file)
     print(f"len(instances) = {len(aws_api.ec2_instances)}")
     assert isinstance(aws_api.ec2_instances, list)
-
-
-@pytest.mark.skip(reason="No way of currently testing this")
-def test_init_and_cache_s3_buckets():
-    aws_api.init_s3_buckets()
-    aws_api.cache_objects(aws_api.s3_buckets, s3_buckets_cache_file)
-    print(f"len(s3_buckets) = {len(aws_api.s3_buckets)}")
-    assert isinstance(aws_api.s3_buckets, list)
-
-
-@pytest.mark.skip(reason="No way of currently testing this")
-def test_init_and_cache_s3_bucket_objects():
-    aws_api.init_s3_buckets(from_cache=True,
-                            cache_file=s3_buckets_cache_file)
-
-    aws_api.init_and_cache_s3_bucket_objects(s3_objects_dir)
-
-    pdb.set_trace()
-
-    print(f"len(s3_buckets) = {len(aws_api.s3_buckets)}")
-    assert isinstance(aws_api.s3_buckets, list)
 
 
 @pytest.mark.skip(reason="No way of currently testing this")

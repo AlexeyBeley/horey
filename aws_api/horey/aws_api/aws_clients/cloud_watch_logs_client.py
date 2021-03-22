@@ -3,6 +3,7 @@ AWS client to handle cloud watch logs.
 """
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.cloud_watch_log_group import CloudWatchLogGroup
+from horey.aws_api.base_entities.aws_account import AWSAccount
 
 
 class CloudWatchLogsClient(Boto3Client):
@@ -28,13 +29,15 @@ class CloudWatchLogsClient(Boto3Client):
         """
 
         final_result = list()
+        for region in AWSAccount.get_aws_account().regions.values():
+            AWSAccount.set_aws_region(region)
+            for result in self.execute(self.client.describe_log_groups, "logGroups"):
+                obj = CloudWatchLogGroup(result)
+                if full_information:
+                    self.update_log_group_full_information(obj)
 
-        for result in self.execute(self.client.describe_log_groups, "logGroups"):
-            obj = CloudWatchLogGroup(result)
-            if full_information:
-                self.update_log_group_full_information(obj)
-
-            final_result.append(obj)
+                obj.region = AWSAccount.get_aws_region()
+                final_result.append(obj)
         return final_result
 
     def update_log_group_full_information(self, obj):
@@ -44,14 +47,19 @@ class CloudWatchLogsClient(Boto3Client):
         :return: None, raise if fails
         """
 
-        for response in self.execute(self.client.describe_log_streams, "logStreams", filters_req={"logGroupName": obj.name}):
+        for response in self.execute(self.client.describe_log_streams, "logStreams",
+                                     filters_req={"logGroupName": obj.name}):
             obj.update_log_stream(response)
 
-    def yield_log_group_streams(self, log_group_name):
+    def yield_log_group_streams(self, log_group):
         """
         Yields streams - made to handle large log groups, in order to prevent the OOM collapse.
-        :param log_group_name:
+        :param log_group:
         :return:
         """
-        for response in self.execute(self.client.describe_log_streams, "logStreams", filters_req={"logGroupName": log_group_name}):
+        if AWSAccount.get_aws_region() != log_group.region:
+            AWSAccount.set_aws_region(log_group.region)
+
+        for response in self.execute(self.client.describe_log_streams, "logStreams",
+                                     filters_req={"logGroupName": log_group.name}):
             yield response

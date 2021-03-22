@@ -143,9 +143,9 @@ class AWSAPI:
         for log_group in log_groups:
             sub_dir = os.path.join(cache_dir, log_group.name.lower().replace("/", "_"))
             os.makedirs(sub_dir, exist_ok=True)
-            logger.info(f"Starting collecting from bucket: {sub_dir}")
+            logger.info(f"Begin collecting from stream: {sub_dir}")
 
-            stream_generator = self.cloud_watch_logs_client.yield_log_group_streams(log_group.name)
+            stream_generator = self.cloud_watch_logs_client.yield_log_group_streams(log_group)
             self.cache_large_objects_from_generator(stream_generator, sub_dir)
 
     def cache_large_objects_from_generator(self, generator, sub_dir):
@@ -217,7 +217,7 @@ class AWSAPI:
 
             print(f"{bucket.name}: {len(bucket_objects)}")
 
-    def init_and_cache_s3_bucket_objects(self, buckets_objects_cache_dir, bucket_name=None):
+    def init_and_cache_all_s3_bucket_objects(self, buckets_objects_cache_dir, bucket_name=None):
         """
         each bucket object represented as 388.586973867 B string in file
         :param buckets_objects_cache_dir:
@@ -226,51 +226,57 @@ class AWSAPI:
         """
         max_count = 100000
         for bucket in self.s3_buckets:
-            raise NotImplementedError("Replacement of pdb.set_trace")
             if bucket_name is not None and bucket.name != bucket_name:
                 continue
 
             bucket_dir = os.path.join(buckets_objects_cache_dir, bucket.name)
             os.makedirs(bucket_dir, exist_ok=True)
             logger.info(f"Starting collecting from bucket: {bucket.name}")
-
-            bucket_objects_iterator = self.s3_client.yield_bucket_objects(bucket)
-            total_counter = 0
-            counter = 0
-
-            buffer = []
-            for bucket_object in bucket_objects_iterator:
-                counter += 1
-                total_counter += 1
-                buffer.append(bucket_object)
-
-                if counter < max_count:
-                    continue
-                logger.info(f"Bucket objects total_counter: {total_counter}")
-                logger.info(f"Writing chunk of {max_count} objects for bucket {bucket.name}")
-                counter = 0
-                file_name = bucket_object.key.replace("/", "_")
-                file_path = os.path.join(bucket_dir, file_name)
-
-                data_to_dump = [obj.convert_to_dict() for obj in buffer]
-
-                buffer = []
-
-                with open(file_path, "w") as fd:
-                    json.dump(data_to_dump, fd)
-
-            logger.info(f"Bucket {bucket.name} total count of objects: {total_counter}")
-
-            if total_counter == 0:
+            try:
+                self.cache_s3_bucket_objects(bucket, max_count, bucket_dir)
+            except self.s3_client.NoReturnStringError as received_exception:
+                logger.warning(f"bucket {bucket.name} has no return string: {received_exception} ")
                 continue
 
+    def cache_s3_bucket_objects(self, bucket, max_count, bucket_dir):
+        bucket_objects_iterator = self.s3_client.yield_bucket_objects(bucket)
+        total_counter = 0
+        counter = 0
+
+        buffer = []
+        for bucket_object in bucket_objects_iterator:
+            counter += 1
+            total_counter += 1
+            buffer.append(bucket_object)
+
+            if counter < max_count:
+                continue
+
+            logger.info(f"Bucket objects total_counter: {total_counter}")
+            logger.info(f"Writing chunk of {max_count} objects for bucket {bucket.name}")
+            counter = 0
             file_name = bucket_object.key.replace("/", "_")
             file_path = os.path.join(bucket_dir, file_name)
 
             data_to_dump = [obj.convert_to_dict() for obj in buffer]
 
+            buffer = []
+
             with open(file_path, "w") as fd:
                 json.dump(data_to_dump, fd)
+
+        logger.info(f"Bucket {bucket.name} total count of objects: {total_counter}")
+
+        if total_counter == 0:
+            return
+
+        file_name = bucket_object.key.replace("/", "_")
+        file_path = os.path.join(bucket_dir, file_name)
+
+        data_to_dump = [obj.convert_to_dict() for obj in buffer]
+
+        with open(file_path, "w") as fd:
+            json.dump(data_to_dump, fd)
 
     def init_lambdas(self, from_cache=False, cache_file=None, full_information=True):
         if from_cache:

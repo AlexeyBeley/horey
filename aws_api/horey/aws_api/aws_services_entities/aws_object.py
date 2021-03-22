@@ -195,7 +195,7 @@ class AwsObject:
         Converts all known attribute types to a specific form available to be init from cache.
 
         :param obj_src:
-        :param custom_types:
+        :param custom_types: list of dicts: {type:converter_function}
         :return:
         """
         if type(obj_src) in [str, int, bool, type(None)]:
@@ -223,6 +223,11 @@ class AwsObject:
 
         # In most cases it will become str
         # Ugly but efficient
+        try:
+            return obj_src.convert_to_dict()
+        except AttributeError:
+            pass
+
         if not custom_types:
             return str(obj_src)
 

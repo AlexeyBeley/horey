@@ -4,7 +4,7 @@ Base Boto3 client. It provides sessions and client management.
 
 import time
 from horey.aws_api.aws_clients.sessions_manager import SessionsManager
-
+import pdb
 from horey.h_logger import get_logger
 
 logger = get_logger()
@@ -66,8 +66,8 @@ class Boto3Client:
             filters_req = {}
 
         starting_token = self.NEXT_PAGE_INITIAL_KEY
-
-        for retry_counter in range(self.EXECUTION_RETRY_COUNT):
+        retry_counter = 0
+        while retry_counter < self.EXECUTION_RETRY_COUNT:
             try:
                 logger.info(f"Start paginating with starting_token: '{starting_token}' and args '{filters_req}'")
 
@@ -81,17 +81,25 @@ class Boto3Client:
                     Boto3Client.EXEC_COUNT += 1
 
                     if return_string not in _page:
-                        raise NotImplementedError("Has no return string")
+                        raise self.NoReturnStringError(f"Has no return string '{return_string}'. Return dict: {_page}")
 
                     for response_obj in _page[return_string]:
                         yield response_obj
                     if starting_token is None:
                         return
+                break
+            except self.NoReturnStringError:
+                raise
             except Exception as exception_instance:
-                if retry_counter == self.EXECUTION_RETRY_COUNT - 1:
-                    raise
+                exception_weight = 10
+                time_to_sleep = 1
 
-                time.sleep(1)
+                if "Throttling" in repr(exception_instance):
+                    exception_weight = 1
+                    time_to_sleep = retry_counter + exception_weight
+
+                retry_counter += exception_weight
+                time.sleep(time_to_sleep)
                 logger.warning(f"Retrying '{func_command.__name__}' attempt {retry_counter}/{self.EXECUTION_RETRY_COUNT} Error: {exception_instance}")
         else:
             raise
@@ -130,3 +138,6 @@ class Boto3Client:
 
         for ret_obj in ret_lst:
             yield ret_obj
+
+    class NoReturnStringError(Exception):
+        pass

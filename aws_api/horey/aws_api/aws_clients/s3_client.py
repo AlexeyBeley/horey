@@ -3,6 +3,8 @@ AWS s3 client to handle s3 service API requests.
 """
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.s3_bucket import S3Bucket
+from horey.aws_api.base_entities.aws_account import AWSAccount
+import pdb
 
 
 class S3Client(Boto3Client):
@@ -19,6 +21,8 @@ class S3Client(Boto3Client):
         :param obj:
         :return:
         """
+        AWSAccount.set_aws_region(obj.region)
+
         try:
             start_after = ""
             while start_after is not None:
@@ -50,6 +54,7 @@ class S3Client(Boto3Client):
         for i in range(len_all_buckets):
             response = all_buckets[i]
             obj = S3Bucket(response)
+            obj.region = AWSAccount.get_aws_region()
 
             print(f"Init bucket {obj.name}:  {i}/{len_all_buckets}")
 
