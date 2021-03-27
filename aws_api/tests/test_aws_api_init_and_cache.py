@@ -32,9 +32,9 @@ def test_init_and_cache_lambdas():
     assert isinstance(aws_api.lambdas, list)
 
 
-@pytest.mark.skip(reason="No way of currently testing this")
+#@pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_raw_large_cloud_watch_log_groups():
-    aws_api.init_and_cache_raw_large_cloud_watch_log_groups(configuration.aws_api_cloudwatch_log_groups_cache_dir)
+    aws_api.init_and_cache_raw_large_cloud_watch_log_groups(configuration.aws_api_cloudwatch_log_groups_streams_cache_dir)
     print(f"len(cloud_watch_log_groups) = {len(aws_api.cloud_watch_log_groups)}")
     assert isinstance(aws_api.cloud_watch_log_groups, list)
 
@@ -55,7 +55,7 @@ def test_init_and_cache_s3_buckets():
     assert isinstance(aws_api.s3_buckets, list)
 
 
-#@pytest.mark.skip(reason="No way of currently testing this")
+@pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_all_s3_bucket_objects():
     aws_api.init_s3_buckets(from_cache=True,
                             cache_file=configuration.aws_api_s3_buckets_cache_file)
@@ -113,3 +113,6 @@ def test_init_and_cache_load_balancers():
     aws_api.init_load_balancers()
     aws_api.cache_objects(aws_api.load_balancers, load_balancers_cache_file)
     print(f"len(load_balancers) = {len(aws_api.load_balancers)}")
+
+if __name__ == "__main__":
+    test_init_and_cache_raw_large_cloud_watch_log_groups()

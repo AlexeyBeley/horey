@@ -4,7 +4,7 @@ AWS client to handle cloud watch logs.
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.cloud_watch_log_group import CloudWatchLogGroup
 from horey.aws_api.base_entities.aws_account import AWSAccount
-
+import pdb
 
 class CloudWatchLogsClient(Boto3Client):
     """
@@ -59,7 +59,8 @@ class CloudWatchLogsClient(Boto3Client):
         """
         if AWSAccount.get_aws_region() != log_group.region:
             AWSAccount.set_aws_region(log_group.region)
-
+        #pdb.set_trace()
         for response in self.execute(self.client.describe_log_streams, "logStreams",
                                      filters_req={"logGroupName": log_group.name}):
+            #pdb.set_trace()
             yield response

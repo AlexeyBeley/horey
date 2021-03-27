@@ -44,6 +44,8 @@ class S3Bucket(AwsObject):
         self._init_from_cache(dict_src, options)
 
     def _init_region_from_cache(self, _, dict_src):
+        if dict_src is None:
+            return
         self.region = Region()
         self.region.init_from_dict(dict_src)
 

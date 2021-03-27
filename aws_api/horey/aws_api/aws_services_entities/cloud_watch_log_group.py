@@ -56,6 +56,9 @@ class CloudWatchLogGroup(AwsObject):
         ls = CloudWatchLogGroup.LogStream(dict_src, from_cache=from_cache)
         self.log_streams.append(ls)
 
+    def generate_dir_name(self):
+        return self.name.lower().replace("/", "_")
+
     class LogStream(AwsObject):
         """
         The class representing log group's log stream

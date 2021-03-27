@@ -21,7 +21,6 @@ class S3Client(Boto3Client):
         :param obj:
         :return:
         """
-        AWSAccount.set_aws_region(obj.region)
 
         try:
             start_after = ""

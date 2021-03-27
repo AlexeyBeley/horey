@@ -136,12 +136,10 @@ class AWSAPI:
 
         self.cloud_watch_log_groups = objects
 
-    def init_and_cache_raw_large_cloud_watch_log_groups(self, cache_dir):
-        cache_dir = os.path.join(cache_dir, "streams")
-        os.makedirs(cache_dir, exist_ok=True)
+    def init_and_cache_raw_large_cloud_watch_log_groups(self, cloudwatch_log_groups_streams_cache_dir):
         log_groups = self.cloud_watch_logs_client.get_cloud_watch_log_groups(full_information=False)
         for log_group in log_groups:
-            sub_dir = os.path.join(cache_dir, log_group.name.lower().replace("/", "_"))
+            sub_dir = os.path.join(cloudwatch_log_groups_streams_cache_dir, log_group.generate_dir_name())
             os.makedirs(sub_dir, exist_ok=True)
             logger.info(f"Begin collecting from stream: {sub_dir}")
 
@@ -155,6 +153,7 @@ class AWSAPI:
         buffer = []
 
         for dict_src in generator:
+            #pdb.set_trace()
             counter += 1
             total_counter += 1
             buffer.append(dict_src)
@@ -444,6 +443,42 @@ class AWSAPI:
             tb_ret.lines = [f"No lambdas found with size over {CommonUtils.bytes_to_str(limit)}"]
         return tb_ret
 
+    def cleanup_report_lambdas_not_running(self, aws_api_cloudwatch_log_groups_streams_cache_dir):
+        tb_ret = TextBlock("Not functioning lambdas- either the last run was to much time ago or it never run")
+        for aws_lambda in self.lambdas:
+            log_groups = \
+                CommonUtils.find_objects_by_values(self.cloud_watch_log_groups, {"name": f"/aws/lambda/{aws_lambda.name}"}, max_count=1)
+            if len(log_groups) == 0:
+                tb_ret.lines.append(f"{aws_lambda.name}- never run [Log group does not exist]")
+                continue
+
+            log_group = log_groups[0]
+            if log_group.stored_bytes == 0:
+                tb_ret.lines.append(f"{aws_lambda.name}- never run [No logs in log group]")
+                continue
+
+            if CommonUtils.timestamp_to_datetime(log_group.creation_time/1000) > datetime.datetime.now() - datetime.timedelta(days=31):
+                continue
+
+            lines = self.cleanup_report_lambdas_not_running_stream_analysis(log_group, aws_api_cloudwatch_log_groups_streams_cache_dir)
+            tb_ret.lines += lines
+
+        return tb_ret
+
+    def cleanup_report_lambdas_not_running_stream_analysis(self, log_group, aws_api_cloudwatch_log_groups_streams_cache_dir):
+        lines = []
+        file_names = os.listdir(os.path.join(aws_api_cloudwatch_log_groups_streams_cache_dir, log_group.generate_dir_name()))
+
+        last_file = str(max([int(file_name) for file_name in file_names]))
+        with open(os.path.join(aws_api_cloudwatch_log_groups_streams_cache_dir, log_group.generate_dir_name(), last_file)) as file_handler:
+            last_stream = json.load(file_handler)[-1]
+
+        if CommonUtils.timestamp_to_datetime(last_stream["lastIngestionTime"]/1000) < datetime.datetime.now() - datetime.timedelta(days=365):
+            lines.append(f"Cloudwatch log group '{log_group.name}' last event was more then year ago: {CommonUtils.timestamp_to_datetime(last_stream['lastIngestionTime']/1000)}")
+        elif CommonUtils.timestamp_to_datetime(last_stream["lastIngestionTime"]/1000) < datetime.datetime.now() - datetime.timedelta(days=62):
+            lines.append(f"Cloudwatch log group '{log_group.name}' last event was more then 2 months ago: {CommonUtils.timestamp_to_datetime(last_stream['lastIngestionTime']/1000)}")
+        return lines
+
     def cleanup_report_lambdas_old_code(self):
         """
         Find all lambdas, which code wasn't updated for a year or more.
@@ -461,8 +496,9 @@ class AWSAPI:
         tb_ret.lines = [f"Lambda {name} was last update: {update_date.strftime('%Y-%m-%d %H:%M')}" for name, update_date in lst_names_dates]
         return tb_ret
 
-    def cleanup_report_lambdas(self, report_file_path):
+    def cleanup_report_lambdas(self, report_file_path, aws_api_cloudwatch_log_groups_streams_cache_dir):
         tb_ret = TextBlock("AWS Lambdas cleanup")
+        tb_ret.blocks.append(self.cleanup_report_lambdas_not_running(aws_api_cloudwatch_log_groups_streams_cache_dir))
         tb_ret.blocks.append(self.cleanup_report_lambdas_large_size())
         tb_ret.blocks.append(self.cleanup_report_lambdas_security_group())
         tb_ret.blocks.append(self.cleanup_report_lambdas_old_code())
@@ -472,7 +508,7 @@ class AWSAPI:
 
         return tb_ret
 
-    def cleanup_report_s3_buckets_objects(self, summarised_data_file):
+    def cleanup_report_s3_buckets_objects(self, summarised_data_file, output_file):
         with open(summarised_data_file) as fh:
             all_buckets = json.load(fh)
 
@@ -513,8 +549,8 @@ class AWSAPI:
 
             tb_ret.blocks.append(tb_bucket)
 
-        print(tb_ret.format_pprint())
-        with open("./tmp_output.txt", "w") as fh:
+        #print(tb_ret.format_pprint())
+        with open(output_file, "w") as fh:
             fh.write(tb_ret.format_pprint())
 
         return tb_ret
@@ -649,11 +685,19 @@ class AWSAPI:
 
     @staticmethod
     def enter_n_sorted(items, get_item_weight, item_to_insert):
+        """
+        Inserting item into sorted array.
+        items- array of items.
+        get_item_weight- function to comapre 2 items- each item in array and candidate.
+        item_to_insert - candidate to be inserted
+
+        """
         item_to_insert_weight = get_item_weight(item_to_insert)
 
         if len(items) == 0:
             raise ValueError("Not inited items (len=0)")
 
+        i = 0
         for i in range(len(items)):
             if item_to_insert_weight < get_item_weight(items[i]):
                 logger.info(f"Found new item to insert with wait {item_to_insert_weight} at place {i} where current weight is {get_item_weight(items[i])}")
@@ -662,7 +706,7 @@ class AWSAPI:
         i -= 1
 
         while i > -1:
-            logger.info(f"Updatig item at place {i}")
+            #logger.info(f"Updating item at place {i}")
             item_to_insert_tmp = items[i]
             items[i] = item_to_insert
             item_to_insert = item_to_insert_tmp
@@ -673,20 +717,16 @@ class AWSAPI:
             return
 
         if dict_log_group["streams_count"] < top_streams_count:
-            dict_log_group["data"]["streams_by_size"].append(stream)
             dict_log_group["data"]["streams_by_date"].append(stream)
             return
 
         if dict_log_group["streams_count"] == top_streams_count:
-            dict_log_group["data"]["streams_by_size"] = sorted(dict_log_group["data"]["streams_by_size"],
-                                                               key=lambda x: x["storedBytes"])
             dict_log_group["data"]["streams_by_date"] = sorted(dict_log_group["data"]["streams_by_date"],
                                                                key=lambda x: -(
                                                                x["lastIngestionTime"] if "lastIngestionTime" in x else
                                                                x["creationTime"]))
             return
 
-        self.enter_n_sorted(dict_log_group["data"]["streams_by_size"], lambda x: x["storedBytes"], stream)
         self.enter_n_sorted(dict_log_group["data"]["streams_by_date"],
                         lambda x: -(x["lastIngestionTime"] if "lastIngestionTime" in x else x["creationTime"]), stream)
 
@@ -699,52 +739,45 @@ class AWSAPI:
         for dict_log_group in dict_total["data"]:
             tb_log_group = TextBlock(
                 f"{dict_log_group['name']} size: {CommonUtils.bytes_to_str(dict_log_group['size'])}, streams: {CommonUtils.int_to_str(dict_log_group['streams_count'])}")
-
-            lines = []
-            total_size = 0
-            for stream in dict_log_group["data"]["streams_by_size"]:
-                name = stream["logStreamName"]
-                size = stream["storedBytes"]
-                total_size += size
-                last_accessed = stream["lastIngestionTime"] if "lastIngestionTime" in stream else stream["creationTime"]
-                last_accessed = CommonUtils.timestamp_to_datetime(last_accessed / 1000.0)
-                lines.append(f"{name} size: {CommonUtils.bytes_to_str(size)}, last_accessed: {last_accessed}")
-
-            tb_streams_by_size = TextBlock(
-                f"{top_streams_count} largest streams' total size: {CommonUtils.bytes_to_str(total_size)}")
-            tb_streams_by_size.lines = lines
-            tb_log_group.blocks.append(tb_streams_by_size)
+            logger.info(dict_log_group['name'])
 
             if dict_log_group['streams_count'] > top_streams_count:
                 lines = []
-                total_size = 0
                 for stream in dict_log_group["data"]["streams_by_date"]:
+                    logger.info(stream["logStreamName"])
                     name = stream["logStreamName"]
-                    size = stream["storedBytes"]
-                    total_size += size
                     last_accessed = stream["lastIngestionTime"] if "lastIngestionTime" in stream else stream["creationTime"]
                     last_accessed = CommonUtils.timestamp_to_datetime(last_accessed / 1000.0)
-                    lines.append(f"{name} size: {CommonUtils.bytes_to_str(size)}, last_accessed: {last_accessed}")
+                    lines.append(f"{name} last_accessed: {last_accessed}")
 
                 tb_streams_by_date = TextBlock(
-                    f"{top_streams_count} ancient streams' total size: {CommonUtils.bytes_to_str(total_size)}")
+                    f"{top_streams_count} ancient streams")
                 tb_streams_by_date.lines = lines
                 tb_log_group.blocks.append(tb_streams_by_date)
 
             tb_ret.blocks.append(tb_log_group)
         return tb_ret
 
-    def cleanup_report_cloud_watch_log_groups(self, streams_dir, top_streams_count=100):
+    def cleanup_report_cloud_watch_log_groups(self, streams_dir, output_file, top_streams_count=100):
         dict_total = {"size": 0, "streams_count": 0, "data": []}
-        for log_group_subdir in os.listdir(streams_dir):
-            dict_log_group = {"name": log_group_subdir, "size": 0, "streams_count": 0, "data": {"streams_by_size": [], "streams_by_date": []}}
+        log_group_subdirs = os.listdir(streams_dir)
+        for i in range(len(log_group_subdirs)):
+            log_group_subdir = log_group_subdirs[i]
+            logger.info(f"Log group sub directory {i}/{len(log_group_subdirs)}")
+            dict_log_group = {"name": log_group_subdir, "size": 0, "streams_count": 0, "data": {"streams_by_date": []}}
             log_group_full_path = os.path.join(streams_dir, log_group_subdir)
 
-            for chunk_file in os.listdir(log_group_full_path):
+            log_group_chunk_files = os.listdir(log_group_full_path)
+            for j in range(len(log_group_chunk_files)):
+                chunk_file = log_group_chunk_files[j]
+                logger.info(f"Chunk files in log group dir {j}/{len(log_group_chunk_files)}")
+
                 with open(os.path.join(log_group_full_path, chunk_file)) as fh:
                     streams = json.load(fh)
+                log_group_name = streams[0]["arn"].split(":")[6]
+                log_group = CommonUtils.find_objects_by_values(self.cloud_watch_log_groups, {"name": log_group_name}, max_count=1)[0]
+                dict_log_group["size"] = log_group.stored_bytes
                 for stream in streams:
-                    dict_log_group["size"] += stream["storedBytes"]
                     dict_log_group["streams_count"] += 1
                     self.cleanup_report_cloud_watch_log_groups_handle_sorted_streams(top_streams_count, dict_log_group, stream)
 
@@ -753,9 +786,9 @@ class AWSAPI:
             dict_total["data"].append(dict_log_group)
         dict_total["data"] = sorted(dict_total["data"], key=lambda x: x["size"], reverse=True)
         tb_ret = self.cleanup_report_cloud_watch_log_groups_prepare_tb(dict_total, top_streams_count)
-        print(tb_ret.format_pprint())
-        raise NotImplementedError("Replacement of pdb.set_trace")
-        return
+        with open(output_file, "w+") as file_handler:
+            file_handler.write(tb_ret.format_pprint())
+        return tb_ret
 
     def cleanup_report_iam_policies(self):
         tb_ret = TextBlock("Iam Policies")

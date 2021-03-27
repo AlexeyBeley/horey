@@ -16,7 +16,7 @@ class Boto3Client:
     """
     EXEC_COUNT = 0
     SESSIONS_MANAGER = SessionsManager()
-    EXECUTION_RETRY_COUNT = 4
+    EXECUTION_RETRY_COUNT = 100
     NEXT_PAGE_REQUEST_KEY = "NextToken"
     NEXT_PAGE_RESPONSE_KEY = "NextToken"
     NEXT_PAGE_INITIAL_KEY = None
@@ -74,7 +74,6 @@ class Boto3Client:
                 for _page in self.client.get_paginator(func_command.__name__).paginate(
                         PaginationConfig={self.NEXT_PAGE_REQUEST_KEY: starting_token},
                         **filters_req):
-
                     starting_token = _page.get(self.NEXT_PAGE_RESPONSE_KEY)
                     logger.info(f"Updating '{func_command.__name__}' {filters_req} pagination starting_token: {starting_token}")
 
