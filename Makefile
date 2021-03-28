@@ -21,6 +21,7 @@ prepare_package_wheel-%: init_venv_dir
 
 recursive_install_from_source_local_venv-%: init_venv_dir
 	source ${VENV_DIR}/bin/activate &&\
+	pip install -U setuptools &&\
 	${BUILD_DIR}/recursive_install_from_source.sh --root_dir ${ROOT_DIR} --package_name horey.$(subst recursive_install_from_source_local_venv-,,$@)
 
 package_source-%:
