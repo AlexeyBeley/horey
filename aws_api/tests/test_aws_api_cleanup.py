@@ -17,7 +17,7 @@ aws_api = AWSAPI(configuration=configuration)
 
 
 # region done
-#@pytest.mark.skip(reason="No way of currently testing this")
+@pytest.mark.skip(reason="No way of currently testing this")
 def test_init_from_cache_and_cleanup_lambdas():
     aws_api.init_security_groups(from_cache=True, cache_file=configuration.aws_api_ec2_security_groups_cache_file)
     aws_api.init_lambdas(from_cache=True, cache_file=configuration.aws_api_lambdas_cache_file)
@@ -26,7 +26,7 @@ def test_init_from_cache_and_cleanup_lambdas():
     assert tb_ret is not None
 
 
-@pytest.mark.skip(reason="No way of currently testing this")
+#@pytest.mark.skip(reason="No way of currently testing this")
 def test_cleanup_report_cloud_watch_logs():
     aws_api.init_cloud_watch_log_groups(from_cache=True, cache_file=configuration.aws_api_cloudwatch_log_groups_cache_file)
     ret = aws_api.cleanup_report_cloud_watch_log_groups(configuration.aws_api_cloudwatch_log_groups_streams_cache_dir, configuration.aws_api_cleanup_cloudwatch_report_file)
