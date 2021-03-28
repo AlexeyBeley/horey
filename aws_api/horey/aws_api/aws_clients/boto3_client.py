@@ -16,7 +16,7 @@ class Boto3Client:
     """
     EXEC_COUNT = 0
     SESSIONS_MANAGER = SessionsManager()
-    EXECUTION_RETRY_COUNT = 100
+    EXECUTION_RETRY_COUNT = 1000
     NEXT_PAGE_REQUEST_KEY = "NextToken"
     NEXT_PAGE_RESPONSE_KEY = "NextToken"
     NEXT_PAGE_INITIAL_KEY = None
@@ -96,6 +96,8 @@ class Boto3Client:
                 if "Throttling" in repr(exception_instance):
                     exception_weight = 1
                     time_to_sleep = retry_counter + exception_weight
+                    with open("/tmp/error.log", "a+") as file_handler:
+                        file_handler.write(f"func_command: {func_command.__name__} exception_instance: {repr(exception_instance)} exception_weight: {exception_weight}, time_to_sleep: {time_to_sleep}")
 
                 retry_counter += exception_weight
                 time.sleep(time_to_sleep)
