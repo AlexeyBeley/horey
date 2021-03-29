@@ -90,15 +90,13 @@ class Boto3Client:
             except self.NoReturnStringError:
                 raise
             except Exception as exception_instance:
-                pdb.set_trace()
                 exception_weight = 10
                 time_to_sleep = 1
 
                 if "Throttling" in repr(exception_instance):
                     exception_weight = 1
                     time_to_sleep = retry_counter + exception_weight
-                    with open("/tmp/error.log", "a+") as file_handler:
-                        file_handler.write(f"func_command: {func_command.__name__} exception_instance: {repr(exception_instance)} exception_weight: {exception_weight}, time_to_sleep: {time_to_sleep}")
+                    logger.error(f"Retrying after Throttling '{func_command.__name__}' attempt {retry_counter}/{self.EXECUTION_RETRY_COUNT} Error: {exception_instance}")
 
                 retry_counter += exception_weight
                 time.sleep(time_to_sleep)
