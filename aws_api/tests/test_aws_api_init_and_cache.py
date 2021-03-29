@@ -10,8 +10,8 @@ from horey.aws_api.aws_api_configuration_policy import AWSAPIConfigurationPolicy
 logger = get_logger(configuration_values_file_full_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), "h_logger_configuration_values.py"))
 
 configuration = AWSAPIConfigurationPolicy()
-configuration.configuration_file_full_path = "/Users/alexeybe/Desktop/tmp/configuration_values.py"
-#configuration.configuration_file_full_path = "/home/ubuntu/configuration_values.py"
+#configuration.configuration_file_full_path = "/Users/alexeybe/Desktop/tmp/configuration_values.py"
+configuration.configuration_file_full_path = "/home/ubuntu/configuration_values.py"
 configuration.init_from_file()
 
 aws_api = AWSAPI(configuration=configuration)
