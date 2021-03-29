@@ -700,10 +700,8 @@ class AWSAPI:
         i = 0
         for i in range(len(items)):
             if item_to_insert_weight < get_item_weight(items[i]):
-                logger.info(f"Found new item to insert with wait {item_to_insert_weight} at place {i} where current weight is {get_item_weight(items[i])}")
+                logger.info(f"Found new item to insert with weight {item_to_insert_weight} at place {i} where current weight is {get_item_weight(items[i])}")
                 break
-
-        i -= 1
 
         while i > -1:
             #logger.info(f"Updating item at place {i}")

@@ -90,6 +90,7 @@ class Boto3Client:
             except self.NoReturnStringError:
                 raise
             except Exception as exception_instance:
+                pdb.set_trace()
                 exception_weight = 10
                 time_to_sleep = 1
 

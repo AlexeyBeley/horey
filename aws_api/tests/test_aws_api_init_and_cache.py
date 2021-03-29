@@ -11,6 +11,7 @@ logger = get_logger()
 
 configuration = AWSAPIConfigurationPolicy()
 configuration.configuration_file_full_path = "/Users/alexeybe/Desktop/tmp/configuration_values.py"
+configuration.configuration_file_full_path = "/home/ubuntu/configuration_values.py"
 configuration.init_from_file()
 
 aws_api = AWSAPI(configuration=configuration)
