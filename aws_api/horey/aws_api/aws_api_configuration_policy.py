@@ -16,6 +16,10 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
         self._aws_api_cloudwatch_log_groups_cache_dir = None
         self._aws_api_cloudwatch_log_groups_streams_cache_dir = None
         self._accounts_file = None
+        self._aws_api_classic_loadbalancers_cache_dir = None
+        self._aws_api_loadbalancers_cache_dir = None
+        self._aws_api_databases_cache_dir = None
+        self._aws_api_hosted_zones_cache_dir = None
 
     @property
     def aws_api_regions(self):
@@ -171,7 +175,105 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     def aws_api_lambdas_cache_file(self, value):
         raise ValueError(value)
     # endregion
+
+    # region classic_loadbalancers
+    @property
+    def aws_api_classic_loadbalancers_cache_dir(self):
+        if self._aws_api_classic_loadbalancers_cache_dir is None:
+            self._aws_api_classic_loadbalancers_cache_dir = os.path.join(self.aws_api_cache_dir, self.aws_api_account, "classic_loadbalancers")
+            os.makedirs(self._aws_api_classic_loadbalancers_cache_dir, exist_ok=True)
+        return self._aws_api_classic_loadbalancers_cache_dir
+
+    @aws_api_classic_loadbalancers_cache_dir.setter
+    def aws_api_classic_loadbalancers_cache_dir(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_classic_loadbalancers_cache_file(self):
+        return os.path.join(self.aws_api_classic_loadbalancers_cache_dir, "classic_loadbalancers.json")
+
+    @aws_api_classic_loadbalancers_cache_file.setter
+    def aws_api_classic_loadbalancers_cache_file(self, value):
+        raise ValueError(value)
+    # endregion
+
+    # region loadbalancers
+    @property
+    def aws_api_loadbalancers_cache_dir(self):
+        if self._aws_api_loadbalancers_cache_dir is None:
+            self._aws_api_loadbalancers_cache_dir = os.path.join(self.aws_api_cache_dir, self.aws_api_account,
+                                                                         "loadbalancers")
+            os.makedirs(self._aws_api_loadbalancers_cache_dir, exist_ok=True)
+        return self._aws_api_loadbalancers_cache_dir
+
+    @aws_api_loadbalancers_cache_dir.setter
+    def aws_api_loadbalancers_cache_dir(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_loadbalancers_cache_file(self):
+        return os.path.join(self.aws_api_loadbalancers_cache_dir, "loadbalancers.json")
+
+    @aws_api_loadbalancers_cache_file.setter
+    def aws_api_loadbalancers_cache_file(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_loadbalancer_target_groups_cache_file(self):
+        return os.path.join(self.aws_api_loadbalancers_cache_dir, "loadbalancer_target_groups.json")
+
+    @aws_api_loadbalancer_target_groups_cache_file.setter
+    def aws_api_loadbalancer_target_groups_cache_file(self, value):
+        raise ValueError(value)
+
+    # endregion
+
+    # region databases
+    @property
+    def aws_api_databases_cache_dir(self):
+        if self._aws_api_databases_cache_dir is None:
+            self._aws_api_databases_cache_dir = os.path.join(self.aws_api_cache_dir, self.aws_api_account,
+                                                                         "databases")
+            os.makedirs(self._aws_api_databases_cache_dir, exist_ok=True)
+        return self._aws_api_databases_cache_dir
+
+    @aws_api_databases_cache_dir.setter
+    def aws_api_databases_cache_dir(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_databases_cache_file(self):
+        return os.path.join(self.aws_api_databases_cache_dir, "databases.json")
+
+    @aws_api_databases_cache_file.setter
+    def aws_api_databases_cache_file(self, value):
+        raise ValueError(value)
+
+    # endregion
     
+    # region hosted_zones
+    @property
+    def aws_api_hosted_zones_cache_dir(self):
+        if self._aws_api_hosted_zones_cache_dir is None:
+            self._aws_api_hosted_zones_cache_dir = os.path.join(self.aws_api_cache_dir, self.aws_api_account,
+                                                                         "hosted_zones")
+            os.makedirs(self._aws_api_hosted_zones_cache_dir, exist_ok=True)
+        return self._aws_api_hosted_zones_cache_dir
+
+    @aws_api_hosted_zones_cache_dir.setter
+    def aws_api_hosted_zones_cache_dir(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_hosted_zones_cache_file(self):
+        return os.path.join(self.aws_api_hosted_zones_cache_dir, "hosted_zones.json")
+
+    @aws_api_hosted_zones_cache_file.setter
+    def aws_api_hosted_zones_cache_file(self, value):
+        raise ValueError(value)
+
+    # endregion
+
     # region cleanup
     @property
     def aws_api_cleanup_cache_dir(self):
@@ -190,6 +292,14 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
 
     @aws_api_cleanups_lambda_file.setter
     def aws_api_cleanups_lambda_file(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_cleanups_loadbalancers_report_file(self):
+        return os.path.join(self.aws_api_cleanup_cache_dir, "loadbalancers.txt")
+
+    @aws_api_cleanups_loadbalancers_report_file.setter
+    def aws_api_cleanups_loadbalancers_report_file(self, value):
         raise ValueError(value)
 
     @property

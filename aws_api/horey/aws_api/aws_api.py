@@ -386,7 +386,6 @@ class AWSAPI:
 
     def cleanup_report(self):
         ret = self.cleanup_load_balancers()
-        ret += self.cleanup_target_groups()
         ret += self.cleanup_report_ec2_paths()
         ret += self.cleanup_report_security_groups()
         ret += self.cleanup_report_dns_records()
@@ -467,12 +466,15 @@ class AWSAPI:
 
     def cleanup_report_lambdas_not_running_stream_analysis(self, log_group, aws_api_cloudwatch_log_groups_streams_cache_dir):
         lines = []
-        file_names = os.listdir(os.path.join(aws_api_cloudwatch_log_groups_streams_cache_dir, log_group.generate_dir_name()))
+        #todo: remove
+        try:
+            file_names = os.listdir(os.path.join(aws_api_cloudwatch_log_groups_streams_cache_dir, log_group.generate_dir_name()))
+        except Exception as e:
+            return lines
 
         last_file = str(max([int(file_name) for file_name in file_names]))
         with open(os.path.join(aws_api_cloudwatch_log_groups_streams_cache_dir, log_group.generate_dir_name(), last_file)) as file_handler:
             last_stream = json.load(file_handler)[-1]
-
         if CommonUtils.timestamp_to_datetime(last_stream["lastIngestionTime"]/1000) < datetime.datetime.now() - datetime.timedelta(days=365):
             lines.append(f"Cloudwatch log group '{log_group.name}' last event was more then year ago: {CommonUtils.timestamp_to_datetime(last_stream['lastIngestionTime']/1000)}")
         elif CommonUtils.timestamp_to_datetime(last_stream["lastIngestionTime"]/1000) < datetime.datetime.now() - datetime.timedelta(days=62):
@@ -832,30 +834,45 @@ class AWSAPI:
         set(known_services)
         raise NotImplementedError("Replacement of pdb.set_trace")
 
-    def cleanup_load_balancers(self):
-        unuzed_load_balancers = []
+    def cleanup_load_balancers(self, output_file):
+        tb_ret = TextBlock("Load Balancers Cleanup")
+        unused_load_balancers = []
         for load_balancer in self.classic_load_balancers:
             if not load_balancer.instances:
-                unuzed_load_balancers.append(load_balancer)
+                unused_load_balancers.append(load_balancer)
+        if len(unused_load_balancers) > 0:
+            tb_ret_tmp = TextBlock("Unused classic- loadbalancers without instances associated")
+            tb_ret_tmp.lines = [x.name for x in unused_load_balancers]
+            tb_ret.blocks.append(tb_ret_tmp)
 
         lbs_using_tg = set()
         for target_group in self.target_groups:
             lbs_using_tg.update(target_group.load_balancer_arns)
 
-        unuzed_load_balancers_2 = []
+        unused_load_balancers_2 = []
         # = CommonUtils.find_objects_by_values(self.load_balancers, {"arn": lb_arn})
         for load_balancer in self.load_balancers:
             if load_balancer.arn not in lbs_using_tg:
-                unuzed_load_balancers_2.append(load_balancer)
-        raise NotImplementedError("Replacement of pdb.set_trace")
+                unused_load_balancers_2.append(load_balancer)
+
+        if len(unused_load_balancers_2) > 0:
+            tb_ret_tmp = TextBlock("Unused- loadbalancers without target groups associated")
+            tb_ret_tmp.lines = [x.name for x in unused_load_balancers_2]
+            tb_ret.blocks.append(tb_ret_tmp)
+
+        tb_ret_tmp = self.cleanup_target_groups()
+        if tb_ret_tmp.lines or tb_ret_tmp.blocks:
+            tb_ret.blocks.append(tb_ret_tmp)
+        with open(output_file, "w+") as file_handler:
+            file_handler.write(tb_ret.format_pprint())
+        return tb_ret
 
     def cleanup_target_groups(self):
-        lst_ret = []
+        tb_ret = TextBlock("Following target groups have a bad health")
         for target_group in self.target_groups:
             if not target_group.target_health:
-                lst_ret.append(target_group)
-                #print("{} - target group has no targets".format(target_group.name))
-        return lst_ret
+                tb_ret.lines.append(target_group.name)
+        return tb_ret
 
     def cleanup_report_ec2_paths(self):
         sg_map = self.prepare_security_groups_mapping()
@@ -900,6 +917,7 @@ class AWSAPI:
 
     def cleanup_report_dns_records(self):
         dns_map = self.prepare_hosted_zones_mapping()
+        pdb.set_trace()
         return ret
 
     def find_ec2_instances_by_security_group_name(self, name):

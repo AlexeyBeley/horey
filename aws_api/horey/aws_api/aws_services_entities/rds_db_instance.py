@@ -64,6 +64,13 @@ class DBInstance(AwsObject):
                         "ReadReplicaSourceDBInstanceIdentifier": self.init_default_attr,
                         "StatusInfos": self.init_default_attr,
                         "SecondaryAvailabilityZone": self.init_default_attr,
+                        "DBClusterIdentifier": self.init_default_attr,
+                        "PromotionTier": self.init_default_attr,
+                        "AssociatedRoles": self.init_default_attr,
+                        "TagList": self.init_default_attr,
+                        "CustomerOwnedIpEnabled": self.init_default_attr,
+                        "PerformanceInsightsKMSKeyId": self.init_default_attr,
+                        "PerformanceInsightsRetentionPeriod": self.init_default_attr,
                         }
 
         self.init_attrs(dict_src, init_options)

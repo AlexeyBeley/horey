@@ -10,8 +10,8 @@ from horey.aws_api.aws_api_configuration_policy import AWSAPIConfigurationPolicy
 logger = get_logger(configuration_values_file_full_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), "h_logger_configuration_values.py"))
 
 configuration = AWSAPIConfigurationPolicy()
-#configuration.configuration_file_full_path = "/Users/alexeybe/Desktop/tmp/configuration_values.py"
-configuration.configuration_file_full_path = "/home/ubuntu/configuration_values.py"
+configuration.configuration_file_full_path = "/Users/alexeybe/Desktop/tmp/configuration_values.py"
+#configuration.configuration_file_full_path = "/home/ubuntu/configuration_values.py"
 configuration.init_from_file()
 
 aws_api = AWSAPI(configuration=configuration)
@@ -48,7 +48,7 @@ def test_init_and_cache_cloudwatch_logs():
     assert isinstance(aws_api.cloud_watch_log_groups, list)
 
 
-#@pytest.mark.skip(reason="No way of currently testing this")
+@pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_s3_buckets():
     aws_api.init_s3_buckets()
     aws_api.cache_objects(aws_api.s3_buckets, configuration.aws_api_s3_buckets_cache_file)
@@ -64,7 +64,27 @@ def test_init_and_cache_all_s3_bucket_objects():
     aws_api.init_and_cache_all_s3_bucket_objects(configuration.aws_api_s3_bucket_objects_cache_dir)
     print(f"len(s3_buckets) = {len(aws_api.s3_buckets)}")
     assert isinstance(aws_api.s3_buckets, list)
-# endregion
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_classic_load_balancers():
+    aws_api.init_classic_load_balancers()
+    aws_api.cache_objects(aws_api.classic_load_balancers, configuration.aws_api_classic_loadbalancers_cache_file)
+    print(f"len(classic_load_balancers) = {len(aws_api.classic_load_balancers)}")
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_load_balancers():
+    aws_api.init_load_balancers()
+    aws_api.cache_objects(aws_api.load_balancers, configuration.aws_api_loadbalancers_cache_file)
+    print(f"len(load_balancers) = {len(aws_api.load_balancers)}")
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_target_groups():
+    aws_api.init_target_groups()
+    aws_api.cache_objects(aws_api.target_groups, configuration.aws_api_loadbalancer_target_groups_cache_file)
+    print(f"len(load_balancers) = {len(aws_api.load_balancers)}")
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
@@ -73,6 +93,22 @@ def test_init_and_cache_ec2instances():
     aws_api.cache_objects(aws_api.ec2_instances, configuration.aws_api_ec2_instances_cache_file)
     print(f"len(instances) = {len(aws_api.ec2_instances)}")
     assert isinstance(aws_api.ec2_instances, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_dbs():
+    aws_api.init_databases()
+    aws_api.cache_objects(aws_api.databases, configuration.aws_api_databases_cache_file)
+    print(f"len(databases) = {len(aws_api.databases)}")
+    assert isinstance(aws_api.databases, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_hosted_zones():
+    aws_api.init_hosted_zones()
+    aws_api.cache_objects(aws_api.hosted_zones, configuration.aws_api_hosted_zones_cache_file)
+    assert isinstance(aws_api.hosted_zones, list)
+# endregion
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
@@ -92,28 +128,6 @@ def test_init_and_cache_iam_policies():
 
     logger.info(f"len(iam_policies) = {len(aws_api.iam_policies)}")
     assert isinstance(aws_api.iam_policies, list)
-
-
-@pytest.mark.skip(reason="No way of currently testing this")
-def test_init_and_cache_hosted_zones():
-    aws_api.init_hosted_zones()
-    aws_api.cache_objects(aws_api.hosted_zones, hosted_zones_cache_file)
-
-    assert isinstance(aws_api.iam_roles, list)
-
-
-@pytest.mark.skip(reason="No way of currently testing this")
-def test_init_and_cache_classic_load_balancers():
-    aws_api.init_classic_load_balancers()
-    aws_api.cache_objects(aws_api.classic_load_balancers, classic_load_balancers_cache_file)
-    print(f"len(classic_load_balancers) = {len(aws_api.classic_load_balancers)}")
-
-
-@pytest.mark.skip(reason="No way of currently testing this")
-def test_init_and_cache_load_balancers():
-    aws_api.init_load_balancers()
-    aws_api.cache_objects(aws_api.load_balancers, load_balancers_cache_file)
-    print(f"len(load_balancers) = {len(aws_api.load_balancers)}")
 
 
 if __name__ == "__main__":
