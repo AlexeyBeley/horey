@@ -44,6 +44,9 @@ from horey.aws_api.aws_services_entities.iam_role import IamRole
 from horey.aws_api.aws_clients.cloud_watch_logs_client import CloudWatchLogsClient
 from horey.aws_api.aws_services_entities.cloud_watch_log_group import CloudWatchLogGroup
 
+from horey.aws_api.aws_clients.cloudfront_client import CloudfrontClient
+from horey.aws_api.aws_services_entities.cloudfront_distribution import CloudfrontDistribution
+
 from horey.common_utils.common_utils import CommonUtils
 from horey.network.dns import DNS
 
@@ -70,6 +73,7 @@ class AWSAPI:
         self.route53_client = Route53Client()
         self.cloud_watch_logs_client = CloudWatchLogsClient()
         self.ecs_client = ECSClient()
+        self.cloudfront_client = CloudfrontClient()
 
         self.iam_policies = []
         self.ec2_instances = []
@@ -84,6 +88,7 @@ class AWSAPI:
         self.lambdas = []
         self.iam_roles = []
         self.cloud_watch_log_groups = []
+        self.cloudfront_distributions = []
         self.configuration = configuration
         self.init_configuration()
 
@@ -308,6 +313,14 @@ class AWSAPI:
             objects = self.route53_client.get_all_hosted_zones(full_information=full_information)
 
         self.hosted_zones = objects
+
+    def init_cloudfront_distributions(self, from_cache=False, cache_file=None, full_information=True):
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, CloudfrontDistribution)
+        else:
+            objects = self.cloudfront_client.get_all_cloudfront_distributions(full_information=full_information)
+
+        self.cloudfront_distributions = objects
 
     def init_databases(self, from_cache=False, cache_file=None):
         if from_cache:
@@ -915,10 +928,21 @@ class AWSAPI:
 
         return sg_map
 
-    def cleanup_report_dns_records(self):
+    def cleanup_report_dns_records(self, output_file):
+        tb_ret = TextBlock("DNS cleanup")
         dns_map = self.prepare_hosted_zones_mapping()
-        pdb.set_trace()
-        return ret
+        zone_to_records_mapping = defaultdict(list)
+        for zone, record in dns_map.unmapped_records:
+            zone_to_records_mapping[zone.name].append(record)
+
+        for zone_name, records in zone_to_records_mapping.items():
+            tb_zone = TextBlock(f"Hosted zone '{zone_name}'")
+            tb_zone.lines = [f"{record.name} -> {[resource_record['Value'] for resource_record in record.resource_records]}" for record in records]
+            tb_ret.blocks.append(tb_zone)
+
+        with open(output_file, "w+") as file_handler:
+            file_handler.write(tb_ret.format_pprint())
+        return tb_ret
 
     def find_ec2_instances_by_security_group_name(self, name):
         lst_ret = []

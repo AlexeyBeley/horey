@@ -1,6 +1,7 @@
 """
 Module representing DNS Map.
 """
+import pdb
 
 
 class DNSMapNode:
@@ -14,7 +15,7 @@ class DNSMapNode:
         self.type = None  # str resource/pointer
         self.children = []
         self.next = None
-        self.data = None
+        self.data = []
         self.hosted_zone = None  # self hosted zone
         self.destination = None  # the dns_name, used to point this pointer (for example multiple names for server will generate multiple nodes with the same data)
 
@@ -36,14 +37,13 @@ class DNSMap:
             raise NotImplementedError("Replacement of pdb.set_trace")
 
         dns_name = dns_name.rstrip(".")
-        if dns_name in self.nodes:
-            raise NotImplementedError("Replacement of pdb.set_trace")
+        if dns_name not in self.nodes:
+            node = DNSMapNode()
+            node.type = DNSMapNode.RESOURCE
+            node.destination = dns_name
+            self.nodes[dns_name] = node
 
-        node = DNSMapNode()
-        node.data = seed
-        node.type = DNSMapNode.RESOURCE
-        node.destination = dns_name
-        self.nodes[dns_name] = node
+        self.nodes[dns_name].data.append(seed)
 
     def add_pointer_node(self, dns_name, hosted_zone, record, pointed_dns):
         """
@@ -66,7 +66,7 @@ class DNSMap:
                     raise Exception
 
         node = DNSMapNode()
-        node.data = record
+        node.data.append(record)
         node.type = DNSMapNode.POINTER
         node.next = self.nodes[pointed_dns]
         node.destination = dns_name
@@ -98,8 +98,9 @@ class DNSMap:
         """
         dict_types = self.split_records_by_type()
         self.prepare_map_add_atype_records(dict_types)
-        # pylint: disable=R1721
-        left_dns_records = [x for x in dict_types["CNAME"]] + [x for x in dict_types["A"] if hasattr(x, "alias_target")] + [x for x in dict_types["SRV"]]
+        left_dns_records = [x for x in dict_types["CNAME"]] + [x for x in dict_types["A"] if hasattr(x, "alias_target")]
+        if "SRV" in dict_types:
+            left_dns_records += [x for x in dict_types["SRV"]]
         self.unmapped_records = self.recursive_prepare_map(left_dns_records)
 
     @staticmethod

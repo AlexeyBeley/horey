@@ -18,7 +18,7 @@ aws_api = AWSAPI(configuration=configuration)
 
 
 # region done
-#@pytest.mark.skip(reason="No way of currently testing this")
+@pytest.mark.skip(reason="No way of currently testing this")
 def test_init_from_cache_and_cleanup_lambdas():
     aws_api.init_security_groups(from_cache=True, cache_file=configuration.aws_api_ec2_security_groups_cache_file)
     aws_api.init_lambdas(from_cache=True, cache_file=configuration.aws_api_lambdas_cache_file)
@@ -27,7 +27,7 @@ def test_init_from_cache_and_cleanup_lambdas():
     assert tb_ret is not None
 
 
-#@pytest.mark.skip(reason="No way of currently testing this")
+@pytest.mark.skip(reason="No way of currently testing this")
 def test_cleanup_report_cloud_watch_logs():
     aws_api.init_cloud_watch_log_groups(from_cache=True, cache_file=configuration.aws_api_cloudwatch_log_groups_cache_file)
     ret = aws_api.cleanup_report_cloud_watch_log_groups(configuration.aws_api_cloudwatch_log_groups_streams_cache_dir, configuration.aws_api_cleanup_cloudwatch_report_file)
@@ -39,7 +39,7 @@ def test_init_from_cache_and_cleanup_s3_buckets():
     aws_api.generate_summarised_s3_cleanup_data(configuration.aws_api_s3_bucket_objects_cache_dir, configuration.aws_api_cleanups_s3_summarized_data_file)
     aws_api.cleanup_report_s3_buckets_objects(configuration.aws_api_cleanups_s3_summarized_data_file, configuration.aws_api_cleanups_s3_report_file)
 
-#@pytest.mark.skip(reason="No way of currently testing this")
+@pytest.mark.skip(reason="No way of currently testing this")
 def test_init_from_cache_and_cleanup_load_balancers():
     aws_api.init_classic_load_balancers(from_cache=True, cache_file=configuration.aws_api_classic_loadbalancers_cache_file)
     aws_api.init_load_balancers(from_cache=True, cache_file=configuration.aws_api_loadbalancers_cache_file)
@@ -48,13 +48,14 @@ def test_init_from_cache_and_cleanup_load_balancers():
 # endregion
 
 
-@pytest.mark.skip(reason="No way of currently testing this")
+#@pytest.mark.skip(reason="No way of currently testing this")
 def test_init_from_cache_and_cleanup_report_dns_records():
     aws_api.init_ec2_instances(from_cache=True, cache_file=configuration.aws_api_ec2_instances_cache_file)
     aws_api.init_classic_load_balancers(from_cache=True, cache_file=configuration.aws_api_classic_loadbalancers_cache_file)
     aws_api.init_load_balancers(from_cache=True, cache_file=configuration.aws_api_loadbalancers_cache_file)
     aws_api.init_databases(from_cache=True, cache_file=configuration.aws_api_databases_cache_file)
-    aws_api.cleanup_report_dns_records()
+    aws_api.init_hosted_zones(from_cache=True, cache_file=configuration.aws_api_hosted_zones_cache_file)
+    aws_api.cleanup_report_dns_records(configuration.aws_api_cleanups_dns_report_file)
 
 
 @pytest.mark.skip(reason="No way of currently testing this")

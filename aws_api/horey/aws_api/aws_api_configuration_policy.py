@@ -327,12 +327,22 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
         raise ValueError(value)
 
     @property
+    def aws_api_cleanups_dns_report_file(self):
+        return os.path.join(self.aws_api_cleanup_cache_dir, "dns_report.txt")
+
+    @aws_api_cleanups_dns_report_file.setter
+    def aws_api_cleanups_dns_report_file(self, value):
+        raise ValueError(value)
+
+    @property
     def accounts_file(self):
         return self._accounts_file
 
     @accounts_file.setter
     def accounts_file(self, value):
         self._accounts_file = value
+
+
 
     # endregion
     #HOSTED_ZONES_CACHE_FILE = os.path.join(CACHE_DIR, "hosted_zones.json")

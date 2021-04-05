@@ -4,7 +4,7 @@ AWS elb client to handle elb service API requests.
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.elb_load_balancer import ClassicLoadBalancer
 from horey.aws_api.base_entities.aws_account import AWSAccount
-
+import pdb
 
 class ELBClient(Boto3Client):
     """
@@ -21,8 +21,8 @@ class ELBClient(Boto3Client):
         :return:
         """
         final_result = list()
-
         for region in AWSAccount.get_aws_account().regions.values():
+            pdb.set_trace()
             AWSAccount.set_aws_region(region)
             for response in self.execute(self.client.describe_load_balancers, "LoadBalancerDescriptions"):
                 obj = ClassicLoadBalancer(response)

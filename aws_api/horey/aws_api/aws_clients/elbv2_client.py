@@ -6,7 +6,7 @@ from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.elbv2_load_balancer import LoadBalancer
 from horey.aws_api.aws_services_entities.elbv2_target_group import ELBV2TargetGroup
 from horey.aws_api.base_entities.aws_account import AWSAccount
-
+import pdb
 
 class ELBV2Client(Boto3Client):
     """
@@ -23,8 +23,8 @@ class ELBV2Client(Boto3Client):
         :return:
         """
         final_result = list()
-
         for region in AWSAccount.get_aws_account().regions.values():
+            pdb.set_trace()
             AWSAccount.set_aws_region(region)
             for response in self.execute(self.client.describe_load_balancers, "LoadBalancers"):
                 obj = LoadBalancer(response)

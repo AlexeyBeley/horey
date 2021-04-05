@@ -4,7 +4,7 @@ A base class for working with aws objects - parsing, caching and initiation.
 import re
 import datetime
 from enum import Enum
-
+import pdb
 
 class AwsObject:
     """
@@ -14,6 +14,8 @@ class AwsObject:
     # Regex for manipulating CamelCase attr names
     _FIRST_CAP_RE = re.compile('(.)([A-Z][a-z]+)')
     _ALL_CAP_RE = re.compile('([a-z0-9])([A-Z])')
+    #'2017-07-26 15:54:10.000000+0000'
+    _DATE_MICROSECONDS_FORMAT_RE = re.compile('([0-9]{4})-([0-9]{2})-([0-9]{2}) ([0-9]{2}):([0-9]{2}):([0-9]{2})\.([0-9]{6})\+([0-9]{4})')
 
     def __init__(self, dict_src, from_cache=False):
         if from_cache:
@@ -120,14 +122,12 @@ class AwsObject:
         :param value:
         :return:
         """
-        if "+" not in value:
-            raise NotImplementedError
-        # To use %z : "2017-07-26 15:54:10+01:00" -> "2017-07-26 15:54:10+0100"
-        index = value.rfind(":")
-        value = value[:index] + value[index+1:]
+        if not self._DATE_MICROSECONDS_FORMAT_RE.fullmatch(value):
+            raise ValueError(value)
 
-        # Example: strptime('2017-07-26 15:54:10+0000', '%Y-%m-%d %H:%M:%S%z')
-        datetime_object = datetime.datetime.strptime(value, "%Y-%m-%d %H:%M:%S%z")
+        # Example: datetime.datetime.strptime('2017-07-26 15:54:10.000000+0000', '%Y-%m-%d %H:%M:%S.%f%z')
+        datetime_object = datetime.datetime.strptime(value, "%Y-%m-%d %H:%M:%S.%f%z")
+
         setattr(self, attr_name, datetime_object)
 
     def init_attrs(self, dict_src, dict_options):
