@@ -318,7 +318,7 @@ class AWSAPI:
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, CloudfrontDistribution)
         else:
-            objects = self.cloudfront_client.get_all_cloudfront_distributions(full_information=full_information)
+            objects = self.cloudfront_client.get_all_distributions(full_information=full_information)
 
         self.cloudfront_distributions = objects
 
@@ -378,17 +378,23 @@ class AWSAPI:
         dns_map = DNSMap(self.hosted_zones)
         seed_end_points = []
 
-        for inst in self.ec2_instances:
-            seed_end_points.append(inst)
+        for obj in self.ec2_instances:
+            seed_end_points.append(obj)
 
-        for db in self.databases:
-            seed_end_points.append(db)
+        for obj in self.databases:
+            seed_end_points.append(obj)
 
-        for lb in self.load_balancers:
-            seed_end_points.append(lb)
+        for obj in self.load_balancers:
+            seed_end_points.append(obj)
 
-        for lb in self.classic_load_balancers:
-            seed_end_points.append(lb)
+        for obj in self.classic_load_balancers:
+            seed_end_points.append(obj)
+
+        for obj in self.cloudfront_distributions:
+            seed_end_points.append(obj)
+
+        for obj in self.s3_buckets:
+            seed_end_points.append(obj)
 
         for seed in seed_end_points:
             for dns_name in seed.get_dns_records():

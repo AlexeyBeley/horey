@@ -49,7 +49,7 @@ def test_init_and_cache_cloudwatch_logs():
     assert isinstance(aws_api.cloud_watch_log_groups, list)
 
 
-@pytest.mark.skip(reason="No way of currently testing this")
+#@pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_s3_buckets():
     aws_api.init_s3_buckets()
     aws_api.cache_objects(aws_api.s3_buckets, configuration.aws_api_s3_buckets_cache_file)

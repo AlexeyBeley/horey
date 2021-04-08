@@ -4,7 +4,10 @@ AWS s3 client to handle s3 service API requests.
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.s3_bucket import S3Bucket
 from horey.aws_api.base_entities.aws_account import AWSAccount
+from horey.aws_api.base_entities.region import Region
+from horey.h_logger import get_logger
 import pdb
+logger = get_logger()
 
 
 class S3Client(Boto3Client):
@@ -46,14 +49,12 @@ class S3Client(Boto3Client):
         :return:
         """
         final_result = list()
-
         all_buckets = list(self.execute(self.client.list_buckets, "Buckets"))
         len_all_buckets = len(all_buckets)
 
         for i in range(len_all_buckets):
             response = all_buckets[i]
             obj = S3Bucket(response)
-            obj.region = AWSAccount.get_aws_region()
 
             print(f"Init bucket {obj.name}:  {i}/{len_all_buckets}")
 
@@ -61,11 +62,33 @@ class S3Client(Boto3Client):
 
             if full_information:
                 try:
-                    update_info = list(self.execute(self.client.get_bucket_acl, "Grants", filters_req={"Bucket": obj.name}))
-                    obj.update_acl(update_info)
+                    #update_info = list(self.execute(self.client.get_bucket_acl, "Grants", filters_req={"Bucket": obj.name}))
+                    #obj.update_acl(update_info)
+                    location_info = list(self.execute(self.client.get_bucket_location, "LocationConstraint", filters_req={"Bucket": obj.name}))
+                    obj.update_location(location_info)
+
+                    # Dangerous - must be at the end - throwable
+                    update_info = list(self.execute(self.client.get_bucket_website, "Grants", filters_req={"Bucket": obj.name}, raw_data=True))
+                    obj.update_website(update_info)
                 except Exception as inst:
-                    if "AccessDenied" in repr(inst):
-                        print(f"Init bucket full information failed {obj.name}: {repr(inst)}")
+                    if "NoSuchWebsiteConfiguration" in repr(inst):
+                        pass
+                    elif "AccessDenied" in repr(inst):
+                        logger.error(f"Init bucket full information failed {obj.name}: {repr(inst)}")
+                    elif "IllegalLocationConstraintException" in repr(inst):
+                        logger.error(f"Init bucket full information failed {obj.name}: {repr(inst)}")
+                        continue
+                        bucket_location = list(self.execute(self.client.get_bucket_location, "LocationConstraint", filters_req={"Bucket": obj.name}))
+                        # todo:
+                        if len(bucket_location) > 1:
+                            raise ValueError(bucket_location)
+                        prev_aws_account_region = AWSAccount.get_aws_region()
+                        obj.region = Region()
+                        obj.region.region_mark = bucket_location[0]
+                        AWSAccount.set_aws_region(obj.region)
+                        update_info = list(
+                            self.execute(self.client.get_bucket_acl, "Grants", filters_req={"Bucket": obj.name}))
+                        obj.update_acl(update_info)
                     else:
                         raise
 

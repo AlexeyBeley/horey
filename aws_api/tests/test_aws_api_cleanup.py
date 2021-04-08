@@ -55,6 +55,9 @@ def test_init_from_cache_and_cleanup_report_dns_records():
     aws_api.init_load_balancers(from_cache=True, cache_file=configuration.aws_api_loadbalancers_cache_file)
     aws_api.init_databases(from_cache=True, cache_file=configuration.aws_api_databases_cache_file)
     aws_api.init_hosted_zones(from_cache=True, cache_file=configuration.aws_api_hosted_zones_cache_file)
+    aws_api.init_cloudfront_distributions(from_cache=True, cache_file=configuration.aws_api_cloudfront_distributions_cache_file)
+    aws_api.init_s3_buckets(from_cache=True, cache_file=configuration.aws_api_s3_buckets_cache_file)
+
     aws_api.cleanup_report_dns_records(configuration.aws_api_cleanups_dns_report_file)
 
 

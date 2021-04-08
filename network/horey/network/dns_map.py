@@ -89,7 +89,7 @@ class DNSMap:
             if hasattr(seed, "resource_records"):
                 self.add_resource_node(seed.name.rstrip("."), seed)
             else:
-                raise Exception
+                raise Exception()
 
     def prepare_map(self):
         """
@@ -98,6 +98,7 @@ class DNSMap:
         """
         dict_types = self.split_records_by_type()
         self.prepare_map_add_atype_records(dict_types)
+
         left_dns_records = [x for x in dict_types["CNAME"]] + [x for x in dict_types["A"] if hasattr(x, "alias_target")]
         if "SRV" in dict_types:
             left_dns_records += [x for x in dict_types["SRV"]]

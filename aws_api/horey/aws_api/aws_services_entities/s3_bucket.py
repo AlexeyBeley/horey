@@ -4,17 +4,22 @@ Module handling S3 buckets
 import json
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 from horey.aws_api.base_entities.region import Region
+import pdb
 
 
 class S3Bucket(AwsObject):
     """
     Class representing S3 bucket.
     """
+
     def __init__(self, dict_src, from_cache=False):
         self.acl = None
         self.policy = None
         self.bucket_objects = []
         self.region = None
+        self.index_document = None
+        self.error_document = None
+        self.location = None
 
         super().__init__(dict_src)
         if from_cache:
@@ -22,9 +27,9 @@ class S3Bucket(AwsObject):
             return
 
         init_options = {
-                        "Name": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-                        "CreationDate": self.init_default_attr
-                        }
+            "Name": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "CreationDate": self.init_default_attr
+        }
 
         self.init_attrs(dict_src, init_options)
 
@@ -35,11 +40,11 @@ class S3Bucket(AwsObject):
         :return:
         """
         options = {
-                   "creation_date":  self.init_date_attr_from_formatted_string,
-                   "acl":  self._init_acl_from_cache,
-                   "policy":  self._init_policy_from_cache,
-                   "region": self._init_region_from_cache,
-                   }
+            "creation_date": self.init_date_attr_from_formatted_string,
+            "acl": self._init_acl_from_cache,
+            "policy": self._init_policy_from_cache,
+            "region": self._init_region_from_cache,
+        }
 
         self._init_from_cache(dict_src, options)
 
@@ -110,10 +115,79 @@ class S3Bucket(AwsObject):
         else:
             raise NotImplementedError()
 
+    def update_website(self, lst_src):
+        if len(lst_src) > 1:
+            raise ValueError(lst_src)
+
+        init_options = {
+            "IndexDocument": self.init_default_attr,
+            "ErrorDocument": self.init_default_attr,
+            "ResponseMetadata": lambda x, y: 0
+        }
+
+        for dict_src in lst_src:
+            self.init_attrs(dict_src, init_options)
+
+    def update_location(self, lst_src):
+        """
+        For more info about this ugly stuff check get_dns_records docstring
+        """
+        if len(lst_src) > 1:
+            raise ValueError(lst_src)
+        self.location = lst_src[0] if lst_src[0] is not None else "us-east-1"
+        return
+
+    def get_dns_records(self):
+        """
+        If while reading this you say "WHAT????", read here and cry:
+        https://docs.aws.amazon.com/general/latest/gr/s3.html#s3_website_region_endpoints
+        and this:
+
+        "
+        LocationConstraint (string) --
+        Specifies the Region where the bucket resides. For a list of all the Amazon S3 supported location constraints by Region, see Regions and Endpoints . Buckets in Region us-east-1 have a LocationConstraint of null .
+        "
+
+        Get all self dns records.
+        :return:
+        """
+
+        mappings = {
+                    "us-east-2": ".",
+                    "us-east-1": "-",
+                    "us-west-1": "-",
+                    "us-west-2": "-",
+                    "af-south-1": ".",
+                    "ap-east-1": ".",
+                    "ap-south-1": ".",
+                    "ap-northeast-3": ".",
+                    "ap-northeast-2": ".",
+                    "ap-southeast-1": "-",
+                    "ap-southeast-2": "-",
+                    "ap-northeast-1": "-",
+                    "eu-west-1": "-",
+                    "sa-east-1": "-",
+                    "us-gov-west-1": "-",
+                    "ca-central-1": ".",
+                    "cn-northwest-1": ".",
+                    "eu-central-1": ".",
+                    "eu-west-2": ".",
+                    "eu-south-1": ".",
+                    "eu-west-3": ".",
+                    "eu-north-1": ".",
+                    "me-south-1": ".",
+                    "us-gov-east-1": "."}
+
+        if self.index_document is None and self.error_document is None:
+            return []
+
+        return [f"{self.name}.s3-website{mappings[self.location]}{self.location}.amazonaws.com"]
+
     class ACL(AwsObject):
         """
         Class representing S3 Bucket's ACL
         """
+
         def __init__(self, src_data, from_cache=False):
             super(S3Bucket.ACL, self).__init__(src_data)
             self.grants = []
@@ -138,8 +212,8 @@ class S3Bucket(AwsObject):
             :return:
             """
             options = {
-                       'grants': self._init_grants_from_cache,
-                       }
+                'grants': self._init_grants_from_cache,
+            }
 
             self._init_from_cache(dict_src, options)
 
@@ -160,6 +234,7 @@ class S3Bucket(AwsObject):
             """
             Class representing S3 bucket policy Grant.
             """
+
             def __init__(self, dict_src, from_cache=False):
                 super(S3Bucket.ACL.Grant, self).__init__(dict_src)
                 if from_cache:
@@ -187,6 +262,7 @@ class S3Bucket(AwsObject):
         """
         Class representing S3 Bucket policy
         """
+
         def __init__(self, src_, from_cache=False):
             if isinstance(src_, str):
                 dict_src = json.loads(src_)
@@ -226,6 +302,7 @@ class S3Bucket(AwsObject):
         """
         Class representing one saved object in S3 bucket.
         """
+
         def __init__(self, src_data, from_cache=False):
             self.key = None
             super(S3Bucket.BucketObject, self).__init__(src_data)
