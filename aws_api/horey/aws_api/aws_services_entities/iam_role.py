@@ -1,7 +1,10 @@
 """
 Module handling IAM role object
 """
+import pdb
+
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
+from horey.aws_api.base_entities.region import Region
 
 
 class IamRole(AwsObject):
@@ -13,11 +16,13 @@ class IamRole(AwsObject):
         :param dict_src:
         """
         self.policies = []
+        self.role_last_used_time = None
+        self.role_last_used_region = None
 
         super().__init__(dict_src)
 
         if from_cache:
-            self._init_iam_role_from_cashe(dict_src)
+            self._init_iam_role_from_cache(dict_src)
             return
 
         init_options = {
@@ -29,10 +34,9 @@ class IamRole(AwsObject):
                         "AssumeRolePolicyDocument": self.init_default_attr,
                         "Description": self.init_default_attr,
                         "MaxSessionDuration": self.init_default_attr}
-
         self.init_attrs(dict_src, init_options)
 
-    def _init_iam_role_from_cashe(self, dict_src):
+    def _init_iam_role_from_cache(self, dict_src):
         """
         Init the object from saved cache dict
         :param dict_src:
@@ -57,11 +61,29 @@ class IamRole(AwsObject):
                         "CreateDate": self.init_default_attr,
                         "AssumeRolePolicyDocument": self.init_default_attr,
                         "Description": self.init_default_attr,
-                        "RoleLastUsed": self.init_default_attr,
+                        "RoleLastUsed": self.init_role_last_used_attr,
                         "Tags": self.init_default_attr,
                         "MaxSessionDuration": self.init_default_attr}
 
         self.init_attrs(dict_src, init_options)
+
+    def init_role_last_used_attr(self, _, dict_src):
+        """
+        Init RoleLastUsed - split to time and region
+
+        @param _:
+        @param dict_src:
+        @return:
+        """
+        if not dict_src:
+            return
+        for key in dict_src:
+            if key == "LastUsedDate":
+                self.role_last_used_time = dict_src.get(key)
+            elif key == "Region":
+                self.role_last_used_region = Region.get_region(dict_src.get(key))
+            else:
+                raise NotImplementedError(key)
 
     def add_policy(self, policy):
         """
@@ -79,3 +101,4 @@ class IamRole(AwsObject):
         :return:
         """
         raise NotImplementedError("Not yet implemented, replaced pdb.set_trace")
+

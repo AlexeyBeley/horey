@@ -49,7 +49,7 @@ def test_init_and_cache_cloudwatch_logs():
     assert isinstance(aws_api.cloud_watch_log_groups, list)
 
 
-#@pytest.mark.skip(reason="No way of currently testing this")
+@pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_s3_buckets():
     aws_api.init_s3_buckets()
     aws_api.cache_objects(aws_api.s3_buckets, configuration.aws_api_s3_buckets_cache_file)
@@ -116,26 +116,25 @@ def test_init_and_cache_cloudfront_distributions():
     aws_api.init_cloudfront_distributions()
     aws_api.cache_objects(aws_api.cloudfront_distributions, configuration.aws_api_cloudfront_distributions_cache_file)
     assert isinstance(aws_api.cloudfront_distributions, list)
-# endregion
-
-
-@pytest.mark.skip(reason="No way of currently testing this")
-def test_init_and_cache_iam_roles():
-    aws_api.init_iam_policies(from_cache=True, cache_file=iam_policies_cache_file)
-    aws_api.init_iam_roles()
-    aws_api.cache_objects(aws_api.iam_roles, iam_roles_cache_file)
-
-    print(f"len(iam_roles) = {len(aws_api.iam_roles)}")
-    assert isinstance(aws_api.iam_roles, list)
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_iam_policies():
     aws_api.init_iam_policies()
-    aws_api.cache_objects(aws_api.iam_policies, iam_policies_cache_file)
-
+    aws_api.cache_objects(aws_api.iam_policies, configuration.aws_api_iam_policies_cache_file)
     logger.info(f"len(iam_policies) = {len(aws_api.iam_policies)}")
     assert isinstance(aws_api.iam_policies, list)
+
+#@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_iam_roles():
+    aws_api.init_iam_policies(from_cache=True, cache_file=configuration.aws_api_iam_policies_cache_file)
+    aws_api.init_iam_roles()
+    aws_api.cache_objects(aws_api.iam_roles, configuration.aws_api_iam_roles_cache_file)
+
+    print(f"len(iam_roles) = {len(aws_api.iam_roles)}")
+    assert isinstance(aws_api.iam_roles, list)
+
+# endregion
 
 
 if __name__ == "__main__":

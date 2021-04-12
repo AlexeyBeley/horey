@@ -6,10 +6,9 @@ import os
 import socket
 import datetime
 
-
 from collections import defaultdict
 from horey.network.ip import IP
-import pdb
+
 from horey.aws_api.aws_clients.ec2_client import EC2Client
 from horey.aws_api.aws_services_entities.ec2_instance import EC2Instance
 from horey.aws_api.aws_services_entities.ec2_security_group import EC2SecurityGroup
@@ -797,19 +796,94 @@ class AWSAPI:
             raise ValueError(arn)
         return account_id
 
-    def cleanup_report_iam_roles(self, output_file):
-        time_limit = datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(days=30)
-        tb_ret = TextBlock("unused IAM roles. Last use time < 30 days")
+    def cleanup_report_iam_policy_statements_optimize_not_statement(self, statement):
+        """
+        https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_notresource.html
+        :param statement:
+        :return:
+        """
+        lines = []
 
-        for role in self.iam_roles:
-            if role.role_last_used_time is None:
-                continue
-            if role.role_last_used_time < time_limit:
-                tb_ret.lines.append(f"Role: '{role.name}' last used: {role.role_last_used_time}")
+        if statement.effect == statement.Effects.ALLOW:
+            if statement.not_action != {}:
+                lines.append(f"Potential risk in too permissive not_action. Effect: 'Allow', not_action: '{statement.not_action}'")
+            if statement.not_resource is not None:
+                lines.append(f"Potential risk in too permissive not_resource. Effect: 'Allow', not_resource: '{statement.not_resource}'")
+        return lines
 
-        with open(output_file, "w+") as file_handler:
-            file_handler.write(tb_ret.format_pprint())
+    def cleanup_report_iam_policy_statements_intersecting_statements(self, statements):
+        """
+        Generating report of intersecting policies.
+        @param statements:
+        @return:
+        """
+        raise NotImplementedError("Not yet")
+        lines = []
+        for i in range(len(statements)):
+            statement_1 = statements[i]
+            for j in range(i+1, len(statements)):
+                statement_2 = statements[j]
+                try:
+                    statement_1.condition
+                    continue
+                except Exception:
+                    pass
 
+                try:
+                    statement_2.condition
+                    continue
+                except Exception:
+                    pass
+
+                common_resource = statement_1.intersect_resource(statement_2)
+
+                if len(common_resource) == 0:
+                    continue
+                common_action = statement_1.intersect_action(statement_2)
+
+                if len(common_action) == 0:
+                    continue
+                lines.append(f"Common Action: {common_action} Common resource {common_resource}")
+                lines.append(str(statement_1.dict_src))
+                lines.append(str(statement_2.dict_src))
+
+        return lines
+
+    def cleanup_report_iam_policy_statements_optimize(self, policy):
+        """
+        1) action is not of the resource - solved by AWS in creation process.
+        2) resource has no action
+        3) effect allow + NotResources
+        4) resource arn without existing resource
+        5) Resources completely included into other resource
+        :param policy:
+        :return:
+        """
+
+        tb_ret = TextBlock(f"Policy_Name: {policy.name}")
+        for statement in policy.document.statements:
+            lines = self.cleanup_report_iam_policy_statements_optimize_not_statement(statement)
+            if len(lines) > 0:
+                tb_ret.lines += lines
+        lines = self.cleanup_report_iam_policy_statements_intersecting_statements(policy.document.statements)
+        tb_ret.lines += lines
+        return tb_ret
+
+    def cleanup_report_iam_policies_statements_optimize(self):
+        """
+        Optimizing policies and generating report
+        @return:
+        """
+        raise NotImplementedError("Not yet")
+        tb_ret = TextBlock("Iam Policies optimize statements")
+        for policy in self.iam_policies:
+            logger.info(f"Optimizing policy {policy.name}")
+            tb_policy = self.cleanup_report_iam_policy_statements_optimize(policy)
+            if tb_policy.blocks or tb_policy.lines:
+                tb_ret.blocks.append(tb_policy)
+                #raise NotImplementedError("Replacement of pdb.set_trace")
+
+        print(tb_ret.format_pprint())
         return tb_ret
 
     @staticmethod
@@ -833,6 +907,7 @@ class AWSAPI:
                 break
 
         while i > -1:
+            #logger.info(f"Updating item at place {i}")
             item_to_insert_tmp = items[i]
             items[i] = item_to_insert
             item_to_insert = item_to_insert_tmp
@@ -937,6 +1012,56 @@ class AWSAPI:
             file_handler.write(tb_ret.format_pprint())
         return tb_ret
 
+    def cleanup_report_iam_policies(self):
+        """
+        Clean IAM policies
+        @return:
+        """
+        raise NotImplementedError("Not yet")
+        tb_ret = TextBlock("Iam Policies")
+        tb_ret.blocks.append(self.cleanup_report_iam_policies_statements_optimize())
+        return tb_ret
+
+    def cleanup_report_iam_roles(self):
+        """
+        Cleanup for AWS roles
+
+        :return:
+        """
+        raise NotImplementedError("Not yet")
+        tb_ret = TextBlock("Iam Roles")
+        known_services = []
+        for iam_role in self.iam_roles:
+            role_account_id = self.account_id_from_arn(iam_role.arn)
+            doc = iam_role.assume_role_policy_document
+            for statement in doc["Statement"]:
+                if statement["Action"] == "sts:AssumeRole":
+                    if statement["Effect"] != "Allow":
+                        raise ValueError(statement["Effect"])
+                    if "Service" in statement["Principal"]:
+                        pass
+                        if isinstance(statement["Principal"]["Service"], list):
+                            for service_name in statement["Principal"]["Service"]:
+                                known_services.append(service_name)
+                        else:
+                            known_services.append(statement["Principal"]["Service"])
+                        #raise NotImplementedError("Replacement of pdb.set_trace")
+                        #continue
+                    elif "AWS" in statement["Principal"]:
+                        principal_arn = statement["Principal"]["AWS"]
+                        principal_account_id = self.account_id_from_arn(principal_arn)
+                        if principal_account_id != role_account_id:
+                            print(statement)
+                elif statement["Action"] == "sts:AssumeRoleWithSAML":
+                    pass
+                elif statement["Action"] == "sts:AssumeRoleWithWebIdentity":
+                    pass
+                else:
+                    print(f"{iam_role.name}: {statement['Action']}")
+            #tb_ret.lines.append(f"{bucket.name}: {len(bucket_objects)}")
+        set(known_services)
+        raise NotImplementedError("Replacement of pdb.set_trace")
+
     def cleanup_load_balancers(self, output_file):
         """
         Generate load balancers' cleanup report.
@@ -986,6 +1111,15 @@ class AWSAPI:
                 tb_ret.lines.append(target_group.name)
         return tb_ret
 
+    def cleanup_report_ec2_paths(self):
+        """
+        Incoming and outgoing flows
+        @return:
+        """
+        sg_map = self.prepare_security_groups_mapping()
+        for ec2_instace in self.ec2_instances:
+            ret = self.find_ec2_instance_outgoing_paths(ec2_instace, sg_map)
+
     def find_ec2_instance_outgoing_paths(self, ec2_instace, sg_map):
         """
         Find flows outgoing from security groups
@@ -996,6 +1130,46 @@ class AWSAPI:
         for grp in ec2_instace.security_groups:
             paths = sg_map.find_outgoing_paths(grp["GroupId"])
             raise NotImplementedError("Replacement of pdb.set_trace")
+
+    def cleanup_report_security_groups(self):
+        """
+        Should generate sg
+        @return:
+        """
+        raise NotImplementedError("Do not remember what is this, seems good")
+        sg_map = self.prepare_security_groups_mapping()
+        self.ec2_client.connect()
+        for sg_id, node in sg_map.nodes.items():
+            if len(node.data) == 0:
+                sg = CommonUtils.find_objects_by_values(self.security_groups, {"id": sg_id}, max_count=1)
+                lst_inter = self.ec2_client.execute(self.ec2_client.client.describe_network_interfaces, "NetworkInterfaces", filters_req={"Filters": [{"Name": "group-id", "Values": [sg_id]}]})
+                if lst_inter:
+                    raise NotImplementedError("Replacement of pdb.set_trace")
+                print("{}:{}:{}".format(sg_id, sg[0].name, lst_inter))
+
+    def prepare_security_groups_mapping(self):
+        """
+        Create SecurityGroupMapNode from self security groups
+        @return:
+        """
+        sg_map = SecurityGroupsMap()
+        for sg in self.security_groups:
+            node = SecurityGroupMapNode(sg)
+            sg_map.add_node(node)
+
+        for ec2_instance in self.ec2_instances:
+            for endpoint in ec2_instance.get_security_groups_endpoints():
+                sg_map.add_node_data(endpoint["sg_id"], endpoint)
+
+        for lb in self.load_balancers:
+            for endpoint in lb.get_security_groups_endpoints():
+                sg_map.add_node_data(endpoint["sg_id"], endpoint)
+
+        for rds in self.databases:
+            for endpoint in rds.get_security_groups_endpoints():
+                sg_map.add_node_data(endpoint["sg_id"], endpoint)
+
+        return sg_map
 
     def cleanup_report_dns_records(self, output_file):
         """
@@ -1018,103 +1192,173 @@ class AWSAPI:
             file_handler.write(tb_ret.format_pprint())
         return tb_ret
 
-    def cleanup_report_iam_policies(self, output_file):
+    def find_ec2_instances_by_security_group_name(self, name):
         """
-        Clean IAM policies
+        Search for instances - members of specific security group
+        @param name: str
+        @return:
+        """
+        lst_ret = []
+        for inst in self.ec2_instances:
+            for grp in inst.security_groups:
+                if grp["GroupName"] == name:
+                    lst_ret.append(inst)
+                    break
+        return lst_ret
+
+    def get_ec2_instances_h_flow_destinations(self):
+        """
+        Get all flows
+        @return:
+        """
+        sg_map = self.prepare_security_groups_mapping()
+        total_count = 0
+        for ec2_instance in self.ec2_instances:
+            for endpoint in ec2_instance.get_security_groups_endpoints():
+                print(endpoint)
+                hflow = HFlow()
+                tunnel = hflow.Tunnel()
+                tunnel.traffic_start = HFlow.Tunnel.Traffic()
+                tunnel.traffic_end = HFlow.Tunnel.Traffic()
+
+                end_point_src = hflow.EndPoint()
+                if "ip" not in endpoint:
+                    print("ec2_instance: {} ip not in interface: {}/{}".format(ec2_instance.name, endpoint["device_name"], endpoint["device_id"]))
+                    continue
+                end_point_src.ip = endpoint["ip"]
+
+                tunnel.traffic_start.ip_src = endpoint["ip"]
+
+                if "dns" in endpoint:
+                    #print("ec2_instance: {} dns not in interface: {}/{}".format(ec2_instance.name, endpoint["device_name"], endpoint["device_id"]))
+                    end_point_src.dns = DNS(endpoint["dns"])
+                    tunnel.traffic_start.dns_src = DNS(endpoint["dns"])
+
+                end_point_src.add_custom("security_group_id", endpoint["sg_id"])
+
+                hflow.end_point_src = end_point_src
+
+                end_point_dst = hflow.EndPoint()
+                hflow.end_point_dst = end_point_dst
+
+                tunnel.traffic_start.ip_dst = tunnel.traffic_start.any()
+                hflow.tunnel = tunnel
+                lst_flow = sg_map.apply_dst_h_flow_filters_multihop(hflow)
+                lst_resources = self.find_resources_by_ip(lst_flow[-1])
+                raise NotImplementedError("Replacement of pdb.set_trace")
+                total_count += 1
+                print("{}: {}".format(len(lst_flow), lst_flow))
+
+                #raise NotImplementedError("Replacement of pdb.set_trace")
+
+        print("Total hflows count: {}".format(total_count))
+        raise NotImplementedError("Replacement of pdb.set_trace")
+        self.find_end_point_by_dns()
+
+    def find_resources_by_ip(self, ip_addr):
+        """
+        FInd any resource by its IP address
+        @param ip_addr: IP
+        @return:
+        """
+        lst_ret = self.find_ec2_instances_by_ip(ip_addr)
+        lst_ret += self.find_loadbalancers_by_ip(ip_addr)
+        lst_ret += self.find_rdss_by_ip(ip_addr)
+        lst_ret += self.find_elastic_searches_by_ip(ip_addr)
+        return lst_ret
+
+    def find_elastic_searches_by_ip(self, ip_addr):
+        """
+        Search for an ES with the specific ip
+        @param ip_addr: IP
         @return:
         """
         raise NotImplementedError("Not yet")
-        tb_ret = TextBlock("Iam Policies")
-        tb_ret.blocks.append(self.cleanup_report_iam_policies_statements_optimize())
-        return tb_ret
 
-    def cleanup_report_iam_policies_statements_optimize(self, output_file):
+    def find_rdss_by_ip(self, ip_addr):
         """
-        Optimizing policies and generating report
+        Search for an RDS with the specific ip
+        @param ip_addr: IP
         @return:
         """
-        tb_ret = TextBlock("Iam Policies optimize statements")
-        for policy in self.iam_policies:
-            logger.info(f"Optimizing policy {policy.name}")
-            tb_policy = self.cleanup_report_iam_policy_statements_optimize(policy)
-            if tb_policy.blocks or tb_policy.lines:
-                tb_ret.blocks.append(tb_policy)
+        raise NotImplementedError("Not yet")
 
-        with open(output_file, "w+") as file_handler:
-            file_handler.write(tb_ret.format_pprint())
-        return tb_ret
-
-    def cleanup_report_iam_policy_statements_optimize(self, policy):
+    def find_loadbalancers_by_ip(self, ip_addr):
         """
-        1) action is not of the resource - solved by AWS in creation process.
-        2) resource has no action
-        3) effect allow + NotResources
-        4) resource arn without existing resource
-        5) Resources completely included into other resource
-        :param policy:
-        :return:
-        """
-
-        tb_ret = TextBlock(f"Policy_Name: {policy.name}")
-        for statement in policy.document.statements:
-            lines = self.cleanup_report_iam_policy_statements_optimize_not_statement(statement)
-            if len(lines) > 0:
-                tb_ret.lines += lines
-
-        # todo: test and remove
-        #lines = self.cleanup_report_iam_policy_statements_intersecting_statements(policy.document.statements)
-        #tb_ret.lines += lines
-
-        return tb_ret
-
-    def cleanup_report_iam_policy_statements_optimize_not_statement(self, statement):
-        """
-        https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_notresource.html
-        :param statement:
-        :return:
-        """
-        lines = []
-
-        if statement.effect == statement.Effects.ALLOW:
-            if statement.not_action != {}:
-                lines.append(f"Potential risk in too permissive not_action. Effect: 'Allow', not_action: '{statement.not_action}'")
-            if statement.not_resource is not None:
-                lines.append(f"Potential risk in too permissive not_resource. Effect: 'Allow', not_resource: '{statement.not_resource}'")
-        return lines
-
-    def cleanup_report_iam_policy_statements_intersecting_statements(self, statements):
-        """
-        Generating report of intersecting policies.
-        @param statements:
+        Search for a loadbalancer with the specific ip
+        @param ip_addr: IP
         @return:
         """
-        lines = []
-        for i in range(len(statements)):
-            statement_1 = statements[i]
-            for j in range(i+1, len(statements)):
-                statement_2 = statements[j]
-                try:
-                    statement_1.condition
-                    continue
-                except Exception:
-                    pass
+        lst_ret = []
 
-                try:
-                    statement_2.condition
-                    continue
-                except Exception:
-                    pass
+        for obj in self.load_balancers + self.classic_load_balancers:
+            for addr in obj.get_all_addresses():
+                if isinstance(addr, IP):
+                    lst_addr = [addr]
+                elif isinstance(addr, DNS):
+                    lst_addr = AWSAPI.find_ips_from_dns(addr)
+                else:
+                    raise ValueError
 
-                common_resource = statement_1.intersect_resource(statement_2)
-
-                if len(common_resource) == 0:
+                for lb_ip_addr in lst_addr:
+                    if ip_addr.intersect(lb_ip_addr):
+                        lst_ret.append(obj)
+                        break
+                else:
                     continue
-                common_action = statement_1.intersect_action(statement_2)
 
-                if len(common_action) == 0:
-                    continue
-                lines.append(f"Common Action: {common_action} Common resource {common_resource}")
-                lines.append(str(statement_1.dict_src))
-                lines.append(str(statement_2.dict_src))
-        pdb.set_trace()
-        return lines
+                break
+
+        return lst_ret
+
+    def find_ec2_instances_by_ip(self, ip_addr):
+        """
+        Search for an instance with the specific ip
+        """
+        lst_ret = []
+        for ec2_instance in self.ec2_instances:
+            if any(ip_addr.intersect(inter_ip) is not None for inter_ip in ec2_instance.get_all_ips()):
+                lst_ret.append(ec2_instance)
+        return lst_ret
+
+    @staticmethod
+    def find_ips_from_dns(dns, dummy=True):
+        """
+        Receive dns address, returns ip address
+        """
+        if dummy:
+            print("todo: init address from dns: {}".format(dns))
+            ip = IP("1.1.1.1/32")
+            return [ip]
+
+        try:
+            addr_info_lst = socket.getaddrinfo(dns, None)
+        except socket.gaierror as socket_error:
+            raise RuntimeError("Can't find address from socket") from socket_error
+
+        addresses = {addr_info[4][0] for addr_info in addr_info_lst}
+        addresses = {IP(address, int_mask=32) for address in addresses}
+
+        if len(addresses) != 1:
+            raise NotImplementedError("Replacement of pdb.set_trace")
+
+        for address in addresses:
+            endpoint["ip"] = address
+
+
+        print("todo: init address from dns: {}".format(dns))
+        ip = IP("1.1.1.1")
+        return ip
+
+    def create_ec2_from_lambda(self, aws_lambda_arn):
+        """
+        #  copy vpc and subnets
+        #  copy security groups and add port ssh to it
+        #  copy role
+        #  create environment
+        #  copy code
+        """
+        raise NotImplementedError("create_ec2_from_lambda")
+
+
+

@@ -22,7 +22,6 @@ class ELBClient(Boto3Client):
         """
         final_result = list()
         for region in AWSAccount.get_aws_account().regions.values():
-            pdb.set_trace()
             AWSAccount.set_aws_region(region)
             for response in self.execute(self.client.describe_load_balancers, "LoadBalancerDescriptions"):
                 obj = ClassicLoadBalancer(response)

@@ -6,6 +6,10 @@ import datetime
 from enum import Enum
 import pdb
 
+from horey.common_utils.common_utils import CommonUtils
+from horey.aws_api.base_entities.region import Region
+
+
 class AwsObject:
     """
     Class to handle aws objets' base interaction.
@@ -16,6 +20,7 @@ class AwsObject:
     _ALL_CAP_RE = re.compile('([a-z0-9])([A-Z])')
     #'2017-07-26 15:54:10.000000+0000'
     _DATE_MICROSECONDS_FORMAT_RE = re.compile('([0-9]{4})-([0-9]{2})-([0-9]{2}) ([0-9]{2}):([0-9]{2}):([0-9]{2})\.([0-9]{6})\+([0-9]{4})')
+    SELF_CACHED_TYPE_KEY_NAME = "horey_cached_type"
 
     def __init__(self, dict_src, from_cache=False):
         if from_cache:
@@ -33,11 +38,40 @@ class AwsObject:
         :param dict_options:
         :return:
         """
+
         for key_src, value in dict_src.items():
-            if key_src in dict_options:
+            if isinstance(value, dict) and value.get(self.SELF_CACHED_TYPE_KEY_NAME) is not None:
+                self.init_horey_cached_type(key_src, value)
+            elif key_src in dict_options:
                 dict_options[key_src](key_src, value)
             else:
                 self.init_default_attr(key_src, value)
+
+    def init_horey_cached_type(self, attr_name, value):
+        """
+        Init automatically cached values
+        @param attr_name:
+        @param value: {self.SELF_CACHED_TYPE_KEY_NAME: datetime/region..., "value": value_to_init}
+        @return:
+        """
+        if value.get(self.SELF_CACHED_TYPE_KEY_NAME) == "datetime":
+            # Example: datetime.datetime.strptime('2017-07-26 15:54:10.000000+0000', '%Y-%m-%d %H:%M:%S.%f%z')
+            new_value = datetime.datetime.strptime(value["value"], "%Y-%m-%d %H:%M:%S.%f%z")
+        elif value.get(self.SELF_CACHED_TYPE_KEY_NAME) == "region":
+            inited_region = Region()
+            inited_region.init_from_dict(value["value"])
+
+            new_value = Region.get_region(inited_region.region_mark)
+            if inited_region.region_name is not None:
+                if new_value.region_name is not None:
+                    if new_value.region_name != inited_region.region_name:
+                        raise ValueError(f"{new_value.region_name} != {inited_region.region_name}")
+                else:
+                    new_value.region_name = inited_region.region_name
+        else:
+            raise ValueError(f"{attr_name} : {value}")
+
+        self.init_default_attr(attr_name, new_value)
 
     @property
     def h_class_name(self):
@@ -216,7 +250,10 @@ class AwsObject:
             return obj_src.convert_to_dict()
 
         if isinstance(obj_src, datetime.datetime):
-            return obj_src.strftime("%Y-%m-%d %H:%M:%S.%f%z")
+            return {AwsObject.SELF_CACHED_TYPE_KEY_NAME: "datetime", "value": obj_src.strftime("%Y-%m-%d %H:%M:%S.%f%z")}
+
+        if isinstance(obj_src, Region):
+            return {AwsObject.SELF_CACHED_TYPE_KEY_NAME: "region", "value": obj_src.convert_to_dict()}
 
         if isinstance(obj_src, Enum):
             return obj_src.value
@@ -224,7 +261,8 @@ class AwsObject:
         # In most cases it will become str
         # Ugly but efficient
         try:
-            return obj_src.convert_to_dict()
+            assert obj_src.convert_to_dict
+            raise DeprecationWarning("'return obj_src.convert_to_dict()' Use the new SELF_CACHED_TYPE_KEY_NAME format")
         except AttributeError:
             pass
 

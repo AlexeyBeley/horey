@@ -45,10 +45,20 @@ def test_init_from_cache_and_cleanup_load_balancers():
     aws_api.init_load_balancers(from_cache=True, cache_file=configuration.aws_api_loadbalancers_cache_file)
     aws_api.init_target_groups(from_cache=True, cache_file=configuration.aws_api_loadbalancer_target_groups_cache_file)
     aws_api.cleanup_load_balancers(configuration.aws_api_cleanups_loadbalancers_report_file)
-# endregion
 
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_from_cache_and_cleanup_report_iam_policies_statements_optimize():
+    aws_api.init_iam_policies(from_cache=True, cache_file=configuration.aws_api_iam_policies_cache_file)
+    aws_api.cleanup_report_iam_policies_statements_optimize(configuration.aws_api_cleanups_iam_policies_report_file)
 
 #@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_from_cache_and_cleanup_report_iam_roles():
+    aws_api.init_iam_roles(from_cache=True, cache_file=configuration.aws_api_iam_roles_cache_file)
+    aws_api.cleanup_report_iam_roles(configuration.aws_api_cleanups_iam_roles_report_file)
+# endregion
+
+@pytest.mark.skip(reason="No way of currently testing this")
 def test_init_from_cache_and_cleanup_report_dns_records():
     aws_api.init_ec2_instances(from_cache=True, cache_file=configuration.aws_api_ec2_instances_cache_file)
     aws_api.init_classic_load_balancers(from_cache=True, cache_file=configuration.aws_api_classic_loadbalancers_cache_file)
@@ -59,25 +69,6 @@ def test_init_from_cache_and_cleanup_report_dns_records():
     aws_api.init_s3_buckets(from_cache=True, cache_file=configuration.aws_api_s3_buckets_cache_file)
 
     aws_api.cleanup_report_dns_records(configuration.aws_api_cleanups_dns_report_file)
-
-
-@pytest.mark.skip(reason="No way of currently testing this")
-def test_cleanup_report_iam_roles():
-    for dict_environ in ignore_me.aws_accounts:
-        env = AWSAccount()
-        env.init_from_dict(dict_environ)
-        AWSAccount.set_aws_account(env)
-
-        aws_api.init_iam_roles(from_cache=True,
-                            cache_file="/Users/alexeybe/private/aws_api/ignore/cache_objects/iam_roles.json")
-
-        aws_api.cleanup_report_iam_roles()
-
-
-@pytest.mark.skip(reason="No way of currently testing this")
-def test_cleanup_report_iam_policies():
-    aws_api.init_iam_policies(from_cache=True, cache_file=IAM_POLICIES_CACHE_FILE)
-    aws_api.cleanup_report_iam_policies()
 
 
 @pytest.mark.skip(reason="No way of currently testing this")

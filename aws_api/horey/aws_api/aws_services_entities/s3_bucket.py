@@ -19,6 +19,7 @@ class S3Bucket(AwsObject):
         self.region = None
         self.index_document = None
         self.error_document = None
+        self.redirect_all_requests_to = None
         self.location = None
 
         super().__init__(dict_src)
@@ -122,6 +123,7 @@ class S3Bucket(AwsObject):
         init_options = {
             "IndexDocument": self.init_default_attr,
             "ErrorDocument": self.init_default_attr,
+            "RedirectAllRequestsTo": self.init_default_attr,
             "ResponseMetadata": lambda x, y: 0
         }
 
@@ -177,6 +179,9 @@ class S3Bucket(AwsObject):
                     "eu-north-1": ".",
                     "me-south-1": ".",
                     "us-gov-east-1": "."}
+
+        if self.redirect_all_requests_to is not None:
+            pdb.set_trace()
 
         if self.index_document is None and self.error_document is None:
             return []

@@ -21,6 +21,9 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
         self._aws_api_databases_cache_dir = None
         self._aws_api_hosted_zones_cache_dir = None
         self._aws_api_cloudfront_cache_dir = None
+        self._aws_api_iam_cache_dir = None
+        self._aws_api_iam_policies_cache_dir = None
+        self._aws_api_iam_roles_cache_dir = None
 
     @property
     def aws_api_regions(self):
@@ -229,6 +232,57 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
 
     # endregion
 
+    # region iam
+    @property
+    def aws_api_iam_cache_dir(self):
+        if self._aws_api_iam_cache_dir is None:
+            self._aws_api_iam_cache_dir = os.path.join(self.aws_api_cache_dir, self.aws_api_account, "iam")
+            os.makedirs(self.aws_api_iam_cache_dir, exist_ok=True)
+        return self._aws_api_iam_cache_dir
+
+    @aws_api_iam_cache_dir.setter
+    def aws_api_iam_cache_dir(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_iam_policies_cache_dir(self):
+        if self._aws_api_iam_policies_cache_dir is None:
+            self._aws_api_iam_policies_cache_dir = os.path.join(self.aws_api_iam_cache_dir, "policies")
+            os.makedirs(self._aws_api_iam_policies_cache_dir, exist_ok=True)
+        return self._aws_api_iam_policies_cache_dir
+
+    @aws_api_iam_policies_cache_dir.setter
+    def aws_api_iam_policies_cache_dir(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_iam_roles_cache_dir(self):
+        if self._aws_api_iam_roles_cache_dir is None:
+            self._aws_api_iam_roles_cache_dir = os.path.join(self.aws_api_iam_cache_dir, "roles")
+            os.makedirs(self._aws_api_iam_roles_cache_dir, exist_ok=True)
+        return self._aws_api_iam_roles_cache_dir
+
+    @aws_api_iam_roles_cache_dir.setter
+    def aws_api_iam_roles_cache_dir(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_iam_policies_cache_file(self):
+        return os.path.join(self.aws_api_iam_policies_cache_dir, "policies.json")
+
+    @aws_api_iam_policies_cache_file.setter
+    def aws_api_iam_policies_cache_file(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_iam_roles_cache_file(self):
+        return os.path.join(self.aws_api_iam_roles_cache_dir, "roles.json")
+
+    @aws_api_iam_roles_cache_file.setter
+    def aws_api_iam_roles_cache_file(self, value):
+        raise ValueError(value)
+    # endregion
+
     # region databases
     @property
     def aws_api_databases_cache_dir(self):
@@ -307,6 +361,14 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_cleanup_cache_dir.setter
     def aws_api_cleanup_cache_dir(self, value):
         raise ValueError(value)
+
+    @property
+    def aws_api_cleanups_iam_roles_report_file(self):
+        return os.path.join(self.aws_api_cleanup_cache_dir, "iam_roles.txt")
+
+    @property
+    def aws_api_cleanups_iam_policies_report_file(self):
+        return os.path.join(self.aws_api_cleanup_cache_dir, "iam_policies.txt")
 
     @property
     def aws_api_cleanups_lambda_file(self):
