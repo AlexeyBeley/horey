@@ -1023,12 +1023,40 @@ class AWSAPI:
         Clean IAM policies
         @return:
         """
-        raise NotImplementedError("Not yet")
         tb_ret = TextBlock("Iam Policies")
+
+        tb_ret.blocks.append(self.cleanup_report_iam_unused_policies())
+
         tb_ret.blocks.append(self.cleanup_report_iam_policies_statements_optimize())
+
+        with open(output_file, "w+") as file_handler:
+            file_handler.write(tb_ret.format_pprint())
+
         return tb_ret
 
-    def cleanup_report_iam_policies_statements_optimize(self, output_file):
+    def cleanup_report_iam_unused_policies(self):
+        used_policies = self.find_all_used_policy_names()
+        lines = []
+        for policy in self.iam_policies:
+            if policy.name not in used_policies:
+                lines.append(policy.name)
+
+        tb_ret = TextBlock(f"Unused Policies: {len(lines)}")
+        tb_ret.lines = lines
+
+        return tb_ret
+
+    def find_all_used_policy_names(self):
+        """
+        Get all used policies' names
+        @return:
+        """
+        lst_ret = []
+        for role in self.iam_roles:
+            lst_ret += [policy["_name"] for policy in role.policies]
+        return list(set(lst_ret))
+
+    def cleanup_report_iam_policies_statements_optimize(self):
         """
         Optimizing policies and generating report
         @return:
@@ -1040,8 +1068,6 @@ class AWSAPI:
             if tb_policy.blocks or tb_policy.lines:
                 tb_ret.blocks.append(tb_policy)
 
-        with open(output_file, "w+") as file_handler:
-            file_handler.write(tb_ret.format_pprint())
         return tb_ret
 
     def cleanup_report_iam_policy_statements_optimize(self, policy):
@@ -1062,8 +1088,8 @@ class AWSAPI:
                 tb_ret.lines += lines
 
         # todo: test and remove
-        #lines = self.cleanup_report_iam_policy_statements_intersecting_statements(policy.document.statements)
-        #tb_ret.lines += lines
+        lines = self.cleanup_report_iam_policy_statements_intersecting_statements(policy)
+        tb_ret.lines += lines
 
         return tb_ret
 
@@ -1082,29 +1108,22 @@ class AWSAPI:
                 lines.append(f"Potential risk in too permissive not_resource. Effect: 'Allow', not_resource: '{statement.not_resource}'")
         return lines
 
-    def cleanup_report_iam_policy_statements_intersecting_statements(self, statements):
+    def cleanup_report_iam_policy_statements_intersecting_statements(self, policy):
         """
         Generating report of intersecting policies.
-        @param statements:
+        @param policy:
         @return:
         """
+
+        statements = policy.document.statements
+
         lines = []
+
         for i in range(len(statements)):
             statement_1 = statements[i]
+
             for j in range(i+1, len(statements)):
                 statement_2 = statements[j]
-                try:
-                    statement_1.condition
-                    continue
-                except Exception:
-                    pass
-
-                try:
-                    statement_2.condition
-                    continue
-                except Exception:
-                    pass
-
                 common_resource = statement_1.intersect_resource(statement_2)
 
                 if len(common_resource) == 0:
@@ -1113,8 +1132,12 @@ class AWSAPI:
 
                 if len(common_action) == 0:
                     continue
-                lines.append(f"Common Action: {common_action} Common resource {common_resource}")
+
+                if statement_1.condition is not None:
+                    lines.append(f"Statement 1 has condition: {statement_1.condition}")
+                if statement_2.condition is not None:
+                    lines.append(f"Statement 2 has condition: {statement_2.condition}")
+                lines.append(f"Policy: '{policy.name}' Common Action: {common_action} Common resource {common_resource}")
                 lines.append(str(statement_1.dict_src))
                 lines.append(str(statement_2.dict_src))
-        pdb.set_trace()
         return lines

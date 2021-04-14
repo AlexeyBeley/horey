@@ -26,6 +26,7 @@ def test_init_and_cache_security_groups():
     logger.info(f"len(security_groups) = {len(aws_api.security_groups)}")
     assert len(aws_api.security_groups) > 0
 
+
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_lambdas():
     aws_api.init_lambdas()
@@ -118,14 +119,15 @@ def test_init_and_cache_cloudfront_distributions():
     assert isinstance(aws_api.cloudfront_distributions, list)
 
 
-@pytest.mark.skip(reason="No way of currently testing this")
+#@pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_iam_policies():
     aws_api.init_iam_policies()
     aws_api.cache_objects(aws_api.iam_policies, configuration.aws_api_iam_policies_cache_file)
     logger.info(f"len(iam_policies) = {len(aws_api.iam_policies)}")
     assert isinstance(aws_api.iam_policies, list)
 
-#@pytest.mark.skip(reason="No way of currently testing this")
+
+@pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_iam_roles():
     aws_api.init_iam_policies(from_cache=True, cache_file=configuration.aws_api_iam_policies_cache_file)
     aws_api.init_iam_roles()

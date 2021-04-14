@@ -3,7 +3,7 @@ Module handling AWS Iam Policy object
 """
 from enum import Enum
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
-
+import pdb
 
 class IamPolicy(AwsObject):
     """
@@ -139,6 +139,7 @@ class IamPolicy(AwsObject):
                 self.not_action = {}
                 self.resource = None
                 self.not_resource = None
+                self.condition = None
                 super(IamPolicy.Document.Statement, self).__init__(dict_src, from_cache=from_cache)
 
                 if from_cache:
@@ -266,6 +267,7 @@ class IamPolicy(AwsObject):
                 :param resource_2:
                 :return:
                 """
+
                 lst_ret = []
                 lst_arn_1 = resource_1.split(":")
                 lst_arn_2 = resource_2.split(":")
@@ -279,10 +281,12 @@ class IamPolicy(AwsObject):
                     elif lst_arn_2[i] == "*":
                         lst_ret.append(lst_arn_1[i])
                     elif "*" in lst_arn_1[i] or "*" in lst_arn_2[i]:
-                        ret =self.tail_position_regexes_intersect(lst_arn_1[i], lst_arn_2[i])
+                        ret = self.tail_position_regexes_intersect(lst_arn_1[i], lst_arn_2[i])
                         if ret is None:
                             return []
                         lst_ret.append(ret)
+                    else:
+                        return []
                     i += 1
 
                 return [":".join(lst_ret)]
