@@ -16,6 +16,14 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
         self._aws_api_cloudwatch_log_groups_cache_dir = None
         self._aws_api_cloudwatch_log_groups_streams_cache_dir = None
         self._accounts_file = None
+        self._aws_api_classic_loadbalancers_cache_dir = None
+        self._aws_api_loadbalancers_cache_dir = None
+        self._aws_api_databases_cache_dir = None
+        self._aws_api_hosted_zones_cache_dir = None
+        self._aws_api_cloudfront_cache_dir = None
+        self._aws_api_iam_cache_dir = None
+        self._aws_api_iam_policies_cache_dir = None
+        self._aws_api_iam_roles_cache_dir = None
 
     @property
     def aws_api_regions(self):
@@ -171,6 +179,176 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     def aws_api_lambdas_cache_file(self, value):
         raise ValueError(value)
     # endregion
+
+    # region classic_loadbalancers
+    @property
+    def aws_api_classic_loadbalancers_cache_dir(self):
+        if self._aws_api_classic_loadbalancers_cache_dir is None:
+            self._aws_api_classic_loadbalancers_cache_dir = os.path.join(self.aws_api_cache_dir, self.aws_api_account, "classic_loadbalancers")
+            os.makedirs(self._aws_api_classic_loadbalancers_cache_dir, exist_ok=True)
+        return self._aws_api_classic_loadbalancers_cache_dir
+
+    @aws_api_classic_loadbalancers_cache_dir.setter
+    def aws_api_classic_loadbalancers_cache_dir(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_classic_loadbalancers_cache_file(self):
+        return os.path.join(self.aws_api_classic_loadbalancers_cache_dir, "classic_loadbalancers.json")
+
+    @aws_api_classic_loadbalancers_cache_file.setter
+    def aws_api_classic_loadbalancers_cache_file(self, value):
+        raise ValueError(value)
+    # endregion
+
+    # region loadbalancers
+    @property
+    def aws_api_loadbalancers_cache_dir(self):
+        if self._aws_api_loadbalancers_cache_dir is None:
+            self._aws_api_loadbalancers_cache_dir = os.path.join(self.aws_api_cache_dir, self.aws_api_account,
+                                                                         "loadbalancers")
+            os.makedirs(self._aws_api_loadbalancers_cache_dir, exist_ok=True)
+        return self._aws_api_loadbalancers_cache_dir
+
+    @aws_api_loadbalancers_cache_dir.setter
+    def aws_api_loadbalancers_cache_dir(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_loadbalancers_cache_file(self):
+        return os.path.join(self.aws_api_loadbalancers_cache_dir, "loadbalancers.json")
+
+    @aws_api_loadbalancers_cache_file.setter
+    def aws_api_loadbalancers_cache_file(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_loadbalancer_target_groups_cache_file(self):
+        return os.path.join(self.aws_api_loadbalancers_cache_dir, "loadbalancer_target_groups.json")
+
+    @aws_api_loadbalancer_target_groups_cache_file.setter
+    def aws_api_loadbalancer_target_groups_cache_file(self, value):
+        raise ValueError(value)
+
+    # endregion
+
+    # region iam
+    @property
+    def aws_api_iam_cache_dir(self):
+        if self._aws_api_iam_cache_dir is None:
+            self._aws_api_iam_cache_dir = os.path.join(self.aws_api_cache_dir, self.aws_api_account, "iam")
+            os.makedirs(self.aws_api_iam_cache_dir, exist_ok=True)
+        return self._aws_api_iam_cache_dir
+
+    @aws_api_iam_cache_dir.setter
+    def aws_api_iam_cache_dir(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_iam_policies_cache_dir(self):
+        if self._aws_api_iam_policies_cache_dir is None:
+            self._aws_api_iam_policies_cache_dir = os.path.join(self.aws_api_iam_cache_dir, "policies")
+            os.makedirs(self._aws_api_iam_policies_cache_dir, exist_ok=True)
+        return self._aws_api_iam_policies_cache_dir
+
+    @aws_api_iam_policies_cache_dir.setter
+    def aws_api_iam_policies_cache_dir(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_iam_roles_cache_dir(self):
+        if self._aws_api_iam_roles_cache_dir is None:
+            self._aws_api_iam_roles_cache_dir = os.path.join(self.aws_api_iam_cache_dir, "roles")
+            os.makedirs(self._aws_api_iam_roles_cache_dir, exist_ok=True)
+        return self._aws_api_iam_roles_cache_dir
+
+    @aws_api_iam_roles_cache_dir.setter
+    def aws_api_iam_roles_cache_dir(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_iam_policies_cache_file(self):
+        return os.path.join(self.aws_api_iam_policies_cache_dir, "policies.json")
+
+    @aws_api_iam_policies_cache_file.setter
+    def aws_api_iam_policies_cache_file(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_iam_roles_cache_file(self):
+        return os.path.join(self.aws_api_iam_roles_cache_dir, "roles.json")
+
+    @aws_api_iam_roles_cache_file.setter
+    def aws_api_iam_roles_cache_file(self, value):
+        raise ValueError(value)
+    # endregion
+
+    # region databases
+    @property
+    def aws_api_databases_cache_dir(self):
+        if self._aws_api_databases_cache_dir is None:
+            self._aws_api_databases_cache_dir = os.path.join(self.aws_api_cache_dir, self.aws_api_account,
+                                                                         "databases")
+            os.makedirs(self._aws_api_databases_cache_dir, exist_ok=True)
+        return self._aws_api_databases_cache_dir
+
+    @aws_api_databases_cache_dir.setter
+    def aws_api_databases_cache_dir(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_databases_cache_file(self):
+        return os.path.join(self.aws_api_databases_cache_dir, "databases.json")
+
+    @aws_api_databases_cache_file.setter
+    def aws_api_databases_cache_file(self, value):
+        raise ValueError(value)
+
+    # endregion
+    
+    # region hosted_zones
+    @property
+    def aws_api_hosted_zones_cache_dir(self):
+        if self._aws_api_hosted_zones_cache_dir is None:
+            self._aws_api_hosted_zones_cache_dir = os.path.join(self.aws_api_cache_dir, self.aws_api_account,
+                                                                         "hosted_zones")
+            os.makedirs(self._aws_api_hosted_zones_cache_dir, exist_ok=True)
+        return self._aws_api_hosted_zones_cache_dir
+
+    @aws_api_hosted_zones_cache_dir.setter
+    def aws_api_hosted_zones_cache_dir(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_hosted_zones_cache_file(self):
+        return os.path.join(self.aws_api_hosted_zones_cache_dir, "hosted_zones.json")
+
+    @aws_api_hosted_zones_cache_file.setter
+    def aws_api_hosted_zones_cache_file(self, value):
+        raise ValueError(value)
+
+    # endregion
+    
+    # region cloudfront
+    @property
+    def aws_api_cloudfront_cache_dir(self):
+        if self._aws_api_cloudfront_cache_dir is None:
+            self._aws_api_cloudfront_cache_dir = os.path.join(self.aws_api_cache_dir, self.aws_api_account, "cloudfront")
+            os.makedirs(self._aws_api_cloudfront_cache_dir, exist_ok=True)
+        return self._aws_api_cloudfront_cache_dir
+
+    @aws_api_cloudfront_cache_dir.setter
+    def aws_api_cloudfront_cache_dir(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_cloudfront_distributions_cache_file(self):
+        return os.path.join(self.aws_api_cloudfront_cache_dir, "cloudfront_distributions.json")
+
+    @aws_api_cloudfront_distributions_cache_file.setter
+    def aws_api_cloudfront_distributions_cache_file(self, value):
+        raise ValueError(value)
+    # endregion
     
     # region cleanup
     @property
@@ -185,11 +363,27 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
         raise ValueError(value)
 
     @property
+    def aws_api_cleanups_iam_roles_report_file(self):
+        return os.path.join(self.aws_api_cleanup_cache_dir, "iam_roles.txt")
+
+    @property
+    def aws_api_cleanups_iam_policies_report_file(self):
+        return os.path.join(self.aws_api_cleanup_cache_dir, "iam_policies.txt")
+
+    @property
     def aws_api_cleanups_lambda_file(self):
         return os.path.join(self.aws_api_cleanup_cache_dir, "lambda.txt")
 
     @aws_api_cleanups_lambda_file.setter
     def aws_api_cleanups_lambda_file(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_cleanups_loadbalancers_report_file(self):
+        return os.path.join(self.aws_api_cleanup_cache_dir, "loadbalancers.txt")
+
+    @aws_api_cleanups_loadbalancers_report_file.setter
+    def aws_api_cleanups_loadbalancers_report_file(self, value):
         raise ValueError(value)
 
     @property
@@ -217,12 +411,22 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
         raise ValueError(value)
 
     @property
+    def aws_api_cleanups_dns_report_file(self):
+        return os.path.join(self.aws_api_cleanup_cache_dir, "dns_report.txt")
+
+    @aws_api_cleanups_dns_report_file.setter
+    def aws_api_cleanups_dns_report_file(self, value):
+        raise ValueError(value)
+
+    @property
     def accounts_file(self):
         return self._accounts_file
 
     @accounts_file.setter
     def accounts_file(self, value):
         self._accounts_file = value
+
+
 
     # endregion
     #HOSTED_ZONES_CACHE_FILE = os.path.join(CACHE_DIR, "hosted_zones.json")

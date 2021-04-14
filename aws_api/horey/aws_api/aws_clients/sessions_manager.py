@@ -134,10 +134,6 @@ class SessionsManager:
         :return:
         """
         aws_account = AWSAccount.get_aws_account()
-        aws_region = AWSAccount.get_aws_region()
-
-        if aws_region is not None and len(aws_account.regions[aws_region.region_mark].connection_steps) > 0:
-            raise NotImplementedError("Per region connection steps not yet implemented")
 
         if len(aws_account.connection_steps) == 0:
             raise RuntimeError(f"No connection steps defined for aws_account: '{aws_account.id}'")

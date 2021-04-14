@@ -33,10 +33,14 @@ install_from_source-%: package_source-% init_venv_dir
 recursive_install_from_source-%:
 	${BUILD_DIR}/recursive_install_from_source.sh --root_dir ${ROOT_DIR} --package_name horey.$(subst recursive_install_from_source-,,$@)
 
-pylint: init_venv_dir pylint_raw
+install_pylint:
+	source ${VENV_DIR}/bin/activate &&\
+	pip3 install pylint
+
+pylint: init_venv_dir install_pylint raw_pylint
 raw_pylint:
 	source ${VENV_DIR}/bin/activate &&\
-	pylint ${ROOT_DIR}/aws_api/src/aws_api.py
+	pylint  --rcfile=${BUILD_DIR}/.pylintrc ${ROOT_DIR}/aws_api/horey/aws_api/aws_api.py
 
 install_test_deps-%: init_venv_dir
 	source ${VENV_DIR}/bin/activate &&\
@@ -52,7 +56,7 @@ raw_test-%:
 clear:
 	rm -rf ${BUILD_TMP_DIR}/*
 
-test_aws_api-install: recursive_install_from_source_local_venv-aws_api install_test_deps-aws_api
+test_aws_api_install: recursive_install_from_source_local_venv-aws_api install_test_deps-aws_api
 test_aws_api_cleanup: install_from_source-aws_api
 	source ${VENV_DIR}/bin/activate &&\
 	pytest ${ROOT_DIR}/aws_api/tests/test_aws_api_cleanup.py

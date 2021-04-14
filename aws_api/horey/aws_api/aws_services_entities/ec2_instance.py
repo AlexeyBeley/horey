@@ -68,6 +68,8 @@ class EC2Instance(AwsObject):
                         "InstanceLifecycle": self.init_default_attr,
                         "HibernationOptions": self.init_default_attr,
                         "MetadataOptions": self.init_default_attr,
+                        "EnclaveOptions": self.init_default_attr,
+                        "BootMode": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)

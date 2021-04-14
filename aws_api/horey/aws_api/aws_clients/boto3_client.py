@@ -49,7 +49,7 @@ class Boto3Client:
         """
         raise RuntimeError(f"Nobody can set a client explicitly in{self}")
 
-    def yield_with_paginator(self, func_command, return_string, filters_req=None, raw_data=False):
+    def yield_with_paginator(self, func_command, return_string, filters_req=None, raw_data=False, internal_starting_token=False):
         """
         Function to yeild replies, if there is no need to get all replies.
         It can save API requests if the expected information found before.
@@ -59,8 +59,6 @@ class Boto3Client:
         :param filters_req: filters dict passed to the API client to filter the response
         :return: list of replies
         """
-        if raw_data:
-            raise NotImplementedError()
 
         if filters_req is None:
             filters_req = {}
@@ -70,43 +68,61 @@ class Boto3Client:
         while retry_counter < self.EXECUTION_RETRY_COUNT:
             try:
                 logger.info(f"Start paginating with starting_token: '{starting_token}' and args '{filters_req}'")
-
-                for _page in self.client.get_paginator(func_command.__name__).paginate(
-                        PaginationConfig={self.NEXT_PAGE_REQUEST_KEY: starting_token},
-                        **filters_req):
-                    starting_token = _page.get(self.NEXT_PAGE_RESPONSE_KEY)
-                    logger.info(f"Updating '{func_command.__name__}' {filters_req} pagination starting_token: {starting_token}")
-
-                    Boto3Client.EXEC_COUNT += 1
-
-                    if return_string not in _page:
-                        raise self.NoReturnStringError(f"Has no return string '{return_string}'. Return dict: {_page}")
-
-                    for response_obj in _page[return_string]:
-                        yield response_obj
-                    if starting_token is None:
-                        return
+                for result, new_starting_token in self.unpack_pagination_loop(starting_token, func_command.__name__, return_string, filters_req, raw_data=raw_data, internal_starting_token=internal_starting_token):
+                    retry_counter = 0
+                    starting_token = new_starting_token
+                    yield result
                 break
             except self.NoReturnStringError:
                 raise
             except Exception as exception_instance:
-                pdb.set_trace()
                 exception_weight = 10
                 time_to_sleep = 1
 
                 if "Throttling" in repr(exception_instance):
                     exception_weight = 1
                     time_to_sleep = retry_counter + exception_weight
-                    with open("/tmp/error.log", "a+") as file_handler:
-                        file_handler.write(f"func_command: {func_command.__name__} exception_instance: {repr(exception_instance)} exception_weight: {exception_weight}, time_to_sleep: {time_to_sleep}")
+                    logger.error(f"Retrying after Throttling '{func_command.__name__}' attempt {retry_counter}/{self.EXECUTION_RETRY_COUNT} Error: {exception_instance}")
 
                 retry_counter += exception_weight
                 time.sleep(time_to_sleep)
                 logger.warning(f"Retrying '{func_command.__name__}' attempt {retry_counter}/{self.EXECUTION_RETRY_COUNT} Error: {exception_instance}")
         else:
-            raise
+            raise TimeoutError(f"Max attempts reached while executing '{func_command.__name__}': {self.EXECUTION_RETRY_COUNT}")
 
-    def execute(self, func_command, return_string, filters_req=None, raw_data=False):
+    def unpack_pagination_loop(self, starting_token, func_command_name, return_string, filters_req, raw_data=False, internal_starting_token=False):
+        for _page in self.client.get_paginator(func_command_name).paginate(
+                PaginationConfig={self.NEXT_PAGE_REQUEST_KEY: starting_token},
+                **filters_req):
+
+            starting_token = self.unpack_pagination_loop_starting_token(_page, return_string, internal_starting_token)
+            logger.info(f"Updating '{func_command_name}' {filters_req} pagination starting_token: {starting_token}")
+
+            Boto3Client.EXEC_COUNT += 1
+
+            if raw_data:
+                yield _page, starting_token
+            else:
+                if return_string not in _page:
+                    raise self.NoReturnStringError(f"Has no return string '{return_string}'. Return dict: {_page}")
+                if isinstance(_page[return_string], list):
+                    for response_obj in _page[return_string]:
+                        yield response_obj, starting_token
+                elif isinstance(_page[return_string], dict):
+                    yield _page[return_string], starting_token
+                else:
+                    raise NotImplementedError(f"Unexpected return type: {type(_page[return_string])}")
+
+            if starting_token is None:
+                return
+
+    def unpack_pagination_loop_starting_token(self, _page, return_string, internal_starting_token):
+        if internal_starting_token:
+            return _page.get(return_string).get(self.NEXT_PAGE_RESPONSE_KEY)
+        else:
+            return _page.get(self.NEXT_PAGE_RESPONSE_KEY)
+
+    def execute(self, func_command, return_string, filters_req=None, raw_data=False, internal_starting_token=False):
         """
         Command to execute clients bound function- execute with paginator if available.
 
@@ -120,7 +136,7 @@ class Boto3Client:
             filters_req = {}
 
         if self.client.can_paginate(func_command.__name__):
-            for ret_obj in self.yield_with_paginator(func_command, return_string, filters_req=filters_req, raw_data=raw_data):
+            for ret_obj in self.yield_with_paginator(func_command, return_string, filters_req=filters_req, raw_data=raw_data, internal_starting_token=internal_starting_token):
                 yield ret_obj
             return
 
@@ -133,7 +149,7 @@ class Boto3Client:
 
         if isinstance(response[return_string], list):
             ret_lst = response[return_string]
-        elif type(response[return_string]) in [str, dict]:
+        elif type(response[return_string]) in [str, dict, type(None)]:
             ret_lst = [response[return_string]]
         else:
             raise NotImplementedError("{} type:{}".format(response[return_string], type(response[return_string])))

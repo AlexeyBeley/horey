@@ -59,8 +59,7 @@ class CloudWatchLogsClient(Boto3Client):
         """
         if AWSAccount.get_aws_region() != log_group.region:
             AWSAccount.set_aws_region(log_group.region)
-        #pdb.set_trace()
+            
         for response in self.execute(self.client.describe_log_streams, "logStreams",
                                      filters_req={"logGroupName": log_group.name}):
-            #pdb.set_trace()
             yield response

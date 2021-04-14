@@ -1,0 +1,1 @@
+horey.configuration_policy>=1.0.0

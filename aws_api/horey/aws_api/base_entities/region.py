@@ -7,11 +7,21 @@ class Region:
     """
     AWS Region class
     """
+    REGIONS = {}
+
+    @staticmethod
+    def get_region(region_mark):
+        try:
+            return Region.REGIONS[region_mark]
+        except KeyError:
+            Region.REGIONS[region_mark] = Region()
+            Region.REGIONS[region_mark].region_mark = region_mark
+
+        return Region.REGIONS[region_mark]
 
     def __init__(self):
         self._region_mark = None
         self._region_name = None
-        self.connection_steps = []
 
     @property
     def region_mark(self):
