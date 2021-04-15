@@ -83,8 +83,7 @@ class EC2Instance(AwsObject):
         :param dict_src:
         :return:
         """
-        options = {'launch_time': self.init_date_attr_from_cache_string,
-                   'network_interfaces': self._init_network_interfaces_from_cache}
+        options = {"network_interfaces": self._init_network_interfaces_from_cache}
 
         self._init_from_cache(dict_src, options)
 

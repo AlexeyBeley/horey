@@ -45,9 +45,7 @@ class ClassicLoadBalancer(AwsObject):
         :param dict_src:
         :return:
         """
-        options = {
-                   'created_date':  self.init_date_attr_from_cache_string,
-                   }
+        options = {}
         self._init_from_cache(dict_src, options)
 
     def get_dns_records(self):

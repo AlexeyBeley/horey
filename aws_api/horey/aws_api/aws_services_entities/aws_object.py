@@ -149,21 +149,6 @@ class AwsObject:
         datetime_object = datetime.datetime.strptime(value, "%Y-%m-%d %H:%M:%S.%f%z")
         self.init_default_attr(attr_name, datetime_object)
 
-    def init_date_attr_from_cache_string(self, attr_name, value):
-        """
-        Standard date format to be inited from cache. The format is set explicitly while cached.
-        :param attr_name:
-        :param value:
-        :return:
-        """
-        if not self._DATE_MICROSECONDS_FORMAT_RE.fullmatch(value):
-            raise ValueError(value)
-
-        # Example: datetime.datetime.strptime('2017-07-26 15:54:10.000000+0000', '%Y-%m-%d %H:%M:%S.%f%z')
-        datetime_object = datetime.datetime.strptime(value, "%Y-%m-%d %H:%M:%S.%f%z")
-
-        setattr(self, attr_name, datetime_object)
-
     def init_attrs(self, dict_src, dict_options):
         """
         Init the object attributes according to given "recipe"

@@ -40,7 +40,6 @@ class EC2SecurityGroup(AwsObject):
         :return:
         """
         options = {
-                   'created_date':  self.init_date_attr_from_cache_string,
                    'ip_permissions': self.init_ip_permissions_from_cache_strings,
                    'ip_permissions_egress': self.init_ip_permissions_from_cache_strings,
                    }
