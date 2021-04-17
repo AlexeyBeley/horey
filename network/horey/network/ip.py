@@ -23,30 +23,30 @@ class IP:
 
         # IP(value, from_dict=True)
         if "from_dict" in kwargs and kwargs["from_dict"] is True:
-            if not self.init_address_from_dict(address, **kwargs):
-                raise Exception
+            if not self.init_from_dict(address):
+                raise RuntimeError(f"Can not init from {address}")
             return
 
         if not self.init_address(address, **kwargs):
-            raise Exception
+            raise RuntimeError(f"Can not init from {address}")
 
     def __str__(self):
-        addresss = ""
+        address = ""
 
         #  address
         if self.str_address:
-            addresss = self.str_address
+            address = self.str_address
 
-        if not addresss:
-            raise Exception
+        if not address:
+            raise RuntimeError("Address not set")
 
         #  mask
         mask = self.init_str_int_mask()
 
         if not mask:
-            raise Exception
+            raise RuntimeError("Mask not set")
 
-        return "{}/{}".format(addresss, mask)
+        return "{}/{}".format(address, mask)
 
     def __eq__(self, other):
         if not isinstance(other, IP):
@@ -64,7 +64,7 @@ class IP:
         :param ip: IP
         :return: bool
         """
-        raise NotImplementedError
+        raise NotImplementedError("contains")
 
     def intersect(self, ip):
         """
@@ -111,9 +111,9 @@ class IP:
     def address_from_str_binary(self, str_address):
         return ".".join([str(int(str_address[i*8: i*8 + 8], 2)) for i in range(0, 4)])
 
-    def init_address_from_dict(self, dict_src, **kwargs):
+    def init_from_dict(self, dict_src):
         if self.str_address or self.str_int_mask:
-            raise Exception
+            raise ValueError(dict_src)
         else:
             self.type = dict_src["type"]
             self.str_address = dict_src["str_address"]
@@ -135,18 +135,18 @@ class IP:
         self.int_mask = None
 
         if "str_mask" in kwargs:
-            raise NotImplementedError
+            raise NotImplementedError()
 
         if "int_mask" in kwargs:
             if "/" in str_src:
-                raise Exception
+                raise NotImplementedError()
             self.int_mask = kwargs["int_mask"]
 
         if "/" in str_src:
             if (self.str_mask is not None) or \
                     (self.int_mask is not None) or \
                     (self.str_int_mask is not None):
-                raise Exception
+                raise NotImplementedError()
 
             self.str_address, str_mask = str_src.split("/")
 
@@ -161,7 +161,7 @@ class IP:
     def init_int_mask(self):
         if self.int_mask is None:
             if not self.str_int_mask:
-                raise NotImplementedError
+                raise NotImplementedError()
             self.int_mask = int(self.str_int_mask)
 
         return self.int_mask
@@ -170,7 +170,7 @@ class IP:
         if self.str_address:
             return self.str_address
         else:
-            raise NotImplementedError
+            raise NotImplementedError()
 
     def init_str_bit_address(self):
         return "".join([format(int(octet), '08b') for octet in self.str_address.split(".")])
@@ -181,7 +181,7 @@ class IP:
         elif self.int_mask is not None:
             self.str_int_mask = str(self.int_mask)
         else:
-            raise NotImplementedError
+            raise NotImplementedError()
 
         return self.str_int_mask
 
@@ -197,12 +197,12 @@ class IP:
 
         if self.type == IP.Types.IPV4:
             if not IP.check_str_int_mask_v4_validity(value):
-                raise Exception
+                raise NotImplementedError()
         elif self.type == IP.Types.IPV6:
             if not IP.check_str_int_mask_v6_validity(value):
-                raise Exception
+                raise NotImplementedError()
         else:
-            raise Exception
+            raise NotImplementedError()
 
         self._str_int_mask = value
 
@@ -218,12 +218,12 @@ class IP:
 
         if self.type == IP.Types.IPV4:
             if not IP.check_int_mask_v4_validity(value):
-                raise Exception
+                raise NotImplementedError()
         elif self.type == IP.Types.IPV6:
             if not IP.check_int_mask_v6_validity(value):
-                raise Exception
+                raise NotImplementedError()
         else:
-            raise Exception
+            raise NotImplementedError()
 
         self._int_mask = value
 
@@ -237,10 +237,7 @@ class IP:
             self._str_mask = None
             return
 
-        raise NotImplementedError
-        if value not in [True, False]:
-            raise Exception
-
+        raise NotImplementedError()
         self._str_mask = value
 
     @property

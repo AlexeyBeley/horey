@@ -40,7 +40,6 @@ class EC2SecurityGroup(AwsObject):
         :return:
         """
         options = {
-                   'created_date':  self.init_date_attr_from_cache_string,
                    'ip_permissions': self.init_ip_permissions_from_cache_strings,
                    'ip_permissions_egress': self.init_ip_permissions_from_cache_strings,
                    }
@@ -160,7 +159,7 @@ class EC2SecurityGroup(AwsObject):
             :param lst_src:
             :return:
             """
-            setattr(self, key_name, [self.Address(dict_src["ip"], description=dict_src["description"], from_cache=True) for dict_src in lst_src])
+            setattr(self, key_name, [self.Address(dict_src["ip"]["value"], description=dict_src["description"], from_cache=True) for dict_src in lst_src])
 
         class Address(AwsObject):
             """

@@ -27,6 +27,9 @@ class CloudfrontClient(Boto3Client):
         final_result = list()
 
         for response in self.execute(self.client.list_distributions, "DistributionList", internal_starting_token=True):
+            if response["Quantity"] == 0:
+                continue
+
             for item in response["Items"]:
                 obj = CloudfrontDistribution(item)
                 final_result.append(obj)

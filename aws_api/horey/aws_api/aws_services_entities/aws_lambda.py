@@ -63,8 +63,7 @@ class AWSLambda(AwsObject):
         :param dict_src:
         :return:
         """
-        options = {"last_modified": self.init_date_attr_from_formatted_string,
-                   }
+        options = {}
         self._init_from_cache(dict_src, options)
 
     def get_assinged_security_group_ids(self):

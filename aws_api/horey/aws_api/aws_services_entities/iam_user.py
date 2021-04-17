@@ -34,7 +34,6 @@ class IamUser(AwsObject):
         :param dict_src:
         :return:
         """
-        options = {'create_date': self.init_date_attr_from_cache_string,
-                   'password_last_used':  self.init_date_attr_from_cache_string}
+        options = {}
 
         self._init_from_cache(dict_src, options)
