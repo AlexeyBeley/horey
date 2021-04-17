@@ -41,7 +41,6 @@ class S3Bucket(AwsObject):
         :return:
         """
         options = {
-            "creation_date": self.init_date_attr_from_formatted_string,
             "acl": self._init_acl_from_cache,
             "policy": self._init_policy_from_cache,
             "region": self._init_region_from_cache,
@@ -180,10 +179,7 @@ class S3Bucket(AwsObject):
                     "me-south-1": ".",
                     "us-gov-east-1": "."}
 
-        if self.redirect_all_requests_to is not None:
-            pdb.set_trace()
-
-        if self.index_document is None and self.error_document is None:
+        if self.index_document is None and self.error_document is None and self.redirect_all_requests_to is None:
             return []
 
         return [f"{self.name}.s3-website{mappings[self.location]}{self.location}.amazonaws.com"]
@@ -313,15 +309,17 @@ class S3Bucket(AwsObject):
             super(S3Bucket.BucketObject, self).__init__(src_data)
 
             if from_cache:
-                if not isinstance(src_data, dict):
-                    raise TypeError()
                 self._init_bucket_object_from_cache(src_data)
                 return
 
-            if not isinstance(src_data, dict):
-                raise TypeError()
-
-            self.key = src_data["Key"]
+            init_options = {
+                "Key": self.init_default_attr,
+                "LastModified":  self.init_default_attr,
+                "ETag":  self.init_default_attr,
+                "Size":  self.init_default_attr,
+                "StorageClass":  self.init_default_attr,
+            }
+            self.init_attrs(src_data, init_options)
 
         def _init_bucket_object_from_cache(self, dict_src):
             """
@@ -332,5 +330,4 @@ class S3Bucket(AwsObject):
             options = {}
             self._init_from_cache(dict_src, options)
 
-            self.init_date_attr_from_formatted_string("LastModified", dict_src["dict_src"]["LastModified"])
             self.size = dict_src["dict_src"]["Size"]

@@ -159,7 +159,7 @@ class EC2SecurityGroup(AwsObject):
             :param lst_src:
             :return:
             """
-            setattr(self, key_name, [self.Address(dict_src["ip"], description=dict_src["description"], from_cache=True) for dict_src in lst_src])
+            setattr(self, key_name, [self.Address(dict_src["ip"]["value"], description=dict_src["description"], from_cache=True) for dict_src in lst_src])
 
         class Address(AwsObject):
             """

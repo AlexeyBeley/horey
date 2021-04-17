@@ -18,7 +18,7 @@ class IamPolicy(AwsObject):
 
         super().__init__(dict_src, from_cache=from_cache)
         if from_cache:
-            self._init_policy_from_cashe(dict_src)
+            self._init_policy_from_cache(dict_src)
             return
 
         init_options = {
@@ -35,14 +35,13 @@ class IamPolicy(AwsObject):
 
         self.init_attrs(dict_src, init_options)
 
-    def _init_policy_from_cashe(self, dict_src):
+    def _init_policy_from_cache(self, dict_src):
         """
         Init the object from saved cache dict
         :param dict_src:
         :return:
         """
-        options = {"create_date": self.init_date_attr_from_formatted_string,
-                   "update_date":  self.init_date_attr_from_formatted_string,
+        options = {
                    "document": self.init_document_from_cache,
                    }
 

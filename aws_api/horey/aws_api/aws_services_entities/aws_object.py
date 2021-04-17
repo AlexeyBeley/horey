@@ -6,8 +6,8 @@ import datetime
 from enum import Enum
 import pdb
 
-from horey.common_utils.common_utils import CommonUtils
 from horey.aws_api.base_entities.region import Region
+from horey.network.ip import IP
 
 
 class AwsObject:
@@ -51,12 +51,15 @@ class AwsObject:
         """
         Init automatically cached values
         @param attr_name:
-        @param value: {self.SELF_CACHED_TYPE_KEY_NAME: datetime/region..., "value": value_to_init}
+        @param value: {self.SELF_CACHED_TYPE_KEY_NAME: datetime/region/ip..., "value": value_to_init}
         @return:
         """
+
         if value.get(self.SELF_CACHED_TYPE_KEY_NAME) == "datetime":
             # Example: datetime.datetime.strptime('2017-07-26 15:54:10.000000+0000', '%Y-%m-%d %H:%M:%S.%f%z')
             new_value = datetime.datetime.strptime(value["value"], "%Y-%m-%d %H:%M:%S.%f%z")
+        elif value.get(self.SELF_CACHED_TYPE_KEY_NAME) == "ip":
+            new_value = IP(value["value"], from_dict=True)
         elif value.get(self.SELF_CACHED_TYPE_KEY_NAME) == "region":
             inited_region = Region()
             inited_region.init_from_dict(value["value"])
@@ -240,6 +243,9 @@ class AwsObject:
         if isinstance(obj_src, Region):
             return {AwsObject.SELF_CACHED_TYPE_KEY_NAME: "region", "value": obj_src.convert_to_dict()}
 
+        if isinstance(obj_src, IP):
+            return {AwsObject.SELF_CACHED_TYPE_KEY_NAME: "ip", "value": obj_src.convert_to_dict()}
+
         if isinstance(obj_src, Enum):
             return obj_src.value
 
@@ -247,7 +253,7 @@ class AwsObject:
         # Ugly but efficient
         try:
             assert obj_src.convert_to_dict
-            raise DeprecationWarning("'return obj_src.convert_to_dict()' Use the new SELF_CACHED_TYPE_KEY_NAME format")
+            raise DeprecationWarning(f"'return obj_src.convert_to_dict()' Use the new SELF_CACHED_TYPE_KEY_NAME format: {obj_src}")
         except AttributeError:
             pass
 
