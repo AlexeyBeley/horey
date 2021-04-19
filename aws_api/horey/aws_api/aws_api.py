@@ -12,6 +12,7 @@ from horey.network.ip import IP
 import pdb
 from horey.aws_api.aws_clients.ec2_client import EC2Client
 from horey.aws_api.aws_services_entities.ec2_instance import EC2Instance
+from horey.aws_api.aws_services_entities.network_interface import NetworkInterface
 from horey.aws_api.aws_services_entities.ec2_security_group import EC2SecurityGroup
 
 from horey.aws_api.aws_clients.ecs_client import ECSClient
@@ -52,6 +53,7 @@ from horey.h_logger import get_logger
 from horey.common_utils.text_block import TextBlock
 
 from horey.network.dns_map import DNSMap
+from horey.network.service import ServiceTCP, Service
 from horey.aws_api.base_entities.aws_account import AWSAccount
 
 logger = get_logger()
@@ -75,6 +77,7 @@ class AWSAPI:
         self.ecs_client = ECSClient()
         self.cloudfront_client = CloudfrontClient()
 
+        self.network_interfaces = []
         self.iam_policies = []
         self.ec2_instances = []
         self.s3_buckets = []
@@ -100,6 +103,21 @@ class AWSAPI:
             return
         accounts = CommonUtils.load_object_from_module(self.configuration.accounts_file, "main")
         AWSAccount.set_aws_account(accounts[self.configuration.aws_api_account])
+
+    def init_network_interfaces(self, from_cache=False, cache_file=None):
+        """
+        Init ec2 instances.
+
+        @param from_cache:
+        @param cache_file:
+        @return:
+        """
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, NetworkInterface)
+        else:
+            objects = self.ec2_client.get_all_interfaces()
+
+        self.network_interfaces += objects
 
     def init_ec2_instances(self, from_cache=False, cache_file=None):
         """
@@ -946,6 +964,10 @@ class AWSAPI:
         tb_ret = TextBlock("Load Balancers Cleanup")
         unused_load_balancers = []
         for load_balancer in self.classic_load_balancers:
+            if not load_balancer.listeners:
+                pdb.set_trace()
+                raise NotImplementedError("Create cleanup")
+
             if not load_balancer.instances:
                 unused_load_balancers.append(load_balancer)
         if len(unused_load_balancers) > 0:
@@ -960,6 +982,10 @@ class AWSAPI:
         unused_load_balancers_2 = []
         # = CommonUtils.find_objects_by_values(self.load_balancers, {"arn": lb_arn})
         for load_balancer in self.load_balancers:
+            if not load_balancer.listeners:
+                pdb.set_trace()
+                raise NotImplementedError("Create cleanup")
+
             if load_balancer.arn not in lbs_using_tg:
                 unused_load_balancers_2.append(load_balancer)
 
@@ -986,16 +1012,112 @@ class AWSAPI:
                 tb_ret.lines.append(target_group.name)
         return tb_ret
 
-    def find_ec2_instance_outgoing_paths(self, ec2_instace, sg_map):
+    def cleanup_report_security_groups(self, report_file_path):
         """
-        Find flows outgoing from security groups
-        @param ec2_instace:
-        @param sg_map:
+        Generating security group cleanup reports.
+
+        @param report_file_path:
         @return:
         """
-        for grp in ec2_instace.security_groups:
-            paths = sg_map.find_outgoing_paths(grp["GroupId"])
-            raise NotImplementedError("Replacement of pdb.set_trace")
+        tb_ret = TextBlock("EC2 security groups cleanup")
+        tb_ret.blocks.append(self.cleanup_report_wrong_port_lbs_security_groups())
+        tb_ret.blocks.append(self.cleanup_report_unused_security_group())
+        tb_ret.blocks.append(self.cleanup_report_dangerous_security_groups())
+
+        with open(report_file_path, "w+") as file_handler:
+            file_handler.write(str(tb_ret))
+
+        return tb_ret
+
+    def cleanup_report_wrong_port_lbs_security_groups(self):
+        """
+        Checks load balancers' ports to security groups' internal ports.
+
+        @return:
+        """
+        tb_ret = TextBlock("Wrong load balancer listeners ports")
+        for load_balancer in self.load_balancers + self.classic_load_balancers:
+            lines = self.cleanup_report_wrong_port_lb_security_groups(load_balancer)
+            tb_ret.lines += lines
+
+        return tb_ret
+
+    def cleanup_report_unused_security_group(self):
+        tb_ret = TextBlock("Unused security groups")
+        used_security_group_ids = []
+        for interface in self.network_interfaces:
+            sg_ids = interface.get_used_security_group_ids()
+            used_security_group_ids += sg_ids
+        used_security_group_ids = list(set(used_security_group_ids))
+        all_security_groups_dict = {sg.id: sg.name for sg in self.security_groups}
+        tb_ret.lines = [f"{sg_id} [{all_security_groups_dict[sg_id]}]" for sg_id in all_security_groups_dict if sg_id not in used_security_group_ids]
+        return tb_ret
+
+    def cleanup_report_dangerous_security_groups(self):
+        tb_ret = TextBlock("Unused security groups")
+        for security_group in self.security_groups:
+            pairs = security_group.get_destination_pairs()
+            if len(pairs) == 0:
+                tb_ret.lines.append(f"No ingress rules in group {security_group.id} [{security_group.name}]")
+                continue
+            for ip, service in pairs:
+                if ip is IP.any():
+                    pdb.set_trace()
+
+                if service is Service.any():
+                    pdb.set_trace()
+        return tb_ret
+
+    def cleanup_report_wrong_port_lb_security_groups(self, load_balancer):
+        """
+        Checks single load balancer's ports to security groups' internal ports.
+
+        @param load_balancer:
+        @return:
+        """
+
+        lines = []
+        if load_balancer.security_groups is None:
+            return lines
+
+        #target_groups = self.find_loadbalnacers_target_groups(load_balancer)
+        #if len(target_groups) == 0:
+        #    return lines
+
+        listeners_ports = [listener.port for listener in load_balancer.listeners]
+        listeners_ports = set(listeners_ports)
+
+        listeners_services = []
+        for port in listeners_ports:
+            service = ServiceTCP()
+            service.start = port
+            service.end = port
+            listeners_services.append(service)
+
+        for security_group_id in load_balancer.security_groups:
+            security_group = \
+            CommonUtils.find_objects_by_values(self.security_groups, {"id": security_group_id}, max_count=1)[0]
+            security_group_dst_pairs = security_group.get_destination_pairs()
+
+            for _, sg_service in security_group_dst_pairs:
+                for listener_service in listeners_services:
+                    if listener_service.intersect(sg_service) is not None:
+                        break
+                else:
+                    lines.append(
+                        f"Security group '{security_group.name}' has and open service '{str(sg_service)}' but no LB '{load_balancer.name}' listener on this port")
+
+            for listener_service in listeners_services:
+                for _, sg_service in security_group_dst_pairs:
+                    if listener_service.intersect(sg_service) is not None:
+                        break
+                else:
+                    lines.append(
+                        f"There is LB '{load_balancer.name}' listener service '{listener_service}' but no security group permits a traffic to it")
+        return lines
+
+    def find_loadbalnacers_target_groups(self, load_balancer):
+        return [target_group for target_group in self.target_groups if load_balancer.arn in target_group.load_balancer_arns]
 
     def cleanup_report_dns_records(self, output_file):
         """

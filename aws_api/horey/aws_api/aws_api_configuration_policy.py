@@ -157,6 +157,15 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_ec2_security_groups_cache_file.setter
     def aws_api_ec2_security_groups_cache_file(self, value):
         raise ValueError(value)
+
+    @property
+    def aws_api_ec2_network_interfaces_cache_file(self):
+        return os.path.join(self.aws_api_ec2_cache_dir, "network_interfaces.json")
+
+    @aws_api_ec2_network_interfaces_cache_file.setter
+    def aws_api_ec2_network_interfaces_cache_file(self, value):
+        raise ValueError(value)
+
     # endregion
 
     # region lambda
@@ -363,8 +372,13 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
         raise ValueError(value)
 
     @property
+    def aws_api_cleanups_security_groups_report_file(self):
+        return os.path.join(self.aws_api_cleanup_cache_dir, "security_groups.txt")
+
+    @property
     def aws_api_cleanups_iam_roles_report_file(self):
         return os.path.join(self.aws_api_cleanup_cache_dir, "iam_roles.txt")
+
 
     @property
     def aws_api_cleanups_iam_policies_report_file(self):
