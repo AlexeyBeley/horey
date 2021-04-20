@@ -26,6 +26,7 @@ def test_init_and_cache_network_interfaces():
     logger.info(f"len(network_interfaces) = {len(aws_api.network_interfaces)}")
     assert len(aws_api.network_interfaces) > 0
 
+
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_security_groups():
     aws_api.init_security_groups()

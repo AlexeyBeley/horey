@@ -20,6 +20,7 @@ class NetworkInterface(AwsObject):
         self.description = None
         self.ipv6_addresses = []
         self.private_ip_address = None
+        self.attachment = None
 
         if from_cache:
             self._init_interface_from_cache(dict_src)

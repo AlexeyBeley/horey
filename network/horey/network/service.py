@@ -149,3 +149,33 @@ class ServiceICMP(Service):
 
     def _intersect(self, other):
         raise NotImplementedError()
+
+
+class ServiceRDP(Service):
+    """
+    ICMP family services
+    """
+    ANY = None
+
+    @classmethod
+    def any(cls):
+        """
+        Get Any ICMP service
+        :return:
+        """
+        if ServiceRDP.ANY is None:
+            ServiceRDP.ANY = ServiceRDP()
+        return ServiceRDP.ANY
+
+    def __init__(self):
+        super().__init__()
+
+    def __str__(self):
+        return "RDP"
+
+    def copy(self):
+        """Make a copy of self"""
+        raise NotImplementedError()
+
+    def _intersect(self, other):
+        raise NotImplementedError()

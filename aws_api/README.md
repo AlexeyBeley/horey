@@ -21,3 +21,4 @@ python3 aws_api_actor --action cleanup_report --accounts_file_path "/ignorme/acc
 ```
 make aws_api_cleanup-lambda
 ```
+

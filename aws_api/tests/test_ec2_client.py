@@ -4,7 +4,6 @@ import json
 import pdb
 
 sys.path.insert(0, os.path.abspath("../src"))
-sys.path.insert(0, "/Users/alexeybe/private/IP/ip")
 sys.path.insert(0, "/Users/alexeybe/private/aws_api/ignore")
 sys.path.insert(0, "/Users/alexeybe/private/aws_api/src/base_entities")
 sys.path.insert(0, "/Users/alexeybe/private/aws_api/src/aws_clients")

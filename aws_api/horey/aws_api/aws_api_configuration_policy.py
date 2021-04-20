@@ -372,6 +372,10 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
         raise ValueError(value)
 
     @property
+    def aws_api_cleanups_network_interfaces_report_file(self):
+        return os.path.join(self.aws_api_cleanup_cache_dir, "network_interfaces.txt")
+
+    @property
     def aws_api_cleanups_security_groups_report_file(self):
         return os.path.join(self.aws_api_cleanup_cache_dir, "security_groups.txt")
 
