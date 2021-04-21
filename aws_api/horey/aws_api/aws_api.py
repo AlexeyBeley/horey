@@ -12,6 +12,7 @@ from horey.network.ip import IP
 import pdb
 from horey.aws_api.aws_clients.ec2_client import EC2Client
 from horey.aws_api.aws_services_entities.ec2_instance import EC2Instance
+from horey.aws_api.aws_services_entities.network_interface import NetworkInterface
 from horey.aws_api.aws_services_entities.ec2_security_group import EC2SecurityGroup
 
 from horey.aws_api.aws_clients.ecs_client import ECSClient
@@ -52,6 +53,7 @@ from horey.h_logger import get_logger
 from horey.common_utils.text_block import TextBlock
 
 from horey.network.dns_map import DNSMap
+from horey.network.service import ServiceTCP, Service
 from horey.aws_api.base_entities.aws_account import AWSAccount
 
 logger = get_logger()
@@ -75,6 +77,7 @@ class AWSAPI:
         self.ecs_client = ECSClient()
         self.cloudfront_client = CloudfrontClient()
 
+        self.network_interfaces = []
         self.iam_policies = []
         self.ec2_instances = []
         self.s3_buckets = []
@@ -100,6 +103,23 @@ class AWSAPI:
             return
         accounts = CommonUtils.load_object_from_module(self.configuration.accounts_file, "main")
         AWSAccount.set_aws_account(accounts[self.configuration.aws_api_account])
+
+    def init_network_interfaces(self, from_cache=False, cache_file=None):
+        """
+        Init ec2 instances.
+
+        @param from_cache:
+        @param cache_file:
+        @return:
+        """
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, NetworkInterface)
+        else:
+            objects = self.ec2_client.get_all_interfaces()
+
+        self.network_interfaces += objects
+
+        return self.network_interfaces
 
     def init_ec2_instances(self, from_cache=False, cache_file=None):
         """
@@ -193,47 +213,6 @@ class AWSAPI:
             stream_generator = self.cloud_watch_logs_client.yield_log_group_streams(log_group)
             self.cache_large_objects_from_generator(stream_generator, sub_dir)
 
-    def cache_large_objects_from_generator(self, generator, sub_dir):
-        """
-        Run on a generator and write chunks of cache data into files.
-
-        @param generator:
-        @param sub_dir:
-        @return:
-        """
-        total_counter = 0
-        counter = 0
-        max_count = 100000
-        buffer = []
-
-        for dict_src in generator:
-            counter += 1
-            total_counter += 1
-            buffer.append(dict_src)
-
-            if counter < max_count:
-                continue
-            logger.info(f"Objects total_counter: {total_counter}")
-            logger.info(f"Writing chunk of {max_count} to file {sub_dir}")
-
-            file_path = os.path.join(sub_dir, str(total_counter))
-
-            with open(file_path, "w") as fd:
-                json.dump(buffer, fd)
-
-            counter = 0
-            buffer = []
-
-        logger.info(f"Dir {sub_dir} total count of objects: {total_counter}")
-
-        if total_counter == 0:
-            return
-
-        file_path = os.path.join(sub_dir, str(total_counter))
-
-        with open(file_path, "w") as fd:
-            json.dump(buffer, fd)
-
     def init_iam_policies(self, from_cache=False, cache_file=None):
         """
         Init iam policies.
@@ -303,53 +282,6 @@ class AWSAPI:
             except self.s3_client.NoReturnStringError as received_exception:
                 logger.warning(f"bucket {bucket.name} has no return string: {received_exception} ")
                 continue
-
-    def cache_s3_bucket_objects(self, bucket, max_count, bucket_dir):
-        """
-        Cache single bucket objects in multiple files - each file is a chunk of objects.
-        @param bucket:
-        @param max_count:
-        @param bucket_dir:
-        @return:
-        """
-        bucket_objects_iterator = self.s3_client.yield_bucket_objects(bucket)
-        total_counter = 0
-        counter = 0
-
-        buffer = []
-        for bucket_object in bucket_objects_iterator:
-            counter += 1
-            total_counter += 1
-            buffer.append(bucket_object)
-
-            if counter < max_count:
-                continue
-
-            logger.info(f"Bucket objects total_counter: {total_counter}")
-            logger.info(f"Writing chunk of {max_count} objects for bucket {bucket.name}")
-            counter = 0
-            file_name = bucket_object.key.replace("/", "_")
-            file_path = os.path.join(bucket_dir, file_name)
-
-            data_to_dump = [obj.convert_to_dict() for obj in buffer]
-
-            buffer = []
-
-            with open(file_path, "w") as fd:
-                json.dump(data_to_dump, fd)
-
-        logger.info(f"Bucket {bucket.name} total count of objects: {total_counter}")
-
-        if total_counter == 0:
-            return
-
-        file_name = bucket_object.key.replace("/", "_")
-        file_path = os.path.join(bucket_dir, file_name)
-
-        data_to_dump = [obj.convert_to_dict() for obj in buffer]
-
-        with open(file_path, "w") as fd:
-            json.dump(data_to_dump, fd)
 
     def init_lambdas(self, from_cache=False, cache_file=None, full_information=True):
         """
@@ -470,6 +402,94 @@ class AWSAPI:
             objects = self.ec2_client.get_all_security_groups(full_information=full_information)
         self.security_groups += objects
 
+    def cache_large_objects_from_generator(self, generator, sub_dir):
+        """
+        Run on a generator and write chunks of cache data into files.
+
+        @param generator:
+        @param sub_dir:
+        @return:
+        """
+        total_counter = 0
+        counter = 0
+        max_count = 100000
+        buffer = []
+
+        for dict_src in generator:
+            counter += 1
+            total_counter += 1
+            buffer.append(dict_src)
+
+            if counter < max_count:
+                continue
+            logger.info(f"Objects total_counter: {total_counter}")
+            logger.info(f"Writing chunk of {max_count} to file {sub_dir}")
+
+            file_path = os.path.join(sub_dir, str(total_counter))
+
+            with open(file_path, "w") as fd:
+                json.dump(buffer, fd)
+
+            counter = 0
+            buffer = []
+
+        logger.info(f"Dir {sub_dir} total count of objects: {total_counter}")
+
+        if total_counter == 0:
+            return
+
+        file_path = os.path.join(sub_dir, str(total_counter))
+
+        with open(file_path, "w") as fd:
+            json.dump(buffer, fd)
+
+    def cache_s3_bucket_objects(self, bucket, max_count, bucket_dir):
+        """
+        Cache single bucket objects in multiple files - each file is a chunk of objects.
+        @param bucket:
+        @param max_count:
+        @param bucket_dir:
+        @return:
+        """
+        bucket_objects_iterator = self.s3_client.yield_bucket_objects(bucket)
+        total_counter = 0
+        counter = 0
+
+        buffer = []
+        for bucket_object in bucket_objects_iterator:
+            counter += 1
+            total_counter += 1
+            buffer.append(bucket_object)
+
+            if counter < max_count:
+                continue
+
+            logger.info(f"Bucket objects total_counter: {total_counter}")
+            logger.info(f"Writing chunk of {max_count} objects for bucket {bucket.name}")
+            counter = 0
+            file_name = bucket_object.key.replace("/", "_")
+            file_path = os.path.join(bucket_dir, file_name)
+
+            data_to_dump = [obj.convert_to_dict() for obj in buffer]
+
+            buffer = []
+
+            with open(file_path, "w") as fd:
+                json.dump(data_to_dump, fd)
+
+        logger.info(f"Bucket {bucket.name} total count of objects: {total_counter}")
+
+        if total_counter == 0:
+            return
+
+        file_name = bucket_object.key.replace("/", "_")
+        file_path = os.path.join(bucket_dir, file_name)
+
+        data_to_dump = [obj.convert_to_dict() for obj in buffer]
+
+        with open(file_path, "w") as fd:
+            json.dump(data_to_dump, fd)
+
     def load_objects_from_cache(self, file_name, class_type):
         """
         Load objects from cached file
@@ -541,6 +561,39 @@ class AWSAPI:
 
         dns_map.prepare_map()
         return dns_map
+
+    def cleanup_report_network_interfaces(self, output_file):
+        tb_ret = TextBlock("Unused network interfaces")
+        for interface in self.network_interfaces:
+            if interface.attachment is None:
+                tb_ret.lines.append(f"Name: {interface.name}, Private dns name: {interface.private_dns_name}, "
+                                    f"availability_zone: {interface.availability_zone}, subnet: {interface.subnet_id}")
+
+            if interface.status not in ["available", "in-use"]:
+                raise NotImplementedError(interface.status)
+
+        tb_ret.header += f" ({len(tb_ret.lines)})"
+        tb_ret.write_to_file(output_file)
+        return tb_ret
+
+    def cleanup_report_lambdas(self, report_file_path, aws_api_cloudwatch_log_groups_streams_cache_dir):
+        """
+        Generated various lambdas' cleanup reports.
+
+        @param report_file_path:
+        @param aws_api_cloudwatch_log_groups_streams_cache_dir:
+        @return:
+        """
+        tb_ret = TextBlock("AWS Lambdas cleanup")
+        tb_ret.blocks.append(self.cleanup_report_lambdas_not_running(aws_api_cloudwatch_log_groups_streams_cache_dir))
+        tb_ret.blocks.append(self.cleanup_report_lambdas_large_size())
+        tb_ret.blocks.append(self.cleanup_report_lambdas_security_group())
+        tb_ret.blocks.append(self.cleanup_report_lambdas_old_code())
+
+        with open(report_file_path, "w+") as file_handler:
+            file_handler.write(str(tb_ret))
+
+        return tb_ret
 
     def cleanup_report_lambdas_security_group(self):
         """
@@ -658,25 +711,6 @@ class AWSAPI:
 
         lst_names_dates = sorted(lst_names_dates, key=lambda x: x[1])
         tb_ret.lines = [f"Lambda {name} was last update: {update_date.strftime('%Y-%m-%d %H:%M')}" for name, update_date in lst_names_dates]
-        return tb_ret
-
-    def cleanup_report_lambdas(self, report_file_path, aws_api_cloudwatch_log_groups_streams_cache_dir):
-        """
-        Generated various lambdas' cleanup reports.
-
-        @param report_file_path:
-        @param aws_api_cloudwatch_log_groups_streams_cache_dir:
-        @return:
-        """
-        tb_ret = TextBlock("AWS Lambdas cleanup")
-        tb_ret.blocks.append(self.cleanup_report_lambdas_not_running(aws_api_cloudwatch_log_groups_streams_cache_dir))
-        tb_ret.blocks.append(self.cleanup_report_lambdas_large_size())
-        tb_ret.blocks.append(self.cleanup_report_lambdas_security_group())
-        tb_ret.blocks.append(self.cleanup_report_lambdas_old_code())
-
-        with open(report_file_path, "w+") as file_handler:
-            file_handler.write(str(tb_ret))
-
         return tb_ret
 
     def cleanup_report_s3_buckets_objects(self, summarised_data_file, output_file):
@@ -799,10 +833,11 @@ class AWSAPI:
 
     def cleanup_report_iam_roles(self, output_file):
         time_limit = datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(days=30)
-        tb_ret = TextBlock("unused IAM roles. Last use time < 30 days")
+        tb_ret = TextBlock("Unused IAM roles. Last use time < 30 days")
 
         for role in self.iam_roles:
             if role.role_last_used_time is None:
+                pdb.set_trace()
                 continue
             if role.role_last_used_time < time_limit:
                 tb_ret.lines.append(f"Role: '{role.name}' last used: {role.role_last_used_time}")
@@ -810,6 +845,46 @@ class AWSAPI:
         with open(output_file, "w+") as file_handler:
             file_handler.write(tb_ret.format_pprint())
 
+        return tb_ret
+
+    def cleanup_report_cloud_watch_log_groups(self, streams_dir, output_file, top_streams_count=100):
+        """
+        Generate cleanup report for cloudwatch log groups - too big, too old etc.
+
+        @param streams_dir: Full path to the streams' cache dir
+        @param output_file:
+        @param top_streams_count: Top most streams count to show in the report.
+        @return:
+        """
+        dict_total = {"size": 0, "streams_count": 0, "data": []}
+        log_group_subdirs = os.listdir(streams_dir)
+        for i in range(len(log_group_subdirs)):
+            log_group_subdir = log_group_subdirs[i]
+            logger.info(f"Log group sub directory {i}/{len(log_group_subdirs)}")
+            dict_log_group = {"name": log_group_subdir, "size": 0, "streams_count": 0, "data": {"streams_by_date": []}}
+            log_group_full_path = os.path.join(streams_dir, log_group_subdir)
+
+            log_group_chunk_files = os.listdir(log_group_full_path)
+            for j in range(len(log_group_chunk_files)):
+                chunk_file = log_group_chunk_files[j]
+                logger.info(f"Chunk files in log group dir {j}/{len(log_group_chunk_files)}")
+
+                with open(os.path.join(log_group_full_path, chunk_file)) as fh:
+                    streams = json.load(fh)
+                log_group_name = streams[0]["arn"].split(":")[6]
+                log_group = CommonUtils.find_objects_by_values(self.cloud_watch_log_groups, {"name": log_group_name}, max_count=1)[0]
+                dict_log_group["size"] = log_group.stored_bytes
+                for stream in streams:
+                    dict_log_group["streams_count"] += 1
+                    self.cleanup_report_cloud_watch_log_groups_handle_sorted_streams(top_streams_count, dict_log_group, stream)
+
+            dict_total["size"] += dict_log_group["size"]
+            dict_total["streams_count"] += dict_log_group["streams_count"]
+            dict_total["data"].append(dict_log_group)
+        dict_total["data"] = sorted(dict_total["data"], key=lambda x: x["size"], reverse=True)
+        tb_ret = self.cleanup_report_cloud_watch_log_groups_prepare_tb(dict_total, top_streams_count)
+        with open(output_file, "w+") as file_handler:
+            file_handler.write(tb_ret.format_pprint())
         return tb_ret
 
     @staticmethod
@@ -897,46 +972,6 @@ class AWSAPI:
             tb_ret.blocks.append(tb_log_group)
         return tb_ret
 
-    def cleanup_report_cloud_watch_log_groups(self, streams_dir, output_file, top_streams_count=100):
-        """
-        Generate cleanup report for cloudwatch log groups - too big, too old etc.
-
-        @param streams_dir: Full path to the streams' cache dir
-        @param output_file:
-        @param top_streams_count: Top most streams count to show in the report.
-        @return:
-        """
-        dict_total = {"size": 0, "streams_count": 0, "data": []}
-        log_group_subdirs = os.listdir(streams_dir)
-        for i in range(len(log_group_subdirs)):
-            log_group_subdir = log_group_subdirs[i]
-            logger.info(f"Log group sub directory {i}/{len(log_group_subdirs)}")
-            dict_log_group = {"name": log_group_subdir, "size": 0, "streams_count": 0, "data": {"streams_by_date": []}}
-            log_group_full_path = os.path.join(streams_dir, log_group_subdir)
-
-            log_group_chunk_files = os.listdir(log_group_full_path)
-            for j in range(len(log_group_chunk_files)):
-                chunk_file = log_group_chunk_files[j]
-                logger.info(f"Chunk files in log group dir {j}/{len(log_group_chunk_files)}")
-
-                with open(os.path.join(log_group_full_path, chunk_file)) as fh:
-                    streams = json.load(fh)
-                log_group_name = streams[0]["arn"].split(":")[6]
-                log_group = CommonUtils.find_objects_by_values(self.cloud_watch_log_groups, {"name": log_group_name}, max_count=1)[0]
-                dict_log_group["size"] = log_group.stored_bytes
-                for stream in streams:
-                    dict_log_group["streams_count"] += 1
-                    self.cleanup_report_cloud_watch_log_groups_handle_sorted_streams(top_streams_count, dict_log_group, stream)
-
-            dict_total["size"] += dict_log_group["size"]
-            dict_total["streams_count"] += dict_log_group["streams_count"]
-            dict_total["data"].append(dict_log_group)
-        dict_total["data"] = sorted(dict_total["data"], key=lambda x: x["size"], reverse=True)
-        tb_ret = self.cleanup_report_cloud_watch_log_groups_prepare_tb(dict_total, top_streams_count)
-        with open(output_file, "w+") as file_handler:
-            file_handler.write(tb_ret.format_pprint())
-        return tb_ret
-
     def cleanup_load_balancers(self, output_file):
         """
         Generate load balancers' cleanup report.
@@ -944,36 +979,75 @@ class AWSAPI:
         @return:
         """
         tb_ret = TextBlock("Load Balancers Cleanup")
-        unused_load_balancers = []
-        for load_balancer in self.classic_load_balancers:
-            if not load_balancer.instances:
-                unused_load_balancers.append(load_balancer)
-        if len(unused_load_balancers) > 0:
-            tb_ret_tmp = TextBlock("Unused classic- loadbalancers without instances associated")
-            tb_ret_tmp.lines = [x.name for x in unused_load_balancers]
+        tb_ret_tmp = self.cleanup_classic_load_balancers()
+        if tb_ret_tmp is not None:
             tb_ret.blocks.append(tb_ret_tmp)
 
-        lbs_using_tg = set()
-        for target_group in self.target_groups:
-            lbs_using_tg.update(target_group.load_balancer_arns)
-
-        unused_load_balancers_2 = []
-        # = CommonUtils.find_objects_by_values(self.load_balancers, {"arn": lb_arn})
-        for load_balancer in self.load_balancers:
-            if load_balancer.arn not in lbs_using_tg:
-                unused_load_balancers_2.append(load_balancer)
-
-        if len(unused_load_balancers_2) > 0:
-            tb_ret_tmp = TextBlock("Unused- loadbalancers without target groups associated")
-            tb_ret_tmp.lines = [x.name for x in unused_load_balancers_2]
+        tb_ret_tmp = self.cleanup_alb_load_balancers()
+        if tb_ret_tmp is not None:
             tb_ret.blocks.append(tb_ret_tmp)
 
         tb_ret_tmp = self.cleanup_target_groups()
         if tb_ret_tmp.lines or tb_ret_tmp.blocks:
             tb_ret.blocks.append(tb_ret_tmp)
+
         with open(output_file, "w+") as file_handler:
             file_handler.write(tb_ret.format_pprint())
+
         return tb_ret
+
+    def cleanup_classic_load_balancers(self):
+        """
+        Generate cleanup report for classic load balancers.
+
+        @return:
+        """
+        tb_ret = TextBlock("Cleanup report classic load balancers")
+        tb_ret_no_instances = TextBlock("No instances associated with these load balancers")
+        tb_ret_no_listeners = TextBlock("No listeners associated with these load balancers")
+        for load_balancer in self.classic_load_balancers:
+            if not load_balancer.listeners:
+                tb_ret_no_listeners.lines.append(load_balancer.name)
+
+            if not load_balancer.instances:
+                tb_ret_no_instances.lines.append(load_balancer.name)
+
+        if len(tb_ret_no_instances.lines) > 0:
+            tb_ret.blocks.append(tb_ret_no_instances)
+
+        if len(tb_ret_no_listeners.lines) > 0:
+            tb_ret.blocks.append(tb_ret_no_listeners)
+
+        return tb_ret if len(tb_ret.blocks) > 0 else None
+
+    def cleanup_alb_load_balancers(self):
+        """
+        Generate cleanup report for alb load balancers.
+
+        @return:
+        """
+        tb_ret = TextBlock("Cleanup report ALBs")
+        tb_ret_no_tgs = TextBlock("No target groups associated with these load balancers")
+        tb_ret_no_listeners = TextBlock("No listeners associated with these load balancers")
+
+        lbs_using_tg = set()
+        for target_group in self.target_groups:
+            lbs_using_tg.update(target_group.load_balancer_arns)
+
+        for load_balancer in self.load_balancers:
+            if not load_balancer.listeners:
+                tb_ret_no_listeners.lines.append(load_balancer.name)
+
+            if load_balancer.arn not in lbs_using_tg:
+                tb_ret_no_tgs.lines.append(load_balancer.name)
+
+        if len(tb_ret_no_tgs.lines) > 0:
+            tb_ret.blocks.append(tb_ret_no_tgs)
+
+        if len(tb_ret_no_listeners.lines) > 0:
+            tb_ret.blocks.append(tb_ret_no_listeners)
+
+        return tb_ret if len(tb_ret.blocks) > 0 else None
 
     def cleanup_target_groups(self):
         """
@@ -984,18 +1058,111 @@ class AWSAPI:
         for target_group in self.target_groups:
             if not target_group.target_health:
                 tb_ret.lines.append(target_group.name)
-        return tb_ret
+        return tb_ret if len(tb_ret.lines) > 0 else None
 
-    def find_ec2_instance_outgoing_paths(self, ec2_instace, sg_map):
+    def cleanup_report_security_groups(self, report_file_path):
         """
-        Find flows outgoing from security groups
-        @param ec2_instace:
-        @param sg_map:
+        Generating security group cleanup reports.
+
+        @param report_file_path:
         @return:
         """
-        for grp in ec2_instace.security_groups:
-            paths = sg_map.find_outgoing_paths(grp["GroupId"])
-            raise NotImplementedError("Replacement of pdb.set_trace")
+        tb_ret = TextBlock("EC2 security groups cleanup")
+        tb_ret.blocks.append(self.cleanup_report_wrong_port_lbs_security_groups())
+        tb_ret.blocks.append(self.cleanup_report_unused_security_groups())
+        tb_ret.blocks.append(self.cleanup_report_dangerous_security_groups())
+
+        with open(report_file_path, "w+") as file_handler:
+            file_handler.write(str(tb_ret))
+
+        return tb_ret
+
+    def cleanup_report_wrong_port_lbs_security_groups(self):
+        """
+        Checks load balancers' ports to security groups' internal ports.
+
+        @return:
+        """
+        tb_ret = TextBlock("Wrong load balancer listeners ports")
+        for load_balancer in self.load_balancers + self.classic_load_balancers:
+            lines = self.cleanup_report_wrong_port_lb_security_groups(load_balancer)
+            tb_ret.lines += lines
+
+        return tb_ret
+
+    def cleanup_report_unused_security_groups(self):
+        tb_ret = TextBlock("Unused security groups")
+        used_security_group_ids = []
+        for interface in self.network_interfaces:
+            sg_ids = interface.get_used_security_group_ids()
+            used_security_group_ids += sg_ids
+        used_security_group_ids = list(set(used_security_group_ids))
+        all_security_groups_dict = {sg.id: sg.name for sg in self.security_groups}
+        tb_ret.lines = [f"{sg_id} [{all_security_groups_dict[sg_id]}]" for sg_id in all_security_groups_dict if sg_id not in used_security_group_ids]
+        return tb_ret
+
+    def cleanup_report_dangerous_security_groups(self):
+        tb_ret = TextBlock("Dangerously open security groups")
+        for security_group in self.security_groups:
+            pairs = security_group.get_ingress_pairs()
+            if len(pairs) == 0:
+                tb_ret.lines.append(f"No ingress rules in group {security_group.id} [{security_group.name}]")
+                continue
+            for ip, service in pairs:
+                if ip is IP.any():
+                    tb_ret.lines.append(f"Dangerously wide range of addresses {security_group.id} [{security_group.name}] - {ip}")
+
+                if service is Service.any():
+                    tb_ret.lines.append(f"Dangerously wide range of services {security_group.id} [{security_group.name}] - {service}")
+
+        return tb_ret
+
+    def cleanup_report_wrong_port_lb_security_groups(self, load_balancer):
+        """
+        Checks single load balancer's ports to security groups' internal ports.
+
+        @param load_balancer:
+        @return:
+        """
+
+        lines = []
+        if load_balancer.security_groups is None:
+            return lines
+
+        listeners_ports = [listener.port for listener in load_balancer.listeners]
+        listeners_ports = set(listeners_ports)
+
+        listeners_services = []
+        for port in listeners_ports:
+            service = ServiceTCP()
+            service.start = port
+            service.end = port
+            listeners_services.append(service)
+
+        for security_group_id in load_balancer.security_groups:
+            security_group = \
+            CommonUtils.find_objects_by_values(self.security_groups, {"id": security_group_id}, max_count=1)[0]
+            security_group_dst_pairs = security_group.get_ingress_pairs()
+
+            for _, sg_service in security_group_dst_pairs:
+                for listener_service in listeners_services:
+                    if listener_service.intersect(sg_service) is not None:
+                        break
+                else:
+                    lines.append(
+                        f"Security group '{security_group.name}' has and open service '{str(sg_service)}' but no LB '{load_balancer.name}' listener on this port")
+
+            for listener_service in listeners_services:
+                for _, sg_service in security_group_dst_pairs:
+                    if listener_service.intersect(sg_service) is not None:
+                        break
+                else:
+                    lines.append(
+                        f"There is LB '{load_balancer.name}' listener service '{listener_service}' but no security group permits a traffic to it")
+        return lines
+
+    def find_loadbalnacers_target_groups(self, load_balancer):
+        return [target_group for target_group in self.target_groups if load_balancer.arn in target_group.load_balancer_arns]
 
     def cleanup_report_dns_records(self, output_file):
         """

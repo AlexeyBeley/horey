@@ -29,8 +29,13 @@ class ELBV2Client(Boto3Client):
                 obj = LoadBalancer(response)
                 final_result.append(obj)
 
+                for listener_response in self.execute(self.client.describe_listeners, "Listeners", filters_req={"LoadBalancerArn": obj.arn}):
+                    obj.add_raw_listener(listener_response)
+
                 if full_information:
                     pass
+
+
 
         return final_result
 

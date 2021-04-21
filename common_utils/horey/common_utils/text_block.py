@@ -40,3 +40,7 @@ class TextBlock:
         if len(self.footer) > 0:
             ret += "\n" + "\n".join(self.footer)
         return ret
+
+    def write_to_file(self, output_file):
+        with open(output_file, "w+") as file_handler:
+            file_handler.write(self.format_pprint())

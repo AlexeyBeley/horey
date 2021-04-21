@@ -3,7 +3,9 @@ AWS ec2 security group representation
 """
 
 from horey.network.ip import IP
+from horey.network.service import ServiceTCP, ServiceUDP, ServiceICMP, ServiceRDP
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
+import pdb
 
 
 class EC2SecurityGroup(AwsObject):
@@ -88,6 +90,31 @@ class EC2SecurityGroup(AwsObject):
         :return:
         """
         return [self.dns_name] if self.dns_name else []
+
+    def get_ingress_pairs(self):
+        lst_ret = []
+        for ip_permission in self.ip_permissions:
+            if ip_permission.ip_protocol == "-1":
+                service = ServiceTCP.any()
+            elif ip_permission.ip_protocol == "tcp":
+                service = ServiceTCP()
+                service.start = ip_permission.from_port
+                service.end = ip_permission.to_port
+            elif ip_permission.ip_protocol == "udp":
+                service = ServiceUDP()
+                service.start = ip_permission.from_port
+                service.end = ip_permission.to_port
+            elif ip_permission.ip_protocol == "27":
+                service = ServiceRDP()
+            elif ip_permission.ip_protocol == "icmp":
+                service = ServiceICMP.any()
+            else:
+                raise NotImplementedError(ip_permission.ip_protocol)
+
+            for address in ip_permission.ipv4_ranges:
+                lst_ret.append((address.ip, service))
+
+        return lst_ret
 
     class IpPermission(AwsObject):
         """
