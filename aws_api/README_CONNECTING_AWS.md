@@ -1,7 +1,8 @@
-#MANAGING AWS CONNECTIONS
+#AWS_API configuration
 
-##Sample configuration file
+##Sample configuration values file
 aws_api/tests/configuration_values.py
+##Sample accounts file
 aws_api/tests/accounts/managed_accounts.py
 
 

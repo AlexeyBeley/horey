@@ -119,6 +119,8 @@ class AWSAPI:
 
         self.network_interfaces += objects
 
+        return self.network_interfaces
+
     def init_ec2_instances(self, from_cache=False, cache_file=None):
         """
         Init ec2 instances.

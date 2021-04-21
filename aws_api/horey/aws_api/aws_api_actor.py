@@ -1,12 +1,9 @@
 import pdb
 import argparse
-import json
+import os
 
-
-from aws_api import AWSAPI
 import logging
 logger = logging.Logger(__name__)
-from horey.aws_api.base_entities.aws_account import AWSAccount
 
 from horey.aws_api.aws_api import AWSAPI
 from horey.aws_api.aws_api_configuration_policy import AWSAPIConfigurationPolicy
@@ -14,41 +11,64 @@ from horey.common_utils.actions_manager import ActionsManager
 
 #AWSAccount.set_aws_account(ignore_me.acc_default)
 action_manager = ActionsManager()
-aws_api = AWSAPI()
 
 
 # region cleanup
 def cleanup_parser():
     description = "Cleanup AWS account"
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument("--target", required=True, type=str, help="Tag name will be added, description and alias set")
-    parser.add_argument("--accounts_file_path", required=True, type=str, help="Tag name will be added, description and alias set")
+    parser.add_argument("--target", required=True, type=str, help="Object type to cleanup")
+    parser.add_argument("--configuration_file_full_path", required=True, type=str, help="Configuration file full path")
 
     return parser
 
 
 def cleanup(arguments) -> None:
-    print("hello ")
+    configuration = AWSAPIConfigurationPolicy()
+    configuration.configuration_file_full_path = arguments.configuration_file_full_path
+    configuration.init_from_file()
+
+    aws_api = AWSAPI(configuration)
+
+    init_functions = {"interfaces": aws_api.init_network_interfaces}
+    cache_files = {"interfaces": configuration.aws_api_ec2_network_interfaces_cache_file}
+    output_files = {"interfaces": configuration.aws_api_cleanups_network_interfaces_report_file}
+
+    init_functions[arguments.target](from_cache=True, cache_file=cache_files[arguments.target])
+    aws_api.cleanup_report_network_interfaces(output_files[arguments.target])
 
 
 action_manager.register_action("cleanup", cleanup_parser, cleanup)
 # endregion
+
 
 # region init_and_cache
 def init_and_cache_parser():
     description = "Init and cache elements"
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("--target", required=True, type=str, help="Object type to init")
+    parser.add_argument("--configuration_file_full_path", required=True, type=str, help="Configuration file full path")
 
     return parser
 
 
 def init_and_cache(arguments) -> None:
-    print("hello ")
+    configuration = AWSAPIConfigurationPolicy()
+    configuration.configuration_file_full_path = arguments.configuration_file_full_path
+    configuration.init_from_file()
+
+    aws_api = AWSAPI(configuration)
+
+    init_functions = {"interfaces": aws_api.init_network_interfaces}
+    cache_files = {"interfaces": configuration.aws_api_ec2_network_interfaces_cache_file}
+
+    objects = init_functions[arguments.target]()
+    aws_api.cache_objects(objects, cache_files[arguments.target])
 
 
 action_manager.register_action("init_and_cache", init_and_cache_parser, init_and_cache)
 # endregion
+
 
 # region create_ec2_from_lambda
 def create_ec2_from_lambda_parser():
