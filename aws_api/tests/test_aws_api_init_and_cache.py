@@ -130,7 +130,7 @@ def test_init_and_cache_cloudfront_distributions():
     assert isinstance(aws_api.cloudfront_distributions, list)
 
 
-@pytest.mark.skip(reason="No way of currently testing this")
+@pytest.mark.skip(reason="IAM policies will be inited explicitly")
 def test_init_and_cache_iam_policies():
     aws_api.init_iam_policies()
     aws_api.cache_objects(aws_api.iam_policies, configuration.aws_api_iam_policies_cache_file)
@@ -138,7 +138,7 @@ def test_init_and_cache_iam_policies():
     assert isinstance(aws_api.iam_policies, list)
 
 
-#@pytest.mark.skip(reason="IAM roles will be inited explicitly")
+@pytest.mark.skip(reason="IAM roles will be inited explicitly")
 def test_init_and_cache_iam_roles():
     aws_api.init_iam_policies(from_cache=True, cache_file=configuration.aws_api_iam_policies_cache_file)
     aws_api.init_iam_roles()

@@ -17,6 +17,19 @@ aws_api = AWSAPI(configuration=configuration)
 
 # region done
 @pytest.mark.skip(reason="No way of currently testing this")
+def test_init_from_cache_and_cleanup_report_iam_policies():
+    aws_api.init_iam_policies(from_cache=True, cache_file=configuration.aws_api_iam_policies_cache_file)
+    aws_api.init_iam_roles(from_cache=True, cache_file=configuration.aws_api_iam_roles_cache_file)
+    aws_api.cleanup_report_iam_policies(configuration.aws_api_cleanups_iam_policies_report_file)
+
+
+@pytest.mark.skip(reason="IAM roles cleanup will be enabled explicitly")
+def test_init_from_cache_and_cleanup_report_iam_roles():
+    aws_api.init_iam_roles(from_cache=True, cache_file=configuration.aws_api_iam_roles_cache_file)
+    aws_api.cleanup_report_iam_roles(configuration.aws_api_cleanups_iam_roles_report_file)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
 def test_init_from_cache_and_cleanup_lambdas():
     aws_api.init_security_groups(from_cache=True, cache_file=configuration.aws_api_ec2_security_groups_cache_file)
     aws_api.init_lambdas(from_cache=True, cache_file=configuration.aws_api_lambdas_cache_file)
@@ -46,17 +59,6 @@ def test_init_from_cache_and_cleanup_load_balancers():
     aws_api.cleanup_load_balancers(configuration.aws_api_cleanups_loadbalancers_report_file)
 
 
-@pytest.mark.skip(reason="No way of currently testing this")
-def test_init_from_cache_and_cleanup_report_iam_policies():
-    aws_api.init_iam_policies(from_cache=True, cache_file=configuration.aws_api_iam_policies_cache_file)
-    aws_api.init_iam_roles(from_cache=True, cache_file=configuration.aws_api_iam_roles_cache_file)
-    aws_api.cleanup_report_iam_policies(configuration.aws_api_cleanups_iam_policies_report_file)
-
-
-@pytest.mark.skip(reason="IAM roles cleanup will be enabled explicitly")
-def test_init_from_cache_and_cleanup_report_iam_roles():
-    aws_api.init_iam_roles(from_cache=True, cache_file=configuration.aws_api_iam_roles_cache_file)
-    aws_api.cleanup_report_iam_roles(configuration.aws_api_cleanups_iam_roles_report_file)
 # endregion
 
 
