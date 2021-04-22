@@ -1,3 +1,4 @@
+SHELL := /bin/bash
 
 ROOT_DIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 CONFIGURATION_FILE_PATH := ${ROOT_DIR}/../aws_api/tests/configuration_values.py

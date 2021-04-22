@@ -55,6 +55,31 @@ aws_secret_access_key = XXXXXXXXXXXXXXXXXXXXXXXXXX
 * Connections' management internals.
 
 
+#Full flow:
+```shell
+ubuntu:~$ git clone https://github.com/AlexeyBeley/horey.git
+Cloning into 'horey'...
+remote: Enumerating objects: 903, done.
+remote: Counting objects: 100% (903/903), done.
+remote: Compressing objects: 100% (500/500), done.
+remote: Total 903 (delta 557), reused 643 (delta 309), pack-reused 0
+Receiving objects: 100% (903/903), 209.39 KiB | 20.94 MiB/s, done.
+Resolving deltas: 100% (557/557), done.
+
+ubuntu:~$ cd horey/
+ubuntu:~/horey$ sudo apt-get update
+ubuntu:~/horey$ sudo apt install make
+ubuntu:~/horey$ sudo apt-get install python3-venv -y
+ubuntu:~/horey$ sudo apt install python3-pip -y
+
+make recursive_install_from_source_local_venv-aws_api
+
+```
+
+
+
+
+
 #halilit - paam be shavua 265 kinor
 #organit - 150 230
 #hamishi - 17:00, 
