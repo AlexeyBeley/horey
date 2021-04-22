@@ -21,10 +21,14 @@ aws_api_sts_set:
 	python3 ${AWS_API_CLIENTS_DIR}/session_manager_actor.py --action set_session_credentials --profile_name current --configuration_file_full_path ${CONFIGURATION_FILE_PATH}
 	#export AWS_PROFILE=current
 
-test_aws_api_init:
+install_pytest:
+	source ${VENV_BIN_DIR}/activate &&\
+	pip3 install pytest
+
+test_aws_api_init: install_pytest
 	source ${VENV_BIN_DIR}/activate &&\
 	pytest ${ROOT_DIR}/tests/test_aws_api_init_and_cache.py
 
-test_aws_api_cleanup:
+test_aws_api_cleanup: install_pytest
 	source ${VENV_BIN_DIR}/activate &&\
 	pytest ${ROOT_DIR}/tests/test_aws_api_cleanup.py

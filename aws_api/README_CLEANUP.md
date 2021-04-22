@@ -26,8 +26,8 @@ ubuntu:~$ vi aws_api/tests/test_aws_api_cleanup.py
 #becomes
 #@pytest.mark.skip(reason="IAM roles will be inited explicitly")
 
-cd horey/aws_api
-make test_aws_api_init
+ubuntu:~$ cd horey/aws_api
+ubuntu:~/horey/aws_api$ make test_aws_api_init
 
  
 
