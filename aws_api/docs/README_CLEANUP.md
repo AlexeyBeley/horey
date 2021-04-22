@@ -4,8 +4,8 @@
 This is a toolset to perform some basic AWS environment cleanup procedures.
 A vast majority of the cleanups run on cached data- i.e. needed objects must be explicitly loaded before.
 
-## Sample flow.
-### *After you've done the base flow in aws_api/README.md
+## Sample flow
+### *After you've done the base flow in [Step by step basic flow](../README.md)
 
 Let's take for example this clenaup function from `~/horey/aws_api/tests/test_aws_api_cleanup.py`
 

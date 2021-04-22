@@ -31,7 +31,7 @@ AWSAPI
 Use file `aws_api/tests/accounts/default_managed_account.py` to specify what accounts can be accessed by AWS_API.
 I use single account "12345678910".
 
-#### *For more information about AWS_API configuration goto: docs/README_AWS_API_CONFIGURATION.md
+#### *For more information about AWS_API configuration goto: [Managing AWS_API configuration](docs/README_AWS_API_CONFIGURATION.md)
 ```python
 AWSAccount.ConnectionStep({"profile": "default", "region_mark": "us-east-1"})
 ...
@@ -44,18 +44,18 @@ cat ~/.aws/credentials
 aws_access_key_id = XXXXXXXXXXXXXXXX
 aws_secret_access_key = XXXXXXXXXXXXXXXXXXXXXXXXXX
 ```
-#### *For more information about connections' configurations goto: docs/README_CONNECTING_AWS.md
+#### *For more information about connections' configurations goto: [Managing AWS connections](docs/README_CONNECTING_AWS.md)
 
 ##################################
 
 Use file `aws_api/tests/configuration_values.py` to select current AWSAccount to work with.
 I use AWSAccount with ID: "12345678910".
-#### *For more information about AWS_API configuration goto: docs/README_AWS_API_CONFIGURATION.md
+#### *For more information about AWS_API configuration goto: [Managing AWS_API configuration](docs/README_AWS_API_CONFIGURATION.md)
 
 ###############################################################
 
 # Step by step basic flow
-#### *For more information about other cleanup routines goto: docs/README_CLEANUP.md
+#### *For more information about other cleanup routines goto: [Cleanup feature usage and examples](docs/README_CLEANUP.md) 
 ```shell
 ubuntu:~$ git clone https://github.com/AlexeyBeley/horey.git
 Cloning into 'horey'...
@@ -75,10 +75,11 @@ ubuntu:~/horey$ sudo apt install python3-pip -y
 ubuntu:~/horey$ mkdir ~/.aws/
 ubuntu:~/horey$ vi ~/.aws/credentials
 ubuntu:~/horey$ make recursive_install_from_source_local_venv-aws_api
+
 #
-# Make your magic here - we are going to use [default] profile.
-# Using region "us-east-1"
-# To change thee go to README.md section "Connecting to AWS example" 
+# Make your magic here - I am going to use [default] profile and region "us-east-1"
+# To change these go to README.md section "Connecting to AWS example"
+ 
 ubuntu:~/horey$ cd aws_api/
 
 ubuntu:~/horey/aws_api$ make aws_api_init_and_cache-interfaces
@@ -110,4 +111,3 @@ tests/ignore/cache/12345678910/cleanup/network_interfaces.txt
 ubuntu:~/horey/aws_api$ cat tests/ignore/cache/12345678910/cleanup/network_interfaces.txt
 * Unused network interfaces (0)
 ```
-[Contribution guidelines for this project](docs/README_CLEANUP.md) 
