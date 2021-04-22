@@ -3,13 +3,38 @@
 ##Intro
 This is a toolset to perform some basic AWS environment cleanup procedures.
 A vast majority of the cleanups run on cached data- i.e. needed objects must be explicitly loaded before.
-For mor information see #Environment section.
+
+##Sample flow.
+### *After you've done the base flow in aws_api/README.md
+We are going to do the following:
+* Enable initiation and caching IAM Roles' test function.
+* Enable IAM Roles' cleanup test function.
+* Running the init_and_cache to download IAM Roles data.
+* Running the cleanup function on the downloaded data
+
+```bash
+ubuntu:~$ vi horey/aws_api/tests/test_aws_api_init_and_cache.py
+
+#comment the skip test line
+@pytest.mark.skip(reason="IAM roles will be inited explicitly")
+#becomes
+#@pytest.mark.skip(reason="IAM roles will be inited explicitly")
+
+ubuntu:~$ vi aws_api/tests/test_aws_api_cleanup.py
+#comment the skip test line
+@pytest.mark.skip(reason="IAM roles will be inited explicitly")
+#becomes
+#@pytest.mark.skip(reason="IAM roles will be inited explicitly")
+
+cd horey/aws_api
+make test_aws_api_init
+
+ 
+
+```
 
 
-##Environment
-Setting the environment before running cleanup routines.
-* Creating `configuration_values.py` file. 
-* Setting `configuration.configuration_file_full_path` = `/full/path/to/configuration_values.py`
+
 * `aws_api/tests/test_aws_api_init_and_cache.py` 
    Commenting the `#@pytest.mark.skip(reason="No way of currently testing this")` 
    above `test_init_and_cache_network_interfaces`
