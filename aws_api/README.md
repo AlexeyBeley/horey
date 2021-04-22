@@ -31,7 +31,7 @@ AWSAPI
 Use file `aws_api/tests/accounts/default_managed_account.py` to specify what accounts can be accessed by AWS_API.
 I use single account "12345678910".
 
-#### *For more information about AWS_API configuration goto: README_AWS_API_CONFIGURATION.md
+#### *For more information about AWS_API configuration goto: docs/README_AWS_API_CONFIGURATION.md
 ```python
 AWSAccount.ConnectionStep({"profile": "default", "region_mark": "us-east-1"})
 ...
@@ -44,18 +44,18 @@ cat ~/.aws/credentials
 aws_access_key_id = XXXXXXXXXXXXXXXX
 aws_secret_access_key = XXXXXXXXXXXXXXXXXXXXXXXXXX
 ```
-#### *For more information about connections' configurations goto: README_CONNECTING_AWS.md
+#### *For more information about connections' configurations goto: docs/README_CONNECTING_AWS.md
 
 ##################################
 
 Use file `aws_api/tests/configuration_values.py` to select current AWSAccount to work with.
 I use AWSAccount with ID: "12345678910".
-#### *For more information about AWS_API configuration goto: README_AWS_API_CONFIGURATION.md
+#### *For more information about AWS_API configuration goto: docs/README_AWS_API_CONFIGURATION.md
 
 ###############################################################
 
 #Step by step basic flow
-#### *For more information about other cleanup routines goto: README_CLEANUP.md
+#### *For more information about other cleanup routines goto: docs/README_CLEANUP.md
 ```shell
 ubuntu:~$ git clone https://github.com/AlexeyBeley/horey.git
 Cloning into 'horey'...
