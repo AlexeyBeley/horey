@@ -22,6 +22,24 @@ aws_api = AWSAPI(configuration=configuration)
 
 
 # region done
+@pytest.mark.skip(reason="IAM policies will be inited explicitly")
+def test_init_and_cache_iam_policies():
+    aws_api.init_iam_policies()
+    aws_api.cache_objects(aws_api.iam_policies, configuration.aws_api_iam_policies_cache_file)
+    logger.info(f"len(iam_policies) = {len(aws_api.iam_policies)}")
+    assert isinstance(aws_api.iam_policies, list)
+
+
+@pytest.mark.skip(reason="IAM roles will be inited explicitly")
+def test_init_and_cache_iam_roles():
+    aws_api.init_iam_policies(from_cache=True, cache_file=configuration.aws_api_iam_policies_cache_file)
+    aws_api.init_iam_roles()
+    aws_api.cache_objects(aws_api.iam_roles, configuration.aws_api_iam_roles_cache_file)
+
+    print(f"len(iam_roles) = {len(aws_api.iam_roles)}")
+    assert isinstance(aws_api.iam_roles, list)
+
+
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_network_interfaces():
     aws_api.init_network_interfaces()
@@ -128,24 +146,6 @@ def test_init_and_cache_cloudfront_distributions():
     aws_api.init_cloudfront_distributions()
     aws_api.cache_objects(aws_api.cloudfront_distributions, configuration.aws_api_cloudfront_distributions_cache_file)
     assert isinstance(aws_api.cloudfront_distributions, list)
-
-
-@pytest.mark.skip(reason="IAM policies will be inited explicitly")
-def test_init_and_cache_iam_policies():
-    aws_api.init_iam_policies()
-    aws_api.cache_objects(aws_api.iam_policies, configuration.aws_api_iam_policies_cache_file)
-    logger.info(f"len(iam_policies) = {len(aws_api.iam_policies)}")
-    assert isinstance(aws_api.iam_policies, list)
-
-
-@pytest.mark.skip(reason="IAM roles will be inited explicitly")
-def test_init_and_cache_iam_roles():
-    aws_api.init_iam_policies(from_cache=True, cache_file=configuration.aws_api_iam_policies_cache_file)
-    aws_api.init_iam_roles()
-    aws_api.cache_objects(aws_api.iam_roles, configuration.aws_api_iam_roles_cache_file)
-
-    print(f"len(iam_roles) = {len(aws_api.iam_roles)}")
-    assert isinstance(aws_api.iam_roles, list)
 
 # endregion
 
