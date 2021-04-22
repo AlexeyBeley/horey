@@ -16,7 +16,7 @@ aws_api = AWSAPI(configuration=configuration)
 
 
 # region done
-@pytest.mark.skip(reason="No way of currently testing this")
+@pytest.mark.skip(reason="IAM policies cleanup will be enabled explicitly")
 def test_init_from_cache_and_cleanup_report_iam_policies():
     aws_api.init_iam_policies(from_cache=True, cache_file=configuration.aws_api_iam_policies_cache_file)
     aws_api.init_iam_roles(from_cache=True, cache_file=configuration.aws_api_iam_roles_cache_file)

@@ -6,42 +6,59 @@ A vast majority of the cleanups run on cached data- i.e. needed objects must be 
 
 ##Sample flow.
 ### *After you've done the base flow in aws_api/README.md
+
+Let's take for example this clenaup function from `~/horey/aws_api/tests/test_aws_api_cleanup.py`
+
+```python
+@pytest.mark.skip(reason="IAM policies cleanup will be enabled explicitly")
+def test_init_from_cache_and_cleanup_report_iam_policies():
+    aws_api.init_iam_policies(from_cache=True, cache_file=configuration.aws_api_iam_policies_cache_file)
+    aws_api.init_iam_roles(from_cache=True, cache_file=configuration.aws_api_iam_roles_cache_file)
+    aws_api.cleanup_report_iam_policies(configuration.aws_api_cleanups_iam_policies_report_file)
+```
+To run `cleanup_report_iam_policies` we need 2 explicitly preloaded object types: iam_policies and iam_roles.
 We are going to do the following:
-* Enable initiation and caching IAM Roles' test function.
-* Enable IAM Roles' cleanup test function.
-* Running the init_and_cache to download IAM Roles data.
-* Running the cleanup function on the downloaded data
+* Enable initiation and caching- IAM Roles and Policies
+* Enable IAM Roles' and Policies' cleanup test functions.
+* Running the init_and_cache to download IAM Roles and Policies data.
+* Running the cleanup functions on the downloaded data
 
 ```bash
 ubuntu:~$ vi horey/aws_api/tests/test_aws_api_init_and_cache.py
 
 #comment the skip test line
 @pytest.mark.skip(reason="IAM roles will be inited explicitly")
-#becomes
+# --->
 #@pytest.mark.skip(reason="IAM roles will be inited explicitly")
 
-ubuntu:~$ vi aws_api/tests/test_aws_api_cleanup.py
+@pytest.mark.skip(reason="IAM policies will be inited explicitly")
+# ---> 
+#@pytest.mark.skip(reason="IAM policies will be inited explicitly")
+
+ubuntu:~$ vi horey/aws_api/tests/test_aws_api_cleanup.py
 #comment the skip test line
-@pytest.mark.skip(reason="IAM roles will be inited explicitly")
-#becomes
-#@pytest.mark.skip(reason="IAM roles will be inited explicitly")
+@pytest.mark.skip(reason="IAM roles cleanup will be enabled explicitly")
+# --->
+#@pytest.mark.skip(reason="IAM roles cleanup will be enabled explicitly")
+
+@pytest.mark.skip(reason="IAM policies cleanup will be enabled explicitly")
+# --->
+#@pytest.mark.skip(reason="IAM policies cleanup will be enabled explicitly")
 
 ubuntu:~$ cd horey/aws_api
+
 ubuntu:~/horey/aws_api$ make test_aws_api_init
+...
+...
+tests/test_aws_api_init_and_cache.py ..ssssssssssssss                                                                                                      [100%]
 
- 
+================================================================= 2 passed, 14 skipped in 20.39s =================================================================
 
+ubuntu:~/horey/aws_api$ make test_aws_api_cleanup
+tests/test_aws_api_cleanup.py ..sssssss                                                                                                                    [100%]
+
+================================================================== 2 passed, 7 skipped in 0.58s ==================================================================
 ```
-
-
-
-* `aws_api/tests/test_aws_api_init_and_cache.py` 
-   Commenting the `#@pytest.mark.skip(reason="No way of currently testing this")` 
-   above `test_init_and_cache_network_interfaces`
-* `make test_aws_api_install`
-* `make test_aws_api_init`
-* `make test_aws_api_cleanup`
-
 
 ##Currently available cleanups
 ###EC2 Network Interfaces:
