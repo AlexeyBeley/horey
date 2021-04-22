@@ -1,10 +1,10 @@
-#AWS Cleanup
+# AWS Cleanup
 
-##Intro
+## Intro
 This is a toolset to perform some basic AWS environment cleanup procedures.
 A vast majority of the cleanups run on cached data- i.e. needed objects must be explicitly loaded before.
 
-##Sample flow.
+## Sample flow.
 ### *After you've done the base flow in aws_api/README.md
 
 Let's take for example this clenaup function from `~/horey/aws_api/tests/test_aws_api_cleanup.py`
@@ -60,13 +60,13 @@ tests/test_aws_api_cleanup.py ..sssssss                                         
 ================================================================== 2 passed, 7 skipped in 0.58s ==================================================================
 ```
 
-##Currently available cleanups
-###EC2 Network Interfaces:
+## Currently available cleanups
+### EC2 Network Interfaces:
 Function cleanup_report_network_interfaces:
 Generates report of unused network interfaces.
 
 
-###Lambdas:
+### Lambdas:
 Function cleanup_report_lambdas includes following functions:
 * Function cleanup_report_lambdas_not_running - checks relevant cloudwatch streams. 
   If you don't use cloudwatch for lambda logging, this report may be useless.
@@ -79,7 +79,7 @@ Function cleanup_report_lambdas includes following functions:
 * Function cleanup_report_lambdas_old_code - to old code should be reviewed.
 
 
-###EC2 Load Balancers
+### EC2 Load Balancers
 Function cleanup_load_balancers- for both alb and classic:
 * No instances associated with these load balancers
 * No listeners associated with these load balancers
@@ -87,7 +87,7 @@ Function cleanup_load_balancers- for both alb and classic:
 * Function cleanup_target_groups- Target groups with bad health
 
 
-###EC2 Security Groups
+### EC2 Security Groups
 Function cleanup_report_security_groups includes following functions:
 * Function cleanup_report_wrong_port_lbs_security_groups - 
   Security group opens ports lb doesn't listen.
@@ -96,29 +96,29 @@ Function cleanup_report_security_groups includes following functions:
 * Function cleanup_report_dangerous_security_groups- "permit any any" is not owr way!
 
 
-###S3
+### S3
 Dew to huge amounts of data this report must be used carefully.
 Function cleanup_report_s3_buckets_objects flow:
 * Function generate_summarised_s3_cleanup_data - we can not store all the data in RAM, so I generate a summarizing file.
 * Function cleanup_report_s3_buckets_objects_large - uses previous data to generate report.
 
 
-###IAM roles:
+### IAM roles:
 Function cleanup_report_iam_roles: "Unused IAM roles. Last use time > 30 days"
 
 
-###IAM Policies:
+### IAM Policies:
 Function cleanup_report_iam_policies:
 * Unused polices.
 * Function cleanup_report_iam_policy_statements_optimize_not_statement - to permissive, dangerous policies.
 * Function cleanup_report_iam_policy_statements_intersecting_statements - A pilot function to try and catch inconsistencies.  
 
 
-###Cloudwatch
+### Cloudwatch
 Function cleanup_report_cloud_watch_log_groups: reports top size log groups. 
 
 
-###Route53
+### Route53
 Function cleanup_report_dns_records: Another pilot. Generates a "map" based on seeds - EC2 instances, S3, EC2 Load Balancers etc.
 Reports unknown hosted zones -> records. 
 It can point valid resources- DNS records pointing to CDN, DDoS protection, or other external resources. 

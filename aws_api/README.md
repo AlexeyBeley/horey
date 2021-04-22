@@ -27,7 +27,7 @@ AWSAPI
 
 ###############################################################
 
-##Connecting to AWS example
+## Connecting to AWS example
 Use file `aws_api/tests/accounts/default_managed_account.py` to specify what accounts can be accessed by AWS_API.
 I use single account "12345678910".
 
@@ -54,7 +54,7 @@ I use AWSAccount with ID: "12345678910".
 
 ###############################################################
 
-#Step by step basic flow
+# Step by step basic flow
 #### *For more information about other cleanup routines goto: docs/README_CLEANUP.md
 ```shell
 ubuntu:~$ git clone https://github.com/AlexeyBeley/horey.git
