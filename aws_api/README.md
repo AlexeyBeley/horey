@@ -110,4 +110,4 @@ tests/ignore/cache/12345678910/cleanup/network_interfaces.txt
 ubuntu:~/horey/aws_api$ cat tests/ignore/cache/12345678910/cleanup/network_interfaces.txt
 * Unused network interfaces (0)
 ```
- 
+[Contribution guidelines for this project](docs/README_CLEANUP.md) 
