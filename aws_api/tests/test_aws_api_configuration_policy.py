@@ -1,7 +1,4 @@
 import os
-import sys
-import pdb
-import pytest
 
 
 from horey.h_logger import get_logger
@@ -23,5 +20,5 @@ def test_init_aws_api_configuration_policy():
     assert configuration.aws_api_lambda_cache_dir == os.path.join(os.path.dirname(os.path.abspath(__file__)), "ignore/cache/12345678910/lambda")
     assert configuration.aws_api_lambdas_cache_file == os.path.join(os.path.dirname(os.path.abspath(__file__)), "ignore/cache/12345678910/lambda/lambdas.json")
 
-    assert configuration.aws_api_cleanup_cache_dir == os.path.join(os.path.dirname(os.path.abspath(__file__)), "ignore/cache/12345678910/cleanup")
+    assert configuration.aws_api_cleanup_reports_dir == os.path.join(os.path.dirname(os.path.abspath(__file__)), "ignore/cache/12345678910/cleanup")
     assert configuration.aws_api_cleanups_lambda_file == os.path.join(os.path.dirname(os.path.abspath(__file__)), "ignore/cache/12345678910/cleanup/lambda.txt")

@@ -833,11 +833,11 @@ class AWSAPI:
 
     def cleanup_report_iam_roles(self, output_file):
         time_limit = datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(days=30)
-        tb_ret = TextBlock("Unused IAM roles. Last use time < 30 days")
+        tb_ret = TextBlock("Unused IAM roles. Last use time > 30 days")
 
         for role in self.iam_roles:
             if role.role_last_used_time is None:
-                pdb.set_trace()
+                tb_ret.lines.append(f"Role: '{role.name}' last used: Never")
                 continue
             if role.role_last_used_time < time_limit:
                 tb_ret.lines.append(f"Role: '{role.name}' last used: {role.role_last_used_time}")

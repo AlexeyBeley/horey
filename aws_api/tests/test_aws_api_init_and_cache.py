@@ -8,18 +8,21 @@ from horey.aws_api.aws_api import AWSAPI
 from horey.h_logger import get_logger
 from horey.aws_api.aws_api_configuration_policy import AWSAPIConfigurationPolicy
 
-logger = get_logger(configuration_values_file_full_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), "h_logger_configuration_values.py"))
+configuration_values_file_full_path = None
+# Uncomment next line to save error lines to /tmp/error.log
+# configuration_values_file_full_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), "h_logger_configuration_values.py")
+
+logger = get_logger(configuration_values_file_full_path=configuration_values_file_full_path)
 
 configuration = AWSAPIConfigurationPolicy()
-configuration.configuration_file_full_path = "/Users/alexeybe/Desktop/tmp/configuration_values.py"
-#configuration.configuration_file_full_path = "/home/ubuntu/configuration_values.py"
+configuration.configuration_file_full_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "configuration_values.py")
 configuration.init_from_file()
 
 aws_api = AWSAPI(configuration=configuration)
 
 
 # region done
-#@pytest.mark.skip(reason="No way of currently testing this")
+@pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_network_interfaces():
     aws_api.init_network_interfaces()
     aws_api.cache_objects(aws_api.network_interfaces, configuration.aws_api_ec2_network_interfaces_cache_file)

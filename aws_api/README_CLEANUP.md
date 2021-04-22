@@ -2,23 +2,20 @@
 
 ##Intro
 This is a toolset to perform some basic AWS environment cleanup procedures.
-Vast majority of the cleanups run on cached data- needed objects must be explicitly loaded.
+A vast majority of the cleanups run on cached data- i.e. needed objects must be explicitly loaded before.
 For mor information see #Environment section.
 
 
 ##Environment
-1) AWS environments- managing multiple accounts/regions connections.
-2) AWS_API configuration management 
-3) Cache management- saving objects to cache and initiating from it. 
-4) Setting the environment before running cleanup routines.:
- * Creating `configuration_values.py` file. 
- * Setting configuration.configuration_file_full_path to `/full/path/to/configuration_values.py`
- * `aws_api/tests/test_aws_api_init_and_cache.py` 
+Setting the environment before running cleanup routines.
+* Creating `configuration_values.py` file. 
+* Setting `configuration.configuration_file_full_path` = `/full/path/to/configuration_values.py`
+* `aws_api/tests/test_aws_api_init_and_cache.py` 
    Commenting the `#@pytest.mark.skip(reason="No way of currently testing this")` 
    above `test_init_and_cache_network_interfaces`
- * `make test_aws_api_install`
- * `make test_aws_api_init`
- * `make test_aws_api_cleanup`
+* `make test_aws_api_install`
+* `make test_aws_api_init`
+* `make test_aws_api_cleanup`
 
 
 ##Currently available cleanups
@@ -65,7 +62,7 @@ Function cleanup_report_s3_buckets_objects flow:
 
 
 ###IAM roles:
-Function cleanup_report_iam_roles: "Unused IAM roles. Last use time < 30 days"
+Function cleanup_report_iam_roles: "Unused IAM roles. Last use time > 30 days"
 
 
 ###IAM Policies:

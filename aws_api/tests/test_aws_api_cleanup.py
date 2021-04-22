@@ -1,14 +1,15 @@
+import os
 import pytest
 
 from horey.aws_api.aws_api import AWSAPI
 
 from horey.h_logger import get_logger
-logger = get_logger()
-
 from horey.aws_api.aws_api_configuration_policy import AWSAPIConfigurationPolicy
+
+
+logger = get_logger()
 configuration = AWSAPIConfigurationPolicy()
-configuration.configuration_file_full_path = "/Users/alexeybe/Desktop/tmp/configuration_values.py"
-#configuration.configuration_file_full_path = "/home/ubuntu/configuration_values.py"
+configuration.configuration_file_full_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "configuration_values.py")
 configuration.init_from_file()
 
 aws_api = AWSAPI(configuration=configuration)
@@ -52,7 +53,7 @@ def test_init_from_cache_and_cleanup_report_iam_policies():
     aws_api.cleanup_report_iam_policies(configuration.aws_api_cleanups_iam_policies_report_file)
 
 
-@pytest.mark.skip(reason="No way of currently testing this")
+#@pytest.mark.skip(reason="No way of currently testing this")
 def test_init_from_cache_and_cleanup_report_iam_roles():
     aws_api.init_iam_roles(from_cache=True, cache_file=configuration.aws_api_iam_roles_cache_file)
     aws_api.cleanup_report_iam_roles(configuration.aws_api_cleanups_iam_roles_report_file)
@@ -83,7 +84,7 @@ def test_init_from_cache_and_cleanup_report_security_groups():
     aws_api.cleanup_report_security_groups(configuration.aws_api_cleanups_security_groups_report_file)
 
 
-#@pytest.mark.skip(reason="No way of currently testing this")
+@pytest.mark.skip(reason="No way of currently testing this")
 def test_init_from_cache_and_cleanup_report_network_interfaces():
     aws_api.init_network_interfaces(from_cache=True, cache_file=configuration.aws_api_ec2_network_interfaces_cache_file)
 
