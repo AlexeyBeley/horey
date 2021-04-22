@@ -1,9 +1,12 @@
 # horey
-My packages.
+My packages. Do whatever you want with them.
 
-Recursive install of a package
+
+## Installing a package:
+In venv: `build/_build/_venv`
+
 ```
 make recursive_install_from_source-aws_api
-make aws_api_cleanup-lambda
 ```
+
 

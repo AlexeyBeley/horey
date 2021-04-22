@@ -75,10 +75,11 @@ ubuntu:~/horey$ sudo apt install python3-pip -y
 ubuntu:~/horey$ mkdir ~/.aws/
 ubuntu:~/horey$ vi ~/.aws/credentials
 ubuntu:~/horey$ make recursive_install_from_source_local_venv-aws_api
+
 #
-# Make your magic here - we are going to use [default] profile.
-# Using region "us-east-1"
-# To change thee go to README.md section "Connecting to AWS example" 
+# Make your magic here - I am going to use [default] profile and region "us-east-1"
+# To change these go to README.md section "Connecting to AWS example"
+ 
 ubuntu:~/horey$ cd aws_api/
 
 ubuntu:~/horey/aws_api$ make aws_api_init_and_cache-interfaces
