@@ -1,7 +1,7 @@
-# AWS_API - creates datastructures from AWS services.
+# AWS_API - creates datastructures from AWS services
 
 Menu:
-* Installation in a venv 
+* Installation
 * Connecting to AWS example 
 * Step by step basic flow
 
