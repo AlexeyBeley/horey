@@ -1,11 +1,10 @@
-#AWS_API - creates datastructures from AWS services.
+# AWS_API - creates datastructures from AWS services.
 
 Menu:
 * Installation in a venv 
 * Connecting to AWS example 
 * Step by step basic flow
 
-###############################################################
 ## Installation 
 After a short prep 
 ```shell
@@ -26,19 +25,22 @@ AWSAPI
 #<class 'horey.aws_api.aws_api.AWSAPI'>
 ```
 
-###############################################################
 
 ## Connecting to AWS example
 Use file `aws_api/tests/accounts/default_managed_account.py` to specify what accounts can be accessed by AWS_API.
-I use single account "12345678910".
+
+In the example there is a single account: "12345678910".
 
 #### *For more information about AWS_API configuration goto: [Managing AWS_API configuration](docs/README_AWS_API_CONFIGURATION.md)
+
 ```python
 AWSAccount.ConnectionStep({"profile": "default", "region_mark": "us-east-1"})
 ...
 reg.region_mark = "us-east-1"
 ```
+
 `AWS credentials` file:
+
 ```shell
 cat ~/.aws/credentials
 [default]
@@ -47,13 +49,12 @@ aws_secret_access_key = XXXXXXXXXXXXXXXXXXXXXXXXXX
 ```
 #### *For more information about connections' configurations goto: [Managing AWS connections](docs/README_CONNECTING_AWS.md)
 
-##################################
-
 Use file `aws_api/tests/configuration_values.py` to select current AWSAccount to work with.
+
 I use AWSAccount with ID: "12345678910".
+
 #### *For more information about AWS_API configuration goto: [Managing AWS_API configuration](docs/README_AWS_API_CONFIGURATION.md)
 
-###############################################################
 
 # Step by step basic flow
 #### *For more information about other cleanup routines goto: [Cleanup feature usage and examples](docs/README_CLEANUP.md) 
