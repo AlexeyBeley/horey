@@ -1,7 +1,7 @@
 
 SHELL := /bin/bash
 
-SRC_DIR= /Users/alexeybe/private
+SRC_DIR= ~/private
 BUILD_DIR= ${SRC_DIR}/_build
 VENV_DIR= ${BUILD_DIR}/_venv
 ZIP_FILE= ${BUILD_DIR}/function.zip

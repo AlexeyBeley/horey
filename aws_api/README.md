@@ -6,7 +6,8 @@ Menu:
 * Step by step basic flow
 
 ###############################################################
-##Installation in a venv 
+## Installation 
+After a short prep 
 ```shell
 make recursive_install_from_source_local_venv-aws_api
 ```

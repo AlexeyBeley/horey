@@ -4,8 +4,8 @@ import argparse
 import json
 import docker
 
-sys.path.insert(0, "/Users/alexeybe/private/aws_api/src/aws_clients")
-sys.path.insert(0, "/Users/alexeybe/private/aws_api/ignore")
+sys.path.insert(0, "~/private/aws_api/src/aws_clients")
+sys.path.insert(0, "~/private/aws_api/ignore")
 
 import logging
 logger = logging.Logger(__name__)

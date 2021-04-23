@@ -3,10 +3,10 @@ import sys
 import pdb
 
 sys.path.insert(0, os.path.abspath("../src"))
-sys.path.insert(0, "/Users/alexeybe/private/IP/ip")
-sys.path.insert(0, "/Users/alexeybe/private/aws_api/ignore")
-sys.path.insert(0, "/Users/alexeybe/private/aws_api/src/base_entities")
-sys.path.insert(0, "/Users/alexeybe/private/aws_api/src/aws_clients")
+sys.path.insert(0, "~/private/IP/ip")
+sys.path.insert(0, "~/private/aws_api/ignore")
+sys.path.insert(0, "~/private/aws_api/src/base_entities")
+sys.path.insert(0, "~/private/aws_api/src/aws_clients")
 
 from ecr_client import ECRClient
 import ignore_me

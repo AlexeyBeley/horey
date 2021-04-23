@@ -23,7 +23,7 @@ def set_session_credentials_parser():
 
 def set_session_credentials(arguments, configs_dict) -> None:
     configuration = AWSAPIConfigurationPolicy()
-    configuration.configuration_file_full_path = "/Users/alexeybe/Desktop/tmp/configuration_values.py"
+    configuration.configuration_file_full_path = "~/Desktop/tmp/configuration_values.py"
     configuration.init_from_file()
 
     accounts = CommonUtils.load_object_from_module(configuration.accounts_file, "main")
@@ -38,7 +38,7 @@ def set_session_credentials(arguments, configs_dict) -> None:
     ret += f"\naws_secret_access_key = {credentials.secret_key}"
     ret += f"\naws_session_token = {credentials.token}"
 
-    with open("/Users/alexeybe/.aws/credentials") as file_handler:
+    with open("~/.aws/credentials") as file_handler:
         contents = file_handler.read()
 
     if arguments.profile_name in contents:
@@ -51,11 +51,11 @@ def set_session_credentials(arguments, configs_dict) -> None:
             tail_string = ""
 
         new_contents = contents[:start_index].strip("\n") + ret + tail_string
-        with open("/Users/alexeybe/.aws/credentials", "w+") as file_handler:
+        with open("~/.aws/credentials", "w+") as file_handler:
             file_handler.write(new_contents)
 
     else:
-        with open("/Users/alexeybe/.aws/credentials", "a+") as file_handler:
+        with open("~/.aws/credentials", "a+") as file_handler:
             file_handler.write(ret)
 
 action_manager.register_action("set_session_credentials", set_session_credentials_parser, set_session_credentials)
