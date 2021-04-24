@@ -62,8 +62,9 @@ class S3Client(Boto3Client):
 
             if full_information:
                 try:
-                    #update_info = list(self.execute(self.client.get_bucket_acl, "Grants", filters_req={"Bucket": obj.name}))
-                    #obj.update_acl(update_info)
+                    update_info = list(self.execute(self.client.get_bucket_acl, "Grants", filters_req={"Bucket": obj.name}))
+                    obj.update_acl(update_info)
+
                     location_info = list(self.execute(self.client.get_bucket_location, "LocationConstraint", filters_req={"Bucket": obj.name}))
                     obj.update_location(location_info)
 
@@ -77,18 +78,6 @@ class S3Client(Boto3Client):
                         logger.error(f"Init bucket full information failed {obj.name}: {repr(inst)}")
                     elif "IllegalLocationConstraintException" in repr(inst):
                         logger.error(f"Init bucket full information failed {obj.name}: {repr(inst)}")
-                        continue
-                        bucket_location = list(self.execute(self.client.get_bucket_location, "LocationConstraint", filters_req={"Bucket": obj.name}))
-                        # todo:
-                        if len(bucket_location) > 1:
-                            raise ValueError(bucket_location)
-                        prev_aws_account_region = AWSAccount.get_aws_region()
-                        obj.region = Region()
-                        obj.region.region_mark = bucket_location[0]
-                        AWSAccount.set_aws_region(obj.region)
-                        update_info = list(
-                            self.execute(self.client.get_bucket_acl, "Grants", filters_req={"Bucket": obj.name}))
-                        obj.update_acl(update_info)
                     else:
                         raise
 
