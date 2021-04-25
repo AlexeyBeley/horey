@@ -4,10 +4,12 @@ A base class for working with aws objects - parsing, caching and initiation.
 import re
 import datetime
 from enum import Enum
-import pdb
 
 from horey.aws_api.base_entities.region import Region
+from horey.h_logger import get_logger
 from horey.network.ip import IP
+
+logger = get_logger()
 
 
 class AwsObject:
@@ -152,20 +154,25 @@ class AwsObject:
         datetime_object = datetime.datetime.strptime(value, "%Y-%m-%d %H:%M:%S.%f%z")
         self.init_default_attr(attr_name, datetime_object)
 
-    def init_attrs(self, dict_src, dict_options):
+    def init_attrs(self, dict_src, dict_options, raise_on_no_option=False):
         """
         Init the object attributes according to given "recipe"
         :param dict_src:
         :param dict_options:
+        @param raise_on_no_option: If key not set explicitly raise exception.
         :return:
         """
         for key_src, value in dict_src.items():
             try:
                 dict_options[key_src](key_src, value)
             except KeyError as caught_exception:
-                for key_src_, _ in dict_src.items():
+                for key_src_ in dict_src:
                     if key_src_ not in dict_options:
-                        print('"{}":  self.init_default_attr,'.format(key_src_))
+                        logger.error('"{}":  self.init_default_attr,'.format(key_src_))
+
+                if not raise_on_no_option:
+                    self.init_default_attr(key_src, value)
+                    continue
 
                 raise self.UnknownKeyError("Unknown key: " + key_src) from caught_exception
 

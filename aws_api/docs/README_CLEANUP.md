@@ -1,13 +1,14 @@
 # AWS Cleanup
 
 ## Intro
-This is a toolset to perform some basic AWS environment cleanup procedures.
+Toolset to perform basic AWS environment cleanup procedures.
 A vast majority of the cleanups run on cached data- i.e. needed objects must be explicitly loaded before.
+In order to understand which objects must be inited check the `test_aws_api_clenup.py` file.
 
 ## Sample flow
 ### *After you've done the base flow in [Step by step basic flow](../README.md)
 
-Let's take for example this clenaup function from `~/horey/aws_api/tests/test_aws_api_cleanup.py`
+Let's take for example this cleanup function from `~/horey/aws_api/tests/test_aws_api_cleanup.py`
 
 ```python
 @pytest.mark.skip(reason="IAM policies cleanup will be enabled explicitly")
@@ -16,12 +17,16 @@ def test_init_from_cache_and_cleanup_report_iam_policies():
     aws_api.init_iam_roles(from_cache=True, cache_file=configuration.aws_api_iam_roles_cache_file)
     aws_api.cleanup_report_iam_policies(configuration.aws_api_cleanups_iam_policies_report_file)
 ```
-To run `cleanup_report_iam_policies` we need 2 explicitly preloaded object types: iam_policies and iam_roles.
-We are going to do the following:
-* Enable initiation and caching- IAM Roles and Policies
-* Enable IAM Roles' and Policies' cleanup test functions.
-* Running the init_and_cache to download IAM Roles and Policies data.
-* Running the cleanup functions on the downloaded data
+
+To run `cleanup_report_iam_policies` we need 2 explicitly preloaded object types: `iam_policies` and `iam_roles`.
+We are going to perform the following steps:
+* Turning on initiation and caching for IAM Roles and Policies test functions.
+* Turning on IAM Roles' and Policies' cleanup test functions.
+* Running `init_and_cache` to download IAM Roles and Policies data.
+* Running cleanup functions on the downloaded data.
+
+By default, all test functions are disabled by `pytest.mark.skip` decorator.
+In order to enable them we comment the decorator: 
 
 ```bash
 ubuntu:~$ vi horey/aws_api/tests/test_aws_api_init_and_cache.py

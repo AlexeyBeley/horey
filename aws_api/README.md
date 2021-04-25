@@ -6,13 +6,15 @@ Menu:
 * Step by step basic flow
 
 ## Installation 
-After a short prep 
+! This must be done in the main repo level. Not from the package itself !
+In my case `~/horey/` 
+
+Installing the package with its dependencies:
 ```shell
 make recursive_install_from_source_local_venv-aws_api
 ```
 
-Now you can do:
-
+Validating the installation was successful:
 ```shell
 source build/_build/_venv/bin/activate
 #(_venv)

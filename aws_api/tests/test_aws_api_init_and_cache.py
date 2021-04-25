@@ -1,7 +1,6 @@
 """
 sudo mount -t nfs4 -o  nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport  172.31.14.49:/ /home/ubuntu/efs
 """
-import pdb
 import pytest
 import os
 from horey.aws_api.aws_api import AWSAPI

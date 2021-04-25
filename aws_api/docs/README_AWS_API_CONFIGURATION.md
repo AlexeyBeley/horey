@@ -1,7 +1,9 @@
 # AWS_API configuration.
 
 ## AWS_API ConfigurationPolicy
-I use the ConfigurationPolicy concept.
+Implementing the ConfigurationPolicy concept. For more details go-to: `https://alexey-beley-87984.medium.com/configuration-as-a-code-f8adb72874ce`
+
+
 This is the aws_api configuration policy file: `aws_api/horey/aws_api/aws_api_configuration_policy.py`
 
 Components:
@@ -18,7 +20,7 @@ Components:
 This is the aws_api configuration_policy values file.
 `aws_api/tests/configuration_values.py`
 
-## HLogger ConfigurationPolicy Values
+## H_Logger ConfigurationPolicy Values
 This is the h_logger configuration_policy values file. 
 I use it to log error level messages to `/tmp/error.log`
 `aws_api/tests/h_logger_configuration_values.py`

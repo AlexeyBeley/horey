@@ -1,10 +1,10 @@
 # AWS_API configuration
 
 ## Q/A
-- Why using .py files and not .json or .yaml?
-- Short answer: Because you can use code to hide "assume_role" and "external_id" values.
-- Long answer: You can use any type of configuration file. 
-  Thanks to ConfigurationPolicy idea you can feed it ith values from any supported source, 
+- Why using `.py` files and not `.json` or `.yaml`?
+- Short answer: Because you can write code to hide values - for instance "assume_role" and "external_id".
+- Long answer: You are free to use any type of configuration files.
+  Thanks to ConfigurationPolicy concept you store the values in any supported format, 
   while the evaluation logic is common to all.
 
 This document explains how to manage multiple accounts/regions using single AWS_API installation.
@@ -19,12 +19,14 @@ Several AWSAccounts can point the same AWS Accounts' different regions.
 
 ## Components
 ### AWSAccount
-This is an environment managed with the same session. 
+Environment managed via the same Boto3 session. 
 There can be different logical environments inside (like STG and PROD), 
 but if you connect once to manage them all - they must be stored in a single AWSAccount.
+Different regions can be accessed using the sane Boto3 session but trhew different agents. 
+Thus each AWSAccount manages multiple regions. 
 
 ### AWSAccount.ConnectionStep
-Single step in a chain while connecting the environment. 
+Single step in a chain of steps performed while connecting the environment. 
 There are different mechanisms one can use to restrict access to a management role.
 Currently, 2 available: 
 * Using AWS profile name.
