@@ -42,7 +42,7 @@ def test_cleanup_report_cloud_watch_logs():
     aws_api.init_cloud_watch_log_groups(from_cache=True, cache_file=configuration.aws_api_cloudwatch_log_groups_cache_file)
     aws_api.cleanup_report_cloud_watch_log_groups(configuration.aws_api_cloudwatch_log_groups_streams_cache_dir, configuration.aws_api_cleanup_cloudwatch_logs_report_file)
 
-#@pytest.mark.skip(reason="No way of currently testing this")
+@pytest.mark.skip(reason="No way of currently testing this")
 def test_cleanup_report_cloud_watch_metrics():
     aws_api.cleanup_report_cloud_watch_metrics(configuration.aws_api_cloudwatch_metrics_cache_dir, configuration.aws_api_cleanup_cloudwatch_metrics_report_file)
 
