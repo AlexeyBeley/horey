@@ -1,7 +1,6 @@
 """
 sudo mount -t nfs4 -o  nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport  172.31.14.49:/ /home/ubuntu/efs
 """
-import pdb
 import pytest
 import os
 from horey.aws_api.aws_api import AWSAPI
@@ -77,6 +76,11 @@ def test_init_and_cache_cloudwatch_logs():
     aws_api.cache_objects(aws_api.cloud_watch_log_groups, configuration.aws_api_cloudwatch_log_groups_cache_file)
     print(f"len(cloud_watch_log_groups) = {len(aws_api.cloud_watch_log_groups)}")
     assert isinstance(aws_api.cloud_watch_log_groups, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing cloudwatch metrics")
+def test_init_and_cache_cloudwatch_metrics():
+    aws_api.cache_raw_cloud_watch_metrics(configuration.aws_api_cloudwatch_metrics_cache_dir)
 
 
 @pytest.mark.skip(reason="No way of currently testing this")

@@ -15,7 +15,6 @@ configuration.init_from_file()
 aws_api = AWSAPI(configuration=configuration)
 
 
-# region done
 @pytest.mark.skip(reason="IAM policies cleanup will be enabled explicitly")
 def test_init_from_cache_and_cleanup_report_iam_policies():
     aws_api.init_iam_policies(from_cache=True, cache_file=configuration.aws_api_iam_policies_cache_file)
@@ -41,7 +40,11 @@ def test_init_from_cache_and_cleanup_lambdas():
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_cleanup_report_cloud_watch_logs():
     aws_api.init_cloud_watch_log_groups(from_cache=True, cache_file=configuration.aws_api_cloudwatch_log_groups_cache_file)
-    ret = aws_api.cleanup_report_cloud_watch_log_groups(configuration.aws_api_cloudwatch_log_groups_streams_cache_dir, configuration.aws_api_cleanup_cloudwatch_report_file)
+    aws_api.cleanup_report_cloud_watch_log_groups(configuration.aws_api_cloudwatch_log_groups_streams_cache_dir, configuration.aws_api_cleanup_cloudwatch_logs_report_file)
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_cleanup_report_cloud_watch_metrics():
+    aws_api.cleanup_report_cloud_watch_metrics(configuration.aws_api_cloudwatch_metrics_cache_dir, configuration.aws_api_cleanup_cloudwatch_metrics_report_file)
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
@@ -57,9 +60,6 @@ def test_init_from_cache_and_cleanup_load_balancers():
     aws_api.init_load_balancers(from_cache=True, cache_file=configuration.aws_api_loadbalancers_cache_file)
     aws_api.init_target_groups(from_cache=True, cache_file=configuration.aws_api_loadbalancer_target_groups_cache_file)
     aws_api.cleanup_load_balancers(configuration.aws_api_cleanups_loadbalancers_report_file)
-
-
-# endregion
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
