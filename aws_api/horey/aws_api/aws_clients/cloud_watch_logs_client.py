@@ -4,7 +4,7 @@ AWS client to handle cloud watch logs.
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.cloud_watch_log_group import CloudWatchLogGroup
 from horey.aws_api.base_entities.aws_account import AWSAccount
-import pdb
+
 
 class CloudWatchLogsClient(Boto3Client):
     """

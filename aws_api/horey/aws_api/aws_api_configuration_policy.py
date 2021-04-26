@@ -17,6 +17,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
         self._aws_api_lambda_cache_dir = None
         self._aws_api_cloudwatch_log_groups_cache_dir = None
         self._aws_api_cloudwatch_log_groups_streams_cache_dir = None
+        self._aws_api_cloudwatch_metrics_cache_dir = None
         self._aws_api_classic_loadbalancers_cache_dir = None
         self._aws_api_loadbalancers_cache_dir = None
         self._aws_api_databases_cache_dir = None
@@ -98,20 +99,20 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     # endregion
     # region cloudwatch
     @property
-    def aws_api_cloudwatch_log_groups_cache_dir(self):
+    def aws_api_cloudwatch_cache_dir(self):
         if self._aws_api_cloudwatch_log_groups_cache_dir is None:
             self._aws_api_cloudwatch_log_groups_cache_dir = os.path.join(self.aws_api_cache_dir, self.aws_api_account, "cloudwatch")
             os.makedirs(self._aws_api_cloudwatch_log_groups_cache_dir, exist_ok=True)
         return self._aws_api_cloudwatch_log_groups_cache_dir
 
-    @aws_api_cloudwatch_log_groups_cache_dir.setter
-    def aws_api_cloudwatch_log_groups_cache_dir(self, value):
+    @aws_api_cloudwatch_cache_dir.setter
+    def aws_api_cloudwatch_cache_dir(self, value):
         raise ValueError(value)
 
     @property
     def aws_api_cloudwatch_log_groups_streams_cache_dir(self):
         if self._aws_api_cloudwatch_log_groups_streams_cache_dir is None:
-            self._aws_api_cloudwatch_log_groups_streams_cache_dir = os.path.join(self.aws_api_cloudwatch_log_groups_cache_dir, "streams")
+            self._aws_api_cloudwatch_log_groups_streams_cache_dir = os.path.join(self.aws_api_cloudwatch_cache_dir, "streams")
             os.makedirs(self._aws_api_cloudwatch_log_groups_streams_cache_dir, exist_ok=True)
         return self._aws_api_cloudwatch_log_groups_streams_cache_dir
 
@@ -121,8 +122,19 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
 
 
     @property
+    def aws_api_cloudwatch_metrics_cache_dir(self):
+        if self._aws_api_cloudwatch_metrics_cache_dir is None:
+            self._aws_api_cloudwatch_metrics_cache_dir = os.path.join(self.aws_api_cloudwatch_cache_dir, "metrics")
+            os.makedirs(self._aws_api_cloudwatch_metrics_cache_dir, exist_ok=True)
+        return self._aws_api_cloudwatch_metrics_cache_dir
+
+    @aws_api_cloudwatch_metrics_cache_dir.setter
+    def aws_api_cloudwatch_metrics_cache_dir(self, value):
+        raise ValueError(value)
+
+    @property
     def aws_api_cloudwatch_log_groups_cache_file(self):
-        return os.path.join(self.aws_api_cloudwatch_log_groups_cache_dir, "cloudwatch_log_groups.json")
+        return os.path.join(self.aws_api_cloudwatch_cache_dir, "cloudwatch_log_groups.json")
 
     @aws_api_cloudwatch_log_groups_cache_file.setter
     def aws_api_cloudwatch_log_groups_cache_file(self, value):
@@ -422,11 +434,19 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
         raise ValueError(value)
 
     @property
-    def aws_api_cleanup_cloudwatch_report_file(self):
+    def aws_api_cleanup_cloudwatch_logs_report_file(self):
         return os.path.join(self.aws_api_cleanup_reports_dir, "cloudwatch_report.txt")
 
-    @aws_api_cleanup_cloudwatch_report_file.setter
-    def aws_api_cleanup_cloudwatch_report_file(self, value):
+    @aws_api_cleanup_cloudwatch_logs_report_file.setter
+    def aws_api_cleanup_cloudwatch_logs_report_file(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_cleanup_cloudwatch_metrics_report_file(self):
+        return os.path.join(self.aws_api_cleanup_reports_dir, "cloudwatch_metrics_report.txt")
+
+    @aws_api_cleanup_cloudwatch_metrics_report_file.setter
+    def aws_api_cleanup_cloudwatch_metrics_report_file(self, value):
         raise ValueError(value)
 
     @property

@@ -43,6 +43,10 @@ from horey.aws_api.aws_services_entities.iam_role import IamRole
 from horey.aws_api.aws_clients.cloud_watch_logs_client import CloudWatchLogsClient
 from horey.aws_api.aws_services_entities.cloud_watch_log_group import CloudWatchLogGroup
 
+from horey.aws_api.aws_services_entities.cloud_watch_metric import CloudWatchMetric
+
+from horey.aws_api.aws_clients.cloud_watch_client import CloudWatchClient
+
 from horey.aws_api.aws_clients.cloudfront_client import CloudfrontClient
 from horey.aws_api.aws_services_entities.cloudfront_distribution import CloudfrontDistribution
 
@@ -74,6 +78,7 @@ class AWSAPI:
         self.rds_client = RDSClient()
         self.route53_client = Route53Client()
         self.cloud_watch_logs_client = CloudWatchLogsClient()
+        self.cloud_watch_client = CloudWatchClient()
         self.ecs_client = ECSClient()
         self.cloudfront_client = CloudfrontClient()
 
@@ -182,6 +187,17 @@ class AWSAPI:
 
         self.iam_roles += objects
 
+    def cache_raw_cloud_watch_metrics(self, cache_dir):
+        """
+        Cache the cloudwatch metrics.
+
+        @param cache_dir:
+        @return:
+        """
+
+        metrics_generator = self.cloud_watch_client.yield_cloud_watch_metrics()
+        self.cache_objects_from_generator(metrics_generator, cache_dir)
+
     def init_cloud_watch_log_groups(self, from_cache=False, cache_file=None):
         """
         Init the cloudwatch log groups.
@@ -211,7 +227,7 @@ class AWSAPI:
             logger.info(f"Begin collecting from stream: {sub_dir}")
 
             stream_generator = self.cloud_watch_logs_client.yield_log_group_streams(log_group)
-            self.cache_large_objects_from_generator(stream_generator, sub_dir)
+            self.cache_objects_from_generator(stream_generator, sub_dir)
 
     def init_iam_policies(self, from_cache=False, cache_file=None):
         """
@@ -402,7 +418,8 @@ class AWSAPI:
             objects = self.ec2_client.get_all_security_groups(full_information=full_information)
         self.security_groups += objects
 
-    def cache_large_objects_from_generator(self, generator, sub_dir):
+    @staticmethod
+    def cache_objects_from_generator(generator, sub_dir):
         """
         Run on a generator and write chunks of cache data into files.
 
@@ -845,6 +862,40 @@ class AWSAPI:
         with open(output_file, "w+") as file_handler:
             file_handler.write(tb_ret.format_pprint())
 
+        return tb_ret
+
+    def cleanup_report_cloud_watch_metrics(self, metrics_dir, output_file):
+        """
+        800 150 130 +50
+
+        @param metrics_dir:
+        @param output_file:
+        @return:
+        """
+        tb_ret = TextBlock("Cloudwatch metrics report")
+        chunk_files = os.listdir(metrics_dir)
+        for i in range(len(chunk_files)):
+            chunk_file_name = chunk_files[i]
+            chunk_file_path = os.path.join(metrics_dir, chunk_file_name)
+            with open(chunk_file_path) as file_handler:
+                metrics_dicts = json.load(file_handler)
+
+            metrics = [CloudWatchMetric(metric) for metric in metrics_dicts]
+
+        namespaces = defaultdict(list)
+        for metric in metrics:
+            namespaces[metric.namespace].append(metric)
+
+        for namespace, metrics in sorted(namespaces.items(), reverse=True, key=lambda namespace_metrics: len(namespace_metrics[1])):
+            tb_namespace = TextBlock(f"Namespace: '{namespace}', metrics count: '{len(metrics)}'")
+            metrics_per_name = defaultdict(list)
+            for metric in metrics:
+                metrics_per_name[metric.name].append(metric)
+            tb_namespace.lines = [f"Metric name: '{metric_name}': Different Dimensions: {len(metrics_per_name[metric_name])}" for metric_name in metrics_per_name]
+            tb_ret.blocks.append(tb_namespace)
+
+        with open(output_file, "w+") as file_handler:
+            file_handler.write(tb_ret.format_pprint())
         return tb_ret
 
     def cleanup_report_cloud_watch_log_groups(self, streams_dir, output_file, top_streams_count=100):
