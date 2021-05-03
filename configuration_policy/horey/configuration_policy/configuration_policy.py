@@ -9,7 +9,7 @@ import argparse
 from horey.h_logger import get_logger
 from horey.common_utils.common_utils import CommonUtils
 logger = get_logger()
-
+import pdb
 
 class ConfigurationPolicy:
     """
@@ -49,6 +49,7 @@ class ConfigurationPolicy:
 
     def _set_attribute_value(self, attribute_name, attribute_value):
         if not hasattr(self, f"_{attribute_name}"):
+            pdb.set_trace()
             raise ValueError(attribute_name)
 
         setattr(self, attribute_name, attribute_value)

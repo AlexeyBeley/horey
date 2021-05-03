@@ -1,15 +1,20 @@
 """
 sudo mount -t nfs4 -o  nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport  172.31.14.49:/ /home/ubuntu/efs
 """
+import pdb
+
 import pytest
 import os
 from horey.aws_api.aws_api import AWSAPI
 from horey.h_logger import get_logger
 from horey.aws_api.aws_api_configuration_policy import AWSAPIConfigurationPolicy
 
-configuration_values_file_full_path = None
-# Uncomment next line to save error lines to /tmp/error.log
-# configuration_values_file_full_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), "h_logger_configuration_values.py")
+configuration_values_file_full_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore", "configuration_values.py"))
+print(configuration_values_file_full_path)
+pdb.set_trace()
+
+#Uncomment next line to save error lines to /tmp/error.log
+configuration_values_file_full_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), "h_logger_configuration_values.py")
 
 logger = get_logger(configuration_values_file_full_path=configuration_values_file_full_path)
 
@@ -155,4 +160,8 @@ def test_init_and_cache_cloudfront_distributions():
 
 
 if __name__ == "__main__":
-    test_init_and_cache_raw_large_cloud_watch_log_groups()
+    """
+    106 = 41.7
+    112 = 44 
+    """
+    test_init_and_cache_cloudwatch_logs()
