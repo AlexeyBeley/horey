@@ -140,6 +140,21 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     def aws_api_cloudwatch_log_groups_cache_file(self, value):
         raise ValueError(value)
 
+    @property
+    def aws_api_cloudwatch_alarms_cache_file(self):
+        return os.path.join(self.aws_api_cloudwatch_cache_dir, "cloudwatch_alarms.json")
+
+    @aws_api_cloudwatch_alarms_cache_file.setter
+    def aws_api_cloudwatch_alarms_cache_file(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_cloudwatch_log_groups_metric_filters_cache_file(self):
+        return os.path.join(self.aws_api_cloudwatch_cache_dir, "cloudwatch_log_groups_metric_filters.json")
+
+    @aws_api_cloudwatch_log_groups_metric_filters_cache_file.setter
+    def aws_api_cloudwatch_log_groups_metric_filters_cache_file(self, value):
+        raise ValueError(value)
 
     # endregion
     
@@ -162,7 +177,15 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_ec2_instances_cache_file.setter
     def aws_api_ec2_instances_cache_file(self, value):
         raise ValueError(value)
-    
+
+    @property
+    def aws_api_spot_fleet_requests_cache_file(self):
+        return os.path.join(self.aws_api_ec2_cache_dir, "spot_fleet_requests.json")
+
+    @aws_api_spot_fleet_requests_cache_file.setter
+    def aws_api_spot_fleet_requests_cache_file(self, value):
+        raise ValueError(value)
+
     @property
     def aws_api_ec2_security_groups_cache_file(self):
         return os.path.join(self.aws_api_ec2_cache_dir, "security_groups.json")
@@ -171,6 +194,14 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     def aws_api_ec2_security_groups_cache_file(self, value):
         raise ValueError(value)
 
+    @property
+    def aws_api_ec2_launch_templates_cache_file(self):
+        return os.path.join(self.aws_api_ec2_cache_dir, "ec2_launch_templates.json")
+
+    @aws_api_ec2_launch_templates_cache_file.setter
+    def aws_api_ec2_launch_templates_cache_file(self, value):
+        raise ValueError(value)
+    
     @property
     def aws_api_ec2_network_interfaces_cache_file(self):
         return os.path.join(self.aws_api_ec2_cache_dir, "network_interfaces.json")

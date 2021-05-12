@@ -1,0 +1,30 @@
+{
+  "builders": [
+    {
+      "type": "amazon-ebs",
+      "ami_name": "packer-ami-{{timestamp}}",
+      "instance_type": "t2.micro",
+      "region": "us-east-1",
+      "source_ami": "ami-fce3c696",
+      "ssh_username": "ubuntu",
+      "ssh_interface": "private_ip",
+      "communicator": "ssh",
+      "vpc_id": PLACE_HOLDER,
+      "subnet_id": PLACE_HOLDER,
+      "associate_public_ip_address": true
+    }
+  ],
+  "provisioners": [
+    {
+      "type": "file",
+      "source": "./packer_agent_scripts",
+      "destination": "/tmp"
+    },
+    {
+      "type": "shell",
+      "inline": [
+        "cd /tmp/packer_agent_scripts && sudo chmod +x ./install_java.sh && ./install_java.sh"
+      ]
+    }
+  ]
+}

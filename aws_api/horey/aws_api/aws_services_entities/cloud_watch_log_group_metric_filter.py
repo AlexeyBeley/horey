@@ -1,17 +1,17 @@
 """
 Cloud watch specific log group representation
 """
-import sys
-import os
+import pdb
 from horey.common_utils.common_utils import CommonUtils
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 
 
-class CloudWatchLogGroup(AwsObject):
+class CloudWatchLogGroupMetricFilter(AwsObject):
     """
     The class to represent instances of the log group objects.
     """
+
     def __init__(self, dict_src, from_cache=False):
         """
         Init with boto3 dict
@@ -27,13 +27,12 @@ class CloudWatchLogGroup(AwsObject):
             return
 
         init_options = {
-                        "logGroupName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-                        "creationTime": self.init_default_attr,
-                        "metricFilterCount": self.init_default_attr,
-                        "arn": self.init_default_attr,
-                        "storedBytes": self.init_default_attr,
-                        "retentionInDays": self.init_default_attr,
-                        }
+            "filterName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "metricTransformations": self.init_default_attr,
+            "creationTime": self.init_default_attr,
+            "logGroupName": self.init_default_attr,
+            "filterPattern": self.init_default_attr,
+        }
 
         self.init_attrs(dict_src, init_options)
 
@@ -59,10 +58,30 @@ class CloudWatchLogGroup(AwsObject):
     def generate_dir_name(self):
         return self.name.lower().replace("/", "_")
 
+    def generate_create_request(self):
+        """
+        [REQUIRED]
+        logGroupName (string) --
+        filterName (string) --
+        filterPattern (string) --
+        metricTransformations (list) --
+        metricName (string) --
+        metricNamespace (string) --
+        metricValue (string) --
+        """
+        request_dict = {
+            "logGroupName": self.log_group_name,
+            "filterName": self.name,
+            "filterPattern": self.filter_pattern,
+            "metricTransformations": self.metric_transformations
+        }
+        return request_dict
+
     class LogStream(AwsObject):
         """
         The class representing log group's log stream
         """
+
         def __init__(self, dict_src, from_cache=False):
             self.statements = []
 
@@ -72,14 +91,15 @@ class CloudWatchLogGroup(AwsObject):
                 self.init_log_stream_from_cache(dict_src)
                 return
 
-            init_options = {"logStreamName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-                            "creationTime": lambda name, value: (name, CommonUtils.timestamp_to_datetime(value/1000.0)),
-                            "firstEventTimestamp":  self.init_default_attr,
-                            "lastEventTimestamp":  self.init_default_attr,
-                            "lastIngestionTime":  self.init_default_attr,
-                            "uploadSequenceToken":  self.init_default_attr,
-                            "arn":  self.init_default_attr,
-                            "storedBytes":  self.init_default_attr
+            init_options = {"logStreamName": self.init_default_attr,
+                            "creationTime": lambda name, value: (
+                            name, CommonUtils.timestamp_to_datetime(value / 1000.0)),
+                            "firstEventTimestamp": self.init_default_attr,
+                            "lastEventTimestamp": self.init_default_attr,
+                            "lastIngestionTime": self.init_default_attr,
+                            "uploadSequenceToken": self.init_default_attr,
+                            "arn": self.init_default_attr,
+                            "storedBytes": self.init_default_attr
                             }
 
             self.init_attrs(dict_src, init_options)

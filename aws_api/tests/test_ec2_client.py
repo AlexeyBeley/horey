@@ -35,6 +35,7 @@ def test_create_security_group():
     client = EC2Client()
     client.create_security_group(DICT_CREATE_SECURITY_GROUP_REQUEST)
 
+
 SECURITY_GROUP_ID = ""
 DICT_AUTHORIZE_SECURITY_GROUP_INGRESS_REQUEST = {
       "GroupId": SECURITY_GROUP_ID,
@@ -44,6 +45,7 @@ DICT_AUTHORIZE_SECURITY_GROUP_INGRESS_REQUEST = {
              'ToPort': 8080,
              'IpRanges': [{'CidrIp': '0.0.0.0/0'}]},
         ]}
+
 
 def test_authorize_security_group_ingress():
     client = EC2Client()

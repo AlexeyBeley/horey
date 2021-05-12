@@ -162,19 +162,23 @@ class AwsObject:
         @param raise_on_no_option: If key not set explicitly raise exception.
         :return:
         """
+        composed_errors = []
         for key_src, value in dict_src.items():
             try:
                 dict_options[key_src](key_src, value)
             except KeyError as caught_exception:
                 for key_src_ in dict_src:
                     if key_src_ not in dict_options:
-                        logger.error('"{}":  self.init_default_attr,'.format(key_src_))
+                        line_to_add = '"{}":  self.init_default_attr,'.format(key_src_)
+                        composed_errors.append(line_to_add)
+                        logger.error(line_to_add)
 
                 if not raise_on_no_option:
                     self.init_default_attr(key_src, value)
                     continue
 
-                raise self.UnknownKeyError("Unknown key: " + key_src) from caught_exception
+                print("\n".join(composed_errors))
+                raise self.UnknownKeyError("\n".join(composed_errors)) from caught_exception
 
     def update_attributes(self, dict_src):
         """

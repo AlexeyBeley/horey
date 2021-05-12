@@ -27,6 +27,12 @@ class Package:
         if str(first) == str(second):
             return first
 
+        if second is None:
+            return first
+
+        if first is None:
+            return second
+
         first_lower_limit = "0.0.0" if first.lower_limit is None else first.lower_limit
         second_lower_limit = "0.0.0" if second.lower_limit is None else second.lower_limit
         first_upper_limit = "100000.0.0" if first.lower_limit is None else first.lower_limit

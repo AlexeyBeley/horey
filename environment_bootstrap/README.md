@@ -37,3 +37,13 @@ Packer file Provisioner
 #  "source": "app.tar.gz",
 #  "destination": "/tmp/app.tar.gz"
 #}
+
+SSH:
+eval `ssh-agent -s`
+sudo chmod 400 /tmp/tmp.p 
+ssh-add -K /tmp/tmp.p
+ssh -o StrictHostKeyChecking=no ubuntu@1.1.1.1
+
+#ppk to pem
+brew install putty
+puttygen key.ppk -O private-openssh -o key.pem

@@ -1,6 +1,8 @@
 """
 AWS iam client to handle iam service API requests.
 """
+import pdb
+
 from horey.aws_api.aws_services_entities.iam_user import IamUser
 from horey.aws_api.aws_services_entities.iam_access_key import IamAccessKey
 from horey.aws_api.aws_services_entities.iam_policy import IamPolicy
@@ -127,10 +129,11 @@ class IamClient(Boto3Client):
             for document_dict in self.execute(self.client.get_role_policy, "PolicyDocument", filters_req={"RoleName": iam_role.name, "PolicyName": poilcy_name}):
                 policy_dict = {"PolicyName": poilcy_name}
                 policy = IamPolicy(policy_dict)
-                iam_role.add_policy(policy)
 
                 policy_dict = {"Document": document_dict}
                 policy.update_statements(policy_dict)
+
+                iam_role.add_policy(policy)
 
     def get_all_policies(self, full_information=True):
         """
@@ -163,3 +166,8 @@ class IamClient(Boto3Client):
     def attach_role_policy(self, request_dict):
         for response in self.execute(self.client.attach_role_policy, "Role", filters_req=request_dict, raw_data=True):
             return response
+
+    def attach_role_inline_policy(self, request_dict):
+        for response in self.execute(self.client.put_role_policy, "ResponseMetadata", filters_req=request_dict):
+            return response
+

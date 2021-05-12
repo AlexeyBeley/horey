@@ -1,6 +1,9 @@
 """
 sudo mount -t nfs4 -o  nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport  172.31.14.49:/ /home/ubuntu/efs
 """
+import json
+import sys
+sys.path.insert(0, "/Users/alexey.beley/private/horey/aws_api")
 import pdb
 
 import pytest
@@ -8,18 +11,13 @@ import os
 from horey.aws_api.aws_api import AWSAPI
 from horey.h_logger import get_logger
 from horey.aws_api.aws_api_configuration_policy import AWSAPIConfigurationPolicy
-
-configuration_values_file_full_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore", "configuration_values.py"))
-print(configuration_values_file_full_path)
-pdb.set_trace()
-
 #Uncomment next line to save error lines to /tmp/error.log
 configuration_values_file_full_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), "h_logger_configuration_values.py")
 
 logger = get_logger(configuration_values_file_full_path=configuration_values_file_full_path)
 
 configuration = AWSAPIConfigurationPolicy()
-configuration.configuration_file_full_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "configuration_values.py")
+configuration.configuration_file_full_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore", "aws_api_configuration_values.py"))
 configuration.init_from_file()
 
 aws_api = AWSAPI(configuration=configuration)
@@ -83,9 +81,23 @@ def test_init_and_cache_cloudwatch_logs():
     assert isinstance(aws_api.cloud_watch_log_groups, list)
 
 
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_cloudwatch_log_groups_metric_filters():
+    aws_api.init_cloud_watch_log_groups_metric_filters()
+    aws_api.cache_objects(aws_api.cloud_watch_log_groups_metric_filters, configuration.aws_api_cloudwatch_log_groups_metric_filters_cache_file)
+    print(f"len(cloud_watch_log_group_metric_filters) = {len(aws_api.cloud_watch_log_groups_metric_filters)}")
+    assert isinstance(aws_api.cloud_watch_log_groups_metric_filters, list)
+
+
 @pytest.mark.skip(reason="No way of currently testing cloudwatch metrics")
 def test_init_and_cache_cloudwatch_metrics():
     aws_api.cache_raw_cloud_watch_metrics(configuration.aws_api_cloudwatch_metrics_cache_dir)
+
+
+@pytest.mark.skip(reason="No way of currently testing cloudwatch metrics")
+def test_init_and_cache_cloudwatch_alarms():
+    aws_api.init_cloud_watch_alarms()
+    aws_api.cache_objects(aws_api.cloud_watch_alarms, configuration.aws_api_cloudwatch_alarms_cache_file)
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
@@ -156,6 +168,17 @@ def test_init_and_cache_cloudfront_distributions():
     aws_api.cache_objects(aws_api.cloudfront_distributions, configuration.aws_api_cloudfront_distributions_cache_file)
     assert isinstance(aws_api.cloudfront_distributions, list)
 
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_spot_fleet_requests():
+    aws_api.init_spot_fleet_requests()
+    aws_api.cache_objects(aws_api.spot_fleet_requests, configuration.aws_api_spot_fleet_requests_cache_file)
+    assert isinstance(aws_api.spot_fleet_requests, list)
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_ec2_launch_templates():
+    aws_api.init_ec2_launch_templates()
+    aws_api.cache_objects(aws_api.ec2_launch_templates, configuration.aws_api_ec2_launch_templates_cache_file)
+    assert isinstance(aws_api.ec2_launch_templates, list)
 # endregion
 
 
@@ -164,4 +187,4 @@ if __name__ == "__main__":
     106 = 41.7
     112 = 44 
     """
-    test_init_and_cache_cloudwatch_logs()
+    test_init_and_cache_raw_large_cloud_watch_log_groups()

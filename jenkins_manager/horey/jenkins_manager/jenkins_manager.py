@@ -49,8 +49,8 @@ class JenkinsManager:
 
     def __init__(self, configuration):
         jenkins_address = configuration.jenkins_host
-        username =  configuration.jenkins_username
-        password =  configuration.jenkins_token
+        username = configuration.jenkins_username
+        password = configuration.jenkins_token
         protocol = configuration.jenkins_protocol
         port = configuration.jenkins_port
         timeout = configuration.jenkins_timeout

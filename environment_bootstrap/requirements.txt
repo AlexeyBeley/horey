@@ -1,0 +1,6 @@
+#python-jenkins==1.7.0
+horey.configuration_policy>=1.0.0
+#requests
+#horey.common_utils>=1.0.0
+horey.h_logger>=1.0.0
+horey.aws_api>=1.0.0

@@ -49,7 +49,6 @@ class ConfigurationPolicy:
 
     def _set_attribute_value(self, attribute_name, attribute_value):
         if not hasattr(self, f"_{attribute_name}"):
-            pdb.set_trace()
             raise ValueError(attribute_name)
 
         setattr(self, attribute_name, attribute_value)

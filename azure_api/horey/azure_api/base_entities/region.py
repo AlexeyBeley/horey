@@ -1,11 +1,11 @@
 """
-AWS region metadata
+Azure region metadata
 """
 
 
 class Region:
     """
-    AWS Region class
+    Azure Region class
     """
     REGIONS = {}
 
@@ -20,7 +20,6 @@ class Region:
         return Region.REGIONS[region_mark]
 
     def __init__(self):
-        self._region_mark = None
         self._region_name = None
 
     def __str__(self):
@@ -29,7 +28,7 @@ class Region:
     @property
     def region_mark(self):
         """
-        Standard aws mark getter e.g. us-east-1
+        Standard azure mark getter e.g. us-east-1
         :return:
         """
         return self._region_mark
@@ -37,7 +36,7 @@ class Region:
     @region_mark.setter
     def region_mark(self, value):
         """
-        Standard aws mark setter e.g. us-east-1
+        Standard azure mark setter e.g. us-east-1
         :return:
         """
         self._region_mark = value
@@ -45,7 +44,7 @@ class Region:
     @property
     def region_name(self):
         """
-        AWS region name getter - user friendly
+        Azure region name getter - user friendly
         :return:
         """
         return self._region_name
@@ -53,7 +52,7 @@ class Region:
     @region_name.setter
     def region_name(self, value):
         """
-        AWS region name setter - user friendly
+        Azure region name setter - user friendly
         :return:
         """
         self._region_name = value
