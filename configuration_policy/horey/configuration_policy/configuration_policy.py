@@ -127,3 +127,6 @@ class ConfigurationPolicy:
             parser.add_argument(parameter, type=str, required=False)
 
         return parser
+
+    class StaticValueError(RuntimeError):
+        pass

@@ -1,0 +1,13 @@
+Host *
+    StrictHostKeyChecking no
+
+Host bastion
+    Hostname 8.8.8.8
+    User ubuntu
+    IdentityFile ~/.ssh/secret.pem
+
+Host protected
+    Hostname 10.0.0.1
+    User ubuntu
+    ProxyJump bastion
+    IdentityFile ~/.ssh/secret.pem

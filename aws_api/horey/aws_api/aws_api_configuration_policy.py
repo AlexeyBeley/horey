@@ -188,7 +188,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
 
     @property
     def aws_api_ec2_security_groups_cache_file(self):
-        return os.path.join(self.aws_api_ec2_cache_dir, "security_groups.json")
+        return os.path.join(self.aws_api_ec2_cache_dir, "network_security_groups.json")
 
     @aws_api_ec2_security_groups_cache_file.setter
     def aws_api_ec2_security_groups_cache_file(self, value):
@@ -421,7 +421,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
 
     @property
     def aws_api_cleanups_security_groups_report_file(self):
-        return os.path.join(self.aws_api_cleanup_reports_dir, "security_groups.txt")
+        return os.path.join(self.aws_api_cleanup_reports_dir, "network_security_groups.txt")
 
     @property
     def aws_api_cleanups_iam_roles_report_file(self):

@@ -47,3 +47,8 @@ ssh -o StrictHostKeyChecking=no ubuntu@1.1.1.1
 #ppk to pem
 brew install putty
 puttygen key.ppk -O private-openssh -o key.pem
+
+GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone
+GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git push
+
+#/Users/alexey.beley/Library/Caches/JetBrains/PyCharmCE2021.1/index/filetypes

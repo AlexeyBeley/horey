@@ -1241,7 +1241,7 @@ class AWSAPI:
         """
 
         lines = []
-        if load_balancer.security_groups is None:
+        if load_balancer.network_security_groups is None:
             return lines
 
         listeners_ports = [listener.port for listener in load_balancer.listeners]
@@ -1254,7 +1254,7 @@ class AWSAPI:
             service.end = port
             listeners_services.append(service)
 
-        for security_group_id in load_balancer.security_groups:
+        for security_group_id in load_balancer.network_security_groups:
             security_group = \
             CommonUtils.find_objects_by_values(self.security_groups, {"id": security_group_id}, max_count=1)[0]
             security_group_dst_pairs = security_group.get_ingress_pairs()

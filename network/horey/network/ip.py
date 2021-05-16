@@ -1,6 +1,7 @@
 import re
 import pdb
 
+
 class IP:
     """
     Class for network engineers usage
@@ -31,6 +32,24 @@ class IP:
             raise RuntimeError(f"Can not init from {address}")
 
     def __str__(self):
+        address = ""
+
+        #  address
+        if self.str_address:
+            address = self.str_address
+
+        if not address:
+            raise RuntimeError("Address not set")
+
+        #  mask
+        mask = self.init_str_int_mask()
+
+        if not mask:
+            raise RuntimeError("Mask not set")
+
+        return "{}/{}".format(address, mask)
+
+    def str_address_slash_short_mask(self):
         address = ""
 
         #  address
