@@ -102,15 +102,24 @@ def test_init_and_cache_virtual_machines():
     logger.info(f"len(virtual_machines) = {len(azure_api.virtual_machines)}")
     assert isinstance(azure_api.virtual_machines, list)
 
+@pytest.mark.skip(reason="IAM policies will be inited explicitly")
+def test_init_and_cache_virtual_networks():
+    azure_api.init_resource_groups()
+    azure_api.init_virtual_networks()
+    azure_api.cache_objects(azure_api.virtual_networks, configuration.azure_api_virtual_networks_cache_file)
+    logger.info(f"len(virtual_networks) = {len(azure_api.virtual_networks)}")
+    assert isinstance(azure_api.virtual_networks, list)
+
 
 if __name__ == "__main__":
     #test_init_and_cache_resource_groups()
     #test_init_and_cache_disks()
-    #test_init_and_cache_load_balancers()
+    test_init_and_cache_load_balancers()
     #test_init_and_cache_nat_gateways()
-    #test_init_and_cache_network_interfaces()
+    test_init_and_cache_network_interfaces()
     #test_init_and_cache_public_ip_addresses()
     #test_init_and_cache_network_security_groups()
     #test_init_and_cache_ssh_keys()
     test_init_and_cache_virtual_machines()
+    #test_init_and_cache_virtual_networks()
 

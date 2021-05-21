@@ -9,7 +9,9 @@ class NetworkSecurityGroup(AzureObject):
         self.id = None
         self.location = None
         self.tags = {}
-        self.properties = None
+        self.resource_group_name = None
+        self.security_rules = None
+        self.network_interfaces = None
 
         super().__init__(dict_src, from_cache=from_cache)
 
@@ -38,22 +40,13 @@ class NetworkSecurityGroup(AzureObject):
         raise NotImplementedError()
 
     def generate_create_request(self):
-        """
-            return list:
-
-
-            "PythonAzureExample-rg",
-            {
-             "location": "centralus"
-             "tags": { "environment":"test", "department":"tech" }
-            }
-        """
-        return [self.name,
+        return [self.resource_group_name,
+                self.name,
                 {"location": self.location,
+                 "security_rules": self.security_rules,
                  "tags": self.tags
                  }
                 ]
 
     def update_after_creation(self, network_security_group):
         self.id = network_security_group.id
-        self.properties = network_security_group.properties.__dict__

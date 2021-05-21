@@ -6,10 +6,14 @@ from horey.azure_api.azure_service_entities.azure_object import AzureObject
 class VirtualMachine(AzureObject):
     def __init__(self, dict_src, from_cache=False):
         self.name = None
+        self.resource_group_name = None
         self.id = None
         self.location = None
         self.tags = {}
-        self.properties = None
+        self.hardware_profile = None
+        self.storage_profile = None
+        self.os_profile = None
+        self.network_profile = None
 
         super().__init__(dict_src, from_cache=from_cache)
 
@@ -35,7 +39,13 @@ class VirtualMachine(AzureObject):
         self.init_attrs(dict_src, init_options)
 
     def init_virtual_machine_from_cache(self, dict_src):
-        raise NotImplementedError()
+        """
+        Init from cache
+        :param dict_src:
+        :return:
+        """
+        options = {}
+        self._init_from_cache(dict_src, options)
 
     def generate_create_request(self):
         """
@@ -48,12 +58,16 @@ class VirtualMachine(AzureObject):
              "tags": { "environment":"test", "department":"tech" }
             }
         """
-        return [self.name,
+        return [self.resource_group_name,
+                self.name,
                 {"location": self.location,
+                 "hardware_profile": self.hardware_profile,
+                 "storage_profile": self.storage_profile,
+                 "os_profile": self.os_profile,
+                 "network_profile": self.network_profile,
                  "tags": self.tags
                  }
                 ]
 
     def update_after_creation(self, virtual_machine):
         self.id = virtual_machine.id
-        self.properties = virtual_machine.properties.__dict__

@@ -12,6 +12,7 @@ class Disk(AzureObject):
         self.tags = {}
         self.resource_group_name = None
         self.disk_size_gb = None
+        self.unique_id = None
 
         super().__init__(dict_src, from_cache=from_cache)
 
@@ -75,7 +76,6 @@ class Disk(AzureObject):
                 ]
 
     def update_after_creation(self, disk):
-        pdb.set_trace()
         self.id = disk.id
-        self.properties = disk.properties.__dict__
+        self.unique_id = disk.unique_id
 

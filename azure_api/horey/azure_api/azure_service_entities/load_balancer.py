@@ -9,7 +9,12 @@ class LoadBalancer(AzureObject):
         self.id = None
         self.location = None
         self.tags = {}
-        self.properties = None
+        self.resource_group_name = None
+        self.frontend_ip_configurations = None
+        self.backend_address_pools = None
+        self.probes = None
+        self.sku = None
+        self.load_balancing_rules = None
 
         super().__init__(dict_src, from_cache=from_cache)
 
@@ -75,85 +80,18 @@ class LoadBalancer(AzureObject):
         )
 
     def generate_create_request(self):
-        """
-        https://github.com/Azure-Samples/network-python-manage-loadbalancer/blob/master/example.py
-        frontend_ip_configurations = [{
-        'name': FIP_NAME,
-        'private_ip_allocation_method': 'Dynamic',
-        'public_ip_address': {
-            'id': public_ip_info.id
-        }
-        }]
-        GROUP_NAME,
-        LB_NAME,
-        {
-            'location': LOCATION,
-            'frontend_ip_configurations': frontend_ip_configurations,
-            'backend_address_pools': backend_address_pools,
-            'probes': probes,
-            'load_balancing_rules': load_balancing_rules,
-            'inbound_nat_rules': inbound_nat_rules
-        }
-        """
-        frontend_ip_configurations = [{
-            'name': FIP_NAME,
-            'private_ip_allocation_method': 'Dynamic',
-            'public_ip_address': {
-                'id': public_ip_info.id
-            }
-        }]
-        backend_address_pools = [{
-            'name': ADDRESS_POOL_NAME
-        }]
-        probes = [{
-            'name': PROBE_NAME,
-            'protocol': 'Http',
-            'port': 80,
-            'interval_in_seconds': 15,
-            'number_of_probes': 4,
-            'request_path': 'healthprobe.aspx'
-        }]
-        load_balancing_rules = [{
-            'name': LB_RULE_NAME,
-            'protocol': 'tcp',
-            'frontend_port': 80,
-            'backend_port': 80,
-            'idle_timeout_in_minutes': 4,
-            'enable_floating_ip': False,
-            'load_distribution': 'Default',
-            'frontend_ip_configuration': {
-                'id': self.construct_fip_id(subscription_id)
-            },
-            'backend_address_pool': {
-                'id': self.construct_bap_id(subscription_id)
-            },
-            'probe': {
-                'id': self.construct_probe_id(subscription_id)
-            }
-        }]
-        inbound_nat_rules = [{
-            'name': NETRULE_NAME_1,
-            'protocol': 'tcp',
-            'frontend_port': FRONTEND_PORT_1,
-            'backend_port': BACKEND_PORT,
-            'enable_floating_ip': False,
-            'idle_timeout_in_minutes': 4,
-            'frontend_ip_configuration': {
-                'id': self.construct_fip_id(subscription_id)
-            }
-        }]
-        return [self.name,
+
+        return [self.resource_group_name,
+                self.name,
                 {"location": self.location,
-                 "frontend_ip_configurations": frontend_ip_configurations,
-                 "backend_address_pools": backend_address_pools,
-                 "probes": probes,
-                 "load_balancing_rules": load_balancing_rules,
-                 "inbound_nat_rules": inbound_nat_rules,
+                 "frontend_ip_configurations": self.frontend_ip_configurations,
+                 "backend_address_pools": self.backend_address_pools,
+                 "probes": self.probes,
+                 "load_balancing_rules": self.load_balancing_rules,
+                 "sku": self.sku,
                  "tags": self.tags
                  }
                 ]
 
     def update_after_creation(self, load_balancer):
-        pdb.set_trace()
         self.id = load_balancer.id
-        self.properties = load_balancer.properties.__dict__

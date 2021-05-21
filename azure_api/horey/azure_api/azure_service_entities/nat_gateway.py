@@ -10,7 +10,9 @@ class NatGateway(AzureObject):
         self.id = None
         self.location = None
         self.tags = {}
-        self.properties = None
+        self.public_ip_addresses = None
+        self.subnets = None
+        self.sku = None
 
         super().__init__(dict_src, from_cache=from_cache)
 
@@ -39,20 +41,11 @@ class NatGateway(AzureObject):
         raise NotImplementedError()
 
     def generate_create_request(self):
-        pdb.set_trace()
-        """
-            return list:
-
-
-            "PythonAzureExample-rg",
-            {
-             "location": "centralus"
-             "tags": { "environment":"test", "department":"tech" }
-            }
-        """
         return [self.resource_group_name,
                 self.name,
                 {"location": self.location,
+                 "public_ip_addresses": self.public_ip_addresses,
+                 "sku": self.sku,
                  "tags": self.tags
                  }
                 ]
@@ -60,4 +53,3 @@ class NatGateway(AzureObject):
     def update_after_creation(self, nat_gateway):
         pdb.set_trace()
         self.id = nat_gateway.id
-        self.properties = nat_gateway.properties.__dict__

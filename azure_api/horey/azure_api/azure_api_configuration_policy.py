@@ -21,6 +21,7 @@ class AzureAPIConfigurationPolicy(ConfigurationPolicy):
         self._azure_api_public_ip_addresses_cache_dir = None
         self._azure_api_network_security_groups_cache_dir = None
         self._azure_api_ssh_keys_cache_dir = None
+        self._azure_api_virtual_networks_cache_dir = None
 
     @property
     def azure_api_regions(self):
@@ -271,6 +272,29 @@ class AzureAPIConfigurationPolicy(ConfigurationPolicy):
 
     @azure_api_ssh_keys_cache_file.setter
     def azure_api_ssh_keys_cache_file(self, value):
+        raise ValueError(value)
+
+    # endregion
+    
+    # region virtual_networks
+    @property
+    def azure_api_virtual_networks_cache_dir(self):
+        if self._azure_api_virtual_networks_cache_dir is None:
+            self._azure_api_virtual_networks_cache_dir = os.path.join(self.azure_api_cache_dir, self.azure_account,
+                                                                     "virtual_networks")
+            os.makedirs(self._azure_api_virtual_networks_cache_dir, exist_ok=True)
+        return self._azure_api_virtual_networks_cache_dir
+
+    @azure_api_virtual_networks_cache_dir.setter
+    def azure_api_virtual_networks_cache_dir(self, value):
+        raise ValueError(value)
+
+    @property
+    def azure_api_virtual_networks_cache_file(self):
+        return os.path.join(self.azure_api_virtual_networks_cache_dir, "virtual_networks.json")
+
+    @azure_api_virtual_networks_cache_file.setter
+    def azure_api_virtual_networks_cache_file(self, value):
         raise ValueError(value)
 
     # endregion

@@ -13,6 +13,7 @@ class VirtualNetwork(AzureObject):
         self.tags = {}
         self.resource_guid = None
         self.etag = None
+        self.subnets = None
 
         super().__init__(dict_src, from_cache=from_cache)
 
@@ -22,6 +23,17 @@ class VirtualNetwork(AzureObject):
 
         init_options = {
             "id": self.init_default_attr,
+            "name": self.init_default_attr,
+            "type": self.init_default_attr,
+            "location": self.init_default_attr,
+            "tags": self.init_default_attr,
+            "etag": self.init_default_attr,
+            "address_space": self.init_default_attr,
+            "subnets": self.init_default_attr,
+            "virtual_network_peerings": self.init_default_attr,
+            "resource_guid": self.init_default_attr,
+            "provisioning_state": self.init_default_attr,
+            "enable_ddos_protection": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -44,6 +56,7 @@ class VirtualNetwork(AzureObject):
                 self.name,
                 {"location": self.location,
                  "address_space": {"address_prefixes": [ip.str_address_slash_short_mask() for ip in self.address_space["address_prefixes"] ]},
+                 "subnets": self.subnets,
                  "tags": self.tags
                  }
                 ]

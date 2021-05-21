@@ -20,5 +20,7 @@ class ResourceClient(AzureClient):
 
     def raw_delete_resource_group(self, name):
         delete_async_operation = self.client.resource_groups.begin_delete(name)
-        return delete_async_operation
+        delete_async_operation.wait()
+        pdb.set_trace()
+        return delete_async_operation.result()
 

@@ -117,6 +117,24 @@ class AzureObject:
 
                 print("\n".join(composed_errors))
                 raise self.UnknownKeyError("\n".join(composed_errors)) from caught_exception
+
+    def _init_from_cache(self, dict_src, dict_options):
+        """
+        Init aws object from cache.
+
+        :param dict_src:
+        :param dict_options:
+        :return:
+        """
+
+        for key_src, value in dict_src.items():
+            if isinstance(value, dict) and value.get(self.SELF_CACHED_TYPE_KEY_NAME) is not None:
+                raise NotImplementedError()
+            elif key_src in dict_options:
+                dict_options[key_src](key_src, value)
+            else:
+                self.init_default_attr(key_src, value)
+
     class UnknownKeyError(Exception):
         """
         If trying to access unknown key

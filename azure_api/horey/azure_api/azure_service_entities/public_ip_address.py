@@ -9,7 +9,11 @@ class PublicIpAddress(AzureObject):
         self.id = None
         self.location = None
         self.tags = {}
-        self.properties = None
+        self.resource_group_name = None
+        self.sku = None
+        self.public_ip_allocation_method = None
+        self.public_ip_address_version = None
+        self.ip_address = None
 
         super().__init__(dict_src, from_cache=from_cache)
 
@@ -38,25 +42,40 @@ class PublicIpAddress(AzureObject):
         self.init_attrs(dict_src, init_options)
 
     def init_public_ip_address_from_cache(self, dict_src):
-        raise NotImplementedError()
+        """
+        Init from cache
+        :param dict_src:
+        :return:
+        """
+        options = {}
+        self._init_from_cache(dict_src, options)
 
     def generate_create_request(self):
         """
-            return list:
-
-
-            "PythonAzureExample-rg",
-            {
-             "location": "centralus"
-             "tags": { "environment":"test", "department":"tech" }
-            }
+        RESOURCE_GROUP_NAME,
+        IP_NAME,
+        {
+            "location": LOCATION,
+            "sku": { "name": "Standard" },
+            "public_ip_allocation_method": "Static",
+            "public_ip_address_version" : "IPV4"
+        }
         """
-        return [self.name,
-                {"location": self.location,
-                 "tags": self.tags
-                 }
-                ]
+        if self.resource_group_name is None:
+            raise ValueError()
+
+        ret = [self.resource_group_name,
+               self.name,
+               {"location": self.location,
+                "sku": self.sku,
+                "public_ip_allocation_method": self.public_ip_allocation_method,
+                "public_ip_address_version": self.public_ip_address_version,
+                "tags": self.tags
+                }
+               ]
+        return ret
 
     def update_after_creation(self, public_ip_address):
         self.id = public_ip_address.id
-        self.properties = public_ip_address.properties.__dict__
+        self.ip_address = public_ip_address.ip_address
+

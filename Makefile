@@ -60,4 +60,4 @@ clean:
 test_azure_api: install_from_source-azure_api
 	source ${VENV_DIR}/bin/activate &&\
 	cd ${ROOT_DIR}/azure_api/tests &&\
-	create_wheel.shpython3 test_azure_api_init_and_cache.py
+	python3 test_azure_api_init_and_cache.py
