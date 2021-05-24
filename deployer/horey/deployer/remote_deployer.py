@@ -67,7 +67,7 @@ class RemoteDeployer:
                 sftp_client.put_dir(os.path.join(block_to_deploy.local_deployment_dir_path, block_to_deploy.remote_scripts_dir_name),
                                     block_to_deploy.remote_deployment_dir_path)
 
-            self.execute_step(client, self.)
+            self.execute_step(client, block_to_deploy.application_infrastructure_provision_step)
 
             block_to_deploy.deployment_code_provisioning_ended = True
 

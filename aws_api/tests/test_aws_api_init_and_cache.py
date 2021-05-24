@@ -3,7 +3,6 @@ sudo mount -t nfs4 -o  nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,re
 """
 import json
 import sys
-sys.path.insert(0, "/Users/alexey.beley/private/horey/aws_api")
 import pdb
 
 import pytest
