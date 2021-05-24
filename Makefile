@@ -32,7 +32,7 @@ install_from_source-%: package_source-% init_venv_dir
 	source ${VENV_DIR}/bin/activate &&\
 	pip3 install --force-reinstall ${BUILD_TMP_DIR}/$(subst install_from_source-,,$@)/dist/*.whl
 
-recursive_install_from_source-%:
+recursive_install_from_source-%: create_build_env
 	${BUILD_DIR}/recursive_install_from_source.sh --root_dir ${ROOT_DIR} --package_name horey.$(subst recursive_install_from_source-,,$@)
 
 install_pylint:
