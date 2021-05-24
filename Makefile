@@ -11,10 +11,12 @@ ALL_PACKAGES := $(wildcard *)
 EXCLUSIONS := LICENSE Makefile README.md build dns_map docker terraform security_group_map pypi_infra h_flow network
 SRC_FILES := $(filter-out $(EXCLUSIONS), $(ALL_PACKAGES))
 
-init_venv_dir:
+create_build_env:
 	mkdir -p ${BUILD_TMP_DIR} &&\
-	python3 -m venv ${VENV_DIR} &&\
 	pip3 install wheel
+
+init_venv_dir: create_build_env
+	python3 -m venv ${VENV_DIR}
 
 prepare_package_wheel-%: init_venv_dir
 	${BUILD_DIR}/create_wheel.sh $(subst prepare_package_wheel-,,$@)

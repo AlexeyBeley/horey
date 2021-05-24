@@ -70,14 +70,12 @@ class NetworkClient(AzureClient):
     def raw_delete_load_balancer(self, obj_repr):
         logger.info(f"Begin load balancer deletion: '{obj_repr.resource_group_name} {obj_repr.name}'")
         response = self.client.load_balancers.begin_delete(obj_repr.resource_group_name, obj_repr.name)
-        pdb.set_trace()
         response.wait()
         return response.status() == "Succeeded"
 
     def raw_delete_network_interface(self, obj_repr):
         logger.info(f"Begin network interface deletion: '{obj_repr.resource_group_name} {obj_repr.name}'")
         response = self.client.network_interfaces.begin_delete(obj_repr.resource_group_name, obj_repr.name)
-        pdb.set_trace()
         response.wait()
         return response.status() == "Succeeded"
 

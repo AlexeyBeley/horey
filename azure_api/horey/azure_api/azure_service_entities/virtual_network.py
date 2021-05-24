@@ -1,4 +1,5 @@
 import pdb
+import copy
 
 from horey.azure_api.azure_service_entities.azure_object import AzureObject
 
@@ -52,14 +53,23 @@ class VirtualNetwork(AzureObject):
             }
         }
         """
-        return [self.resource_group_name,
-                self.name,
-                {"location": self.location,
-                 "address_space": {"address_prefixes": [ip.str_address_slash_short_mask() for ip in self.address_space["address_prefixes"] ]},
-                 "subnets": self.subnets,
-                 "tags": self.tags
-                 }
-                ]
+        subnets = []
+        for subnet in self.subnets:
+            subnet_copy = copy.deepcopy(subnet)
+            subnet_copy["address_prefix"] = subnet_copy["address_prefix"].str_address_slash_short_mask()
+            subnets.append(subnet_copy)
+
+        ret = [self.resource_group_name,
+               self.name,
+               {"location": self.location,
+                "address_space": {"address_prefixes": [ip.str_address_slash_short_mask() for ip in
+                                                       self.address_space["address_prefixes"]]},
+                "subnets": subnets,
+                "tags": self.tags
+                }
+               ]
+
+        return ret
 
     def update_after_creation(self, async_waiter):
         async_waiter.wait()

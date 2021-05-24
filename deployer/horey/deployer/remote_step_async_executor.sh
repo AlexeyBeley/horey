@@ -1,0 +1,8 @@
+#!/bin/bash
+set -xe
+
+CONFIGURATION_FILE_OPTION=$1
+CONFIGURATION_FILE_PATH=$2
+
+
+screen -d -m SCRIPT_PATH >>

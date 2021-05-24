@@ -100,6 +100,11 @@ class ConfigurationPolicy:
         if self.configuration_file_full_path.endswith(".py"):
             return self.init_from_python_file()
 
+        if self.configuration_file_full_path.endswith(".json"):
+            return self.init_from_json_file()
+
+        raise TypeError(self.configuration_file_full_path)
+
     def init_from_python_file(self):
         config = CommonUtils.load_object_from_module(self.configuration_file_full_path, "main")
         self.init_from_dictionary(config.__dict__, custom_source_log="Init attribute '{}' from python file: '" + self.configuration_file_full_path + "'")
@@ -128,5 +133,19 @@ class ConfigurationPolicy:
 
         return parser
 
+    def convert_to_dict(self):
+        dict_ret = {}
+        for key in self.__dict__.keys():
+            if not key.startswith("_"):
+                continue
+            attr_name = key[1:]
+            dict_ret[attr_name] = getattr(self, attr_name)
+
+        if dict_ret["configuration_file_full_path"] is None:
+            del dict_ret["configuration_file_full_path"]
+
+        return dict_ret
+
     class StaticValueError(RuntimeError):
         pass
+

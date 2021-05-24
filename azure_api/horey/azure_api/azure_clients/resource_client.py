@@ -4,6 +4,10 @@ from azure.mgmt.resource import ResourceManagementClient
 from horey.azure_api.azure_clients.azure_client import AzureClient
 from horey.azure_api.azure_service_entities.resource_group import ResourceGroup
 
+from horey.h_logger import get_logger
+
+logger = get_logger()
+
 
 class ResourceClient(AzureClient):
     CLIENT_CLASS = ResourceManagementClient
@@ -19,8 +23,8 @@ class ResourceClient(AzureClient):
         return response
 
     def raw_delete_resource_group(self, name):
-        delete_async_operation = self.client.resource_groups.begin_delete(name)
-        delete_async_operation.wait()
-        pdb.set_trace()
-        return delete_async_operation.result()
+        logger.info(f"Begin resource group deletion: '{name}'")
+        response = self.client.resource_groups.begin_delete(name)
+        response.wait()
+        return response.status() == "Succeeded"
 

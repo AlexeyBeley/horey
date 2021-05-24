@@ -51,5 +51,4 @@ class NatGateway(AzureObject):
                 ]
 
     def update_after_creation(self, nat_gateway):
-        pdb.set_trace()
         self.id = nat_gateway.id

@@ -62,5 +62,6 @@ class NetworkInterface(AzureObject):
                 ]
 
     def update_after_creation(self, network_interface):
+        self.ip_configurations = [config.as_dict() for config in network_interface.ip_configurations]
         self.id = network_interface.id
 
