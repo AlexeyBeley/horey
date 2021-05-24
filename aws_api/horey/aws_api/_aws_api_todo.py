@@ -1127,7 +1127,7 @@ class AWSAPI:
         @param sg_map:
         @return:
         """
-        for grp in ec2_instace.security_groups:
+        for grp in ec2_instace.network_security_groups:
             paths = sg_map.find_outgoing_paths(grp["GroupId"])
             raise NotImplementedError("Replacement of pdb.set_trace")
 
@@ -1141,7 +1141,7 @@ class AWSAPI:
         self.ec2_client.connect()
         for sg_id, node in sg_map.nodes.items():
             if len(node.data) == 0:
-                sg = CommonUtils.find_objects_by_values(self.security_groups, {"id": sg_id}, max_count=1)
+                sg = CommonUtils.find_objects_by_values(self.network_security_groups, {"id": sg_id}, max_count=1)
                 lst_inter = self.ec2_client.execute(self.ec2_client.client.describe_network_interfaces, "NetworkInterfaces", filters_req={"Filters": [{"Name": "group-id", "Values": [sg_id]}]})
                 if lst_inter:
                     raise NotImplementedError("Replacement of pdb.set_trace")
@@ -1200,7 +1200,7 @@ class AWSAPI:
         """
         lst_ret = []
         for inst in self.ec2_instances:
-            for grp in inst.security_groups:
+            for grp in inst.network_security_groups:
                 if grp["GroupName"] == name:
                     lst_ret.append(inst)
                     break

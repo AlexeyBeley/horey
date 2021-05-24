@@ -5,6 +5,8 @@ AWS ec2 client to handle ec2 service API requests.
 from horey.aws_api.aws_services_entities.ec2_instance import EC2Instance
 from horey.aws_api.aws_services_entities.network_interface import NetworkInterface
 from horey.aws_api.aws_services_entities.ec2_security_group import EC2SecurityGroup
+from horey.aws_api.aws_services_entities.ec2_launch_template import EC2LaunchTemplate
+from horey.aws_api.aws_services_entities.ec2_spot_fleet_request import EC2SpotFleetRequest
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.base_entities.aws_account import AWSAccount
 import pdb
@@ -19,7 +21,7 @@ class EC2Client(Boto3Client):
 
     def get_all_interfaces(self):
         """
-        Get all interfaces in current region.
+        Get all interfaces in all regions.
         :return:
         """
         final_result = list()
@@ -66,10 +68,56 @@ class EC2Client(Boto3Client):
 
     def create_security_group(self, request_dict):
         for response in self.execute(self.client.create_security_group, "GroupId", filters_req=request_dict):
-            print(response)
             return response
 
     def authorize_security_group_ingress(self, request_dict):
         for response in self.execute(self.client.authorize_security_group_ingress, "GroupId", filters_req=request_dict, raw_data=True):
             print(response)
             return response
+
+    def create_instance(self, request_dict):
+        for response in self.execute(self.client.run_instances, "Instances", filters_req=request_dict):
+            with open("/tmp/instances.txt", "a+") as file_handler:
+                file_handler.write(f"{response['InstanceId']}\n")
+            print(response["InstanceId"])
+            return response
+
+    def create_key_pair(self, request_dict):
+        for response in self.execute(self.client.create_key_pair, None, raw_data=True, filters_req=request_dict):
+            return response
+
+    def create_launch_template(self, request_dict):
+        for response in self.execute(self.client.create_launch_template, "LaunchTemplate", filters_req=request_dict):
+            return response
+
+    def request_spot_fleet(self, request_dict):
+        for response in self.execute(self.client.request_spot_fleet, "SpotFleetRequestId", filters_req=request_dict):
+            return response
+
+    def get_all_spot_fleet_requests(self, full_information=False):
+        final_result = list()
+
+        for region in AWSAccount.get_aws_account().regions.values():
+            AWSAccount.set_aws_region(region)
+            for ret in self.execute(self.client.describe_spot_fleet_requests, "SpotFleetRequestConfigs"):
+                obj = EC2SpotFleetRequest(ret)
+                if full_information is True:
+                    raise NotImplementedError()
+
+                final_result.append(obj)
+
+        return final_result
+
+    def get_all_ec2_launch_templates(self, full_information=False):
+        final_result = list()
+
+        for region in AWSAccount.get_aws_account().regions.values():
+            AWSAccount.set_aws_region(region)
+            for ret in self.execute(self.client.describe_launch_templates, "LaunchTemplates"):
+                obj = EC2LaunchTemplate(ret)
+                if full_information is True:
+                    raise NotImplementedError()
+
+                final_result.append(obj)
+
+        return final_result

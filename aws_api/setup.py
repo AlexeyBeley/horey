@@ -18,7 +18,3 @@ setup(
     packages=find_namespace_packages(include=["horey.aws_api", "horey.aws_api.*"]),
     include_package_data=True,
     zip_safe=False)
-
-#shlishi 6.30
-#sheni hamishi 7.15 - hazak sheni
-#hamishi 6:30 - hazak

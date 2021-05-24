@@ -30,3 +30,10 @@ Several use case examples in `tests` dir.
 make recursive_install_from_source_local_venv-jenkins_manager
 ```
 Then set the interpreter to build/_build/_venv
+
+Packer file Provisioner
+#{
+#  "type": "file",
+#  "source": "app.tar.gz",
+#  "destination": "/tmp/app.tar.gz"
+#}

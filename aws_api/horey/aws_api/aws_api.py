@@ -3,7 +3,6 @@ Module to handle cross service interaction
 """
 import json
 import os
-import socket
 import datetime
 
 
@@ -14,6 +13,9 @@ from horey.aws_api.aws_clients.ec2_client import EC2Client
 from horey.aws_api.aws_services_entities.ec2_instance import EC2Instance
 from horey.aws_api.aws_services_entities.network_interface import NetworkInterface
 from horey.aws_api.aws_services_entities.ec2_security_group import EC2SecurityGroup
+from horey.aws_api.aws_services_entities.ec2_spot_fleet_request import EC2SpotFleetRequest
+from horey.aws_api.aws_services_entities.ec2_launch_template import EC2LaunchTemplate
+
 
 from horey.aws_api.aws_clients.ecs_client import ECSClient
 from horey.aws_api.aws_clients.s3_client import S3Client
@@ -42,8 +44,10 @@ from horey.aws_api.aws_services_entities.iam_role import IamRole
 
 from horey.aws_api.aws_clients.cloud_watch_logs_client import CloudWatchLogsClient
 from horey.aws_api.aws_services_entities.cloud_watch_log_group import CloudWatchLogGroup
+from horey.aws_api.aws_services_entities.cloud_watch_log_group_metric_filter import CloudWatchLogGroupMetricFilter
 
 from horey.aws_api.aws_services_entities.cloud_watch_metric import CloudWatchMetric
+from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlarm
 
 from horey.aws_api.aws_clients.cloud_watch_client import CloudWatchClient
 
@@ -85,6 +89,7 @@ class AWSAPI:
         self.network_interfaces = []
         self.iam_policies = []
         self.ec2_instances = []
+        self.spot_fleet_requests = []
         self.s3_buckets = []
         self.load_balancers = []
         self.classic_load_balancers = []
@@ -93,9 +98,12 @@ class AWSAPI:
         self.databases = []
         self.security_groups = []
         self.target_groups = []
+        self.ec2_launch_templates = []
         self.lambdas = []
         self.iam_roles = []
         self.cloud_watch_log_groups = []
+        self.cloud_watch_log_groups_metric_filters = []
+        self.cloud_watch_alarms = []
         self.cloudfront_distributions = []
         self.configuration = configuration
         self.init_configuration()
@@ -140,6 +148,36 @@ class AWSAPI:
             objects = self.ec2_client.get_all_instances()
 
         self.ec2_instances += objects
+
+    def init_spot_fleet_requests(self, from_cache=False, cache_file=None):
+        """
+        Init spot fleet requests instances.
+
+        @param from_cache:
+        @param cache_file:
+        @return:
+        """
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, EC2SpotFleetRequest)
+        else:
+            objects = self.ec2_client.get_all_spot_fleet_requests()
+
+        self.spot_fleet_requests += objects
+
+    def init_ec2_launch_templates(self, from_cache=False, cache_file=None):
+        """
+        Init ec2 launch templates.
+
+        @param from_cache:
+        @param cache_file:
+        @return:
+        """
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, EC2LaunchTemplate)
+        else:
+            objects = self.ec2_client.get_all_ec2_launch_templates()
+
+        self.ec2_launch_templates += objects
 
     def init_s3_buckets(self, from_cache=False, cache_file=None, full_information=True):
         """
@@ -198,6 +236,14 @@ class AWSAPI:
         metrics_generator = self.cloud_watch_client.yield_cloud_watch_metrics()
         self.cache_objects_from_generator(metrics_generator, cache_dir)
 
+    def init_cloud_watch_alarms(self, from_cache=False, cache_file=None):
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, CloudWatchAlarm)
+        else:
+            objects = self.cloud_watch_client.get_cloud_watch_alarms()
+
+        self.cloud_watch_alarms = objects
+
     def init_cloud_watch_log_groups(self, from_cache=False, cache_file=None):
         """
         Init the cloudwatch log groups.
@@ -213,7 +259,22 @@ class AWSAPI:
 
         self.cloud_watch_log_groups = objects
 
-    def init_and_cache_raw_large_cloud_watch_log_groups(self, cloudwatch_log_groups_streams_cache_dir):
+    def init_cloud_watch_log_groups_metric_filters(self, from_cache=False, cache_file=None):
+        """
+        Init the cloudwatch log groups.
+
+        @param from_cache:
+        @param cache_file:
+        @return:
+        """
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, CloudWatchLogGroupMetricFilter)
+        else:
+            objects = self.cloud_watch_logs_client.get_cloud_watch_log_group_metric_filters()
+
+        self.cloud_watch_log_groups_metric_filters = objects
+
+    def init_and_cache_raw_large_cloud_watch_log_groups(self, cloudwatch_log_groups_streams_cache_dir, log_group_names=None):
         """
         Because cloudwatch groups can grow very large I use the same mechanism like in S3.
 
@@ -222,6 +283,9 @@ class AWSAPI:
         """
         log_groups = self.cloud_watch_logs_client.get_cloud_watch_log_groups(full_information=False)
         for log_group in log_groups:
+            if log_group_names is not None:
+                if log_group.name not in log_group_names:
+                    continue
             sub_dir = os.path.join(cloudwatch_log_groups_streams_cache_dir, log_group.generate_dir_name())
             os.makedirs(sub_dir, exist_ok=True)
             logger.info(f"Begin collecting from stream: {sub_dir}")
@@ -1177,7 +1241,7 @@ class AWSAPI:
         """
 
         lines = []
-        if load_balancer.security_groups is None:
+        if load_balancer.network_security_groups is None:
             return lines
 
         listeners_ports = [listener.port for listener in load_balancer.listeners]
@@ -1190,7 +1254,7 @@ class AWSAPI:
             service.end = port
             listeners_services.append(service)
 
-        for security_group_id in load_balancer.security_groups:
+        for security_group_id in load_balancer.network_security_groups:
             security_group = \
             CommonUtils.find_objects_by_values(self.security_groups, {"id": security_group_id}, max_count=1)[0]
             security_group_dst_pairs = security_group.get_ingress_pairs()

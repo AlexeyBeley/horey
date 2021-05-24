@@ -23,6 +23,9 @@ class Region:
         self._region_mark = None
         self._region_name = None
 
+    def __str__(self):
+        return self.region_mark
+
     @property
     def region_mark(self):
         """

@@ -15,7 +15,7 @@ def test_init_aws_api_configuration_policy():
     assert configuration.aws_api_s3_buckets_cache_file == os.path.join(os.path.dirname(os.path.abspath(__file__)), "ignore/cache/12345678910/s3/buckets.json")
 
     assert configuration.aws_api_ec2_cache_dir == os.path.join(os.path.dirname(os.path.abspath(__file__)), "ignore/cache/12345678910/ec2")
-    assert configuration.aws_api_ec2_security_groups_cache_file == os.path.join(os.path.dirname(os.path.abspath(__file__)), "ignore/cache/12345678910/ec2/security_groups.json")
+    assert configuration.aws_api_ec2_security_groups_cache_file == os.path.join(os.path.dirname(os.path.abspath(__file__)), "ignore/cache/12345678910/ec2/network_security_groups.json")
 
     assert configuration.aws_api_lambda_cache_dir == os.path.join(os.path.dirname(os.path.abspath(__file__)), "ignore/cache/12345678910/lambda")
     assert configuration.aws_api_lambdas_cache_file == os.path.join(os.path.dirname(os.path.abspath(__file__)), "ignore/cache/12345678910/lambda/lambdas.json")

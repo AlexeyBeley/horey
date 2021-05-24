@@ -11,10 +11,12 @@ ALL_PACKAGES := $(wildcard *)
 EXCLUSIONS := LICENSE Makefile README.md build dns_map docker terraform security_group_map pypi_infra h_flow network
 SRC_FILES := $(filter-out $(EXCLUSIONS), $(ALL_PACKAGES))
 
-init_venv_dir:
+create_build_env:
 	mkdir -p ${BUILD_TMP_DIR} &&\
-	python3 -m venv ${VENV_DIR} &&\
 	pip3 install wheel
+
+init_venv_dir: create_build_env
+	python3 -m venv ${VENV_DIR}
 
 prepare_package_wheel-%: init_venv_dir
 	${BUILD_DIR}/create_wheel.sh $(subst prepare_package_wheel-,,$@)
@@ -30,7 +32,7 @@ install_from_source-%: package_source-% init_venv_dir
 	source ${VENV_DIR}/bin/activate &&\
 	pip3 install --force-reinstall ${BUILD_TMP_DIR}/$(subst install_from_source-,,$@)/dist/*.whl
 
-recursive_install_from_source-%:
+recursive_install_from_source-%: create_build_env
 	${BUILD_DIR}/recursive_install_from_source.sh --root_dir ${ROOT_DIR} --package_name horey.$(subst recursive_install_from_source-,,$@)
 
 install_pylint:
@@ -55,3 +57,9 @@ raw_test-%:
 
 clean:
 	rm -rf ${BUILD_TMP_DIR}/*
+
+#test_azure_api: recursive_install_from_source_local_venv-azure_api
+test_azure_api: install_from_source-azure_api
+	source ${VENV_DIR}/bin/activate &&\
+	cd ${ROOT_DIR}/azure_api/tests &&\
+	python3 test_azure_api_init_and_cache.py

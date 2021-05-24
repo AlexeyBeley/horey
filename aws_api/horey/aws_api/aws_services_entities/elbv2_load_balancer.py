@@ -66,7 +66,7 @@ class LoadBalancer(AwsObject):
         :return:
         """
         ret = []
-        grps = self.__dict__.get("security_groups")
+        grps = self.__dict__.get("network_security_groups")
         grps = grps if grps is not None else []
 
         for sg in grps:
