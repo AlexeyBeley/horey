@@ -23,4 +23,7 @@ class MachineDeploymentBlock:
         self.deployment_code_provisioning_ended = False
         self.deployment_ended = False
 
+        self.application_infrastructure_provision_step = None
+        self.application_deploy_step = None
+
 

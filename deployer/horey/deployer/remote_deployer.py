@@ -66,6 +66,9 @@ class RemoteDeployer:
                 sftp_client = HoreySFTPClient.from_transport(transport)
                 sftp_client.put_dir(os.path.join(block_to_deploy.local_deployment_dir_path, block_to_deploy.remote_scripts_dir_name),
                                     block_to_deploy.remote_deployment_dir_path)
+
+            self.execute_step(client, self.)
+
             block_to_deploy.deployment_code_provisioning_ended = True
 
     def wait_for_deployment_code_provisioning_to_end(self, blocks_to_deploy: List[MachineDeploymentBlock]):
