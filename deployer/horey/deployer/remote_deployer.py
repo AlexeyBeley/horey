@@ -5,12 +5,14 @@ import time
 import paramiko
 from sshtunnel import open_tunnel
 import os
-from datetime import time
 from horey.deployer.machine_deployment_block import MachineDeploymentBlock
-from horey.deployer.deployment_step_configuration_policy import DeploymentStepConfigurationPolicy
 from typing import List
 from contextlib import contextmanager
 from io import StringIO
+
+from horey.h_logger import get_logger
+
+logger = get_logger()
 
 
 class HoreySFTPClient(paramiko.SFTPClient):
@@ -51,6 +53,8 @@ class RemoteDeployer:
         self.configuration = configuration
 
     def deploy_blocks(self, blocks_to_deploy: List[MachineDeploymentBlock]):
+        self.begin_provisioning_deployment_infrastructure(blocks_to_deploy)
+
         self.begin_provisioning_deployment_code(blocks_to_deploy)
 
         self.wait_for_deployment_code_provisioning_to_end(blocks_to_deploy)
@@ -59,17 +63,96 @@ class RemoteDeployer:
 
         self.wait_for_deployment_to_end(blocks_to_deploy)
 
-    def begin_provisioning_deployment_code(self, blocks_to_deploy: List[MachineDeploymentBlock]):
-        for block_to_deploy in blocks_to_deploy:
-            with self.get_deployment_target_client(block_to_deploy) as client:
+    def begin_provisioning_deployment_infrastructure(self, deployment_targets):
+        """
+        """
+        for deployment_target in deployment_targets:
+            self.perform_recursive_replacements(deployment_target.replacements_base_dir_path, deployment_target.string_replacements)
+            with self.get_deployment_target_client(deployment_target) as client:
+                target_remote_scripts_dir_path = os.path.join(deployment_target.remote_deployment_dir_path, deployment_target.remote_scripts_dir_name)
+                command = f"rm -rf {target_remote_scripts_dir_path}"
+                logger.info(f"[REMOTE] {command}")
+                client.exec_command(command)
+
                 transport = client.get_transport()
                 sftp_client = HoreySFTPClient.from_transport(transport)
-                sftp_client.put_dir(os.path.join(block_to_deploy.local_deployment_dir_path, block_to_deploy.remote_scripts_dir_name),
-                                    block_to_deploy.remote_deployment_dir_path)
 
-            self.execute_step(client, block_to_deploy.application_infrastructure_provision_step)
+                logger.info(f"sftp: mkdir {target_remote_scripts_dir_path}")
+                sftp_client.mkdir(target_remote_scripts_dir_path, ignore_existing=True)
 
-            block_to_deploy.deployment_code_provisioning_ended = True
+                logger.info(f"sftp: put_dir {target_remote_scripts_dir_path}")
+                sftp_client.put_dir(os.path.join(deployment_target.local_deployment_dir_path, deployment_target.remote_scripts_dir_name),
+                                    target_remote_scripts_dir_path)
+
+                logger.info(f"sftp: Uploading '{os.path.join(target_remote_scripts_dir_path, 'remote_step_executor.sh')}'")
+                sftp_client.put(os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "remote_step_executor.sh"),
+                                    os.path.join(target_remote_scripts_dir_path, "remote_step_executor.sh"))
+
+                command = f"sudo chmod +x {os.path.join(target_remote_scripts_dir_path, 'remote_step_executor.sh')}"
+                logger.info(f"[REMOTE] {command}")
+                client.exec_command(command)
+
+
+    def perform_recursive_replacements(self, replacements_base_dir_path, string_replacements):
+        for root, _, filenames in os.walk(replacements_base_dir_path):
+            for filename in filenames:
+                if filename.startswith("template_"):
+                    self.perform_file_string_replacements(root, filename, string_replacements)
+
+    def perform_file_string_replacements(self, root, filename, string_replacements):
+        with open(os.path.join(root, filename)) as file_handler:
+            str_file = file_handler.read()
+
+        for key in sorted(string_replacements.keys(), key=lambda key_string: len(key_string), reverse=True):
+            if not key.startswith("STRING_REPLACEMENT_"):
+                raise ValueError("Key must start with STRING_REPLACEMENT_")
+            value = string_replacements[key]
+            str_file = str_file.replace(key, value)
+
+        new_filename = filename[len("template_"):]
+
+        with open(os.path.join(root, new_filename), "w+") as file_handler:
+            file_handler.write(str_file)
+
+        if "STRING_REPLACEMENT_" in str_file:
+            raise ValueError(f"Not all STRING_REPLACEMENT_ were replaced in {os.path.join(root, new_filename)}")
+
+    def begin_provisioning_deployment_code(self, deployment_targets: List[MachineDeploymentBlock]):
+        for deployment_target in deployment_targets:
+            self.perform_recursive_replacements(deployment_target.replacements_base_dir_path, deployment_target.string_replacements)
+            with self.get_deployment_target_client(deployment_target) as client:
+                transport = client.get_transport()
+                sftp_client = HoreySFTPClient.from_transport(transport)
+
+                self.execute_step(client, deployment_target.application_infrastructure_provision_step)
+                self.wait_for_step_to_finish(deployment_target.application_infrastructure_provision_step, deployment_target.local_deployment_data_dir_path, sftp_client)
+
+            deployment_target.deployment_code_provisioning_ended = True
+
+    def wait_for_step_to_finish(self, step, local_deployment_data_dir_path, sftp_client):
+        retry_attempts = 5
+        sleep_time = 60
+        for retry_counter in range(retry_attempts):
+            try:
+                sftp_client.get(step.configuration.finish_status_file_path,
+                        os.path.join(local_deployment_data_dir_path, step.configuration.finish_status_file_name))
+
+                sftp_client.get(step.configuration.output_file_path,
+                                os.path.join(local_deployment_data_dir_path, step.configuration.output_file_name))
+                break
+            except IOError as error_received:
+                if "No such file" not in repr(error_received):
+                    raise
+                logger.info(f"Retrying to fetch remote script's status in {sleep_time} seconds ({retry_counter}/{retry_attempts})")
+            time.sleep(sleep_time)
+        else:
+            raise TimeoutError("Failed to fetch remote script's status")
+
+        step.update_finish_status(local_deployment_data_dir_path)
+        step.update_output(local_deployment_data_dir_path)
+
+        if step.status_code != step.StatusCode.SUCCESS:
+            raise RuntimeError(f"Step finished with status: {step.status}, error: \n{step.output}")
 
     def wait_for_deployment_code_provisioning_to_end(self, blocks_to_deploy: List[MachineDeploymentBlock]):
         for block_to_deploy in blocks_to_deploy:
@@ -80,10 +163,17 @@ class RemoteDeployer:
             else:
                 raise RuntimeError("Deployment failed at wait_for_deployment_code_provisioning_to_end")
 
-    def begin_deployment(self, blocks_to_deploy: List[MachineDeploymentBlock]):
-        for block_to_deploy in blocks_to_deploy:
-            with self.get_deployment_target_client(block_to_deploy) as client:
-                self.execute_step(client, os.path.join(block_to_deploy.local_deployment_dir_path, block_to_deploy.remote_scripts_dir_name, block_to_deploy.deployment_step_configuration_file_name))
+    def begin_deployment(self, deployment_targets: List[MachineDeploymentBlock]):
+        for deployment_target in deployment_targets:
+            with self.get_deployment_target_client(deployment_target) as client:
+                transport = client.get_transport()
+                sftp_client = HoreySFTPClient.from_transport(transport)
+
+                self.execute_step(client, deployment_target.application_deploy_step)
+                self.wait_for_step_to_finish(deployment_target.application_infrastructure_provision_step, deployment_target.local_deployment_data_dir_path, sftp_client)
+
+            deployment_target.deployment_code_provisioning_ended = True
+
 
     @staticmethod
     @contextmanager
@@ -109,17 +199,12 @@ class RemoteDeployer:
 
                 yield client
 
-    def execute_step(self, client: paramiko.SSHClient, step_configuration_file_path):
-        configs = DeploymentStepConfigurationPolicy()
-        configs.configuration_file_full_path = step_configuration_file_path
-        configs.init_from_file()
-        command = f"./configuration.remote_step_executor.sh {configs.scripts_dir_path}, {step_configuration_file_path}, {configs.finish_status_file_path}, {configs.output_file_path}"
-        pdb.set_trace()
+    def execute_step(self, client: paramiko.SSHClient, step):
+        command = f"screen -S deployer -dm {step.configuration.step_scripts_dir_path}/remote_step_executor.sh {step.configuration.remote_script_file_path} {step.configuration.script_configuration_file_path} {step.configuration.finish_status_file_path} {step.configuration.output_file_path}"
+        logger.info(f"[REMOTE] {command}")
+
         client.exec_command(command)
-        transport = client.get_transport()
-        sftp_client = HoreySFTPClient.from_transport(transport)
-        sftp_client.get(step_configuration_file_path.configuration_file_full_path,
-                            step_configuration_file_path.configuration_file_full_path)
+        #client.exec_command(command, get_pty=True)
 
     def get_status_path_from_script_path(self, script_path):
         pdb.set_trace()

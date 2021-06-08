@@ -10,9 +10,12 @@ brew update && brew install azure-cli
 
 
 Taken from here: https://docs.microsoft.com/en-us/cli/azure/install-azure-cli-macos
+export PATH=/Users/<your_name>/homebrew/bin:$PATH
 az login #opens browser
-
 az login --use-device-code
+
+#Find available SKUs
+az vm list-skus --location southcentralus --size Standard_F --all --output table
 
 /usr/local/etc/bash_completion.d/
 

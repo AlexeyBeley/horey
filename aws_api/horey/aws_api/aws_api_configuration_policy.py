@@ -26,6 +26,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
         self._aws_api_iam_cache_dir = None
         self._aws_api_iam_policies_cache_dir = None
         self._aws_api_iam_roles_cache_dir = None
+        self._aws_api_event_bridge_cache_dir = None
 
     @property
     def aws_api_regions(self):
@@ -97,6 +98,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
         raise ValueError(value)
 
     # endregion
+
     # region cloudwatch
     @property
     def aws_api_cloudwatch_cache_dir(self):
@@ -400,6 +402,27 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
 
     @aws_api_cloudfront_distributions_cache_file.setter
     def aws_api_cloudfront_distributions_cache_file(self, value):
+        raise ValueError(value)
+    # endregion
+    
+    # region event_bridge
+    @property
+    def aws_api_event_bridge_cache_dir(self):
+        if self._aws_api_event_bridge_cache_dir is None:
+            self._aws_api_event_bridge_cache_dir = os.path.join(self.aws_api_cache_dir, self.aws_api_account, "event_bridge")
+            os.makedirs(self._aws_api_event_bridge_cache_dir, exist_ok=True)
+        return self._aws_api_event_bridge_cache_dir
+
+    @aws_api_event_bridge_cache_dir.setter
+    def aws_api_event_bridge_cache_dir(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_event_bridge_rules_cache_file(self):
+        return os.path.join(self.aws_api_event_bridge_cache_dir, "event_bridge_rules.json")
+
+    @aws_api_event_bridge_rules_cache_file.setter
+    def aws_api_event_bridge_rules_cache_file(self, value):
         raise ValueError(value)
     # endregion
     

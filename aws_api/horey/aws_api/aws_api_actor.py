@@ -85,5 +85,55 @@ def create_ec2_from_lambda(arguments) -> None:
 action_manager.register_action("create_ec2_from_lambda", create_ec2_from_lambda_parser, create_ec2_from_lambda)
 # endregion
 
+
+# region put_secret_file
+def put_secret_file_parser():
+    description = "Store contents of a file in a secret"
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument("--secret_name", required=True, type=str, help="Secret name")
+    parser.add_argument("--secret_file_path", required=True, type=str, help="File path")
+    parser.add_argument("--configuration_file_full_path", required=True, type=str, help="Configuration file full path")
+
+    return parser
+
+
+def put_secret_file(arguments) -> None:
+    configuration = AWSAPIConfigurationPolicy()
+    configuration.configuration_file_full_path = arguments.configuration_file_full_path
+    configuration.init_from_file()
+
+    aws_api = AWSAPI(configuration)
+
+    aws_api.put_secret_file(arguments.secret_name, arguments.secret_file_path)
+
+
+action_manager.register_action("put_secret_file", put_secret_file_parser, put_secret_file)
+# endregion
+
+
+# region put_secret_value
+def put_secret_value_parser():
+    description = "Store contents of a file in a secret"
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument("--secret_name", required=True, type=str, help="Secret name")
+    parser.add_argument("--secret_value", required=True, type=str, help="Value string")
+    parser.add_argument("--configuration_file_full_path", required=True, type=str, help="Configuration file full path")
+
+    return parser
+
+
+def put_secret_value(arguments) -> None:
+    configuration = AWSAPIConfigurationPolicy()
+    configuration.configuration_file_full_path = arguments.configuration_file_full_path
+    configuration.init_from_file()
+
+    aws_api = AWSAPI(configuration)
+
+    aws_api.put_secret_value(arguments.secret_name, arguments.secret_value)
+
+
+action_manager.register_action("put_secret_value", put_secret_value_parser, put_secret_value)
+# endregion
+
 if __name__ == "__main__":
     action_manager.call_action()

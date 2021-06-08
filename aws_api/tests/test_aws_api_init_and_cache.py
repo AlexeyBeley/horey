@@ -178,6 +178,22 @@ def test_init_and_cache_ec2_launch_templates():
     aws_api.init_ec2_launch_templates()
     aws_api.cache_objects(aws_api.ec2_launch_templates, configuration.aws_api_ec2_launch_templates_cache_file)
     assert isinstance(aws_api.ec2_launch_templates, list)
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_event_bridge_rules():
+    aws_api.init_event_bridge_rules()
+    aws_api.cache_objects(aws_api.event_bridge_rules, configuration.aws_api_event_bridge_rules_cache_file)
+    assert isinstance(aws_api.event_bridge_rules, list)
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_secrets_manager_secrets():
+    aws_api.init_secrets_manager_secrets()
+    #ret = [secret for secret in aws_api.secrets_manager_secrets if secret.name.startswith("stg_")]
+    #for secret in ret:
+        #aws_api.copy_secrets_manager_secret_to_region(secret.name, "eu-central-1", "us-east-1")
+
+    #pdb.set_trace()
+    assert isinstance(aws_api.secrets_manager_secrets, list)
 # endregion
 
 
@@ -186,4 +202,4 @@ if __name__ == "__main__":
     106 = 41.7
     112 = 44 
     """
-    test_init_and_cache_raw_large_cloud_watch_log_groups()
+    test_init_secrets_manager_secrets()

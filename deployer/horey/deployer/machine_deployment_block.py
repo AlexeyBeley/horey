@@ -1,3 +1,4 @@
+import os.path
 import pdb
 
 
@@ -9,6 +10,7 @@ class MachineDeploymentBlock:
         self.local_deployment_dir_path = None
         self.remote_deployment_dir_path = None
         self.remote_scripts_dir_name = None
+        self.deployment_data_dir_name = None
 
         self.bastion_address = None
         self.bastion_user_name = None
@@ -26,4 +28,21 @@ class MachineDeploymentBlock:
         self.application_infrastructure_provision_step = None
         self.application_deploy_step = None
 
+        self.string_replacements = None
+        self.replacements_base_dir_path = None
 
+    @property
+    def local_deployment_remote_scripts_dir_path(self):
+        if self.local_deployment_dir_path is None:
+            raise ValueError()
+        if self.remote_scripts_dir_name is None:
+            raise ValueError()
+
+        return os.path.join(self.local_deployment_dir_path, self.remote_scripts_dir_name)
+
+    @property
+    def local_deployment_data_dir_path(self):
+        if self.local_deployment_remote_scripts_dir_path is None:
+            raise ValueError()
+
+        return os.path.join(self.local_deployment_remote_scripts_dir_path, self.deployment_data_dir_name)

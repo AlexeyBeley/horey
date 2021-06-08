@@ -145,6 +145,12 @@ class ConfigurationPolicy:
 
         return dict_ret
 
+    def generate_configuration_file(self, output_file_name):
+        dict_values = self.convert_to_dict()
+
+        with open(output_file_name, "w+") as file_handler:
+            json.dump(dict_values, file_handler, indent=4)
+
     class StaticValueError(RuntimeError):
         pass
 

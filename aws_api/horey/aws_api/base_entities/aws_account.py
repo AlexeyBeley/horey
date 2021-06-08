@@ -44,8 +44,12 @@ class AWSAccount:
         Set current region to work against.
         :return:
         """
+        if isinstance(value, str):
+            value = AWSAccount.get_aws_account().regions[value]
+
         if not isinstance(value, Region):
             raise ValueError(f"{value} is not of type Region")
+
         AWSAccount._CURRENT_REGION = value
 
     def __init__(self):
