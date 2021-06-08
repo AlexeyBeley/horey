@@ -20,8 +20,8 @@ class SNSClient(Boto3Client):
         client_name = "sns"
         super().__init__(client_name)
 
-    def raw_publish(self, topic_arn, message):
-        filters_req = {"TopicArn": topic_arn, "Message": ":thumbsup:" + "Ignore this message", "Subject": "Zabbix test alert"}
+    def raw_publish(self, topic_arn, subject, message):
+        filters_req = {"TopicArn": topic_arn, "Message": ":exclamation:" + message, "Subject": subject}
         # state_dict = {"Ok": ":thumbsup:", "Info": ":information_source:", "Severe": ":exclamation:"}
 
         for response in self.execute(self.client.publish, "MessageId", filters_req=filters_req):

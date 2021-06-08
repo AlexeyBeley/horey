@@ -19,6 +19,7 @@ def publish_parser():
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("--topic_arn", required=True, type=str, help="Topic Arn")
     parser.add_argument("--message", required=True, type=str, help="Message")
+    parser.add_argument("--subject", required=True, type=str, help="Message subject")
     parser.add_argument("--accounts_file", required=True, type=str, help="Message")
     parser.add_argument("--account", required=True, type=str, help="Message")
     return parser
@@ -27,7 +28,7 @@ def publish_parser():
 def publish(arguments) -> None:
     accounts = CommonUtils.load_object_from_module(arguments.accounts_file, "main")
     AWSAccount.set_aws_account(accounts[arguments.account])
-    SNSClient().raw_publish(arguments.topic_arn, arguments.message)
+    SNSClient().raw_publish(arguments.topic_arn, arguments.subject, arguments.message)
 
 
 action_manager.register_action("publish", publish_parser, publish)

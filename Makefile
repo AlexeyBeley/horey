@@ -13,7 +13,7 @@ SRC_FILES := $(filter-out $(EXCLUSIONS), $(ALL_PACKAGES))
 
 create_build_env:
 	mkdir -p ${BUILD_TMP_DIR} &&\
-	pip3 install -U setuptools
+	sudo pip3 install -U setuptools
 	pip3 install wheel
 
 init_venv_dir: create_build_env
