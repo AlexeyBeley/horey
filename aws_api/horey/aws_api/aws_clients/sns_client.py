@@ -22,11 +22,7 @@ class SNSClient(Boto3Client):
 
     def raw_publish(self, topic_arn, message):
         filters_req = {"TopicArn": topic_arn, "Message": ":thumbsup:" + "Ignore this message", "Subject": "Zabbix test alert"}
+        # state_dict = {"Ok": ":thumbsup:", "Info": ":information_source:", "Severe": ":exclamation:"}
 
-        #state_dict = {"Ok": ":thumbsup:", "Info": ":information_source:", "Severe": ":exclamation:"}
-
-        #AWSAccount.set_aws_region(region)
         for response in self.execute(self.client.publish, "MessageId", filters_req=filters_req):
-            pdb.set_trace()
-
-        return obj
+            return response
