@@ -151,6 +151,18 @@ class ConfigurationPolicy:
         with open(output_file_name, "w+") as file_handler:
             json.dump(dict_values, file_handler, indent=4)
 
+    def init_from_policy(self, configuration):
+        for key, value in configuration.convert_to_dict().items():
+            if not key.startswith("_"):
+                continue
+            attr_name = key[1:]
+
+            try:
+                setattr(self, attr_name, value)
+            except ConfigurationPolicy.StaticValueError:
+                pass
+
     class StaticValueError(RuntimeError):
         pass
+
 

@@ -5,7 +5,6 @@ BUILD_DIR= ${ROOT_DIR}/build
 BUILD_TMP_DIR= ${BUILD_DIR}/_build
 VENV_DIR= ${BUILD_TMP_DIR}/_venv
 
-REQUIREMENTS=~/private/IP
 ALL_PACKAGES := $(wildcard *)
 
 EXCLUSIONS := LICENSE Makefile README.md build dns_map docker terraform security_group_map pypi_infra h_flow network
@@ -13,8 +12,8 @@ SRC_FILES := $(filter-out $(EXCLUSIONS), $(ALL_PACKAGES))
 
 create_build_env:
 	mkdir -p ${BUILD_TMP_DIR} &&\
-	sudo pip3 install -U setuptools
-	pip3 install wheel
+	pip3 install wheel &&\
+	pip3 install -U setuptools
 
 init_venv_dir: create_build_env
 	python3 -m venv ${VENV_DIR}
@@ -70,3 +69,7 @@ test_aws_api: install_from_source-aws_api
 	source ${VENV_DIR}/bin/activate &&\
 	cd ${ROOT_DIR}/aws_api/tests &&\
 	python3 test_aws_api_init_and_cache.py
+
+install_azure_api_prerequisites:
+	source ${VENV_DIR}/bin/activate &&\
+	sudo pip3 install --upgrade pip

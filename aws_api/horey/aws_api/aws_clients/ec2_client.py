@@ -11,10 +11,12 @@ from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.base_entities.aws_account import AWSAccount
 import pdb
 
+
 class EC2Client(Boto3Client):
     """
     Client to handle specific aws service API calls.
     """
+
     def __init__(self):
         client_name = "ec2"
         super().__init__(client_name)
@@ -66,12 +68,13 @@ class EC2Client(Boto3Client):
 
         return final_result
 
-    def create_security_group(self, request_dict):
+    def raw_create_security_group(self, request_dict):
         for response in self.execute(self.client.create_security_group, "GroupId", filters_req=request_dict):
             return response
 
     def authorize_security_group_ingress(self, request_dict):
-        for response in self.execute(self.client.authorize_security_group_ingress, "GroupId", filters_req=request_dict, raw_data=True):
+        for response in self.execute(self.client.authorize_security_group_ingress, "GroupId", filters_req=request_dict,
+                                     raw_data=True):
             print(response)
             return response
 
@@ -121,3 +124,40 @@ class EC2Client(Boto3Client):
                 final_result.append(obj)
 
         return final_result
+
+    def update_security_group(self, security_group):
+        filters_req = {"GroupId": security_group.id,
+                       "IpPermissions": security_group.generate_permissions_request_dict()
+                       }
+
+        for x in self.execute(self.client.authorize_security_group_ingress, None, filters_req=filters_req):
+            pdb.set_trace()
+
+    def raw_create_managed_prefix_list(self, request, add_client_token=True):
+        if add_client_token:
+            if "ClientToken" not in request:
+                request["ClientToken"] = request["PrefixListName"]
+
+        for response in self.execute(self.client.create_managed_prefix_list, "PrefixList", filters_req=request):
+            return response
+
+    def raw_modify_managed_prefix_list(self, request):
+        for response in self.execute(self.client.modify_managed_prefix_list, "PrefixList", filters_req=request):
+            return response
+
+    def raw_describe_managed_prefix_list(self, pl_id=None, prefix_list_name=None):
+        if pl_id is None and prefix_list_name is None:
+            raise ValueError("pl_id pr prefix_list_name must be specified")
+
+        request = {}
+        if pl_id is not None:
+            request["PrefixListIds"] = [pl_id]
+
+        if prefix_list_name is not None:
+            request["Filters"] = [{
+                'Name': 'prefix-list-name',
+                'Values': [prefix_list_name]
+            }]
+
+        for response in self.execute(self.client.describe_managed_prefix_lists, "PrefixLists", filters_req=request):
+            return response

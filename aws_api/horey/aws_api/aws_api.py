@@ -1483,3 +1483,17 @@ class AWSAPI:
     def copy_secrets_manager_secret_to_region(self, secret_name, region_src, region_dst):
         secret = self.secretsmanager_client.get_secret(secret_name, region_name=region_src)
         self.secretsmanager_client.put_secret(secret, region_name=region_dst)
+
+    def add_ingress_to_security_group(self, security_group_name):
+        self.init_security_groups()
+
+        pdb.set_trace()
+
+        security_group = CommonUtils.find_objects_by_values(self.security_groups, {"name": security_group_name}, max_count=1)[0]
+
+        for ip_permission in security_group.ip_permissions:
+            pass
+
+    def update_security_group(self):
+
+        pdb.set_trace()
