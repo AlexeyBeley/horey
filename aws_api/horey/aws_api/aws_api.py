@@ -25,6 +25,8 @@ from horey.aws_api.aws_clients.elbv2_client import ELBV2Client
 from horey.aws_api.aws_services_entities.elbv2_load_balancer import LoadBalancer
 from horey.aws_api.aws_services_entities.elbv2_target_group import ELBV2TargetGroup
 
+from horey.aws_api.aws_services_entities.managed_prefix_list import ManagedPrefixList
+
 from horey.aws_api.aws_clients.elb_client import ELBClient
 from horey.aws_api.aws_services_entities.elb_load_balancer import ClassicLoadBalancer
 
@@ -60,6 +62,13 @@ from horey.aws_api.aws_services_entities.event_bridge_rule import EventBridgeRul
 from horey.aws_api.aws_clients.secrets_manager_client import SecretsManagerClient
 from horey.aws_api.aws_services_entities.secrets_manager_secret import SecretsManagerSecret
 
+from horey.aws_api.aws_clients.servicediscovery_client import ServicediscoveryClient
+from horey.aws_api.aws_services_entities.servicediscovery_service import ServicediscoveryService
+
+from horey.aws_api.aws_clients.elasticsearch_client import ElasticsearchClient
+from horey.aws_api.aws_services_entities.elasticsearch_domain import ElasticsearchDomain
+
+
 from horey.common_utils.common_utils import CommonUtils
 from horey.network.dns import DNS
 
@@ -93,6 +102,8 @@ class AWSAPI:
         self.cloudfront_client = CloudfrontClient()
         self.event_bridge_client = EventBridgeClient()
         self.secretsmanager_client = SecretsManagerClient()
+        self.servicediscovery_client = ServicediscoveryClient()
+        self.elasticsearch_client = ElasticsearchClient()
 
         self.network_interfaces = []
         self.iam_policies = []
@@ -115,6 +126,10 @@ class AWSAPI:
         self.cloudfront_distributions = []
         self.event_bridge_rules = []
         self.secrets_manager_secrets = []
+        self.servicediscovery_services = []
+        self.elasticsearch_domains = []
+        self.managed_prefix_lists = []
+
         self.configuration = configuration
         self.init_configuration()
 
@@ -126,6 +141,14 @@ class AWSAPI:
             return
         accounts = CommonUtils.load_object_from_module(self.configuration.accounts_file, "main")
         AWSAccount.set_aws_account(accounts[self.configuration.aws_api_account])
+
+    def init_managed_prefix_lists(self, from_cache=False, cache_file=None):
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, ManagedPrefixList)
+        else:
+            objects = self.ec2_client.get_all_managed_prefix_lists()
+
+        self.managed_prefix_lists += objects
 
     def init_network_interfaces(self, from_cache=False, cache_file=None):
         """
@@ -463,6 +486,36 @@ class AWSAPI:
 
         self.event_bridge_rules = objects
 
+    def init_servicediscovery_services(self, from_cache=False, cache_file=None, full_information=True):
+        """
+        Init servicediscovery serivces
+        @param from_cache:
+        @param cache_file:
+        @param full_information:
+        @return:
+        """
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, ServicediscoveryService)
+        else:
+            objects = self.servicediscovery_client.get_all_services(full_information=full_information)
+
+        self.servicediscovery_services = objects
+
+    def init_elasticsearch_domains(self, from_cache=False, cache_file=None, full_information=True):
+        """
+        Init elasticsearch serivces
+        @param from_cache:
+        @param cache_file:
+        @param full_information:
+        @return:
+        """
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, ElasticsearchDomain)
+        else:
+            objects = self.elasticsearch_client.get_all_domains(full_information=full_information)
+
+        self.elasticsearch_domains = objects
+        
     def init_secrets_manager_secrets(self, from_cache=False, cache_file=None, full_information=True):
         """
         Init secrets_manager_secrets
@@ -1486,7 +1539,6 @@ class AWSAPI:
 
     def add_ingress_to_security_group(self, security_group_name):
         self.init_security_groups()
-
         pdb.set_trace()
 
         security_group = CommonUtils.find_objects_by_values(self.security_groups, {"name": security_group_name}, max_count=1)[0]
@@ -1495,5 +1547,14 @@ class AWSAPI:
             pass
 
     def update_security_group(self):
-
         pdb.set_trace()
+
+    def provision_managed_prefix_list(self, managed_prefix_list):
+        live_managed_prefix_list = self.ec2_client.get_managed_prefix_list(managed_prefix_list.region, managed_prefix_list.id)
+        request = live_managed_prefix_list.get_entries_add_request(managed_prefix_list)
+
+        if request is None:
+            return True
+
+        ret = self.ec2_client.raw_modify_managed_prefix_list(request)
+        print(ret)

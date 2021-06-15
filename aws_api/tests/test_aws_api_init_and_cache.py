@@ -194,6 +194,27 @@ def test_init_secrets_manager_secrets():
 
     #pdb.set_trace()
     assert isinstance(aws_api.secrets_manager_secrets, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_servicediscovery_services():
+    aws_api.init_servicediscovery_services()
+    aws_api.cache_objects(aws_api.servicediscovery_services, configuration.aws_api_servicediscovery_services_cache_file)
+    assert isinstance(aws_api.servicediscovery_services, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_elasticsearch_domains():
+    aws_api.init_elasticsearch_domains()
+    aws_api.cache_objects(aws_api.elasticsearch_domains, configuration.aws_api_elasticsearch_domains_cache_file)
+    assert isinstance(aws_api.elasticsearch_domains, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_managed_prefix_lists():
+    aws_api.init_managed_prefix_lists()
+    aws_api.cache_objects(aws_api.managed_prefix_lists, configuration.aws_api_managed_prefix_lists_cache_file)
+    assert isinstance(aws_api.managed_prefix_lists, list)
 # endregion
 
 
@@ -202,4 +223,4 @@ if __name__ == "__main__":
     106 = 41.7
     112 = 44 
     """
-    test_init_secrets_manager_secrets()
+    test_init_and_cache_managed_prefix_lists()

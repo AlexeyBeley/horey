@@ -70,7 +70,7 @@ def test_authorize_security_group_ingress():
 
 
 def test_raw_create_managed_prefix_list():
-    request = {"PrefixListName": "test-alexey",
+    request = {"PrefixListName": "pl_staging_cloud_hive_public_outgoing",
                "Entries": [
                    {
                        "Cidr": "2.2.2.2/32",
@@ -83,7 +83,7 @@ def test_raw_create_managed_prefix_list():
     for region in AWSAccount.get_aws_account().regions.values():
         AWSAccount.set_aws_region(region)
 
-        prefix_list_name = "pl_prod_cloud_hive_public_outgoing"
+        prefix_list_name = "test"
 
         request = {"PrefixListName": prefix_list_name,
                "MaxEntries": 60,
@@ -144,7 +144,7 @@ def test_raw_modify_managed_prefix_list():
 
 def test_raw_modify_managed_prefix_list_add():
     client = EC2Client()
-    pl_id = "pl-0d1adbd1928158a65"
+    pl_id = ""
     base_version = 7
     request = {
         "CurrentVersion": base_version,

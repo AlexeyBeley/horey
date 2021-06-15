@@ -48,7 +48,7 @@ class ConfigurationPolicy:
 
     def _set_attribute_value(self, attribute_name, attribute_value):
         if not hasattr(self, f"_{attribute_name}"):
-            raise ValueError(attribute_name)
+            raise ValueError(f"No attribute found with name _{attribute_name}")
 
         setattr(self, attribute_name, attribute_value)
 
@@ -152,15 +152,29 @@ class ConfigurationPolicy:
             json.dump(dict_values, file_handler, indent=4)
 
     def init_from_policy(self, configuration):
-        for key, value in configuration.convert_to_dict().items():
-            if not key.startswith("_"):
-                continue
-            attr_name = key[1:]
-
+        for attr_name, value in configuration.convert_to_dict().items():
             try:
                 setattr(self, attr_name, value)
+                log_line = f"Init attribute '{attr_name}' from {type(configuration)} policy"
+                logger.info(log_line)
             except ConfigurationPolicy.StaticValueError:
                 pass
+
+    @staticmethod
+    def validate_type_decorator(types):
+        def function_receiver(func):
+            def function_wrapper(*args, **kwargs):
+                if isinstance(types, list):
+                    if type(args[0]) not in types:
+                        raise ValueError(f"Received type '{type(args[0])}' while expecting one of '{types}'")
+                else:
+                    if isinstance(args[0], types):
+                        raise ValueError(f"Received type '{type(args[0])}' while expecting '{types}'")
+
+                func(*args, **kwargs)
+
+            return function_wrapper
+        return function_receiver
 
     class StaticValueError(RuntimeError):
         pass

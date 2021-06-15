@@ -6,6 +6,7 @@ import paramiko
 from sshtunnel import open_tunnel
 import os
 from horey.deployer.machine_deployment_block import MachineDeploymentBlock
+from horey.deployer.machine_deployment_step import MachineDeploymentStep
 from typing import List
 from contextlib import contextmanager
 from io import StringIO
@@ -92,7 +93,6 @@ class RemoteDeployer:
                 logger.info(f"[REMOTE] {command}")
                 client.exec_command(command)
 
-
     def perform_recursive_replacements(self, replacements_base_dir_path, string_replacements):
         for root, _, filenames in os.walk(replacements_base_dir_path):
             for filename in filenames:
@@ -100,12 +100,14 @@ class RemoteDeployer:
                     self.perform_file_string_replacements(root, filename, string_replacements)
 
     def perform_file_string_replacements(self, root, filename, string_replacements):
+        logger.info(f"Performing replacements on template dir: '{root}' name: '{filename}'")
         with open(os.path.join(root, filename)) as file_handler:
             str_file = file_handler.read()
 
         for key in sorted(string_replacements.keys(), key=lambda key_string: len(key_string), reverse=True):
             if not key.startswith("STRING_REPLACEMENT_"):
                 raise ValueError("Key must start with STRING_REPLACEMENT_")
+            logger.info(f"Performing replacement in template: {filename}, key: {key}")
             value = string_replacements[key]
             str_file = str_file.replace(key, value)
 
@@ -123,14 +125,13 @@ class RemoteDeployer:
             with self.get_deployment_target_client(deployment_target) as client:
                 transport = client.get_transport()
                 sftp_client = HoreySFTPClient.from_transport(transport)
-
                 self.execute_step(client, deployment_target.application_infrastructure_provision_step)
                 self.wait_for_step_to_finish(deployment_target.application_infrastructure_provision_step, deployment_target.local_deployment_data_dir_path, sftp_client)
 
             deployment_target.deployment_code_provisioning_ended = True
 
     def wait_for_step_to_finish(self, step, local_deployment_data_dir_path, sftp_client):
-        retry_attempts = 5
+        retry_attempts = 10
         sleep_time = 60
         for retry_counter in range(retry_attempts):
             try:
@@ -152,7 +153,10 @@ class RemoteDeployer:
         step.update_output(local_deployment_data_dir_path)
 
         if step.status_code != step.StatusCode.SUCCESS:
-            raise RuntimeError(f"Step finished with status: {step.status}, error: \n{step.output}")
+            last_lines = '\n'.join(step.output.split("\n")[-50:])
+            raise RuntimeError(f"Step finished with status: {step.status}, error: \n{last_lines}")
+
+        logger.info(f"Step finished successfully output in: '{step.configuration.output_file_name}'")
 
     def wait_for_deployment_code_provisioning_to_end(self, blocks_to_deploy: List[MachineDeploymentBlock]):
         for block_to_deploy in blocks_to_deploy:
@@ -162,6 +166,7 @@ class RemoteDeployer:
                 time.sleep(1)
             else:
                 raise RuntimeError("Deployment failed at wait_for_deployment_code_provisioning_to_end")
+        logger.info("Deployment provisioning finished successfully")
 
     def begin_deployment(self, deployment_targets: List[MachineDeploymentBlock]):
         for deployment_target in deployment_targets:
@@ -170,10 +175,9 @@ class RemoteDeployer:
                 sftp_client = HoreySFTPClient.from_transport(transport)
 
                 self.execute_step(client, deployment_target.application_deploy_step)
-                self.wait_for_step_to_finish(deployment_target.application_infrastructure_provision_step, deployment_target.local_deployment_data_dir_path, sftp_client)
+                self.wait_for_step_to_finish(deployment_target.application_deploy_step, deployment_target.local_deployment_data_dir_path, sftp_client)
 
             deployment_target.deployment_code_provisioning_ended = True
-
 
     @staticmethod
     @contextmanager
@@ -213,4 +217,12 @@ class RemoteDeployer:
         pdb.set_trace()
 
     def wait_for_deployment_to_end(self, blocks_to_deploy):
-        pdb.set_trace()
+        lst_errors = []
+        for block in blocks_to_deploy:
+            if block.application_deploy_step.status_code != MachineDeploymentStep.StatusCode.SUCCESS:
+                lst_errors.append(block.application_infrastructure_provision_step.configuration.output_file_path)
+
+        if lst_errors:
+            raise RuntimeError(str(lst_errors))
+        logger.info("Deployment finished successfully output in")
+

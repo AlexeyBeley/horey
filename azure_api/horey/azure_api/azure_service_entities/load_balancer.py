@@ -44,7 +44,8 @@ class LoadBalancer(AzureObject):
         self.init_attrs(dict_src, init_options)
 
     def init_load_balancer_from_cache(self, dict_src):
-        raise NotImplementedError()
+        options = {}
+        self._init_from_cache(dict_src, options)
 
     def construct_fip_id(subscription_id):
         """Build the future FrontEndId based on components name.

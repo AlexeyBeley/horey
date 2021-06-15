@@ -27,6 +27,8 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
         self._aws_api_iam_policies_cache_dir = None
         self._aws_api_iam_roles_cache_dir = None
         self._aws_api_event_bridge_cache_dir = None
+        self._aws_api_servicediscovery_cache_dir = None
+        self._aws_api_elasticsearch_cache_dir = None
 
     @property
     def aws_api_regions(self):
@@ -210,6 +212,14 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
 
     @aws_api_ec2_network_interfaces_cache_file.setter
     def aws_api_ec2_network_interfaces_cache_file(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_managed_prefix_lists_cache_file(self):
+        return os.path.join(self.aws_api_ec2_cache_dir, "managed_prefix_lists.json")
+
+    @aws_api_managed_prefix_lists_cache_file.setter
+    def aws_api_managed_prefix_lists_cache_file(self, value):
         raise ValueError(value)
 
     # endregion
@@ -426,6 +436,48 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
         raise ValueError(value)
     # endregion
     
+    # region servicediscovery
+    @property
+    def aws_api_servicediscovery_cache_dir(self):
+        if self._aws_api_servicediscovery_cache_dir is None:
+            self._aws_api_servicediscovery_cache_dir = os.path.join(self.aws_api_cache_dir, self.aws_api_account, "servicediscovery")
+            os.makedirs(self._aws_api_servicediscovery_cache_dir, exist_ok=True)
+        return self._aws_api_servicediscovery_cache_dir
+
+    @aws_api_servicediscovery_cache_dir.setter
+    def aws_api_servicediscovery_cache_dir(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_servicediscovery_services_cache_file(self):
+        return os.path.join(self.aws_api_servicediscovery_cache_dir, "servicediscovery_services.json")
+
+    @aws_api_servicediscovery_services_cache_file.setter
+    def aws_api_servicediscovery_services_cache_file(self, value):
+        raise ValueError(value)
+    # endregion
+    
+    # region elasticsearch
+    @property
+    def aws_api_elasticsearch_cache_dir(self):
+        if self._aws_api_elasticsearch_cache_dir is None:
+            self._aws_api_elasticsearch_cache_dir = os.path.join(self.aws_api_cache_dir, self.aws_api_account, "elasticsearch")
+            os.makedirs(self._aws_api_elasticsearch_cache_dir, exist_ok=True)
+        return self._aws_api_elasticsearch_cache_dir
+
+    @aws_api_elasticsearch_cache_dir.setter
+    def aws_api_elasticsearch_cache_dir(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_elasticsearch_domains_cache_file(self):
+        return os.path.join(self.aws_api_elasticsearch_cache_dir, "elasticsearch_domains.json")
+
+    @aws_api_elasticsearch_domains_cache_file.setter
+    def aws_api_elasticsearch_domains_cache_file(self, value):
+        raise ValueError(value)
+    # endregion
+
     # region cleanup
     @property
     def aws_api_cleanup_reports_dir(self):

@@ -73,3 +73,8 @@ test_aws_api: install_from_source-aws_api
 install_azure_api_prerequisites:
 	source ${VENV_DIR}/bin/activate &&\
 	sudo pip3 install --upgrade pip
+
+test_zabbix_api: install_from_source-zabbix_api
+	source ${VENV_DIR}/bin/activate &&\
+	cd ${ROOT_DIR}/zabbix_api/tests &&\
+	python3 test_zabbix_api.py

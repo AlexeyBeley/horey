@@ -49,7 +49,7 @@ class Boto3Client:
         """
         raise RuntimeError(f"Nobody can set a client explicitly in{self}")
 
-    def yield_with_paginator(self, func_command, return_string, filters_req=None, raw_data=False, internal_starting_token=False):
+    def yield_with_paginator(self, func_command, return_string, filters_req=None, raw_data=False, internal_starting_token=False, exception_ignore_callback=None):
         """
         Function to yeild replies, if there is no need to get all replies.
         It can save API requests if the expected information found before.
@@ -57,6 +57,7 @@ class Boto3Client:
         :param func_command: Bound method from _client instance
         :param return_string: string to retrive the infromation from reply dict
         :param filters_req: filters dict passed to the API client to filter the response
+        :param exception_ignore_callback: called on exception if returns true - do not retries on exception
         :return: list of replies
         """
 
@@ -83,6 +84,9 @@ class Boto3Client:
                     exception_weight = 1
                     time_to_sleep = retry_counter + exception_weight
                     logger.error(f"Retrying after Throttling '{func_command.__name__}' attempt {retry_counter}/{self.EXECUTION_RETRY_COUNT} Error: {exception_instance}")
+
+                if exception_ignore_callback(exception_instance):
+                    return
 
                 retry_counter += exception_weight
                 time.sleep(time_to_sleep)
@@ -122,13 +126,14 @@ class Boto3Client:
         else:
             return _page.get(self.NEXT_PAGE_RESPONSE_KEY)
 
-    def execute(self, func_command, return_string, filters_req=None, raw_data=False, internal_starting_token=False):
+    def execute(self, func_command, return_string, filters_req=None, raw_data=False, internal_starting_token=False, exception_ignore_callback=None):
         """
         Command to execute clients bound function- execute with paginator if available.
 
         :param func_command: Bound method from _client instance
         :param return_string: string to retrive the infromation from reply dict
         :param filters_req: filters dict passed to the API client to filter the response
+        :param exception_ignore_callback: called on exception if returns true - do not retries on exception
         :return: list of replies
         """
 
@@ -136,7 +141,7 @@ class Boto3Client:
             filters_req = {}
 
         if self.client.can_paginate(func_command.__name__):
-            for ret_obj in self.yield_with_paginator(func_command, return_string, filters_req=filters_req, raw_data=raw_data, internal_starting_token=internal_starting_token):
+            for ret_obj in self.yield_with_paginator(func_command, return_string, filters_req=filters_req, raw_data=raw_data, internal_starting_token=internal_starting_token, exception_ignore_callback=exception_ignore_callback):
                 yield ret_obj
             return
 
