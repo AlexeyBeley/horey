@@ -15,7 +15,7 @@ inall-pip:
 	apt-get -y install python3-pip
 	pip3 install --upgrade pip
 
-create_build_env: inall-pip
+create_build_env:
 	mkdir -p ${BUILD_TMP_DIR} &&\
 	pip3 install wheel &&\
 	pip3 install --upgrade setuptools
