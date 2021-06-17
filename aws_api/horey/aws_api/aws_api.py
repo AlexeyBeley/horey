@@ -25,6 +25,8 @@ from horey.aws_api.aws_clients.elbv2_client import ELBV2Client
 from horey.aws_api.aws_services_entities.elbv2_load_balancer import LoadBalancer
 from horey.aws_api.aws_services_entities.elbv2_target_group import ELBV2TargetGroup
 
+from horey.aws_api.aws_services_entities.managed_prefix_list import ManagedPrefixList
+
 from horey.aws_api.aws_clients.elb_client import ELBClient
 from horey.aws_api.aws_services_entities.elb_load_balancer import ClassicLoadBalancer
 
@@ -53,6 +55,19 @@ from horey.aws_api.aws_clients.cloud_watch_client import CloudWatchClient
 
 from horey.aws_api.aws_clients.cloudfront_client import CloudfrontClient
 from horey.aws_api.aws_services_entities.cloudfront_distribution import CloudfrontDistribution
+
+from horey.aws_api.aws_clients.event_bridge_client import EventBridgeClient
+from horey.aws_api.aws_services_entities.event_bridge_rule import EventBridgeRule
+
+from horey.aws_api.aws_clients.secrets_manager_client import SecretsManagerClient
+from horey.aws_api.aws_services_entities.secrets_manager_secret import SecretsManagerSecret
+
+from horey.aws_api.aws_clients.servicediscovery_client import ServicediscoveryClient
+from horey.aws_api.aws_services_entities.servicediscovery_service import ServicediscoveryService
+
+from horey.aws_api.aws_clients.elasticsearch_client import ElasticsearchClient
+from horey.aws_api.aws_services_entities.elasticsearch_domain import ElasticsearchDomain
+
 
 from horey.common_utils.common_utils import CommonUtils
 from horey.network.dns import DNS
@@ -85,6 +100,10 @@ class AWSAPI:
         self.cloud_watch_client = CloudWatchClient()
         self.ecs_client = ECSClient()
         self.cloudfront_client = CloudfrontClient()
+        self.event_bridge_client = EventBridgeClient()
+        self.secretsmanager_client = SecretsManagerClient()
+        self.servicediscovery_client = ServicediscoveryClient()
+        self.elasticsearch_client = ElasticsearchClient()
 
         self.network_interfaces = []
         self.iam_policies = []
@@ -105,6 +124,12 @@ class AWSAPI:
         self.cloud_watch_log_groups_metric_filters = []
         self.cloud_watch_alarms = []
         self.cloudfront_distributions = []
+        self.event_bridge_rules = []
+        self.secrets_manager_secrets = []
+        self.servicediscovery_services = []
+        self.elasticsearch_domains = []
+        self.managed_prefix_lists = []
+
         self.configuration = configuration
         self.init_configuration()
 
@@ -116,6 +141,14 @@ class AWSAPI:
             return
         accounts = CommonUtils.load_object_from_module(self.configuration.accounts_file, "main")
         AWSAccount.set_aws_account(accounts[self.configuration.aws_api_account])
+
+    def init_managed_prefix_lists(self, from_cache=False, cache_file=None):
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, ManagedPrefixList)
+        else:
+            objects = self.ec2_client.get_all_managed_prefix_lists()
+
+        self.managed_prefix_lists += objects
 
     def init_network_interfaces(self, from_cache=False, cache_file=None):
         """
@@ -437,6 +470,66 @@ class AWSAPI:
             objects = self.cloudfront_client.get_all_distributions(full_information=full_information)
 
         self.cloudfront_distributions = objects
+
+    def init_event_bridge_rules(self, from_cache=False, cache_file=None, full_information=True):
+        """
+        Init event_bridge distributions
+        @param from_cache:
+        @param cache_file:
+        @param full_information:
+        @return:
+        """
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, EventBridgeRule)
+        else:
+            objects = self.event_bridge_client.get_all_distributions(full_information=full_information)
+
+        self.event_bridge_rules = objects
+
+    def init_servicediscovery_services(self, from_cache=False, cache_file=None, full_information=True):
+        """
+        Init servicediscovery serivces
+        @param from_cache:
+        @param cache_file:
+        @param full_information:
+        @return:
+        """
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, ServicediscoveryService)
+        else:
+            objects = self.servicediscovery_client.get_all_services(full_information=full_information)
+
+        self.servicediscovery_services = objects
+
+    def init_elasticsearch_domains(self, from_cache=False, cache_file=None, full_information=True):
+        """
+        Init elasticsearch serivces
+        @param from_cache:
+        @param cache_file:
+        @param full_information:
+        @return:
+        """
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, ElasticsearchDomain)
+        else:
+            objects = self.elasticsearch_client.get_all_domains(full_information=full_information)
+
+        self.elasticsearch_domains = objects
+        
+    def init_secrets_manager_secrets(self, from_cache=False, cache_file=None, full_information=True):
+        """
+        Init secrets_manager_secrets
+        @param from_cache:
+        @param cache_file:
+        @param full_information:
+        @return:
+        """
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, SecretsManagerSecret)
+        else:
+            objects = self.secretsmanager_client.get_all_secrets(full_information=full_information)
+
+        self.secrets_manager_secrets = objects
 
     def init_databases(self, from_cache=False, cache_file=None):
         """
@@ -1423,3 +1516,71 @@ class AWSAPI:
                 lines.append(str(statement_1.dict_src))
                 lines.append(str(statement_2.dict_src))
         return lines
+
+    def get_secret_value(self, secret_name):
+        return self.secretsmanager_client.raw_get_secret_string(secret_name)
+
+    def put_secret_value(self, secret_name, value):
+        return self.secretsmanager_client.raw_put_secret_string(secret_name, value)
+
+    def put_secret_file(self, secret_name, file_path):
+        with open(file_path) as file_handler:
+            contents = file_handler.read()
+        self.put_secret_value(secret_name, contents)
+
+    def get_secret_file(self, secret_name, dir_path):
+        contents = self.get_secret_value(secret_name)
+        with open(os.path.join(dir_path, secret_name), "w+") as file_handler:
+            file_handler.write(contents)
+
+    def copy_secrets_manager_secret_to_region(self, secret_name, region_src, region_dst):
+        secret = self.secretsmanager_client.get_secret(secret_name, region_name=region_src)
+        self.secretsmanager_client.put_secret(secret, region_name=region_dst)
+
+    def add_ingress_to_security_group(self, security_group_name):
+        self.init_security_groups()
+        pdb.set_trace()
+
+        security_group = CommonUtils.find_objects_by_values(self.security_groups, {"name": security_group_name}, max_count=1)[0]
+
+        for ip_permission in security_group.ip_permissions:
+            pass
+
+    def update_security_group(self):
+        pdb.set_trace()
+
+    def provision_managed_prefix_list(self, managed_prefix_list):
+        live_managed_prefix_list = self.ec2_client.get_managed_prefix_list(managed_prefix_list.region, managed_prefix_list.id)
+        request = live_managed_prefix_list.get_entries_add_request(managed_prefix_list)
+
+        if request is None:
+            return True
+
+        ret = self.ec2_client.raw_modify_managed_prefix_list(request)
+        print(ret)
+
+    def provision_hosted_zone(self, hosted_zone):
+        self.route53_client.create_hosted_zone(hosted_zone)
+
+        for vpc_association in hosted_zone.vpc_associations[1:]:
+            associate_request = {"HostedZoneId": hosted_zone.id,
+            "VPC": vpc_association
+            }
+
+            self.route53_client.raw_associate_vpc_with_hosted_zone(associate_request)
+
+        changes = []
+        for record in hosted_zone.records:
+            change = {
+                'Action': 'CREATE',
+                'ResourceRecordSet': {
+                    'Name': record.name,
+                    'Type': record.type,
+                    'TTL': record.ttl,
+                    'ResourceRecords': record.resource_records
+                }
+            }
+            changes.append(change)
+        request = {"HostedZoneId": hosted_zone.id, "ChangeBatch": {"Changes": changes}}
+        return self.route53_client.raw_change_resource_record_sets(request)
+

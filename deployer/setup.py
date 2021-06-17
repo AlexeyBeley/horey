@@ -19,5 +19,8 @@ setup(
 	author_email="alexey.beley@gmail.com",
 	license="DWTFYWTPL",
 	packages=["horey.deployer"],
+	package_data={
+		"": ["data/*.sh"],
+	},
 	include_package_data=True,
 	zip_safe=False)

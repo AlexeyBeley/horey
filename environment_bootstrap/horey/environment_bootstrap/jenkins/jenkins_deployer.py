@@ -332,7 +332,7 @@ class JenkinsDeployer:
             ],
         }
 
-        sg_id = self.aws_api.ec2_client.create_security_group(security_group)
+        sg_id = self.aws_api.ec2_client.raw_create_security_group(security_group)
         input_ports_request = {
             "GroupId": sg_id,
             "IpPermissions": [
@@ -362,7 +362,7 @@ class JenkinsDeployer:
             ],
         }
 
-        sg_agent_id = self.aws_api.ec2_client.create_security_group(security_group)
+        sg_agent_id = self.aws_api.ec2_client.raw_create_security_group(security_group)
         input_ports_request = {
             "GroupId": sg_agent_id,
             "IpPermissions": [

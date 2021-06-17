@@ -124,19 +124,19 @@ class AzureAPI:
         with open(cache_file_path, "w+") as file_handler:
             json.dump(lst_dicts, file_handler, indent=4)
 
-    def deploy_resource_group(self, resource_group):
+    def provision_resource_group(self, resource_group):
         response = self.resource_client.raw_create_resource_group(resource_group.generate_create_request())
         resource_group.update_after_creation(response)
 
-    def deploy_virtual_network(self, virtual_network):
+    def provision_virtual_network(self, virtual_network):
         response = self.network_client.raw_create_virtual_networks(virtual_network.generate_create_request())
         virtual_network.update_after_creation(response)
 
-    def deploy_ssh_key(self, ssh_key):
+    def provision_ssh_key(self, ssh_key):
         response = self.compute_client.raw_create_ssh_key(ssh_key.generate_create_request())
         ssh_key.update_after_creation(response)
 
-    def deploy_disk(self, disk):
+    def provision_disk(self, disk):
         response = self.compute_client.raw_create_disk(disk.generate_create_request())
         disk.update_after_creation(response)
 
@@ -152,51 +152,51 @@ class AzureAPI:
     def delete_load_balancer(self, object_repr):
         return self.network_client.raw_delete_load_balancer(object_repr)
 
-    def deploy_public_ip_address(self, public_ip_address):
+    def provision_public_ip_address(self, public_ip_address):
         response = self.network_client.raw_create_public_ip_addresses(public_ip_address.generate_create_request())
         public_ip_address.update_after_creation(response)
 
-    def deploy_nat_gateway(self, building_block):
+    def provision_nat_gateway(self, building_block):
         response = self.network_client.raw_create_nat_gateway(building_block.generate_create_request())
         building_block.update_after_creation(response)
 
-    def deploy_network_interface(self, building_block):
+    def provision_network_interface(self, building_block):
         response = self.network_client.raw_create_network_interfaces(building_block.generate_create_request())
         building_block.update_after_creation(response)
 
-    def deploy_network_security_group(self, building_block):
+    def provision_network_security_group(self, building_block):
         response = self.network_client.raw_create_network_security_group(building_block.generate_create_request())
         building_block.update_after_creation(response)
 
-    def deploy_load_balancer(self, building_block):
+    def provision_load_balancer(self, building_block):
         response = self.network_client.raw_create_load_balancer(building_block.generate_create_request())
         building_block.update_after_creation(response)
 
-    def deploy_virtual_machine(self, building_block):
+    def provision_virtual_machine(self, building_block):
         response = self.compute_client.raw_create_virtual_machines(building_block.generate_create_request())
         building_block.update_after_creation(response)
 
-    def deploy(self, building_block):
+    def provision(self, building_block):
         if isinstance(building_block, ResourceGroup):
-            self.deploy_resource_group(building_block)
+            self.provision_resource_group(building_block)
         elif isinstance(building_block, VirtualNetwork):
-            self.deploy_virtual_network(building_block)
+            self.provision_virtual_network(building_block)
         elif isinstance(building_block, SSHKey):
-            self.deploy_ssh_key(building_block)
+            self.provision_ssh_key(building_block)
         elif isinstance(building_block, Disk):
-            self.deploy_disk(building_block)
+            self.provision_disk(building_block)
         elif isinstance(building_block, PublicIpAddress):
-            self.deploy_public_ip_address(building_block)
+            self.provision_public_ip_address(building_block)
         elif isinstance(building_block, NatGateway):
-            self.deploy_nat_gateway(building_block)
+            self.provision_nat_gateway(building_block)
         elif isinstance(building_block, NetworkInterface):
-            self.deploy_network_interface(building_block)
+            self.provision_network_interface(building_block)
         elif isinstance(building_block, NetworkSecurityGroup):
-            self.deploy_network_security_group(building_block)
+            self.provision_network_security_group(building_block)
         elif isinstance(building_block, VirtualMachine):
-            self.deploy_virtual_machine(building_block)
+            self.provision_virtual_machine(building_block)
         elif isinstance(building_block, LoadBalancer):
-            self.deploy_load_balancer(building_block)
+            self.provision_load_balancer(building_block)
         else:
             raise NotImplementedError(f"Not yet implemented deployment for {type(building_block)}")
 

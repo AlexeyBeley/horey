@@ -3,7 +3,6 @@ sudo mount -t nfs4 -o  nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,re
 """
 import json
 import sys
-sys.path.insert(0, "/Users/alexey.beley/private/horey/aws_api")
 import pdb
 
 import pytest
@@ -179,6 +178,43 @@ def test_init_and_cache_ec2_launch_templates():
     aws_api.init_ec2_launch_templates()
     aws_api.cache_objects(aws_api.ec2_launch_templates, configuration.aws_api_ec2_launch_templates_cache_file)
     assert isinstance(aws_api.ec2_launch_templates, list)
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_event_bridge_rules():
+    aws_api.init_event_bridge_rules()
+    aws_api.cache_objects(aws_api.event_bridge_rules, configuration.aws_api_event_bridge_rules_cache_file)
+    assert isinstance(aws_api.event_bridge_rules, list)
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_secrets_manager_secrets():
+    aws_api.init_secrets_manager_secrets()
+    #ret = [secret for secret in aws_api.secrets_manager_secrets if secret.name.startswith("stg_")]
+    #for secret in ret:
+        #aws_api.copy_secrets_manager_secret_to_region(secret.name, "eu-central-1", "us-east-1")
+
+    #pdb.set_trace()
+    assert isinstance(aws_api.secrets_manager_secrets, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_servicediscovery_services():
+    aws_api.init_servicediscovery_services()
+    aws_api.cache_objects(aws_api.servicediscovery_services, configuration.aws_api_servicediscovery_services_cache_file)
+    assert isinstance(aws_api.servicediscovery_services, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_elasticsearch_domains():
+    aws_api.init_elasticsearch_domains()
+    aws_api.cache_objects(aws_api.elasticsearch_domains, configuration.aws_api_elasticsearch_domains_cache_file)
+    assert isinstance(aws_api.elasticsearch_domains, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_managed_prefix_lists():
+    aws_api.init_managed_prefix_lists()
+    aws_api.cache_objects(aws_api.managed_prefix_lists, configuration.aws_api_managed_prefix_lists_cache_file)
+    assert isinstance(aws_api.managed_prefix_lists, list)
 # endregion
 
 
@@ -187,4 +223,4 @@ if __name__ == "__main__":
     106 = 41.7
     112 = 44 
     """
-    test_init_and_cache_raw_large_cloud_watch_log_groups()
+    test_init_and_cache_hosted_zones()

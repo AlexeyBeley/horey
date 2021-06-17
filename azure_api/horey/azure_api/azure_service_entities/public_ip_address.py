@@ -37,6 +37,7 @@ class PublicIpAddress(AzureObject):
             "idle_timeout_in_minutes": self.init_default_attr,
             "resource_guid": self.init_default_attr,
             "provisioning_state": self.init_default_attr,
+            "nat_gateway": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)

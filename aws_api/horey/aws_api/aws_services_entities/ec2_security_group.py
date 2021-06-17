@@ -116,6 +116,19 @@ class EC2SecurityGroup(AwsObject):
 
         return lst_ret
 
+    def generate_permissions_request_dict(self):
+        pdb.set_trace()
+
+        return [
+            {'IpProtocol': 'tcp',
+             'FromPort': 80,
+             'ToPort': 80,
+             'IpRanges': [{'CidrIp': '0.0.0.0/0'}]},
+            {'IpProtocol': 'tcp',
+             'FromPort': 22,
+             'ToPort': 22,
+             'IpRanges': [{'CidrIp': '0.0.0.0/0'}]}]
+
     class IpPermission(AwsObject):
         """
         Class representing AWS ip permission.
