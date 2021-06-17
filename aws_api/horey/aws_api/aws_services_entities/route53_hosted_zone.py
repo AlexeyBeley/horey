@@ -1,6 +1,8 @@
 """
 Module handling AWS route53 hosted zone
 """
+import datetime
+
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 
 
@@ -10,6 +12,9 @@ class HostedZone(AwsObject):
     """
     def __init__(self, dict_src, from_cache=False):
         self.records = []
+        self.vpc_associations = []
+        self.config = None
+
         super().__init__(dict_src)
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -55,6 +60,13 @@ class HostedZone(AwsObject):
 
         for record in lst_src:
             self.records.append(self.Record(record, from_cache=True))
+
+    def generate_create_request(self):
+        return {"Name": self.name,
+                "VPC": self.vpc_associations[0],
+                "CallerReference": self.name + str(datetime.datetime.now()),
+                "HostedZoneConfig": self.config,
+                }
 
     class Record(AwsObject):
         """

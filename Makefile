@@ -10,10 +10,15 @@ ALL_PACKAGES := $(wildcard *)
 EXCLUSIONS := LICENSE Makefile README.md build dns_map docker terraform security_group_map pypi_infra h_flow network
 SRC_FILES := $(filter-out $(EXCLUSIONS), $(ALL_PACKAGES))
 
-create_build_env:
+inall-pip:
+	apt-get update
+	apt-get -y install python3-pip
+	pip3 install --upgrade pip
+
+create_build_env: inall-pip
 	mkdir -p ${BUILD_TMP_DIR} &&\
 	pip3 install wheel &&\
-	pip3 install -U setuptools
+	pip3 install --upgrade setuptools
 
 init_venv_dir: create_build_env
 	python3 -m venv ${VENV_DIR}

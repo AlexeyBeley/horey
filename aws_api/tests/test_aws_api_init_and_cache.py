@@ -223,4 +223,4 @@ if __name__ == "__main__":
     106 = 41.7
     112 = 44 
     """
-    test_init_and_cache_managed_prefix_lists()
+    test_init_and_cache_hosted_zones()

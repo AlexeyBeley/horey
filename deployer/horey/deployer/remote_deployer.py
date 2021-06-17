@@ -54,7 +54,7 @@ class RemoteDeployer:
         self.configuration = configuration
 
     def deploy_blocks(self, blocks_to_deploy: List[MachineDeploymentBlock]):
-        self.begin_provisioning_deployment_infrastructure(blocks_to_deploy)
+        self.provision_remote_deployer_infrastructure(blocks_to_deploy)
 
         self.begin_provisioning_deployment_code(blocks_to_deploy)
 
@@ -64,7 +64,7 @@ class RemoteDeployer:
 
         self.wait_for_deployment_to_end(blocks_to_deploy)
 
-    def begin_provisioning_deployment_infrastructure(self, deployment_targets):
+    def provision_remote_deployer_infrastructure(self, deployment_targets):
         """
         """
         for deployment_target in deployment_targets:
@@ -208,7 +208,6 @@ class RemoteDeployer:
         logger.info(f"[REMOTE] {command}")
 
         client.exec_command(command)
-        #client.exec_command(command, get_pty=True)
 
     def get_status_path_from_script_path(self, script_path):
         pdb.set_trace()

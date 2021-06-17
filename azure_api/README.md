@@ -39,6 +39,15 @@ To sign in, use a web browser to open the page https://microsoft.com/devicelogin
 
 #az ad sp create-for-rbac --name localtest-sp-rbac --skip-assignment
 #To retrieve your subscription ID, run the "az account show" command and look for the id property in the output.]
+
+# ubuntu:
+pip3 install setuptools_rust docker-compose
+#did not work sudo apt-get install rustc -y
+# sudo apt-get install libpcre3-dev -y
+cryptography==3.0.0
+
+pip3 install azure-identity
+
 pip3 install setuptools_rust docker-compose
 brew install rust
 pip3 install azure-identity

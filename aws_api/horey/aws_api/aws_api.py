@@ -1558,3 +1558,29 @@ class AWSAPI:
 
         ret = self.ec2_client.raw_modify_managed_prefix_list(request)
         print(ret)
+
+    def provision_hosted_zone(self, hosted_zone):
+        self.route53_client.create_hosted_zone(hosted_zone)
+
+        for vpc_association in hosted_zone.vpc_associations[1:]:
+            associate_request = {"HostedZoneId": hosted_zone.id,
+            "VPC": vpc_association
+            }
+
+            self.route53_client.raw_associate_vpc_with_hosted_zone(associate_request)
+
+        changes = []
+        for record in hosted_zone.records:
+            change = {
+                'Action': 'CREATE',
+                'ResourceRecordSet': {
+                    'Name': record.name,
+                    'Type': record.type,
+                    'TTL': record.ttl,
+                    'ResourceRecords': record.resource_records
+                }
+            }
+            changes.append(change)
+        request = {"HostedZoneId": hosted_zone.id, "ChangeBatch": {"Changes": changes}}
+        return self.route53_client.raw_change_resource_record_sets(request)
+
