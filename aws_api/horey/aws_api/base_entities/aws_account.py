@@ -3,6 +3,9 @@ AWS account management module - defines how to connect to an account in order to
 """
 from enum import Enum
 from horey.aws_api.base_entities.region import Region
+from horey.h_logger import get_logger
+
+logger = get_logger()
 
 
 class AWSAccount:
@@ -119,6 +122,7 @@ class AWSAccount:
             CREDENTIALS = 0
             PROFILE = 1
             ASSUME_ROLE = 2
+            CURRENT_ROLE = 3
 
         def __init__(self, dict_src):
             self.aws_access_key_id = None
@@ -130,18 +134,23 @@ class AWSAccount:
             self.external_id = None
 
             if "region_mark" in dict_src:
-                self.region = Region()
-                self.region.region_mark = dict_src["region_mark"]
+                self.region = Region.get_region(dict_src["region_mark"])
 
             if "credentials" in dict_src:
                 raise NotImplementedError()
 
             if "profile" in dict_src:
+                logger.info(f"Setting connection step type to AWSAccount.ConnectionStep.Type.PROFILE: {dict_src}")
                 self.type = AWSAccount.ConnectionStep.Type.PROFILE
                 self.profile_name = dict_src["profile"]
             elif "assume_role" in dict_src:
                 self.type = AWSAccount.ConnectionStep.Type.ASSUME_ROLE
                 self.role_arn = dict_src["assume_role"]
+            elif "role" in dict_src:
+                if dict_src["role"] != "current":
+                    raise ValueError(dict_src["role"])
+                logger.info(f"Setting connection step type to AWSAccount.ConnectionStep.Type.CURRENT_ROLE: {dict_src}")
+                self.type = AWSAccount.ConnectionStep.Type.CURRENT_ROLE
             else:
                 raise NotImplementedError(f"Unknown {dict_src}")
 

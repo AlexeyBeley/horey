@@ -124,6 +124,8 @@ class SessionsManager:
                                             region_name=connection_step.region.region_mark)
         elif connection_step.type == connection_step.Type.ASSUME_ROLE:
             session = SessionsManager.start_assuming_role(connection_step.role_arn, session, extra_args=extra_args)
+        elif connection_step.type == connection_step.Type.CURRENT_ROLE:
+            session = boto3.session.Session(region_name=connection_step.region.region_mark)
         else:
             raise NotImplementedError(f"Unknown connection_step type: {connection_step.type}")
 
