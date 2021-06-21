@@ -18,7 +18,13 @@ class ComputeClient(AzureClient):
 
     def raw_create_virtual_machines(self, lst_args):
         logger.info(f"Begin virtual machine creation: '{lst_args[1]}'")
-        response = self.client.virtual_machines.begin_create_or_update(*lst_args)
+        try:
+            response = self.client.virtual_machines.begin_create_or_update(*lst_args)
+        except Exception as inst:
+            print(inst)
+            ret = inst
+            pdb.set_trace()
+
         response.wait()
         return response.result()
 

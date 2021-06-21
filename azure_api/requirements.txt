@@ -1,6 +1,6 @@
 pip==21.1.2
 setuptools-rust==0.12.1
-cryptography==3.0.0
+cryptography==3.4.7
 horey.configuration_policy>=1.0.0
 horey.h_logger>=1.0.0
 horey.common_utils>=1.0.0

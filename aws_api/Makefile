@@ -50,6 +50,11 @@ put_file_value:
 	export PYTHONPATH=${AWS_API_DIR} &&\
 	python3 ${AWS_API_DIR}/aws_api_actor.py --action put_secret_file --secret_name "file_name" --secret_file_path "file_path" --configuration_file_full_path ${CONFIGURATION_FILE_PATH}
 
+get_secret_file:
+	source ${VENV_BIN_DIR}/activate &&\
+	export PYTHONPATH=${AWS_API_DIR} &&\
+	python3 ${AWS_API_DIR}/aws_api_actor.py --action get_secret_file --secret_name "file_name" --secret_file_path "file_path" --configuration_file_full_path "None"
+
 push_sns:
 	source ${VENV_BIN_DIR}/activate &&\
 	python3 ${AWS_API_CLIENTS_DIR}/sns_client_actor.py --action publish --topic_arn "arn:aws:sns:us-east-1:211921183446:infrastracture-alarm" --subject "zabbix-test-from-local" --message "please ignore" --accounts_file "/Users/alexey.beley/private/ignore/accounts/managed_accounts.py" --account "211921183446"

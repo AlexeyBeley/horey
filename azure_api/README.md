@@ -45,8 +45,16 @@ pip3 install setuptools_rust docker-compose
 #did not work sudo apt-get install rustc -y
 # sudo apt-get install libpcre3-dev -y
 cryptography==3.0.0
-
 pip3 install azure-identity
+
+# macos
+test:
+3.4.7
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+Warning:  is not in your PATH.
+export PATH="/opt/homebrew/bin:$PATH"
+brew install openssl
+
 
 pip3 install setuptools_rust docker-compose
 brew install rust

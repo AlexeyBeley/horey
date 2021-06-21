@@ -81,6 +81,7 @@ class Route53Client(Boto3Client):
                 raise
 
     def raw_change_resource_record_sets(self, request_dict):
+        logger.info(f"Updating hosted zone record set: {request_dict}")
         try:
             for response in self.execute(self.client.change_resource_record_sets, "ChangeInfo", filters_req=request_dict):
                 return response

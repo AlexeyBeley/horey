@@ -78,9 +78,11 @@ class SessionsManager:
         :return:
         """
         aws_account = AWSAccount.get_aws_account()
+        aws_account_id = "default_account" if aws_account is None else aws_account.id
+
         aws_region = AWSAccount.get_aws_region()
         region_mark = aws_region.region_mark if aws_region is not None else ""
-        return f"{aws_account.id}/{region_mark}"
+        return f"{aws_account_id}/{region_mark}"
 
     @staticmethod
     def get_connection():
@@ -133,14 +135,14 @@ class SessionsManager:
         Each account can be managed after several steps of connection - run all steps in order to connect.
         :return:
         """
+        session = None
         aws_account = AWSAccount.get_aws_account()
 
-        if len(aws_account.connection_steps) == 0:
-            raise RuntimeError(f"No connection steps defined for aws_account: '{aws_account.id}'")
-
-        session = None
-        for connection_step in aws_account.connection_steps:
-            session = SessionsManager.execute_connection_step(connection_step, session)
+        if aws_account is None or len(aws_account.connection_steps) == 0:
+            session = boto3.session.Session()
+        else:
+            for connection_step in aws_account.connection_steps:
+                session = SessionsManager.execute_connection_step(connection_step, session)
 
         if session is None:
             raise RuntimeError(f"Could not establish session for aws_account {aws_account.id}")

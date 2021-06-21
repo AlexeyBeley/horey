@@ -192,6 +192,8 @@ class RemoteDeployer:
                 remote_bind_address=(block_to_deploy.deployment_target_address, 22),
                 ssh_username=block_to_deploy.bastion_user_name,
                 ssh_pkey=bastion_key) as tunnel:
+            logger.info(f"Opened SSH tunnel to {block_to_deploy.deployment_target_address} via {block_to_deploy.bastion_address} ")
+
             with paramiko.SSHClient() as client:
                 client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
                 client.connect(

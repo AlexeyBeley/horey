@@ -40,11 +40,6 @@ class ElasticsearchClient(Boto3Client):
 
         return final_result
 
-    def update_service_instances(self, sd_service):
-        filters_req = {"ServiceId": sd_service.id}
-        final_result = []
-
-        for response in self.execute(self.client.list_instances, "Instances", filters_req=filters_req):
-            obj = ServicediscoveryInstance(response)
-            final_result.append(obj)
-            sd_service.instances.append(obj)
+    def raw_update_elasticsearch_domain_config(self, request):
+        for response in self.execute(self.client.update_elasticsearch_domain_config, "DomainConfig", filters_req=request):
+            return response

@@ -1528,8 +1528,13 @@ class AWSAPI:
             contents = file_handler.read()
         self.put_secret_value(secret_name, contents)
 
-    def get_secret_file(self, secret_name, dir_path):
+    def get_secret_file(self, secret_name, dir_path: str):
+        if dir_path.endswith(secret_name):
+            dir_path = os.path.dirname(dir_path)
+
+        os.makedirs(dir_path, exist_ok=True)
         contents = self.get_secret_value(secret_name)
+
         with open(os.path.join(dir_path, secret_name), "w+") as file_handler:
             file_handler.write(contents)
 
@@ -1572,7 +1577,7 @@ class AWSAPI:
         changes = []
         for record in hosted_zone.records:
             change = {
-                'Action': 'CREATE',
+                'Action': 'UPSERT',
                 'ResourceRecordSet': {
                     'Name': record.name,
                     'Type': record.type,
@@ -1584,3 +1589,10 @@ class AWSAPI:
         request = {"HostedZoneId": hosted_zone.id, "ChangeBatch": {"Changes": changes}}
         return self.route53_client.raw_change_resource_record_sets(request)
 
+    def add_elasticsearch_access_policy_raw_statements(self, elasticsearch_domain, raw_statements):
+        access_policies = json.loads(elasticsearch_domain.access_policies)
+        access_policies["Statement"] += raw_statements
+        access_policies_str = json.dumps(access_policies)
+
+        request = {"DomainName": elasticsearch_domain.name, "AccessPolicies": access_policies_str}
+        self.elasticsearch_client.raw_update_elasticsearch_domain_config(request)

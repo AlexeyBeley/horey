@@ -21,14 +21,16 @@ create_build_env:
 	pip3 install --upgrade setuptools
 
 init_venv_dir: create_build_env
-	python3 -m venv ${VENV_DIR}
+	python3 -m venv ${VENV_DIR} &&\
+	source ${VENV_DIR}/bin/activate &&\
+	pip3 install --upgrade pip &&\
+	pip3 install -U setuptools
 
 prepare_package_wheel-%: init_venv_dir
 	${BUILD_DIR}/create_wheel.sh $(subst prepare_package_wheel-,,$@)
 
 recursive_install_from_source_local_venv-%: init_venv_dir
 	source ${VENV_DIR}/bin/activate &&\
-	pip3 install -U setuptools &&\
 	${BUILD_DIR}/recursive_install_from_source.sh --root_dir ${ROOT_DIR} --package_name horey.$(subst recursive_install_from_source_local_venv-,,$@)
 
 package_source-%:
