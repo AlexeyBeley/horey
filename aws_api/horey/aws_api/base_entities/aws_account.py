@@ -45,7 +45,7 @@ class AWSAccount:
         :return:
         """
         if isinstance(value, str):
-            value = AWSAccount.get_aws_account().regions[value]
+            value = Region.get_region(value)
 
         if not isinstance(value, Region):
             raise ValueError(f"{value} is not of type Region")

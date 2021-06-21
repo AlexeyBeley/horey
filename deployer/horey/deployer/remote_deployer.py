@@ -68,28 +68,26 @@ class RemoteDeployer:
         """
         """
         for deployment_target in deployment_targets:
-            self.perform_recursive_replacements(deployment_target.replacements_base_dir_path, deployment_target.string_replacements)
             with self.get_deployment_target_client(deployment_target) as client:
-                target_remote_scripts_dir_path = os.path.join(deployment_target.remote_deployment_dir_path, deployment_target.remote_scripts_dir_name)
-                command = f"rm -rf {target_remote_scripts_dir_path}"
+                command = f"rm -rf {deployment_target.remote_target_deployment_directory_path}"
                 logger.info(f"[REMOTE] {command}")
                 client.exec_command(command)
 
                 transport = client.get_transport()
                 sftp_client = HoreySFTPClient.from_transport(transport)
 
-                logger.info(f"sftp: mkdir {target_remote_scripts_dir_path}")
-                sftp_client.mkdir(target_remote_scripts_dir_path, ignore_existing=True)
+                logger.info(f"sftp: mkdir {deployment_target.remote_target_deployment_directory_path}")
+                sftp_client.mkdir(deployment_target.remote_target_deployment_directory_path, ignore_existing=True)
 
-                logger.info(f"sftp: put_dir {target_remote_scripts_dir_path}")
-                sftp_client.put_dir(os.path.join(deployment_target.local_deployment_dir_path, deployment_target.remote_scripts_dir_name),
-                                    target_remote_scripts_dir_path)
+                logger.info(f"sftp: put_dir {deployment_target.remote_target_deployment_directory_path}")
+                sftp_client.put_dir(deployment_target.local_deployment_dir_path,
+                                    deployment_target.remote_target_deployment_directory_path)
 
-                logger.info(f"sftp: Uploading '{os.path.join(target_remote_scripts_dir_path, 'remote_step_executor.sh')}'")
+                logger.info(f"sftp: Uploading '{os.path.join(deployment_target.remote_target_deployment_directory_path, 'remote_step_executor.sh')}'")
                 sftp_client.put(os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "remote_step_executor.sh"),
-                                    os.path.join(target_remote_scripts_dir_path, "remote_step_executor.sh"))
+                                    os.path.join(deployment_target.remote_target_deployment_directory_path, "remote_step_executor.sh"))
 
-                command = f"sudo chmod +x {os.path.join(target_remote_scripts_dir_path, 'remote_step_executor.sh')}"
+                command = f"sudo chmod +x {os.path.join(deployment_target.remote_target_deployment_directory_path, 'remote_step_executor.sh')}"
                 logger.info(f"[REMOTE] {command}")
                 client.exec_command(command)
 
@@ -121,7 +119,6 @@ class RemoteDeployer:
 
     def begin_provisioning_deployment_code(self, deployment_targets: List[MachineDeploymentBlock]):
         for deployment_target in deployment_targets:
-            self.perform_recursive_replacements(deployment_target.replacements_base_dir_path, deployment_target.string_replacements)
             with self.get_deployment_target_client(deployment_target) as client:
                 transport = client.get_transport()
                 sftp_client = HoreySFTPClient.from_transport(transport)
