@@ -27,6 +27,8 @@ class MachineDeploymentBlock:
         self.application_deploy_step = None
         self.local_deployment_dir_path = None
 
+        self.remote_deployer_infrastructure_provisioning_finished = False
+
     @property
     def local_deployment_data_dir_path(self):
         if self.local_deployment_dir_path is None:
