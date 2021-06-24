@@ -163,3 +163,83 @@ class EC2Instance(AwsObject):
                 lst_ret.append(ret_inter)
 
         return lst_ret
+
+    def create(self):
+        return {
+            "DisableApiTermination": True,
+            "InstanceInitiatedShutdownBehavior": 'stop',
+            "NetworkInterfaces": [
+                {
+                    'AssociatePublicIpAddress': True,
+                    'DeleteOnTermination': True,
+                    'DeviceIndex': 0,
+                    'Groups': [
+                        SEC_GROUP,
+                    ],
+                    'Ipv6AddressCount': 0,
+                    'SubnetId': SUBNET,
+                    'InterfaceType': 'interface',
+                    'NetworkCardIndex': 0
+                },
+            ],
+            "CreditSpecification": {
+                'CpuCredits': 'unlimited'
+            },
+            "BlockDeviceMappings": [
+                {
+                    'DeviceName': '/dev/sda1',
+                    'Ebs': {
+                        'DeleteOnTermination': True,
+                        'VolumeSize': 20,
+                        'VolumeType': 'standard',
+                    },
+                },
+                {
+                    'DeviceName': '/dev/sdb',
+                    'Ebs': {
+                        'DeleteOnTermination': False,
+                        'VolumeSize': 40,
+                        'VolumeType': 'standard',
+                    },
+                },
+                {
+                    'DeviceName': '/dev/sdc',
+                    'Ebs': {
+                        'DeleteOnTermination': True,
+                        'VolumeSize': 20,
+                        'VolumeType': 'standard',
+                    },
+                },
+            ],
+            "ImageId": AMI_ID,
+            "InstanceType": 't2.micro',
+            "KeyName": 'jenkins-key',
+            "Monitoring": {
+                'Enabled': True
+            },
+            "TagSpecifications": [
+                {
+                    'ResourceType': 'instance',
+                    'Tags': [
+                        {
+                            'Key': 'Name',
+                            'Value': 'jenkins-master-tmp'
+                        },
+                        {
+                            'Key': 'env_level',
+                            'Value': 'production'
+                        },
+                        {
+                            'Key': 'env_name',
+                            'Value': 'production'
+                        },
+
+                    ]
+                },
+            ],
+            "IamInstanceProfile": {
+                'Name': 'service-role-jenkins'
+            },
+            "MaxCount": 1,
+            "MinCount": 1
+        }

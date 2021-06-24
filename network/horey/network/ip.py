@@ -16,9 +16,9 @@ class IP:
 
     def __init__(self, address, **kwargs):
         self.type = None
-        self.str_int_mask = None
-        self.int_mask = None
-        self.str_mask = None
+        self._str_int_mask = None
+        self._int_mask = None
+        self._str_mask = None
         self.str_address = None
         self.logger = None
 
@@ -149,10 +149,6 @@ class IP:
         if ":" in str_src:
             self.type = IP.Types.IPV6
 
-        self.str_mask = None
-        self.str_int_mask = None
-        self.int_mask = None
-
         if "str_mask" in kwargs:
             raise NotImplementedError()
 
@@ -162,9 +158,9 @@ class IP:
             self.int_mask = kwargs["int_mask"]
 
         if "/" in str_src:
-            if (self.str_mask is not None) or \
-                    (self.int_mask is not None) or \
-                    (self.str_int_mask is not None):
+            if (self._str_mask is not None) or \
+                    (self._int_mask is not None) or \
+                    (self._str_int_mask is not None):
                 raise NotImplementedError()
 
             self.str_address, str_mask = str_src.split("/")
@@ -177,13 +173,26 @@ class IP:
             self.str_address = str_src
         return True
 
-    def init_int_mask(self):
-        if self.int_mask is None:
-            if not self.str_int_mask:
-                raise NotImplementedError()
-            self.int_mask = int(self.str_int_mask)
+    @property
+    def int_mask(self):
+        if self._int_mask is None:
+            self._int_mask = self.init_int_mask()
+        return self._int_mask
 
-        return self.int_mask
+    @int_mask.setter
+    def int_mask(self, value):
+        if self.type == self.Types.IPV4:
+            if not self.check_int_mask_v4_validity(value):
+                raise ValueError(value)
+        elif self.type == self.Types.IPV6:
+            if not self.check_int_mask_v6_validity(value):
+                raise ValueError(value)
+        self._int_mask = value
+
+    def init_int_mask(self):
+        if not self._str_int_mask:
+            raise NotImplementedError()
+        return int(self._str_int_mask)
 
     def init_str_address(self):
         if self.str_address:
@@ -226,37 +235,11 @@ class IP:
         self._str_int_mask = value
 
     @property
-    def int_mask(self):
-        return self._int_mask
-
-    @int_mask.setter
-    def int_mask(self, value):
-        if value is None:
-            self._int_mask = None
-            return
-
-        if self.type == IP.Types.IPV4:
-            if not IP.check_int_mask_v4_validity(value):
-                raise NotImplementedError()
-        elif self.type == IP.Types.IPV6:
-            if not IP.check_int_mask_v6_validity(value):
-                raise NotImplementedError()
-        else:
-            raise NotImplementedError()
-
-        self._int_mask = value
-
-    @property
     def str_mask(self):
         return self._str_mask
 
     @str_mask.setter
     def str_mask(self, value):
-        if value is None:
-            self._str_mask = None
-            return
-
-        raise NotImplementedError()
         self._str_mask = value
 
     @property
@@ -411,3 +394,23 @@ class IP:
     def copy(self):
         ip = IP(self.init_str_address(), int_mask=self.init_int_mask())
         return ip
+
+    def split(self, mask_length):
+        if self.type != self.Types.IPV4:
+            raise NotImplementedError()
+        str_address_bits = self.init_str_bit_address()
+        base = str_address_bits[:self.int_mask]
+        hosts_part = "0"*(32 - mask_length)
+        permutations = self.get_bit_permutations(2)
+        return [IP(f"{self.address_from_str_binary(base+permutation+hosts_part)}/{mask_length}") for permutation in permutations]
+
+    @staticmethod
+    def get_bit_permutations(count):
+        if count < 0:
+            raise ValueError()
+
+        if count == 0:
+            return [""]
+
+        sub_permutations = IP.get_bit_permutations(count-1)
+        return ["0"+permutation for permutation in sub_permutations] + ["1"+permutation for permutation in sub_permutations]

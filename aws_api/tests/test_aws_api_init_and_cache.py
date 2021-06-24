@@ -215,12 +215,93 @@ def test_init_and_cache_managed_prefix_lists():
     aws_api.init_managed_prefix_lists()
     aws_api.cache_objects(aws_api.managed_prefix_lists, configuration.aws_api_managed_prefix_lists_cache_file)
     assert isinstance(aws_api.managed_prefix_lists, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_vpcs():
+    aws_api.init_vpcs()
+    aws_api.cache_objects(aws_api.vpcs, configuration.aws_api_vpcs_cache_file)
+    assert isinstance(aws_api.vpcs, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_subnets():
+    aws_api.init_subnets()
+    aws_api.cache_objects(aws_api.subnets, configuration.aws_api_subnets_cache_file)
+    assert isinstance(aws_api.subnets, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_availability_zones():
+    aws_api.init_availability_zones()
+    aws_api.cache_objects(aws_api.availability_zones, configuration.aws_api_availability_zones_cache_file)
+    assert isinstance(aws_api.availability_zones, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_amis():
+    aws_api.init_amis()
+    aws_api.cache_objects(aws_api.amis, configuration.aws_api_amis_cache_file)
+    assert isinstance(aws_api.amis, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_key_pairs():
+    aws_api.init_key_pairs()
+    aws_api.cache_objects(aws_api.key_pairs, configuration.aws_api_key_pairs_cache_file)
+    assert isinstance(aws_api.key_pairs, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_internet_gateways():
+    aws_api.init_internet_gateways()
+    aws_api.cache_objects(aws_api.internet_gateways, configuration.aws_api_internet_gateways_cache_file)
+    assert isinstance(aws_api.internet_gateways, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_vpc_peerings():
+    aws_api.init_vpc_peerings()
+    aws_api.cache_objects(aws_api.vpc_peerings, configuration.aws_api_vpc_peerings_cache_file)
+    assert isinstance(aws_api.vpc_peerings, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_route_tables():
+    aws_api.init_route_tables()
+    aws_api.cache_objects(aws_api.route_tables, configuration.aws_api_route_tables_cache_file)
+    assert isinstance(aws_api.route_tables, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_elastic_addresses():
+    aws_api.init_elastic_addresses()
+    aws_api.cache_objects(aws_api.elastic_addresses, configuration.aws_api_elastic_addresses_cache_file)
+    assert isinstance(aws_api.elastic_addresses, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_nat_gateways():
+    aws_api.init_nat_gateways()
+    aws_api.cache_objects(aws_api.nat_gateways, configuration.aws_api_nat_gateways_cache_file)
+    assert isinstance(aws_api.nat_gateways, list)
 # endregion
 
-
+"""
+amis
+key_pairs
+internet_gateways
+vpc_peerings
+route_tables
+elastic_addresses
+nat_gateways
+"""
 if __name__ == "__main__":
-    """
-    106 = 41.7
-    112 = 44 
-    """
-    test_init_and_cache_hosted_zones()
+    test_init_and_cache_amis()
+    test_init_and_cache_key_pairs()
+    test_init_and_cache_internet_gateways()
+    test_init_and_cache_vpc_peerings()
+    test_init_and_cache_route_tables()
+    test_init_and_cache_elastic_addresses()
+    test_init_and_cache_nat_gateways()
+

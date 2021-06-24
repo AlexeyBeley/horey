@@ -2,7 +2,11 @@
 AWS ec2 client to handle ec2 service API requests.
 """
 
+from horey.aws_api.aws_services_entities.subnet import Subnet
 from horey.aws_api.aws_services_entities.ec2_instance import EC2Instance
+from horey.aws_api.aws_services_entities.vpc import VPC
+from horey.aws_api.aws_services_entities.availability_zone import AvailabilityZone
+
 from horey.aws_api.aws_services_entities.network_interface import NetworkInterface
 from horey.aws_api.aws_services_entities.ec2_security_group import EC2SecurityGroup
 from horey.aws_api.aws_services_entities.ec2_launch_template import EC2LaunchTemplate
@@ -16,6 +20,7 @@ from horey.h_logger import get_logger
 
 logger = get_logger()
 
+
 class EC2Client(Boto3Client):
     """
     Client to handle specific aws service API calls.
@@ -24,6 +29,69 @@ class EC2Client(Boto3Client):
     def __init__(self):
         client_name = "ec2"
         super().__init__(client_name)
+
+    def get_all_subnets(self):
+        """
+        Get all subnets in all regions.
+        :return:
+        """
+        final_result = list()
+
+        for region in AWSAccount.get_aws_account().regions.values():
+            AWSAccount.set_aws_region(region)
+            for dict_src in self.execute(self.client.describe_subnets, "Subnets"):
+                obj = Subnet(dict_src)
+                final_result.append(obj)
+
+        return final_result
+
+    def get_all_vpcs(self, region=None):
+        """
+        Get all interfaces in all regions.
+        :return:
+        """
+
+        if region is not None:
+            AWSAccount.set_aws_region(region)
+            return self.get_all_vpcs_in_current_region()
+
+        final_result = list()
+        for region in AWSAccount.get_aws_account().regions.values():
+            AWSAccount.set_aws_region(region)
+            final_result += self.get_all_vpcs_in_current_region()
+
+        return final_result
+
+    def get_all_vpcs_in_current_region(self):
+        final_result = []
+        for dict_src in self.execute(self.client.describe_vpcs, "Vpcs"):
+            obj = VPC(dict_src)
+            final_result.append(obj)
+        return final_result
+    
+    def get_all_availability_zones(self, region=None):
+        """
+        Get all interfaces in all regions.
+        :return:
+        """
+
+        if region is not None:
+            AWSAccount.set_aws_region(region)
+            return self.get_all_availability_zones_in_current_region()
+
+        final_result = list()
+        for region in AWSAccount.get_aws_account().regions.values():
+            AWSAccount.set_aws_region(region)
+            final_result += self.get_all_availability_zones_in_current_region()
+
+        return final_result
+
+    def get_all_availability_zones_in_current_region(self):
+        final_result = []
+        for dict_src in self.execute(self.client.describe_availability_zones, "AvailabilityZones"):
+            obj = AvailabilityZone(dict_src)
+            final_result.append(obj)
+        return final_result
 
     def get_all_interfaces(self):
         """
@@ -71,6 +139,15 @@ class EC2Client(Boto3Client):
                 final_result.append(obj)
 
         return final_result
+
+    def provision_security_group(self, security_group):
+        try:
+            self.raw_create_security_group(security_group.generate_create_request())
+        except Exception as exception_inst:
+            repr_exception_inst = repr(exception_inst)
+            if "already exists for VPC" not in repr_exception_inst:
+                raise
+            logger.warning(repr_exception_inst)
 
     def raw_create_security_group(self, request_dict):
         for response in self.execute(self.client.create_security_group, "GroupId", filters_req=request_dict):
@@ -137,7 +214,7 @@ class EC2Client(Boto3Client):
         for x in self.execute(self.client.authorize_security_group_ingress, None, filters_req=filters_req):
             pdb.set_trace()
 
-    def raw_create_managed_prefix_list(self, request, add_client_token=True):
+    def raw_create_managed_prefix_list(self, request, add_client_token=False):
         if add_client_token:
             if "ClientToken" not in request:
                 request["ClientToken"] = request["PrefixListName"]
@@ -190,7 +267,17 @@ class EC2Client(Boto3Client):
                                              filters_req=filters_req):
             prefix_list.add_entry_from_raw_response(entries_response)
 
-    def get_all_managed_prefix_lists(self, full_information=True):
+    def get_all_managed_prefix_lists(self, full_information=True, region=None):
+        if region is not None:
+            return self.get_all_managed_prefix_lists_in_region(region, full_information=full_information)
+
+        final_result = list()
+        for region in AWSAccount.get_aws_account().regions.values():
+            final_result += self.get_all_managed_prefix_lists_in_region(region, full_information=full_information)
+        return final_result
+
+    def get_all_managed_prefix_lists_in_region(self, region, full_information=True):
+        AWSAccount.set_aws_region(region)
         final_result = list()
 
         def _ignore_unsupported_operation_callback(exception_instance):
@@ -199,19 +286,58 @@ class EC2Client(Boto3Client):
                 return True
             return False
 
-        for region in AWSAccount.get_aws_account().regions.values():
-            AWSAccount.set_aws_region(region)
-            for response in self.execute(self.client.describe_managed_prefix_lists, "PrefixLists"):
-                obj = ManagedPrefixList(response)
-                if full_information is True:
-                    # todo: replace with update_managed_prefix_list_full_information
-                    filters_req = {"PrefixListId": obj.id}
-                    for associations_response in self.execute(self.client.get_managed_prefix_list_associations, "PrefixListAssociations", filters_req=filters_req, exception_ignore_callback=_ignore_unsupported_operation_callback):
-                        obj.add_association_from_raw_response(associations_response)
+        for response in self.execute(self.client.describe_managed_prefix_lists, "PrefixLists"):
+            obj = ManagedPrefixList(response)
+            if full_information is True:
+                # todo: replace with update_managed_prefix_list_full_information
+                filters_req = {"PrefixListId": obj.id}
+                for associations_response in self.execute(self.client.get_managed_prefix_list_associations, "PrefixListAssociations", filters_req=filters_req, exception_ignore_callback=_ignore_unsupported_operation_callback):
+                    obj.add_association_from_raw_response(associations_response)
 
-                    for entries_response in self.execute(self.client.get_managed_prefix_list_entries, "Entries", filters_req=filters_req):
-                        obj.add_entry_from_raw_response(entries_response)
+                for entries_response in self.execute(self.client.get_managed_prefix_list_entries, "Entries", filters_req=filters_req):
+                    obj.add_entry_from_raw_response(entries_response)
 
-                final_result.append(obj)
+            final_result.append(obj)
 
         return final_result
+
+    def provision_vpc(self, vpc):
+        lst_vpcs = self.get_all_vpcs(region=vpc.region)
+        for vpc_exists in lst_vpcs:
+            if vpc_exists.get_tagname() == vpc.get_tagname():
+                if vpc_exists.cidr_block != vpc.cidr_block:
+                    raise RuntimeError(f"VPC {vpc_exists.name} exists with different cidr_block {vpc_exists.cidr_block} != {vpc.cidr_block}")
+                return vpc.update_from_raw_create(vpc_exists.dict_src)
+
+        AWSAccount.set_aws_region(vpc.region.region_mark)
+        response = self.provision_vpc_raw(vpc.generate_create_request())
+        vpc.update_from_raw_create(response)
+
+    def provision_vpc_raw(self, request):
+        for response in self.execute(self.client.create_vpc, "Vpc", filters_req=request):
+            return response
+
+    def provision_subnets(self, subnets):
+        for subnet in subnets:
+            try:
+                self.provision_subnet_raw(subnet.generate_create_request())
+            except Exception as exception_inst:
+                if "conflicts with another subnet" in repr(exception_inst):
+                    logger.warning(f"{subnet.generate_create_request()}: {repr(exception_inst)}")
+                    continue
+                raise
+
+    def provision_subnet_raw(self, request):
+        for response in self.execute(self.client.create_subnet, "Subnet", filters_req=request):
+            return response
+
+    def provision_managed_prefix_list(self, managed_prefix_list):
+        lst_objects = self.get_all_managed_prefix_lists(region=managed_prefix_list.region)
+        for object_exists in lst_objects:
+            if object_exists.get_tagname() == managed_prefix_list.get_tagname():
+                managed_prefix_list.id = object_exists.id
+                return
+
+        AWSAccount.set_aws_region(managed_prefix_list.region.region_mark)
+        response = self.raw_create_managed_prefix_list(managed_prefix_list.generate_create_request())
+        managed_prefix_list.update_from_raw_create(response)

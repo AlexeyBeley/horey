@@ -129,6 +129,33 @@ class EC2SecurityGroup(AwsObject):
              'ToPort': 22,
              'IpRanges': [{'CidrIp': '0.0.0.0/0'}]}]
 
+    def generate_create_request(self):
+        """
+        Description='string',
+        GroupName='string',
+        VpcId='string',
+        TagSpecifications=[
+        {
+            'ResourceType': 'client-vpn-endpoint'|'customer-gateway'|'dedicated-host'|'dhcp-options'|'egress-only-internet-gateway'|'elastic-ip'|'elastic-gpu'|'export-image-task'|'export-instance-task'|'fleet'|'fpga-image'|'host-reservation'|'image'|'import-image-task'|'import-snapshot-task'|'instance'|'internet-gateway'|'key-pair'|'launch-template'|'local-gateway-route-table-vpc-association'|'natgateway'|'network-acl'|'network-interface'|'network-insights-analysis'|'network-insights-path'|'placement-group'|'reserved-instances'|'route-table'|'security-group'|'snapshot'|'spot-fleet-request'|'spot-instances-request'|'subnet'|'traffic-mirror-filter'|'traffic-mirror-session'|'traffic-mirror-target'|'transit-gateway'|'transit-gateway-attachment'|'transit-gateway-connect-peer'|'transit-gateway-multicast-domain'|'transit-gateway-route-table'|'volume'|'vpc'|'vpc-peering-connection'|'vpn-connection'|'vpn-gateway'|'vpc-flow-log',
+            'Tags': [
+                {
+                    'Key': 'string',
+                    'Value': 'string'
+                },
+            ]
+        },
+        ],
+        """
+        request = dict()
+        request["GroupName"] = self.name
+        request["Description"] = self.description
+        request["VpcId"] = self.vpc_id
+        request["TagSpecifications"] = [{
+                                        "ResourceType": "security-group",
+                                        "Tags": self.tags}]
+
+        return request
+
     class IpPermission(AwsObject):
         """
         Class representing AWS ip permission.

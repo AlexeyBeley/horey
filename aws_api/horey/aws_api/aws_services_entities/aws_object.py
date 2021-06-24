@@ -285,3 +285,13 @@ class AwsObject:
         """
         Can't parse the object while initializing.
         """
+
+    def get_tagname(self, ignore_not_exists=True):
+        for tag in self.tags:
+            if tag["Key"].lower() == "name":
+                return tag["Value"]
+
+        if ignore_not_exists:
+            return None
+
+        raise RuntimeError("No tag Name associated")

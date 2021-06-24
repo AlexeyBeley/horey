@@ -222,6 +222,85 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     def aws_api_managed_prefix_lists_cache_file(self, value):
         raise ValueError(value)
 
+    @property
+    def aws_api_vpcs_cache_file(self):
+        return os.path.join(self.aws_api_ec2_cache_dir, "vpcs.json")
+
+    @aws_api_vpcs_cache_file.setter
+    def aws_api_vpcs_cache_file(self, value):
+        raise ValueError(value)
+    
+    @property
+    def aws_api_subnets_cache_file(self):
+        return os.path.join(self.aws_api_ec2_cache_dir, "subnets.json")
+
+    @aws_api_subnets_cache_file.setter
+    def aws_api_subnets_cache_file(self, value):
+        raise ValueError(value)
+    
+    @property
+    def aws_api_availability_zones_cache_file(self):
+        return os.path.join(self.aws_api_ec2_cache_dir, "availability_zones.json")
+
+    @aws_api_availability_zones_cache_file.setter
+    def aws_api_availability_zones_cache_file(self, value):
+        raise ValueError(value)
+    
+    @property
+    def aws_api_amis_cache_file(self):
+        return os.path.join(self.aws_api_ec2_cache_dir, "amis.json")
+
+    @aws_api_amis_cache_file.setter
+    def aws_api_amis_cache_file(self, value):
+        raise ValueError(value)
+    
+    @property
+    def aws_api_key_pairs_cache_file(self):
+        return os.path.join(self.aws_api_ec2_cache_dir, "key_pairs.json")
+
+    @aws_api_key_pairs_cache_file.setter
+    def aws_api_key_pairs_cache_file(self, value):
+        raise ValueError(value)
+    
+    @property
+    def aws_api_internet_gateways_cache_file(self):
+        return os.path.join(self.aws_api_ec2_cache_dir, "internet_gateways.json")
+
+    @aws_api_internet_gateways_cache_file.setter
+    def aws_api_internet_gateways_cache_file(self, value):
+        raise ValueError(value)
+    
+    @property
+    def aws_api_vpc_peerings_cache_file(self):
+        return os.path.join(self.aws_api_ec2_cache_dir, "vpc_peerings.json")
+
+    @aws_api_vpc_peerings_cache_file.setter
+    def aws_api_vpc_peerings_cache_file(self, value):
+        raise ValueError(value)
+    
+    @property
+    def aws_api_route_tables_cache_file(self):
+        return os.path.join(self.aws_api_ec2_cache_dir, "route_tables.json")
+
+    @aws_api_route_tables_cache_file.setter
+    def aws_api_route_tables_cache_file(self, value):
+        raise ValueError(value)
+    
+    @property
+    def aws_api_elastic_addresses_cache_file(self):
+        return os.path.join(self.aws_api_ec2_cache_dir, "elastic_addresses.json")
+
+    @aws_api_elastic_addresses_cache_file.setter
+    def aws_api_elastic_addresses_cache_file(self, value):
+        raise ValueError(value)
+    
+    @property
+    def aws_api_nat_gateways_cache_file(self):
+        return os.path.join(self.aws_api_ec2_cache_dir, "nat_gateways.json")
+
+    @aws_api_nat_gateways_cache_file.setter
+    def aws_api_nat_gateways_cache_file(self, value):
+        raise ValueError(value)
     # endregion
 
     # region lambda

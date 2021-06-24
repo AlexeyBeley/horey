@@ -68,6 +68,10 @@ from horey.aws_api.aws_services_entities.servicediscovery_service import Service
 from horey.aws_api.aws_clients.elasticsearch_client import ElasticsearchClient
 from horey.aws_api.aws_services_entities.elasticsearch_domain import ElasticsearchDomain
 
+from horey.aws_api.aws_services_entities.vpc import VPC
+from horey.aws_api.aws_services_entities.subnet import Subnet
+from horey.aws_api.aws_services_entities.availability_zone import AvailabilityZone
+
 
 from horey.common_utils.common_utils import CommonUtils
 from horey.network.dns import DNS
@@ -129,6 +133,16 @@ class AWSAPI:
         self.servicediscovery_services = []
         self.elasticsearch_domains = []
         self.managed_prefix_lists = []
+        self.vpcs = []
+        self.subnets = []
+        self.availability_zones = []
+        self.amis = []
+        self.key_pairs = []
+        self.internet_gateways = []
+        self.vpc_peerings = []
+        self.route_tables = []
+        self.elastic_addresses = []
+        self.nat_gateways = []
 
         self.configuration = configuration
         self.init_configuration()
@@ -149,6 +163,86 @@ class AWSAPI:
             objects = self.ec2_client.get_all_managed_prefix_lists()
 
         self.managed_prefix_lists += objects
+    
+    def init_vpcs(self, from_cache=False, cache_file=None):
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, VPC)
+        else:
+            objects = self.ec2_client.get_all_vpcs()
+
+        self.vpcs += objects
+        
+    def init_subnets(self, from_cache=False, cache_file=None):
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, Subnet)
+        else:
+            objects = self.ec2_client.get_all_subnets()
+
+        self.subnets += objects
+    
+    def init_availability_zones(self, from_cache=False, cache_file=None):
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, AvailabilityZone)
+        else:
+            objects = self.ec2_client.get_all_availability_zones()
+
+        self.availability_zones += objects
+    
+    def init_nat_gateways(self, from_cache=False, cache_file=None):
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, NatGateway)
+        else:
+            objects = self.ec2_client.get_all_nat_gateways()
+
+        self.nat_gateways += objects
+
+    def init_amis(self, from_cache=False, cache_file=None):
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, AMI)
+        else:
+            objects = self.ec2_client.get_all_amis()
+
+        self.amis += objects
+
+    def init_key_pairs(self, from_cache=False, cache_file=None):
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, KeyPair)
+        else:
+            objects = self.ec2_client.get_all_key_pairs()
+
+        self.key_pairs += objects
+
+    def init_internet_gateways(self, from_cache=False, cache_file=None):
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, InternetGateway)
+        else:
+            objects = self.ec2_client.get_all_internet_gateways()
+
+        self.internet_gateways += objects
+
+    def init_vpc_peerings(self, from_cache=False, cache_file=None):
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, VPCPeering)
+        else:
+            objects = self.ec2_client.get_all_vpc_peerings()
+
+        self.vpc_peerings += objects
+
+    def init_route_tables(self, from_cache=False, cache_file=None):
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, RouteTable)
+        else:
+            objects = self.ec2_client.get_all_route_tables()
+
+        self.route_tables += objects
+
+    def init_elastic_addresses(self, from_cache=False, cache_file=None):
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, ElasticAddress)
+        else:
+            objects = self.ec2_client.get_all_elastic_addresses()
+
+        self.elastic_addresses += objects
 
     def init_network_interfaces(self, from_cache=False, cache_file=None):
         """
@@ -1551,18 +1645,16 @@ class AWSAPI:
         for ip_permission in security_group.ip_permissions:
             pass
 
-    def update_security_group(self):
-        pdb.set_trace()
-
     def provision_managed_prefix_list(self, managed_prefix_list):
-        live_managed_prefix_list = self.ec2_client.get_managed_prefix_list(managed_prefix_list.region, managed_prefix_list.id)
+        if managed_prefix_list.id is None:
+            self.ec2_client.provision_managed_prefix_list(managed_prefix_list)
+        live_managed_prefix_list = self.ec2_client.get_managed_prefix_list(managed_prefix_list.region.region_mark, managed_prefix_list.id)
         request = live_managed_prefix_list.get_entries_add_request(managed_prefix_list)
 
         if request is None:
             return True
 
-        ret = self.ec2_client.raw_modify_managed_prefix_list(request)
-        print(ret)
+        return self.ec2_client.raw_modify_managed_prefix_list(request)
 
     def provision_hosted_zone(self, hosted_zone):
         self.route53_client.create_hosted_zone(hosted_zone)
@@ -1596,3 +1688,12 @@ class AWSAPI:
 
         request = {"DomainName": elasticsearch_domain.name, "AccessPolicies": access_policies_str}
         self.elasticsearch_client.raw_update_elasticsearch_domain_config(request)
+
+    def provision_vpc(self, vpc):
+        self.ec2_client.provision_vpc(vpc)
+
+    def provision_subnets(self, subnets):
+        self.ec2_client.provision_subnets(subnets)
+
+    def provision_security_group(self, security_group):
+        self.ec2_client.provision_security_group(security_group)
