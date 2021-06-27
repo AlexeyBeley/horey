@@ -18,7 +18,10 @@ class InternetGateway(AwsObject):
             self._init_object_from_cache(dict_src)
             return
         init_options = {
-            "ZoneId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "InternetGatewayId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "Attachments": self.init_default_attr,
+            "OwnerId": self.init_default_attr,
+            "Tags": self.init_default_attr,
                         }
 
         self.init_attrs(dict_src, init_options)
@@ -32,5 +35,5 @@ class InternetGateway(AwsObject):
         options = {}
         self._init_from_cache(dict_src, options)
 
-    def update_value_from_raw_response(self, raw_value):
+    def update_from_raw_response(self, raw_value):
         pdb.set_trace()

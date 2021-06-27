@@ -2,5 +2,5 @@ cryptography==3.4.7
 paramiko==2.7.2
 sshtunnel==0.4.0
 
-dnspython = "*"
-requests = "*"
+dnspython==2.1.0
+requests==2.25.1

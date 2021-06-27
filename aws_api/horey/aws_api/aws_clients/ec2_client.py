@@ -12,8 +12,17 @@ from horey.aws_api.aws_services_entities.ec2_security_group import EC2SecurityGr
 from horey.aws_api.aws_services_entities.ec2_launch_template import EC2LaunchTemplate
 from horey.aws_api.aws_services_entities.ec2_spot_fleet_request import EC2SpotFleetRequest
 from horey.aws_api.aws_services_entities.managed_prefix_list import ManagedPrefixList
+from horey.aws_api.aws_services_entities.ami import AMI
+from horey.aws_api.aws_services_entities.key_pair import KeyPair
+from horey.aws_api.aws_services_entities.internet_gateway import InternetGateway
+from horey.aws_api.aws_services_entities.vpc_peering import VPCPeering
+from horey.aws_api.aws_services_entities.route_table import RouteTable
+from horey.aws_api.aws_services_entities.elastic_address import ElasticAddress
+from horey.aws_api.aws_services_entities.nat_gateway import NatGateway
+
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.base_entities.aws_account import AWSAccount
+
 import pdb
 
 from horey.h_logger import get_logger
@@ -341,3 +350,206 @@ class EC2Client(Boto3Client):
         AWSAccount.set_aws_region(managed_prefix_list.region.region_mark)
         response = self.raw_create_managed_prefix_list(managed_prefix_list.generate_create_request())
         managed_prefix_list.update_from_raw_create(response)
+    
+    def get_all_amis(self, full_information=True, region=None):
+        if region is not None:
+            return self.get_region_amis(region, full_information=full_information)
+
+        final_result = list()
+        for region in AWSAccount.get_aws_account().regions.values():
+            final_result += self.get_region_amis(region, full_information=full_information)
+        return final_result
+
+    def get_region_amis(self, region, full_information=True):
+        AWSAccount.set_aws_region(region)
+        final_result = list()
+
+        for response in self.execute(self.client.describe_images, "Images"):
+            obj = AMI(response)
+            if full_information is True:
+                pass
+
+            final_result.append(obj)
+
+        return final_result
+    
+    def get_all_key_pairs(self, full_information=True, region=None):
+        if region is not None:
+            return self.get_region_key_pairs(region, full_information=full_information)
+
+        final_result = list()
+        for region in AWSAccount.get_aws_account().regions.values():
+            final_result += self.get_region_key_pairs(region, full_information=full_information)
+        return final_result
+
+    def get_region_key_pairs(self, region, full_information=True):
+        AWSAccount.set_aws_region(region)
+        final_result = list()
+
+        for response in self.execute(self.client.describe_key_pairs, "KeyPairs"):
+            obj = KeyPair(response)
+            if full_information is True:
+                pass
+
+            final_result.append(obj)
+
+        return final_result
+    
+    def get_all_internet_gateways(self, full_information=True, region=None):
+        if region is not None:
+            return self.get_region_internet_gateways(region, full_information=full_information)
+
+        final_result = list()
+        for region in AWSAccount.get_aws_account().regions.values():
+            final_result += self.get_region_internet_gateways(region, full_information=full_information)
+        return final_result
+
+    def get_region_internet_gateways(self, region, full_information=True):
+        AWSAccount.set_aws_region(region)
+        final_result = list()
+
+        for response in self.execute(self.client.describe_internet_gateways, "InternetGateways"):
+            obj = InternetGateway(response)
+            if full_information is True:
+                pass
+
+            final_result.append(obj)
+
+        return final_result
+
+    def get_all_vpc_peerings(self, full_information=True, region=None):
+        if region is not None:
+            return self.get_region_vpc_peerings(region, full_information=full_information)
+
+        final_result = list()
+        for region in AWSAccount.get_aws_account().regions.values():
+            final_result += self.get_region_vpc_peerings(region, full_information=full_information)
+        return final_result
+
+    def get_region_vpc_peerings(self, region, full_information=True):
+        AWSAccount.set_aws_region(region)
+        final_result = list()
+
+        for response in self.execute(self.client.describe_vpc_peering_connections, "VpcPeeringConnections"):
+            obj = VPCPeering(response)
+            if full_information is True:
+                pass
+
+            final_result.append(obj)
+
+        return final_result
+    
+    def get_all_route_tables(self, full_information=True, region=None):
+        if region is not None:
+            return self.get_region_route_tables(region, full_information=full_information)
+
+        final_result = list()
+        for region in AWSAccount.get_aws_account().regions.values():
+            final_result += self.get_region_route_tables(region, full_information=full_information)
+        return final_result
+
+    def get_region_route_tables(self, region, full_information=True):
+        AWSAccount.set_aws_region(region)
+        final_result = list()
+
+        for response in self.execute(self.client.describe_route_tables, "RouteTables"):
+            obj = RouteTable(response)
+            if full_information is True:
+                pass
+
+            final_result.append(obj)
+
+        return final_result
+   
+    def get_all_elastic_addresses(self, full_information=True, region=None):
+        if region is not None:
+            return self.get_region_elastic_addresses(region, full_information=full_information)
+
+        final_result = list()
+        for region in AWSAccount.get_aws_account().regions.values():
+            final_result += self.get_region_elastic_addresses(region, full_information=full_information)
+        return final_result
+
+    def get_region_elastic_addresses(self, region, full_information=True):
+        AWSAccount.set_aws_region(region)
+        final_result = list()
+
+        for response in self.execute(self.client.describe_addresses, "Addresses"):
+            obj = ElasticAddress(response)
+            if full_information is True:
+                pass
+
+            final_result.append(obj)
+
+        return final_result
+    
+    def get_all_nat_gateways(self, full_information=True, region=None):
+        if region is not None:
+            return self.get_region_nat_gateways(region, full_information=full_information)
+
+        final_result = list()
+        for region in AWSAccount.get_aws_account().regions.values():
+            final_result += self.get_region_nat_gateways(region, full_information=full_information)
+        return final_result
+
+    def get_region_nat_gateways(self, region, full_information=True):
+        AWSAccount.set_aws_region(region)
+        final_result = list()
+
+        for response in self.execute(self.client.describe_nat_gateways, "NatGateways"):
+            obj = NatGateway(response)
+            if full_information is True:
+                pass
+
+            final_result.append(obj)
+
+        return final_result
+
+    def provision_internet_gateway(self, internet_gateway):
+        """
+        create_internet_gateway
+
+        response = client.attach_internet_gateway(
+        InternetGatewayId='string',
+        VpcId='string'
+        )
+        """
+        attachment_vpc_ids = [att["VpcId"] for att in internet_gateway.attachments]
+        try:
+            response = self.provision_internet_gateway_raw(internet_gateway.generate_create_request())
+            internet_gateway.update_from_raw_response(response)
+        except Exception as exception_inst:
+            pdb.set_trace()
+            if "conflicts with another" not in repr(exception_inst):
+                raise
+            logger.warning(f"{internet_gateway.generate_create_request()}: {repr(exception_inst)}")
+
+        for attachment in attachment_vpc_ids:
+            if attachment["VpcId"] in [att["VpcId"] for att in self.attachments]:
+                attachment_vpc_ids.remove(attachment["VpcId"])
+        pdb.set_trace()
+        for attachment_vpc_id in attachment_vpc_ids:
+            request = {"InternetGatewayId": internet_gateway.id, "VpcId": attachment_vpc_id}
+            self.attach_internet_gateway_raw(request)
+
+    def provision_internet_gateway_raw(self, request):
+        for response in self.execute(self.client.create_internet_gateway, "InternetGateway", filters_req=request):
+            return response
+
+    def attach_internet_gateway_raw(self, request):
+        for response in self.execute(self.client.attach_internet_gateway, "ResponseMetadata", filters_req=request):
+            return response
+
+    def provision_elastic_address(self, elastic_address):
+        try:
+            self.provision_elastic_address_raw(elastic_address.generate_create_request())
+        except Exception as exception_inst:
+            repr_exception_inst = repr(exception_inst)
+            if "already exists for VPC" not in repr_exception_inst:
+                raise
+            logger.warning(repr_exception_inst)
+
+    def provision_elastic_address_raw(self, request_dict):
+        for response in self.execute(self.client.allocate_address, "", filters_req=request_dict, raw_data=True):
+            pdb.set_trace()
+            return response

@@ -18,7 +18,17 @@ class ElasticAddress(AwsObject):
             self._init_object_from_cache(dict_src)
             return
         init_options = {
-            "ZoneId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "AllocationId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "InstanceId": self.init_default_attr,
+            "PublicIp": self.init_default_attr,
+            "AssociationId": self.init_default_attr,
+            "Domain": self.init_default_attr,
+            "NetworkInterfaceId": self.init_default_attr,
+            "NetworkInterfaceOwnerId": self.init_default_attr,
+            "PrivateIpAddress": self.init_default_attr,
+            "Tags": self.init_default_attr,
+            "PublicIpv4Pool": self.init_default_attr,
+            "NetworkBorderGroup": self.init_default_attr,
                         }
 
         self.init_attrs(dict_src, init_options)

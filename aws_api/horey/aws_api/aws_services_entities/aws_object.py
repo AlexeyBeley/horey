@@ -1,6 +1,7 @@
 """
 A base class for working with aws objects - parsing, caching and initiation.
 """
+import pdb
 import re
 import datetime
 from enum import Enum
@@ -142,16 +143,21 @@ class AwsObject:
             formatted_name = self.format_attr_name(attr_name)
         setattr(self, formatted_name, value)
 
-    def init_date_attr_from_formatted_string(self, attr_name, value):
+    def init_date_attr_from_formatted_string(self, attr_name, value, custom_format=None):
         """
         "%Y-%m-%d %H:%M:%S.%f%z"
 
         :param attr_name:
         :param value:
+        :param custom_format:
         :return:
         """
+        if not value:
+            return
 
-        datetime_object = datetime.datetime.strptime(value, "%Y-%m-%d %H:%M:%S.%f%z")
+        string_format = custom_format or "%Y-%m-%d %H:%M:%S.%f%z"
+
+        datetime_object = datetime.datetime.strptime(value, string_format)
         self.init_default_attr(attr_name, datetime_object)
 
     def init_attrs(self, dict_src, dict_options, raise_on_no_option=True):

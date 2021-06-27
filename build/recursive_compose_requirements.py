@@ -76,7 +76,11 @@ class Package:
                 continue
             dependency_name, dependency_restriction, version = self.split_dependency_line(line)
             version_restriction = Package.VersionRestriction()
-            version_restriction.add_restriction(dependency_restriction, version)
+            try:
+                version_restriction.add_restriction(dependency_restriction, version)
+            except Exception as exception_inst:
+                raise RuntimeError(f"In file {requirements_file_path}") from exception_inst
+
             dependency_package = Package(self.root_dir, dependency_name, version_restriction=version_restriction)
             self.dependencies.append(dependency_package)
 
@@ -183,7 +187,7 @@ class Package:
                 self.contains_upper_limit = True
                 return
 
-            raise ValueError(restriction_key)
+            raise ValueError(f"{restriction_key}, {restriction_value}")
 
     class PackageVersionPolicy(Enum):
         UPGRADE = 0

@@ -18,7 +18,20 @@ class AMI(AwsObject):
             self._init_object_from_cache(dict_src)
             return
         init_options = {
-            "ZoneId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "ImageId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "Architecture": self.init_default_attr,
+            "CreationDate": lambda x, y: self.init_date_attr_from_formatted_string(x, y, custom_format="%Y-%m-%dT%H:%M:%S.%f%Z"),
+            "ImageLocation": self.init_default_attr,
+            "ImageType": self.init_default_attr,
+            "Public": self.init_default_attr,
+            "OwnerId": self.init_default_attr,
+            "PlatformDetails": self.init_default_attr,
+            "UsageOperation": self.init_default_attr,
+            "State": self.init_default_attr,
+            "BlockDeviceMappings": self.init_default_attr,
+            "Hypervisor": self.init_default_attr,
+            "RootDeviceType": self.init_default_attr,
+            "VirtualizationType": self.init_default_attr,
                         }
 
         self.init_attrs(dict_src, init_options)

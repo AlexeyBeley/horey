@@ -18,7 +18,10 @@ class KeyPair(AwsObject):
             self._init_object_from_cache(dict_src)
             return
         init_options = {
-            "ZoneId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "KeyPairId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "KeyName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "KeyFingerprint": self.init_default_attr,
+            "Tags": self.init_default_attr,
                         }
 
         self.init_attrs(dict_src, init_options)

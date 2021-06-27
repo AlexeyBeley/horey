@@ -71,7 +71,13 @@ from horey.aws_api.aws_services_entities.elasticsearch_domain import Elasticsear
 from horey.aws_api.aws_services_entities.vpc import VPC
 from horey.aws_api.aws_services_entities.subnet import Subnet
 from horey.aws_api.aws_services_entities.availability_zone import AvailabilityZone
-
+from horey.aws_api.aws_services_entities.ami import AMI
+from horey.aws_api.aws_services_entities.key_pair import KeyPair
+from horey.aws_api.aws_services_entities.internet_gateway import InternetGateway
+from horey.aws_api.aws_services_entities.vpc_peering import VPCPeering
+from horey.aws_api.aws_services_entities.route_table import RouteTable
+from horey.aws_api.aws_services_entities.elastic_address import ElasticAddress
+from horey.aws_api.aws_services_entities.nat_gateway import NatGateway
 
 from horey.common_utils.common_utils import CommonUtils
 from horey.network.dns import DNS
@@ -1697,3 +1703,6 @@ class AWSAPI:
 
     def provision_security_group(self, security_group):
         self.ec2_client.provision_security_group(security_group)
+
+    def provision_internet_gateway(self, internet_gateway):
+        self.ec2_client.provision_internet_gateway(internet_gateway)

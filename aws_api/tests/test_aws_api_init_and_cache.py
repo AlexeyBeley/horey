@@ -297,11 +297,11 @@ elastic_addresses
 nat_gateways
 """
 if __name__ == "__main__":
-    test_init_and_cache_amis()
-    test_init_and_cache_key_pairs()
-    test_init_and_cache_internet_gateways()
-    test_init_and_cache_vpc_peerings()
-    test_init_and_cache_route_tables()
+    #test_init_and_cache_amis()
+    #test_init_and_cache_key_pairs()
+    #test_init_and_cache_internet_gateways()
+    #test_init_and_cache_vpc_peerings()
+    #test_init_and_cache_route_tables()
     test_init_and_cache_elastic_addresses()
     test_init_and_cache_nat_gateways()
 

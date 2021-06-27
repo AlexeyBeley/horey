@@ -18,7 +18,13 @@ class RouteTable(AwsObject):
             self._init_object_from_cache(dict_src)
             return
         init_options = {
-            "ZoneId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "RouteTableId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "Associations": self.init_default_attr,
+            "PropagatingVgws": self.init_default_attr,
+            "Routes": self.init_default_attr,
+            "Tags": self.init_default_attr,
+            "VpcId": self.init_default_attr,
+            "OwnerId": self.init_default_attr,
                         }
 
         self.init_attrs(dict_src, init_options)
