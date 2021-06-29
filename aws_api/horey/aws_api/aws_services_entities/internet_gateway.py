@@ -35,5 +35,20 @@ class InternetGateway(AwsObject):
         options = {}
         self._init_from_cache(dict_src, options)
 
-    def update_from_raw_response(self, raw_value):
-        pdb.set_trace()
+    def update_from_raw_response(self, dict_src):
+        init_options = {
+            "InternetGatewayId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "Attachments": self.init_default_attr,
+            "OwnerId": self.init_default_attr,
+            "Tags": self.init_default_attr,
+        }
+
+        self.init_attrs(dict_src, init_options)
+
+    def generate_create_request(self):
+        request = dict()
+        request["TagSpecifications"] = [{
+                                        "ResourceType": "internet-gateway",
+                                        "Tags": self.tags}]
+
+        return request

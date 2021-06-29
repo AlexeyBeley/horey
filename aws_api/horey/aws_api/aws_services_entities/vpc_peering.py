@@ -23,6 +23,7 @@ class VPCPeering(AwsObject):
             "RequesterVpcInfo": self.init_default_attr,
             "Status": self.init_default_attr,
             "Tags": self.init_default_attr,
+            "ExpirationTime": self.init_default_attr,
                         }
 
         self.init_attrs(dict_src, init_options)
@@ -36,5 +37,41 @@ class VPCPeering(AwsObject):
         options = {}
         self._init_from_cache(dict_src, options)
 
-    def update_value_from_raw_response(self, raw_value):
-        pdb.set_trace()
+    def generate_create_request(self):
+        """
+        PeerVpcId='string',
+        VpcId='string',
+        PeerRegion='string',
+        """
+        request = dict()
+        request["PeerVpcId"] = self.peer_vpc_id
+        request["VpcId"] = self.vpc_id
+        request["PeerRegion"] = self.peer_region
+        request["TagSpecifications"] = [{
+            "ResourceType": "vpc-peering-connection",
+            "Tags": self.tags}]
+
+        return request
+
+    def generate_accept_request(self):
+        """
+        PeerVpcId='string',
+        VpcId='string',
+        PeerRegion='string',
+        """
+        request = dict()
+        request["VpcPeeringConnectionId"] = self.id
+
+        return request
+
+    def update_from_raw_response(self, dict_src):
+        init_options = {
+            "VpcPeeringConnectionId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "AccepterVpcInfo": self.init_default_attr,
+            "RequesterVpcInfo": self.init_default_attr,
+            "Status": self.init_default_attr,
+            "Tags": self.init_default_attr,
+            "ExpirationTime": self.init_default_attr,
+                        }
+
+        self.init_attrs(dict_src, init_options)

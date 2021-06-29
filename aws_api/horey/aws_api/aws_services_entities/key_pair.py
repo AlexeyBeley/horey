@@ -35,5 +35,11 @@ class KeyPair(AwsObject):
         options = {}
         self._init_from_cache(dict_src, options)
 
-    def update_value_from_raw_response(self, raw_value):
-        pdb.set_trace()
+    def generate_create_request(self):
+        request = dict()
+        request["KeyName"] = self.name
+        request["TagSpecifications"] = [{
+            "ResourceType": "key-pair",
+            "Tags": self.tags}]
+
+        return request

@@ -156,6 +156,20 @@ class EC2SecurityGroup(AwsObject):
 
         return request
 
+    def update_from_raw_create(self, dict_src):
+        init_options = {
+            "GroupName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "Description": self.init_default_attr,
+            "IpPermissions": self.init_ip_permissions,
+            "OwnerId": self.init_default_attr,
+            "GroupId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "IpPermissionsEgress": self.init_ip_permissions,
+            "Tags": self.init_default_attr,
+            "VpcId": self.init_default_attr,
+        }
+
+        self.init_attrs(dict_src, init_options)
+
     class IpPermission(AwsObject):
         """
         Class representing AWS ip permission.

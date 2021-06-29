@@ -22,7 +22,7 @@ from horey.aws_api.aws_services_entities.nat_gateway import NatGateway
 
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.base_entities.aws_account import AWSAccount
-
+from horey.common_utils.common_utils import CommonUtils
 import pdb
 
 from horey.h_logger import get_logger
@@ -51,6 +51,15 @@ class EC2Client(Boto3Client):
             for dict_src in self.execute(self.client.describe_subnets, "Subnets"):
                 obj = Subnet(dict_src)
                 final_result.append(obj)
+
+        return final_result
+
+    def get_region_subnets(self, region):
+        final_result = list()
+        AWSAccount.set_aws_region(region)
+        for dict_src in self.execute(self.client.describe_subnets, "Subnets"):
+            obj = Subnet(dict_src)
+            final_result.append(obj)
 
         return final_result
 
@@ -149,22 +158,40 @@ class EC2Client(Boto3Client):
 
         return final_result
 
+    def get_all_security_groups_in_region(self, region, full_information=True):
+        AWSAccount.set_aws_region(region)
+        final_result = list()
+
+        for ret in self.execute(self.client.describe_security_groups, "SecurityGroups"):
+            obj = EC2SecurityGroup(ret)
+            if full_information is True:
+                raise NotImplementedError()
+
+            final_result.append(obj)
+
+        return final_result
+
     def provision_security_group(self, security_group):
         try:
-            self.raw_create_security_group(security_group.generate_create_request())
+            group_id = self.raw_create_security_group(security_group.generate_create_request())
+            security_group.id = group_id
         except Exception as exception_inst:
             repr_exception_inst = repr(exception_inst)
             if "already exists for VPC" not in repr_exception_inst:
                 raise
             logger.warning(repr_exception_inst)
+            region_groups = self.get_all_security_groups_in_region(security_group.region, security_group)
+            existing_group = CommonUtils.find_objects_by_values(region_groups, {"name": security_group.name}, max_count=1)[0]
+            security_group.update_from_raw_create(existing_group.dict_src)
 
     def raw_create_security_group(self, request_dict):
-        for response in self.execute(self.client.create_security_group, "GroupId", filters_req=request_dict):
-            return response
+        for group_id in self.execute(self.client.create_security_group, "GroupId", filters_req=request_dict):
+            return group_id
 
     def authorize_security_group_ingress(self, request_dict):
+        logger.info(f"Authorizing security group ingress: {request_dict}")
         for response in self.execute(self.client.authorize_security_group_ingress, "GroupId", filters_req=request_dict,
-                                     raw_data=True):
+                                     raw_data=True, exception_ignore_callback=lambda x: "already exists" in repr(x)):
             print(response)
             return response
 
@@ -215,13 +242,20 @@ class EC2Client(Boto3Client):
 
         return final_result
 
-    def update_security_group(self, security_group):
-        filters_req = {"GroupId": security_group.id,
-                       "IpPermissions": security_group.generate_permissions_request_dict()
-                       }
-
-        for x in self.execute(self.client.authorize_security_group_ingress, None, filters_req=filters_req):
+    def get_security_group(self, security_group):
+        if security_group.id is not None:
+            filters_req = {"GroupIds": [security_group.id]}
+            for x in self.execute(self.client.describe_security_groups, "SecurityGroups", filters_req=filters_req):
+                pdb.set_trace()
+        elif security_group.name is not None:
+            AWSAccount.set_aws_region(security_group.region)
+            vpc_filter = {'Name': 'vpc-id', 'Values': [security_group.vpc_id]}
+            filters_req = {"GroupNames": [security_group.name], "Filters": [vpc_filter]}
             pdb.set_trace()
+            for response in self.execute(self.client.describe_security_groups, "SecurityGroups", filters_req=filters_req):
+                pdb.set_trace()
+        else:
+            raise NotImplementedError()
 
     def raw_create_managed_prefix_list(self, request, add_client_token=False):
         if add_client_token:
@@ -313,7 +347,7 @@ class EC2Client(Boto3Client):
     def provision_vpc(self, vpc):
         lst_vpcs = self.get_all_vpcs(region=vpc.region)
         for vpc_exists in lst_vpcs:
-            if vpc_exists.get_tagname() == vpc.get_tagname():
+            if vpc_exists.get_tagname(ignore_not_exists=True) == vpc.get_tagname():
                 if vpc_exists.cidr_block != vpc.cidr_block:
                     raise RuntimeError(f"VPC {vpc_exists.name} exists with different cidr_block {vpc_exists.cidr_block} != {vpc.cidr_block}")
                 return vpc.update_from_raw_create(vpc_exists.dict_src)
@@ -327,7 +361,25 @@ class EC2Client(Boto3Client):
             return response
 
     def provision_subnets(self, subnets):
+        """
+
+        """
+        for subnet in subnets[1:]:
+            if subnet.region.region_mark != subnets[0].region.region_mark:
+                raise RuntimeError("All subnets should be in one region")
+
+        region_subnets = self.get_region_subnets(subnets[0].region)
         for subnet in subnets:
+            for region_subnet in region_subnets:
+                if region_subnet.get_tagname(ignore_not_exists=True) == subnet.get_tagname():
+                    if region_subnet.cidr_block != subnet.cidr_block:
+                        raise RuntimeError(
+                        f"Subnet {subnet.get_tagname()} exists with different cidr_block {region_subnet.cidr_block} != {subnet.cidr_block}")
+                    subnet.update_from_raw_create(region_subnet.dict_src)
+
+        for subnet in subnets:
+            if subnet.id is not None:
+                continue
             try:
                 self.provision_subnet_raw(subnet.generate_create_request())
             except Exception as exception_inst:
@@ -343,7 +395,7 @@ class EC2Client(Boto3Client):
     def provision_managed_prefix_list(self, managed_prefix_list):
         lst_objects = self.get_all_managed_prefix_lists(region=managed_prefix_list.region)
         for object_exists in lst_objects:
-            if object_exists.get_tagname() == managed_prefix_list.get_tagname():
+            if object_exists.get_tagname(ignore_not_exists=True) == managed_prefix_list.get_tagname():
                 managed_prefix_list.id = object_exists.id
                 return
 
@@ -514,20 +566,25 @@ class EC2Client(Boto3Client):
         VpcId='string'
         )
         """
-        attachment_vpc_ids = [att["VpcId"] for att in internet_gateway.attachments]
-        try:
-            response = self.provision_internet_gateway_raw(internet_gateway.generate_create_request())
-            internet_gateway.update_from_raw_response(response)
-        except Exception as exception_inst:
-            pdb.set_trace()
-            if "conflicts with another" not in repr(exception_inst):
-                raise
-            logger.warning(f"{internet_gateway.generate_create_request()}: {repr(exception_inst)}")
+        region_gateways = self.get_region_internet_gateways(internet_gateway.region)
+        for region_gateway in region_gateways:
+            if region_gateway.get_tagname(ignore_not_exists=True) == internet_gateway.get_tagname():
+                internet_gateway.update_from_raw_response(region_gateway.dict_src)
+                break
 
-        for attachment in attachment_vpc_ids:
-            if attachment["VpcId"] in [att["VpcId"] for att in self.attachments]:
-                attachment_vpc_ids.remove(attachment["VpcId"])
-        pdb.set_trace()
+        if internet_gateway.id is None:
+            try:
+                response = self.provision_internet_gateway_raw(internet_gateway.generate_create_request())
+                internet_gateway.update_from_raw_response(response)
+            except Exception as exception_inst:
+                logger.warning(f"{internet_gateway.generate_create_request()}: {repr(exception_inst)}")
+                raise
+
+        attachment_vpc_ids = [att["VpcId"] for att in internet_gateway.attachments]
+        for vpc_id in attachment_vpc_ids:
+            if vpc_id in [att["VpcId"] for att in internet_gateway.attachments]:
+                attachment_vpc_ids.remove(vpc_id)
+
         for attachment_vpc_id in attachment_vpc_ids:
             request = {"InternetGatewayId": internet_gateway.id, "VpcId": attachment_vpc_id}
             self.attach_internet_gateway_raw(request)
@@ -537,19 +594,142 @@ class EC2Client(Boto3Client):
             return response
 
     def attach_internet_gateway_raw(self, request):
+        logger.info(request)
         for response in self.execute(self.client.attach_internet_gateway, "ResponseMetadata", filters_req=request):
             return response
 
     def provision_elastic_address(self, elastic_address):
+        region_elastic_addresses = self.get_region_elastic_addresses(elastic_address.region)
+        for region_elastic_address in region_elastic_addresses:
+            if region_elastic_address.get_tagname(ignore_not_exists=True) == elastic_address.get_tagname():
+                elastic_address.update_from_raw_response(region_elastic_address.dict_src)
+                return
+                
         try:
-            self.provision_elastic_address_raw(elastic_address.generate_create_request())
+            response = self.provision_elastic_address_raw(elastic_address.generate_create_request())
+            del response["ResponseMetadata"]
+            elastic_address.update_from_raw_response(response)
+        except Exception as exception_inst:
+            repr_exception_inst = repr(exception_inst)
+            logger.warning(repr_exception_inst)
+            raise
+
+    def provision_elastic_address_raw(self, request_dict):
+        for response in self.execute(self.client.allocate_address, "", filters_req=request_dict, raw_data=True):
+            return response
+
+    def provision_vpc_peering(self, vpc_peering):
+        try:
+            AWSAccount.set_aws_region(vpc_peering.region)
+            response = self.provision_vpc_peering_raw(vpc_peering.generate_create_request())
+            vpc_peering.update_from_raw_response(response)
+            AWSAccount.set_aws_region(vpc_peering.peer_region)
+            self.accept_vpc_peering_connection_raw(vpc_peering.generate_accept_request())
         except Exception as exception_inst:
             repr_exception_inst = repr(exception_inst)
             if "already exists for VPC" not in repr_exception_inst:
                 raise
             logger.warning(repr_exception_inst)
 
-    def provision_elastic_address_raw(self, request_dict):
-        for response in self.execute(self.client.allocate_address, "", filters_req=request_dict, raw_data=True):
-            pdb.set_trace()
+    def provision_vpc_peering_raw(self, request_dict):
+        for response in self.execute(self.client.create_vpc_peering_connection, "VpcPeeringConnection", filters_req=request_dict):
+            return response
+
+    def accept_vpc_peering_connection_raw(self, request_dict):
+        for response in self.execute(self.client.accept_vpc_peering_connection, "VpcPeeringConnection", filters_req=request_dict):
+            return response
+
+    def provision_nat_gateway(self, nat_gateway):
+        region_gateways = self.get_region_nat_gateways(nat_gateway.region)
+        for region_gateway in region_gateways:
+            if region_gateway.get_tagname(ignore_not_exists=True) == nat_gateway.get_tagname():
+                nat_gateway.update_from_raw_response(region_gateway.dict_src)
+                return
+
+        try:
+            response = self.provision_nat_gateway_raw(nat_gateway.generate_create_request())
+            nat_gateway.update_from_raw_response(response)
+        except Exception as exception_inst:
+            logger.warning(repr(exception_inst))
+            raise
+
+    def provision_nat_gateway_raw(self, request_dict):
+        for response in self.execute(self.client.create_nat_gateway, "NatGateway", filters_req=request_dict):
+            return response
+    
+    def provision_route_table(self, route_table):
+        region_route_tables = self.get_region_route_tables(route_table.region)
+        for region_route_table in region_route_tables:
+            if region_route_table.get_tagname(ignore_not_exists=True) == route_table.get_tagname():
+                route_table.id = region_route_table.id
+                break
+        else:
+            try:
+                response = self.provision_route_table_raw(route_table.generate_create_request())
+                route_table.id = response["RouteTableId"]
+            except Exception as exception_inst:
+                logger.warning(repr(exception_inst))
+                raise
+
+        try:
+            self.associate_route_table_raw(route_table.generate_associate_route_table_request())
+        except Exception as exception_inst:
+            logger.warning(repr(exception_inst))
+            raise
+
+        try:
+            for request in route_table.generate_create_route_requests():
+                self.create_route_raw(request)
+        except Exception as exception_inst:
+            repr_exception_inst = repr(exception_inst)
+            logger.warning(repr_exception_inst)
+            if "already exists" not in repr_exception_inst:
+                raise
+
+    def provision_route_table_raw(self, request_dict):
+        for response in self.execute(self.client.create_route_table, "RouteTable", filters_req=request_dict):
+            return response
+
+    def associate_route_table_raw(self, request_dict):
+        for response in self.execute(self.client.associate_route_table, "AssociationId", filters_req=request_dict):
+            return response
+
+    def create_route_raw(self, request_dict):
+        for response in self.execute(self.client.create_route, "Return", filters_req=request_dict):
+            return response
+
+    def provision_ec2_instance(self, ec2_instance):
+        pdb.set_trace()
+        region_gateways = self.get_region_ec2_instances(ec2_instance.region)
+        for region_gateway in region_gateways:
+            if region_gateway.get_tagname(ignore_not_exists=True) == ec2_instance.get_tagname():
+                ec2_instance.update_from_raw_response(region_gateway.dict_src)
+                return
+
+        try:
+            response = self.provision_ec2_instance_raw(ec2_instance.generate_create_request())
+            ec2_instance.update_from_raw_response(response)
+        except Exception as exception_inst:
+            logger.warning(repr(exception_inst))
+            raise
+
+    def provision_ec2_instance_raw(self, request_dict):
+        for response in self.execute(self.client.create_ec2_instance, "NatGateway", filters_req=request_dict):
+            return response
+    
+    def provision_key_pair(self, key_pair):
+        region_key_pairs = self.get_region_key_pairs(key_pair.region)
+        for region_key_pair in region_key_pairs:
+            if region_key_pair.name == key_pair.name:
+                key_pair.id = region_key_pair.id
+                return
+
+        try:
+            return self.provision_key_pair_raw(key_pair.generate_create_request())
+        except Exception as exception_inst:
+            logger.warning(repr(exception_inst))
+            raise
+
+    def provision_key_pair_raw(self, request_dict):
+        for response in self.execute(self.client.create_key_pair, None, filters_req=request_dict, raw_data=True):
             return response

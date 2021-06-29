@@ -32,6 +32,7 @@ class AwsObject:
             self.dict_src = dict_src
         self.name = None
         self.id = None
+        self.tags = None
 
     def _init_from_cache(self, dict_src, dict_options):
         """
@@ -292,7 +293,12 @@ class AwsObject:
         Can't parse the object while initializing.
         """
 
-    def get_tagname(self, ignore_not_exists=True):
+    def get_tagname(self, ignore_not_exists=False):
+        if self.tags is None:
+            if ignore_not_exists:
+                return None
+            raise RuntimeError("No tags associated")
+
         for tag in self.tags:
             if tag["Key"].lower() == "name":
                 return tag["Value"]
@@ -300,4 +306,4 @@ class AwsObject:
         if ignore_not_exists:
             return None
 
-        raise RuntimeError("No tag Name associated")
+        raise RuntimeError("No tag Name/name associated")

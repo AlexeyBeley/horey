@@ -72,3 +72,24 @@ class Subnet(AwsObject):
                                         "Tags": self.tags}]
 
         return request
+
+    def update_from_raw_create(self, dict_src):
+        init_options = {
+            "SubnetId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "AvailabilityZone": self.init_default_attr,
+            "AvailabilityZoneId": self.init_default_attr,
+            "AvailableIpAddressCount": self.init_default_attr,
+            "CidrBlock": self.init_default_attr,
+            "DefaultForAz": self.init_default_attr,
+            "MapPublicIpOnLaunch": self.init_default_attr,
+            "MapCustomerOwnedIpOnLaunch": self.init_default_attr,
+            "State": self.init_default_attr,
+            "VpcId": self.init_default_attr,
+            "OwnerId": self.init_default_attr,
+            "AssignIpv6AddressOnCreation": self.init_default_attr,
+            "Ipv6CidrBlockAssociationSet": self.init_default_attr,
+            "Tags": self.init_default_attr,
+            "SubnetArn": self.init_default_attr,
+                        }
+
+        self.init_attrs(dict_src, init_options)

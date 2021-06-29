@@ -42,5 +42,27 @@ class ElasticAddress(AwsObject):
         options = {}
         self._init_from_cache(dict_src, options)
 
-    def update_value_from_raw_response(self, raw_value):
-        pdb.set_trace()
+    def update_from_raw_response(self, dict_src):
+        init_options = {
+            "AllocationId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "InstanceId": self.init_default_attr,
+            "PublicIp": self.init_default_attr,
+            "AssociationId": self.init_default_attr,
+            "Domain": self.init_default_attr,
+            "NetworkInterfaceId": self.init_default_attr,
+            "NetworkInterfaceOwnerId": self.init_default_attr,
+            "PrivateIpAddress": self.init_default_attr,
+            "Tags": self.init_default_attr,
+            "PublicIpv4Pool": self.init_default_attr,
+            "NetworkBorderGroup": self.init_default_attr,
+        }
+
+        self.init_attrs(dict_src, init_options)
+
+    def generate_create_request(self):
+        request = dict()
+        request["TagSpecifications"] = [{
+            "ResourceType": "elastic-ip",
+            "Tags": self.tags}]
+
+        return request

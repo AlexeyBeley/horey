@@ -4,7 +4,7 @@ Module to handle cross service interaction
 import json
 import os
 import datetime
-
+import time
 
 from collections import defaultdict
 from horey.network.ip import IP
@@ -1706,3 +1706,52 @@ class AWSAPI:
 
     def provision_internet_gateway(self, internet_gateway):
         self.ec2_client.provision_internet_gateway(internet_gateway)
+
+    def provision_vpc_peering(self, vpc_peering):
+        self.ec2_client.provision_vpc_peering(vpc_peering)
+
+    def provision_nat_gateways(self, nat_gateways):
+        for nat_gateway in nat_gateways:
+            self.provision_nat_gateway(nat_gateway)
+
+        nat_gateways_tmp = [ngw for ngw in nat_gateways]
+        while len(nat_gateways_tmp) > 0:
+            to_del = []
+            for region_gateway in self.ec2_client.get_region_nat_gateways(nat_gateways_tmp[0].region):
+                for nat_gateway in nat_gateways_tmp:
+                    if region_gateway.id == nat_gateway.id:
+                        if nat_gateway.state == "available":
+                            to_del.append(nat_gateway)
+                        elif nat_gateway.state == "deleted":
+                            raise ValueError(f"{nat_gateway.get_tagname()} state deleted")
+                        elif nat_gateway.state != "pending":
+                            raise ValueError(nat_gateway.state)
+            for ngw in to_del:
+                nat_gateways_tmp.remove(ngw)
+
+            if nat_gateways_tmp:
+                time.sleep(10)
+
+    def provision_nat_gateway(self, nat_gateway):
+        self.ec2_client.provision_nat_gateway(nat_gateway)
+
+    def provision_elastic_address(self, elastic_address):
+        self.ec2_client.provision_elastic_address(elastic_address)
+
+    def provision_route_table(self, route_table):
+        self.ec2_client.provision_route_table(route_table)
+
+    def provision_ec2_instance(self, ec2_instance):
+        self.ec2_client.provision_ec2_instance(ec2_instance)
+
+    def provision_key_pair(self, key_pair, save_to_secrets_manager=None, private_key_region=None):
+        response = self.ec2_client.provision_key_pair(key_pair)
+        if response is None:
+            return
+
+        if save_to_secrets_manager:
+            AWSAccount.set_aws_region(private_key_region)
+            self.put_secret_value(key_pair.name + ".key", response["KeyMaterial"])
+        else:
+            return response
+

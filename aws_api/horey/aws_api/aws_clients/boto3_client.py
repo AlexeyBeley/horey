@@ -77,6 +77,7 @@ class Boto3Client:
             except self.NoReturnStringError:
                 raise
             except Exception as exception_instance:
+                logger.warning(f"Exception received '{func_command.__name__}' Error: {repr(exception_instance)}")
                 exception_weight = 10
                 time_to_sleep = 1
 
@@ -85,7 +86,7 @@ class Boto3Client:
                     time_to_sleep = retry_counter + exception_weight
                     logger.error(f"Retrying after Throttling '{func_command.__name__}' attempt {retry_counter}/{self.EXECUTION_RETRY_COUNT} Error: {exception_instance}")
 
-                if exception_ignore_callback(exception_instance):
+                if exception_ignore_callback is not None and exception_ignore_callback(exception_instance):
                     return
 
                 retry_counter += exception_weight
@@ -146,7 +147,13 @@ class Boto3Client:
             return
 
         Boto3Client.EXEC_COUNT += 1
-        response = func_command(**filters_req)
+        try:
+            response = func_command(**filters_req)
+        except Exception as exception_instance:
+            logger.warning(f"Exception received '{func_command.__name__}' Error: {repr(exception_instance)}")
+            if exception_ignore_callback is not None and exception_ignore_callback(exception_instance):
+                return
+            raise
 
         if raw_data:
             yield response
@@ -154,7 +161,7 @@ class Boto3Client:
 
         if isinstance(response[return_string], list):
             ret_lst = response[return_string]
-        elif type(response[return_string]) in [str, dict, type(None)]:
+        elif type(response[return_string]) in [str, dict, type(None), bool]:
             ret_lst = [response[return_string]]
         else:
             raise NotImplementedError("{} type:{}".format(response[return_string], type(response[return_string])))
