@@ -185,18 +185,50 @@ class ZabbixAPI(object):
         # hosts = self.host.get(filter={"host": host_name}, selectInterfaces=["interfaceid"])
 
     def raw_create_host(self, dict_request):
-        try:
-            response = self.host.create(**dict_request)
-            logger.info(response)
-        except ZabbixAPIException as exception_instance:
-            repr_exception = repr(exception_instance)
-            if f'Host with the same name "{dict_request["host"]}" already exists' not in repr_exception:
-                raise
-            logger.warning(repr_exception)
+        logger.info(f"Raw create Zabbix host: {dict_request['host']}")
+        response = self.host.create(**dict_request)
+        logger.info(response)
+        return response
+
+    def raw_update_host(self, dict_request):
+        logger.info(f"Raw update Zabbix host: {dict_request['host']}")
+        response = self.host.update(**dict_request)
+        logger.info(response)
+        return response
+
+    def get_host_id(self, host_src):
+        self.init_hosts()
+        for host in self.hosts:
+            if host.host == host_src.host:
+                return host.id
+        raise RuntimeError(f"Host not found {host_src.host}")
+
+    def delete_host(self, host_src):
+        self.init_hosts()
+        for host in self.hosts:
+            if host.host == host_src.host:
+                self.raw_delete_host(host.generate_delete_request())
+
+    def raw_delete_host(self, request):
+        logger.info(f"Raw delete Zabbix host: {request}")
+        response = self.host.delete(*request)
+        logger.info(response)
+        return response
 
     def provision_host(self, host):
         logger.info(f"Provisioning Zabbix host: {host.name}")
-        response = self.raw_create_host(host.generate_create_request())
+        try:
+            response = self.raw_create_host(host.generate_create_request())
+        except ZabbixAPIException as exception_instance:
+            repr_exception = repr(exception_instance)
+            if f'Host with the same name "{host.host}" already exists' not in repr_exception:
+                raise
+            logger.warning(repr_exception)
+            host.id = self.get_host_id(host)
+            response = self.raw_update_host(host.generate_update_request())
+            #self.delete_host(host)
+            #response = self.raw_create_host(host.generate_create_request())
+
         return response
 
 

@@ -53,7 +53,7 @@ put_secret_file:
 get_secret_file:
 	source ${VENV_BIN_DIR}/activate &&\
 	export PYTHONPATH=${AWS_API_DIR} &&\
-	python3 ${AWS_API_DIR}/aws_api_actor.py --action get_secret_file --secret_name "file_name" --secret_file_path "file_path" --configuration_file_full_path "None"
+	python3 ${AWS_API_DIR}/aws_api_actor.py --action get_secret_file --secret_name ${SECRET_FILE_NAME} --secret_file_path ${SECRET_FILE_PATH} --configuration_file_full_path ${CONFIGURATION_FILE_PATH}
 
 push_sns:
 	source ${VENV_BIN_DIR}/activate &&\

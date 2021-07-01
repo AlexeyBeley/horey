@@ -197,9 +197,6 @@ class EC2Client(Boto3Client):
 
     def create_instance(self, request_dict):
         for response in self.execute(self.client.run_instances, "Instances", filters_req=request_dict):
-            with open("/tmp/instances.txt", "a+") as file_handler:
-                file_handler.write(f"{response['InstanceId']}\n")
-            print(response["InstanceId"])
             return response
 
     def create_key_pair(self, request_dict):
@@ -569,20 +566,20 @@ class EC2Client(Boto3Client):
         region_gateways = self.get_region_internet_gateways(internet_gateway.region)
         for region_gateway in region_gateways:
             if region_gateway.get_tagname(ignore_not_exists=True) == internet_gateway.get_tagname():
-                internet_gateway.update_from_raw_response(region_gateway.dict_src)
+                internet_gateway.id = region_gateway.id
                 break
 
         if internet_gateway.id is None:
             try:
                 response = self.provision_internet_gateway_raw(internet_gateway.generate_create_request())
-                internet_gateway.update_from_raw_response(response)
+                region_gateway = InternetGateway(response)
             except Exception as exception_inst:
                 logger.warning(f"{internet_gateway.generate_create_request()}: {repr(exception_inst)}")
                 raise
 
         attachment_vpc_ids = [att["VpcId"] for att in internet_gateway.attachments]
         for vpc_id in attachment_vpc_ids:
-            if vpc_id in [att["VpcId"] for att in internet_gateway.attachments]:
+            if vpc_id in [att["VpcId"] for att in region_gateway.attachments]:
                 attachment_vpc_ids.remove(vpc_id)
 
         for attachment_vpc_id in attachment_vpc_ids:
@@ -642,6 +639,8 @@ class EC2Client(Boto3Client):
     def provision_nat_gateway(self, nat_gateway):
         region_gateways = self.get_region_nat_gateways(nat_gateway.region)
         for region_gateway in region_gateways:
+            if region_gateway.get_state() not in [region_gateway.State.AVAILABLE, region_gateway.State.PENDING]:
+                continue
             if region_gateway.get_tagname(ignore_not_exists=True) == nat_gateway.get_tagname():
                 nat_gateway.update_from_raw_response(region_gateway.dict_src)
                 return
@@ -697,16 +696,27 @@ class EC2Client(Boto3Client):
     def create_route_raw(self, request_dict):
         for response in self.execute(self.client.create_route, "Return", filters_req=request_dict):
             return response
-
+    
+    def get_region_ec2_instances(self, region):
+        AWSAccount.set_aws_region(region)
+        final_result = list()
+        for instance in self.execute(self.client.describe_instances, "Reservations"):
+            final_result.extend(instance['Instances'])
+        return [EC2Instance(instance) for instance in final_result]
+    
     def provision_ec2_instance(self, ec2_instance):
-        pdb.set_trace()
-        region_gateways = self.get_region_ec2_instances(ec2_instance.region)
-        for region_gateway in region_gateways:
-            if region_gateway.get_tagname(ignore_not_exists=True) == ec2_instance.get_tagname():
-                ec2_instance.update_from_raw_response(region_gateway.dict_src)
+        region_ec2_instances = self.get_region_ec2_instances(ec2_instance.region)
+        for region_ec2_instance in region_ec2_instances:
+            if region_ec2_instance.get_state() not in [region_ec2_instance.State.RUNNING, region_ec2_instance.State.PENDING]:
+                continue
+
+            if region_ec2_instance.get_tagname(ignore_not_exists=True) == ec2_instance.get_tagname():
+                ec2_instance.update_from_raw_response(region_ec2_instance.dict_src)
                 return
 
         try:
+            #ret = self.get_region_amis(ec2_instance.region)
+            #pdb.set_trace()
             response = self.provision_ec2_instance_raw(ec2_instance.generate_create_request())
             ec2_instance.update_from_raw_response(response)
         except Exception as exception_inst:
@@ -714,7 +724,7 @@ class EC2Client(Boto3Client):
             raise
 
     def provision_ec2_instance_raw(self, request_dict):
-        for response in self.execute(self.client.create_ec2_instance, "NatGateway", filters_req=request_dict):
+        for response in self.execute(self.client.run_instances, "Instances", filters_req=request_dict):
             return response
     
     def provision_key_pair(self, key_pair):
@@ -732,4 +742,11 @@ class EC2Client(Boto3Client):
 
     def provision_key_pair_raw(self, request_dict):
         for response in self.execute(self.client.create_key_pair, None, filters_req=request_dict, raw_data=True):
+            return response
+
+    def test_debug(self):
+        import pdb
+        pdb.set_trace()
+
+        for response in self.execute(self.client.describe_managed_prefix_lists, "PrefixLists", filters_req=request):
             return response

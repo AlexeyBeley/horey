@@ -54,7 +54,7 @@ class Host(ZabbixObject):
     def init_host_from_cache(self, dict_src):
         raise NotImplementedError()
 
-    def generate_create_request(self, validate = True):
+    def generate_create_request(self, validate=True):
         """
         {
             "jsonrpc": "2.0",
@@ -108,6 +108,27 @@ class Host(ZabbixObject):
 
         request["templates"] = [{"templateid": template["templateid"]} for template in self.parent_templates]
 
+        return request
+
+    def generate_update_request(self):
+        request = self.generate_create_request()
+        request["hostid"] = self.id
+        del request["interfaces"]
+        return request
+
+    def generate_delete_request(self):
+        """
+        {
+        "jsonrpc": "2.0",
+        "method": "host.delete",
+        "params": [
+            "13",
+            "32"
+        ],
+        "auth": "038e1d7b1735c6a5436ee9eae095879e",
+        "id": 1
+        }"""
+        request = [self.id]
         return request
 
     def update_after_creation(self, disk):

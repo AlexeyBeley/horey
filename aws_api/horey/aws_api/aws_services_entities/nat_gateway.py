@@ -2,7 +2,7 @@
 AWS Lambda representation
 """
 import pdb
-
+from enum import Enum
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 
 
@@ -27,6 +27,8 @@ class NatGateway(AwsObject):
             "Tags": self.init_default_attr,
             "ConnectivityType": self.init_default_attr,
             "DeleteTime": self.init_default_attr,
+            "FailureCode": self.init_default_attr,
+            "FailureMessage": self.init_default_attr,
                         }
 
         self.init_attrs(dict_src, init_options)
@@ -66,7 +68,28 @@ class NatGateway(AwsObject):
             "Tags": self.init_default_attr,
             "ConnectivityType": self.init_default_attr,
             "DeleteTime": self.init_default_attr,
+            "FailureCode": self.init_default_attr,
+            "FailureMessage": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
 
+    def get_state(self):
+        if self.state == "available":
+            return self.State.AVAILABLE
+        elif self.state == "deleted":
+            return self.State.DELETED
+        elif self.state == "pending":
+            return self.State.PENDING
+        elif self.state == "failed":
+            return self.State.FAILED
+        elif self.state == "deleting":
+            return self.State.DELETING
+        raise ValueError(self.state)
+
+    class State(Enum):
+        PENDING = 0
+        AVAILABLE = 1
+        DELETED = 2
+        DELETING = 3
+        FAILED = 4

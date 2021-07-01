@@ -1717,15 +1717,19 @@ class AWSAPI:
         nat_gateways_tmp = [ngw for ngw in nat_gateways]
         while len(nat_gateways_tmp) > 0:
             to_del = []
-            for region_gateway in self.ec2_client.get_region_nat_gateways(nat_gateways_tmp[0].region):
-                for nat_gateway in nat_gateways_tmp:
-                    if region_gateway.id == nat_gateway.id:
-                        if nat_gateway.state == "available":
-                            to_del.append(nat_gateway)
-                        elif nat_gateway.state == "deleted":
-                            raise ValueError(f"{nat_gateway.get_tagname()} state deleted")
-                        elif nat_gateway.state != "pending":
-                            raise ValueError(nat_gateway.state)
+            for nat_gateway_tmp in nat_gateways_tmp:
+                for region_gateway in self.ec2_client.get_region_nat_gateways(nat_gateways_tmp[0].region):
+                    if region_gateway.get_state() not in [region_gateway.State.PENDING, region_gateway.State.AVAILABLE]:
+                        continue
+
+                    if region_gateway.id == nat_gateway_tmp.id:
+                        if region_gateway.get_state() == region_gateway.State.AVAILABLE:
+                            to_del.append(nat_gateway_tmp)
+                            break
+                        break
+                else:
+                    raise RuntimeError(f"Can not find nat_gateway '{nat_gateway_tmp.get_tagname()}' in region nat_gateways")
+
             for ngw in to_del:
                 nat_gateways_tmp.remove(ngw)
 
@@ -1745,6 +1749,7 @@ class AWSAPI:
         self.ec2_client.provision_ec2_instance(ec2_instance)
 
     def provision_key_pair(self, key_pair, save_to_secrets_manager=None, private_key_region=None):
+        logger.info(f"provisioning ssh key pair {key_pair.name}")
         response = self.ec2_client.provision_key_pair(key_pair)
         if response is None:
             return

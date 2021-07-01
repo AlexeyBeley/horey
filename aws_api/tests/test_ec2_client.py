@@ -174,9 +174,14 @@ def test_raw_describe_managed_prefix_list_by_name():
     print(ret)
 
 
+def test_debug():
+    client = EC2Client()
+    client.test_debug()
+
+
 if __name__ == "__main__":
     #test_create_security_group()
-    test_raw_create_managed_prefix_list()
+    test_debug()
 
     #test_raw_modify_managed_prefix_list()
     #test_raw_describe_managed_prefix_list_by_id()
