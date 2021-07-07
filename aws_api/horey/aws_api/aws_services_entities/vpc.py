@@ -78,3 +78,12 @@ class VPC(AwsObject):
 
         self.init_attrs(dict_src, init_options)
 
+    @property
+    def name(self):
+        return self.get_tagname(ignore_missing_tag=True)
+
+    @name.setter
+    def name(self, value):
+        if value is None:
+            return
+        raise NotImplementedError()

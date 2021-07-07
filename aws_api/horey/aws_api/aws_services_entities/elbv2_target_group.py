@@ -54,3 +54,68 @@ class ELBV2TargetGroup(AwsObject):
         :return:
         """
         self.target_health = dict_src
+
+    def generate_create_request(self):
+        """
+        client.create_target_group(
+        Name='string',
+        Protocol='HTTP'|'HTTPS'|'TCP'|'TLS'|'UDP'|'TCP_UDP'|'GENEVE',
+        ProtocolVersion='string',
+        Port=123,
+        VpcId='string',
+        HealthCheckProtocol='HTTP'|'HTTPS'|'TCP'|'TLS'|'UDP'|'TCP_UDP'|'GENEVE',
+        HealthCheckPort='string',
+        HealthCheckEnabled=True|False,
+        HealthCheckPath='string',
+        HealthCheckIntervalSeconds=123,
+        HealthCheckTimeoutSeconds=123,
+        HealthyThresholdCount=123,
+        UnhealthyThresholdCount=123,
+        Matcher={
+            'HttpCode': 'string',
+            'GrpcCode': 'string'
+        },
+        TargetType='instance'|'ip'|'lambda',
+        Tags=[
+        {
+            'Key': 'string',
+            'Value': 'string'
+        },
+    ]
+)
+        """
+        request = dict()
+        request["Name"] = self.name
+        request["Protocol"] = self.protocol
+        request["Port"] = self.port
+        request["VpcId"] = self.vpc_id
+
+        request["HealthCheckProtocol"] = self.health_check_protocol
+        request["HealthCheckPort"] = self.health_check_port
+
+        request["HealthCheckEnabled"] = self.health_check_enabled
+        request["HealthCheckIntervalSeconds"] = self.health_check_interval_seconds
+        request["HealthCheckTimeoutSeconds"] = self.health_check_timeout_seconds
+        request["HealthyThresholdCount"] = self.healthy_threshold_count
+        request["UnhealthyThresholdCount"] = self.unhealthy_threshold_count
+        request["TargetType"] = self.target_type
+        request["Tags"] = self.tags
+
+        return request
+
+    def generate_register_targets_request(self):
+        request = dict()
+        request["TargetGroupArn"] = self.arn
+        request["Targets"] = self.targets
+        return request
+
+    def generate_register_targets_request(self):
+        request = dict()
+
+        if self.arn is None:
+            raise ValueError(f"Target group '{self.name}' arn is not set")
+
+        request["TargetGroupArn"] = self.arn
+        request["Targets"] = self.targets
+
+        return request

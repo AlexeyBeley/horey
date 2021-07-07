@@ -40,6 +40,9 @@ class ElasticsearchClient(Boto3Client):
 
         return final_result
 
-    def raw_update_elasticsearch_domain_config(self, request):
+    def raw_update_elasticsearch_domain_config(self, request, region=None):
+        if region is not None:
+            AWSAccount.set_aws_region(region)
+
         for response in self.execute(self.client.update_elasticsearch_domain_config, "DomainConfig", filters_req=request):
             return response

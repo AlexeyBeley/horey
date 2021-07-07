@@ -66,3 +66,12 @@ class ElasticAddress(AwsObject):
             "Tags": self.tags}]
 
         return request
+
+    @property
+    def name(self):
+        return self.get_tagname(ignore_missing_tag=True)
+
+    @name.setter
+    def name(self, value):
+        if value is not None:
+            raise ValueError(value)

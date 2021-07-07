@@ -10,6 +10,7 @@ class Host(ZabbixObject):
         self.host = None
         self.interfaces = None
         self.parent_templates = None
+        self.status = None
 
         super().__init__(dict_src, from_cache=from_cache)
 
@@ -97,6 +98,7 @@ class Host(ZabbixObject):
 
         request = dict()
         request["host"] = self.host
+        request["status"] = self.status
         request["groups"] = [{"groupid": group["groupid"]} for group in self.groups]
         request["interfaces"] = [{"ip": interface["ip"],
                                   "type": interface["type"],

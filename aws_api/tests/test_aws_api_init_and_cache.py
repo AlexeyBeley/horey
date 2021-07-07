@@ -67,6 +67,7 @@ def test_init_and_cache_lambdas():
 
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_raw_large_cloud_watch_log_groups():
+    "4470"
     aws_api.init_and_cache_raw_large_cloud_watch_log_groups(configuration.aws_api_cloudwatch_log_groups_streams_cache_dir)
     print(f"len(cloud_watch_log_groups) = {len(aws_api.cloud_watch_log_groups)}")
     assert isinstance(aws_api.cloud_watch_log_groups, list)
@@ -287,6 +288,19 @@ def test_init_and_cache_nat_gateways():
     assert isinstance(aws_api.nat_gateways, list)
 # endregion
 
+
+def find_stream():
+    log_group_dir = "dirpath"
+    for file_name in os.listdir(log_group_dir):
+        print(f"checking {file_name}")
+        with open(os.path.join(log_group_dir, file_name)) as fh:
+            ret = json.load(fh)
+        for dict_stream in ret:
+            if "something" in dict_stream["logStreamName"]:
+                print(dict_stream["logStreamName"])
+                #pdb.set_trace()
+                #ret_ = [(x, x["firstEventTimestamp"]) for x in ret if "4470" in x["logStreamName"]]
+
 """
 amis
 key_pairs
@@ -302,6 +316,7 @@ if __name__ == "__main__":
     #test_init_and_cache_internet_gateways()
     #test_init_and_cache_vpc_peerings()
     #test_init_and_cache_route_tables()
-    test_init_and_cache_elastic_addresses()
-    test_init_and_cache_nat_gateways()
+    #test_init_and_cache_elastic_addresses()
+    #test_init_and_cache_nat_gateways()
+    find_stream()
 

@@ -101,37 +101,43 @@ class RemoteDeployer:
             self.provision_target_remote_deployer_infrastructure_thread(deployment_target)
 
     def provision_target_remote_deployer_infrastructure_thread(self, deployment_target):
-        with self.get_deployment_target_client_context(deployment_target) as client:
-            command = f"rm -rf {deployment_target.remote_target_deployment_directory_path}"
-            logger.info(f"[REMOTE] {command}")
-            client.exec_command(command)
+        try:
+            with self.get_deployment_target_client_context(deployment_target) as client:
+                command = f"rm -rf {deployment_target.remote_target_deployment_directory_path}"
+                logger.info(f"[REMOTE] {command}")
+                client.exec_command(command)
 
-            transport = client.get_transport()
-            sftp_client = HoreySFTPClient.from_transport(transport)
+                transport = client.get_transport()
+                sftp_client = HoreySFTPClient.from_transport(transport)
 
-            logger.info(f"sftp: mkdir {deployment_target.remote_target_deployment_directory_path}")
-            try:
-                sftp_client.mkdir(deployment_target.remote_target_deployment_directory_path, ignore_existing=True)
-            except Exception as exception_instance:
-                raise RuntimeError(f"{deployment_target.deployment_target_address}") from exception_instance
+                logger.info(f"sftp: mkdir {deployment_target.remote_target_deployment_directory_path}")
+                try:
+                    sftp_client.mkdir(deployment_target.remote_target_deployment_directory_path, ignore_existing=True)
+                except Exception as exception_instance:
+                    raise RuntimeError(f"{deployment_target.deployment_target_address}") from exception_instance
 
-            logger.info(f"sftp: put_dir {deployment_target.remote_target_deployment_directory_path}")
+                logger.info(f"sftp: put_dir {deployment_target.remote_target_deployment_directory_path}")
 
-            try:
-                sftp_client.put_dir(deployment_target.local_deployment_dir_path,
-                                deployment_target.remote_target_deployment_directory_path)
-            except Exception as exception_instance:
-                raise RuntimeError(f"{deployment_target.deployment_target_address}") from exception_instance
+                try:
+                    sftp_client.put_dir(deployment_target.local_deployment_dir_path,
+                                    deployment_target.remote_target_deployment_directory_path)
+                except Exception as exception_instance:
+                    raise RuntimeError(f"{deployment_target.deployment_target_address}") from exception_instance
 
-            logger.info(
-                f"sftp: Uploading '{os.path.join(deployment_target.remote_target_deployment_directory_path, 'remote_step_executor.sh')}'")
-            sftp_client.put(os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "remote_step_executor.sh"),
-                            os.path.join(deployment_target.remote_target_deployment_directory_path,
-                                         "remote_step_executor.sh"))
+                logger.info(
+                    f"sftp: Uploading '{os.path.join(deployment_target.remote_target_deployment_directory_path, 'remote_step_executor.sh')}'")
+                sftp_client.put(os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "remote_step_executor.sh"),
+                                os.path.join(deployment_target.remote_target_deployment_directory_path,
+                                             "remote_step_executor.sh"))
 
-            command = f"sudo chmod +x {os.path.join(deployment_target.remote_target_deployment_directory_path, 'remote_step_executor.sh')}"
-            logger.info(f"[REMOTE] {command}")
-            client.exec_command(command)
+                command = f"sudo chmod +x {os.path.join(deployment_target.remote_target_deployment_directory_path, 'remote_step_executor.sh')}"
+                logger.info(f"[REMOTE] {command}")
+                client.exec_command(command)
+                deployment_target.remote_deployer_infrastructure_provisioning_succeeded = True
+        except Exception:
+            deployment_target.remote_deployer_infrastructure_provisioning_succeeded = False
+            raise
+        finally:
             deployment_target.remote_deployer_infrastructure_provisioning_finished = True
 
     def deploy_target_step(self, deployment_target, step, asynchronous=False):

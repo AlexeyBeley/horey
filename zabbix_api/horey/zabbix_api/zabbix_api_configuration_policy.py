@@ -13,6 +13,7 @@ class ZabbixAPIConfigurationPolicy(ConfigurationPolicy):
 
     def __init__(self):
         self._server = None
+        self._server_address = None
         self._session = None
         self._user_authenticate = False
         self._token_authenticate = False
@@ -34,7 +35,20 @@ class ZabbixAPIConfigurationPolicy(ConfigurationPolicy):
             raise ValueError(f"server must be string received {value} of type: {type(value)}")
 
         self._server = value
+        
+    @property
+    def server_address(self):
+        if self._server_address is None:
+            raise ValueError("server_address was not set")
+        return self._server_address
 
+    @server_address.setter
+    def server_address(self, value):
+        if not isinstance(value, str):
+            raise ValueError(f"server_address must be string received {value} of type: {type(value)}")
+
+        self._server_address = value
+        
     @property
     def url(self):
         return self.server + '/api_jsonrpc.php' if not self.server.endswith(

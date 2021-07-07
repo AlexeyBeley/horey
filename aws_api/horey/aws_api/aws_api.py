@@ -168,15 +168,15 @@ class AWSAPI:
         else:
             objects = self.ec2_client.get_all_managed_prefix_lists()
 
-        self.managed_prefix_lists += objects
+        self.managed_prefix_lists = objects
     
-    def init_vpcs(self, from_cache=False, cache_file=None):
+    def init_vpcs(self, from_cache=False, cache_file=None, region=None):
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, VPC)
         else:
-            objects = self.ec2_client.get_all_vpcs()
+            objects = self.ec2_client.get_all_vpcs(region=region)
 
-        self.vpcs += objects
+        self.vpcs = objects
         
     def init_subnets(self, from_cache=False, cache_file=None):
         if from_cache:
@@ -184,7 +184,7 @@ class AWSAPI:
         else:
             objects = self.ec2_client.get_all_subnets()
 
-        self.subnets += objects
+        self.subnets = objects
     
     def init_availability_zones(self, from_cache=False, cache_file=None):
         if from_cache:
@@ -192,15 +192,15 @@ class AWSAPI:
         else:
             objects = self.ec2_client.get_all_availability_zones()
 
-        self.availability_zones += objects
+        self.availability_zones = objects
     
-    def init_nat_gateways(self, from_cache=False, cache_file=None):
+    def init_nat_gateways(self, from_cache=False, cache_file=None, region=None):
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, NatGateway)
         else:
-            objects = self.ec2_client.get_all_nat_gateways()
+            objects = self.ec2_client.get_all_nat_gateways(region=region)
 
-        self.nat_gateways += objects
+        self.nat_gateways = objects
 
     def init_amis(self, from_cache=False, cache_file=None):
         if from_cache:
@@ -208,7 +208,7 @@ class AWSAPI:
         else:
             objects = self.ec2_client.get_all_amis()
 
-        self.amis += objects
+        self.amis = objects
 
     def init_key_pairs(self, from_cache=False, cache_file=None):
         if from_cache:
@@ -216,7 +216,7 @@ class AWSAPI:
         else:
             objects = self.ec2_client.get_all_key_pairs()
 
-        self.key_pairs += objects
+        self.key_pairs = objects
 
     def init_internet_gateways(self, from_cache=False, cache_file=None):
         if from_cache:
@@ -224,7 +224,7 @@ class AWSAPI:
         else:
             objects = self.ec2_client.get_all_internet_gateways()
 
-        self.internet_gateways += objects
+        self.internet_gateways = objects
 
     def init_vpc_peerings(self, from_cache=False, cache_file=None):
         if from_cache:
@@ -232,7 +232,7 @@ class AWSAPI:
         else:
             objects = self.ec2_client.get_all_vpc_peerings()
 
-        self.vpc_peerings += objects
+        self.vpc_peerings = objects
 
     def init_route_tables(self, from_cache=False, cache_file=None):
         if from_cache:
@@ -240,15 +240,15 @@ class AWSAPI:
         else:
             objects = self.ec2_client.get_all_route_tables()
 
-        self.route_tables += objects
+        self.route_tables = objects
 
-    def init_elastic_addresses(self, from_cache=False, cache_file=None):
+    def init_elastic_addresses(self, from_cache=False, cache_file=None, region=None):
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, ElasticAddress)
         else:
-            objects = self.ec2_client.get_all_elastic_addresses()
+            objects = self.ec2_client.get_all_elastic_addresses(region=region)
 
-        self.elastic_addresses += objects
+        self.elastic_addresses = objects
 
     def init_network_interfaces(self, from_cache=False, cache_file=None):
         """
@@ -263,11 +263,11 @@ class AWSAPI:
         else:
             objects = self.ec2_client.get_all_interfaces()
 
-        self.network_interfaces += objects
+        self.network_interfaces = objects
 
         return self.network_interfaces
 
-    def init_ec2_instances(self, from_cache=False, cache_file=None):
+    def init_ec2_instances(self, from_cache=False, cache_file=None, region=None):
         """
         Init ec2 instances.
 
@@ -278,9 +278,9 @@ class AWSAPI:
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, EC2Instance)
         else:
-            objects = self.ec2_client.get_all_instances()
+            objects = self.ec2_client.get_all_instances(region=region)
 
-        self.ec2_instances += objects
+        self.ec2_instances = objects
 
     def init_spot_fleet_requests(self, from_cache=False, cache_file=None):
         """
@@ -295,7 +295,7 @@ class AWSAPI:
         else:
             objects = self.ec2_client.get_all_spot_fleet_requests()
 
-        self.spot_fleet_requests += objects
+        self.spot_fleet_requests = objects
 
     def init_ec2_launch_templates(self, from_cache=False, cache_file=None):
         """
@@ -310,7 +310,7 @@ class AWSAPI:
         else:
             objects = self.ec2_client.get_all_ec2_launch_templates()
 
-        self.ec2_launch_templates += objects
+        self.ec2_launch_templates = objects
 
     def init_s3_buckets(self, from_cache=False, cache_file=None, full_information=True):
         """
@@ -356,7 +356,7 @@ class AWSAPI:
         else:
             objects = self.iam_client.get_all_roles(policies=self.iam_policies)
 
-        self.iam_roles += objects
+        self.iam_roles = objects
 
     def cache_raw_cloud_watch_metrics(self, cache_dir):
         """
@@ -509,9 +509,9 @@ class AWSAPI:
         else:
             objects = self.lambda_client.get_all_lambdas(full_information=full_information)
 
-        self.lambdas += objects
+        self.lambdas = objects
 
-    def init_load_balancers(self, from_cache=False, cache_file=None):
+    def init_load_balancers(self, from_cache=False, cache_file=None, region=None):
         """
         Init elbs v2
 
@@ -522,9 +522,9 @@ class AWSAPI:
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, LoadBalancer)
         else:
-            objects = self.elbv2_client.get_all_load_balancers()
+            objects = self.elbv2_client.get_all_load_balancers(region=region)
 
-        self.load_balancers += objects
+        self.load_balancers = objects
 
     def init_classic_load_balancers(self, from_cache=False, cache_file=None):
         """
@@ -539,7 +539,7 @@ class AWSAPI:
         else:
             objects = self.elb_client.get_all_load_balancers()
 
-        self.classic_load_balancers += objects
+        self.classic_load_balancers = objects
 
     def init_hosted_zones(self, from_cache=False, cache_file=None, full_information=True):
         """
@@ -673,7 +673,7 @@ class AWSAPI:
             objects = self.load_objects_from_cache(cache_file, EC2SecurityGroup)
         else:
             objects = self.ec2_client.get_all_security_groups(full_information=full_information)
-        self.security_groups += objects
+        self.security_groups = objects
 
     @staticmethod
     def cache_objects_from_generator(generator, sub_dir):
@@ -1617,8 +1617,8 @@ class AWSAPI:
                 lines.append(str(statement_2.dict_src))
         return lines
 
-    def get_secret_value(self, secret_name):
-        return self.secretsmanager_client.raw_get_secret_string(secret_name)
+    def get_secret_value(self, secret_name, region=None):
+        return self.secretsmanager_client.raw_get_secret_string(secret_name, region=region)
 
     def put_secret_value(self, secret_name, value):
         return self.secretsmanager_client.raw_put_secret_string(secret_name, value)
@@ -1628,12 +1628,12 @@ class AWSAPI:
             contents = file_handler.read()
         self.put_secret_value(secret_name, contents)
 
-    def get_secret_file(self, secret_name, dir_path: str):
+    def get_secret_file(self, secret_name, dir_path: str, region=None):
         if dir_path.endswith(secret_name):
             dir_path = os.path.dirname(dir_path)
 
         os.makedirs(dir_path, exist_ok=True)
-        contents = self.get_secret_value(secret_name)
+        contents = self.get_secret_value(secret_name, region=region)
 
         with open(os.path.join(dir_path, secret_name), "w+") as file_handler:
             file_handler.write(contents)
@@ -1662,15 +1662,18 @@ class AWSAPI:
 
         return self.ec2_client.raw_modify_managed_prefix_list(request)
 
-    def provision_hosted_zone(self, hosted_zone):
-        self.route53_client.create_hosted_zone(hosted_zone)
-
-        for vpc_association in hosted_zone.vpc_associations[1:]:
+    def associate_hosted_zone(self, hosted_zone):
+        for vpc_association in hosted_zone.vpc_associations:
             associate_request = {"HostedZoneId": hosted_zone.id,
             "VPC": vpc_association
             }
 
             self.route53_client.raw_associate_vpc_with_hosted_zone(associate_request)
+
+    def provision_hosted_zone(self, hosted_zone):
+        self.route53_client.create_hosted_zone(hosted_zone)
+
+        self.associate_hosted_zone(hosted_zone)
 
         changes = []
         for record in hosted_zone.records:
@@ -1693,7 +1696,7 @@ class AWSAPI:
         access_policies_str = json.dumps(access_policies)
 
         request = {"DomainName": elasticsearch_domain.name, "AccessPolicies": access_policies_str}
-        self.elasticsearch_client.raw_update_elasticsearch_domain_config(request)
+        self.elasticsearch_client.raw_update_elasticsearch_domain_config(request, region=elasticsearch_domain.region)
 
     def provision_vpc(self, vpc):
         self.ec2_client.provision_vpc(vpc)
@@ -1714,6 +1717,8 @@ class AWSAPI:
         for nat_gateway in nat_gateways:
             self.provision_nat_gateway(nat_gateway)
 
+        aws_propagation_timeout = 60
+        time_to_sleep = 10
         nat_gateways_tmp = [ngw for ngw in nat_gateways]
         while len(nat_gateways_tmp) > 0:
             to_del = []
@@ -1728,13 +1733,15 @@ class AWSAPI:
                             break
                         break
                 else:
-                    raise RuntimeError(f"Can not find nat_gateway '{nat_gateway_tmp.get_tagname()}' in region nat_gateways")
+                    if aws_propagation_timeout <= 0:
+                        raise RuntimeError(f"Can not find nat_gateway '{nat_gateway_tmp.get_tagname()}' in region nat_gateways")
+                    aws_propagation_timeout -= time_to_sleep
 
             for ngw in to_del:
                 nat_gateways_tmp.remove(ngw)
 
             if nat_gateways_tmp:
-                time.sleep(10)
+                time.sleep(time_to_sleep)
 
     def provision_nat_gateway(self, nat_gateway):
         self.ec2_client.provision_nat_gateway(nat_gateway)
@@ -1760,3 +1767,16 @@ class AWSAPI:
         else:
             return response
 
+    def provision_load_balancer(self, load_balancer):
+        self.elbv2_client.provision_load_balancer(load_balancer)
+
+    def provision_load_balancer_target_group(self, load_balancer):
+        self.elbv2_client.provision_load_balancer_target_group(load_balancer)
+
+    def provision_load_balancer_listener(self, load_balancer):
+        self.elbv2_client.provision_load_balancer_listener(load_balancer)
+
+    def associate_elastic_address(self, ec2_instance, elastic_address):
+        request = {"AllocationId": elastic_address.id,
+                    "InstanceId": ec2_instance.id}
+        self.ec2_client.associate_elastic_address_raw(request)

@@ -135,6 +135,12 @@ class EC2Instance(AwsObject):
         """
         return [end_point["ip"].copy() for end_point in self.get_security_groups_endpoints()]
 
+    def get_private_addresses(self):
+        lst_ret = []
+        for inter in self.network_interfaces:
+            lst_ret += inter.get_private_addresses()
+        return lst_ret
+
     def get_security_groups_endpoints(self):
         """
         Return security group endpoints - what end points the security group protects.

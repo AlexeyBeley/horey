@@ -2,6 +2,7 @@
 AWS Lambda representation
 """
 import pdb
+import copy
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 
@@ -91,16 +92,8 @@ class RouteTable(AwsObject):
         """
         lst_ret = []
         for route in self.routes:
-            request = dict()
-            request["DestinationCidrBlock"] = route["DestinationCidrBlock"]
+            request = copy.deepcopy(route)
             request["RouteTableId"] = self.id
-
-            if route.get("NatGatewayId") is not None:
-                request["NatGatewayId"] = route["NatGatewayId"]
-
-            if route.get("GatewayId") is not None:
-                request["GatewayId"] = route["GatewayId"]
-
             lst_ret.append(request)
 
         return lst_ret

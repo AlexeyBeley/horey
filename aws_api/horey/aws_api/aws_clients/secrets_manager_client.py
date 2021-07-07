@@ -72,7 +72,10 @@ class SecretsManagerClient(Boto3Client):
             logger.error(f"Can not find secret {secret_id}")
             raise
 
-    def raw_get_secret_string(self, secret_id):
+    def raw_get_secret_string(self, secret_id, region=None):
+        if region is not None:
+            AWSAccount.set_aws_region(region)
+
         try:
             for response in self.execute(self.client.get_secret_value, None, raw_data=True,
                                      filters_req={"SecretId": secret_id}):
