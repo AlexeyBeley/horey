@@ -15,6 +15,8 @@ class VPC(AwsObject):
         self.instances = []
         self.cidr_block = None
         self.region = None
+        self.enable_dns_hostnames = True
+        self.enable_dns_support = True
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -61,6 +63,21 @@ class VPC(AwsObject):
                                         "Tags": self.tags}]
 
         return request
+
+    def generate_modify_vpc_attribute_requests(self):
+        lst_ret = []
+        request = dict()
+        request["EnableDnsHostnames"] = {"Value": self.enable_dns_hostnames}
+        request["VpcId"] = self.id
+
+        lst_ret.append(request)
+
+        request = dict()
+        request["EnableDnsSupport"] = {"Value": self.enable_dns_support}
+        request["VpcId"] = self.id
+
+        lst_ret.append(request)
+        return lst_ret
 
     def update_from_raw_create(self, dict_src):
         init_options = {

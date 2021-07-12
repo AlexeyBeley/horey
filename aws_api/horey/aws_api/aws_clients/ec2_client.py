@@ -40,18 +40,18 @@ class EC2Client(Boto3Client):
         client_name = "ec2"
         super().__init__(client_name)
 
-    def get_all_subnets(self):
+    def get_all_subnets(self, region=None):
         """
         Get all subnets in all regions.
         :return:
         """
-        final_result = list()
 
+        if region is not None:
+            return self.get_region_subnets(region)
+
+        final_result = list()
         for region in AWSAccount.get_aws_account().regions.values():
-            AWSAccount.set_aws_region(region)
-            for dict_src in self.execute(self.client.describe_subnets, "Subnets"):
-                obj = Subnet(dict_src)
-                final_result.append(obj)
+            final_result += self.get_region_subnets(region)
 
         return final_result
 
@@ -87,7 +87,13 @@ class EC2Client(Boto3Client):
             obj.region = region
             final_result.append(obj)
         return final_result
-    
+
+    def init_vpc_attributes(self, vpc):
+        pdb.set_trace()
+        for attr_name in ["EnableDnsHostnames", "EnableDnsSupport"]:
+            for value in self.execute(self.client.describe_vpc_attribute, attr_name, filters_req={"Attribute": attr_name, "VpcId":vpc.id}):
+                vpc.init_default_attr(attr_name, value)
+
     def get_all_availability_zones(self, region=None):
         """
         Get all interfaces in all regions.
@@ -359,14 +365,22 @@ class EC2Client(Boto3Client):
             if vpc_exists.get_tagname(ignore_missing_tag=True) == vpc.get_tagname():
                 if vpc_exists.cidr_block != vpc.cidr_block:
                     raise RuntimeError(f"VPC {vpc_exists.name} exists with different cidr_block {vpc_exists.cidr_block} != {vpc.cidr_block}")
-                return vpc.update_from_raw_create(vpc_exists.dict_src)
+                vpc.id = vpc_exists.id
 
-        AWSAccount.set_aws_region(vpc.region.region_mark)
-        response = self.provision_vpc_raw(vpc.generate_create_request())
-        vpc.update_from_raw_create(response)
+        if vpc.id is None:
+            AWSAccount.set_aws_region(vpc.region.region_mark)
+            response = self.provision_vpc_raw(vpc.generate_create_request())
+            vpc.id = response["VpcId"]
+
+        for request in vpc.generate_modify_vpc_attribute_requests():
+            self.modify_vpc_attribute_raw(request)
 
     def provision_vpc_raw(self, request):
         for response in self.execute(self.client.create_vpc, "Vpc", filters_req=request):
+            return response
+
+    def modify_vpc_attribute_raw(self, request):
+        for response in self.execute(self.client.modify_vpc_attribute, None, filters_req=request, raw_data=True):
             return response
 
     def provision_subnets(self, subnets):
@@ -629,28 +643,40 @@ class EC2Client(Boto3Client):
             return response
 
     def provision_vpc_peering(self, vpc_peering):
-        try:
+        region_vpc_peerings = self.get_region_vpc_peerings(vpc_peering.region)
+        for region_vpc_peering in region_vpc_peerings:
+            if region_vpc_peering.get_status() in [region_vpc_peering.Status.DELETED, region_vpc_peering.Status.DELETING]:
+                continue
+            if region_vpc_peering.get_tagname(ignore_missing_tag=True) != vpc_peering.get_tagname():
+                continue
+
+            vpc_peering.update_from_raw_response(region_vpc_peering.dict_src)
+
+            if region_vpc_peering.get_status() in [region_vpc_peering.Status.ACTIVE, region_vpc_peering.Status.PROVISIONING]:
+                return
+            break
+
+        if vpc_peering.id is None:
             AWSAccount.set_aws_region(vpc_peering.region)
             response = self.provision_vpc_peering_raw(vpc_peering.generate_create_request())
             vpc_peering.update_from_raw_response(response)
-        except Exception as exception_inst:
-            repr_exception_inst = repr(exception_inst)
-            if "already exists for VPC" not in repr_exception_inst:
-                raise
-            logger.warning(repr_exception_inst)
 
-        AWSAccount.set_aws_region(vpc_peering.peer_region)
-        for counter in range(20):
-            try:
-                self.accept_vpc_peering_connection_raw(vpc_peering.generate_accept_request())
-                break
-            except Exception as exception_inst:
-                repr_exception_inst = repr(exception_inst)
-                if "does not exist" not in repr_exception_inst:
-                    raise
-            time.sleep(5)
+        if vpc_peering.get_status() in [vpc_peering.Status.INITIATING_REQUEST, vpc_peering.Status.PENDING_ACCEPTANCE]:
+            AWSAccount.set_aws_region(vpc_peering.peer_region)
+            for counter in range(20):
+                try:
+                    self.accept_vpc_peering_connection_raw(vpc_peering.generate_accept_request())
+                    break
+                except Exception as exception_inst:
+                    repr_exception_inst = repr(exception_inst)
+                    if "does not exist" not in repr_exception_inst:
+                        raise
+                time.sleep(5)
+        else:
+            raise RuntimeError(vpc_peering.get_status())
 
     def provision_vpc_peering_raw(self, request_dict):
+        logger.info(f"Creating VPC Peering: {request_dict}")
         for response in self.execute(self.client.create_vpc_peering_connection, "VpcPeeringConnection", filters_req=request_dict):
             return response
 
@@ -698,6 +724,10 @@ class EC2Client(Boto3Client):
             logger.warning(repr(exception_inst))
             raise
 
+        self.create_routes(route_table)
+
+    def create_routes(self, route_table, replace=True):
+        AWSAccount.set_aws_region(route_table.region)
         for request in route_table.generate_create_route_requests():
             try:
                 self.create_route_raw(request)
@@ -706,7 +736,8 @@ class EC2Client(Boto3Client):
                 logger.warning(repr_exception_inst)
                 if "already exists" not in repr_exception_inst:
                     raise
-                self.replace_route_raw(request)
+                if replace:
+                    self.replace_route_raw(request)
 
     def provision_route_table_raw(self, request_dict):
         for response in self.execute(self.client.create_route_table, "RouteTable", filters_req=request_dict):

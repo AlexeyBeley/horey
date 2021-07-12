@@ -178,11 +178,11 @@ class AWSAPI:
 
         self.vpcs = objects
         
-    def init_subnets(self, from_cache=False, cache_file=None):
+    def init_subnets(self, from_cache=False, cache_file=None, region=None):
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, Subnet)
         else:
-            objects = self.ec2_client.get_all_subnets()
+            objects = self.ec2_client.get_all_subnets(region=region)
 
         self.subnets = objects
     
@@ -226,19 +226,19 @@ class AWSAPI:
 
         self.internet_gateways = objects
 
-    def init_vpc_peerings(self, from_cache=False, cache_file=None):
+    def init_vpc_peerings(self, from_cache=False, cache_file=None, region=None):
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, VPCPeering)
         else:
-            objects = self.ec2_client.get_all_vpc_peerings()
+            objects = self.ec2_client.get_all_vpc_peerings(region=region)
 
         self.vpc_peerings = objects
 
-    def init_route_tables(self, from_cache=False, cache_file=None):
+    def init_route_tables(self, from_cache=False, cache_file=None, region=None):
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, RouteTable)
         else:
-            objects = self.ec2_client.get_all_route_tables()
+            objects = self.ec2_client.get_all_route_tables(region=region)
 
         self.route_tables = objects
 
@@ -1667,7 +1667,6 @@ class AWSAPI:
             associate_request = {"HostedZoneId": hosted_zone.id,
             "VPC": vpc_association
             }
-
             self.route53_client.raw_associate_vpc_with_hosted_zone(associate_request)
 
     def provision_hosted_zone(self, hosted_zone):
