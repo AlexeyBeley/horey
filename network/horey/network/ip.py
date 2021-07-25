@@ -396,13 +396,22 @@ class IP:
         return ip
 
     def split(self, mask_length):
+        if self.int_mask > mask_length:
+            raise ValueError(f"{self.int_mask} > {mask_length}")
+
         if self.type != self.Types.IPV4:
             raise NotImplementedError()
         str_address_bits = self.init_str_bit_address()
-        base = str_address_bits[:self.int_mask]
+
+        base_net_part = str_address_bits[:self.int_mask]
+
         hosts_part = "0"*(32 - mask_length)
-        permutations = self.get_bit_permutations(2)
-        return [IP(f"{self.address_from_str_binary(base+permutation+hosts_part)}/{mask_length}") for permutation in permutations]
+
+        permutations_part_length = (mask_length- self.int_mask)
+
+        permutations = self.get_bit_permutations(permutations_part_length)
+
+        return [IP(f"{self.address_from_str_binary(base_net_part+permutation+hosts_part)}/{mask_length}") for permutation in permutations]
 
     @staticmethod
     def get_bit_permutations(count):

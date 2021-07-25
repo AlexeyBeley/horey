@@ -173,8 +173,7 @@ class AzureAPI:
         building_block.update_after_creation(response)
 
     def provision_virtual_machine(self, building_block):
-        response = self.compute_client.raw_create_virtual_machines(building_block.generate_create_request())
-        building_block.update_after_creation(response)
+        self.compute_client.provision_virtual_machine(building_block)
 
     def provision(self, building_block):
         if isinstance(building_block, ResourceGroup):

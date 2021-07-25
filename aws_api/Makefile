@@ -10,6 +10,8 @@ VENV_BIN_DIR := ${ROOT_DIR}/../build/_build/_venv/bin
 SECRET_NAME := "name"
 SECRET_VALUE := "value"
 
+SECRET_FILE_NAME := "bastion_staging.pem"
+SECRET_FILE_PATH := "/Users/alexey.beley/.ssh/${SECRET_FILE_NAME}"
 
 test:
 	echo ${CONFIGURATION_FILE_PATH}
@@ -48,7 +50,7 @@ put_secret_value:
 put_secret_file:
 	source ${VENV_BIN_DIR}/activate &&\
 	export PYTHONPATH=${AWS_API_DIR} &&\
-	python3 ${AWS_API_DIR}/aws_api_actor.py --action put_secret_file --secret_name "file_name" --secret_file_path "file_path" --configuration_file_full_path ${CONFIGURATION_FILE_PATH}
+	python3 ${AWS_API_DIR}/aws_api_actor.py --action put_secret_file --secret_name ${SECRET_FILE_NAME} --secret_file_path ${SECRET_FILE_PATH} --configuration_file_full_path ${CONFIGURATION_FILE_PATH}
 
 get_secret_file:
 	source ${VENV_BIN_DIR}/activate &&\

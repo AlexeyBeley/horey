@@ -73,6 +73,7 @@ class SecretsManagerClient(Boto3Client):
             raise
 
     def raw_get_secret_string(self, secret_id, region=None):
+        logger.info(f"Fetching secret value for secret '{secret_id}'")
         if region is not None:
             AWSAccount.set_aws_region(region)
 

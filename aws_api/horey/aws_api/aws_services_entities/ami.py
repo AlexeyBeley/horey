@@ -42,6 +42,7 @@ class AMI(AwsObject):
             "Platform": self.init_default_attr,
             "BootMode": self.init_default_attr,
             "KernelId": self.init_default_attr,
+            "RamdiskId": self.init_default_attr,
                         }
 
         self.init_attrs(dict_src, init_options)

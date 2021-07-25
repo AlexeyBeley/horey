@@ -340,7 +340,7 @@ class RemoteDeployer:
             raise RuntimeError(str(lst_errors))
         logger.info("Deployment finished successfully output in")
 
-    def wait_to_finish(self, targets, check_callback, sleep_time=10, total_time=300):
+    def wait_to_finish(self, targets, check_callback, sleep_time=10, total_time=600):
         start_time = datetime.datetime.now()
         end_time = start_time + datetime.timedelta(seconds=total_time)
 

@@ -16,6 +16,15 @@ class ComputeClient(AzureClient):
     def __init__(self):
         super().__init__()
 
+    def provision_virtual_machine(self, virtual_machine):
+        all_machines = self.get_all_virtual_machines(virtual_machine.resource_group_name)
+        for existing_machine in all_machines:
+            if existing_machine.name == virtual_machine.name:
+                virtual_machine.update_after_creation(existing_machine)
+                return virtual_machine
+
+        return self.raw_create_virtual_machines(virtual_machine.generate_create_request())
+
     def raw_create_virtual_machines(self, lst_args):
         logger.info(f"Begin virtual machine creation: '{lst_args[1]}'")
         try:
@@ -38,8 +47,8 @@ class ComputeClient(AzureClient):
     def get_all_ssh_keys(self, resource_group):
         return [SSHKey(obj.as_dict()) for obj in self.client.ssh_public_keys.list_by_resource_group(resource_group.name)]
 
-    def get_all_virtual_machines(self, resource_group):
-        return [VirtualMachine(obj.as_dict()) for obj in self.client.virtual_machines.list(resource_group.name)]
+    def get_all_virtual_machines(self, resource_group_name):
+        return [VirtualMachine(obj.as_dict()) for obj in self.client.virtual_machines.list(resource_group_name)]
 
     def raw_create_disk(self, lst_args):
         logger.info(f"Begin disk creation: '{lst_args[1]}'")

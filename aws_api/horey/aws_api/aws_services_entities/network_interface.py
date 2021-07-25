@@ -99,6 +99,9 @@ class NetworkInterface(AwsObject):
             all_addresses.append(dict_addr["PrivateIpAddress"])
         return all_addresses
 
+    def get_public_addresses(self):
+        return [IP(self.association["PublicIp"] + "/32")]
+
     def get_security_groups_endpoints(self):
         """
         Get all endpoints reached by security groups.

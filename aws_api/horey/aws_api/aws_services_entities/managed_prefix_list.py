@@ -121,7 +121,10 @@ class ManagedPrefixList(AwsObject):
         request["TagSpecifications"] = [{
                                         "ResourceType": "prefix-list",
                                         "Tags": self.tags}]
-        request["Entries"] = self.entries
+        request["Entries"] = [{
+                "Cidr": entry.cidr,
+                "Description": entry.description
+                } for entry in self.entries ]
 
         return request
 

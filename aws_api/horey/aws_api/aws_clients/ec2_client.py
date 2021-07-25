@@ -193,21 +193,30 @@ class EC2Client(Boto3Client):
         try:
             group_id = self.raw_create_security_group(security_group.generate_create_request())
             security_group.id = group_id
+            # wait for propagation?
+            #for i in range(60):
+            #    region_groups = self.get_all_security_groups_in_region(security_group.region, full_information=False)
+            #    named_region_groups = CommonUtils.find_objects_by_values(region_groups, {"name": security_group.name}, max_count=1)
+            #    if len(named_region_groups) > 0:
+            #        break
+            #    time.sleep(5)
         except Exception as exception_inst:
             repr_exception_inst = repr(exception_inst)
             if "already exists for VPC" not in repr_exception_inst:
                 raise
             logger.warning(repr_exception_inst)
-            region_groups = self.get_all_security_groups_in_region(security_group.region, security_group)
+            region_groups = self.get_all_security_groups_in_region(security_group.region, full_information=False)
             existing_group = CommonUtils.find_objects_by_values(region_groups, {"name": security_group.name}, max_count=1)[0]
             security_group.update_from_raw_create(existing_group.dict_src)
 
     def raw_create_security_group(self, request_dict):
+        logger.info(f"Creating security group {request_dict}")
         for group_id in self.execute(self.client.create_security_group, "GroupId", filters_req=request_dict):
             return group_id
 
-    def authorize_security_group_ingress(self, request_dict):
+    def authorize_security_group_ingress(self, region, request_dict):
         logger.info(f"Authorizing security group ingress: {request_dict}")
+        AWSAccount.set_aws_region(region)
         for response in self.execute(self.client.authorize_security_group_ingress, "GroupId", filters_req=request_dict,
                                      raw_data=True, exception_ignore_callback=lambda x: "already exists" in repr(x)):
             print(response)
@@ -436,11 +445,14 @@ class EC2Client(Boto3Client):
             final_result += self.get_region_amis(region, full_information=full_information)
         return final_result
 
-    def get_region_amis(self, region, full_information=True):
+    def get_region_amis(self, region, full_information=True, image_ids=None):
         AWSAccount.set_aws_region(region)
         final_result = list()
+        filter_request = dict()
+        if image_ids is not None:
+            filter_request["ImageIds"] = image_ids
 
-        for response in self.execute(self.client.describe_images, "Images"):
+        for response in self.execute(self.client.describe_images, "Images", filters_req=filter_request):
             obj = AMI(response)
             if full_information is True:
                 pass
@@ -599,6 +611,7 @@ class EC2Client(Boto3Client):
         if internet_gateway.id is None:
             try:
                 response = self.provision_internet_gateway_raw(internet_gateway.generate_create_request())
+                internet_gateway.id = response["InternetGatewayId"]
                 region_gateway = InternetGateway(response)
             except Exception as exception_inst:
                 logger.warning(f"{internet_gateway.generate_create_request()}: {repr(exception_inst)}")
@@ -775,8 +788,6 @@ class EC2Client(Boto3Client):
                 return
 
         try:
-            #ret = self.get_region_amis(ec2_instance.region)
-            #pdb.set_trace()
             response = self.provision_ec2_instance_raw(ec2_instance.generate_create_request())
             ec2_instance.update_from_raw_response(response)
         except Exception as exception_inst:
@@ -806,8 +817,11 @@ class EC2Client(Boto3Client):
 
     def test_debug(self):
         import pdb
-        pdb.set_trace()
+        ret_1 = self.get_region_amis("us-west-2")
+        ret_syd = self.get_region_amis("ap-southeast-2")
+        syd_ami = self.get_region_amis("ap-southeast-2", image_ids=["ami-0f39d06d145e9bb63"])
 
+        pdb.set_trace()
         for response in self.execute(self.client.describe_managed_prefix_lists, "PrefixLists", filters_req=request):
             return response
 

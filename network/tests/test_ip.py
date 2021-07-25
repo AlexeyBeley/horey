@@ -40,11 +40,18 @@ def test_first_in_net(self):
     ip = IP("10.0.0.1/24")
     self.assertEqual(ip.first_in_net(), IP("10.0.0.0/24"))
 
+
 def test_split():
     ip = IP("10.0.0.0/22")
     lst_ret = ip.split(24)
-    assert lst_ret == 0
+    assert len(lst_ret) == 4
+
+
+def test_split_2():
+    ip = IP("192.168.16.0/21")
+    lst_ret = ip.split(24)
+    assert len(lst_ret) == 8
 
 
 if __name__ == "__main__":
-    test_split()
+    test_split_2()

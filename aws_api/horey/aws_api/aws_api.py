@@ -1654,6 +1654,8 @@ class AWSAPI:
     def provision_managed_prefix_list(self, managed_prefix_list):
         if managed_prefix_list.id is None:
             self.ec2_client.provision_managed_prefix_list(managed_prefix_list)
+            return
+
         live_managed_prefix_list = self.ec2_client.get_managed_prefix_list(managed_prefix_list.region.region_mark, managed_prefix_list.id)
         request = live_managed_prefix_list.get_entries_add_request(managed_prefix_list)
 
@@ -1691,7 +1693,27 @@ class AWSAPI:
 
     def add_elasticsearch_access_policy_raw_statements(self, elasticsearch_domain, raw_statements):
         access_policies = json.loads(elasticsearch_domain.access_policies)
-        access_policies["Statement"] += raw_statements
+        new_statements = []
+        for raw_statement in raw_statements:
+            for access_policies_statement in access_policies["Statement"]:
+                if access_policies_statement["Effect"] != raw_statement["Effect"]:
+                    continue
+                if access_policies_statement["Principal"] != raw_statement["Principal"]:
+                    continue
+                if access_policies_statement["Action"] != raw_statement["Action"]:
+                    continue
+                if access_policies_statement["Resource"] != raw_statement["Resource"]:
+                    continue
+                if access_policies_statement["Condition"]["IpAddress"]["aws:SourceIp"] != raw_statement["Condition"]["IpAddress"]["aws:SourceIp"]:
+                    continue
+                break
+            else:
+                new_statements.append(raw_statements)
+
+        if len(new_statements) == 0:
+            return
+
+        access_policies["Statement"] += new_statements
         access_policies_str = json.dumps(access_policies)
 
         request = {"DomainName": elasticsearch_domain.name, "AccessPolicies": access_policies_str}
@@ -1754,14 +1776,14 @@ class AWSAPI:
     def provision_ec2_instance(self, ec2_instance):
         self.ec2_client.provision_ec2_instance(ec2_instance)
 
-    def provision_key_pair(self, key_pair, save_to_secrets_manager=None, private_key_region=None):
+    def provision_key_pair(self, key_pair, save_to_secrets_manager=None, secrets_manager_region=None):
         logger.info(f"provisioning ssh key pair {key_pair.name}")
         response = self.ec2_client.provision_key_pair(key_pair)
         if response is None:
             return
 
         if save_to_secrets_manager:
-            AWSAccount.set_aws_region(private_key_region)
+            AWSAccount.set_aws_region(secrets_manager_region)
             self.put_secret_value(key_pair.name + ".key", response["KeyMaterial"])
         else:
             return response
@@ -1779,3 +1801,21 @@ class AWSAPI:
         request = {"AllocationId": elastic_address.id,
                     "InstanceId": ec2_instance.id}
         self.ec2_client.associate_elastic_address_raw(request)
+
+    def find_route_table_by_subnet(self, region, subnet):
+        self.init_route_tables(region=region)
+        main_route_tables = []
+        for route_table in self.route_tables:
+            if route_table.vpc_id != subnet.vpc_id:
+                continue
+            for association in route_table.associations:
+                if association["Main"]:
+                    main_route_tables.append(route_table)
+                if association.get("SubnetId") == subnet.id:
+                    return route_table
+
+        if len(main_route_tables) != 1:
+            raise RuntimeError(f"{len(main_route_tables)} != 1")
+
+        return main_route_tables[0]
+
