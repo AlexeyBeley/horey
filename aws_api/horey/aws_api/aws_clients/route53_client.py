@@ -67,6 +67,7 @@ class Route53Client(Boto3Client):
             return response
 
     def raw_create_hosted_zone(self, request_dict):
+        logger.info(f"Creating hosted zone: {request_dict}")
         for response in self.execute(self.client.create_hosted_zone, "HostedZone", filters_req=request_dict):
             return response
 
