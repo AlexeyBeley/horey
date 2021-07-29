@@ -59,5 +59,5 @@ get_secret_file:
 
 push_sns:
 	source ${VENV_BIN_DIR}/activate &&\
-	python3 ${AWS_API_CLIENTS_DIR}/sns_client_actor.py --action publish --topic_arn "arn:aws:sns:us-east-1:211921183446:infrastracture-alarm" --subject "zabbix-test-from-local" --message "please ignore" --accounts_file "/Users/alexey.beley/private/ignore/accounts/managed_accounts.py" --account "211921183446"
+	python3 ${AWS_API_CLIENTS_DIR}/sns_client_actor.py --action publish --topic_arn "arn:aws:sns:us-east-1" --subject "zabbix-test-from-local" --message "please ignore" --accounts_file "/Users/alexey.beley/private/ignore/accounts/managed_accounts.py" --account "211921183446"
 	#export AWS_PROFILE=current

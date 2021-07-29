@@ -215,12 +215,29 @@ class EC2Client(Boto3Client):
             return group_id
 
     def authorize_security_group_ingress(self, region, request_dict):
-        logger.info(f"Authorizing security group ingress: {request_dict}")
         AWSAccount.set_aws_region(region)
-        for response in self.execute(self.client.authorize_security_group_ingress, "GroupId", filters_req=request_dict,
-                                     raw_data=True, exception_ignore_callback=lambda x: "already exists" in repr(x)):
-            print(response)
-            return response
+        try:
+            return self.authorize_security_group_ingress_raw(request_dict)
+        except Exception as inst_exception:
+            if "already exists" in repr(inst_exception):
+                for request_ip_permission in request_dict["IpPermissions"]:
+                    request_dict_tmp = {"GroupId": request_dict["GroupId"],
+                                        "IpPermissions": [request_ip_permission]}
+
+                    self.authorize_security_group_ingress_raw(request_dict_tmp, ignore_exists=True)
+            else:
+                raise
+
+    def authorize_security_group_ingress_raw(self, request_dict, ignore_exists=False):
+        logger.info(f"Authorizing security group ingress: {request_dict}")
+        if ignore_exists:
+            for response in self.execute(self.client.authorize_security_group_ingress, "GroupId", filters_req=request_dict,
+                                    raw_data=True, exception_ignore_callback=lambda x: "already exists" in repr(x)):
+                return response
+        else:
+            for response in self.execute(self.client.authorize_security_group_ingress, "GroupId", filters_req=request_dict,
+                             raw_data=True):
+                return response
 
     def create_instance(self, request_dict):
         for response in self.execute(self.client.run_instances, "Instances", filters_req=request_dict):

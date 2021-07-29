@@ -162,11 +162,11 @@ class AWSAPI:
         accounts = CommonUtils.load_object_from_module(self.configuration.accounts_file, "main")
         AWSAccount.set_aws_account(accounts[self.configuration.aws_api_account])
 
-    def init_managed_prefix_lists(self, from_cache=False, cache_file=None):
+    def init_managed_prefix_lists(self, from_cache=False, cache_file=None, region=None):
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, ManagedPrefixList)
         else:
-            objects = self.ec2_client.get_all_managed_prefix_lists()
+            objects = self.ec2_client.get_all_managed_prefix_lists(region=region)
 
         self.managed_prefix_lists = objects
     
@@ -1708,11 +1708,10 @@ class AWSAPI:
                     continue
                 break
             else:
-                new_statements.append(raw_statements)
+                new_statements.append(raw_statement)
 
         if len(new_statements) == 0:
             return
-
         access_policies["Statement"] += new_statements
         access_policies_str = json.dumps(access_policies)
 
@@ -1762,6 +1761,7 @@ class AWSAPI:
                 nat_gateways_tmp.remove(ngw)
 
             if nat_gateways_tmp:
+                logger.info(f"Waiting for {len(nat_gateways_tmp)} NAT gateways creation. Going to sleep for {time_to_sleep} seconds")
                 time.sleep(time_to_sleep)
 
     def provision_nat_gateway(self, nat_gateway):
@@ -1794,8 +1794,8 @@ class AWSAPI:
     def provision_load_balancer_target_group(self, load_balancer):
         self.elbv2_client.provision_load_balancer_target_group(load_balancer)
 
-    def provision_load_balancer_listener(self, load_balancer):
-        self.elbv2_client.provision_load_balancer_listener(load_balancer)
+    def provision_load_balancer_listener(self, listener):
+        self.elbv2_client.provision_load_balancer_listener(listener)
 
     def associate_elastic_address(self, ec2_instance, elastic_address):
         request = {"AllocationId": elastic_address.id,
