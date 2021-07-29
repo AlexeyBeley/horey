@@ -72,6 +72,7 @@ class Route53Client(Boto3Client):
             return response
 
     def raw_associate_vpc_with_hosted_zone(self, request_dict):
+        logger.info(f"Associating VPC with hosted zone: {request_dict}")
         try:
             for response in self.execute(self.client.associate_vpc_with_hosted_zone, "ChangeInfo", filters_req=request_dict):
                 return response
