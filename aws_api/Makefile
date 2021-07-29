@@ -10,8 +10,8 @@ VENV_BIN_DIR := ${ROOT_DIR}/../build/_build/_venv/bin
 SECRET_NAME := "name"
 SECRET_VALUE := "value"
 
-SECRET_FILE_NAME := "bastion_staging.pem"
-SECRET_FILE_PATH := "/Users/alexey.beley/.ssh/${SECRET_FILE_NAME}"
+SECRET_FILE_NAME := "tmp.file"
+SECRET_FILE_PATH := "/tmp/${SECRET_FILE_NAME}"
 
 test:
 	echo ${CONFIGURATION_FILE_PATH}
