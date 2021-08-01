@@ -122,7 +122,9 @@ class RemoteDeployer:
                     sftp_client.put_dir(deployment_target.local_deployment_dir_path,
                                     deployment_target.remote_target_deployment_directory_path)
                 except Exception as exception_instance:
-                    raise RuntimeError(f"{deployment_target.deployment_target_address}") from exception_instance
+                    raise RuntimeError(f"SFTP copping dir {deployment_target.local_deployment_dir_path} to "
+                                       f"{deployment_target.remote_target_deployment_directory_path} to"
+                                       f" {deployment_target.deployment_target_address}") from exception_instance
 
                 logger.info(
                     f"sftp: Uploading '{os.path.join(deployment_target.remote_target_deployment_directory_path, 'remote_step_executor.sh')}'")
