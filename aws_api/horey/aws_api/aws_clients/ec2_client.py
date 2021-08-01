@@ -406,6 +406,7 @@ class EC2Client(Boto3Client):
             return response
 
     def modify_vpc_attribute_raw(self, request):
+        logger.info(f"Modifying VPC {request}")
         for response in self.execute(self.client.modify_vpc_attribute, None, filters_req=request, raw_data=True):
             return response
 
