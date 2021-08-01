@@ -775,6 +775,7 @@ class EC2Client(Boto3Client):
             return response
 
     def associate_route_table_raw(self, request_dict):
+        logger.info(f"Associating route table: {request_dict}")
         for response in self.execute(self.client.associate_route_table, "AssociationId", filters_req=request_dict):
             return response
 
