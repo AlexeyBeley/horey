@@ -155,12 +155,15 @@ class ConfigurationPolicy:
         with open(output_file_name, "w+") as file_handler:
             json.dump(dict_values, file_handler, indent=4)
 
-    def init_from_policy(self, configuration):
+    def init_from_policy(self, configuration, ignore_undefined=False):
         for attr_name, value in configuration.convert_to_dict().items():
             try:
-                setattr(self, attr_name, value)
                 log_line = f"Init attribute '{attr_name}' from {type(configuration)} policy"
+                setattr(self, attr_name, value)
                 logger.info(log_line)
+            except AttributeError:
+                if not ignore_undefined:
+                    raise
             except ConfigurationPolicy.StaticValueError:
                 pass
 

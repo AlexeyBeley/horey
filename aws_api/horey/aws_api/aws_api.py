@@ -9,6 +9,9 @@ import time
 from collections import defaultdict
 from horey.network.ip import IP
 import pdb
+
+from horey.aws_api.aws_clients.ecr_client import ECRClient
+
 from horey.aws_api.aws_clients.ec2_client import EC2Client
 from horey.aws_api.aws_services_entities.ec2_instance import EC2Instance
 from horey.aws_api.aws_services_entities.network_interface import NetworkInterface
@@ -114,6 +117,7 @@ class AWSAPI:
         self.secretsmanager_client = SecretsManagerClient()
         self.servicediscovery_client = ServicediscoveryClient()
         self.elasticsearch_client = ElasticsearchClient()
+        self.ecr_client = ECRClient()
 
         self.network_interfaces = []
         self.iam_policies = []
@@ -1628,14 +1632,17 @@ class AWSAPI:
             contents = file_handler.read()
         self.put_secret_value(secret_name, contents)
 
-    def get_secret_file(self, secret_name, dir_path: str, region=None):
+    def get_secret_file(self, secret_name, dir_path: str, region=None, file_name=None):
         if dir_path.endswith(secret_name):
             dir_path = os.path.dirname(dir_path)
 
         os.makedirs(dir_path, exist_ok=True)
         contents = self.get_secret_value(secret_name, region=region)
 
-        with open(os.path.join(dir_path, secret_name), "w+") as file_handler:
+        if file_name is None:
+            file_name = secret_name
+
+        with open(os.path.join(dir_path, file_name), "w+") as file_handler:
             file_handler.write(contents)
 
     def copy_secrets_manager_secret_to_region(self, secret_name, region_src, region_dst):
@@ -1819,3 +1826,5 @@ class AWSAPI:
 
         return main_route_tables[0]
 
+    def get_ecr_authorization_info(self, region=None):
+        return self.ecr_client.get_authorization_info(region=region)

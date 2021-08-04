@@ -16,8 +16,11 @@ class ECRClient(Boto3Client):
         client_name = "ecr"
         super().__init__(client_name)
 
-    def get_authorization_info(self):
+    def get_authorization_info(self, region=None):
         current_account = AWSAccount.get_aws_account()
+
+        if region is not None:
+            AWSAccount.set_aws_region(region)
 
         lst_ret = list(self.execute(self.client.get_authorization_token, "authorizationData", filters_req={"registryIds": [current_account.id]}))
         for dict_src in lst_ret:
