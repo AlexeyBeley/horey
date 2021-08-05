@@ -18,6 +18,7 @@ class DockerAPI:
         logger.info(ret)
 
     def build(self, dockerfile_directory_path, tags, nocache=True):
+        logger.info("Starting building image")
         if not isinstance(tags, list):
             raise ValueError(f"'tags' must be of a type 'list' received {tags}: type: {type(tags)}")
 
@@ -27,6 +28,8 @@ class DockerAPI:
         except BuildError as exception_instance:
             self.print_log(exception_instance.build_log)
             raise
+
+        logger.info("Finished building image")
 
         self.print_log(build_log)
         self.tag_image(docker_image, tags[1:])
