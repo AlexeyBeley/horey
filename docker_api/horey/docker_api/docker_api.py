@@ -67,8 +67,7 @@ class DockerAPI:
             self.print_log_line(log_line)
 
     def upload_image(self, docker_image):
-        pdb.set_trace()
-        for repository in docker_image.attrs["RepoTags"]:
-            pdb.set_trace()
+        repo_tags = [repo_tag for repo_tag in docker_image.attrs["RepoTags"]]
+        for repository in repo_tags:
             for log_line in self.client.images.push(repository=repository, stream=True, decode=True):
                 self.print_log_line(log_line)
