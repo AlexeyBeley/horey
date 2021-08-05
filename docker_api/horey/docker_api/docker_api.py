@@ -30,7 +30,6 @@ class DockerAPI:
             raise
 
         logger.info("Finished building image")
-        pdb.set_trace()
         self.print_log(build_log)
         self.tag_image(docker_image, tags[1:])
         return docker_image
