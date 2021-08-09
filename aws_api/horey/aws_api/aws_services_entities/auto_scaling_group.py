@@ -88,7 +88,6 @@ class AutoScalingGroup(AwsObject):
     def generate_create_request(self):
         request = dict()
         request["AutoScalingGroupName"] = self.name
-        request["tags"] = self.tags
         request["LaunchTemplate"] = self.launch_template
         request["MinSize"] = self.min_size
         request["MaxSize"] = self.max_size
