@@ -56,9 +56,34 @@ class AutoScalingGroup(AwsObject):
         options = {}
         self._init_from_cache(dict_src, options)
 
-    def update_value_from_raw_response(self, raw_value):
+    def update_value_from_raw_response(self, dict_src):
         pdb.set_trace()
-        raise NotImplementedError()
+        init_options = {
+            "AutoScalingGroupName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "AutoScalingGroupARN": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "LaunchTemplate": self.init_default_attr,
+            "MinSize": self.init_default_attr,
+            "MaxSize": self.init_default_attr,
+            "DesiredCapacity": self.init_default_attr,
+            "DefaultCooldown": self.init_default_attr,
+            "AvailabilityZones": self.init_default_attr,
+            "LoadBalancerNames": self.init_default_attr,
+            "TargetGroupARNs": self.init_default_attr,
+            "HealthCheckType": self.init_default_attr,
+            "HealthCheckGracePeriod": self.init_default_attr,
+            "Instances": self.init_default_attr,
+            "CreatedTime": self.init_default_attr,
+            "SuspendedProcesses": self.init_default_attr,
+            "VPCZoneIdentifier": self.init_default_attr,
+            "EnabledMetrics": self.init_default_attr,
+            "Tags": self.init_default_attr,
+            "TerminationPolicies": self.init_default_attr,
+            "NewInstancesProtectedFromScaleIn": self.init_default_attr,
+            "ServiceLinkedRoleARN": self.init_default_attr,
+            "LaunchConfigurationName": self.init_default_attr,
+        }
+
+        self.init_attrs(dict_src, init_options)
 
     def generate_create_request(self):
         request = dict()
@@ -87,34 +112,40 @@ class AutoScalingGroup(AwsObject):
         return request
 
     def update_from_raw_create(self, dict_src):
-        raise NotImplementedError()
         pdb.set_trace()
         init_options = {
-            "ECSClusterId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
-            "ECSClusterArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
-            "AvailabilityZone": self.init_default_attr,
-            "AvailabilityZoneId": self.init_default_attr,
-            "AvailableIpAddressCount": self.init_default_attr,
-            "CidrBlock": self.init_default_attr,
-            "DefaultForAz": self.init_default_attr,
-            "MapPublicIpOnLaunch": self.init_default_attr,
-            "MapCustomerOwnedIpOnLaunch": self.init_default_attr,
-            "State": self.init_default_attr,
-            "VpcId": self.init_default_attr,
-            "OwnerId": self.init_default_attr,
-            "AssignIpv6AddressOnCreation": self.init_default_attr,
-            "Ipv6CidrBlockAssociationSet": self.init_default_attr,
+            "AutoScalingGroupName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "AutoScalingGroupARN": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "LaunchTemplate": self.init_default_attr,
+            "MinSize": self.init_default_attr,
+            "MaxSize": self.init_default_attr,
+            "DesiredCapacity": self.init_default_attr,
+            "DefaultCooldown": self.init_default_attr,
+            "AvailabilityZones": self.init_default_attr,
+            "LoadBalancerNames": self.init_default_attr,
+            "TargetGroupARNs": self.init_default_attr,
+            "HealthCheckType": self.init_default_attr,
+            "HealthCheckGracePeriod": self.init_default_attr,
+            "Instances": self.init_default_attr,
+            "CreatedTime": self.init_default_attr,
+            "SuspendedProcesses": self.init_default_attr,
+            "VPCZoneIdentifier": self.init_default_attr,
+            "EnabledMetrics": self.init_default_attr,
             "Tags": self.init_default_attr,
+            "TerminationPolicies": self.init_default_attr,
+            "NewInstancesProtectedFromScaleIn": self.init_default_attr,
+            "ServiceLinkedRoleARN": self.init_default_attr,
+            "LaunchConfigurationName": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
 
     @property
     def region(self):
-        raise NotImplementedError()
         if self._region is not None:
             return self._region
 
+        raise NotImplementedError()
         if self.arn is not None:
             self._region = Region.get_region(self.arn.split(":")[3])
 
@@ -122,11 +153,7 @@ class AutoScalingGroup(AwsObject):
 
     @region.setter
     def region(self, value):
-        raise NotImplementedError()
         if not isinstance(value, Region):
             raise ValueError(value)
 
         self._region = value
-
-    def update_from_raw_response(self, dict_src):
-        pdb.set_trace()
