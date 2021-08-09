@@ -7,6 +7,9 @@ from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.aws_services_entities.auto_scaling_group import AutoScalingGroup
 
+from horey.h_logger import get_logger
+logger = get_logger()
+
 
 class AutoScalingClient(Boto3Client):
     """
@@ -40,3 +43,20 @@ class AutoScalingClient(Boto3Client):
             final_result.append(obj)
 
         return final_result
+
+    def provision_auto_scaling_group(self, autoscaling_group):
+        region_objects = self.get_region_auto_scaling_groups(autoscaling_group.region)
+        for region_object in region_objects:
+            if region_object.name == autoscaling_group.name:
+                autoscaling_group.update_from_raw_response(region_object.dict_src)
+                return
+
+        AWSAccount.set_aws_region(autoscaling_group.region)
+        response = self.provision_auto_scaling_group_raw(autoscaling_group.generate_create_request())
+        autoscaling_group.update_from_raw_create(response)
+
+    def provision_auto_scaling_group_raw(self, request_dict):
+        logger.info(f"Creating Auto Scaling Group: {request_dict}")
+        pdb.set_trace()
+        for response in self.execute(self.client.create_auto_scaling_group, "ResponseMetadata", raw_data=True, filters_req=request_dict):
+            return response

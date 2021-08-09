@@ -310,3 +310,7 @@ class AwsObject:
 
     def get_tagname(self, ignore_missing_tag=False):
         return self.get_tag("name", ignore_missing_tag=ignore_missing_tag)
+
+    def print_dict_src(self):
+        for x in self.dict_src.items():
+            print(x)

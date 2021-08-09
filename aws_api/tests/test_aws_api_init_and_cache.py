@@ -10,6 +10,9 @@ import os
 from horey.aws_api.aws_api import AWSAPI
 from horey.h_logger import get_logger
 from horey.aws_api.aws_api_configuration_policy import AWSAPIConfigurationPolicy
+#from horey.common_utils.debug_utils import DebugUtils
+
+
 #Uncomment next line to save error lines to /tmp/error.log
 configuration_values_file_full_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), "h_logger_configuration_values.py")
 
@@ -168,11 +171,13 @@ def test_init_and_cache_cloudfront_distributions():
     aws_api.cache_objects(aws_api.cloudfront_distributions, configuration.aws_api_cloudfront_distributions_cache_file)
     assert isinstance(aws_api.cloudfront_distributions, list)
 
+
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_spot_fleet_requests():
     aws_api.init_spot_fleet_requests()
     aws_api.cache_objects(aws_api.spot_fleet_requests, configuration.aws_api_spot_fleet_requests_cache_file)
     assert isinstance(aws_api.spot_fleet_requests, list)
+
 
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_ec2_launch_templates():
@@ -180,18 +185,21 @@ def test_init_and_cache_ec2_launch_templates():
     aws_api.cache_objects(aws_api.ec2_launch_templates, configuration.aws_api_ec2_launch_templates_cache_file)
     assert isinstance(aws_api.ec2_launch_templates, list)
 
+
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_ec2_launch_template_versions():
     aws_api.init_ec2_launch_templates()
     aws_api.init_ec2_launch_template_versions()
     aws_api.cache_objects(aws_api.ec2_launch_template_versions, configuration.aws_api_ec2_launch_template_versions_cache_file)
     assert isinstance(aws_api.ec2_launch_template_versions, list)
-    
+
+
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_event_bridge_rules():
     aws_api.init_event_bridge_rules()
     aws_api.cache_objects(aws_api.event_bridge_rules, configuration.aws_api_event_bridge_rules_cache_file)
     assert isinstance(aws_api.event_bridge_rules, list)
+
 
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_secrets_manager_secrets():
@@ -345,6 +353,29 @@ def find_stream():
                 #pdb.set_trace()
                 #ret_ = [(x, x["firstEventTimestamp"]) for x in ret if "4470" in x["logStreamName"]]
 
+
+def find_ami():
+    region = "us-east-1"
+    #region = "us-west-2"
+    filter_request = dict()
+    filter_request["Filters"] = [{'Name': 'owner-id',
+                                  'Values': [
+                                      '591542846629',
+                                  ]}]
+    filter_request["Filters"] = [{'Name': 'image-id',
+            'Values': [
+                'ami-0f06fc190dd71269e',
+            ]}]
+
+    filter_request["Filters"] = [{'Name': 'name',
+                                  'Values': [
+                                      "amzn2-ami-ecs-hvm-2.0.20201209-x86_64-ebs",
+                                  ]}]
+    amis = aws_api.ec2_client.get_region_amis(region, custom_filters=filter_request)
+    ami = amis[0]
+    ami.print_dict_src()
+    pdb.set_trace()
+
 """
 amis
 key_pairs
@@ -364,6 +395,7 @@ if __name__ == "__main__":
     #test_init_and_cache_nat_gateways()
     #test_init_and_cache_ecr_repositories()
     #test_init_and_cache_ecs_clusters()
-    test_init_and_cache_ec2_launch_template_versions()
+    #test_init_and_cache_ec2_launch_template_versions()
     #find_stream()
+    find_ami()
 

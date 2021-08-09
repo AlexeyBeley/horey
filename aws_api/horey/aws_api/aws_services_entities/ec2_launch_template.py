@@ -1,6 +1,7 @@
 """
 Class to represent ec2 spot fleet request
 """
+import pdb
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 from horey.aws_api.base_entities.region import Region
@@ -47,20 +48,28 @@ class EC2LaunchTemplate(AwsObject):
 
     def generate_create_request(self):
         request = dict()
-        request["clusterName"] = self.name
-        request["tags"] = self.tags
-
+        request["LaunchTemplateName"] = self.name
+        request["LaunchTemplateData"] = self.launch_template_data
+        request["TagSpecifications"] = [
+            {
+                'ResourceType': 'launch-template',
+                'Tags': self.tags
+            },
+        ]
         return request
 
-        #"LaunchTemplateId": "lt-09959434484feec9c",
-        #"LaunchTemplateName": "EC2ContainerService-scoutbees-us-EcsInstanceLc-MCF5KXOQHONT",
-        #"CreateTime": {
-        #    "horey_cached_type": "datetime",
-        #    "value": "2020-12-28 17:14:08.000000+0000"
-        #},
-        #"CreatedBy": "arn:aws:iam::211921183446:user/shay.dev",
-        #"DefaultVersionNumber": 1,
-        #"LatestVersionNumber": 1
+    def update_from_raw_response(self, dict_src):
+        init_options = {
+            "LaunchTemplateName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "CreateTime": self.init_default_attr,
+            "CreatedBy": self.init_default_attr,
+            "DefaultVersionNumber": self.init_default_attr,
+            "LatestVersionNumber": self.init_default_attr,
+            "LaunchTemplateId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "Tags": self.init_default_attr
+        }
+
+        self.init_attrs(dict_src, init_options)
 
     @property
     def region(self):

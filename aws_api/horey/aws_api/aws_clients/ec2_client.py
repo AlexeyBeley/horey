@@ -248,7 +248,8 @@ class EC2Client(Boto3Client):
         for response in self.execute(self.client.create_key_pair, None, raw_data=True, filters_req=request_dict):
             return response
 
-    def create_launch_template(self, request_dict):
+    def provision_launch_template_raw(self, request_dict):
+        logger.info(f"Creating Launch Template: {request_dict}")
         for response in self.execute(self.client.create_launch_template, "LaunchTemplate", filters_req=request_dict):
             return response
 
@@ -270,21 +271,30 @@ class EC2Client(Boto3Client):
 
         return final_result
 
-    def get_all_ec2_launch_templates(self, full_information=False):
+    def get_all_ec2_launch_templates(self, full_information=False, region=None):
         final_result = list()
 
-        for region in AWSAccount.get_aws_account().regions.values():
-            AWSAccount.set_aws_region(region)
-            for ret in self.execute(self.client.describe_launch_templates, "LaunchTemplates"):
-                obj = EC2LaunchTemplate(ret)
-                obj.region = region
-                if full_information is True:
-                    raise NotImplementedError()
+        if region is not None:
+            return self.get_region_launch_templates(region, full_information=full_information)
 
-                final_result.append(obj)
+        for region in AWSAccount.get_aws_account().regions.values():
+            final_result += self.get_region_launch_templates(region, full_information=full_information)
 
         return final_result
-    
+
+    def get_region_launch_templates(self, region, full_information=True,):
+        AWSAccount.set_aws_region(region)
+        final_result = list()
+
+        for ret in self.execute(self.client.describe_launch_templates, "LaunchTemplates"):
+            obj = EC2LaunchTemplate(ret)
+            obj.region = region
+            if full_information is True:
+                raise NotImplementedError()
+
+            final_result.append(obj)
+        return final_result
+
     def get_all_launch_template_versions(self, launch_template):
         """
         Get all launch_template_versions in all regions.
@@ -480,14 +490,11 @@ class EC2Client(Boto3Client):
             final_result += self.get_region_amis(region, full_information=full_information)
         return final_result
 
-    def get_region_amis(self, region, full_information=True, image_ids=None):
+    def get_region_amis(self, region, full_information=True, custom_filters=None):
         AWSAccount.set_aws_region(region)
         final_result = list()
-        filter_request = dict()
-        if image_ids is not None:
-            filter_request["ImageIds"] = image_ids
 
-        for response in self.execute(self.client.describe_images, "Images", filters_req=filter_request):
+        for response in self.execute(self.client.describe_images, "Images", filters_req=custom_filters):
             obj = AMI(response)
             if full_information is True:
                 pass
@@ -731,6 +738,17 @@ class EC2Client(Boto3Client):
     def accept_vpc_peering_connection_raw(self, request_dict):
         for response in self.execute(self.client.accept_vpc_peering_connection, "VpcPeeringConnection", filters_req=request_dict):
             return response
+
+    def provision_launch_template(self, launch_template):
+        region_objects = self.get_region_launch_templates(launch_template.region)
+        for region_object in region_objects:
+            if region_object.name == launch_template.name:
+                launch_template.update_from_raw_response(region_object.dict_src)
+                return
+
+        AWSAccount.set_aws_region(launch_template.region)
+        response = self.provision_launch_template_raw(launch_template.generate_create_request())
+        launch_template.update_from_raw_response(response)
 
     def provision_nat_gateway(self, nat_gateway):
         region_gateways = self.get_region_nat_gateways(nat_gateway.region)

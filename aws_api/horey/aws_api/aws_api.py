@@ -379,11 +379,12 @@ class AWSAPI:
         @param cache_file:
         @return:
         """
+        objects = []
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, EC2LaunchTemplateVersion)
         else:
             for launch_template in self.ec2_launch_templates:
-                objects = self.ec2_client.get_all_launch_template_versions(launch_template)
+                objects += self.ec2_client.get_all_launch_template_versions(launch_template)
 
         self.ec2_launch_template_versions = objects
 
@@ -1810,6 +1811,12 @@ class AWSAPI:
 
     def provision_vpc_peering(self, vpc_peering):
         self.ec2_client.provision_vpc_peering(vpc_peering)
+
+    def provision_launch_template(self, launch_template):
+        self.ec2_client.provision_launch_template(launch_template)
+
+    def provision_auto_scaling_group(self, autoscaling_group):
+        self.autoscaling_client.provision_auto_scaling_group(autoscaling_group)
 
     def provision_nat_gateways(self, nat_gateways):
         for nat_gateway in nat_gateways:

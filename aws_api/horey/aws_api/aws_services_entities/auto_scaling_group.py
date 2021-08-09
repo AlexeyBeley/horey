@@ -57,8 +57,8 @@ class AutoScalingGroup(AwsObject):
         self._init_from_cache(dict_src, options)
 
     def update_value_from_raw_response(self, raw_value):
-        raise NotImplementedError()
         pdb.set_trace()
+        raise NotImplementedError()
 
     def generate_create_request(self):
         request = dict()
@@ -70,10 +70,10 @@ class AutoScalingGroup(AwsObject):
         request["Tags"] = [
                    {
                        "ResourceType": "auto-scaling-group",
-                       "Key": "string",
-                       "Value": "string",
+                       "Key": tag["Key"],
+                       "Value": tag["Value"],
                        "PropagateAtLaunch": True
-                   },
+                   } for tag in self.tags
                ]
         request["ServiceLinkedRoleARN"] = self.service_linked_role_arn
         request["DesiredCapacity"] = self.desired_capacity
@@ -127,3 +127,6 @@ class AutoScalingGroup(AwsObject):
             raise ValueError(value)
 
         self._region = value
+
+    def update_from_raw_response(self, dict_src):
+        pdb.set_trace()
