@@ -18,9 +18,11 @@ from horey.aws_api.aws_services_entities.network_interface import NetworkInterfa
 from horey.aws_api.aws_services_entities.ec2_security_group import EC2SecurityGroup
 from horey.aws_api.aws_services_entities.ec2_spot_fleet_request import EC2SpotFleetRequest
 from horey.aws_api.aws_services_entities.ec2_launch_template import EC2LaunchTemplate
+from horey.aws_api.aws_services_entities.ec2_launch_template_version import EC2LaunchTemplateVersion
 
 
 from horey.aws_api.aws_clients.ecs_client import ECSClient
+from horey.aws_api.aws_clients.auto_scaling_client import AutoScalingClient
 from horey.aws_api.aws_clients.s3_client import S3Client
 from horey.aws_api.aws_services_entities.s3_bucket import S3Bucket
 
@@ -81,7 +83,10 @@ from horey.aws_api.aws_services_entities.vpc_peering import VPCPeering
 from horey.aws_api.aws_services_entities.route_table import RouteTable
 from horey.aws_api.aws_services_entities.elastic_address import ElasticAddress
 from horey.aws_api.aws_services_entities.nat_gateway import NatGateway
-
+from horey.aws_api.aws_services_entities.ecr_repository import ECRRepository
+from horey.aws_api.aws_services_entities.ecr_image import ECRImage
+from horey.aws_api.aws_services_entities.ecs_cluster import ECSCluster
+from horey.aws_api.aws_services_entities.ecs_capacity_provider import ECSCapacityProvider
 from horey.common_utils.common_utils import CommonUtils
 from horey.network.dns import DNS
 
@@ -112,6 +117,7 @@ class AWSAPI:
         self.cloud_watch_logs_client = CloudWatchLogsClient()
         self.cloud_watch_client = CloudWatchClient()
         self.ecs_client = ECSClient()
+        self.autoscaling_client = AutoScalingClient()
         self.cloudfront_client = CloudfrontClient()
         self.event_bridge_client = EventBridgeClient()
         self.secretsmanager_client = SecretsManagerClient()
@@ -132,6 +138,7 @@ class AWSAPI:
         self.security_groups = []
         self.target_groups = []
         self.ec2_launch_templates = []
+        self.ec2_launch_template_versions = []
         self.lambdas = []
         self.iam_roles = []
         self.cloud_watch_log_groups = []
@@ -153,6 +160,11 @@ class AWSAPI:
         self.route_tables = []
         self.elastic_addresses = []
         self.nat_gateways = []
+        self.ecr_images = []
+        self.ecr_repositories = []
+        self.ecs_clusters = []
+        self.ecs_capacity_providers = [] 
+        self.auto_scaling_groups = []
 
         self.configuration = configuration
         self.init_configuration()
@@ -206,6 +218,49 @@ class AWSAPI:
 
         self.nat_gateways = objects
 
+    def init_ecr_images(self, from_cache=False, cache_file=None, region=None):
+        objects = []
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, ECRImage)
+        else:
+            for ecr_repository in self.ecr_repositories:
+                if region is not None and ecr_repository.region != region:
+                    continue
+                objects += self.ecr_client.get_all_images(ecr_repository)
+        self.ecr_images = objects
+    
+    def init_ecr_repositories(self, from_cache=False, cache_file=None, region=None):
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, ECRRepository)
+        else:
+            objects = self.ecr_client.get_all_repositories(region=region)
+
+        self.ecr_repositories = objects
+        
+    def init_ecs_clusters(self, from_cache=False, cache_file=None, region=None):
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, ECSCluster)
+        else:
+            objects = self.ecs_client.get_all_clusters(region=region)
+
+        self.ecs_clusters = objects
+
+    def init_ecs_capacity_providers(self, from_cache=False, cache_file=None, region=None):
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, ECSCapacityProvider)
+        else:
+            objects = self.ecs_client.get_all_capacity_providers(region=region)
+
+        self.ecs_capacity_providers = objects
+
+    def init_auto_scaling_groups(self, from_cache=False, cache_file=None, region=None):
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, ECSCluster)
+        else:
+            objects = self.autoscaling_client.get_all_auto_scaling_groups(region=region)
+
+        self.auto_scaling_groups = objects
+        
     def init_amis(self, from_cache=False, cache_file=None):
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, AMI)
@@ -315,6 +370,22 @@ class AWSAPI:
             objects = self.ec2_client.get_all_ec2_launch_templates()
 
         self.ec2_launch_templates = objects
+
+    def init_ec2_launch_template_versions(self, from_cache=False, cache_file=None):
+        """
+        Init ec2 launch template_versions.
+
+        @param from_cache:
+        @param cache_file:
+        @return:
+        """
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, EC2LaunchTemplateVersion)
+        else:
+            for launch_template in self.ec2_launch_templates:
+                objects = self.ec2_client.get_all_launch_template_versions(launch_template)
+
+        self.ec2_launch_template_versions = objects
 
     def init_s3_buckets(self, from_cache=False, cache_file=None, full_information=True):
         """

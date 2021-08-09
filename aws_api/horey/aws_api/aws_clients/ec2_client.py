@@ -11,6 +11,7 @@ from horey.aws_api.aws_services_entities.availability_zone import AvailabilityZo
 from horey.aws_api.aws_services_entities.network_interface import NetworkInterface
 from horey.aws_api.aws_services_entities.ec2_security_group import EC2SecurityGroup
 from horey.aws_api.aws_services_entities.ec2_launch_template import EC2LaunchTemplate
+from horey.aws_api.aws_services_entities.ec2_launch_template_version import EC2LaunchTemplateVersion
 from horey.aws_api.aws_services_entities.ec2_spot_fleet_request import EC2SpotFleetRequest
 from horey.aws_api.aws_services_entities.managed_prefix_list import ManagedPrefixList
 from horey.aws_api.aws_services_entities.ami import AMI
@@ -276,13 +277,29 @@ class EC2Client(Boto3Client):
             AWSAccount.set_aws_region(region)
             for ret in self.execute(self.client.describe_launch_templates, "LaunchTemplates"):
                 obj = EC2LaunchTemplate(ret)
+                obj.region = region
                 if full_information is True:
                     raise NotImplementedError()
 
                 final_result.append(obj)
 
         return final_result
+    
+    def get_all_launch_template_versions(self, launch_template):
+        """
+        Get all launch_template_versions in all regions.
+        :return:
+        """
 
+        final_result = []
+        filters_req = {"LaunchTemplateId": launch_template.id}
+        AWSAccount.set_aws_region(launch_template.region)
+        for dict_src in self.execute(self.client.describe_launch_template_versions, "LaunchTemplateVersions", filters_req=filters_req):
+            obj = EC2LaunchTemplateVersion(dict_src)
+            final_result.append(obj)
+
+        return final_result
+    
     def get_security_group(self, security_group):
         if security_group.id is not None:
             filters_req = {"GroupIds": [security_group.id]}

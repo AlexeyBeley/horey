@@ -181,6 +181,13 @@ def test_init_and_cache_ec2_launch_templates():
     assert isinstance(aws_api.ec2_launch_templates, list)
 
 @pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_ec2_launch_template_versions():
+    aws_api.init_ec2_launch_templates()
+    aws_api.init_ec2_launch_template_versions()
+    aws_api.cache_objects(aws_api.ec2_launch_template_versions, configuration.aws_api_ec2_launch_template_versions_cache_file)
+    assert isinstance(aws_api.ec2_launch_template_versions, list)
+    
+@pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_event_bridge_rules():
     aws_api.init_event_bridge_rules()
     aws_api.cache_objects(aws_api.event_bridge_rules, configuration.aws_api_event_bridge_rules_cache_file)
@@ -286,7 +293,44 @@ def test_init_and_cache_nat_gateways():
     aws_api.init_nat_gateways()
     aws_api.cache_objects(aws_api.nat_gateways, configuration.aws_api_nat_gateways_cache_file)
     assert isinstance(aws_api.nat_gateways, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_ecr_images():
+    aws_api.init_ecr_repositories()
+    aws_api.init_ecr_images()
+    aws_api.cache_objects(aws_api.ecr_images, configuration.aws_api_ecr_images_cache_file)
+    assert isinstance(aws_api.ecr_images, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_ecr_repositories():
+    aws_api.init_ecr_repositories()
+    aws_api.cache_objects(aws_api.ecr_repositories, configuration.aws_api_ecr_repositories_cache_file)
+    assert isinstance(aws_api.ecr_repositories, list)
+    
 # endregion
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_ecs_clusters():
+    aws_api.init_ecs_clusters()
+    aws_api.cache_objects(aws_api.ecs_clusters, configuration.aws_api_ecs_clusters_cache_file)
+    assert isinstance(aws_api.ecs_clusters, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_ecs_auto_scaling_groups():
+    aws_api.init_auto_scaling_groups()
+    aws_api.cache_objects(aws_api.auto_scaling_groups, configuration.aws_api_auto_scaling_groups_cache_file)
+    assert isinstance(aws_api.auto_scaling_groups, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_ecs_capacity_providers():
+    aws_api.init_ecs_capacity_providers()
+    aws_api.cache_objects(aws_api.ecs_capacity_providers, configuration.aws_api_ecs_capacity_providers_cache_file)
+    assert isinstance(aws_api.ecs_capacity_providers, list)
 
 
 def find_stream():
@@ -318,5 +362,8 @@ if __name__ == "__main__":
     #test_init_and_cache_route_tables()
     #test_init_and_cache_elastic_addresses()
     #test_init_and_cache_nat_gateways()
-    find_stream()
+    #test_init_and_cache_ecr_repositories()
+    #test_init_and_cache_ecs_clusters()
+    test_init_and_cache_ec2_launch_template_versions()
+    #find_stream()
 

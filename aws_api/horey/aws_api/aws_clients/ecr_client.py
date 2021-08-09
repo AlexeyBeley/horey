@@ -5,6 +5,8 @@ import pdb
 from base64 import b64decode
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.base_entities.aws_account import AWSAccount
+from horey.aws_api.aws_services_entities.ecr_repository import ECRRepository
+from horey.aws_api.aws_services_entities.ecr_image import ECRImage
 
 
 class ECRClient(Boto3Client):
@@ -41,3 +43,41 @@ class ECRClient(Boto3Client):
                 return True
 
         return False
+
+    def get_all_images(self, repository):
+        """
+        Get all images in all regions.
+        :return:
+        """
+        final_result = list()
+        AWSAccount.set_aws_region(repository.region)
+        filters_req = {"repositoryName": repository.name, "filter": {"tagStatus": "ANY"}}
+        for dict_src in self.execute(self.client.describe_images, "imageDetails", filters_req=filters_req):
+            obj = ECRImage(dict_src)
+            final_result.append(obj)
+
+        return final_result
+    
+    def get_all_repositories(self, region=None):
+        """
+        Get all repositories in all regions.
+        :return:
+        """
+
+        if region is not None:
+            return self.get_region_repositories(region)
+
+        final_result = list()
+        for region in AWSAccount.get_aws_account().regions.values():
+            final_result += self.get_region_repositories(region)
+
+        return final_result
+
+    def get_region_repositories(self, region):
+        final_result = list()
+        AWSAccount.set_aws_region(region)
+        for dict_src in self.execute(self.client.describe_repositories, "repositories"):
+            obj = ECRRepository(dict_src)
+            final_result.append(obj)
+
+        return final_result

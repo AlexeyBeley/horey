@@ -29,6 +29,9 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
         self._aws_api_event_bridge_cache_dir = None
         self._aws_api_servicediscovery_cache_dir = None
         self._aws_api_elasticsearch_cache_dir = None
+        self._aws_api_ecr_cache_dir = None
+        self._aws_api_ecs_cache_dir = None
+        self._aws_api_auto_scaling_cache_dir = None
 
     @property
     def aws_api_regions(self):
@@ -207,6 +210,14 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
         raise ValueError(value)
     
     @property
+    def aws_api_ec2_launch_template_versions_cache_file(self):
+        return os.path.join(self.aws_api_ec2_cache_dir, "ec2_launch_template_versions.json")
+
+    @aws_api_ec2_launch_template_versions_cache_file.setter
+    def aws_api_ec2_launch_template_versions_cache_file(self, value):
+        raise ValueError(value)
+    
+    @property
     def aws_api_ec2_network_interfaces_cache_file(self):
         return os.path.join(self.aws_api_ec2_cache_dir, "network_interfaces.json")
 
@@ -323,7 +334,36 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     def aws_api_lambdas_cache_file(self, value):
         raise ValueError(value)
     # endregion
+    
+    # region ecr
+    @property
+    def aws_api_ecr_cache_dir(self):
+        if self._aws_api_ecr_cache_dir is None:
+            self._aws_api_ecr_cache_dir = os.path.join(self.aws_api_cache_dir, self.aws_api_account, "ecr")
+            os.makedirs(self._aws_api_ecr_cache_dir, exist_ok=True)
+        return self._aws_api_ecr_cache_dir
 
+    @aws_api_ecr_cache_dir.setter
+    def aws_api_ecr_cache_dir(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_ecr_images_cache_file(self):
+        return os.path.join(self.aws_api_ecr_cache_dir, "ecr_images.json")
+
+    @aws_api_ecr_images_cache_file.setter
+    def aws_api_ecr_images_cache_file(self, value):
+        raise ValueError(value)
+    
+    @property
+    def aws_api_ecr_repositories_cache_file(self):
+        return os.path.join(self.aws_api_ecr_cache_dir, "ecr_repositories.json")
+
+    @aws_api_ecr_repositories_cache_file.setter
+    def aws_api_ecr_repositories_cache_file(self, value):
+        raise ValueError(value)
+    # endregion
+    
     # region classic_loadbalancers
     @property
     def aws_api_classic_loadbalancers_cache_dir(self):
@@ -554,6 +594,56 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
 
     @aws_api_elasticsearch_domains_cache_file.setter
     def aws_api_elasticsearch_domains_cache_file(self, value):
+        raise ValueError(value)
+    # endregion
+    
+    # region ecs
+    @property
+    def aws_api_ecs_cache_dir(self):
+        if self._aws_api_ecs_cache_dir is None:
+            self._aws_api_ecs_cache_dir = os.path.join(self.aws_api_cache_dir, self.aws_api_account, "ecs")
+            os.makedirs(self._aws_api_ecs_cache_dir, exist_ok=True)
+        return self._aws_api_ecs_cache_dir
+
+    @aws_api_ecs_cache_dir.setter
+    def aws_api_ecs_cache_dir(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_ecs_clusters_cache_file(self):
+        return os.path.join(self.aws_api_ecs_cache_dir, "ecs_clusters.json")
+
+    @aws_api_ecs_clusters_cache_file.setter
+    def aws_api_ecs_clusters_cache_file(self, value):
+        raise ValueError(value)
+    
+    @property
+    def aws_api_ecs_capacity_providers_cache_file(self):
+        return os.path.join(self.aws_api_ecs_cache_dir, "ecs_capacity_providers.json")
+
+    @aws_api_ecs_capacity_providers_cache_file.setter
+    def aws_api_ecs_capacity_providers_cache_file(self, value):
+        raise ValueError(value)
+    # endregion
+
+    # region auto_scaling
+    @property
+    def aws_api_auto_scaling_cache_dir(self):
+        if self._aws_api_auto_scaling_cache_dir is None:
+            self._aws_api_auto_scaling_cache_dir = os.path.join(self.aws_api_cache_dir, self.aws_api_account, "auto_scaling")
+            os.makedirs(self._aws_api_auto_scaling_cache_dir, exist_ok=True)
+        return self._aws_api_auto_scaling_cache_dir
+
+    @aws_api_auto_scaling_cache_dir.setter
+    def aws_api_auto_scaling_cache_dir(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_auto_scaling_groups_cache_file(self):
+        return os.path.join(self.aws_api_auto_scaling_cache_dir, "auto_scaling_groups.json")
+
+    @aws_api_auto_scaling_groups_cache_file.setter
+    def aws_api_auto_scaling_groups_cache_file(self, value):
         raise ValueError(value)
     # endregion
 
