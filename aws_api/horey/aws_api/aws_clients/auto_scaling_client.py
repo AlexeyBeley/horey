@@ -52,11 +52,9 @@ class AutoScalingClient(Boto3Client):
                 return
 
         AWSAccount.set_aws_region(autoscaling_group.region)
-        response = self.provision_auto_scaling_group_raw(autoscaling_group.generate_create_request())
-        autoscaling_group.update_from_raw_create(response)
+        self.provision_auto_scaling_group_raw(autoscaling_group.generate_create_request())
 
     def provision_auto_scaling_group_raw(self, request_dict):
         logger.info(f"Creating Auto Scaling Group: {request_dict}")
         for response in self.execute(self.client.create_auto_scaling_group, "ResponseMetadata", raw_data=True, filters_req=request_dict):
-            pdb.set_trace()
             return response
