@@ -57,6 +57,6 @@ class AutoScalingClient(Boto3Client):
 
     def provision_auto_scaling_group_raw(self, request_dict):
         logger.info(f"Creating Auto Scaling Group: {request_dict}")
-        pdb.set_trace()
         for response in self.execute(self.client.create_auto_scaling_group, "ResponseMetadata", raw_data=True, filters_req=request_dict):
+            pdb.set_trace()
             return response
