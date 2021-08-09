@@ -282,7 +282,7 @@ class EC2Client(Boto3Client):
 
         return final_result
 
-    def get_region_launch_templates(self, region, full_information=True,):
+    def get_region_launch_templates(self, region, full_information=False):
         AWSAccount.set_aws_region(region)
         final_result = list()
 
