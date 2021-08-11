@@ -5,7 +5,7 @@ import pdb
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 from horey.aws_api.base_entities.region import Region
-
+from enum import Enum
 
 class AutoScalingGroup(AwsObject):
     """
@@ -43,6 +43,7 @@ class AutoScalingGroup(AwsObject):
             "NewInstancesProtectedFromScaleIn": self.init_default_attr,
             "ServiceLinkedRoleARN": self.init_default_attr,
             "LaunchConfigurationName": self.init_default_attr,
+            "Status": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -80,6 +81,7 @@ class AutoScalingGroup(AwsObject):
             "NewInstancesProtectedFromScaleIn": self.init_default_attr,
             "ServiceLinkedRoleARN": self.init_default_attr,
             "LaunchConfigurationName": self.init_default_attr,
+            "Status": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -126,3 +128,39 @@ class AutoScalingGroup(AwsObject):
             raise ValueError(value)
 
         self._region = value
+
+    def get_status(self):
+        """
+        """
+        pdb.set_trace()
+        if self.status["Code"] == "initiating-request":
+            return self.Status.INITIATING_REQUEST
+        elif self.status["Code"] == "pending-acceptance":
+            return self.Status.PENDING_ACCEPTANCE
+        elif self.status["Code"] == "active":
+            return self.Status.ACTIVE
+        elif self.status["Code"] == "deleted":
+            return self.Status.DELETED
+        elif self.status["Code"] == "rejected":
+            return self.Status.REJECTED
+        elif self.status["Code"] == "failed":
+            return self.Status.FAILED
+        elif self.status["Code"] == "expired":
+            return self.Status.EXPIRED
+        elif self.status["Code"] == "provisioning":
+            return self.Status.PROVISIONING
+        elif self.status["Code"] == "deleting":
+            return self.Status.DELETING
+        else:
+            raise NotImplementedError(self.status["Code"])
+
+    class Status(Enum):
+        INITIATING_REQUEST = 0
+        PENDING_ACCEPTANCE = 1
+        ACTIVE = 2
+        DELETED = 3
+        REJECTED = 4
+        FAILED = 5
+        EXPIRED = 6
+        PROVISIONING = 7
+        DELETING = 8

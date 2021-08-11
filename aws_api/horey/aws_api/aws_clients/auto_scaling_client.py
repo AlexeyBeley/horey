@@ -45,8 +45,11 @@ class AutoScalingClient(Boto3Client):
         return final_result
 
     def provision_auto_scaling_group(self, autoscaling_group):
+        pdb.set_trace()
         region_objects = self.get_region_auto_scaling_groups(autoscaling_group.region)
         for region_object in region_objects:
+            if region_object.get_status() == region_objects.Status.DELETING:
+                continue
             if region_object.name == autoscaling_group.name:
                 autoscaling_group.update_from_raw_response(region_object.dict_src)
                 return
