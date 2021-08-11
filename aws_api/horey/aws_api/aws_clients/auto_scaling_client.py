@@ -2,6 +2,9 @@
 AWS lambda client to handle lambda service API requests.
 """
 import pdb
+
+import time
+
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 
 from horey.aws_api.base_entities.aws_account import AWSAccount
@@ -35,10 +38,13 @@ class AutoScalingClient(Boto3Client):
 
         return final_result
 
-    def get_region_auto_scaling_groups(self, region):
+    def get_region_auto_scaling_groups(self, region, names=None):
         final_result = list()
+        filters_req = dict()
+        if names is not None:
+            filters_req["AutoScalingGroupNames"] = names
         AWSAccount.set_aws_region(region)
-        for dict_src in self.execute(self.client.describe_auto_scaling_groups, "AutoScalingGroups"):
+        for dict_src in self.execute(self.client.describe_auto_scaling_groups, "AutoScalingGroups", filters_req=filters_req):
             obj = AutoScalingGroup(dict_src)
             final_result.append(obj)
 
@@ -46,13 +52,17 @@ class AutoScalingClient(Boto3Client):
 
     def provision_auto_scaling_group(self, autoscaling_group):
         pdb.set_trace()
-        region_objects = self.get_region_auto_scaling_groups(autoscaling_group.region)
-        for region_object in region_objects:
-            if region_object.get_status() == region_objects.Status.DELETING:
-                continue
-            if region_object.name == autoscaling_group.name:
-                autoscaling_group.update_from_raw_response(region_object.dict_src)
-                return
+        region_objects = self.get_region_auto_scaling_groups(autoscaling_group.region, names=[autoscaling_group.name])
+        sleep_time = 5
+        while len(region_objects) > 0 and region_objects[0].get_status() == autoscaling_group.Status.DELETING:
+            logger.info(f"{autoscaling_group.name} is being deleted. Going to sleep for {sleep_time} seconds")
+            time.sleep(sleep_time)
+            region_objects = self.get_region_auto_scaling_groups(autoscaling_group.region,
+                                                                     names=[autoscaling_group.name])
+
+        if len(region_objects) > 0:
+            autoscaling_group.update_from_raw_response(region_objects[0].dict_src)
+            return
 
         AWSAccount.set_aws_region(autoscaling_group.region)
         self.provision_auto_scaling_group_raw(autoscaling_group.generate_create_request())
