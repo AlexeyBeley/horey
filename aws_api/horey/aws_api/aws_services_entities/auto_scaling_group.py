@@ -131,7 +131,6 @@ class AutoScalingGroup(AwsObject):
         self._region = value
 
     def get_status(self):
-        pdb.set_trace()
         if self.status is None:
             return self.Status.ACTIVE
         elif self.status == "Delete in progress":

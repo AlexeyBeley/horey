@@ -51,10 +51,16 @@ class AutoScalingClient(Boto3Client):
         return final_result
 
     def provision_auto_scaling_group(self, autoscaling_group):
-        pdb.set_trace()
         region_objects = self.get_region_auto_scaling_groups(autoscaling_group.region, names=[autoscaling_group.name])
         sleep_time = 5
+        retries_count = 300/sleep_time
+
+        retry_counter = 0
         while len(region_objects) > 0 and region_objects[0].get_status() == autoscaling_group.Status.DELETING:
+            retry_counter += 1
+            if retry_counter > retries_count:
+                raise TimeoutError(f"{autoscaling_group.name} deletion takes more then 300 sec")
+
             logger.info(f"{autoscaling_group.name} is being deleted. Going to sleep for {sleep_time} seconds")
             time.sleep(sleep_time)
             region_objects = self.get_region_auto_scaling_groups(autoscaling_group.region,
@@ -66,6 +72,23 @@ class AutoScalingClient(Boto3Client):
 
         AWSAccount.set_aws_region(autoscaling_group.region)
         self.provision_auto_scaling_group_raw(autoscaling_group.generate_create_request())
+
+        # update arn
+        region_objects = self.get_region_auto_scaling_groups(autoscaling_group.region, names=[autoscaling_group.name])
+
+        sleep_time = 2
+        retries_count = 300/sleep_time
+        retry_counter = 0
+        while len(region_objects) == 0:
+            retry_counter += 1
+            if retry_counter > retries_count:
+                raise TimeoutError(f"{autoscaling_group.name} creation takes more then 300 sec")
+            logger.info(f"{autoscaling_group.name} is being created. Going to sleep for {sleep_time} seconds")
+            time.sleep(sleep_time)
+            region_objects = self.get_region_auto_scaling_groups(autoscaling_group.region,
+                                                             names=[autoscaling_group.name])
+
+        autoscaling_group.update_from_raw_response(region_objects[0].dict_src)
 
     def provision_auto_scaling_group_raw(self, request_dict):
         logger.info(f"Creating Auto Scaling Group: {request_dict}")
