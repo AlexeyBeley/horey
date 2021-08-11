@@ -1,24 +1,27 @@
 import os
 import sys
-import pdb
-
-sys.path.insert(0, os.path.abspath("../src"))
-sys.path.insert(0, "~/private/IP/ip")
-sys.path.insert(0, "~/private/aws_api/ignore")
-sys.path.insert(0, "~/private/aws_api/src/base_entities")
-sys.path.insert(0, "~/private/aws_api/src/aws_clients")
 
 from horey.aws_api.aws_clients.ecs_client import ECSClient
-import ignore_me
-import logging
-
-logger = logging.Logger(__name__)
+from horey.aws_api.aws_services_entities.ecs_capacity_provider import ECSCapacityProvider
+from horey.aws_api.aws_services_entities.ecs_cluster import ECSCluster
+import pdb
+from horey.h_logger import get_logger
 from horey.aws_api.base_entities.aws_account import AWSAccount
+from horey.aws_api.base_entities.region import Region
+from horey.common_utils.common_utils import CommonUtils
 
-tested_account = ignore_me.acc_default
-AWSAccount.set_aws_account(tested_account)
+from unittest.mock import Mock
+configuration_values_file_full_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "h_logger_configuration_values.py")
+logger = get_logger(configuration_values_file_full_path=configuration_values_file_full_path)
 
-cache_base_path = os.path.join(os.path.expanduser("~"), f"private/aws_api/ignore/cache_objects_{tested_account.name}")
+accounts_file_full_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "ignore", "aws_api_managed_accounts.py"))
+
+accounts = CommonUtils.load_object_from_module(accounts_file_full_path, "main")
+AWSAccount.set_aws_account(accounts["1111"])
+AWSAccount.set_aws_region(accounts["1111"].regions['us-west-2'])
+
+mock_values_file_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "ignore", "mock_values.py"))
+mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 
 
 def test_init_ecs_client():
@@ -250,39 +253,94 @@ def test_create_cluster():
     client.create_cluster(dict_create_cluster_request)
 
 
-ALLOWED_SUBNETS = []
-SECURITY_GROUPS = []
-dict_run_task_request = {"cluster": CLUSTER_NAME, "taskDefinition": TASK_DEFINITION_FAMILY,
-                         "launchType": "FARGATE",
-                         "networkConfiguration": {
-                             "awsvpcConfiguration": {
-                                 "subnets": ALLOWED_SUBNETS,
-                                 "securityGroups": SECURITY_GROUPS,
-                                 "assignPublicIp": "ENABLED"
-                             }
-                         }
-                         }
-
-
 def test_run_task():
+    ALLOWED_SUBNETS = []
+    SECURITY_GROUPS = []
+    dict_run_task_request = {"cluster": CLUSTER_NAME, "taskDefinition": TASK_DEFINITION_FAMILY,
+                             "launchType": "FARGATE",
+                             "networkConfiguration": {
+                                 "awsvpcConfiguration": {
+                                     "subnets": ALLOWED_SUBNETS,
+                                     "securityGroups": SECURITY_GROUPS,
+                                     "assignPublicIp": "ENABLED"
+                                 }
+                             }
+                             }
     client = ECSClient()
     client.run_task(dict_run_task_request)
 
 
-"""
-def     
-    for dict_environ in ignore_me.aws_accounts:
-        env = AWSAccount()
-        env.init_from_dict(dict_environ)
-        AWSAccount.set_aws_account(env)
-        aws_api.init_s3_buckets(full_information=False)
+def test_provision_capacity_provider():
+    ecs_client = ECSClient()
+    auto_scaling_group = Mock()
+    auto_scaling_group.arn = mock_values["auto_scaling_group.arn"]
+    tags = [
+        {
+            'key': 'lvl',
+            'value': "tst"
+        }]
+    capacity_provider = ECSCapacityProvider({})
+    capacity_provider.name = "test-capacity-provider"
+    capacity_provider.tags = tags
+    capacity_provider.region = AWSAccount.get_aws_region()
+    capacity_provider.tags.append({
+        'key': 'Name',
+        'value': capacity_provider.name
+    })
 
-        aws_api.cleanup_report_s3_buckets()
+    capacity_provider.auto_scaling_group_provider = {
+        "autoScalingGroupArn": auto_scaling_group.arn,
+        "managedScaling": {
+            "status": "ENABLED",
+            "targetCapacity": 70,
+            "minimumScalingStepSize": 1,
+            "maximumScalingStepSize": 10000,
+            "instanceWarmupPeriod": 300
+        },
+        "managedTerminationProtection": "DISABLED"
+    }
+    ecs_client.provision_capacity_provider(capacity_provider)
+    assert capacity_provider.arn is not None
 
-    print(f"len(s3_buckets) = {len(aws_api.s3_buckets)}")
-    assert isinstance(aws_api.s3_buckets, list)
-"""
+
+def test_provision_cluster():
+    tags = [
+        {
+            'key': 'lvl',
+            'value': "tst"
+        }]
+
+    ecs_client = ECSClient()
+    cluster = ECSCluster({})
+    cluster.region = AWSAccount.get_aws_region()
+    cluster.settings = [
+        {
+            "name": "containerInsights",
+            "value": "enabled"
+        }
+    ]
+
+    cluster.name = "test_cluster"
+    cluster.tags = tags
+    cluster.tags.append({
+        'key': 'Name',
+        'value': cluster.name
+    })
+    cluster.configuration = {}
+    cluster.capacity_providers = ["test-capacity-provider"]
+    cluster.default_capacity_provider_strategy = [
+        {
+          "capacityProvider": "test-capacity-provider",
+          "weight": 1,
+          "base": 0
+        }
+      ]
+
+    ecs_client.provision_cluster(cluster)
+
+    assert cluster.arn is not None
+
 
 if __name__ == "__main__":
     # test_register_task_definition()
-    test_run_task()
+    test_provision_cluster()

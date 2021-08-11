@@ -11,6 +11,8 @@ class Region:
 
     @staticmethod
     def get_region(region_mark):
+        if not isinstance(region_mark, str):
+            raise ValueError(f"Expecting region_mark of type string, received {type(region_mark)}")
         try:
             return Region.REGIONS[region_mark]
         except KeyError:

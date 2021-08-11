@@ -2,7 +2,7 @@
 AWS ec2 client to handle ec2 service API requests.
 """
 import time
-
+import base64
 from horey.aws_api.aws_services_entities.subnet import Subnet
 from horey.aws_api.aws_services_entities.ec2_instance import EC2Instance
 from horey.aws_api.aws_services_entities.vpc import VPC
@@ -285,7 +285,7 @@ class EC2Client(Boto3Client):
     def get_region_launch_templates(self, region, full_information=False):
         AWSAccount.set_aws_region(region)
         final_result = list()
-
+        logger.info(f"Fetching all launch templates from {region}")
         for ret in self.execute(self.client.describe_launch_templates, "LaunchTemplates"):
             obj = EC2LaunchTemplate(ret)
             obj.region = region
@@ -882,3 +882,9 @@ class EC2Client(Boto3Client):
     def associate_elastic_address_raw(self, request_dict):
         for response in self.execute(self.client.associate_address, None, filters_req=request_dict, raw_data=True):
             return response
+
+    @staticmethod
+    def generate_user_data_from_file(file_path):
+        with open(file_path) as file_handler:
+            user_data = file_handler.read()
+        return base64.b64encode(user_data.encode()).decode("ascii")

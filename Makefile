@@ -35,9 +35,11 @@ recursive_install_from_source_local_venv-%: init_venv_dir
 
 package_source-%:
 	${BUILD_DIR}/create_wheel.sh $(subst package_source-,,$@)
-install_from_source-%: package_source-% init_venv_dir
+
+install_from_source-%: init_venv_dir raw_install_from_source-%
+raw_install_from_source-%: package_source-%
 	source ${VENV_DIR}/bin/activate &&\
-	pip3 install --force-reinstall ${BUILD_TMP_DIR}/$(subst install_from_source-,,$@)/dist/*.whl
+	pip3 install --force-reinstall ${BUILD_TMP_DIR}/$(subst raw_install_from_source-,,$@)/dist/*.whl
 
 recursive_install_from_source-%: create_build_env
 	${BUILD_DIR}/recursive_install_from_source.sh --root_dir ${ROOT_DIR} --package_name horey.$(subst recursive_install_from_source-,,$@)

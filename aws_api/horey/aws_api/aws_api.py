@@ -1861,6 +1861,12 @@ class AWSAPI:
     def provision_ec2_instance(self, ec2_instance):
         self.ec2_client.provision_ec2_instance(ec2_instance)
 
+    def provision_ecs_capacity_provider(self, ecs_capacity_provider):
+        self.ecs_client.provision_capacity_provider(ecs_capacity_provider)
+
+    def provision_ecs_cluster(self, ecs_cluster):
+        self.ecs_client.provision_cluster(ecs_cluster)
+
     def provision_key_pair(self, key_pair, save_to_secrets_manager=None, secrets_manager_region=None):
         logger.info(f"provisioning ssh key pair {key_pair.name}")
         response = self.ec2_client.provision_key_pair(key_pair)

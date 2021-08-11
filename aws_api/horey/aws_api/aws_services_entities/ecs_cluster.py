@@ -48,9 +48,25 @@ class ECSCluster(AwsObject):
         options = {}
         self._init_from_cache(dict_src, options)
 
-    def update_value_from_raw_response(self, raw_value):
-        raise NotImplementedError()
-        pdb.set_trace()
+    def update_from_raw_response(self, dict_src):
+        init_options = {
+            "clusterArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "clusterName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "status": self.init_default_attr,
+            "registeredContainerInstancesCount": self.init_default_attr,
+            "runningTasksCount": self.init_default_attr,
+            "pendingTasksCount": self.init_default_attr,
+            "activeServicesCount": self.init_default_attr,
+            "statistics": self.init_default_attr,
+            "tags": self.init_default_attr,
+            "settings": self.init_default_attr,
+            "capacityProviders": self.init_default_attr,
+            "defaultCapacityProviderStrategy": self.init_default_attr,
+            "attachments": self.init_default_attr,
+            "attachmentsStatus": self.init_default_attr,
+        }
+
+        self.init_attrs(dict_src, init_options)
 
     def generate_create_request(self):
         """
@@ -96,6 +112,10 @@ class ECSCluster(AwsObject):
         request = dict()
         request["clusterName"] = self.name
         request["tags"] = self.tags
+        request["settings"] = self.settings
+        request["configuration"] = self.configuration
+        request["capacityProviders"] = self.capacity_providers
+        request["defaultCapacityProviderStrategy"] = self.default_capacity_provider_strategy
 
         return request
 
@@ -124,10 +144,10 @@ class ECSCluster(AwsObject):
 
     @property
     def region(self):
-        raise NotImplementedError()
         if self._region is not None:
             return self._region
 
+        raise NotImplementedError()
         if self.arn is not None:
             self._region = Region.get_region(self.arn.split(":")[3])
 
@@ -135,7 +155,6 @@ class ECSCluster(AwsObject):
 
     @region.setter
     def region(self, value):
-        raise NotImplementedError()
         if not isinstance(value, Region):
             raise ValueError(value)
 

@@ -57,7 +57,6 @@ class AutoScalingGroup(AwsObject):
         self._init_from_cache(dict_src, options)
 
     def update_from_raw_response(self, dict_src):
-        pdb.set_trace()
         init_options = {
             "AutoScalingGroupName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
             "AutoScalingGroupARN": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
