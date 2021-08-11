@@ -15,6 +15,7 @@ class AutoScalingGroup(AwsObject):
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self._region = None
+        self.status = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -130,37 +131,14 @@ class AutoScalingGroup(AwsObject):
         self._region = value
 
     def get_status(self):
-        """
-        """
         pdb.set_trace()
-        if self.status["Code"] == "initiating-request":
-            return self.Status.INITIATING_REQUEST
-        elif self.status["Code"] == "pending-acceptance":
-            return self.Status.PENDING_ACCEPTANCE
-        elif self.status["Code"] == "active":
+        if self.status is None:
             return self.Status.ACTIVE
-        elif self.status["Code"] == "deleted":
-            return self.Status.DELETED
-        elif self.status["Code"] == "rejected":
-            return self.Status.REJECTED
-        elif self.status["Code"] == "failed":
-            return self.Status.FAILED
-        elif self.status["Code"] == "expired":
-            return self.Status.EXPIRED
-        elif self.status["Code"] == "provisioning":
-            return self.Status.PROVISIONING
-        elif self.status["Code"] == "deleting":
+        elif self.status == "Delete in progress":
             return self.Status.DELETING
         else:
-            raise NotImplementedError(self.status["Code"])
+            raise NotImplementedError(self.status)
 
     class Status(Enum):
-        INITIATING_REQUEST = 0
-        PENDING_ACCEPTANCE = 1
-        ACTIVE = 2
-        DELETED = 3
-        REJECTED = 4
-        FAILED = 5
-        EXPIRED = 6
-        PROVISIONING = 7
-        DELETING = 8
+        ACTIVE = 0
+        DELETING = 1
