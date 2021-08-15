@@ -624,6 +624,23 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_ecs_capacity_providers_cache_file.setter
     def aws_api_ecs_capacity_providers_cache_file(self, value):
         raise ValueError(value)
+    
+    @property
+    def aws_api_ecs_services_cache_file(self):
+        return os.path.join(self.aws_api_ecs_cache_dir, "ecs_services.json")
+
+    @aws_api_ecs_services_cache_file.setter
+    def aws_api_ecs_services_cache_file(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_ecs_task_definitions_cache_file(self):
+        return os.path.join(self.aws_api_ecs_cache_dir, "ecs_task_definitions.json")
+
+    @aws_api_ecs_task_definitions_cache_file.setter
+    def aws_api_ecs_task_definitions_cache_file(self, value):
+        raise ValueError(value)
+    
     # endregion
 
     # region auto_scaling

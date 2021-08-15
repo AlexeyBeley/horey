@@ -70,6 +70,7 @@ class AutoScalingClient(Boto3Client):
             autoscaling_group.update_from_raw_response(region_objects[0].dict_src)
             return
 
+        # creation
         AWSAccount.set_aws_region(autoscaling_group.region)
         self.provision_auto_scaling_group_raw(autoscaling_group.generate_create_request())
 

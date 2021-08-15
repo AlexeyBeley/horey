@@ -93,7 +93,9 @@ class SecretsManagerClient(Boto3Client):
             print(repr(exception_received))
             raise
 
-    def raw_put_secret_string(self, secret_id, value):
+    def raw_put_secret_string(self, secret_id, value, region=None):
+        if region is not None:
+            AWSAccount.set_aws_region(region)
         try:
             for response in self.execute(self.client.put_secret_value, None, raw_data=True, filters_req={"SecretId": secret_id, "SecretString": value}):
                 return response

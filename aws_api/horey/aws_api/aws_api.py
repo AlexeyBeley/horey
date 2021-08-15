@@ -87,6 +87,8 @@ from horey.aws_api.aws_services_entities.ecr_repository import ECRRepository
 from horey.aws_api.aws_services_entities.ecr_image import ECRImage
 from horey.aws_api.aws_services_entities.ecs_cluster import ECSCluster
 from horey.aws_api.aws_services_entities.ecs_capacity_provider import ECSCapacityProvider
+from horey.aws_api.aws_services_entities.ecs_task_definition import ECSTaskDefinition
+from horey.aws_api.aws_services_entities.ecs_service import ECSService
 from horey.common_utils.common_utils import CommonUtils
 from horey.network.dns import DNS
 
@@ -165,6 +167,8 @@ class AWSAPI:
         self.ecs_clusters = []
         self.ecs_capacity_providers = [] 
         self.auto_scaling_groups = []
+        self.ecs_task_definitions = []
+        self.ecs_services = []
 
         self.configuration = configuration
         self.init_configuration()
@@ -177,6 +181,14 @@ class AWSAPI:
             return
         accounts = CommonUtils.load_object_from_module(self.configuration.accounts_file, "main")
         AWSAccount.set_aws_account(accounts[self.configuration.aws_api_account])
+
+    def add_managed_region(self, region):
+        account = AWSAccount.get_aws_account()
+        account.add_region(region)
+
+    def get_managed_regions(self):
+        account = AWSAccount.get_aws_account()
+        return account.get_regions()
 
     def init_managed_prefix_lists(self, from_cache=False, cache_file=None, region=None):
         if from_cache:
@@ -252,7 +264,27 @@ class AWSAPI:
             objects = self.ecs_client.get_all_capacity_providers(region=region)
 
         self.ecs_capacity_providers = objects
+    
+    def init_ecs_services(self, from_cache=False, cache_file=None, region=None):
+        objects = []
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, ECSService)
+        else:
+            for cluster in self.ecs_clusters:
+                if region is not None and cluster.region != region:
+                    continue
+                objects += self.ecs_client.get_all_services(cluster)
 
+        self.ecs_services = objects
+    
+    def init_ecs_task_definitions(self, from_cache=False, cache_file=None, region=None):
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, ECSService)
+        else:
+            objects = self.ecs_client.get_all_task_definitions(region=region)
+
+        self.ecs_task_definitions = objects
+        
     def init_auto_scaling_groups(self, from_cache=False, cache_file=None, region=None):
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, ECSCluster)
@@ -1696,8 +1728,8 @@ class AWSAPI:
     def get_secret_value(self, secret_name, region=None):
         return self.secretsmanager_client.raw_get_secret_string(secret_name, region=region)
 
-    def put_secret_value(self, secret_name, value):
-        return self.secretsmanager_client.raw_put_secret_string(secret_name, value)
+    def put_secret_value(self, secret_name, value, region=None):
+        return self.secretsmanager_client.raw_put_secret_string(secret_name, value, region=region)
 
     def put_secret_file(self, secret_name, file_path):
         with open(file_path) as file_handler:

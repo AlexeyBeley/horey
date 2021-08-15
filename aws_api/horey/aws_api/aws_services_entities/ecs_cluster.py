@@ -147,9 +147,9 @@ class ECSCluster(AwsObject):
         if self._region is not None:
             return self._region
 
-        raise NotImplementedError()
-        if self.arn is not None:
-            self._region = Region.get_region(self.arn.split(":")[3])
+        if self.arn is None:
+            raise NotImplementedError()
+        self._region = Region.get_region(self.arn.split(":")[3])
 
         return self._region
 

@@ -136,13 +136,19 @@ class ConfigurationPolicy:
 
         return parser
 
-    def convert_to_dict(self):
+    def convert_to_dict(self, ignore_undefined=False):
         dict_ret = {}
         for key in self.__dict__.keys():
             if not key.startswith("_"):
                 continue
             attr_name = key[1:]
-            dict_ret[attr_name] = getattr(self, attr_name)
+            try:
+                dict_ret[attr_name] = getattr(self, attr_name)
+            except self.UndefinedValueError as received_exception:
+                if not ignore_undefined:
+                    raise ValueError(f"Value can not be accessed for attribute: {attr_name}") from received_exception
+            except Exception as received_exception:
+                raise ValueError(f"Value can not be accessed for attribute: {attr_name}") from received_exception
 
         if dict_ret["configuration_file_full_path"] is None:
             del dict_ret["configuration_file_full_path"]
@@ -156,7 +162,7 @@ class ConfigurationPolicy:
             json.dump(dict_values, file_handler, indent=4)
 
     def init_from_policy(self, configuration, ignore_undefined=False):
-        for attr_name, value in configuration.convert_to_dict().items():
+        for attr_name, value in configuration.convert_to_dict(ignore_undefined=ignore_undefined).items():
             try:
                 log_line = f"Init attribute '{attr_name}' from {type(configuration)} policy"
                 setattr(self, attr_name, value)
@@ -186,4 +192,6 @@ class ConfigurationPolicy:
     class StaticValueError(RuntimeError):
         pass
 
+    class UndefinedValueError(RuntimeError):
+        pass
 

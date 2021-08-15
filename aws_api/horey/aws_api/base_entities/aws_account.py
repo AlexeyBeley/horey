@@ -91,6 +91,14 @@ class AWSAccount:
 
         self._id = value
 
+    def add_region(self, region):
+        if region.region_mark in self.regions:
+            return
+        self.regions[region.region_mark] = region
+
+    def get_regions(self):
+        return self.regions.values()
+
     def init_from_dict(self, dict_src):
         """
         Example:

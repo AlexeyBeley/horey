@@ -6,7 +6,10 @@ from horey.aws_api.aws_clients.boto3_client import Boto3Client
 
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.aws_services_entities.ecs_cluster import ECSCluster
+from horey.aws_api.aws_services_entities.ecs_service import ECSService
 from horey.aws_api.aws_services_entities.ecs_capacity_provider import ECSCapacityProvider
+from horey.aws_api.aws_services_entities.ecs_task_definition import ECSTaskDefinition
+
 
 from horey.h_logger import get_logger
 logger = get_logger()
@@ -129,3 +132,49 @@ class ECSClient(Boto3Client):
         logger.info(f"Creating ECS Capacity Provider: {request_dict}")
         for response in self.execute(self.client.create_cluster, "cluster", filters_req=request_dict):
             return response
+
+    def get_all_services(self, cluster):
+        filters_req = {"cluster": cluster.name}
+        AWSAccount.set_aws_region(cluster.region)
+
+        final_result = []
+        service_arns = []
+
+        for dict_src in self.execute(self.client.list_services, "serviceArns", filters_req=filters_req):
+            service_arns.append(dict_src)
+
+        if len(service_arns) > 10:
+            raise NotImplementedError()
+        filters_req["services"] = service_arns
+        for dict_src in self.execute(self.client.describe_services, "services", filters_req=filters_req):
+            final_result.append(ECSService(dict_src))
+
+        return final_result
+
+    def get_all_task_definitions(self, region=None):
+        if region is not None:
+            return self.get_region_task_definitions(region)
+
+        final_result = list()
+        for region in AWSAccount.get_aws_account().regions.values():
+            final_result += self.get_region_task_definitions(region)
+
+        return final_result
+
+    def get_region_task_definitions(self, region):
+        list_arns = list()
+        AWSAccount.set_aws_region(region)
+        pdb.set_trace()
+
+        for dict_src in self.execute(self.client.list_task_definition_families, "families"):
+            list_arns.append(dict_src)
+        for dict_src in self.execute(self.client.list_task_definitions, "taskDefinitionArns"):
+            list_arns.append(dict_src)
+
+        final_result = list()
+        for arn in list_arns:
+            filters_req = {"taskDefinition": arn, "include": ['TAGS']}
+            for dict_src in self.execute(self.client.describe_task_definition, "taskDefinition", filters_req=filters_req):
+                final_result.append(ECSTaskDefinition(dict_src))
+
+        return final_result

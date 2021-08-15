@@ -10,11 +10,12 @@ import os
 from horey.aws_api.aws_api import AWSAPI
 from horey.h_logger import get_logger
 from horey.aws_api.aws_api_configuration_policy import AWSAPIConfigurationPolicy
+from horey.aws_api.base_entities.region import Region
 #from horey.common_utils.debug_utils import DebugUtils
 
 
 #Uncomment next line to save error lines to /tmp/error.log
-configuration_values_file_full_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), "h_logger_configuration_values.py")
+configuration_values_file_full_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "h_logger_configuration_values.py")
 
 logger = get_logger(configuration_values_file_full_path=configuration_values_file_full_path)
 
@@ -328,7 +329,7 @@ def test_init_and_cache_ecs_clusters():
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
-def test_init_and_cache_ecs_auto_scaling_groups():
+def test_init_and_cache_auto_scaling_groups():
     aws_api.init_auto_scaling_groups()
     aws_api.cache_objects(aws_api.auto_scaling_groups, configuration.aws_api_auto_scaling_groups_cache_file)
     assert isinstance(aws_api.auto_scaling_groups, list)
@@ -339,6 +340,22 @@ def test_init_and_cache_ecs_capacity_providers():
     aws_api.init_ecs_capacity_providers()
     aws_api.cache_objects(aws_api.ecs_capacity_providers, configuration.aws_api_ecs_capacity_providers_cache_file)
     assert isinstance(aws_api.ecs_capacity_providers, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_ecs_services():
+    aws_api.init_ecs_clusters()
+    aws_api.init_ecs_services()
+    aws_api.cache_objects(aws_api.ecs_services, configuration.aws_api_ecs_services_cache_file)
+    assert isinstance(aws_api.ecs_services, list)
+    
+    
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_ecs_task_definitions():
+    aws_api.init_ecs_task_definitions()
+    aws_api.cache_objects(aws_api.ecs_task_definitions, configuration.aws_api_ecs_task_definitions_cache_file)
+    pdb.set_trace()
+    assert isinstance(aws_api.ecs_task_definitions, list)
 
 
 def find_stream():
@@ -376,6 +393,13 @@ def find_ami():
     ami.print_dict_src()
     pdb.set_trace()
 
+
+def test_add_managed_region():
+    region = Region.get_region("us-west-2")
+    aws_api.add_managed_region(region)
+    assert region in aws_api.get_managed_regions()
+
+
 """
 amis
 key_pairs
@@ -397,5 +421,6 @@ if __name__ == "__main__":
     #test_init_and_cache_ecs_clusters()
     #test_init_and_cache_ec2_launch_template_versions()
     #find_stream()
-    find_ami()
+    #test_init_and_cache_ecs_task_definitions()
+    test_add_managed_region()
 
