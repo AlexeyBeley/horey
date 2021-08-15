@@ -46,9 +46,9 @@ class ConfigurationPolicy:
     def configuration_files_history(self, _):
         raise ValueError("Readonly property")
 
-    def _set_attribute_value(self, attribute_name, attribute_value, ignore_not_defined=False):
+    def _set_attribute_value(self, attribute_name, attribute_value, ignore_undefined=False):
         if not hasattr(self, f"_{attribute_name}"):
-            if ignore_not_defined:
+            if ignore_undefined:
                 logger.info(f"{attribute_name} value is not set - no attribute definition")
                 return
 
@@ -70,7 +70,7 @@ class ConfigurationPolicy:
 
         self.init_from_dictionary(dict_arguments, custom_source_log="Init attribute '{}' from command line argument")
 
-    def init_from_dictionary(self, dict_src, custom_source_log=None, ignore_not_defined=False):
+    def init_from_dictionary(self, dict_src, custom_source_log=None, ignore_undefined=False):
         """
 
         :param dict_src:
@@ -83,7 +83,7 @@ class ConfigurationPolicy:
             else:
                 log_line = f"Init attribute '{key}' from dictionary"
             logger.info(log_line)
-            self._set_attribute_value(key, value, ignore_not_defined=ignore_not_defined)
+            self._set_attribute_value(key, value, ignore_undefined=ignore_undefined)
 
     def init_from_environ(self):
         for key_tmp, value in os.environ.items():
