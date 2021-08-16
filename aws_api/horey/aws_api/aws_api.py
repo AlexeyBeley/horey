@@ -1944,3 +1944,6 @@ class AWSAPI:
 
     def get_ecr_authorization_info(self, region=None):
         return self.ecr_client.get_authorization_info(region=region)
+
+    def provision_ecs_task_definition(self, task_definition):
+        self.ecs_client.provision_ecs_task_definition(task_definition)

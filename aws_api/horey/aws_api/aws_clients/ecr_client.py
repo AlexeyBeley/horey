@@ -14,6 +14,9 @@ class ECRClient(Boto3Client):
     Client to handle specific aws service API calls.
     """
 
+    NEXT_PAGE_REQUEST_KEY = "nextToken"
+    NEXT_PAGE_RESPONSE_KEY = "nextToken"
+
     def __init__(self):
         client_name = "ecr"
         super().__init__(client_name)
@@ -73,10 +76,14 @@ class ECRClient(Boto3Client):
 
         return final_result
 
-    def get_region_repositories(self, region):
+    def get_region_repositories(self, region, repository_names=None):
+        filters_req = dict()
+        if repository_names is not None:
+            filters_req["repositoryNames"] = repository_names
+
         final_result = list()
         AWSAccount.set_aws_region(region)
-        for dict_src in self.execute(self.client.describe_repositories, "repositories"):
+        for dict_src in self.execute(self.client.describe_repositories, "repositories", filters_req=filters_req):
             obj = ECRRepository(dict_src)
             final_result.append(obj)
 

@@ -178,3 +178,19 @@ class ECSClient(Boto3Client):
                 final_result.append(ECSTaskDefinition(dict_src))
 
         return final_result
+
+    def provision_ecs_task_definition(self, task_definition):
+        region_objects = self.get_region_task_definitions(task_definition.region)
+        for region_object in region_objects:
+            if region_object.name == task_definition.name:
+                task_definition.update_from_raw_response(region_object.dict_src)
+                return
+
+        AWSAccount.set_aws_region(task_definition.region)
+        response = self.provision_ecs_task_definition_raw(task_definition.generate_create_request())
+        task_definition.update_from_raw_response(response)
+
+    def provision_ecs_task_definition_raw(self, request_dict):
+        logger.info(f"Creating ECS task definition: {request_dict}")
+        for response in self.execute(self.client.register_task_definition, "taskDefinition", filters_req=request_dict):
+            return response
