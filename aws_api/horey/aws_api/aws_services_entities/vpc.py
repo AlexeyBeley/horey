@@ -4,7 +4,7 @@ AWS Lambda representation
 import pdb
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
-
+from horey.network.ip import IP
 
 class VPC(AwsObject):
     """
@@ -104,3 +104,6 @@ class VPC(AwsObject):
         if value is None:
             return
         raise NotImplementedError()
+
+    def get_associated_cidr_ips(self):
+        return [IP(association_set["CidrBlock"]) for association_set in self.cidr_block_association_set]

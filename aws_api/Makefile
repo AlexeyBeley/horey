@@ -14,8 +14,8 @@ SECRET_VALUE := "value"
 #SECRET_FILE_NAME := "tmp.py"
 #SECRET_FILE_PATH := "private/ignore/${SECRET_FILE_NAME}"
 
-SECRET_FILE_NAME := "backend_api_development_dhparam.pem"
-SECRET_FILE_PATH := "/Users/alexey.beley/git/cloud-infrastructure/components/scoutbees/components/nginx/${SECRET_FILE_NAME}"
+SECRET_FILE_NAME := "xxx.pem"
+SECRET_FILE_PATH := "/Users/xxx/.ssh/${SECRET_FILE_NAME}"
 
 test:
 	echo ${CONFIGURATION_FILE_PATH}
