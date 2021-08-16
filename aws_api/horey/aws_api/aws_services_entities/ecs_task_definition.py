@@ -74,7 +74,7 @@ class ECSTaskDefinition(AwsObject):
 
     def generate_create_request(self):
         request = dict()
-        request["name"] = self.name
+        request["family"] = self.family
         request["containerDefinitions"] = self.container_definitions
         request["tags"] = self.tags
         request["family"] = self.family

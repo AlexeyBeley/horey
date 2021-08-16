@@ -161,15 +161,18 @@ class ECSClient(Boto3Client):
 
         return final_result
 
-    def get_region_task_definitions(self, region):
+    def get_region_task_definitions(self, region, family_prefix=None):
         list_arns = list()
         AWSAccount.set_aws_region(region)
-        pdb.set_trace()
+        filters_req = dict()
+        if family_prefix is not None:
+            filters_req["familyPrefix"] = family_prefix
 
-        for dict_src in self.execute(self.client.list_task_definition_families, "families"):
+        for dict_src in self.execute(self.client.list_task_definitions, "taskDefinitionArns", filters_req=filters_req):
             list_arns.append(dict_src)
-        for dict_src in self.execute(self.client.list_task_definitions, "taskDefinitionArns"):
-            list_arns.append(dict_src)
+
+        if len(list_arns) == 0:
+            return []
 
         final_result = list()
         for arn in list_arns:
