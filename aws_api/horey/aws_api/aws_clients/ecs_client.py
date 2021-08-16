@@ -183,8 +183,9 @@ class ECSClient(Boto3Client):
         return final_result
 
     def provision_ecs_task_definition(self, task_definition):
-        region_objects = self.get_region_task_definitions(task_definition.region)
+        region_objects = self.get_region_task_definitions(task_definition.region, family_prefix=task_definition.family)
         for region_object in region_objects:
+            pdb.set_trace()
             if region_object.name == task_definition.name:
                 task_definition.update_from_raw_response(region_object.dict_src)
                 return
