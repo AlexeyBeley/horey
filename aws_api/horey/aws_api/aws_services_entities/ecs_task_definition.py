@@ -74,7 +74,6 @@ class ECSTaskDefinition(AwsObject):
 
     def generate_create_request(self):
         request = dict()
-        request["family"] = self.family
         request["containerDefinitions"] = self.container_definitions
         request["tags"] = self.tags
         request["family"] = self.family
@@ -84,7 +83,7 @@ class ECSTaskDefinition(AwsObject):
 
         request["cpu"] = self.cpu
         request["memory"] = self.memory
-
+        pdb.set_trace()
         return request
 
     @property
