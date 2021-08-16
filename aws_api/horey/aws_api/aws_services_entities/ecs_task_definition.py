@@ -83,7 +83,6 @@ class ECSTaskDefinition(AwsObject):
 
         request["cpu"] = self.cpu
         request["memory"] = self.memory
-        pdb.set_trace()
         return request
 
     @property
