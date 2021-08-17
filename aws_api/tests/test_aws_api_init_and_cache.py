@@ -140,7 +140,7 @@ def test_init_and_cache_load_balancers():
 def test_init_and_cache_target_groups():
     aws_api.init_target_groups()
     aws_api.cache_objects(aws_api.target_groups, configuration.aws_api_loadbalancer_target_groups_cache_file)
-    print(f"len(load_balancers) = {len(aws_api.load_balancers)}")
+    print(f"len(target_groups) = {len(aws_api.target_groups)}")
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
@@ -422,5 +422,7 @@ if __name__ == "__main__":
     #test_init_and_cache_ec2_launch_template_versions()
     #find_stream()
     #test_init_and_cache_ecs_task_definitions()
-    test_add_managed_region()
+    #test_add_managed_region()
+    #test_init_and_cache_load_balancers()
+    test_init_and_cache_target_groups()
 

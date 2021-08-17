@@ -177,11 +177,11 @@ class EC2Client(Boto3Client):
 
         return final_result
 
-    def get_all_security_groups_in_region(self, region, full_information=True):
+    def get_region_security_groups(self, region, full_information=True, filters=None):
         AWSAccount.set_aws_region(region)
         final_result = list()
 
-        for ret in self.execute(self.client.describe_security_groups, "SecurityGroups"):
+        for ret in self.execute(self.client.describe_security_groups, "SecurityGroups", filters_req=filters):
             obj = EC2SecurityGroup(ret)
             if full_information is True:
                 raise NotImplementedError()
@@ -206,7 +206,7 @@ class EC2Client(Boto3Client):
             if "already exists for VPC" not in repr_exception_inst:
                 raise
             logger.warning(repr_exception_inst)
-            region_groups = self.get_all_security_groups_in_region(security_group.region, full_information=False)
+            region_groups = self.get_region_security_groups(security_group.region, full_information=False)
             existing_group = CommonUtils.find_objects_by_values(region_groups, {"name": security_group.name}, max_count=1)[0]
             security_group.update_from_raw_create(existing_group.dict_src)
 

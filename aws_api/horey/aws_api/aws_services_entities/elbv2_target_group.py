@@ -14,7 +14,10 @@ class ELBV2TargetGroup(AwsObject):
         if from_cache:
             self._init_object_from_cache(dict_src)
             return
+
+        self.health_check_path = None
         self.target_health = None
+
         init_options = {
                         "TargetGroupArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
                         "TargetGroupName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
@@ -99,6 +102,8 @@ class ELBV2TargetGroup(AwsObject):
         request["HealthyThresholdCount"] = self.healthy_threshold_count
         request["UnhealthyThresholdCount"] = self.unhealthy_threshold_count
         request["TargetType"] = self.target_type
+        if self.health_check_path is not None:
+            request["HealthCheckPath"] = self.health_check_path
         request["Tags"] = self.tags
 
         return request
