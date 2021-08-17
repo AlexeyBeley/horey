@@ -85,11 +85,14 @@ class ELBV2Client(Boto3Client):
                     obj.add_raw_listener(listener_response)
         return final_result
 
-    def get_region_target_groups(self, region, full_information=True):
+    def get_region_target_groups(self, region, full_information=True, target_group_names=None):
         AWSAccount.set_aws_region(region)
         final_result = list()
-        for response in self.execute(self.client.describe_target_groups, "TargetGroups"):
+        filters_req = dict()
+        if target_group_names is not None:
+            filters_req["Names"] = target_group_names
 
+        for response in self.execute(self.client.describe_target_groups, "TargetGroups", filters_req=filters_req):
             obj = ELBV2TargetGroup(response)
             final_result.append(obj)
 
@@ -147,7 +150,9 @@ class ELBV2Client(Boto3Client):
         response = self.provision_load_balancer_target_group_raw(target_group.generate_create_request())
         target_group.arn = response["TargetGroupArn"]
 
-        self.register_targets_raw(target_group.generate_register_targets_request())
+        register_targets_request = target_group.generate_register_targets_request()
+        if register_targets_request:
+            self.register_targets_raw(register_targets_request)
 
     def provision_load_balancer_target_group_raw(self, request_dict):
         for response in self.execute(self.client.create_target_group, "TargetGroups", filters_req=request_dict):

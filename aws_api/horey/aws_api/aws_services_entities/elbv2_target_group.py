@@ -17,6 +17,8 @@ class ELBV2TargetGroup(AwsObject):
 
         self.health_check_path = None
         self.target_health = None
+        self.targets = None
+        self.arn = None
 
         init_options = {
                         "TargetGroupArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
@@ -109,12 +111,9 @@ class ELBV2TargetGroup(AwsObject):
         return request
 
     def generate_register_targets_request(self):
-        request = dict()
-        request["TargetGroupArn"] = self.arn
-        request["Targets"] = self.targets
-        return request
+        if self.targets is None:
+            return
 
-    def generate_register_targets_request(self):
         request = dict()
 
         if self.arn is None:

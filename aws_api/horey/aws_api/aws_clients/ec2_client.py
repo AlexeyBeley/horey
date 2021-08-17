@@ -56,10 +56,13 @@ class EC2Client(Boto3Client):
 
         return final_result
 
-    def get_region_subnets(self, region):
+    def get_region_subnets(self, region, filters=None):
         final_result = list()
+        filters_req = dict()
+        if filters is not None:
+            filters_req["Filters"] = filters
         AWSAccount.set_aws_region(region)
-        for dict_src in self.execute(self.client.describe_subnets, "Subnets"):
+        for dict_src in self.execute(self.client.describe_subnets, "Subnets", filters_req=filters_req):
             obj = Subnet(dict_src)
             final_result.append(obj)
 
@@ -80,10 +83,14 @@ class EC2Client(Boto3Client):
 
         return final_result
 
-    def get_region_vpcs(self, region):
+    def get_region_vpcs(self, region, filters=None):
         AWSAccount.set_aws_region(region)
         final_result = []
-        for dict_src in self.execute(self.client.describe_vpcs, "Vpcs"):
+        filters_req = dict()
+        if filters is not None:
+            filters_req["Filters"] = filters
+
+        for dict_src in self.execute(self.client.describe_vpcs, "Vpcs", filters_req=filters_req):
             obj = VPC(dict_src)
             obj.region = region
             final_result.append(obj)
@@ -180,8 +187,10 @@ class EC2Client(Boto3Client):
     def get_region_security_groups(self, region, full_information=True, filters=None):
         AWSAccount.set_aws_region(region)
         final_result = list()
-
-        for ret in self.execute(self.client.describe_security_groups, "SecurityGroups", filters_req=filters):
+        filters_req = dict()
+        if filters is not None:
+            filters_req["Filters"] = filters
+        for ret in self.execute(self.client.describe_security_groups, "SecurityGroups", filters_req=filters_req):
             obj = EC2SecurityGroup(ret)
             if full_information is True:
                 raise NotImplementedError()

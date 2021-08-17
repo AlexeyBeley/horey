@@ -23,27 +23,27 @@ class ECSService(AwsObject):
         init_options = {
             "serviceArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
             "serviceName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-            "clusterArn":  self.init_default_attr,
-            "loadBalancers":  self.init_default_attr,
-            "serviceRegistries":  self.init_default_attr,
-            "desiredCount":  self.init_default_attr,
-            "runningCount":  self.init_default_attr,
-            "pendingCount":  self.init_default_attr,
-            "capacityProviderStrategy":  self.init_default_attr,
-            "taskDefinition":  self.init_default_attr,
-            "deploymentConfiguration":  self.init_default_attr,
-            "deployments":  self.init_default_attr,
-            "roleArn":  self.init_default_attr,
-            "events":  self.init_default_attr,
-            "createdAt":  self.init_default_attr,
-            "placementConstraints":  self.init_default_attr,
-            "placementStrategy":  self.init_default_attr,
-            "healthCheckGracePeriodSeconds":  self.init_default_attr,
-            "schedulingStrategy":  self.init_default_attr,
-            "createdBy":  self.init_default_attr,
-            "enableECSManagedTags":  self.init_default_attr,
-            "propagateTags":  self.init_default_attr,
-            "enableExecuteCommand":  self.init_default_attr,
+            "clusterArn": self.init_default_attr,
+            "loadBalancers": self.init_default_attr,
+            "serviceRegistries": self.init_default_attr,
+            "desiredCount": self.init_default_attr,
+            "runningCount": self.init_default_attr,
+            "pendingCount": self.init_default_attr,
+            "capacityProviderStrategy": self.init_default_attr,
+            "taskDefinition": self.init_default_attr,
+            "deploymentConfiguration": self.init_default_attr,
+            "deployments": self.init_default_attr,
+            "roleArn": self.init_default_attr,
+            "events": self.init_default_attr,
+            "createdAt": self.init_default_attr,
+            "placementConstraints": self.init_default_attr,
+            "placementStrategy": self.init_default_attr,
+            "healthCheckGracePeriodSeconds": self.init_default_attr,
+            "schedulingStrategy": self.init_default_attr,
+            "createdBy": self.init_default_attr,
+            "enableECSManagedTags": self.init_default_attr,
+            "propagateTags": self.init_default_attr,
+            "enableExecuteCommand": self.init_default_attr,
             "status": self.init_default_attr,
             "launchType": self.init_default_attr,
         }
@@ -67,91 +67,24 @@ class ECSService(AwsObject):
         self.init_attrs(dict_src, init_options)
 
     def generate_create_request(self):
-        """
-
-        response = client.create_service(
-            cluster='string',
-            serviceName='string',
-            taskDefinition='string',
-            loadBalancers=[
-                {
-                    'targetGroupArn': 'string',
-                    'loadBalancerName': 'string',
-                    'containerName': 'string',
-                    'containerPort': 123
-                },
-            ],
-            serviceRegistries=[
-                {
-                    'registryArn': 'string',
-                    'port': 123,
-                    'containerName': 'string',
-                    'containerPort': 123
-                },
-            ],
-            desiredCount=123,
-            clientToken='string',
-            launchType='EC2'|'FARGATE'|'EXTERNAL',
-            capacityProviderStrategy=[
-                {
-                    'capacityProvider': 'string',
-                    'weight': 123,
-                    'base': 123
-                },
-            ],
-            platformVersion='string',
-            role='string',
-            deploymentConfiguration={
-                'deploymentCircuitBreaker': {
-                    'enable': True|False,
-                    'rollback': True|False
-                },
-                'maximumPercent': 123,
-                'minimumHealthyPercent': 123
-            },
-            placementConstraints=[
-                {
-                    'type': 'distinctInstance'|'memberOf',
-                    'expression': 'string'
-                },
-            ],
-            placementStrategy=[
-                {
-                    'type': 'random'|'spread'|'binpack',
-                    'field': 'string'
-                },
-            ],
-            networkConfiguration={
-                'awsvpcConfiguration': {
-                    'subnets': [
-                        'string',
-                    ],
-                    'securityGroups': [
-                        'string',
-                    ],
-                    'assignPublicIp': 'ENABLED'|'DISABLED'
-                }
-            },
-            healthCheckGracePeriodSeconds=123,
-            schedulingStrategy='REPLICA'|'DAEMON',
-            deploymentController={
-                'type': 'ECS'|'CODE_DEPLOY'|'EXTERNAL'
-            },
-            tags=[
-                {
-                    'key': 'string',
-                    'value': 'string'
-                },
-            ],
-            enableECSManagedTags=True|False,
-            propagateTags='TASK_DEFINITION'|'SERVICE',
-            enableExecuteCommand=True|False
-        )
-        """
-
         request = dict()
-        request["name"] = self.name
-        request["autoScalingGroupProvider"] = self.auto_scaling_group_provider
+        request["serviceName"] = self.name
+        request["cluster"] = self.cluster_arn
+        request["taskDefinition"] = self.task_definition
+        request["loadBalancers"] = self.load_balancers
+        request["desiredCount"] = self.desired_count
+
+        request["launchType"] = self.launch_type
+
+        request["role"] = self.role_arn
+        request["deploymentConfiguration"] = self.deployment_configuration
+        request["placementStrategy"] = self.placement_strategy
+        request["healthCheckGracePeriodSeconds"] = self.health_check_grace_period_seconds
+        request["schedulingStrategy"] = self.scheduling_strategy
+        request["enableECSManagedTags"] = self.enable_ecs_managed_tags
+        request["propagateTags"] = self.propagate_tags
+        request["enableExecuteCommand"] = self.enable_execute_command
+
         request["tags"] = self.tags
         return request
 
