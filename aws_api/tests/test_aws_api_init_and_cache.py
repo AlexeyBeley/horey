@@ -394,12 +394,19 @@ def find_ami():
     pdb.set_trace()
 
 
+@pytest.mark.skip(reason="No way of currently testing this")
 def test_add_managed_region():
     region = Region.get_region("us-west-2")
     aws_api.add_managed_region(region)
     assert region in aws_api.get_managed_regions()
 
 
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_acm_certificates():
+    aws_api.init_acm_certificates()
+    aws_api.cache_objects(aws_api.acm_certificates, configuration.aws_api_loadbalancer_acm_certificates_cache_file)
+    print(f"len(acm_certificates) = {len(aws_api.acm_certificates)}")
+    
 """
 amis
 key_pairs
@@ -424,5 +431,6 @@ if __name__ == "__main__":
     #test_init_and_cache_ecs_task_definitions()
     #test_add_managed_region()
     #test_init_and_cache_load_balancers()
-    test_init_and_cache_target_groups()
+    #test_init_and_cache_target_groups()
+    test_init_and_cache_acm_certificates()
 

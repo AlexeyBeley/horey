@@ -30,6 +30,9 @@ from horey.aws_api.aws_clients.elbv2_client import ELBV2Client
 from horey.aws_api.aws_services_entities.elbv2_load_balancer import LoadBalancer
 from horey.aws_api.aws_services_entities.elbv2_target_group import ELBV2TargetGroup
 
+from horey.aws_api.aws_clients.acm_client import ACMClient
+from horey.aws_api.aws_services_entities.acm_certificate import ACMCertificate
+
 from horey.aws_api.aws_services_entities.managed_prefix_list import ManagedPrefixList
 
 from horey.aws_api.aws_clients.elb_client import ELBClient
@@ -126,6 +129,7 @@ class AWSAPI:
         self.servicediscovery_client = ServicediscoveryClient()
         self.elasticsearch_client = ElasticsearchClient()
         self.ecr_client = ECRClient()
+        self.acm_client = ACMClient()
 
         self.network_interfaces = []
         self.iam_policies = []
@@ -139,6 +143,7 @@ class AWSAPI:
         self.databases = []
         self.security_groups = []
         self.target_groups = []
+        self.acm_certificates= []
         self.ec2_launch_templates = []
         self.ec2_launch_template_versions = []
         self.lambdas = []
@@ -767,7 +772,21 @@ class AWSAPI:
             objects = self.elbv2_client.get_all_target_groups()
 
         self.target_groups = objects
+        
+    def init_acm_certificates(self, from_cache=False, cache_file=None):
+        """
+        Init ELB target groups
+        @param from_cache:
+        @param cache_file:
+        @return:
+        """
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, ACMCertificate)
+        else:
+            objects = self.acm_client.get_all_certificates()
 
+        self.acm_certificates = objects
+        
     def init_security_groups(self, from_cache=False, cache_file=None, full_information=False):
         """
         Init security groups
