@@ -19,24 +19,30 @@ class Route53Client(Boto3Client):
         client_name = "route53"
         super().__init__(client_name)
 
-    def get_all_hosted_zones(self, full_information=True):
+    def get_all_hosted_zones(self, full_information=True, name=None):
         """
         Get all osted zones
         :param full_information:
         :return:
         """
         final_result = list()
-
+        if name is not None and not name.endswith("."):
+            name += "."
         for response in self.execute(self.client.list_hosted_zones, "HostedZones"):
-
             obj = HostedZone(response)
+            if name is not None and obj.name != name:
+                continue
 
             if full_information:
-                for update_info in self.execute(self.client.list_resource_record_sets, "ResourceRecordSets", filters_req={"HostedZoneId": obj.id}):
-                    obj.update_record_set(update_info)
-
+                self.get_hosted_zone_full_information(obj)
             final_result.append(obj)
+
         return final_result
+
+    def get_hosted_zone_full_information(self, hsoted_zone):
+        for update_info in self.execute(self.client.list_resource_record_sets, "ResourceRecordSets",
+                                            filters_req={"HostedZoneId": hsoted_zone.id}):
+            hsoted_zone.update_record_set(update_info)
 
     def change_resource_record_sets(self, name):
         pdb.set_trace()
@@ -45,26 +51,55 @@ class Route53Client(Boto3Client):
         for response in self.execute(self.client.list_traffic_policy_instances, "HostedZones", raw_data=True):
             pdb.set_trace()
 
-    def create_hosted_zone(self, hosted_zone):
-        request = hosted_zone.generate_create_request()
-        try:
+    def provision_hosted_zone(self, hosted_zone):
+        changes = []
+        for record in hosted_zone.records:
+            change = {
+                'Action': 'UPSERT',
+                'ResourceRecordSet': {
+                    'Name': record.name,
+                    'Type': record.type,
+                    'TTL': record.ttl,
+                    'ResourceRecords': record.resource_records
+                }
+            }
+            changes.append(change)
+
+        hosted_zones = self.get_all_hosted_zones(name=hosted_zone.name)
+        if len(hosted_zones) > 1:
+            raise ValueError(f"More then 1 '{hosted_zone.name}' hosted_zone found: {len(hosted_zones)}")
+
+        if len(hosted_zones) == 1:
+            hosted_zone.update_from_raw_response(hosted_zones[0].dict_src)
+        else:
+            pdb.set_trace()
+            request = hosted_zone.generate_create_request()
             response = self.raw_create_hosted_zone(request)
             hosted_zone.id = response["Id"]
-        except Exception as exception_instance:
-            logger.warning(repr(exception_instance))
-            if "ConflictingDomainExists" not in repr(exception_instance):
-                raise
-            response = self.get_hosted_zone(name=hosted_zone.name)
-            hosted_zone.id = response["Id"]
 
-    def get_hosted_zone(self, name=None):
-        if name is None:
-            raise ValueError("Name not set")
+        self.associate_hosted_zone(hosted_zone)
 
-        request_dict = {"DNSName": name}
+        if len(changes) != 0:
+            request = {"HostedZoneId": hosted_zone.id, "ChangeBatch": {"Changes": changes}}
+            self.raw_change_resource_record_sets(request)
 
-        for response in self.execute(self.client.list_hosted_zones_by_name, "HostedZones", filters_req=request_dict):
-            return response
+        hosted_zones = self.get_all_hosted_zones(name=hosted_zone.name)
+        hosted_zone.update_from_raw_response(hosted_zones[0].dict_src)
+        hosted_zone.records = hosted_zones[0].records
+
+    def update(self, hosted_zone):
+        hosted_zones = self.get_all_hosted_zones(name=hosted_zone.name)
+        if len(hosted_zones) > 1:
+            raise ValueError(f"More then 1 hosted_zone found: {len(hosted_zones)}")
+
+        hosted_zone.updated(hosted_zones[0].dict_src)
+
+    def associate_hosted_zone(self, hosted_zone):
+        for vpc_association in hosted_zone.vpc_associations:
+            associate_request = {"HostedZoneId": hosted_zone.id,
+            "VPC": vpc_association
+            }
+            self.raw_associate_vpc_with_hosted_zone(associate_request)
 
     def raw_create_hosted_zone(self, request_dict):
         logger.info(f"Creating hosted zone: {request_dict}")

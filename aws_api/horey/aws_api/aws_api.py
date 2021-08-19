@@ -1775,21 +1775,26 @@ class AWSAPI:
 
         return self.ec2_client.raw_modify_managed_prefix_list(request)
 
-    def associate_hosted_zone(self, hosted_zone):
-        for vpc_association in hosted_zone.vpc_associations:
-            associate_request = {"HostedZoneId": hosted_zone.id,
-            "VPC": vpc_association
-            }
-            self.route53_client.raw_associate_vpc_with_hosted_zone(associate_request)
+    def provision_hosted_zone(self, hosted_zone, master_hosted_zone_name=None):
+        self.route53_client.provision_hosted_zone(hosted_zone)
 
-    def provision_hosted_zone(self, hosted_zone):
-        self.route53_client.create_hosted_zone(hosted_zone)
+        if master_hosted_zone_name is None:
+            return
 
-        self.associate_hosted_zone(hosted_zone)
+        hzs_master = self.route53_client.get_all_hosted_zones(name=master_hosted_zone_name)
+        if len(hzs_master) > 1:
+            raise NotImplementedError(f"Found more then 1 hosted zone with name {master_hosted_zone_name}")
 
-        changes = []
+        master_hosted_zone = hzs_master[0]
+
         for record in hosted_zone.records:
-            change = {
+            if record.type == "NS" and record.name == hosted_zone.name:
+                break
+        else:
+            raise RuntimeError(f"Can not find NS record for hosted zone '{hosted_zone.name}'")
+
+        changes = [
+               {
                 'Action': 'UPSERT',
                 'ResourceRecordSet': {
                     'Name': record.name,
@@ -1797,10 +1802,10 @@ class AWSAPI:
                     'TTL': record.ttl,
                     'ResourceRecords': record.resource_records
                 }
-            }
-            changes.append(change)
-        request = {"HostedZoneId": hosted_zone.id, "ChangeBatch": {"Changes": changes}}
-        return self.route53_client.raw_change_resource_record_sets(request)
+            }]
+
+        request = {"HostedZoneId": master_hosted_zone.id, "ChangeBatch": {"Changes": changes}}
+        self.route53_client.raw_change_resource_record_sets(request)
 
     def add_elasticsearch_access_policy_raw_statements(self, elasticsearch_domain, raw_statements):
         access_policies = json.loads(elasticsearch_domain.access_policies)
