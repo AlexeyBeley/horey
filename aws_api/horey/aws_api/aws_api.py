@@ -235,12 +235,15 @@ class AWSAPI:
 
         self.nat_gateways = objects
 
-    def init_ecr_images(self, from_cache=False, cache_file=None, region=None):
+    def init_ecr_images(self, from_cache=False, cache_file=None, region=None, ecr_repositories=None):
         objects = []
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, ECRImage)
         else:
-            for ecr_repository in self.ecr_repositories:
+            if ecr_repositories is None:
+                ecr_repositories = self.ecr_client.get_all_repositories(region=region)
+
+            for ecr_repository in ecr_repositories:
                 if region is not None and ecr_repository.region != region:
                     continue
                 objects += self.ecr_client.get_all_images(ecr_repository)
@@ -1923,6 +1926,9 @@ class AWSAPI:
     def provision_ecs_cluster(self, ecs_cluster):
         self.ecs_client.provision_cluster(ecs_cluster)
 
+    def provision_ecs_service(self, ecs_service):
+        self.ecs_client.provision_service(ecs_service)
+
     def provision_key_pair(self, key_pair, save_to_secrets_manager=None, secrets_manager_region=None):
         logger.info(f"provisioning ssh key pair {key_pair.name}")
         response = self.ec2_client.provision_key_pair(key_pair)
@@ -1971,3 +1977,69 @@ class AWSAPI:
 
     def provision_ecs_task_definition(self, task_definition):
         self.ecs_client.provision_ecs_task_definition(task_definition)
+
+    def provision_acm_certificate(self, certificate, master_hosted_zone_name):
+        self.acm_client.provision_certificate(certificate)
+
+        if certificate.status == "ISSUED":
+            return
+
+        if certificate.status != "PENDING_VALIDATION":
+            raise ValueError(certificate.status)
+
+        self.validate_certificate(certificate, master_hosted_zone_name)
+
+        new_certificate = self.wait_for_certificate_validation(certificate)
+        certificate.update_from_raw_response(new_certificate.dict_src)
+
+    def validate_certificate(self, certificate, master_hosted_zone_name):
+        max_time = 5*60
+        sleep_time = 10
+        start_time = datetime.datetime.now()
+        end_time = start_time + datetime.timedelta(seconds=max_time)
+        while datetime.datetime.now() < end_time:
+            certificate = self.acm_client.get_certificate(certificate.arn)
+            if certificate.domain_validation_options[0].get("ResourceRecord") is not None:
+                break
+
+            logger.info(f"Waiting for certificate validation request. Going to sleep for {sleep_time} seconds: {certificate.arn}")
+            time.sleep(sleep_time)
+
+        if len(certificate.domain_validation_options) != 1:
+            raise NotImplementedError(certificate.domain_validation_options)
+
+        hosted_zones = self.route53_client.get_all_hosted_zones(name=master_hosted_zone_name)
+        if len(hosted_zones) != 1:
+            raise ValueError(f"More then one hosted_zones with name '{master_hosted_zone_name}'")
+        hosted_zone = hosted_zones[0]
+
+        dict_record = {
+            "Name": certificate.domain_validation_options[0]["ResourceRecord"]["Name"],
+            "Type": certificate.domain_validation_options[0]["ResourceRecord"]["Type"],
+            "TTL": 300,
+            "ResourceRecords": [
+                {
+                    "Value": certificate.domain_validation_options[0]["ResourceRecord"]["Value"]
+                }
+            ]}
+
+        record = HostedZone.Record(dict_record)
+        hosted_zone.records = [record]
+
+        self.provision_hosted_zone(hosted_zone)
+
+    def wait_for_certificate_validation(self, certificate):
+        max_time = 5*60
+        sleep_time = 30
+        start_time = datetime.datetime.now()
+        end_time = start_time + datetime.timedelta(seconds=max_time)
+        while datetime.datetime.now() < end_time:
+            certificate = self.acm_client.get_certificate(certificate.arn)
+            if certificate.status == "ISSUED":
+                logger.info(f"Finished issuing in {datetime.datetime.now() - start_time}")
+                return certificate
+            elif certificate.status == "PENDING_VALIDATION":
+                logger.info(f"Waiting for certificate validation going to sleep for {sleep_time} seconds: {certificate.arn}")
+                time.sleep(sleep_time)
+            else:
+                raise ValueError(certificate.status)

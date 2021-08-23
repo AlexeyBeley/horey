@@ -4,6 +4,7 @@ import sys
 from horey.aws_api.aws_clients.ecs_client import ECSClient
 from horey.aws_api.aws_services_entities.ecs_capacity_provider import ECSCapacityProvider
 from horey.aws_api.aws_services_entities.ecs_cluster import ECSCluster
+from horey.aws_api.aws_services_entities.ecs_service import ECSService
 import pdb
 from horey.h_logger import get_logger
 from horey.aws_api.base_entities.aws_account import AWSAccount
@@ -341,6 +342,70 @@ def test_provision_cluster():
     assert cluster.arn is not None
 
 
+def test_provision_service():
+    region = Region.get_region("us-west-2")
+    ecs_client = ECSClient()
+    ecs_task_definition = Mock()
+    ecs_task_definition.arn = mock_values["ecs_task_definition.arn"]
+    ecs_cluster = Mock()
+    ecs_cluster.arn = mock_values["ecs_cluster.arn"]
+    target_group = Mock()
+    target_group.arn = mock_values["target_group.arn"]
+    service_name = mock_values["service_name"]
+    container_name = mock_values["container_name"]
+    role_arn = mock_values["ecs_service.role_arn"]
+    ecs_service = ECSService({})
+    ecs_service.region = region
+
+    ecs_service.tags = [{
+        'key': 'env',
+        'value': "test"
+    },
+    {
+        'key': 'Name',
+        'value': "test"
+    }]
+
+    ecs_service.name = service_name
+    ecs_service.cluster_arn = ecs_cluster.arn
+    ecs_service.task_definition = ecs_task_definition.arn
+    ecs_service.load_balancers = [{
+        "targetGroupArn": target_group.arn,
+        "containerName": container_name,
+        "containerPort": 443
+    }]
+    ecs_service.desired_count = 1
+
+    ecs_service.launch_type = "EC2"
+
+    ecs_service.role_arn = role_arn
+    ecs_service.deployment_configuration = {
+        "deploymentCircuitBreaker": {
+            "enable": False,
+            "rollback": False
+        },
+        "maximumPercent": 200,
+        "minimumHealthyPercent": 100
+    }
+    ecs_service.placement_strategy = [
+        {
+            "type": "spread",
+            "field": "attribute:ecs.availability-zone"
+        },
+        {
+            "type": "spread",
+            "field": "instanceId"
+        }
+    ]
+    ecs_service.health_check_grace_period_seconds = 10
+    ecs_service.scheduling_strategy = "REPLICA"
+    ecs_service.enable_ecs_managed_tags = False
+    ecs_service.enable_execute_command = False
+
+    ecs_client.provision_service(ecs_service)
+
+
 if __name__ == "__main__":
     # test_register_task_definition()
-    test_provision_cluster()
+    # test_provision_cluster()
+    test_provision_service()

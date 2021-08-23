@@ -21,10 +21,28 @@ class ACMCertificate(AwsObject):
             return
 
         init_options = {
-            "Arn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
-            "Name": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-            "Id": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
-            "status": self.init_default_attr,
+            "CertificateArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "DomainName": self.init_default_attr,
+            "SubjectAlternativeNames": self.init_default_attr,
+            "DomainValidationOptions": self.init_default_attr,
+            "Serial": self.init_default_attr,
+            "Subject": self.init_default_attr,
+            "Issuer": self.init_default_attr,
+            "CreatedAt": self.init_default_attr,
+            "IssuedAt": self.init_default_attr,
+            "Status": self.init_default_attr,
+            "NotBefore": self.init_default_attr,
+            "NotAfter": self.init_default_attr,
+            "KeyAlgorithm": self.init_default_attr,
+            "SignatureAlgorithm": self.init_default_attr,
+            "InUseBy": self.init_default_attr,
+            "Type": self.init_default_attr,
+            "KeyUsages": self.init_default_attr,
+            "ExtendedKeyUsages": self.init_default_attr,
+            "RenewalEligibility": self.init_default_attr,
+            "Options": self.init_default_attr,
+            "ImportedAt": self.init_default_attr,
+            "RenewalSummary": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -38,23 +56,70 @@ class ACMCertificate(AwsObject):
         options = {}
         self._init_from_cache(dict_src, options)
 
-    def update_value_from_raw_response(self, raw_value):
-        raise NotImplementedError()
+    def update_from_raw_response(self, dict_src):
+        init_options = {
+            "CertificateArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "DomainName": self.init_default_attr,
+            "SubjectAlternativeNames": self.init_default_attr,
+            "DomainValidationOptions": self.init_default_attr,
+            "Serial": self.init_default_attr,
+            "Subject": self.init_default_attr,
+            "Issuer": self.init_default_attr,
+            "CreatedAt": self.init_default_attr,
+            "IssuedAt": self.init_default_attr,
+            "Status": self.init_default_attr,
+            "NotBefore": self.init_default_attr,
+            "NotAfter": self.init_default_attr,
+            "KeyAlgorithm": self.init_default_attr,
+            "SignatureAlgorithm": self.init_default_attr,
+            "InUseBy": self.init_default_attr,
+            "Type": self.init_default_attr,
+            "KeyUsages": self.init_default_attr,
+            "ExtendedKeyUsages": self.init_default_attr,
+            "RenewalEligibility": self.init_default_attr,
+            "Options": self.init_default_attr,
+            "ImportedAt": self.init_default_attr,
+            "RenewalSummary": self.init_default_attr,
+        }
+
+        self.init_attrs(dict_src, init_options)
 
     def generate_create_request(self):
-        raise NotImplementedError()
+        """
+        DomainName='string',
+    ValidationMethod='EMAIL'|'DNS',
+    SubjectAlternativeNames=[
+        'string',
+    ],
+    IdempotencyToken='string',
+    DomainValidationOptions=[
+        {
+            'DomainName': 'string',
+            'ValidationDomain': 'string'
+        },
+    ],
+    Options={
+        'CertificateTransparencyLoggingPreference': 'ENABLED'|'DISABLED'
+    },
+    CertificateAuthorityArn='string',
+    Tags=[
+        {
+            'Key': 'string',
+            'Value': 'string'
+        },
+    ]
+)
+        """
         request = dict()
-        request["Name"] = self.name
-        request["tags"] = self.tags
+        request["DomainName"] = self.domain_name
+        request["ValidationMethod"] = self.validation_method
+
+        request["Tags"] = self.tags
 
         return request
 
-    def update_from_raw_create(self, dict_src):
-        raise NotImplementedError()
-
     @property
     def region(self):
-        raise NotImplementedError()
         if self._region is not None:
             return self._region
 
@@ -65,7 +130,6 @@ class ACMCertificate(AwsObject):
 
     @region.setter
     def region(self, value):
-        raise NotImplementedError()
         if not isinstance(value, Region):
             raise ValueError(value)
 

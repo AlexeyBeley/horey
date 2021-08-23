@@ -165,7 +165,7 @@ class ELBV2Client(Boto3Client):
     def provision_load_balancer_listener(self, listener):
         region_listeners = self.get_region_listeners(listener.region, full_information=False, load_balancer_arn=listener.load_balancer_arn)
         for region_listener in region_listeners:
-            if region_listener.get_tagname(ignore_missing_tag=True) == listener.get_tagname():
+            if region_listener.port == listener.port:
                 listener.arn = region_listener.arn
                 return
 

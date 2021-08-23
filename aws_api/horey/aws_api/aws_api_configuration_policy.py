@@ -32,6 +32,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
         self._aws_api_ecr_cache_dir = None
         self._aws_api_ecs_cache_dir = None
         self._aws_api_auto_scaling_cache_dir = None
+        self._aws_api_acm_cache_dir = None
 
     @property
     def aws_api_regions(self):
@@ -661,6 +662,27 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
 
     @aws_api_auto_scaling_groups_cache_file.setter
     def aws_api_auto_scaling_groups_cache_file(self, value):
+        raise ValueError(value)
+    # endregion
+
+    # region acm
+    @property
+    def aws_api_acm_cache_dir(self):
+        if self._aws_api_acm_cache_dir is None:
+            self._aws_api_acm_cache_dir = os.path.join(self.aws_api_cache_dir, self.aws_api_account, "acm")
+            os.makedirs(self._aws_api_acm_cache_dir, exist_ok=True)
+        return self._aws_api_acm_cache_dir
+
+    @aws_api_acm_cache_dir.setter
+    def aws_api_acm_cache_dir(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_acm_certificates_cache_file(self):
+        return os.path.join(self.aws_api_acm_cache_dir, "acm_certificates.json")
+
+    @aws_api_acm_certificates_cache_file.setter
+    def aws_api_acm_certificates_cache_file(self, value):
         raise ValueError(value)
     # endregion
 

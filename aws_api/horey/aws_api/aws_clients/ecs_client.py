@@ -5,6 +5,7 @@ import pdb
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 
 from horey.aws_api.base_entities.aws_account import AWSAccount
+from horey.aws_api.base_entities.region import Region
 from horey.aws_api.aws_services_entities.ecs_cluster import ECSCluster
 from horey.aws_api.aws_services_entities.ecs_service import ECSService
 from horey.aws_api.aws_services_entities.ecs_capacity_provider import ECSCapacityProvider
@@ -143,6 +144,9 @@ class ECSClient(Boto3Client):
         for dict_src in self.execute(self.client.list_services, "serviceArns", filters_req=filters_req):
             service_arns.append(dict_src)
 
+        if len(service_arns) == 0:
+            return []
+
         if len(service_arns) > 10:
             raise NotImplementedError()
         filters_req["services"] = service_arns
@@ -197,4 +201,30 @@ class ECSClient(Boto3Client):
     def provision_ecs_task_definition_raw(self, request_dict):
         logger.info(f"Creating ECS task definition: {request_dict}")
         for response in self.execute(self.client.register_task_definition, "taskDefinition", filters_req=request_dict):
+            return response
+
+    @staticmethod
+    def get_cluster_from_arn(cluster_arn):
+        cluster = ECSCluster({})
+        cluster.name = cluster_arn.split(":")[-1].split("/")[-1]
+        cluster.arn = cluster_arn
+        cluster.region = Region.get_region(cluster_arn.split(":")[3])
+        return cluster
+
+    def provision_service(self, service):
+        cluster = self.get_cluster_from_arn(service.cluster_arn)
+        region_objects = self.get_all_services(cluster)
+        for region_object in region_objects:
+            pdb.set_trace()
+            if region_object.name == service.name:
+                service.update_from_raw_response(region_object.dict_src)
+                return
+
+        AWSAccount.set_aws_region(service.region)
+        response = self.provision_service_raw(service.generate_create_request())
+        service.update_from_raw_response(response)
+
+    def provision_service_raw(self, request_dict):
+        logger.info(f"Creating ECS Service: {request_dict}")
+        for response in self.execute(self.client.create_service, "service", filters_req=request_dict):
             return response

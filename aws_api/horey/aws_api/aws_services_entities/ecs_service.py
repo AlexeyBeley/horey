@@ -16,6 +16,7 @@ class ECSService(AwsObject):
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self._region = None
+        self.propagate_tags = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -46,6 +47,7 @@ class ECSService(AwsObject):
             "enableExecuteCommand": self.init_default_attr,
             "status": self.init_default_attr,
             "launchType": self.init_default_attr,
+            "tags": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -61,9 +63,34 @@ class ECSService(AwsObject):
 
     def update_from_raw_response(self, dict_src):
         init_options = {
-            "arn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "serviceArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "serviceName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "clusterArn": self.init_default_attr,
+            "loadBalancers": self.init_default_attr,
+            "serviceRegistries": self.init_default_attr,
+            "desiredCount": self.init_default_attr,
+            "runningCount": self.init_default_attr,
+            "pendingCount": self.init_default_attr,
+            "capacityProviderStrategy": self.init_default_attr,
+            "taskDefinition": self.init_default_attr,
+            "deploymentConfiguration": self.init_default_attr,
+            "deployments": self.init_default_attr,
+            "roleArn": self.init_default_attr,
+            "events": self.init_default_attr,
+            "createdAt": self.init_default_attr,
+            "placementConstraints": self.init_default_attr,
+            "placementStrategy": self.init_default_attr,
+            "healthCheckGracePeriodSeconds": self.init_default_attr,
+            "schedulingStrategy": self.init_default_attr,
+            "createdBy": self.init_default_attr,
+            "enableECSManagedTags": self.init_default_attr,
+            "propagateTags": self.init_default_attr,
+            "enableExecuteCommand": self.init_default_attr,
             "status": self.init_default_attr,
+            "launchType": self.init_default_attr,
+            "tags": self.init_default_attr,
         }
+
         self.init_attrs(dict_src, init_options)
 
     def generate_create_request(self):
@@ -82,7 +109,8 @@ class ECSService(AwsObject):
         request["healthCheckGracePeriodSeconds"] = self.health_check_grace_period_seconds
         request["schedulingStrategy"] = self.scheduling_strategy
         request["enableECSManagedTags"] = self.enable_ecs_managed_tags
-        request["propagateTags"] = self.propagate_tags
+        if self.propagate_tags is not None:
+            request["propagateTags"] = self.propagate_tags
         request["enableExecuteCommand"] = self.enable_execute_command
 
         request["tags"] = self.tags

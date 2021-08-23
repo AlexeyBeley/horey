@@ -148,6 +148,9 @@ class LoadBalancer(AwsObject):
     class Listener(AwsObject):
         def __init__(self, dict_src, from_cache=False):
             super().__init__(dict_src)
+            self.ssl_policy = None
+            self.certificates = None
+
             if from_cache:
                 self._init_object_from_cache(dict_src)
                 return
@@ -174,89 +177,13 @@ class LoadBalancer(AwsObject):
             self._init_from_cache(dict_src, options)
 
         def generate_create_request(self):
-
-            """
-            response = client.create_listener(
-            LoadBalancerArn='string',
-            Protocol='HTTP'|'HTTPS'|'TCP'|'TLS'|'UDP'|'TCP_UDP'|'GENEVE',
-            Port=123,
-            SslPolicy='string',
-            Certificates=[
-                {
-                'CertificateArn': 'string',
-                'IsDefault': True|False
-            },
-        ],
-            DefaultActions=[
-        {
-            'Type': 'forward'|'authenticate-oidc'|'authenticate-cognito'|'redirect'|'fixed-response',
-            'TargetGroupArn': 'string',
-            'AuthenticateOidcConfig': {
-                'Issuer': 'string',
-                'AuthorizationEndpoint': 'string',
-                'TokenEndpoint': 'string',
-                'UserInfoEndpoint': 'string',
-                'ClientId': 'string',
-                'ClientSecret': 'string',
-                'SessionCookieName': 'string',
-                'Scope': 'string',
-                'SessionTimeout': 123,
-                'AuthenticationRequestExtraParams': {
-                    'string': 'string'
-                },
-                'OnUnauthenticatedRequest': 'deny'|'allow'|'authenticate',
-                'UseExistingClientSecret': True|False
-            },
-            'AuthenticateCognitoConfig': {
-                'UserPoolArn': 'string',
-                'UserPoolClientId': 'string',
-                'UserPoolDomain': 'string',
-                'SessionCookieName': 'string',
-                'Scope': 'string',
-                'SessionTimeout': 123,
-                'AuthenticationRequestExtraParams': {
-                    'string': 'string'
-                },
-                'OnUnauthenticatedRequest': 'deny'|'allow'|'authenticate'
-            },
-            'Order': 123,
-            'RedirectConfig': {
-                'Protocol': 'string',
-                'Port': 'string',
-                'Host': 'string',
-                'Path': 'string',
-                'Query': 'string',
-                'StatusCode': 'HTTP_301'|'HTTP_302'
-            },
-            'FixedResponseConfig': {
-                'MessageBody': 'string',
-                'StatusCode': 'string',
-                'ContentType': 'string'
-            },
-            'ForwardConfig': {
-                'TargetGroups': [
-                    {
-                        'TargetGroupArn': 'string',
-                        'Weight': 123
-                    },
-                ],
-                'TargetGroupStickinessConfig': {
-                    'Enabled': True|False,
-                    'DurationSeconds': 123
-                }
-            }
-        },
-    ],
-    AlpnPolicy=[
-        'string',
-    ],
-    Tags=[
-
-)
-            """
-
             request = dict()
-            request["Tags"] = self.tags
+
+            if self.ssl_policy is not None:
+                request["SslPolicy"] = self.ssl_policy
+
+            if self.certificates is not None:
+                request["Certificates"] = self.certificates
 
             request["Protocol"] = self.protocol
             request["Port"] = self.port

@@ -404,7 +404,7 @@ def test_add_managed_region():
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_acm_certificates():
     aws_api.init_acm_certificates()
-    aws_api.cache_objects(aws_api.acm_certificates, configuration.aws_api_loadbalancer_acm_certificates_cache_file)
+    aws_api.cache_objects(aws_api.acm_certificates, configuration.aws_api_acm_certificates_cache_file)
     print(f"len(acm_certificates) = {len(aws_api.acm_certificates)}")
     
 """

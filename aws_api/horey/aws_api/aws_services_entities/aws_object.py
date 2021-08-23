@@ -300,13 +300,17 @@ class AwsObject:
             raise RuntimeError("No tags associated")
 
         for tag in self.tags:
-            if tag["Key"].lower() == key:
-                return tag["Value"]
+            tag_key_value = tag.get("Key")
+            tag_key_value = tag_key_value if tag_key_value is not None else tag.get("key")
+
+            if tag_key_value.lower() == key:
+                tag_value_value = tag.get("Value")
+                return tag_value_value if tag_value_value is not None else tag.get("value")
 
         if ignore_missing_tag:
             return None
 
-        raise RuntimeError(f"No tag '{key}.lower()' associated")
+        raise RuntimeError(f"No tag '{key}' associated")
 
     def get_tagname(self, ignore_missing_tag=False):
         return self.get_tag("name", ignore_missing_tag=ignore_missing_tag)

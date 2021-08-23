@@ -11,52 +11,75 @@ from horey.h_logger import get_logger
 logger = get_logger()
 
 
-class TemplateClient(Boto3Client):
+class ACMClient(Boto3Client):
     """
     Client to handle specific aws service API calls.
+    Validate fingerprint
+    openssl pkcs8 -in file_name.pem -inform PEM -outform DER -topk8 -nocrypt | openssl sha1 -c
     """
 
     def __init__(self):
-        client_name = "ACM"
+        client_name = "acm"
         super().__init__(client_name)
 
-    def get_all_acm_certificates(self, region=None):
+    def get_all_certificates(self, region=None):
         """
         Get all acm_certificates in all regions.
         :return:
         """
 
         if region is not None:
-            return self.get_region_acm_certificates(region)
+            return self.get_region_certificates(region)
 
         final_result = list()
         for region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_acm_certificates(region)
+            final_result += self.get_region_certificates(region)
 
         return final_result
 
-    def get_region_acm_certificates(self, region):
+    def get_region_certificates(self, region):
         final_result = list()
         AWSAccount.set_aws_region(region)
-        for dict_src in self.execute(self.client.describe_acm_certificates, "acm_certificates"):
-            obj = ACMCertificate(dict_src)
+
+        for dict_src_arn in self.execute(self.client.list_certificates, "CertificateSummaryList"):
+            obj = self.get_certificate(dict_src_arn["CertificateArn"])
             final_result.append(obj)
 
         return final_result
 
-    def provision_acm_certificate(self, acm_certificate):
-        region_certificates = self.get_region_acm_certificates(acm_certificate.region)
+    def get_certificate(self, arn):
+        filters_req = {"CertificateArn": arn}
+        certs_dicts = list(self.execute(self.client.describe_certificate, "Certificate", filters_req=filters_req))
+        if len(certs_dicts) == 0:
+            return None
+
+        if len(certs_dicts) > 1:
+            raise ValueError(arn)
+
+        return ACMCertificate(certs_dicts[0])
+
+    def provision_certificate(self, certificate):
+        region_certificates = self.get_region_certificates(certificate.region)
         for region_certificate in region_certificates:
-            if region_certificate.get_tagname(ignore_missing_tag=True) == acm_certificate.get_tagname():
-                acm_certificate.update_from_raw_response(region_certificate.dict_src)
-                return
+            if certificate.domain_name == region_certificate.domain_name:
+                certificate.update_from_raw_response(region_certificate.dict_src)
+                return certificate.arn
 
-        AWSAccount.set_aws_region(acm_certificate.region)
-        response = self.provision_acm_certificate_raw(acm_certificate.generate_create_request())
-        acm_certificate.update_from_raw_response(response)
+        AWSAccount.set_aws_region(certificate.region)
+        response_arn = self.provision_certificate_raw(certificate.generate_create_request())
+        certificate.arn = response_arn
 
-    def provision_acm_certificate_raw(self, request_dict):
-        logger.info(f"Creating acm_certificate: {request_dict}")
-        for response in self.execute(self.client.create_acm_certificate, "acm_certificate",
+        region_certificates = self.get_region_certificates(certificate.region)
+        for region_certificate in region_certificates:
+            if region_certificate.arn == certificate.arn:
+                certificate.update_from_raw_response(region_certificate.dict_src)
+                break
+
+    def provision_certificate_raw(self, request_dict):
+        """
+        Returns ARN
+        """
+        logger.info(f"Creating certificate: {request_dict}")
+        for response in self.execute(self.client.request_certificate, "CertificateArn",
                                      filters_req=request_dict):
             return response
