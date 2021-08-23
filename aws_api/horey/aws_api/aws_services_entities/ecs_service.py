@@ -116,6 +116,19 @@ class ECSService(AwsObject):
         request["tags"] = self.tags
         return request
 
+    def generate_update_request(self):
+        request = dict()
+        request["service"] = self.name
+        request["cluster"] = self.cluster_arn
+        request["taskDefinition"] = self.task_definition
+        request["desiredCount"] = self.desired_count
+        request["deploymentConfiguration"] = self.deployment_configuration
+        request["placementStrategy"] = self.placement_strategy
+        request["healthCheckGracePeriodSeconds"] = self.health_check_grace_period_seconds
+        request["enableExecuteCommand"] = self.enable_execute_command
+
+        return request
+
     @property
     def region(self):
         if self._region is not None:

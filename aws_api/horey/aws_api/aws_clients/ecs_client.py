@@ -215,16 +215,22 @@ class ECSClient(Boto3Client):
         cluster = self.get_cluster_from_arn(service.cluster_arn)
         region_objects = self.get_all_services(cluster)
         for region_object in region_objects:
-            pdb.set_trace()
             if region_object.name == service.name:
-                service.update_from_raw_response(region_object.dict_src)
+                AWSAccount.set_aws_region(service.region)
+                response = self.update_service_raw(service.generate_update_request())
+                service.update_from_raw_response(response)
                 return
 
         AWSAccount.set_aws_region(service.region)
-        response = self.provision_service_raw(service.generate_create_request())
+        response = self.create_service_raw(service.generate_create_request())
         service.update_from_raw_response(response)
 
-    def provision_service_raw(self, request_dict):
+    def create_service_raw(self, request_dict):
         logger.info(f"Creating ECS Service: {request_dict}")
         for response in self.execute(self.client.create_service, "service", filters_req=request_dict):
+            return response
+
+    def update_service_raw(self, request_dict):
+        logger.info(f"Creating ECS Service: {request_dict}")
+        for response in self.execute(self.client.update_service, "service", filters_req=request_dict):
             return response
