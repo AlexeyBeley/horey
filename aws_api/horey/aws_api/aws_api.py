@@ -45,7 +45,7 @@ from horey.aws_api.aws_clients.route53_client import Route53Client
 from horey.aws_api.aws_services_entities.route53_hosted_zone import HostedZone
 
 from horey.aws_api.aws_clients.rds_client import RDSClient
-from horey.aws_api.aws_services_entities.rds_db_instance import DBInstance
+from horey.aws_api.aws_services_entities.rds_db_instance import RDSDBInstance
 
 from horey.aws_api.aws_clients.iam_client import IamClient
 from horey.aws_api.aws_services_entities.iam_policy import IamPolicy
@@ -140,7 +140,9 @@ class AWSAPI:
         self.classic_load_balancers = []
         self.hosted_zones = []
         self.users = []
-        self.databases = []
+        self.rds_db_instances = []
+        self.rds_db_subnet_groups = []
+        self.rds_db_clusters = []
         self.security_groups = []
         self.target_groups = []
         self.acm_certificates= []
@@ -747,7 +749,7 @@ class AWSAPI:
 
         self.secrets_manager_secrets = objects
 
-    def init_databases(self, from_cache=False, cache_file=None):
+    def init_rds_db_subnet_groups(self, from_cache=False, cache_file=None, region=None):
         """
         Init RDSs
 
@@ -756,11 +758,41 @@ class AWSAPI:
         @return:
         """
         if from_cache:
-            objects = self.load_objects_from_cache(cache_file, DBInstance)
+            objects = self.load_objects_from_cache(cache_file, RDSDBInstance)
         else:
-            objects = self.rds_client.get_all_databases()
+            objects = self.rds_client.get_all_db_subnet_groups(region=region)
 
-        self.databases = objects
+        self.rds_db_subnet_groups = objects
+        
+    def init_rds_db_instances(self, from_cache=False, cache_file=None, region=None):
+        """
+        Init RDSs
+
+        @param from_cache:
+        @param cache_file:
+        @return:
+        """
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, RDSDBInstance)
+        else:
+            objects = self.rds_client.get_all_db_instances(region=region)
+
+        self.rds_db_instances = objects
+    
+    def init_rds_db_clusters(self, from_cache=False, cache_file=None, region=None):
+        """
+        Init RDSs
+
+        @param from_cache:
+        @param cache_file:
+        @return:
+        """
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, RDSDBInstance)
+        else:
+            objects = self.rds_client.get_all_db_clusters(region=region)
+
+        self.rds_db_clusters = objects
 
     def init_target_groups(self, from_cache=False, cache_file=None):
         """
@@ -2043,3 +2075,6 @@ class AWSAPI:
                 time.sleep(sleep_time)
             else:
                 raise ValueError(certificate.status)
+
+    def provision_rds_db_cluster(self, cluster):
+        self.rds_client.provision_cluster(cluster)

@@ -33,7 +33,7 @@ def test_provision_certificate():
     cert = ACMCertificate({})
     cert.region = AWSAccount.get_aws_region()
 
-    cert.domain_name = "*.development.us-west-2.scoutbees.io"
+    cert.domain_name = "*.test.comp.com"
     cert.tags = [
         {
             'Key': 'lvl',

@@ -152,13 +152,37 @@ def test_init_and_cache_ec2_instances():
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
-def test_init_and_cache_dbs():
-    aws_api.init_databases()
-    aws_api.cache_objects(aws_api.databases, configuration.aws_api_databases_cache_file)
-    print(f"len(databases) = {len(aws_api.databases)}")
-    assert isinstance(aws_api.databases, list)
+def test_init_and_cache_rds_db_instances():
+    aws_api.init_rds_db_instances()
+    aws_api.cache_objects(aws_api.rds_db_instances, configuration.aws_api_rds_db_instances_cache_file)
+    print(f"len(rds_db_instances) = {len(aws_api.rds_db_instances)}")
+    assert isinstance(aws_api.rds_db_instances, list)
 
 
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_rds_db_clusters():
+    aws_api.init_rds_db_clusters()
+    aws_api.cache_objects(aws_api.rds_db_clusters, configuration.aws_api_rds_db_clusters_cache_file)
+    print(f"len(rds_db_clusters) = {len(aws_api.rds_db_clusters)}")
+    assert isinstance(aws_api.rds_db_clusters, list)
+   
+   
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_rds_db_subnet_groups():
+    aws_api.init_rds_db_subnet_groups()
+    aws_api.cache_objects(aws_api.rds_db_subnet_groups, configuration.aws_api_rds_db_subnet_groups_cache_file)
+    print(f"len(rds_db_subnet_groups) = {len(aws_api.rds_db_subnet_groups)}")
+    assert isinstance(aws_api.rds_db_subnet_groups, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_rds_db_cluster_parameters():
+    aws_api.init_rds_db_cluster_parameters()
+    aws_api.cache_objects(aws_api.rds_db_cluster_parameters, configuration.aws_api_rds_db_cluster_parameters_cache_file)
+    print(f"len(rds_db_cluster_parameters) = {len(aws_api.rds_db_cluster_parameters)}")
+    assert isinstance(aws_api.rds_db_cluster_parameters, list)
+
+    
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_hosted_zones():
     aws_api.init_hosted_zones()
@@ -432,5 +456,10 @@ if __name__ == "__main__":
     #test_add_managed_region()
     #test_init_and_cache_load_balancers()
     #test_init_and_cache_target_groups()
-    test_init_and_cache_acm_certificates()
+    #test_init_and_cache_acm_certificates()
+    #test_init_and_cache_cloudfront_distributions()
+    #test_init_and_cache_rds_db_instances()
+    #test_init_and_cache_rds_db_clusters()
+    #test_init_and_cache_rds_db_subnet_groups()
+    test_init_and_cache_rds_db_cluster_parameters()
 

@@ -20,7 +20,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
         self._aws_api_cloudwatch_metrics_cache_dir = None
         self._aws_api_classic_loadbalancers_cache_dir = None
         self._aws_api_loadbalancers_cache_dir = None
-        self._aws_api_databases_cache_dir = None
+        self._aws_api_rds_cache_dir = None
         self._aws_api_hosted_zones_cache_dir = None
         self._aws_api_cloudfront_cache_dir = None
         self._aws_api_iam_cache_dir = None
@@ -470,23 +470,39 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
 
     # region databases
     @property
-    def aws_api_databases_cache_dir(self):
-        if self._aws_api_databases_cache_dir is None:
-            self._aws_api_databases_cache_dir = os.path.join(self.aws_api_cache_dir, self.aws_api_account,
-                                                                         "databases")
-            os.makedirs(self._aws_api_databases_cache_dir, exist_ok=True)
-        return self._aws_api_databases_cache_dir
+    def aws_api_rds_cache_dir(self):
+        if self._aws_api_rds_cache_dir is None:
+            self._aws_api_rds_cache_dir = os.path.join(self.aws_api_cache_dir, self.aws_api_account,
+                                                                         "rds")
+            os.makedirs(self._aws_api_rds_cache_dir, exist_ok=True)
+        return self._aws_api_rds_cache_dir
 
-    @aws_api_databases_cache_dir.setter
-    def aws_api_databases_cache_dir(self, value):
+    @aws_api_rds_cache_dir.setter
+    def aws_api_rds_cache_dir(self, value):
         raise ValueError(value)
 
     @property
-    def aws_api_databases_cache_file(self):
-        return os.path.join(self.aws_api_databases_cache_dir, "databases.json")
+    def aws_api_rds_db_instances_cache_file(self):
+        return os.path.join(self.aws_api_rds_cache_dir, "rds_db_instances.json")
 
-    @aws_api_databases_cache_file.setter
-    def aws_api_databases_cache_file(self, value):
+    @aws_api_rds_db_instances_cache_file.setter
+    def aws_api_rds_db_instances_cache_file(self, value):
+        raise ValueError(value)
+    
+    @property
+    def aws_api_rds_db_clusters_cache_file(self):
+        return os.path.join(self.aws_api_rds_cache_dir, "rds_db_clusters.json")
+
+    @aws_api_rds_db_clusters_cache_file.setter
+    def aws_api_rds_db_clusters_cache_file(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_rds_db_subnet_groups_cache_file(self):
+        return os.path.join(self.aws_api_rds_cache_dir, "rds_db_subnet_groups.json")
+
+    @aws_api_rds_db_subnet_groups_cache_file.setter
+    def aws_api_rds_db_subnet_groups_cache_file(self, value):
         raise ValueError(value)
 
     # endregion

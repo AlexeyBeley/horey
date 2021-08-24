@@ -4,7 +4,7 @@ Module to handle AWS RDS instances
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 
 
-class DBInstance(AwsObject):
+class RDSDBInstance(AwsObject):
     """
     Class representing RDS DB instance
     """
@@ -71,6 +71,7 @@ class DBInstance(AwsObject):
                         "CustomerOwnedIpEnabled": self.init_default_attr,
                         "PerformanceInsightsKMSKeyId": self.init_default_attr,
                         "PerformanceInsightsRetentionPeriod": self.init_default_attr,
+                        "EnabledCloudwatchLogsExports": self.init_default_attr,
                         }
 
         self.init_attrs(dict_src, init_options)

@@ -50,13 +50,3 @@ class EC2LaunchTemplateVersion(AwsObject):
         request["tags"] = self.tags
 
         return request
-
-        #"LaunchTemplateId": "lt-09959434484feec9c",
-        #"LaunchTemplateName": "EC2ContainerService-scoutbees-us-EcsInstanceLc-MCF5KXOQHONT",
-        #"CreateTime": {
-        #    "horey_cached_type": "datetime",
-        #    "value": "2020-12-28 17:14:08.000000+0000"
-        #},
-        #"CreatedBy": "arn:aws:iam::211921183446:user/shay.dev",
-        #"DefaultVersionNumber": 1,
-        #"LatestVersionNumber": 1
