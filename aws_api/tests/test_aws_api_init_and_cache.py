@@ -176,12 +176,21 @@ def test_init_and_cache_rds_db_subnet_groups():
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
-def test_init_and_cache_rds_db_cluster_parameters():
-    aws_api.init_rds_db_cluster_parameters()
-    aws_api.cache_objects(aws_api.rds_db_cluster_parameters, configuration.aws_api_rds_db_cluster_parameters_cache_file)
-    print(f"len(rds_db_cluster_parameters) = {len(aws_api.rds_db_cluster_parameters)}")
-    assert isinstance(aws_api.rds_db_cluster_parameters, list)
+def test_init_and_cache_rds_db_cluster_parameter_groups():
+    aws_api.init_rds_db_cluster_parameter_groups()
+    aws_api.cache_objects(aws_api.rds_db_cluster_parameter_groups, configuration.aws_api_rds_db_cluster_parameter_groups_cache_file)
+    print(f"len(rds_db_cluster_parameter_groups) = {len(aws_api.rds_db_cluster_parameter_groups)}")
+    pdb.set_trace()
+    assert isinstance(aws_api.rds_db_cluster_parameter_groups, list)
 
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_rds_db_parameter_groups():
+    aws_api.init_rds_db_parameter_groups()
+    aws_api.cache_objects(aws_api.rds_db_parameter_groups, configuration.aws_api_rds_db_parameter_groups_cache_file)
+    print(f"len(rds_db_parameter_groups) = {len(aws_api.rds_db_parameter_groups)}")
+    assert isinstance(aws_api.rds_db_parameter_groups, list)
+    
     
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_hosted_zones():
@@ -461,5 +470,6 @@ if __name__ == "__main__":
     #test_init_and_cache_rds_db_instances()
     #test_init_and_cache_rds_db_clusters()
     #test_init_and_cache_rds_db_subnet_groups()
-    test_init_and_cache_rds_db_cluster_parameters()
+    test_init_and_cache_rds_db_cluster_parameter_groups()
+    #test_init_and_cache_rds_db_parameter_groups()
 

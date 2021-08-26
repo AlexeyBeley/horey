@@ -46,6 +46,8 @@ from horey.aws_api.aws_services_entities.route53_hosted_zone import HostedZone
 
 from horey.aws_api.aws_clients.rds_client import RDSClient
 from horey.aws_api.aws_services_entities.rds_db_instance import RDSDBInstance
+from horey.aws_api.aws_services_entities.rds_db_cluster_parameter_group import RDSDBClusterParameterGroup
+from horey.aws_api.aws_services_entities.rds_db_parameter_group import RDSDBParameterGroup
 
 from horey.aws_api.aws_clients.iam_client import IamClient
 from horey.aws_api.aws_services_entities.iam_policy import IamPolicy
@@ -142,6 +144,8 @@ class AWSAPI:
         self.users = []
         self.rds_db_instances = []
         self.rds_db_subnet_groups = []
+        self.rds_db_cluster_parameter_groups = []
+        self.rds_db_parameter_groups = []
         self.rds_db_clusters = []
         self.security_groups = []
         self.target_groups = []
@@ -763,6 +767,36 @@ class AWSAPI:
             objects = self.rds_client.get_all_db_subnet_groups(region=region)
 
         self.rds_db_subnet_groups = objects
+     
+    def init_rds_db_cluster_parameter_groups(self, from_cache=False, cache_file=None, region=None):
+        """
+        Init RDSs
+
+        @param from_cache:
+        @param cache_file:
+        @return:
+        """
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, RDSDBClusterParameterGroup)
+        else:
+            objects = self.rds_client.get_all_db_cluster_parameter_groups(region=region)
+
+        self.rds_db_cluster_parameter_groups = objects
+    
+    def init_rds_db_parameter_groups(self, from_cache=False, cache_file=None, region=None):
+        """
+        Init RDSs
+
+        @param from_cache:
+        @param cache_file:
+        @return:
+        """
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, RDSDBParameterGroup)
+        else:
+            objects = self.rds_client.get_all_db_parameter_groups(region=region)
+
+        self.rds_db_parameter_groups = objects
         
     def init_rds_db_instances(self, from_cache=False, cache_file=None, region=None):
         """

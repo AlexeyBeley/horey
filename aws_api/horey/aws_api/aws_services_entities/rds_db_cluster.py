@@ -13,6 +13,10 @@ class RDSDBCluster(AwsObject):
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self._region = None
+        self.availability_zones = None
+        self.db_subnet_group_name = None
+        self.db_cluster_parameter_group_name = None
+        self.kms_key_id = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -123,25 +127,38 @@ class RDSDBCluster(AwsObject):
 )
         """
         request = dict()
-        request["AvailabilityZones"] = self.availability_zones
-        request["BackupRetentionPeriod"] = self.backup_retention_period = 35
+        if self.availability_zones:
+            request["AvailabilityZones"] = self.availability_zones
+
+        if self.db_subnet_group_name:
+            request["DBSubnetGroupName"] = self.db_subnet_group_name
+
+        if self.db_cluster_parameter_group_name:
+            request["DBClusterParameterGroupName"] = self.db_cluster_parameter_group_name
+
+        request["BackupRetentionPeriod"] = self.backup_retention_period
         request["DatabaseName"] = self.database_name
         request["DBClusterIdentifier"] = self.db_cluster_identifier
         request["VpcSecurityGroupIds"] = self.vpc_security_group_ids
         request["Engine"] = self.engine = "aurora-mysql"
-        request["EngineVersion"] = self.engine_version = "5.7.mysql_aurora.2.09.2"
-        request["Port"] = self.port = 3306
+        request["EngineVersion"] = self.engine_version
+        request["Port"] = self.port
 
-        request["MasterUsername"] = self.master_username = "admin"
+        request["MasterUsername"] = self.master_username
         request["MasterUserPassword"] = self.master_user_password
-        request["PreferredBackupWindow"] = self.preferred_backup_window = "09:23-09:53"
-        request["PreferredMaintenanceWindow"] = self.preferred_maintenance_window = "sun:03:30-sun:04:00"
-        request["StorageEncrypted"] = self.storage_encrypted = True
-        request["KmsKeyId"] = self.kms_key_id = True
-        request["EngineMode"] = self.engine_mode = "provisioned"
+        request["PreferredBackupWindow"] = self.preferred_backup_window
+        request["PreferredMaintenanceWindow"] = self.preferred_maintenance_window
+        request["StorageEncrypted"] = self.storage_encrypted
 
-        request["DeletionProtection"] = self.deletion_protection = True
-        request["CopyTagsToSnapshot"] = self.copy_tags_to_snapshot = True
+        request["EnableCloudwatchLogsExports"] = self.enable_cloudwatch_logs_exports
+
+        if self.kms_key_id:
+            request["KmsKeyId"] = self.kms_key_id
+
+        request["EngineMode"] = self.engine_mode
+
+        request["DeletionProtection"] = self.deletion_protection
+        request["CopyTagsToSnapshot"] = self.copy_tags_to_snapshot
 
         request["Tags"] = self.tags
 
@@ -163,3 +180,9 @@ class RDSDBCluster(AwsObject):
             raise ValueError(value)
 
         self._region = value
+    """
+    117 height 46 
+    30 sholders 11.8
+    31 body 12
+    56 waist 22
+    """

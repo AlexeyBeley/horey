@@ -3,7 +3,10 @@ import sys
 
 from horey.aws_api.aws_clients.rds_client import RDSClient
 from horey.aws_api.aws_services_entities.rds_db_cluster import RDSDBCluster
+from horey.aws_api.aws_services_entities.rds_db_instance import RDSDBInstance
 from horey.aws_api.aws_services_entities.rds_db_subnet_group import RDSDBSubnetGroup
+from horey.aws_api.aws_services_entities.rds_db_cluster_parameter_group import RDSDBClusterParameterGroup
+from horey.aws_api.aws_services_entities.rds_db_parameter_group import RDSDBParameterGroup
 
 import pdb
 from horey.h_logger import get_logger
@@ -34,25 +37,32 @@ def test_provision_cluster():
     cluster = RDSDBCluster({})
     cluster.region = AWSAccount.get_aws_region()
 
-    cluster.availability_zones = []
+    cluster.db_subnet_group_name = "db_subnet-test"
+    cluster.db_cluster_parameter_group_name = "cluster-param-group-test"
     cluster.backup_retention_period = 35
-    cluster.database_name = ""
-    cluster.db_cluster_identifier = ""
-    cluster.vpc_security_group_ids = ""
+    cluster.database_name = "db_test"
+    cluster.db_cluster_identifier = "cluster-db-test"
+    cluster.vpc_security_group_ids = ["sg-0c327a59a702c75ef"]
     cluster.engine = "aurora-mysql"
     cluster.engine_version = "5.7.mysql_aurora.2.09.2"
     cluster.port = 3306
 
     cluster.master_username = "admin"
-    cluster.master_user_password = ""
+    cluster.master_user_password = "12345678"
     cluster.preferred_backup_window = "09:23-09:53"
     cluster.preferred_maintenance_window = "sun:03:30-sun:04:00"
     cluster.storage_encrypted = True
-    cluster.kms_key_id = True
+    #cluster.kms_key_id = True
     cluster.engine_mode = "provisioned"
 
-    cluster.deletion_protection = True
+    cluster.deletion_protection = False
     cluster.copy_tags_to_snapshot = True
+    cluster.enable_cloudwatch_logs_exports = [
+        "audit",
+        "error",
+        "general",
+        "slowquery"
+    ]
 
     cluster.tags = [
         {
@@ -64,10 +74,42 @@ def test_provision_cluster():
         }
     ]
 
-    ret = client.provision_db_cluster(cluster)
-    pdb.set_trace()
+    client.provision_db_cluster(cluster)
 
     assert cluster.arn is not None
+
+
+def test_provision_db_instance():
+    client = RDSClient()
+    db_instance = RDSDBInstance({})
+    db_instance.region = AWSAccount.get_aws_region()
+
+    db_instance.id = "instance-db-test-1"
+    db_instance.db_instance_class = "db.t3.medium"
+    db_instance.db_cluster_identifier = "cluster-db-test"
+    db_instance.db_subnet_group_name = "db_subnet-test"
+    db_instance.db_parameter_group_name = "param-group-test"
+    db_instance.engine = "aurora-mysql"
+    db_instance.engine_version = "5.7.mysql_aurora.2.09.2"
+
+    db_instance.preferred_maintenance_window = "sun:03:30-sun:04:00"
+    db_instance.storage_encrypted = True
+
+    db_instance.copy_tags_to_snapshot = True
+
+    db_instance.tags = [
+        {
+            'Key': 'lvl',
+            'Value': "tst"
+        }, {
+            'Key': 'name',
+            'Value': db_instance.id
+        }
+    ]
+
+    client.provision_db_instance(db_instance)
+
+    assert db_instance.arn is not None
 
 
 def test_provision_subnet_group():
@@ -91,7 +133,52 @@ def test_provision_subnet_group():
     assert subnet_group.arn is not None
 
 
+def test_provision_db_parameter_group():
+    client = RDSClient()
+    db_parameter_group = RDSDBParameterGroup({})
+    db_parameter_group.region = AWSAccount.get_aws_region()
+    db_parameter_group.name = "param-group-test"
+    db_parameter_group.db_parameter_group_family = "aurora-mysql5.7"
+    db_parameter_group.description = "test"
+    db_parameter_group.tags = [
+        {
+            'Key': 'lvl',
+            'Value': "tst"
+        }, {
+            'Key': 'name',
+            'Value': db_parameter_group.name
+        }
+    ]
+    client.provision_db_parameter_group(db_parameter_group)
+
+    assert db_parameter_group.arn is not None
+
+
+def test_provision_db_cluster_parameter_group():
+    client = RDSClient()
+    db_cluster_parameter_group = RDSDBClusterParameterGroup({})
+    db_cluster_parameter_group.region = AWSAccount.get_aws_region()
+    db_cluster_parameter_group.name = "cluster-param-group-test"
+    db_cluster_parameter_group.db_parameter_group_family = "aurora-mysql5.7"
+    db_cluster_parameter_group.description = "test"
+    db_cluster_parameter_group.tags = [
+        {
+            'Key': 'lvl',
+            'Value': "tst"
+        }, {
+            'Key': 'name',
+            'Value': db_cluster_parameter_group.name
+        }
+    ]
+    client.provision_db_cluster_parameter_group(db_cluster_parameter_group)
+
+    assert db_cluster_parameter_group.arn is not None
+
+
 if __name__ == "__main__":
+    #test_provision_subnet_group()
+    #test_provision_db_parameter_group()
+    #test_provision_db_cluster_parameter_group()
     #test_provision_cluster()
-    test_provision_subnet_group()
+    test_provision_db_instance()
 
