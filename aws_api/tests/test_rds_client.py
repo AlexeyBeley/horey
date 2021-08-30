@@ -28,7 +28,7 @@ mock_values_file_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abs
 mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 
 
-def test_init_acm_client():
+def test_init_rds_client():
     assert isinstance(RDSClient(), RDSClient)
 
 

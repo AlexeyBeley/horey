@@ -72,7 +72,6 @@ class Route53Client(Boto3Client):
         if len(hosted_zones) == 1:
             hosted_zone.update_from_raw_response(hosted_zones[0].dict_src)
         else:
-            pdb.set_trace()
             request = hosted_zone.generate_create_request()
             response = self.raw_create_hosted_zone(request)
             hosted_zone.id = response["Id"]

@@ -1851,17 +1851,7 @@ class AWSAPI:
             pass
 
     def provision_managed_prefix_list(self, managed_prefix_list):
-        if managed_prefix_list.id is None:
-            self.ec2_client.provision_managed_prefix_list(managed_prefix_list)
-            return
-
-        live_managed_prefix_list = self.ec2_client.get_managed_prefix_list(managed_prefix_list.region.region_mark, managed_prefix_list.id)
-        request = live_managed_prefix_list.get_entries_add_request(managed_prefix_list)
-
-        if request is None:
-            return True
-
-        return self.ec2_client.raw_modify_managed_prefix_list(request)
+        self.ec2_client.provision_managed_prefix_list(managed_prefix_list)
 
     def provision_hosted_zone(self, hosted_zone, master_hosted_zone_name=None):
         self.route53_client.provision_hosted_zone(hosted_zone)
@@ -2111,4 +2101,39 @@ class AWSAPI:
                 raise ValueError(certificate.status)
 
     def provision_rds_db_cluster(self, cluster):
-        self.rds_client.provision_cluster(cluster)
+        self.rds_client.provision_db_cluster(cluster)
+
+    def get_security_group_by_vpc_and_name(self, vpc, name, full_information=False):
+        filters = [
+            {
+                'Name': 'vpc-id',
+                'Values': [
+                    vpc.id
+                ]
+            },
+            {
+                'Name': "group-name",
+                'Values': [
+                    name
+                ]
+            }
+        ]
+        security_groups = self.ec2_client.get_region_security_groups(vpc.region, full_information=full_information,
+                                                                             filters=filters)
+        if len(security_groups) != 1:
+            raise RuntimeError(
+                f"Can not find security group {name} in vpc {vpc.id}")
+
+        return security_groups[0]
+
+    def provision_db_cluster_parameter_group(self, db_cluster_parameter_group):
+        self.rds_client.provision_db_cluster_parameter_group(db_cluster_parameter_group)
+
+    def provision_db_parameter_group(self, db_parameter_group):
+        self.rds_client.provision_db_parameter_group(db_parameter_group)
+
+    def provision_db_subnet_group(self, db_subnet_group):
+        self.rds_client.provision_db_subnet_group(db_subnet_group)
+
+    def provision_db_instance(self, db_instance):
+        self.rds_client.provision_db_instance(db_instance)

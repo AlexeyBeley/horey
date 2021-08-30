@@ -1,5 +1,8 @@
-import dns
-import dns.resolver
+try:
+    import dns
+    import dns.resolver
+except Exception as inst:
+    print(repr(inst))
 
 
 def fetch_ip_from_google():

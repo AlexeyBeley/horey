@@ -138,9 +138,9 @@ class RDSDBCluster(AwsObject):
 
         request["BackupRetentionPeriod"] = self.backup_retention_period
         request["DatabaseName"] = self.database_name
-        request["DBClusterIdentifier"] = self.db_cluster_identifier
+        request["DBClusterIdentifier"] = self.id
         request["VpcSecurityGroupIds"] = self.vpc_security_group_ids
-        request["Engine"] = self.engine = "aurora-mysql"
+        request["Engine"] = self.engine
         request["EngineVersion"] = self.engine_version
         request["Port"] = self.port
 

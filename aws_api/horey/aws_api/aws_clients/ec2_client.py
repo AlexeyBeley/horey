@@ -480,15 +480,19 @@ class EC2Client(Boto3Client):
             return response
 
     def provision_managed_prefix_list(self, managed_prefix_list):
-        lst_objects = self.get_all_managed_prefix_lists(region=managed_prefix_list.region)
-        for object_exists in lst_objects:
-            if object_exists.get_tagname(ignore_missing_tag=True) == managed_prefix_list.get_tagname():
-                managed_prefix_list.id = object_exists.id
-                return
+        raw_region_pl = self.raw_describe_managed_prefix_list(managed_prefix_list.region, prefix_list_name=managed_prefix_list.name)
 
-        AWSAccount.set_aws_region(managed_prefix_list.region.region_mark)
-        response = self.raw_create_managed_prefix_list(managed_prefix_list.generate_create_request())
-        managed_prefix_list.update_from_raw_create(response)
+        if raw_region_pl is None:
+            AWSAccount.set_aws_region(managed_prefix_list.region.region_mark)
+            response = self.raw_create_managed_prefix_list(managed_prefix_list.generate_create_request())
+            managed_prefix_list.update_from_raw_create(response)
+            return
+
+        region_object = ManagedPrefixList(raw_region_pl)
+
+        request = region_object.get_entries_add_request(managed_prefix_list)
+        if request is not None:
+            return self.raw_modify_managed_prefix_list(request)
     
     def get_all_amis(self, full_information=True, region=None):
         if region is not None:

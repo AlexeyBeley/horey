@@ -40,10 +40,13 @@ class RDSClient(Boto3Client):
 
         return final_result
 
-    def get_region_db_instances(self, region):
+    def get_region_db_instances(self, region, filters=None):
         final_result = list()
+        if filters is not None:
+            filters = {"Filters": filters}
+
         AWSAccount.set_aws_region(region)
-        for response in self.execute(self.client.describe_db_instances, "DBInstances"):
+        for response in self.execute(self.client.describe_db_instances, "DBInstances", filters_req=filters):
             obj = RDSDBInstance(response)
             final_result.append(obj)
 
@@ -64,10 +67,13 @@ class RDSClient(Boto3Client):
 
         return final_result
 
-    def get_region_db_clusters(self, region):
+    def get_region_db_clusters(self, region, filters=None):
         final_result = list()
+        if filters is not None:
+            filters = {"Filters": filters}
+
         AWSAccount.set_aws_region(region)
-        for response in self.execute(self.client.describe_db_clusters, "DBClusters"):
+        for response in self.execute(self.client.describe_db_clusters, "DBClusters", filters_req=filters):
             obj = RDSDBCluster(response)
             final_result.append(obj)
 
@@ -76,7 +82,7 @@ class RDSClient(Boto3Client):
     def provision_db_cluster(self, db_cluster):
         region_db_clusters = self.get_region_db_clusters(db_cluster.region)
         for region_db_cluster in region_db_clusters:
-            if db_cluster.name == region_db_cluster.name:
+            if db_cluster.id == region_db_cluster.id:
                 db_cluster.update_from_raw_response(region_db_cluster.dict_src)
                 return
 
@@ -238,7 +244,7 @@ class RDSClient(Boto3Client):
     def provision_db_instance(self, db_instance):
         region_db_instances = self.get_region_db_instances(db_instance.region)
         for region_db_instance in region_db_instances:
-            if db_instance.name == region_db_instance.name:
+            if db_instance.id == region_db_instance.id:
                 db_instance.update_from_raw_response(region_db_instance.dict_src)
                 return
 
