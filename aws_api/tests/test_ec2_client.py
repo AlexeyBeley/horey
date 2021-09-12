@@ -75,7 +75,7 @@ def test_authorize_security_group_ingress():
 
 
 def test_raw_create_managed_prefix_list():
-    request = {"PrefixListName": "pl_staging_cloud_hive_public_outgoing",
+    request = {"PrefixListName": "pl_test_name",
                "Entries": [
                    {
                        "Cidr": "2.2.2.2/32",
@@ -167,14 +167,14 @@ def test_raw_modify_managed_prefix_list_add():
 
 
 def test_raw_describe_managed_prefix_list_by_id():
-    pl_id = "pl-0d1adbd1928158a65"
+    pl_id = "pl-111111111"
     client = EC2Client()
     ret = client.raw_describe_managed_prefix_list(pl_id=pl_id)
     print(ret)
 
 
 def test_raw_describe_managed_prefix_list_by_name():
-    prefix_list_name = "pl_prod_cloud_hive_public_outgoing"
+    prefix_list_name = "pl_horey_test-name"
     client = EC2Client()
     ret = client.raw_describe_managed_prefix_list(prefix_list_name=prefix_list_name)
     print(ret)

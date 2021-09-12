@@ -64,7 +64,7 @@ tmux new -s horey
 Ctrl+b d
 
 ##Attach 
-tmux attach-session -t 0
+tmux attach-session -t horey 
 
 #Options
     Ctrl+b c Create a new window (with shell)
@@ -77,3 +77,14 @@ tmux attach-session -t 0
     Ctrl+b ; Toggle between the current and previous pane
     Ctrl+b x Close the current pane
 
+~/.ssh/conf
+Host github
+  HostName github.com
+  User git
+  IdentityFile /home/whoever/.ssh/id_dsa.bob
+  IdentitiesOnly yes
+
+origin	git@github.com:AlexeyBeley/horey.git (fetch)
+origin	git@github.com:AlexeyBeley/horey.git (push)
+
+git remote set-url origin git@github:AlexeyBeley/horey.git

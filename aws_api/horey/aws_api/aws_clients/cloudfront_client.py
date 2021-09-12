@@ -2,9 +2,10 @@
 AWS lambda client to handle lambda service API requests.
 """
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
+from horey.aws_api.aws_services_entities.cloudfront_origin_access_identity import CloudfrontOriginAccessIdentity
 from horey.aws_api.aws_services_entities.cloudfront_distribution import CloudfrontDistribution
-from horey.aws_api.base_entities.aws_account import AWSAccount
 import pdb
+
 
 class CloudfrontClient(Boto3Client):
     """
@@ -38,3 +39,53 @@ class CloudfrontClient(Boto3Client):
                 pass
 
         return final_result
+    
+    def provision_distribution(self, distribution):
+        existing_distributions = self.get_all_distributions()
+        pdb.set_trace()
+        for existing_distribution in existing_distributions:
+            if existing_distribution.get_tagname(ignore_missing_tag=True) == distribution.get_tagname():
+                distribution.arn = existing_distribution.arn
+                return
+
+        response = self.provision_distribution_raw(distribution.generate_create_request_with_tags())
+        distribution.arn = response["ARN"]
+
+    def provision_distribution_raw(self, request_dict):
+        for response in self.execute(self.client.create_distribution_with_tags, "Distribution", filters_req=request_dict):
+            return response
+
+    def get_all_origin_access_identities(self, full_information=True):
+        """
+        :param full_information:
+        :return:
+        """
+        final_result = list()
+
+        for response in self.execute(self.client.list_cloud_front_origin_access_identities, "CloudFrontOriginAccessIdentityList", internal_starting_token=True):
+            if response["Quantity"] == 0:
+                continue
+
+            for item in response["Items"]:
+                obj = CloudfrontOriginAccessIdentity(item)
+                final_result.append(obj)
+
+            if full_information:
+                pass
+
+        return final_result
+    
+    def provision_origin_access_identity(self, origin_access_identity):
+        existing_origin_access_identities = self.get_all_origin_access_identities()
+        pdb.set_trace()
+        for existing_origin_access_identity in existing_origin_access_identities:
+            if existing_origin_access_identity.comment == origin_access_identity.comment:
+                origin_access_identity.id = existing_origin_access_identity.id
+                return
+
+        response = self.provision_origin_access_identity_raw(origin_access_identity.generate_create_request())
+        origin_access_identity.id = response["Id"]
+
+    def provision_origin_access_identity_raw(self, request_dict):
+        for response in self.execute(self.client.create_cloud_front_origin_access_identity, "CloudFrontOriginAccessIdentity", filters_req=request_dict):
+            return response

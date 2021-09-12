@@ -10,6 +10,7 @@ ALL_PACKAGES := $(wildcard *)
 EXCLUSIONS := LICENSE Makefile README.md build dns_map docker terraform security_group_map pypi_infra h_flow network
 SRC_FILES := $(filter-out $(EXCLUSIONS), $(ALL_PACKAGES))
 
+#apt install python3.8 python3.8-venv python3-venv
 inall-pip:
 	apt-get update
 	apt-get -y install python3-pip
@@ -21,7 +22,7 @@ create_build_env:
 	pip3 install --upgrade setuptools
 
 init_venv_dir: create_build_env
-	python3 -m venv ${VENV_DIR} &&\
+	python3.8 -m venv ${VENV_DIR} &&\
 	source ${VENV_DIR}/bin/activate &&\
 	pip3 install --upgrade pip &&\
 	pip3 install -U setuptools
@@ -71,13 +72,13 @@ clean:
 test_azure_api: install_from_source-azure_api
 	source ${VENV_DIR}/bin/activate &&\
 	cd ${ROOT_DIR}/azure_api/tests &&\
-	python3 test_azure_api_init_and_cache.py
+	python3.8 test_azure_api_init_and_cache.py
 
 #test_azure_api: recursive_install_from_source_local_venv-azure_api
 test_aws_api: install_from_source-aws_api
 	source ${VENV_DIR}/bin/activate &&\
 	cd ${ROOT_DIR}/aws_api/tests &&\
-	python3 test_aws_api_init_and_cache.py
+	python3.8 test_aws_api_init_and_cache.py
 
 install_azure_api_prerequisites:
 	source ${VENV_DIR}/bin/activate &&\
@@ -86,4 +87,4 @@ install_azure_api_prerequisites:
 test_zabbix_api: install_from_source-zabbix_api
 	source ${VENV_DIR}/bin/activate &&\
 	cd ${ROOT_DIR}/zabbix_api/tests &&\
-	python3 test_zabbix_api.py
+	python3.8 test_zabbix_api.py

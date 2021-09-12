@@ -207,6 +207,13 @@ def test_init_and_cache_cloudfront_distributions():
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_cloudfront_origin_access_identities():
+    aws_api.init_cloudfront_origin_access_identities()
+    aws_api.cache_objects(aws_api.cloudfront_origin_access_identities, configuration.aws_api_cloudfront_origin_access_identities_cache_file)
+    assert isinstance(aws_api.cloudfront_origin_access_identities, list)
+    
+    
+@pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_spot_fleet_requests():
     aws_api.init_spot_fleet_requests()
     aws_api.cache_objects(aws_api.spot_fleet_requests, configuration.aws_api_spot_fleet_requests_cache_file)
@@ -470,6 +477,7 @@ if __name__ == "__main__":
     #test_init_and_cache_rds_db_instances()
     #test_init_and_cache_rds_db_clusters()
     #test_init_and_cache_rds_db_subnet_groups()
-    test_init_and_cache_rds_db_cluster_parameter_groups()
+    #test_init_and_cache_rds_db_cluster_parameter_groups()
     #test_init_and_cache_rds_db_parameter_groups()
-
+    #test_init_and_cache_s3_buckets()
+    test_init_and_cache_cloudfront_origin_access_identities()

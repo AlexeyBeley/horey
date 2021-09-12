@@ -31,8 +31,8 @@ def test_add_managed_region():
 
 def test_provision_certificate():
     cert = ACMCertificate({})
-    cert.region = Region.get_region("us-west-2")
-    cert.domain_name = "*.test.us-west-2.domain.com"
+    cert.region = Region.get_region("us-east-1")
+    cert.domain_name = "front.horey.com"
     cert.validation_method = "DNS"
     cert.tags = [
         {
@@ -45,7 +45,7 @@ def test_provision_certificate():
         }
     ]
 
-    hosted_zone_name = "test.us-west-2.domain.com"
+    hosted_zone_name = "horey.com"
     aws_api.provision_acm_certificate(cert, hosted_zone_name)
 
     assert cert.status == "ISSUED"

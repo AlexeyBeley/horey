@@ -65,6 +65,8 @@ from horey.aws_api.aws_clients.cloud_watch_client import CloudWatchClient
 
 from horey.aws_api.aws_clients.cloudfront_client import CloudfrontClient
 from horey.aws_api.aws_services_entities.cloudfront_distribution import CloudfrontDistribution
+from horey.aws_api.aws_services_entities.cloudfront_origin_access_identity import CloudfrontOriginAccessIdentity
+
 
 from horey.aws_api.aws_clients.event_bridge_client import EventBridgeClient
 from horey.aws_api.aws_services_entities.event_bridge_rule import EventBridgeRule
@@ -149,7 +151,7 @@ class AWSAPI:
         self.rds_db_clusters = []
         self.security_groups = []
         self.target_groups = []
-        self.acm_certificates= []
+        self.acm_certificates = []
         self.ec2_launch_templates = []
         self.ec2_launch_template_versions = []
         self.lambdas = []
@@ -158,6 +160,7 @@ class AWSAPI:
         self.cloud_watch_log_groups_metric_filters = []
         self.cloud_watch_alarms = []
         self.cloudfront_distributions = []
+        self.cloudfront_origin_access_identities = []
         self.event_bridge_rules = []
         self.secrets_manager_secrets = []
         self.servicediscovery_services = []
@@ -692,6 +695,21 @@ class AWSAPI:
             objects = self.cloudfront_client.get_all_distributions(full_information=full_information)
 
         self.cloudfront_distributions = objects
+
+    def init_cloudfront_origin_access_identities(self, from_cache=False, cache_file=None, full_information=True):
+        """
+        Init cloudfront distributions
+        @param from_cache:
+        @param cache_file:
+        @param full_information:
+        @return:
+        """
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, CloudfrontOriginAccessIdentity)
+        else:
+            objects = self.cloudfront_client.get_all_origin_access_identities(full_information=full_information)
+
+        self.cloudfront_origin_access_identities = objects
 
     def init_event_bridge_rules(self, from_cache=False, cache_file=None, full_information=True):
         """
@@ -2137,3 +2155,9 @@ class AWSAPI:
 
     def provision_db_instance(self, db_instance):
         self.rds_client.provision_db_instance(db_instance)
+
+    def provision_s3_bucket(self, s3_bucket):
+        self.s3_client.provision_bucket(s3_bucket)
+
+    def provision_cloudfront_distribution(self, cloudfront_distribution):
+        self.cloudfront_client.provision_distribution(cloudfront_distribution)

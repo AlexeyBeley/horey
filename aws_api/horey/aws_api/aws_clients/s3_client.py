@@ -1,9 +1,12 @@
 """
 AWS s3 client to handle s3 service API requests.
 """
+import pdb
+
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.s3_bucket import S3Bucket
 from horey.h_logger import get_logger
+from horey.aws_api.base_entities.aws_account import AWSAccount
 logger = get_logger()
 
 
@@ -105,3 +108,25 @@ class S3Client(Boto3Client):
         :return:
         """
         raise NotImplementedError()
+
+    def provision_bucket(self, bucket):
+        filters_req = {"Bucket": bucket.name}
+        AWSAccount.set_aws_region(bucket.region)
+        try:
+            for bucket_region_mark in self.execute(self.client.get_bucket_location, "LocationConstraint", filters_req=filters_req):
+                if bucket.region.region_mark != bucket_region_mark:
+                    raise RuntimeError(f"Provisioning bucket {bucket.name} in '{bucket.region.region_mark}' fails. "
+                                       f"Exists in region '{bucket_region_mark}'")
+                return
+        except Exception as exception_instance:
+            repr_exception_instance = repr(exception_instance)
+            logger.info(repr_exception_instance)
+            if "NoSuchBucket" not in repr_exception_instance:
+                raise
+
+        response = self.provision_bucket_raw(bucket.generate_create_request())
+        bucket.location = response
+
+    def provision_bucket_raw(self, request_dict):
+        for response in self.execute(self.client.create_bucket, "Location", filters_req=request_dict):
+            return response
