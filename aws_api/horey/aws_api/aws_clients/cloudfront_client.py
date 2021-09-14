@@ -42,14 +42,14 @@ class CloudfrontClient(Boto3Client):
     
     def provision_distribution(self, distribution):
         existing_distributions = self.get_all_distributions()
-        pdb.set_trace()
         for existing_distribution in existing_distributions:
             if existing_distribution.get_tagname(ignore_missing_tag=True) == distribution.get_tagname():
-                distribution.arn = existing_distribution.arn
+                distribution.update_from_raw_create(existing_distribution.dict_src)
                 return
 
         response = self.provision_distribution_raw(distribution.generate_create_request_with_tags())
-        distribution.arn = response["ARN"]
+
+        distribution.update_from_raw_create(response)
 
     def provision_distribution_raw(self, request_dict):
         for response in self.execute(self.client.create_distribution_with_tags, "Distribution", filters_req=request_dict):
@@ -77,7 +77,6 @@ class CloudfrontClient(Boto3Client):
     
     def provision_origin_access_identity(self, origin_access_identity):
         existing_origin_access_identities = self.get_all_origin_access_identities()
-        pdb.set_trace()
         for existing_origin_access_identity in existing_origin_access_identities:
             if existing_origin_access_identity.comment == origin_access_identity.comment:
                 origin_access_identity.id = existing_origin_access_identity.id

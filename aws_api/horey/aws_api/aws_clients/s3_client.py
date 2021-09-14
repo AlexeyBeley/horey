@@ -1,6 +1,7 @@
 """
 AWS s3 client to handle s3 service API requests.
 """
+import os
 import pdb
 
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
@@ -94,20 +95,46 @@ class S3Client(Boto3Client):
 
         return final_result
 
-    def upload_to_s3(self, dir_to_upload, bucket_name):
+    def upload(self, bucket_name, src_object_path, dst_root_key, keep_src_object_name=True):
         """
-        Uploads directory or file to s3 bucket name- saves the same folders tree.
 
-        for root, dirs, files in os.walk(dir_to_upload):
-            print(root)
-            for file in files:
-                aws_api.s3_client.client.upload_file(os.path.join(root, file), bucket_name, os.path.join(root, file))
-        return
-        :param dir_to_upload:
-        :param bucket_name:
-        :return:
+        @param bucket_name: S3 bucket name.
+        @param src_object_path: File or directory path
+        @param dst_root_key: Bucket key name - root of the copied tree.
+        @param keep_src_object_name: If True: src_object base name preserved.
+        @return: None
         """
-        raise NotImplementedError()
+
+        logger.info(f"Uploading '{src_object_path}' to S3 bucket '{bucket_name}'")
+
+        key_name = dst_root_key if not keep_src_object_name else f"{dst_root_key}/{os.path.basename(src_object_path)}"
+        if os.path.isdir(src_object_path):
+            return self.upload_directory(bucket_name, src_object_path, key_name)
+
+        return self.upload_file(bucket_name, src_object_path, key_name)
+
+    def upload_file(self, bucket_name, file_path, key_name):
+        """
+
+        @param bucket_name: S3 bucket name.
+        @param file_path:
+        @param key_name:
+        @return:
+        """
+        #create_multipart_upload
+
+        with open(file_path, "rb") as file_handler:
+            file_data = file_handler.read()
+
+        filters_req = {"Bucket": bucket_name, "Key": key_name, "Body": file_data}
+        for response in self.execute(self.client.put_object, None, filters_req=filters_req, raw_data=True):
+            return response
+
+    def upload_directory(self, bucket_name, src_data_path, dst_root_key):
+        for src_object_name in os.listdir(src_data_path):
+            src_object_full_path = os.path.join(src_data_path, src_object_name)
+            new_dst_root_key = f"{dst_root_key}/{src_object_name}"
+            self.upload(bucket_name, src_object_full_path, new_dst_root_key, keep_src_object_name=False)
 
     def provision_bucket(self, bucket):
         filters_req = {"Bucket": bucket.name}
@@ -117,16 +144,22 @@ class S3Client(Boto3Client):
                 if bucket.region.region_mark != bucket_region_mark:
                     raise RuntimeError(f"Provisioning bucket {bucket.name} in '{bucket.region.region_mark}' fails. "
                                        f"Exists in region '{bucket_region_mark}'")
-                return
         except Exception as exception_instance:
             repr_exception_instance = repr(exception_instance)
             logger.info(repr_exception_instance)
             if "NoSuchBucket" not in repr_exception_instance:
                 raise
 
-        response = self.provision_bucket_raw(bucket.generate_create_request())
-        bucket.location = response
+            response = self.provision_bucket_raw(bucket.generate_create_request())
+            bucket.location = response
+
+        if bucket.policy is not None:
+            self.put_bucket_policy_raw(bucket.generate_put_bucket_policy_request())
 
     def provision_bucket_raw(self, request_dict):
         for response in self.execute(self.client.create_bucket, "Location", filters_req=request_dict):
+            return response
+
+    def put_bucket_policy_raw(self, request_dict):
+        for response in self.execute(self.client.put_bucket_policy, "ResponseMetadata", filters_req=request_dict):
             return response

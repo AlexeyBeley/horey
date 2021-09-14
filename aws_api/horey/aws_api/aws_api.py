@@ -2161,3 +2161,6 @@ class AWSAPI:
 
     def provision_cloudfront_distribution(self, cloudfront_distribution):
         self.cloudfront_client.provision_distribution(cloudfront_distribution)
+
+    def provision_cloudfront_origin_access_identity(self, cloudfront_origin_access_identity):
+        self.cloudfront_client.provision_origin_access_identity(cloudfront_origin_access_identity)

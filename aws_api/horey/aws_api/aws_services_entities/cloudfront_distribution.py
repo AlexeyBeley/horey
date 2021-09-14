@@ -86,3 +86,33 @@ class CloudfrontDistribution(AwsObject):
             return None
 
         raise RuntimeError(f"No tag '{key}' associated")
+
+    def update_from_raw_create(self, dict_src):
+        init_options = {
+            "Id": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "ARN": self.init_default_attr,
+            "Status": self.init_default_attr,
+            "LastModifiedTime": self.init_default_attr,
+            "DomainName": self.init_default_attr,
+            "Aliases": self.init_default_attr,
+            "Origins": self.init_default_attr,
+            "OriginGroups": self.init_default_attr,
+            "DefaultCacheBehavior": self.init_default_attr,
+            "CacheBehaviors": self.init_default_attr,
+            "CustomErrorResponses": self.init_default_attr,
+            "Comment": self.init_default_attr,
+            "PriceClass": self.init_default_attr,
+            "Enabled": self.init_default_attr,
+            "ViewerCertificate": self.init_default_attr,
+            "Restrictions": self.init_default_attr,
+            "WebACLId": self.init_default_attr,
+            "HttpVersion": self.init_default_attr,
+            "IsIPV6Enabled": self.init_default_attr,
+            "AliasICPRecordals": self.init_default_attr,
+            "InProgressInvalidationBatches": self.init_default_attr,
+            "ActiveTrustedSigners": self.init_default_attr,
+            "ActiveTrustedKeyGroups": self.init_default_attr,
+            "DistributionConfig": self.init_default_attr,
+        }
+
+        self.init_attrs(dict_src, init_options)

@@ -23,7 +23,7 @@ mock_values_file_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abs
 mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 
 
-def test_init_ecs_client():
+def test_init_s3_client():
     assert isinstance(S3Client(), S3Client)
 
 
@@ -42,6 +42,72 @@ def test_provision_s3_bucket():
     s3_client.provision_bucket(s3_bucket)
 
 
+def test_provision_s3_bucket():
+    region = Region.get_region("us-west-2")
+    s3_client = S3Client()
+
+    #ecs_task_definition = Mock()
+    #ecs_task_definition.arn = mock_values["ecs_task_definition.arn"]
+
+    s3_bucket = S3Bucket({})
+    s3_bucket.region = region
+    s3_bucket.name = "horey-alexey-ytest-test"
+    s3_bucket.acl = "private"
+
+    s3_bucket.policy = S3Bucket.Policy({})
+    s3_bucket.policy.version = "2012-10-17"
+    s3_bucket.policy.statement = [
+          {
+            "Sid": "AllowReadAny",
+            "Effect": "Allow",
+            "Principal": "*",
+            "Action": "s3:GetObject",
+            "Resource": f"arn:aws:s3:::{s3_bucket.name}/*"
+          }
+        ]
+
+    s3_client.provision_bucket(s3_bucket)
+
+
+def create_test_file(path, size):
+    with open(path, "w+") as file_handler:
+        file_handler.write("a" * size)
+
+
+def test_upload_small_file_to_s3():
+    path = "./test_file"
+    # 10 MB
+    #size = 10 * 1024 * 1024
+    # 10 Byte
+    size = 10
+
+    create_test_file(path, size)
+
+    s3_client = S3Client()
+    bucket_name = "horey-alexey-ytest-test"
+    src_data_path = path
+    dst_root_key = "root"
+    s3_client.upload(bucket_name, src_data_path, dst_root_key, keep_src_object_name=False)
+
+
+def test_upload_small_dir_to_s3():
+    dir_path = "./test_files_dir"
+    file_name = "test_file"
+    path = os.path.join(dir_path, file_name)
+    os.makedirs(dir_path, exist_ok=True)
+    size = 10
+
+    create_test_file(path, size)
+
+    s3_client = S3Client()
+    bucket_name = "horey-alexey-ytest-test"
+    src_data_path = dir_path
+    dst_root_key = "root"
+    s3_client.upload(bucket_name, src_data_path, dst_root_key, keep_src_object_name=True)
+
+
 if __name__ == "__main__":
-    test_init_ecs_client()
-    test_provision_s3_bucket()
+    #test_init_s3_client()
+    #test_provision_s3_bucket()
+    #test_upload_small_file_to_s3()
+    test_upload_small_dir_to_s3()

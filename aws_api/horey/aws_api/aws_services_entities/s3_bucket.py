@@ -197,6 +197,13 @@ class S3Bucket(AwsObject):
         request["CreateBucketConfiguration"] = {"LocationConstraint": self.region.region_mark}
         return request
 
+    def generate_put_bucket_policy_request(self):
+        request = dict()
+        request["Policy"] = self.policy.generate_put_string()
+        request["Bucket"] = self.name
+
+        return request
+
     class ACL(AwsObject):
         """
         Class representing S3 Bucket's ACL
@@ -284,8 +291,10 @@ class S3Bucket(AwsObject):
                 if from_cache:
                     self._init_policy_from_cache(src_)
                     return
+                if not isinstance(src_, dict):
+                    raise NotImplementedError("Not yet implemented")
 
-                raise NotImplementedError("Not yet implemented")
+                dict_src = src_
 
             super(S3Bucket.Policy, self).__init__(dict_src)
             if from_cache:
@@ -311,6 +320,10 @@ class S3Bucket(AwsObject):
             except Exception:
                 print(dict_src)
                 raise
+
+        def generate_put_string(self):
+            request_dict = {"Version": self.version, "Statement": self.statement}
+            return json.dumps(request_dict)
 
     class BucketObject(AwsObject):
         """
