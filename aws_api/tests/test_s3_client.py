@@ -1,7 +1,7 @@
 import os
 import sys
 
-from horey.aws_api.aws_clients.s3_client import S3Client
+from horey.aws_api.aws_clients.s3_client import S3Client, MultiPartUploadController
 from horey.aws_api.aws_services_entities.s3_bucket import S3Bucket
 import pdb
 from horey.h_logger import get_logger
@@ -106,8 +106,24 @@ def test_upload_small_dir_to_s3():
     s3_client.upload(bucket_name, src_data_path, dst_root_key, keep_src_object_name=True)
 
 
+def test_multipart_upload_file():
+    path = "./test_file"
+    size = 500 * 1024 * 1024
+
+    create_test_file(path, size)
+
+    s3_client = S3Client()
+    bucket_name = "horey-alexey-ytest-test"
+    src_data_path = path
+    dst_root_key = "root/test_file"
+    multipart_upload_controller = MultiPartUploadController()
+    multipart_upload_controller.chunk_size = 100 * 1024 * 1024
+    s3_client.multipart_upload_file(bucket_name, src_data_path, dst_root_key, multipart_upload_controller=multipart_upload_controller)
+
+
 if __name__ == "__main__":
     #test_init_s3_client()
     #test_provision_s3_bucket()
     #test_upload_small_file_to_s3()
-    test_upload_small_dir_to_s3()
+    #test_upload_small_dir_to_s3()
+    test_multipart_upload_file()
