@@ -320,8 +320,12 @@ class S3Client(Boto3Client):
                 logger.info(f"Tasks manager thread waiting for tasks in tasks queue")
                 time.sleep(0.5)
             except Exception as inst:
-                pdb.set_trace()
+                import traceback
+                ret= traceback.format_stack(limit=10)
+                print(ret)
                 print(inst)
+
+                pdb.set_trace()
                 raise inst
         pdb.set_trace()
 
