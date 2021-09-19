@@ -53,11 +53,11 @@ class TasksQueue:
         self._max_queue_size = value
 
     def put(self, task):
-        counter = 60
+        counter = 10 * 60 * 2
         while len(TasksQueue.TASKS_DICT) >= self.max_queue_size:
             counter -= 1
-            if counter == 0:
-                pdb.set_trace()
+            if counter <= 0:
+                raise TimeoutError(f"Timeout reached waiting to put a task into tasks queue")
             time.sleep(0.5)
         TasksQueue.TASKS_DICT[task.id] = task
 
@@ -213,7 +213,8 @@ class S3Client(Boto3Client):
     def get_all_buckets(self, full_information=True):
         """
         Get all S3 buckets - if full_information set fetches all bucket keys' information.
-        :param full_information:
+
+        :param full_information: Extended bucket information
         :return:
         """
         final_result = list()
@@ -269,6 +270,7 @@ class S3Client(Boto3Client):
 
     def upload(self, bucket_name, src_object_path, dst_root_key, keep_src_object_name=True):
         """
+        Upload file or directory tree to s3 bucket.
 
         @param bucket_name: S3 bucket name.
         @param src_object_path: File or directory path
@@ -293,6 +295,15 @@ class S3Client(Boto3Client):
                     f"finished in {end_time - start_time}")
 
     def start_uploading_object(self, bucket_name, src_object_path, dst_root_key, keep_src_object_name=True):
+        """
+        Start the flow of uploading local object - file or folder.
+
+        @param bucket_name: S3 dst bucket name
+        @param src_object_path: Local object path
+        @param dst_root_key: Root of the s3 keys tree.
+        @param keep_src_object_name: Keep the object name /overwrite with the dst_root_key
+        @return:
+        """
         logger.info(f"Uploading '{src_object_path}' to S3 bucket '{bucket_name}'")
 
         key_name = dst_root_key if not keep_src_object_name else f"{dst_root_key}/{os.path.basename(src_object_path)}"
@@ -306,6 +317,14 @@ class S3Client(Boto3Client):
         self.start_uploading_file_task(bucket_name, src_object_path, key_name)
 
     def start_tasks_manager_thread(self):
+        """
+        Start the thread manages tasks:
+        * Runs new tasks
+        * Reruns failed tasks
+        * Removes successful tasks
+
+        @return:
+        """
         for counter in range(60):
             if not self.tasks_queue.empty():
                 break
@@ -329,13 +348,17 @@ class S3Client(Boto3Client):
 
                 logger.info(f"Tasks manager thread waiting for tasks in tasks queue")
                 time.sleep(0.5)
-            except Exception as inst:
-                ret = traceback.format_stack(limit=50)
+            except Exception:
                 tb = traceback.format_exc()
-                pdb.set_trace()
-                raise inst
+                logger.error(tb)
 
     def finish_multipart_uploads(self, finished_tasks):
+        """
+        Goes over finished tasks- if there are finished multipart tasks sends complete request to AWS.
+
+        @param finished_tasks: List of successfully completed tasks.
+        @return:
+        """
         finished_parts = []
         for task in finished_tasks:
             if task.task_type != task.Type.PART:
@@ -349,10 +372,7 @@ class S3Client(Boto3Client):
                     break
             else:
                 logger.info(f"Completing multipart upload of file {task.key_name}")
-                # response.append({
-                #    'ETag': response["ETag"],
-                #    'PartNumber': response
-                # })
+
                 task = self.multipart_uploads[task.upload_id][0]
                 filters_req = {"Bucket": task.bucket_name,
                                "Key": task.key_name,
@@ -371,6 +391,12 @@ class S3Client(Boto3Client):
                                      f"len(finished_uploads) = {len(finished_uploads)} != 1")
 
     def execute_s3_upload_task(self, task):
+        """
+        Starts uploading task thread.
+
+        @param task: UpdateTask
+        @return:
+        """
         task.started = True
         if task.task_type == task.Type.FILE:
             self.thread_pool_executor.submit(self.upload_file_thread, (task))
@@ -380,6 +406,12 @@ class S3Client(Boto3Client):
             raise ValueError(task.type)
 
     def upload_file_thread(self, task):
+        """
+        Uploads a complete file.
+
+        @param task: UpdateTask with all needed info
+        @return:
+        """
         with open(task.file_path, "rb") as file_handler:
             file_data = file_handler.read()
 
@@ -398,14 +430,17 @@ class S3Client(Boto3Client):
         logger.info(f"Uploaded {task.key_name}, {len(file_data)} bytes took {end_time - start_time}")
 
     def upload_file_part_thread(self, task):
+        """
+        Uploads part of a large file.
+
+        @param task: UpdateTask has all the relevant information for the upload - offset, length etc.
+        @return:
+        """
         logger.info(f"Reading file {task.file_path} offset {task.offset_index}, offset_length {task.offset_length}")
 
-        # if task.file_lock.acquire(blocking=True):
-        if True:
-            with open(task.file_path, "rb") as file_handler:
-                file_handler.seek(task.offset_index)
-                byte_chunk = file_handler.read(task.offset_length)
-            # task.file_lock.release()
+        with open(task.file_path, "rb") as file_handler:
+            file_handler.seek(task.offset_index)
+            byte_chunk = file_handler.read(task.offset_length)
 
         logger.info(f"Uploading {len(byte_chunk)} bytes part {task.part_number}")
         filters_req = {"Bucket": task.bucket_name,
@@ -414,6 +449,7 @@ class S3Client(Boto3Client):
                        "PartNumber": task.part_number,
                        "Key": task.key_name
                        }
+
         start_time = datetime.datetime.now()
         try:
             for response in self.execute(self.client.upload_part, None, raw_data=True,
@@ -422,7 +458,6 @@ class S3Client(Boto3Client):
             task.succeed = True
         except Exception as exception_inst:
             logger.warning(exception_inst)
-
             task.succeed = False
 
         task.finished = True
