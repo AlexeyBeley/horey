@@ -326,7 +326,7 @@ class S3Client(Boto3Client):
                 time.sleep(0.5)
             except Exception as inst:
                 import traceback
-                ret= traceback.format_stack(limit=10)
+                ret= traceback.format_stack(limit=50)
                 print(ret)
                 print(inst)
                 pdb.set_trace()
