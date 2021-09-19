@@ -53,7 +53,11 @@ class TasksQueue:
         self._max_queue_size = value
 
     def put(self, task):
+        counter = 1000
         while len(TasksQueue.TASKS_DICT) >= self.max_queue_size:
+            counter -= 1
+            if counter == 0:
+                pdb.set_trace()
             time.sleep(0.5)
         TasksQueue.TASKS_DICT[task.id] = task
 
