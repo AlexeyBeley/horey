@@ -30,8 +30,8 @@ def test_init_ec2_client():
 
 
 DICT_CREATE_SECURITY_GROUP_REQUEST = {
-    "Description": "test-alexey-group",
-    "GroupName": "test-alexey-group",
+    "Description": "sg-test-group",
+    "GroupName": "sg-test-group",
 }
 
 

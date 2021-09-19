@@ -11,10 +11,10 @@ from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.s3_bucket import S3Bucket
 from horey.h_logger import get_logger
 from horey.aws_api.base_entities.aws_account import AWSAccount
-from queue import Queue
 from concurrent.futures import ThreadPoolExecutor
 import threading
 from enum import Enum
+import traceback
 
 logger = get_logger()
 
@@ -280,7 +280,8 @@ class S3Client(Boto3Client):
         self.finished_uploading_flow = False
         thread = threading.Thread(target=self.start_tasks_manager_thread)
         thread.start()
-        self.start_uploading_object(bucket_name, src_object_path, dst_root_key, keep_src_object_name=keep_src_object_name)
+        self.start_uploading_object(bucket_name, src_object_path, dst_root_key,
+                                    keep_src_object_name=keep_src_object_name)
         self.finished_uploading_flow = True
         sleep_time = 0.5
         while not self.tasks_queue.empty():
@@ -289,7 +290,7 @@ class S3Client(Boto3Client):
 
         end_time = datetime.datetime.now()
         logger.info(f"Upload with args {bucket_name, src_object_path, dst_root_key, keep_src_object_name} "
-                    f"finished in {end_time-start_time}")
+                    f"finished in {end_time - start_time}")
 
     def start_uploading_object(self, bucket_name, src_object_path, dst_root_key, keep_src_object_name=True):
         logger.info(f"Uploading '{src_object_path}' to S3 bucket '{bucket_name}'")
@@ -329,11 +330,8 @@ class S3Client(Boto3Client):
                 logger.info(f"Tasks manager thread waiting for tasks in tasks queue")
                 time.sleep(0.5)
             except Exception as inst:
-                import traceback
                 ret = traceback.format_stack(limit=50)
                 tb = traceback.format_exc()
-                print(ret)
-                print(inst)
                 pdb.set_trace()
                 raise inst
 
@@ -360,7 +358,9 @@ class S3Client(Boto3Client):
                                "Key": task.key_name,
                                "UploadId": task.upload_id,
                                "MultipartUpload": {
-                                   'Parts': [{"ETag": part.raw_response["ETag"].strip('"'), "PartNumber": part.part_number} for part in self.multipart_uploads[task.upload_id]]
+                                   'Parts': [
+                                       {"ETag": part.raw_response["ETag"].strip('"'), "PartNumber": part.part_number}
+                                       for part in self.multipart_uploads[task.upload_id]]
                                }}
 
                 finished_uploads = list(
@@ -382,12 +382,12 @@ class S3Client(Boto3Client):
     def upload_file_thread(self, task):
         with open(task.file_path, "rb") as file_handler:
             file_data = file_handler.read()
-            
+
         start_time = datetime.datetime.now()
         filters_req = {"Bucket": task.bucket_name, "Key": task.key_name, "Body": file_data}
         try:
             for response in self.execute(self.client.put_object, None, filters_req=filters_req, raw_data=True):
-                task.raw_response = response            
+                task.raw_response = response
             task.succeed = True
         except Exception as exception_inst:
             logger.warning(exception_inst)
@@ -396,16 +396,16 @@ class S3Client(Boto3Client):
         task.finished = True
         end_time = datetime.datetime.now()
         logger.info(f"Uploaded {task.key_name}, {len(file_data)} bytes took {end_time - start_time}")
-        
+
     def upload_file_part_thread(self, task):
         logger.info(f"Reading file {task.file_path} offset {task.offset_index}, offset_length {task.offset_length}")
 
-        #if task.file_lock.acquire(blocking=True):
+        # if task.file_lock.acquire(blocking=True):
         if True:
             with open(task.file_path, "rb") as file_handler:
                 file_handler.seek(task.offset_index)
                 byte_chunk = file_handler.read(task.offset_length)
-            #task.file_lock.release()
+            # task.file_lock.release()
 
         logger.info(f"Uploading {len(byte_chunk)} bytes part {task.part_number}")
         filters_req = {"Bucket": task.bucket_name,
@@ -417,7 +417,7 @@ class S3Client(Boto3Client):
         start_time = datetime.datetime.now()
         try:
             for response in self.execute(self.client.upload_part, None, raw_data=True,
-                                               filters_req=filters_req):
+                                         filters_req=filters_req):
                 task.raw_response = response
             task.succeed = True
         except Exception as exception_inst:
@@ -490,11 +490,11 @@ class S3Client(Boto3Client):
         self.multipart_uploads[upload_id] = list()
         part_number = 0
         file_lock = threading.Lock()
-        for part_number in range(1, full_chunks+1):
+        for part_number in range(1, full_chunks + 1):
             task_id = f"{key_name}%{part_number}"
             task = UploadTask(task_id, UploadTask.Type.PART, file_path, bucket_name, key_name)
             task.part_number = part_number
-            task.offset_index = self.multipart_chunk_size * (part_number-1)
+            task.offset_index = self.multipart_chunk_size * (part_number - 1)
             task.offset_length = self.multipart_chunk_size
             task.upload_id = upload_id
             task.file_lock = file_lock

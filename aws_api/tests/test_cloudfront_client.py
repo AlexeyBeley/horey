@@ -52,7 +52,7 @@ def test_provision_distribution():
         'Items': [
             {
                 'Key': 'Name',
-                'Value': 'alexey-test'
+                'Value': 'horey-test'
             },
         ]
     }
@@ -69,7 +69,7 @@ def test_provision_distribution():
             "Items": [
                 {
                     "Id": "horey-test-id",
-                    "DomainName": "horey-alexey-ytest-test.s3.amazonaws.com",
+                    "DomainName": "test.s3.amazonaws.com",
                     "OriginPath": "",
                     "CustomHeaders": {
                         "Quantity": 1,

@@ -42,7 +42,7 @@ def test_provision_cluster():
     cluster.backup_retention_period = 35
     cluster.database_name = "db_test"
     cluster.db_cluster_identifier = "cluster-db-test"
-    cluster.vpc_security_group_ids = ["sg-0c327a59a702c75ef"]
+    cluster.vpc_security_group_ids = ["sg-11111111111"]
     cluster.engine = "aurora-mysql"
     cluster.engine_version = "5.7.mysql_aurora.2.09.2"
     cluster.port = 3306
