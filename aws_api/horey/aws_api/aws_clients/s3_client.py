@@ -74,7 +74,7 @@ class TasksQueue:
             task = self.TASKS_DICT.get(key)
             if task is None:
                 continue
-                
+
             if task.finished:
                 if task.succeed:
                     finished_tasks.append(task)
@@ -329,10 +329,8 @@ class S3Client(Boto3Client):
                 ret= traceback.format_stack(limit=10)
                 print(ret)
                 print(inst)
-
                 pdb.set_trace()
                 raise inst
-        pdb.set_trace()
 
     def finish_multipart_uploads(self, finished_tasks):
         finished_parts = []
