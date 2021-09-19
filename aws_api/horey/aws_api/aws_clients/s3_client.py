@@ -89,7 +89,11 @@ class TasksQueue:
         return finished_tasks
 
     def get_next_ready(self):
-        for task in self.TASKS_DICT.values():
+        keys = list(self.TASKS_DICT)[:]
+        for key in keys:
+            task = self.TASKS_DICT.get(key)
+            if task is None:
+                continue
             if not task.started:
                 return task
 
@@ -326,7 +330,8 @@ class S3Client(Boto3Client):
                 time.sleep(0.5)
             except Exception as inst:
                 import traceback
-                ret= traceback.format_stack(limit=50)
+                ret = traceback.format_stack(limit=50)
+                tb = traceback.format_exc()
                 print(ret)
                 print(inst)
                 pdb.set_trace()
