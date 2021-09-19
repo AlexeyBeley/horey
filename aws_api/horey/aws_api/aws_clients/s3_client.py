@@ -305,20 +305,24 @@ class S3Client(Boto3Client):
             raise TimeoutError()
 
         while not self.tasks_queue.empty() or not self.finished_uploading_flow:
-            self._tasks_manager_thread_keepalive = datetime.datetime.now()
+            try:
+                self._tasks_manager_thread_keepalive = datetime.datetime.now()
 
-            finished_tasks = self.tasks_queue.prune_finished()
-            self.finish_multipart_uploads(finished_tasks)
+                finished_tasks = self.tasks_queue.prune_finished()
+                self.finish_multipart_uploads(finished_tasks)
 
-            task = self.tasks_queue.get_next_ready()
+                task = self.tasks_queue.get_next_ready()
 
-            if task is not None:
-                self.execute_s3_upload_task(task)
-                continue
+                if task is not None:
+                    self.execute_s3_upload_task(task)
+                    continue
 
-            logger.info(f"Tasks manager thread waiting for tasks in tasks queue")
-            time.sleep(0.5)
-
+                logger.info(f"Tasks manager thread waiting for tasks in tasks queue")
+                time.sleep(0.5)
+            except Exception as inst:
+                pdb.set_trace()
+                print(inst)
+                raise inst
         pdb.set_trace()
 
     def finish_multipart_uploads(self, finished_tasks):
