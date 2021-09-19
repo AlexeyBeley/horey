@@ -53,7 +53,7 @@ class TasksQueue:
         self._max_queue_size = value
 
     def put(self, task):
-        counter = 1000
+        counter = 60
         while len(TasksQueue.TASKS_DICT) >= self.max_queue_size:
             counter -= 1
             if counter == 0:
