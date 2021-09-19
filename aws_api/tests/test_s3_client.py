@@ -19,9 +19,6 @@ accounts = CommonUtils.load_object_from_module(accounts_file_full_path, "main")
 AWSAccount.set_aws_account(accounts["1111"])
 AWSAccount.set_aws_region(accounts["1111"].regions['us-west-2'])
 
-mock_values_file_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "ignore", "mock_values.py"))
-mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
-
 
 def test_init_s3_client():
     assert isinstance(S3Client(), S3Client)
@@ -30,9 +27,6 @@ def test_init_s3_client():
 def test_provision_s3_bucket():
     region = Region.get_region("us-west-2")
     s3_client = S3Client()
-
-    #ecs_task_definition = Mock()
-    #ecs_task_definition.arn = mock_values["ecs_task_definition.arn"]
 
     s3_bucket = S3Bucket({})
     s3_bucket.region = region
@@ -45,9 +39,6 @@ def test_provision_s3_bucket():
 def test_provision_s3_bucket():
     region = Region.get_region("us-west-2")
     s3_client = S3Client()
-
-    #ecs_task_definition = Mock()
-    #ecs_task_definition.arn = mock_values["ecs_task_definition.arn"]
 
     s3_bucket = S3Bucket({})
     s3_bucket.region = region
@@ -135,9 +126,26 @@ def test_multipart_upload_file():
     s3_client.start_multipart_uploading_file_task(bucket_name, src_data_path, dst_root_key)
 
 
+def test_upload_large_files_directory_to_s3():
+    dir_path = "./test_files_dir"
+    for counter in range(10):
+        file_name = f"test_file_{counter}"
+        path = os.path.join(dir_path, file_name)
+        os.makedirs(dir_path, exist_ok=True)
+        size = 500 * 1024 * 1024
+
+        create_test_file(path, size)
+
+    s3_client = S3Client()
+    bucket_name = "horey-alexey-ytest-test"
+    src_data_path = dir_path
+    dst_root_key = "root"
+    s3_client.upload(bucket_name, src_data_path, dst_root_key, keep_src_object_name=True)
+
+
 if __name__ == "__main__":
     #test_init_s3_client()
     #test_provision_s3_bucket()
     #test_upload_small_file_to_s3()
-    test_upload_large_file_to_s3()
+    test_upload_large_files_directory_to_s3()
     #test_multipart_upload_file()
