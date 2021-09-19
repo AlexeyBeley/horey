@@ -69,7 +69,12 @@ class TasksQueue:
 
     def prune_finished(self):
         finished_tasks = []
-        for task in self.TASKS_DICT.values():
+        keys = list(self.TASKS_DICT)[:]
+        for key in keys:
+            task = self.TASKS_DICT.get(key)
+            if task is None:
+                continue
+                
             if task.finished:
                 if task.succeed:
                     finished_tasks.append(task)
