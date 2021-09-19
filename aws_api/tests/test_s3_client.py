@@ -113,25 +113,12 @@ def test_upload_large_file_to_s3():
     s3_client.upload(bucket_name, src_data_path, dst_root_key, keep_src_object_name=True)
 
 
-def test_multipart_upload_file():
-    path = "./test_file"
-    size = 500 * 1024 * 1024
-
-    create_test_file(path, size)
-
-    s3_client = S3Client()
-    bucket_name = "horey-alexey-ytest-test"
-    src_data_path = path
-    dst_root_key = "root/test_file"
-    s3_client.start_multipart_uploading_file_task(bucket_name, src_data_path, dst_root_key)
-
-
 def test_upload_large_files_directory_to_s3():
     dir_path = "./test_files_dir"
+    os.makedirs(dir_path, exist_ok=True)
     for counter in range(10):
         file_name = f"test_file_{counter}"
         path = os.path.join(dir_path, file_name)
-        os.makedirs(dir_path, exist_ok=True)
         size = 500 * 1024 * 1024
 
         create_test_file(path, size)
@@ -143,9 +130,26 @@ def test_upload_large_files_directory_to_s3():
     s3_client.upload(bucket_name, src_data_path, dst_root_key, keep_src_object_name=True)
 
 
+def test_upload_small_files_directory_to_s3():
+    dir_path = "./test_files_dir"
+    os.makedirs(dir_path, exist_ok=True)
+    for counter in range(100000):
+        file_name = f"test_file_{counter}"
+        path = os.path.join(dir_path, file_name)
+        size = 100 * 1024
+
+        create_test_file(path, size)
+
+    s3_client = S3Client()
+    bucket_name = "horey-alexey-ytest-test"
+    src_data_path = dir_path
+    dst_root_key = "root"
+    s3_client.upload(bucket_name, src_data_path, dst_root_key, keep_src_object_name=True)
+
 if __name__ == "__main__":
     #test_init_s3_client()
     #test_provision_s3_bucket()
     #test_upload_small_file_to_s3()
-    test_upload_large_files_directory_to_s3()
+    test_upload_large_file_to_s3()
+    #test_upload_large_files_directory_to_s3()
     #test_multipart_upload_file()

@@ -54,7 +54,7 @@ class TasksQueue:
 
     def put(self, task):
         while len(TasksQueue.TASKS_DICT) >= self.max_queue_size:
-            time.sleep(1)
+            time.sleep(0.5)
         TasksQueue.TASKS_DICT[task.id] = task
 
     def empty(self):
@@ -269,7 +269,7 @@ class S3Client(Boto3Client):
         thread.start()
         self.start_uploading_object(bucket_name, src_object_path, dst_root_key, keep_src_object_name=keep_src_object_name)
         self.finished_uploading_flow = True
-        sleep_time = 10
+        sleep_time = 0.5
         while not self.tasks_queue.empty():
             logger.info(f"Main thread waiting for all tasks to finish. Going to sleep for {sleep_time}")
             time.sleep(sleep_time)
@@ -296,7 +296,7 @@ class S3Client(Boto3Client):
             if not self.tasks_queue.empty():
                 break
             logger.info(f"Tasks manager thread waiting for tasks in tasks queue")
-            time.sleep(1)
+            time.sleep(0.5)
         else:
             raise TimeoutError()
 
@@ -313,7 +313,7 @@ class S3Client(Boto3Client):
                 continue
 
             logger.info(f"Tasks manager thread waiting for tasks in tasks queue")
-            time.sleep(1)
+            time.sleep(0.5)
 
     def finish_multipart_uploads(self, finished_tasks):
         finished_parts = []
@@ -349,21 +349,32 @@ class S3Client(Boto3Client):
                                      f"len(finished_uploads) = {len(finished_uploads)} != 1")
 
     def execute_s3_upload_task(self, task):
+        task.started = True
         if task.task_type == task.Type.FILE:
-            pdb.set_trace()
-            future = self.THREAD_POOL_EXECUTOR.submit(self.upload_file_thread, (bucket_name, file_path, key_name))
-            with open(file_path, "rb") as file_handler:
-                file_data = file_handler.read()
-
-            filters_req = {"Bucket": bucket_name, "Key": key_name, "Body": file_data}
-            for response in self.execute(self.client.put_object, None, filters_req=filters_req, raw_data=True):
-                return response
+            self.thread_pool_executor.submit(self.upload_file_thread, (task))
         elif task.task_type == task.Type.PART:
-            task.started = True
             self.thread_pool_executor.submit(self.upload_file_part_thread, (task))
         else:
             raise ValueError(task.type)
 
+    def upload_file_thread(self, task):
+        with open(task.file_path, "rb") as file_handler:
+            file_data = file_handler.read()
+            
+        start_time = datetime.datetime.now()
+        filters_req = {"Bucket": task.bucket_name, "Key": task.key_name, "Body": file_data}
+        try:
+            for response in self.execute(self.client.put_object, None, filters_req=filters_req, raw_data=True):
+                task.raw_response = response            
+            task.succeed = True
+        except Exception as exception_inst:
+            logger.warning(exception_inst)
+            task.succeed = False
+
+        task.finished = True
+        end_time = datetime.datetime.now()
+        logger.info(f"Uploaded {len(file_data)} bytes took {end_time - start_time}")
+        
     def upload_file_part_thread(self, task):
         logger.info(f"Reading file {task.file_path} offset {task.offset_index}, offset_length {task.offset_length}")
 
@@ -387,8 +398,8 @@ class S3Client(Boto3Client):
                                                filters_req=filters_req):
                 task.raw_response = response
             task.succeed = True
-        except Exception as exception_isnt:
-            logger.warning(exception_isnt)
+        except Exception as exception_inst:
+            logger.warning(exception_inst)
 
             task.succeed = False
 
