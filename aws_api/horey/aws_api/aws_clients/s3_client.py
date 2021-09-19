@@ -315,6 +315,8 @@ class S3Client(Boto3Client):
             logger.info(f"Tasks manager thread waiting for tasks in tasks queue")
             time.sleep(0.5)
 
+        pdb.set_trace()
+
     def finish_multipart_uploads(self, finished_tasks):
         finished_parts = []
         for task in finished_tasks:
