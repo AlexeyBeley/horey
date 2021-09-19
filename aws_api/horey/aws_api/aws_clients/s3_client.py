@@ -373,7 +373,7 @@ class S3Client(Boto3Client):
 
         task.finished = True
         end_time = datetime.datetime.now()
-        logger.info(f"Uploaded {len(file_data)} bytes took {end_time - start_time}")
+        logger.info(f"Uploaded {task.key_name}, {len(file_data)} bytes took {end_time - start_time}")
         
     def upload_file_part_thread(self, task):
         logger.info(f"Reading file {task.file_path} offset {task.offset_index}, offset_length {task.offset_length}")

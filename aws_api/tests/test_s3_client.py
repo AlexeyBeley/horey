@@ -61,6 +61,8 @@ def test_provision_s3_bucket():
 
 
 def create_test_file(path, size):
+    print(f"Creating test file {path}")
+
     with open(path, "w+") as file_handler:
         file_handler.write("a" * size)
 
@@ -134,6 +136,7 @@ def test_upload_small_files_directory_to_s3():
     dir_path = "./test_files_dir"
     os.makedirs(dir_path, exist_ok=True)
     for counter in range(100000):
+        continue
         file_name = f"test_file_{counter}"
         path = os.path.join(dir_path, file_name)
         size = 100 * 1024
