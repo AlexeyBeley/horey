@@ -1,3 +1,4 @@
+SHELL := /bin/bash
 
 TESTS_DIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 HOREY_DIR_PATH := $(realpath ${TESTS_DIR}/../..)

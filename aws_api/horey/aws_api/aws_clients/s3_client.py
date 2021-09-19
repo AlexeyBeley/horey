@@ -5,43 +5,173 @@ import datetime
 import os
 import pdb
 
+import time
+
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.s3_bucket import S3Bucket
 from horey.h_logger import get_logger
 from horey.aws_api.base_entities.aws_account import AWSAccount
+from queue import Queue
+from concurrent.futures import ThreadPoolExecutor
+import threading
+from enum import Enum
 
 logger = get_logger()
 
 
-class AsyncUploadController:
-    def __init__(self):
-        self.dict_keys = None
+class UploadTask:
+    def __init__(self, task_id, task_type, file_path, bucket_name, key_name):
+        self.id = task_id
+        self.task_type = task_type
+        self.file_path = file_path
+        self.offset_index = None
+        self.offset_length = None
+        self.key_name = key_name
+        self.bucket_name = bucket_name
+        self.start_time = None
+        self.started = False
+        self.finished = False
+        self.upload_id = None
+
+    class Type(Enum):
+        FILE = 0
+        PART = 1
 
 
-class MultiPartUploadController:
-    def __init__(self):
-        self.file_size_multipart_limit = 100 * 1024 * 1024
-        self._chunk_size = 5 * 1024 * 1024
+class TasksQueue:
+    TASKS_DICT = dict()
+
+    def __init__(self, max_queue_size):
+        self._max_queue_size = max_queue_size
 
     @property
-    def chunk_size(self):
-        return self._chunk_size
+    def max_queue_size(self):
+        return self._max_queue_size
 
-    @chunk_size.setter
-    def chunk_size(self, value):
-        if value < 5 * 1024 * 1024 :
-            raise ValueError("Minimal chunk size is 5MB")
-        self._chunk_size = value
+    @max_queue_size.setter
+    def max_queue_size(self, value):
+        self._max_queue_size = value
+
+    def put(self, task):
+        while len(TasksQueue.TASKS_DICT) >= self.max_queue_size:
+            pdb.set_trace()
+            time.sleep(1)
+        TasksQueue.TASKS_DICT[task.id] = task
+
+    def empty(self):
+        return len(TasksQueue.TASKS_DICT) == 0
+
+    def remove(self, task):
+        del TasksQueue.TASKS_DICT[task.id]
+
+    def prune_finished(self):
+        finished_tasks = []
+        for task in self.TASKS_DICT.values():
+            if task.finished:
+                if task.succeed:
+                    finished_tasks.append(task)
+                    continue
+
+                task.finished = False
+                task.started = False
+
+        for task in finished_tasks:
+            del self.TASKS_DICT[task.id]
+
+        return finished_tasks
+
+    def get_next_ready(self):
+        for task in self.TASKS_DICT.values():
+            if not task.started:
+                return task
 
 
 class S3Client(Boto3Client):
     """
     Client to handle specific aws service API calls.
     """
+    TASKS_QUEUE = None
+    THREAD_POOL_EXECUTOR = None
 
     def __init__(self):
         client_name = "s3"
         super().__init__(client_name)
+        self._multipart_chunk_size = 8 * 1024 * 1024
+        self._max_queue_size = 1000
+        self._multipart_threshold = 100 * 1024 * 1024
+        self._max_concurrent_requests = 10
+        self.finished_uploading_flow = False
+        self.multipart_uploads = dict()
+        self._tasks_manager_thread_keepalive = None
+
+    @property
+    def multipart_chunk_size(self):
+        return self._multipart_chunk_size
+
+    @multipart_chunk_size.setter
+    def multipart_chunk_size(self, value):
+        self.validate_int(value, min_value=5 * 1024 * 1024)
+        self._multipart_chunk_size = value
+
+    @property
+    def max_queue_size(self):
+        return self._max_queue_size
+
+    @max_queue_size.setter
+    def max_queue_size(self, value):
+        self.validate_int(value)
+        self._max_queue_size = value
+
+        if S3Client.TASKS_QUEUE.max_queue_size == value:
+            return
+
+        S3Client.TASKS_QUEUE.max_queue_size = value
+
+    @property
+    def tasks_queue(self):
+        if S3Client.TASKS_QUEUE is None:
+            S3Client.TASKS_QUEUE = TasksQueue(self.max_queue_size)
+
+        return S3Client.TASKS_QUEUE
+
+    @property
+    def thread_pool_executor(self):
+        if S3Client.THREAD_POOL_EXECUTOR is None:
+            S3Client.THREAD_POOL_EXECUTOR = ThreadPoolExecutor(max_workers=self.max_concurrent_requests)
+        return S3Client.THREAD_POOL_EXECUTOR
+
+    @property
+    def multipart_threshold(self):
+        return self._multipart_threshold
+
+    @multipart_threshold.setter
+    def multipart_threshold(self, value):
+        self.validate_int(value)
+        self._multipart_threshold = value
+
+    @property
+    def max_concurrent_requests(self):
+        return self._max_concurrent_requests
+
+    @max_concurrent_requests.setter
+    def max_concurrent_requests(self, value):
+        self.validate_int(value)
+        self._max_concurrent_requests = value
+
+        if S3Client.THREAD_POOL_EXECUTOR is not None:
+            raise RuntimeError("Can not change max_concurrent_requests for running executor")
+
+    @staticmethod
+    def validate_int(value, min_value=1, max_value=None):
+        if isinstance(value, int):
+            raise ValueError(f"{value} is not int")
+
+        if value < min_value:
+            raise ValueError(f"{value} < {min_value}")
+
+        if max_value is not None:
+            if value > max_value:
+                raise ValueError(f"{value} > {max_value}")
 
     def yield_bucket_objects(self, obj):
         """
@@ -134,7 +264,18 @@ class S3Client(Boto3Client):
         @param keep_src_object_name: If True: src_object base name preserved.
         @return: None
         """
+        self.finished_uploading_flow = False
+        thread = threading.Thread(target=self.start_tasks_manager_thread)
+        thread.start()
+        self.start_uploading_object(bucket_name, src_object_path, dst_root_key, keep_src_object_name=keep_src_object_name)
+        self.finished_uploading_flow = True
+        sleep_time = 10
+        while not self.tasks_queue.empty():
 
+            logger.info(f"Main thread waiting for all tasks to finish. Going to sleep for {sleep_time}")
+            time.sleep(sleep_time)
+
+    def start_uploading_object(self, bucket_name, src_object_path, dst_root_key, keep_src_object_name=True):
         logger.info(f"Uploading '{src_object_path}' to S3 bucket '{bucket_name}'")
 
         key_name = dst_root_key if not keep_src_object_name else f"{dst_root_key}/{os.path.basename(src_object_path)}"
@@ -145,9 +286,117 @@ class S3Client(Boto3Client):
         if key_name == "":
             raise ValueError("key_name is not set while keep_src_object_name is set to False")
 
-        return self.upload_file(bucket_name, src_object_path, key_name)
+        self.start_uploading_file_task(bucket_name, src_object_path, key_name)
 
-    def upload_file(self, bucket_name, file_path, key_name, multipart_upload_controller=None):
+    def start_tasks_manager_thread(self):
+        for counter in range(60):
+            if not self.tasks_queue.empty():
+                break
+            logger.info(f"Tasks manager thread waiting for tasks in tasks queue")
+            time.sleep(1)
+        else:
+            raise TimeoutError()
+
+        while not self.tasks_queue.empty() or not self.finished_uploading_flow:
+            self._tasks_manager_thread_keepalive = datetime.datetime.now()
+
+            finished_tasks = self.tasks_queue.prune_finished()
+            self.finish_multipart_uploads(finished_tasks)
+
+            task = self.tasks_queue.get_next_ready()
+
+            if task is not None:
+                self.execute_s3_upload_task(task)
+                continue
+
+            logger.info(f"Tasks manager thread waiting for tasks in tasks queue")
+            time.sleep(1)
+
+    def finish_multipart_uploads(self, finished_tasks):
+        finished_parts = []
+        for task in finished_tasks:
+            if "%" not in task.id:
+                continue
+            if task.upload_id in finished_parts:
+                continue
+
+            finished_parts.append(task.upload_id)
+            for upload_part in self.multipart_uploads[task.upload_id]:
+                if not upload_part.finished or not upload_part.succeed:
+                    break
+            else:
+                pdb.set_trace()
+                # response.append({
+                #    'ETag': response["ETag"],
+                #    'PartNumber': response
+                # })
+                task = self.multipart_uploads[task.upload_id][0]
+                filters_req = {"Bucket": task.bucket_name,
+                               "Key": task.key_name,
+                               "UploadId": task.upload_id,
+                               "MultipartUpload": {
+                                   'Parts': [{"ETag": part.response["ETag"], "PartNumber": part.response["PartNumber"]} for part in self.multipart_uploads[complete_id]]
+
+                               }}
+
+                finished_uploads = list(
+                    self.execute(self.client.complete_multipart_upload, None, raw_data=True, filters_req=filters_req))
+
+                if len(finished_uploads) != 1:
+                    raise ValueError(f"Was not able to finish multipart upload with params {filters_req}. "
+                                     f"len(finished_uploads) = {len(finished_uploads)} != 1")
+
+    def execute_s3_upload_task(self, task):
+        if task.task_type == task.Type.FILE:
+            pdb.set_trace()
+            future = self.THREAD_POOL_EXECUTOR.submit(self.upload_file_thread, (bucket_name, file_path, key_name))
+            with open(file_path, "rb") as file_handler:
+                file_data = file_handler.read()
+
+            filters_req = {"Bucket": bucket_name, "Key": key_name, "Body": file_data}
+            for response in self.execute(self.client.put_object, None, filters_req=filters_req, raw_data=True):
+                return response
+        elif task.task_type == task.Type.PART:
+            task.started = True
+            #pdb.set_trace()
+            print(task.part_number)
+            self.thread_pool_executor.submit(self.upload_file_part_thread, (task))
+            #pdb.set_trace()
+            #self.upload_file_part_thread(task)
+        else:
+            raise ValueError(task.type)
+
+    def upload_file_part_thread(self, task):
+        logger.info(f"Reading file {task.file_path} offset {task.offset_index}, offset_length {task.offset_length}")
+
+        if task.file_lock.acquire(blocking=False):
+            with open(task.file_path, "rb") as file_handler:
+                file_handler.seek(task.offset_index)
+                byte_chunk = file_handler.read(task.offset_length)
+            task.file_lock.release()
+
+        logger.info(f"Uploading {len(byte_chunk)} bytes part {task.part_number}")
+        filters_req = {"Bucket": task.bucket_name,
+                       "Body": byte_chunk,
+                       "UploadId": task.upload_id,
+                       "PartNumber": task.part_number,
+                       "Key": task.key_name
+                       }
+        start_time = datetime.datetime.now()
+        try:
+            for response in self.execute(self.client.upload_part, None, raw_data=True,
+                                               filters_req=filters_req):
+                task.raw_response = response
+            task.succeed = True
+        except Exception:
+            task.succeed = False
+
+        task.finished = True
+
+        end_time = datetime.datetime.now()
+        logger.info(f"Uploaded {len(byte_chunk)} bytes part {task.part_number}: took {end_time - start_time}")
+
+    def start_uploading_file_task(self, bucket_name, file_path, key_name):
         """
         Uploads a file to S3 bucket.
         File name is not preserved.
@@ -163,21 +412,18 @@ class S3Client(Boto3Client):
         @return:
         """
 
-        if multipart_upload_controller is None:
-            multipart_upload_controller = MultiPartUploadController()
-
         file_size = os.path.getsize(file_path)
-        if file_size > multipart_upload_controller.file_size_multipart_limit:
-            return self.multipart_upload_file(bucket_name, file_path, key_name, multipart_upload_controller)
+        if file_size >= self.multipart_threshold:
+            return self.start_multipart_uploading_file_task(bucket_name, file_path, key_name)
 
-        with open(file_path, "rb") as file_handler:
-            file_data = file_handler.read()
+        task_id = key_name
+        task_type = UploadTask.Type.FILE
 
-        filters_req = {"Bucket": bucket_name, "Key": key_name, "Body": file_data}
-        for response in self.execute(self.client.put_object, None, filters_req=filters_req, raw_data=True):
-            return response
+        task = UploadTask(task_id, task_type, file_path, bucket_name, key_name)
+        task.start_time = datetime.datetime.now()
+        self.tasks_queue.put(task)
 
-    def multipart_upload_file(self, bucket_name, file_path, key_name, multipart_upload_controller):
+    def start_multipart_uploading_file_task(self, bucket_name, file_path, key_name):
         """
         S3 limitation:
         Part number of part being uploaded. This is a positive integer between 1 and 10,000.
@@ -185,11 +431,10 @@ class S3Client(Boto3Client):
         @param bucket_name:
         @param file_path:
         @param key_name:
-        @param multipart_upload_controller:
         @return:
         """
 
-        if os.path.getsize(file_path) / multipart_upload_controller.chunk_size >= 100000:
+        if os.path.getsize(file_path) / self.multipart_chunk_size >= 100000:
             raise ValueError("Can not split file to more then 10000 parts")
 
         filters_req = {"Bucket": bucket_name,
@@ -203,47 +448,36 @@ class S3Client(Boto3Client):
                              f"len(multipart_upload) = {len(multipart_upload_ids)} != 1")
 
         upload_id = multipart_upload_ids[0]
+        fh = open("test_file", "ab")
+        last_position = fh.tell()
+        full_chunks = last_position // self.multipart_chunk_size
+        part_chunk = last_position % self.multipart_chunk_size
 
-        part_number = 1
-        parts = []
-        with open(file_path, "rb") as file_handler:
-            # todo:
-            #file_handler.seek()
-            while byte_chunk := file_handler.read(multipart_upload_controller.chunk_size):
-                start_time = datetime.datetime.now()
-                logger.info(f"Uploading {len(byte_chunk)} bytes part {part_number}")
-                filters_req = {"Bucket": bucket_name,
-                               "Body": byte_chunk,
-                               "UploadId": upload_id,
-                               "PartNumber": part_number,
-                               "Key": key_name
-                               }
-                for part_response in self.execute(self.client.upload_part, None, raw_data=True,
-                                                  filters_req=filters_req):
-                    parts.append({
-                        'ETag': part_response["ETag"],
-                        'PartNumber': part_number
-                    })
+        self.multipart_uploads[upload_id] = list()
+        part_number = 0
+        file_lock = threading.Lock()
+        for part_number in range(1, full_chunks+1):
+            task_id = f"{key_name}%{part_number}"
+            task = UploadTask(task_id, UploadTask.Type.PART, file_path, bucket_name, key_name)
+            task.part_number = part_number
+            task.offset_index = self.multipart_chunk_size * (part_number-1)
+            task.offset_length = self.multipart_chunk_size
+            task.upload_id = upload_id
+            task.file_lock = file_lock
+            self.multipart_uploads[upload_id].append(task)
+            self.tasks_queue.put(task)
 
-                end_time = datetime.datetime.now()
-                logger.info(f"Uploaded {len(byte_chunk)} bytes part {part_number}: took {end_time-start_time}")
-
-                part_number += 1
-                print(f"part: {part_number}")
-
-        filters_req = {"Bucket": bucket_name,
-                       "Key": key_name,
-                       "UploadId": upload_id,
-                       "MultipartUpload": {
-                           'Parts': parts
-                       }}
-
-        finished_uploads = list(
-            self.execute(self.client.complete_multipart_upload, None, raw_data=True, filters_req=filters_req))
-
-        if len(finished_uploads) != 1:
-            raise ValueError(f"Was not able to finish multipart upload with params {filters_req}. "
-                             f"len(finished_uploads) = {len(finished_uploads)} != 1")
+        if part_chunk > 0:
+            part_number += 1
+            task_id = f"{key_name}%{part_number}"
+            task = UploadTask(task_id, UploadTask.Type.PART, file_path, bucket_name, key_name)
+            task.part_number = part_number
+            task.offset_index = self.multipart_chunk_size * (part_number - 1)
+            task.offset_length = self.multipart_chunk_size
+            task.upload_id = upload_id
+            task.file_lock = file_lock
+            self.multipart_uploads[upload_id].append(task)
+            self.tasks_queue.put(task)
 
     def upload_directory(self, bucket_name, src_data_path, dst_root_key):
         """
@@ -261,7 +495,7 @@ class S3Client(Boto3Client):
             src_object_full_path = os.path.join(src_data_path, src_object_name)
             new_dst_root_key = f"{dst_root_key}/{src_object_name}"
             new_dst_root_key = new_dst_root_key.strip("/")
-            self.upload(bucket_name, src_object_full_path, new_dst_root_key, keep_src_object_name=False)
+            self.start_uploading_object(bucket_name, src_object_full_path, new_dst_root_key, keep_src_object_name=False)
 
     def provision_bucket(self, bucket):
         filters_req = {"Bucket": bucket.name}
