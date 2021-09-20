@@ -311,6 +311,9 @@ class S3Client(Boto3Client):
         if os.path.isdir(src_object_path):
             return self.upload_directory(bucket_name, src_object_path, key_name)
 
+        if not os.path.exists(src_object_path):
+            raise ValueError(f"Local object does not exist {src_object_path}")
+
         if key_name == "":
             raise ValueError("key_name is not set while keep_src_object_name is set to False")
 
