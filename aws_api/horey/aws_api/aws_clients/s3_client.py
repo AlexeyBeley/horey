@@ -115,6 +115,7 @@ class S3Client(Boto3Client):
         self.finished_uploading_flow = False
         self.multipart_uploads = dict()
         self._tasks_manager_thread_keepalive = None
+        self._tasks_manager_thread_progress_time_limit = datetime.timedelta(minutes=20)
 
     @property
     def multipart_chunk_size(self):
@@ -289,8 +290,16 @@ class S3Client(Boto3Client):
         self.start_uploading_object(bucket_name, src_object_path, dst_root_key,
                                     keep_src_object_name=keep_src_object_name)
         self.finished_uploading_flow = True
+
         sleep_time = 0.5
+
         while not self.tasks_queue.empty():
+            if self._tasks_manager_thread_keepalive is None:
+                raise RuntimeError("Tasks manager thread is dead")
+
+            if self._tasks_manager_thread_keepalive + self._tasks_manager_thread_progress_time_limit < datetime.datetime.now():
+                raise TimeoutError(f"Tasks manager thread was not updated for {self._tasks_manager_thread_progress_time_limit}")
+
             logger.info(f"Main thread waiting for all tasks to finish. Going to sleep for {sleep_time}")
             time.sleep(sleep_time)
 
@@ -332,8 +341,7 @@ class S3Client(Boto3Client):
 
         @return:
         """
-        tasks_manager_thread_progress_time_limit = datetime.timedelta(minutes=20)
-        progress_time_limit = datetime.datetime.now() + tasks_manager_thread_progress_time_limit
+        progress_time_limit = datetime.datetime.now() + self._tasks_manager_thread_progress_time_limit
 
         for counter in range(60):
             if not self.tasks_queue.empty():
@@ -355,12 +363,12 @@ class S3Client(Boto3Client):
                 if datetime.datetime.now() > progress_time_limit:
                     self._tasks_manager_thread_keepalive = None
                     raise TimeoutError(f"tasks_manager_thread can not fetch ready tas for"
-                                       f" {tasks_manager_thread_progress_time_limit}")
+                                       f" {self._tasks_manager_thread_progress_time_limit}")
                 logger.info(f"Tasks manager thread waiting for tasks in tasks queue")
                 time.sleep(0.5)
                 continue
 
-            progress_time_limit = datetime.datetime.now() + tasks_manager_thread_progress_time_limit
+            progress_time_limit = datetime.datetime.now() + self._tasks_manager_thread_progress_time_limit
 
             if task.attempts and "Access Denied" in task.attempts[-1]:
                 self._tasks_manager_thread_keepalive = None
