@@ -124,8 +124,8 @@ def test_upload_small_files_directory_to_s3():
 if __name__ == "__main__":
     #test_init_s3_client()
     #test_provision_s3_bucket()
-    test_upload_small_file_to_s3()
-    #test_upload_large_file_to_s3()
+    #test_upload_small_file_to_s3()
+    test_upload_large_file_to_s3()
     #test_upload_large_files_directory_to_s3()
     #test_upload_small_files_directory_to_s3()
     #test_multipart_upload_file()

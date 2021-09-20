@@ -32,6 +32,7 @@ class UploadTask:
         self.started = False
         self.finished = False
         self.upload_id = None
+        self.attempts = []
 
     class Type(Enum):
         FILE = 0
@@ -53,12 +54,8 @@ class TasksQueue:
         self._max_queue_size = value
 
     def put(self, task):
-        counter = 10 * 60 * 2
-        while len(TasksQueue.TASKS_DICT) >= self.max_queue_size:
-            counter -= 1
-            if counter <= 0:
-                raise TimeoutError(f"Timeout reached waiting to put a task into tasks queue")
-            time.sleep(0.5)
+        if len(TasksQueue.TASKS_DICT) >= self.max_queue_size:
+            raise self.FullQueueError()
         TasksQueue.TASKS_DICT[task.id] = task
 
     def empty(self):
@@ -96,6 +93,9 @@ class TasksQueue:
                 continue
             if not task.started:
                 return task
+
+    class FullQueueError(RuntimeError):
+        pass
 
 
 class S3Client(Boto3Client):
@@ -279,9 +279,13 @@ class S3Client(Boto3Client):
         @return: None
         """
         start_time = datetime.datetime.now()
+
         self.finished_uploading_flow = False
+        self._tasks_manager_thread_keepalive = datetime.datetime.now()
+
         thread = threading.Thread(target=self.start_tasks_manager_thread)
         thread.start()
+
         self.start_uploading_object(bucket_name, src_object_path, dst_root_key,
                                     keep_src_object_name=keep_src_object_name)
         self.finished_uploading_flow = True
@@ -328,6 +332,9 @@ class S3Client(Boto3Client):
 
         @return:
         """
+        tasks_manager_thread_progress_time_limit = datetime.timedelta(minutes=20)
+        progress_time_limit = datetime.datetime.now() + tasks_manager_thread_progress_time_limit
+
         for counter in range(60):
             if not self.tasks_queue.empty():
                 break
@@ -337,23 +344,29 @@ class S3Client(Boto3Client):
             raise TimeoutError()
 
         while not self.tasks_queue.empty() or not self.finished_uploading_flow:
-            try:
-                self._tasks_manager_thread_keepalive = datetime.datetime.now()
+            self._tasks_manager_thread_keepalive = datetime.datetime.now()
 
-                finished_tasks = self.tasks_queue.prune_finished()
-                self.finish_multipart_uploads(finished_tasks)
+            finished_tasks = self.tasks_queue.prune_finished()
+            self.finish_multipart_uploads(finished_tasks)
 
-                task = self.tasks_queue.get_next_ready()
+            task = self.tasks_queue.get_next_ready()
 
-                if task is not None:
-                    self.execute_s3_upload_task(task)
-                    continue
-
+            if task is None:
+                if datetime.datetime.now() > progress_time_limit:
+                    self._tasks_manager_thread_keepalive = None
+                    raise TimeoutError(f"tasks_manager_thread can not fetch ready tas for"
+                                       f" {tasks_manager_thread_progress_time_limit}")
                 logger.info(f"Tasks manager thread waiting for tasks in tasks queue")
                 time.sleep(0.5)
-            except Exception:
-                tb = traceback.format_exc()
-                logger.error(tb)
+                continue
+
+            progress_time_limit = datetime.datetime.now() + tasks_manager_thread_progress_time_limit
+
+            if task.attempts and "Access Denied" in task.attempts[-1]:
+                self._tasks_manager_thread_keepalive = None
+                raise RuntimeError(f"Uploading file {task.file_path} failed with {task.attempts[-1]}")
+
+            self.execute_s3_upload_task(task)
 
     def finish_multipart_uploads(self, finished_tasks):
         """
@@ -425,7 +438,9 @@ class S3Client(Boto3Client):
                 task.raw_response = response
             task.succeed = True
         except Exception as exception_inst:
-            logger.warning(exception_inst)
+            exception_repr = repr(exception_inst)
+            logger.warning(exception_repr)
+            task.attempts.append(exception_repr)
             task.succeed = False
 
         task.finished = True
@@ -493,7 +508,7 @@ class S3Client(Boto3Client):
 
         task = UploadTask(task_id, task_type, file_path, bucket_name, key_name)
         task.start_time = datetime.datetime.now()
-        self.tasks_queue.put(task)
+        self.insert_task_into_tasks_queue(task)
 
     def start_multipart_uploading_file_task(self, bucket_name, file_path, key_name):
         """
@@ -537,7 +552,7 @@ class S3Client(Boto3Client):
             task.upload_id = upload_id
             task.file_lock = file_lock
             self.multipart_uploads[upload_id].append(task)
-            self.tasks_queue.put(task)
+            self.insert_task_into_tasks_queue(task)
 
         if part_chunk > 0:
             part_number += 1
@@ -549,7 +564,21 @@ class S3Client(Boto3Client):
             task.upload_id = upload_id
             task.file_lock = file_lock
             self.multipart_uploads[upload_id].append(task)
-            self.tasks_queue.put(task)
+            self.insert_task_into_tasks_queue(task)
+
+    def insert_task_into_tasks_queue(self, task):
+        counter = 20 * 60 * 2
+        while counter > 0:
+            if self._tasks_manager_thread_keepalive is None:
+                raise RuntimeError("tasks_manager_thread is dead")
+
+            try:
+                return self.tasks_queue.put(task)
+            except TasksQueue.FullQueueError():
+                counter -= 1
+                time.sleep(0.5)
+        else:
+            raise TimeoutError(f"Timeout reached waiting to put a task into tasks queue")
 
     def upload_directory(self, bucket_name, src_data_path, dst_root_key):
         """
