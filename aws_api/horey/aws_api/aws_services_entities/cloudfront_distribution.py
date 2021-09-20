@@ -13,6 +13,7 @@ class CloudfrontDistribution(AwsObject):
     """
     Lambda representation class
     """
+
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
 
@@ -40,7 +41,7 @@ class CloudfrontDistribution(AwsObject):
             "HttpVersion": self.init_default_attr,
             "IsIPV6Enabled": self.init_default_attr,
             "AliasICPRecordals": self.init_default_attr,
-                        }
+        }
 
         self.init_attrs(dict_src, init_options)
 
@@ -116,3 +117,15 @@ class CloudfrontDistribution(AwsObject):
         }
 
         self.init_attrs(dict_src, init_options)
+
+    def generate_create_invalidation(self, paths):
+        dict_ret = {"DistributionId": self.id,
+                    "InvalidationBatch": {
+                        "Paths": {
+                            "Quantity": len(paths),
+                            "Items": paths
+                        },
+                        "CallerReference": str(datetime.datetime.now())
+                    }
+                    }
+        return dict_ret

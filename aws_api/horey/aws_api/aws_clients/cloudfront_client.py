@@ -88,3 +88,10 @@ class CloudfrontClient(Boto3Client):
     def provision_origin_access_identity_raw(self, request_dict):
         for response in self.execute(self.client.create_cloud_front_origin_access_identity, "CloudFrontOriginAccessIdentity", filters_req=request_dict):
             return response
+
+    def create_invalidation(self, distribution, paths):
+        self.create_invalidation_raw(distribution.generate_create_invalidation(paths))
+
+    def create_invalidation_raw(self, request):
+        for response in self.execute(self.client.create_invalidation, "Invalidation", filters_req=request):
+            return response

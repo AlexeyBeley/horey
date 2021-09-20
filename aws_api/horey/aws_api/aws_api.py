@@ -2164,3 +2164,11 @@ class AWSAPI:
 
     def provision_cloudfront_origin_access_identity(self, cloudfront_origin_access_identity):
         self.cloudfront_client.provision_origin_access_identity(cloudfront_origin_access_identity)
+
+    def find_cloudfront_distribution(self, alias=None):
+        if alias is None:
+            raise RuntimeError("Alias is None")
+
+        for distribution in self.cloudfront_distributions:
+            if alias in distribution.aliases["Items"]:
+                return distribution
