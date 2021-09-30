@@ -371,10 +371,11 @@ class EC2Client(Boto3Client):
         for response in self.execute(self.client.describe_managed_prefix_lists, "PrefixLists", filters_req=request):
             return response
 
-    def get_managed_prefix_list(self, region, pl_id):
-        response = self.raw_describe_managed_prefix_list(region, pl_id=pl_id)
+    def get_managed_prefix_list(self, region, pl_id=None, name=None, full_information=True):
+        response = self.raw_describe_managed_prefix_list(region, pl_id=pl_id, prefix_list_name=name)
         obj = ManagedPrefixList(response)
-        self.update_managed_prefix_list_full_information(obj)
+        if full_information:
+            self.update_managed_prefix_list_full_information(obj)
         return obj
 
     def update_managed_prefix_list_full_information(self, prefix_list):
@@ -489,11 +490,16 @@ class EC2Client(Boto3Client):
             return
 
         region_object = ManagedPrefixList(raw_region_pl)
+        self.update_managed_prefix_list_full_information(region_object)
 
         request = region_object.get_entries_add_request(managed_prefix_list)
         if request is not None:
-            return self.raw_modify_managed_prefix_list(request)
-    
+            # todo: optimize - use return value
+            self.raw_modify_managed_prefix_list(request)
+            raw_region_pl = self.raw_describe_managed_prefix_list(managed_prefix_list.region, prefix_list_name=managed_prefix_list.name)
+
+        managed_prefix_list.update_from_raw_create(raw_region_pl)
+
     def get_all_amis(self, full_information=True, region=None):
         if region is not None:
             return self.get_region_amis(region, full_information=full_information)

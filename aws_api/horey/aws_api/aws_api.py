@@ -193,8 +193,11 @@ class AWSAPI:
         """
         if self.configuration is None:
             return
-        accounts = CommonUtils.load_object_from_module(self.configuration.accounts_file, "main")
+        accounts = self.get_all_managed_accounts()
         AWSAccount.set_aws_account(accounts[self.configuration.aws_api_account])
+
+    def get_all_managed_accounts(self):
+        return CommonUtils.load_object_from_module(self.configuration.accounts_file, "main")
 
     def add_managed_region(self, region):
         account = AWSAccount.get_aws_account()
@@ -204,11 +207,11 @@ class AWSAPI:
         account = AWSAccount.get_aws_account()
         return account.get_regions()
 
-    def init_managed_prefix_lists(self, from_cache=False, cache_file=None, region=None):
+    def init_managed_prefix_lists(self, from_cache=False, cache_file=None, region=None, full_information=True):
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, ManagedPrefixList)
         else:
-            objects = self.ec2_client.get_all_managed_prefix_lists(region=region)
+            objects = self.ec2_client.get_all_managed_prefix_lists(region=region, full_information=full_information)
 
         self.managed_prefix_lists = objects
     
