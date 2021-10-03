@@ -93,12 +93,21 @@ class CommonUtils:
         return f"{return_number} {mapping[key_limit]}"
 
     @staticmethod
-    def timestamp_to_datetime(timestamp):
+    def timestamp_to_datetime(timestamp, microseconds_value=False):
         """
-        int to datetime.
-        :param timestamp:
+        int/str to datetime.
+
+        @param timestamp:
+        @param microseconds_value: Is the value in microseconds
         :return:
         """
+
+        if microseconds_value:
+            try:
+                timestamp /= 1000
+            except TypeError:
+                timestamp = int(timestamp) / 1000
+
         return datetime.datetime.fromtimestamp(timestamp)
 
     @staticmethod

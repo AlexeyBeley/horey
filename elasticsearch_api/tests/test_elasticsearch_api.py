@@ -24,15 +24,17 @@ configuration.init_from_file()
 
 elasticsearch_api = ElasticsearchAPI(configuration=configuration)
 
+
 # region done
 #@pytest.mark.skip(reason="IAM policies will be inited explicitly")
-def test_init_indexes():
+def test_init_indices():
     elasticsearch_api.init_indices()
     logger.info(f"len(indexes) = {len(elasticsearch_api.indices)}")
-    assert isinstance(elasticsearch_api.indexes, list)
+    logger.info(list(elasticsearch_api.indices.keys()))
+    assert isinstance(elasticsearch_api.indices, dict)
 
 
-def test_delete_indexes():
+def test_delete_indices():
     elasticsearch_api.init_indices()
     elasticsearch_api.delete_indices()
 
@@ -42,8 +44,16 @@ def test_get_number_of_shards_used():
     shards_count = elasticsearch_api.get_number_of_shards_used()
     print(shards_count)
     pdb.set_trace()
+
+
+def test_clear_indices():
+    elasticsearch_api.init_indices()
+    elasticsearch_api.clear_indices()
+
 # endregion
 
+
 if __name__ == "__main__":
-    test_get_number_of_shards_used()
+    test_init_indices()
+    #test_clear_indices()
 

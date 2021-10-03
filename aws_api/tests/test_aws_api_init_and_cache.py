@@ -2,7 +2,6 @@
 sudo mount -t nfs4 -o  nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport  172.31.14.49:/ /home/ubuntu/efs
 """
 import json
-import sys
 import pdb
 
 import pytest
@@ -11,7 +10,6 @@ from horey.aws_api.aws_api import AWSAPI
 from horey.h_logger import get_logger
 from horey.aws_api.aws_api_configuration_policy import AWSAPIConfigurationPolicy
 from horey.aws_api.base_entities.region import Region
-#from horey.common_utils.debug_utils import DebugUtils
 
 
 #Uncomment next line to save error lines to /tmp/error.log
@@ -447,15 +445,7 @@ def test_init_and_cache_acm_certificates():
     aws_api.cache_objects(aws_api.acm_certificates, configuration.aws_api_acm_certificates_cache_file)
     print(f"len(acm_certificates) = {len(aws_api.acm_certificates)}")
     
-"""
-amis
-key_pairs
-internet_gateways
-vpc_peerings
-route_tables
-elastic_addresses
-nat_gateways
-"""
+
 if __name__ == "__main__":
     #test_init_and_cache_amis()
     #test_init_and_cache_key_pairs()
@@ -467,7 +457,6 @@ if __name__ == "__main__":
     #test_init_and_cache_ecr_repositories()
     #test_init_and_cache_ecs_clusters()
     #test_init_and_cache_ec2_launch_template_versions()
-    #find_stream()
     #test_init_and_cache_ecs_task_definitions()
     #test_add_managed_region()
     #test_init_and_cache_load_balancers()
