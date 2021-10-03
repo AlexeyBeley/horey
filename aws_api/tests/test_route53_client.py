@@ -24,11 +24,5 @@ def test_init_route53_client():
     assert isinstance(Route53Client(), Route53Client)
 
 
-def test_debug():
-    client = Route53Client()
-    client.test_debug()
-
-
 if __name__ == "__main__":
-    #test_create_security_group()
-    test_debug()
+    test_init_route53_client()

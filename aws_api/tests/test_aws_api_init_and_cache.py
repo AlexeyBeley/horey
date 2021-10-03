@@ -1,6 +1,3 @@
-"""
-sudo mount -t nfs4 -o  nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport  172.31.14.49:/ /home/ubuntu/efs
-"""
 import json
 import pdb
 
@@ -178,7 +175,6 @@ def test_init_and_cache_rds_db_cluster_parameter_groups():
     aws_api.init_rds_db_cluster_parameter_groups()
     aws_api.cache_objects(aws_api.rds_db_cluster_parameter_groups, configuration.aws_api_rds_db_cluster_parameter_groups_cache_file)
     print(f"len(rds_db_cluster_parameter_groups) = {len(aws_api.rds_db_cluster_parameter_groups)}")
-    pdb.set_trace()
     assert isinstance(aws_api.rds_db_cluster_parameter_groups, list)
 
 
@@ -243,11 +239,6 @@ def test_init_and_cache_event_bridge_rules():
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_secrets_manager_secrets():
     aws_api.init_secrets_manager_secrets()
-    #ret = [secret for secret in aws_api.secrets_manager_secrets if secret.name.startswith("stg_")]
-    #for secret in ret:
-        #aws_api.copy_secrets_manager_secret_to_region(secret.name, "eu-central-1", "us-east-1")
-
-    #pdb.set_trace()
     assert isinstance(aws_api.secrets_manager_secrets, list)
 
 
@@ -392,7 +383,6 @@ def test_init_and_cache_ecs_services():
 def test_init_and_cache_ecs_task_definitions():
     aws_api.init_ecs_task_definitions()
     aws_api.cache_objects(aws_api.ecs_task_definitions, configuration.aws_api_ecs_task_definitions_cache_file)
-    pdb.set_trace()
     assert isinstance(aws_api.ecs_task_definitions, list)
 
 
@@ -405,13 +395,10 @@ def find_stream():
         for dict_stream in ret:
             if "something" in dict_stream["logStreamName"]:
                 print(dict_stream["logStreamName"])
-                #pdb.set_trace()
-                #ret_ = [(x, x["firstEventTimestamp"]) for x in ret if "4470" in x["logStreamName"]]
 
 
 def find_ami():
     region = "us-east-1"
-    #region = "us-west-2"
     filter_request = dict()
     filter_request["Filters"] = [{'Name': 'owner-id',
                                   'Values': [
@@ -429,7 +416,6 @@ def find_ami():
     amis = aws_api.ec2_client.get_region_amis(region, custom_filters=filter_request)
     ami = amis[0]
     ami.print_dict_src()
-    pdb.set_trace()
 
 
 @pytest.mark.skip(reason="No way of currently testing this")

@@ -8,7 +8,6 @@ from horey.aws_api.aws_services_entities.rds_db_subnet_group import RDSDBSubnetG
 from horey.aws_api.aws_services_entities.rds_db_cluster_parameter_group import RDSDBClusterParameterGroup
 from horey.aws_api.aws_services_entities.rds_db_parameter_group import RDSDBParameterGroup
 
-import pdb
 from horey.h_logger import get_logger
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.base_entities.region import Region
