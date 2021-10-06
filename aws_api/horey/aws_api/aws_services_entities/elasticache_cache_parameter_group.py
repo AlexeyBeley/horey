@@ -18,8 +18,11 @@ class ElasticacheCacheParameterGroup(AwsObject):
             self._init_object_from_cache(dict_src)
             return
         init_options = {
-            "CacheClusterId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
-            "ClientDownloadLandingPage":  self.init_default_attr,
+            "ARN": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "CacheParameterGroupName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "CacheParameterGroupFamily": self.init_default_attr,
+            "Description": self.init_default_attr,
+            "IsGlobal": self.init_default_attr,
             }
 
         self.init_attrs(dict_src, init_options)

@@ -49,7 +49,6 @@ class ElasticacheClient(Boto3Client):
 
         pdb.set_trace()
         for dict_src in self.execute(self.client.describe_cache_clusters, "CacheClusters"):
-            pdb.set_trace()
             obj = ElasticacheCluster(dict_src)
             final_result.append(obj)
 
@@ -74,9 +73,7 @@ class ElasticacheClient(Boto3Client):
 
         final_result = list()
 
-        pdb.set_trace()
         for dict_src in self.execute(self.client.describe_cache_parameter_groups, "CacheParameterGroups"):
-            pdb.set_trace()
             obj = ElasticacheCacheParameterGroup(dict_src)
             final_result.append(obj)
 
@@ -101,9 +98,7 @@ class ElasticacheClient(Boto3Client):
 
         final_result = list()
 
-        pdb.set_trace()
         for dict_src in self.execute(self.client.describe_cache_subnet_groups, "CacheSubnetGroups"):
-            pdb.set_trace()
             obj = ElasticacheCacheSubnetGroup(dict_src)
             final_result.append(obj)
 
@@ -128,9 +123,7 @@ class ElasticacheClient(Boto3Client):
 
         final_result = list()
 
-        pdb.set_trace()
-        for dict_src in self.execute(self.client.describe_cache_replication_groups, "ReplicationGroups"):
-            pdb.set_trace()
+        for dict_src in self.execute(self.client.describe_replication_groups, "ReplicationGroups"):
             obj = ElasticacheReplicationGroup(dict_src)
             final_result.append(obj)
 

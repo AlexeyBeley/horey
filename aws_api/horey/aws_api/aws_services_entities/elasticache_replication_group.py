@@ -18,8 +18,25 @@ class ElasticacheReplicationGroup(AwsObject):
             self._init_object_from_cache(dict_src)
             return
         init_options = {
-            "CacheClusterId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
-            "ClientDownloadLandingPage":  self.init_default_attr,
+            "ARN": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "LogDeliveryConfigurations":  self.init_default_attr,
+            "ReplicationGroupId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "Description": self.init_default_attr,
+            "GlobalReplicationGroupInfo": self.init_default_attr,
+            "Status": self.init_default_attr,
+            "PendingModifiedValues": self.init_default_attr,
+            "MemberClusters": self.init_default_attr,
+            "NodeGroups": self.init_default_attr,
+            "SnapshottingClusterId": self.init_default_attr,
+            "AutomaticFailover": self.init_default_attr,
+            "MultiAZ": self.init_default_attr,
+            "SnapshotRetentionLimit": self.init_default_attr,
+            "SnapshotWindow": self.init_default_attr,
+            "ClusterEnabled": self.init_default_attr,
+            "CacheNodeType": self.init_default_attr,
+            "AuthTokenEnabled": self.init_default_attr,
+            "TransitEncryptionEnabled": self.init_default_attr,
+            "AtRestEncryptionEnabled": self.init_default_attr,
             }
 
         self.init_attrs(dict_src, init_options)
