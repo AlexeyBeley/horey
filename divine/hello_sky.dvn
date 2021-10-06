@@ -1,0 +1,40 @@
+
+# Management End
+vpc_mgmt = [VPC]
+vpc_mgmt.name = "alexey-test"
+vpc_mgmt.region = "us-east-1"
+
+public_network = [AMI{os=Ubuntu18, owner=12345}]
+
+ami_test = [AMI{os=Ubuntu18, owner=12345}]
+
+bastion_instance = [EC2_INSTANCE]
+bastion_instance -> [EBS{size=50}]
+bastion_instance -> ami_test
+bastion_instance -> vpc_mgmt
+
+
+
+# Front end
+vpc_frontend = [VPC]
+vpc_frontend.name = alexey-front
+vpc_frontend.region = "us-west-2"
+
+ami_front = [AMI{os=Ubuntu18, owner=12345}]
+
+instance_front = [EC2_INSTANCE]
+instance_front -> [EBS{size=50}]
+instance_front -> ami_front
+instance_front -> vpc_frontend
+
+lb_front = [EC2_ALB{external_port=80}]
+lb_front -> [EC2_ALB_TARGET_GROUP{internal_port=8080}]
+
+for i in (4){
+    lb_front -> instance_front
+}
+
+lb.provision()
+
+
+

@@ -45,10 +45,19 @@ class ElasticsearchAPI(object):
         self.init_indices()
         to_del_indices = []
         for es_index_name, es_index in self.indices.items():
+            if ".kibana" in es_index_name:
+                continue
+
             created_date = CommonUtils.timestamp_to_datetime(es_index["settings"]["index"]["creation_date"], microseconds_value=True)
             if created_date < time_limit:
                 logger.info(f"Deleting index '{es_index_name}' created at {created_date}")
                 to_del_indices.append(es_index_name)
-
+        pdb.set_trace()
         self.client.indices.delete(to_del_indices)
         logger.info(f"Deleted {len(to_del_indices)} out of {len(self.indices)}")
+
+    def recreate_kibana_index(self):
+        pdb.set_trace()
+        self.client.indices.delete([".kibana"])
+
+        ret = self.client.indices.create(".kibana", body={"mappings": {"dynamic": True}})

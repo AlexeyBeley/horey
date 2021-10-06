@@ -80,6 +80,12 @@ from horey.aws_api.aws_services_entities.servicediscovery_service import Service
 from horey.aws_api.aws_clients.elasticsearch_client import ElasticsearchClient
 from horey.aws_api.aws_services_entities.elasticsearch_domain import ElasticsearchDomain
 
+from horey.aws_api.aws_clients.elasticache_client import ElasticacheClient
+from horey.aws_api.aws_services_entities.elasticache_cluster import ElasticacheCluster
+from horey.aws_api.aws_services_entities.elasticache_cache_parameter_group import ElasticacheCacheParameterGroup
+from horey.aws_api.aws_services_entities.elasticache_cache_subnet_group import ElasticacheCacheSubnetGroup
+from horey.aws_api.aws_services_entities.elasticache_replication_group import ElasticacheReplicationGroup
+
 from horey.aws_api.aws_services_entities.vpc import VPC
 from horey.aws_api.aws_services_entities.subnet import Subnet
 from horey.aws_api.aws_services_entities.availability_zone import AvailabilityZone
@@ -94,10 +100,8 @@ from horey.aws_api.aws_services_entities.ecr_repository import ECRRepository
 from horey.aws_api.aws_services_entities.ecr_image import ECRImage
 from horey.aws_api.aws_services_entities.ecs_cluster import ECSCluster
 from horey.aws_api.aws_services_entities.ecs_capacity_provider import ECSCapacityProvider
-from horey.aws_api.aws_services_entities.ecs_task_definition import ECSTaskDefinition
 from horey.aws_api.aws_services_entities.ecs_service import ECSService
 from horey.common_utils.common_utils import CommonUtils
-from horey.network.dns import DNS
 
 from horey.h_logger import get_logger
 from horey.common_utils.text_block import TextBlock
@@ -134,6 +138,7 @@ class AWSAPI:
         self.elasticsearch_client = ElasticsearchClient()
         self.ecr_client = ECRClient()
         self.acm_client = ACMClient()
+        self.elasticache_client = ElasticacheClient()
 
         self.network_interfaces = []
         self.iam_policies = []
@@ -183,6 +188,10 @@ class AWSAPI:
         self.auto_scaling_groups = []
         self.ecs_task_definitions = []
         self.ecs_services = []
+        self.elasticache_clusters = []
+        self.elasticache_cache_parameter_groups = []
+        self.elasticache_cache_subnet_groups = []
+        self.elasticache_replication_groups = []
 
         self.configuration = configuration
         self.init_configuration()
@@ -849,6 +858,62 @@ class AWSAPI:
 
         self.rds_db_clusters = objects
 
+    def init_elasticache_clusters(self, from_cache=False, cache_file=None, region=None):
+        """
+
+        @param from_cache:
+        @param cache_file:
+        @return:
+        """
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, ElasticacheCluster)
+        else:
+            objects = self.elasticache_client.get_all_clusters(region=region)
+
+        self.elasticache_clusters = objects
+    
+    def init_elasticache_cache_parameter_groups(self, from_cache=False, cache_file=None, region=None):
+        """
+
+        @param from_cache:
+        @param cache_file:
+        @return:
+        """
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, ElasticacheCacheParameterGroup)
+        else:
+            objects = self.elasticache_client.get_all_cache_parameter_groups(region=region)
+
+        self.elasticache_cache_parameter_groups = objects
+    
+    def init_elasticache_cache_subnet_groups(self, from_cache=False, cache_file=None, region=None):
+        """
+
+        @param from_cache:
+        @param cache_file:
+        @return:
+        """
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, ElasticacheCacheSubnetGroup)
+        else:
+            objects = self.elasticache_client.get_all_cache_subnet_groups(region=region)
+
+        self.elasticache_cache_subnet_groups = objects
+  
+    def init_elasticache_replication_groups(self, from_cache=False, cache_file=None, region=None):
+        """
+
+        @param from_cache:
+        @param cache_file:
+        @return:
+        """
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, ElasticacheReplicationGroup)
+        else:
+            objects = self.elasticache_client.get_all_replication_groups(region=region)
+
+        self.elasticache_replication_groups = objects
+        
     def init_target_groups(self, from_cache=False, cache_file=None):
         """
         Init ELB target groups

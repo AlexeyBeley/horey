@@ -15,7 +15,7 @@ SECRET_VALUE := "value"
 #SECRET_FILE_PATH := "private/ignore/${SECRET_FILE_NAME}"
 
 SECRET_FILE_NAME := "xxx.pem"
-SECRET_FILE_PATH := "/Users/xxx/.ssh/${SECRET_FILE_NAME}"
+SECRET_FILE_PATH := "/Users/xxx/.ssh/xxx/${SECRET_FILE_NAME}"
 
 test:
 	echo ${CONFIGURATION_FILE_PATH}

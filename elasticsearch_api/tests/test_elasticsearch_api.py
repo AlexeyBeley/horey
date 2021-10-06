@@ -29,6 +29,7 @@ elasticsearch_api = ElasticsearchAPI(configuration=configuration)
 #@pytest.mark.skip(reason="IAM policies will be inited explicitly")
 def test_init_indices():
     elasticsearch_api.init_indices()
+    pdb.set_trace()
     logger.info(f"len(indexes) = {len(elasticsearch_api.indices)}")
     logger.info(list(elasticsearch_api.indices.keys()))
     assert isinstance(elasticsearch_api.indices, dict)
@@ -50,10 +51,15 @@ def test_clear_indices():
     elasticsearch_api.init_indices()
     elasticsearch_api.clear_indices()
 
+
+def test_recreate_kibana_index():
+    elasticsearch_api.init_indices()
+    elasticsearch_api.recreate_kibana_index()
+
 # endregion
 
 
 if __name__ == "__main__":
-    test_init_indices()
-    #test_clear_indices()
+    #test_recreate_kibana_index()
+    test_clear_indices()
 

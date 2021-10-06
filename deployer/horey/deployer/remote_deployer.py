@@ -291,7 +291,9 @@ class RemoteDeployer:
                     port=tunnel.local_bind_port,
                     username=block_to_deploy.deployment_target_user_name,
                     pkey=deployment_target_key,
-                    compress=True)
+                    compress=True,
+                    banner_timeout=60
+                )
 
                 yield client
     
@@ -316,7 +318,8 @@ class RemoteDeployer:
                     port=tunnel.local_bind_port,
                     username=target.deployment_target_user_name,
                     pkey=deployment_target_key,
-                    compress=True)
+                    compress=True,
+                    banner_timeout=60)
 
                 yield client
                 
