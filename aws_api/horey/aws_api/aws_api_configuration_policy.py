@@ -554,6 +554,14 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
         raise ValueError(value)
     
     @property
+    def aws_api_elasticache_cache_security_groups_cache_file(self):
+        return os.path.join(self.aws_api_elasticache_cache_dir, "elasticache_cache_security_groups.json")
+
+    @aws_api_elasticache_cache_security_groups_cache_file.setter
+    def aws_api_elasticache_cache_security_groups_cache_file(self, value):
+        raise ValueError(value)
+    
+    @property
     def aws_api_elasticache_cache_parameter_groups_cache_file(self):
         return os.path.join(self.aws_api_elasticache_cache_dir, "elasticache_cache_parameter_groups.json")
 

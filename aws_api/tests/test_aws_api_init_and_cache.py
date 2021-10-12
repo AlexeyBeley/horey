@@ -192,7 +192,16 @@ def test_init_and_cache_elasticache_cache_subnet_groups():
     aws_api.cache_objects(aws_api.elasticache_cache_subnet_groups, configuration.aws_api_elasticache_cache_subnet_groups_cache_file)
     print(f"len(elasticache_cache_subnet_groups) = {len(aws_api.elasticache_cache_subnet_groups)}")
     assert isinstance(aws_api.elasticache_cache_subnet_groups, list)
-    
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_elasticache_cache_security_groups():
+    aws_api.init_elasticache_cache_security_groups()
+    aws_api.cache_objects(aws_api.elasticache_cache_security_groups,
+                          configuration.aws_api_elasticache_cache_security_groups_cache_file)
+    print(f"len(elasticache_cache_security_groups) = {len(aws_api.elasticache_cache_security_groups)}")
+    assert isinstance(aws_api.elasticache_cache_security_groups, list)
+
 
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_rds_db_subnet_groups():
@@ -489,6 +498,7 @@ if __name__ == "__main__":
     #test_init_and_cache_cloudfront_origin_access_identities()
     #test_init_and_cache_cloudfront_distributions()
     #test_init_and_cache_elasticache_clusters()
-    test_init_and_cache_elasticache_cache_parameter_groups()
-    test_init_and_cache_elasticache_cache_subnet_groups()
+    #test_init_and_cache_elasticache_cache_parameter_groups()
+    #test_init_and_cache_elasticache_cache_subnet_groups()
     test_init_and_cache_elasticache_replication_groups()
+    #test_init_and_cache_elasticache_cache_security_groups()

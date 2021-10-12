@@ -84,6 +84,7 @@ from horey.aws_api.aws_clients.elasticache_client import ElasticacheClient
 from horey.aws_api.aws_services_entities.elasticache_cluster import ElasticacheCluster
 from horey.aws_api.aws_services_entities.elasticache_cache_parameter_group import ElasticacheCacheParameterGroup
 from horey.aws_api.aws_services_entities.elasticache_cache_subnet_group import ElasticacheCacheSubnetGroup
+from horey.aws_api.aws_services_entities.elasticache_cache_security_group import ElasticacheCacheSecurityGroup
 from horey.aws_api.aws_services_entities.elasticache_replication_group import ElasticacheReplicationGroup
 
 from horey.aws_api.aws_services_entities.vpc import VPC
@@ -191,6 +192,7 @@ class AWSAPI:
         self.elasticache_clusters = []
         self.elasticache_cache_parameter_groups = []
         self.elasticache_cache_subnet_groups = []
+        self.elasticache_cache_security_groups = []
         self.elasticache_replication_groups = []
 
         self.configuration = configuration
@@ -899,7 +901,21 @@ class AWSAPI:
             objects = self.elasticache_client.get_all_cache_subnet_groups(region=region)
 
         self.elasticache_cache_subnet_groups = objects
-  
+    
+    def init_elasticache_cache_security_groups(self, from_cache=False, cache_file=None, region=None):
+        """
+
+        @param from_cache:
+        @param cache_file:
+        @return:
+        """
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, ElasticacheCacheSecurityGroup)
+        else:
+            objects = self.elasticache_client.get_all_cache_security_groups(region=region)
+
+        self.elasticache_cache_security_groups = object
+    
     def init_elasticache_replication_groups(self, from_cache=False, cache_file=None, region=None):
         """
 
@@ -2224,6 +2240,15 @@ class AWSAPI:
     def provision_db_instance(self, db_instance):
         self.rds_client.provision_db_instance(db_instance)
 
+    def provision_elasticache_cahce_subnet_group(self, subnet_group):
+        self.elasticache_client.provision_subnet_group(subnet_group)
+
+    def provision_elaticache_cluster(self, cluster):
+        self.elasticache_client.provision_cluster(cluster)
+
+    def provision_elaticache_replication_group(self, replication_group):
+        self.elasticache_client.provision_replication_group(replication_group)
+        
     def provision_s3_bucket(self, s3_bucket):
         self.s3_client.provision_bucket(s3_bucket)
 
@@ -2240,3 +2265,24 @@ class AWSAPI:
         for distribution in self.cloudfront_distributions:
             if alias in distribution.aliases["Items"]:
                 return distribution
+
+    def wait_for_instances_provision_ending(self, instances):
+        instance_ids = [instance.id for instance in instances]
+        start_time = datetime.datetime.now()
+        end_time = start_time + datetime.timedelta(minutes=15)
+        time_to_sleep = 20
+
+        while datetime.datetime.now() < end_time:
+            region_ec2_instances = self.ec2_client.get_region_ec2_instances(instances[0].region)
+            for region_ec2_instance in region_ec2_instances:
+                if region_ec2_instance.id not in instance_ids:
+                    continue
+                if region_ec2_instance.get_state() == region_ec2_instance.State.RUNNING:
+                    instance_ids.remove(region_ec2_instance.id)
+
+            if len(instance_ids) == 0:
+                break
+            logger.info(f"Waiting for instances to be ready. Going to sleep for {time_to_sleep} seconds")
+            time.sleep(time_to_sleep)
+        else:
+            raise TimeoutError()

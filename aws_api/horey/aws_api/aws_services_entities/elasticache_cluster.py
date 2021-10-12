@@ -58,3 +58,26 @@ class ElasticacheCluster(AwsObject):
 
     def update_value_from_raw_response(self, raw_value):
         pdb.set_trace()
+
+    def generate_create_request(self):
+        request = dict()
+
+        request["CacheClusterId"] = self.id
+        request["ReplicationGroupId"] = self.replication_group_id
+        request["AZMode"] = self.az_mode
+        request["PreferredAvailabilityZones"] = self.preferred_availability_zones
+        request["NumCacheNodes"] = self.num_cache_nodes
+        request["CacheNodeType"] = self.cache_node_type
+        request["Engine"] = self.engine
+        request["EngineVersion"] = self.engine_version
+        request["Tags"] = self.tags
+        request["SecurityGroupIds"] = self.security_group_ids
+        request["CacheParameterGroupName"] = self.cache_parameter_group_name
+        request["CacheSubnetGroupName"] = self.cache_subnet_group_name
+
+        request["PreferredMaintenanceWindow"] = self.preferred_maintenance_window
+        request["AutoMinorVersionUpgrade"] = self.auto_minor_version_upgrade
+        request["SnapshotRetentionLimit"] = self.snapshot_retention_limit
+        request["SnapshotWindow"] = self.snapshot_window
+
+        return request
