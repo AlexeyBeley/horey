@@ -185,6 +185,9 @@ class RemoteDeployer:
             logger.info(f"Step finished successfully output in: '{step.configuration.output_file_name}'")
 
     def perform_recursive_replacements(self, replacements_base_dir_path, string_replacements):
+        if not os.path.exists(replacements_base_dir_path):
+            raise RuntimeError(f"No such directory '{replacements_base_dir_path}'")
+
         for root, _, filenames in os.walk(replacements_base_dir_path):
             for filename in filenames:
                 if filename.startswith("template_"):

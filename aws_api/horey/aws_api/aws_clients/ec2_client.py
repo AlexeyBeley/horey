@@ -157,10 +157,16 @@ class EC2Client(Boto3Client):
 
         return final_result
 
-    def get_region_instances(self, region):
+    def get_region_instances(self, region, filters=None):
         AWSAccount.set_aws_region(region)
         final_result = []
-        for instance in self.execute(self.client.describe_instances, "Reservations"):
+
+        if filters is not None:
+            filters_req = {"Filters": filters}
+        else:
+            filters_req = None
+
+        for instance in self.execute(self.client.describe_instances, "Reservations", filters_req=filters_req):
             final_result.extend(instance['Instances'])
 
         return [EC2Instance(instance) for instance in final_result]
