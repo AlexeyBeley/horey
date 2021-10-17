@@ -36,16 +36,19 @@ class ECRClient(Boto3Client):
             dict_src["proxy_host"] = dict_src["proxyEndpoint"][len("https://"):]
         return lst_ret
 
-    def create_repository(self, repo_name):
-        try:
-            for _ in self.execute(self.client.create_repository, "repository", filters_req={"repositoryName": repo_name}):
-                return True
-        except Exception as e:
-            e_lower_repr = repr(e).lower()
-            if "repository" in e_lower_repr and "already" in e_lower_repr and "exists" in e_lower_repr:
-                return True
+    def provision_repository_raw(self, request_dict):
+        for response in self.execute(self.client.create_repository, "repository", filters_req=request_dict):
+            return response
 
-        return False
+    def provision_repository(self, repository):
+        AWSAccount.set_aws_region(repository.region)
+
+        region_repos = self.get_region_repositories(repository.region, repository_names=[repository.name])
+        if len(region_repos) == 1:
+            return repository.update_from_raw_create(region_repos[0].dict_src)
+
+        dict_ret = self.provision_repository_raw(repository.generate_create_request())
+        return repository.update_from_raw_create(dict_ret)
 
     def get_all_images(self, repository):
         """
@@ -83,7 +86,8 @@ class ECRClient(Boto3Client):
 
         final_result = list()
         AWSAccount.set_aws_region(region)
-        for dict_src in self.execute(self.client.describe_repositories, "repositories", filters_req=filters_req):
+        for dict_src in self.execute(self.client.describe_repositories, "repositories", filters_req=filters_req,
+                                     exception_ignore_callback=lambda error: "RepositoryNotFoundException" in repr(error)):
             obj = ECRRepository(dict_src)
             final_result.append(obj)
 

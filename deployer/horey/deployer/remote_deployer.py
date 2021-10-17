@@ -150,6 +150,13 @@ class RemoteDeployer:
             self.deploy_target_step_thread(deployment_target, step)
 
     def deploy_target_step_thread(self, deployment_target, step):
+        try:
+            self.deploy_target_step_thread_helper(deployment_target, step)
+        except Exception as exception_instance:
+            step.status_code = step.StatusCode.ERROR
+            step.output = repr(exception_instance)
+
+    def deploy_target_step_thread_helper(self, deployment_target, step):
         with self.get_deployment_target_client_context(deployment_target) as client:
             self.execute_step(client, step)
             transport = client.get_transport()
@@ -173,7 +180,7 @@ class RemoteDeployer:
                         f"Retrying to fetch remote script's status in {sleep_time} seconds ({retry_counter}/{retry_attempts})")
                 time.sleep(sleep_time)
             else:
-                raise TimeoutError("Failed to fetch remote script's status")
+                raise TimeoutError(f"Failed to fetch remote script's status target: {deployment_target.deployment_target_address}")
 
             step.update_finish_status(deployment_target.local_deployment_data_dir_path)
             step.update_output(deployment_target.local_deployment_data_dir_path)
@@ -356,7 +363,7 @@ class RemoteDeployer:
             if all([check_callback(target) for target in targets]):
                 break
 
-            logger.info(f"wait_to_finish going to sleep for {sleep_time} seconds")
+            logger.info(f"remote_deployer wait_to_finish going to sleep for {sleep_time} seconds")
             time.sleep(sleep_time)
         else:
             raise TimeoutError(f"Result: {[check_callback(target) for target in targets]}")

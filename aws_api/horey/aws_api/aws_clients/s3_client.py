@@ -437,11 +437,12 @@ class S3Client(Boto3Client):
         else:
             raise ValueError(task.type)
 
-    def upload_file_thread(self, task):
+    def upload_file_thread(self, task, md5_validate=False):
         """
         Uploads a complete file.
 
         @param task: UpdateTask with all needed info
+        @param md5_validate: if True validates the uploaded file with md5
         @return:
         """
         with open(task.file_path, "rb") as file_handler:

@@ -1,10 +1,10 @@
 import os
 
+from unittest.mock import Mock
 from horey.aws_api.aws_clients.s3_client import S3Client
 from horey.aws_api.aws_services_entities.s3_bucket import S3Bucket
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.base_entities.region import Region
-
 
 AWSAccount.set_aws_region(Region.get_region('us-west-2'))
 
@@ -159,14 +159,35 @@ def test_upload_small_files_directory_to_s3():
     dst_root_key = "root"
     s3_client.upload(TEST_BUCKET_NAME, src_data_path, dst_root_key, keep_src_object_name=True)
 
+def test_upload_file_thread_without_validation():
+
+    path = "./test_file"
+    # 10 Byte
+    size = 10
+
+    create_test_file(path, size)
+
+    s3_client = S3Client()
+    task = Mock()
+    task.file_path = path
+    task.bucket_name = TEST_BUCKET_NAME
+    task.key_name = "root/test_file"
+    task.extra_args = None
+    task.raw_response = None
+    task.succeed = None
+    task.attempts = list()
+    task.finished = None
+    s3_client.upload_file_thread(task, md5_validate=False)
+
 
 if __name__ == "__main__":
     #test_init_s3_client()
     #test_provision_s3_bucket()
     #test_upload_small_file_to_s3()
     #test_upload_small_file_with_extra_args_to_s3()
-    test_upload_large_file_with_extra_args_to_s3()
+    #test_upload_large_file_with_extra_args_to_s3()
     #test_upload_large_file_to_s3()
     #test_upload_large_files_directory_to_s3()
     #test_upload_small_files_directory_to_s3()
     #test_multipart_upload_file()
+    test_upload_file_thread_without_validation()

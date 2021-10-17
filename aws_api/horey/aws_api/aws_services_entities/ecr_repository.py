@@ -41,42 +41,17 @@ class ECRRepository(AwsObject):
         options = {}
         self._init_from_cache(dict_src, options)
 
-    def update_value_from_raw_response(self, raw_value):
-        raise NotImplementedError()
-        pdb.set_trace()
-
     def generate_create_request(self):
-        raise NotImplementedError()
-        """
-        TagSpecifications=[
-        {
-            'ResourceType': 'client-vpn-endpoint'|'customer-gateway'|'dedicated-host'|'dhcp-options'|'egress-only-internet-gateway'|'elastic-ip'|'elastic-gpu'|'export-image-task'|'export-instance-task'|'fleet'|'fpga-image'|'host-reservation'|'image'|'import-image-task'|'import-snapshot-task'|'instance'|'internet-gateway'|'key-pair'|'launch-template'|'local-gateway-route-table-vpc-association'|'natgateway'|'network-acl'|'network-interface'|'network-insights-analysis'|'network-insights-path'|'placement-group'|'reserved-instances'|'route-table'|'security-group'|'snapshot'|'spot-fleet-request'|'spot-instances-request'|'subnet'|'traffic-mirror-filter'|'traffic-mirror-session'|'traffic-mirror-target'|'transit-gateway'|'transit-gateway-attachment'|'transit-gateway-connect-peer'|'transit-gateway-multicast-domain'|'transit-gateway-route-table'|'volume'|'vpc'|'vpc-peering-connection'|'vpn-connection'|'vpn-gateway'|'vpc-flow-log',
-            'Tags': [
-                {
-                    'Key': 'string',
-                    'Value': 'string'
-                },
-            ]
-        },
-    ],
-       """
         request = dict()
-        request["CidrBlock"] = self.cidr_block
-        request["AvailabilityZoneId"] = self.availability_zone_id
-        request["VpcId"] = self.vpc_id
-        request["TagSpecifications"] = [{
-                                        "ResourceType": "subnet",
-                                        "Tags": self.tags}]
-
+        request["repositoryName"] = self.name
+        request["tags"] = self.tags
         return request
 
     def update_from_raw_create(self, dict_src):
-        raise NotImplementedError()
-        pdb.set_trace()
         init_options = {
             "repositoryArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
             "registryId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
-            "repositoryName": self.init_default_attr,
+            "repositoryName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
             "repositoryUri": self.init_default_attr,
             "createdAt": self.init_default_attr,
             "imageTagMutability": self.init_default_attr,
