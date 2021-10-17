@@ -172,7 +172,7 @@ def test_upload_file_thread_without_validation():
     task.file_path = path
     task.bucket_name = TEST_BUCKET_NAME
     task.key_name = "root/test_file"
-    task.extra_args = None
+    task.extra_args = {}
     task.raw_response = None
     task.succeed = None
     task.attempts = list()
