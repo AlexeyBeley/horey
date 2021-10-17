@@ -180,6 +180,26 @@ def test_upload_file_thread_without_validation():
     s3_client.upload_file_thread(task, md5_validate=False)
 
 
+def test_upload_file_thread_with_validation():
+
+    path = "./test_file"
+    # 10 Byte
+    size = 10
+
+    create_test_file(path, size)
+
+    s3_client = S3Client()
+    task = Mock()
+    task.file_path = path
+    task.bucket_name = TEST_BUCKET_NAME
+    task.key_name = "root/test_file"
+    task.extra_args = {}
+    task.raw_response = None
+    task.succeed = None
+    task.attempts = list()
+    task.finished = None
+    s3_client.upload_file_thread(task, md5_validate=True)
+
 if __name__ == "__main__":
     #test_init_s3_client()
     #test_provision_s3_bucket()
@@ -190,4 +210,5 @@ if __name__ == "__main__":
     #test_upload_large_files_directory_to_s3()
     #test_upload_small_files_directory_to_s3()
     #test_multipart_upload_file()
-    test_upload_file_thread_without_validation()
+    #test_upload_file_thread_without_validation()
+    test_upload_file_thread_with_validation()

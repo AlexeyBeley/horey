@@ -4,6 +4,8 @@ AWS s3 client to handle s3 service API requests.
 import datetime
 import os
 import pdb
+import base64
+import hashlib
 
 import time
 
@@ -451,7 +453,18 @@ class S3Client(Boto3Client):
         start_time = datetime.datetime.now()
         filters_req = {"Bucket": task.bucket_name, "Key": task.key_name, "Body": file_data}
         filters_req.update(task.extra_args)
+        if md5_validate:
+            md = hashlib.md5(file_data).hexdigest()
+            #md = hashlib.md5(file_data.encode('utf-8')).digest()
+            content_md5_string = base64.b64encode(md).decode('utf-8')
+            if "Metadata" not in filters_req:
+                filters_req["Metadata"] = {}
 
+            filters_req["Metadata"].update({
+                "md5chksum": content_md5_string
+            })
+
+        pdb.set_trace()
         try:
             for response in self.execute(self.client.put_object, None, filters_req=filters_req, raw_data=True):
                 task.raw_response = response
