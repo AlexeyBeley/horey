@@ -457,7 +457,7 @@ class S3Client(Boto3Client):
             md = hashlib.md5(file_data).hexdigest()
             #md = hashlib.md5(file_data.encode('utf-8')).digest()
             #content_md5_string = base64.b64encode(md).decode('utf-8')
-            content_md5_string = hashlib.md5(file_data).hexdigest()
+            content_md5_string = hashlib.md5(file_data).hexdigest() + "b"
             if "Metadata" not in filters_req:
                 filters_req["Metadata"] = {}
 
