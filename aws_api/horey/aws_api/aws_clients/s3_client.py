@@ -454,13 +454,13 @@ class S3Client(Boto3Client):
         filters_req = {"Bucket": task.bucket_name, "Key": task.key_name, "Body": file_data}
         filters_req.update(task.extra_args)
         if md5_validate:
-            md = hashlib.md5(file_data).hexdigest()
+            md = hashlib.md5(file_data).digest()
+            content_md5_string = base64.b64encode(md).decode('utf-8')
             #md = hashlib.md5(file_data.encode('utf-8')).digest()
             #content_md5_string = base64.b64encode(md).decode('utf-8')
-            content_md5_string = hashlib.md5(file_data).hexdigest()
+            #content_md5_string = hashlib.md5(file_data).hexdigest()
             filters_req["ContentMD5"] = content_md5_string
 
-        pdb.set_trace()
         try:
             for response in self.execute(self.client.put_object, None, filters_req=filters_req, raw_data=True):
                 task.raw_response = response
