@@ -189,6 +189,7 @@ def test_upload_file_thread_with_validation():
     create_test_file(path, size)
 
     s3_client = S3Client()
+    s3_client.md5_validate = True
     task = Mock()
     task.file_path = path
     task.bucket_name = TEST_BUCKET_NAME
@@ -198,7 +199,7 @@ def test_upload_file_thread_with_validation():
     task.succeed = None
     task.attempts = list()
     task.finished = None
-    s3_client.upload_file_thread(task, md5_validate=True)
+    s3_client.upload_file_thread(task)
 
 if __name__ == "__main__":
     #test_init_s3_client()

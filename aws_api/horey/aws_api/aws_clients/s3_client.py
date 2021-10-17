@@ -119,6 +119,15 @@ class S3Client(Boto3Client):
         self.multipart_uploads = dict()
         self._tasks_manager_thread_keepalive = None
         self._tasks_manager_thread_progress_time_limit = datetime.timedelta(minutes=20)
+        self._md5_validate = False
+
+    @property
+    def md5_validate(self):
+        return self._md5_validate
+
+    @md5_validate.setter
+    def md5_validate(self, value):
+        self._md5_validate = value
 
     @property
     def multipart_chunk_size(self):
@@ -439,12 +448,11 @@ class S3Client(Boto3Client):
         else:
             raise ValueError(task.type)
 
-    def upload_file_thread(self, task, md5_validate=False):
+    def upload_file_thread(self, task):
         """
         Uploads a complete file.
 
         @param task: UpdateTask with all needed info
-        @param md5_validate: if True validates the uploaded file with md5
         @return:
         """
         with open(task.file_path, "rb") as file_handler:
@@ -453,13 +461,8 @@ class S3Client(Boto3Client):
         start_time = datetime.datetime.now()
         filters_req = {"Bucket": task.bucket_name, "Key": task.key_name, "Body": file_data}
         filters_req.update(task.extra_args)
-        if md5_validate:
-            md = hashlib.md5(file_data).digest()
-            content_md5_string = base64.b64encode(md).decode('utf-8')
-            #md = hashlib.md5(file_data.encode('utf-8')).digest()
-            #content_md5_string = base64.b64encode(md).decode('utf-8')
-            #content_md5_string = hashlib.md5(file_data).hexdigest()
-            filters_req["ContentMD5"] = content_md5_string
+        if self.md5_validate:
+            self.add_md5_to_request(filters_req, file_data)
 
         try:
             for response in self.execute(self.client.put_object, None, filters_req=filters_req, raw_data=True):
@@ -474,6 +477,12 @@ class S3Client(Boto3Client):
         task.finished = True
         end_time = datetime.datetime.now()
         logger.info(f"Uploaded {task.key_name}, {len(file_data)} bytes took {end_time - start_time}")
+
+    @staticmethod
+    def add_md5_to_request(filters_req, file_data):
+        md = hashlib.md5(file_data).digest()
+        content_md5_string = base64.b64encode(md).decode('utf-8')
+        filters_req["ContentMD5"] = content_md5_string
 
     def upload_file_part_thread(self, task):
         """
@@ -495,6 +504,9 @@ class S3Client(Boto3Client):
                        "PartNumber": task.part_number,
                        "Key": task.key_name
                        }
+
+        if self.md5_validate:
+            self.add_md5_to_request(filters_req, file_data)
 
         start_time = datetime.datetime.now()
         try:
