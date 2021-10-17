@@ -1,3 +1,4 @@
+import datetime
 import os
 
 from unittest.mock import Mock
@@ -159,11 +160,11 @@ def test_upload_small_files_directory_to_s3():
     dst_root_key = "root"
     s3_client.upload(TEST_BUCKET_NAME, src_data_path, dst_root_key, keep_src_object_name=True)
 
-def test_upload_file_thread_without_validation():
 
+def test_upload_file_thread_without_validation():
     path = "./test_file"
     # 10 Byte
-    size = 10
+    size = 500*1024*1024
 
     create_test_file(path, size)
 
@@ -177,7 +178,10 @@ def test_upload_file_thread_without_validation():
     task.succeed = None
     task.attempts = list()
     task.finished = None
-    s3_client.upload_file_thread(task, md5_validate=False)
+    start_time = datetime.datetime.now()
+    s3_client.upload_file_thread(task)
+    end_time = datetime.datetime.now()
+    print(f"Took time: {end_time-start_time}")
 
 
 def test_upload_file_thread_with_validation():
@@ -199,9 +203,22 @@ def test_upload_file_thread_with_validation():
     task.succeed = None
     task.attempts = list()
     task.finished = None
+    start_time = datetime.datetime.now()
     s3_client.upload_file_thread(task)
+    end_time = datetime.datetime.now()
+    print(f"Took time: {end_time-start_time}")
 
+
+"""
+s3 =
+    max_concurrent_requests = 70 
+    multipart_threshold = 50MB
+    multipart_chunksize = 8MB 
+    max_bandwidth = 100000MB/s
+"""
 if __name__ == "__main__":
+    # time aws s3 cp --recursive ./test_files_dir s3://horey-alxey-ytest-test
+    # time aws s3 cp test_files_dir/test_file s3://horey-alexey-ytest-test
     #test_init_s3_client()
     #test_provision_s3_bucket()
     #test_upload_small_file_to_s3()
@@ -211,5 +228,5 @@ if __name__ == "__main__":
     #test_upload_large_files_directory_to_s3()
     #test_upload_small_files_directory_to_s3()
     #test_multipart_upload_file()
-    #test_upload_file_thread_without_validation()
-    test_upload_file_thread_with_validation()
+    test_upload_file_thread_without_validation()
+    #test_upload_file_thread_with_validation()
