@@ -83,7 +83,7 @@ class TasksQueue:
 
                 task.finished = False
                 task.started = False
-            else:
+            elif task.thread_pool_executor_future is not None:
                 ret = task.thread_pool_executor_future.exception()
                 pdb.set_trace()
 
