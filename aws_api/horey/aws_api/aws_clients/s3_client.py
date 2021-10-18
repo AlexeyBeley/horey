@@ -377,7 +377,6 @@ class S3Client(Boto3Client):
             time.sleep(0.5)
         else:
             raise TimeoutError()
-        counter = 0
         while not self.tasks_queue.empty() or not self.finished_uploading_flow:
             self._tasks_manager_thread_keepalive = datetime.datetime.now()
 
