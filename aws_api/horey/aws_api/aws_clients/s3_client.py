@@ -102,6 +102,14 @@ class TasksQueue:
     class FullQueueError(RuntimeError):
         pass
 
+    def get_running_threads_count(self):
+        counter = 0
+        pdb.set_trace()
+        for task in self.TASKS_DICT.values():
+            if task.thread_pool_executor_future.status == "running":
+                counter += 1
+        return counter
+
 
 class S3Client(Boto3Client):
     """
@@ -402,6 +410,11 @@ class S3Client(Boto3Client):
                 self._tasks_manager_thread_keepalive = None
                 raise RuntimeError(f"Uploading file {task.file_path} failed with {task.attempts[-1]}")
 
+            # WTF is this you'll ask? This is because thread_pool_executor.submit
+            # deadlocks on 100,000 concurrent executions.
+            if self.tasks_queue.get_running_threads_count() > self.max_queue_size - 2:
+                time.sleep(1)
+
             self.execute_s3_upload_task(task)
 
     def finish_multipart_uploads(self, finished_tasks):
@@ -451,7 +464,6 @@ class S3Client(Boto3Client):
         """
         task.started = True
         if task.task_type == task.Type.FILE:
-            logger.info("Triggering a file_upoading_thread thread")
             thread_pool_executor_future = self.thread_pool_executor.submit(self.upload_file_thread, (task))
         elif task.task_type == task.Type.PART:
             thread_pool_executor_future = self.thread_pool_executor.submit(self.upload_file_part_thread, (task))
@@ -470,25 +482,18 @@ class S3Client(Boto3Client):
         with open(task.file_path, "rb") as file_handler:
             file_data = file_handler.read()
 
-        logger.info(f"Finished reading file {task.file_pat}")
-
         start_time = datetime.datetime.now()
         filters_req = {"Bucket": task.bucket_name, "Key": task.key_name, "Body": file_data}
         filters_req.update(task.extra_args)
 
-        logger.info("before Calculated md5")
         if self.md5_validate:
             self.add_md5_to_request(filters_req, file_data)
-            logger.info("Calculated md5")
-        logger.info("after Calculated md5")
 
         try:
-            logger.warning(f"s3_client put_object {filters_req}")
             for response in self.execute(self.client.put_object, None, filters_req=filters_req, raw_data=True):
                 task.raw_response = response
             task.succeed = True
         except Exception as exception_inst:
-            raise
             exception_repr = repr(exception_inst)
             logger.warning(f"Failed to upload to s3 {filters_req} with exception {exception_repr}")
             task.attempts.append(exception_repr)
