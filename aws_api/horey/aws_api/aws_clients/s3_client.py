@@ -104,8 +104,10 @@ class TasksQueue:
 
     def get_running_threads_count(self):
         counter = 0
-        pdb.set_trace()
         for task in self.TASKS_DICT.values():
+            if task.thread_pool_executor_future is None:
+                continue
+            pdb.set_trace()
             if task.thread_pool_executor_future.status == "running":
                 counter += 1
         return counter
