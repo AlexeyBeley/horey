@@ -716,5 +716,5 @@ class S3Client(Boto3Client):
             return response
 
     def delete_objects(self, bucket):
-        all_objects = self.yield_bucket_objects(bucket)
+        all_objects = list(self.yield_bucket_objects(bucket))
         pdb.set_trace()
