@@ -85,7 +85,7 @@ class TasksQueue:
                 task.started = False
             elif task.thread_pool_executor_future is not None:
                 ret = task.thread_pool_executor_future.exception()
-                raise RuntimeError("Thread failed").with_traceback(ret.__traceback__)
+                raise self.TaskThreadError(f"Thread failed with error: {repr(ret)}").with_traceback(ret.__traceback__)
 
         for task in finished_tasks:
             logger.info(f"Prunner removing finished task '{task.id}'")
@@ -114,6 +114,9 @@ class TasksQueue:
             if task.thread_pool_executor_future.status == "running":
                 counter += 1
         return counter
+
+    class TaskThreadError(RuntimeError):
+        pass
 
 
 class S3Client(Boto3Client):
@@ -388,7 +391,13 @@ class S3Client(Boto3Client):
         while not self.tasks_queue.empty() or not self.finished_uploading_flow:
             self._tasks_manager_thread_keepalive = datetime.datetime.now()
 
-            finished_tasks = self.tasks_queue.prune_finished()
+            try:
+                finished_tasks = self.tasks_queue.prune_finished()
+            except self.tasks_queue.TaskThreadError:
+                self._tasks_manager_thread_keepalive = None
+                self.finished_uploading_flow = True
+                raise
+
             logger.info(f"Finished {len(finished_tasks)} tasks")
             self.finish_multipart_uploads(finished_tasks)
 
@@ -397,7 +406,7 @@ class S3Client(Boto3Client):
             if task is None:
                 if datetime.datetime.now() > progress_time_limit:
                     self._tasks_manager_thread_keepalive = None
-                    raise TimeoutError(f"tasks_manager_thread can not fetch ready tas for"
+                    raise TimeoutError(f"tasks_manager_thread can not fetch ready task for"
                                        f" {self._tasks_manager_thread_progress_time_limit}")
                 logger.info(f"Tasks manager thread waiting for tasks in tasks queue")
                 # todo: debug
