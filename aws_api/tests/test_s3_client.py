@@ -149,7 +149,6 @@ def test_upload_small_files_directory_to_s3():
     dir_path = "./test_files_dir"
     os.makedirs(dir_path, exist_ok=True)
     for counter in range(100000):
-        continue
         file_name = f"test_file_{counter}"
         path = os.path.join(dir_path, file_name)
         # 100KB
@@ -249,7 +248,6 @@ def test_upload_small_files_directory_to_s3_with_md5_validation():
     dir_path = "./test_files_dir"
     os.makedirs(dir_path, exist_ok=True)
     for counter in range(100000):
-        continue
         file_name = f"test_file_{counter}"
         path = os.path.join(dir_path, file_name)
         # 100KB
@@ -283,14 +281,14 @@ if __name__ == "__main__":
     #test_upload_large_file_with_extra_args_to_s3()
     #test_upload_large_file_to_s3()
     #test_upload_large_files_directory_to_s3()
-    test_upload_small_files_directory_to_s3()
+    #test_upload_small_files_directory_to_s3()
 
     #test_upload_file_thread_without_validation()
     #test_upload_file_thread_with_validation()
 
     #test_upload_large_file_to_s3_with_md5_validation()
     #test_upload_large_files_directory_to_s3_with_md5_validation()
-    #test_upload_small_files_directory_to_s3_with_md5_validation()
+    test_upload_small_files_directory_to_s3_with_md5_validation()
     #test_delete_bucket_objects()
 
 #92000 2020.05
