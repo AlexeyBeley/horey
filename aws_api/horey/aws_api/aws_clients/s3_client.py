@@ -36,7 +36,7 @@ class UploadTask:
         self.upload_id = None
         self.extra_args = extra_args
         self.attempts = []
-        self.thread_pool_executor_future = None
+        self.error = None
 
     class Type(Enum):
         FILE = 0
@@ -83,10 +83,8 @@ class TasksQueue:
 
                 task.finished = False
                 task.started = False
-            elif task.thread_pool_executor_future is not None:
-                ret = task.thread_pool_executor_future.exception()
-                if ret is not None:
-                    raise self.TaskThreadError(f"Thread failed with error: {repr(ret)}").with_traceback(ret.__traceback__)
+            elif task.error is not None:
+                raise self.TaskThreadError(f"Thread failed with error: {repr(task.error)}").with_traceback(task.error.__traceback__)
 
         for task in finished_tasks:
             del self.TASKS_DICT[task.id]
@@ -456,14 +454,21 @@ class S3Client(Boto3Client):
         """
         task.started = True
         if task.task_type == task.Type.FILE:
-            thread_pool_executor_future = self.thread_pool_executor.submit(self.upload_file_thread, (task))
+            self.thread_pool_executor.submit(self.upload_file_thread, task)
         elif task.task_type == task.Type.PART:
-            thread_pool_executor_future = self.thread_pool_executor.submit(self.upload_file_part_thread, (task))
+            self.thread_pool_executor.submit(self.upload_file_part_thread, task)
         else:
             raise ValueError(task.type)
-        task.thread_pool_executor_future = thread_pool_executor_future
 
     def upload_file_thread(self, task):
+        try:
+            self.upload_file_thread_helper(task)
+        except Exception as e:
+            task.finished = True
+            task.succeed = False
+            task.error = e
+
+    def upload_file_thread_helper(self, task):
         """
         Uploads a complete file.
 
