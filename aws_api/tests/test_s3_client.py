@@ -255,18 +255,14 @@ def test_upload_small_files_directory_to_s3_with_md5_validation():
         create_test_file(path, size)
 
     s3_client = S3Client()
+    #s3_client.max_concurrent_requests = 10
+    #s3_client.multipart_chunk_size = 8 * 1024 * 1024
     s3_client.md5_validate = True
     src_data_path = dir_path
     dst_root_key = "root"
     s3_client.upload(TEST_BUCKET_NAME, src_data_path, dst_root_key, keep_src_object_name=True)
 
-"""
-s3 =
-    max_concurrent_requests = 70 
-    multipart_threshold = 50MB
-    multipart_chunksize = 8MB 
-    max_bandwidth = 100000MB/s
-"""
+
 if __name__ == "__main__":
     # time aws s3 cp --recursive ./test_files_dir s3://horey-alxey-ytest-test
     # time aws s3 cp test_files_dir/test_file s3://horey-alexey-ytest-test
@@ -283,8 +279,8 @@ if __name__ == "__main__":
     #test_upload_file_thread_with_validation()
 
     #test_upload_large_file_to_s3_with_md5_validation()
-    test_upload_large_files_directory_to_s3_with_md5_validation()
-    #test_upload_small_files_directory_to_s3_with_md5_validation()
+    #test_upload_large_files_directory_to_s3_with_md5_validation()
+    test_upload_small_files_directory_to_s3_with_md5_validation()
 
 #92000 2020.05
 #93    2020.11
