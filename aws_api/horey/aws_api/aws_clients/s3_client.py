@@ -83,6 +83,9 @@ class TasksQueue:
 
                 task.finished = False
                 task.started = False
+            else:
+                ret = task.thread_pool_executor_future.exception()
+                pdb.set_trace()
 
         for task in finished_tasks:
             logger.info(f"Prunner removing finished task '{task.id}'")
@@ -414,8 +417,8 @@ class S3Client(Boto3Client):
 
             # WTF is this you'll ask? This is because thread_pool_executor.submit
             # deadlocks on 100,000 concurrent executions.
-            if self.tasks_queue.get_running_threads_count() > self.max_queue_size - 2:
-                time.sleep(1)
+            #if self.tasks_queue.get_running_threads_count() > self.max_queue_size - 2:
+            #    time.sleep(1)
 
             self.execute_s3_upload_task(task)
 
@@ -480,7 +483,7 @@ class S3Client(Boto3Client):
         @param task: UpdateTask with all needed info
         @return:
         """
-        logger.info(f"Starting upload_file_thread for file {task.file_pat}")
+        logger.info(f"Starting upload_file_thread for file {task.file_path}")
         with open(task.file_path, "rb") as file_handler:
             file_data = file_handler.read()
 
