@@ -473,9 +473,12 @@ class S3Client(Boto3Client):
         start_time = datetime.datetime.now()
         filters_req = {"Bucket": task.bucket_name, "Key": task.key_name, "Body": file_data}
         filters_req.update(task.extra_args)
+
+        logger.info("before Calculated md5")
         if self.md5_validate:
             self.add_md5_to_request(filters_req, file_data)
             logger.info("Calculated md5")
+        logger.info("after Calculated md5")
 
         try:
             logger.warning(f"s3_client put_object {filters_req}")
