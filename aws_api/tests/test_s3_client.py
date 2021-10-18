@@ -7,7 +7,8 @@ from horey.aws_api.aws_services_entities.s3_bucket import S3Bucket
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.base_entities.region import Region
 
-AWSAccount.set_aws_region(Region.get_region('us-west-2'))
+AWSAccount.set_aws_region(Region.get_region('us-east-1'))
+#AWSAccount.set_aws_region(Region.get_region('us-west-2'))
 
 TEST_BUCKET_NAME = "horey-alexey-ytest-test"  # "horey-test-bucket"
 
@@ -272,7 +273,7 @@ def test_delete_bucket_objects():
 
 
 if __name__ == "__main__":
-    # time aws s3 cp --recursive ./test_files_dir s3://horey-alxey-ytest-test
+    # time aws s3 cp --recursive ./test_files_dir s3://horey-alexey-ytest-test
     # time aws s3 cp test_files_dir/test_file s3://horey-alexey-ytest-test
     #test_init_s3_client()
     #test_provision_s3_bucket()
@@ -281,7 +282,7 @@ if __name__ == "__main__":
     #test_upload_large_file_with_extra_args_to_s3()
     #test_upload_large_file_to_s3()
     #test_upload_large_files_directory_to_s3()
-    #test_upload_small_files_directory_to_s3()
+    test_upload_small_files_directory_to_s3()
 
     #test_upload_file_thread_without_validation()
     #test_upload_file_thread_with_validation()
@@ -289,7 +290,7 @@ if __name__ == "__main__":
     #test_upload_large_file_to_s3_with_md5_validation()
     #test_upload_large_files_directory_to_s3_with_md5_validation()
     #test_upload_small_files_directory_to_s3_with_md5_validation()
-    test_delete_bucket_objects()
+    #test_delete_bucket_objects()
 
 #92000 2020.05
 #93    2020.11

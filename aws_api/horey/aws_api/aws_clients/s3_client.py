@@ -89,7 +89,6 @@ class TasksQueue:
                     raise self.TaskThreadError(f"Thread failed with error: {repr(ret)}").with_traceback(ret.__traceback__)
 
         for task in finished_tasks:
-            logger.info(f"Prunner removing finished task '{task.id}'")
             del self.TASKS_DICT[task.id]
 
         return finished_tasks
@@ -105,16 +104,6 @@ class TasksQueue:
 
     class FullQueueError(RuntimeError):
         pass
-
-    def get_running_threads_count(self):
-        counter = 0
-        for task in self.TASKS_DICT.values():
-            if task.thread_pool_executor_future is None:
-                continue
-            pdb.set_trace()
-            if task.thread_pool_executor_future.status == "running":
-                counter += 1
-        return counter
 
     class TaskThreadError(RuntimeError):
         pass
@@ -424,11 +413,6 @@ class S3Client(Boto3Client):
             if task.attempts and "Access Denied" in task.attempts[-1]:
                 self._tasks_manager_thread_keepalive = None
                 raise RuntimeError(f"Uploading file {task.file_path} failed with {task.attempts[-1]}")
-
-            # WTF is this you'll ask? This is because thread_pool_executor.submit
-            # deadlocks on 100,000 concurrent executions.
-            #if self.tasks_queue.get_running_threads_count() > self.max_queue_size - 2:
-            #    time.sleep(1)
 
             self.execute_s3_upload_task(task)
 
