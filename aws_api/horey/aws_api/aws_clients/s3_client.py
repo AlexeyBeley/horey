@@ -466,6 +466,7 @@ class S3Client(Boto3Client):
         @param task: UpdateTask with all needed info
         @return:
         """
+        logger.info("Starting upload_file_thread")
         with open(task.file_path, "rb") as file_handler:
             file_data = file_handler.read()
 
@@ -474,6 +475,7 @@ class S3Client(Boto3Client):
         filters_req.update(task.extra_args)
         if self.md5_validate:
             self.add_md5_to_request(filters_req, file_data)
+            logger.info("Calculated md5")
 
         try:
             logger.warning(f"s3_client put_object {filters_req}")
