@@ -85,7 +85,7 @@ class TasksQueue:
                 task.started = False
             elif task.thread_pool_executor_future is not None:
                 ret = task.thread_pool_executor_future.exception()
-                pdb.set_trace()
+                raise RuntimeError("Thread failed").with_traceback(ret.__traceback__)
 
         for task in finished_tasks:
             logger.info(f"Prunner removing finished task '{task.id}'")
