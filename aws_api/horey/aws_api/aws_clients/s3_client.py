@@ -84,6 +84,7 @@ class TasksQueue:
                 task.started = False
 
         for task in finished_tasks:
+            logger.info(f"Prunner removing finished task '{task.id}'")
             del self.TASKS_DICT[task.id]
 
         return finished_tasks
@@ -365,7 +366,7 @@ class S3Client(Boto3Client):
         for counter in range(60):
             if not self.tasks_queue.empty():
                 break
-            logger.info(f"Tasks manager thread waiting for tasks in tasks queue")
+            logger.info(f"Tasks manager thread waiting for first tasks in tasks queue to start running")
             time.sleep(0.5)
         else:
             raise TimeoutError()
