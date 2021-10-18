@@ -36,6 +36,7 @@ class UploadTask:
         self.upload_id = None
         self.extra_args = extra_args
         self.attempts = []
+        self.thread_pool_executor_future = None
 
     class Type(Enum):
         FILE = 0
@@ -58,9 +59,6 @@ class TasksQueue:
 
     def put(self, task):
         if len(TasksQueue.TASKS_DICT) >= self.max_queue_size:
-            pdb.set_trace()
-            ret = list(TasksQueue.TASKS_DICT.values())[0]
-            with open("./debug", "w+") as fh: fh.write(str(ret.__dict__))
             raise self.FullQueueError()
         TasksQueue.TASKS_DICT[task.id] = task
 
@@ -389,6 +387,10 @@ class S3Client(Boto3Client):
                     raise TimeoutError(f"tasks_manager_thread can not fetch ready tas for"
                                        f" {self._tasks_manager_thread_progress_time_limit}")
                 logger.info(f"Tasks manager thread waiting for tasks in tasks queue")
+                # todo: debug
+                if len(self.tasks_queue.TASKS_DICT) >= self.tasks_queue.max_queue_size:
+                    time.sleep(100)
+
                 time.sleep(0.5)
                 continue
 
@@ -447,12 +449,12 @@ class S3Client(Boto3Client):
         """
         task.started = True
         if task.task_type == task.Type.FILE:
-            ret = self.thread_pool_executor.submit(self.upload_file_thread, (task))
-            logger.info(f"Thread pool executor returned {ret}")
+            thread_pool_executor_future = self.thread_pool_executor.submit(self.upload_file_thread, (task))
         elif task.task_type == task.Type.PART:
-            self.thread_pool_executor.submit(self.upload_file_part_thread, (task))
+            thread_pool_executor_future = self.thread_pool_executor.submit(self.upload_file_part_thread, (task))
         else:
             raise ValueError(task.type)
+        task.thread_pool_executor_future = thread_pool_executor_future
 
     def upload_file_thread(self, task):
         """
@@ -476,7 +478,7 @@ class S3Client(Boto3Client):
             task.succeed = True
         except Exception as exception_inst:
             exception_repr = repr(exception_inst)
-            logger.warning(exception_repr)
+            logger.warning(f"failed to upload to s3 {filters_req} with exception {exception_repr}")
             task.attempts.append(exception_repr)
             task.succeed = False
 
