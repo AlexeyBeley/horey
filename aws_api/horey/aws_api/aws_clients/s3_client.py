@@ -466,9 +466,11 @@ class S3Client(Boto3Client):
         @param task: UpdateTask with all needed info
         @return:
         """
-        logger.info("Starting upload_file_thread")
+        logger.info(f"Starting upload_file_thread for file {task.file_pat}")
         with open(task.file_path, "rb") as file_handler:
             file_data = file_handler.read()
+
+        logger.info(f"Finished reading file {task.file_pat}")
 
         start_time = datetime.datetime.now()
         filters_req = {"Bucket": task.bucket_name, "Key": task.key_name, "Body": file_data}
