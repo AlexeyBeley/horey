@@ -717,16 +717,13 @@ class S3Client(Boto3Client):
 
     def delete_objects(self, bucket):
         keys_to_delete = list(self.yield_bucket_objects(bucket))
-        pdb.set_trace()
         while len(keys_to_delete) != 0:
             deletion_list = [{"Key": obj.key} for obj in keys_to_delete[:1000]]
             request_dict = {"Bucket": bucket.name, "Delete": {"Objects": deletion_list}}
             for response in self.execute(self.client.delete_objects, None, raw_data=True, filters_req=request_dict):
-                pdb.set_trace()
+                logger.info(f"Deleted {len(deletion_list)} keys from bucket '{bucket.name}'")
                 if "Errors" in response:
                     raise RuntimeError(response)
                 pass
-            pdb.set_trace()
             keys_to_delete = keys_to_delete[1000:]
 
-        pdb.set_trace()
