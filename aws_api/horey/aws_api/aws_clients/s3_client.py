@@ -475,12 +475,14 @@ class S3Client(Boto3Client):
             self.add_md5_to_request(filters_req, file_data)
 
         try:
+            logger.warning(f"s3_client put_object {filters_req}")
             for response in self.execute(self.client.put_object, None, filters_req=filters_req, raw_data=True):
                 task.raw_response = response
             task.succeed = True
         except Exception as exception_inst:
+            raise
             exception_repr = repr(exception_inst)
-            logger.warning(f"failed to upload to s3 {filters_req} with exception {exception_repr}")
+            logger.warning(f"Failed to upload to s3 {filters_req} with exception {exception_repr}")
             task.attempts.append(exception_repr)
             task.succeed = False
 
