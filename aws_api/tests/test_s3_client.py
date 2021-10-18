@@ -209,6 +209,56 @@ def test_upload_file_thread_with_validation():
     print(f"Took time: {end_time-start_time}")
 
 
+def test_upload_large_file_to_s3_with_md5_validation():
+    dir_path = "./test_files_dir"
+    file_name = "test_file"
+    path = os.path.join(dir_path, file_name)
+    os.makedirs(dir_path, exist_ok=True)
+    size = 500 * 1024 * 1024
+
+    create_test_file(path, size)
+
+    s3_client = S3Client()
+    s3_client.md5_validate = True
+    src_data_path = path
+    dst_root_key = "root"
+    s3_client.upload(TEST_BUCKET_NAME, src_data_path, dst_root_key, keep_src_object_name=True)
+
+
+def test_upload_large_files_directory_to_s3_with_md5_validation():
+    dir_path = "./test_files_dir"
+    os.makedirs(dir_path, exist_ok=True)
+    for counter in range(10):
+        file_name = f"test_file_{counter}"
+        path = os.path.join(dir_path, file_name)
+        size = 500 * 1024 * 1024
+
+        create_test_file(path, size)
+
+    s3_client = S3Client()
+    s3_client.md5_validate = True
+    src_data_path = dir_path
+    dst_root_key = "root"
+    s3_client.upload(TEST_BUCKET_NAME, src_data_path, dst_root_key, keep_src_object_name=True)
+
+
+def test_upload_small_files_directory_to_s3_with_md5_validation():
+    dir_path = "./test_files_dir"
+    os.makedirs(dir_path, exist_ok=True)
+    for counter in range(100000):
+        file_name = f"test_file_{counter}"
+        path = os.path.join(dir_path, file_name)
+        # 100KB
+        size = 100 * 1024
+
+        create_test_file(path, size)
+
+    s3_client = S3Client()
+    s3_client.md5_validate = True
+    src_data_path = dir_path
+    dst_root_key = "root"
+    s3_client.upload(TEST_BUCKET_NAME, src_data_path, dst_root_key, keep_src_object_name=True)
+
 """
 s3 =
     max_concurrent_requests = 70 
@@ -227,6 +277,13 @@ if __name__ == "__main__":
     #test_upload_large_file_to_s3()
     #test_upload_large_files_directory_to_s3()
     #test_upload_small_files_directory_to_s3()
-    #test_multipart_upload_file()
-    test_upload_file_thread_without_validation()
+
+    #test_upload_file_thread_without_validation()
     #test_upload_file_thread_with_validation()
+
+    test_upload_large_file_to_s3_with_md5_validation()
+    #test_upload_large_files_directory_to_s3_with_md5_validation()
+    #test_upload_small_files_directory_to_s3_with_md5_validation()
+
+#92000 2020.05
+#93    2020.11
