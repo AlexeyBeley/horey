@@ -506,7 +506,7 @@ class S3Client(Boto3Client):
                        }
 
         if self.md5_validate:
-            self.add_md5_to_request(filters_req, file_data)
+            self.add_md5_to_request(filters_req, byte_chunk)
 
         start_time = datetime.datetime.now()
         try:
