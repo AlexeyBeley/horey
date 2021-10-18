@@ -451,6 +451,7 @@ class S3Client(Boto3Client):
         """
         task.started = True
         if task.task_type == task.Type.FILE:
+            logger.info("Triggering a file_upoading_thread thread")
             thread_pool_executor_future = self.thread_pool_executor.submit(self.upload_file_thread, (task))
         elif task.task_type == task.Type.PART:
             thread_pool_executor_future = self.thread_pool_executor.submit(self.upload_file_part_thread, (task))
