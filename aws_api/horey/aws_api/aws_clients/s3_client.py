@@ -59,6 +59,8 @@ class TasksQueue:
     def put(self, task):
         if len(TasksQueue.TASKS_DICT) >= self.max_queue_size:
             pdb.set_trace()
+            ret = list(TasksQueue.TASKS_DICT.values())[0]
+            with open("./debug", "w+") as fh: fh.write(str(ret.__dict__))
             raise self.FullQueueError()
         TasksQueue.TASKS_DICT[task.id] = task
 
@@ -445,7 +447,8 @@ class S3Client(Boto3Client):
         """
         task.started = True
         if task.task_type == task.Type.FILE:
-            self.thread_pool_executor.submit(self.upload_file_thread, (task))
+            ret = self.thread_pool_executor.submit(self.upload_file_thread, (task))
+            logger.info(f"Thread pool executor returned {ret}")
         elif task.task_type == task.Type.PART:
             self.thread_pool_executor.submit(self.upload_file_part_thread, (task))
         else:
