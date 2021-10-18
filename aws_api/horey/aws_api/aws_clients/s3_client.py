@@ -58,6 +58,7 @@ class TasksQueue:
 
     def put(self, task):
         if len(TasksQueue.TASKS_DICT) >= self.max_queue_size:
+            pdb.set_trace()
             raise self.FullQueueError()
         TasksQueue.TASKS_DICT[task.id] = task
 
