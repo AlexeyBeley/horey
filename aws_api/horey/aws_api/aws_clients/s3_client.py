@@ -217,28 +217,28 @@ class S3Client(Boto3Client):
             if value > max_value:
                 raise ValueError(f"{value} > {max_value}")
 
-    def yield_bucket_objects(self, obj):
+    def yield_bucket_objects(self, bucket):
         """
         Yield over specific bucket keys in order to handle OOM issue.
-        :param obj:
+        :param bucket:
         :return:
         """
-
+        max_keys = 1000
         try:
             start_after = ""
             while start_after is not None:
                 counter = 0
                 for object_info in self.execute(self.client.list_objects_v2, "Contents",
-                                                filters_req={"Bucket": obj.name, "StartAfter": start_after}):
+                                                filters_req={"Bucket": bucket.name, "StartAfter": start_after, "MaxKeys": max_keys}):
                     counter += 1
                     bucket_object = S3Bucket.BucketObject(object_info)
                     yield bucket_object
 
-                start_after = bucket_object.key if counter == 1000 else None
+                start_after = bucket_object.key if counter == max_keys else None
 
         except Exception as inst:
             if "AccessDenied" in repr(inst):
-                print(f"Init bucket full information failed {obj.name}: {repr(inst)}")
+                print(f"Init bucket full information failed {bucket.name}: {repr(inst)}")
             else:
                 raise
 
@@ -714,3 +714,7 @@ class S3Client(Boto3Client):
     def put_bucket_policy_raw(self, request_dict):
         for response in self.execute(self.client.put_bucket_policy, "ResponseMetadata", filters_req=request_dict):
             return response
+
+    def delete_objects(self, bucket):
+        all_objects = self.yield_bucket_objects(bucket)
+        pdb.set_trace()

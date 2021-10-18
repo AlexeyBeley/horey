@@ -264,6 +264,13 @@ def test_upload_small_files_directory_to_s3_with_md5_validation():
     s3_client.upload(TEST_BUCKET_NAME, src_data_path, dst_root_key, keep_src_object_name=True)
 
 
+def test_delete_bucket_objects():
+    s3_client = S3Client()
+    bucket = Mock()
+    bucket.name = TEST_BUCKET_NAME
+    s3_client.delete_objects(bucket)
+
+
 if __name__ == "__main__":
     # time aws s3 cp --recursive ./test_files_dir s3://horey-alxey-ytest-test
     # time aws s3 cp test_files_dir/test_file s3://horey-alexey-ytest-test
@@ -281,7 +288,8 @@ if __name__ == "__main__":
 
     #test_upload_large_file_to_s3_with_md5_validation()
     #test_upload_large_files_directory_to_s3_with_md5_validation()
-    test_upload_small_files_directory_to_s3_with_md5_validation()
+    #test_upload_small_files_directory_to_s3_with_md5_validation()
+    test_delete_bucket_objects()
 
 #92000 2020.05
 #93    2020.11
