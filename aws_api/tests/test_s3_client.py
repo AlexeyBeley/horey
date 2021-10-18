@@ -282,8 +282,8 @@ if __name__ == "__main__":
     #test_upload_file_thread_without_validation()
     #test_upload_file_thread_with_validation()
 
-    test_upload_large_file_to_s3_with_md5_validation()
-    #test_upload_large_files_directory_to_s3_with_md5_validation()
+    #test_upload_large_file_to_s3_with_md5_validation()
+    test_upload_large_files_directory_to_s3_with_md5_validation()
     #test_upload_small_files_directory_to_s3_with_md5_validation()
 
 #92000 2020.05
