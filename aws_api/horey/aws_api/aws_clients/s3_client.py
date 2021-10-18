@@ -188,7 +188,7 @@ class S3Client(Boto3Client):
 
     @staticmethod
     def validate_int(value, min_value=1, max_value=None):
-        if isinstance(value, int):
+        if not isinstance(value, int):
             raise ValueError(f"{value} is not int")
 
         if value < min_value:

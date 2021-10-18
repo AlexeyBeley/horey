@@ -219,6 +219,7 @@ def test_upload_large_file_to_s3_with_md5_validation():
     create_test_file(path, size)
 
     s3_client = S3Client()
+    s3_client.max_concurrent_requests = 10
     s3_client.md5_validate = True
     src_data_path = path
     dst_root_key = "root"
