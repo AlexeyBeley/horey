@@ -375,6 +375,7 @@ class S3Client(Boto3Client):
             self._tasks_manager_thread_keepalive = datetime.datetime.now()
 
             finished_tasks = self.tasks_queue.prune_finished()
+            logger.info(f"Finished {len(finished_tasks)} tasks")
             self.finish_multipart_uploads(finished_tasks)
 
             task = self.tasks_queue.get_next_ready()
