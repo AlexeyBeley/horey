@@ -399,14 +399,6 @@ class S3Client(Boto3Client):
                     raise TimeoutError(f"tasks_manager_thread can not fetch ready task for"
                                        f" {self._tasks_manager_thread_progress_time_limit}")
                 logger.info(f"Tasks manager thread waiting for tasks in tasks queue")
-                # todo: debug
-                if len(self.tasks_queue.TASKS_DICT) >= self.tasks_queue.max_queue_size:
-                    counter += 1
-                    if counter > 10:
-                        time.sleep(100)
-
-                time.sleep(0.5)
-                continue
 
             progress_time_limit = datetime.datetime.now() + self._tasks_manager_thread_progress_time_limit
 
