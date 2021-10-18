@@ -498,7 +498,9 @@ class S3Client(Boto3Client):
 
         start_time = datetime.datetime.now()
         filters_req = {"Bucket": task.bucket_name, "Key": task.key_name, "Body": file_data}
-        filters_req.update(task.extra_args)
+
+        if task.extra_args is not None:
+            filters_req.update(task.extra_args)
 
         if self.md5_validate:
             self.add_md5_to_request(filters_req, file_data)
@@ -543,6 +545,9 @@ class S3Client(Boto3Client):
                        "PartNumber": task.part_number,
                        "Key": task.key_name
                        }
+
+        if task.extra_args is not None:
+            filters_req.update(task.extra_args)
 
         if self.md5_validate:
             self.add_md5_to_request(filters_req, byte_chunk)
