@@ -617,7 +617,7 @@ class S3Client(Boto3Client):
 
             try:
                 return self.tasks_queue.put(task)
-            except TasksQueue.FullQueueError():
+            except TasksQueue.FullQueueError:
                 counter -= 1
                 time.sleep(0.5)
         else:
