@@ -219,7 +219,7 @@ def test_upload_large_file_to_s3_with_md5_validation():
     create_test_file(path, size)
 
     s3_client = S3Client()
-    s3_client.md5_validate = True
+    #s3_client.md5_validate = True
     src_data_path = path
     dst_root_key = "root"
     s3_client.upload(TEST_BUCKET_NAME, src_data_path, dst_root_key, keep_src_object_name=True)
