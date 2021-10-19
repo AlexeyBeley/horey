@@ -34,6 +34,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
         self._aws_api_auto_scaling_cache_dir = None
         self._aws_api_acm_cache_dir = None
         self._aws_api_elasticache_cache_dir = None
+        self._aws_api_sqs_cache_dir = None
 
     @property
     def aws_api_regions(self):
@@ -741,6 +742,27 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     
     # endregion
 
+    # region sqs
+    @property
+    def aws_api_sqs_cache_dir(self):
+        if self._aws_api_sqs_cache_dir is None:
+            self._aws_api_sqs_cache_dir = os.path.join(self.aws_api_cache_dir, self.aws_api_account, "sqs")
+            os.makedirs(self._aws_api_sqs_cache_dir, exist_ok=True)
+        return self._aws_api_sqs_cache_dir
+
+    @aws_api_sqs_cache_dir.setter
+    def aws_api_sqs_cache_dir(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_sqs_queues_cache_file(self):
+        return os.path.join(self.aws_api_sqs_cache_dir, "sqs_queues.json")
+
+    @aws_api_sqs_queues_cache_file.setter
+    def aws_api_sqs_queues_cache_file(self, value):
+        raise ValueError(value)
+    # endregion
+    
     # region auto_scaling
     @property
     def aws_api_auto_scaling_cache_dir(self):

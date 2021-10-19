@@ -81,6 +81,7 @@ from horey.aws_api.aws_clients.elasticsearch_client import ElasticsearchClient
 from horey.aws_api.aws_services_entities.elasticsearch_domain import ElasticsearchDomain
 
 from horey.aws_api.aws_clients.elasticache_client import ElasticacheClient
+from horey.aws_api.aws_clients.sqs_client import SQSClient
 from horey.aws_api.aws_services_entities.elasticache_cluster import ElasticacheCluster
 from horey.aws_api.aws_services_entities.elasticache_cache_parameter_group import ElasticacheCacheParameterGroup
 from horey.aws_api.aws_services_entities.elasticache_cache_subnet_group import ElasticacheCacheSubnetGroup
@@ -102,6 +103,8 @@ from horey.aws_api.aws_services_entities.ecr_image import ECRImage
 from horey.aws_api.aws_services_entities.ecs_cluster import ECSCluster
 from horey.aws_api.aws_services_entities.ecs_capacity_provider import ECSCapacityProvider
 from horey.aws_api.aws_services_entities.ecs_service import ECSService
+from horey.aws_api.aws_services_entities.sqs_queue import SQSQueue
+
 from horey.common_utils.common_utils import CommonUtils
 
 from horey.h_logger import get_logger
@@ -140,6 +143,7 @@ class AWSAPI:
         self.ecr_client = ECRClient()
         self.acm_client = ACMClient()
         self.elasticache_client = ElasticacheClient()
+        self.sqs_client = SQSClient()
 
         self.network_interfaces = []
         self.iam_policies = []
@@ -194,6 +198,7 @@ class AWSAPI:
         self.elasticache_cache_subnet_groups = []
         self.elasticache_cache_security_groups = []
         self.elasticache_replication_groups = []
+        self.sqs_queues = []
 
         self.configuration = configuration
         self.init_configuration()
@@ -929,6 +934,20 @@ class AWSAPI:
             objects = self.elasticache_client.get_all_replication_groups(region=region)
 
         self.elasticache_replication_groups = objects
+    
+    def init_sqs_queues(self, from_cache=False, cache_file=None, region=None):
+        """
+
+        @param from_cache:
+        @param cache_file:
+        @return:
+        """
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, SQSQueue)
+        else:
+            objects = self.sqs_client.get_all_queues(region=region)
+
+        self.sqs_queues = objects
         
     def init_target_groups(self, from_cache=False, cache_file=None):
         """

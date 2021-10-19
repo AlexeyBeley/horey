@@ -427,6 +427,15 @@ def test_init_and_cache_ecs_task_definitions():
     assert isinstance(aws_api.ecs_task_definitions, list)
 
 
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_sqs_queues():
+    aws_api.init_sqs_queues()
+    aws_api.cache_objects(aws_api.sqs_queues,
+                          configuration.aws_api_sqs_queues_cache_file)
+    print(f"len(sqs_queues) = {len(aws_api.sqs_queues)}")
+    assert isinstance(aws_api.sqs_queues, list)
+    
+    
 def find_stream():
     log_group_dir = "dirpath"
     for file_name in os.listdir(log_group_dir):
@@ -500,5 +509,6 @@ if __name__ == "__main__":
     #test_init_and_cache_elasticache_clusters()
     #test_init_and_cache_elasticache_cache_parameter_groups()
     #test_init_and_cache_elasticache_cache_subnet_groups()
-    test_init_and_cache_elasticache_replication_groups()
+    #test_init_and_cache_elasticache_replication_groups()
     #test_init_and_cache_elasticache_cache_security_groups()
+    test_init_and_cache_sqs_queues()

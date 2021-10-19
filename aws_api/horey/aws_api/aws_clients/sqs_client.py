@@ -11,13 +11,13 @@ from horey.h_logger import get_logger
 logger = get_logger()
 
 
-class TemplateClient(Boto3Client):
+class SQSClient(Boto3Client):
     """
     Client to handle specific aws service API calls.
     """
 
     def __init__(self):
-        client_name = "Template"
+        client_name = "sqs"
         super().__init__(client_name)
 
     def get_all_queues(self, region=None, full_information=True):
@@ -38,12 +38,18 @@ class TemplateClient(Boto3Client):
     def get_region_queues(self, region, full_information=True):
         final_result = list()
         AWSAccount.set_aws_region(region)
-        for dict_src in self.execute(self.client.describe_queues, "queues"):
+        for dict_src in self.execute(self.client.list_queues, "queues"):
             obj = SQSQueue(dict_src)
             final_result.append(obj)
             if full_information:
-                #get_queue_attributes
-                #list_queue_tags
+                filters_req = {"QueueUrl": obj.queue_url, "AttributeNames": 'All'}
+                for dict_attributes in self.execute(self.client.get_queue_attributes, "Attributes", filters_req=filters_req):
+                    obj.update_attributes_from_raw_response(dict_attributes)
+
+                filters_req = {"QueueUrl": obj.queue_url}
+                for dict_attributes in self.execute(self.client.list_queue_tags, "Tags", filters_req=filters_req):
+                    obj.update_tags_from_raw_response(dict_attributes)
+                #
                 raise NotImplementedError()
 
         return final_result
