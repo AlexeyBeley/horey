@@ -7,8 +7,7 @@ from horey.aws_api.aws_services_entities.s3_bucket import S3Bucket
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.base_entities.region import Region
 
-AWSAccount.set_aws_region(Region.get_region('us-east-1'))
-#AWSAccount.set_aws_region(Region.get_region('us-west-2'))
+AWSAccount.set_aws_region(Region.get_region('us-west-2'))
 
 TEST_BUCKET_NAME = "horey-alexey-ytest-test"  # "horey-test-bucket"
 
@@ -256,8 +255,8 @@ def test_upload_small_files_directory_to_s3_with_md5_validation():
         create_test_file(path, size)
 
     s3_client = S3Client()
-    #s3_client.max_concurrent_requests = 10
-    #s3_client.multipart_chunk_size = 8 * 1024 * 1024
+    s3_client.max_concurrent_requests = 70
+    s3_client.multipart_chunk_size = 8 * 1024 * 1024
     s3_client.md5_validate = True
     src_data_path = dir_path
     dst_root_key = "root"
