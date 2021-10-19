@@ -2286,3 +2286,6 @@ class AWSAPI:
             time.sleep(time_to_sleep)
         else:
             raise TimeoutError()
+
+    def provision_ecr_repository(self, ecr_repo):
+        self.ecr_client.provision_repository(ecr_repo)

@@ -1,10 +1,11 @@
+import datetime
 import os
 
+from unittest.mock import Mock
 from horey.aws_api.aws_clients.s3_client import S3Client
 from horey.aws_api.aws_services_entities.s3_bucket import S3Bucket
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.base_entities.region import Region
-
 
 AWSAccount.set_aws_region(Region.get_region('us-west-2'))
 
@@ -160,13 +161,134 @@ def test_upload_small_files_directory_to_s3():
     s3_client.upload(TEST_BUCKET_NAME, src_data_path, dst_root_key, keep_src_object_name=True)
 
 
+def test_upload_file_thread_without_validation():
+    path = "./test_file"
+    # 10 Byte
+    size = 500*1024*1024
+
+    create_test_file(path, size)
+
+    s3_client = S3Client()
+    task = Mock()
+    task.file_path = path
+    task.bucket_name = TEST_BUCKET_NAME
+    task.key_name = "root/test_file"
+    task.extra_args = {}
+    task.raw_response = None
+    task.succeed = None
+    task.attempts = list()
+    task.finished = None
+    start_time = datetime.datetime.now()
+    s3_client.upload_file_thread(task)
+    end_time = datetime.datetime.now()
+    print(f"Took time: {end_time-start_time}")
+
+
+def test_upload_file_thread_with_validation():
+
+    path = "./test_file"
+    # 10 Byte
+    size = 10
+
+    create_test_file(path, size)
+
+    s3_client = S3Client()
+    s3_client.md5_validate = True
+    task = Mock()
+    task.file_path = path
+    task.bucket_name = TEST_BUCKET_NAME
+    task.key_name = "root/test_file"
+    task.extra_args = {}
+    task.raw_response = None
+    task.succeed = None
+    task.attempts = list()
+    task.finished = None
+    start_time = datetime.datetime.now()
+    s3_client.upload_file_thread(task)
+    end_time = datetime.datetime.now()
+    print(f"Took time: {end_time-start_time}")
+
+
+def test_upload_large_file_to_s3_with_md5_validation():
+    dir_path = "./test_files_dir"
+    file_name = "test_file"
+    path = os.path.join(dir_path, file_name)
+    os.makedirs(dir_path, exist_ok=True)
+    size = 500 * 1024 * 1024
+
+    create_test_file(path, size)
+
+    s3_client = S3Client()
+    s3_client.max_concurrent_requests = 10
+    s3_client.md5_validate = True
+    src_data_path = path
+    dst_root_key = "root"
+    s3_client.upload(TEST_BUCKET_NAME, src_data_path, dst_root_key, keep_src_object_name=True)
+
+
+def test_upload_large_files_directory_to_s3_with_md5_validation():
+    dir_path = "./test_files_dir"
+    os.makedirs(dir_path, exist_ok=True)
+    for counter in range(10):
+        file_name = f"test_file_{counter}"
+        path = os.path.join(dir_path, file_name)
+        size = 500 * 1024 * 1024
+
+        create_test_file(path, size)
+
+    s3_client = S3Client()
+    s3_client.md5_validate = True
+    src_data_path = dir_path
+    dst_root_key = "root"
+    s3_client.upload(TEST_BUCKET_NAME, src_data_path, dst_root_key, keep_src_object_name=True)
+
+
+def test_upload_small_files_directory_to_s3_with_md5_validation():
+    dir_path = "./test_files_dir"
+    os.makedirs(dir_path, exist_ok=True)
+    for counter in range(100000):
+        file_name = f"test_file_{counter}"
+        path = os.path.join(dir_path, file_name)
+        # 100KB
+        size = 100 * 1024
+
+        create_test_file(path, size)
+
+    s3_client = S3Client()
+    s3_client.max_concurrent_requests = 70
+    s3_client.multipart_chunk_size = 8 * 1024 * 1024
+    s3_client.md5_validate = True
+    src_data_path = dir_path
+    dst_root_key = "root"
+    s3_client.upload(TEST_BUCKET_NAME, src_data_path, dst_root_key, keep_src_object_name=True)
+
+
+def test_delete_bucket_objects():
+    s3_client = S3Client()
+    bucket = Mock()
+    bucket.name = TEST_BUCKET_NAME
+    s3_client.delete_objects(bucket)
+
+
 if __name__ == "__main__":
+    # time aws s3 cp --recursive ./test_files_dir s3://horey-alexey-ytest-test
+    # time aws s3 cp test_files_dir/test_file s3://horey-alexey-ytest-test
     #test_init_s3_client()
     #test_provision_s3_bucket()
     #test_upload_small_file_to_s3()
     #test_upload_small_file_with_extra_args_to_s3()
-    test_upload_large_file_with_extra_args_to_s3()
+    #test_upload_large_file_with_extra_args_to_s3()
     #test_upload_large_file_to_s3()
     #test_upload_large_files_directory_to_s3()
     #test_upload_small_files_directory_to_s3()
-    #test_multipart_upload_file()
+
+    #test_upload_file_thread_without_validation()
+    #test_upload_file_thread_with_validation()
+
+    #test_upload_large_file_to_s3_with_md5_validation()
+    #test_upload_large_files_directory_to_s3_with_md5_validation()
+    test_upload_small_files_directory_to_s3_with_md5_validation()
+    #test_delete_bucket_objects()
+
+#92000 2020.05
+#93    2020.11

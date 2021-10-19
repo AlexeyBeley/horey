@@ -5,7 +5,7 @@ import pdb
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 
 from horey.aws_api.base_entities.aws_account import AWSAccount
-from horey.aws_api.aws_services_entities.template_entities import TemplateEntity
+from horey.aws_api.aws_services_entities.template_entity import TemplateEntity
 
 from horey.h_logger import get_logger
 logger = get_logger()
@@ -20,27 +20,29 @@ class TemplateClient(Boto3Client):
         client_name = "Template"
         super().__init__(client_name)
 
-    def get_all_template_entities(self, region=None):
+    def get_all_template_entities(self, region=None, full_information=True):
         """
         Get all template_entities in all regions.
         :return:
         """
 
         if region is not None:
-            return self.get_region_template_entities(region)
+            return self.get_region_template_entities(region, full_information=full_information)
 
         final_result = list()
         for region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_template_entities(region)
+            final_result += self.get_region_template_entities(region, full_information=full_information)
 
         return final_result
 
-    def get_region_template_entities(self, region):
+    def get_region_template_entities(self, region, full_information=True):
         final_result = list()
         AWSAccount.set_aws_region(region)
         for dict_src in self.execute(self.client.describe_template_entities, "template_entities"):
             obj = TemplateEntity(dict_src)
             final_result.append(obj)
+            if full_information:
+                raise NotImplementedError()
 
         return final_result
 
