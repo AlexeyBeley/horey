@@ -9,7 +9,7 @@ from horey.aws_api.base_entities.region import Region
 
 AWSAccount.set_aws_region(Region.get_region('us-west-2'))
 
-TEST_BUCKET_NAME = "horey-alexey-ytest-test"  # "horey-test-bucket"
+TEST_BUCKET_NAME = "horey-test-bucket"
 
 
 def test_init_s3_client():
@@ -57,7 +57,7 @@ def create_test_html_file(path, size):
 
 def test_upload_small_file_to_s3():
     path = "./test_file"
-    # 10 Byte
+    # 10 Bytes
     size = 10
 
     create_test_file(path, size)
@@ -70,7 +70,7 @@ def test_upload_small_file_to_s3():
 
 def test_upload_small_file_with_extra_args_to_s3():
     path = "./index.html"
-    # 200 Byte
+    # 200 Bytes
     size = 200
 
     create_test_html_file(path, size)
@@ -85,7 +85,7 @@ def test_upload_small_file_with_extra_args_to_s3():
 
 def test_upload_large_file_with_extra_args_to_s3():
     path = "./index.html"
-    # 200 Byte
+    # 200 MB
     size = 200 * 1024 * 1024
 
     create_test_html_file(path, size)
@@ -103,6 +103,7 @@ def test_upload_small_dir_to_s3():
     file_name = "test_file"
     path = os.path.join(dir_path, file_name)
     os.makedirs(dir_path, exist_ok=True)
+    # 10 Bytes
     size = 10
 
     create_test_file(path, size)
@@ -118,6 +119,7 @@ def test_upload_large_file_to_s3():
     file_name = "test_file"
     path = os.path.join(dir_path, file_name)
     os.makedirs(dir_path, exist_ok=True)
+    # 500 MB
     size = 500 * 1024 * 1024
 
     create_test_file(path, size)
@@ -134,6 +136,7 @@ def test_upload_large_files_directory_to_s3():
     for counter in range(10):
         file_name = f"test_file_{counter}"
         path = os.path.join(dir_path, file_name)
+        # 500 MB
         size = 500 * 1024 * 1024
 
         create_test_file(path, size)
@@ -150,7 +153,7 @@ def test_upload_small_files_directory_to_s3():
     for counter in range(100000):
         file_name = f"test_file_{counter}"
         path = os.path.join(dir_path, file_name)
-        # 100KB
+        # 100 KB
         size = 100 * 1024
 
         create_test_file(path, size)
@@ -163,7 +166,7 @@ def test_upload_small_files_directory_to_s3():
 
 def test_upload_file_thread_without_validation():
     path = "./test_file"
-    # 10 Byte
+    # 500 MB
     size = 500*1024*1024
 
     create_test_file(path, size)
@@ -187,7 +190,7 @@ def test_upload_file_thread_without_validation():
 def test_upload_file_thread_with_validation():
 
     path = "./test_file"
-    # 10 Byte
+    # 10 Bytes
     size = 10
 
     create_test_file(path, size)
@@ -214,6 +217,7 @@ def test_upload_large_file_to_s3_with_md5_validation():
     file_name = "test_file"
     path = os.path.join(dir_path, file_name)
     os.makedirs(dir_path, exist_ok=True)
+    # 500 MB
     size = 500 * 1024 * 1024
 
     create_test_file(path, size)
@@ -232,6 +236,7 @@ def test_upload_large_files_directory_to_s3_with_md5_validation():
     for counter in range(10):
         file_name = f"test_file_{counter}"
         path = os.path.join(dir_path, file_name)
+        # 500 MB
         size = 500 * 1024 * 1024
 
         create_test_file(path, size)
