@@ -13,8 +13,8 @@ SRC_FILES := $(filter-out $(EXCLUSIONS), $(ALL_PACKAGES))
 #apt install python3.8 python3.8-venv python3-venv
 install-pip:
 	sudo apt-get update
-	sudo apt-get -y install python3-pip
-	sudo pip3 install --upgrade pip
+	apt-get -y install python3-pip
+	pip3 install --upgrade pip
 
 create_build_env:
 	mkdir -p ${BUILD_TMP_DIR} &&\
