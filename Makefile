@@ -11,10 +11,10 @@ EXCLUSIONS := LICENSE Makefile README.md build dns_map docker terraform security
 SRC_FILES := $(filter-out $(EXCLUSIONS), $(ALL_PACKAGES))
 
 #apt install python3.8 python3.8-venv python3-venv
-inall-pip:
-	apt-get update
-	apt-get -y install python3-pip
-	pip3 install --upgrade pip
+install-pip:
+	sudo apt-get update
+	sudo apt-get -y install python3-pip
+	sudo pip3 install --upgrade pip
 
 create_build_env:
 	mkdir -p ${BUILD_TMP_DIR} &&\

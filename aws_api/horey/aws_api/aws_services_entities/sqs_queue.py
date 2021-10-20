@@ -40,7 +40,7 @@ class SQSQueue(AwsObject):
 
     def update_attributes_from_raw_response(self, dict_src):
         pdb.set_trace()
-        
+
     def update_tags_from_raw_response(self, dict_src):
         pdb.set_trace()
 

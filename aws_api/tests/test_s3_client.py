@@ -271,11 +271,9 @@ def test_delete_bucket_objects():
 
 
 if __name__ == "__main__":
-    # time aws s3 cp --recursive ./test_files_dir s3://horey-alexey-ytest-test
-    # time aws s3 cp test_files_dir/test_file s3://horey-alexey-ytest-test
     #test_init_s3_client()
     #test_provision_s3_bucket()
-    #test_upload_small_file_to_s3()
+    test_upload_small_file_to_s3()
     #test_upload_small_file_with_extra_args_to_s3()
     #test_upload_large_file_with_extra_args_to_s3()
     #test_upload_large_file_to_s3()
@@ -287,8 +285,5 @@ if __name__ == "__main__":
 
     #test_upload_large_file_to_s3_with_md5_validation()
     #test_upload_large_files_directory_to_s3_with_md5_validation()
-    test_upload_small_files_directory_to_s3_with_md5_validation()
+    #test_upload_small_files_directory_to_s3_with_md5_validation()
     #test_delete_bucket_objects()
-
-#92000 2020.05
-#93    2020.11
