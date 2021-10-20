@@ -3,25 +3,24 @@ AWS s3 client to handle s3 service API requests.
 """
 import datetime
 import os
-import pdb
 import base64
 import hashlib
-
+import threading
 import time
-
+from enum import Enum
+from concurrent.futures import ThreadPoolExecutor
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.s3_bucket import S3Bucket
 from horey.h_logger import get_logger
 from horey.aws_api.base_entities.aws_account import AWSAccount
-from concurrent.futures import ThreadPoolExecutor
-import threading
-from enum import Enum
-import traceback
 
 logger = get_logger()
 
 
 class UploadTask:
+    """
+    File part or single file uploading task.
+    """
     def __init__(self, task_id, task_type, file_path, bucket_name, key_name, extra_args=None):
         self.id = task_id
         self.task_type = task_type
@@ -39,12 +38,20 @@ class UploadTask:
         self.error = None
 
     class Type(Enum):
+        """
+        Task's types.
+        """
+
         FILE = 0
         PART = 1
 
 
 class TasksQueue:
-    TASKS_DICT = dict()
+    """
+    Tasks waiting to be uploaded. Tasks can be in an uploading state, waiting for upload beginning,
+    upload failed or upload finished states.
+    """
+    TASKS_DICT = {}
 
     def __init__(self, max_queue_size):
         self._max_queue_size = max_queue_size
@@ -58,17 +65,43 @@ class TasksQueue:
         self._max_queue_size = value
 
     def put(self, task):
+        """
+        Insert the task into the queue.
+
+        @param task:
+        @return:
+        """
         if len(TasksQueue.TASKS_DICT) >= self.max_queue_size:
             raise self.FullQueueError()
         TasksQueue.TASKS_DICT[task.id] = task
 
-    def empty(self):
+    @staticmethod
+    def empty():
+        """
+        Check if the queue is empty.
+
+        @return:
+        """
         return len(TasksQueue.TASKS_DICT) == 0
 
-    def remove(self, task):
+    @staticmethod
+    def remove(task):
+        """
+        Remove the task from the queue.
+
+        @param task:
+        @return:
+        """
         del TasksQueue.TASKS_DICT[task.id]
 
     def prune_finished(self):
+        """
+        Remove successfully finished tasks.
+        If the task failed to upload:
+        1) If the thread was complete - mark the task as not running for rerun.
+        2) If the thread was unexpectedly killed raises TaskThreadError.
+        @return:
+        """
         finished_tasks = []
         keys = list(self.TASKS_DICT)[:]
         for key in keys:
@@ -87,11 +120,16 @@ class TasksQueue:
                 raise self.TaskThreadError(f"Thread failed with error: {repr(task.error)}").with_traceback(task.error.__traceback__)
 
         for task in finished_tasks:
-            del self.TASKS_DICT[task.id]
+            self.remove(task)
 
         return finished_tasks
 
     def get_next_ready(self):
+        """
+        Returns the first not started task in the queue.
+
+        @return:
+        """
         keys = list(self.TASKS_DICT)[:]
         for key in keys:
             task = self.TASKS_DICT.get(key)
@@ -101,10 +139,14 @@ class TasksQueue:
                 return task
 
     class FullQueueError(RuntimeError):
-        pass
+        """
+        The queue is full exception.
+        """
 
     class TaskThreadError(RuntimeError):
-        pass
+        """
+        A thread handling the task threw exception.
+        """
 
 
 class S3Client(Boto3Client):
@@ -122,7 +164,7 @@ class S3Client(Boto3Client):
         self._multipart_threshold = 50 * 1024 * 1024
         self._max_concurrent_requests = 70
         self.finished_uploading_flow = False
-        self.multipart_uploads = dict()
+        self.multipart_uploads = {}
         self._tasks_manager_thread_keepalive = None
         self._tasks_manager_thread_progress_time_limit = datetime.timedelta(minutes=20)
         self._md5_validate = False
@@ -236,7 +278,7 @@ class S3Client(Boto3Client):
         :param full_information: Extended bucket information
         :return:
         """
-        final_result = list()
+        final_result = []
         all_buckets = list(self.execute(self.client.list_buckets, "Buckets"))
         len_all_buckets = len(all_buckets)
 
@@ -355,7 +397,7 @@ class S3Client(Boto3Client):
         if key_name == "":
             raise ValueError("key_name is not set while keep_src_object_name is set to False")
 
-        self.start_uploading_file_task(bucket_name, src_object_path, key_name, extra_args=extra_args)
+        return self.start_uploading_file_task(bucket_name, src_object_path, key_name, extra_args=extra_args)
 
     def start_tasks_manager_thread(self):
         """
@@ -368,13 +410,14 @@ class S3Client(Boto3Client):
         """
         progress_time_limit = datetime.datetime.now() + self._tasks_manager_thread_progress_time_limit
 
-        for counter in range(60):
+        for _ in range(60):
             if not self.tasks_queue.empty():
                 break
-            logger.info(f"Tasks manager thread waiting for first tasks in tasks queue to start running")
+            logger.info("Tasks manager thread waiting for first tasks in tasks queue to start running")
             time.sleep(0.5)
         else:
             raise TimeoutError()
+
         while not self.tasks_queue.empty() or not self.finished_uploading_flow:
             self._tasks_manager_thread_keepalive = datetime.datetime.now()
 
@@ -461,12 +504,17 @@ class S3Client(Boto3Client):
             raise ValueError(task.type)
 
     def upload_file_thread(self, task):
+        """
+        Function starts a file uploading thread
+        @param task:
+        @return:
+        """
         try:
             self.upload_file_thread_helper(task)
-        except Exception as e:
+        except Exception as exception_instance:
             task.finished = True
             task.succeed = False
-            task.error = e
+            task.error = exception_instance
 
     def upload_file_thread_helper(self, task):
         """
@@ -504,11 +552,31 @@ class S3Client(Boto3Client):
 
     @staticmethod
     def add_md5_to_request(filters_req, file_data):
+        """
+        Calculate and add ContentMD5 key and value.
+
+        @param filters_req:
+        @param file_data:
+        @return:
+        """
         md = hashlib.md5(file_data).digest()
         content_md5_string = base64.b64encode(md).decode('utf-8')
         filters_req["ContentMD5"] = content_md5_string
 
     def upload_file_part_thread(self, task):
+        """
+        Function starts a file part uploading thread
+        @param task:
+        @return:
+        """
+        try:
+            self.upload_file_part_thread_helper(task)
+        except Exception as exception_instance:
+            task.finished = True
+            task.succeed = False
+            task.error = exception_instance
+
+    def upload_file_part_thread_helper(self, task):
         """
         Uploads part of a large file.
 
@@ -575,7 +643,7 @@ class S3Client(Boto3Client):
 
         task = UploadTask(task_id, task_type, file_path, bucket_name, key_name, extra_args=extra_args)
         task.start_time = datetime.datetime.now()
-        self.insert_task_into_tasks_queue(task)
+        return self.insert_task_into_tasks_queue(task)
 
     def start_multipart_uploading_file_task(self, bucket_name, file_path, key_name, extra_args=None):
         """
@@ -610,9 +678,8 @@ class S3Client(Boto3Client):
         full_chunks = last_position // self.multipart_chunk_size
         part_chunk = last_position % self.multipart_chunk_size
 
-        self.multipart_uploads[upload_id] = list()
+        self.multipart_uploads[upload_id] = []
         part_number = 0
-        file_lock = threading.Lock()
         for part_number in range(1, full_chunks + 1):
             task_id = f"{key_name}%{part_number}"
             task = UploadTask(task_id, UploadTask.Type.PART, file_path, bucket_name, key_name)
@@ -620,7 +687,6 @@ class S3Client(Boto3Client):
             task.offset_index = self.multipart_chunk_size * (part_number - 1)
             task.offset_length = self.multipart_chunk_size
             task.upload_id = upload_id
-            task.file_lock = file_lock
             self.multipart_uploads[upload_id].append(task)
             self.insert_task_into_tasks_queue(task)
 
@@ -632,11 +698,15 @@ class S3Client(Boto3Client):
             task.offset_index = self.multipart_chunk_size * (part_number - 1)
             task.offset_length = self.multipart_chunk_size
             task.upload_id = upload_id
-            task.file_lock = file_lock
             self.multipart_uploads[upload_id].append(task)
             self.insert_task_into_tasks_queue(task)
 
     def insert_task_into_tasks_queue(self, task):
+        """
+        Retries inserting the task into the queue for 20 minutes.
+        @param task:
+        @return:
+        """
         counter = 20 * 60 * 2
         while counter > 0:
             if self._tasks_manager_thread_keepalive is None:
@@ -647,8 +717,8 @@ class S3Client(Boto3Client):
             except TasksQueue.FullQueueError:
                 counter -= 1
                 time.sleep(0.5)
-        else:
-            raise TimeoutError(f"Timeout reached waiting to put a task into tasks queue")
+
+        raise TimeoutError(f"Timeout reached waiting to put a task into tasks queue")
 
     def upload_directory(self, bucket_name, src_data_path, dst_root_key, extra_args=None):
         """
@@ -669,6 +739,12 @@ class S3Client(Boto3Client):
             self.start_uploading_object(bucket_name, src_object_full_path, new_dst_root_key, keep_src_object_name=False, extra_args=extra_args)
 
     def provision_bucket(self, bucket):
+        """
+        Provision a bucket into AWS
+
+        @param bucket:
+        @return:
+        """
         filters_req = {"Bucket": bucket.name}
         AWSAccount.set_aws_region(bucket.region)
         try:
@@ -690,14 +766,32 @@ class S3Client(Boto3Client):
             self.put_bucket_policy_raw(bucket.generate_put_bucket_policy_request())
 
     def provision_bucket_raw(self, request_dict):
+        """
+        Execute raw create_bucket request.
+
+        @param request_dict:
+        @return:
+        """
         for response in self.execute(self.client.create_bucket, "Location", filters_req=request_dict):
             return response
 
     def put_bucket_policy_raw(self, request_dict):
+        """
+        Execute raw put_bucket_policy request.
+
+        @param request_dict:
+        @return:
+        """
         for response in self.execute(self.client.put_bucket_policy, "ResponseMetadata", filters_req=request_dict):
             return response
 
     def delete_objects(self, bucket):
+        """
+        Delete all bucket objects.
+
+        @param bucket:
+        @return:
+        """
         keys_to_delete = list(self.yield_bucket_objects(bucket))
         while len(keys_to_delete) != 0:
             deletion_list = [{"Key": obj.key} for obj in keys_to_delete[:1000]]
@@ -706,6 +800,5 @@ class S3Client(Boto3Client):
                 logger.info(f"Deleted {len(deletion_list)} keys from bucket '{bucket.name}'")
                 if "Errors" in response:
                     raise RuntimeError(response)
-                pass
-            keys_to_delete = keys_to_delete[1000:]
 
+            keys_to_delete = keys_to_delete[1000:]

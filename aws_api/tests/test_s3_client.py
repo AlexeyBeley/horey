@@ -9,7 +9,7 @@ from horey.aws_api.base_entities.region import Region
 
 AWSAccount.set_aws_region(Region.get_region('us-west-2'))
 
-TEST_BUCKET_NAME = "horey-test-bucket"
+TEST_BUCKET_NAME = "horey-alexey-ytest-test"  # "horey-test-bucket"
 
 
 def test_init_s3_client():

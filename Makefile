@@ -52,7 +52,7 @@ install_pylint:
 pylint: init_venv_dir install_pylint raw_pylint
 raw_pylint:
 	source ${VENV_DIR}/bin/activate &&\
-	pylint  --rcfile=${BUILD_DIR}/.pylintrc ${ROOT_DIR}/aws_api/horey/aws_api/aws_api.py
+	pylint  --rcfile=${BUILD_DIR}/.pylintrc ${ROOT_DIR}/aws_api/horey/aws_api/aws_clients/s3_client.py
 
 install_test_deps-%: init_venv_dir
 	source ${VENV_DIR}/bin/activate &&\
