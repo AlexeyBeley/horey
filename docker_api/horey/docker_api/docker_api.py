@@ -1,7 +1,4 @@
-import sys
-import pdb
-import argparse
-import json
+
 import docker
 from docker.errors import BuildError
 from horey.h_logger import get_logger
@@ -16,6 +13,11 @@ class DockerAPI:
     def login(self, registry, username, password):
         ret = self.client.login(registry=registry, username=username, password=password)
         logger.info(ret)
+
+    def get_image(self, name):
+        logger.info(f"Getting image: '{name}'")
+        docker_image = self.client.images.get(name)
+        return docker_image
 
     def build(self, dockerfile_directory_path, tags, nocache=True):
         logger.info("Starting building image")
