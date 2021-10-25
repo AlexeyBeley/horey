@@ -296,7 +296,6 @@ class RemoteDeployer:
                     compress=True,
                     banner_timeout=60
                 )
-                pdb.set_trace()
                 yield client
             return
 
