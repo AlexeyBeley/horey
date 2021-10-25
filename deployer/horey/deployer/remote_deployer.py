@@ -282,10 +282,26 @@ class RemoteDeployer:
     @staticmethod
     @contextmanager
     def get_deployment_target_client_context(block_to_deploy: MachineDeploymentBlock):
+        with open(block_to_deploy.deployment_target_ssh_key_path, 'r') as ssh_key_file_handler:
+            deployment_target_key = paramiko.RSAKey.from_private_key(StringIO(ssh_key_file_handler.read()))
+
+        if block_to_deploy.bastion_address is None:
+            with paramiko.SSHClient() as client:
+                client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                client.connect(
+                    block_to_deploy.deployment_target_address,
+                    port=22,
+                    username=block_to_deploy.deployment_target_user_name,
+                    pkey=deployment_target_key,
+                    compress=True,
+                    banner_timeout=60
+                )
+                pdb.set_trace()
+                yield client
+            return
+
         with open(block_to_deploy.bastion_ssh_key_path, 'r') as bastion_key_file_handler:
             bastion_key = paramiko.RSAKey.from_private_key(StringIO(bastion_key_file_handler.read()))
-        with open(block_to_deploy.deployment_target_ssh_key_path, 'r') as bastion_key_file_handler:
-            deployment_target_key = paramiko.RSAKey.from_private_key(StringIO(bastion_key_file_handler.read()))
 
         with open_tunnel(
                 ssh_address_or_host=(block_to_deploy.bastion_address, 22),
