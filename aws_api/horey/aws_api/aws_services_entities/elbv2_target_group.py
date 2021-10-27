@@ -38,6 +38,7 @@ class ELBV2TargetGroup(AwsObject):
                         "LoadBalancerArns": self.init_default_attr,
                         "TargetType": self.init_default_attr,
                         "ProtocolVersion": self.init_default_attr,
+                        "IpAddressType": self.init_default_attr,
                         }
 
         self.init_attrs(dict_src, init_options)

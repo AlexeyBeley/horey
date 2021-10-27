@@ -16,6 +16,7 @@ class AutoScalingGroup(AwsObject):
         super().__init__(dict_src)
         self._region = None
         self.status = None
+        self.availability_zones = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -104,7 +105,8 @@ class AutoScalingGroup(AwsObject):
         request["ServiceLinkedRoleARN"] = self.service_linked_role_arn
         request["DesiredCapacity"] = self.desired_capacity
         request["DefaultCooldown"] = self.default_cooldown
-        request["AvailabilityZones"] = self.availability_zones
+        if self.availability_zones is not None:
+            request["AvailabilityZones"] = self.availability_zones
         request["HealthCheckType"] = self.health_check_type
         request["HealthCheckGracePeriod"] = self.health_check_grace_period
         request["VPCZoneIdentifier"] = self.vpc_zone_identifier
