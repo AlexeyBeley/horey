@@ -40,6 +40,7 @@ class Route53Client(Boto3Client):
         return final_result
 
     def get_hosted_zone_full_information(self, hsoted_zone):
+        hsoted_zone.records = []
         for update_info in self.execute(self.client.list_resource_record_sets, "ResourceRecordSets",
                                             filters_req={"HostedZoneId": hsoted_zone.id}):
             hsoted_zone.update_record_set(update_info)
@@ -126,3 +127,18 @@ class Route53Client(Boto3Client):
             if "already exists" not in repr_exception:
                 raise
             logger.warning(repr_exception)
+
+    def update_hosted_zone_information(self, hosted_zone, full_information=False):
+        hosted_zone_name = hosted_zone.name.strip(".")
+        filters_req = {"DNSName": hosted_zone_name}
+        for response in self.execute(self.client.list_hosted_zones_by_name, "HostedZones", filters_req=filters_req):
+            if response["Name"].strip(".") == hosted_zone_name:
+                hosted_zone.update_from_raw_response(response)
+                break
+        else:
+            raise RuntimeError(f"Can not find hosted_zone by name: '{hosted_zone.name}'")
+
+        if full_information:
+            self.get_hosted_zone_full_information(hosted_zone)
+
+

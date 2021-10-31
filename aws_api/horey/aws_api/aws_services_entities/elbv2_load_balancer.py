@@ -15,6 +15,7 @@ class LoadBalancer(AwsObject):
         self.dns_name = None
         self.security_groups = None
         self.listeners = []
+        self.arn = None
         if from_cache:
             self._init_object_from_cache(dict_src)
             return
@@ -126,6 +127,27 @@ class LoadBalancer(AwsObject):
         request["IpAddressType"] = self.ip_address_type
 
         return request
+
+    def update_from_raw_response(self, dict_src):
+        init_options = {
+                        "LoadBalancerArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+                        "LoadBalancerName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+                        "DNSName": self.init_default_attr,
+                        "CanonicalHostedZoneId": self.init_default_attr,
+                        "CreatedTime": self.init_default_attr,
+                        "Scheme": self.init_default_attr,
+                        "VpcId": self.init_default_attr,
+                        "State": self.init_default_attr,
+                        "Type": self.init_default_attr,
+                        "IpAddressType": self.init_default_attr,
+                        "AvailabilityZones": self.init_default_attr,
+                        "SecurityGroups": self.init_default_attr,
+                        }
+
+        self.init_attrs(dict_src, init_options)
+
+    def generate_dispose_request(self):
+        return {"LoadBalancerArn": self.arn}
 
     def get_state(self):
         if self.state["Code"] == "active":

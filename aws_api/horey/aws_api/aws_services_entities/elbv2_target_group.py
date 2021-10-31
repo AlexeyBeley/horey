@@ -1,6 +1,8 @@
 """
 AWS ELB V2 target group
 """
+import pdb
+
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 
 
@@ -124,3 +126,6 @@ class ELBV2TargetGroup(AwsObject):
         request["Targets"] = self.targets
 
         return request
+
+    def generate_dispose_request(self):
+        return {"TargetGroupArn": self.arn}

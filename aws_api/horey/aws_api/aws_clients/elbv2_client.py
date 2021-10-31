@@ -34,11 +34,15 @@ class ELBV2Client(Boto3Client):
             final_result += self.get_region_load_balancers(region, full_information=full_information)
         return final_result
 
-    def get_region_load_balancers(self, region, full_information=True):
+    def get_region_load_balancers(self, region, names=None, full_information=True):
         AWSAccount.set_aws_region(region)
         final_result = list()
 
-        for response in self.execute(self.client.describe_load_balancers, "LoadBalancers"):
+        filters_req = None
+        if names is not None:
+            filters_req = {"Names": names}
+
+        for response in self.execute(self.client.describe_load_balancers, "LoadBalancers", filters_req=filters_req):
             obj = LoadBalancer(response)
             final_result.append(obj)
 
@@ -72,25 +76,14 @@ class ELBV2Client(Boto3Client):
 
         return final_result
 
-    def get_region_load_balancers(self, region, full_information=True):
-        AWSAccount.set_aws_region(region)
-        final_result = list()
-        for response in self.execute(self.client.describe_load_balancers, "LoadBalancers"):
-            obj = LoadBalancer(response)
-            final_result.append(obj)
-
-            if full_information:
-                for listener_response in self.execute(self.client.describe_listeners, "Listeners",
-                                                      filters_req={"LoadBalancerArn": obj.arn}):
-                    obj.add_raw_listener(listener_response)
-        return final_result
-
-    def get_region_target_groups(self, region, full_information=True, target_group_names=None):
+    def get_region_target_groups(self, region, full_information=True, target_group_names=None, load_balancer_arn=None):
         AWSAccount.set_aws_region(region)
         final_result = list()
         filters_req = dict()
         if target_group_names is not None:
             filters_req["Names"] = target_group_names
+        if load_balancer_arn is not None:
+            filters_req["LoadBalancerArn"] = load_balancer_arn
 
         for response in self.execute(self.client.describe_target_groups, "TargetGroups", filters_req=filters_req):
             obj = ELBV2TargetGroup(response)
@@ -175,3 +168,42 @@ class ELBV2Client(Boto3Client):
     def provision_load_balancer_listener_raw(self, request_dict):
         for response in self.execute(self.client.create_listener, "Listeners", filters_req=request_dict):
             return response
+
+    def dispose_load_balancer(self, load_balancer):
+        AWSAccount.set_aws_region(load_balancer.region)
+        pdb.set_trace()
+        lb_target_groups = self.get_region_target_groups(load_balancer.region, load_balancer_arn=load_balancer.arn)
+        lb_listeners = self.get_region_listeners(load_balancer.region, load_balancer_arn=load_balancer.arn)
+        for target_group in lb_target_groups:
+            self.dispose_target_group_raw(target_group.generate_dispose_request())
+        raise NotImplementedError("Remove listeners and target groups")
+
+        if load_balancer.arn is None:
+            region_lbs = self.get_region_load_balancers(load_balancer.region, names=[load_balancer.name])
+
+            if len(region_lbs) > 1:
+                raise ValueError(f"Can not find load_balancer '{load_balancer.name}': found {len(region_lbs)}")
+
+            if len(region_lbs) == 0:
+                return
+
+            load_balancer.update_from_raw_response(region_lbs[0].dict_src)
+
+        self.dispose_load_balancer_raw(load_balancer.generate_dispose_request())
+
+    def dispose_target_group_raw(self, request):
+        pdb.set_trace()
+        for response in self.execute(self.client.delete_target_group, None, raw_data=True,  filters_req=request):
+            return response
+
+    def dispose_load_balancer_raw(self, request):
+        pdb.set_trace()
+        for response in self.execute(self.client.delete_load_balancer, None, raw_data=True,  filters_req=request):
+            return response
+
+    def dispose_listener(self, listener):
+        pdb.set_trace()
+        """
+        response = client.delete_listener(
+        ListenerArn='string'
+        )"""

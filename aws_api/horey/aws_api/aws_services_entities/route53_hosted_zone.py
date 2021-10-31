@@ -94,6 +94,7 @@ class HostedZone(AwsObject):
                 "Weight": self.init_default_attr,
                 "MultiValueAnswer": self.init_default_attr,
                 "HealthCheckId": self.init_default_attr,
+                "LinkedService": self.init_default_attr,
             }
 
             self.init_attrs(dict_src, init_options)
@@ -106,6 +107,17 @@ class HostedZone(AwsObject):
             """
             options = {}
             self._init_from_cache(dict_src, options)
+
+        def generate_dispose_request(self):
+            return {
+                    'Action': 'DELETE',
+                    'ResourceRecordSet': {
+                        'Name': self.name,
+                        'Type': self.type,
+                        'TTL': self.ttl,
+                        'ResourceRecords': self.resource_records
+                    }
+                }
 
     def update_from_raw_response(self, dict_src):
         init_options = {
@@ -122,6 +134,7 @@ class HostedZone(AwsObject):
             "CallerReference": self.init_default_attr,
             "Config": self.init_default_attr,
             "ResourceRecordSetCount": self.init_default_attr,
+            "LinkedService": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
