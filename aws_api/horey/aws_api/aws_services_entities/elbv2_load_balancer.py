@@ -213,4 +213,7 @@ class LoadBalancer(AwsObject):
             request["DefaultActions"] = self.default_actions
             return request
 
-
+        def generate_dispose_request(self):
+            request = dict()
+            request["ListenerArn"] = self.arn
+            return request

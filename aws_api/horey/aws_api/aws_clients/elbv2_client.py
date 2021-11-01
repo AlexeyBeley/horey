@@ -184,27 +184,24 @@ class ELBV2Client(Boto3Client):
 
             load_balancer.update_from_raw_response(region_lbs[0].dict_src)
 
-        pdb.set_trace()
-        lb_target_groups = self.get_region_target_groups(load_balancer.region, load_balancer_arn=load_balancer.arn)
         lb_listeners = self.get_region_listeners(load_balancer.region, load_balancer_arn=load_balancer.arn)
+        for listener in lb_listeners:
+            self.dispose_listener_raw(listener.generate_dispose_request())
+
+        lb_target_groups = self.get_region_target_groups(load_balancer.region, load_balancer_arn=load_balancer.arn)
         for target_group in lb_target_groups:
             self.dispose_target_group_raw(target_group.generate_dispose_request())
-        raise NotImplementedError("Remove listeners and target groups")
+
         self.dispose_load_balancer_raw(load_balancer.generate_dispose_request())
 
     def dispose_target_group_raw(self, request):
-        pdb.set_trace()
         for response in self.execute(self.client.delete_target_group, None, raw_data=True,  filters_req=request):
             return response
 
     def dispose_load_balancer_raw(self, request):
-        pdb.set_trace()
         for response in self.execute(self.client.delete_load_balancer, None, raw_data=True,  filters_req=request):
             return response
 
-    def dispose_listener(self, listener):
-        pdb.set_trace()
-        """
-        response = client.delete_listener(
-        ListenerArn='string'
-        )"""
+    def dispose_listener_raw(self, request):
+        for response in self.execute(self.client.delete_listener, None, raw_data=True,  filters_req=request):
+            return response

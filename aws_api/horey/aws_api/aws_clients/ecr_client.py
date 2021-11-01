@@ -100,6 +100,5 @@ class ECRClient(Boto3Client):
         return repository.update_from_raw_create(dict_ret)
 
     def dispose_repository_raw(self, request_dict):
-        pdb.set_trace()
         for response in self.execute(self.client.delete_repository, "repository", filters_req=request_dict):
             return response
