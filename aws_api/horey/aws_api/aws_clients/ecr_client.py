@@ -36,10 +36,6 @@ class ECRClient(Boto3Client):
             dict_src["proxy_host"] = dict_src["proxyEndpoint"][len("https://"):]
         return lst_ret
 
-    def provision_repository_raw(self, request_dict):
-        for response in self.execute(self.client.create_repository, "repository", filters_req=request_dict):
-            return response
-
     def provision_repository(self, repository):
         AWSAccount.set_aws_region(repository.region)
 
@@ -49,6 +45,10 @@ class ECRClient(Boto3Client):
 
         dict_ret = self.provision_repository_raw(repository.generate_create_request())
         return repository.update_from_raw_create(dict_ret)
+
+    def provision_repository_raw(self, request_dict):
+        for response in self.execute(self.client.create_repository, "repository", filters_req=request_dict):
+            return response
 
     def get_all_images(self, repository):
         """
@@ -92,3 +92,14 @@ class ECRClient(Boto3Client):
             final_result.append(obj)
 
         return final_result
+
+    def dispose_repository(self, repository: ECRRepository):
+        AWSAccount.set_aws_region(repository.region)
+
+        dict_ret = self.dispose_repository_raw(repository.generate_dispose_request())
+        return repository.update_from_raw_create(dict_ret)
+
+    def dispose_repository_raw(self, request_dict):
+        pdb.set_trace()
+        for response in self.execute(self.client.delete_repository, "repository", filters_req=request_dict):
+            return response

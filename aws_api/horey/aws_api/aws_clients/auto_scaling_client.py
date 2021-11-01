@@ -95,3 +95,13 @@ class AutoScalingClient(Boto3Client):
         logger.info(f"Creating Auto Scaling Group: {request_dict}")
         for response in self.execute(self.client.create_auto_scaling_group, "ResponseMetadata", raw_data=True, filters_req=request_dict):
             return response
+
+    def dispose_auto_scaling_group(self, autoscaling_group):
+        AWSAccount.set_aws_region(autoscaling_group.region)
+        self.dispose_auto_scaling_group_raw(autoscaling_group.generate_dispose_request())
+
+    def dispose_auto_scaling_group_raw(self, request_dict):
+        logger.info(f"Disposing Auto Scaling Group: {request_dict}")
+        pdb.set_trace()
+        for response in self.execute(self.client.delete_auto_scaling_group, None, raw_data=True, filters_req=request_dict):
+            return response

@@ -10,9 +10,10 @@ from horey.aws_api.aws_services_entities.ecs_cluster import ECSCluster
 from horey.aws_api.aws_services_entities.ecs_service import ECSService
 from horey.aws_api.aws_services_entities.ecs_capacity_provider import ECSCapacityProvider
 from horey.aws_api.aws_services_entities.ecs_task_definition import ECSTaskDefinition
-
+from horey.aws_api.aws_services_entities.ecs_container_instance import ECSContainerInstance
 
 from horey.h_logger import get_logger
+
 logger = get_logger()
 
 
@@ -75,19 +76,20 @@ class ECSClient(Boto3Client):
 
         return final_result
 
-    def get_region_clusters(self, region):
+    def get_region_clusters(self, region, cluster_identifiers=None):
         AWSAccount.set_aws_region(region)
 
         final_result = list()
-        clusters_arns = []
-        for cluster_arn in self.execute(self.client.list_clusters, "clusterArns"):
-            clusters_arns.append(cluster_arn)
+        if cluster_identifiers is None:
+            cluster_identifiers = []
+            for cluster_arn in self.execute(self.client.list_clusters, "clusterArns"):
+                cluster_identifiers.append(cluster_arn)
 
-        if len(clusters_arns) > 100:
+        if len(cluster_identifiers) > 100:
             raise NotImplementedError("""clusters (list) -- A list of up to 100 cluster names or full cluster 
             Amazon Resource Name (ARN) entries. If you do not specify a cluster, the default cluster is assumed.""")
 
-        filter_req = {"clusters": clusters_arns,
+        filter_req = {"clusters": cluster_identifiers,
                       "include": ["ATTACHMENTS", "CONFIGURATIONS", "SETTINGS", "STATISTICS", "TAGS"]}
 
         for dict_src in self.execute(self.client.describe_clusters, "clusters", filters_req=filter_req):
@@ -95,7 +97,7 @@ class ECSClient(Boto3Client):
             final_result.append(obj)
 
         return final_result
-    
+
     def provision_capacity_provider(self, capacity_provider):
         """
         self.client.delete_capacity_provider(capacityProvider='test-capacity-provider')
@@ -112,9 +114,10 @@ class ECSClient(Boto3Client):
 
     def provision_capacity_provider_raw(self, request_dict):
         logger.info(f"Creating ECS Capacity Provider: {request_dict}")
-        for response in self.execute(self.client.create_capacity_provider, "capacityProvider", filters_req=request_dict):
+        for response in self.execute(self.client.create_capacity_provider, "capacityProvider",
+                                     filters_req=request_dict):
             return response
-        
+
     def provision_cluster(self, cluster):
         """
         self.client.delete_cluster(capacityProvider='test-capacity-provider')
@@ -181,14 +184,15 @@ class ECSClient(Boto3Client):
         final_result = list()
         for arn in list_arns:
             filters_req = {"taskDefinition": arn, "include": ['TAGS']}
-            for dict_src in self.execute(self.client.describe_task_definition, "taskDefinition", filters_req=filters_req):
+            for dict_src in self.execute(self.client.describe_task_definition, "taskDefinition",
+                                         filters_req=filters_req):
                 final_result.append(ECSTaskDefinition(dict_src))
 
         return final_result
 
     def provision_ecs_task_definition(self, task_definition):
-        #region_objects = self.get_region_task_definitions(task_definition.region, family_prefix=task_definition.family)
-        #for region_object in region_objects:
+        # region_objects = self.get_region_task_definitions(task_definition.region, family_prefix=task_definition.family)
+        # for region_object in region_objects:
         #    pdb.set_trace()
         #    if region_object.name == task_definition.name:
         #        task_definition.update_from_raw_response(region_object.dict_src)
@@ -231,6 +235,82 @@ class ECSClient(Boto3Client):
             return response
 
     def update_service_raw(self, request_dict):
-        logger.info(f"Creating ECS Service: {request_dict}")
+        logger.info(f"Updating ECS Service: {request_dict}")
         for response in self.execute(self.client.update_service, "service", filters_req=request_dict):
+            return response
+
+    def dispose_service(self, cluster, service: ECSService):
+        AWSAccount.set_aws_region(service.region)
+        self.dispose_service_raw(service.generate_dispose_request(cluster))
+
+    def dispose_service_raw(self, request_dict):
+        logger.info(f"Disposing ECS Service: {request_dict}")
+        for response in self.execute(self.client.delete_service, "service", filters_req=request_dict):
+            return response
+
+    def get_region_container_instances(self, region, cluster_identifier=None):
+        AWSAccount.set_aws_region(region)
+
+        if cluster_identifier is None:
+            cluster_identifiers = []
+            for cluster_arn in self.execute(self.client.list_clusters, "clusterArns"):
+                cluster_identifiers.append(cluster_arn)
+        else:
+            cluster_identifiers = [cluster_identifier]
+
+        final_result = list()
+
+        for cluster_identifier in cluster_identifiers:
+            cluster_container_instances_arns = []
+            filter_req = {"cluster": cluster_identifier,
+                          "maxResults": 100}
+
+            for container_instance_arn in self.execute(self.client.list_container_instances, "containerInstanceArns",
+                                                       filters_req=filter_req):
+                cluster_container_instances_arns.append(container_instance_arn)
+
+            if len(cluster_container_instances_arns) == 0:
+                continue
+
+            filter_req = {"cluster": cluster_identifier,
+                          "containerInstances": cluster_container_instances_arns,
+                          "include": ["TAGS"]
+                          }
+
+            for dict_src in self.execute(self.client.describe_container_instances, "containerInstances",
+                                         filters_req=filter_req):
+                obj = ECSContainerInstance(dict_src)
+                final_result.append(obj)
+
+        return final_result
+
+    def dispose_cluster(self, cluster: ECSCluster):
+        """
+        response = client.deregister_container_instance(
+         cluster='string',
+        containerInstance='string',
+        force=True|False
+        )
+        @param cluster:
+        @return:
+        """
+        cluster_container_instances = self.get_region_container_instances(cluster.region,
+                                                                          cluster_identifier=cluster.name)
+        self.dispose_container_instances(cluster_container_instances, cluster)
+        AWSAccount.set_aws_region(cluster.region)
+        self.dispose_cluster_raw(cluster.generate_dispose_request(cluster))
+
+    def dispose_cluster_raw(self, request_dict):
+        logger.info(f"Disposing ECS Cluster: {request_dict}")
+        for response in self.execute(self.client.delete_cluster, "cluster", filters_req=request_dict):
+            return response
+
+    def dispose_container_instances(self, container_instances, cluster):
+        for container_instance in container_instances:
+            self.dispose_container_instance_raw(container_instance.generate_dispose_request(cluster))
+
+    def dispose_container_instance_raw(self, request_dict):
+        logger.info(f"Disposing ECS container instance: {request_dict}")
+        for response in self.execute(self.client.deregister_container_instance, "containerInstance",
+                                     filters_req=request_dict):
             return response

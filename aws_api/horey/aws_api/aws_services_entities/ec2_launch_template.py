@@ -58,6 +58,12 @@ class EC2LaunchTemplate(AwsObject):
         ]
         return request
 
+    def generate_dispose_request(self):
+        request = dict()
+        request["LaunchTemplateName"] = self.name
+        request["DryRun"] = False
+        return request
+
     def update_from_raw_response(self, dict_src):
         init_options = {
             "LaunchTemplateName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),

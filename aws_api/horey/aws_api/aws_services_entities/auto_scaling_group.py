@@ -114,6 +114,12 @@ class AutoScalingGroup(AwsObject):
         request["NewInstancesProtectedFromScaleIn"] = self.new_instances_protected_from_scale_in
         return request
 
+    def generate_dispose_request(self):
+        request = dict()
+        request["AutoScalingGroupName"] = self.name
+        request["ForceDelete"] = self.name
+        return request
+
     @property
     def region(self):
         if self._region is not None:

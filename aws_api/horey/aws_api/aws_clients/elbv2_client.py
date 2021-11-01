@@ -42,7 +42,8 @@ class ELBV2Client(Boto3Client):
         if names is not None:
             filters_req = {"Names": names}
 
-        for response in self.execute(self.client.describe_load_balancers, "LoadBalancers", filters_req=filters_req):
+        for response in self.execute(self.client.describe_load_balancers, "LoadBalancers", filters_req=filters_req,
+                                     exception_ignore_callback=lambda error: "LoadBalancerNotFound" in repr(error)):
             obj = LoadBalancer(response)
             final_result.append(obj)
 
@@ -171,12 +172,6 @@ class ELBV2Client(Boto3Client):
 
     def dispose_load_balancer(self, load_balancer):
         AWSAccount.set_aws_region(load_balancer.region)
-        pdb.set_trace()
-        lb_target_groups = self.get_region_target_groups(load_balancer.region, load_balancer_arn=load_balancer.arn)
-        lb_listeners = self.get_region_listeners(load_balancer.region, load_balancer_arn=load_balancer.arn)
-        for target_group in lb_target_groups:
-            self.dispose_target_group_raw(target_group.generate_dispose_request())
-        raise NotImplementedError("Remove listeners and target groups")
 
         if load_balancer.arn is None:
             region_lbs = self.get_region_load_balancers(load_balancer.region, names=[load_balancer.name])
@@ -189,6 +184,12 @@ class ELBV2Client(Boto3Client):
 
             load_balancer.update_from_raw_response(region_lbs[0].dict_src)
 
+        pdb.set_trace()
+        lb_target_groups = self.get_region_target_groups(load_balancer.region, load_balancer_arn=load_balancer.arn)
+        lb_listeners = self.get_region_listeners(load_balancer.region, load_balancer_arn=load_balancer.arn)
+        for target_group in lb_target_groups:
+            self.dispose_target_group_raw(target_group.generate_dispose_request())
+        raise NotImplementedError("Remove listeners and target groups")
         self.dispose_load_balancer_raw(load_balancer.generate_dispose_request())
 
     def dispose_target_group_raw(self, request):

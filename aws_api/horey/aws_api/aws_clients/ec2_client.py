@@ -913,3 +913,13 @@ class EC2Client(Boto3Client):
         with open(file_path) as file_handler:
             user_data = file_handler.read()
         return base64.b64encode(user_data.encode()).decode("ascii")
+
+    def dispose_launch_template(self, launch_template):
+        AWSAccount.set_aws_region(launch_template.region)
+        self.dispose_launch_template_raw(launch_template.generate_dispose_request())
+
+    def dispose_launch_template_raw(self, request_dict):
+        pdb.set_trace()
+        for response in self.execute(self.client.delete_launch_template, "LaunchTemplate", filters_req=request_dict):
+            return response
+

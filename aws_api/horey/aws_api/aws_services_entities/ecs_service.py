@@ -116,6 +116,13 @@ class ECSService(AwsObject):
         request["tags"] = self.tags
         return request
 
+    def generate_dispose_request(self, cluster):
+        request = dict()
+        request["service"] = self.name
+        request["cluster"] = cluster.name
+        request["force"] = True
+        return request
+
     def generate_update_request(self):
         request = dict()
         request["service"] = self.name

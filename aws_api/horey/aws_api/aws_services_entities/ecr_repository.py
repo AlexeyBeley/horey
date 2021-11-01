@@ -47,6 +47,12 @@ class ECRRepository(AwsObject):
         request["tags"] = self.tags
         return request
 
+    def generate_dispose_request(self):
+        request = dict()
+        request["repositoryName"] = self.name
+        request["force"] = True
+        return request
+
     def update_from_raw_create(self, dict_src):
         init_options = {
             "repositoryArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),

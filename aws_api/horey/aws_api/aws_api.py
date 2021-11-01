@@ -2380,3 +2380,18 @@ class AWSAPI:
 
     def provision_ecr_repository(self, ecr_repo):
         self.ecr_client.provision_repository(ecr_repo)
+
+    def dispose_ecr_repository(self, ecr_repo):
+        self.ecr_client.dispose_repository(ecr_repo)
+
+    def dispose_ecs_service(self, cluster, service):
+        self.ecs_client.dispose_service(cluster, service)
+
+    def dispose_ecs_cluster(self, cluster):
+        self.ecs_client.dispose_cluster(cluster)
+
+    def dispose_auto_scaling_group(self, auto_scaling_group):
+        self.autoscaling_client.dispose_auto_scaling_group(auto_scaling_group)
+
+    def dispose_launch_template(self, launch_template):
+        self.ec2_client.dispose_launch_template(launch_template)

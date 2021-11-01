@@ -159,3 +159,8 @@ class ECSCluster(AwsObject):
             raise ValueError(value)
 
         self._region = value
+
+    def generate_dispose_request(self, cluster):
+        request = dict()
+        request["cluster"] = cluster.name
+        return request
