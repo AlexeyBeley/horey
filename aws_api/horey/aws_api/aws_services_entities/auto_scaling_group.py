@@ -120,6 +120,12 @@ class AutoScalingGroup(AwsObject):
         request["ForceDelete"] = True
         return request
 
+    def generate_desired_capacity_request(self):
+        request = dict()
+        request["AutoScalingGroupName"] = self.name
+        request["DesiredCapacity"] = self.desired_capacity
+        return request
+
     @property
     def region(self):
         if self._region is not None:

@@ -12,6 +12,7 @@ class EC2Instance(AwsObject):
     """
     Class to represent ec2 instance
     """
+
     def __init__(self, dict_src, from_cache=False):
         """
         Init EC2 instance with boto3 dict
@@ -31,49 +32,52 @@ class EC2Instance(AwsObject):
             return
 
         init_options = {
-                        "InstanceId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
-                        "NetworkInterfaces": self.init_interfaces,
-                        "Tags": self.init_default_attr,
-                        "AmiLaunchIndex": self.init_default_attr,
-                        "ImageId": self.init_default_attr,
-                        "InstanceType": self.init_default_attr,
-                        "KeyName": self.init_default_attr,
-                        "LaunchTime": self.init_default_attr,
-                        "Monitoring": self.init_default_attr,
-                        "Placement": self.init_default_attr,
-                        "PrivateDnsName": self.init_default_attr,
-                        "PrivateIpAddress": self.init_default_attr,
-                        "ProductCodes": self.init_default_attr,
-                        "PublicDnsName": self.init_default_attr,
-                        "State": self.init_default_attr,
-                        "StateTransitionReason": self.init_default_attr,
-                        "SubnetId": self.init_default_attr,
-                        "VpcId": self.init_default_attr,
-                        "Architecture": self.init_default_attr,
-                        "BlockDeviceMappings": self.init_default_attr,
-                        "ClientToken": self.init_default_attr,
-                        "EbsOptimized": self.init_default_attr,
-                        "EnaSupport": self.init_default_attr,
-                        "Hypervisor": self.init_default_attr,
-                        "IamInstanceProfile": self.init_default_attr,
-                        "RootDeviceName": self.init_default_attr,
-                        "RootDeviceType": self.init_default_attr,
-                        "SecurityGroups": self.init_default_attr,
-                        "SourceDestCheck": self.init_default_attr,
-                        "StateReason": self.init_default_attr,
-                        "VirtualizationType": self.init_default_attr,
-                        "CpuOptions": self.init_default_attr,
-                        "PublicIpAddress": self.init_default_attr,
-                        "Association": self.init_default_attr,
-                        "CapacityReservationSpecification": self.init_default_attr,
-                        "KernelId": self.init_default_attr,
-                        "Platform": self.init_default_attr,
-                        "SpotInstanceRequestId": self.init_default_attr,
-                        "InstanceLifecycle": self.init_default_attr,
-                        "HibernationOptions": self.init_default_attr,
-                        "MetadataOptions": self.init_default_attr,
-                        "EnclaveOptions": self.init_default_attr,
-                        "BootMode": self.init_default_attr,
+            "InstanceId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "NetworkInterfaces": self.init_interfaces,
+            "Tags": self.init_default_attr,
+            "AmiLaunchIndex": self.init_default_attr,
+            "ImageId": self.init_default_attr,
+            "InstanceType": self.init_default_attr,
+            "KeyName": self.init_default_attr,
+            "LaunchTime": self.init_default_attr,
+            "Monitoring": self.init_default_attr,
+            "Placement": self.init_default_attr,
+            "PrivateDnsName": self.init_default_attr,
+            "PrivateIpAddress": self.init_default_attr,
+            "ProductCodes": self.init_default_attr,
+            "PublicDnsName": self.init_default_attr,
+            "State": self.init_default_attr,
+            "StateTransitionReason": self.init_default_attr,
+            "SubnetId": self.init_default_attr,
+            "VpcId": self.init_default_attr,
+            "Architecture": self.init_default_attr,
+            "BlockDeviceMappings": self.init_default_attr,
+            "ClientToken": self.init_default_attr,
+            "EbsOptimized": self.init_default_attr,
+            "EnaSupport": self.init_default_attr,
+            "Hypervisor": self.init_default_attr,
+            "IamInstanceProfile": self.init_default_attr,
+            "RootDeviceName": self.init_default_attr,
+            "RootDeviceType": self.init_default_attr,
+            "SecurityGroups": self.init_default_attr,
+            "SourceDestCheck": self.init_default_attr,
+            "StateReason": self.init_default_attr,
+            "VirtualizationType": self.init_default_attr,
+            "CpuOptions": self.init_default_attr,
+            "PublicIpAddress": self.init_default_attr,
+            "Association": self.init_default_attr,
+            "CapacityReservationSpecification": self.init_default_attr,
+            "KernelId": self.init_default_attr,
+            "Platform": self.init_default_attr,
+            "SpotInstanceRequestId": self.init_default_attr,
+            "InstanceLifecycle": self.init_default_attr,
+            "HibernationOptions": self.init_default_attr,
+            "MetadataOptions": self.init_default_attr,
+            "EnclaveOptions": self.init_default_attr,
+            "BootMode": self.init_default_attr,
+            "PlatformDetails": self.init_default_attr,
+            "UsageOperation": self.init_default_attr,
+            "UsageOperationUpdateTime": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -208,6 +212,9 @@ class EC2Instance(AwsObject):
             "MetadataOptions": self.init_default_attr,
             "EnclaveOptions": self.init_default_attr,
             "BootMode": self.init_default_attr,
+            "PlatformDetails": self.init_default_attr,
+            "UsageOperation": self.init_default_attr,
+            "UsageOperationUpdateTime": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -216,7 +223,7 @@ class EC2Instance(AwsObject):
         request = dict()
         request["InstanceInitiatedShutdownBehavior"] = self.instance_initiated_shutdown_behavior
         request["NetworkInterfaces"] = self.network_interfaces
-        #request["CreditSpecification"] = {
+        # request["CreditSpecification"] = {
         #        'CpuCredits': 'unlimited'
         #    }
         request["BlockDeviceMappings"] = self.block_device_mappings
@@ -225,7 +232,7 @@ class EC2Instance(AwsObject):
 
         request["InstanceType"] = self.instance_type
 
-        #request["EbsOptimized"] = self.ebs_optimized
+        # request["EbsOptimized"] = self.ebs_optimized
 
         request["KeyName"] = self.key_name
         request["Monitoring"] = self.monitoring
@@ -265,5 +272,3 @@ class EC2Instance(AwsObject):
         TERMINATED = 3
         STOPPING = 4
         STOPPED = 5
-
-

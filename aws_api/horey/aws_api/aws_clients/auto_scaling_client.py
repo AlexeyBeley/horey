@@ -50,7 +50,7 @@ class AutoScalingClient(Boto3Client):
 
         return final_result
 
-    def provision_auto_scaling_group(self, autoscaling_group):
+    def provision_auto_scaling_group(self, autoscaling_group: AutoScalingGroup):
         region_objects = self.get_region_auto_scaling_groups(autoscaling_group.region, names=[autoscaling_group.name])
         sleep_time = 5
         retries_count = 300/sleep_time
@@ -67,6 +67,9 @@ class AutoScalingClient(Boto3Client):
                                                                      names=[autoscaling_group.name])
 
         if len(region_objects) > 0:
+            pdb.set_trace()
+            if autoscaling_group.desired_capacity != region_objects[0].desired_capacity:
+                self.set_desired_capacity_raw(autoscaling_group.generate_desired_capacity_request())
             autoscaling_group.update_from_raw_response(region_objects[0].dict_src)
             return
 
@@ -90,6 +93,12 @@ class AutoScalingClient(Boto3Client):
                                                              names=[autoscaling_group.name])
 
         autoscaling_group.update_from_raw_response(region_objects[0].dict_src)
+
+    def set_desired_capacity_raw(self, request_dict):
+        logger.info(f"Modifying Scaling Group: {request_dict}")
+        pdb.set_trace()
+        for response in self.execute(self.client.set_desired_capacity, None, raw_data=True, filters_req=request_dict):
+            return response
 
     def provision_auto_scaling_group_raw(self, request_dict):
         logger.info(f"Creating Auto Scaling Group: {request_dict}")
