@@ -117,7 +117,7 @@ class AutoScalingGroup(AwsObject):
     def generate_dispose_request(self):
         request = dict()
         request["AutoScalingGroupName"] = self.name
-        request["ForceDelete"] = self.name
+        request["ForceDelete"] = True
         return request
 
     @property

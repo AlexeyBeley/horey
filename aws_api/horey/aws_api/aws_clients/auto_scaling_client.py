@@ -102,6 +102,5 @@ class AutoScalingClient(Boto3Client):
 
     def dispose_auto_scaling_group_raw(self, request_dict):
         logger.info(f"Disposing Auto Scaling Group: {request_dict}")
-        pdb.set_trace()
         for response in self.execute(self.client.delete_auto_scaling_group, None, raw_data=True, filters_req=request_dict):
             return response
