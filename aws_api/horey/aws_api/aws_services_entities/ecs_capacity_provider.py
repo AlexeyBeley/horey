@@ -26,6 +26,7 @@ class ECSCapacityProvider(AwsObject):
             "tags": self.init_default_attr,
             "autoScalingGroupProvider": self.init_default_attr,
             "updateStatus": self.init_default_attr,
+            "updateStatusReason": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -47,6 +48,7 @@ class ECSCapacityProvider(AwsObject):
             "tags": self.init_default_attr,
             "autoScalingGroupProvider": self.init_default_attr,
             "updateStatus": self.init_default_attr,
+            "updateStatusReason": self.init_default_attr,
         }
         self.init_attrs(dict_src, init_options)
 

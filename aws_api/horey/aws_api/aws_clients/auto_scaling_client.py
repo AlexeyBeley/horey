@@ -53,7 +53,7 @@ class AutoScalingClient(Boto3Client):
     def provision_auto_scaling_group(self, autoscaling_group: AutoScalingGroup):
         region_objects = self.get_region_auto_scaling_groups(autoscaling_group.region, names=[autoscaling_group.name])
         sleep_time = 5
-        retries_count = 300/sleep_time
+        retries_count = 300//sleep_time
 
         retry_counter = 0
         while len(region_objects) > 0 and region_objects[0].get_status() == autoscaling_group.Status.DELETING:
@@ -67,9 +67,20 @@ class AutoScalingClient(Boto3Client):
                                                                      names=[autoscaling_group.name])
 
         if len(region_objects) > 0:
-            pdb.set_trace()
             if autoscaling_group.desired_capacity != region_objects[0].desired_capacity:
                 self.set_desired_capacity_raw(autoscaling_group.generate_desired_capacity_request())
+
+                for _ in range(retries_count):
+                    region_objects = self.get_region_auto_scaling_groups(autoscaling_group.region, names=[autoscaling_group.name])
+                    if len(region_objects[0].instances) == autoscaling_group.desired_capacity:
+                        break
+                    logger.info(f"Waiting for auto scaling group desired capacity change from "
+                                f"{len(region_objects[0].instances)} to {autoscaling_group.desired_capacity}")
+                    time.sleep(sleep_time)
+                else:
+                    raise RuntimeError(f"Failed to change auto scaling group '{autoscaling_group.name}' "
+                                       f"desired capacity to {autoscaling_group.desired_capacity}")
+
             autoscaling_group.update_from_raw_response(region_objects[0].dict_src)
             return
 
@@ -96,7 +107,6 @@ class AutoScalingClient(Boto3Client):
 
     def set_desired_capacity_raw(self, request_dict):
         logger.info(f"Modifying Scaling Group: {request_dict}")
-        pdb.set_trace()
         for response in self.execute(self.client.set_desired_capacity, None, raw_data=True, filters_req=request_dict):
             return response
 

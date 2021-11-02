@@ -5,7 +5,7 @@ import pdb
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 from horey.aws_api.base_entities.region import Region
-
+from enum import Enum
 
 class ECSCluster(AwsObject):
     """
@@ -15,6 +15,8 @@ class ECSCluster(AwsObject):
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self._region = None
+        self.capacity_providers = None
+        self.default_capacity_provider_strategy = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -69,53 +71,15 @@ class ECSCluster(AwsObject):
         self.init_attrs(dict_src, init_options)
 
     def generate_create_request(self):
-        """
-        response = client.create_cluster(
-            clusterName='string',
-            tags=[
-        {
-            'key': 'string',
-            'value': 'string'
-        },
-            ],
-            settings=[
-                {
-            'name': 'containerInsights',
-            'value': 'string'
-                },
-                ],
-            configuration={
-            'executeCommandConfiguration': {
-            'kmsKeyId': 'string',
-            'logging': 'NONE'|'DEFAULT'|'OVERRIDE',
-            'logConfiguration': {
-                'cloudWatchLogGroupName': 'string',
-                'cloudWatchEncryptionEnabled': True|False,
-                's3BucketName': 'string',
-                's3EncryptionEnabled': True|False,
-                's3KeyPrefix': 'string'
-                }
-                }
-            },
-            capacityProviders=[
-            'string',
-            ],
-            defaultCapacityProviderStrategy=[
-            {
-            'capacityProvider': 'string',
-            'weight': 123,
-                'base': 123
-                },
-            ]
-            )
-        """
         request = dict()
         request["clusterName"] = self.name
         request["tags"] = self.tags
         request["settings"] = self.settings
         request["configuration"] = self.configuration
-        request["capacityProviders"] = self.capacity_providers
-        request["defaultCapacityProviderStrategy"] = self.default_capacity_provider_strategy
+        if self.capacity_providers is not None:
+            request["capacityProviders"] = self.capacity_providers
+        if self.default_capacity_provider_strategy is not None:
+            request["defaultCapacityProviderStrategy"] = self.default_capacity_provider_strategy
 
         return request
 
@@ -164,3 +128,13 @@ class ECSCluster(AwsObject):
         request = dict()
         request["cluster"] = cluster.name
         return request
+
+    def get_status(self):
+        return self.Status[self.status]
+
+    class Status(Enum):
+        ACTIVE = 0
+        PROVISIONING = 1
+        DEPROVISIONING = 2
+        FAILED = 3
+        INACTIVE = 4

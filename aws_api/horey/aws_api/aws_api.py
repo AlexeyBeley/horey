@@ -2395,3 +2395,7 @@ class AWSAPI:
 
     def dispose_launch_template(self, launch_template):
         self.ec2_client.dispose_launch_template(launch_template)
+
+    def attach_capacity_providers_to_ecs_cluster(self, ecs_cluster, capacity_provider_names, default_capacity_provider_strategy):
+        self.ecs_client.attach_capacity_providers_to_ecs_cluster(ecs_cluster, capacity_provider_names, default_capacity_provider_strategy)
+

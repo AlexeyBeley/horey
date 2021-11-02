@@ -2,6 +2,9 @@
 AWS lambda client to handle lambda service API requests.
 """
 import pdb
+
+import time
+
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 
 from horey.aws_api.base_entities.aws_account import AWSAccount
@@ -25,14 +28,6 @@ class ECSClient(Boto3Client):
     def __init__(self):
         client_name = "ecs"
         super().__init__(client_name)
-
-    def register_task_definition(self, request_dict):
-        for response in self.execute(self.client.register_task_definition, "taskDefinition", filters_req=request_dict):
-            pdb.set_trace()
-
-    def create_cluster(self, request_dict):
-        for response in self.execute(self.client.create_cluster, "cluster", filters_req=request_dict):
-            pdb.set_trace()
 
     def run_task(self, request_dict):
         for response in self.execute(self.client.run_task, "tasks", filters_req=request_dict):
@@ -118,19 +113,38 @@ class ECSClient(Boto3Client):
                                      filters_req=request_dict):
             return response
 
-    def provision_cluster(self, cluster):
+    def provision_cluster(self, cluster: ECSCluster):
         """
         self.client.delete_cluster(capacityProvider='test-capacity-provider')
         """
-        region_objects = self.get_region_clusters(cluster.region)
-        for region_object in region_objects:
-            if region_object.name == cluster.name:
-                cluster.update_from_raw_response(region_object.dict_src)
+        region_objects = self.get_region_clusters(cluster.region, cluster_identifiers=[cluster.name])
+        if len(region_objects) == 1:
+            region_cluster = region_objects[0]
+            if region_cluster.get_status() == region_cluster.Status.ACTIVE:
+                cluster.update_from_raw_response(region_cluster.dict_src)
                 return
 
-        AWSAccount.set_aws_region(cluster.region)
-        response = self.provision_cluster_raw(cluster.generate_create_request())
-        cluster.update_from_raw_response(response)
+        if len(region_objects) == 0 or region_cluster.get_status() == region_cluster.Status.INACTIVE:
+            AWSAccount.set_aws_region(cluster.region)
+            response = self.provision_cluster_raw(cluster.generate_create_request())
+            cluster.update_from_raw_response(response)
+
+        timeout = 300
+        sleep_time = 5
+        for i in range(timeout // sleep_time):
+            region_objects = self.get_region_clusters(cluster.region, cluster_identifiers=[cluster.name])
+            region_cluster = region_objects[0]
+
+            if region_cluster.get_status() == region_cluster.Status.FAILED:
+                raise RuntimeError(f"cluster {region_cluster.name} provisioning failed. Cluster in FAILED status")
+
+            if region_cluster.get_status() != region_cluster.Status.ACTIVE:
+                time.sleep(sleep_time)
+                continue
+
+            cluster.update_from_raw_response(region_cluster.dict_src)
+            return
+        raise TimeoutError(f"Cluster did not become available for {timeout} seconds")
 
     def provision_cluster_raw(self, request_dict):
         logger.info(f"Creating ECS Capacity Provider: {request_dict}")
@@ -191,13 +205,6 @@ class ECSClient(Boto3Client):
         return final_result
 
     def provision_ecs_task_definition(self, task_definition):
-        # region_objects = self.get_region_task_definitions(task_definition.region, family_prefix=task_definition.family)
-        # for region_object in region_objects:
-        #    pdb.set_trace()
-        #    if region_object.name == task_definition.name:
-        #        task_definition.update_from_raw_response(region_object.dict_src)
-        #        return
-
         AWSAccount.set_aws_region(task_definition.region)
         response = self.provision_ecs_task_definition_raw(task_definition.generate_create_request())
         task_definition.update_from_raw_response(response)
@@ -312,5 +319,19 @@ class ECSClient(Boto3Client):
     def dispose_container_instance_raw(self, request_dict):
         logger.info(f"Disposing ECS container instance: {request_dict}")
         for response in self.execute(self.client.deregister_container_instance, "containerInstance",
+                                     filters_req=request_dict):
+            return response
+
+    def attach_capacity_providers_to_ecs_cluster(self, ecs_cluster, capacity_provider_names,
+                                                 default_capacity_provider_strategy):
+        request_dict = {"cluster": ecs_cluster.name,
+                        "capacityProviders": capacity_provider_names,
+                        "defaultCapacityProviderStrategy": default_capacity_provider_strategy
+                        }
+        self.attach_capacity_providers_to_ecs_cluster_raw(request_dict)
+
+    def attach_capacity_providers_to_ecs_cluster_raw(self, request_dict):
+        logger.info(f"Attaching capacity provider to ecs cluster: {request_dict}")
+        for response in self.execute(self.client.put_cluster_capacity_providers, "cluster",
                                      filters_req=request_dict):
             return response
