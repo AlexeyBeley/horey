@@ -48,3 +48,7 @@ cat /var/log/ecs/ecs-init.log
 2021-10-28T13:41:33Z [INFO] Cleaning up the credentials endpoint setup for Amazon Elastic Container Service Agent
 docker container restart 494d361f48f
 level=info time=2021-10-28T20:07:17Z msg="Successfully got ECS instance credentials from provider: EC2RoleProvider" module=instancecreds.go
+
+
+
+aws sts get-caller-identity

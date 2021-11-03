@@ -15,6 +15,7 @@ class ECSTaskDefinition(AwsObject):
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self._region = None
+        self.volumes = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -79,6 +80,10 @@ class ECSTaskDefinition(AwsObject):
         request["family"] = self.family
         request["taskRoleArn"] = self.task_role_arn
         request["executionRoleArn"] = self.execution_role_arn
+
+        if self.volumes is not None:
+            request["volumes"] = self.volumes
+
         request["requiresCompatibilities"] = ["EC2"]
 
         request["cpu"] = self.cpu

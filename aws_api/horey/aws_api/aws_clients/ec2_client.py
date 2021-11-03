@@ -500,7 +500,6 @@ class EC2Client(Boto3Client):
 
         request = region_object.get_entries_add_request(managed_prefix_list)
         if request is not None:
-            # todo: optimize - use return value
             self.raw_modify_managed_prefix_list(request)
             raw_region_pl = self.raw_describe_managed_prefix_list(managed_prefix_list.region, prefix_list_name=managed_prefix_list.name)
 
