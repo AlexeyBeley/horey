@@ -44,6 +44,14 @@ class CloudfrontClient(Boto3Client):
         return final_result
     
     def provision_distribution(self, distribution: CloudfrontDistribution):
+        """
+        WARNING! Comment is being used to identify distributions. If you've
+        provisioned multiple cloudfront distributions with the same comment -
+        it might raise an issue.
+        
+        @param distribution:
+        @return:
+        """
         desired_distribution = CloudfrontDistribution(distribution.distribution_config)
         existing_distributions = self.get_all_distributions()
         for existing_distribution in existing_distributions:
