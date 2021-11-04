@@ -2242,6 +2242,8 @@ class AWSAPI:
     def provision_acm_certificate(self, certificate, master_hosted_zone_name):
         self.acm_client.provision_certificate(certificate)
 
+        certificate.print_dict_src()
+        
         if certificate.status == "ISSUED":
             return
 
