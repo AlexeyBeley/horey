@@ -43,13 +43,13 @@ class CloudfrontClient(Boto3Client):
 
         return final_result
     
-    def provision_distribution(self, distribution):
+    def provision_distribution(self, distribution: CloudfrontDistribution):
+        desired_distribution = CloudfrontDistribution(distribution.distribution_config)
         existing_distributions = self.get_all_distributions()
         for existing_distribution in existing_distributions:
-            if existing_distribution.get_tagname(ignore_missing_tag=True) == distribution.get_tagname():
+            if existing_distribution.comment == desired_distribution.comment:
                 distribution.update_from_raw_create(existing_distribution.dict_src)
                 return
-
         response = self.provision_distribution_raw(distribution.generate_create_request_with_tags())
 
         distribution.update_from_raw_create(response)

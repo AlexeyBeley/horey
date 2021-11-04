@@ -16,6 +16,7 @@ class CloudfrontDistribution(AwsObject):
 
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
+        self.comment = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -41,6 +42,7 @@ class CloudfrontDistribution(AwsObject):
             "HttpVersion": self.init_default_attr,
             "IsIPV6Enabled": self.init_default_attr,
             "AliasICPRecordals": self.init_default_attr,
+            "CallerReference": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -114,6 +116,7 @@ class CloudfrontDistribution(AwsObject):
             "ActiveTrustedSigners": self.init_default_attr,
             "ActiveTrustedKeyGroups": self.init_default_attr,
             "DistributionConfig": self.init_default_attr,
+            "CallerReference": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
