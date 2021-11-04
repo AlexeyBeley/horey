@@ -486,19 +486,18 @@ class EC2Client(Boto3Client):
         for response in self.execute(self.client.create_subnet, "Subnet", filters_req=request):
             return response
 
-    def provision_managed_prefix_list(self, managed_prefix_list):
+    def provision_managed_prefix_list(self, managed_prefix_list, declarative=False):
         raw_region_pl = self.raw_describe_managed_prefix_list(managed_prefix_list.region, prefix_list_name=managed_prefix_list.name)
 
         if raw_region_pl is None:
             AWSAccount.set_aws_region(managed_prefix_list.region.region_mark)
             response = self.raw_create_managed_prefix_list(managed_prefix_list.generate_create_request())
-            managed_prefix_list.update_from_raw_create(response)
-            return
+            return managed_prefix_list.update_from_raw_create(response)
 
         region_object = ManagedPrefixList(raw_region_pl)
         self.update_managed_prefix_list_full_information(region_object)
 
-        request = region_object.get_entries_add_request(managed_prefix_list)
+        request = region_object.get_entries_modify_request(managed_prefix_list, declarative)
         if request is not None:
             self.raw_modify_managed_prefix_list(request)
             raw_region_pl = self.raw_describe_managed_prefix_list(managed_prefix_list.region, prefix_list_name=managed_prefix_list.name)
@@ -891,16 +890,6 @@ class EC2Client(Boto3Client):
 
     def provision_key_pair_raw(self, request_dict):
         for response in self.execute(self.client.create_key_pair, None, filters_req=request_dict, raw_data=True):
-            return response
-
-    def test_debug(self):
-        import pdb
-        ret_1 = self.get_region_amis("us-west-2")
-        ret_syd = self.get_region_amis("ap-southeast-2")
-        syd_ami = self.get_region_amis("ap-southeast-2", image_ids=["ami-0f39d06d145e9bb63"])
-
-        pdb.set_trace()
-        for response in self.execute(self.client.describe_managed_prefix_lists, "PrefixLists", filters_req=request):
             return response
 
     def associate_elastic_address_raw(self, request_dict):

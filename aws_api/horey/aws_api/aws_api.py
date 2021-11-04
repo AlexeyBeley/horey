@@ -2009,8 +2009,22 @@ class AWSAPI:
         for ip_permission in security_group.ip_permissions:
             pass
 
-    def provision_managed_prefix_list(self, managed_prefix_list):
-        self.ec2_client.provision_managed_prefix_list(managed_prefix_list)
+    def provision_managed_prefix_list(self, managed_prefix_list, declarative=False):
+        cidrs = []
+        for entry in managed_prefix_list.entries:
+            if entry.cidr in cidrs:
+                raise Exception(f"{managed_prefix_list.name} [{managed_prefix_list.region.region_mark}] -"
+                                f" multiple entries with same cidr {entry.cidr}")
+            cidrs.append(entry.cidr)
+
+        descriptions = []
+        for entry in managed_prefix_list.entries:
+            if entry.description in descriptions:
+                raise Exception(f"{managed_prefix_list.name} [{managed_prefix_list.region.region_mark}] -"
+                                f" multiple entries with same description {entry.description}")
+            descriptions.append(entry.description)
+
+        self.ec2_client.provision_managed_prefix_list(managed_prefix_list, declarative=declarative)
 
     def provision_hosted_zone(self, hosted_zone, master_hosted_zone_name=None):
         """

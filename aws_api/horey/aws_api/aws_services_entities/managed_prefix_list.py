@@ -11,6 +11,7 @@ class ManagedPrefixList(AwsObject):
     """
     Elasticsearch domain class
     """
+
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self.instances = []
@@ -33,7 +34,7 @@ class ManagedPrefixList(AwsObject):
             "Version": self.init_default_attr,
             "Tags": self.init_default_attr,
             "OwnerId": self.init_default_attr,
-                        }
+        }
 
         self.init_attrs(dict_src, init_options)
 
@@ -68,15 +69,22 @@ class ManagedPrefixList(AwsObject):
             raise ValueError(value)
         self._region = value
 
+    def get_entries_modify_request(self, managed_prefix_list, declarative):
+        if not declarative:
+            return self.get_entries_add_request(managed_prefix_list)
+
+        return self.get_entries_add_remove_request(managed_prefix_list)
+
     def get_entries_add_request(self, dst_managed_prefix_list):
         request_entries = []
         self_cidr_descriptions = {entry.cidr: entry.description for entry in self.entries}
         for dst_managed_prefix_list_entry in dst_managed_prefix_list.entries:
             if dst_managed_prefix_list_entry.cidr not in self_cidr_descriptions or \
-            dst_managed_prefix_list_entry.description != self_cidr_descriptions[dst_managed_prefix_list_entry.cidr]:
+                    dst_managed_prefix_list_entry.description != self_cidr_descriptions[
+                dst_managed_prefix_list_entry.cidr]:
                 request_entries.append({
-                "Cidr": dst_managed_prefix_list_entry.cidr,
-                "Description": dst_managed_prefix_list_entry.description
+                    "Cidr": dst_managed_prefix_list_entry.cidr,
+                    "Description": dst_managed_prefix_list_entry.description
                 })
 
         if len(request_entries) == 0:
@@ -86,6 +94,40 @@ class ManagedPrefixList(AwsObject):
             "CurrentVersion": self.version,
             "PrefixListId": self.id,
             "AddEntries": request_entries
+        }
+        return request
+
+    def get_entries_add_remove_request(self, desired_prefix_list):
+        request_entries_add = []
+        request_entries_remove = []
+
+        for dst_managed_prefix_list_entry in desired_prefix_list.entries:
+            for entry in self.entries:
+                if dst_managed_prefix_list_entry.cidr == entry.cidr or dst_managed_prefix_list_entry.description == entry.description:
+                    if dst_managed_prefix_list_entry.cidr != entry.cidr or dst_managed_prefix_list_entry.description != entry.description:
+                        request_entries_add.append({
+                            "Cidr": dst_managed_prefix_list_entry.cidr,
+                            "Description": dst_managed_prefix_list_entry.description
+                        })
+
+                        request_entries_remove.append({
+                            "Cidr": entry.cidr
+                        })
+                    break
+            else:
+                request_entries_add.append({
+                    "Cidr": dst_managed_prefix_list_entry.cidr,
+                    "Description": dst_managed_prefix_list_entry.description
+                })
+
+        if len(request_entries_add) == 0:
+            return None
+
+        request = {
+            "CurrentVersion": self.version,
+            "PrefixListId": self.id,
+            "AddEntries": request_entries_add,
+            "RemoveEntries": request_entries_remove
         }
         return request
 
@@ -119,12 +161,12 @@ class ManagedPrefixList(AwsObject):
         request["MaxEntries"] = self.max_entries
         request["AddressFamily"] = self.address_family
         request["TagSpecifications"] = [{
-                                        "ResourceType": "prefix-list",
-                                        "Tags": self.tags}]
+            "ResourceType": "prefix-list",
+            "Tags": self.tags}]
         request["Entries"] = [{
-                "Cidr": entry.cidr,
-                "Description": entry.description
-                } for entry in self.entries ]
+            "Cidr": entry.cidr,
+            "Description": entry.description
+        } for entry in self.entries]
 
         return request
 

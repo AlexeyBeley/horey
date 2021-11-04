@@ -772,6 +772,7 @@ class S3Client(Boto3Client):
         @param request_dict:
         @return:
         """
+        logger.info(f"Creating S3 bucket '{request_dict}'")
         for response in self.execute(self.client.create_bucket, "Location", filters_req=request_dict):
             return response
 
