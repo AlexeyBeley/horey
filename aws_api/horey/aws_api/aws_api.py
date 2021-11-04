@@ -2243,7 +2243,7 @@ class AWSAPI:
         self.acm_client.provision_certificate(certificate)
 
         certificate.print_dict_src()
-        
+
         if certificate.status == "ISSUED":
             return
 
@@ -2308,6 +2308,7 @@ class AWSAPI:
                 time.sleep(sleep_time)
             else:
                 raise ValueError(certificate.status)
+        raise TimeoutError(f"Finished waiting {max_time} seconds for certificate validation. Finished with status: {certificate.status}")
 
     def provision_rds_db_cluster(self, cluster):
         self.rds_client.provision_db_cluster(cluster)
