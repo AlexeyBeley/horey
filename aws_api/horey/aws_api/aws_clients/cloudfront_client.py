@@ -4,6 +4,9 @@ AWS lambda client to handle lambda service API requests.
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.cloudfront_origin_access_identity import CloudfrontOriginAccessIdentity
 from horey.aws_api.aws_services_entities.cloudfront_distribution import CloudfrontDistribution
+from horey.h_logger import get_logger
+
+logger = get_logger()
 import pdb
 
 
@@ -52,6 +55,7 @@ class CloudfrontClient(Boto3Client):
         distribution.update_from_raw_create(response)
 
     def provision_distribution_raw(self, request_dict):
+        logger.info(f"Creating distribution {request_dict}")
         for response in self.execute(self.client.create_distribution_with_tags, "Distribution", filters_req=request_dict):
             return response
 
