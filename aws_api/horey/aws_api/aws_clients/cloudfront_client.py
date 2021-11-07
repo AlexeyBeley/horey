@@ -48,7 +48,7 @@ class CloudfrontClient(Boto3Client):
         WARNING! Comment is being used to identify distributions. If you've
         provisioned multiple cloudfront distributions with the same comment -
         it might raise an issue.
-        
+
         @param distribution:
         @return:
         """

@@ -2247,7 +2247,7 @@ class AWSAPI:
         if certificate.status == "ISSUED":
             return
 
-        if certificate.status != "PENDING_VALIDATION":
+        if certificate.status is not None and certificate.status != "PENDING_VALIDATION":
             raise ValueError(certificate.status)
 
         self.validate_certificate(certificate, master_hosted_zone_name)
