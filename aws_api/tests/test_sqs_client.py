@@ -27,27 +27,23 @@ mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 def test_init_client():
     assert isinstance(SQSClient(), SQSClient)
 
-def test_provision_sqs_queue():
+
+def test_provision_queue():
     client = SQSClient()
     sqs_queue = ElasticacheCacheSubnetGroup({})
     sqs_queue.region = AWSAccount.get_aws_region()
-    sqs_queue.name = "subnet-group-horey-test"
-    sqs_queue.cache_sqs_queue_description = "db subnet test"
-    sqs_queue.subnet_ids = mock_values["elasticache.sqs_queue.subnet_ids"]
-    sqs_queue.tags = [
-        {
-            'Key': 'lvl',
-            'Value': "tst"
-        }, {
-            'Key': 'name',
-            'Value': sqs_queue.name
-        }
-    ]
-    client.provision_sqs_queue(sqs_queue)
+    sqs_queue.name = "sqs_queue_horey_test"
+    sqs_queue.visibility_timeout = "30"
+    sqs_queue.maximum_message_size = "262144"
+    sqs_queue.message_retention_period = "604800"
+    sqs_queue.delay_seconds = "0"
+    sqs_queue.tags = {'name': sqs_queue.name}
+
+    client.provision_queue(sqs_queue)
     assert sqs_queue.arn is not None
 
 
 if __name__ == "__main__":
     test_init_client()
-    #test_provision_subnet_group()
+    test_provision_queue()
 

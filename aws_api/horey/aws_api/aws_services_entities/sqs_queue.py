@@ -68,10 +68,60 @@ class SQSQueue(AwsObject):
             pdb.set_trace()
 
     def generate_create_request(self):
-        raise NotImplementedError()
         request = dict()
         request["Name"] = self.name
-        request["tags"] = self.tags
+        request["Tags"] = self.tags
+
+        if self.delay_seconds is not None:
+            request["DelaySeconds"] = self.delay_seconds
+
+        if self.maximum_message_size is not None:
+            request["MaximumMessageSize"] = self.maximum_message_size
+
+        if self.message_retention_period is not None:
+            request["MessageRetentionPeriod"] = self.message_retention_period
+
+        if self.policy is not None:
+            request["Policy"] = self.policy
+
+        if self.receive_message_wait_time_seconds is not None:
+            request["ReceiveMessageWaitTimeSeconds"] = self.receive_message_wait_time_seconds
+
+        if self.visibility_timeout is not None:
+            request["VisibilityTimeout"] = self.visibility_timeout
+
+        if self.redrive_policy is not None:
+            request["RedrivePolicy"] = self.redrive_policy
+
+        if self.redrive_allow_policy is not None:
+            request["RedriveAllowPolicy"] = self.redrive_allow_policy
+
+        if self.source_queue_arns is not None:
+            request["sourceQueueArns"] = self.source_queue_arns
+
+        if self.kms_master_key_id is not None:
+            request["KmsMasterKeyId"] = self.kms_master_key_id
+
+        if self.kms_data_key_reuse_period_seconds is not None:
+            request["KmsDataKeyReusePeriodSeconds"] = self.kms_data_key_reuse_period_seconds
+
+        if self.fifo_queue is not None:
+            request["FifoQueue"] = self.fifo_queue
+
+        if self.content_based_deduplication is not None:
+            request["ContentBasedDeduplication"] = self.content_based_deduplication
+
+        if self.deduplication_scope is not None:
+            request["DeduplicationScope"] = self.deduplication_scope
+
+        if self.fifo_throughput_limit is not None:
+            request["FifoThroughputLimit"] = self.fifo_throughput_limit
+
+        if self.deduplication_scope is not None:
+            request["DeduplicationScope"] = self.deduplication_scope
+
+        if self.fifo_throughput_limit is not None:
+            request["FifoThroughputLimit"] = self.fifo_throughput_limit
 
         return request
 

@@ -66,10 +66,13 @@ class SQSClient(Boto3Client):
 
         AWSAccount.set_aws_region(queue.region)
         response = self.provision_queue_raw(queue.generate_create_request())
-        queue.update_from_raw_response(response)
+
+        dict_src = {"QueueUrl": response}
+        queue.update_from_raw_response(dict_src)
 
     def provision_queue_raw(self, request_dict):
+        pdb.set_trace()
         logger.info(f"Creating queue: {request_dict}")
-        for response in self.execute(self.client.create_queue, "queue",
+        for response in self.execute(self.client.create_queue, "QueueUrl",
                                      filters_req=request_dict):
             return response
