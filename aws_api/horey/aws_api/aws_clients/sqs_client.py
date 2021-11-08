@@ -38,19 +38,22 @@ class SQSClient(Boto3Client):
     def get_region_queues(self, region, full_information=True):
         final_result = list()
         AWSAccount.set_aws_region(region)
-        for dict_src in self.execute(self.client.list_queues, "queues"):
+
+        raw_data = list(self.execute(self.client.list_queues, None, raw_data=True))[0]
+        urls = raw_data.get("QueueUrls") or []
+
+        for url in urls:
+            dict_src = {"QueueUrl": url}
             obj = SQSQueue(dict_src)
             final_result.append(obj)
             if full_information:
-                filters_req = {"QueueUrl": obj.queue_url, "AttributeNames": 'All'}
+                filters_req = {"QueueUrl": obj.queue_url, "AttributeNames": ['All']}
                 for dict_attributes in self.execute(self.client.get_queue_attributes, "Attributes", filters_req=filters_req):
                     obj.update_attributes_from_raw_response(dict_attributes)
 
                 filters_req = {"QueueUrl": obj.queue_url}
-                for dict_attributes in self.execute(self.client.list_queue_tags, "Tags", filters_req=filters_req):
+                for dict_attributes in self.execute(self.client.list_queue_tags, None, raw_data=True, filters_req=filters_req):
                     obj.update_tags_from_raw_response(dict_attributes)
-                #
-                raise NotImplementedError()
 
         return final_result
 

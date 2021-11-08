@@ -39,10 +39,33 @@ class SQSQueue(AwsObject):
         pdb.set_trace()
 
     def update_attributes_from_raw_response(self, dict_src):
-        pdb.set_trace()
+        init_options = {
+            "QueueUrl": self.init_default_attr,
+            "QueueArn": self.init_default_attr,
+            "ApproximateNumberOfMessages": self.init_default_attr,
+            "ApproximateNumberOfMessagesNotVisible": self.init_default_attr,
+            "ApproximateNumberOfMessagesDelayed": self.init_default_attr,
+            "CreatedTimestamp": self.init_default_attr,
+            "LastModifiedTimestamp": self.init_default_attr,
+            "VisibilityTimeout": self.init_default_attr,
+            "MaximumMessageSize": self.init_default_attr,
+            "MessageRetentionPeriod": self.init_default_attr,
+            "DelaySeconds": self.init_default_attr,
+            "Policy": self.init_default_attr,
+            "ReceiveMessageWaitTimeSeconds": self.init_default_attr,
+            "KmsMasterKeyId": self.init_default_attr,
+            "KmsDataKeyReusePeriodSeconds": self.init_default_attr,
+            "FifoQueue": self.init_default_attr,
+            "DeduplicationScope": self.init_default_attr,
+            "FifoThroughputLimit": self.init_default_attr,
+            "ContentBasedDeduplication": self.init_default_attr,
+        }
+
+        self.init_attrs(dict_src, init_options)
 
     def update_tags_from_raw_response(self, dict_src):
-        pdb.set_trace()
+        if "Tags" in dict_src:
+            pdb.set_trace()
 
     def generate_create_request(self):
         raise NotImplementedError()
