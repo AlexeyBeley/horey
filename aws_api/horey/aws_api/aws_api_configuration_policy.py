@@ -336,6 +336,14 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_lambdas_cache_file.setter
     def aws_api_lambdas_cache_file(self, value):
         raise ValueError(value)
+    
+    @property
+    def aws_api_lambda_event_source_mappings_cache_file(self):
+        return os.path.join(self.aws_api_lambda_cache_dir, "lambda_event_source_mappings.json")
+
+    @aws_api_lambda_event_source_mappings_cache_file.setter
+    def aws_api_lambda_event_source_mappings_cache_file(self, value):
+        raise ValueError(value)
     # endregion
     
     # region ecr
@@ -828,7 +836,6 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def aws_api_cleanups_iam_roles_report_file(self):
         return os.path.join(self.aws_api_cleanup_reports_dir, "iam_roles.txt")
-
 
     @property
     def aws_api_cleanups_iam_policies_report_file(self):

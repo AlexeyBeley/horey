@@ -37,3 +37,6 @@ Packer file Provisioner
 #  "source": "app.tar.gz",
 #  "destination": "/tmp/app.tar.gz"
 #}
+
+
+BUILD_USER_NAME=$(echo $BUILD_CAUSE_JSON | tr "," "\n" | grep "userName" | awk -F\" '{print $4}')

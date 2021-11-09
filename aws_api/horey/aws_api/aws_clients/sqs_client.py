@@ -71,7 +71,6 @@ class SQSClient(Boto3Client):
         queue.update_from_raw_response(dict_src)
 
     def provision_queue_raw(self, request_dict):
-        pdb.set_trace()
         logger.info(f"Creating queue: {request_dict}")
         for response in self.execute(self.client.create_queue, "QueueUrl",
                                      filters_req=request_dict):

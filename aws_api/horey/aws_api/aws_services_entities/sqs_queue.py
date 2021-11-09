@@ -15,6 +15,23 @@ class SQSQueue(AwsObject):
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self._region = None
+        self.delay_seconds = None
+        self.maximum_message_size = None
+        self.message_retention_period = None
+        self.policy = None
+        self.receive_message_wait_time_seconds = None
+        self.visibility_timeout = None
+        self.redrive_policy = None
+        self.redrive_allow_policy = None
+        self.source_queue_arns = None
+        self.kms_master_key_id = None
+        self.kms_data_key_reuse_period_seconds = None
+        self.fifo_queue = None
+        self.content_based_deduplication = None
+        self.deduplication_scope = None
+        self.fifo_throughput_limit = None
+        self.deduplication_scope = None
+        self.fifo_throughput_limit = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -35,13 +52,17 @@ class SQSQueue(AwsObject):
         options = {}
         self._init_from_cache(dict_src, options)
 
-    def update_from_raw_response(self, raw_value):
-        pdb.set_trace()
+    def update_from_raw_response(self, dict_src):
+        init_options = {
+            "QueueUrl": self.init_default_attr,
+        }
+
+        self.init_attrs(dict_src, init_options)
 
     def update_attributes_from_raw_response(self, dict_src):
         init_options = {
             "QueueUrl": self.init_default_attr,
-            "QueueArn": self.init_default_attr,
+            "QueueArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
             "ApproximateNumberOfMessages": self.init_default_attr,
             "ApproximateNumberOfMessagesNotVisible": self.init_default_attr,
             "ApproximateNumberOfMessagesDelayed": self.init_default_attr,
@@ -64,70 +85,72 @@ class SQSQueue(AwsObject):
         self.init_attrs(dict_src, init_options)
 
     def update_tags_from_raw_response(self, dict_src):
-        if "Tags" in dict_src:
-            pdb.set_trace()
+        self.tags = dict_src.get("Tags")
 
     def generate_create_request(self):
         request = dict()
-        request["Name"] = self.name
-        request["Tags"] = self.tags
+        request["QueueName"] = self.name
+        request["tags"] = self.tags
 
+        attributes = {}
         if self.delay_seconds is not None:
-            request["DelaySeconds"] = self.delay_seconds
+            attributes["DelaySeconds"] = self.delay_seconds
 
         if self.maximum_message_size is not None:
-            request["MaximumMessageSize"] = self.maximum_message_size
+            attributes["MaximumMessageSize"] = self.maximum_message_size
 
         if self.message_retention_period is not None:
-            request["MessageRetentionPeriod"] = self.message_retention_period
+            attributes["MessageRetentionPeriod"] = self.message_retention_period
 
         if self.policy is not None:
-            request["Policy"] = self.policy
+            attributes["Policy"] = self.policy
 
         if self.receive_message_wait_time_seconds is not None:
-            request["ReceiveMessageWaitTimeSeconds"] = self.receive_message_wait_time_seconds
+            attributes["ReceiveMessageWaitTimeSeconds"] = self.receive_message_wait_time_seconds
 
         if self.visibility_timeout is not None:
-            request["VisibilityTimeout"] = self.visibility_timeout
+            attributes["VisibilityTimeout"] = self.visibility_timeout
 
         if self.redrive_policy is not None:
-            request["RedrivePolicy"] = self.redrive_policy
+            attributes["RedrivePolicy"] = self.redrive_policy
 
         if self.redrive_allow_policy is not None:
-            request["RedriveAllowPolicy"] = self.redrive_allow_policy
+            attributes["RedriveAllowPolicy"] = self.redrive_allow_policy
 
         if self.source_queue_arns is not None:
-            request["sourceQueueArns"] = self.source_queue_arns
+            attributes["sourceQueueArns"] = self.source_queue_arns
 
         if self.kms_master_key_id is not None:
-            request["KmsMasterKeyId"] = self.kms_master_key_id
+            attributes["KmsMasterKeyId"] = self.kms_master_key_id
 
         if self.kms_data_key_reuse_period_seconds is not None:
-            request["KmsDataKeyReusePeriodSeconds"] = self.kms_data_key_reuse_period_seconds
+            attributes["KmsDataKeyReusePeriodSeconds"] = self.kms_data_key_reuse_period_seconds
 
         if self.fifo_queue is not None:
-            request["FifoQueue"] = self.fifo_queue
+            attributes["FifoQueue"] = self.fifo_queue
 
         if self.content_based_deduplication is not None:
-            request["ContentBasedDeduplication"] = self.content_based_deduplication
+            attributes["ContentBasedDeduplication"] = self.content_based_deduplication
 
         if self.deduplication_scope is not None:
-            request["DeduplicationScope"] = self.deduplication_scope
+            attributes["DeduplicationScope"] = self.deduplication_scope
 
         if self.fifo_throughput_limit is not None:
-            request["FifoThroughputLimit"] = self.fifo_throughput_limit
+            attributes["FifoThroughputLimit"] = self.fifo_throughput_limit
 
         if self.deduplication_scope is not None:
-            request["DeduplicationScope"] = self.deduplication_scope
+            attributes["DeduplicationScope"] = self.deduplication_scope
 
         if self.fifo_throughput_limit is not None:
-            request["FifoThroughputLimit"] = self.fifo_throughput_limit
+            attributes["FifoThroughputLimit"] = self.fifo_throughput_limit
+
+        if attributes:
+            request["Attributes"] = attributes
 
         return request
 
     @property
     def region(self):
-        raise NotImplementedError()
         if self._region is not None:
             return self._region
 
@@ -138,8 +161,20 @@ class SQSQueue(AwsObject):
 
     @region.setter
     def region(self, value):
-        raise NotImplementedError()
         if not isinstance(value, Region):
             raise ValueError(value)
 
         self._region = value
+
+    def get_tag(self, key, ignore_missing_tag=False):
+        if self.tags is None:
+            if ignore_missing_tag:
+                return None
+            raise RuntimeError("No tags associated")
+
+        try:
+            return self.tags.get(key)
+        except KeyError:
+            if ignore_missing_tag:
+                return
+            raise RuntimeError(f"No tag '{key}' associated")

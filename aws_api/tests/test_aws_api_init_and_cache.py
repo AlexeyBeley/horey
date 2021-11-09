@@ -434,7 +434,16 @@ def test_init_and_cache_sqs_queues():
                           configuration.aws_api_sqs_queues_cache_file)
     print(f"len(sqs_queues) = {len(aws_api.sqs_queues)}")
     assert isinstance(aws_api.sqs_queues, list)
-    
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_lambda_event_source_mappings():
+    aws_api.init_lambda_event_source_mappings()
+    aws_api.cache_objects(aws_api.lambda_event_source_mappings,
+                          configuration.aws_api_lambda_event_source_mappings_cache_file)
+    print(f"len(lambda_event_source_mappings) = {len(aws_api.lambda_event_source_mappings)}")
+    assert isinstance(aws_api.lambda_event_source_mappings, list)
+
     
 def find_stream():
     log_group_dir = "dirpath"
@@ -511,4 +520,5 @@ if __name__ == "__main__":
     #test_init_and_cache_elasticache_cache_subnet_groups()
     #test_init_and_cache_elasticache_replication_groups()
     #test_init_and_cache_elasticache_cache_security_groups()
-    test_init_and_cache_sqs_queues()
+    #test_init_and_cache_sqs_queues()
+    test_init_and_cache_lambda_event_source_mappings()

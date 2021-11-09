@@ -1,10 +1,7 @@
 import os
-import pdb
-import sys
 
 from horey.aws_api.aws_clients.sqs_client import SQSClient
-from horey.aws_api.aws_services_entities.elasticache_replication_group import ElasticacheReplicationGroup
-from horey.aws_api.aws_services_entities.elasticache_cache_subnet_group import ElasticacheCacheSubnetGroup
+from horey.aws_api.aws_services_entities.sqs_queue import SQSQueue
 
 from horey.h_logger import get_logger
 from horey.aws_api.base_entities.aws_account import AWSAccount
@@ -30,7 +27,7 @@ def test_init_client():
 
 def test_provision_queue():
     client = SQSClient()
-    sqs_queue = ElasticacheCacheSubnetGroup({})
+    sqs_queue = SQSQueue({})
     sqs_queue.region = AWSAccount.get_aws_region()
     sqs_queue.name = "sqs_queue_horey_test"
     sqs_queue.visibility_timeout = "30"
@@ -40,7 +37,7 @@ def test_provision_queue():
     sqs_queue.tags = {'name': sqs_queue.name}
 
     client.provision_queue(sqs_queue)
-    assert sqs_queue.arn is not None
+    assert sqs_queue.queue_url is not None
 
 
 if __name__ == "__main__":

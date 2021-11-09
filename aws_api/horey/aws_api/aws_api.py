@@ -102,6 +102,7 @@ from horey.aws_api.aws_services_entities.ecs_cluster import ECSCluster
 from horey.aws_api.aws_services_entities.ecs_capacity_provider import ECSCapacityProvider
 from horey.aws_api.aws_services_entities.ecs_service import ECSService
 from horey.aws_api.aws_services_entities.sqs_queue import SQSQueue
+from horey.aws_api.aws_services_entities.lambda_event_source_mapping import LambdaEventSourceMapping
 
 from horey.common_utils.common_utils import CommonUtils
 
@@ -198,6 +199,7 @@ class AWSAPI:
         self.elasticache_cache_security_groups = []
         self.elasticache_replication_groups = []
         self.sqs_queues = []
+        self.lambda_event_source_mappings = []
 
         self.configuration = configuration
         self.init_configuration()
@@ -948,6 +950,20 @@ class AWSAPI:
             objects = self.sqs_client.get_all_queues(region=region)
 
         self.sqs_queues = objects
+
+    def init_lambda_event_source_mappings(self, from_cache=False, cache_file=None, region=None):
+        """
+
+        @param from_cache:
+        @param cache_file:
+        @return:
+        """
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, LambdaEventSourceMapping)
+        else:
+            objects = self.lambda_client.get_all_event_source_mappings(region=region)
+
+        self.lambda_event_source_mappings = objects
 
     def init_target_groups(self, from_cache=False, cache_file=None):
         """
