@@ -9,6 +9,10 @@ from horey.aws_api.aws_services_entities.lambda_event_source_mapping import Lamb
 
 from horey.aws_api.base_entities.aws_account import AWSAccount
 
+from horey.h_logger import get_logger
+
+logger = get_logger()
+
 
 class LambdaClient(Boto3Client):
     """
@@ -68,3 +72,32 @@ class LambdaClient(Boto3Client):
             obj = LambdaEventSourceMapping(response)
             final_result.append(obj)
         return final_result
+
+    def provision_lambda(self, aws_lambda: AWSLambda, force=False):
+        region_lambdas = self.get_region_lambdas(aws_lambda.region)
+        for region_lambda in region_lambdas:
+            if region_lambda.name == aws_lambda.name:
+                aws_lambda.update_from_raw_response(region_lambda.dict_src)
+                if force:
+                    response = self.update_function_code_raw(aws_lambda.generate_update_function_code_request())
+                    del response["ResponseMetadata"]
+                    aws_lambda.update_from_raw_response(response)
+                return
+
+        AWSAccount.set_aws_region(aws_lambda.region)
+        response = self.provision_lambda_raw(aws_lambda.generate_create_request())
+
+        aws_lambda.update_from_raw_response(response)
+
+    def provision_lambda_raw(self, request_dict):
+        logger.info(f"Creating lambda: {request_dict}")
+        for response in self.execute(self.client.create_function, None, raw_data=True,
+                                     filters_req=request_dict):
+            pdb.set_trace()
+            return response
+
+    def update_function_code_raw(self, request_dict):
+        logger.info(f"Updating lambda code lambda: {request_dict}")
+        for response in self.execute(self.client.update_function_code, None, raw_data=True,
+                                     filters_req=request_dict):
+            return response

@@ -5,7 +5,7 @@ import json
 import os
 import datetime
 import time
-
+import zipfile
 from collections import defaultdict
 from horey.network.ip import IP
 import pdb
@@ -2432,3 +2432,23 @@ class AWSAPI:
     def attach_capacity_providers_to_ecs_cluster(self, ecs_cluster, capacity_provider_names, default_capacity_provider_strategy):
         self.ecs_client.attach_capacity_providers_to_ecs_cluster(ecs_cluster, capacity_provider_names, default_capacity_provider_strategy)
 
+    def provision_aws_lambda_from_file(self, aws_lambda, file_path, force=False):
+        zip_file_name = os.path.splitext(os.path.basename(file_path))[0] + ".zip"
+
+        with zipfile.ZipFile(zip_file_name, 'w') as myzip:
+            myzip.write(file_path, arcname=os.path.basename(file_path))
+
+        with open(zip_file_name, "rb") as myzip:
+            aws_lambda.code = {"ZipFile": myzip.read()}
+
+        self.lambda_client.provision_lambda(aws_lambda, force=force)
+
+    def provision_aws_lambda_from_venv(self, code_path, venv_dir):
+        raise NotImplementedError()
+        zip_file_name = os.path.splitext(os.path.basename(file_path))[0]
+        import shutil
+        shutil.make_archive(zip_file_name, 'zip', os.path.dirname(file_path)+"/lambda")
+        with open(zip_file_name+".zip", "rb") as myzip:
+            aws_lambda.code = {"ZipFile": myzip.read()}
+
+        self.lambda_client.provision_lambda(aws_lambda)
