@@ -8,7 +8,7 @@ import requests
 import json
 from horey.h_logger import get_logger
 from horey.slack_api.slack_api_configuration_policy import SlackAPIConfigurationPolicy
-from horey.slack_api.host import Host
+from horey.slack_api.slack_message import SlackMessage
 
 logger = get_logger()
 
@@ -27,11 +27,11 @@ class SlackAPI(object):
     def __init__(self, configuration: SlackAPIConfigurationPolicy = None):
         self.webhook_url = configuration.webhook_url
 
-    def send_message(self, message):
-        logger.info(f"Sending message {message.subject}")
-        pdb.set_trace()
+    def send_message(self, message: SlackMessage):
+        logger.info(f"Sending message")
+
         response = requests.post(
-            self.webhook_url, data=message.convert_to_json(),
+            self.webhook_url, data=message.generate_send_request(),
             headers={'Content-Type': 'application/json'}
         )
         if response.status_code != 200:

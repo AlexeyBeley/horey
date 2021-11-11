@@ -2036,6 +2036,7 @@ class AWSAPI:
         descriptions = []
         for entry in managed_prefix_list.entries:
             if entry.description in descriptions:
+                pdb.set_trace()
                 raise Exception(f"{managed_prefix_list.name} [{managed_prefix_list.region.region_mark}] -"
                                 f" multiple entries with same description {entry.description}")
             descriptions.append(entry.description)

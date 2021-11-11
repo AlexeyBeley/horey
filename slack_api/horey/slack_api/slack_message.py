@@ -1,36 +1,78 @@
 import pdb
 import json
-from horey.h_logger import get_logger
 from enum import Enum
-logger = get_logger()
 
 
 class SlackMessage:
-    def __init__(self):
+    MARKS_MAPPINGS = {
+        "INFO": ":information_source:",
+        "STABLE": ":white_check_mark:",
+        "WARNING": ":warning:",
+        "CRITICAL": ":bangbang:",
+        "PARTY": ":tada:"}
+
+    SECTION_MARKS_MAPPINGS = {
+        "CRITICAL": ":exclamation:",
+        "INFO": ":bulb:",
+        "STABLE": ":bee:",
+        "WARNING": ":mega:",
+        "PARTY": ":clinking_glasses:"}
+
+    SECONDARY_MARKS_MAPPINGS = {
+        "CRITICAL": ":red_circle:",
+        "INFO": ":radio_button:",
+        "STABLE": ":large_green_circle:",
+        "WARNING": ":large_yellow_circle:",
+        "PARTY": ":large_purple_circle:"}
+
+    COLOR_MAPPINGS = {
+        "CRITICAL": "danger",
+        "INFO": "#454442",
+        "STABLE": "#7CD197",
+        "WARNING": "#d1d07c",
+        "PARTY": "#d40fb9"}
+
+    def __init__(self, message_type):
         self._type = None
-        self.message = None
-        self.subject = None
         self.src_username = None
         self.dst_channel = None
         self._text_color = None
         self._icon_emoji = None
+        self._blocks = []
+        self._attachments = []
+        self.message_type = message_type
 
-    def convert_to_json(self):
-        return json.dumps(self.convert_to_dict())
+    def add_block(self, block):
+        block.message_type = self.message_type
+        self._blocks.append(block)
+
+        divider_block = self.DividerBlock(self.message_type)
+        self._blocks.append(divider_block)
     
-    def convert_to_dict(self):
+    def add_attachment(self, attachment):
+        attachment.message_type = self.message_type
+        self._attachments.append(attachment)
 
-        slack_data = {"text": self.subject,
-                      "attachments": [{
-                          "text": self.message,
-                          "color": self.text_color,
-                      }],
-                      "channel": self.dst_channel,
-                      "username": self.src_username,
-                      "icon_emoji": self.icon_emoji
-                      }
-        pdb.set_trace()
-        return slack_data
+    def generate_send_request(self):
+        blocks = []
+        for i in range(len(self._blocks)):
+            block = self._blocks[i]
+
+            if block.block_type == "section" and block.link is not None:
+                if len(blocks) > 0 and blocks[-1]["type"] == "divider":
+                    blocks[-1] = block.generate_send_request()
+                    continue
+
+            blocks.append(block.generate_send_request())
+
+        attachments = []
+        for attachment in self._attachments:
+            attachments.append(attachment.generate_send_request())
+
+        slack_data = {"blocks": blocks, "channel": self.dst_channel, "username": self.src_username,
+                      "icon_emoji": self.icon_emoji, "attachments": attachments}
+
+        return json.dumps(slack_data)
 
     def init_from_dict(self, dict_src):
         pdb.set_trace()
@@ -43,43 +85,15 @@ class SlackMessage:
 
     @type.setter
     def type(self, value):
-        if not isinstance(value, str):
-            raise ValueError(f"type must be string received {value} of type: {type(value)}")
+        if not isinstance(value, self.Types):
+            raise ValueError(f"type must be {self.Types} received {value} of type: {type(value)}")
 
         self._type = value
 
     @property
-    def text_color(self):
-        if self._text_color is None:
-            if self.type == self.Types.STABLE:
-                self._text_color = "#7CD197"
-            elif self.type == self.Types.WARNING:
-                self._text_color = "danger"
-            elif self.type == self.Types.CRITICAL:
-                self._text_color = "danger"
-            else:
-                raise RuntimeError(f"Unknown type: {self.type}")
-        
-        return self._text_color
-
-    @text_color.setter
-    def text_color(self, value):
-        if not isinstance(value, str):
-            raise ValueError(f"text_color must be string received {value} of text_color: {type(value)}")
-
-        self._text_color = value
-
-    @property
     def icon_emoji(self):
         if self._icon_emoji is None:
-            if self.type == self.Types.STABLE:
-                self._icon_emoji = ":white_check_mark:"
-            elif self.type == self.Types.WARNING:
-                self._icon_emoji = ":bangbang:"
-            elif self.type == self.Types.CRITICAL:
-                self._icon_emoji = ":bangbang:"
-            else:
-                raise RuntimeError(f"Unknown type: {self.type}")
+            self._icon_emoji = self.MARKS_MAPPINGS[self.message_type.value]
         return self._icon_emoji
 
     @icon_emoji.setter
@@ -90,6 +104,78 @@ class SlackMessage:
         self._icon_emoji = value
 
     class Types(Enum):
-        STABLE = 0
-        WARNING = 1
-        CRITICAL = 2
+        INFO = "INFO"
+        STABLE = "STABLE"
+        WARNING = "WARNING"
+        CRITICAL = "CRITICAL"
+        PARTY = "PARTY"
+
+    class Attachment:
+        def __init__(self):
+            self.message_type = None
+            self.text = None
+
+        def generate_send_request(self):
+            return {
+                    "text": SlackMessage.SECTION_MARKS_MAPPINGS[self.message_type.value] + self.text,
+                    "color": SlackMessage.COLOR_MAPPINGS[self.message_type.value]
+            }
+
+    class Block:
+        def __init__(self, message_type):
+            self.message_type = message_type
+            self.text = None
+            self.link = None
+
+    class SectionBlock(Block):
+        def __init__(self, message_type=None):
+            self.block_type = "section"
+            super().__init__(message_type)
+
+        def generate_send_request(self):
+            if self.link is not None:
+                return self.generate_send_request_mrkdwn_link()
+            return self.generate_send_request_mrkdwn()
+
+        def generate_send_request_mrkdwn_link(self):
+            return {
+                "type": self.block_type,
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"<{self.link}|{self.text}>"
+                }
+            }
+
+        def generate_send_request_mrkdwn(self):
+            return {
+                "type": self.block_type,
+                "text": {
+                    "type": "mrkdwn",
+                    "text": SlackMessage.SECTION_MARKS_MAPPINGS[self.message_type.value] + self.text
+                }
+            }
+
+    class HeaderBlock(Block):
+        def __init__(self, message_type=None):
+            self.block_type = "header"
+            super().__init__(message_type)
+
+        def generate_send_request(self):
+            return {
+                "type": self.block_type,
+                "text": {
+                    "type": "plain_text",
+                    "text": SlackMessage.SECONDARY_MARKS_MAPPINGS[self.message_type.value] + self.text
+                }
+            }
+
+    class DividerBlock(Block):
+        def __init__(self, message_type=None):
+            self.block_type = "divider"
+            super().__init__(message_type)
+
+        def generate_send_request(self):
+            return {
+            "type": self.block_type
+            }
+
