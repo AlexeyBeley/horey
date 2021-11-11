@@ -13,6 +13,7 @@ from horey.aws_api.aws_api_configuration_policy import AWSAPIConfigurationPolicy
 from horey.aws_api.base_entities.region import Region
 from horey.aws_api.aws_services_entities.acm_certificate import ACMCertificate
 from horey.aws_api.aws_services_entities.aws_lambda import AWSLambda
+from horey.aws_api.aws_services_entities.lambda_event_source_mapping import LambdaEventSourceMapping
 from horey.common_utils.common_utils import CommonUtils
 
 configuration_values_file_full_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
@@ -77,6 +78,19 @@ def test_provision_aws_lambda_from_file():
     assert aws_lambda.state == "Active"
 
 
+def test_provision_lambda_event_source_mapping():
+    event_mapping = LambdaEventSourceMapping({})
+    event_mapping.region = Region.get_region("us-west-2")
+    event_mapping.function_identification = "horey-test-lambda"
+    event_mapping.event_source_arn = mock_values["lambda_event_source_mapping:event_source_arn"]
+    event_mapping.enabled = True
+
+    aws_api.provision_lambda_event_source_mapping(event_mapping)
+
+    assert event_mapping.state == "Enabled"
+    
+
 if __name__ == "__main__":
     # test_provision_certificate()
-    test_provision_aws_lambda_from_file()
+    #test_provision_aws_lambda_from_file()
+    test_provision_lambda_event_source_mapping()

@@ -13,9 +13,15 @@ class LambdaEventSourceMapping(AwsObject):
     lambda_event_source_mapping representation class
     """
     def __init__(self, dict_src, from_cache=False):
-        super().__init__(dict_src)
+        """
+        function_identification - parameter being used in create_event_source_mapping.
+        @param dict_src:
+        @param from_cache:
+        """
         self.vpc_config = None
         self._region = None
+        self.function_identification = None
+        super().__init__(dict_src)
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -44,10 +50,25 @@ class LambdaEventSourceMapping(AwsObject):
         self.init_attrs(dict_src, init_options)
 
     def update_from_raw_response(self, dict_src):
-        pdb.set_trace()
         init_options = {
-            "QueueUrl": self.init_default_attr,
-        }
+            "FunctionArn": self.init_default_attr,
+            "UUID": self.init_default_attr,
+            "StartingPosition": self.init_default_attr,
+            "BatchSize": self.init_default_attr,
+            "MaximumBatchingWindowInSeconds": self.init_default_attr,
+            "ParallelizationFactor": self.init_default_attr,
+            "EventSourceArn": self.init_default_attr,
+            "LastModified": self.init_default_attr,
+            "LastProcessingResult": self.init_default_attr,
+            "State": self.init_default_attr,
+            "StateTransitionReason": self.init_default_attr,
+            "DestinationConfig": self.init_default_attr,
+            "MaximumRecordAgeInSeconds": self.init_default_attr,
+            "BisectBatchOnFunctionError": self.init_default_attr,
+            "MaximumRetryAttempts": self.init_default_attr,
+            "TumblingWindowInSeconds": self.init_default_attr,
+            "FunctionResponseTypes": self.init_default_attr,
+                        }
 
         self.init_attrs(dict_src, init_options)
 
@@ -61,14 +82,11 @@ class LambdaEventSourceMapping(AwsObject):
         self._init_from_cache(dict_src, options)
 
     def generate_create_request(self):
-        pdb.set_trace()
         request = dict()
-        request["QueueName"] = self.name
-        request["tags"] = self.tags
+        request["EventSourceArn"] = self.event_source_arn
+        request["FunctionName"] = self.function_identification
+        request["Enabled"] = self.enabled
 
-        attributes = {}
-        if self.delay_seconds is not None:
-            attributes["DelaySeconds"] = self.delay_seconds
         return request
 
     @property

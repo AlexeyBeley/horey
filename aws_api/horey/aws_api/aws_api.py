@@ -2453,3 +2453,6 @@ class AWSAPI:
             aws_lambda.code = {"ZipFile": myzip.read()}
 
         self.lambda_client.provision_lambda(aws_lambda)
+
+    def provision_lambda_event_source_mapping(self, event_mapping):
+        self.lambda_client.provision_event_source_mapping(event_mapping)

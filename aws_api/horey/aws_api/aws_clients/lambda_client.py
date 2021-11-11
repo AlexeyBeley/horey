@@ -86,18 +86,38 @@ class LambdaClient(Boto3Client):
 
         AWSAccount.set_aws_region(aws_lambda.region)
         response = self.provision_lambda_raw(aws_lambda.generate_create_request())
-
         aws_lambda.update_from_raw_response(response)
 
     def provision_lambda_raw(self, request_dict):
         logger.info(f"Creating lambda: {request_dict}")
         for response in self.execute(self.client.create_function, None, raw_data=True,
                                      filters_req=request_dict):
-            pdb.set_trace()
             return response
 
     def update_function_code_raw(self, request_dict):
         logger.info(f"Updating lambda code lambda: {request_dict}")
         for response in self.execute(self.client.update_function_code, None, raw_data=True,
+                                     filters_req=request_dict):
+            return response
+
+    def provision_event_source_mapping(self, event_source_mapping: LambdaEventSourceMapping):
+        region_event_source_mappings = self.get_all_event_source_mappings(region=event_source_mapping.region)
+        for region_event_source_mapping in region_event_source_mappings:
+            if not region_event_source_mapping.function_arn.endswith(event_source_mapping.function_identification):
+                continue
+            if region_event_source_mapping.event_source_arn != event_source_mapping.event_source_arn:
+                continue
+
+            event_source_mapping.update_from_raw_response(region_event_source_mapping.dict_src)
+            return
+
+        AWSAccount.set_aws_region(event_source_mapping.region)
+        response = self.provision_event_source_mapping_raw(event_source_mapping.generate_create_request())
+        del response["ResponseMetadata"]
+        event_source_mapping.update_from_raw_response(response)
+
+    def provision_event_source_mapping_raw(self, request_dict):
+        logger.info(f"Creating lambda event_source_mapping: {request_dict}")
+        for response in self.execute(self.client.create_event_source_mapping, None, raw_data=True,
                                      filters_req=request_dict):
             return response
