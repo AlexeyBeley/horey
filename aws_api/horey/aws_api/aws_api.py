@@ -2456,3 +2456,6 @@ class AWSAPI:
 
     def provision_lambda_event_source_mapping(self, event_mapping):
         self.lambda_client.provision_event_source_mapping(event_mapping)
+
+    def provision_iam_role(self, iam_role):
+        self.iam_client.provision_iam_role(iam_role)

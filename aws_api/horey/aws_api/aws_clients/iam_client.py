@@ -10,6 +10,10 @@ from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.iam_role import IamRole
 from horey.common_utils.common_utils import CommonUtils
 
+from horey.h_logger import get_logger
+
+logger = get_logger()
+
 
 class IamClient(Boto3Client):
     """
@@ -42,8 +46,6 @@ class IamClient(Boto3Client):
 
         return final_result
 
-
-
     def get_all_access_keys(self):
         """
         Get all access keys.
@@ -66,32 +68,28 @@ class IamClient(Boto3Client):
         :return:
         """
         final_result = list()
-
         for result in self.execute(self.client.list_roles, "Roles", filters_req={"MaxItems": 1000}):
             role = IamRole(result)
             final_result.append(role)
             if full_information:
-                self.update_iam_role_full_information(role, policies)
+                self.update_iam_role_full_information(role, policies=policies)
 
         return final_result
 
-    def update_iam_role_full_information(self, iam_role, policies):
+    def update_iam_role_full_information(self, iam_role, policies=None):
         """
-        list_role_policies:
-        ('RoleName', '')
-        ('PolicyName', '')
-        ('PolicyDocument', {'Version': '2012-10-17', 'Statement': [{'Effect': 'Allow', 'Action': 'ec2:Describe*', 'Resource': '*'}, {'Effect': 'Allow', 'Action': 'elasticloadbalancing:Describe*', 'Resource': '*'},
-        {'Effect': 'Allow', 'Action': ['cloudwatch:ListMetrics', 'cloudwatch:GetMetricStatistics', 'cloudwatch:Describe*'], 'Resource': '*'}, {'Effect': 'Allow', 'Action': 'autoscaling:Describe*', 'Resource': '*'}]})
-        ('ResponseMetadata', {'RequestId': 'dcc6b611-786c-4ef7-a7d3-a7c391755326', 'HTTPStatusCode': 200, 'HTTPHeaders': {'x-amzn-requestid': 'dcc6b611-786c-4ef7-a7d3-a7c391755326', 'content-type': 'text/xml',
-        'content-length': '1963', 'date': 'Thu, 17 Sep 2020 07:49:30 GMT'}, 'RetryAttempts': 0})
 
         :param iam_role:
-        :param policies:
+        :param policies: if policies already polled, you can pass them to save time.
         :return:
         """
 
         self.update_iam_role_last_used(iam_role)
-        self.update_iam_role_managed_policies(iam_role, policies)
+
+        if policies is None:
+            policies = self.get_all_policies(full_information=False, filters_req={"OnlyAttached": True})
+
+        self.update_iam_role_managed_policies(iam_role, policies=policies)
         self.update_iam_role_inline_policies(iam_role)
 
     def update_iam_role_last_used(self, iam_role):
@@ -104,12 +102,17 @@ class IamClient(Boto3Client):
         update_info = next(ret)
         iam_role.update_extended(update_info)
 
-    def update_iam_role_managed_policies(self, iam_role, policies):
+    def update_iam_role_managed_policies(self, iam_role, policies=None):
         """
-        Full information part update.
-        :param iam_role:
-        :return:
+        Full information part
+
+        @param iam_role:
+        @param policies:
+        @return:
         """
+        if policies is None:
+            return
+
         for managed_policy in self.execute(self.client.list_attached_role_policies, "AttachedPolicies", filters_req={"RoleName": iam_role.name, "MaxItems": 1000}):
             found_policies = CommonUtils.find_objects_by_values(policies, {"arn": managed_policy["PolicyArn"]})
 
@@ -135,19 +138,21 @@ class IamClient(Boto3Client):
 
                 iam_role.add_policy(policy)
 
-    def get_all_policies(self, full_information=True):
+    def get_all_policies(self, full_information=True, filters_req=None):
         """
         Get all iam policies.
-        :param full_information:
-        :return:
+        @param full_information:
+        @param filters_req:
+        @return:
         """
         final_result = list()
 
-        for result in self.execute(self.client.list_policies, "Policies"):
+        for result in self.execute(self.client.list_policies, "Policies", filters_req=filters_req):
             pol = IamPolicy(result)
             if full_information:
                 self.update_policy_statements(pol)
             final_result.append(pol)
+
         return final_result
 
     def update_policy_statements(self, policy):
@@ -159,11 +164,8 @@ class IamClient(Boto3Client):
         for response in self.execute(self.client.get_policy_version, "PolicyVersion", filters_req={"PolicyArn": policy.arn, "VersionId": policy.default_version_id}):
             policy.update_statements(response)
 
-    def create_role(self, request_dict):
-        for response in self.execute(self.client.create_role, "Role", filters_req=request_dict):
-            return response
-
-    def attach_role_policy(self, request_dict):
+    def attach_role_policy_raw(self, request_dict):
+        logger.info(f"Attaching policy to role: {request_dict}")
         for response in self.execute(self.client.attach_role_policy, "Role", filters_req=request_dict, raw_data=True):
             return response
 
@@ -171,3 +173,23 @@ class IamClient(Boto3Client):
         for response in self.execute(self.client.put_role_policy, "ResponseMetadata", filters_req=request_dict):
             return response
 
+    def provision_iam_role(self, iam_role: IamRole):
+        all_roles = self.get_all_roles(full_information=False)
+        found_role = CommonUtils.find_objects_by_values(all_roles, {"name": iam_role.name})
+
+        if found_role:
+            found_role = found_role[0]
+            role_dict_src = found_role.dict_src
+        else:
+            role_dict_src = self.provision_iam_role_raw(iam_role.generate_create_request())
+
+        iam_role.update_from_raw_response(role_dict_src)
+
+        for request in iam_role.generate_attach_policies_requests():
+            self.attach_role_policy_raw(request)
+
+    def provision_iam_role_raw(self, request_dict):
+        logger.warning(f"Creating iam role: {request_dict}")
+
+        for response in self.execute(self.client.create_role, "Role", filters_req=request_dict):
+            return response

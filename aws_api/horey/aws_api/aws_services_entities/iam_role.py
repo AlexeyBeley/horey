@@ -9,6 +9,7 @@ from horey.aws_api.base_entities.region import Region
 
 class IamRole(AwsObject):
     """Class representing AWS IAM Role"""
+
     def __init__(self, dict_src, from_cache=False):
         """
         Init Iam user with boto3 dict
@@ -26,14 +27,14 @@ class IamRole(AwsObject):
             return
 
         init_options = {
-                        "RoleId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
-                        "Path": self.init_default_attr,
-                        "RoleName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-                        "Arn": self.init_default_attr,
-                        "CreateDate": self.init_default_attr,
-                        "AssumeRolePolicyDocument": self.init_default_attr,
-                        "Description": self.init_default_attr,
-                        "MaxSessionDuration": self.init_default_attr}
+            "RoleId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "Path": self.init_default_attr,
+            "RoleName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "Arn": self.init_default_attr,
+            "CreateDate": self.init_default_attr,
+            "AssumeRolePolicyDocument": self.init_default_attr,
+            "Description": self.init_default_attr,
+            "MaxSessionDuration": self.init_default_attr}
         self.init_attrs(dict_src, init_options)
 
     def _init_iam_role_from_cache(self, dict_src):
@@ -54,16 +55,16 @@ class IamRole(AwsObject):
         """
 
         init_options = {
-                        "RoleId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
-                        "Path": self.init_default_attr,
-                        "RoleName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-                        "Arn": self.init_default_attr,
-                        "CreateDate": self.init_default_attr,
-                        "AssumeRolePolicyDocument": self.init_default_attr,
-                        "Description": self.init_default_attr,
-                        "RoleLastUsed": self.init_role_last_used_attr,
-                        "Tags": self.init_default_attr,
-                        "MaxSessionDuration": self.init_default_attr}
+            "RoleId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "Path": self.init_default_attr,
+            "RoleName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "Arn": self.init_default_attr,
+            "CreateDate": self.init_default_attr,
+            "AssumeRolePolicyDocument": self.init_default_attr,
+            "Description": self.init_default_attr,
+            "RoleLastUsed": self.init_role_last_used_attr,
+            "Tags": self.init_default_attr,
+            "MaxSessionDuration": self.init_default_attr}
 
         self.init_attrs(dict_src, init_options)
 
@@ -102,3 +103,32 @@ class IamRole(AwsObject):
         """
         raise NotImplementedError("Not yet implemented, replaced pdb.set_trace")
 
+    def update_from_raw_response(self, dict_src):
+        init_options = {
+            "RoleId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "Path": self.init_default_attr,
+            "RoleName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "Arn": self.init_default_attr,
+            "CreateDate": self.init_default_attr,
+            "AssumeRolePolicyDocument": self.init_default_attr,
+            "Description": self.init_default_attr,
+            "MaxSessionDuration": self.init_default_attr}
+
+        self.init_attrs(dict_src, init_options)
+
+    def generate_create_request(self):
+        request = dict()
+        request["RoleName"] = self.name
+        request["Description"] = self.description
+        request["AssumeRolePolicyDocument"] = self.assume_role_policy_document
+        request["MaxSessionDuration"] = self.max_session_duration
+
+        return request
+
+    def generate_attach_policies_requests(self, desired_role=None):
+        return [
+            {
+                "PolicyArn": policy.arn,
+                "RoleName": self.name
+            }
+            for policy in self.policies]
