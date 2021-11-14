@@ -841,6 +841,7 @@ class S3Client(Boto3Client):
         @param request_dict:
         @return:
         """
+        logger.info(f"Putting Bucket policy {request_dict}")
         for response in self.execute(self.client.put_bucket_policy, "ResponseMetadata", filters_req=request_dict):
             return response
 
