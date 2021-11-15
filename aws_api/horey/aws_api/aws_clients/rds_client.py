@@ -188,14 +188,14 @@ class RDSClient(Boto3Client):
 
         return final_result
 
-    def get_region_db_cluster_snapshots(self, region, full_information=True):
+    def get_region_db_cluster_snapshots(self, region, full_information=True, custom_filters=None):
         final_result = list()
         AWSAccount.set_aws_region(region)
-        for response in self.execute(self.client.describe_db_cluster_snapshots, "DBClusterSnapshots"):
+        for response in self.execute(self.client.describe_db_cluster_snapshots, "DBClusterSnapshots", filters_req=custom_filters):
             obj = RDSDBClusterSnapshot(response)
             final_result.append(obj)
             if full_information:
-                filters_req = {"DBClusterSnapshotIdentifier": obj.name}
+                filters_req = {"DBClusterSnapshotIdentifier": obj.id}
                 obj.parameters = []
                 for response_param in self.execute(self.client.describe_db_cluster_snapshot_attributes, "DBClusterSnapshotAttributesResult", filters_req=filters_req):
                     obj.parameters.append(response_param)
@@ -291,25 +291,25 @@ class RDSClient(Boto3Client):
                                      filters_req=request_dict):
             return response
 
-    def copy_db_cluster_snapshot(self, cluster_snapshot_src, cluster_snapshot_dst):
+    def copy_db_cluster_snapshot(self, cluster_snapshot_src: RDSDBClusterSnapshot, cluster_snapshot_dst: RDSDBClusterSnapshot):
         AWSAccount.set_aws_region(cluster_snapshot_src.region)
-        pdb.set_trace()
 
-        ret = list(self.execute(self.client.describe_db_cluster_cluster_snapshots, "DBClustercluster_snapshots"))
+        filters_req = {"DBClusterIdentifier": cluster_snapshot_src.db_cluster_identifier}
+        src_region_cluster_snapshots = self.get_region_db_cluster_snapshots(cluster_snapshot_src.region, full_information=False, custom_filters=filters_req)
+        cluster_snapshot_src.update_from_raw_response(src_region_cluster_snapshots[0].dict_src)
 
-        region_db_instances = self.get_region_db_instances(db_instance.region)
-        for region_db_instance in region_db_instances:
-            if db_instance.id == region_db_instance.id:
-                db_instance.update_from_raw_response(region_db_instance.dict_src)
-                return
+        filters_req = {"DBClusterIdentifier": cluster_snapshot_dst.id}
+        dst_region_cluster_snapshots = self.get_region_db_cluster_snapshots(cluster_snapshot_dst.region, full_information=False, custom_filters=filters_req)
+        for dst_region_cluster_snapshot in dst_region_cluster_snapshots:
+            pdb.set_trace()
 
-        AWSAccount.set_aws_region(db_instance.region)
-        response = self.provision_db_instance_raw(db_instance.generate_create_request())
-        db_instance.update_from_raw_response(response)
+        AWSAccount.set_aws_region(cluster_snapshot_dst.region)
+        response = self.copy_db_cluster_snapshot_raw(cluster_snapshot_src.generate_copy_request(cluster_snapshot_dst))
+        cluster_snapshot_dst.update_from_raw_response(response)
 
     def copy_db_cluster_snapshot_raw(self, request_dict):
         logger.info(f"Copying cluster_snapshot: {request_dict}")
-        for response in self.execute(self.client.copy_db_cluster_snapshot, "DBcluster_snapshot",
+        for response in self.execute(self.client.copy_db_cluster_snapshot, "DBClusterSnapshot",
                                      filters_req=request_dict):
             return response
 

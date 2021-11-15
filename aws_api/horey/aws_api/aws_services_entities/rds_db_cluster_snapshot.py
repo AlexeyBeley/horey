@@ -22,7 +22,7 @@ class RDSDBClusterSnapshot(AwsObject):
             return
 
         init_options = {
-            "DBClusterSnapshotIdentifier": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "DBClusterSnapshotIdentifier": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
             "DBClusterSnapshotArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
             "AvailabilityZones": self.init_default_attr,
             "DBClusterIdentifier": self.init_default_attr,
@@ -58,7 +58,7 @@ class RDSDBClusterSnapshot(AwsObject):
 
     def update_from_raw_response(self, dict_src):
         init_options = {
-            "DBClusterSnapshotIdentifier": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "DBClusterSnapshotIdentifier": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
             "DBClusterSnapshotArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
             "AvailabilityZones": self.init_default_attr,
             "DBClusterIdentifier": self.init_default_attr,
@@ -79,6 +79,7 @@ class RDSDBClusterSnapshot(AwsObject):
             "KmsKeyId": self.init_default_attr,
             "IAMDatabaseAuthenticationEnabled": self.init_default_attr,
             "TagList": self.init_default_attr,
+            "SourceDBClusterSnapshotArn": self.init_default_attr
         }
 
         self.init_attrs(dict_src, init_options)
@@ -92,10 +93,22 @@ class RDSDBClusterSnapshot(AwsObject):
 
     def generate_copy_request(self, dst_cluster_snapshot):
         request = dict()
-        pdb.set_trace()
-        request["Tags"] = self.tags
+        request["SourceDBClusterSnapshotIdentifier"] = self.arn
+        request["TargetDBClusterSnapshotIdentifier"] = dst_cluster_snapshot.id
+        request["KmsKeyId"] = "arn:aws:kms:us-west-2:211921183446:key/e6b17236-93a5-403f-9258-30f8da98cfae"
+        request["CopyTags"] = False
 
+        request["Tags"] = dst_cluster_snapshot.tags
+        request["Tags"].append(self.get_src_snapshot_id_tag())
+
+        request["SourceRegion"] = self.region.region_mark
         return request
+
+    def get_src_snapshot_id_tag(self):
+        return {
+            "Key": "src_snapshot_id",
+            "Value": self.arn
+        }
 
     @property
     def region(self):

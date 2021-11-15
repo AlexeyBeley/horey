@@ -6,6 +6,7 @@ from horey.aws_api.aws_services_entities.rds_db_cluster import RDSDBCluster
 from horey.aws_api.aws_services_entities.rds_db_instance import RDSDBInstance
 from horey.aws_api.aws_services_entities.rds_db_subnet_group import RDSDBSubnetGroup
 from horey.aws_api.aws_services_entities.rds_db_cluster_parameter_group import RDSDBClusterParameterGroup
+from horey.aws_api.aws_services_entities.rds_db_cluster_snapshot import RDSDBClusterSnapshot
 from horey.aws_api.aws_services_entities.rds_db_parameter_group import RDSDBParameterGroup
 
 from horey.h_logger import get_logger
@@ -176,11 +177,23 @@ def test_provision_db_cluster_parameter_group():
 
 def test_copy_db_snapshot():
     client = RDSClient()
-    snapshot_src_mock = Mock()
-    snapshot_src_mock.region = Region.get_region("us-east-1")
+    snapshot_src = RDSDBClusterSnapshot({})
+    snapshot_src.region = Region.get_region("us-east-1")
+    snapshot_src.db_cluster_identifier = mock_values["snapshot_src.id"]
 
-    snapshot_dst_mock = Mock()
-    client.copy_db_cluster_snapshot(snapshot_src_mock, snapshot_dst_mock)
+    snapshot_dst = RDSDBClusterSnapshot({})
+    snapshot_dst.region = Region.get_region("us-west-2")
+    snapshot_dst.id = "horey-test-snapshot-id"
+    snapshot_dst.tags = [
+        {
+            'Key': 'lvl',
+            'Value': "tst"
+        }, {
+            'Key': 'name',
+            'Value': snapshot_dst.id
+        }
+    ]
+    client.copy_db_cluster_snapshot(snapshot_src, snapshot_dst)
 
 
 if __name__ == "__main__":
