@@ -530,7 +530,15 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_rds_db_cluster_parameter_groups_cache_file.setter
     def aws_api_rds_db_cluster_parameter_groups_cache_file(self, value):
         raise ValueError(value)
+    
+    @property
+    def aws_api_rds_db_cluster_snapshots_cache_file(self):
+        return os.path.join(self.aws_api_rds_cache_dir, "rds_db_cluster_snapshots.json")
 
+    @aws_api_rds_db_cluster_snapshots_cache_file.setter
+    def aws_api_rds_db_cluster_snapshots_cache_file(self, value):
+        raise ValueError(value)
+    
     # endregion
     
     # region elasticache

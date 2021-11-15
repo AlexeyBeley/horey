@@ -220,6 +220,15 @@ def test_init_and_cache_rds_db_cluster_parameter_groups():
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_rds_db_cluster_snapshots():
+    aws_api.init_rds_db_cluster_snapshots()
+    aws_api.cache_objects(aws_api.rds_db_cluster_snapshots, configuration.aws_api_rds_db_cluster_snapshots_cache_file)
+    print(f"len(rds_db_cluster_snapshots) = {len(aws_api.rds_db_cluster_snapshots)}")
+    assert isinstance(aws_api.rds_db_cluster_snapshots, list)
+
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_rds_db_parameter_groups():
     aws_api.init_rds_db_parameter_groups()
     aws_api.cache_objects(aws_api.rds_db_parameter_groups, configuration.aws_api_rds_db_parameter_groups_cache_file)
@@ -509,6 +518,7 @@ if __name__ == "__main__":
     #test_init_and_cache_acm_certificates()
     #test_init_and_cache_rds_db_instances()
     #test_init_and_cache_rds_db_clusters()
+    test_init_and_cache_rds_db_cluster_snapshots()
     #test_init_and_cache_rds_db_subnet_groups()
     #test_init_and_cache_rds_db_cluster_parameter_groups()
     #test_init_and_cache_rds_db_parameter_groups()
@@ -521,4 +531,4 @@ if __name__ == "__main__":
     #test_init_and_cache_elasticache_replication_groups()
     #test_init_and_cache_elasticache_cache_security_groups()
     #test_init_and_cache_sqs_queues()
-    test_init_and_cache_lambda_event_source_mappings()
+    #test_init_and_cache_lambda_event_source_mappings()

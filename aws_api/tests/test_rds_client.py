@@ -174,10 +174,19 @@ def test_provision_db_cluster_parameter_group():
     assert db_cluster_parameter_group.arn is not None
 
 
+def test_copy_db_snapshot():
+    client = RDSClient()
+    snapshot_src_mock = Mock()
+    snapshot_src_mock.region = Region.get_region("us-east-1")
+
+    snapshot_dst_mock = Mock()
+    client.copy_db_cluster_snapshot(snapshot_src_mock, snapshot_dst_mock)
+
+
 if __name__ == "__main__":
     #test_provision_subnet_group()
     #test_provision_db_parameter_group()
     #test_provision_db_cluster_parameter_group()
     #test_provision_cluster()
-    test_provision_db_instance()
-
+    #test_provision_db_instance()
+    test_copy_db_snapshot()
