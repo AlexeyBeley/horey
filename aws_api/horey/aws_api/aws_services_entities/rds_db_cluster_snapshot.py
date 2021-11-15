@@ -95,7 +95,7 @@ class RDSDBClusterSnapshot(AwsObject):
         request = dict()
         request["SourceDBClusterSnapshotIdentifier"] = self.arn
         request["TargetDBClusterSnapshotIdentifier"] = dst_cluster_snapshot.id
-        request["KmsKeyId"] = "arn:aws:kms:us-west-2:211921183446:key/e6b17236-93a5-403f-9258-30f8da98cfae"
+        request["KmsKeyId"] = dst_cluster_snapshot.kms_key_id
         request["CopyTags"] = False
 
         request["Tags"] = dst_cluster_snapshot.tags
