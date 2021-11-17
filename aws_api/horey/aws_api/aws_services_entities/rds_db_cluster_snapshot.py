@@ -16,6 +16,7 @@ class RDSDBClusterSnapshot(AwsObject):
         super().__init__(dict_src)
         self._region = None
         self.parameters = None
+        self.kms_key_id = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -43,6 +44,7 @@ class RDSDBClusterSnapshot(AwsObject):
             "KmsKeyId": self.init_default_attr,
             "IAMDatabaseAuthenticationEnabled": self.init_default_attr,
             "TagList": self.init_default_attr,
+            "SourceDBClusterSnapshotArn": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -92,6 +94,12 @@ class RDSDBClusterSnapshot(AwsObject):
         return request
 
     def generate_copy_request(self, dst_cluster_snapshot):
+        """
+        Warning known AWS bug- if there were no RDS databases created in the dst region
+        there is no aws/rds kms key so it will fail. Create small db before copying a snapshot.
+        @param dst_cluster_snapshot:
+        @return:
+        """
         request = dict()
         request["SourceDBClusterSnapshotIdentifier"] = self.arn
         request["TargetDBClusterSnapshotIdentifier"] = dst_cluster_snapshot.id

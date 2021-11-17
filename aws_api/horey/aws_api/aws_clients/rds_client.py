@@ -22,6 +22,7 @@ class RDSClient(Boto3Client):
     """
     Client to handle specific aws service API calls.
     """
+
     def __init__(self):
         client_name = "rds"
         super().__init__(client_name)
@@ -52,7 +53,7 @@ class RDSClient(Boto3Client):
             final_result.append(obj)
 
         return final_result
-    
+
     def get_all_db_clusters(self, region=None):
         """
         Get all db_clusters in all regions.
@@ -79,8 +80,11 @@ class RDSClient(Boto3Client):
             final_result.append(obj)
 
         return final_result
-    
-    def provision_db_cluster(self, db_cluster):
+
+    def provision_db_cluster(self, db_cluster: RDSDBCluster, snapshot_id=None):
+        if snapshot_id is not None:
+            return self.restore_db_cluster_from_snapshot(db_cluster, snapshot_id)
+
         region_db_clusters = self.get_region_db_clusters(db_cluster.region)
         for region_db_cluster in region_db_clusters:
             if db_cluster.id == region_db_cluster.id:
@@ -90,7 +94,7 @@ class RDSClient(Boto3Client):
         AWSAccount.set_aws_region(db_cluster.region)
         response = self.provision_db_cluster_raw(db_cluster.generate_create_request())
         db_cluster.update_from_raw_response(response)
-        
+
     def provision_db_cluster_raw(self, request_dict):
         """
         Returns ARN
@@ -99,7 +103,71 @@ class RDSClient(Boto3Client):
         for response in self.execute(self.client.create_db_cluster, "DBCluster",
                                      filters_req=request_dict):
             return response
-    
+
+    def dispose_db_cluster(self, db_cluster: RDSDBCluster):
+        region_db_clusters = self.get_region_db_clusters(db_cluster.region)
+        for region_db_cluster in region_db_clusters:
+            if db_cluster.id == region_db_cluster.id:
+                db_cluster.update_from_raw_response(region_db_cluster.dict_src)
+                break
+        else:
+            return
+        filters_req = [{'Name': 'db-cluster-id',
+                        'Values': [
+                            db_cluster.id,
+                        ]}]
+        db_instances = self.get_region_db_instances(region=db_cluster.region, filters=filters_req)
+        for db_instance in db_instances:
+            db_instance.region = db_cluster.region
+            db_instance.skip_final_snapshot = db_cluster.skip_final_snapshot
+            self.dispose_db_instance(db_instance)
+
+        AWSAccount.set_aws_region(db_cluster.region)
+        response = self.dispose_db_cluster_raw(db_cluster.generate_dispose_request())
+
+        db_cluster.update_from_raw_response(response)
+
+    def dispose_db_cluster_raw(self, request_dict):
+        """
+        Returns ARN
+        """
+        pdb.set_trace()
+        logger.info(f"Disposing db_cluster: {request_dict}")
+        for response in self.execute(self.client.delete_db_cluster, "DBCluster",
+                                     filters_req=request_dict):
+            return response
+
+    def dispose_db_instance(self, db_instance: RDSDBInstance):
+        AWSAccount.set_aws_region(db_instance.region)
+        response = self.dispose_db_instance_raw(db_instance.generate_dispose_request())
+
+        db_instance.update_from_raw_response(response)
+
+    def dispose_db_instance_raw(self, request_dict):
+        """
+        Returns ARN
+        """
+        pdb.set_trace()
+        logger.info(f"Disposing db_instance: {request_dict}")
+        for response in self.execute(self.client.delete_db_instance, "DBInstance",
+                                     filters_req=request_dict):
+            return response
+
+    def restore_db_cluster_from_snapshot(self, db_cluster, snapshot_id):
+        AWSAccount.set_aws_region(db_cluster.region)
+        response = self.restore_db_cluster_from_snapshot_raw(
+            db_cluster.generate_restore_db_cluster_from_snapshot_request(snapshot_id))
+        db_cluster.update_from_raw_response(response)
+
+    def restore_db_cluster_from_snapshot_raw(self, request_dict):
+        """
+        Returns ARN
+        """
+        logger.info(f"restoring db_cluster from snapshot: {request_dict}")
+        for response in self.execute(self.client.restore_db_cluster_from_snapshot, "DBCluster",
+                                     filters_req=request_dict):
+            return response
+
     def get_all_db_subnet_groups(self, region=None):
         """
         Get all db_subnet_groups in all regions.
@@ -123,7 +191,7 @@ class RDSClient(Boto3Client):
             final_result.append(obj)
 
         return final_result
-    
+
     def provision_db_subnet_group(self, db_subnet_group):
         region_db_subnet_groups = self.get_region_db_subnet_groups(db_subnet_group.region)
         for region_db_subnet_group in region_db_subnet_groups:
@@ -143,7 +211,7 @@ class RDSClient(Boto3Client):
         for response in self.execute(self.client.create_db_subnet_group, "DBSubnetGroup",
                                      filters_req=request_dict):
             return response
-    
+
     def get_all_db_cluster_parameter_groups(self, region=None):
         """
         Get all db_cluster_parameter_groups in all regions.
@@ -168,7 +236,8 @@ class RDSClient(Boto3Client):
             if full_information:
                 filters_req = {"DBClusterParameterGroupName": obj.name}
                 obj.parameters = []
-                for response_param in self.execute(self.client.describe_db_cluster_parameters, "Parameters", filters_req=filters_req):
+                for response_param in self.execute(self.client.describe_db_cluster_parameters, "Parameters",
+                                                   filters_req=filters_req):
                     obj.parameters.append(response_param)
 
         return final_result
@@ -191,17 +260,19 @@ class RDSClient(Boto3Client):
     def get_region_db_cluster_snapshots(self, region, full_information=True, custom_filters=None):
         final_result = list()
         AWSAccount.set_aws_region(region)
-        for response in self.execute(self.client.describe_db_cluster_snapshots, "DBClusterSnapshots", filters_req=custom_filters):
+        for response in self.execute(self.client.describe_db_cluster_snapshots, "DBClusterSnapshots",
+                                     filters_req=custom_filters, exception_ignore_callback=lambda x: "DBClusterSnapshotNotFoundFault" in repr(x)):
             obj = RDSDBClusterSnapshot(response)
             final_result.append(obj)
             if full_information:
                 filters_req = {"DBClusterSnapshotIdentifier": obj.id}
                 obj.parameters = []
-                for response_param in self.execute(self.client.describe_db_cluster_snapshot_attributes, "DBClusterSnapshotAttributesResult", filters_req=filters_req):
+                for response_param in self.execute(self.client.describe_db_cluster_snapshot_attributes,
+                                                   "DBClusterSnapshotAttributesResult", filters_req=filters_req):
                     obj.parameters.append(response_param)
 
         return final_result
-    
+
     def get_all_db_parameter_groups(self, region=None):
         """
         Get all db_parameter_groups in all regions.
@@ -226,13 +297,15 @@ class RDSClient(Boto3Client):
             if full_information:
                 filters_req = {"DBParameterGroupName": obj.name}
                 obj.parameters = []
-                for response_param in self.execute(self.client.describe_db_parameters, "Parameters", filters_req=filters_req):
+                for response_param in self.execute(self.client.describe_db_parameters, "Parameters",
+                                                   filters_req=filters_req):
                     obj.parameters.append(response_param)
 
         return final_result
 
     def provision_db_cluster_parameter_group(self, db_cluster_parameter_group):
-        region_db_cluster_parameter_groups = self.get_region_db_cluster_parameter_groups(db_cluster_parameter_group.region)
+        region_db_cluster_parameter_groups = self.get_region_db_cluster_parameter_groups(
+            db_cluster_parameter_group.region)
         for region_db_cluster_parameter_group in region_db_cluster_parameter_groups:
             if db_cluster_parameter_group.name == region_db_cluster_parameter_group.name:
                 db_cluster_parameter_group.update_from_raw_response(region_db_cluster_parameter_group.dict_src)
@@ -250,7 +323,7 @@ class RDSClient(Boto3Client):
         for response in self.execute(self.client.create_db_cluster_parameter_group, "DBClusterParameterGroup",
                                      filters_req=request_dict):
             return response
-        
+
     def provision_db_parameter_group(self, db_parameter_group):
         region_db_parameter_groups = self.get_region_db_parameter_groups(db_parameter_group.region)
         for region_db_parameter_group in region_db_parameter_groups:
@@ -291,17 +364,19 @@ class RDSClient(Boto3Client):
                                      filters_req=request_dict):
             return response
 
-    def copy_db_cluster_snapshot(self, cluster_snapshot_src: RDSDBClusterSnapshot, cluster_snapshot_dst: RDSDBClusterSnapshot):
+    def copy_db_cluster_snapshot(self, cluster_snapshot_src: RDSDBClusterSnapshot,
+                                 cluster_snapshot_dst: RDSDBClusterSnapshot):
         AWSAccount.set_aws_region(cluster_snapshot_src.region)
 
-        filters_req = {"DBClusterIdentifier": cluster_snapshot_src.db_cluster_identifier}
-        src_region_cluster_snapshots = self.get_region_db_cluster_snapshots(cluster_snapshot_src.region, full_information=False, custom_filters=filters_req)
-        cluster_snapshot_src.update_from_raw_response(src_region_cluster_snapshots[0].dict_src)
-
-        filters_req = {"DBClusterIdentifier": cluster_snapshot_dst.id}
-        dst_region_cluster_snapshots = self.get_region_db_cluster_snapshots(cluster_snapshot_dst.region, full_information=False, custom_filters=filters_req)
+        filters_req = {"DBClusterSnapshotIdentifier": cluster_snapshot_dst.id}
+        dst_region_cluster_snapshots = self.get_region_db_cluster_snapshots(cluster_snapshot_dst.region,
+                                                                            full_information=False,
+                                                                            custom_filters=filters_req)
         for dst_region_cluster_snapshot in dst_region_cluster_snapshots:
-            pdb.set_trace()
+            if dst_region_cluster_snapshot.id == cluster_snapshot_dst.id:
+                if cluster_snapshot_src.arn == dst_region_cluster_snapshot.source_db_cluster_snapshot_arn:
+                    return
+                raise RuntimeError(f"Found destination snapshot with name {cluster_snapshot_dst.id} but src arn {dst_region_cluster_snapshot.source_db_cluster_snapshot_arn} is not equals to {cluster_snapshot_src.arn}")
 
         AWSAccount.set_aws_region(cluster_snapshot_dst.region)
         response = self.copy_db_cluster_snapshot_raw(cluster_snapshot_src.generate_copy_request(cluster_snapshot_dst))
@@ -313,3 +388,11 @@ class RDSClient(Boto3Client):
                                      filters_req=request_dict):
             return response
 
+    def update_db_cluster_information(self, db_cluster):
+        if db_cluster.id is None:
+            raise NotImplementedError()
+
+        region_db_clusters = self.get_region_db_clusters(db_cluster.region)
+        for region_db_cluster in region_db_clusters:
+            if db_cluster.id == region_db_cluster.id:
+                db_cluster.update_from_raw_response(region_db_cluster.dict_src)

@@ -77,7 +77,7 @@ class Boto3Client:
             except self.NoReturnStringError:
                 raise
             except Exception as exception_instance:
-                logger.warning(f"Exception received '{func_command.__name__}' Error: {repr(exception_instance)}")
+                logger.warning(f"Exception received in paginator '{func_command.__name__}' Error: {repr(exception_instance)}")
                 exception_weight = 10
                 time_to_sleep = 1
 

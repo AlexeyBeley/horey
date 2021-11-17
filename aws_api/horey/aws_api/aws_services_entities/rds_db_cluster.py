@@ -1,6 +1,8 @@
 """
 Module to handle AWS RDS instances
 """
+import pdb
+
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 from horey.aws_api.base_entities.region import Region
 
@@ -159,6 +161,44 @@ class RDSDBCluster(AwsObject):
 
         request["DeletionProtection"] = self.deletion_protection
         request["CopyTagsToSnapshot"] = self.copy_tags_to_snapshot
+
+        request["Tags"] = self.tags
+
+        return request
+
+    def generate_dispose_request(self):
+        request = dict()
+        request["DBClusterIdentifier"] = self.id
+        request["SkipFinalSnapshot"] = self.skip_final_snapshot
+        return request
+
+    def generate_restore_db_cluster_from_snapshot_request(self, snapshot_id):
+        request = dict()
+        if self.availability_zones:
+            request["AvailabilityZones"] = self.availability_zones
+
+        if self.db_subnet_group_name:
+            request["DBSubnetGroupName"] = self.db_subnet_group_name
+
+        if self.db_cluster_parameter_group_name:
+            request["DBClusterParameterGroupName"] = self.db_cluster_parameter_group_name
+
+        request["SnapshotIdentifier"] = snapshot_id
+        request["DBClusterIdentifier"] = self.id
+        request["VpcSecurityGroupIds"] = self.vpc_security_group_ids
+        request["Engine"] = self.engine
+        request["EngineVersion"] = self.engine_version
+        request["Port"] = self.port
+
+        request["EnableCloudwatchLogsExports"] = self.enable_cloudwatch_logs_exports
+
+        if self.kms_key_id:
+            request["KmsKeyId"] = self.kms_key_id
+
+        request["EngineMode"] = self.engine_mode
+
+        request["DeletionProtection"] = self.deletion_protection
+        request["CopyTagsToSnapshot"] = False
 
         request["Tags"] = self.tags
 

@@ -1,4 +1,6 @@
 import os
+import pdb
+
 import sys
 
 from horey.aws_api.aws_clients.rds_client import RDSClient
@@ -77,6 +79,64 @@ def test_provision_cluster():
     client.provision_db_cluster(cluster)
 
     assert cluster.arn is not None
+
+
+def test_provision_cluster_from_snapshot():
+    client = RDSClient()
+    cluster = RDSDBCluster({})
+    cluster.region = AWSAccount.get_aws_region()
+
+    cluster.db_subnet_group_name = "db_subnet-test"
+    cluster.db_cluster_parameter_group_name = "cluster-param-group-test"
+    cluster.backup_retention_period = 35
+    cluster.database_name = "db_test"
+    cluster.id = "cluster-db-test"
+    cluster.vpc_security_group_ids = [mock_values["cluster.vpc_security_group_ids"]]
+    cluster.engine = "aurora-mysql"
+    cluster.engine_version = "5.7.mysql_aurora.2.09.2"
+    cluster.port = 3306
+
+    cluster.master_username = "admin"
+    cluster.master_user_password = "12345678"
+    cluster.preferred_backup_window = "09:23-09:53"
+    cluster.preferred_maintenance_window = "sun:03:30-sun:04:00"
+    cluster.storage_encrypted = True
+    #cluster.kms_key_id = True
+    cluster.engine_mode = "provisioned"
+
+    cluster.deletion_protection = False
+    cluster.copy_tags_to_snapshot = True
+    cluster.enable_cloudwatch_logs_exports = [
+        "audit",
+        "error",
+        "general",
+        "slowquery"
+    ]
+
+    cluster.tags = [
+        {
+            'Key': 'lvl',
+            'Value': "tst"
+        }, {
+            'Key': 'name',
+            'Value': cluster.id
+        }
+    ]
+
+    client.provision_db_cluster(cluster, snapshot_id="horey-test-snapshot-id")
+
+    assert cluster.arn is not None
+
+
+def test_dispose_db_cluster():
+    client = RDSClient()
+    cluster = RDSDBCluster({})
+    cluster.region = AWSAccount.get_aws_region()
+
+    cluster.skip_final_snapshot = True
+    cluster.id = "cluster-db-test"
+
+    client.dispose_db_cluster(cluster)
 
 
 def test_provision_db_instance():
@@ -175,11 +235,11 @@ def test_provision_db_cluster_parameter_group():
     assert db_cluster_parameter_group.arn is not None
 
 
-def test_copy_db_snapshot():
+def test_copy_db_cluster_snapshot():
     client = RDSClient()
     snapshot_src = RDSDBClusterSnapshot({})
     snapshot_src.region = Region.get_region("us-east-1")
-    snapshot_src.db_cluster_identifier = mock_values["snapshot_src.id"]
+    snapshot_src.db_cluster_identifier = mock_values["snapshot_src.db_cluster_identifier"]
 
     snapshot_dst = RDSDBClusterSnapshot({})
     snapshot_dst.region = Region.get_region("us-west-2")
@@ -202,4 +262,6 @@ if __name__ == "__main__":
     #test_provision_db_cluster_parameter_group()
     #test_provision_cluster()
     #test_provision_db_instance()
-    test_copy_db_snapshot()
+    #test_copy_db_cluster_snapshot()
+    #test_provision_cluster_from_snapshot()
+    test_dispose_db_cluster()

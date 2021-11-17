@@ -47,10 +47,10 @@ class TemplateClient(Boto3Client):
         return final_result
 
     def provision_template_entity(self, template_entity):
-        region_entitys = self.get_region_template_entities(template_entity.region)
-        for region_entity in region_entitys:
-            if region_entity.get_tagname(ignore_missing_tag=True) == template_entity.get_tagname():
-                template_entity.update_from_raw_response(region_entity.dict_src)
+        region_template_entities = self.get_region_template_entities(template_entity.region)
+        for region_template_entity in region_template_entities:
+            if region_template_entity.get_tagname(ignore_missing_tag=True) == template_entity.get_tagname():
+                template_entity.update_from_raw_response(region_template_entity.dict_src)
                 return
 
         AWSAccount.set_aws_region(template_entity.region)

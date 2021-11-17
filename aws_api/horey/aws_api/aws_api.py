@@ -32,6 +32,9 @@ from horey.aws_api.aws_services_entities.elbv2_target_group import ELBV2TargetGr
 from horey.aws_api.aws_clients.acm_client import ACMClient
 from horey.aws_api.aws_services_entities.acm_certificate import ACMCertificate
 
+from horey.aws_api.aws_clients.kms_client import KMSClient
+from horey.aws_api.aws_services_entities.kms_key import KMSKey
+
 from horey.aws_api.aws_services_entities.managed_prefix_list import ManagedPrefixList
 
 from horey.aws_api.aws_clients.elb_client import ELBClient
@@ -143,6 +146,7 @@ class AWSAPI:
         self.elasticsearch_client = ElasticsearchClient()
         self.ecr_client = ECRClient()
         self.acm_client = ACMClient()
+        self.kms_client = KMSClient()
         self.elasticache_client = ElasticacheClient()
         self.sqs_client = SQSClient()
 
@@ -164,6 +168,7 @@ class AWSAPI:
         self.security_groups = []
         self.target_groups = []
         self.acm_certificates = []
+        self.kms_keys = []
         self.ec2_launch_templates = []
         self.ec2_launch_template_versions = []
         self.lambdas = []
@@ -1009,7 +1014,21 @@ class AWSAPI:
             objects = self.acm_client.get_all_certificates()
 
         self.acm_certificates = objects
+    
+    def init_kms_keys(self, from_cache=False, cache_file=None):
+        """
+        Init ELB target groups
+        @param from_cache:
+        @param cache_file:
+        @return:
+        """
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, KMSKey)
+        else:
+            objects = self.kms_client.get_all_keys()
 
+        self.kms_keys = objects
+        
     def init_security_groups(self, from_cache=False, cache_file=None, full_information=False):
         """
         Init security groups
@@ -2476,3 +2495,39 @@ class AWSAPI:
 
     def provision_iam_role(self, iam_role):
         self.iam_client.provision_iam_role(iam_role)
+
+    def dispose_rds_db_cluster(self, rds_cluster):
+        self.rds_client.dispose_db_cluster(rds_cluster)
+
+    def copy_latest_db_cluster_snapshot(self, db_cluster, desired_snapshot: RDSDBClusterSnapshot):
+        filters_req = {"DBClusterIdentifier": db_cluster.id}
+        src_region_cluster_snapshots = self.rds_client.get_region_db_cluster_snapshots(db_cluster.region,
+                                                                    full_information=False,
+                                                                    custom_filters=filters_req)
+
+        src_snapshot = src_region_cluster_snapshots[-1]
+        src_snapshot.region = db_cluster.region
+
+        if desired_snapshot.kms_key_id is None:
+            if db_cluster.kms_key_id is None:
+                self.rds_client.update_db_cluster_information(db_cluster)
+            src_region_keys = self.kms_client.get_region_keys(db_cluster.region, full_information=True)
+            src_region_key = CommonUtils.find_objects_by_values(src_region_keys, {"arn": db_cluster.kms_key_id}, max_count=1)[0]
+
+            desired_snapshot.kms_key_id = src_region_key.aliases[0]["AliasName"]
+
+        if desired_snapshot.id is None:
+            dst_id = src_snapshot.id
+            dst_id = dst_id.replace(":", "-")
+
+            dst_id += f"-from-{db_cluster.region.region_mark}"
+            while "--" in dst_id:
+                dst_id = dst_id.replace("--", "-")
+            desired_snapshot.id = dst_id
+
+            desired_snapshot.tags.append({
+                'Key': 'Name',
+                'Value': dst_id
+            })
+
+        self.rds_client.copy_db_cluster_snapshot(src_snapshot, desired_snapshot)

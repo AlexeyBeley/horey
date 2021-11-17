@@ -33,6 +33,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
         self._aws_api_ecs_cache_dir = None
         self._aws_api_auto_scaling_cache_dir = None
         self._aws_api_acm_cache_dir = None
+        self._aws_api_kms_cache_dir = None
         self._aws_api_elasticache_cache_dir = None
         self._aws_api_sqs_cache_dir = None
 
@@ -821,6 +822,27 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
         raise ValueError(value)
     # endregion
 
+    # region kms
+    @property
+    def aws_api_kms_cache_dir(self):
+        if self._aws_api_kms_cache_dir is None:
+            self._aws_api_kms_cache_dir = os.path.join(self.aws_api_cache_dir, self.aws_api_account, "kms")
+            os.makedirs(self._aws_api_kms_cache_dir, exist_ok=True)
+        return self._aws_api_kms_cache_dir
+
+    @aws_api_kms_cache_dir.setter
+    def aws_api_kms_cache_dir(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_kms_keys_cache_file(self):
+        return os.path.join(self.aws_api_kms_cache_dir, "kms_keys.json")
+
+    @aws_api_kms_keys_cache_file.setter
+    def aws_api_kms_keys_cache_file(self, value):
+        raise ValueError(value)
+    # endregion
+    
     # region cleanup
     @property
     def aws_api_cleanup_reports_dir(self):
@@ -913,9 +935,5 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     def accounts_file(self, value):
         self._accounts_file = value
 
-
-
     # endregion
-    #HOSTED_ZONES_CACHE_FILE = os.path.join(CACHE_DIR, "hosted_zones.json")
-    #IAM_POLICIES_CACHE_FILE = os.path.join(CACHE_DIR, "iam_policies.json")
 

@@ -227,7 +227,6 @@ def test_init_and_cache_rds_db_cluster_snapshots():
     assert isinstance(aws_api.rds_db_cluster_snapshots, list)
 
 
-
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_rds_db_parameter_groups():
     aws_api.init_rds_db_parameter_groups()
@@ -498,7 +497,13 @@ def test_init_and_cache_acm_certificates():
     aws_api.init_acm_certificates()
     aws_api.cache_objects(aws_api.acm_certificates, configuration.aws_api_acm_certificates_cache_file)
     print(f"len(acm_certificates) = {len(aws_api.acm_certificates)}")
-    
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_kms_keys():
+    aws_api.init_kms_keys()
+    aws_api.cache_objects(aws_api.kms_keys, configuration.aws_api_kms_keys_cache_file)
+    print(f"len(kms_keys) = {len(aws_api.kms_keys)}")
+    assert isinstance(aws_api.kms_keys, list)
 
 if __name__ == "__main__":
     #test_init_and_cache_amis()
@@ -518,7 +523,8 @@ if __name__ == "__main__":
     #test_init_and_cache_acm_certificates()
     #test_init_and_cache_rds_db_instances()
     #test_init_and_cache_rds_db_clusters()
-    test_init_and_cache_rds_db_cluster_snapshots()
+    #test_init_and_cache_rds_db_cluster_snapshots()
+    test_init_and_cache_kms_keys()
     #test_init_and_cache_rds_db_subnet_groups()
     #test_init_and_cache_rds_db_cluster_parameter_groups()
     #test_init_and_cache_rds_db_parameter_groups()
