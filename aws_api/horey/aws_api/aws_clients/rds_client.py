@@ -375,6 +375,7 @@ class RDSClient(Boto3Client):
         for dst_region_cluster_snapshot in dst_region_cluster_snapshots:
             if dst_region_cluster_snapshot.id == cluster_snapshot_dst.id:
                 if cluster_snapshot_src.arn == dst_region_cluster_snapshot.source_db_cluster_snapshot_arn:
+                    cluster_snapshot_dst.update_from_raw_response(dst_region_cluster_snapshot.dict_src)
                     return
                 raise RuntimeError(f"Found destination snapshot with name {cluster_snapshot_dst.id} but src arn {dst_region_cluster_snapshot.source_db_cluster_snapshot_arn} is not equals to {cluster_snapshot_src.arn}")
 

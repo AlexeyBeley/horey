@@ -1,4 +1,4 @@
-
+from lambda_test_2 import output_text
 
 def lambda_handler(event, context):
     """
@@ -6,5 +6,5 @@ def lambda_handler(event, context):
     :param context:
     :return:
     """
-    print("Hello World!")
+    print(output_text)
     return "200"

@@ -2363,8 +2363,8 @@ class AWSAPI:
                 raise ValueError(certificate.status)
         raise TimeoutError(f"Finished waiting {max_time} seconds for certificate validation. Finished with status: {certificate.status}")
 
-    def provision_rds_db_cluster(self, cluster):
-        self.rds_client.provision_db_cluster(cluster)
+    def provision_rds_db_cluster(self, cluster, snapshot=None):
+        self.rds_client.provision_db_cluster(cluster, snapshot_id=snapshot.id)
 
     def get_security_group_by_vpc_and_name(self, vpc, name, full_information=False):
         filters = [
@@ -2469,11 +2469,12 @@ class AWSAPI:
     def attach_capacity_providers_to_ecs_cluster(self, ecs_cluster, capacity_provider_names, default_capacity_provider_strategy):
         self.ecs_client.attach_capacity_providers_to_ecs_cluster(ecs_cluster, capacity_provider_names, default_capacity_provider_strategy)
 
-    def provision_aws_lambda_from_file(self, aws_lambda, file_path, force=False):
-        zip_file_name = os.path.splitext(os.path.basename(file_path))[0] + ".zip"
-
+    def provision_aws_lambda_from_filelist(self, aws_lambda, files_paths, force=False):
+        zip_file_name = "lambda.zip"
         with zipfile.ZipFile(zip_file_name, 'w') as myzip:
-            myzip.write(file_path, arcname=os.path.basename(file_path))
+            for file_path in files_paths:
+                #zip_file_name = os.path.splitext(os.path.basename(file_path))[0] + ".zip"
+                myzip.write(file_path, arcname=os.path.basename(file_path))
 
         with open(zip_file_name, "rb") as myzip:
             aws_lambda.code = {"ZipFile": myzip.read()}

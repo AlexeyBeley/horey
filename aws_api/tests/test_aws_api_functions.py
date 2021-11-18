@@ -60,7 +60,7 @@ def test_provision_certificate():
     assert cert.status == "ISSUED"
 
 
-def test_provision_aws_lambda_from_file():
+def test_provision_aws_lambda_from_filelist():
     aws_lambda = AWSLambda({})
     aws_lambda.region = Region.get_region("us-west-2")
     aws_lambda.name = "horey-test-lambda"
@@ -72,8 +72,9 @@ def test_provision_aws_lambda_from_file():
         "name": "horey-test"
     }
 
-    file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "lambda_test.py")
-    aws_api.provision_aws_lambda_from_file(aws_lambda, file_path, force=True)
+    files_paths = [os.path.join(os.path.dirname(os.path.abspath(__file__)), filename) for filename in
+                   ["lambda_test.py", "lambda_test_2.py"]]
+    aws_api.provision_aws_lambda_from_filelist(aws_lambda, files_paths, force=True)
 
     assert aws_lambda.state == "Active"
 
@@ -88,9 +89,9 @@ def test_provision_lambda_event_source_mapping():
     aws_api.provision_lambda_event_source_mapping(event_mapping)
 
     assert event_mapping.state == "Enabled"
-    
+
 
 if __name__ == "__main__":
     # test_provision_certificate()
-    #test_provision_aws_lambda_from_file()
-    test_provision_lambda_event_source_mapping()
+    test_provision_aws_lambda_from_filelist()
+    # test_provision_lambda_event_source_mapping()

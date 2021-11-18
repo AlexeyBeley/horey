@@ -18,3 +18,18 @@ FORCE: ;
 build:
 	cd ${HOREY_DIR_PATH} &&\
 	make raw_install_from_source-aws_api
+
+init_venv_dir: create_build_env
+	source ${VENV_DIR}/bin/activate &&\
+	pip3 install --upgrade pip &&\
+	pip3 install -U setuptools
+
+
+create_slack_lambda_venv:
+	python3.8 -m venv ${TESTS_DIR}/lambda
+
+
+create_slack_lambda_package: create_slack_lambda_package
+	source ${TESTS_DIR}/lambda/bin/activate &&\
+	cd ${HOREY_DIR_PATH} &&\
+	make recursive_install_from_source-slack_api
