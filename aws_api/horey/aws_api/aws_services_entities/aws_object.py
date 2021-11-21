@@ -329,4 +329,4 @@ class AwsObject:
                 print(f'"{key}" : "{value}"')
                 continue
 
-            print(f"{key}: {value}")
+            print(f"{key}: {repr(value)}")

@@ -1,7 +1,9 @@
 """
 AWS rds client to handle rds service API requests.
 """
+import datetime
 import pdb
+import time
 
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.rds_db_instance import RDSDBInstance
@@ -365,13 +367,14 @@ class RDSClient(Boto3Client):
             return response
 
     def copy_db_cluster_snapshot(self, cluster_snapshot_src: RDSDBClusterSnapshot,
-                                 cluster_snapshot_dst: RDSDBClusterSnapshot):
+                                 cluster_snapshot_dst: RDSDBClusterSnapshot, synchronous=True):
         AWSAccount.set_aws_region(cluster_snapshot_src.region)
 
         filters_req = {"DBClusterSnapshotIdentifier": cluster_snapshot_dst.id}
         dst_region_cluster_snapshots = self.get_region_db_cluster_snapshots(cluster_snapshot_dst.region,
                                                                             full_information=False,
                                                                             custom_filters=filters_req)
+        pdb.set_trace()
         for dst_region_cluster_snapshot in dst_region_cluster_snapshots:
             if dst_region_cluster_snapshot.id == cluster_snapshot_dst.id:
                 if cluster_snapshot_src.arn == dst_region_cluster_snapshot.source_db_cluster_snapshot_arn:
@@ -382,6 +385,35 @@ class RDSClient(Boto3Client):
         AWSAccount.set_aws_region(cluster_snapshot_dst.region)
         response = self.copy_db_cluster_snapshot_raw(cluster_snapshot_src.generate_copy_request(cluster_snapshot_dst))
         cluster_snapshot_dst.update_from_raw_response(response)
+        if not synchronous:
+            return
+
+        start_time = datetime.datetime.now()
+        logger.info(f"Starting waiting loop for cluster_snapshot to become ready")
+
+        timeout = 300
+        sleep_time = 5
+        for i in range(timeout // sleep_time):
+            filters_req = {"DBClusterSnapshotIdentifier": cluster_snapshot_dst.id}
+            dst_region_cluster_snapshots = self.get_region_db_cluster_snapshots(cluster_snapshot_dst.region,
+                                                                                full_information=False,
+                                                                                custom_filters=filters_req)
+
+            dst_region_cluster_snapshot = dst_region_cluster_snapshots[0]
+
+            if dst_region_cluster_snapshot.get_status() == dst_region_cluster_snapshot.Status.FAILED:
+                raise RuntimeError(f"cluster {dst_region_cluster_snapshot.name} provisioning failed. Cluster in FAILED status")
+
+            if dst_region_cluster_snapshot.get_status() != dst_region_cluster_snapshot.Status.ACTIVE:
+                time.sleep(sleep_time)
+                continue
+
+            cluster_snapshot_dst.update_from_raw_response(dst_region_cluster_snapshot.dict_src)
+            end_time = datetime.datetime.now()
+            logger.info(f"cluster_snapshot become ready after {end_time-start_time}")
+            return
+
+        raise TimeoutError(f"Cluster did not become available for {timeout} seconds")
 
     def copy_db_cluster_snapshot_raw(self, request_dict):
         logger.info(f"Copying cluster_snapshot: {request_dict}")
@@ -397,3 +429,9 @@ class RDSClient(Boto3Client):
         for region_db_cluster in region_db_clusters:
             if db_cluster.id == region_db_cluster.id:
                 db_cluster.update_from_raw_response(region_db_cluster.dict_src)
+                return
+
+        raise self.ResourceNotFoundError(f"db_cluster {db_cluster.id} not found in region {db_cluster.region.region_mark}")
+
+    class ResourceNotFoundError(ValueError):
+        pass

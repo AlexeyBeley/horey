@@ -2534,4 +2534,4 @@ class AWSAPI:
                 'Value': dst_id
             })
 
-        self.rds_client.copy_db_cluster_snapshot(src_snapshot, desired_snapshot)
+        self.rds_client.copy_db_cluster_snapshot(src_snapshot, desired_snapshot, synchronous=True)
