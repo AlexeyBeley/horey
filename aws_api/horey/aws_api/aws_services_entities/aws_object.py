@@ -316,5 +316,17 @@ class AwsObject:
         return self.get_tag("name", ignore_missing_tag=ignore_missing_tag)
 
     def print_dict_src(self):
-        for x in self.dict_src.items():
-            print(x)
+        for key, value in self.dict_src.items():
+            if isinstance(value, str):
+                print(f'"{key}" : "{value}"')
+                continue
+
+            print(f"{key}: {value}")
+
+    def print(self):
+        for key, value in self.__dict__.items():
+            if isinstance(value, str):
+                print(f'"{key}" : "{value}"')
+                continue
+
+            print(f"{key}: {value}")
