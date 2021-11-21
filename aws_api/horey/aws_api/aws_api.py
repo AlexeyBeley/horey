@@ -2500,13 +2500,16 @@ class AWSAPI:
     def dispose_rds_db_cluster(self, rds_cluster):
         self.rds_client.dispose_db_cluster(rds_cluster)
 
-    def copy_latest_db_cluster_snapshot(self, db_cluster, desired_snapshot: RDSDBClusterSnapshot):
+    def get_latest_db_cluster_snapshot(self, db_cluster):
         filters_req = {"DBClusterIdentifier": db_cluster.id}
         src_region_cluster_snapshots = self.rds_client.get_region_db_cluster_snapshots(db_cluster.region,
                                                                     full_information=False,
                                                                     custom_filters=filters_req)
 
-        src_snapshot = src_region_cluster_snapshots[-1]
+        return src_region_cluster_snapshots[-1]
+
+    def copy_latest_db_cluster_snapshot(self, db_cluster, desired_snapshot: RDSDBClusterSnapshot):
+        src_snapshot = self.get_latest_db_cluster_snapshot(db_cluster)
         src_snapshot.region = db_cluster.region
 
         if desired_snapshot.kms_key_id is None:

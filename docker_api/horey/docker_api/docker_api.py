@@ -42,6 +42,10 @@ class DockerAPI:
 
     @staticmethod
     def print_log_line(log_line):
+        key = "status"
+        if key in log_line:
+            return logger.info(log_line[key])
+        
         key = "stream"
         if key in log_line:
             return logger.info(log_line[key])
