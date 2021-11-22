@@ -96,6 +96,8 @@ class RDSClient(Boto3Client):
         AWSAccount.set_aws_region(db_cluster.region)
         response = self.provision_db_cluster_raw(db_cluster.generate_create_request())
         db_cluster.update_from_raw_response(response)
+        pdb.set_trace()
+        self.status_waiter(db_cluster, self.update_db_cluster_information, [db_cluster.Status.AVAILABLE], [db_cluster.Status.CREATING], [db_cluster.Status.FAILED, db_cluster.Status.DELETING])
 
     def provision_db_cluster_raw(self, request_dict):
         """
@@ -128,6 +130,11 @@ class RDSClient(Boto3Client):
         response = self.dispose_db_cluster_raw(db_cluster.generate_dispose_request())
 
         db_cluster.update_from_raw_response(response)
+
+        try:
+            self.status_waiter(db_cluster, self.update_db_cluster_information, [], [db_cluster.Status.DELETING], [])
+        except self.ResourceNotFoundError:
+            pass
 
     def dispose_db_cluster_raw(self, request_dict):
         """
@@ -263,7 +270,8 @@ class RDSClient(Boto3Client):
         final_result = list()
         AWSAccount.set_aws_region(region)
         for response in self.execute(self.client.describe_db_cluster_snapshots, "DBClusterSnapshots",
-                                     filters_req=custom_filters, exception_ignore_callback=lambda x: "DBClusterSnapshotNotFoundFault" in repr(x)):
+                                     filters_req=custom_filters,
+                                     exception_ignore_callback=lambda x: "DBClusterSnapshotNotFoundFault" in repr(x)):
             obj = RDSDBClusterSnapshot(response)
             final_result.append(obj)
             if full_information:
@@ -346,16 +354,46 @@ class RDSClient(Boto3Client):
                                      filters_req=request_dict):
             return response
 
-    def provision_db_instance(self, db_instance):
-        region_db_instances = self.get_region_db_instances(db_instance.region)
-        for region_db_instance in region_db_instances:
-            if db_instance.id == region_db_instance.id:
-                db_instance.update_from_raw_response(region_db_instance.dict_src)
-                return
+    def status_waiter(self, observed_object, update_function, desired_statuses, permit_statues, error_statuses):
+        start_time = datetime.datetime.now()
+        logger.info(f"Starting waiting loop for {observed_object.id} to become one of {desired_statuses}")
+
+        timeout = 300
+        sleep_time = 5
+        for i in range(timeout // sleep_time):
+            update_function(observed_object)
+
+            object_status = observed_object.get_status()
+
+            if object_status in desired_statuses:
+                break
+
+            if object_status in error_statuses:
+                raise RuntimeError(f"{observed_object.id} is in error status: {object_status}")
+
+            if permit_statues and object_status not in permit_statues:
+                raise RuntimeError(f"Permit statuses were set but {observed_object.id} is in a different status: {object_status}")
+
+            logger.info(f"Status waiter for {observed_object.id} is going to sleep for {sleep_time}")
+            time.sleep(sleep_time)
+        else:
+            raise TimeoutError(f"Cluster did not become available for {timeout} seconds")
+
+        end_time = datetime.datetime.now()
+        logger.info(f"Finished waiting loop for {observed_object.id} to become one of {desired_statuses}. Took {end_time-start_time}")
+
+    def provision_db_instance(self, db_instance: RDSDBInstance):
+        try:
+            return self.update_db_instance_information(db_instance)
+        except self.ResourceNotFoundError:
+            pass
 
         AWSAccount.set_aws_region(db_instance.region)
         response = self.provision_db_instance_raw(db_instance.generate_create_request())
         db_instance.update_from_raw_response(response)
+
+        self.status_waiter(db_instance, self.update_db_instance_information, [db_instance.Status.AVAILABLE],
+                           [db_instance.Status.CREATING], [db_instance.Status.DELETING, db_instance.Status.FAILED])
 
     def provision_db_instance_raw(self, request_dict):
         """
@@ -374,20 +412,20 @@ class RDSClient(Boto3Client):
         dst_region_cluster_snapshots = self.get_region_db_cluster_snapshots(cluster_snapshot_dst.region,
                                                                             full_information=False,
                                                                             custom_filters=filters_req)
-        pdb.set_trace()
         for dst_region_cluster_snapshot in dst_region_cluster_snapshots:
             if dst_region_cluster_snapshot.id == cluster_snapshot_dst.id:
                 if cluster_snapshot_src.arn == dst_region_cluster_snapshot.source_db_cluster_snapshot_arn:
                     cluster_snapshot_dst.update_from_raw_response(dst_region_cluster_snapshot.dict_src)
                     return
-                raise RuntimeError(f"Found destination snapshot with name {cluster_snapshot_dst.id} but src arn {dst_region_cluster_snapshot.source_db_cluster_snapshot_arn} is not equals to {cluster_snapshot_src.arn}")
+                raise RuntimeError(
+                    f"Found destination snapshot with name {cluster_snapshot_dst.id} but src arn {dst_region_cluster_snapshot.source_db_cluster_snapshot_arn} is not equals to {cluster_snapshot_src.arn}")
 
         AWSAccount.set_aws_region(cluster_snapshot_dst.region)
         response = self.copy_db_cluster_snapshot_raw(cluster_snapshot_src.generate_copy_request(cluster_snapshot_dst))
         cluster_snapshot_dst.update_from_raw_response(response)
         if not synchronous:
             return
-
+        pdb.set_trace()
         start_time = datetime.datetime.now()
         logger.info(f"Starting waiting loop for cluster_snapshot to become ready")
 
@@ -402,7 +440,8 @@ class RDSClient(Boto3Client):
             dst_region_cluster_snapshot = dst_region_cluster_snapshots[0]
 
             if dst_region_cluster_snapshot.get_status() == dst_region_cluster_snapshot.Status.FAILED:
-                raise RuntimeError(f"cluster {dst_region_cluster_snapshot.name} provisioning failed. Cluster in FAILED status")
+                raise RuntimeError(
+                    f"cluster {dst_region_cluster_snapshot.name} provisioning failed. Cluster in FAILED status")
 
             if dst_region_cluster_snapshot.get_status() != dst_region_cluster_snapshot.Status.ACTIVE:
                 time.sleep(sleep_time)
@@ -410,7 +449,7 @@ class RDSClient(Boto3Client):
 
             cluster_snapshot_dst.update_from_raw_response(dst_region_cluster_snapshot.dict_src)
             end_time = datetime.datetime.now()
-            logger.info(f"cluster_snapshot become ready after {end_time-start_time}")
+            logger.info(f"cluster_snapshot become ready after {end_time - start_time}")
             return
 
         raise TimeoutError(f"Cluster did not become available for {timeout} seconds")
@@ -424,14 +463,38 @@ class RDSClient(Boto3Client):
     def update_db_cluster_information(self, db_cluster):
         if db_cluster.id is None:
             raise NotImplementedError()
+        filters = [{
+            'Name': "db-cluster-id",
+            'Values': [
+                db_cluster.id
+            ]
+        }]
+        region_db_clusters = self.get_region_db_clusters(db_cluster.region, filters=filters)
+        if len(region_db_clusters) == 0:
+            raise self.ResourceNotFoundError(
+                f"db_cluster {db_cluster.id} not found in region {db_cluster.region.region_mark}")
 
-        region_db_clusters = self.get_region_db_clusters(db_cluster.region)
-        for region_db_cluster in region_db_clusters:
-            if db_cluster.id == region_db_cluster.id:
-                db_cluster.update_from_raw_response(region_db_cluster.dict_src)
-                return
+        if len(region_db_clusters) > 1:
+            raise RuntimeError(region_db_clusters)
 
-        raise self.ResourceNotFoundError(f"db_cluster {db_cluster.id} not found in region {db_cluster.region.region_mark}")
+        db_cluster.update_from_raw_response(region_db_clusters[0].dict_src)
+
+    def update_db_instance_information(self, db_instance):
+        filters_req = [{'Name': 'db-instance-id',
+                        'Values': [
+                            db_instance.id,
+                        ]}]
+
+        region_db_instances = self.get_region_db_instances(db_instance.region, filters=filters_req)
+
+        if len(region_db_instances) == 0:
+            raise self.ResourceNotFoundError(
+                f"db_instance {db_instance.id} not found in region {db_instance.region.region_mark}")
+
+        if len(region_db_instances) > 1:
+            raise RuntimeError(region_db_instances)
+
+        db_instance.update_from_raw_response(region_db_instances[0].dict_src)
 
     class ResourceNotFoundError(ValueError):
         pass

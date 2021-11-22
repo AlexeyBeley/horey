@@ -2,6 +2,7 @@
 Module to handle AWS RDS instances
 """
 import pdb
+from enum import Enum
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 from horey.aws_api.base_entities.region import Region
@@ -220,9 +221,43 @@ class RDSDBCluster(AwsObject):
             raise ValueError(value)
 
         self._region = value
-    """
-    117 height 46 
-    30 sholders 11.8
-    31 body 12
-    56 waist 22
-    """
+
+    def get_status(self):
+        return {enum_value.value: enum_value for _, enum_value in self.Status.__members__.items()}[self.status]
+
+    class Status(Enum):
+        """
+        CONFIGURING_ENHANCED_MONITORING = "configuring-enhanced-monitoring"
+        CONFIGURING_IA"configuring-iam-database-auth"
+        BACKING_UP = "backing-up"
+        "configuring-log-exports"
+        "converting-to-vpc"
+        "inaccessible-encryption-credentials"
+        "incompatible-network"
+        "incompatible-option-group"
+        "incompatible-parameters"
+        "incompatible-restore"
+        "insufficient-capacity"
+        "maintenance"
+        "moving-to-vpc"
+        "rebooting"
+        "resetting-master-credentials"
+        "renaming"
+        "restore-error"
+        "storage-full"
+        "storage-optimization"
+        "upgrading"
+        """
+        AVAILABLE = "available"
+        CREATING = "creating"
+        DELETING = "deleting"
+        MODIFYING = "modifying"
+        FAILED = "failed"
+        STARTING = "starting"
+        STOPPED = "stopped"
+        STOPPING = "stopping"
+
+
+
+
+

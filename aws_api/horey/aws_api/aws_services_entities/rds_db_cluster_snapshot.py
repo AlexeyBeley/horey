@@ -137,7 +137,6 @@ class RDSDBClusterSnapshot(AwsObject):
         self._region = value
 
     def get_status(self):
-        pdb.set_trace()
         if self.status == "copying":
             return self.Status.COPYING
         elif self.status == "available":
