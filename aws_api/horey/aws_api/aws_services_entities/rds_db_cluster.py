@@ -65,6 +65,7 @@ class RDSDBCluster(AwsObject):
             "CrossAccountClone": self.init_default_attr,
             "DomainMemberships": self.init_default_attr,
             "TagList": self.init_default_attr,
+            "PendingModifiedValues": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -119,6 +120,7 @@ class RDSDBCluster(AwsObject):
             "CrossAccountClone": self.init_default_attr,
             "DomainMemberships": self.init_default_attr,
             "TagList": self.init_default_attr,
+            "PendingModifiedValues": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -171,6 +173,13 @@ class RDSDBCluster(AwsObject):
         request = dict()
         request["DBClusterIdentifier"] = self.id
         request["SkipFinalSnapshot"] = self.skip_final_snapshot
+        return request
+
+    def generate_modify_request(self):
+        request = dict()
+        request["DBClusterIdentifier"] = self.id
+        request["MasterUserPassword"] = self.master_user_password
+        request["ApplyImmediately"] = True
         return request
 
     def generate_restore_db_cluster_from_snapshot_request(self, snapshot_id):
@@ -256,7 +265,7 @@ class RDSDBCluster(AwsObject):
         STARTING = "starting"
         STOPPED = "stopped"
         STOPPING = "stopping"
-
+        RESETTING_MASTER_CREDENTIALS = "resetting-master-credentials"
 
 
 

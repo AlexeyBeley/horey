@@ -290,6 +290,7 @@ class RDSDBInstance(AwsObject):
         STARTING = "starting"
         STOPPED = "stopped"
         STOPPING = "stopping"
+        CONFIGURING_LOG_EXPORTS = "configuring-log-exports"
 
 
 

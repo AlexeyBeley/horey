@@ -97,7 +97,8 @@ class RDSClient(Boto3Client):
         response = self.provision_db_cluster_raw(db_cluster.generate_create_request())
         db_cluster.update_from_raw_response(response)
         pdb.set_trace()
-        self.status_waiter(db_cluster, self.update_db_cluster_information, [db_cluster.Status.AVAILABLE], [db_cluster.Status.CREATING], [db_cluster.Status.FAILED, db_cluster.Status.DELETING])
+        self.wait_for_status(db_cluster, self.update_db_cluster_information, [db_cluster.Status.AVAILABLE],
+                             [db_cluster.Status.CREATING], [db_cluster.Status.FAILED, db_cluster.Status.DELETING])
 
     def provision_db_cluster_raw(self, request_dict):
         """
@@ -132,7 +133,7 @@ class RDSClient(Boto3Client):
         db_cluster.update_from_raw_response(response)
 
         try:
-            self.status_waiter(db_cluster, self.update_db_cluster_information, [], [db_cluster.Status.DELETING], [])
+            self.wait_for_status(db_cluster, self.update_db_cluster_information, [], [db_cluster.Status.DELETING], [])
         except self.ResourceNotFoundError:
             pass
 
@@ -354,34 +355,6 @@ class RDSClient(Boto3Client):
                                      filters_req=request_dict):
             return response
 
-    def status_waiter(self, observed_object, update_function, desired_statuses, permit_statues, error_statuses):
-        start_time = datetime.datetime.now()
-        logger.info(f"Starting waiting loop for {observed_object.id} to become one of {desired_statuses}")
-
-        timeout = 300
-        sleep_time = 5
-        for i in range(timeout // sleep_time):
-            update_function(observed_object)
-
-            object_status = observed_object.get_status()
-
-            if object_status in desired_statuses:
-                break
-
-            if object_status in error_statuses:
-                raise RuntimeError(f"{observed_object.id} is in error status: {object_status}")
-
-            if permit_statues and object_status not in permit_statues:
-                raise RuntimeError(f"Permit statuses were set but {observed_object.id} is in a different status: {object_status}")
-
-            logger.info(f"Status waiter for {observed_object.id} is going to sleep for {sleep_time}")
-            time.sleep(sleep_time)
-        else:
-            raise TimeoutError(f"Cluster did not become available for {timeout} seconds")
-
-        end_time = datetime.datetime.now()
-        logger.info(f"Finished waiting loop for {observed_object.id} to become one of {desired_statuses}. Took {end_time-start_time}")
-
     def provision_db_instance(self, db_instance: RDSDBInstance):
         try:
             return self.update_db_instance_information(db_instance)
@@ -392,8 +365,9 @@ class RDSClient(Boto3Client):
         response = self.provision_db_instance_raw(db_instance.generate_create_request())
         db_instance.update_from_raw_response(response)
 
-        self.status_waiter(db_instance, self.update_db_instance_information, [db_instance.Status.AVAILABLE],
-                           [db_instance.Status.CREATING], [db_instance.Status.DELETING, db_instance.Status.FAILED])
+        self.wait_for_status(db_instance, self.update_db_instance_information, [db_instance.Status.AVAILABLE],
+                             [db_instance.Status.CREATING, db_instance.Status.CONFIGURING_LOG_EXPORTS],
+                             [db_instance.Status.DELETING, db_instance.Status.FAILED])
 
     def provision_db_instance_raw(self, request_dict):
         """
@@ -478,6 +452,8 @@ class RDSClient(Boto3Client):
             raise RuntimeError(region_db_clusters)
 
         db_cluster.update_from_raw_response(region_db_clusters[0].dict_src)
+        self.wait_for_status(db_cluster, self.update_db_cluster_information, [db_cluster.Status.RESETTING_MASTER_CREDENTIALS], [db_cluster.Status.AVAILABLE], [])
+        self.wait_for_status(db_cluster, self.update_db_cluster_information, [db_cluster.Status.AVAILABLE], [db_cluster.Status.RESETTING_MASTER_CREDENTIALS], [])
 
     def update_db_instance_information(self, db_instance):
         filters_req = [{'Name': 'db-instance-id',
@@ -495,6 +471,31 @@ class RDSClient(Boto3Client):
             raise RuntimeError(region_db_instances)
 
         db_instance.update_from_raw_response(region_db_instances[0].dict_src)
+
+    def modify_db_cluster(self, db_cluster: RDSDBCluster):
+        AWSAccount.set_aws_region(db_cluster.region)
+
+        response = self.modify_db_cluster_raw(db_cluster.generate_modify_request())
+        db_cluster.update_from_raw_response(response)
+
+    def modify_db_cluster_raw(self, request_dict):
+        logger.info(f"Modifying db_cluster: {request_dict.keys()}")
+        for response in self.execute(self.client.modify_db_cluster, "DBCluster",
+                                     filters_req=request_dict):
+            return response
+    
+    def modify_db_instance(self, db_instance: RDSDBCluster):
+        AWSAccount.set_aws_region(db_instance.region)
+        response = self.modify_db_instance_raw(db_instance.generate_modify_request())
+        db_instance.update_from_raw_response(response)
+
+    def modify_db_instance_raw(self, request_dict):
+        request_dict = {"DBInstanceIdentifier": "db-instance-scoutbees-outsource-eu", 'MasterUserPassword': 'S33mplipassww00rd'}
+        logger.info(f"Modifying db_instance: {request_dict}")
+        pdb.set_trace()
+        for response in self.execute(self.client.modify_db_instance, "DBInstance",
+                                     filters_req=request_dict):
+            return response
 
     class ResourceNotFoundError(ValueError):
         pass

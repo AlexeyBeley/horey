@@ -1,6 +1,7 @@
 """
 Base Boto3 client. It provides sessions and client management.
 """
+import datetime
 
 import time
 from horey.aws_api.aws_clients.sessions_manager import SessionsManager
@@ -168,6 +169,37 @@ class Boto3Client:
 
         for ret_obj in ret_lst:
             yield ret_obj
+
+    @staticmethod
+    def wait_for_status(observed_object, update_function, desired_statuses, permit_statues, error_statuses,
+                        timeout=300, sleep_time=5):
+        start_time = datetime.datetime.now()
+        logger.info(f"Starting waiting loop for {observed_object.id} to become one of {desired_statuses}")
+
+        for i in range(timeout // sleep_time):
+            update_function(observed_object)
+
+            object_status = observed_object.get_status()
+
+            if object_status in desired_statuses:
+                break
+
+            if object_status in error_statuses:
+                raise RuntimeError(f"{observed_object.id} is in error status: {object_status}")
+
+            if permit_statues and object_status not in permit_statues:
+                raise RuntimeError(
+                    f"Permit statuses were set but {observed_object.id} is in a different status: {object_status}")
+
+            logger.info(
+                f"Status waiter for {observed_object.id} is going to sleep for {sleep_time}. Status: {object_status}")
+            time.sleep(sleep_time)
+        else:
+            raise TimeoutError(f"Cluster did not become available for {timeout} seconds")
+
+        end_time = datetime.datetime.now()
+        logger.info(
+            f"Finished waiting loop for {observed_object.id} to become one of {desired_statuses}. Took {end_time - start_time}")
 
     class NoReturnStringError(Exception):
         pass
