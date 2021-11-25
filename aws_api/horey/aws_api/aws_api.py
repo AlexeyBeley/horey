@@ -2470,15 +2470,17 @@ class AWSAPI:
         self.ecs_client.attach_capacity_providers_to_ecs_cluster(ecs_cluster, capacity_provider_names, default_capacity_provider_strategy)
 
     def provision_aws_lambda_from_filelist(self, aws_lambda, files_paths, force=False):
-        zip_file_name = "lambda.zip"
+        zip_file_name = f"{aws_lambda.name}.zip"
         with zipfile.ZipFile(zip_file_name, 'w') as myzip:
             for file_path in files_paths:
                 #zip_file_name = os.path.splitext(os.path.basename(file_path))[0] + ".zip"
                 myzip.write(file_path, arcname=os.path.basename(file_path))
+                with open(zip_file_name, "rb") as myzip:
+                    aws_lambda.code = {"ZipFile": myzip.read()}
 
-        with open(zip_file_name, "rb") as myzip:
-            aws_lambda.code = {"ZipFile": myzip.read()}
+        self.provision_aws_lambda(aws_lambda, force=force)
 
+    def provision_aws_lambda(self, aws_lambda, force=False):
         self.lambda_client.provision_lambda(aws_lambda, force=force)
 
     def provision_aws_lambda_from_venv(self, code_path, venv_dir):
