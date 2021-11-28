@@ -181,7 +181,10 @@ class AWSLambda(AwsObject):
         if len(desired_policy["Statement"]) != 1:
             raise NotImplementedError(desired_policy["Statement"])
 
-        desired_policy["Statement"][0]["Resource"] = self.arn
+        if self.arn.endswith(self.name):
+            desired_policy["Statement"][0]["Resource"] = self.arn
+        else:
+            desired_policy["Statement"][0]["Resource"] = self.arn[:self.arn.rfind(":")]
 
         if self.policy is not None:
             self_policy = json.loads(self.policy)
