@@ -72,18 +72,27 @@ class EventsClient(Boto3Client):
         ret = list(self.execute(self.client.list_rule_names_by_target, None, raw_data=True))
         ret = list(self.execute(self.client.list_targets_by_rule, None, raw_data=True, filters_req={"Rule":"initiator-production-InitiatorEventsRuleSchedule1-MWYJ6917GUN9"}))
 
-    def provision_rule(self, rule: EventBridgeRule):
+    def update_rule_information(self, rule):
         region_rules = self.get_region_rules(rule.region, custom_filter={"NamePrefix": rule.name})
         if len(region_rules) == 1:
             rule.update_from_raw_response(region_rules[0].dict_src)
-        else:
-            AWSAccount.set_aws_region(rule.region)
+            return
+
+        if len(region_rules) > 1:
+            raise RuntimeError(region_rules)
+
+    def provision_rule(self, rule: EventBridgeRule):
+        self.update_rule_information(rule)
+        AWSAccount.set_aws_region(rule.region)
+
+        if rule.arn is None:
             response = self.provision_rule_raw(rule.generate_create_request())
             del response["ResponseMetadata"]
             rule.update_from_raw_response(response)
 
         put_targets_request = rule.generate_put_targets_request()
-        self.put_targets_raw(put_targets_request)
+        if put_targets_request is not None:
+            self.put_targets_raw(put_targets_request)
 
     def provision_rule_raw(self, request_dict):
         logger.info(f"Creating rule: {request_dict}")

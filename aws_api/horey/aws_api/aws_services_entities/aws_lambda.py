@@ -149,7 +149,7 @@ class AWSLambda(AwsObject):
 
         if desired_code is None:
             return
-        pdb.set_trace()
+
         request["ZipFile"] = desired_code.get("ZipFile")
         request["FunctionName"] = self.name
         request["Publish"] = True
@@ -188,7 +188,6 @@ class AWSLambda(AwsObject):
                     break
             else:
                 return
-        pdb.set_trace()
         request = dict()
 
         request["FunctionName"] = self.name
@@ -198,6 +197,3 @@ class AWSLambda(AwsObject):
         request["SourceArn"] = desired_policy["Statement"][0]["Condition"]["ArnLike"]["AWS:SourceArn"]
 
         return request
-
-    def update_from_raw_add_permission_response(self, dict_src):
-        pdb.set_trace()

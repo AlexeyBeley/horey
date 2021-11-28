@@ -112,9 +112,8 @@ class LambdaClient(Boto3Client):
 
         update_permission_request = aws_lambda.generate_add_permission_request(desired_policy)
         if update_permission_request is not None:
-            response = self.add_permission_raw(update_permission_request)
-            del response["ResponseMetadata"]
-            aws_lambda.update_from_raw_add_permission_response(response)
+            self.add_permission_raw(update_permission_request)
+            self.update_lambda_information(aws_lambda, full_information=True)
 
     def provision_lambda_raw(self, request_dict):
         log_dict = {key: value for key, value in request_dict.items() if key != "Code"}

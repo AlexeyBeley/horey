@@ -2536,3 +2536,6 @@ class AWSAPI:
             })
 
         self.rds_client.copy_db_cluster_snapshot(src_snapshot, desired_snapshot, synchronous=True)
+
+    def provision_events_rule(self, events_rule):
+        self.events_client.provision_rule(events_rule)

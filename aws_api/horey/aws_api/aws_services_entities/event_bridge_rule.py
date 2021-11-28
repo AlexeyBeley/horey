@@ -16,6 +16,8 @@ class EventBridgeRule(AwsObject):
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self._region = None
+        self.targets = None
+        self.arn = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -69,6 +71,9 @@ class EventBridgeRule(AwsObject):
         return request
 
     def generate_put_targets_request(self):
+        if not self.targets:
+            return
+
         request = dict()
         request["Rule"] = self.name
         request["EventBusName"] = self.event_bus_name
