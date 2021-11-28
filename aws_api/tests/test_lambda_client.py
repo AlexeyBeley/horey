@@ -1,3 +1,5 @@
+import pdb
+
 from horey.aws_api.aws_clients.lambda_client import LambdaClient
 from horey.aws_api.aws_services_entities.aws_lambda import AWSLambda
 from horey.aws_api.base_entities.aws_account import AWSAccount
@@ -17,5 +19,6 @@ def test_get_region_lambdas():
 
 
 if __name__ == "__main__":
-    #test_init_lambda_client()
+    # test_init_lambda_client()
     test_get_region_lambdas()
+    #test_provision_lambda()

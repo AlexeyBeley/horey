@@ -1,6 +1,8 @@
 """
 AWS Lambda representation
 """
+import json
+
 import sys
 import os
 import pdb
@@ -18,6 +20,7 @@ class AWSLambda(AwsObject):
         self.vpc_config = None
         self._region = None
         self.code = None
+        self.policy = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -25,7 +28,7 @@ class AWSLambda(AwsObject):
 
         init_options = {
             "FunctionName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-            "FunctionArn": self.init_default_attr,
+            "FunctionArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
             "Runtime": self.init_default_attr,
             "Role": self.init_default_attr,
             "Handler": self.init_default_attr,
@@ -95,7 +98,7 @@ class AWSLambda(AwsObject):
     def update_from_raw_response(self, dict_src):
         init_options = {
             "FunctionName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-            "FunctionArn": self.init_default_attr,
+            "FunctionArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
             "Runtime": self.init_default_attr,
             "Role": self.init_default_attr,
             "Handler": self.init_default_attr,
@@ -116,9 +119,19 @@ class AWSLambda(AwsObject):
             "PackageType": self.init_default_attr,
             "State": self.init_default_attr,
             "LastUpdateStatus": self.init_default_attr,
+            "StateReason": self.init_default_attr,
+            "StateReasonCode": self.init_default_attr,
                         }
 
         self.init_attrs(dict_src, init_options)
+
+    def update_from_raw_get_function_response(self, dict_src):
+        self.update_from_raw_response(dict_src["Configuration"])
+        self.tags = dict_src["Tags"]
+        self.code = dict_src["Code"]
+
+    def update_policy_from_get_policy_raw_response(self, dict_src):
+        self.policy = dict_src["Policy"]
 
     def generate_create_request(self):
         request = dict()
@@ -131,9 +144,13 @@ class AWSLambda(AwsObject):
 
         return request
 
-    def generate_update_function_code_request(self):
+    def generate_update_function_code_request(self, desired_code):
         request = dict()
-        request["ZipFile"] = self.code["ZipFile"]
+
+        if desired_code is None:
+            return
+        pdb.set_trace()
+        request["ZipFile"] = desired_code.get("ZipFile")
         request["FunctionName"] = self.name
         request["Publish"] = True
         request["DryRun"] = False
@@ -141,3 +158,46 @@ class AWSLambda(AwsObject):
 
         return request
 
+    def generate_add_permission_request(self, desired_policy):
+        """
+        response = client.add_permission(
+        Action='lambda:InvokeFunction',
+        FunctionName='my-function',
+        Principal='s3.amazonaws.com',
+        SourceAccount='123456789012',
+        SourceArn='arn:aws:s3:::my-bucket-1xpuxmplzrlbh/*',
+        StatementId='s3',
+        )
+        @return:
+        """
+        if desired_policy is None:
+            return
+
+        if len(desired_policy["Statement"]) != 1:
+            raise NotImplementedError(desired_policy["Statement"])
+
+        desired_policy["Statement"][0]["Resource"] = self.arn
+
+        if self.policy is not None:
+            self_policy = json.loads(self.policy)
+            if len(self_policy["Statement"]) != 1:
+                raise NotImplementedError(self_policy["Statement"])
+
+            for key, value in desired_policy["Statement"][0].items():
+                if desired_policy["Statement"][0][key] != self_policy["Statement"][0][key]:
+                    break
+            else:
+                return
+        pdb.set_trace()
+        request = dict()
+
+        request["FunctionName"] = self.name
+        request["StatementId"] = desired_policy["Statement"][0]["Sid"]
+        request["Action"] = desired_policy["Statement"][0]["Action"]
+        request["Principal"] = desired_policy["Statement"][0]["Principal"]["Service"]
+        request["SourceArn"] = desired_policy["Statement"][0]["Condition"]["ArnLike"]["AWS:SourceArn"]
+
+        return request
+
+    def update_from_raw_add_permission_response(self, dict_src):
+        pdb.set_trace()

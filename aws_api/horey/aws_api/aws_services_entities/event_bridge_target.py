@@ -1,5 +1,5 @@
 """
-Event bridge rule representation
+Event bridge target representation
 """
 
 import pdb
@@ -8,29 +8,27 @@ from horey.aws_api.aws_services_entities.aws_object import AwsObject
 from horey.aws_api.base_entities.region import Region
 
 
-class EventBridgeRule(AwsObject):
+class EventBridgeTarget(AwsObject):
     """
-    AWS EventBridgeRule class
+    AWS EventBridgeTarget class
     """
 
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self._region = None
+        self.role_arn = None
+        self.input = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
             return
 
         init_options = {
+            "Id": self.init_default_attr,
             "Arn": self.init_default_attr,
-            "Name": self.init_default_attr,
-            "EventPattern": self.init_default_attr,
-            "State": self.init_default_attr,
-            "Description": self.init_default_attr,
-            "ScheduleExpression": self.init_default_attr,
             "RoleArn": self.init_default_attr,
-            "ManagedBy": self.init_default_attr,
-            "EventBusName": self.init_default_attr,
+            "Input": self.init_default_attr,
+            "EcsParameters": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -46,33 +44,24 @@ class EventBridgeRule(AwsObject):
 
     def update_from_raw_response(self, dict_src):
         init_options = {
-            "RuleArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
-            "Name": self.init_default_attr,
+            "Id": self.init_default_attr,
             "Arn": self.init_default_attr,
-            "State": self.init_default_attr,
-            "Description": self.init_default_attr,
-            "ScheduleExpression": self.init_default_attr,
-            "EventBusName": self.init_default_attr,
+            "RoleArn": self.init_default_attr,
+            "Input": self.init_default_attr,
+            "EcsParameters": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
 
-    def generate_create_request(self):
+    def generate_put_request(self):
         request = dict()
-        request["Name"] = self.name
-        request["Tags"] = self.tags
-        request["ScheduleExpression"] = self.schedule_expression
-        request["State"] = self.state
-        request["Description"] = self.description
-        request["EventBusName"] = self.event_bus_name
+        request["Id"] = self.id
+        request["Arn"] = self.arn
+        if self.role_arn is not None:
+            request["RoleArn"] = self.role_arn
+        if self.input is not None:
+            request["Input"] = self.input
 
-        return request
-
-    def generate_put_targets_request(self):
-        request = dict()
-        request["Rule"] = self.name
-        request["EventBusName"] = self.event_bus_name
-        request["Targets"] = [target.generate_put_request() for target in self.targets]
         return request
 
     @property

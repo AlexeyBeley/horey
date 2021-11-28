@@ -20,4 +20,5 @@ FORCE: ;
 .PHONY: build
 build:
 	cd ${HOREY_DIR_PATH} &&\
-	make raw_install_from_source-serverless
+	make raw_install_from_source-serverless &&\
+	make raw_install_from_source-aws_api

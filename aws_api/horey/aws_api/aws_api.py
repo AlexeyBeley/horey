@@ -70,7 +70,7 @@ from horey.aws_api.aws_clients.cloudfront_client import CloudfrontClient
 from horey.aws_api.aws_services_entities.cloudfront_distribution import CloudfrontDistribution
 from horey.aws_api.aws_services_entities.cloudfront_origin_access_identity import CloudfrontOriginAccessIdentity
 
-from horey.aws_api.aws_clients.event_bridge_client import EventBridgeClient
+from horey.aws_api.aws_clients.events_client import EventsClient
 from horey.aws_api.aws_services_entities.event_bridge_rule import EventBridgeRule
 
 from horey.aws_api.aws_clients.secrets_manager_client import SecretsManagerClient
@@ -140,7 +140,7 @@ class AWSAPI:
         self.ecs_client = ECSClient()
         self.autoscaling_client = AutoScalingClient()
         self.cloudfront_client = CloudfrontClient()
-        self.event_bridge_client = EventBridgeClient()
+        self.events_client = EventsClient()
         self.secretsmanager_client = SecretsManagerClient()
         self.servicediscovery_client = ServicediscoveryClient()
         self.elasticsearch_client = ElasticsearchClient()
@@ -750,7 +750,7 @@ class AWSAPI:
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, EventBridgeRule)
         else:
-            objects = self.event_bridge_client.get_all_distributions(full_information=full_information)
+            objects = self.events_client.get_all_rules(full_information=full_information)
 
         self.event_bridge_rules = objects
 
@@ -2072,7 +2072,6 @@ class AWSAPI:
         descriptions = []
         for entry in managed_prefix_list.entries:
             if entry.description in descriptions:
-                pdb.set_trace()
                 raise Exception(f"{managed_prefix_list.name} [{managed_prefix_list.region.region_mark}] -"
                                 f" multiple entries with same description {entry.description}")
             descriptions.append(entry.description)
@@ -2475,8 +2474,8 @@ class AWSAPI:
             for file_path in files_paths:
                 #zip_file_name = os.path.splitext(os.path.basename(file_path))[0] + ".zip"
                 myzip.write(file_path, arcname=os.path.basename(file_path))
-                with open(zip_file_name, "rb") as myzip:
-                    aws_lambda.code = {"ZipFile": myzip.read()}
+        with open(zip_file_name, "rb") as myzip:
+            aws_lambda.code = {"ZipFile": myzip.read()}
 
         self.provision_aws_lambda(aws_lambda, force=force)
 

@@ -84,7 +84,7 @@ class IamClient(Boto3Client):
         :return:
         """
 
-        self.update_iam_role_last_used(iam_role)
+        self.update_role_information(iam_role)
 
         if policies is None:
             policies = self.get_all_policies(full_information=False, filters_req={"OnlyAttached": True})
@@ -92,7 +92,7 @@ class IamClient(Boto3Client):
         self.update_iam_role_managed_policies(iam_role, policies=policies)
         self.update_iam_role_inline_policies(iam_role)
 
-    def update_iam_role_last_used(self, iam_role):
+    def update_role_information(self, iam_role):
         """
         Full information part update.
         :param iam_role:
