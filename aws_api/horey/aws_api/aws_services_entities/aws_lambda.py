@@ -47,6 +47,7 @@ class AWSLambda(AwsObject):
             "DeadLetterConfig": self.init_default_attr,
             "KMSKeyArn": self.init_default_attr,
             "PackageType": self.init_default_attr,
+            "Architectures": self.init_default_attr,
                         }
 
         self.init_attrs(dict_src, init_options)
@@ -121,6 +122,7 @@ class AWSLambda(AwsObject):
             "LastUpdateStatus": self.init_default_attr,
             "StateReason": self.init_default_attr,
             "StateReasonCode": self.init_default_attr,
+            "Architectures": self.init_default_attr,
                         }
 
         self.init_attrs(dict_src, init_options)
