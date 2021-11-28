@@ -9,6 +9,9 @@ import pdb
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 from horey.aws_api.base_entities.region import Region
+from horey.h_logger import get_logger
+
+logger = get_logger()
 
 
 class AWSLambda(AwsObject):
@@ -186,6 +189,7 @@ class AWSLambda(AwsObject):
                 raise NotImplementedError(self_policy["Statement"])
 
             for key, value in desired_policy["Statement"][0].items():
+                logger.info(f'{key}, {desired_policy["Statement"][0][key]}, {self_policy["Statement"][0][key]}')
                 if desired_policy["Statement"][0][key] != self_policy["Statement"][0][key]:
                     break
             else:
