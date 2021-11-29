@@ -24,6 +24,7 @@ class AWSLambda(AwsObject):
         self._region = None
         self.code = None
         self.policy = None
+        self._arn = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -54,6 +55,17 @@ class AWSLambda(AwsObject):
                         }
 
         self.init_attrs(dict_src, init_options)
+
+    @property
+    def arn(self):
+        return self._arn
+
+    @arn.setter
+    def arn(self, value):
+        if value.endswith(self.name):
+            self._arn = value
+        else:
+            self._arn = value[:value.rfind(":")]
 
     @staticmethod
     def format_last_modified_time(str_value):
@@ -181,10 +193,7 @@ class AWSLambda(AwsObject):
         if len(desired_policy["Statement"]) != 1:
             raise NotImplementedError(desired_policy["Statement"])
 
-        if self.arn.endswith(self.name):
-            desired_policy["Statement"][0]["Resource"] = self.arn
-        else:
-            desired_policy["Statement"][0]["Resource"] = self.arn[:self.arn.rfind(":")]
+        desired_policy["Statement"][0]["Resource"] = self.arn
 
         if self.policy is not None:
             self_policy = json.loads(self.policy)
