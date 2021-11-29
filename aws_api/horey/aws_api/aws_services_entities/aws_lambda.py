@@ -25,6 +25,7 @@ class AWSLambda(AwsObject):
         self.code = None
         self.policy = None
         self._arn = None
+        self.environment = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -158,16 +159,44 @@ class AWSLambda(AwsObject):
         request["Handler"] = self.handler
         request["Runtime"] = self.runtime
         request["Tags"] = self.tags
+        request["Environment"] = self.environment
+        request["VpcConfig"] = self.vpc_config
 
         return request
 
-    def generate_update_function_code_request(self, desired_code):
+    def generate_update_function_configuration_request(self, desired_lambda):
+        request = dict()
+        request["FunctionName"] = self.name
+        if self.role != desired_lambda.role:
+            request["Role"] = desired_lambda.role
+
+        if self.handler != desired_lambda.handler:
+            request["Handler"] = desired_lambda.handler
+
+        if self.runtime != desired_lambda.runtime:
+            request["Runtime"] = desired_lambda.runtime
+
+        if self.tags != desired_lambda.tags:
+            request["Tags"] = desired_lambda.tags
+
+        if self.environment != desired_lambda.environment:
+            request["Environment"] = desired_lambda.environment
+
+        if self.vpc_config != desired_lambda.vpc_config:
+            request["VpcConfig"] = desired_lambda.vpc_config
+
+        return request
+
+    def generate_update_function_code_request(self, desired_aws_lambda):
         request = dict()
 
-        if desired_code is None:
+        if desired_aws_lambda.code is None:
             return
 
-        request["ZipFile"] = desired_code.get("ZipFile")
+        if desired_aws_lambda.code.get("ZipFile") is None:
+            return
+
+        request["ZipFile"] = desired_aws_lambda.code.get("ZipFile")
         request["FunctionName"] = self.name
         request["Publish"] = True
         request["DryRun"] = False

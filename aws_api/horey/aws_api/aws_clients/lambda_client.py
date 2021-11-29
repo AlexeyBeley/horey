@@ -90,30 +90,35 @@ class LambdaClient(Boto3Client):
         if full_information:
             self.update_lambda_full_information(aws_lambda)
 
-    def provision_lambda(self, aws_lambda: AWSLambda, force=False):
-        desired_policy = aws_lambda.policy
-        aws_lambda.policy = None
-        desired_code = aws_lambda.code
-        AWSAccount.set_aws_region(aws_lambda.region)
-        self.update_lambda_information(aws_lambda, full_information=True)
+    def provision_lambda(self, desired_aws_lambda: AWSLambda, force=False):
+        AWSAccount.set_aws_region(desired_aws_lambda.region)
 
-        if aws_lambda.arn is None:
-            response = self.provision_lambda_raw(aws_lambda.generate_create_request())
+        current_lambda = AWSLambda({})
+        current_lambda.name = desired_aws_lambda.name
+        current_lambda.region = desired_aws_lambda.region
+
+        self.update_lambda_information(current_lambda, full_information=True)
+
+        if current_lambda.arn is None:
+            response = self.provision_lambda_raw(desired_aws_lambda.generate_create_request())
             del response["ResponseMetadata"]
-            aws_lambda.update_from_raw_response(response)
+            desired_aws_lambda.update_from_raw_response(response)
         elif not force:
             return
 
-        update_code_request = aws_lambda.generate_update_function_code_request(desired_code)
-        if update_code_request is not None:
-            response = self.update_function_code_raw(update_code_request)
-            del response["ResponseMetadata"]
-            aws_lambda.update_from_raw_response(response)
+        update_function_configuration_request = current_lambda.generate_update_function_configuration_request(desired_aws_lambda)
+        if update_function_configuration_request is not None:
+            self.update_function_configuration_raw(update_function_configuration_request)
 
-        update_permission_request = aws_lambda.generate_add_permission_request(desired_policy)
+        update_code_request = current_lambda.generate_update_function_code_request(desired_aws_lambda)
+        if update_code_request is not None:
+            self.update_function_code_raw(update_code_request)
+
+        update_permission_request = desired_aws_lambda.generate_add_permission_request(desired_aws_lambda.policy)
         if update_permission_request is not None:
             self.add_permission_raw(update_permission_request)
-            self.update_lambda_information(aws_lambda, full_information=True)
+
+        self.update_lambda_information(desired_aws_lambda, full_information=True)
 
     def provision_lambda_raw(self, request_dict):
         log_dict = {key: value for key, value in request_dict.items() if key != "Code"}
@@ -124,8 +129,14 @@ class LambdaClient(Boto3Client):
 
     def update_function_code_raw(self, request_dict):
         log_dict = {key: value for key, value in request_dict.items() if key != "ZipFile"}
-        logger.info(f"Updating lambda code lambda: {log_dict}")
+        logger.info(f"Updating lambda code: {log_dict}")
         for response in self.execute(self.client.update_function_code, None, raw_data=True,
+                                     filters_req=request_dict):
+            return response
+
+    def update_function_configuration_raw(self, request_dict):
+        logger.info(f"Updating lambda configuration: {request_dict}")
+        for response in self.execute(self.client.update_function_configuration, None, raw_data=True,
                                      filters_req=request_dict):
             return response
 
