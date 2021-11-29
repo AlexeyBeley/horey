@@ -110,11 +110,14 @@ class LambdaClient(Boto3Client):
         if update_function_configuration_request is not None:
             self.update_function_configuration_raw(update_function_configuration_request)
 
+        self.wait_for_status(current_lambda, self.update_lambda_information, [current_lambda.Status.SUCCESSFUL],
+                             [current_lambda.Status.INPROGRESS], [current_lambda.Status.FAILED])
+
         update_code_request = current_lambda.generate_update_function_code_request(desired_aws_lambda)
         if update_code_request is not None:
             self.update_function_code_raw(update_code_request)
 
-        update_permission_request = desired_aws_lambda.generate_add_permission_request(desired_aws_lambda.policy)
+        update_permission_request = current_lambda.generate_add_permission_request(desired_aws_lambda)
         if update_permission_request is not None:
             self.add_permission_raw(update_permission_request)
 

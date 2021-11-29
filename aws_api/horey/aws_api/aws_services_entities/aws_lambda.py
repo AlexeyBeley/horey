@@ -2,6 +2,7 @@
 AWS Lambda representation
 """
 import json
+from enum import Enum
 
 import sys
 import os
@@ -53,6 +54,8 @@ class AWSLambda(AwsObject):
             "KMSKeyArn": self.init_default_attr,
             "PackageType": self.init_default_attr,
             "Architectures": self.init_default_attr,
+            "LastUpdateStatusReason": self.init_default_attr,
+            "LastUpdateStatusReasonCode": self.init_default_attr,
                         }
 
         self.init_attrs(dict_src, init_options)
@@ -139,6 +142,8 @@ class AWSLambda(AwsObject):
             "StateReason": self.init_default_attr,
             "StateReasonCode": self.init_default_attr,
             "Architectures": self.init_default_attr,
+            "LastUpdateStatusReason": self.init_default_attr,
+            "LastUpdateStatusReasonCode": self.init_default_attr,
                         }
 
         self.init_attrs(dict_src, init_options)
@@ -204,7 +209,7 @@ class AWSLambda(AwsObject):
 
         return request
 
-    def generate_add_permission_request(self, desired_policy):
+    def generate_add_permission_request(self, desired_aws_lambda):
         """
         response = client.add_permission(
         Action='lambda:InvokeFunction',
@@ -216,22 +221,22 @@ class AWSLambda(AwsObject):
         )
         @return:
         """
-        if desired_policy is None:
+        if desired_aws_lambda.policy is None:
             return
 
-        if len(desired_policy["Statement"]) != 1:
-            raise NotImplementedError(desired_policy["Statement"])
+        if len(desired_aws_lambda.policy["Statement"]) != 1:
+            raise NotImplementedError(desired_aws_lambda.policy["Statement"])
 
-        desired_policy["Statement"][0]["Resource"] = self.arn
+        desired_aws_lambda.policy["Statement"][0]["Resource"] = self.arn
 
         if self.policy is not None:
             self_policy = json.loads(self.policy)
             if len(self_policy["Statement"]) != 1:
                 raise NotImplementedError(self_policy["Statement"])
 
-            for key, value in desired_policy["Statement"][0].items():
-                logger.info(f'{key}, {desired_policy["Statement"][0][key]}, {self_policy["Statement"][0][key]}')
-                if desired_policy["Statement"][0][key] != self_policy["Statement"][0][key]:
+            for key, value in desired_aws_lambda.policy["Statement"][0].items():
+                logger.info(f'{key}, {desired_aws_lambda.policy["Statement"][0][key]}, {self_policy["Statement"][0][key]}')
+                if desired_aws_lambda.policy["Statement"][0][key] != self_policy["Statement"][0][key]:
                     break
             else:
                 return
@@ -244,3 +249,11 @@ class AWSLambda(AwsObject):
         request["SourceArn"] = desired_policy["Statement"][0]["Condition"]["ArnLike"]["AWS:SourceArn"]
 
         return request
+
+    def get_status(self):
+        return {enum_value.value: enum_value for _, enum_value in self.Status.__members__.items()}[self.last_update_status]
+
+    class Status(Enum):
+        SUCCESSFUL = "Successful"
+        INPROGRESS = "InProgress"
+        FAILED = "Failed"

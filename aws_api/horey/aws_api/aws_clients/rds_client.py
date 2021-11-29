@@ -96,7 +96,7 @@ class RDSClient(Boto3Client):
         AWSAccount.set_aws_region(db_cluster.region)
         response = self.provision_db_cluster_raw(db_cluster.generate_create_request())
         db_cluster.update_from_raw_response(response)
-        pdb.set_trace()
+
         self.wait_for_status(db_cluster, self.update_db_cluster_information, [db_cluster.Status.AVAILABLE],
                              [db_cluster.Status.CREATING], [db_cluster.Status.FAILED, db_cluster.Status.DELETING])
 
