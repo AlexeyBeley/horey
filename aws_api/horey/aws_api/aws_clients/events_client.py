@@ -89,7 +89,6 @@ class EventsClient(Boto3Client):
             response = self.provision_rule_raw(rule.generate_create_request())
             del response["ResponseMetadata"]
             rule.update_from_raw_response(response)
-
         put_targets_request = rule.generate_put_targets_request()
         if put_targets_request is not None:
             self.put_targets_raw(put_targets_request)
@@ -102,8 +101,7 @@ class EventsClient(Boto3Client):
 
     def put_targets_raw(self, request_dict):
         logger.info(f"Putting targets: {request_dict}")
-        for response in self.execute(self.client.put_targets, None, raw_data=True,
-                                     filters_req=request_dict):
+        for response in self.execute(self.client.put_targets, None, raw_data=True, filters_req=request_dict):
             if response.get("FailedEntryCount") != 0:
                 raise RuntimeError(response)
 
