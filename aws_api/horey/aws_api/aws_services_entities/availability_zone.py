@@ -27,6 +27,8 @@ class AvailabilityZone(AwsObject):
             "GroupName": self.init_default_attr,
             "NetworkBorderGroup": self.init_default_attr,
             "ZoneType": self.init_default_attr,
+            "ParentZoneName": self.init_default_attr,
+            "ParentZoneId": self.init_default_attr,
                         }
 
         self.init_attrs(dict_src, init_options)
