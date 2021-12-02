@@ -36,6 +36,7 @@ class Subnet(AwsObject):
             "Ipv6CidrBlockAssociationSet": self.init_default_attr,
             "Tags": self.init_default_attr,
             "PrivateDnsNameOptionsOnLaunch": self.init_default_attr,
+            "EnableDns64": self.init_default_attr,
                         }
 
         self.init_attrs(dict_src, init_options)
@@ -94,6 +95,7 @@ class Subnet(AwsObject):
             "Ipv6CidrBlockAssociationSet": self.init_default_attr,
             "Tags": self.init_default_attr,
             "PrivateDnsNameOptionsOnLaunch": self.init_default_attr,
+            "EnableDns64": self.init_default_attr,
                         }
 
         self.init_attrs(dict_src, init_options)

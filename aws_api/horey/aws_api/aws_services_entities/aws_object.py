@@ -161,7 +161,7 @@ class AwsObject:
         datetime_object = datetime.datetime.strptime(value, string_format)
         self.init_default_attr(attr_name, datetime_object)
 
-    def init_attrs(self, dict_src, dict_options, raise_on_no_option=True):
+    def init_attrs(self, dict_src, dict_options, raise_on_no_option=False):
         """
         Init the object attributes according to given "recipe"
         :param dict_src:
