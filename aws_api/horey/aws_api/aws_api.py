@@ -2547,3 +2547,24 @@ class AWSAPI:
         } for tag_name, tag_values in key_values_map.items()]
 
         return self.ec2_client.get_region_vpcs(region, filters=filters)
+
+    def get_alive_ec2_instance_by_name(self, region, name):
+        filters = [{
+            'Name': f'tag:Name',
+            'Values': [
+                name
+            ]
+        }]
+        ec2_instances = self.ec2_client.get_region_instances(region, filters=filters)
+
+        ret_instances = []
+        for ec2_instance in ec2_instances:
+            if ec2_instance.get_state() not in [ec2_instance.State.PENDING, ec2_instance.State.RUNNING]:
+                continue
+
+            ret_instances.append(ec2_instance)
+
+        if len(ec2_instances) != 1:
+            raise RuntimeError(f"Found {len(ec2_instances)} RUNNING/PENDING instances in region {region.region_mark} with tag_name '{name}' while expected 1")
+
+        return ec2_instances[0]
