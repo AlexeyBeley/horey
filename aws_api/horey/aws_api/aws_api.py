@@ -2564,7 +2564,7 @@ class AWSAPI:
 
             ret_instances.append(ec2_instance)
 
-        if len(ec2_instances) != 1:
-            raise RuntimeError(f"Found {len(ec2_instances)} RUNNING/PENDING instances in region {region.region_mark} with tag_name '{name}' while expected 1")
+        if len(ret_instances) != 1:
+            raise RuntimeError(f"Found {len(ret_instances)} RUNNING/PENDING instances in region {region.region_mark} with tag_name '{name}' while expected 1")
 
-        return ec2_instances[0]
+        return ret_instances[0]

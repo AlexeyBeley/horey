@@ -452,8 +452,6 @@ class RDSClient(Boto3Client):
             raise RuntimeError(region_db_clusters)
 
         db_cluster.update_from_raw_response(region_db_clusters[0].dict_src)
-        self.wait_for_status(db_cluster, self.update_db_cluster_information, [db_cluster.Status.RESETTING_MASTER_CREDENTIALS], [db_cluster.Status.AVAILABLE], [])
-        self.wait_for_status(db_cluster, self.update_db_cluster_information, [db_cluster.Status.AVAILABLE], [db_cluster.Status.RESETTING_MASTER_CREDENTIALS], [])
 
     def update_db_instance_information(self, db_instance):
         filters_req = [{'Name': 'db-instance-id',
@@ -475,8 +473,12 @@ class RDSClient(Boto3Client):
     def modify_db_cluster(self, db_cluster: RDSDBCluster):
         AWSAccount.set_aws_region(db_cluster.region)
 
-        response = self.modify_db_cluster_raw(db_cluster.generate_modify_request())
+        request = db_cluster.generate_modify_request()
+        response = self.modify_db_cluster_raw(request)
         db_cluster.update_from_raw_response(response)
+        if "MasterUserPassword" in request:
+            self.wait_for_status(db_cluster, self.update_db_cluster_information, [db_cluster.Status.RESETTING_MASTER_CREDENTIALS], [db_cluster.Status.AVAILABLE], [], sleep_time=2)
+            self.wait_for_status(db_cluster, self.update_db_cluster_information, [db_cluster.Status.AVAILABLE], [db_cluster.Status.RESETTING_MASTER_CREDENTIALS], [])
 
     def modify_db_cluster_raw(self, request_dict):
         logger.info(f"Modifying db_cluster: {request_dict.keys()}")
@@ -490,9 +492,7 @@ class RDSClient(Boto3Client):
         db_instance.update_from_raw_response(response)
 
     def modify_db_instance_raw(self, request_dict):
-        request_dict = {"DBInstanceIdentifier": "db-instance-scoutbees-outsource-eu", 'MasterUserPassword': 'S33mplipassww00rd'}
         logger.info(f"Modifying db_instance: {request_dict}")
-        pdb.set_trace()
         for response in self.execute(self.client.modify_db_instance, "DBInstance",
                                      filters_req=request_dict):
             return response
