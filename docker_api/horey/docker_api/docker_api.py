@@ -20,7 +20,7 @@ class DockerAPI:
         return docker_image
 
     def build(self, dockerfile_directory_path, tags, nocache=True):
-        logger.info("Starting building image")
+        logger.info(f"Starting building image {dockerfile_directory_path}, {tags}")
         if not isinstance(tags, list):
             raise ValueError(f"'tags' must be of a type 'list' received {tags}: type: {type(tags)}")
 
@@ -72,6 +72,7 @@ class DockerAPI:
             self.print_log_line(log_line)
 
     def upload_image(self, repo_tags):
+        logger.info(f"Uploading image to repository {repo_tags}")
         for repository in repo_tags:
             for log_line in self.client.images.push(repository=repository, stream=True, decode=True):
                 self.print_log_line(log_line)

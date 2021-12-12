@@ -133,7 +133,7 @@ class RDSClient(Boto3Client):
         db_cluster.update_from_raw_response(response)
 
         try:
-            self.wait_for_status(db_cluster, self.update_db_cluster_information, [], [db_cluster.Status.DELETING], [])
+            self.wait_for_status(db_cluster, self.update_db_cluster_information, [], [db_cluster.Status.DELETING, db_cluster.Status.AVAILABLE], [])
         except self.ResourceNotFoundError:
             pass
 
@@ -367,7 +367,7 @@ class RDSClient(Boto3Client):
 
         self.wait_for_status(db_instance, self.update_db_instance_information, [db_instance.Status.AVAILABLE],
                              [db_instance.Status.CREATING, db_instance.Status.CONFIGURING_LOG_EXPORTS],
-                             [db_instance.Status.DELETING, db_instance.Status.FAILED])
+                             [db_instance.Status.DELETING, db_instance.Status.FAILED], timeout=20*60*60)
 
     def provision_db_instance_raw(self, request_dict):
         """
@@ -386,6 +386,7 @@ class RDSClient(Boto3Client):
         dst_region_cluster_snapshots = self.get_region_db_cluster_snapshots(cluster_snapshot_dst.region,
                                                                             full_information=False,
                                                                             custom_filters=filters_req)
+
         for dst_region_cluster_snapshot in dst_region_cluster_snapshots:
             if dst_region_cluster_snapshot.id == cluster_snapshot_dst.id:
                 if cluster_snapshot_src.arn == dst_region_cluster_snapshot.source_db_cluster_snapshot_arn:
@@ -399,11 +400,10 @@ class RDSClient(Boto3Client):
         cluster_snapshot_dst.update_from_raw_response(response)
         if not synchronous:
             return
-        pdb.set_trace()
         start_time = datetime.datetime.now()
         logger.info(f"Starting waiting loop for cluster_snapshot to become ready")
 
-        timeout = 300
+        timeout = 6000
         sleep_time = 5
         for i in range(timeout // sleep_time):
             filters_req = {"DBClusterSnapshotIdentifier": cluster_snapshot_dst.id}
