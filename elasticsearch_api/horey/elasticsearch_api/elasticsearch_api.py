@@ -45,7 +45,7 @@ class ElasticsearchAPI(object):
         self.init_indices()
         to_del_indices = []
         for es_index_name, es_index in self.indices.items():
-            if ".kibana" in es_index_name:
+            if es_index_name.startswith("."):
                 continue
 
             created_date = CommonUtils.timestamp_to_datetime(es_index["settings"]["index"]["creation_date"], microseconds_value=True)

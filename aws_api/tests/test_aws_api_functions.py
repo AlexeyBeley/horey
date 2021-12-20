@@ -92,6 +92,7 @@ def test_provision_lambda_event_source_mapping():
 
 
 if __name__ == "__main__":
-    # test_provision_certificate()
-    test_provision_aws_lambda_from_filelist()
-    # test_provision_lambda_event_source_mapping()
+    #test_provision_certificate()
+    #test_provision_aws_lambda_from_filelist()
+    test_provision_lambda_event_source_mapping()
+    #test_copy_ecr_image()

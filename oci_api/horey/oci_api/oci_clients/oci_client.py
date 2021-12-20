@@ -26,9 +26,10 @@ class OCIClient:
             self._client = self.CLIENT_CLASS(project=connection_step.project, credentials=connection_step.credentials)
 
     def execute(self, function, args=None, kwargs=None):
+        pdb.set_trace()
         if args is None:
             args = []
         if kwargs is None:
             kwargs = dict()
-        return function(args, kwargs)
+        return function(*args, **kwargs)
         pdb.set_trace()

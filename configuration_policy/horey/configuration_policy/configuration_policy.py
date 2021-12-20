@@ -52,7 +52,7 @@ class ConfigurationPolicy:
                 logger.info(f"{attribute_name} value is not set - no attribute definition")
                 return
 
-            raise ValueError(f"No attribute found with name _{attribute_name}")
+            raise ValueError(f"No attribute found with name _{attribute_name} in {self.__class__.__name__}")
 
         setattr(self, attribute_name, attribute_value)
 

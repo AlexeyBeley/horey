@@ -1,3 +1,4 @@
+import datetime
 
 import docker
 from docker.errors import BuildError
@@ -74,5 +75,39 @@ class DockerAPI:
     def upload_image(self, repo_tags):
         logger.info(f"Uploading image to repository {repo_tags}")
         for repository in repo_tags:
+            time_start = datetime.datetime.now()
             for log_line in self.client.images.push(repository=repository, stream=True, decode=True):
                 self.print_log_line(log_line)
+            time_end = datetime.datetime.now()
+            logger.info(f"Uploading repository {repository} took {time_end-time_start} time.")
+
+    def pull_image(self, repo, tag=None):
+        logger.info(f"Pulling image from repository {repo}")
+        if tag is not None and repo.find(":") > -1:
+            raise RuntimeError(f"Using both repo tag and tag kwarg: {repo}, {tag}")
+        image = self.client.images.pull(repository=repo, tag=tag, decode=True)
+        return image
+
+    def copy_image(self, src_repo_with_tag, dst_repo_name, copy_all_tags=True):
+        image = self.pull_image(src_repo_with_tag)
+
+        repo, tag = self.split_repo_with_tag(src_repo_with_tag)
+        if copy_all_tags:
+            dst_tags = [f"{dst_repo_name}:{self.split_repo_with_tag(image_tag)[1]}"
+                        for image_tag in image.attrs["RepoTags"] if image_tag.startswith(repo)]
+        else:
+            dst_tags = [f"{dst_repo_name}:{tag}"]
+
+        self.tag_image(image, dst_tags)
+        self.upload_image(dst_tags)
+
+    @staticmethod
+    def split_repo_with_tag(repo_with_tag):
+        if ":" not in repo_with_tag:
+            raise ValueError(f"Untagged repo: {repo_with_tag}")
+
+        if repo_with_tag.count(":") > 1:
+            raise ValueError(f"Expected single ':' in repo repo: {repo_with_tag}")
+
+        repo, tag = repo_with_tag.split(":")
+        return repo, tag

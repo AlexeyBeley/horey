@@ -9,6 +9,7 @@ class OCIAPIConfigurationPolicy(ConfigurationPolicy):
         self._accounts_file = None
         self._oci_account = None
         self._oci_api_cache_dir = None
+        self._oci_api_vm_hosts_cache_dir = None
 
     @property
     def oci_api_regions(self):
@@ -22,7 +23,7 @@ class OCIAPIConfigurationPolicy(ConfigurationPolicy):
             raise ValueError(f"oci_api_regions must be a list received {value} of type: {type(value)}")
 
         self._oci_api_regions = value
-
+        
     @property
     def accounts_file(self):
         return self._accounts_file
@@ -41,7 +42,6 @@ class OCIAPIConfigurationPolicy(ConfigurationPolicy):
     def oci_account(self, value):
         if not isinstance(value, str):
             raise ValueError(f"oci_account must be a string received {value} of type: {type(value)}")
-
         self._oci_account = value
 
     @property
@@ -54,3 +54,24 @@ class OCIAPIConfigurationPolicy(ConfigurationPolicy):
     def oci_api_cache_dir(self, value):
         self._oci_api_cache_dir = value
         os.makedirs(self._oci_api_cache_dir, exist_ok=True)
+    
+    # region compute
+    @property
+    def oci_api_vm_hosts_cache_dir(self):
+        if self._oci_api_vm_hosts_cache_dir is None:
+            self._oci_api_vm_hosts_cache_dir = os.path.join(self.oci_api_cache_dir, self.oci_account, "vm_hosts")
+            os.makedirs(self._oci_api_vm_hosts_cache_dir, exist_ok=True)
+        return self._oci_api_vm_hosts_cache_dir
+
+    @oci_api_vm_hosts_cache_dir.setter
+    def oci_api_vm_hosts_cache_dir(self, value):
+        raise ValueError(value)
+
+    @property
+    def oci_api_vm_hosts_cache_file(self):
+        return os.path.join(self.oci_api_vm_hosts_cache_dir, "vm_hosts_queues.json")
+
+    @oci_api_vm_hosts_cache_file.setter
+    def oci_api_vm_hosts_cache_file(self, value):
+        raise ValueError(value)
+    # endregion

@@ -26,8 +26,8 @@ class ECRClient(Boto3Client):
 
         if region is not None:
             AWSAccount.set_aws_region(region)
-
-        lst_ret = list(self.execute(self.client.get_authorization_token, "authorizationData", filters_req={"registryIds": [current_account.id]}))
+        filters_req = {"registryIds": [current_account.id]} if current_account is not None else None
+        lst_ret = list(self.execute(self.client.get_authorization_token, "authorizationData", filters_req=filters_req))
         for dict_src in lst_ret:
             auth_user_token = b64decode(dict_src['authorizationToken']).decode()
             user_name, decoded_token = auth_user_token.split(":")

@@ -24,14 +24,14 @@ oci_api = OCIAPI(configuration=configuration)
 
 # region done
 @pytest.mark.skip(reason="IAM policies will be inited explicitly")
-def test_init_and_cache_resource_groups():
+def test_init_and_cache_vm_hosts():
 
-    oci_api.init_resource_groups()
-    oci_api.cache_objects(oci_api.resource_groups, configuration.oci_api_resource_groups_cache_file)
-    logger.info(f"len(iam_policies) = {len(oci_api.resource_groups)}")
-    assert isinstance(oci_api.resource_groups, list)
+    oci_api.init_vm_hosts()
+    oci_api.cache_objects(oci_api.vm_hosts, configuration.oci_api_vm_hosts_cache_file)
+    logger.info(f"len(iam_policies) = {len(oci_api.vm_hosts)}")
+    assert isinstance(oci_api.vm_hosts, list)
 
 
 if __name__ == "__main__":
-    test_init_and_cache_resource_groups()
+    test_init_and_cache_vm_hosts()
 

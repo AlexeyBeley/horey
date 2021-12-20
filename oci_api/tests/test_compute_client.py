@@ -5,9 +5,11 @@ import pdb
 
 import pytest
 import os
-from horey.oci_api.oci_clients.compute_client import ComputeClient
+from horey.oci_api.oci_clients.oci_compute_client import OCIComputeClient
 from horey.h_logger import get_logger
 from horey.oci_api.oci_api_configuration_policy import OCIAPIConfigurationPolicy
+from horey.oci_api.oci_service_entities.vm_host import VMHost
+from unittest import mock
 logger = get_logger()
 
 configuration = OCIAPIConfigurationPolicy()
@@ -18,9 +20,10 @@ configuration.init_from_file()
 # region done
 @pytest.mark.skip(reason="IAM policies will be inited explicitly")
 def test_provision_vm():
-    client = ComputeClient()
-    pdb.set_trace()
-    client.provision_bucket()
+    client = OCIComputeClient()
+    host = VMHost({})
+    host.name = "horey_test"
+    client.provision_dedicated_vm_host(host)
 
 
 if __name__ == "__main__":
