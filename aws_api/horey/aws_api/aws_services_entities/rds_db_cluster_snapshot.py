@@ -141,9 +141,12 @@ class RDSDBClusterSnapshot(AwsObject):
             return self.Status.COPYING
         elif self.status == "available":
             return self.Status.AVAILABLE
+        elif self.status == "failed":
+            return self.Status.FAILED
         else:
             raise NotImplementedError(self.status)
 
     class Status(Enum):
         COPYING = 0
         AVAILABLE = 1
+        FAILED = 2

@@ -2509,6 +2509,14 @@ class AWSAPI:
 
         return src_region_cluster_snapshots[-1]
 
+    def db_snapshot_by_id(self, region, snapshot_id):
+        filters_req = {"DBClusterSnapshotIdentifier": snapshot_id}
+        src_region_cluster_snapshots = self.rds_client.get_region_db_cluster_snapshots(region,
+                                                                                       full_information=False,
+                                                                                       custom_filters=filters_req)
+
+        return src_region_cluster_snapshots[-1]
+
     def copy_latest_db_cluster_snapshot(self, db_cluster, desired_snapshot: RDSDBClusterSnapshot):
         src_snapshot = self.get_latest_db_cluster_snapshot(db_cluster)
         src_snapshot.region = db_cluster.region

@@ -52,6 +52,16 @@ def test_provision_certificate():
     assert cert.arn is not None
 
 
+def test_get_certificate_by_tags():
+    client = ACMClient()
+    domain_name = "*.test.comp.com"
+
+    ret = client.get_certificate_by_tags(AWSAccount.get_aws_region(), {"name": domain_name.replace("*", "star")})
+
+    assert ret is not None
+
+
 if __name__ == "__main__":
     # test_register_task_definition()
-    test_provision_certificate()
+    #test_provision_certificate()
+    test_get_certificate_by_tags()
