@@ -46,8 +46,6 @@ class OCIComputeClient(OCIClient):
         pdb.set_trace()
         OCIAccount.set_oci_region(region)
 
-        "ocid1.compartment.oc1..aaaaaaaanoaklnc5n6jof4gal7lgmad4tumipnmjqicqctpoxygs32iceaka"
-        args = ["ocid1.tenancy.oc1..aaaaaaaa6imwwfidzwxdzpdzmsqxhzn6gf3as3hqqwvvvtqmb22a264z53qa"]
         for dict_src in self.execute(self.client.list_dedicated_vm_hosts, None, args=args):
             obj = VMHost(dict_src)
             final_result.append(obj)
