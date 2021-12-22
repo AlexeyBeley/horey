@@ -37,26 +37,36 @@ class ACMClient(Boto3Client):
 
         return final_result
 
-    def get_region_certificates(self, region):
-        final_result = list()
+    def yield_region_certificates(self, region, full_information=False):
         AWSAccount.set_aws_region(region)
 
         for dict_src_arn in self.execute(self.client.list_certificates, "CertificateSummaryList"):
-            obj = self.get_certificate(dict_src_arn["CertificateArn"])
-            final_result.append(obj)
+            obj = self.get_certificate(dict_src_arn["CertificateArn"], full_information=full_information)
+            yield obj
 
-        return final_result
+    def get_region_certificates(self, region, full_information=False):
+        return list(self.yield_region_certificates(region, full_information=full_information))
 
-    def get_certificate(self, arn):
+    def update_certificate_full_information(self, cert):
+        filters_req = {"CertificateArn": cert.arn}
+        cert.tags = list(self.execute(self.client.list_tags_for_certificate, "Tags", filters_req=filters_req))
+
+    def get_certificate(self, arn, full_information=False):
         filters_req = {"CertificateArn": arn}
         certs_dicts = list(self.execute(self.client.describe_certificate, "Certificate", filters_req=filters_req))
+
         if len(certs_dicts) == 0:
             return None
 
         if len(certs_dicts) > 1:
             raise ValueError(arn)
 
-        return ACMCertificate(certs_dicts[0])
+        obj = ACMCertificate(certs_dicts[0])
+
+        if full_information:
+            self.update_certificate_full_information(obj)
+
+        return obj
 
     def provision_certificate(self, certificate):
         region_certificates = self.get_region_certificates(certificate.region)
@@ -83,3 +93,20 @@ class ACMClient(Boto3Client):
         for response in self.execute(self.client.request_certificate, "CertificateArn",
                                      filters_req=request_dict):
             return response
+
+    def get_certificate_by_tags(self, region, dict_tags):
+        ret = []
+        for cert in self.yield_region_certificates(region, full_information=True):
+            for tag_key, tag_value in dict_tags.items():
+                if cert.get_tag(tag_key) != tag_value:
+                    break
+            else:
+                ret.append(cert)
+
+        if len(ret) > 1:
+            raise ValueError(f"Found more then 1 certificate in region '{str(region)}' with tags: {dict_tags}")
+
+        try:
+            return ret[0]
+        except IndexError:
+            raise self.ResourceNotFoundError(f"Certificate in region '{str(region)}' with tags: {dict_tags}")

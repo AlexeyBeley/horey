@@ -105,6 +105,10 @@ class ElasticacheReplicationGroup(AwsObject):
         self.init_attrs(dict_src, init_options)
 
     def get_primary_endpoint_address(self):
+        try:
+            self.node_groups
+        except Exception:
+            pdb.set_trace()
         if len(self.node_groups) != 1:
             raise NotImplementedError(f"len(self.node_groups) != 1: {self.node_groups}")
         return self.node_groups[0]["PrimaryEndpoint"]["Address"]

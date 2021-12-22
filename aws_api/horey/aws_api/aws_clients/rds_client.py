@@ -497,5 +497,3 @@ class RDSClient(Boto3Client):
                                      filters_req=request_dict):
             return response
 
-    class ResourceNotFoundError(ValueError):
-        pass

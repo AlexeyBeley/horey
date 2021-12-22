@@ -203,3 +203,6 @@ class Boto3Client:
 
     class NoReturnStringError(Exception):
         pass
+
+    class ResourceNotFoundError(ValueError):
+        pass
