@@ -299,6 +299,13 @@ def test_init_and_cache_servicediscovery_services():
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_servicediscovery_namespaces():
+    aws_api.init_servicediscovery_namespaces()
+    aws_api.cache_objects(aws_api.servicediscovery_namespaces, configuration.aws_api_servicediscovery_namespaces_cache_file)
+    assert isinstance(aws_api.servicediscovery_namespaces, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_elasticsearch_domains():
     aws_api.init_elasticsearch_domains()
     aws_api.cache_objects(aws_api.elasticsearch_domains, configuration.aws_api_elasticsearch_domains_cache_file)
@@ -539,5 +546,6 @@ if __name__ == "__main__":
     #test_init_and_cache_sqs_queues()
     #test_init_and_cache_lambda_event_source_mappings()
     #test_init_and_cache_event_bridge_rules()
-    test_init_and_cache_lambdas()
+    #test_init_and_cache_lambdas()
     #test_init_and_cache_lambda_event_source_mappings()
+    test_init_and_cache_servicediscovery_namespaces()

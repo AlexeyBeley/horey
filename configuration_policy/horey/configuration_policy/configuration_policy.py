@@ -189,6 +189,27 @@ class ConfigurationPolicy:
             return function_wrapper
         return function_receiver
 
+    @staticmethod
+    def validate_value_is_not_none_decorator(property_getter_function):
+        """
+        Is being called when @property is called.
+        The property_getter_function is this:
+
+        @validate_value_is_not_none_decorator
+        @property
+        def property_getter_function(configuration_instance)
+
+        @param property_getter_function:
+        @return:
+        """
+        def property_function(configuration_instance):
+            _value = getattr(configuration_instance, "_" + property_getter_function.__name__)
+            if _value is None:
+                raise ConfigurationPolicy.UndefinedValueError(f"_{property_getter_function.__name__} is None")
+            return property_getter_function(configuration_instance)
+
+        return property_function
+
     class StaticValueError(RuntimeError):
         pass
 

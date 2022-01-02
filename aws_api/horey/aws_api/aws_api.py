@@ -78,6 +78,7 @@ from horey.aws_api.aws_services_entities.secrets_manager_secret import SecretsMa
 
 from horey.aws_api.aws_clients.servicediscovery_client import ServicediscoveryClient
 from horey.aws_api.aws_services_entities.servicediscovery_service import ServicediscoveryService
+from horey.aws_api.aws_services_entities.servicediscovery_namespace import ServicediscoveryNamespace
 
 from horey.aws_api.aws_clients.elasticsearch_client import ElasticsearchClient
 from horey.aws_api.aws_services_entities.elasticsearch_domain import ElasticsearchDomain
@@ -181,6 +182,7 @@ class AWSAPI:
         self.event_bridge_rules = []
         self.secrets_manager_secrets = []
         self.servicediscovery_services = []
+        self.servicediscovery_namespaces = []
         self.elasticsearch_domains = []
         self.managed_prefix_lists = []
         self.vpcs = []
@@ -768,6 +770,21 @@ class AWSAPI:
             objects = self.servicediscovery_client.get_all_services(full_information=full_information)
 
         self.servicediscovery_services = objects
+    
+    def init_servicediscovery_namespaces(self, from_cache=False, cache_file=None, full_information=True):
+        """
+        Init servicediscovery serivces
+        @param from_cache:
+        @param cache_file:
+        @param full_information:
+        @return:
+        """
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, ServicediscoveryNamespace)
+        else:
+            objects = self.servicediscovery_client.get_all_namespaces(full_information=full_information)
+
+        self.servicediscovery_namespaces = objects
 
     def init_elasticsearch_domains(self, from_cache=False, cache_file=None, full_information=True):
         """
@@ -2073,7 +2090,7 @@ class AWSAPI:
         for entry in managed_prefix_list.entries:
             if entry.description in descriptions:
                 raise Exception(f"{managed_prefix_list.name} [{managed_prefix_list.region.region_mark}] -"
-                                f" multiple entries with same description {entry.description}")
+                                f" multiple entries with same description '{entry.description}'")
             descriptions.append(entry.description)
 
         self.ec2_client.provision_managed_prefix_list(managed_prefix_list, declarative=declarative)
@@ -2576,3 +2593,6 @@ class AWSAPI:
             raise RuntimeError(f"Found {len(ret_instances)} RUNNING/PENDING instances in region {region.region_mark} with tag_name '{name}' while expected 1")
 
         return ret_instances[0]
+
+    def provision_servicediscovery_namespace(self, namespace):
+        self.servicediscovery_client.provision_namespace(namespace)
