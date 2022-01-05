@@ -379,6 +379,8 @@ class EC2Client(Boto3Client):
 
     def get_managed_prefix_list(self, region, pl_id=None, name=None, full_information=True):
         response = self.raw_describe_managed_prefix_list(region, pl_id=pl_id, prefix_list_name=name)
+        if response is None:
+            return
         obj = ManagedPrefixList(response)
         if full_information:
             self.update_managed_prefix_list_full_information(obj)

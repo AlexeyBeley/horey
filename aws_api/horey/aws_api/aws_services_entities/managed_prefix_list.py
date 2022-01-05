@@ -34,6 +34,7 @@ class ManagedPrefixList(AwsObject):
             "Version": self.init_default_attr,
             "Tags": self.init_default_attr,
             "OwnerId": self.init_default_attr,
+            "StateMessage": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -181,6 +182,7 @@ class ManagedPrefixList(AwsObject):
             "Version": self.init_default_attr,
             "Tags": self.init_default_attr,
             "OwnerId": self.init_default_attr,
+            "StateMessage": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)

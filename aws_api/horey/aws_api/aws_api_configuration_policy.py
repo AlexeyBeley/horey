@@ -690,6 +690,15 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_servicediscovery_services_cache_file.setter
     def aws_api_servicediscovery_services_cache_file(self, value):
         raise ValueError(value)
+    
+    @property
+    def aws_api_servicediscovery_namespaces_cache_file(self):
+        return os.path.join(self.aws_api_servicediscovery_cache_dir, "servicediscovery_namespaces.json")
+
+    @aws_api_servicediscovery_namespaces_cache_file.setter
+    def aws_api_servicediscovery_namespaces_cache_file(self, value):
+        raise ValueError(value)
+    
     # endregion
     
     # region elasticsearch

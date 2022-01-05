@@ -56,6 +56,7 @@ class ConfigurationSon(ConfigurationPolicy):
     def __init__(self):
         super().__init__()
         self._component1 = None
+        self._component2 = None
 
     @property
     def component1(self):
@@ -64,6 +65,15 @@ class ConfigurationSon(ConfigurationPolicy):
     @component1.setter
     def component1(self, value):
         self._component1 = value
+
+    @property
+    @ConfigurationPolicy.validate_value_is_not_none_decorator
+    def component2(self):
+        return self._component2
+
+    @component2.setter
+    def component2(self, value):
+        self._component2 = value
 
 
 # @pytest.mark.skip(reason="No way of currently testing this")
@@ -84,3 +94,13 @@ def test_init_from_json_file():
     config = ConfigurationSon()
     config.init_from_dictionary(config_values)
     config.init_from_json_file()
+
+
+def test_property_value_not_set_exception():
+    son = ConfigurationSon()
+    son.component2 = "1"
+    print(son.component2)
+
+
+if __name__ == "__main__":
+    test_property_value_not_set_exception()
