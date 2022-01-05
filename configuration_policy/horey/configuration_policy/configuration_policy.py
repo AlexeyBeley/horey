@@ -195,8 +195,8 @@ class ConfigurationPolicy:
         Is being called when @property is called.
         The property_getter_function is this:
 
-        @validate_value_is_not_none_decorator
         @property
+        @validate_value_is_not_none_decorator
         def property_getter_function(configuration_instance)
 
         @param property_getter_function:

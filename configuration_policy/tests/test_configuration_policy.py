@@ -101,5 +101,6 @@ def test_property_value_not_set_exception():
     son.component2 = "1"
     print(son.component2)
 
+
 if __name__ == "__main__":
     test_property_value_not_set_exception()

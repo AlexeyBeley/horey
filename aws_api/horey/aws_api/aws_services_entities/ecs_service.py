@@ -17,6 +17,7 @@ class ECSService(AwsObject):
         super().__init__(dict_src)
         self._region = None
         self.propagate_tags = None
+        self.service_registries = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -98,7 +99,11 @@ class ECSService(AwsObject):
         request["serviceName"] = self.name
         request["cluster"] = self.cluster_arn
         request["taskDefinition"] = self.task_definition
+
         request["loadBalancers"] = self.load_balancers
+        if self.service_registries is not None:
+            request["serviceRegistries"] = self.service_registries
+
         request["desiredCount"] = self.desired_count
 
         request["launchType"] = self.launch_type
