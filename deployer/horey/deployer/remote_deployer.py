@@ -116,7 +116,8 @@ class RemoteDeployer:
                 except Exception as exception_instance:
                     raise RuntimeError(f"{deployment_target.deployment_target_address}") from exception_instance
 
-                logger.info(f"sftp: put_dir {deployment_target.remote_target_deployment_directory_path}")
+                logger.info(f"sftp: put_dir from local {deployment_target.local_deployment_dir_path} to "
+                            f"{deployment_target.deployment_target_address}:{deployment_target.remote_target_deployment_directory_path}")
 
                 try:
                     sftp_client.put_dir(deployment_target.local_deployment_dir_path,

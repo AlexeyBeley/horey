@@ -2596,3 +2596,6 @@ class AWSAPI:
 
     def provision_servicediscovery_namespace(self, namespace):
         self.servicediscovery_client.provision_namespace(namespace)
+    
+    def provision_servicediscovery_service(self, service):
+        self.servicediscovery_client.provision_service(service)

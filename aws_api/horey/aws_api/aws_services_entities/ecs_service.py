@@ -18,6 +18,7 @@ class ECSService(AwsObject):
         self._region = None
         self.propagate_tags = None
         self.service_registries = None
+        self.role_arn = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -108,7 +109,9 @@ class ECSService(AwsObject):
 
         request["launchType"] = self.launch_type
 
-        request["role"] = self.role_arn
+        if self.role_arn is not None:
+            request["role"] = self.role_arn
+
         request["deploymentConfiguration"] = self.deployment_configuration
         request["placementStrategy"] = self.placement_strategy
         request["healthCheckGracePeriodSeconds"] = self.health_check_grace_period_seconds
