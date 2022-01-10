@@ -2280,6 +2280,9 @@ class AWSAPI:
     def provision_load_balancer_listener(self, listener):
         self.elbv2_client.provision_load_balancer_listener(listener)
 
+    def provision_load_balancer_rule(self, rule):
+        self.elbv2_client.provision_load_balancer_rule(rule)
+        
     def associate_elastic_address(self, ec2_instance, elastic_address):
         request = {"AllocationId": elastic_address.id,
                    "InstanceId": ec2_instance.id}

@@ -114,6 +114,15 @@ class AutoScalingGroup(AwsObject):
         request["NewInstancesProtectedFromScaleIn"] = self.new_instances_protected_from_scale_in
         return request
 
+    def generate_update_request(self, desired_state):
+        request = dict()
+
+        if self.max_size != desired_state.max_size:
+            request["AutoScalingGroupName"] = desired_state.name
+            request["MaxSize"] = desired_state.max_size
+
+        return request if request else None
+
     def generate_dispose_request(self):
         request = dict()
         request["AutoScalingGroupName"] = self.name

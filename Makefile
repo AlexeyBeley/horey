@@ -74,8 +74,7 @@ test_azure_api: install_from_source-azure_api
 	cd ${ROOT_DIR}/azure_api/tests &&\
 	python3.8 test_azure_api_init_and_cache.py
 
-#test_azure_api: recursive_install_from_source_local_venv-azure_api
-test_aws_api: install_from_source-aws_api
+test_aws_api: recursive_install_from_source_local_venv-aws_api
 	source ${VENV_DIR}/bin/activate &&\
 	cd ${ROOT_DIR}/aws_api/tests &&\
 	python3.8 test_aws_api_init_and_cache.py

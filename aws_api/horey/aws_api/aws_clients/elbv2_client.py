@@ -6,6 +6,7 @@ from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.elbv2_load_balancer import LoadBalancer
 from horey.aws_api.aws_services_entities.elbv2_target_group import ELBV2TargetGroup
 from horey.aws_api.base_entities.aws_account import AWSAccount
+from horey.common_utils.common_utils import CommonUtils
 import pdb
 from horey.h_logger import get_logger
 logger = get_logger()
@@ -34,7 +35,7 @@ class ELBV2Client(Boto3Client):
             final_result += self.get_region_load_balancers(region, full_information=full_information)
         return final_result
 
-    def get_region_load_balancers(self, region, names=None, full_information=True):
+    def get_region_load_balancers(self, region, names=None, full_information=True, get_tags=True):
         AWSAccount.set_aws_region(region)
         final_result = list()
 
@@ -48,10 +49,28 @@ class ELBV2Client(Boto3Client):
             final_result.append(obj)
 
             if full_information:
-                for listener_response in self.execute(self.client.describe_listeners, "Listeners",
-                                                      filters_req={"LoadBalancerArn": obj.arn}):
-                    obj.add_raw_listener(listener_response)
+                self.get_load_balancer_full_inforrmation(obj)
+
+        if get_tags:
+            self.update_tags(final_result)
         return final_result
+
+    def update_tags(self, objects):
+        for response in self.execute(self.client.describe_tags, "TagDescriptions",
+                                     filters_req={"ResourceArns": [obj.arn for obj in objects]}):
+            obj = \
+                CommonUtils.find_objects_by_values(objects, {"arn": response["ResourceArn"]}, max_count=1)[0]
+            obj.tags = response["Tags"]
+
+    def get_load_balancer_full_inforrmation(self, load_balancer):
+        for listener_response in self.execute(self.client.describe_listeners, "Listeners",
+                                          filters_req={"LoadBalancerArn": load_balancer.arn}):
+
+            load_balancer.add_raw_listener(listener_response)
+
+            for rule_response in self.execute(self.client.describe_rules, "Rules",
+                                                  filters_req={"ListenerArn": listener_response["ListenerArn"]}):
+                load_balancer.add_raw_rule(rule_response)
 
     def get_all_target_groups(self, full_information=True):
         """
@@ -117,15 +136,34 @@ class ELBV2Client(Boto3Client):
             if full_information:
                 raise NotImplementedError()
         return final_result
+    
+    def get_region_rules(self, region, full_information=False, listener_arn=None, get_tags=True):
+        AWSAccount.set_aws_region(region)
+        final_result = list()
+
+        filters_req = None
+        if listener_arn is not None:
+            filters_req = {"ListenerArn": listener_arn}
+
+        for response in self.execute(self.client.describe_rules, "Rules", filters_req=filters_req):
+            obj = LoadBalancer.Rule(response)
+            final_result.append(obj)
+
+            if full_information:
+                raise NotImplementedError()
+
+        if get_tags:
+            self.update_tags(final_result)
+
+        return final_result
 
     def provision_load_balancer(self, load_balancer):
-        region_load_balancers = self.get_region_load_balancers(load_balancer.region, full_information=False)
+        region_load_balancers = self.get_region_load_balancers(load_balancer.region, full_information=False, names=[load_balancer.name])
         for region_load_balancer in region_load_balancers:
             if region_load_balancer.get_state() not in [region_load_balancer.State.PROVISIONING, region_load_balancer.State.ACTIVE, region_load_balancer.State.ACTIVE_IMPAIRED]:
                 continue
-            if region_load_balancer.get_tagname(ignore_missing_tag=True) == load_balancer.get_tagname():
-                load_balancer.arn = region_load_balancer.arn
-                return
+            load_balancer.arn = region_load_balancer.arn
+            return
 
         response = self.provision_load_balancer_raw(load_balancer.generate_create_request())
         load_balancer.arn = response["LoadBalancerArn"]
@@ -170,6 +208,20 @@ class ELBV2Client(Boto3Client):
         for response in self.execute(self.client.create_listener, "Listeners", filters_req=request_dict):
             return response
 
+    def provision_load_balancer_rule(self, rule: LoadBalancer.Rule):
+        region_rules = self.get_region_rules(rule.region, full_information=False, listener_arn=rule.listener_arn)
+        for region_rule in region_rules:
+            if region_rule.get_tagname(ignore_missing_tag=True) == rule.get_tagname():
+                rule.arn = region_rule.arn
+                return
+
+        response = self.provision_load_balancer_rule_raw(rule.generate_create_request())
+        rule.update_from_raw_response(response)
+
+    def provision_load_balancer_rule_raw(self, request_dict):
+        for response in self.execute(self.client.create_rule, "Rules", filters_req=request_dict):
+            return response
+        
     def dispose_load_balancer(self, load_balancer):
         AWSAccount.set_aws_region(load_balancer.region)
 

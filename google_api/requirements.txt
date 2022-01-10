@@ -1,0 +1,8 @@
+pip==21.1.2
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib
+horey.configuration_policy>=1.0.0
+horey.h_logger>=1.0.0
+horey.common_utils>=1.0.0
+horey.network>=1.0.0
