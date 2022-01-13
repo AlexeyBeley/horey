@@ -157,7 +157,6 @@ class RDSClient(Boto3Client):
         """
         Returns ARN
         """
-        pdb.set_trace()
         logger.info(f"Disposing db_instance: {request_dict}")
         for response in self.execute(self.client.delete_db_instance, "DBInstance",
                                      filters_req=request_dict):
