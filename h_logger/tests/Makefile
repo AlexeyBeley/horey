@@ -17,4 +17,4 @@ FORCE: ;
 
 build:
 	cd ${HOREY_DIR_PATH} &&\
-	make raw_install_from_source-google_api
+	make raw_install_from_source-h_logger

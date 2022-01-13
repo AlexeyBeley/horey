@@ -133,7 +133,8 @@ class RDSClient(Boto3Client):
         db_cluster.update_from_raw_response(response)
 
         try:
-            self.wait_for_status(db_cluster, self.update_db_cluster_information, [], [db_cluster.Status.DELETING, db_cluster.Status.AVAILABLE], [])
+            self.wait_for_status(db_cluster, self.update_db_cluster_information, [],
+                                 [db_cluster.Status.DELETING, db_cluster.Status.AVAILABLE], [])
         except self.ResourceNotFoundError:
             pass
 
@@ -367,7 +368,7 @@ class RDSClient(Boto3Client):
 
         self.wait_for_status(db_instance, self.update_db_instance_information, [db_instance.Status.AVAILABLE],
                              [db_instance.Status.CREATING, db_instance.Status.CONFIGURING_LOG_EXPORTS],
-                             [db_instance.Status.DELETING, db_instance.Status.FAILED], timeout=20*60*60)
+                             [db_instance.Status.DELETING, db_instance.Status.FAILED], timeout=20 * 60 * 60)
 
     def provision_db_instance_raw(self, request_dict):
         """
@@ -403,7 +404,7 @@ class RDSClient(Boto3Client):
         start_time = datetime.datetime.now()
         logger.info(f"Starting waiting loop for cluster_snapshot to become ready")
 
-        timeout = 6000
+        timeout = 60 * 60
         sleep_time = 5
         for i in range(timeout // sleep_time):
             filters_req = {"DBClusterSnapshotIdentifier": cluster_snapshot_dst.id}
@@ -417,7 +418,10 @@ class RDSClient(Boto3Client):
                 raise RuntimeError(
                     f"cluster {dst_region_cluster_snapshot.name} provisioning failed. Cluster in FAILED status")
 
-            if dst_region_cluster_snapshot.get_status() != dst_region_cluster_snapshot.Status.ACTIVE:
+            if dst_region_cluster_snapshot.get_status() != dst_region_cluster_snapshot.Status.AVAILABLE:
+                logger.info(
+                    f"Waiting for snapshot to become available: {i + 1}/{timeout}. "
+                    f"Going to sleep for {sleep_time} seconds")
                 time.sleep(sleep_time)
                 continue
 
@@ -477,15 +481,18 @@ class RDSClient(Boto3Client):
         response = self.modify_db_cluster_raw(request)
         db_cluster.update_from_raw_response(response)
         if "MasterUserPassword" in request:
-            self.wait_for_status(db_cluster, self.update_db_cluster_information, [db_cluster.Status.RESETTING_MASTER_CREDENTIALS], [db_cluster.Status.AVAILABLE], [], sleep_time=2)
-            self.wait_for_status(db_cluster, self.update_db_cluster_information, [db_cluster.Status.AVAILABLE], [db_cluster.Status.RESETTING_MASTER_CREDENTIALS], [])
+            self.wait_for_status(db_cluster, self.update_db_cluster_information,
+                                 [db_cluster.Status.RESETTING_MASTER_CREDENTIALS], [db_cluster.Status.AVAILABLE], [],
+                                 sleep_time=2)
+            self.wait_for_status(db_cluster, self.update_db_cluster_information, [db_cluster.Status.AVAILABLE],
+                                 [db_cluster.Status.RESETTING_MASTER_CREDENTIALS], [])
 
     def modify_db_cluster_raw(self, request_dict):
         logger.info(f"Modifying db_cluster: {request_dict.keys()}")
         for response in self.execute(self.client.modify_db_cluster, "DBCluster",
                                      filters_req=request_dict):
             return response
-    
+
     def modify_db_instance(self, db_instance: RDSDBCluster):
         AWSAccount.set_aws_region(db_instance.region)
         response = self.modify_db_instance_raw(db_instance.generate_modify_request())
@@ -496,4 +503,3 @@ class RDSClient(Boto3Client):
         for response in self.execute(self.client.modify_db_instance, "DBInstance",
                                      filters_req=request_dict):
             return response
-

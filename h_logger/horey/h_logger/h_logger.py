@@ -2,11 +2,13 @@
 logging handler
 """
 import logging
-#from horey.h_logger.formatter import MultilineFormatter
+from horey.h_logger.formatter import MultilineFormatter
+import pdb
 
 handler = logging.StreamHandler()
 formatter = logging.Formatter("[%(asctime)s] %(levelname)s:%(filename)s:%(lineno)s: %(message)s")
-#formatter = MultilineFormatter()
+#formatter = logging.Formatter("[%(created)f] %(levelname)s:%(filename)s:%(lineno)s: %(message)s")
+formatter = MultilineFormatter()
 handler.setFormatter(formatter)
 _logger = logging.getLogger("main")
 _logger.setLevel("INFO")
