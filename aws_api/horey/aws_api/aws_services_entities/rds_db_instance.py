@@ -81,6 +81,7 @@ class RDSDBInstance(AwsObject):
                         "PerformanceInsightsKMSKeyId": self.init_default_attr,
                         "PerformanceInsightsRetentionPeriod": self.init_default_attr,
                         "EnabledCloudwatchLogsExports": self.init_default_attr,
+                        "BackupTarget": self.init_default_attr,
                         }
 
         self.init_attrs(dict_src, init_options)
@@ -252,6 +253,7 @@ class RDSDBInstance(AwsObject):
                         "PerformanceInsightsKMSKeyId": self.init_default_attr,
                         "PerformanceInsightsRetentionPeriod": self.init_default_attr,
                         "EnabledCloudwatchLogsExports": self.init_default_attr,
+                        "BackupTarget": self.init_default_attr,
                         }
 
         self.init_attrs(dict_src, init_options)
