@@ -142,7 +142,6 @@ class RDSClient(Boto3Client):
         """
         Returns ARN
         """
-        pdb.set_trace()
         logger.info(f"Disposing db_cluster: {request_dict}")
         for response in self.execute(self.client.delete_db_cluster, "DBCluster",
                                      filters_req=request_dict):
