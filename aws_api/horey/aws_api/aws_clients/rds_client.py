@@ -134,7 +134,7 @@ class RDSClient(Boto3Client):
 
         try:
             self.wait_for_status(db_cluster, self.update_db_cluster_information, [],
-                                 [db_cluster.Status.DELETING, db_cluster.Status.AVAILABLE], [])
+                                 [db_cluster.Status.DELETING, db_cluster.Status.AVAILABLE], [], timeout=20*60)
         except self.ResourceNotFoundError:
             pass
 

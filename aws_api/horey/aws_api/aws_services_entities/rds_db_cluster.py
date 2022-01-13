@@ -66,6 +66,7 @@ class RDSDBCluster(AwsObject):
             "DomainMemberships": self.init_default_attr,
             "TagList": self.init_default_attr,
             "PendingModifiedValues": self.init_default_attr,
+            "AutoMinorVersionUpgrade": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -121,6 +122,7 @@ class RDSDBCluster(AwsObject):
             "DomainMemberships": self.init_default_attr,
             "TagList": self.init_default_attr,
             "PendingModifiedValues": self.init_default_attr,
+            "AutoMinorVersionUpgrade": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
