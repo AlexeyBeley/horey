@@ -56,6 +56,8 @@ class ELBV2Client(Boto3Client):
         return final_result
 
     def update_tags(self, objects):
+        if len(objects) == 0:
+            return
         for response in self.execute(self.client.describe_tags, "TagDescriptions",
                                      filters_req={"ResourceArns": [obj.arn for obj in objects]}):
             obj = \
