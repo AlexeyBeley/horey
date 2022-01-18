@@ -2040,8 +2040,8 @@ class AWSAPI:
                 lines.append(str(statement_2.dict_src))
         return lines
 
-    def get_secret_value(self, secret_name, region=None):
-        return self.secretsmanager_client.raw_get_secret_string(secret_name, region=region)
+    def get_secret_value(self, secret_name, region=None, ignore_missing=False):
+        return self.secretsmanager_client.raw_get_secret_string(secret_name, region=region, ignore_missing=ignore_missing)
 
     def put_secret_value(self, secret_name, value, region=None):
         return self.secretsmanager_client.raw_put_secret_string(secret_name, value, region=region)
