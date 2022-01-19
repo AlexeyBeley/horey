@@ -44,7 +44,7 @@ class RDSClient(Boto3Client):
 
         return final_result
 
-    def get_region_db_instances(self, region, filters=None):
+    def get_region_db_instances(self, region, filters=None, update_tags=True):
         final_result = list()
         if filters is not None:
             filters = {"Filters": filters}
@@ -53,6 +53,9 @@ class RDSClient(Boto3Client):
         for response in self.execute(self.client.describe_db_instances, "DBInstances", filters_req=filters):
             obj = RDSDBInstance(response)
             final_result.append(obj)
+
+        if update_tags:
+            self.update_tags(final_result)
 
         return final_result
 
@@ -71,7 +74,7 @@ class RDSClient(Boto3Client):
 
         return final_result
 
-    def get_region_db_clusters(self, region, filters=None):
+    def get_region_db_clusters(self, region, filters=None, update_tags=True):
         final_result = list()
         if filters is not None:
             filters = {"Filters": filters}
@@ -80,6 +83,9 @@ class RDSClient(Boto3Client):
         for response in self.execute(self.client.describe_db_clusters, "DBClusters", filters_req=filters):
             obj = RDSDBCluster(response)
             final_result.append(obj)
+
+        if update_tags:
+            self.update_tags(final_result)
 
         return final_result
 
@@ -266,7 +272,7 @@ class RDSClient(Boto3Client):
 
         return final_result
 
-    def get_region_db_cluster_snapshots(self, region, full_information=True, custom_filters=None):
+    def get_region_db_cluster_snapshots(self, region, full_information=True, custom_filters=None, update_tags=True):
         final_result = list()
         AWSAccount.set_aws_region(region)
         for response in self.execute(self.client.describe_db_cluster_snapshots, "DBClusterSnapshots",
@@ -280,7 +286,8 @@ class RDSClient(Boto3Client):
                 for response_param in self.execute(self.client.describe_db_cluster_snapshot_attributes,
                                                    "DBClusterSnapshotAttributesResult", filters_req=filters_req):
                     obj.parameters.append(response_param)
-
+        if update_tags:
+            self.update_tags(final_result)
         return final_result
 
     def get_all_db_parameter_groups(self, region=None):
@@ -501,3 +508,11 @@ class RDSClient(Boto3Client):
         for response in self.execute(self.client.modify_db_instance, "DBInstance",
                                      filters_req=request_dict):
             return response
+
+    def update_tags(self, objects):
+        if len(objects) == 0:
+            return
+        for obj in objects:
+            tags = list(self.execute(self.client.list_tags_for_resource, "TagList",
+                                     filters_req={"ResourceName": obj.arn}))
+            obj.tags = tags
