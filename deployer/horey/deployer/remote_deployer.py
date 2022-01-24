@@ -132,9 +132,14 @@ class RemoteDeployer:
 
                 transport = client.get_transport()
                 sftp_client = HoreySFTPClient.from_transport(transport)
-                logger.info(f"sftp: mkdir {deployment_target.remote_target_deployment_directory_path}")
                 try:
+                    logger.info(f"sftp: mkdir {deployment_target.remote_target_deployment_directory_path}")
                     sftp_client.mkdir(deployment_target.remote_target_deployment_directory_path, ignore_existing=True)
+
+                    remote_output_dir = os.path.join(deployment_target.remote_target_deployment_directory_path,
+                                                     "output")
+                    logger.info(f"sftp: mkdir {remote_output_dir}")
+                    sftp_client.mkdir(remote_output_dir, ignore_existing=True)
                 except Exception as exception_instance:
                     raise RuntimeError(f"{deployment_target.deployment_target_address}") from exception_instance
 
