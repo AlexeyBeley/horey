@@ -99,7 +99,10 @@ class RemoteDeployer:
 
                 logger.info(f"sftp: mkdir {deployment_target.remote_target_deployment_directory_path}")
                 sftp_client.mkdir(deployment_target.remote_target_deployment_directory_path, ignore_existing=True)
-                sftp_client.mkdir(os.path.join(deployment_target.remote_target_deployment_directory_path, "output"), ignore_existing=True)
+
+                remote_output_dir = os.path.join(deployment_target.remote_target_deployment_directory_path, "output")
+                logger.info(f"sftp: mkdir {remote_output_dir}")
+                sftp_client.mkdir(remote_output_dir, ignore_existing=True)
 
                 logger.info(f"sftp: put_dir {deployment_target.remote_target_deployment_directory_path}")
                 sftp_client.put_dir(deployment_target.local_deployment_dir_path,
