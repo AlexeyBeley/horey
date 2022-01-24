@@ -3,6 +3,7 @@ import json
 import pdb
 import time
 import threading
+import stat
 
 import paramiko
 from sshtunnel import open_tunnel
@@ -49,6 +50,24 @@ class HoreySFTPClient(paramiko.SFTPClient):
                 pass
             else:
                 raise
+
+    def get_dir(self, remote_path, local_path):
+        if os.path.isfile(local_path):
+            raise RuntimeError(f"local_path must be a dir but {local_path} is a file")
+        remote_path_basename = os.path.basename(remote_path)
+        if not local_path.endswith(remote_path_basename):
+            local_path = os.path.join(local_path, remote_path_basename)
+
+        logger.info(f"Copying remote directory '{remote_path}' to local {local_path}")
+
+        os.makedirs(local_path, exist_ok=True)
+
+        remote_files_and_dirs = self.listdir_attr(path=remote_path)
+        for attribute in remote_files_and_dirs:
+            if stat.S_ISDIR(attribute.st_mode):
+                self.get_dir(os.path.join(remote_path, attribute.filename), local_path)
+                continue
+            self.get(os.path.join(remote_path, attribute.filename), os.path.join(local_path, attribute.filename))
 
 
 class RemoteDeployer:
@@ -109,7 +128,6 @@ class RemoteDeployer:
 
                 transport = client.get_transport()
                 sftp_client = HoreySFTPClient.from_transport(transport)
-
                 logger.info(f"sftp: mkdir {deployment_target.remote_target_deployment_directory_path}")
                 try:
                     sftp_client.mkdir(deployment_target.remote_target_deployment_directory_path, ignore_existing=True)
@@ -173,6 +191,9 @@ class RemoteDeployer:
 
                     sftp_client.get(step.configuration.output_file_path,
                                     os.path.join(deployment_target.local_deployment_data_dir_path, step.configuration.output_file_name))
+
+                    sftp_client.get_dir(os.path.join(step.configuration.step_scripts_dir_path, "output"),
+                                    deployment_target.local_deployment_dir_path)
                     break
                 except IOError as error_received:
                     if "No such file" not in repr(error_received):

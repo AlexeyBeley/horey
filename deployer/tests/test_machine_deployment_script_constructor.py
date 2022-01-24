@@ -3,53 +3,50 @@ import sys
 import pdb
 from unittest import mock
 import pytest
-sys.path.insert(0, os.path.abspath("../horey/deployer"))
+from shutil import copyfile
 
-tests_dir = os.path.dirname(os.path.abspath(__file__))
-
-from machine_deployment_step import MachineDeploymentStep
-
-
-def test_update_finish_status():
-    configuration_mock = mock.Mock()
-    configuration_mock.finish_status_file_name = "status_success_file"
-    step = MachineDeploymentStep(configuration_mock)
-    step.update_finish_status(tests_dir)
-    assert step.status_code == step.StatusCode.SUCCESS
-
-    configuration_mock.finish_status_file_name = "status_failure_file"
-    step = MachineDeploymentStep(configuration_mock)
-    step.update_finish_status(tests_dir)
-    assert step.status_code == step.StatusCode.FAILURE
-
-    configuration_mock.finish_status_file_name = "status_error_file"
-    step = MachineDeploymentStep(configuration_mock)
-    step.update_finish_status(tests_dir)
-    assert step.status_code == step.StatusCode.ERROR
-
-    configuration_mock.finish_status_file_name = "not_existing_file"
-    step = MachineDeploymentStep(configuration_mock)
-    step.update_finish_status(tests_dir)
-    assert step.status_code == step.StatusCode.ERROR
+TESTS_DIR = os.path.dirname(os.path.abspath(__file__))
+from horey.deployer.machine_deployment_script_constructor import MachineDeploymentScriptConstructor
 
 
-def test_update_finish_status_tmp():
-    step = MachineDeploymentStep(None)
-    os_path_exists_mock = mock.Mock()
-    os_path_exists_mock.return_value = True
+def test_init_script_file():
+    data_level_0_dir = os.path.join(TESTS_DIR, "data_dir0")
+    os.makedirs(data_level_0_dir, exist_ok=True)
+    script_path = os.path.join(data_level_0_dir, "script.sh")
+    os.remove(script_path)
+    constructor = MachineDeploymentScriptConstructor(script_path)
 
-    with mock.patch("open", file_mock):
-        step.update_finish_status()
+    assert isinstance(constructor, MachineDeploymentScriptConstructor)
+    assert os.path.exists(script_path)
 
 
-def test_update_output():
-    configuration_mock = mock.Mock()
-    configuration_mock.output_file_name = "status_success_file"
-    step = MachineDeploymentStep(configuration_mock)
-    step.update_output(tests_dir)
-    assert step.output == "SUCCESS"
+def test_add_module():
+    data_level_0_dir = os.path.join(TESTS_DIR, "data_dir0")
+    os.makedirs(data_level_0_dir, exist_ok=True)
+    script_path = os.path.join(data_level_0_dir, "script.sh")
+    os.remove(script_path)
+    constructor = MachineDeploymentScriptConstructor(script_path)
+    constructor.add_module(os.path.join(TESTS_DIR, "deployment_scripts_1", "test_script_1.sh"))
+    assert isinstance(constructor, MachineDeploymentScriptConstructor)
+
+
+def test_add_modules():
+    data_level_0_dir = os.path.join(TESTS_DIR, "data_dir0")
+    os.makedirs(data_level_0_dir, exist_ok=True)
+    script_path = os.path.join(data_level_0_dir, "script.sh")
+    os.remove(script_path)
+    constructor = MachineDeploymentScriptConstructor(script_path)
+    constructor.add_module(os.path.join(TESTS_DIR, "deployment_scripts_1", "test_script_1.sh"))
+    constructor.add_module(os.path.join(TESTS_DIR, "deployment_scripts_1", "deployment_scripts_2", "test_script_2.sh"))
+
+    constructor.add_module(os.path.join(TESTS_DIR, "deployment_scripts_1", "test_script_3.sh"),
+                           put_near_script_file=True)
+
+    assert isinstance(constructor, MachineDeploymentScriptConstructor)
 
 
 if __name__ == "__main__":
-    test_update_output()
+    #test_init_script_file()
+    #test_add_module()
+    test_add_modules()
 

@@ -72,10 +72,10 @@ class AutoScalingClient(Boto3Client):
                 self.update_auto_scaling_group_raw(update_request)
                 for _ in range(retries_count):
                     region_objects = self.get_region_auto_scaling_groups(autoscaling_group.region, names=[autoscaling_group.name])
-                    if len(region_objects[0].max_size) == autoscaling_group.max_size:
+                    if region_objects[0].max_size == autoscaling_group.max_size:
                         break
                     logger.info(f"Waiting for auto scaling group max_size change from "
-                                f"{len(region_objects[0].max_size)} to {autoscaling_group.max_size}")
+                                f"{region_objects[0].max_size} to {autoscaling_group.max_size}")
                     time.sleep(sleep_time)
                 else:
                     raise RuntimeError(f"Failed to change auto scaling group '{autoscaling_group.name}' "
@@ -125,7 +125,6 @@ class AutoScalingClient(Boto3Client):
             return response
 
     def update_auto_scaling_group_raw(self, request_dict):
-        pdb.set_trace()
         logger.info(f"Modifying Auto Scaling Group: {request_dict}")
         for response in self.execute(self.client.update_auto_scaling_group, None, raw_data=True, filters_req=request_dict):
             return response

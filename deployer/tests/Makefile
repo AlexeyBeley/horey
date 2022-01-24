@@ -1,21 +1,20 @@
 SHELL := /bin/bash
-ROOT_DIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
-SRC_DIR := ${ROOT_DIR}/../horey/deployer
 
-REMOTE_DEPLOYER_SCRIPT_PATH := ${ROOT_DIR}/script_deployer_test.sh
-STEP_SCRIPT_CONFIGURATION_FILE_PATH=${ROOT_DIR}/script_deployer_configuration.json
-STEP_SCRIPT_FINISH_STATUS_FILE=${ROOT_DIR}/deploy_step_finish_status
-STEP_SCRIPT_OUTPUT_FILE_PATH=${ROOT_DIR}/deploy_step_output.txt
+TESTS_DIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
+HOREY_DIR_PATH := $(realpath ${TESTS_DIR}/../..)
+BUILD_DIR := ${HOREY_DIR_PATH}/build
+BUILD_TMP_DIR := ${BUILD_DIR}/_build
+VENV_DIR := $(realpath ${BUILD_TMP_DIR}/_venv)
 
-test:
-	${SRC_DIR}/remote_step_executor.sh ${REMOTE_DEPLOYER_SCRIPT_PATH} ${STEP_SCRIPT_CONFIGURATION_FILE_PATH} ${STEP_SCRIPT_FINISH_STATUS_FILE} ${STEP_SCRIPT_OUTPUT_FILE_PATH}
+bla:
+	echo ${VENV_DIR}
 
-VENV_BIN_DIR := ${ROOT_DIR}/../build/_build/_venv/bin
+test_%: FORCE build
+	source ${VENV_DIR}/bin/activate &&\
+	python3 ${TESTS_DIR}/${@}
 
-aws_api_init_and_cache-%:
-	source ${VENV_BIN_DIR}/activate &&\
-	export PYTHONPATH=${AWS_API_DIR} &&\
-	python3 ${AWS_API_DIR}/aws_api_actor.py --action init_and_cache --target $(subst aws_api_init_and_cache-,,$@) --configuration_file_full_path ${CONFIGURATION_FILE_PATH}
+FORCE: ;
 
-test_machine_deployment_step:
-	python3 ./test_machine_deployment_step.py
+build:
+	cd ${HOREY_DIR_PATH} &&\
+	make raw_install_from_source-deployer
