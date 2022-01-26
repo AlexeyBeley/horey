@@ -90,7 +90,7 @@ class DockerAPI:
 
     def copy_image(self, src_repo_with_tag, dst_repo_name, copy_all_tags=True):
         image = self.pull_image(src_repo_with_tag)
-
+        print(image)
         repo, tag = self.split_repo_with_tag(src_repo_with_tag)
         if copy_all_tags:
             logger.info(f"Preparing dst tags: {image.attrs['RepoTags']}")
