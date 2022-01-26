@@ -85,7 +85,7 @@ class DockerAPI:
         logger.info(f"Pulling image from repository {repo}")
         if tag is not None and repo.find(":") > -1:
             raise RuntimeError(f"Using both repo tag and tag kwarg: {repo}, {tag}")
-        image = self.client.images.pull(repository=repo, tag=tag, decode=True)
+        image = self.client.images.pull(repository=repo, tag=tag, all_tags=True, decode=True)
         return image
 
     def copy_image(self, src_repo_with_tag, dst_repo_name, copy_all_tags=True):
@@ -93,6 +93,7 @@ class DockerAPI:
 
         repo, tag = self.split_repo_with_tag(src_repo_with_tag)
         if copy_all_tags:
+            logger.info(f"Preparing dst tags: {image.attrs['RepoTags']}")
             dst_tags = [f"{dst_repo_name}:{self.split_repo_with_tag(image_tag)[1]}"
                         for image_tag in image.attrs["RepoTags"] if image_tag.startswith(repo)]
         else:

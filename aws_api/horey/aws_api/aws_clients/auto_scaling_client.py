@@ -65,6 +65,8 @@ class AutoScalingClient(Boto3Client):
             time.sleep(sleep_time)
             region_objects = self.get_region_auto_scaling_groups(autoscaling_group.region,
                                                                      names=[autoscaling_group.name])
+        if len(region_objects) > 1:
+            raise RuntimeError(f"{autoscaling_group.name} found > 1: {len(region_objects)}")
 
         if len(region_objects) > 0:
             update_request = region_objects[0].generate_update_request(autoscaling_group)
