@@ -2602,3 +2602,6 @@ class AWSAPI:
     
     def provision_servicediscovery_service(self, service):
         self.servicediscovery_client.provision_service(service)
+    
+    def provision_sqs_queue(self, sqs_queue):
+        self.sqs_client.provision_queue(sqs_queue)

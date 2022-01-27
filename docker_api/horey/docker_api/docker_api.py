@@ -87,9 +87,8 @@ class DockerAPI:
             raise RuntimeError(f"Using both repo tag and tag kwarg: {repo}, {tag}")
         images = self.client.images.pull(repository=repo, tag=tag, all_tags=True, decode=True)
         for image in images:
-            logger.info(image.attrs['RepoTags'])
-            logger.info(image.__dict__)
-            if repo in image.attrs['RepoTags']:
+            logger.info(f"Image tags: {image.attrs['RepoTags']}")
+            if repo in image.attrs["RepoTags"]:
                 return image
         raise RuntimeError(f"Image not found: {repo}, tag = {tag}")
 

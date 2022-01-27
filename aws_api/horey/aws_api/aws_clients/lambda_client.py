@@ -86,9 +86,14 @@ class LambdaClient(Boto3Client):
         for response in self.execute(self.client.get_function, None, raw_data=True, filters_req={"FunctionName": aws_lambda.name}, exception_ignore_callback=lambda x: "ResourceNotFoundException" in repr(x)):
             del response["ResponseMetadata"]
             aws_lambda.update_from_raw_get_function_response(response)
+            break
+        else:
+            return False
 
         if full_information:
             self.update_lambda_full_information(aws_lambda)
+
+        return True
 
     def provision_lambda(self, desired_aws_lambda: AWSLambda, force=False):
         AWSAccount.set_aws_region(desired_aws_lambda.region)
@@ -96,14 +101,15 @@ class LambdaClient(Boto3Client):
         current_lambda = AWSLambda({})
         current_lambda.name = desired_aws_lambda.name
         current_lambda.region = desired_aws_lambda.region
-
         self.update_lambda_information(current_lambda, full_information=True)
 
         if current_lambda.arn is None:
             response = self.provision_lambda_raw(desired_aws_lambda.generate_create_request())
             del response["ResponseMetadata"]
             desired_aws_lambda.update_from_raw_response(response)
-        elif not force:
+            return
+
+        if not force:
             return
 
         update_function_configuration_request = current_lambda.generate_update_function_configuration_request(desired_aws_lambda)
@@ -117,9 +123,14 @@ class LambdaClient(Boto3Client):
         if update_code_request is not None:
             self.update_function_code_raw(update_code_request)
 
-        update_permission_request = current_lambda.generate_add_permission_request(desired_aws_lambda)
-        if update_permission_request is not None:
+        add_permission_requests, remove_permission_requests = current_lambda.generate_modify_permissions_requests(
+            desired_aws_lambda)
+
+        for update_permission_request in add_permission_requests:
             self.add_permission_raw(update_permission_request)
+
+        for update_permission_request in remove_permission_requests:
+            self.remove_permission_raw(update_permission_request)
 
         self.update_lambda_information(desired_aws_lambda, full_information=True)
 
@@ -141,6 +152,13 @@ class LambdaClient(Boto3Client):
         logger.info(f"Updating lambda configuration: {request_dict}")
         for response in self.execute(self.client.update_function_configuration, None, raw_data=True,
                                      filters_req=request_dict):
+            return response
+
+    def remove_permission_raw(self, request_dict):
+        logger.info(f"Removing permissions from lambda: {request_dict}")
+        pdb.set_trace()
+        for response in self.execute(self.client.remove_permission, None, raw_data=True,
+                                 filters_req=request_dict):
             return response
 
     def add_permission_raw(self, request_dict):

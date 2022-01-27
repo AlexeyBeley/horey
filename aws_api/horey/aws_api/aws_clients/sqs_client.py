@@ -47,21 +47,25 @@ class SQSClient(Boto3Client):
             obj = SQSQueue(dict_src)
             final_result.append(obj)
             if full_information:
-                filters_req = {"QueueUrl": obj.queue_url, "AttributeNames": ['All']}
-                for dict_attributes in self.execute(self.client.get_queue_attributes, "Attributes", filters_req=filters_req):
-                    obj.update_attributes_from_raw_response(dict_attributes)
-
-                filters_req = {"QueueUrl": obj.queue_url}
-                for dict_attributes in self.execute(self.client.list_queue_tags, None, raw_data=True, filters_req=filters_req):
-                    obj.update_tags_from_raw_response(dict_attributes)
+                self.update_queue_information(obj)
 
         return final_result
 
-    def provision_queue(self, queue):
+    def update_queue_information(self, sqs_queue):
+        filters_req = {"QueueUrl": sqs_queue.queue_url, "AttributeNames": ['All']}
+        for dict_attributes in self.execute(self.client.get_queue_attributes, "Attributes", filters_req=filters_req):
+            sqs_queue.update_attributes_from_raw_response(dict_attributes)
+
+        filters_req = {"QueueUrl": sqs_queue.queue_url}
+        for dict_attributes in self.execute(self.client.list_queue_tags, None, raw_data=True, filters_req=filters_req):
+            sqs_queue.update_tags_from_raw_response(dict_attributes)
+
+    def provision_queue(self, queue: SQSQueue):
         region_queues = self.get_region_queues(queue.region)
         for region_queue in region_queues:
             if region_queue.get_tagname(ignore_missing_tag=True) == queue.get_tagname():
                 queue.update_from_raw_response(region_queue.dict_src)
+                self.update_queue_information(queue)
                 return
 
         AWSAccount.set_aws_region(queue.region)

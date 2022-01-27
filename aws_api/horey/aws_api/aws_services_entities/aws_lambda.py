@@ -4,8 +4,6 @@ AWS Lambda representation
 import json
 from enum import Enum
 
-import sys
-import os
 import pdb
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
@@ -165,7 +163,8 @@ class AWSLambda(AwsObject):
         request["Runtime"] = self.runtime
         request["Tags"] = self.tags
         request["Environment"] = self.environment
-        request["VpcConfig"] = self.vpc_config
+        if self.vpc_config is not None:
+            request["VpcConfig"] = self.vpc_config
 
         return request
 
@@ -209,7 +208,7 @@ class AWSLambda(AwsObject):
 
         return request
 
-    def generate_add_permission_request(self, desired_aws_lambda):
+    def generate_modify_permissions_requests(self, desired_aws_lambda):
         """
         response = client.add_permission(
         Action='lambda:InvokeFunction',
@@ -229,26 +228,46 @@ class AWSLambda(AwsObject):
 
         desired_aws_lambda.policy["Statement"][0]["Resource"] = self.arn
 
-        if self.policy is not None:
-            self_policy = json.loads(self.policy)
-            if len(self_policy["Statement"]) != 1:
-                raise NotImplementedError(self_policy["Statement"])
+        if self.policy is None:
+            requests = []
+            for statement in desired_aws_lambda.policy["Statement"]:
+                request = dict()
+                request["FunctionName"] = self.name
+                request["StatementId"] = statement["Sid"]
+                request["Action"] = statement["Action"]
+                request["Principal"] = statement["Principal"]["Service"]
+                request["SourceArn"] = statement["Condition"]["ArnLike"]["AWS:SourceArn"]
+                requests.append(request)
+            return requests
 
-            for key, value in desired_aws_lambda.policy["Statement"][0].items():
-                logger.info(f'{key}, {desired_aws_lambda.policy["Statement"][0][key]}, {self_policy["Statement"][0][key]}')
-                if desired_aws_lambda.policy["Statement"][0][key] != self_policy["Statement"][0][key]:
+        add_permissions = []
+        remove_permissions = []
+        self_policy = json.loads(self.policy)
+        for self_statement in self_policy["Statement"]:
+            for desired_statement in desired_aws_lambda.policy["Statement"]:
+                if desired_statement["Sid"] == self_statement["Sid"]:
                     break
             else:
-                return
-        request = dict()
+                request = dict()
+                request["FunctionName"] = self.name
+                request["StatementId"] = self_statement["Sid"]
+                remove_permissions.append(request)
+                continue
 
-        request["FunctionName"] = self.name
-        request["StatementId"] = desired_policy["Statement"][0]["Sid"]
-        request["Action"] = desired_policy["Statement"][0]["Action"]
-        request["Principal"] = desired_policy["Statement"][0]["Principal"]["Service"]
-        request["SourceArn"] = desired_policy["Statement"][0]["Condition"]["ArnLike"]["AWS:SourceArn"]
-
-        return request
+            for key, desired_value in desired_statement.items():
+                logger.info(f'{key}, {desired_aws_lambda.policy["Statement"][0][key]}, {self_policy["Statement"][0][key]}')
+                if desired_value != self_statement[key]:
+                    break
+            else:
+                continue
+            request = dict()
+            request["FunctionName"] = self.name
+            request["StatementId"] = desired_statement["Sid"]
+            request["Action"] = desired_statement["Action"]
+            request["Principal"] = desired_statement["Principal"]["Service"]
+            request["SourceArn"] = desired_statement["Condition"]["ArnLike"]["AWS:SourceArn"]
+            add_permissions.append(request)
+        return add_permissions, remove_permissions
 
     def get_status(self):
         return {enum_value.value: enum_value for _, enum_value in self.Status.__members__.items()}[self.last_update_status]
