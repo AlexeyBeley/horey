@@ -2086,12 +2086,13 @@ class AWSAPI:
                                 f" multiple entries with same cidr {entry.cidr}")
             cidrs.append(entry.cidr)
 
-        descriptions = []
-        for entry in managed_prefix_list.entries:
-            if entry.description in descriptions:
-                raise Exception(f"{managed_prefix_list.name} [{managed_prefix_list.region.region_mark}] -"
+        if not declarative:
+            descriptions = []
+            for entry in managed_prefix_list.entries:
+                if entry.description in descriptions:
+                    raise Exception(f"{managed_prefix_list.name} [{managed_prefix_list.region.region_mark}] -"
                                 f" multiple entries with same description '{entry.description}'")
-            descriptions.append(entry.description)
+                descriptions.append(entry.description)
 
         self.ec2_client.provision_managed_prefix_list(managed_prefix_list, declarative=declarative)
 
