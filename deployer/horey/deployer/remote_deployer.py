@@ -319,6 +319,8 @@ class RemoteDeployer:
         if block_to_deploy.bastion_address is None:
             with paramiko.SSHClient() as client:
                 client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                logger.info(f"Connecting directly to {block_to_deploy.deployment_target_address}, "
+                            f"using key at {block_to_deploy.deployment_target_ssh_key_path}")
                 client.connect(
                     block_to_deploy.deployment_target_address,
                     port=22,
@@ -409,6 +411,8 @@ class RemoteDeployer:
             if all([check_callback(target) for target in targets]):
                 break
 
+            logger.info(f"Finished: {[target.deployment_target_address for target in targets if check_callback(target)]}"
+                        f", not finished: {[target.deployment_target_address for target in targets if not check_callback(target)]}")
             logger.info(f"remote_deployer wait_to_finish going to sleep for {sleep_time} seconds")
             time.sleep(sleep_time)
         else:
