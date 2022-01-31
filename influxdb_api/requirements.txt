@@ -1,0 +1,3 @@
+horey.configuration_policy>=1.0.0
+horey.logger>=1.0.0
+requests
