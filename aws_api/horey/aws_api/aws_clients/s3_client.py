@@ -806,6 +806,7 @@ class S3Client(Boto3Client):
         filters_req = {"Bucket": bucket.name}
         AWSAccount.set_aws_region(bucket.region)
         try:
+            logger.info(f"Get bucket location {filters_req}")
             for bucket_region_mark in self.execute(self.client.get_bucket_location, "LocationConstraint",
                                                    filters_req=filters_req):
                 if bucket.region.region_mark != bucket_region_mark:
