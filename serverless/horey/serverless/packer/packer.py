@@ -73,8 +73,12 @@ class Packer:
         bash_cmd = ["/bin/bash", "./tmp"]
         return self.execute(bash_cmd)
 
+    @staticmethod
+    def get_site_packages_directory(venv_dir_path, python_version):
+        return os.path.join(venv_dir_path, "lib", python_version, "site-packages")
+
     def zip_venv_site_packages(self, zip_file_name, venv_dir_path, python_version):
-        package_dir = os.path.join(venv_dir_path, "lib", python_version, "site-packages")
+        package_dir = self.get_site_packages_directory(venv_dir_path, python_version)
         shutil.make_archive(zip_file_name, 'zip', root_dir=package_dir)
 
     def add_files_to_zip(self, zip_file_name, files_paths):
