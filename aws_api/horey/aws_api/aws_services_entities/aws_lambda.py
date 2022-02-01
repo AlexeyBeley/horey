@@ -197,16 +197,21 @@ class AWSLambda(AwsObject):
         if desired_aws_lambda.code is None:
             return
 
-        if desired_aws_lambda.code.get("ZipFile") is None:
-            return
-
-        request["ZipFile"] = desired_aws_lambda.code.get("ZipFile")
         request["FunctionName"] = self.name
         request["Publish"] = True
         request["DryRun"] = False
         request["RevisionId"] = self.revision_id
 
-        return request
+        if desired_aws_lambda.code.get("ZipFile") is not None:
+            request["ZipFile"] = desired_aws_lambda.code.get("ZipFile")
+            return request
+
+        if desired_aws_lambda.code.get("S3Bucket") is not None:
+            request["S3Bucket"] = desired_aws_lambda.code.get("S3Bucket")
+            request["S3Key"] = desired_aws_lambda.code.get("S3Key")
+            return request
+
+        raise RuntimeError(self.name)
 
     def generate_modify_permissions_requests(self, desired_aws_lambda):
         """

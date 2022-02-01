@@ -28,6 +28,11 @@ class Kapacitor(InfluxDBObject):
         super().__init__(dict_src)
 
 
+class Rule(InfluxDBObject):
+    def __init__(self, dict_src):
+        super().__init__(dict_src)
+
+
 class InfluxDBAPI:
     def __init__(self, configuration: InfluxDBAPIConfigurationPolicy = None):
         self.base_address = configuration.server_address
@@ -59,10 +64,13 @@ class InfluxDBAPI:
             )
         return response.json()
 
-    def create_request(self, request, is_link):
+    def create_request(self, request, is_link=False):
         """
         http://127.0.0.1:8888/chronograf/v1/sources
         """
+        if is_link:
+            return f"{self.base_address}{request}"
+
         return f"{self.base_address}/chronograf/{self.version}/{request}"
 
     def init_kapacitors(self):
@@ -92,9 +100,14 @@ class InfluxDBAPI:
         """
         if not self.kapacitors:
             self.init_kapacitors()
-
+        objs = []
         for kapacitor in self.kapacitors:
             response = self.get(kapacitor.links["rules"], is_link=True)
 
+            for dict_src in response["rules"]:
+                obj = Rule(dict_src)
+                objs.append(obj)
+            pdb.set_trace()
 
+        self.rules = objs
         pdb.set_trace()
