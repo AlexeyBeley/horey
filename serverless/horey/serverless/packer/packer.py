@@ -55,6 +55,11 @@ class Packer:
         command = f"pip3 install -r {package_setup_path}/requirements.txt"
         return self.execute_in_venv(command, venv_path)
 
+    def uninstall_packages(self, venv_path, packages):
+        for package_name in packages:
+            command = f"pip3 uninstall {package_name}"
+            self.execute_in_venv(command, venv_path)
+
     def execute_in_venv(self, command, venv_path):
         logger.info(f"Executing {command} in venv")
         script_content = f"!#/bin/bash\n"
