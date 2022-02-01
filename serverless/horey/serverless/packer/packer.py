@@ -57,6 +57,7 @@ class Packer:
 
     def uninstall_packages(self, venv_path, packages):
         for package_name in packages:
+            logger.info(f"Uninstalling package: {package_name} in venv: {venv_path}")
             command = f"pip3 uninstall {package_name}"
             self.execute_in_venv(command, venv_path)
 
