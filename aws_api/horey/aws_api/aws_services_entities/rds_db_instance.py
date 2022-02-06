@@ -30,6 +30,7 @@ class RDSDBInstance(AwsObject):
 
         init_options = {
                         "DBInstanceIdentifier": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+                        "DBInstanceArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
                         "DBInstanceClass": self.init_default_attr,
                         "Engine": self.init_default_attr,
                         "DBInstanceStatus": self.init_default_attr,
@@ -63,7 +64,6 @@ class RDSDBInstance(AwsObject):
                         "DomainMemberships": self.init_default_attr,
                         "CopyTagsToSnapshot": self.init_default_attr,
                         "MonitoringInterval": self.init_default_attr,
-                        "DBInstanceArn": self.init_default_attr,
                         "IAMDatabaseAuthenticationEnabled": self.init_default_attr,
                         "PerformanceInsightsEnabled": self.init_default_attr,
                         "DeletionProtection": self.init_default_attr,

@@ -154,6 +154,7 @@ class AWSAPI:
         self.network_interfaces = []
         self.iam_policies = []
         self.ec2_instances = []
+        self.ec2_volumes = []
         self.spot_fleet_requests = []
         self.s3_buckets = []
         self.load_balancers = []
@@ -419,6 +420,21 @@ class AWSAPI:
 
         self.ec2_instances = objects
 
+    def init_ec2_volumes(self, from_cache=False, cache_file=None, region=None):
+        """
+        Init ec2 volumes.
+
+        @param from_cache:
+        @param cache_file:
+        @return:
+        """
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, EC2Instance)
+        else:
+            objects = self.ec2_client.get_all_volumes(region=region)
+
+        self.ec2_volumes = objects
+        
     def init_spot_fleet_requests(self, from_cache=False, cache_file=None):
         """
         Init spot fleet requests instances.
@@ -2346,7 +2362,10 @@ class AWSAPI:
             raise NotImplementedError(certificate.domain_validation_options)
 
         hosted_zones = self.route53_client.get_all_hosted_zones(name=master_hosted_zone_name)
-        if len(hosted_zones) != 1:
+        pdb.set_trace()
+        if len(hosted_zones) == 0:
+            raise ValueError(f"Can not find hosted zone: '{master_hosted_zone_name}'")
+        if len(hosted_zones) > 1:
             raise ValueError(f"More then one hosted_zones with name '{master_hosted_zone_name}'")
         hosted_zone = hosted_zones[0]
 

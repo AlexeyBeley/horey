@@ -162,7 +162,11 @@ class ConfigurationPolicy:
             json.dump(dict_values, file_handler, indent=4)
 
     def init_from_policy(self, configuration, ignore_undefined=False):
+        self_definable_attrs = [attr_name[1:] for attr_name in self.__dict__ if attr_name.startswith("_")]
         for attr_name, value in configuration.convert_to_dict(ignore_undefined=ignore_undefined).items():
+            if attr_name not in self_definable_attrs:
+                logger.info(f"Skipping attribute {attr_name} from {type(configuration)} policy")
+                continue
             try:
                 log_line = f"Init attribute '{attr_name}' from {type(configuration)} policy"
                 setattr(self, attr_name, value)

@@ -5,6 +5,7 @@ import time
 import base64
 from horey.aws_api.aws_services_entities.subnet import Subnet
 from horey.aws_api.aws_services_entities.ec2_instance import EC2Instance
+from horey.aws_api.aws_services_entities.ec2_volume import EC2Volume
 from horey.aws_api.aws_services_entities.vpc import VPC
 from horey.aws_api.aws_services_entities.availability_zone import AvailabilityZone
 
@@ -170,6 +171,36 @@ class EC2Client(Boto3Client):
             final_result.extend(instance['Instances'])
 
         return [EC2Instance(instance) for instance in final_result]
+
+    def get_all_volumes(self, region=None):
+        """
+        Get all ec2 volumes in current region.
+        :return:
+        """
+
+        if region is not None:
+            return self.get_region_volumes(region)
+
+        final_result = list()
+
+        for region in AWSAccount.get_aws_account().regions.values():
+            final_result += self.get_region_volumes(region)
+
+        return final_result
+
+    def get_region_volumes(self, region, filters=None):
+        AWSAccount.set_aws_region(region)
+        final_result = []
+
+        if filters is not None:
+            filters_req = {"Filters": filters}
+        else:
+            filters_req = None
+
+        for dict_src in self.execute(self.client.describe_volumes, "Volumes", filters_req=filters_req):
+            final_result.append(EC2Volume(dict_src))
+
+        return final_result
 
     def get_all_security_groups(self, full_information=False):
         """

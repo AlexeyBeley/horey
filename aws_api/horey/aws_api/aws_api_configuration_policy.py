@@ -188,6 +188,14 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_ec2_instances_cache_file.setter
     def aws_api_ec2_instances_cache_file(self, value):
         raise ValueError(value)
+    
+    @property
+    def aws_api_ec2_volumes_cache_file(self):
+        return os.path.join(self.aws_api_ec2_cache_dir, "volumes.json")
+
+    @aws_api_ec2_volumes_cache_file.setter
+    def aws_api_ec2_volumes_cache_file(self, value):
+        raise ValueError(value)
 
     @property
     def aws_api_spot_fleet_requests_cache_file(self):

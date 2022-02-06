@@ -107,7 +107,5 @@ class InfluxDBAPI:
             for dict_src in response["rules"]:
                 obj = Rule(dict_src)
                 objs.append(obj)
-            pdb.set_trace()
 
         self.rules = objs
-        pdb.set_trace()

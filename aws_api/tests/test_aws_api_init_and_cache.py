@@ -414,6 +414,13 @@ def test_init_and_cache_ecs_clusters():
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_ec2_volumes():
+    aws_api.init_ec2_volumes()
+    aws_api.cache_objects(aws_api.ec2_volumes, configuration.aws_api_ec2_volumes_cache_file)
+    assert isinstance(aws_api.ec2_volumes, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_auto_scaling_groups():
     aws_api.init_auto_scaling_groups()
     aws_api.cache_objects(aws_api.auto_scaling_groups, configuration.aws_api_auto_scaling_groups_cache_file)
@@ -525,8 +532,8 @@ if __name__ == "__main__":
     #test_init_and_cache_ec2_launch_template_versions()
     #test_init_and_cache_ecs_task_definitions()
     #test_add_managed_region()
-    test_init_and_cache_load_balancers()
-    test_init_and_cache_target_groups()
+    #test_init_and_cache_load_balancers()
+    #test_init_and_cache_target_groups()
     #test_init_and_cache_acm_certificates()
     #test_init_and_cache_rds_db_instances()
     #test_init_and_cache_rds_db_clusters()
@@ -549,3 +556,4 @@ if __name__ == "__main__":
     #test_init_and_cache_lambdas()
     #test_init_and_cache_lambda_event_source_mappings()
     #test_init_and_cache_servicediscovery_namespaces()
+    test_init_and_cache_ec2_volumes()
