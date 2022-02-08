@@ -94,11 +94,11 @@ class ACMClient(Boto3Client):
                                      filters_req=request_dict):
             return response
 
-    def get_certificate_by_tags(self, region, dict_tags):
+    def get_certificate_by_tags(self, region, dict_tags, ignore_missing_tag):
         ret = []
         for cert in self.yield_region_certificates(region, full_information=True):
             for tag_key, tag_value in dict_tags.items():
-                if cert.get_tag(tag_key) != tag_value:
+                if cert.get_tag(tag_key, ignore_missing_tag=True) != tag_value:
                     break
             else:
                 ret.append(cert)

@@ -11,7 +11,7 @@ do
   ssh x-${COUNTER} << 'ENDSSH'
   hostname=$(cat /etc/hostname)
   echo ${hostname}
-  cat /var/log/x.log | grep "2022-01-27"  >> /tmp/x_${hostname}.log
+  cat /var/log/x.log | grep "ERROR"  >> /tmp/x_${hostname}.log
 ENDSSH
 done
 
