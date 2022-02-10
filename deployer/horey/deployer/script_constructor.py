@@ -3,7 +3,8 @@ import os
 import stat
 from shutil import copyfile
 
-class MachineDeploymentScriptConstructor:
+
+class ScriptConstructor:
     IMPORTS_SECTION_SEPARATOR = "#_______________imports_section_end__________\n"
     MAIN_SECTION_SEPARATOR = "#_______________main_section_end__________\n"
 

@@ -2,21 +2,21 @@
 
 set -xe
 
-TEMPLATE=$1
-COUNT=$2
-SCRIPT_PATH=$3
+#run_remote.sh script_path host_base_name last_counter
+script_path=$1
+host_base_name=$2
+last_counter=$3
 
-for COUNTER in 0 1 2 3 4 5 6 7 8 9 10 11 12 13
+script_name=$(basename ${script_path})
+
+for COUNTER in $(seq 0 1 "$last_counter")
 do
-  ssh x-${COUNTER} << 'ENDSSH'
+  scp "${script_path}" "${host_base_name}${COUNTER}:/tmp/adhoc.sh"
+  ssh "${host_base_name}${COUNTER}" << 'ENDSSH'
   hostname=$(cat /etc/hostname)
   echo ${hostname}
-  cat /var/log/x.log | grep "ERROR"  >> /tmp/x_${hostname}.log
+  sudo chmod +x /tmp/adhoc.sh
+  /tmp/adhoc.sh
 ENDSSH
-done
 
-
-for COUNTER in 0 1 2 3 4 5 6 7 8 9 10 11 12 13
-do
-  scp x-${COUNTER}:/tmp/x_*.log /tmp/
 done

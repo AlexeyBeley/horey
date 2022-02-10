@@ -56,10 +56,26 @@ def test_recreate_kibana_index():
     elasticsearch_api.init_indices()
     elasticsearch_api.recreate_kibana_index()
 
+
+def test_create_alarm():
+    elasticsearch_api.init_indices()
+    elasticsearch_api.create_alarm()
+
+
+def test_create_monitor():
+    elasticsearch_api.create_monitor()
+
+
+def test_init_monitors():
+    elasticsearch_api.init_monitors()
+    elasticsearch_api.cache_objects(elasticsearch_api.monitors, "monitors.json")
 # endregion
 
 
 if __name__ == "__main__":
     #test_recreate_kibana_index()
-    test_clear_indices()
+    #test_clear_indices()
+    #test_create_monitor()
+    test_init_monitors()
+
 
