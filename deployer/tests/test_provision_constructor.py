@@ -1,7 +1,8 @@
 from horey.deployer.provision_constructor import ProvisionConstructor
 import horey.deployer.system_functions.swap
+import os
 
-DEPLOYMENT_DIR = "provision_constructor_deployment"
+DEPLOYMENT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "provision_constructor_deployment")
 
 
 def test_init():
