@@ -13,6 +13,7 @@ from horey.deployer.machine_deployment_step import MachineDeploymentStep
 from typing import List
 from contextlib import contextmanager
 from io import StringIO
+from horey.deployer.replacement_engine import ReplacementEngine
 
 from horey.h_logger import get_logger
 
@@ -73,6 +74,7 @@ class HoreySFTPClient(paramiko.SFTPClient):
 class RemoteDeployer:
     def __init__(self, configuration=None):
         self.configuration = configuration
+        self.replacement_engine = ReplacementEngine()
 
     def deploy_blocks(self, blocks_to_deploy: List[MachineDeploymentBlock]):
         self.provision_remote_deployer_infrastructure(blocks_to_deploy)
@@ -223,33 +225,10 @@ class RemoteDeployer:
             logger.info(f"Step finished successfully output in: '{step.configuration.output_file_name}'")
 
     def perform_recursive_replacements(self, replacements_base_dir_path, string_replacements):
-        if not os.path.exists(replacements_base_dir_path):
-            raise RuntimeError(f"No such directory '{replacements_base_dir_path}'")
-
-        for root, _, filenames in os.walk(replacements_base_dir_path):
-            for filename in filenames:
-                if filename.startswith("template_"):
-                    self.perform_file_string_replacements(root, filename, string_replacements)
+        self.replacement_engine.perform_recursive_replacements(replacements_base_dir_path, string_replacements)
 
     def perform_file_string_replacements(self, root, filename, string_replacements):
-        logger.info(f"Performing replacements on template dir: '{root}' name: '{filename}'")
-        with open(os.path.join(root, filename)) as file_handler:
-            str_file = file_handler.read()
-
-        for key in sorted(string_replacements.keys(), key=lambda key_string: len(key_string), reverse=True):
-            if not key.startswith("STRING_REPLACEMENT_"):
-                raise ValueError("Key must start with STRING_REPLACEMENT_")
-            logger.info(f"Performing replacement in template: {filename}, key: {key}")
-            value = string_replacements[key]
-            str_file = str_file.replace(key, value)
-
-        new_filename = filename[len("template_"):]
-
-        with open(os.path.join(root, new_filename), "w+") as file_handler:
-            file_handler.write(str_file)
-
-        if "STRING_REPLACEMENT_" in str_file:
-            raise ValueError(f"Not all STRING_REPLACEMENT_ were replaced in {os.path.join(root, new_filename)}")
+        self.replacement_engine.perform_file_string_replacements(root, filename, string_replacements)
 
     def begin_provisioning_deployment_code(self, deployment_targets: List[MachineDeploymentBlock]):
         for deployment_target in deployment_targets:

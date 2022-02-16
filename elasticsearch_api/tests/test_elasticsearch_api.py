@@ -29,7 +29,6 @@ elasticsearch_api = ElasticsearchAPI(configuration=configuration)
 #@pytest.mark.skip(reason="IAM policies will be inited explicitly")
 def test_init_indices():
     elasticsearch_api.init_indices()
-    pdb.set_trace()
     logger.info(f"len(indexes) = {len(elasticsearch_api.indices)}")
     logger.info(list(elasticsearch_api.indices.keys()))
     assert isinstance(elasticsearch_api.indices, dict)
@@ -69,13 +68,53 @@ def test_create_monitor():
 def test_init_monitors():
     elasticsearch_api.init_monitors()
     elasticsearch_api.cache_objects(elasticsearch_api.monitors, "monitors.json")
+
+
+def test_init_destinations():
+    elasticsearch_api.init_destinations()
+    #elasticsearch_api.cache_objects(elasticsearch_api.destinations, "destinations.json")
+
+
+def test_init_monitors_from_cache():
+    elasticsearch_api.init_monitors(from_cache=True, cache_filename="monitors.json")
+
+
+def test_copy_monitors_from_cache():
+    elasticsearch_api.init_monitors(from_cache=True, cache_filename="monitors.json")
+    for monitor in elasticsearch_api.monitors:
+        if monitor.name == "test":
+            break
+    else:
+        raise Exception("asdf")
+    pdb.set_trace()
+    elasticsearch_api.create_monitor(monitor)
+
+
+def test_init_destinations_from_cache():
+    elasticsearch_api.init_destinations()
+    elasticsearch_api.cache_objects(elasticsearch_api.destinations, "destinations.json")
+
+
+def test_provision_monitor():
+    elasticsearch_api.init_monitors(from_cache=True, cache_filename="monitors.json")
+    pdb.set_trace()
+    elasticsearch_api.monitors
+    #cloud_hive_runner_error
+
+
 # endregion
 
 
 if __name__ == "__main__":
+    #test_init_indices()
     #test_recreate_kibana_index()
     #test_clear_indices()
     #test_create_monitor()
-    test_init_monitors()
+    #test_init_monitors()
+    #test_init_destinations()
+    #test_init_monitors_from_cache()
+    test_copy_monitors_from_cache()
+    #test_init_destinations()
+    #test_provision_monitor()
 
 

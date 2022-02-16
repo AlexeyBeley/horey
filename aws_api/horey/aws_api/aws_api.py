@@ -2362,7 +2362,7 @@ class AWSAPI:
             raise NotImplementedError(certificate.domain_validation_options)
 
         hosted_zones = self.route53_client.get_all_hosted_zones(name=master_hosted_zone_name)
-        pdb.set_trace()
+
         if len(hosted_zones) == 0:
             raise ValueError(f"Can not find hosted zone: '{master_hosted_zone_name}'")
         if len(hosted_zones) > 1:
@@ -2403,7 +2403,9 @@ class AWSAPI:
         raise TimeoutError(f"Finished waiting {max_time} seconds for certificate validation. Finished with status: {certificate.status}")
 
     def provision_rds_db_cluster(self, cluster, snapshot=None):
-        self.rds_client.provision_db_cluster(cluster, snapshot_id=snapshot.id)
+        snapshot_id = snapshot.id if snapshot is not None else None
+        self.rds_client.provision_db_cluster(cluster, snapshot_id=snapshot_id)
+
 
     def get_security_group_by_vpc_and_name(self, vpc, name, full_information=False):
         filters = [
@@ -2625,3 +2627,8 @@ class AWSAPI:
     
     def provision_sqs_queue(self, sqs_queue):
         self.sqs_client.provision_queue(sqs_queue)
+
+    def get_vpc_peerings(self, vpc=None):
+        objects = self.ec2_client.get_all_vpc_peerings(region=vpc.region)
+        pdb.set_trace()
+        return [peering for peering in objects if peering.peering]

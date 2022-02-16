@@ -472,7 +472,7 @@ class EC2Client(Boto3Client):
         if vpc.id is None:
             AWSAccount.set_aws_region(vpc.region.region_mark)
             response = self.provision_vpc_raw(vpc.generate_create_request())
-            vpc.id = response["VpcId"]
+            vpc.update_from_raw_create(response)
 
         for request in vpc.generate_modify_vpc_attribute_requests():
             self.modify_vpc_attribute_raw(request)
@@ -940,6 +940,7 @@ class EC2Client(Boto3Client):
         self.dispose_launch_template_raw(launch_template.generate_dispose_request())
 
     def dispose_launch_template_raw(self, request_dict):
-        for response in self.execute(self.client.delete_launch_template, "LaunchTemplate", filters_req=request_dict):
+        for response in self.execute(self.client.delete_launch_template, "LaunchTemplate", filters_req=request_dict,
+                                     exception_ignore_callback=lambda x: "NotFoundException" in repr(x)):
             return response
 
