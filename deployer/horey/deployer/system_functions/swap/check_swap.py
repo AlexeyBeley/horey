@@ -14,10 +14,8 @@ action_manager = ActionsManager()
 
 # region check_swappiness
 def check_swappiness_parser():
-    description = "Update component"
+    description = "check_swappiness"
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument("--use_bastion", required=True, type=str, help=f"")
-
     parser.epilog = f"Usage: python3 {__file__} [options]"
     return parser
 
@@ -41,7 +39,7 @@ action_manager.register_action("check_swappiness", check_swappiness_parser, chec
 
 # region check_swap_size
 def check_swap_size_parser():
-    description = "Update component"
+    description = "check_swap_size"
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("--swap_size", required=True, type=str, help=f"GB swap_size")
 
