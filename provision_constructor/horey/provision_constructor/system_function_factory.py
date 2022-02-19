@@ -4,6 +4,7 @@ import shutil
 import sys
 import uuid
 
+from horey.pip_api.pip_api import PipAPI
 
 class SystemFunctionFactory:
     REGISTERED_FUNCTIONS = dict()
@@ -19,10 +20,14 @@ class SystemFunctionFactory:
             self.provisioner_script_name = provisioner_script_name
             self.root_deployment_dir = root_deployment_dir
             self.deployment_dir = os.path.join(root_deployment_dir, self.__module__[self.__module__.rfind(".")+1:])
+            self.pip_api = PipAPI(venv_dir_path=os.path.join(root_deployment_dir, "venv"))
 
         def move_system_function_to_deployment_dir(self):
-            pdb.set_trace()
             shutil.copytree(os.path.dirname(sys.modules[self.__module__].__file__), self.deployment_dir)
+            requirements_path = os.path.join(self.deployment_dir, "requirements.txt")
+            horey_requirements_path = os.path.join(self.deployment_dir, "horey_requirements.txt")
+            self.pip_api.install_requirements(requirements_path)
+            pdb.set_trace()
 
         def add_system_function_to_provisioner_script(self, force=False):
             system_functions_provisioners = []
@@ -75,3 +80,13 @@ class SystemFunctionFactory:
                        "fi\n\n")
 
             return ret
+
+        def add_system_function_unittest(self):
+            """
+            Add system unit test base class with it's requirements
+            @return:
+            """
+            move("/Users/alexey.beley/private/horey/provision_constructor/horey/provision_constructor/system_functions/system_function_unittest.py",
+                 self.deployment_dir
+                 )
+            self.pip_api.install_requirements("/Users/alexey.beley/private/horey/provision_constructor/horey/provision_constructor/system_functions/requirements.txt")

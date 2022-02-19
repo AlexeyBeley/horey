@@ -5,6 +5,7 @@ from horey.provision_constructor.system_function_factory import SystemFunctionFa
 from horey.provision_constructor.system_functions import *
 import os
 import shutil
+import subprocess
 
 
 class ProvisionConstructor:
@@ -23,6 +24,10 @@ class ProvisionConstructor:
                                      'SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"\n',
                                      'cd "${SCRIPT_DIR}"\n\n',
                                      "------------------------------\n"])
+
+        venv_path = os.path.join(self.deployment_dir, "_venv")
+        os.makedirs(venv_path, exist_ok=True)
+        subprocess.run([f"python3.8 -m venv {venv_path}"], shell=True)
 
     def add_system_function(self, module, **kwargs):
         SystemFunctionFactory.REGISTERED_FUNCTIONS[module.__name__](self.deployment_dir,

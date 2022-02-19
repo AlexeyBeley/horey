@@ -24,6 +24,14 @@ class Package:
             raise ValueError(requirement_str)
 
 
+class Package:
+    def __init__(self, str_src):
+        if "==" in str_src:
+            self.name, self.version = str_src.split("==")
+        else:
+            raise ValueError(f"'{str_src}'")
+
+
 class PipAPI:
     def __init__(self, venv_dir_path=None):
         self.packages = None
@@ -34,6 +42,8 @@ class PipAPI:
         lines = response.split("\n")
         objs = []
         for line in lines:
+            if len(line) == 0:
+                continue
             objs.append(Package(line))
         self.packages = objs
 
@@ -42,3 +52,6 @@ class PipAPI:
             command = f"source {os.path.join(self.venv_dir_path, 'bin/activate')} && {command}"
         ret = subprocess.run([command], capture_output=True, shell=True)
         return ret.stdout.decode().strip("\n")
+
+    def install_requirements(self, requirements_file_path):
+        pdb.set_trace()

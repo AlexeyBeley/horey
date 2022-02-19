@@ -17,5 +17,5 @@ FORCE: ;
 
 build:
 	cd ${HOREY_DIR_PATH} &&\
-	make raw_install_from_source-provision_constructor
-	#make recursive_install_from_source_local_venv-provision_constructor
+	make recursive_install_from_source_local_venv-provision_constructor
+	#make raw_install_from_source-provision_constructor

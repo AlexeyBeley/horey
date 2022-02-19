@@ -19,6 +19,8 @@ class Swap(SystemFunctionFactory.SystemFunction):
                                                                                     str(self.ram_size_in_gb)})
         self.add_system_function_to_provisioner_script()
 
+        self.add_system_function_unittest()
+
     def init_swap_size_from_ram(self):
         self.swap_size_in_gb = self.ram_size_in_gb * 2
 
