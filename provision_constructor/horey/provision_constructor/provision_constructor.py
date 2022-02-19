@@ -1,8 +1,8 @@
 #!/usr/bin/python
 import pdb
 
-from horey.deployer.system_function_factory import SystemFunctionFactory
-from horey.deployer.system_functions import *
+from horey.provision_constructor.system_function_factory import SystemFunctionFactory
+from horey.provision_constructor.system_functions import *
 import os
 import shutil
 
