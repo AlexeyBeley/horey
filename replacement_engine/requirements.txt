@@ -1,1 +1,1 @@
-horey.h_logger<=1.0.0
+horey.h_logger>=1.0.0
