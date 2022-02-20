@@ -1,4 +1,4 @@
-from .system_function_unittest import SystemFunctionUnittest
+from system_function_unittest import SystemFunctionUnittest
 from horey.common_utils.actions_manager import ActionsManager
 import argparse
 import pdb
@@ -13,7 +13,19 @@ class Check(SystemFunctionUnittest):
         ret = self.run_shell(["ls", "-l", "/dev/null"])
 
     def check_swappiness(self, arguments):
+        self.check_swappiness_config()
+        self.check_swappiness_proc(arguments.proc_swappiness_file)
+
+    def check_swappiness_proc(self, proc_output_file_path):
+        with open(proc_output_file_path, "r") as file_handler:
+            content = file_handler.read()
         pdb.set_trace()
+
+    def check_swappiness_config(self):
+        pdb.set_trace()
+        """
+        #2. cat /etc/sysctl.conf | grep vm.swappiness=1
+        """
 
 
 action_manager = ActionsManager()
