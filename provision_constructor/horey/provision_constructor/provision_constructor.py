@@ -12,7 +12,10 @@ class ProvisionConstructor:
     PROVISIONER_SCRIPT_NAME = "main.sh"
     PROVISIONER_CONSTRUCTOR_SUB_DIR = "provision_constructor_deployment_dir"
 
-    def __init__(self, base_dir_path):
+    def __init__(self, base_dir_path, horey_repo_path=None):
+        self.horey_repo_path = horey_repo_path
+        SystemFunctionFactory.SystemFunction.HOREY_REPO_PATH = self.horey_repo_path
+
         self.deployment_dir = os.path.join(base_dir_path, ProvisionConstructor.PROVISIONER_CONSTRUCTOR_SUB_DIR)
         if os.path.exists(self.deployment_dir):
             shutil.rmtree(self.deployment_dir)

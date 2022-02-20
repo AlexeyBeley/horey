@@ -30,6 +30,11 @@ init_venv_dir: create_build_env
 prepare_package_wheel-%: init_venv_dir
 	${BUILD_DIR}/create_wheel.sh $(subst prepare_package_wheel-,,$@)
 
+install_wheel-%: init_venv_dir raw_install_wheel-%
+	echo "done installing $(subst install_wheel-,,$@)"
+raw_install_wheel-%: package_source-%
+	pip3 install --force-reinstall ${BUILD_TMP_DIR}/$(subst raw_install_wheel-,,$@)/dist/*.whl
+
 recursive_install_from_source_local_venv-%: init_venv_dir
 	source ${VENV_DIR}/bin/activate &&\
 	${BUILD_DIR}/recursive_install_from_source.sh --root_dir ${ROOT_DIR} --package_name horey.$(subst recursive_install_from_source_local_venv-,,$@)
@@ -87,3 +92,10 @@ test_zabbix_api: install_from_source-zabbix_api
 	source ${VENV_DIR}/bin/activate &&\
 	cd ${ROOT_DIR}/zabbix_api/tests &&\
 	python3.8 test_zabbix_api.py
+
+zip_env:
+	cd "/Users/alexey.beley/private/horey/provision_constructor/tests/provision_constructor_deployment" &&\
+	zip -r ${ROOT_DIR}/myfiles.zip "provision_constructor_deployment_dir"
+
+unzip_env:
+	unzip myfiles.zip -d /tmp/

@@ -1,8 +1,7 @@
-from horey.provision_constructor.system_function_unittest import SystemFunctionUnittest
+from .system_function_unittest import SystemFunctionUnittest
 from horey.common_utils.actions_manager import ActionsManager
 import argparse
 import pdb
-import subprocess
 
 
 class Check(SystemFunctionUnittest):
@@ -13,7 +12,7 @@ class Check(SystemFunctionUnittest):
         pdb.set_trace()
         ret = self.run_shell(["ls", "-l", "/dev/null"])
 
-    def check_swappiness(self):
+    def check_swappiness(self, arguments):
         pdb.set_trace()
 
 
@@ -24,12 +23,13 @@ action_manager = ActionsManager()
 def check_swappiness_parser():
     description = "check_swappiness"
     parser = argparse.ArgumentParser(description=description)
+    parser.add_argument("--proc_swappiness_file", required=True, type=str, help=f"cat /proc/sys/vm/swappiness output file")
     parser.epilog = f"Usage: python3 {__file__} [options]"
     return parser
 
 
 def check_swappiness(arguments) -> None:
-    Check().check_swappiness()
+    Check().check_swappiness(arguments)
 
 
 action_manager.register_action("check_swappiness", check_swappiness_parser, check_swappiness)
