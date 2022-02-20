@@ -8,24 +8,31 @@ class Check(SystemFunctionUnittest):
     def __init__(self):
         super().__init__()
 
-    def check_swap_size(self, **kwargs):
+    def check_swap_size(self, swap_size=None):
+        """
+        #collect
+        #swapon --show
+
+        #output
+        #NAME       TYPE   SIZE USED PRIO
+        #/swapfile  file 1024M   0B   -2
+        @param kwargs:
+        @return:
+        """
+        ret = self.run_bash("swapon --show")
         pdb.set_trace()
-        ret = self.run_shell(["ls", "-l", "/dev/null"])
 
-    def check_swappiness(self, arguments):
+    def check_swappiness(self):
         self.check_swappiness_config()
-        self.check_swappiness_proc(arguments.proc_swappiness_file)
+        self.check_swappiness_proc()
 
-    def check_swappiness_proc(self, proc_output_file_path):
-        with open(proc_output_file_path, "r") as file_handler:
-            content = file_handler.read()
+    def check_swappiness_proc(self):
+        ret = self.run_bash("cat /proc/sys/vm/swappiness")
         pdb.set_trace()
 
     def check_swappiness_config(self):
+        ret = self.run_bash("cat /etc/sysctl.conf | grep vm.swappiness=1")
         pdb.set_trace()
-        """
-        #2. cat /etc/sysctl.conf | grep vm.swappiness=1
-        """
 
 
 action_manager = ActionsManager()
