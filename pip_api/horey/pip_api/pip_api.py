@@ -83,8 +83,10 @@ class PipAPI:
     def install_horey_requirement(self, requirement):
         _, name = requirement.name.split(".")
         ret = self.execute(f"cd {self.horey_repo_path} && make install_wheel-{name}")
-        pdb.set_trace()
-        if ret.split("\n")[-1] != f"done installing {name}":
+        lines = ret.split("\n")
+
+        index = -2 if "Leaving directory" in lines[-1] else -1
+        if lines[index] != f"done installing {name}":
             raise RuntimeError(f"Could not install {name} from source code:\n {ret}")
 
     def requirement_satisfied(self, requirement):
