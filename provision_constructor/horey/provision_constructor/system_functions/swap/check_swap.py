@@ -28,11 +28,14 @@ class Check(SystemFunctionUnittest):
 
     def check_swappiness_proc(self):
         ret = self.run_bash("cat /proc/sys/vm/swappiness")
-        pdb.set_trace()
+        if ret != "1":
+            raise RuntimeError(f"cat /proc/sys/vm/swappiness = {ret} != 1")
 
     def check_swappiness_config(self):
-        ret = self.run_bash("cat /etc/sysctl.conf | grep vm.swappiness=1")
-        pdb.set_trace()
+        file_content = "vm.swappiness=1"
+        ret = self.run_bash(f"cat /etc/sysctl.conf | grep {file_content}")
+        if ret != file_content:
+            raise RuntimeError(f"can not find {file_content} in /etc/sysctl.conf")
 
 
 action_manager = ActionsManager()
@@ -42,13 +45,12 @@ action_manager = ActionsManager()
 def check_swappiness_parser():
     description = "check_swappiness"
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument("--proc_swappiness_file", required=True, type=str, help=f"cat /proc/sys/vm/swappiness output file")
     parser.epilog = f"Usage: python3 {__file__} [options]"
     return parser
 
 
 def check_swappiness(arguments) -> None:
-    Check().check_swappiness(arguments)
+    Check().check_swappiness()
 
 
 action_manager.register_action("check_swappiness", check_swappiness_parser, check_swappiness)
