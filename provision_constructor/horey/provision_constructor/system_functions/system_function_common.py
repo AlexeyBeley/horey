@@ -7,15 +7,17 @@ class SystemFunctionCommon:
     def __init__(self):
         super().__init__()
 
-    def add_line_to_file(self, line=None, file_path=None):
-        pdb.set_trace()
+    @staticmethod
+    def add_line_to_file(line=None, file_path=None):
         if not line.endswith("\n"):
             line = line + "\n"
 
-        with open(file_path, "a+") as file_handler:
+        with open(file_path, "r") as file_handler:
             lines = file_handler.readlines()
             if line in lines:
                 return
+
+        with open(file_path, "a") as file_handler:
             file_handler.write(line)
 
 
@@ -35,7 +37,7 @@ def add_line_to_file_parser():
 
 def add_line_to_file(arguments) -> None:
     arguments_dict = vars(arguments)
-    SystemFunctionCommon().add_line_to_file(**arguments_dict)
+    SystemFunctionCommon.add_line_to_file(**arguments_dict)
 
 
 action_manager.register_action("add_line_to_file", add_line_to_file_parser, add_line_to_file)
