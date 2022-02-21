@@ -8,17 +8,15 @@ class SystemFunctionCommon:
         super().__init__()
 
     def add_line_to_file(self, line=None, file_path=None):
-        """
-        #collect
-        #swapon --show
-
-        #output
-        #NAME       TYPE   SIZE USED PRIO
-        #/swapfile  file 1024M   0B   -2
-        @param kwargs:
-        @return:
-        """
         pdb.set_trace()
+        if not line.endswith("\n"):
+            line = line + "\n"
+
+        with open(file_path, "a+") as file_handler:
+            lines = file_handler.readlines()
+            if line in lines:
+                return
+            file_handler.write(line)
 
 
 action_manager = ActionsManager()

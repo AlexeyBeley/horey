@@ -8,5 +8,3 @@ cd "${SCRIPT_DIR}"
 #cat /proc/sys/vm/swappiness >> proc_swappiness.output
 source ../_venv/bin/activate
 python check_swap.py --action check_swappiness
-
-

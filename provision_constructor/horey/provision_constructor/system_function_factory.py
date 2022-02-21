@@ -39,13 +39,13 @@ class SystemFunctionFactory:
                 if file_name.startswith("provision_"):
                     script_path = os.path.join(self.deployment_dir, file_name)
                     relative_script_path = os.path.relpath(script_path, start=self.root_deployment_dir)
-                    system_functions_chmods.append(f"chmod +x {relative_script_path}\n")
-                    system_functions_provisioners.append(relative_script_path+"\n")
+                    system_functions_chmods.append(f"sudo chmod +x {relative_script_path}\n")
+                    system_functions_provisioners.append("sudo" + relative_script_path + "\n")
                 elif file_name.startswith("test_"):
                     script_path = os.path.join(self.deployment_dir, file_name)
                     relative_script_path = os.path.relpath(script_path, start=self.root_deployment_dir)
-                    system_functions_chmods.append(f"chmod +x {relative_script_path}\n")
-                    system_functions_unittests.append(relative_script_path+"\n")
+                    system_functions_chmods.append(f"sudo chmod +x {relative_script_path}\n")
+                    system_functions_unittests.append("sudo" + relative_script_path + "\n")
 
             provisioner_script_path = os.path.join(self.root_deployment_dir, self.provisioner_script_name)
             with open(provisioner_script_path, "a") as file_handler:
