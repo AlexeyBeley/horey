@@ -90,3 +90,12 @@ class SystemFunctionFactory:
             system_functions_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "system_functions")
             shutil.copy(os.path.join(system_functions_dir, "system_function_unittest.py"), self.deployment_dir)
             self.pip_api.install_requirements(os.path.join(system_functions_dir, "requirements.txt"))
+
+        def add_system_function_common(self):
+            """
+            Add system unit test base class with it's requirements
+            @return:
+            """
+            system_functions_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "system_functions")
+            shutil.copy(os.path.join(system_functions_dir, "system_function_common.py"), self.deployment_dir)
+            self.pip_api.install_requirements(os.path.join(system_functions_dir, "requirements.txt"))

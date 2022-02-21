@@ -53,7 +53,7 @@ class Check(SystemFunctionUnittest):
         file_content = "vm.swappiness=1"
         ret = self.run_bash(f"cat /etc/sysctl.conf | grep {file_content}")
         if ret != file_content:
-            raise RuntimeError(f"can not find {file_content} in /etc/sysctl.conf")
+            raise RuntimeError(f"can not find {file_content} in /etc/sysctl.conf: {ret}")
 
 
 action_manager = ActionsManager()
