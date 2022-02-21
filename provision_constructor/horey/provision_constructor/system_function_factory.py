@@ -50,35 +50,35 @@ class SystemFunctionFactory:
             provisioner_script_path = os.path.join(self.root_deployment_dir, self.provisioner_script_name)
             with open(provisioner_script_path, "a") as file_handler:
                 file_handler.writelines(system_functions_chmods)
-                file_handler.write("------------------------------\n")
+                file_handler.write("#------------------------------\n")
                 if not force:
                     preprovision_tests_lines = self.generate_preprovisioning_tests(system_functions_unittests)
                     file_handler.writelines(preprovision_tests_lines)
                 file_handler.writelines(system_functions_provisioners)
                 file_handler.writelines(system_functions_unittests)
-                file_handler.write("------------------------------\n")
+                file_handler.write("#------------------------------\n")
 
         def generate_preprovisioning_tests(self, system_functions_unittests):
             function_name = f"tests_{uuid.uuid4()}"
-            ret = [f"function {function_name} ()" + "  { \n    set +e\n"]
+            ret = [f"function {function_name} ()" + "  { \n"]
             for command in system_functions_unittests:
                 ret.append("    " + command)
                 ret.append("    result=$?\n"
                            "    if [ \"${result}\" -ne 0 ]\n"
                            "    then\n"
-                           "        set -e\n"
                            "        return ${result}\n"
                            "    fi\n\n")
 
             ret.append("    return 0\n}\n\n")
 
-            ret.append(f"{function_name}\n")
+            ret.append(f"set +e\n{function_name}\n")
 
             ret.append("result=$?\n"
                        "if [ \"${result}\" -eq 0 ]\n"
                        "then\n"
                        "    exit 0\n"
-                       "fi\n\n")
+                       "fi\n"
+                       "set -e\n\n")
 
             return ret
 

@@ -26,7 +26,7 @@ class ProvisionConstructor:
                                      "set -xe\n\n",
                                      'SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"\n',
                                      'cd "${SCRIPT_DIR}"\n\n',
-                                     "------------------------------\n"])
+                                     "#------------------------------\n"])
 
         venv_path = os.path.join(self.deployment_dir, "_venv")
         os.makedirs(venv_path, exist_ok=True)
