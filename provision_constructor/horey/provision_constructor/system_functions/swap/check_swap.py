@@ -20,7 +20,25 @@ class Check(SystemFunctionUnittest):
         @return:
         """
         ret = self.run_bash("swapon --show")
-        pdb.set_trace()
+        lines = ret.split("\n")
+        header_vars = ["NAME", "TYPE", "SIZE", "USED", "PRIO"]
+        for header_var in header_vars:
+            if header_var not in lines[0]:
+                raise RuntimeError(f"Wrong output of 'swapon --show': {ret}")
+        for line in lines[1:]:
+            if line.startswith("/swapfile"):
+                while "  " in line:
+                    line = line.replace("  ", " ")
+                _filename, _type, size, _used_size, _prio = line.split(" ")
+
+                if size.endswith("G"):
+                    size = size[:-1]
+                else:
+                    raise RuntimeError(size)
+                if size == str(swap_size):
+                    return True
+                break
+        raise RuntimeError(f"'swapon --show' output: {ret}")
 
     def check_swappiness(self):
         self.check_swappiness_config()
