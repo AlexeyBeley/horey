@@ -1,4 +1,5 @@
 import pdb
+import shutil
 import subprocess
 import uuid
 import os
@@ -72,6 +73,30 @@ class SystemFunctionCommon:
 
         with open(file_path, "a+") as file_handler:
             file_handler.write(line)
+
+    @staticmethod
+    def provision_file(src_file_path, dst_location):
+        """
+
+        @param src_file_path:
+        @param dst_location:
+        @return: True if copied else False
+        """
+        pdb.set_trace()
+        if os.path.isdir(dst_location):
+            dst_location = os.path.join(dst_location, os.path.basename(src_file_path))
+        if os.path.exists(dst_location):
+            with open(dst_location, "r") as file_handler:
+                dst_content = file_handler.read()
+            with open(src_file_path, "r") as file_handler:
+                src_content = file_handler.read()
+
+            if src_content == dst_content:
+                return False
+
+        shutil.copy(src_file_path, dst_location)
+        return True
+
 
     def check_local_port(self):
         pdb.set_trace()
