@@ -8,17 +8,19 @@ class LogstashRemoteProvisioner(SystemFunctionCommon):
     def __init__(self):
         super().__init__()
 
-    def add_logstash_configuration_files_parser(self):
+    @staticmethod
+    def add_logstash_configuration_files_parser():
         parser = argparse.ArgumentParser()
         return parser
 
-    def add_logstash_configuration_files(self):
+    @staticmethod
+    def add_logstash_configuration_files():
         pdb.set_trace()
 
 
 LogstashRemoteProvisioner.ACTION_MANAGER.register_action("add_logstash_configuration_files",
-                                                      LogstashProvisioner.add_logstash_configuration_files_parser,
-                                                      LogstashProvisioner.add_logstash_configuration_files)
+                                                      LogstashRemoteProvisioner.add_logstash_configuration_files_parser,
+                                                      LogstashRemoteProvisioner.add_logstash_configuration_files)
 
 
 if __name__ == "__main__":
