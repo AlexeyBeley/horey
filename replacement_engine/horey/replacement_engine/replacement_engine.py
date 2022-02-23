@@ -42,7 +42,6 @@ class ReplacementEngine:
 
     @staticmethod
     def perform_comment_line_replacement(file_path, comment_line, replacement_string, keep_comment=False):
-        pdb.set_trace()
         if not comment_line.endswith("\n"):
             comment_line += "\n"
 

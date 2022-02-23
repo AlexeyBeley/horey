@@ -56,12 +56,17 @@ class PipAPI:
         self.packages = objs
 
     def execute(self, command):
+        file_name = None
         if self.venv_dir_path is not None:
             file_name = f"tmp-{str(uuid.uuid4())}.sh"
             with open(file_name, "w") as file_handler:
                 file_handler.write(f"source {os.path.join(self.venv_dir_path, 'bin/activate')}\n{command}")
                 command = f"/bin/bash {file_name}"
         ret = subprocess.run([command], capture_output=True, shell=True)
+
+        if file_name:
+            os.remove(file_name)
+
         return ret.stdout.decode().strip("\n")
 
     def install_requirements(self, requirements_file_path):
