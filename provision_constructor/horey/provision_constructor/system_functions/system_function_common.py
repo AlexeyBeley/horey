@@ -14,6 +14,17 @@ class SystemFunctionCommon:
         return
 
     @staticmethod
+    def empty_parser():
+        return argparse.ArgumentParser()
+
+    @staticmethod
+    def current_subpath(subpath=None):
+        cur_dir = os.path.dirname(os.path.abspath(__file__))
+        if subpath is None:
+            return cur_dir
+        return os.path.join(cur_dir, *(subpath.split("/")))
+
+    @staticmethod
     def run_bash(command):
         file_name = f"tmp-{str(uuid.uuid4())}.sh"
         with open(file_name, "w") as file_handler:
@@ -82,7 +93,6 @@ class SystemFunctionCommon:
         @param dst_location:
         @return: True if copied else False
         """
-        pdb.set_trace()
         if os.path.isdir(dst_location):
             dst_location = os.path.join(dst_location, os.path.basename(src_file_path))
         if os.path.exists(dst_location):
@@ -96,7 +106,6 @@ class SystemFunctionCommon:
 
         shutil.copy(src_file_path, dst_location)
         return True
-
 
     def check_local_port(self):
         pdb.set_trace()

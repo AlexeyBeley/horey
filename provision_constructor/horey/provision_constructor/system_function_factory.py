@@ -22,7 +22,8 @@ class SystemFunctionFactory:
         def __init__(self, root_deployment_dir, provisioner_script_name, force=False):
             self.provisioner_script_name = provisioner_script_name
             self.root_deployment_dir = root_deployment_dir
-            self.deployment_dir = os.path.join(root_deployment_dir, self.__module__[self.__module__.rfind(".")+1:])
+            subdirs = self.__module__[len("horey.provision_constructor.system_functions."):self.__module__.rfind(".")].split(".")
+            self.deployment_dir = os.path.join(root_deployment_dir, *subdirs)
             self.pip_api = PipAPI(venv_dir_path=os.path.join(root_deployment_dir, "_venv"), horey_repo_path=self.HOREY_REPO_PATH)
             self.add_system_function(force=force)
 
@@ -31,7 +32,7 @@ class SystemFunctionFactory:
             self.add_system_function_to_provisioner_script(force=force)
 
         def move_system_function_to_deployment_dir(self):
-            shutil.copytree(os.path.dirname(sys.modules[self.__module__].__file__), self.deployment_dir)
+            shutil.copytree(os.path.dirname(sys.modules[self.__module__].__file__), self.deployment_dir, dirs_exist_ok=True)
             requirements_path = os.path.join(self.deployment_dir, "requirements.txt")
             self.pip_api.install_requirements(requirements_path)
 

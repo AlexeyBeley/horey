@@ -3,5 +3,5 @@ cd "${SCRIPT_DIR}"
 
 
 source ../_venv/bin/activate
-python logstash_remote_provisioner.py --action add_logstash_configuration_files
+python provisioner.py --action add_logstash_configuration_files
 
