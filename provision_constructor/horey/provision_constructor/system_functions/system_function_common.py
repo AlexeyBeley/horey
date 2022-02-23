@@ -62,12 +62,15 @@ class SystemFunctionCommon:
         if not line.endswith("\n"):
             line = line + "\n"
 
-        with open(file_path, "r") as file_handler:
-            lines = file_handler.readlines()
-            if line in lines:
-                return
+        try:
+            with open(file_path, "r") as file_handler:
+                lines = file_handler.readlines()
+                if line in lines:
+                    return
+        except FileNotFoundError:
+            pass
 
-        with open(file_path, "a") as file_handler:
+        with open(file_path, "a+") as file_handler:
             file_handler.write(line)
 
     def check_local_port(self):
