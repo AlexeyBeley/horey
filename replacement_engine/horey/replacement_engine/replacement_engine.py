@@ -1,4 +1,5 @@
 import os
+import pdb
 
 from horey.h_logger import get_logger
 
@@ -38,3 +39,21 @@ class ReplacementEngine:
 
         if "STRING_REPLACEMENT_" in str_file:
             raise ValueError(f"Not all STRING_REPLACEMENT_ were replaced in {os.path.join(root, new_filename)}")
+
+    @staticmethod
+    def perform_comment_line_replacement(file_path, comment_line, replacement_string, keep_comment=False):
+        pdb.set_trace()
+        if not comment_line.endswith("\n"):
+            comment_line += "\n"
+
+        with open(file_path, "r") as file_handler:
+            lines = file_handler.readlines()
+
+        if keep_comment:
+            lines.insert(lines.index(comment_line), replacement_string)
+        else:
+            lines[lines.index(comment_line)] = replacement_string
+
+        with open(file_path, "w") as file_handler:
+            file_handler.writelines(lines)
+

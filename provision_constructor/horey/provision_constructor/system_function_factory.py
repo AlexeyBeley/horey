@@ -12,18 +12,23 @@ class SystemFunctionFactory:
 
     @staticmethod
     def register(cls):
-        name = cls.__module__
+        name = cls.__module__[len("horey.provision_constructor.system_functions."):]
         package_name = name[:name.rfind(".")]
         SystemFunctionFactory.REGISTERED_FUNCTIONS[package_name] = cls
 
     class SystemFunction:
         HOREY_REPO_PATH = None
 
-        def __init__(self, root_deployment_dir, provisioner_script_name):
+        def __init__(self, root_deployment_dir, provisioner_script_name, force=False):
             self.provisioner_script_name = provisioner_script_name
             self.root_deployment_dir = root_deployment_dir
             self.deployment_dir = os.path.join(root_deployment_dir, self.__module__[self.__module__.rfind(".")+1:])
             self.pip_api = PipAPI(venv_dir_path=os.path.join(root_deployment_dir, "_venv"), horey_repo_path=self.HOREY_REPO_PATH)
+            self.add_system_function(force=force)
+
+        def add_system_function(self, force=False):
+            self.move_system_function_to_deployment_dir()
+            self.add_system_function_to_provisioner_script(force=force)
 
         def move_system_function_to_deployment_dir(self):
             shutil.copytree(os.path.dirname(sys.modules[self.__module__].__file__), self.deployment_dir)
@@ -82,13 +87,13 @@ class SystemFunctionFactory:
 
             return ret
 
-        def add_system_function_unittest(self):
+        def add_system_function_common(self):
             """
             Add system unit test base class with it's requirements
             @return:
             """
             system_functions_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "system_functions")
-            shutil.copy(os.path.join(system_functions_dir, "system_function_unittest.py"), self.deployment_dir)
+            shutil.copy(os.path.join(system_functions_dir, "system_function_common.py"), self.deployment_dir)
             self.pip_api.install_requirements(os.path.join(system_functions_dir, "requirements.txt"))
 
         def add_system_function_common(self):
