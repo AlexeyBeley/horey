@@ -23,22 +23,36 @@ class ReplacementEngine:
     def perform_file_string_replacements(root, filename, string_replacements):
         logger.info(f"Performing replacements on template dir: '{root}' name: '{filename}'")
         with open(os.path.join(root, filename)) as file_handler:
-            str_file = file_handler.read()
+            file_contents = file_handler.read()
 
+        try:
+            new_file_contents = ReplacementEngine.perform_raw_string_replacements(file_contents, string_replacements)
+        except ReplacementEngine.UnresolvedReplacementsError as exception_instance:
+            raise ReplacementEngine.UnresolvedReplacementsError(f"Replacing file contents of {os.path.join(root, filename)}")\
+                from exception_instance
+
+        new_filename = filename[len("template_"):]
+        try:
+            new_filename = ReplacementEngine.perform_raw_string_replacements(new_filename, string_replacements)
+        except ReplacementEngine.UnresolvedReplacementsError as exception_instance:
+            raise ReplacementEngine.UnresolvedReplacementsError(f"Replacing file name {os.path.join(root, filename)}")\
+                from exception_instance
+
+        with open(os.path.join(root, new_filename), "w+") as file_handler:
+            file_handler.write(new_file_contents)
+
+    @staticmethod
+    def perform_raw_string_replacements(str_src, string_replacements):
         for key in sorted(string_replacements.keys(), key=lambda key_string: len(key_string), reverse=True):
             if not key.startswith("STRING_REPLACEMENT_"):
                 raise ValueError("Key must start with STRING_REPLACEMENT_")
-            logger.info(f"Performing replacement in template: {filename}, key: {key}")
+            logger.info(f"Performing replacement in template: key: {key}")
             value = string_replacements[key]
-            str_file = str_file.replace(key, value)
+            str_src = str_src.replace(key, value)
+        if "STRING_REPLACEMENT_" in str_src:
+            raise ReplacementEngine.UnresolvedReplacementsError(f"Not all STRING_REPLACEMENT_ were replaced in {str_src}")
 
-        new_filename = filename[len("template_"):]
-
-        with open(os.path.join(root, new_filename), "w+") as file_handler:
-            file_handler.write(str_file)
-
-        if "STRING_REPLACEMENT_" in str_file:
-            raise ValueError(f"Not all STRING_REPLACEMENT_ were replaced in {os.path.join(root, new_filename)}")
+        return str_src
 
     @staticmethod
     def perform_comment_line_replacement(file_path, comment_line, replacement_string, keep_comment=False):
@@ -56,3 +70,12 @@ class ReplacementEngine:
         with open(file_path, "w") as file_handler:
             file_handler.writelines(lines)
 
+    class UnresolvedReplacementsError(ValueError):
+        pass
+
+# ls /Users/alexey.beley/private/horey/build/_build/_venv/lib/python3.8/site-packages/horey/provision_constructor/system_functions/logstash/input_file
+#    /Users/alexey.beley/private/horey/build/_build/_venv/bin/../lib/python*/site-packages/horey/provision_constructor
+
+
+
+# /Users/alexey.beley/private/horey/build/_build/_venv/bin/../lib/python*/site-packages/horey/provision_constructor

@@ -1,1 +1,1 @@
-from .output_opensearch import OutputOpensearch
+from .builder import Builder
