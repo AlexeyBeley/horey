@@ -26,9 +26,10 @@ def test_add_system_function_logstash():
     provision_constructor.add_system_function("logstash.configuration",  pipeline_names=["main"])
     provision_constructor.add_system_function("logstash.input_file", pipe_name="main", input_file_path="/var/log/test.log")
     logstash_test_dir = os.path.join(my_dir, "logstash")
-    provision_constructor.add_system_function("logstash.filter", pipe_name="main", filter_file_path=os.path.join(logstash_test_dir, "filter/filter.sample"))
-    provision_constructor.add_system_function("logstash.output_file", file_path="/var/log/logstash/docker.log")
-    provision_constructor.add_system_function("logstash.output_opensearch")
+    provision_constructor.add_system_function("logstash.filter", pipe_name="main", filter_file_path=os.path.join(logstash_test_dir, "filter.sample"))
+    provision_constructor.add_system_function("logstash.output_file", pipe_name="main", file_path="/var/log/logstash/docker.log")
+    index = "horey-%{+YYYY.MM}"
+    provision_constructor.add_system_function("logstash.output_opensearch", pipe_name="main", server_address="1.1.1.1", user="user", password="pass", index=index)
     provision_constructor.add_system_function("systemd")
     provision_constructor.add_system_function("systemd.override")
     provision_constructor.add_system_function("logstash.reset_service", any=["logstash.input_file",

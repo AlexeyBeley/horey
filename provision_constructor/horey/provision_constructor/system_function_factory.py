@@ -5,7 +5,9 @@ import sys
 import uuid
 
 from horey.pip_api.pip_api import PipAPI
+from horey.h_logger import get_logger
 
+logger = get_logger()
 
 class SystemFunctionFactory:
     REGISTERED_FUNCTIONS = dict()
@@ -14,6 +16,7 @@ class SystemFunctionFactory:
     def register(cls):
         name = cls.__module__[len("horey.provision_constructor.system_functions."):]
         package_name = name[:name.rfind(".")]
+        logger.info(f"Registering system function {package_name}")
         SystemFunctionFactory.REGISTERED_FUNCTIONS[package_name] = cls
 
     class SystemFunction:
@@ -32,7 +35,6 @@ class SystemFunctionFactory:
             self.add_system_function_to_provisioner_script(force=force)
 
         def move_system_function_to_deployment_dir(self):
-            pdb.set_trace()
             shutil.copytree(os.path.dirname(sys.modules[self.__module__].__file__), self.deployment_dir, dirs_exist_ok=True)
             requirements_path = os.path.join(self.deployment_dir, "requirements.txt")
             self.pip_api.install_requirements(requirements_path)

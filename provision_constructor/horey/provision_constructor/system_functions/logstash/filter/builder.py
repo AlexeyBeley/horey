@@ -11,9 +11,7 @@ class Builder(SystemFunctionFactory.SystemFunction):
         super().__init__(root_deployment_dir, provisioner_script_name, force=force)
         self.add_system_function_common()
         self.replacement_engine = ReplacementEngine()
-        pdb.set_trace()
         self.replacement_engine = ReplacementEngine()
-        pdb.set_trace()
         shutil.copy(filter_file_path, self.deployment_dir)
         self.replacement_engine.perform_recursive_replacements(self.deployment_dir,
                                                                {"STRING_REPLACEMENT_PIPELINE_NAME": pipe_name,

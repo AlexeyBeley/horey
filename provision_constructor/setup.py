@@ -26,6 +26,7 @@ setup(
              "system_functions/**/*.txt",
              "system_functions/**/**/*.conf",
              "system_functions/**/**/*.yml",
+             "system_functions/**/**/*.txt",
              "system_functions/**/**/*.sh",
              "system_functions/*.txt"
              ],
