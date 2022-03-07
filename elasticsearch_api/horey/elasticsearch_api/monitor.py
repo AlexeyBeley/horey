@@ -31,3 +31,19 @@ class Monitor:
             ret[key] = getattr(self, key)
 
         return ret
+
+    def init_from_dict(self, dict_src):
+        for key, value in dict_src.items():
+            setattr(self, key, value)
+
+    def generate_create_request(self):
+        request = {
+            "type": "monitor",
+            "name": self.name,
+            "monitor_type": "query_level_monitor",
+            "enabled": True,
+            "schedule": self.schedule,
+            "inputs": self.inputs,
+            "triggers": self.triggers
+        }
+        return request

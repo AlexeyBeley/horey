@@ -13,6 +13,7 @@ from horey.elasticsearch_api.elasticsearch_api_configuration_policy import Elast
 from elasticsearch import Elasticsearch
 from horey.common_utils.common_utils import CommonUtils
 from horey.elasticsearch_api.monitor import Monitor
+from horey.elasticsearch_api.destination import Destination
 
 logger = get_logger()
 
@@ -24,6 +25,7 @@ class ElasticsearchAPI(object):
         self.connect()
         self.indices = None
         self.monitors = None
+        self.destinations = None
 
     def connect(self):
         # pdb.set_trace()
@@ -90,133 +92,22 @@ class ElasticsearchAPI(object):
                                               params=None, headers=None)
         ""
 
-    def create_monitor(self):
+    def create_monitor(self, monitor):
         """
         https://opensearch.org/docs/latest/monitoring-plugins/alerting/api/#create-query-level-monitor
         @return:
         """
-        monitor_data = {
-            "type": "monitor",
-            "name": "test-monitor",
-            "monitor_type": "query_level_monitor",
-            "enabled": True,
-            "schedule": {
-                "period": {
-                    "interval": 1,
-                    "unit": "MINUTES"
-                }
-            },
-            "inputs": [{
-                "search": {
-                    "indices": ["movies"],
-                    "query": {
-                        "size": 0,
-                        "aggregations": {},
-                        "query": {
-                            "bool": {
-                                "filter": {
-                                    "range": {
-                                        "@timestamp": {
-                                            "gte": "||-1h",
-                                            "lte": "",
-                                            "format": "epoch_millis"
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }],
-            "triggers": [{
-                "name": "test-trigger",
-                "severity": "1",
-                "condition": {
-                    "script": {
-                        "source": "ctx.results[0].hits.total.value > 0",
-                        "lang": "painless"
-                    }
-                },
-                "actions": [{
-                    "name": "test-action",
-                    "destination_id": "ld7912sBlQ5JUWWFThoW",
-                    "message_template": {
-                        "source": "This is my message body."
-                    },
-                    "throttle_enabled": True,
-                    "throttle": {
-                        "value": 27,
-                        "unit": "MINUTES"
-                    },
-                    "subject_template": {
-                        "source": "TheSubject"
-                    }
-                }]
-            }]
-        }
-
-        monitor_data = {
-            "type": "monitor",
-            "name": "test-monitor",
-            "monitor_type": "query_level_monitor",
-            "enabled": True,
-            "schedule": {
-                "period": {
-                    "interval": 1,
-                    "unit": "MINUTES"
-                }
-            },
-            "inputs": [{
-                "search": {
-                    "indices": ["cloud-hive-*"],
-                    "query": {
-                        "size": 0,
-                        "aggregations": {},
-                        "query": {
-                            "bool": {
-                                "filter": {
-                                    "range": {
-                                        "@timestamp": {
-                                            "gte": "||-5m",
-                                            "lte": "",
-                                            "format": "epoch_millis"
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }],
-            "triggers": [{
-                "name": "test-trigger-1",
-                "severity": "1",
-                "condition": {
-                    "script": {
-                        "source": "ctx.results[0].hits.total.value > 0",
-                        "lang": "painless"
-                    }
-                },
-                "actions": []
-            },
-                {
-                    "name": "test-trigger-2",
-                    "severity": "1",
-                    "condition": {
-                        "script": {
-                            "source": "ctx.results[0].hits.total.value > 0",
-                            "lang": "painless"
-                        }
-                    },
-                    "actions": []
-                }
-            ]
-        }
-        ret = self.client.transport.perform_request("POST", _make_path("_plugins", "_alerting", "monitors"),
-                                              params=None, headers=None, body=monitor_data)
+        request = monitor.generate_create_request()
+        request["triggers"][0]["actions"] = []
         pdb.set_trace()
 
-    def init_monitors(self):
+        self.client.transport.perform_request("POST", _make_path("_plugins", "_alerting", "monitors"),
+                                              params=None, headers=None, body=request)
+
+    def init_monitors(self, from_cache=False, cache_filename=None):
+        if from_cache:
+            self.monitors = self.init_objects_from_cache(Monitor, cache_filename)
+            return
         search_result = self.client.transport.perform_request("GET", _make_path("_plugins", "_alerting", "monitors", "_search"),
                                                     body={"query": {"regexp": {"monitor.name": ".*"}}})
         monitors = []
@@ -226,7 +117,30 @@ class ElasticsearchAPI(object):
             monitors.append(monitor)
         self.monitors = monitors
 
+    def init_objects_from_cache(self, cls, file_name):
+        cache_file_path = os.path.join(self.configuration.cache_dir, file_name)
+        with open(cache_file_path, "r") as file_handler:
+            objects = json.load(file_handler)
+
+        ret = []
+        for dict_obj in objects:
+            obj = cls()
+            obj.init_from_dict(dict_obj)
+            ret.append(obj)
+
+        return ret
+    
+    def init_destinations(self):
+        search_result = self.client.transport.perform_request("GET", _make_path("_plugins", "_alerting", "destinations"))
+        destinations = []
+        for _metadata in search_result["destinations"]:
+            destination = Destination()
+            destination.init_from_search_reply(_metadata)
+            destinations.append(destination)
+        self.destinations = destinations
+        
     def cache_objects(self, objects, file_name):
+        pdb.set_trace()
         cache_file_path = os.path.join(self.configuration.cache_dir, file_name)
         ret = []
         for obj in objects:

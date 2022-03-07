@@ -13,6 +13,10 @@ echo "Created recursive_compose_requirements"
 while read LINE; do
    "${CURRENT_SCRIPT_FULL_PATH}/create_wheel.sh" "${LINE}"
    echo "After create_wheel.sh ${LINE}"
+   pip3 uninstall -y "horey.${LINE}"
+   pip3_path=$(which pip3)
+   rm -rf "${pip3_path%/*}/../lib/python3.8/site-packages/horey/${LINE}"
+   #if [[ "${LINE}" == "provision_constructor" ]]; then exit 1; fi
 
    pip3 install --force-reinstall --ignore-installed $(find "${CURRENT_SCRIPT_FULL_PATH}/_build/${LINE}/dist" -name "*.whl")
    echo "After pip3 install ${LINE}"

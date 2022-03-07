@@ -1,7 +1,7 @@
 from zabbix_api import ZabbixAPI, ZabbixAPIException
 
 # The hostname at which the Zabbix web interface is available
-ZABBIX_SERVER = "http://34.235.88.205"
+ZABBIX_SERVER = "http://"
 
 zapi = ZabbixAPI(ZABBIX_SERVER)
 

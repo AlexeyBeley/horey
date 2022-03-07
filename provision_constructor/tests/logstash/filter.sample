@@ -1,0 +1,43 @@
+    json {
+    source => "message"
+    target => "json"
+    }
+    if "_jsonparsefailure" not in [tags]  {
+        ruby {
+            code => "
+                json_data = event.get('[json]')
+                event.set('log_line_tmp', json_data['log'])
+                event.set('tag', json_data['attrs']['tag'])
+            "
+        }
+        mutate {
+            remove_field => ["message"]
+            remove_field => ["json"]
+            remove_field => ["path"]
+            remove_field => ["@version"]
+            remove_field => ["type"]
+        }
+    }
+
+    grok {
+        pattern_definitions => { "SINGLE_QUOTE" => "\"" }
+        match => { "tag" => "%{SINGLE_QUOTE:ignore}%{NOTSPACE:region}:%{NOTSPACE:session}%{SINGLE_QUOTE:ignore}" }
+    }
+
+    grok {
+        match => { "log_line_tmp" => "\[%{GREEDYDATA:timestamp}\]\[%{GREEDYDATA:log_level}\]\[%{GREEDYDATA:line_num}\]:%{GREEDYDATA:log_line}" }
+    }
+
+    date {
+          match => ["timestamp", "YYYY-MM-dd HH:mm:ss,SSS" ]
+          target => "@timestamp"
+         }
+
+    mutate {
+    remove_field => ["tag"]
+    remove_field => ["ignore"]
+    remove_field => ["log_line_tmp"]
+    remove_field => ["timestamp"]
+    gsub => ["log_line", "\\n", "
+" ]
+    }

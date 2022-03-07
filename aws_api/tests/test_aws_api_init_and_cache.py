@@ -321,14 +321,16 @@ def test_init_and_cache_managed_prefix_lists():
 
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_vpcs():
-    aws_api.init_vpcs()
+    all_regions = list(aws_api.aws_accounts.values())[0].regions
+    aws_api.init_vpcs(region=all_regions)
     aws_api.cache_objects(aws_api.vpcs, configuration.aws_api_vpcs_cache_file)
     assert isinstance(aws_api.vpcs, list)
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_subnets():
-    aws_api.init_subnets()
+    all_regions = list(aws_api.aws_accounts.values())[0].regions
+    aws_api.init_subnets(region=all_regions)
     aws_api.cache_objects(aws_api.subnets, configuration.aws_api_subnets_cache_file)
     assert isinstance(aws_api.subnets, list)
 
@@ -556,4 +558,6 @@ if __name__ == "__main__":
     #test_init_and_cache_lambdas()
     #test_init_and_cache_lambda_event_source_mappings()
     #test_init_and_cache_servicediscovery_namespaces()
-    test_init_and_cache_ec2_volumes()
+    #test_init_and_cache_vpcs()
+    #test_init_and_cache_ec2_volumes()
+    test_init_and_cache_subnets()

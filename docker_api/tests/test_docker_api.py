@@ -72,6 +72,12 @@ def test_copy_image():
     docker_api.copy_image(mock_values["src_image_tags"][0], mock_values["dst_repo"], copy_all_tags=True)
 
 
+def test_remove_image():
+    docker_api = DockerAPI()
+    image = docker_api.remove_image("755fa0e2e444", force=True)
+    assert image is not None
+
+
 if __name__ == "__main__":
     #test_init_docker_api()
     #test_build()
@@ -79,4 +85,5 @@ if __name__ == "__main__":
     #test_login()
     #test_upload_image()
     #test_pull_image()
-    test_copy_image()
+    #test_copy_image()
+    test_remove_image()

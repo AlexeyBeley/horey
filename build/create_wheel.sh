@@ -13,7 +13,7 @@ rm -rf "${PACKAGE_SRC_DIR_FULL_PATH}"
 mkdir -p "${PACKAGE_SRC_DIR_FULL_PATH}"
 
 
-#echo "Copying cp -r ${ROOT_DIR}/${PACKAGE_NAME} ${BUILD_TMP_DIR}"
+echo "Copying source code from ${ROOT_DIR}/${PACKAGE_NAME} ${BUILD_TMP_DIR}"
 cp -R "${ROOT_DIR}/${PACKAGE_NAME}/horey/${PACKAGE_NAME}/." "${PACKAGE_SRC_DIR_FULL_PATH}/"
 
 cp "${ROOT_DIR}/${PACKAGE_NAME}/README.md" "${PACKAGE_TMP_DIR_FULL_PATH}/"
