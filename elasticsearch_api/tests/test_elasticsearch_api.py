@@ -99,7 +99,6 @@ def test_provision_monitor():
     elasticsearch_api.init_monitors(from_cache=True, cache_filename="monitors.json")
     pdb.set_trace()
     elasticsearch_api.monitors
-    #cloud_hive_runner_error
 
 
 # endregion
