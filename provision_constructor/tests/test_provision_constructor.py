@@ -31,7 +31,7 @@ def test_add_system_function_logstash():
     index = "horey-%{+YYYY.MM}"
     provision_constructor.add_system_function("logstash.output_opensearch", pipe_name="main", server_address="1.1.1.1", user="user", password="pass", index=index)
     provision_constructor.add_system_function("systemd")
-    provision_constructor.add_system_function("systemd.override")
+    provision_constructor.add_system_function("systemd.override", service_name="logstash")
     provision_constructor.add_system_function("logstash.reset_service", any=["logstash.input_file",
                                                                              "logstash.filter",
                                                                              "logstash.output_file",

@@ -212,6 +212,7 @@ class AWSAPI:
         self.lambda_event_source_mappings = []
 
         self.configuration = configuration
+        self.aws_accounts = None
         self.init_configuration()
 
     def init_configuration(self):
@@ -220,8 +221,8 @@ class AWSAPI:
         """
         if self.configuration is None:
             return
-        accounts = self.get_all_managed_accounts()
-        AWSAccount.set_aws_account(accounts[self.configuration.aws_api_account])
+        self.aws_accounts = self.get_all_managed_accounts()
+        AWSAccount.set_aws_account(self.aws_accounts[self.configuration.aws_api_account])
 
     def get_all_managed_accounts(self):
         return CommonUtils.load_object_from_module(self.configuration.accounts_file, "main")
@@ -246,7 +247,12 @@ class AWSAPI:
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, VPC)
         else:
-            objects = self.ec2_client.get_all_vpcs(region=region)
+            if not isinstance(region, list):
+                region = [region]
+
+            objects = []
+            for _region in region:
+                objects += self.ec2_client.get_all_vpcs(region=_region)
 
         self.vpcs = objects
 
@@ -254,7 +260,12 @@ class AWSAPI:
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, Subnet)
         else:
-            objects = self.ec2_client.get_all_subnets(region=region)
+            if not isinstance(region, list):
+                region = [region]
+
+            objects = []
+            for _region in region:
+                objects += self.ec2_client.get_all_subnets(region=_region)
 
         self.subnets = objects
 
