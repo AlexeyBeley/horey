@@ -131,8 +131,6 @@ class DockerAPI:
             self.client.images.remove(image_id, force=force)
         except Exception as exception_instance:
             logger.info(f"Exception received: {repr(exception_instance)}. Endof exception.")
-            if "image is being used by running container" not in repr(exception_instance):
-                raise
 
             for container in self.get_containers_by_image(image_id):
                 self.kill_container(container, remove=True)
