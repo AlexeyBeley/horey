@@ -141,7 +141,8 @@ class ECSService(AwsObject):
         request["desiredCount"] = self.desired_count
         request["deploymentConfiguration"] = self.deployment_configuration
         request["placementStrategy"] = self.placement_strategy
-        request["healthCheckGracePeriodSeconds"] = self.health_check_grace_period_seconds
+        if self.load_balancers is not None:
+            request["healthCheckGracePeriodSeconds"] = self.health_check_grace_period_seconds
         request["enableExecuteCommand"] = self.enable_execute_command
 
         return request
