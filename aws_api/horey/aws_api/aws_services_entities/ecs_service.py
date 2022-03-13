@@ -105,6 +105,8 @@ class ECSService(AwsObject):
         if self.load_balancers is not None:
             request["loadBalancers"] = self.load_balancers
             request["healthCheckGracePeriodSeconds"] = self.health_check_grace_period_seconds
+            if self.role_arn is not None:
+                request["role"] = self.role_arn
 
         if self.service_registries is not None:
             request["serviceRegistries"] = self.service_registries
@@ -112,9 +114,6 @@ class ECSService(AwsObject):
         request["desiredCount"] = self.desired_count
 
         request["launchType"] = self.launch_type
-
-        if self.role_arn is not None:
-            request["role"] = self.role_arn
 
         request["deploymentConfiguration"] = self.deployment_configuration
         request["placementStrategy"] = self.placement_strategy
