@@ -118,8 +118,10 @@ class DockerAPI:
 
     @staticmethod
     def kill_container(container, remove=False):
+        logger.info(f"Killing container: {container.id}.")
         container.kill()
         if remove:
+            logger.info(f"Removing container: {container.id}.")
             container.remove()
 
     def get_containers_by_image(self, image_id):
@@ -127,13 +129,11 @@ class DockerAPI:
         return ret
 
     def remove_image(self, image_id, force=True):
-        try:
-            self.client.images.remove(image_id, force=force)
-        except Exception as exception_instance:
-            logger.info(f"Exception received: {repr(exception_instance)}. Endof exception.")
-
+        logger.info(f"Removing image: {image_id}.")
+        if force:
             for container in self.get_containers_by_image(image_id):
                 self.kill_container(container, remove=True)
 
-            self.client.images.remove(image_id, force=force)
+        self.client.images.remove(image_id, force=force)
+
 

@@ -126,51 +126,58 @@ class RemoteDeployer:
             self.provision_target_remote_deployer_infrastructure_thread(deployment_target)
 
     def provision_target_remote_deployer_infrastructure_thread(self, deployment_target):
+        retries = 5
         try:
-            with self.get_deployment_target_client_context(deployment_target) as client:
-                command = f"rm -rf {deployment_target.remote_target_deployment_directory_path}"
-                logger.info(f"[REMOTE] {command}")
-                client.exec_command(command)
-
-                transport = client.get_transport()
-                sftp_client = HoreySFTPClient.from_transport(transport)
+            for i in range(retries):
                 try:
-                    logger.info(f"sftp: mkdir {deployment_target.remote_target_deployment_directory_path}")
-                    sftp_client.mkdir(deployment_target.remote_target_deployment_directory_path, ignore_existing=True)
-
-                    remote_output_dir = os.path.join(deployment_target.remote_target_deployment_directory_path,
-                                                     "output")
-                    logger.info(f"sftp: mkdir {remote_output_dir}")
-                    sftp_client.mkdir(remote_output_dir, ignore_existing=True)
+                    self.provision_target_remote_deployer_infrastructure_raw(deployment_target)
+                    break
                 except Exception as exception_instance:
-                    raise RuntimeError(f"{deployment_target.deployment_target_address}") from exception_instance
+                    if i == retries-1:
+                        raise
+                    if "Unable to connect to port 22" in repr(exception_instance):
+                        time.sleep(10)
+                        continue
+                    raise
 
-                logger.info(f"sftp: put_dir from local {deployment_target.local_deployment_dir_path} to "
-                            f"{deployment_target.deployment_target_address}:{deployment_target.remote_target_deployment_directory_path}")
-
-                try:
-                    sftp_client.put_dir(deployment_target.local_deployment_dir_path,
-                                    deployment_target.remote_target_deployment_directory_path)
-                except Exception as exception_instance:
-                    raise RuntimeError(f"SFTP copping dir {deployment_target.local_deployment_dir_path} to "
-                                       f"{deployment_target.remote_target_deployment_directory_path} to"
-                                       f" {deployment_target.deployment_target_address}") from exception_instance
-
-                logger.info(
-                    f"sftp: Uploading '{os.path.join(deployment_target.remote_target_deployment_directory_path, 'remote_step_executor.sh')}'")
-                sftp_client.put(os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "remote_step_executor.sh"),
-                                os.path.join(deployment_target.remote_target_deployment_directory_path,
-                                             "remote_step_executor.sh"))
-
-                command = f"sudo chmod +x {os.path.join(deployment_target.remote_target_deployment_directory_path, 'remote_step_executor.sh')}"
-                logger.info(f"[REMOTE] {command}")
-                client.exec_command(command)
-                deployment_target.remote_deployer_infrastructure_provisioning_succeeded = True
-        except Exception:
+        except Exception as exception_instance:
             deployment_target.remote_deployer_infrastructure_provisioning_succeeded = False
-            raise
+            raise RuntimeError(f"{deployment_target.deployment_target_address}") from exception_instance
         finally:
             deployment_target.remote_deployer_infrastructure_provisioning_finished = True
+
+    def provision_target_remote_deployer_infrastructure_raw(self, deployment_target):
+        with self.get_deployment_target_client_context(deployment_target) as client:
+            command = f"rm -rf {deployment_target.remote_target_deployment_directory_path}"
+            logger.info(f"[REMOTE] {command}")
+            client.exec_command(command)
+
+            transport = client.get_transport()
+            sftp_client = HoreySFTPClient.from_transport(transport)
+            logger.info(f"sftp: mkdir {deployment_target.remote_target_deployment_directory_path}")
+            sftp_client.mkdir(deployment_target.remote_target_deployment_directory_path, ignore_existing=True)
+
+            remote_output_dir = os.path.join(deployment_target.remote_target_deployment_directory_path,
+                                                 "output")
+            logger.info(f"sftp: mkdir {remote_output_dir}")
+            sftp_client.mkdir(remote_output_dir, ignore_existing=True)
+
+            logger.info(f"sftp: put_dir from local {deployment_target.local_deployment_dir_path} to "
+                        f"{deployment_target.deployment_target_address}:{deployment_target.remote_target_deployment_directory_path}")
+
+            sftp_client.put_dir(deployment_target.local_deployment_dir_path,
+                                    deployment_target.remote_target_deployment_directory_path)
+
+            logger.info(
+                f"sftp: Uploading '{os.path.join(deployment_target.remote_target_deployment_directory_path, 'remote_step_executor.sh')}'")
+            sftp_client.put(os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "remote_step_executor.sh"),
+                            os.path.join(deployment_target.remote_target_deployment_directory_path,
+                                         "remote_step_executor.sh"))
+
+            command = f"sudo chmod +x {os.path.join(deployment_target.remote_target_deployment_directory_path, 'remote_step_executor.sh')}"
+            logger.info(f"[REMOTE] {command}")
+            client.exec_command(command)
+            deployment_target.remote_deployer_infrastructure_provisioning_succeeded = True
 
     def deploy_target_step(self, deployment_target, step, asynchronous=False):
         if asynchronous:
@@ -366,12 +373,6 @@ class RemoteDeployer:
 
         client.exec_command(command)
 
-    def get_status_path_from_script_path(self, script_path):
-        pdb.set_trace()
-
-    def get_output_path_from_script_path(self, script_path):
-        pdb.set_trace()
-
     def wait_for_deployment_to_end(self, blocks_to_deploy):
         lst_errors = []
         for block in blocks_to_deploy:
@@ -382,17 +383,39 @@ class RemoteDeployer:
             raise RuntimeError(str(lst_errors))
         logger.info("Deployment finished successfully output in")
 
-    def wait_to_finish(self, targets, check_callback, sleep_time=10, total_time=600):
+    @staticmethod
+    def wait_to_finish(targets, check_callback, sleep_time=10, total_time=600, steps=None):
         start_time = datetime.datetime.now()
         end_time = start_time + datetime.timedelta(seconds=total_time)
 
         while datetime.datetime.now() < end_time:
             if all([check_callback(target) for target in targets]):
-                break
+                logger.info(
+                    f"All Finished: {[target.deployment_target_address for target in targets if check_callback(target)]}")
+                return
 
             logger.info(f"Finished: {[target.deployment_target_address for target in targets if check_callback(target)]}"
                         f", not finished: {[target.deployment_target_address for target in targets if not check_callback(target)]}")
             logger.info(f"remote_deployer wait_to_finish going to sleep for {sleep_time} seconds")
+
             time.sleep(sleep_time)
-        else:
-            raise TimeoutError(f"Result: {[check_callback(target) for target in targets]}")
+
+        errors = [f"Result: {[check_callback(target) for target in targets]}"]
+        for i in range(len(targets)):
+            target = targets[i]
+            if not check_callback(target):
+                error_line = f"Failed: {target.deployment_target_address}"
+                if steps is not None:
+                    errors.append(f"{error_line} output:\n{steps[i].output}")
+
+        raise TimeoutError("\n".join(errors))
+
+    def deploy_targets_steps(self, targets, step_callback, asynchronous=True):
+        steps = []
+        for target in targets:
+            step = step_callback(target)
+            steps.append(step)
+            self.deploy_target_step(target, step, asynchronous=asynchronous)
+            time.sleep(10)
+
+        self.wait_to_finish(targets, lambda _target: step_callback(_target).status_code is not None, steps=steps)

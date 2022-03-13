@@ -2643,3 +2643,6 @@ class AWSAPI:
         objects = self.ec2_client.get_all_vpc_peerings(region=vpc.region)
         pdb.set_trace()
         return [peering for peering in objects if peering.peering]
+
+    def create_image(self, instance):
+        return self.ec2_client.create_image(instance)
