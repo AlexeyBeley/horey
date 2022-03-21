@@ -1,6 +1,8 @@
 """
 AWS ec2 client to handle ec2 service API requests.
 """
+import datetime
+
 import time
 import base64
 from horey.aws_api.aws_services_entities.subnet import Subnet
@@ -552,13 +554,49 @@ class EC2Client(Boto3Client):
 
         for response in self.execute(self.client.describe_images, "Images", filters_req=custom_filters):
             obj = AMI(response)
+            obj.region = AWSAccount.get_aws_region()
             if full_information is True:
                 pass
 
             final_result.append(obj)
 
         return final_result
-    
+
+    def create_image(self, instance: EC2Instance):
+        #snapshots_raw = self.create_snapshots(instance)
+        AWSAccount.set_aws_region(instance.region)
+        ami_id = self.create_image_raw(instance.generate_create_image_request())
+        filter_request = dict()
+        filter_request["ImageIds"] = [ami_id]
+
+        amis = self.get_region_amis(instance.region, custom_filters=filter_request)
+        if len(amis) != 1:
+            raise RuntimeError(filter_request)
+        new_ami = amis[0]
+
+        self.wait_for_status(new_ami, self.update_image_information, [new_ami.State.AVAILABLE],
+                                 [new_ami.State.PENDING], [new_ami.State.INVALID,
+                                                                new_ami.State.DEREGISTERED,
+                                                                new_ami.State.TRANSIENT,
+                                                                new_ami.State.FAILED,
+                                                                new_ami.State.ERROR])
+        return new_ami
+
+    def create_image_raw(self, request_dict):
+        for response in self.execute(self.client.create_image, "ImageId", filters_req=request_dict):
+            return response
+
+    def create_snapshots(self, instance):
+        start = datetime.datetime.now()
+        AWSAccount.set_aws_region(instance.region)
+        ret = self.create_snapshots_raw(instance.generate_create_snapshots_request())
+        end = datetime.datetime.now()
+        logger.info(f"Snapshot creation took {end - start}")
+        return ret
+
+    def create_snapshots_raw(self, request_dict):
+        return list(self.execute(self.client.create_snapshots, "Snapshots", filters_req=request_dict))
+
     def get_all_key_pairs(self, full_information=True, region=None):
         if region is not None:
             return self.get_region_key_pairs(region, full_information=full_information)
@@ -887,7 +925,7 @@ class EC2Client(Boto3Client):
             final_result.extend(instance['Instances'])
         return [EC2Instance(instance) for instance in final_result]
     
-    def provision_ec2_instance(self, ec2_instance):
+    def provision_ec2_instance(self, ec2_instance: EC2Instance, wait_until_active=False):
         region_ec2_instances = self.get_region_ec2_instances(ec2_instance.region)
         for region_ec2_instance in region_ec2_instances:
             if region_ec2_instance.get_state() not in [region_ec2_instance.State.RUNNING, region_ec2_instance.State.PENDING]:
@@ -903,6 +941,34 @@ class EC2Client(Boto3Client):
         except Exception as exception_inst:
             logger.warning(repr(exception_inst))
             raise
+
+        if wait_until_active:
+            self.wait_for_status(ec2_instance, self.update_instance_information, [ec2_instance.State.RUNNING],
+                                 [ec2_instance.State.PENDING], [ec2_instance.State.SHUTTING_DOWN,
+                                                                ec2_instance.State.TERMINATED,
+                                                                ec2_instance.State.STOPPING,
+                                                                ec2_instance.State.STOPPED])
+
+    def update_instance_information(self, instance:EC2Instance):
+        filters = [{
+            "Name": "instance-id",
+            "Values": [
+                instance.id
+            ]
+        }]
+        instance_new = self.get_region_instances(instance.region, filters=filters)[0]
+        instance.update_from_raw_response(instance_new.dict_src)
+
+    def update_image_information(self, ami: AMI):
+        filter_request = dict()
+        filter_request["ImageIds"] = [ami.id]
+        amis = self.get_region_amis(ami.region, custom_filters=filter_request)
+        if len(amis) != 1:
+            raise RuntimeError(filter_request)
+
+        ami_new = amis[0]
+
+        ami.update_from_raw_response(ami_new.dict_src)
 
     def provision_ec2_instance_raw(self, request_dict):
         for response in self.execute(self.client.run_instances, "Instances", filters_req=request_dict):
@@ -944,3 +1010,10 @@ class EC2Client(Boto3Client):
                                      exception_ignore_callback=lambda x: "NotFoundException" in repr(x)):
             return response
 
+    def dispose_instance(self, instance):
+        AWSAccount.set_aws_region(instance.region)
+        self.dispose_instance_raw(instance.generate_dispose_request())
+
+    def dispose_instance_raw(self, request_dict):
+        for response in self.execute(self.client.terminate_instances, "TerminatingInstances", filters_req=request_dict):
+            return response

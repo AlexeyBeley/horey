@@ -2073,10 +2073,10 @@ class AWSAPI:
     def put_secret_value(self, secret_name, value, region=None):
         return self.secretsmanager_client.raw_put_secret_string(secret_name, value, region=region)
 
-    def put_secret_file(self, secret_name, file_path):
+    def put_secret_file(self, secret_name, file_path, region=None):
         with open(file_path) as file_handler:
             contents = file_handler.read()
-        self.put_secret_value(secret_name, contents)
+        self.put_secret_value(secret_name, contents, region=region)
 
     def get_secret_file(self, secret_name, dir_path: str, region=None, file_name=None):
         if dir_path.endswith(secret_name):
@@ -2275,8 +2275,8 @@ class AWSAPI:
     def provision_route_table(self, route_table):
         self.ec2_client.provision_route_table(route_table)
 
-    def provision_ec2_instance(self, ec2_instance):
-        self.ec2_client.provision_ec2_instance(ec2_instance)
+    def provision_ec2_instance(self, ec2_instance, wait_until_active=False):
+        self.ec2_client.provision_ec2_instance(ec2_instance, wait_until_active=wait_until_active)
 
     def provision_ecs_capacity_provider(self, ecs_capacity_provider):
         self.ecs_client.provision_capacity_provider(ecs_capacity_provider)

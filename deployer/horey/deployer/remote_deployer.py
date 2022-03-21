@@ -88,8 +88,7 @@ class RemoteDeployer:
         self.wait_for_deployment_to_end(blocks_to_deploy)
 
     def provision_remote_deployer_infrastructure(self, deployment_targets):
-        """
-        """
+        raise DeprecationWarning()
         for deployment_target in deployment_targets:
             with self.get_deployment_target_client_context(deployment_target) as client:
                 command = f"rm -rf {deployment_target.remote_target_deployment_directory_path}"
@@ -177,6 +176,11 @@ class RemoteDeployer:
             command = f"sudo chmod +x {os.path.join(deployment_target.remote_target_deployment_directory_path, 'remote_step_executor.sh')}"
             logger.info(f"[REMOTE] {command}")
             client.exec_command(command)
+
+            if deployment_target.linux_distro == "redhat":
+                command = "sudo yum install screen -y"
+                logger.info(f"[REMOTE] {command}")
+                client.exec_command(command)
             deployment_target.remote_deployer_infrastructure_provisioning_succeeded = True
 
     def deploy_target_step(self, deployment_target, step, asynchronous=False):
@@ -371,7 +375,12 @@ class RemoteDeployer:
         command = f"screen -S deployer -dm {step.configuration.step_scripts_dir_path}/remote_step_executor.sh {step.configuration.remote_script_file_path} {step.configuration.script_configuration_file_path} {step.configuration.finish_status_file_path} {step.configuration.output_file_path}"
         logger.info(f"[REMOTE] {command}")
 
-        client.exec_command(command)
+        stdin_transport, stdout_transport, stderr_transport = client.exec_command(command)
+        stderr = stderr_transport.read()
+        if stderr:
+            raise RuntimeError(stderr)
+        stdout = stdout_transport.read()
+        logger.info(stdout)
 
     def wait_for_deployment_to_end(self, blocks_to_deploy):
         lst_errors = []
@@ -384,31 +393,34 @@ class RemoteDeployer:
         logger.info("Deployment finished successfully output in")
 
     @staticmethod
-    def wait_to_finish(targets, check_callback, sleep_time=10, total_time=600, steps=None):
+    def wait_to_finish(targets, check_finished_callback, check_success_callback, sleep_time=10, total_time=600, steps=None):
         start_time = datetime.datetime.now()
         end_time = start_time + datetime.timedelta(seconds=total_time)
 
         while datetime.datetime.now() < end_time:
-            if all([check_callback(target) for target in targets]):
+            if all([check_finished_callback(target) for target in targets]):
                 logger.info(
-                    f"All Finished: {[target.deployment_target_address for target in targets if check_callback(target)]}")
-                return
+                    f"All Finished: {[target.deployment_target_address for target in targets if check_finished_callback(target)]}")
+                break
 
-            logger.info(f"Finished: {[target.deployment_target_address for target in targets if check_callback(target)]}"
-                        f", not finished: {[target.deployment_target_address for target in targets if not check_callback(target)]}")
+            logger.info(f"Finished: {[target.deployment_target_address for target in targets if check_finished_callback(target)]}"
+                        f", not finished: {[target.deployment_target_address for target in targets if not check_finished_callback(target)]}")
             logger.info(f"remote_deployer wait_to_finish going to sleep for {sleep_time} seconds")
 
             time.sleep(sleep_time)
-
-        errors = [f"Result: {[check_callback(target) for target in targets]}"]
+        failed = False
+        errors = [f"Result: {[check_success_callback(target) for target in targets]}"]
         for i in range(len(targets)):
             target = targets[i]
-            if not check_callback(target):
+            if not check_success_callback(target):
+                failed = True
                 error_line = f"Failed: {target.deployment_target_address}"
                 if steps is not None:
-                    errors.append(f"{error_line} output:\n{steps[i].output}")
+                    error_line += f" output:\n{steps[i].output}"
+                errors.append(error_line)
 
-        raise TimeoutError("\n".join(errors))
+        if failed:
+            raise TimeoutError("\n".join(errors))
 
     def deploy_targets_steps(self, targets, step_callback, asynchronous=True):
         steps = []
@@ -418,4 +430,6 @@ class RemoteDeployer:
             self.deploy_target_step(target, step, asynchronous=asynchronous)
             time.sleep(10)
 
-        self.wait_to_finish(targets, lambda _target: step_callback(_target).status_code is not None, steps=steps)
+        self.wait_to_finish(targets, lambda _target: step_callback(_target).status_code is not None,
+                                     lambda _target: step_callback(_target).status_code == step.StatusCode.SUCCESS,
+                                     steps=steps)

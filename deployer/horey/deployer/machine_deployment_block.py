@@ -29,6 +29,7 @@ class MachineDeploymentBlock:
 
         self.remote_deployer_infrastructure_provisioning_finished = False
         self.remote_deployer_infrastructure_provisioning_succeeded = None
+        self.linux_distro = "ubuntu"
 
     @property
     def local_deployment_data_dir_path(self):

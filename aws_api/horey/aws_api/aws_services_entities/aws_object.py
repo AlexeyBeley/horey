@@ -33,6 +33,7 @@ class AwsObject:
         self.name = None
         self.id = None
         self.tags = None
+        self._region = None
 
     def _init_from_cache(self, dict_src, dict_options):
         """
@@ -330,3 +331,20 @@ class AwsObject:
                 continue
 
             print(f"{key}: {repr(value)}")
+
+    @property
+    def region(self):
+        if self._region is not None:
+            return self._region
+
+        if self.arn is not None:
+            self._region = Region.get_region(self.arn.split(":")[3])
+
+        return self._region
+
+    @region.setter
+    def region(self, value):
+        if not isinstance(value, Region):
+            raise ValueError(value)
+
+        self._region = value
