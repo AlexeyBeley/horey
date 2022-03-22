@@ -14,7 +14,7 @@ while read LINE; do
    set +ex
    pip3 uninstall -y "horey.${LINE}"
    set -ex
-   
+
    pip3_path=$(which pip3)
    rm -rf "${pip3_path%/*}/../lib/python3.8/site-packages/horey/${LINE}"
 
