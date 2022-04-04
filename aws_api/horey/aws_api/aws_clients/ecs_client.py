@@ -11,6 +11,7 @@ from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.base_entities.region import Region
 from horey.aws_api.aws_services_entities.ecs_cluster import ECSCluster
 from horey.aws_api.aws_services_entities.ecs_service import ECSService
+from horey.aws_api.aws_services_entities.ecs_task import ECSTask
 from horey.aws_api.aws_services_entities.ecs_capacity_provider import ECSCapacityProvider
 from horey.aws_api.aws_services_entities.ecs_task_definition import ECSTaskDefinition
 from horey.aws_api.aws_services_entities.ecs_container_instance import ECSContainerInstance
@@ -172,6 +173,30 @@ class ECSClient(Boto3Client):
 
         return final_result
 
+    def get_all_tasks(self, cluster):
+        filters_req = {"cluster": cluster.name}
+        AWSAccount.set_aws_region(cluster.region)
+
+        final_result = []
+        task_arns = []
+
+        for arn in self.execute(self.client.list_tasks, "taskArns", filters_req=filters_req):
+            task_arns.append(arn)
+
+        if len(task_arns) == 0:
+            return []
+
+        if len(task_arns) > 100:
+            raise NotImplementedError()
+
+        filters_req["tasks"] = task_arns
+        filters_req["include"] = ["TAGS"]
+
+        for dict_src in self.execute(self.client.describe_tasks, "tasks", filters_req=filters_req):
+            final_result.append(ECSTask(dict_src))
+
+        return final_result
+
     def get_all_task_definitions(self, region=None):
         if region is not None:
             return self.get_region_task_definitions(region)
@@ -321,6 +346,11 @@ class ECSClient(Boto3Client):
         for response in self.execute(self.client.deregister_container_instance, "containerInstance",
                                      filters_req=request_dict):
             return response
+
+    def dispose_tasks(self, tasks, cluster_name):
+        for task in tasks:
+            for response in self.execute(self.client.stop_task, "task", filters_req={"cluster": cluster_name, "task": task.arn}):
+                logger.info(response)
 
     def attach_capacity_providers_to_ecs_cluster(self, ecs_cluster, capacity_provider_names,
                                                  default_capacity_provider_strategy):

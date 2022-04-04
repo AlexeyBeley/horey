@@ -46,6 +46,12 @@ class CloudWatchLogGroup(AwsObject):
         options = {}
         self._init_from_cache(dict_src, options)
 
+    def generate_create_request(self):
+        ret = dict()
+        ret["logGroupName"] = self.name
+        ret["tags"] = self.tags
+        return ret
+
     def update_log_stream(self, dict_src, from_cache=False):
         """
         When needed full information the stream is updated from AWS.

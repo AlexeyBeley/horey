@@ -121,3 +121,12 @@ class CloudWatchLogsClient(Boto3Client):
                                      filters_req={"logGroupName": log_group.name, "logStreamName": stream.name, "nextToken": token}):
             if token != response["nextForwardToken"]:
                 raise ValueError()
+
+    def provision_log_group(self, log_group: CloudWatchLogGroup):
+        AWSAccount.set_aws_region(log_group.region)
+
+        self.provision_log_group_raw(log_group.generate_create_request())
+
+    def provision_log_group_raw(self, request_dict):
+        for response in self.execute(self.client.create_log_group, None, raw_data=True, filters_req=request_dict):
+            return response

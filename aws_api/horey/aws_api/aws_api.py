@@ -2212,6 +2212,9 @@ class AWSAPI:
         request = {"DomainName": elasticsearch_domain.name, "AccessPolicies": access_policies_str}
         self.elasticsearch_client.raw_update_elasticsearch_domain_config(request, region=elasticsearch_domain.region)
 
+    def provision_cloudwatch_log_group(self, log_group):
+        self.cloud_watch_logs_client.provision_log_group(log_group)
+
     def provision_vpc(self, vpc):
         self.ec2_client.provision_vpc(vpc)
 

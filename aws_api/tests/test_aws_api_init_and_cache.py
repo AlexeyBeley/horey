@@ -329,7 +329,7 @@ def test_init_and_cache_vpcs():
 
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_subnets():
-    all_regions = list(aws_api.aws_accounts.values())[0].regions
+    all_regions = list(list(aws_api.aws_accounts.values())[0].regions.values())
     aws_api.init_subnets(region=all_regions)
     aws_api.cache_objects(aws_api.subnets, configuration.aws_api_subnets_cache_file)
     assert isinstance(aws_api.subnets, list)
