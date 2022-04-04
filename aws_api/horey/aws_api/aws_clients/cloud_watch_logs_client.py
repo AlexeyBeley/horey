@@ -133,6 +133,7 @@ class CloudWatchLogsClient(Boto3Client):
         for region_log_group in region_log_groups:
             if region_log_group.name == log_group.name:
                 log_group.update_from_raw_response(region_log_group.dict_src)
+                return
 
         AWSAccount.set_aws_region(log_group.region)
         self.provision_log_group_raw(log_group.generate_create_request())
