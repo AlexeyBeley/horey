@@ -128,5 +128,6 @@ class CloudWatchLogsClient(Boto3Client):
         self.provision_log_group_raw(log_group.generate_create_request())
 
     def provision_log_group_raw(self, request_dict):
+        logger.info(f"Creating log group '{request_dict}'")
         for response in self.execute(self.client.create_log_group, None, raw_data=True, filters_req=request_dict):
             return response
