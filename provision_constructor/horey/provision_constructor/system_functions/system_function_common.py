@@ -53,6 +53,53 @@ class SystemFunctionCommon:
 
         if errors:
             raise SystemFunctionCommon.FailedCheckError("\n".join(errors))
+    
+    @staticmethod
+    def action_move_file_parser():
+        description = "move_file from src_path to dst_path"
+        parser = argparse.ArgumentParser(description=description)
+        parser.add_argument("--src_file_path", required=True, type=str, help="Source file path")
+        parser.add_argument("--dst_file_path", required=True, type=str, help="Destination file path")
+
+        parser.epilog = f"Usage: python3 {__file__} [options]"
+        return parser
+
+    @staticmethod
+    def action_move_file(arguments):
+        arguments_dict = vars(arguments)
+        SystemFunctionCommon.move_file(**arguments_dict)
+
+    @staticmethod
+    def move_file(src_file_path=None, dst_file_path=None):
+        shutil.copyfile(src_file_path, dst_file_path)
+
+    @staticmethod
+    def action_compare_files_parser():
+        description = "compare_files from src_path to dst_path"
+        parser = argparse.ArgumentParser(description=description)
+        parser.add_argument("--src_file_path", required=True, type=str, help="Source file path")
+        parser.add_argument("--dst_file_path", required=True, type=str, help="Destination file path")
+
+        parser.epilog = f"Usage: python3 {__file__} [options]"
+        return parser
+
+    @staticmethod
+    def action_compare_files(arguments):
+        arguments_dict = vars(arguments)
+        SystemFunctionCommon.compare_files(**arguments_dict)
+
+    @staticmethod
+    def compare_files(src_file_path=None, dst_file_path=None):
+        with open(src_file_path) as file_handler:
+            src_file_string = file_handler.read()
+
+        with open(dst_file_path) as file_handler:
+            dst_file_string = file_handler.read()
+
+        if src_file_string == dst_file_string:
+            return
+
+        raise RuntimeError(f"{src_file_path} not equals to {dst_file_path}")
 
     @staticmethod
     def action_add_line_to_file_parser():
@@ -136,6 +183,13 @@ SystemFunctionCommon.ACTION_MANAGER.register_action("add_line_to_file",
                                                       SystemFunctionCommon.action_add_line_to_file_parser,
                                                       SystemFunctionCommon.action_add_line_to_file)
 
+SystemFunctionCommon.ACTION_MANAGER.register_action("move_file",
+                                                      SystemFunctionCommon.action_move_file_parser,
+                                                      SystemFunctionCommon.action_move_file)
+
+SystemFunctionCommon.ACTION_MANAGER.register_action("compare_files",
+                                                      SystemFunctionCommon.action_compare_files_parser,
+                                                      SystemFunctionCommon.action_compare_files)
 
 if __name__ == "__main__":
     SystemFunctionCommon.ACTION_MANAGER.call_action()
