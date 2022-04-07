@@ -111,7 +111,7 @@ class SystemFunctionFactory:
 
             ret.append("result=$?\n")
             ret.append(f"set -e\n")
-            ret.append("if [[ \"${result}\" -eq 0 ]]; then exit 0; fi\n")
+            ret.append("if [[ \"${result}\" -eq 0 ]]; then return 0; fi\n")
 
             return ret
 
