@@ -97,7 +97,7 @@ class SystemFunctionCommon:
             dst_file_string = file_handler.read()
 
         if src_file_string == dst_file_string:
-            return
+            return True
 
         raise RuntimeError(f"{src_file_path} not equals to {dst_file_path}")
 

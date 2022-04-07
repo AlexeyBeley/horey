@@ -42,7 +42,7 @@ class SystemFunctionFactory:
         def add_system_function_to_provisioner_script(self, force=False, trigger_on_any_provisioned=None):
             system_functions_provisioners = []
             system_functions_unittests = []
-            system_functions_chmods =[]
+            system_functions_chmods = []
             for file_name in os.listdir(self.deployment_dir):
                 if file_name.startswith("provision_"):
                     script_path = os.path.join(self.deployment_dir, file_name)
@@ -53,12 +53,12 @@ class SystemFunctionFactory:
                     script_path = os.path.join(self.deployment_dir, file_name)
                     relative_script_path = os.path.relpath(script_path, start=self.root_deployment_dir)
                     system_functions_chmods.append(f"sudo chmod +x {relative_script_path}\n")
-                    system_functions_unittests.append("sudo " + relative_script_path + "\n")
+                    system_functions_unittests.append(relative_script_path + "\n")
 
             provisioner_script_path = os.path.join(self.root_deployment_dir, self.provisioner_script_name)
             main_function_name = f"main_{self.submodules}"
             with open(provisioner_script_path, "a") as file_handler:
-                file_handler.write(f"function {main_function_name}" + " {\n")
+                file_handler.write(f"function {main_function_name}()" + " {\n")
                 file_handler.write(self.add_indentation("#---------CHANGE_MODES---------\n", 1))
                 file_handler.writelines(self.add_indentation(system_functions_chmods, 1))
                 if not force:
@@ -73,12 +73,31 @@ class SystemFunctionFactory:
                 file_handler.writelines(self.add_indentation(system_functions_unittests, 1))
                 file_handler.write("}\n"+f"#---endof main_{self.submodules}---------\n")
                 if trigger_on_any_provisioned:
-                    pdb.set_trace()
-                file_handler.write(f"{main_function_name}\n")
+                    file_handler.write(self.generate_trigger_on_any_provisioned(trigger_on_any_provisioned, main_function_name))
+                else:
+                    file_handler.write(f"{main_function_name}\n\n")
+            logger.info(f"Finished generating '{provisioner_script_path}'")
+
+        def generate_trigger_on_any_provisioned(self, trigger_on_any_provisioned, main_function_name):
+            lst_ret = []
+            check_function_name = f"run_{main_function_name}_if_any"
+            lst_ret.append(f"function {check_function_name}()"+"{")
+            for check_provisioned in trigger_on_any_provisioned:
+                lst_ret.append(self.add_indentation(f"set +e", 1))
+                lst_ret.append(self.add_indentation("contains \"${ProvisionedSystemFunctions[@]}\"" + f" ${check_provisioned}", 1))
+                lst_ret.append(self.add_indentation("result=$?", 1))
+                lst_ret.append(self.add_indentation(f"set -e", 1))
+                lst_ret.append(self.add_indentation("if [[ \"${result}\" -eq 0 ]]; then return 0; fi\n", 1))
+
+            lst_ret.append(self.add_indentation(f"{main_function_name}\n", 1))
+            lst_ret.append(self.add_indentation("return 1", 1))
+            lst_ret.append("}")
+            lst_ret.append(check_function_name)
+            return "\n".join(lst_ret)
 
         def generate_preprovisioning_tests(self, system_functions_unittests):
             function_name = f"unittests_{self.submodules}"
-            ret = [f"function {function_name} ()" + "  { \n"]
+            ret = [f"function {function_name}()" + "  { \n"]
             for command in system_functions_unittests:
                 ret.append(self.add_indentation(command, 1))
                 ret.append(self.add_indentation("result=$?\n", 1))
