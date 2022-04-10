@@ -4,6 +4,7 @@ import subprocess
 import uuid
 import os
 from horey.common_utils.actions_manager import ActionsManager
+from horey.replacement_engine.replacement_engine import ReplacementEngine
 import argparse
 
 
@@ -19,6 +20,12 @@ class SystemFunctionCommon:
 
     @staticmethod
     def current_subpath(subpath=None):
+        """
+        Sub path of this current file + subpath from input.
+        
+        @param subpath: 
+        @return: 
+        """
         cur_dir = os.path.dirname(os.path.abspath(__file__))
         if subpath is None:
             return cur_dir
@@ -72,7 +79,8 @@ class SystemFunctionCommon:
     @staticmethod
     def move_file(src_file_path=None, dst_file_path=None):
         shutil.copyfile(src_file_path, dst_file_path)
-
+      
+# region compare_files
     @staticmethod
     def action_compare_files_parser():
         description = "compare_files from src_path to dst_path"
@@ -100,6 +108,60 @@ class SystemFunctionCommon:
             return True
 
         raise RuntimeError(f"{src_file_path} not equals to {dst_file_path}")
+# endregion
+
+# region perform_comment_line_replacement
+    @staticmethod
+    def action_perform_comment_line_replacement_parser():
+        description = "perform_comment_line_replacement from src_path in dst_path above comment line"
+        parser = argparse.ArgumentParser(description=description)
+        parser.add_argument("--src_file_path", required=True, type=str, help="Source file path")
+        parser.add_argument("--dst_file_path", required=True, type=str, help="Destination file path")
+        parser.add_argument("--comment_line", required=True, type=str, help="Destination file path")
+
+        parser.epilog = f"Usage: python3 {__file__} [options]"
+        return parser
+
+    @staticmethod
+    def action_perform_comment_line_replacement(arguments):
+        arguments_dict = vars(arguments)
+        SystemFunctionCommon.perform_comment_line_replacement(**arguments_dict)
+
+    @staticmethod
+    def perform_comment_line_replacement(src_file_path=None, dst_file_path=None, comment_line=None):
+        replacement_engine = ReplacementEngine()
+        with open(src_file_path) as file_handler:
+            replacement_string = file_handler.read()
+
+        replacement_engine.perform_comment_line_replacement(dst_file_path, comment_line, replacement_string, keep_comment=True)
+# endregion
+
+# region check_file_contains
+    @staticmethod
+    def action_check_file_contains_parser():
+        description = "check_file_contains from src_path in dst_path above comment line"
+        parser = argparse.ArgumentParser(description=description)
+        parser.add_argument("--src_file_path", required=True, type=str, help="Source file path")
+        parser.add_argument("--dst_file_path", required=True, type=str, help="Destination file path")
+
+        parser.epilog = f"Usage: python3 {__file__} [options]"
+        return parser
+
+    @staticmethod
+    def action_check_file_contains(arguments):
+        arguments_dict = vars(arguments)
+        SystemFunctionCommon.check_file_contains(**arguments_dict)
+
+    @staticmethod
+    def check_file_contains(src_file_path=None, dst_file_path=None):
+        replacement_engine = ReplacementEngine()
+        with open(src_file_path) as file_handler:
+            replacement_string = file_handler.read()
+
+        if not replacement_engine.check_file_contains(dst_file_path, replacement_string):
+            raise RuntimeError(f"{src_file_path} -> {dst_file_path}")
+
+# endregion
 
     @staticmethod
     def action_add_line_to_file_parser():
@@ -190,6 +252,11 @@ SystemFunctionCommon.ACTION_MANAGER.register_action("move_file",
 SystemFunctionCommon.ACTION_MANAGER.register_action("compare_files",
                                                       SystemFunctionCommon.action_compare_files_parser,
                                                       SystemFunctionCommon.action_compare_files)
+
+SystemFunctionCommon.ACTION_MANAGER.register_action("perform_comment_line_replacement",
+                                                    SystemFunctionCommon.action_perform_comment_line_replacement_parser,
+                                                    SystemFunctionCommon.action_perform_comment_line_replacement)
+
 
 if __name__ == "__main__":
     SystemFunctionCommon.ACTION_MANAGER.call_action()

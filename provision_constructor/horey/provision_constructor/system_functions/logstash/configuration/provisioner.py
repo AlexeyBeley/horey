@@ -37,11 +37,9 @@ class Provisioner(SystemFunctionCommon):
 
     @staticmethod
     def check_pipeline_conf_files():
-        pdb.set_trace()
         pipeline_files_dir = SystemFunctionCommon.current_subpath("pipelines")
         for file_name in os.listdir(pipeline_files_dir):
-            deployed_file = os.path.join("/etc/logstash/conf.d/", file_name)
-            if not SystemFunctionCommon.compare_files(os.path.join(pipeline_files_dir, file_name), deployed_file):
+            if not os.path.exists(os.path.join("/etc/logstash/conf.d/", file_name)):
                 sys.exit(1)
 
 

@@ -11,7 +11,7 @@ class Builder(SystemFunctionFactory.SystemFunction):
                  user=None,
                  password=None,
                  index=None):
-        super().__init__(root_deployment_dir, provisioner_script_name, force=force)
+        super().__init__(root_deployment_dir, provisioner_script_name, force=force, explicitly_add_system_function=False)
         self.add_system_function_common()
         self.replacement_engine = ReplacementEngine()
 
@@ -25,3 +25,5 @@ class Builder(SystemFunctionFactory.SystemFunction):
                                                                 "STRING_REPLACEMENT_OPENSEARCH_USERNAME": user,
                                                                 "STRING_REPLACEMENT_OPENSEARCH_PASSWORD": password,
                                                                 })
+        pdb.set_trace()
+        self.add_system_function(force=force)
