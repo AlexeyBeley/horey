@@ -25,5 +25,5 @@ class Builder(SystemFunctionFactory.SystemFunction):
                                                                 "STRING_REPLACEMENT_OPENSEARCH_USERNAME": user,
                                                                 "STRING_REPLACEMENT_OPENSEARCH_PASSWORD": password,
                                                                 })
-        pdb.set_trace()
+
         self.add_system_function(force=force)

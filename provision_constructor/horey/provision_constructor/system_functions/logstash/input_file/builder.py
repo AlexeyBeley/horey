@@ -15,5 +15,4 @@ class Builder(SystemFunctionFactory.SystemFunction):
         self.replacement_engine.perform_recursive_replacements(self.deployment_dir,
                                                                {"STRING_REPLACEMENT_PIPELINE_NAME": pipe_name,
                                                                 "STRING_REPLACEMENT_INPUT_FILE_PATH": input_file_path})
-        pdb.set_trace()
         self.add_system_function(force=force)

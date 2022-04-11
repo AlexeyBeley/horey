@@ -88,7 +88,7 @@ class SystemFunctionFactory:
             lst_ret.append(f"function {check_function_name}()"+"{")
             for check_provisioned in trigger_on_any_provisioned:
                 lst_ret.append(self.add_indentation(f"set +e", 1))
-                lst_ret.append(self.add_indentation("contains \"${ProvisionedSystemFunctions[@]}\"" + f" ${check_provisioned}", 1))
+                lst_ret.append(self.add_indentation("contains \"${ProvisionedSystemFunctions[@]}\"" + f" \"{check_provisioned}\"", 1))
                 lst_ret.append(self.add_indentation("result=$?", 1))
                 lst_ret.append(self.add_indentation(f"set -e", 1))
                 lst_ret.append(self.add_indentation("if [[ \"${result}\" -eq 0 ]]; then return 0; fi\n", 1))
