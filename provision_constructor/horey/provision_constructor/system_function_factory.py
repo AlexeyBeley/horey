@@ -84,19 +84,21 @@ class SystemFunctionFactory:
 
         def generate_trigger_on_any_provisioned(self, trigger_on_any_provisioned, main_function_name):
             lst_ret = []
-            check_function_name = f"run_{main_function_name}_if_any"
+            check_function_name = f"run_{main_function_name}_check_if_any"
             lst_ret.append(f"function {check_function_name}()"+"{")
+            lst_ret.append(self.add_indentation(f"set +e", 1))
             for check_provisioned in trigger_on_any_provisioned:
-                lst_ret.append(self.add_indentation(f"set +e", 1))
                 lst_ret.append(self.add_indentation("contains \"${ProvisionedSystemFunctions[@]}\"" + f" \"{check_provisioned}\"", 1))
                 lst_ret.append(self.add_indentation("result=$?", 1))
-                lst_ret.append(self.add_indentation(f"set -e", 1))
                 lst_ret.append(self.add_indentation("if [[ \"${result}\" -eq 0 ]]; then return 0; fi\n", 1))
 
-            lst_ret.append(self.add_indentation(f"{main_function_name}\n", 1))
             lst_ret.append(self.add_indentation("return 1", 1))
             lst_ret.append("}")
+            lst_ret.append("set +e")
             lst_ret.append(check_function_name)
+            lst_ret.append("result=$?")
+            lst_ret.append("set -e")
+            lst_ret.append("if [[ \"${result}\" -eq 0 ]]; then " + f"{main_function_name}; fi")
             return "\n".join(lst_ret)
 
         def generate_preprovisioning_tests(self, system_functions_unittests):
