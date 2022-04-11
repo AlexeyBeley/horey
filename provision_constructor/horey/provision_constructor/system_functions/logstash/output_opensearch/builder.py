@@ -15,11 +15,9 @@ class Builder(SystemFunctionFactory.SystemFunction):
         self.add_system_function_common()
         self.replacement_engine = ReplacementEngine()
 
-        file_name = "template_output_opensearch.txt"
-        file_path = os.path.join(self.deployment_dir, file_name)
         self.replacement_engine.perform_recursive_replacements(self.deployment_dir,
                                                                {"STRING_REPLACEMENT_PIPELINE_NAME": pipe_name,
-                                                                "STRING_REPLACEMENT_OUTPUT_OPENSEARCH_FILE_NAME": file_path,
+                                                                "STRING_REPLACEMENT_OUTPUT_OPENSEARCH_FILE_NAME": "output_opensearch.txt",
                                                                 "STRING_REPLACEMENT_OPENSEARCH_ADDRESS": server_address,
                                                                 "STRING_REPLACEMENT_INDEX": index,
                                                                 "STRING_REPLACEMENT_OPENSEARCH_USERNAME": user,
