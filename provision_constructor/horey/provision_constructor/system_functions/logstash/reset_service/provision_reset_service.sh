@@ -1,9 +1,9 @@
 #!/bin/bash
+set -xe
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 cd "${SCRIPT_DIR}"
 
-set -xe
 
 logstash_pid=$(ps aux | grep 'logstash' | grep 'java' | awk '{print $2}')
 if [ -n "${logstash_pid}" ]
