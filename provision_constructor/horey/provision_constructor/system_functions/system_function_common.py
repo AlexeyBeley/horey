@@ -78,6 +78,7 @@ class SystemFunctionCommon:
 
     @staticmethod
     def move_file(src_file_path=None, dst_file_path=None):
+        os.makedirs(os.path.dirname(dst_file_path), exist_ok=True)
         shutil.copyfile(src_file_path, dst_file_path)
       
 # region compare_files
