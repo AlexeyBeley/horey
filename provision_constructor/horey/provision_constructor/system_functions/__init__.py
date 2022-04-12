@@ -5,3 +5,4 @@ from .logstash import *
 from .systemd import *
 from .swap import *
 from .logrotate import *
+from .ntp import *

@@ -6,6 +6,7 @@ import os
 from horey.common_utils.actions_manager import ActionsManager
 from horey.replacement_engine.replacement_engine import ReplacementEngine
 import argparse
+import subprocess
 
 
 class SystemFunctionCommon:
@@ -137,6 +138,30 @@ class SystemFunctionCommon:
         replacement_engine.perform_comment_line_replacement(dst_file_path, comment_line, replacement_string, keep_comment=True)
 # endregion
 
+# region check_systemd_service_status
+    @staticmethod
+    def action_check_systemd_service_status_parser():
+        description = "check_systemd_service_status for specific duration"
+        parser = argparse.ArgumentParser(description=description)
+        parser.add_argument("--service_name", required=True, type=str, help="Service name to check")
+        parser.add_argument("--min_uptime", required=True, type=str, help="Check running duration in seconds")
+
+        parser.epilog = f"Usage: python3 {__file__} [options]"
+        return parser
+
+    @staticmethod
+    def action_check_systemd_service_status(arguments):
+        arguments_dict = vars(arguments)
+        SystemFunctionCommon.check_systemd_service_status(**arguments_dict)
+
+    @staticmethod
+    def check_systemd_service_status(src_file_path=None, service_name=None, min_uptime=None):
+        pdb.set_trace()
+        command = f"systemctl status {service_name}"
+        ret = subprocess.run([command], capture_output=True, shell=True)
+        decoded_ret = ret.stdout.decode().strip("\n")
+# endregion
+    
 # region check_file_contains
     @staticmethod
     def action_check_file_contains_parser():
@@ -262,6 +287,9 @@ SystemFunctionCommon.ACTION_MANAGER.register_action("perform_comment_line_replac
                                                     SystemFunctionCommon.action_perform_comment_line_replacement_parser,
                                                     SystemFunctionCommon.action_perform_comment_line_replacement)
 
+SystemFunctionCommon.ACTION_MANAGER.register_action("check_systemd_service_status",
+                                                    SystemFunctionCommon.action_check_systemd_service_status_parser,
+                                                    SystemFunctionCommon.action_check_systemd_service_status)
 
 if __name__ == "__main__":
     SystemFunctionCommon.ACTION_MANAGER.call_action()

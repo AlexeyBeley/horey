@@ -22,8 +22,9 @@ def test_add_system_function_swap():
 def test_add_system_function_logstash():
     my_dir = os.path.dirname(os.path.abspath(__file__))
     provision_constructor = ProvisionConstructor(DEPLOYMENT_DIR, horey_repo_path=os.path.join(my_dir, "..", ".."))
-    provision_constructor.add_system_function("logrotate", force=True, rotation_path="/var/log/nginx", file_name="nginx")
+    provision_constructor.add_system_function("ntp", force=True, rotation_path="/var/log/nginx", file_name="nginx")
     return
+    provision_constructor.add_system_function("logrotate", force=True, rotation_path="/var/log/nginx", file_name="nginx")
     provision_constructor.add_system_function("logstash", force=True)
     provision_constructor.add_system_function("logstash.configuration",  pipeline_names=["main"], force=True)
     provision_constructor.add_system_function("logstash.input_file", pipe_name="main", input_file_path="/var/log/test.log", force=True)
