@@ -23,16 +23,25 @@ class SystemFunctionFactory:
         HOREY_REPO_PATH = None
 
         def __init__(self, root_deployment_dir, provisioner_script_name, force=False, trigger_on_any_provisioned=None, explicitly_add_system_function=True):
+            """
+
+            @param root_deployment_dir:
+            @param provisioner_script_name:
+            @param force:
+            @param trigger_on_any_provisioned:
+            @param explicitly_add_system_function: for example template_provisioner.py won't be added if added before replacement_engine finished its work.
+            """
             self.provisioner_script_name = provisioner_script_name
             self.root_deployment_dir = root_deployment_dir
             self.submodules = self.__module__[len("horey.provision_constructor.system_functions."):self.__module__.rfind(".")]
             self.deployment_dir = os.path.join(root_deployment_dir, *self.submodules.split("."))
+            os.makedirs(self.deployment_dir, exist_ok=True)
             self.pip_api = PipAPI(venv_dir_path=os.path.join(root_deployment_dir, "_venv"), horey_repo_path=self.HOREY_REPO_PATH)
+            self.move_system_function_to_deployment_dir()
             if explicitly_add_system_function:
                 self.add_system_function(force=force, trigger_on_any_provisioned=trigger_on_any_provisioned)
 
         def add_system_function(self, force=False, trigger_on_any_provisioned=None):
-            self.move_system_function_to_deployment_dir()
             self.install_system_function_requirements()
             self.add_system_function_to_provisioner_script(force=force, trigger_on_any_provisioned=trigger_on_any_provisioned)
 
@@ -138,5 +147,5 @@ class SystemFunctionFactory:
             @return:
             """
             system_functions_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "system_functions")
-            shutil.copy(os.path.join(system_functions_dir, "system_function_common.py"), self.deployment_dir)
+            shutil.copy(os.path.join(system_functions_dir, "system_function_common.py"), os.path.join(self.deployment_dir, "system_function_common.py"))
             self.pip_api.install_requirements(os.path.join(system_functions_dir, "requirements.txt"))
