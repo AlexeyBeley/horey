@@ -1,6 +1,6 @@
 import pdb
 import shutil
-import subprocess
+import datetime
 import uuid
 import os
 from horey.common_utils.actions_manager import ActionsManager
@@ -155,14 +155,81 @@ class SystemFunctionCommon:
         SystemFunctionCommon.check_systemd_service_status(**arguments_dict)
 
     @staticmethod
-    def check_systemd_service_status(src_file_path=None, service_name=None, min_uptime=None):
+    def check_systemd_service_status(service_name=None, min_uptime=None):
         pdb.set_trace()
+        "certbot.service"
+        # 'Active: active (running) since Tue 2022-04-12 18:32:04 GMT; 2h 33min ago'
+
+        service_status_raw = SystemFunctionCommon.get_systemd_service_status(service_name)
+        service_status = SystemFunctionCommon.extract_service_status_value(service_status_raw)
+        server_time, duration = SystemFunctionCommon.extract_service_status_times(service_status_raw)
+# endregion
+
+    @staticmethod
+    def get_systemd_service_status(service_name):
         command = f"systemctl status {service_name}"
         ret = subprocess.run([command], capture_output=True, shell=True)
         decoded_ret = ret.stdout.decode().strip("\n")
-# endregion
-    
-# region check_file_contains
+        return decoded_ret
+
+    @staticmethod
+    def extract_service_status_value(service_status_raw):
+        lst_line = SystemFunctionCommon.extract_service_status_line_raw(service_status_raw)
+        status = lst_line[1]
+        if status not in ["active", "failed", "activating"]:
+            raise NotImplementedError(f"status is {status}")
+        return status
+
+    @staticmethod
+    def extract_service_status_times(service_status_raw):
+        """
+        # 'Active: active (running) since Tue 2022-04-12 18:32:04 GMT; 2h 33min ago'
+        3 months 19 days ago
+        6s ago
+
+        @param service_status_raw:
+        @return: server_time, duration
+        """
+        pdb.set_trace()
+        lst_line = SystemFunctionCommon.extract_service_status_line_raw(service_status_raw)
+        since_index = lst_line.index("since")
+        str_time_data = " ".join(lst_line[since_index + 1:])
+        start_date_str, duration_string = str_time_data.split("; ")
+        start_date = datetime.strptime(start_date_str, "%a %Y-%m-%d %H:%M:%S GMT")
+        return start_date, SystemFunctionCommon.extract_service_status_time_duration(duration_string)
+
+    @staticmethod
+    def extract_service_status_time_duration(duration_string):
+        pdb.set_trace()
+        duration_lst = duration_string.lower().split(" ")
+        hours = 0
+        minutes = 0
+        seconds = 0
+
+        try:
+            days = duration_lst[duration_lst.index("days")-1]
+        except ValueError:
+            days = 0
+
+        try:
+            months = duration_lst[duration_lst.index("months")-1]
+        except ValueError:
+            months = 0
+
+        try:
+            years = duration_lst[duration_lst.index("years")-1]
+        except ValueError:
+            years = 0
+
+    @staticmethod
+    def extract_service_status_line_raw(service_status_raw):
+        for line in decoded_ret.split("\n"):
+            line = line.strip(" ")
+            if line.startswith("Active:"):
+                lst_line = line.split(" ")
+                return lst_line
+
+    # region check_file_contains
     @staticmethod
     def action_check_file_contains_parser():
         description = "check_file_contains from src_path in dst_path above comment line"
