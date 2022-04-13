@@ -223,7 +223,7 @@ class SystemFunctionCommon:
 
     @staticmethod
     def extract_service_status_line_raw(service_status_raw):
-        for line in decoded_ret.split("\n"):
+        for line in service_status_raw.split("\n"):
             line = line.strip(" ")
             if line.startswith("Active:"):
                 lst_line = line.split(" ")
