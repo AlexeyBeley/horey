@@ -195,7 +195,7 @@ class SystemFunctionCommon:
         since_index = lst_line.index("since")
         str_time_data = " ".join(lst_line[since_index + 1:])
         start_date_str, duration_string = str_time_data.split("; ")
-        start_date = datetime.strptime(start_date_str, "%a %Y-%m-%d %H:%M:%S GMT")
+        start_date = datetime.datetime.strptime(start_date_str, "%a %Y-%m-%d %H:%M:%S GMT")
         return start_date, SystemFunctionCommon.extract_service_status_time_duration(duration_string)
 
     @staticmethod
