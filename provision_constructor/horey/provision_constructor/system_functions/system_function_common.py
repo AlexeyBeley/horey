@@ -215,9 +215,13 @@ class SystemFunctionCommon:
             months = 0
 
         try:
-            years = duration_lst[duration_lst.index("years")-1]
+            index = duration_lst.index("years")
+            years = duration_lst[index-1]
+            duration_lst = duration_lst[:index-1] + duration_lst[index+1]
         except ValueError:
             years = 0
+
+        for
 
     @staticmethod
     def extract_service_status_line_raw(service_status_raw):
