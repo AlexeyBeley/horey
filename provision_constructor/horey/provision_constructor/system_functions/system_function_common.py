@@ -180,7 +180,7 @@ class SystemFunctionCommon:
         if service_status != status_name:
             raise TimeoutError(f"service {service_name} did not reach {status_name} in {status_change_seconds_limit} seconds")
 
-        if min_uptime < seconds_duration:
+        if min_uptime <= seconds_duration:
             return True
 
         logger.info(f"Waiting for status duration time: {min_uptime}. Going to sleep for {min_uptime-seconds_duration} sec")
@@ -191,7 +191,7 @@ class SystemFunctionCommon:
         if service_status != status_name:
             raise TimeoutError(f"service {service_name} seams to be in restart loop")
 
-        if min_uptime < seconds_duration:
+        if min_uptime <= seconds_duration:
             return True
 
         raise TimeoutError(f"service {service_name} seams to be in restart loop after cause it can not keep {status_name} "
