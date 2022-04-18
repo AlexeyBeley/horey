@@ -210,7 +210,7 @@ class SystemFunctionCommon:
 
         try:
             index = duration_lst.index("days")
-            days = duration_lst[index-1]
+            days = int(duration_lst[index-1])
             duration_lst = duration_lst[:index-1] + duration_lst[index+1:]
         except ValueError:
             days = 0
