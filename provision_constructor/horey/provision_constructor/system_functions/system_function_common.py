@@ -217,14 +217,14 @@ class SystemFunctionCommon:
 
         try:
             index = duration_lst.index("months")
-            months = duration_lst[index-1]
+            months = int(duration_lst[index-1])
             duration_lst = duration_lst[:index-1] + duration_lst[index+1:]
         except ValueError:
             months = 0
 
         try:
             index = duration_lst.index("years")
-            years = duration_lst[index-1]
+            years = int(duration_lst[index-1])
             duration_lst = duration_lst[:index-1] + duration_lst[index+1:]
         except ValueError:
             years = 0
@@ -241,8 +241,9 @@ class SystemFunctionCommon:
                 minutes = duration_part[:-3]
             else:
                 raise ValueError(f"{duration_part} in {duration_lst}")
+        days = days + 365*years + months*30
         pdb.set_trace()
-        return datetime.timedelta(years=years, months=months, days=days, hours=hours, minutes=minutes, seconds=seconds)
+        return datetime.timedelta(days=days, hours=hours, minutes=minutes, seconds=seconds)
 
     @staticmethod
     def extract_service_status_line_raw(service_status_raw):
