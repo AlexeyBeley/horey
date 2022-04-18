@@ -7,8 +7,11 @@ import os
 import time
 from horey.common_utils.actions_manager import ActionsManager
 from horey.replacement_engine.replacement_engine import ReplacementEngine
+from horey.h_logger import get_logger
 import argparse
 import subprocess
+
+logger = get_logger()
 
 
 class SystemFunctionCommon:
@@ -158,7 +161,6 @@ class SystemFunctionCommon:
 
     @staticmethod
     def check_systemd_service_status(service_name=None, min_uptime=None):
-        pdb.set_trace()
         status_name = "active"
         status_change_seconds_limit = 120
         # 'Active: active (running) since Tue 2022-04-12 18:32:04 GMT; 2h 33min ago'
@@ -168,6 +170,7 @@ class SystemFunctionCommon:
 
         time_limit = datetime.datetime.now() + datetime.timedelta(seconds=status_change_seconds_limit)
         while service_status != status_name and datetime.datetime.now() < time_limit:
+            logger.info(f"Waiting for status to change from {service_status} to {status_name}. Going to sleep for 5 sec")
             time.sleep(5)
             service_status_raw = SystemFunctionCommon.get_systemd_service_status(service_name)
             service_status = SystemFunctionCommon.extract_service_status_value(service_status_raw)
@@ -179,6 +182,7 @@ class SystemFunctionCommon:
         if min_uptime < seconds_duration:
             return True
 
+        logger.info(f"Waiting for status duration time: {seconds_duration}. Going to sleep for {min_uptime-seconds_duration} sec")
         time.sleep(min_uptime-seconds_duration)
         service_status_raw = SystemFunctionCommon.get_systemd_service_status(service_name)
         service_status = SystemFunctionCommon.extract_service_status_value(service_status_raw)
