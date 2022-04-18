@@ -161,6 +161,7 @@ class SystemFunctionCommon:
 
     @staticmethod
     def check_systemd_service_status(service_name=None, min_uptime=None):
+        min_uptime = int(min_uptime)
         status_name = "active"
         status_change_seconds_limit = 120
         # 'Active: active (running) since Tue 2022-04-12 18:32:04 GMT; 2h 33min ago'
