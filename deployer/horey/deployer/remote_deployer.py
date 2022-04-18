@@ -143,7 +143,8 @@ class RemoteDeployer:
                     repr_exception_instance = repr(exception_instance)
 
                     if "Unable to connect to port 22" in repr_exception_instance or \
-                            "Could not establish session to SSH gateway" in repr_exception_instance:
+                            "Could not establish session to SSH gateway" in repr_exception_instance or \
+                            "Error reading SSH protocol banner" in repr_exception_instance:
                         time.sleep(10)
                         continue
                     logger.error(f"Raised unknown exception {repr_exception_instance}")
@@ -204,6 +205,8 @@ class RemoteDeployer:
         try:
             self.deploy_target_step_thread_helper(deployment_target, step)
         except Exception as exception_instance:
+            logger.error(
+                f"Unhandled exception in deploy_target_step_thread {repr(exception_instance)})")
             step.status_code = step.StatusCode.ERROR
             step.output = repr(exception_instance)
 
@@ -229,10 +232,16 @@ class RemoteDeployer:
                                         deployment_target.local_deployment_dir_path)
                     break
                 except IOError as error_received:
-                    if "No such file" not in repr(error_received):
+                    repr_error_received = repr(error_received)
+                    logger.error(f"Error received in helper thread: {repr_error_received}")
+                    if "No such file" not in repr_error_received:
                         raise
                     logger.info(
                         f"Retrying to fetch remote script's status in {sleep_time} seconds ({retry_counter}/{retry_attempts})")
+                except Exception as error_received:
+                    logger.error(
+                        f"Unhandled exception in helper thread {repr(error_received)})")
+
                 time.sleep(sleep_time)
             else:
                 raise TimeoutError(
@@ -341,26 +350,49 @@ class RemoteDeployer:
         with open(block_to_deploy.bastion_ssh_key_path, 'r') as bastion_key_file_handler:
             bastion_key = paramiko.RSAKey.from_private_key(StringIO(bastion_key_file_handler.read()))
 
-        with open_tunnel(
-                ssh_address_or_host=(block_to_deploy.bastion_address, 22),
-                remote_bind_address=(block_to_deploy.deployment_target_address, 22),
-                ssh_username=block_to_deploy.bastion_user_name,
-                ssh_pkey=bastion_key) as tunnel:
-            logger.info(
-                f"Opened SSH tunnel to {block_to_deploy.deployment_target_address} via {block_to_deploy.bastion_address} ")
+        with RemoteDeployer.get_client_context_with_bastion(block_to_deploy.bastion_address,
+                                                             block_to_deploy.bastion_user_name,
+                                                             bastion_key,
+                                                             block_to_deploy.deployment_target_address,
+                                                             block_to_deploy.deployment_target_user_name,
+                                                             deployment_target_key) as client:
+            yield client
 
-            with paramiko.SSHClient() as client:
-                client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                client.connect(
-                    'localhost',
-                    port=tunnel.local_bind_port,
-                    username=block_to_deploy.deployment_target_user_name,
-                    pkey=deployment_target_key,
-                    compress=True,
-                    banner_timeout=60
-                )
+    @staticmethod
+    @contextmanager
+    def get_client_context_with_bastion(bastion_address, bastion_user_name, bastion_key, deployment_target_address,
+                                        deployment_target_user_name, deployment_target_key):
 
-                yield client
+        for i in range(10):
+            try:
+                with open_tunnel(
+                        ssh_address_or_host=(bastion_address, 22),
+                        remote_bind_address=(deployment_target_address, 22),
+                        ssh_username=bastion_user_name,
+                        ssh_pkey=bastion_key) as tunnel:
+                    logger.info(
+                        f"Opened SSH tunnel to {deployment_target_address} via {bastion_address} ")
+
+                    with paramiko.SSHClient() as client:
+                        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                        client.connect(
+                            'localhost',
+                            port=tunnel.local_bind_port,
+                            username=deployment_target_user_name,
+                            pkey=deployment_target_key,
+                            compress=True,
+                            banner_timeout=60
+                        )
+
+                        yield client
+                        return
+            except Exception as error_received:
+                logger.error(f"Low level ssh connection to {deployment_target_address} via {bastion_address} error: {repr(error_received)}")
+
+            logger.info(f"Going to sleep before retrying connecting to {deployment_target_address} via {bastion_address}")
+            time.sleep(1)
+
+        raise TimeoutError(f"Failed to open ssh tunnel to {deployment_target_address} via {bastion_address}")
 
     @staticmethod
     def get_deployment_target_client(target: MachineDeploymentBlock):
@@ -410,7 +442,7 @@ class RemoteDeployer:
         logger.info("Deployment finished successfully output in")
 
     @staticmethod
-    def wait_to_finish(targets, check_finished_callback, check_success_callback, sleep_time=10, total_time=600,
+    def wait_to_finish(targets, check_finished_callback, check_success_callback, sleep_time=10, total_time=1200,
                        steps=None):
         start_time = datetime.datetime.now()
         end_time = start_time + datetime.timedelta(seconds=total_time)
@@ -429,8 +461,7 @@ class RemoteDeployer:
             time.sleep(sleep_time)
         failed = False
         errors = [f"Result: {[check_success_callback(target) for target in targets]}"]
-        for i in range(len(targets)):
-            target = targets[i]
+        for i, target in enumerate(targets):
             if not check_success_callback(target):
                 failed = True
                 error_line = f"Failed: {target.deployment_target_address}"

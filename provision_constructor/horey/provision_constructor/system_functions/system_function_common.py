@@ -183,8 +183,6 @@ class SystemFunctionCommon:
     def extract_service_status_times(service_status_raw):
         """
         # 'Active: active (running) since Tue 2022-04-12 18:32:04 GMT; 2h 33min ago'
-        3 months 19 days ago
-        6s ago
 
         @param service_status_raw:
         @return: server_time, duration
@@ -198,6 +196,13 @@ class SystemFunctionCommon:
 
     @staticmethod
     def extract_service_status_time_duration(duration_string):
+        """
+        2h 33min ago'
+        3 months 19 days ago
+        6s ago
+        @param duration_string:
+        @return:
+        """
         pdb.set_trace()
         duration_lst = duration_string.lower().split(" ")
         hours = 0
@@ -205,12 +210,16 @@ class SystemFunctionCommon:
         seconds = 0
 
         try:
-            days = duration_lst[duration_lst.index("days")-1]
+            index = duration_lst.index("days")
+            days = duration_lst[index-1]
+            duration_lst = duration_lst[:index-1] + duration_lst[index+1]
         except ValueError:
             days = 0
 
         try:
-            months = duration_lst[duration_lst.index("months")-1]
+            index = duration_lst.index("months")
+            months = duration_lst[index-1]
+            duration_lst = duration_lst[:index-1] + duration_lst[index+1]
         except ValueError:
             months = 0
 
@@ -221,7 +230,19 @@ class SystemFunctionCommon:
         except ValueError:
             years = 0
 
-        for
+        if duration_lst[-1] != "ago":
+            raise RuntimeError(f"{duration_lst} has no 'ago'")
+
+        for duration_part in duration_lst[:-1]:
+            if duration_part.endswith("s"):
+                seconds = duration_part[:-1]
+            elif duration_part.endswith("h"):
+                hours = duration_part[:-1]
+            elif duration_part.endswith("min"):
+                minutes = duration_part[:-3]
+            else:
+                raise ValueError(f"{duration_part} in {duration_lst}")
+        return datetime.timedelta(years=years, months=months, days=days, hours=hours, minutes=minutes, seconds=seconds)
 
     @staticmethod
     def extract_service_status_line_raw(service_status_raw):
