@@ -183,7 +183,7 @@ class SystemFunctionCommon:
         if min_uptime < seconds_duration:
             return True
 
-        logger.info(f"Waiting for status duration time: {seconds_duration}. Going to sleep for {min_uptime-seconds_duration} sec")
+        logger.info(f"Waiting for status duration time: {min_uptime}. Going to sleep for {min_uptime-seconds_duration} sec")
         time.sleep(min_uptime-seconds_duration)
         service_status_raw = SystemFunctionCommon.get_systemd_service_status(service_name)
         service_status = SystemFunctionCommon.extract_service_status_value(service_status_raw)
@@ -195,7 +195,7 @@ class SystemFunctionCommon:
             return True
 
         raise TimeoutError(f"service {service_name} seams to be in restart loop after cause it can not keep {status_name} "
-                           f"status for {min_uptime} seconds ")
+                           f"status for {min_uptime} seconds. Current status duration is {seconds_duration} ")
 # endregion
 
     @staticmethod
