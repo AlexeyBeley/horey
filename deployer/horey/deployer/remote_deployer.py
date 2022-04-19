@@ -220,7 +220,7 @@ class RemoteDeployer:
                 transport = client.get_transport()
                 sftp_client = HoreySFTPClient.from_transport(transport)
 
-                retry_attempts = 20
+                retry_attempts = 40
                 sleep_time = 60
                 for retry_counter in range(retry_attempts):
                     try:
@@ -457,7 +457,7 @@ class RemoteDeployer:
         logger.info("Deployment finished successfully output in")
 
     @staticmethod
-    def wait_to_finish(targets, check_finished_callback, check_success_callback, sleep_time=10, total_time=1200,
+    def wait_to_finish(targets, check_finished_callback, check_success_callback, sleep_time=10, total_time=2400,
                        steps=None):
         start_time = datetime.datetime.now()
         end_time = start_time + datetime.timedelta(seconds=total_time)
