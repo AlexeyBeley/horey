@@ -164,7 +164,6 @@ class SystemFunctionCommon:
         min_uptime = int(min_uptime)
         status_name = "active"
         status_change_seconds_limit = 120
-        # 'Active: active (running) since Tue 2022-04-12 18:32:04 GMT; 2h 33min ago'
         service_status_raw = SystemFunctionCommon.get_systemd_service_status(service_name)
         service_status = SystemFunctionCommon.extract_service_status_value(service_status_raw)
         server_time, seconds_duration = SystemFunctionCommon.extract_service_status_times(service_status_raw)
