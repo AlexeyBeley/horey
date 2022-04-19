@@ -328,12 +328,12 @@ class RemoteDeployer:
                 try:
                     transport = client.get_transport()
                     sftp_client = HoreySFTPClient.from_transport(transport)
-
                     self.execute_step(client, deployment_target.application_deploy_step)
                     self.wait_for_step_to_finish(deployment_target.application_deploy_step,
                                              deployment_target.local_deployment_data_dir_path, sftp_client)
                 except Exception as error_instance:
                     raise RemoteDeployer.DeployerError(repr(error_instance)) from error_instance
+
 
             deployment_target.deployment_code_provisioning_ended = True
 
@@ -369,6 +369,7 @@ class RemoteDeployer:
                                                              block_to_deploy.deployment_target_user_name,
                                                              deployment_target_key) as client:
             yield client
+
 
     @staticmethod
     @contextmanager
@@ -497,6 +498,6 @@ class RemoteDeployer:
         self.wait_to_finish(targets, lambda _target: step_callback(_target).status_code is not None,
                             lambda _target: step_callback(_target).status_code == step.StatusCode.SUCCESS,
                             steps=steps)
-
+        
     class DeployerError(RuntimeError):
         pass
