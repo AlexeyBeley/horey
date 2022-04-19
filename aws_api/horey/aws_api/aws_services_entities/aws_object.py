@@ -346,7 +346,7 @@ class AwsObject:
     def region(self, value):
         if isinstance(value, str):
             value = Region.get_region(value)
-            
+
         if not isinstance(value, Region):
             raise ValueError(value)
 

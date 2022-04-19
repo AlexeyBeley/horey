@@ -21,6 +21,7 @@ class NetworkInterface(AwsObject):
         self.ipv6_addresses = []
         self.private_ip_address = None
         self.attachment = None
+        self.association = None
 
         if from_cache:
             self._init_interface_from_cache(dict_src)
@@ -100,6 +101,8 @@ class NetworkInterface(AwsObject):
         return all_addresses
 
     def get_public_addresses(self):
+        if self.association is None:
+            raise RuntimeError(self.dict_src)
         return [IP(self.association["PublicIp"] + "/32")]
 
     def get_security_groups_endpoints(self):

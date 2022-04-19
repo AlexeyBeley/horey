@@ -1,7 +1,6 @@
 #!/usr/bin/python
 import pdb
 
-from horey.provision_constructor.system_function_factory import SystemFunctionFactory
 from horey.provision_constructor.system_functions import *
 import os
 import shutil
@@ -22,11 +21,14 @@ class ProvisionConstructor:
             shutil.rmtree(self.deployment_dir)
 
         os.makedirs(self.deployment_dir, exist_ok=True)
+        shutil.copyfile(os.path.join(os.path.dirname(os.path.abspath(__file__)), "bash_tools", "list_contains.sh"),
+                        os.path.join(self.deployment_dir, "list_contains.sh"))
         with open(os.path.join(self.deployment_dir, ProvisionConstructor.PROVISIONER_SCRIPT_NAME), "w") as file_handler:
             file_handler.writelines(["#!/bin/bash\n",
                                      "set -xe\n\n",
                                      'SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"\n',
                                      'cd "${SCRIPT_DIR}"\n\n',
+                                     'source list_contains.sh\n',
                                      "ProvisionedSystemFunctions=()\n",
                                      "#------------------------------\n"])
 

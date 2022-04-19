@@ -22,7 +22,8 @@ setup(
                                               "horey.provision_constructor.system_functions",
                                               "horey.provision_constructor.system_functions.*"]),
     package_data={
-        "": ["system_functions/**/*.sh",
+        "": ["bash_tools/*.sh",
+             "system_functions/**/*.sh",
              "system_functions/**/*.txt",
              "system_functions/**/**/*.conf",
              "system_functions/**/**/*.yml",
