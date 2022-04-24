@@ -16,6 +16,7 @@ logger = get_logger()
 
 class SystemFunctionCommon:
     ACTION_MANAGER = ActionsManager()
+    APT_PACKAGES = None
 
     def __init__(self):
         return
@@ -197,6 +198,42 @@ class SystemFunctionCommon:
                            f"status for {min_uptime} seconds. Current status duration is {seconds_duration} ")
 # endregion
 
+# region apt_install
+    @staticmethod
+    def action_apt_install_parser():
+        description = "apt_install"
+        parser = argparse.ArgumentParser(description=description)
+        parser.add_argument("--packages", required=True, type=str, help="Service name to check")
+
+        parser.epilog = f"Usage: python3 {__file__} [options]"
+        return parser
+
+    @staticmethod
+    def action_apt_install(arguments):
+        arguments_dict = vars(arguments)
+        SystemFunctionCommon.apt_install(**arguments_dict)
+
+    @staticmethod
+    def apt_install(service_name=None, min_uptime=None):
+        raise NotImplementedError()
+        if SystemFunctionCommon.APT_PACKAGES is None:
+            SystemFunctionCommon.init_apt_packages()
+
+        SystemFunctionCommon.run_bash("apt ")
+
+        raise TimeoutError(f"service {service_name} seams to be in restart loop after cause it can not keep {status_name} "
+                           f"status for {min_uptime} seconds. Current status duration is {seconds_duration} ")
+    @staticmethod
+    def init_apt_packages():
+        raise NotImplementedError()
+        lines = SystemFunctionCommon.run_bash("sudo apt list --installed")
+        for line in lines.split("\n"):
+            line.split(",", maxsplit=3)
+            name = line[0]
+        SystemFunctionCommon.APT_PACKAGES
+
+# endregion
+
     @staticmethod
     def get_systemd_service_status(service_name):
         command = f"systemctl status {service_name}"
@@ -249,6 +286,13 @@ class SystemFunctionCommon:
             days = 0
 
         try:
+            index = duration_lst.index("day")
+            days = int(duration_lst[index-1])
+            duration_lst = duration_lst[:index-1] + duration_lst[index+1:]
+        except ValueError:
+            pass
+
+        try:
             index = duration_lst.index("months")
             months = int(duration_lst[index-1])
             duration_lst = duration_lst[:index-1] + duration_lst[index+1:]
@@ -256,11 +300,25 @@ class SystemFunctionCommon:
             months = 0
 
         try:
+            index = duration_lst.index("month")
+            months = int(duration_lst[index-1])
+            duration_lst = duration_lst[:index-1] + duration_lst[index+1:]
+        except ValueError:
+            pass
+
+        try:
             index = duration_lst.index("years")
             years = int(duration_lst[index-1])
             duration_lst = duration_lst[:index-1] + duration_lst[index+1:]
         except ValueError:
             years = 0
+
+        try:
+            index = duration_lst.index("year")
+            years = int(duration_lst[index-1])
+            duration_lst = duration_lst[:index-1] + duration_lst[index+1:]
+        except ValueError:
+            pass
 
         if duration_lst[-1] != "ago":
             raise RuntimeError(f"{duration_lst} has no 'ago'")
@@ -413,6 +471,10 @@ SystemFunctionCommon.ACTION_MANAGER.register_action("perform_comment_line_replac
 
 SystemFunctionCommon.ACTION_MANAGER.register_action("check_systemd_service_status",
                                                     SystemFunctionCommon.action_check_systemd_service_status_parser,
+                                                    SystemFunctionCommon.action_check_systemd_service_status)
+
+SystemFunctionCommon.ACTION_MANAGER.register_action("apt_install",
+                                                    SystemFunctionCommon.action_apt_install_parser,
                                                     SystemFunctionCommon.action_check_systemd_service_status)
 
 if __name__ == "__main__":

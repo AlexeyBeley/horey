@@ -30,10 +30,18 @@ class MachineDeploymentBlock:
         self.remote_deployer_infrastructure_provisioning_finished = False
         self.remote_deployer_infrastructure_provisioning_succeeded = None
         self.linux_distro = "ubuntu"
+        self.steps = []
 
     @property
     def local_deployment_data_dir_path(self):
+        """
+        Deployment data - values, status and output.
+        @return:
+        """
         if self.local_deployment_dir_path is None:
             raise ValueError("local_deployment_dir_path was not set")
 
         return os.path.join(self.local_deployment_dir_path, self.deployment_data_dir_name)
+
+    def add_step(self, step):
+        self.steps.append(step)

@@ -334,7 +334,6 @@ class RemoteDeployer:
                 except Exception as error_instance:
                     raise RemoteDeployer.DeployerError(repr(error_instance)) from error_instance
 
-
             deployment_target.deployment_code_provisioning_ended = True
 
     @staticmethod
@@ -498,6 +497,9 @@ class RemoteDeployer:
         self.wait_to_finish(targets, lambda _target: step_callback(_target).status_code is not None,
                             lambda _target: step_callback(_target).status_code == step.StatusCode.SUCCESS,
                             steps=steps)
-        
+
+    def deploy_target(self, target):
+        pdb.set_trace()
+
     class DeployerError(RuntimeError):
         pass

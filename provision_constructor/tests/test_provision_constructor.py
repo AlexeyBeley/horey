@@ -40,7 +40,10 @@ def test_add_system_function_logstash():
                                                                              "logstash.output_file",
                                                                              "logstash.output_opensearch",
                                                                              "systemd.override"], force=True)
-
+    #docker
+    #python3.8
+    #zabbix
+    #system_journal
     assert isinstance(provision_constructor, ProvisionConstructor)
 
 
