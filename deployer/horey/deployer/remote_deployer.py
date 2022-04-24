@@ -500,6 +500,12 @@ class RemoteDeployer:
 
     def deploy_target(self, target):
         pdb.set_trace()
+        self.provision_target_remote_deployer_infrastructure_raw(target)
+        for step in target.steps:
+            self.deploy_target_step(target, step, asynchronous=False)
+            self.wait_to_finish([target], lambda _: step.status_code is not None,
+                                lambda _: step.status_code == step.StatusCode.SUCCESS,
+                                steps=[step])
 
     class DeployerError(RuntimeError):
         pass
