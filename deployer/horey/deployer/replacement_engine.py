@@ -8,8 +8,8 @@ import stat
 import paramiko
 from sshtunnel import open_tunnel
 import os
-from horey.deployer.machine_deployment_block import MachineDeploymentBlock
-from horey.deployer.machine_deployment_step import MachineDeploymentStep
+from horey.deployer.deployment_target import DeploymentTarget
+from horey.deployer.deployment_step import DeploymentStep
 from typing import List
 from contextlib import contextmanager
 from io import StringIO

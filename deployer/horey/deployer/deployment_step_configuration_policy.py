@@ -4,9 +4,10 @@ from uuid import uuid4
 from horey.configuration_policy.configuration_policy import ConfigurationPolicy
 
 
-class MachineDeploymentStepConfigurationPolicy(ConfigurationPolicy):
-    def __init__(self):
+class DeploymentStepConfigurationPolicy(ConfigurationPolicy):
+    def __init__(self, name):
         super().__init__()
+        self._name = name
         self._deployment_dir_path = None
         self._script_name = None
         self._finish_status_file_path = None
@@ -15,6 +16,16 @@ class MachineDeploymentStepConfigurationPolicy(ConfigurationPolicy):
         self._uuid = None
         self._step_data_dir_name = None
 
+    @property
+    def name(self):
+        if self._name is None:
+            return "deployment_data"
+        return self._name
+
+    @name.setter
+    def name(self, value):
+        self._name = value
+        
     @property
     def step_data_dir_name(self):
         if self._step_data_dir_name is None:
