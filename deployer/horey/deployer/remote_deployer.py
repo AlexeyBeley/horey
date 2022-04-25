@@ -206,6 +206,7 @@ class RemoteDeployer:
             self.deploy_target_step_thread(deployment_target, step)
 
     def deploy_target_step_thread(self, deployment_target, step):
+        logger.info(f"Starting deployment for target {deployment_target.deployment_target_address} step: {step.configuration.name}")
         try:
             self.deploy_target_step_thread_helper(deployment_target, step)
         except Exception as exception_instance:
@@ -483,7 +484,6 @@ class RemoteDeployer:
 
     @staticmethod
     def wait_to_finish_step(target, step: DeploymentStep, sleep_time=10, total_time=2400):
-        pdb.set_trace()
         start_time = datetime.datetime.now()
         end_time = start_time + datetime.timedelta(seconds=total_time)
 
@@ -493,7 +493,7 @@ class RemoteDeployer:
                     f"Finished: {target.deployment_target_address}")
                 break
 
-            logger.info(f"remote_deployer wait_to_finish {target.deployment_target_address } going to sleep for {sleep_time} seconds")
+            logger.info(f"remote_deployer wait_to_finish {target.deployment_target_address} step: {step.configuration.name} going to sleep for {sleep_time} seconds")
 
             time.sleep(sleep_time)
         else:
@@ -502,6 +502,8 @@ class RemoteDeployer:
         if step.status_code != step.StatusCode.SUCCESS:
             raise RuntimeError(f"{target.deployment_target_address}: step {step.configuration.name}: {step.status_code}: {step.status}: {step.output}")
 
+        logger.info(f"Finished deployment for target {target.deployment_target_address} step: {step.configuration.name}")
+
     def deploy_targets_steps(self, targets, step_callback, asynchronous=True):
         steps = []
         for target in targets:
@@ -509,7 +511,6 @@ class RemoteDeployer:
             steps.append(step)
             self.deploy_target_step(target, step, asynchronous=asynchronous)
             time.sleep(10)
-
         self.wait_to_finish(targets, lambda _target: step_callback(_target).status_code is not None,
                             lambda _target: step_callback(_target).status_code == step.StatusCode.SUCCESS,
                             steps=steps)
@@ -522,7 +523,7 @@ class RemoteDeployer:
             self.deploy_target_thread(target)
             
     def deploy_target_thread(self, target):
-        pdb.set_trace()
+        logger.info(f"Starting deployment for target {target.deployment_target_address}")
         try:
             self.provision_target_remote_deployer_infrastructure_thread(target)
             if not target.remote_deployer_infrastructure_provisioning_succeeded:
@@ -538,9 +539,11 @@ class RemoteDeployer:
             target.status_code = target.StatusCode.FAILURE
             target.status = repr(inst_error)
 
+        logger.info(f"Finished deployment for target {target.deployment_target_address}")
+
     def deploy_targets(self, targets):
         for target in targets:
-            self.deploy_target(target, asynchronous=False)
+            self.deploy_target(target, asynchronous=True)
             time.sleep(10)
 
         self.wait_to_finish(targets, lambda _target: _target.status_code is not None,

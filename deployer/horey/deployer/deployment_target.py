@@ -30,6 +30,8 @@ class DeploymentTarget:
         self.remote_deployer_infrastructure_provisioning_succeeded = None
         self.linux_distro = "ubuntu"
         self.steps = []
+        self.status_code = None
+        self.status = None
 
     @property
     def local_deployment_data_dir_path(self):
