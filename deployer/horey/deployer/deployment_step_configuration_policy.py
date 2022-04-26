@@ -4,10 +4,11 @@ from uuid import uuid4
 from horey.configuration_policy.configuration_policy import ConfigurationPolicy
 
 
-class MachineDeploymentStepConfigurationPolicy(ConfigurationPolicy):
-    def __init__(self):
+class DeploymentStepConfigurationPolicy(ConfigurationPolicy):
+    def __init__(self, name):
         super().__init__()
-        self._step_scripts_dir_path = None
+        self._name = name
+        self._deployment_dir_path = None
         self._script_name = None
         self._finish_status_file_path = None
         self._output_file_path = None
@@ -15,6 +16,16 @@ class MachineDeploymentStepConfigurationPolicy(ConfigurationPolicy):
         self._uuid = None
         self._step_data_dir_name = None
 
+    @property
+    def name(self):
+        if self._name is None:
+            return "deployment_data"
+        return self._name
+
+    @name.setter
+    def name(self, value):
+        self._name = value
+        
     @property
     def step_data_dir_name(self):
         if self._step_data_dir_name is None:
@@ -48,16 +59,16 @@ class MachineDeploymentStepConfigurationPolicy(ConfigurationPolicy):
         self._script_name = value
 
     @property
-    def step_scripts_dir_path(self):
-        if self._step_scripts_dir_path is None:
+    def deployment_dir_path(self):
+        if self._deployment_dir_path is None:
             return "/tmp"
-        return self._step_scripts_dir_path
+        return self._deployment_dir_path
 
-    @step_scripts_dir_path.setter
-    def step_scripts_dir_path(self, value):
+    @deployment_dir_path.setter
+    def deployment_dir_path(self, value):
         if not isinstance(value, str):
-            raise ValueError(f"step_scripts_dir_path must be str, received: '{type(value)}'")
-        self._step_scripts_dir_path = value
+            raise ValueError(f"deployment_dir_path must be str, received: '{type(value)}'")
+        self._deployment_dir_path = value
 
     @property
     def finish_status_file_name(self):
@@ -103,10 +114,10 @@ class MachineDeploymentStepConfigurationPolicy(ConfigurationPolicy):
 
     @property
     def step_data_dir_path(self):
-        if self.step_scripts_dir_path is None or self.step_data_dir_name is None:
+        if self.deployment_dir_path is None or self.step_data_dir_name is None:
             raise ValueError()
 
-        return os.path.join(self.step_scripts_dir_path, self.step_data_dir_name)
+        return os.path.join(self.deployment_dir_path, self.step_data_dir_name)
 
     @step_data_dir_path.setter
     def step_data_dir_path(self, _):
@@ -152,7 +163,7 @@ class MachineDeploymentStepConfigurationPolicy(ConfigurationPolicy):
     def remote_script_file_path(self):
         if self.script_name is None:
             raise ValueError()
-        return os.path.join(self.step_scripts_dir_path, self.script_name)
+        return os.path.join(self.deployment_dir_path, self.script_name)
 
     @remote_script_file_path.setter
     def remote_script_file_path(self, _):
