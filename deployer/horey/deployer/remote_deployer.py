@@ -195,7 +195,10 @@ class RemoteDeployer:
                     logger.info(f"[REMOTE] {command}")
                     client.exec_command(command)
                 deployment_target.remote_deployer_infrastructure_provisioning_succeeded = True
+                logger.info(f"Finished provisioning deployer infrastructure at target {deployment_target.deployment_target_address}")
             except Exception as error_instance:
+                logger.error(f"Failed provisioning deployer infrastructure at target {deployment_target.deployment_target_address}: {repr(error_instance)}")
+                deployment_target.remote_deployer_infrastructure_provisioning_succeeded = False
                 raise RemoteDeployer.DeployerError(repr(error_instance)) from error_instance
 
     def deploy_target_step(self, deployment_target, step, asynchronous=False):
@@ -523,7 +526,7 @@ class RemoteDeployer:
             self.deploy_target_thread(target)
             
     def deploy_target_thread(self, target):
-        logger.info(f"Starting deployment for target {target.deployment_target_address}")
+        logger.info(f"Starting target deployment {target.deployment_target_address}")
         try:
             self.provision_target_remote_deployer_infrastructure_thread(target)
             if not target.remote_deployer_infrastructure_provisioning_succeeded:
@@ -539,7 +542,7 @@ class RemoteDeployer:
             target.status_code = target.StatusCode.FAILURE
             target.status = repr(inst_error)
 
-        logger.info(f"Finished deployment for target {target.deployment_target_address}")
+        logger.info(f"Finished target deployment: {target.deployment_target_address}")
 
     def deploy_targets(self, targets):
         for target in targets:
