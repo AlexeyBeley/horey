@@ -48,3 +48,15 @@ class ProvisionConstructor:
             ancestor_name = system_function_name[:system_function_name.rfind(".")]
             if ancestor_name not in self.provisioned_system_functions:
                 raise RuntimeError(f"'{system_function_name}' ancestor '{ancestor_name}' was not found")
+
+    def generate_provision_constructor_bootstrap_script(self, remote_deployment_dir_path, script_path):
+        pdb.set_trace()
+        # cp -r  _venv_tmp/lib/python3.8/site-packages/* _venv/lib/python3.8/site-packages/
+        # install python3.8
+        # install git
+        # install pip3.8
+        # install make
+        # make install
+        # apt-get install python3-venv -y
+
+        #download_horey

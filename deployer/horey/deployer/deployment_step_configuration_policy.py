@@ -15,6 +15,7 @@ class DeploymentStepConfigurationPolicy(ConfigurationPolicy):
         self._script_configuration_file_name = None
         self._uuid = None
         self._step_data_dir_name = None
+        self._remote_script_file_path = None
 
     @property
     def name(self):
@@ -161,10 +162,13 @@ class DeploymentStepConfigurationPolicy(ConfigurationPolicy):
 
     @property
     def remote_script_file_path(self):
+        if self._remote_script_file_path is not None:
+            return self._remote_script_file_path
+
         if self.script_name is None:
             raise ValueError()
         return os.path.join(self.deployment_dir_path, self.script_name)
 
     @remote_script_file_path.setter
-    def remote_script_file_path(self, _):
-        raise self.StaticValueError()
+    def remote_script_file_path(self, value):
+        self._remote_script_file_path = value
