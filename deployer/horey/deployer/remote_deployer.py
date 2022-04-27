@@ -4,6 +4,7 @@ import pdb
 import time
 import threading
 import stat
+import traceback
 
 import paramiko
 from sshtunnel import open_tunnel
@@ -148,7 +149,8 @@ class RemoteDeployer:
                             "Error reading SSH protocol banner" in repr_exception_instance:
                         time.sleep(10)
                         continue
-                    logger.error(f"Raised unknown exception {repr_exception_instance}")
+                    traceback_str = ''.join(traceback.format_tb(exception_instance.__traceback__))
+                    logger.error(f"Raised unknown exception {repr_exception_instance}: tb: {traceback_str} ")
                     raise
 
         except Exception as exception_instance:
@@ -169,10 +171,10 @@ class RemoteDeployer:
                 logger.info(f"sftp: mkdir {deployment_target.remote_deployment_dir_path}")
                 sftp_client.mkdir(deployment_target.remote_deployment_dir_path, ignore_existing=True)
 
-                remote_output_dir = os.path.join(deployment_target.remote_deployment_dir_path,
-                                             "output")
-                logger.info(f"sftp: mkdir {remote_output_dir}")
-                sftp_client.mkdir(remote_output_dir, ignore_existing=True)
+                #remote_output_dir = os.path.join(deployment_target.remote_deployment_dir_path,
+                #                             "output")
+                #logger.info(f"sftp: mkdir {remote_output_dir}")
+                #sftp_client.mkdir(remote_output_dir, ignore_existing=True)
 
                 logger.info(f"sftp: put_dir from local {deployment_target.local_deployment_dir_path} to "
                             f"{deployment_target.deployment_target_address}:{deployment_target.remote_deployment_dir_path}")
@@ -197,7 +199,8 @@ class RemoteDeployer:
                 deployment_target.remote_deployer_infrastructure_provisioning_succeeded = True
                 logger.info(f"Finished provisioning deployer infrastructure at target {deployment_target.deployment_target_address}")
             except Exception as error_instance:
-                logger.error(f"Failed provisioning deployer infrastructure at target {deployment_target.deployment_target_address}: {repr(error_instance)}")
+                traceback_str = ''.join(traceback.format_tb(error_instance.__traceback__))
+                logger.error(f"Failed provisioning deployer infrastructure at target {deployment_target.deployment_target_address}: {repr(error_instance)}: tb {traceback_str}")
                 deployment_target.remote_deployer_infrastructure_provisioning_succeeded = False
                 raise RemoteDeployer.DeployerError(repr(error_instance)) from error_instance
 
