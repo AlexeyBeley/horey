@@ -201,6 +201,7 @@ class RemoteDeployer:
             except Exception as error_instance:
                 traceback_str = ''.join(traceback.format_tb(error_instance.__traceback__))
                 logger.error(f"Failed provisioning deployer infrastructure at target {deployment_target.deployment_target_address}: {repr(error_instance)}: tb {traceback_str}")
+
                 deployment_target.remote_deployer_infrastructure_provisioning_succeeded = False
                 raise RemoteDeployer.DeployerError(repr(error_instance)) from error_instance
 
