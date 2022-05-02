@@ -144,7 +144,8 @@ class RemoteDeployer:
 
                     repr_exception_instance = repr(exception_instance)
 
-                    if "Unable to connect to port 22" in repr_exception_instance or \
+                    if "Unable to connect to port 22" in repr_exception_instance or\
+                        "No such file" in repr_exception_instance or\
                             "Could not establish session to SSH gateway" in repr_exception_instance or \
                             "Error reading SSH protocol banner" in repr_exception_instance:
                         time.sleep(10)
