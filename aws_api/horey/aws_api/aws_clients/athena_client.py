@@ -11,16 +11,24 @@ from horey.h_logger import get_logger
 logger = get_logger()
 
 
-class TemplateClient(Boto3Client):
+class AthenaClient(Boto3Client):
     """
     Client to handle specific aws service API calls.
     """
 
     def __init__(self):
-        client_name = "Template"
+        client_name = "athena"
         super().__init__(client_name)
         pdb.set_trace()
-        ret = list(self.execute(self.client.get_databases, None, raw_data=True))
+        ret = list(self.execute(self.client.list_work_groups, "WorkGroups"))
+        ret = list(self.execute(self.client.list_data_catalogs, "DataCatalogsSummary"))
+        ret = list(self.execute(self.client.list_databases, "DatabaseList", filters_req={"CatalogName": "AwsDataCatalog"}))
+        ret = list(self.execute(self.client.get_table_metadata, "TableMetadata", filters_req={"CatalogName": "AwsDataCatalog", "DatabaseName": "sampledb", "TableName": "elb_logs"}))
+
+        ret = list(self.execute(self.client.list_table_metadata, "TableMetadataList", filters_req={"CatalogName": "AwsDataCatalog", "DatabaseName": "sampledb"}))
+
+
+
 
     def get_all_template_entities(self, region=None, full_information=True):
         """
