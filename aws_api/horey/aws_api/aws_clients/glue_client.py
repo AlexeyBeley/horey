@@ -21,9 +21,6 @@ class GlueClient(Boto3Client):
     def __init__(self):
         client_name = "glue"
         super().__init__(client_name)
-        pdb.set_trace()
-        ret = list(self.execute(self.client.get_databases, "DatabaseList"))
-        ret = list(self.execute(self.client.get_tables, "TableList", filters_req={"DatabaseName": "sampledb"}))
 
     # region table
     def get_all_tables(self, region=None, full_information=True):
