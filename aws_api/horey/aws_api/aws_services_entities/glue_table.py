@@ -21,10 +21,20 @@ class GlueTable(AwsObject):
             return
 
         init_options = {
-            "Arn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
             "Name": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-            "Id": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
-            "status": self.init_default_attr,
+            "DatabaseName": self.init_default_attr,
+            "Owner": self.init_default_attr,
+            "CreateTime": self.init_default_attr,
+            "UpdateTime": self.init_default_attr,
+            "LastAccessTime": self.init_default_attr,
+            "Retention": self.init_default_attr,
+            "StorageDescriptor": self.init_default_attr,
+            "PartitionKeys": self.init_default_attr,
+            "TableType": self.init_default_attr,
+            "Parameters": self.init_default_attr,
+            "CreatedBy": self.init_default_attr,
+            "IsRegisteredWithLakeFormation": self.init_default_attr,
+            "CatalogId": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options, raise_on_no_option=True)
@@ -42,7 +52,7 @@ class GlueTable(AwsObject):
         raise NotImplementedError()
 
     def generate_create_request(self):
-        raise NotImplementedError()
+        pdb.set_trace()
         request = dict()
         request["Name"] = self.name
         request["tags"] = self.tags
@@ -51,10 +61,10 @@ class GlueTable(AwsObject):
 
     @property
     def region(self):
-        raise NotImplementedError()
         if self._region is not None:
             return self._region
 
+        raise NotImplementedError()
         if self.arn is not None:
             self._region = Region.get_region(self.arn.split(":")[3])
 
@@ -62,7 +72,6 @@ class GlueTable(AwsObject):
 
     @region.setter
     def region(self, value):
-        raise NotImplementedError()
         if not isinstance(value, Region):
             raise ValueError(value)
 

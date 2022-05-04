@@ -41,15 +41,17 @@ class GlueClient(Boto3Client):
     def get_region_tables(self, region, full_information=True):
         final_result = list()
         AWSAccount.set_aws_region(region)
-        for dict_src in self.execute(self.client.describe_tables, "tables"):
-            obj = GlueTable(dict_src)
-            final_result.append(obj)
-            if full_information:
-                raise NotImplementedError()
+        for database in self.get_region_databases(region):
+            for dict_src in self.execute(self.client.get_tables, "TableList", filters_req={"DatabaseName": database.name}):
+                obj = GlueTable(dict_src)
+                final_result.append(obj)
+                if full_information:
+                    pass
 
         return final_result
 
-    def provision_table(self, table):
+    def provision_table(self, table: GlueTable):
+        pdb.set_trace()
         region_tables = self.get_region_tables(table.region)
         for region_table in region_tables:
             if region_table.get_tagname(ignore_missing_tag=True) == table.get_tagname():
@@ -86,20 +88,24 @@ class GlueClient(Boto3Client):
     def get_region_databases(self, region, full_information=True):
         final_result = list()
         AWSAccount.set_aws_region(region)
-        for dict_src in self.execute(self.client.describe_databases, "databases"):
+        for dict_src in self.execute(self.client.get_databases, "DatabaseList"):
             obj = GlueDatabase(dict_src)
             final_result.append(obj)
             if full_information:
-                raise NotImplementedError()
+                pass
 
         return final_result
 
-    def provision_database(self, database):
-        region_databases = self.get_region_databases(database.region)
-        for region_database in region_databases:
-            if region_database.get_tagname(ignore_missing_tag=True) == database.get_tagname():
-                database.update_from_raw_response(region_database.dict_src)
-                return
+    def update_database_information(self, database: GlueDatabase):
+        AWSAccount.set_aws_region(database.region)
+        for dict_src in self.execute(self.client.get_database, "DatabaseList", filters_req={"Name": database.name}):
+            pdb.set_trace()
+            database.update_from_raw_response(dict_src)
+            return
+
+    def provision_database(self, database: GlueDatabase):
+        self.update_database_information(database)
+        pdb.set_trace()
 
         AWSAccount.set_aws_region(database.region)
         response = self.provision_database_raw(database.generate_create_request())

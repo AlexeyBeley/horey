@@ -333,6 +333,22 @@ def test_init_and_cache_subnets():
     aws_api.init_subnets(region=all_regions)
     aws_api.cache_objects(aws_api.subnets, configuration.aws_api_subnets_cache_file)
     assert isinstance(aws_api.subnets, list)
+    
+    
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_glue_tables():
+    all_regions = list(list(aws_api.aws_accounts.values())[0].regions.values())
+    aws_api.init_glue_tables(region=all_regions)
+    aws_api.cache_objects(aws_api.glue_tables, configuration.aws_api_glue_tables_cache_file)
+    assert isinstance(aws_api.glue_tables, list)
+    
+    
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_glue_databases():
+    all_regions = list(list(aws_api.aws_accounts.values())[0].regions.values())
+    aws_api.init_glue_databases(region=all_regions)
+    aws_api.cache_objects(aws_api.glue_databases, configuration.aws_api_glue_databases_cache_file)
+    assert isinstance(aws_api.glue_databases, list)
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
@@ -560,4 +576,6 @@ if __name__ == "__main__":
     #test_init_and_cache_servicediscovery_namespaces()
     #test_init_and_cache_vpcs()
     #test_init_and_cache_ec2_volumes()
-    test_init_and_cache_subnets()
+    #test_init_and_cache_subnets()
+    test_init_and_cache_glue_tables()
+    test_init_and_cache_glue_databases()
