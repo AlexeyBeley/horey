@@ -55,7 +55,40 @@ def test_provision_table():
     client = GlueClient()
     table = GlueTable({})
     table.name = "test"
+    table.database_name = "test"
+    table.description = "test debug"
+    table.retention = 0
     table.region = Region.get_region("us-west-2")
+    table.storage_descriptor = {
+        "Columns": [
+          {
+            "Name": "test",
+            "Type": "int",
+            "Comment": "from test"
+          }
+        ],
+        "Location": "s3://horey/test",
+        "InputFormat": "org.apache.hadoop.mapred.TextInputFormat",
+        "OutputFormat": "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat",
+        "Compressed": False,
+        "NumberOfBuckets": -1,
+        "SerdeInfo": {
+          "SerializationLibrary": "org.openx.data.jsonserde.JsonSerDe",
+          "Parameters": {
+            "serialization.format": "1"
+          }
+        },
+        "BucketColumns": [],
+        "SortColumns": [],
+        "Parameters": {},
+        "SkewedInfo": {
+          "SkewedColumnNames": [],
+          "SkewedColumnValues": [],
+          "SkewedColumnValueLocationMaps": {}
+        },
+        "StoredAsSubDirectories": False
+      }
+
     ret = client.provision_table(table)
 
 

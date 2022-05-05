@@ -14,7 +14,7 @@ class GlueTable(AwsObject):
 
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
-        self._region = None
+        self.create_time = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -52,10 +52,14 @@ class GlueTable(AwsObject):
         raise NotImplementedError()
 
     def generate_create_request(self):
-        pdb.set_trace()
         request = dict()
-        request["Name"] = self.name
-        request["tags"] = self.tags
+        request["DatabaseName"] = self.database_name
+        request["TableInput"] = dict()
+        request["TableInput"]["Name"] = self.name
+        request["TableInput"]["Description"] = self.description
+        request["TableInput"]["Retention"] = self.retention
+
+        request["TableInput"]["StorageDescriptor"] = self.storage_descriptor
 
         return request
 

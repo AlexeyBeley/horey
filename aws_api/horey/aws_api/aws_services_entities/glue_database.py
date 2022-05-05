@@ -14,7 +14,7 @@ class GlueDatabase(AwsObject):
 
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
-        self._region = None
+        self.create_time = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -40,14 +40,20 @@ class GlueDatabase(AwsObject):
         options = {}
         self._init_from_cache(dict_src, options)
 
-    def update_from_raw_response(self, raw_value):
-        raise NotImplementedError()
+    def update_from_raw_response(self, dict_src):
+        init_options = {
+            "Name": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "CreateTime": self.init_default_attr,
+            "CreateTableDefaultPermissions": self.init_default_attr,
+            "CatalogId": self.init_default_attr,
+            "Description": self.init_default_attr,
+            "Parameters": self.init_default_attr,
+        }
+        self.init_attrs(dict_src, init_options, raise_on_no_option=True)
 
     def generate_create_request(self):
-        pdb.set_trace()
         request = dict()
-        request["Name"] = self.name
-        request["tags"] = self.tags
+        request["DatabaseInput"] = {"Name": self.name}
 
         return request
 
