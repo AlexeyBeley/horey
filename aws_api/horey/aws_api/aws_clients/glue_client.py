@@ -52,7 +52,7 @@ class GlueClient(Boto3Client):
 
     def update_table_information(self, table: GlueTable):
         AWSAccount.set_aws_region(table.region)
-        for dict_src in self.execute(self.client.get_table, "Database", filters_req={"DatabaseName": table.database_name, "Name": table.name},
+        for dict_src in self.execute(self.client.get_table, "Table", filters_req={"DatabaseName": table.database_name, "Name": table.name},
                                      exception_ignore_callback=lambda x: f"Table {table.name} not found" in repr(x)):
             table.update_from_raw_response(dict_src)
             return
