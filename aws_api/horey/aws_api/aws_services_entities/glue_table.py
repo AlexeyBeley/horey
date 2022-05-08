@@ -15,6 +15,7 @@ class GlueTable(AwsObject):
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self.create_time = None
+        self._arn = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -39,6 +40,12 @@ class GlueTable(AwsObject):
         }
 
         self.init_attrs(dict_src, init_options, raise_on_no_option=True)
+
+    @property
+    def arn(self):
+        if self._arn is None:
+            self._arn = f"arn:aws:glue:{self.region.region_mark}:{self.account_id}:table/{self.database_name}/{self.name}"
+        return self._arn
 
     def _init_object_from_cache(self, dict_src):
         """

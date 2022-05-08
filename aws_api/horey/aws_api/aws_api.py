@@ -2266,6 +2266,12 @@ class AWSAPI:
 
     def provision_auto_scaling_group(self, autoscaling_group):
         self.autoscaling_client.provision_auto_scaling_group(autoscaling_group)
+        
+    def provision_glue_table(self, glue_table):
+        self.glue_client.provision_table(glue_table)
+    
+    def provision_glue_database(self, glue_database):
+        self.glue_client.provision_database(glue_database)
 
     def provision_nat_gateways(self, nat_gateways):
         for nat_gateway in nat_gateways:
