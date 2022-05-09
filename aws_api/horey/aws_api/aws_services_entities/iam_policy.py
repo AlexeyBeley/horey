@@ -80,6 +80,29 @@ class IamPolicy(AwsObject):
         document = IamPolicy.Document(value)
         self.init_default_attr("document", document)
 
+    def generate_create_request(self):
+        dict_ret = dict()
+        dict_ret["PolicyName"] = self.name
+        dict_ret["PolicyDocument"] = self.document
+        dict_ret["Description"] = self.description
+        dict_ret["Tags"] = self.tags
+        return dict_ret
+
+    def update_from_raw_response(self, dict_src):
+        init_options = {
+            "PolicyId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "Path": self.init_default_attr,
+            "PolicyName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "Arn": self.init_default_attr,
+            "CreateDate": self.init_default_attr,
+            "DefaultVersionId": self.init_default_attr,
+            "AttachmentCount": self.init_default_attr,
+            "PermissionsBoundaryUsageCount": self.init_default_attr,
+            "IsAttachable": self.init_default_attr,
+            "UpdateDate": self.init_default_attr}
+
+        self.init_attrs(dict_src, init_options)
+
     class Document(AwsObject):
         """
         Class representing AWS Policy Document object.

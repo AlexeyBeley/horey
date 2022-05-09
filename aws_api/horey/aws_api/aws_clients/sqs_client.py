@@ -93,5 +93,5 @@ class SQSClient(Boto3Client):
 
     def send_message_raw(self, request_dict):
         logger.info(f"Sending message to queue: {request_dict}")
-        return list(self.execute(self.client.send_message, "Messages",
+        return list(self.execute(self.client.send_message, None, raw_data=True,
                                  filters_req=request_dict))

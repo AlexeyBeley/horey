@@ -27,8 +27,10 @@ class AthenaClient(Boto3Client):
 
         ret = list(self.execute(self.client.list_table_metadata, "TableMetadataList", filters_req={"CatalogName": "AwsDataCatalog", "DatabaseName": "sampledb"}))
 
+        ret = list(self.execute(self.client.list_data_catalogs, "DataCatalogsSummary"))
+        ret = list(self.execute(self.client.get_data_catalog, "DataCatalog", filters_req={'Name': 'AwsDataCatalog'}))
 
-
+        ret = list(self.execute(self.client.get_database, "Database", filters_req={'CatalogName': 'AwsDataCatalog', "DatabaseName": "sampledb"}))
 
     def get_all_template_entities(self, region=None, full_information=True):
         """

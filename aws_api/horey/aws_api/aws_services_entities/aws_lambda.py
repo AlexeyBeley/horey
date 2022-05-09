@@ -226,7 +226,7 @@ class AWSLambda(AwsObject):
         @return:
         """
         if desired_aws_lambda.policy is None:
-            return
+            return [], []
 
         if len(desired_aws_lambda.policy["Statement"]) != 1:
             raise NotImplementedError(desired_aws_lambda.policy["Statement"])
@@ -243,7 +243,7 @@ class AWSLambda(AwsObject):
                 request["Principal"] = statement["Principal"]["Service"]
                 request["SourceArn"] = statement["Condition"]["ArnLike"]["AWS:SourceArn"]
                 requests.append(request)
-            return requests
+            return requests, []
 
         add_permissions = []
         remove_permissions = []
