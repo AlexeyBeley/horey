@@ -16,6 +16,8 @@ class GlueTable(AwsObject):
         super().__init__(dict_src)
         self.create_time = None
         self._arn = None
+        self.parameters = None
+        self.partition_keys = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -86,6 +88,10 @@ class GlueTable(AwsObject):
         request["TableInput"]["Retention"] = self.retention
 
         request["TableInput"]["StorageDescriptor"] = self.storage_descriptor
+        if self.parameters is not None:
+            request["TableInput"]["Parameters"] = self.parameters
+        if self.partition_keys is not None:
+            request["TableInput"]["PartitionKeys"] = self.partition_keys
 
         return request
 
