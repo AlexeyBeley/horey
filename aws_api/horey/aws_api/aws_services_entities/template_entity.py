@@ -14,7 +14,6 @@ class TemplateEntity(AwsObject):
 
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
-        self._region = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -51,10 +50,10 @@ class TemplateEntity(AwsObject):
 
     @property
     def region(self):
-        raise NotImplementedError()
         if self._region is not None:
             return self._region
 
+        raise NotImplementedError()
         if self.arn is not None:
             self._region = Region.get_region(self.arn.split(":")[3])
 
@@ -62,7 +61,6 @@ class TemplateEntity(AwsObject):
 
     @region.setter
     def region(self, value):
-        raise NotImplementedError()
         if not isinstance(value, Region):
             raise ValueError(value)
 

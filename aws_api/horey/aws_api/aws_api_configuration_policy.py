@@ -36,6 +36,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
         self._aws_api_kms_cache_dir = None
         self._aws_api_elasticache_cache_dir = None
         self._aws_api_sqs_cache_dir = None
+        self._aws_api_glue_cache_dir = None
 
     @property
     def aws_api_regions(self):
@@ -325,7 +326,32 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     def aws_api_nat_gateways_cache_file(self, value):
         raise ValueError(value)
     # endregion
+    
+    # region glue
+    @property
+    def aws_api_glue_cache_dir(self):
+        if self._aws_api_glue_cache_dir is None:
+            self._aws_api_glue_cache_dir = os.path.join(self.aws_api_cache_dir, self.aws_api_account, "glue")
+            os.makedirs(self._aws_api_glue_cache_dir, exist_ok=True)
+        return self._aws_api_glue_cache_dir
+    
+    @property
+    def aws_api_glue_databases_cache_file(self):
+        return os.path.join(self.aws_api_glue_cache_dir, "glue_databases.json")
 
+    @aws_api_glue_databases_cache_file.setter
+    def aws_api_glue_databases_cache_file(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_glue_tables_cache_file(self):
+        return os.path.join(self.aws_api_glue_cache_dir, "glue_tables.json")
+
+    @aws_api_glue_tables_cache_file.setter
+    def aws_api_glue_tables_cache_file(self, value):
+        raise ValueError(value)
+    # endregion
+    
     # region lambda
     @property
     def aws_api_lambda_cache_dir(self):

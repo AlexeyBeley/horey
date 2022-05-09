@@ -32,6 +32,14 @@ class Boto3Client:
         """
 
         self.client_name = client_name
+        self._account_id = None
+
+    @property
+    def account_id(self):
+        if self._account_id is None:
+            sts_client = self.SESSIONS_MANAGER.get_client("sts")
+            self._account_id = sts_client.get_caller_identity()["Account"]
+        return self._account_id
 
     @property
     def client(self):
@@ -200,6 +208,18 @@ class Boto3Client:
         end_time = datetime.datetime.now()
         logger.info(
             f"Finished waiting loop for {observed_object.id} to become one of {desired_statuses}. Took {end_time - start_time}")
+
+    def get_tags(self, obj):
+        logger.info(f"Getting resource tags: {obj.arn}")
+        for response in self.execute(self.client.get_tags, "Tags",
+                                     filters_req={"ResourceArn": obj.arn}):
+            return response
+
+    def tag_resource(self, obj):
+        logger.info(f"Tagging resource: {obj.arn}")
+        for response in self.execute(self.client.tag_resource, "Tags",
+                                     filters_req={"ResourceArn": obj.arn, "TagsToAdd": obj.tags}, raw_data=True):
+            return response
 
     class NoReturnStringError(Exception):
         pass

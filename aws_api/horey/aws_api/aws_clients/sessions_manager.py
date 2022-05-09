@@ -46,7 +46,6 @@ class SessionsManager:
             """
             aws_region = AWSAccount.get_aws_region()
             region_mark = aws_region.region_mark if aws_region is not None else self.session.region_name
-            logger.info(f"region_mark: {region_mark} client: {client_name}")
             if region_mark not in self.clients or client_name not in self.clients[region_mark]:
                 self.connect_client(region_mark, client_name)
 

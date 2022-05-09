@@ -138,6 +138,13 @@ class IamClient(Boto3Client):
 
                 iam_role.add_policy(policy)
 
+    def yield_policies(self, full_information=True, filters_req=None):
+        for result in self.execute(self.client.list_policies, "Policies", filters_req=filters_req):
+            pol = IamPolicy(result)
+            if full_information:
+                self.update_policy_default_statement(pol)
+            yield pol
+
     def get_all_policies(self, full_information=True, filters_req=None):
         """
         Get all iam policies.
@@ -150,12 +157,12 @@ class IamClient(Boto3Client):
         for result in self.execute(self.client.list_policies, "Policies", filters_req=filters_req):
             pol = IamPolicy(result)
             if full_information:
-                self.update_policy_statements(pol)
+                self.update_policy_default_statement(pol)
             final_result.append(pol)
 
         return final_result
 
-    def update_policy_statements(self, policy):
+    def update_policy_default_statement(self, policy):
         """
         Fetches and pdates the policy statements
         :param policy: The IamPolicy obj
@@ -192,4 +199,19 @@ class IamClient(Boto3Client):
         logger.warning(f"Creating iam role: {request_dict}")
 
         for response in self.execute(self.client.create_role, "Role", filters_req=request_dict):
+            return response
+
+    def provision_policy(self, policy: IamPolicy):
+        for existing_policy in self.yield_policies(full_information=False):
+            if existing_policy.name == policy.name:
+                policy.update_from_raw_response(existing_policy.dict_src)
+                return
+
+        role_dict_src = self.provision_policy_raw(policy.generate_create_request())
+        policy.update_from_raw_response(role_dict_src)
+
+    def provision_policy_raw(self, request_dict):
+        logger.warning(f"Creating iam policy: {request_dict}")
+
+        for response in self.execute(self.client.create_policy, "Policy", filters_req=request_dict):
             return response

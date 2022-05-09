@@ -20,6 +20,8 @@ from horey.aws_api.aws_services_entities.ec2_spot_fleet_request import EC2SpotFl
 from horey.aws_api.aws_services_entities.ec2_launch_template import EC2LaunchTemplate
 from horey.aws_api.aws_services_entities.ec2_launch_template_version import EC2LaunchTemplateVersion
 
+from horey.aws_api.aws_clients.glue_client import GlueClient
+
 from horey.aws_api.aws_clients.ecs_client import ECSClient
 from horey.aws_api.aws_clients.auto_scaling_client import AutoScalingClient
 from horey.aws_api.aws_clients.s3_client import S3Client
@@ -128,6 +130,7 @@ class AWSAPI:
     """
 
     def __init__(self, configuration=None):
+        self.glue_client = GlueClient()
         self.ec2_client = EC2Client()
         self.lambda_client = LambdaClient()
         self.iam_client = IamClient()
@@ -210,6 +213,8 @@ class AWSAPI:
         self.elasticache_replication_groups = []
         self.sqs_queues = []
         self.lambda_event_source_mappings = []
+        self.glue_databases= []
+        self.glue_tables = []
 
         self.configuration = configuration
         self.aws_accounts = None
@@ -268,6 +273,32 @@ class AWSAPI:
                 objects += self.ec2_client.get_all_subnets(region=_region)
 
         self.subnets = objects
+    
+    def init_glue_tables(self, from_cache=False, cache_file=None, region=None):
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, Subnet)
+        else:
+            if not isinstance(region, list):
+                region = [region]
+
+            objects = []
+            for _region in region:
+                objects += self.glue_client.get_all_tables(region=_region)
+
+        self.glue_tables = objects
+    
+    def init_glue_databases(self, from_cache=False, cache_file=None, region=None):
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, Subnet)
+        else:
+            if not isinstance(region, list):
+                region = [region]
+
+            objects = []
+            for _region in region:
+                objects += self.glue_client.get_all_databases(region=_region)
+
+        self.glue_databases = objects
 
     def init_availability_zones(self, from_cache=False, cache_file=None):
         if from_cache:
@@ -2235,6 +2266,12 @@ class AWSAPI:
 
     def provision_auto_scaling_group(self, autoscaling_group):
         self.autoscaling_client.provision_auto_scaling_group(autoscaling_group)
+        
+    def provision_glue_table(self, glue_table):
+        self.glue_client.provision_table(glue_table)
+    
+    def provision_glue_database(self, glue_database):
+        self.glue_client.provision_database(glue_database)
 
     def provision_nat_gateways(self, nat_gateways):
         for nat_gateway in nat_gateways:
@@ -2553,6 +2590,9 @@ class AWSAPI:
 
     def provision_iam_role(self, iam_role):
         self.iam_client.provision_iam_role(iam_role)
+
+    def provision_iam_policy(self, iam_policy):
+        self.iam_client.provision_policy(iam_policy)
 
     def dispose_rds_db_cluster(self, rds_cluster):
         self.rds_client.dispose_db_cluster(rds_cluster)
