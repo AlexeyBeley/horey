@@ -23,14 +23,14 @@ class AthenaClient(Boto3Client):
         ret = list(self.execute(self.client.list_work_groups, "WorkGroups"))
         ret = list(self.execute(self.client.list_data_catalogs, "DataCatalogsSummary"))
         ret = list(self.execute(self.client.list_databases, "DatabaseList", filters_req={"CatalogName": "AwsDataCatalog"}))
-        ret = list(self.execute(self.client.get_table_metadata, "TableMetadata", filters_req={"CatalogName": "AwsDataCatalog", "DatabaseName": "sampledb", "TableName": "elb_logs"}))
+        ret = list(self.execute(self.client.get_table_metadata, "TableMetadata", filters_req={"CatalogName": "AwsDataCatalog", "DatabaseName": "test", "TableName": "test"}))
 
-        ret = list(self.execute(self.client.list_table_metadata, "TableMetadataList", filters_req={"CatalogName": "AwsDataCatalog", "DatabaseName": "sampledb"}))
+        ret = list(self.execute(self.client.list_table_metadata, "TableMetadataList", filters_req={"CatalogName": "AwsDataCatalog", "DatabaseName": "test"}))
 
         ret = list(self.execute(self.client.list_data_catalogs, "DataCatalogsSummary"))
         ret = list(self.execute(self.client.get_data_catalog, "DataCatalog", filters_req={'Name': 'AwsDataCatalog'}))
 
-        ret = list(self.execute(self.client.get_database, "Database", filters_req={'CatalogName': 'AwsDataCatalog', "DatabaseName": "sampledb"}))
+        ret = list(self.execute(self.client.get_database, "Database", filters_req={'CatalogName': 'AwsDataCatalog', "DatabaseName": "test"}))
 
     def get_all_template_entities(self, region=None, full_information=True):
         """
