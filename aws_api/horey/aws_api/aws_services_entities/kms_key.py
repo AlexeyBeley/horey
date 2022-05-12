@@ -36,10 +36,9 @@ class KMSKey(AwsObject):
         options = {}
         self._init_from_cache(dict_src, options)
 
-    def update_from_raw_response(self, raw_value):
-        raise NotImplementedError()
+    def update_from_raw_response(self, dict_src):
+        self.dict_src = dict_src
 
-    def update_from_describe_response(self, dict_src):
         init_options = {
             "KeyId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
             "AWSAccountId": self.init_default_attr,
@@ -73,19 +72,17 @@ class KMSKey(AwsObject):
         self.init_attrs(dict_src, init_options)
 
     def generate_create_request(self):
-        raise NotImplementedError()
         request = dict()
-        request["Name"] = self.name
-        request["tags"] = self.tags
+        request["KeyUsage"] = self.key_usage
+        request["Description"] = self.description
+        request["Tags"] = self.tags
 
         return request
 
     @property
     def region(self):
-        raise NotImplementedError()
         if self._region is not None:
             return self._region
-
         if self.arn is not None:
             self._region = Region.get_region(self.arn.split(":")[3])
 
@@ -93,7 +90,6 @@ class KMSKey(AwsObject):
 
     @region.setter
     def region(self, value):
-        raise NotImplementedError()
         if not isinstance(value, Region):
             raise ValueError(value)
 

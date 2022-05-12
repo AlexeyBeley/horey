@@ -43,7 +43,7 @@ class KMSClient(Boto3Client):
                 filters_req = {"KeyId": obj.id}
 
                 for dict_response in self.execute(self.client.describe_key, "KeyMetadata", filters_req=filters_req):
-                    obj.update_from_describe_response(dict_response)
+                    obj.update_from_raw_response(dict_response)
 
                 tags = list(self.execute(self.client.list_resource_tags, "Tags", filters_req=filters_req, exception_ignore_callback=lambda error: "AccessDeniedException" in repr(error)))
 
@@ -56,12 +56,16 @@ class KMSClient(Boto3Client):
 
         return final_result
 
-    def provision_key(self, key):
-        region_keys = self.get_region_keys(key.region)
+    def get_key_by_tag(self, region, key_name, key_value):
+        region_keys = self.get_region_keys(region)
         for region_key in region_keys:
-            if region_key.get_tagname(ignore_missing_tag=True) == key.get_tagname():
-                key.update_from_raw_response(region_key.dict_src)
-                return
+            if region_key.get_tag(key_name, ignore_missing_tag=True, tag_key_specifier="TagKey", tag_value_specifier="TagValue") == key_value:
+                return region_key
+
+    def provision_key(self, key):
+        region_key = self.get_key_by_tag(key.region, "name", key.get_tag("name", tag_key_specifier="TagKey", tag_value_specifier="TagValue"))
+        if region_key is not None:
+            key.update_from_raw_response(region_key.dict_src)
 
         AWSAccount.set_aws_region(key.region)
         response = self.provision_key_raw(key.generate_create_request())
@@ -69,7 +73,7 @@ class KMSClient(Boto3Client):
 
     def provision_key_raw(self, request_dict):
         logger.info(f"Creating key: {request_dict}")
-        for response in self.execute(self.client.create_key, "key",
+        for response in self.execute(self.client.create_key, "KeyMetadata",
                                      filters_req=request_dict):
             return response
 
