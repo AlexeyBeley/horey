@@ -208,6 +208,28 @@ class IamClient(Boto3Client):
 
         for response in self.execute(self.client.create_role, "Role", filters_req=request_dict):
             return response
+        
+    def provision_instance_profile(self, iam_instance_profiles: IamInstanceProfile):
+        pdb.set_trace()
+        all_profiles = self.get_all_instance_profiles()
+        found_role = CommonUtils.find_objects_by_values(all_profiles, {"name": iam_instance_profiles.name})
+
+        if found_role:
+            found_role = found_role[0]
+            role_dict_src = found_role.dict_src
+        else:
+            role_dict_src = self.provision_iam_instance_profiles_raw(iam_instance_profiles.generate_create_request())
+
+        iam_instance_profiles.update_from_raw_response(role_dict_src)
+
+        for request in iam_instance_profiles.generate_attach_policies_requests():
+            self.attach_role_policy_raw(request)
+
+    def provision_iam_instance_profiles_raw(self, request_dict):
+        logger.warning(f"Creating iam role: {request_dict}")
+
+        for response in self.execute(self.client.create_role, "Role", filters_req=request_dict):
+            return response
 
     def provision_policy(self, policy: IamPolicy):
         for existing_policy in self.yield_policies(full_information=False):

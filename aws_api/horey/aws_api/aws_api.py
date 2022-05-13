@@ -2611,6 +2611,9 @@ class AWSAPI:
     def provision_iam_policy(self, iam_policy):
         self.iam_client.provision_policy(iam_policy)
 
+    def provision_iam_instance_profile(self, instance_profile):
+        self.iam_client.provision_instance_profile(instance_profile)
+
     def dispose_rds_db_cluster(self, rds_cluster):
         self.rds_client.dispose_db_cluster(rds_cluster)
 
