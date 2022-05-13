@@ -208,22 +208,26 @@ class IamClient(Boto3Client):
 
         for response in self.execute(self.client.create_role, "Role", filters_req=request_dict):
             return response
-        
-    def provision_instance_profile(self, iam_instance_profiles: IamInstanceProfile):
+
+    def update_instance_profile_information(self, iam_instance_profile: IamInstanceProfile):
+        for response in self.execute(self.client.get_instance_profile, "InstanceProfile", filters_req={"InstanceProfileName": iam_instance_profile.name}):
+            iam_instance_profile.update_from_raw_response(response)
+
+    def provision_instance_profile(self, iam_instance_profile: IamInstanceProfile):
         pdb.set_trace()
-        all_profiles = self.get_all_instance_profiles()
-        found_role = CommonUtils.find_objects_by_values(all_profiles, {"name": iam_instance_profiles.name})
+        self.update_instance_profile_information(iam_instance_profile)
 
-        if found_role:
-            found_role = found_role[0]
-            role_dict_src = found_role.dict_src
-        else:
-            role_dict_src = self.provision_iam_instance_profiles_raw(iam_instance_profiles.generate_create_request())
+        if iam_instance_profile.arn is None:
+            role_dict_src = self.provision_iam_instance_profiles_raw(iam_instance_profile.generate_create_request())
 
-        iam_instance_profiles.update_from_raw_response(role_dict_src)
+        for request in iam_instance_profile.generate_add_role_requests():
+            self.add_role_to_instance_profile_raw(request)
 
-        for request in iam_instance_profiles.generate_attach_policies_requests():
-            self.attach_role_policy_raw(request)
+        iam_instance_profile.update_from_raw_response(role_dict_src)
+
+    def add_role_to_instance_profile_raw(self, request):
+        for response in self.execute(self.client.add_role_to_instance_profile, None, raw_data=True, filters_req=request):
+            return response
 
     def provision_iam_instance_profiles_raw(self, request_dict):
         logger.warning(f"Creating iam role: {request_dict}")

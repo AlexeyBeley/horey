@@ -58,7 +58,7 @@ class IamInstanceProfile(AwsObject):
         init_options = {
             "MaxSessionDuration": self.init_default_attr}
 
-        self.init_attrs(dict_src, init_options)
+        self.init_attrs(dict_src, init_options, raise_on_no_option=True)
 
     def generate_create_request(self):
         request = dict()
@@ -67,10 +67,10 @@ class IamInstanceProfile(AwsObject):
 
         return request
 
-    def generate_attach_policies_requests(self, desired_role=None):
+    def generate_add_role_requests(self):
         return [
             {
-                "PolicyArn": policy.arn,
-                "RoleName": self.name
+                "InstanceProfileName": self.name,
+                "RoleName": role["RoleName"]
             }
-            for policy in self.policies]
+            for role in self.roles]
