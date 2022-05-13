@@ -8,6 +8,7 @@ from horey.aws_api.aws_services_entities.iam_access_key import IamAccessKey
 from horey.aws_api.aws_services_entities.iam_policy import IamPolicy
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.iam_role import IamRole
+from horey.aws_api.aws_services_entities.iam_instance_profile import IamInstanceProfile
 from horey.common_utils.common_utils import CommonUtils
 
 from horey.h_logger import get_logger
@@ -74,6 +75,13 @@ class IamClient(Boto3Client):
             if full_information:
                 self.update_iam_role_full_information(role, policies=policies)
 
+        return final_result
+    
+    def get_all_instance_profiles(self):
+        final_result = list()
+        for result in self.execute(self.client.list_instance_profiles, "InstanceProfiles", filters_req={"MaxItems": 1000}):
+            instance_profile = IamInstanceProfile(result)
+            final_result.append(instance_profile)
         return final_result
 
     def update_iam_role_full_information(self, iam_role, policies=None):
@@ -176,7 +184,7 @@ class IamClient(Boto3Client):
         for response in self.execute(self.client.attach_role_policy, "Role", filters_req=request_dict, raw_data=True):
             return response
 
-    def attach_role_inline_policy(self, request_dict):
+    def attach_role_inline_policy_raw(self, request_dict):
         for response in self.execute(self.client.put_role_policy, "ResponseMetadata", filters_req=request_dict):
             return response
 

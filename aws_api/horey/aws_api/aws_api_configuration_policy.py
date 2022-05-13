@@ -511,6 +511,15 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_iam_roles_cache_file.setter
     def aws_api_iam_roles_cache_file(self, value):
         raise ValueError(value)
+    
+    @property
+    def aws_api_iam_instance_profiles_cache_file(self):
+        return os.path.join(self.aws_api_iam_roles_cache_dir, "instance_profiles.json")
+
+    @aws_api_iam_instance_profiles_cache_file.setter
+    def aws_api_iam_instance_profiles_cache_file(self, value):
+        raise ValueError(value)
+    
     # endregion
 
     # region databases
