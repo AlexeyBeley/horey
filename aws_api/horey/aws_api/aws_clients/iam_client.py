@@ -236,6 +236,7 @@ class IamClient(Boto3Client):
         for response in self.execute(self.client.create_instance_profile, "InstanceProfile", filters_req=request_dict):
             return response
 
+
     def provision_policy(self, policy: IamPolicy):
         for existing_policy in self.yield_policies(full_information=False):
             if existing_policy.name == policy.name:
