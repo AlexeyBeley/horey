@@ -8,6 +8,7 @@ from horey.aws_api.aws_services_entities.iam_access_key import IamAccessKey
 from horey.aws_api.aws_services_entities.iam_policy import IamPolicy
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.iam_role import IamRole
+from horey.aws_api.aws_services_entities.iam_instance_profile import IamInstanceProfile
 from horey.common_utils.common_utils import CommonUtils
 
 from horey.h_logger import get_logger
@@ -74,6 +75,13 @@ class IamClient(Boto3Client):
             if full_information:
                 self.update_iam_role_full_information(role, policies=policies)
 
+        return final_result
+    
+    def get_all_instance_profiles(self):
+        final_result = list()
+        for result in self.execute(self.client.list_instance_profiles, "InstanceProfiles", filters_req={"MaxItems": 1000}):
+            instance_profile = IamInstanceProfile(result)
+            final_result.append(instance_profile)
         return final_result
 
     def update_iam_role_full_information(self, iam_role, policies=None):
@@ -176,7 +184,7 @@ class IamClient(Boto3Client):
         for response in self.execute(self.client.attach_role_policy, "Role", filters_req=request_dict, raw_data=True):
             return response
 
-    def attach_role_inline_policy(self, request_dict):
+    def attach_role_inline_policy_raw(self, request_dict):
         for response in self.execute(self.client.put_role_policy, "ResponseMetadata", filters_req=request_dict):
             return response
 
@@ -200,6 +208,34 @@ class IamClient(Boto3Client):
 
         for response in self.execute(self.client.create_role, "Role", filters_req=request_dict):
             return response
+
+    def update_instance_profile_information(self, iam_instance_profile: IamInstanceProfile):
+        for response in self.execute(self.client.get_instance_profile, "InstanceProfile", filters_req={"InstanceProfileName": iam_instance_profile.name},
+                                     exception_ignore_callback=lambda x: "NoSuchEntity" in repr(x)):
+            iam_instance_profile.update_from_raw_response(response)
+
+    def provision_instance_profile(self, iam_instance_profile: IamInstanceProfile):
+        self.update_instance_profile_information(iam_instance_profile)
+
+        role_dict_src = {}
+        if iam_instance_profile.arn is None:
+            role_dict_src = self.provision_iam_instance_profiles_raw(iam_instance_profile.generate_create_request())
+
+        for request in iam_instance_profile.generate_add_role_requests():
+            self.add_role_to_instance_profile_raw(request)
+
+        iam_instance_profile.update_from_raw_response(role_dict_src)
+
+    def add_role_to_instance_profile_raw(self, request):
+        for response in self.execute(self.client.add_role_to_instance_profile, None, raw_data=True, filters_req=request):
+            return response
+
+    def provision_iam_instance_profiles_raw(self, request_dict):
+        logger.warning(f"create_instance_profile: {request_dict}")
+
+        for response in self.execute(self.client.create_instance_profile, "InstanceProfile", filters_req=request_dict):
+            return response
+
 
     def provision_policy(self, policy: IamPolicy):
         for existing_policy in self.yield_policies(full_information=False):

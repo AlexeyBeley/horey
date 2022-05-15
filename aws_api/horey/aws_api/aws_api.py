@@ -58,6 +58,7 @@ from horey.aws_api.aws_clients.iam_client import IamClient
 from horey.aws_api.aws_services_entities.iam_policy import IamPolicy
 from horey.aws_api.aws_services_entities.iam_user import IamUser
 from horey.aws_api.aws_services_entities.iam_role import IamRole
+from horey.aws_api.aws_services_entities.iam_instance_profile import IamInstanceProfile
 
 from horey.aws_api.aws_clients.cloud_watch_logs_client import CloudWatchLogsClient
 from horey.aws_api.aws_services_entities.cloud_watch_log_group import CloudWatchLogGroup
@@ -178,6 +179,7 @@ class AWSAPI:
         self.ec2_launch_template_versions = []
         self.lambdas = []
         self.iam_roles = []
+        self.iam_instance_profiles = []
         self.cloud_watch_log_groups = []
         self.cloud_watch_log_groups_metric_filters = []
         self.cloud_watch_alarms = []
@@ -569,6 +571,21 @@ class AWSAPI:
             objects = self.iam_client.get_all_roles(policies=self.iam_policies)
 
         self.iam_roles = objects
+    
+    def init_iam_instance_profiles(self, from_cache=False, cache_file=None):
+        """
+        Init iam roles
+
+        @param from_cache:
+        @param cache_file:
+        @return:
+        """
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, IamInstanceProfile)
+        else:
+            objects = self.iam_client.get_all_instance_profiles()
+
+        self.iam_instance_profiles = objects
 
     def cache_raw_cloud_watch_metrics(self, cache_dir):
         """
@@ -2593,6 +2610,9 @@ class AWSAPI:
 
     def provision_iam_policy(self, iam_policy):
         self.iam_client.provision_policy(iam_policy)
+
+    def provision_iam_instance_profile(self, instance_profile):
+        self.iam_client.provision_instance_profile(instance_profile)
 
     def dispose_rds_db_cluster(self, rds_cluster):
         self.rds_client.dispose_db_cluster(rds_cluster)

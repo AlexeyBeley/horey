@@ -122,6 +122,7 @@ class IamRole(AwsObject):
         request["Description"] = self.description
         request["AssumeRolePolicyDocument"] = self.assume_role_policy_document
         request["MaxSessionDuration"] = self.max_session_duration
+        request["Tags"] = self.tags
 
         return request
 

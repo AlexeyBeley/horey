@@ -40,6 +40,16 @@ def test_init_and_cache_iam_roles():
     assert isinstance(aws_api.iam_roles, list)
 
 
+@pytest.mark.skip(reason="IAM roles will be inited explicitly")
+def test_init_and_cache_iam_instance_profiles():
+    aws_api.init_iam_policies(from_cache=True, cache_file=configuration.aws_api_iam_policies_cache_file)
+    aws_api.init_iam_instance_profiles()
+    aws_api.cache_objects(aws_api.iam_instance_profiles, configuration.aws_api_iam_instance_profiles_cache_file)
+
+    print(f"len(iam_instance_profiles) = {len(aws_api.iam_instance_profiles)}")
+    assert isinstance(aws_api.iam_instance_profiles, list)
+
+
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_network_interfaces():
     aws_api.init_network_interfaces()
@@ -577,5 +587,6 @@ if __name__ == "__main__":
     #test_init_and_cache_vpcs()
     #test_init_and_cache_ec2_volumes()
     #test_init_and_cache_subnets()
-    test_init_and_cache_glue_tables()
-    test_init_and_cache_glue_databases()
+    #test_init_and_cache_glue_tables()
+    #test_init_and_cache_glue_databases()
+    test_init_and_cache_iam_instance_profiles()
