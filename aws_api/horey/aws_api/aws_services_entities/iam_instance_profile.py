@@ -17,6 +17,7 @@ class IamInstanceProfile(AwsObject):
         :param dict_src:
         """
         super().__init__(dict_src)
+        self.arn = None
 
         if from_cache:
             self._init_instance_profile_from_cache(dict_src)
@@ -29,6 +30,7 @@ class IamInstanceProfile(AwsObject):
             "Arn": self.init_default_attr,
             "CreateDate": self.init_default_attr,
             "Roles": self.init_default_attr,
+            "Tags": self.init_default_attr,
         }
         self.init_attrs(dict_src, init_options, raise_on_no_option=True)
 
@@ -56,13 +58,20 @@ class IamInstanceProfile(AwsObject):
 
     def update_from_raw_response(self, dict_src):
         init_options = {
-            "MaxSessionDuration": self.init_default_attr}
+            "Path": self.init_default_attr,
+            "InstanceProfileName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "InstanceProfileId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "Arn": self.init_default_attr,
+            "CreateDate": self.init_default_attr,
+            "Roles": self.init_default_attr,
+            "Tags": self.init_default_attr,
+        }
 
         self.init_attrs(dict_src, init_options, raise_on_no_option=True)
 
     def generate_create_request(self):
         request = dict()
-        request["RoleName"] = self.name
+        request["InstanceProfileName"] = self.name
         request["Tags"] = self.tags
 
         return request

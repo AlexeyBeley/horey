@@ -210,13 +210,14 @@ class IamClient(Boto3Client):
             return response
 
     def update_instance_profile_information(self, iam_instance_profile: IamInstanceProfile):
-        for response in self.execute(self.client.get_instance_profile, "InstanceProfile", filters_req={"InstanceProfileName": iam_instance_profile.name}):
+        for response in self.execute(self.client.get_instance_profile, "InstanceProfile", filters_req={"InstanceProfileName": iam_instance_profile.name},
+                                     exception_ignore_callback=lambda x: "NoSuchEntity" in repr(x)):
             iam_instance_profile.update_from_raw_response(response)
 
     def provision_instance_profile(self, iam_instance_profile: IamInstanceProfile):
-        pdb.set_trace()
         self.update_instance_profile_information(iam_instance_profile)
 
+        role_dict_src = {}
         if iam_instance_profile.arn is None:
             role_dict_src = self.provision_iam_instance_profiles_raw(iam_instance_profile.generate_create_request())
 
@@ -230,9 +231,9 @@ class IamClient(Boto3Client):
             return response
 
     def provision_iam_instance_profiles_raw(self, request_dict):
-        logger.warning(f"Creating iam role: {request_dict}")
+        logger.warning(f"create_instance_profile: {request_dict}")
 
-        for response in self.execute(self.client.create_role, "Role", filters_req=request_dict):
+        for response in self.execute(self.client.create_instance_profile, "InstanceProfile", filters_req=request_dict):
             return response
 
     def provision_policy(self, policy: IamPolicy):
