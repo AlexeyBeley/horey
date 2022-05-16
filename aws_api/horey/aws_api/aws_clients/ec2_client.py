@@ -71,7 +71,7 @@ class EC2Client(Boto3Client):
 
         return final_result
 
-    def get_all_vpcs(self, region=None):
+    def get_all_vpcs(self, region=None, filters=None):
         """
         Get all interfaces in all regions.
         :return:
@@ -82,7 +82,7 @@ class EC2Client(Boto3Client):
 
         final_result = list()
         for region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_vpcs(region)
+            final_result += self.get_region_vpcs(region, filters=filters)
 
         return final_result
 

@@ -2664,13 +2664,13 @@ class AWSAPI:
     def provision_events_rule(self, events_rule):
         self.events_client.provision_rule(events_rule)
 
-    def get_vpcs_by_tags(self, region, key_values_map):
+    def get_vpcs_by_tags(self, key_values_map):
         filters = [{
             'Name': f'tag:{tag_name}',
             'Values': tag_values
         } for tag_name, tag_values in key_values_map.items()]
 
-        return self.ec2_client.get_region_vpcs(region, filters=filters)
+        return self.ec2_client.get_all_vpcs(filters=filters)
 
     def get_alive_ec2_instance_by_name(self, region, name):
         filters = [{
