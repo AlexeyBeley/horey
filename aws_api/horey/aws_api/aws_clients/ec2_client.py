@@ -78,7 +78,7 @@ class EC2Client(Boto3Client):
         """
 
         if region is not None:
-            return self.get_region_vpcs(region)
+            return self.get_region_vpcs(region, filters=filters)
 
         final_result = list()
         for region in AWSAccount.get_aws_account().regions.values():
