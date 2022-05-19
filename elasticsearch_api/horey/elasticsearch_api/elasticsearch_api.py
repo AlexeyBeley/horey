@@ -30,6 +30,7 @@ class ElasticsearchAPI(object):
     def connect(self):
         # pdb.set_trace()
         self.client = Elasticsearch([self.configuration.server_address])
+        self.client.transport
         return
 
     def init_indices(self):
