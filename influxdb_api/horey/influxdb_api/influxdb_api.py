@@ -2,6 +2,7 @@
 Shamelessly stolen from:
 https://github.com/lukecyca/pyslack
 """
+import json
 import pdb
 
 import requests
@@ -64,6 +65,18 @@ class InfluxDBAPI:
             )
         return response.json()
 
+    def post(self, request_path, data, is_link=False):
+        request = self.create_request(request_path, is_link=is_link)
+        response = requests.post(
+            request, data=json.dumps(data),
+            headers={'Content-Type': 'application/json'}
+        )
+        if response.status_code != 200:
+            raise RuntimeError(
+                f'Request to influxdb api returned an error {response.status_code}, the response is:\n{response.text}'
+            )
+        return response.json()
+
     def create_request(self, request, is_link=False):
         """
         http://127.0.0.1:8888/chronograf/v1/sources
@@ -109,3 +122,7 @@ class InfluxDBAPI:
                 objs.append(obj)
 
         self.rules = objs
+
+    def provision_dashboard(self, dashboard):
+        pdb.set_trace()
+        self.post("dashboards", dashboard.dict_src)
