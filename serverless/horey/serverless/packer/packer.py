@@ -86,6 +86,20 @@ class Packer:
             for file_path in files_paths:
                 myzip.write(file_path, arcname=os.path.basename(file_path))
 
+    def add_dirs_to_zip(self, zip_file_name, dir_paths):
+        for dir_path in dir_paths:
+            self.add_dir_to_zip(zip_file_name, dir_path)
+
+    def add_dir_to_zip(self, zip_file_name, dir_path: str):
+        dir_path = dir_path[:-1] if dir_path.endswith("/") else dir_path
+        prefix_len = dir_path.rfind("/") + 1
+        with zipfile.ZipFile(zip_file_name, "a") as myzip:
+            for base_path, _, files in os.walk(dir_path):
+                for file_name in files:
+                    file_path = os.path.join(base_path, file_name)
+                    arc_name = file_path[prefix_len:]
+                    myzip.write(file_path, arcname=arc_name)
+
     def pip_freeze(self):
         "pip3 freeze --all"
 
