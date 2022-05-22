@@ -125,7 +125,6 @@ class GrafanaAPI:
         return f"{self.base_address}/api/{request}"
 
     def init_folders_and_dashboards(self):
-        pdb.set_trace()
         for dash_data in self.get("search"):
             if dash_data["type"] == "dash-folder":
                 folder = self.init_folder(dash_data)
@@ -137,12 +136,14 @@ class GrafanaAPI:
                 raise RuntimeError(dash_data)
 
     def init_folder(self, dict_src):
-        pdb.set_trace()
         ret = Folder(dict_src)
+        return ret
 
     def init_dashboard(self, dict_src):
+        dashboard = Dashboard(dict_src)
         pdb.set_trace()
-        ret = Dashboard(dict_src)
+        ret = self.get(f"/dashboards/uid/{dashboard.uid}")
+
 
     def provision_dashboard(self, dashboard):
         self.post("dashboards/db", dashboard.generate_create_request())
