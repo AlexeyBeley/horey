@@ -13,7 +13,7 @@ configuration.configuration_file_full_path = os.path.abspath(
                  "grafana_api_configuration_values.py"))
 configuration.init_from_file()
 
-#grafana_api = GrafanaAPI(configuration=configuration)
+grafana_api = GrafanaAPI(configuration=configuration)
 
 
 @pytest.mark.skip(reason="Can not test")
@@ -21,39 +21,22 @@ def test_init_grafana_api():
     grafana_api = GrafanaAPI(configuration=configuration)
     assert isinstance(grafana_api, GrafanaAPI)
 
-def test_create_dashboard():
-    dashboard = Dashboard({
-        "cells": [
-            {
-                "x": 5,
-                "y": 5,
-                "w": 4,
-                "h": 4,
-                "name": "usage_user",
-                "queries": [],
-                "type": "line"
-            },
-            {
-                "x": 0,
-                "y": 0,
-                "w": 4,
-                "h": 4,
-                "name": "usage_system",
-                "queries": [],
-                "type": "line"
-            }
-        ],
-        "name": "lalalalala"
-    })
-    grafana_api.provision_dashboard(dashboard)
-    assert len(grafana_api.rules) > 0
 
+@pytest.mark.skip(reason="Can not test")
+def test_provision_dashboard():
+    dashboard = Dashboard({})
+    dashboard.title = "test dashboard1"
+    grafana_api.provision_dashboard(dashboard)
+
+
+@pytest.mark.skip(reason="Can not test")
+def test_init_folders_and_dashboards():
+    grafana_api.init_folders_and_dashboards()
 
 # endregion
 
 
 if __name__ == "__main__":
-    test_init_grafana_api()
-    # test_init_kapacitors()
-    #test_init_rules()
-    #test_create_dashboard()
+    #test_init_grafana_api()
+    #test_provision_dashboard()
+    test_init_folders_and_dashboards()

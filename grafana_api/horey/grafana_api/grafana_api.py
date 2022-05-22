@@ -8,16 +8,18 @@ import pdb
 import requests
 from horey.h_logger import get_logger
 from horey.grafana_api.grafana_api_configuration_policy import GrafanaAPIConfigurationPolicy
+from horey.grafana_api.dashboard import Dashboard
+from horey.grafana_api.folder import Folder
 
 logger = get_logger()
 
+
 class GrafanaAPI:
     def __init__(self, configuration: GrafanaAPIConfigurationPolicy = None):
+        self.dashboards = []
+        self.folders = []
+
         self.base_address = configuration.server_address
-        self.version = "v1"
-        self.sources = []
-        self.kapacitors = []
-        self.rules = []
         self.token = configuration.token
         if configuration.token is None:
             self.generate_token(configuration)
@@ -122,43 +124,25 @@ class GrafanaAPI:
 
         return f"{self.base_address}/api/{request}"
 
-    def init_kapacitors(self):
-        """
-        http://127.0.0.1:8888/chronograf/v1/sources/{id}/kapacitors
-        @return:
-        """
-        if not self.sources:
-            self.init_sources()
-        logger.info(f"Initializing grafana kapacitors")
+    def init_folders_and_dashboards(self):
+        pdb.set_trace()
+        for dash_data in self.get("search"):
+            if dash_data["type"] == "dash-folder":
+                folder = self.init_folder(dash_data)
+                self.folders.append(folder)
+            elif dash_data["type"] == "dash-db":
+                dashboard = self.init_dashboard(dash_data)
+                self.dashboards.append(dashboard)
+            else:
+                raise RuntimeError(dash_data)
 
-        objs = []
-        for source in self.sources:
-            response = self.get(f"sources/{source.id}/kapacitors")
+    def init_folder(self, dict_src):
+        pdb.set_trace()
+        ret = Folder(dict_src)
 
-            for dict_src in response["kapacitors"]:
-                obj = Kapacitor(dict_src)
-                objs.append(obj)
-
-        self.kapacitors = objs
-
-    def init_rules(self):
-        """
-        http://127.0.0.1:8888/chronograf/v1/sources/{id}/kapacitors/{kapa_id}/rules
-
-        @return:
-        """
-        if not self.kapacitors:
-            self.init_kapacitors()
-        objs = []
-        for kapacitor in self.kapacitors:
-            response = self.get(kapacitor.links["rules"], is_link=True)
-
-            for dict_src in response["rules"]:
-                obj = Rule(dict_src)
-                objs.append(obj)
-
-        self.rules = objs
+    def init_dashboard(self, dict_src):
+        pdb.set_trace()
+        ret = Dashboard(dict_src)
 
     def provision_dashboard(self, dashboard):
-        pdb.set_trace()
-        self.post("dashboards", dashboard.dict_src)
+        self.post("dashboards/db", dashboard.generate_create_request())
