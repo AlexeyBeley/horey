@@ -18,7 +18,6 @@ class GrafanaObject:
 
     def generate_create_request(self):
         raise NotImplementedError()
-        return
 
     def init_default(self, key, value):
         setattr(self, key, value)

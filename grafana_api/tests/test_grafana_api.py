@@ -32,7 +32,22 @@ def test_provision_dashboard():
 @pytest.mark.skip(reason="Can not test")
 def test_init_folders_and_dashboards():
     grafana_api.init_folders_and_dashboards()
+    assert isinstance(grafana_api.dashboards, list)
+    pdb.set_trace()
 
+
+@pytest.mark.skip(reason="Can not test")
+def test_init_datasources():
+    grafana_api.init_datasources()
+    assert isinstance(grafana_api.datasources, list)
+    pdb.set_trace()
+
+
+@pytest.mark.skip(reason="Can not test")
+def test_provision_datasource():
+    dashboard = Dashboard({})
+    dashboard.title = "test dashboard1"
+    grafana_api.provision_datasource(dashboard)
 # endregion
 
 
@@ -40,3 +55,5 @@ if __name__ == "__main__":
     #test_init_grafana_api()
     #test_provision_dashboard()
     test_init_folders_and_dashboards()
+    #test_init_datasources()
+    test_provision_datasource()

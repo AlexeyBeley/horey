@@ -18,6 +18,7 @@ class GrafanaAPI:
     def __init__(self, configuration: GrafanaAPIConfigurationPolicy = None):
         self.dashboards = []
         self.folders = []
+        self.datasources = []
 
         self.base_address = configuration.server_address
         self.token = configuration.token
@@ -101,14 +102,12 @@ class GrafanaAPI:
         org_name = "apiorg"
         self.base_address = self.base_address.replace("//", f"//{configuration.user}:{configuration.password}@")
 
-        org_id = self.provision_organisation(org_name)
-
-        self.add_user_to_organisation(org_id, configuration.user)
-
+        #org_id = self.provision_organisation(org_name)
+        #self.add_user_to_organisation(org_id, configuration.user)
+        org_id = "1"
         response = self.post(f"/user/using/{org_id}", {})
         logger.info(response)
-
-        token_name = "apikeycurl"
+        token_name = "org_1"
         response = self.get(f"/auth/keys")
 
         for key in response:
@@ -135,15 +134,30 @@ class GrafanaAPI:
             else:
                 raise RuntimeError(dash_data)
 
+    def init_datasources(self):
+        pdb.set_trace()
+        for dash_data in self.get("datasources"):
+            if dash_data["type"] == "dash-folder":
+                folder = self.init_folder(dash_data)
+                self.folders.append(folder)
+            elif dash_data["type"] == "dash-db":
+                dashboard = self.init_dashboard(dash_data)
+                self.dashboards.append(dashboard)
+            else:
+                raise RuntimeError(dash_data)
+
     def init_folder(self, dict_src):
         ret = Folder(dict_src)
         return ret
 
     def init_dashboard(self, dict_src):
         dashboard = Dashboard(dict_src)
-        pdb.set_trace()
         ret = self.get(f"/dashboards/uid/{dashboard.uid}")
-
+        dashboard.update_full_info({"meta": ret["meta"], **ret["dashboard"]})
+        return dashboard
 
     def provision_dashboard(self, dashboard):
         self.post("dashboards/db", dashboard.generate_create_request())
+
+    def provision_datasource(self, datasource):
+        self.post("datasources", datasource.generate_create_request())
