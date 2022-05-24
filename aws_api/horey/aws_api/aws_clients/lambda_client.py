@@ -150,6 +150,7 @@ class LambdaClient(Boto3Client):
 
     def update_function_configuration_raw(self, request_dict):
         logger.info(f"Updating lambda configuration: {request_dict}")
+        raise Exception(request_dict)
         for response in self.execute(self.client.update_function_configuration, None, raw_data=True,
                                      filters_req=request_dict):
             return response
