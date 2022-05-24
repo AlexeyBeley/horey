@@ -7,21 +7,26 @@
 #
 # To enable this hook, rename this file to "pre-commit".
 
-# Run pylint
-if [ -d "./build/_build/_venv/lib/python3.8/site-packages/pylint" ]
-then
-   make pylint_raw
-else
-   make pylint
-fi
+# Run pylint on the changed files
+changed_files=$(git diff --name-only HEAD| grep "\.py")
+echo "$changed_files"
+echo "$changed_files" | while read -r line
 
-ret=$?
+do
+  if [ -d "./build/_build/_venv/lib/python3.8/site-packages/pylint" ]
+  then
+      PYLINT_TARGET=$line make -e pylint_raw
+  else
+      PYLINT_TARGET=$line make -e pylint
+  fi
+  ret=$?
 
-if [ "$ret" != "0" ]
-then
-    echo "FAILED to commit!!! Pylint check failed!!!"
-    exit $ret
-fi
+  if [ "$ret" != "0" ]
+  then
+      echo "FAILED to commit!!! Pylint check failed!!!"
+      exit $ret
+  fi
+done
 
 # check white non-ASCII file names
 if git rev-parse --verify HEAD >/dev/null 2>&1

@@ -5,6 +5,8 @@ BUILD_DIR= ${ROOT_DIR}/build
 BUILD_TMP_DIR= ${BUILD_DIR}/_build
 VENV_DIR= ${BUILD_TMP_DIR}/_venv
 
+PYLINT_TARGET= ${BUILD_TMP_DIR}/_venv
+
 ALL_PACKAGES := $(wildcard *)
 
 EXCLUSIONS := LICENSE Makefile README.md build dns_map docker terraform security_group_map pypi_infra h_flow network
@@ -57,7 +59,7 @@ install_pylint:
 pylint: init_venv_dir install_pylint pylint_raw
 pylint_raw:
 	source ${VENV_DIR}/bin/activate &&\
-	pylint  --rcfile=${BUILD_DIR}/.pylintrc /Users/alexey.beley/private/horey/build/sample_pep8_clear_file.py
+	pylint --rcfile=${BUILD_DIR}/.pylintrc ${PYLINT_TARGET}
 
 install_test_deps-%: init_venv_dir
 	source ${VENV_DIR}/bin/activate &&\
