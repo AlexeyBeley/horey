@@ -26,6 +26,7 @@ def test_init_projects():
     gitlab_api.init_projects()
     assert isinstance(gitlab_api.projects, list)
 
+
 @pytest.mark.skip(reason="Can not test")
 def test_add_user_to_projects():
     gitlab_api.init_projects()
