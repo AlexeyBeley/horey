@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # An example hook script to verify what is about to be committed.
 # Called by "git commit" with no arguments.  The hook should
@@ -8,25 +8,42 @@
 # To enable this hook, rename this file to "pre-commit".
 
 # Run pylint on the changed files
-changed_files=$(git diff --name-only HEAD| grep "\.py")
-echo "$changed_files"
+function run_pylint () {
 echo "$changed_files" | while read -r line
-
 do
   if [ -d "./build/_build/_venv/lib/python3.8/site-packages/pylint" ]
   then
+      command="PYLINT_TARGET=$line make -e pylint_raw"
       PYLINT_TARGET=$line make -e pylint_raw
   else
+      command="PYLINT_TARGET=$line make -e pylint"
       PYLINT_TARGET=$line make -e pylint
   fi
   ret=$?
 
   if [ "$ret" != "0" ]
   then
-      echo "FAILED to commit!!! Pylint check failed!!!"
+      echo "FAILED: $command"
       exit $ret
   fi
 done
+
+ret=$?
+if [ "$ret" != "0" ]
+then
+    echo "FAILED to commit!!! Pylint check failed!!! Return code $ret"
+    exit $ret
+fi
+}
+
+changed_files=$(git diff --name-only HEAD| grep "\.py")
+
+echo "changed_files: '$changed_files'"
+
+if [ "$changed_files" != "" ]
+then
+  run_pylint
+fi
 
 # check white non-ASCII file names
 if git rev-parse --verify HEAD >/dev/null 2>&1
