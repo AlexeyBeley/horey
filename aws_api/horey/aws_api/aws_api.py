@@ -1,6 +1,7 @@
 """
 Module to handle cross service interaction
 """
+import pdb
 import json
 import os
 import datetime
@@ -8,7 +9,6 @@ import time
 import zipfile
 from collections import defaultdict
 from horey.network.ip import IP
-import pdb
 
 from horey.aws_api.aws_clients.ecr_client import ECRClient
 
@@ -69,6 +69,8 @@ from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlar
 
 from horey.aws_api.aws_clients.cloud_watch_client import CloudWatchClient
 
+from horey.aws_api.aws_clients.dynamodb_client import DynamoDBClient
+
 from horey.aws_api.aws_clients.cloudfront_client import CloudfrontClient
 from horey.aws_api.aws_services_entities.cloudfront_distribution import CloudfrontDistribution
 from horey.aws_api.aws_services_entities.cloudfront_origin_access_identity import CloudfrontOriginAccessIdentity
@@ -111,6 +113,7 @@ from horey.aws_api.aws_services_entities.ecs_capacity_provider import ECSCapacit
 from horey.aws_api.aws_services_entities.ecs_service import ECSService
 from horey.aws_api.aws_services_entities.sqs_queue import SQSQueue
 from horey.aws_api.aws_services_entities.lambda_event_source_mapping import LambdaEventSourceMapping
+from horey.aws_api.aws_services_entities.dynamodb_table import DynamoDBTable
 
 from horey.common_utils.common_utils import CommonUtils
 
@@ -143,6 +146,7 @@ class AWSAPI:
         self.cloud_watch_logs_client = CloudWatchLogsClient()
         self.cloud_watch_client = CloudWatchClient()
         self.ecs_client = ECSClient()
+        self.dynamodb_client = DynamoDBClient()
         self.autoscaling_client = AutoScalingClient()
         self.cloudfront_client = CloudfrontClient()
         self.events_client = EventsClient()
@@ -201,6 +205,7 @@ class AWSAPI:
         self.route_tables = []
         self.elastic_addresses = []
         self.nat_gateways = []
+        self.dynamodb_tables = []
         self.ecr_images = []
         self.ecr_repositories = []
         self.ecs_clusters = []
@@ -317,7 +322,15 @@ class AWSAPI:
             objects = self.ec2_client.get_all_nat_gateways(region=region)
 
         self.nat_gateways = objects
+    
+    def init_dynamodb_tables(self, from_cache=False, cache_file=None, region=None):
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, DynamoDBTable)
+        else:
+            objects = self.dynamodb_client.get_all_tables(region=region)
 
+        self.dynamodb_tables = objects
+        
     def init_ecr_images(self, from_cache=False, cache_file=None, region=None, ecr_repositories=None):
         objects = []
         if from_cache:
@@ -2703,10 +2716,22 @@ class AWSAPI:
     def provision_sqs_queue(self, sqs_queue):
         self.sqs_client.provision_queue(sqs_queue)
 
-    def get_vpc_peerings(self, vpc=None):
+    def get_vpc_peerings(self, vpc):
+        """
+        Return peerings per vpc
+        @param vpc:
+        @return:
+        """
+        raise NotImplementedError("Old code")
         objects = self.ec2_client.get_all_vpc_peerings(region=vpc.region)
         pdb.set_trace()
         return [peering for peering in objects if peering.peering]
 
-    def create_image(self, instance):
+    def create_image(self, instance: EC2Instance):
+        """
+        Create EC2 instance ami.
+
+        @param instance:
+        @return:
+        """
         return self.ec2_client.create_image(instance)

@@ -48,7 +48,7 @@ def test_init_and_cache_iam_instance_profiles():
 
     print(f"len(iam_instance_profiles) = {len(aws_api.iam_instance_profiles)}")
     assert isinstance(aws_api.iam_instance_profiles, list)
-
+    
 
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_network_interfaces():
@@ -98,6 +98,14 @@ def test_init_and_cache_cloudwatch_log_groups_metric_filters():
     assert isinstance(aws_api.cloud_watch_log_groups_metric_filters, list)
 
 
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_dynamodb_tables():
+    aws_api.init_dynamodb_tables()
+    aws_api.cache_objects(aws_api.dynamodb_tables, configuration.aws_api_dynamodb_tables_cache_file)
+    print(f"len(dynamodb_tables) = {len(aws_api.dynamodb_tables)}")
+    assert isinstance(aws_api.dynamodb_tables, list)
+
+    
 @pytest.mark.skip(reason="No way of currently testing cloudwatch metrics")
 def test_init_and_cache_cloudwatch_metrics():
     aws_api.cache_raw_cloud_watch_metrics(configuration.aws_api_cloudwatch_metrics_cache_dir)
@@ -589,4 +597,5 @@ if __name__ == "__main__":
     #test_init_and_cache_subnets()
     #test_init_and_cache_glue_tables()
     #test_init_and_cache_glue_databases()
-    test_init_and_cache_iam_instance_profiles()
+    #test_init_and_cache_iam_instance_profiles()
+    test_init_and_cache_dynamodb_tables()

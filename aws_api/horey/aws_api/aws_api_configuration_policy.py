@@ -10,6 +10,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
         self._aws_api_account = None
         self._aws_api_cache_dir = None
         self._aws_api_cleanup_cache_dir = None
+        self._aws_api_dynamodb_cache_dir = None
 
         self._aws_api_s3_cache_dir = None
         self._aws_api_s3_bucket_objects_cache_dir = None
@@ -989,3 +990,23 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
 
     # endregion
 
+    # region dynamodb
+    @property
+    def aws_api_dynamodb_cache_dir(self):
+        if self._aws_api_dynamodb_cache_dir is None:
+            self._aws_api_dynamodb_cache_dir = os.path.join(self.aws_api_cache_dir, self.aws_api_account, "dynamodb")
+            os.makedirs(self._aws_api_dynamodb_cache_dir, exist_ok=True)
+        return self._aws_api_dynamodb_cache_dir
+
+    @aws_api_dynamodb_cache_dir.setter
+    def aws_api_dynamodb_cache_dir(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_dynamodb_tables_cache_file(self):
+        return os.path.join(self.aws_api_dynamodb_cache_dir, "dynamodb_tables.json")
+
+    @aws_api_dynamodb_tables_cache_file.setter
+    def aws_api_dynamodb_tables_cache_file(self, value):
+        raise ValueError(value)
+    # endregion
