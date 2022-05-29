@@ -1,11 +1,18 @@
+"""
+Grafana dashboard projection object
+"""
 from horey.grafana_api.grafana_object import GrafanaObject
 
 
 class Dashboard(GrafanaObject):
+    """
+    Grafana dashboard projection object class
+    """
     def __init__(self, dict_src):
         self.rows = None
         self.panels = None
         self.id = None
+        self.uid = None
         self.title = None
         self.tags = []
 
@@ -28,6 +35,11 @@ class Dashboard(GrafanaObject):
         self.init_values(dict_src, options)
 
     def update_full_info(self, dict_src):
+        """
+        Update full information from raw server response
+        @param dict_src:
+        @return:
+        """
         options = {"meta": self.init_default,
                    "annotations": self.init_default,
                    "editable": self.init_default,
@@ -55,6 +67,10 @@ class Dashboard(GrafanaObject):
         self.init_values(dict_src, options)
 
     def generate_create_request(self):
+        """
+        Generate create dashboard raw request
+        @return:
+        """
         return {"dashboard": {
             "id": self.id,
             "title": self.title,

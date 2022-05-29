@@ -4,7 +4,7 @@ ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 BUILD_DIR= ${ROOT_DIR}/build
 BUILD_TMP_DIR= ${BUILD_DIR}/_build
 VENV_DIR= ${BUILD_TMP_DIR}/_venv
-
+PYLINT_TARGET := "none"
 ALL_PACKAGES := $(wildcard *)
 
 EXCLUSIONS := LICENSE Makefile README.md build dns_map docker terraform security_group_map pypi_infra h_flow network
@@ -54,10 +54,10 @@ install_pylint:
 	source ${VENV_DIR}/bin/activate &&\
 	pip3 install pylint
 
-pylint: init_venv_dir install_pylint raw_pylint
-raw_pylint:
+pylint: init_venv_dir install_pylint pylint_raw
+pylint_raw:
 	source ${VENV_DIR}/bin/activate &&\
-	pylint  --rcfile=${BUILD_DIR}/.pylintrc ${ROOT_DIR}/aws_api/horey/aws_api/aws_clients/s3_client.py
+	pylint --rcfile=${BUILD_DIR}/.pylintrc ${PYLINT_TARGET}
 
 install_test_deps-%: init_venv_dir
 	source ${VENV_DIR}/bin/activate &&\
