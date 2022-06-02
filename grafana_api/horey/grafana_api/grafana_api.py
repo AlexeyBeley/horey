@@ -8,6 +8,8 @@ import requests
 from horey.h_logger import get_logger
 from horey.grafana_api.grafana_api_configuration_policy import GrafanaAPIConfigurationPolicy
 from horey.grafana_api.dashboard import Dashboard
+from horey.grafana_api.data_source import DataSource
+
 from horey.grafana_api.folder import Folder
 from horey.replacement_engine.replacement_engine import ReplacementEngine
 
@@ -65,6 +67,28 @@ class GrafanaAPI:
             headers["Authorization"] = f"Bearer {self.token}"
 
         response = requests.post(
+            request, data=json.dumps(data),
+            headers=headers)
+
+        if response.status_code != 200:
+            raise RuntimeError(
+                f'Request to grafana api returned an error {response.status_code}, the response is:\n{response.text}'
+            )
+        return response.json()
+
+    def put(self, request_path, data):
+        """
+        Execute post call
+        @param request_path:
+        @return:
+        """
+        request = self.create_request(request_path)
+        headers = {"Content-Type": "application/json"}
+
+        if self.token is not None:
+            headers["Authorization"] = f"Bearer {self.token}"
+
+        response = requests.put(
             request, data=json.dumps(data),
             headers=headers)
 
@@ -184,7 +208,7 @@ class GrafanaAPI:
         @return:
         """
         for dict_src in self.get("datasources"):
-            self.datasources.append(dict_src)
+            self.datasources.append(DataSource(dict_src))
 
     def init_rule_namespaces(self):
         """
@@ -230,10 +254,29 @@ class GrafanaAPI:
         self.post("dashboards/db", dict_dashboard)
         logger.info(f"Created Dashboard '{dict_dashboard['dashboard']['title']}'")
 
-    def provision_datasource(self, datasource):
+    def provision_datasource(self, datasource: DataSource):
         """
         Provision data source
         @param datasource:
         @return: None
         """
-        self.post("datasources", datasource.generate_create_request())
+        try:
+            self.post("datasources", datasource.generate_create_request())
+        except Exception as exception_instance:
+            if "data source with the same name already exists" in repr(exception_instance):
+                self.put(f"datasources/{datasource.id}", datasource.generate_create_request())
+
+    @staticmethod
+    def get_next_refid(ref_id):
+        """
+        Generate next Ref ID. i.e. None, A, B...
+        @param ref_id:
+        @return:
+        """
+        if ref_id is None:
+            return "A"
+
+        if ref_id == "Z":
+            raise NotImplementedError()
+
+        return chr(ord(ref_id)+1)

@@ -9,14 +9,15 @@ from horey.grafana_api.grafana_api import GrafanaAPI
 from horey.grafana_api.grafana_api_configuration_policy import GrafanaAPIConfigurationPolicy
 from horey.grafana_api.dashboard import Dashboard
 
-configuration = GrafanaAPIConfigurationPolicy()
 
 ignore_dir_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore")
 cache_dir = os.path.join(ignore_dir_path, "grafana_api_cache")
 os.makedirs(cache_dir, exist_ok=True)
 dashboards_cache_file = os.path.join(cache_dir, "dashboards.json")
 folders_cache_file = os.path.join(cache_dir, "folders.json")
+dashboards_datasource_file = os.path.join(cache_dir, "datasources.json")
 
+configuration = GrafanaAPIConfigurationPolicy()
 configuration.configuration_file_full_path = os.path.abspath(os.path.join(ignore_dir_path, "grafana_api_configuration_values.py"))
 configuration.init_from_file()
 
@@ -146,6 +147,8 @@ def test_init_datasources():
     """
     grafana_api.init_datasources()
     assert isinstance(grafana_api.datasources, list)
+    with open(dashboards_datasource_file, "w", encoding='UTF-8') as file_handler:
+        json.dump([obj.dict_src for obj in grafana_api.datasources], file_handler, indent=4)
 
 
 @pytest.mark.skip(reason="Can not test")
@@ -183,9 +186,9 @@ if __name__ == "__main__":
     #test_init_grafana_api()
     #test_provision_dashboard()
     #test_init_folders_and_dashboards()
-    #test_init_datasources()
     #test_provision_datasource()
     #test_create_dashboard_raw()
     #test_create_dashboard_generated_raw()
     #test_init_rule_namespaces()
-    test_init_folders()
+    #test_init_folders()
+    test_init_datasources()
