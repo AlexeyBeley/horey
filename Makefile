@@ -4,7 +4,9 @@ ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 BUILD_DIR= ${ROOT_DIR}/build
 BUILD_TMP_DIR= ${BUILD_DIR}/_build
 VENV_DIR= ${BUILD_TMP_DIR}/_venv
+
 PYLINT_TARGET := "none"
+
 ALL_PACKAGES := $(wildcard *)
 
 EXCLUSIONS := LICENSE Makefile README.md build dns_map docker terraform security_group_map pypi_infra h_flow network
@@ -99,3 +101,6 @@ zip_env:
 
 unzip_env:
 	unzip myfiles.zip -d /tmp/
+
+deploy_client_hooks:
+	cp ${BUILD_DIR}/pre-commit ${ROOT_DIR}/.git/hooks/pre-commit
