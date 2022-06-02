@@ -5,7 +5,7 @@ BUILD_DIR= ${ROOT_DIR}/build
 BUILD_TMP_DIR= ${BUILD_DIR}/_build
 VENV_DIR= ${BUILD_TMP_DIR}/_venv
 
-PYLINT_TARGET= ${BUILD_TMP_DIR}/_venv
+PYLINT_TARGET := "none"
 
 ALL_PACKAGES := $(wildcard *)
 
