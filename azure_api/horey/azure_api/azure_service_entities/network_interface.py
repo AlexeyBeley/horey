@@ -38,7 +38,8 @@ class NetworkInterface(AzureObject):
             "enable_accelerated_networking": self.init_default_attr,
             "enable_ip_forwarding": self.init_default_attr,
             "hosted_workloads": self.init_default_attr,
-            "nic_type": self.init_default_attr
+            "nic_type": self.init_default_attr,
+            "vnet_encryption_supported": self.init_default_attr
         }
 
         self.init_attrs(dict_src, init_options)

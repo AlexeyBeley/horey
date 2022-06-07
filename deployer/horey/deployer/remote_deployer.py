@@ -473,9 +473,11 @@ class RemoteDeployer:
                     f"All Finished: {[target.deployment_target_address for target in targets if check_finished_callback(target)]}")
                 break
 
+            finished_targets = [target.deployment_target_address for target in targets if check_finished_callback(target)]
+            unfinished_targets = [target.deployment_target_address for target in targets if not check_finished_callback(target)]
             logger.info(
-                f"Finished: {[target.deployment_target_address for target in targets if check_finished_callback(target)]}"
-                f", not finished: {[target.deployment_target_address for target in targets if not check_finished_callback(target)]}")
+                f"Finished {len(finished_targets)}: {finished_targets}"
+                f", not finished {len(unfinished_targets)}: {unfinished_targets}")
             logger.info(f"remote_deployer wait_to_finish going to sleep for {sleep_time} seconds")
 
             time.sleep(sleep_time)

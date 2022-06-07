@@ -3,6 +3,7 @@ Shamelessly stolen from:
 https://github.com/lukecyca/pyslack
 """
 import json
+import pdb
 
 import requests
 from horey.h_logger import get_logger
@@ -253,6 +254,16 @@ class GrafanaAPI:
         """
         self.post("dashboards/db", dict_dashboard)
         logger.info(f"Created Dashboard '{dict_dashboard['dashboard']['title']}'")
+
+    def create_rule_raw(self, dict_request, namespace):
+        """
+        Create the dashboard from raw dict
+        @param dict_dashboard:
+        @return: None
+        """
+        pdb.set_trace()
+        self.post(f"ruler/grafana/api/v1/rules/{namespace}", dict_request)
+        logger.info(f"Created Alerts '{'a'}'")
 
     def provision_datasource(self, datasource: DataSource):
         """

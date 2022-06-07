@@ -15,6 +15,7 @@ cache_dir = os.path.join(ignore_dir_path, "grafana_api_cache")
 os.makedirs(cache_dir, exist_ok=True)
 dashboards_cache_file = os.path.join(cache_dir, "dashboards.json")
 folders_cache_file = os.path.join(cache_dir, "folders.json")
+rules_cache_file = os.path.join(cache_dir, "rules.json")
 dashboards_datasource_file = os.path.join(cache_dir, "datasources.json")
 
 configuration = GrafanaAPIConfigurationPolicy()
@@ -72,6 +73,16 @@ def test_create_dashboard_raw():
         "overwrite": True
     }
     grafana_api.create_dashboard_raw(request)
+
+
+@pytest.mark.skip(reason="Can not test")
+def test_create_rule_raw():
+    request = {}
+    with open(os.path.join(cache_dir, "dashboards.json")) as file_handler:
+        pass
+
+    namespace = "critical_alerts"
+    grafana_api.create_rule_raw(request, namespace)
 
 
 @pytest.mark.skip(reason="Can not test")
@@ -169,7 +180,7 @@ def test_init_rule_namespaces():
     @return:
     """
     grafana_api.init_rule_namespaces()
-    with open(folders_cache_file, "w", encoding='UTF-8') as file_handler:
+    with open(rules_cache_file, "w", encoding='UTF-8') as file_handler:
         json.dump(grafana_api.rule_namespaces, file_handler, indent=4)
 
 
@@ -191,4 +202,5 @@ if __name__ == "__main__":
     #test_create_dashboard_generated_raw()
     #test_init_rule_namespaces()
     #test_init_folders()
-    test_init_datasources()
+    #test_init_datasources()
+    test_create_rule_raw()
