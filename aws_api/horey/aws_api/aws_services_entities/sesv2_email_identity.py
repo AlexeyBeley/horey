@@ -7,9 +7,9 @@ from horey.aws_api.aws_services_entities.aws_object import AwsObject
 from horey.aws_api.base_entities.region import Region
 
 
-class DynamoDBTable(AwsObject):
+class SESV2EmailIdentity(AwsObject):
     """
-    AWS DynamoDBTable class
+    AWS SESV2EmailIdentity class
     """
 
     def __init__(self, dict_src, from_cache=False):

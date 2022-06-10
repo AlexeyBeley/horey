@@ -206,6 +206,7 @@ class AWSAPI:
         self.elastic_addresses = []
         self.nat_gateways = []
         self.dynamodb_tables = []
+        self.dynamodb_endpoints = []
         self.ecr_images = []
         self.ecr_repositories = []
         self.ecs_clusters = []
@@ -330,6 +331,14 @@ class AWSAPI:
             objects = self.dynamodb_client.get_all_tables(region=region)
 
         self.dynamodb_tables = objects
+    
+    def init_dynamodb_endpoints(self, from_cache=False, cache_file=None, region=None):
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, DynamoDBTable)
+        else:
+            objects = self.dynamodb_client.get_all_endpoints(region=region)
+
+        self.dynamodb_endpoints = objects
         
     def init_ecr_images(self, from_cache=False, cache_file=None, region=None, ecr_repositories=None):
         objects = []
