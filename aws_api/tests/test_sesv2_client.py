@@ -44,6 +44,15 @@ def test_provision_email_identity():
         }
     ]
     client.provision_email_identity(email_identity)
+    
+
+def test_provision_email_template():
+    client = SESV2Client()
+    email_template = SESV2EmailTemplate({})
+    email_template.name = "test"
+    email_template.region = Region.get_region("us-west-2")
+    email_template.template_content = {"Subject": "test_subject", "Text": "sample text"}
+    client.provision_email_template(email_template)
 
 
 def test_provision_configuration_set():
@@ -72,4 +81,5 @@ def test_provision_configuration_set():
 if __name__ == "__main__":
     #test_init_sesv2_client()
     #test_provision_email_identity()
-    test_provision_configuration_set()
+    #test_provision_configuration_set()
+    test_provision_email_template()

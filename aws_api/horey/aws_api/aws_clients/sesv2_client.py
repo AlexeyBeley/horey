@@ -163,22 +163,21 @@ class SESV2Client(Boto3Client):
             return response
     
     def provision_email_template(self, email_template: SESV2EmailTemplate):
-        pdb.set_trace()
-        region_email_templates = self.get_region_email_templates(email_template.region)
-        for region_email_template in region_email_templates:
-            if region_email_template.name == email_template.name:
-                email_template.update_from_raw_response(region_email_template.dict_src)
-                return
-
         AWSAccount.set_aws_region(email_template.region)
-        response = self.provision_email_template_raw(email_template.generate_create_request())
-        email_template.update_from_raw_response(response)
+        self.provision_email_template_raw(email_template.generate_create_request())
 
     def provision_email_template_raw(self, request_dict):
-        logger.info(f"Creating email_template: {request_dict}")
-        for response in self.execute(self.client.create_email_template, "TableDescription",
-                                     filters_req=request_dict):
+        for response in self.execute(self.client.update_email_template, None, raw_data=True,
+                                     filters_req=request_dict,
+                                     exception_ignore_callback=lambda x: "NotFoundException" in repr(x)):
+            logger.info(f"Updated email_template: {request_dict}")
             return response
+        else:
+            logger.info(f"Creating email_template: {request_dict}")
+            for response in self.execute(self.client.create_email_template, None, raw_data=True,
+                                         filters_req=request_dict,
+                                         exception_ignore_callback=lambda x: "NotFoundException" in repr(x)):
+                return response
 
     def provision_email_identity(self, email_identity: SESV2EmailIdentity):
         AWSAccount.set_aws_region(email_identity.region)

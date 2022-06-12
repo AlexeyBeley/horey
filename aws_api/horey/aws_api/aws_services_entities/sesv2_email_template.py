@@ -47,10 +47,9 @@ class SESV2EmailTemplate(AwsObject):
         self.init_attrs(dict_src, init_options, raise_on_no_option=True)
 
     def generate_create_request(self):
-        pdb.set_trace()
         request = dict()
-        request["TableName"] = self.name
-        pdb.set_trace()
+        request["TemplateName"] = self.name
+        request["TemplateContent"] = self.template_content
 
         return request
 
