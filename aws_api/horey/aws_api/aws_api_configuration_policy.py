@@ -1036,8 +1036,12 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     def aws_api_sesv2_email_identities_cache_file(self):
         return os.path.join(self.aws_api_sesv2_cache_dir, "sesv2_email_identities.json")
 
-    @aws_api_sesv2_email_identities_cache_file.setter
-    def aws_api_sesv2_email_identities_cache_file(self, value):
-        raise ValueError(value)
+    @property
+    def aws_api_sesv2_configuration_sets_cache_file(self):
+        return os.path.join(self.aws_api_sesv2_cache_dir, "sesv2_configuration_sets.json")
 
+    @property
+    def aws_api_sesv2_email_templates_cache_file(self):
+        return os.path.join(self.aws_api_sesv2_cache_dir, "sesv2_email_templates.json")
+    
     # endregion

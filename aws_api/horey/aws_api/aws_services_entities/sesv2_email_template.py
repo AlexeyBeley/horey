@@ -1,5 +1,5 @@
 """
-AWS SESV2EmailIdentity representation
+AWS SESV2EmailTemplate representation
 """
 import pdb
 
@@ -7,25 +7,23 @@ from horey.aws_api.aws_services_entities.aws_object import AwsObject
 from horey.aws_api.base_entities.region import Region
 
 
-class SESV2EmailIdentity(AwsObject):
+class SESV2EmailTemplate(AwsObject):
     """
-    AWS SESV2EmailIdentity class
+    AWS SESV2EmailTemplate class
     """
 
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self.arn = None
         self.tags = None
-        self.identity_type = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
             return
 
         init_options = {
-            "IdentityName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-            "IdentityType": self.init_default_attr,
-            "SendingEnabled": self.init_default_attr,
+            "TemplateName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "CreatedTimestamp":  self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options, raise_on_no_option=True)
@@ -40,23 +38,19 @@ class SESV2EmailIdentity(AwsObject):
         self._init_from_cache(dict_src, options)
 
     def update_from_raw_response(self, dict_src):
+        pdb.set_trace()
         init_options = {
-            "IdentityName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-            "IdentityType": self.init_default_attr,
-            "FeedbackForwardingStatus": self.init_default_attr,
-            "VerifiedForSendingStatus": self.init_default_attr,
-            "DkimAttributes": self.init_default_attr,
-            "MailFromAttributes": self.init_default_attr,
-            "Policies": self.init_default_attr,
-            "Tags": self.init_default_attr,
-            "SendingEnabled": self.init_default_attr,
+            "TemplateName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "TemplateContent":  self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options, raise_on_no_option=True)
 
     def generate_create_request(self):
+        pdb.set_trace()
         request = dict()
-        request["EmailIdentity"] = self.name
+        request["TableName"] = self.name
+        pdb.set_trace()
 
         return request
 

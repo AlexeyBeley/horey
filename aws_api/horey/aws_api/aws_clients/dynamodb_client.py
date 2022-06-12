@@ -39,7 +39,7 @@ class DynamoDBClient(Boto3Client):
     def get_region_tables(self, region, full_information=False):
         final_result = list()
         AWSAccount.set_aws_region(region)
-        for table_name in list(self.execute(self.client.list_tables, "TableNames")):
+        for table_name in self.execute(self.client.list_tables, "TableNames"):
             ret = list(self.execute(self.client.describe_table, "Table", filters_req={"TableName": table_name}))
             obj = DynamoDBTable(ret[0])
             final_result.append(obj)

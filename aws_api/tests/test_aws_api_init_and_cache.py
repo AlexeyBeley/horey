@@ -122,6 +122,22 @@ def test_init_and_cache_sesv2_email_identities():
     assert isinstance(aws_api.sesv2_email_identities, list)
 
 
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_sesv2_email_templates():
+    aws_api.init_sesv2_email_templates()
+    aws_api.cache_objects(aws_api.sesv2_email_templates, configuration.aws_api_sesv2_email_templates_cache_file)
+    print(f"len(sesv2_email_templates) = {len(aws_api.sesv2_email_templates)}")
+    assert isinstance(aws_api.sesv2_email_templates, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_sesv2_configuration_sets():
+    aws_api.init_sesv2_configuration_sets()
+    aws_api.cache_objects(aws_api.sesv2_configuration_sets, configuration.aws_api_sesv2_configuration_sets_cache_file)
+    print(f"len(sesv2_configuration_sets) = {len(aws_api.sesv2_configuration_sets)}")
+    assert isinstance(aws_api.sesv2_configuration_sets, list)
+
+
 @pytest.mark.skip(reason="No way of currently testing cloudwatch metrics")
 def test_init_and_cache_cloudwatch_metrics():
     aws_api.cache_raw_cloud_watch_metrics(configuration.aws_api_cloudwatch_metrics_cache_dir)
@@ -616,4 +632,6 @@ if __name__ == "__main__":
     #test_init_and_cache_iam_instance_profiles()
     #test_init_and_cache_dynamodb_tables()
     #test_init_and_cache_dynamodb_endpoints()
-    test_init_and_cache_sesv2_email_identities()
+    #test_init_and_cache_sesv2_email_identities()
+    #test_init_and_cache_sesv2_email_templates()
+    test_init_and_cache_sesv2_configuration_sets()
