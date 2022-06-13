@@ -17,6 +17,9 @@ class DynamoDBTable(AwsObject):
         self.arn = None
         self.provisioned_throughput = None
         self.tags = None
+        self.billing_mode = None
+        self.stream_specification = None
+        self.sse_specification = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -81,8 +84,12 @@ class DynamoDBTable(AwsObject):
         if self.provisioned_throughput is not None:
             request["ProvisionedThroughput"] = self.provisioned_throughput
 
-        request["BillingMode"] = self.billing_mode
-        request["StreamSpecification"] = self.stream_specification
+        if self.billing_mode is not None:
+            request["BillingMode"] = self.billing_mode
+
+        if self.stream_specification is not None:
+            request["StreamSpecification"] = self.stream_specification
+
         request["Tags"] = self.tags if self.tags is not None else []
         for tag in request["Tags"]:
             if tag["Key"].lower() == "name":
@@ -90,7 +97,8 @@ class DynamoDBTable(AwsObject):
         else:
             request["Tags"].append({"Key": "Name", "Value": self.name})
 
-        request["SSESpecification"] = self.sse_specification
+        if self.sse_specification is not None:
+            request["SSESpecification"] = self.sse_specification
 
         return request
 

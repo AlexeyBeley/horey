@@ -38,7 +38,6 @@ class SESV2EmailTemplate(AwsObject):
         self._init_from_cache(dict_src, options)
 
     def update_from_raw_response(self, dict_src):
-        pdb.set_trace()
         init_options = {
             "TemplateName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
             "TemplateContent":  self.init_default_attr,

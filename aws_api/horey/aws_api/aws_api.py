@@ -2345,7 +2345,10 @@ class AWSAPI:
 
     def provision_glue_database(self, glue_database):
         self.glue_client.provision_database(glue_database)
-
+    
+    def provision_dynamodb_table(self, dynamodb_table):
+        self.dynamodb_client.provision_table(dynamodb_table)
+    
     def provision_nat_gateways(self, nat_gateways):
         for nat_gateway in nat_gateways:
             self.provision_nat_gateway(nat_gateway)
@@ -2530,7 +2533,7 @@ class AWSAPI:
 
     # endregion
 
-    # region acm certificate
+    # region sesv2_domain_email_identity
     def provision_sesv2_domain_email_identity(self, email_identity, wait_for_validation=True):
         self.sesv2_client.provision_email_identity(email_identity)
 
@@ -2615,7 +2618,27 @@ class AWSAPI:
             f"Finished waiting {max_time} seconds for sesv2_domain_email_identity validation. Finished with status: {email_identity.dkim_attributes['Status']}")
 
     # endregion
+    
+    def provision_sesv2_email_template(self, email_template):
+        """
+        Provision SESv2 email template
+        
+        @param email_template: 
+        @return: 
+        """
+        
+        self.sesv2_client.provision_email_template(email_template)
 
+    def provision_sesv2_configuration_set(self, configuration_set):
+        """
+        Provision SESv2 configuration_set
+
+        @param configuration_set:
+        @return: 
+        """
+
+        self.sesv2_client.provision_configuration_set(configuration_set)
+                                                   
     def provision_rds_db_cluster(self, cluster, snapshot=None):
         snapshot_id = snapshot.id if snapshot is not None else None
         self.rds_client.provision_db_cluster(cluster, snapshot_id=snapshot_id)
