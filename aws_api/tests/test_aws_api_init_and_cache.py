@@ -48,7 +48,7 @@ def test_init_and_cache_iam_instance_profiles():
 
     print(f"len(iam_instance_profiles) = {len(aws_api.iam_instance_profiles)}")
     assert isinstance(aws_api.iam_instance_profiles, list)
-
+    
 
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_network_interfaces():
@@ -96,6 +96,46 @@ def test_init_and_cache_cloudwatch_log_groups_metric_filters():
     aws_api.cache_objects(aws_api.cloud_watch_log_groups_metric_filters, configuration.aws_api_cloudwatch_log_groups_metric_filters_cache_file)
     print(f"len(cloud_watch_log_group_metric_filters) = {len(aws_api.cloud_watch_log_groups_metric_filters)}")
     assert isinstance(aws_api.cloud_watch_log_groups_metric_filters, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_dynamodb_tables():
+    aws_api.init_dynamodb_tables()
+    aws_api.cache_objects(aws_api.dynamodb_tables, configuration.aws_api_dynamodb_tables_cache_file)
+    print(f"len(dynamodb_tables) = {len(aws_api.dynamodb_tables)}")
+    assert isinstance(aws_api.dynamodb_tables, list)
+    
+    
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_dynamodb_endpoints():
+    aws_api.init_dynamodb_endpoints()
+    aws_api.cache_objects(aws_api.dynamodb_endpoints, configuration.aws_api_dynamodb_endpoints_cache_file)
+    print(f"len(dynamodb_endpoints) = {len(aws_api.dynamodb_endpoints)}")
+    assert isinstance(aws_api.dynamodb_endpoints, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_sesv2_email_identities():
+    aws_api.init_sesv2_email_identities()
+    aws_api.cache_objects(aws_api.sesv2_email_identities, configuration.aws_api_sesv2_email_identities_cache_file)
+    print(f"len(sesv2_email_identities) = {len(aws_api.sesv2_email_identities)}")
+    assert isinstance(aws_api.sesv2_email_identities, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_sesv2_email_templates():
+    aws_api.init_sesv2_email_templates()
+    aws_api.cache_objects(aws_api.sesv2_email_templates, configuration.aws_api_sesv2_email_templates_cache_file)
+    print(f"len(sesv2_email_templates) = {len(aws_api.sesv2_email_templates)}")
+    assert isinstance(aws_api.sesv2_email_templates, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_sesv2_configuration_sets():
+    aws_api.init_sesv2_configuration_sets()
+    aws_api.cache_objects(aws_api.sesv2_configuration_sets, configuration.aws_api_sesv2_configuration_sets_cache_file)
+    print(f"len(sesv2_configuration_sets) = {len(aws_api.sesv2_configuration_sets)}")
+    assert isinstance(aws_api.sesv2_configuration_sets, list)
 
 
 @pytest.mark.skip(reason="No way of currently testing cloudwatch metrics")
@@ -589,4 +629,9 @@ if __name__ == "__main__":
     #test_init_and_cache_subnets()
     #test_init_and_cache_glue_tables()
     #test_init_and_cache_glue_databases()
-    test_init_and_cache_iam_instance_profiles()
+    #test_init_and_cache_iam_instance_profiles()
+    #test_init_and_cache_dynamodb_tables()
+    #test_init_and_cache_dynamodb_endpoints()
+    #test_init_and_cache_sesv2_email_identities()
+    #test_init_and_cache_sesv2_email_templates()
+    test_init_and_cache_sesv2_configuration_sets()

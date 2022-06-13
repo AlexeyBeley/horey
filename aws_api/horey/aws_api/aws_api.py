@@ -1,6 +1,7 @@
 """
 Module to handle cross service interaction
 """
+import pdb
 import json
 import os
 import datetime
@@ -8,7 +9,6 @@ import time
 import zipfile
 from collections import defaultdict
 from horey.network.ip import IP
-import pdb
 
 from horey.aws_api.aws_clients.ecr_client import ECRClient
 
@@ -69,6 +69,8 @@ from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlar
 
 from horey.aws_api.aws_clients.cloud_watch_client import CloudWatchClient
 
+from horey.aws_api.aws_clients.dynamodb_client import DynamoDBClient
+
 from horey.aws_api.aws_clients.cloudfront_client import CloudfrontClient
 from horey.aws_api.aws_services_entities.cloudfront_distribution import CloudfrontDistribution
 from horey.aws_api.aws_services_entities.cloudfront_origin_access_identity import CloudfrontOriginAccessIdentity
@@ -111,6 +113,11 @@ from horey.aws_api.aws_services_entities.ecs_capacity_provider import ECSCapacit
 from horey.aws_api.aws_services_entities.ecs_service import ECSService
 from horey.aws_api.aws_services_entities.sqs_queue import SQSQueue
 from horey.aws_api.aws_services_entities.lambda_event_source_mapping import LambdaEventSourceMapping
+from horey.aws_api.aws_services_entities.dynamodb_table import DynamoDBTable
+from horey.aws_api.aws_clients.sesv2_client import SESV2Client
+from horey.aws_api.aws_services_entities.sesv2_email_identity import SESV2EmailIdentity
+from horey.aws_api.aws_services_entities.sesv2_configuration_set import SESV2ConfigurationSet
+from horey.aws_api.aws_services_entities.sesv2_email_template import SESV2EmailTemplate
 
 from horey.common_utils.common_utils import CommonUtils
 
@@ -143,6 +150,8 @@ class AWSAPI:
         self.cloud_watch_logs_client = CloudWatchLogsClient()
         self.cloud_watch_client = CloudWatchClient()
         self.ecs_client = ECSClient()
+        self.dynamodb_client = DynamoDBClient()
+        self.sesv2_client = SESV2Client()
         self.autoscaling_client = AutoScalingClient()
         self.cloudfront_client = CloudfrontClient()
         self.events_client = EventsClient()
@@ -201,6 +210,11 @@ class AWSAPI:
         self.route_tables = []
         self.elastic_addresses = []
         self.nat_gateways = []
+        self.dynamodb_tables = []
+        self.dynamodb_endpoints = []
+        self.sesv2_email_identities = []
+        self.sesv2_email_templates = []
+        self.sesv2_configuration_sets = []
         self.ecr_images = []
         self.ecr_repositories = []
         self.ecs_clusters = []
@@ -215,7 +229,7 @@ class AWSAPI:
         self.elasticache_replication_groups = []
         self.sqs_queues = []
         self.lambda_event_source_mappings = []
-        self.glue_databases= []
+        self.glue_databases = []
         self.glue_tables = []
 
         self.configuration = configuration
@@ -275,7 +289,7 @@ class AWSAPI:
                 objects += self.ec2_client.get_all_subnets(region=_region)
 
         self.subnets = objects
-    
+
     def init_glue_tables(self, from_cache=False, cache_file=None, region=None):
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, Subnet)
@@ -288,7 +302,7 @@ class AWSAPI:
                 objects += self.glue_client.get_all_tables(region=_region)
 
         self.glue_tables = objects
-    
+
     def init_glue_databases(self, from_cache=False, cache_file=None, region=None):
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, Subnet)
@@ -317,6 +331,46 @@ class AWSAPI:
             objects = self.ec2_client.get_all_nat_gateways(region=region)
 
         self.nat_gateways = objects
+
+    def init_dynamodb_tables(self, from_cache=False, cache_file=None, region=None):
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, DynamoDBTable)
+        else:
+            objects = self.dynamodb_client.get_all_tables(region=region)
+
+        self.dynamodb_tables = objects
+
+    def init_dynamodb_endpoints(self, from_cache=False, cache_file=None, region=None):
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, DynamoDBTable)
+        else:
+            objects = self.dynamodb_client.get_all_endpoints(region=region)
+
+        self.dynamodb_endpoints = objects
+
+    def init_sesv2_email_identities(self, from_cache=False, cache_file=None, region=None):
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, SESV2EmailIdentity)
+        else:
+            objects = self.sesv2_client.get_all_email_identities(region=region)
+
+        self.sesv2_email_identities = objects
+
+    def init_sesv2_email_templates(self, from_cache=False, cache_file=None, region=None):
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, SESV2EmailTemplate)
+        else:
+            objects = self.sesv2_client.get_all_email_templates(region=region)
+
+        self.sesv2_email_templates = objects
+
+    def init_sesv2_configuration_sets(self, from_cache=False, cache_file=None, region=None):
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, SESV2ConfigurationSet)
+        else:
+            objects = self.sesv2_client.get_all_configuration_sets(region=region)
+
+        self.sesv2_configuration_sets = objects
 
     def init_ecr_images(self, from_cache=False, cache_file=None, region=None, ecr_repositories=None):
         objects = []
@@ -478,7 +532,7 @@ class AWSAPI:
             objects = self.ec2_client.get_all_volumes(region=region)
 
         self.ec2_volumes = objects
-        
+
     def init_spot_fleet_requests(self, from_cache=False, cache_file=None):
         """
         Init spot fleet requests instances.
@@ -571,7 +625,7 @@ class AWSAPI:
             objects = self.iam_client.get_all_roles(policies=self.iam_policies)
 
         self.iam_roles = objects
-    
+
     def init_iam_instance_profiles(self, from_cache=False, cache_file=None):
         """
         Init iam roles
@@ -845,7 +899,7 @@ class AWSAPI:
             objects = self.servicediscovery_client.get_all_services(full_information=full_information)
 
         self.servicediscovery_services = objects
-    
+
     def init_servicediscovery_namespaces(self, from_cache=False, cache_file=None, full_information=True):
         """
         Init servicediscovery serivces
@@ -935,7 +989,7 @@ class AWSAPI:
             objects = self.rds_client.get_all_db_cluster_snapshots(region=region)
 
         self.rds_db_cluster_snapshots = objects
-        
+
     def init_rds_db_parameter_groups(self, from_cache=False, cache_file=None, region=None):
         """
         Init RDSs
@@ -1106,7 +1160,7 @@ class AWSAPI:
             objects = self.acm_client.get_all_certificates()
 
         self.acm_certificates = objects
-    
+
     def init_kms_keys(self, from_cache=False, cache_file=None):
         """
         Init ELB target groups
@@ -1120,7 +1174,7 @@ class AWSAPI:
             objects = self.kms_client.get_all_keys()
 
         self.kms_keys = objects
-        
+
     def init_security_groups(self, from_cache=False, cache_file=None, full_information=False):
         """
         Init security groups
@@ -1663,8 +1717,9 @@ class AWSAPI:
                     streams = json.load(fh)
                 log_group_name = streams[0]["arn"].split(":")[6]
                 log_group = \
-                CommonUtils.find_objects_by_values(self.cloud_watch_log_groups, {"name": log_group_name}, max_count=1)[
-                    0]
+                    CommonUtils.find_objects_by_values(self.cloud_watch_log_groups, {"name": log_group_name},
+                                                       max_count=1)[
+                        0]
                 dict_log_group["size"] = log_group.stored_bytes
                 for stream in streams:
                     dict_log_group["streams_count"] += 1
@@ -2116,7 +2171,8 @@ class AWSAPI:
         return lines
 
     def get_secret_value(self, secret_name, region=None, ignore_missing=False):
-        return self.secretsmanager_client.raw_get_secret_string(secret_name, region=region, ignore_missing=ignore_missing)
+        return self.secretsmanager_client.raw_get_secret_string(secret_name, region=region,
+                                                                ignore_missing=ignore_missing)
 
     def put_secret_value(self, secret_name, value, region=None):
         return self.secretsmanager_client.raw_put_secret_string(secret_name, value, region=region)
@@ -2148,7 +2204,7 @@ class AWSAPI:
         pdb.set_trace()
 
         security_group = \
-        CommonUtils.find_objects_by_values(self.security_groups, {"name": security_group_name}, max_count=1)[0]
+            CommonUtils.find_objects_by_values(self.security_groups, {"name": security_group_name}, max_count=1)[0]
 
         for ip_permission in security_group.ip_permissions:
             pass
@@ -2166,7 +2222,7 @@ class AWSAPI:
             for entry in managed_prefix_list.entries:
                 if entry.description in descriptions:
                     raise Exception(f"{managed_prefix_list.name} [{managed_prefix_list.region.region_mark}] -"
-                                f" multiple entries with same description '{entry.description}'")
+                                    f" multiple entries with same description '{entry.description}'")
                 descriptions.append(entry.description)
 
         self.ec2_client.provision_managed_prefix_list(managed_prefix_list, declarative=declarative)
@@ -2283,13 +2339,16 @@ class AWSAPI:
 
     def provision_auto_scaling_group(self, autoscaling_group):
         self.autoscaling_client.provision_auto_scaling_group(autoscaling_group)
-        
+
     def provision_glue_table(self, glue_table):
         self.glue_client.provision_table(glue_table)
-    
+
     def provision_glue_database(self, glue_database):
         self.glue_client.provision_database(glue_database)
-
+    
+    def provision_dynamodb_table(self, dynamodb_table):
+        self.dynamodb_client.provision_table(dynamodb_table)
+    
     def provision_nat_gateways(self, nat_gateways):
         for nat_gateway in nat_gateways:
             self.provision_nat_gateway(nat_gateway)
@@ -2367,7 +2426,7 @@ class AWSAPI:
 
     def provision_load_balancer_rule(self, rule):
         self.elbv2_client.provision_load_balancer_rule(rule)
-        
+
     def associate_elastic_address(self, ec2_instance, elastic_address):
         request = {"AllocationId": elastic_address.id,
                    "InstanceId": ec2_instance.id}
@@ -2396,6 +2455,7 @@ class AWSAPI:
     def provision_ecs_task_definition(self, task_definition):
         self.ecs_client.provision_ecs_task_definition(task_definition)
 
+    # region acm certificate
     def provision_acm_certificate(self, certificate, master_hosted_zone_name):
         self.acm_client.provision_certificate(certificate)
 
@@ -2468,12 +2528,120 @@ class AWSAPI:
                 time.sleep(sleep_time)
             else:
                 raise ValueError(certificate.status)
-        raise TimeoutError(f"Finished waiting {max_time} seconds for certificate validation. Finished with status: {certificate.status}")
+        raise TimeoutError(
+            f"Finished waiting {max_time} seconds for certificate validation. Finished with status: {certificate.status}")
 
+    # endregion
+
+    # region sesv2_domain_email_identity
+    def provision_sesv2_domain_email_identity(self, email_identity, wait_for_validation=True):
+        self.sesv2_client.provision_email_identity(email_identity)
+
+        if email_identity.dkim_attributes["Status"] == "SUCCESS":
+            return
+
+        max_time = 5 * 60
+        sleep_time = 10
+        start_time = datetime.datetime.now()
+        end_time = start_time + datetime.timedelta(seconds=max_time)
+        while datetime.datetime.now() < end_time:
+            logger.info(
+                f"Waiting for sesv2 domain validation request. Going to sleep for {sleep_time} seconds: {email_identity.name}")
+            time.sleep(sleep_time)
+            self.sesv2_client.update_email_identity_information(email_identity)
+
+            if email_identity.dkim_attributes["Status"] != "NOT_STARTED":
+                break
+        else:
+            raise TimeoutError(f"Reached timeout for {email_identity.name}")
+
+        if email_identity.dkim_attributes["Status"] != "PENDING":
+            raise ValueError(f"Unknown status {email_identity.dkim_attributes['Status']}")
+
+        self.validate_sesv2_domain_email_identity(email_identity)
+
+        if wait_for_validation:
+            self.wait_for_sesv2_domain_email_identity_validation(email_identity)
+
+    def validate_sesv2_domain_email_identity(self, email_identity):
+        hosted_zones = self.route53_client.get_all_hosted_zones(name=email_identity.name)
+
+        if len(hosted_zones) == 0:
+            raise ValueError(f"Can not find hosted zone: '{email_identity.name}'")
+
+        if len(hosted_zones) > 1:
+            raise ValueError(f"More then one hosted_zones with name '{email_identity.name}'")
+
+        hosted_zone = hosted_zones[0]
+
+        for token in email_identity.dkim_attributes["Tokens"]:
+            dict_record = {
+                "Name": f"{token}._domainkey.{email_identity.name}",
+                "Type": "CNAME",
+                "TTL": 1800,
+                "ResourceRecords": [
+                    {
+                        "Value": f"{token}.dkim.amazonses.com"
+                    }
+                ]
+            }
+            record = HostedZone.Record(dict_record)
+            hosted_zone.records.append(record)
+
+        self.provision_hosted_zone(hosted_zone)
+
+    def wait_for_sesv2_domain_email_identity_validation(self, email_identity):
+        """
+        Wait for DNS records to catch
+
+        @param email_identity:
+        @return:
+        """
+        
+        max_time = 5 * 60
+        sleep_time = 30
+        start_time = datetime.datetime.now()
+        end_time = start_time + datetime.timedelta(seconds=max_time)
+        while datetime.datetime.now() < end_time:
+            self.sesv2_client.update_email_identity_information(email_identity)
+            if email_identity.dkim_attributes["Status"] == "SUCCESS":
+                logger.info(f"Finished validating in {datetime.datetime.now() - start_time}")
+                break
+            elif email_identity.dkim_attributes["Status"] == "PENDING":
+                logger.info(
+                    f"Waiting for sesv2_domain_email_identity validation going to sleep for {sleep_time} seconds: {email_identity.name}")
+                time.sleep(sleep_time)
+            else:
+                raise ValueError(email_identity.dkim_attributes["Status"])
+        else:
+            raise TimeoutError(
+            f"Finished waiting {max_time} seconds for sesv2_domain_email_identity validation. Finished with status: {email_identity.dkim_attributes['Status']}")
+
+    # endregion
+    
+    def provision_sesv2_email_template(self, email_template):
+        """
+        Provision SESv2 email template
+        
+        @param email_template: 
+        @return: 
+        """
+        
+        self.sesv2_client.provision_email_template(email_template)
+
+    def provision_sesv2_configuration_set(self, configuration_set):
+        """
+        Provision SESv2 configuration_set
+
+        @param configuration_set:
+        @return: 
+        """
+
+        self.sesv2_client.provision_configuration_set(configuration_set)
+                                                   
     def provision_rds_db_cluster(self, cluster, snapshot=None):
         snapshot_id = snapshot.id if snapshot is not None else None
         self.rds_client.provision_db_cluster(cluster, snapshot_id=snapshot_id)
-
 
     def get_security_group_by_vpc_and_name(self, vpc, name, full_information=False):
         filters = [
@@ -2575,14 +2743,16 @@ class AWSAPI:
     def dispose_launch_template(self, launch_template):
         self.ec2_client.dispose_launch_template(launch_template)
 
-    def attach_capacity_providers_to_ecs_cluster(self, ecs_cluster, capacity_provider_names, default_capacity_provider_strategy):
-        self.ecs_client.attach_capacity_providers_to_ecs_cluster(ecs_cluster, capacity_provider_names, default_capacity_provider_strategy)
+    def attach_capacity_providers_to_ecs_cluster(self, ecs_cluster, capacity_provider_names,
+                                                 default_capacity_provider_strategy):
+        self.ecs_client.attach_capacity_providers_to_ecs_cluster(ecs_cluster, capacity_provider_names,
+                                                                 default_capacity_provider_strategy)
 
     def provision_aws_lambda_from_filelist(self, aws_lambda, files_paths, force=False):
         zip_file_name = f"{aws_lambda.name}.zip"
         with zipfile.ZipFile(zip_file_name, 'w') as myzip:
             for file_path in files_paths:
-                #zip_file_name = os.path.splitext(os.path.basename(file_path))[0] + ".zip"
+                # zip_file_name = os.path.splitext(os.path.basename(file_path))[0] + ".zip"
                 myzip.write(file_path, arcname=os.path.basename(file_path))
         with open(zip_file_name, "rb") as myzip:
             aws_lambda.code = {"ZipFile": myzip.read()}
@@ -2596,8 +2766,8 @@ class AWSAPI:
         raise NotImplementedError()
         zip_file_name = os.path.splitext(os.path.basename(file_path))[0]
         import shutil
-        shutil.make_archive(zip_file_name, 'zip', os.path.dirname(file_path)+"/lambda")
-        with open(zip_file_name+".zip", "rb") as myzip:
+        shutil.make_archive(zip_file_name, 'zip', os.path.dirname(file_path) + "/lambda")
+        with open(zip_file_name + ".zip", "rb") as myzip:
             aws_lambda.code = {"ZipFile": myzip.read()}
 
         self.lambda_client.provision_lambda(aws_lambda)
@@ -2620,8 +2790,8 @@ class AWSAPI:
     def get_latest_db_cluster_snapshot(self, db_cluster):
         filters_req = {"DBClusterIdentifier": db_cluster.id}
         src_region_cluster_snapshots = self.rds_client.get_region_db_cluster_snapshots(db_cluster.region,
-                                                                    full_information=False,
-                                                                    custom_filters=filters_req)
+                                                                                       full_information=False,
+                                                                                       custom_filters=filters_req)
 
         return src_region_cluster_snapshots[-1]
 
@@ -2634,6 +2804,14 @@ class AWSAPI:
         return src_region_cluster_snapshots[-1]
 
     def copy_latest_db_cluster_snapshot(self, db_cluster, desired_snapshot: RDSDBClusterSnapshot):
+        """
+        Copy latest cluster snapshot according to the desired_snapshot params.
+        
+        @param db_cluster: 
+        @param desired_snapshot: 
+        @return: 
+        """
+        
         src_snapshot = self.get_latest_db_cluster_snapshot(db_cluster)
         src_snapshot.region = db_cluster.region
 
@@ -2641,7 +2819,8 @@ class AWSAPI:
             if db_cluster.kms_key_id is None:
                 self.rds_client.update_db_cluster_information(db_cluster)
             src_region_keys = self.kms_client.get_region_keys(db_cluster.region, full_information=True)
-            src_region_key = CommonUtils.find_objects_by_values(src_region_keys, {"arn": db_cluster.kms_key_id}, max_count=1)[0]
+            src_region_key = \
+            CommonUtils.find_objects_by_values(src_region_keys, {"arn": db_cluster.kms_key_id}, max_count=1)[0]
 
             desired_snapshot.kms_key_id = src_region_key.aliases[0]["AliasName"]
 
@@ -2655,28 +2834,49 @@ class AWSAPI:
             desired_snapshot.id = dst_id
 
             desired_snapshot.tags.append({
-                'Key': 'Name',
-                'Value': dst_id
+                "Key": "Name",
+                "Value": dst_id
             })
 
         self.rds_client.copy_db_cluster_snapshot(src_snapshot, desired_snapshot, synchronous=True)
 
     def provision_events_rule(self, events_rule):
+        """
+        Provision events rule
+        
+        @param events_rule: 
+        @return: 
+        """
         self.events_client.provision_rule(events_rule)
 
     def get_vpcs_by_tags(self, key_values_map, region=None):
+        """
+        Find all VPCs by tag keys:values
+        
+        @param key_values_map: 
+        @param region: 
+        @return: 
+        """
+        
         filters = [{
-            'Name': f'tag:{tag_name}',
-            'Values': tag_values
+            "Name": f"tag:{tag_name}",
+            "Values": tag_values
         } for tag_name, tag_values in key_values_map.items()]
-
 
         return self.ec2_client.get_all_vpcs(region=region, filters=filters)
 
     def get_alive_ec2_instance_by_name(self, region, name):
+        """
+        Find running ec2 instance by name tag
+        
+        @param region: 
+        @param name: 
+        @return: 
+        """
+        
         filters = [{
-            'Name': f'tag:Name',
-            'Values': [
+            "Name": f"tag:Name",
+            "Values": [
                 name
             ]
         }]
@@ -2690,23 +2890,44 @@ class AWSAPI:
             ret_instances.append(ec2_instance)
 
         if len(ret_instances) != 1:
-            raise RuntimeError(f"Found {len(ret_instances)} RUNNING/PENDING instances in region {region.region_mark} with tag_name '{name}' while expected 1")
+            raise RuntimeError(
+                f"Found {len(ret_instances)} RUNNING/PENDING instances in region {region.region_mark} with tag_name '{name}' while expected 1")
 
         return ret_instances[0]
 
     def provision_servicediscovery_namespace(self, namespace):
+        """
+        Provision Service discovery namespace
+
+        @param namespace: 
+        @return: 
+        """
         self.servicediscovery_client.provision_namespace(namespace)
-    
+
     def provision_servicediscovery_service(self, service):
+        """
+        Provision Service discovery service
+
+        @param service: 
+        @return: 
+        """
         self.servicediscovery_client.provision_service(service)
-    
+
     def provision_sqs_queue(self, sqs_queue):
+        """
+        Provision SQS queue
+        
+        @param sqs_queue: 
+        @return: 
+        """
+        
         self.sqs_client.provision_queue(sqs_queue)
 
-    def get_vpc_peerings(self, vpc=None):
-        objects = self.ec2_client.get_all_vpc_peerings(region=vpc.region)
-        pdb.set_trace()
-        return [peering for peering in objects if peering.peering]
+    def create_image(self, instance: EC2Instance):
+        """
+        Create EC2 instance ami.
 
-    def create_image(self, instance):
+        @param instance:
+        @return:
+        """
         return self.ec2_client.create_image(instance)

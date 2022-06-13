@@ -12,6 +12,7 @@ from horey.h_logger import get_logger
 from horey.aws_api.aws_api_configuration_policy import AWSAPIConfigurationPolicy
 from horey.aws_api.base_entities.region import Region
 from horey.aws_api.aws_services_entities.acm_certificate import ACMCertificate
+from horey.aws_api.aws_services_entities.sesv2_email_identity import SESV2EmailIdentity
 from horey.aws_api.aws_services_entities.aws_lambda import AWSLambda
 from horey.aws_api.aws_services_entities.lambda_event_source_mapping import LambdaEventSourceMapping
 from horey.common_utils.common_utils import CommonUtils
@@ -60,6 +61,21 @@ def test_provision_certificate():
     assert cert.status == "ISSUED"
 
 
+def test_provision_sesv2_domain_email_identity():
+    email_identity = SESV2EmailIdentity({})
+    email_identity.name = mock_values["email_identity.name"]
+    email_identity.region = Region.get_region("us-west-2")
+    email_identity.tags = [
+        {
+            "Key": "name",
+            "Value": "value"
+        }
+    ]
+    aws_api.provision_sesv2_domain_email_identity(email_identity)
+
+    assert email_identity.status == "ISSUED"
+
+
 def test_provision_aws_lambda_from_filelist():
     aws_lambda = AWSLambda({})
     aws_lambda.region = Region.get_region("us-west-2")
@@ -94,5 +110,6 @@ def test_provision_lambda_event_source_mapping():
 if __name__ == "__main__":
     #test_provision_certificate()
     #test_provision_aws_lambda_from_filelist()
-    test_provision_lambda_event_source_mapping()
+    #test_provision_lambda_event_source_mapping()
     #test_copy_ecr_image()
+    test_provision_sesv2_domain_email_identity()
