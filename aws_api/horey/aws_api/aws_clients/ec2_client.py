@@ -301,12 +301,7 @@ class EC2Client(Boto3Client):
         for response in self.execute(self.client.create_key_pair, None, raw_data=True, filters_req=request_dict):
             return response
 
-    def provision_launch_template_raw(self, request_dict):
-        logger.info(f"Creating Launch Template: {request_dict}")
-        for response in self.execute(self.client.create_launch_template, "LaunchTemplate", filters_req=request_dict):
-            return response
-
-    def request_spot_fleet(self, request_dict):
+    def request_spot_fleet_raw(self, request_dict):
         for response in self.execute(self.client.request_spot_fleet, "SpotFleetRequestId", filters_req=request_dict):
             return response
 
@@ -335,11 +330,11 @@ class EC2Client(Boto3Client):
 
         return final_result
 
-    def get_region_launch_templates(self, region, full_information=False):
+    def get_region_launch_templates(self, region, full_information=False, custom_filters=None):
         AWSAccount.set_aws_region(region)
         final_result = list()
         logger.info(f"Fetching all launch templates from {region}")
-        for ret in self.execute(self.client.describe_launch_templates, "LaunchTemplates"):
+        for ret in self.execute(self.client.describe_launch_templates, "LaunchTemplates", filters_req=custom_filters):
             obj = EC2LaunchTemplate(ret)
             obj.region = region
             if full_information is True:
@@ -348,20 +343,27 @@ class EC2Client(Boto3Client):
             final_result.append(obj)
         return final_result
 
-    def get_all_launch_template_versions(self, launch_template):
+    def get_all_launch_template_versions(self, region=None):
         """
         Get all launch_template_versions in all regions.
         :return:
         """
+        if region is not None:
+            return self.get_region_launch_template_versions(region)
 
         final_result = []
-        filters_req = {"LaunchTemplateId": launch_template.id}
-        AWSAccount.set_aws_region(launch_template.region)
+        for region in AWSAccount.get_aws_account().regions.values():
+            final_result += self.get_region_launch_template_versions(region)
+
+        return final_result
+
+    def get_region_launch_template_versions(self, region, custom_filters=None):
+        AWSAccount.set_aws_region(region)
+        final_result = []
         for dict_src in self.execute(self.client.describe_launch_template_versions, "LaunchTemplateVersions",
-                                     filters_req=filters_req):
+                                     filters_req=custom_filters):
             obj = EC2LaunchTemplateVersion(dict_src)
             final_result.append(obj)
-
         return final_result
 
     def get_security_group(self, security_group):
@@ -587,12 +589,15 @@ class EC2Client(Boto3Client):
             raise RuntimeError(filter_request)
         new_ami = amis[0]
 
+        logger.info(f"Starting waiting loop for ami to become ready: {new_ami.id}")
+
         self.wait_for_status(new_ami, self.update_image_information, [new_ami.State.AVAILABLE],
                              [new_ami.State.PENDING], [new_ami.State.INVALID,
                                                        new_ami.State.DEREGISTERED,
                                                        new_ami.State.TRANSIENT,
                                                        new_ami.State.FAILED,
-                                                       new_ami.State.ERROR])
+                                                       new_ami.State.ERROR],
+                             timeout=600)
         return new_ami
 
     def create_image_raw(self, request_dict):
@@ -850,16 +855,55 @@ class EC2Client(Boto3Client):
                                      filters_req=request_dict):
             return response
 
-    def provision_launch_template(self, launch_template):
-        region_objects = self.get_region_launch_templates(launch_template.region)
-        for region_object in region_objects:
-            if region_object.name == launch_template.name:
-                launch_template.update_from_raw_response(region_object.dict_src)
-                return
+    def find_launch_template(self, launch_template):
+        region_objects = self.get_region_launch_templates(launch_template.region, custom_filters={"LaunchTemplateNames": [launch_template.name]})
 
-        AWSAccount.set_aws_region(launch_template.region)
+        if len(region_objects) > 1:
+            raise RuntimeError(f"len(region_objects) > 1")
+
+        return region_objects[0] if region_objects else None
+
+    def find_region_launch_template_version(self, launch_template):
+        region_objects = self.get_region_launch_template_versions(launch_template.region, custom_filters={"LaunchTemplateName": launch_template.name, "Versions": ["$Latest"]})
+
+        if len(region_objects) > 1:
+            raise RuntimeError(f"len(region_objects) > 1")
+
+        return region_objects[0] if region_objects else None
+
+    def provision_launch_template(self, launch_template: EC2LaunchTemplate):
+        current_launch_template_version = self.find_region_launch_template_version(launch_template)
+        if current_launch_template_version is not None:
+            provision_version_request = current_launch_template_version.generate_create_request(launch_template)
+            if provision_version_request:
+                ret = self.provision_launch_template_version_raw(provision_version_request)
+                #todo: modify version
+                pdb.set_trace()
+                launch_template.generate_modify_launch_template_request()
+                self.modify_launch_template_raw(request)
+                region_object = self.find_launch_template(launch_template)
+
+            launch_template.update_from_raw_response(region_object.dict_src)
+            return
+
         response = self.provision_launch_template_raw(launch_template.generate_create_request())
         launch_template.update_from_raw_response(response)
+
+    def provision_launch_template_raw(self, request_dict):
+        logger.info(f"Creating Launch Template: {request_dict}")
+        for response in self.execute(self.client.create_launch_template, "LaunchTemplate", filters_req=request_dict):
+            return response
+
+    def provision_launch_template_version_raw(self, request_dict):
+        logger.info(f"Creating Launch Template Version: {request_dict}")
+        for response in self.execute(self.client.create_launch_template_version, "LaunchTemplate", filters_req=request_dict):
+            return response
+
+    def modify_launch_template_raw(self, request_dict):
+        logger.info(f"Modifying Launch Template Version: {request_dict}")
+        for response in self.execute(self.client.modify_launch_template, "LaunchTemplate",
+                                     filters_req=request_dict):
+            return response
 
     def provision_nat_gateway(self, nat_gateway):
         region_gateways = self.get_region_nat_gateways(nat_gateway.region)
