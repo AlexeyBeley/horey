@@ -38,11 +38,20 @@ class ProvisionConstructor:
         os.makedirs(venv_path, exist_ok=True)
         subprocess.run([f"python3.8 -m venv {venv_path}"], shell=True)
 
+    def provision_system_function(self, system_function_name, **kwargs):
+        self.check_provisioned_ancestor(system_function_name)
+        system_function = SystemFunctionFactory.REGISTERED_FUNCTIONS[system_function_name](self.deployment_dir,
+                                                                         **kwargs)
+
+        system_function.provision()
+        self.provisioned_system_functions.append(system_function_name)
+
     def add_system_function(self, system_function_name, **kwargs):
         self.check_provisioned_ancestor(system_function_name)
         SystemFunctionFactory.REGISTERED_FUNCTIONS[system_function_name](self.deployment_dir,
                                                                          ProvisionConstructor.PROVISIONER_SCRIPT_NAME,
                                                                          **kwargs)
+        SystemFunctionFactory.REGISTERED_FUNCTIONS[system_function_name].add_system_function_common()
         self.provisioned_system_functions.append(system_function_name)
 
     def check_provisioned_ancestor(self, system_function_name):

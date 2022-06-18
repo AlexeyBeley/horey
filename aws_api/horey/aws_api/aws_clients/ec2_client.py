@@ -876,14 +876,14 @@ class EC2Client(Boto3Client):
         if current_launch_template_version is not None:
             provision_version_request = current_launch_template_version.generate_create_request(launch_template)
             if provision_version_request:
-                ret = self.provision_launch_template_version_raw(provision_version_request)
-                #todo: modify version
-                pdb.set_trace()
-                launch_template.generate_modify_launch_template_request()
-                self.modify_launch_template_raw(request)
+                response = self.provision_launch_template_version_raw(provision_version_request)
+                current_launch_template_version.update_from_raw_response(response)
+                request = launch_template.generate_modify_launch_template_request(str(current_launch_template_version.version_number))
+                response = self.modify_launch_template_raw(request)
+                launch_template.update_from_raw_response(response)
+            else:
                 region_object = self.find_launch_template(launch_template)
-
-            launch_template.update_from_raw_response(region_object.dict_src)
+                launch_template.update_from_raw_response(region_object.dict_src)
             return
 
         response = self.provision_launch_template_raw(launch_template.generate_create_request())
@@ -896,8 +896,10 @@ class EC2Client(Boto3Client):
 
     def provision_launch_template_version_raw(self, request_dict):
         logger.info(f"Creating Launch Template Version: {request_dict}")
-        for response in self.execute(self.client.create_launch_template_version, "LaunchTemplate", filters_req=request_dict):
-            return response
+        for response in self.execute(self.client.create_launch_template_version, None, raw_data=True, filters_req=request_dict):
+            if "Warning" in str(response):
+                raise RuntimeError(response)
+            return response["LaunchTemplateVersion"]
 
     def modify_launch_template_raw(self, request_dict):
         logger.info(f"Modifying Launch Template Version: {request_dict}")

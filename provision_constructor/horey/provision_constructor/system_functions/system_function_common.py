@@ -225,9 +225,9 @@ class SystemFunctionCommon:
                            f"status for {min_uptime} seconds. Current status duration is {seconds_duration} ")
     @staticmethod
     def init_apt_packages():
-        raise NotImplementedError()
         lines = SystemFunctionCommon.run_bash("sudo apt list --installed")
         for line in lines.split("\n"):
+            pdb.set_trace()
             line.split(",", maxsplit=3)
             name = line[0]
         SystemFunctionCommon.APT_PACKAGES

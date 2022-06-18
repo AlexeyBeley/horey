@@ -34,6 +34,19 @@ class EC2LaunchTemplateVersion(AwsObject):
 
         self.init_attrs(dict_src, init_options)
 
+    def update_from_raw_response(self, dict_src):
+        init_options = {
+            "LaunchTemplateId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "LaunchTemplateName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "VersionNumber": self.init_default_attr,
+            "CreatedBy": self.init_default_attr,
+            "DefaultVersion": self.init_default_attr,
+            "LaunchTemplateData": self.init_default_attr,
+            "CreateTime": self.init_default_attr,
+        }
+
+        self.init_attrs(dict_src, init_options)
+
     def _init_ec2_launch_template_version_from_cache(self, dict_src):
         """
         Init self from preserved dict.
@@ -48,7 +61,7 @@ class EC2LaunchTemplateVersion(AwsObject):
         if desired_template.launch_template_data == self.launch_template_data:
             return None
         request = dict()
-        request["SourceVersion"] = self.version_number
+        request["SourceVersion"] = str(self.version_number)
         request["LaunchTemplateName"] = desired_template.name
         request["LaunchTemplateData"] = desired_template.launch_template_data
         return request
