@@ -11,7 +11,7 @@ class Provisioner(SystemFunctionCommon):
         super().__init__(os.path.dirname(os.path.abspath(__file__)))
         self.deployment_dir = deployment_dir
 
-    def provision(self, force=False):
+    def provision(self, force=True):
         if not force:
             if self.test_provisioned():
                 return
