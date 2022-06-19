@@ -36,7 +36,7 @@ class APTPackage:
         @param str_src:
         @return:
         """
-        package_list_names = ["focal-updates"]
+        package_list_names = ["focal-updates", "focal"]
 
         self.str_src = str_src
 
