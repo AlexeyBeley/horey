@@ -7,6 +7,7 @@ import os
 import time
 from horey.common_utils.actions_manager import ActionsManager
 from horey.replacement_engine.replacement_engine import ReplacementEngine
+from horey.provision_constructor.apt_package import APTPackage
 from horey.h_logger import get_logger
 import argparse
 import subprocess
@@ -223,14 +224,16 @@ class SystemFunctionCommon:
 
         raise TimeoutError(f"service {service_name} seams to be in restart loop after cause it can not keep {status_name} "
                            f"status for {min_uptime} seconds. Current status duration is {seconds_duration} ")
+
     @staticmethod
     def init_apt_packages():
-        lines = SystemFunctionCommon.run_bash("sudo apt list --installed")
-        for line in lines.split("\n"):
-            pdb.set_trace()
-            line.split(",", maxsplit=3)
-            name = line[0]
-        SystemFunctionCommon.APT_PACKAGES
+        if SystemFunctionCommon.APT_PACKAGES is None:
+            SystemFunctionCommon.APT_PACKAGES = []
+            lines = SystemFunctionCommon.run_bash("sudo apt list --installed")
+            for line in lines.split("\n"):
+                package = APTPackage()
+                package.init_from_line(line)
+                SystemFunctionCommon.APT_PACKAGES.append(package)
 
 # endregion
 
