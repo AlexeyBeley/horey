@@ -3,6 +3,9 @@ import pdb
 from horey.provision_constructor.system_function_factory import SystemFunctionFactory
 
 from horey.provision_constructor.system_functions.system_function_common import SystemFunctionCommon
+from horey.h_logger import get_logger
+
+logger = get_logger()
 
 
 @SystemFunctionFactory.register
@@ -33,12 +36,17 @@ class Provisioner(SystemFunctionCommon):
 
         @return:
         """
-        pdb.set_trace()
         self.apt_purge("ntp*")
         self.apt_purge("sntp*")
         self.apt_purge("chrony*")
-        self.run_bash("sudo timedatectl set-ntp false")
+
+        ret = self.run_bash("sudo timedatectl set-ntp false")
+        logger.oinfo(ret)
+
         self.provision_file("./timesyncd.conf", "/etc/systemd/timesyncd.conf")
-        self.run_bash("sudo timedatectl set-ntp true")
-        self.run_bash("sudo systemctl restart systemd-timedated")
-        pdb.set_trace()
+
+        ret = self.run_bash("sudo timedatectl set-ntp true")
+        logger.oinfo(ret)
+
+        ret = self.run_bash("sudo systemctl restart systemd-timedated")
+        logger.oinfo(ret)

@@ -255,8 +255,8 @@ class SystemFunctionCommon:
 
     @staticmethod
     def apt_purge(str_regex_name):
-        pdb.set_trace()
-        SystemFunctionCommon.run_bash(f"apt purge -y {str_regex_name}")
+        ret = SystemFunctionCommon.run_bash(f"apt purge -y {str_regex_name}")
+        logger.info(ret)
 
     @staticmethod
     def update_packages():
