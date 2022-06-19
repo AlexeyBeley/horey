@@ -22,9 +22,6 @@ class SystemFunctionCommon:
 
     def __init__(self, system_function_provisioner_dir_path):
         self.system_function_provisioner_dir_path = system_function_provisioner_dir_path
-        pdb.set_trace()
-        
-        return
 
     @staticmethod
     def empty_parser():
@@ -258,7 +255,10 @@ class SystemFunctionCommon:
             return
         
         lines = SystemFunctionCommon.run_bash("sudo apt update")
-        pdb.set_trace()
+        if "can be upgraded" not in lines.split("\n")[-1]:
+            raise RuntimeError(lines)
+
+        logger.info(lines)
         SystemFunctionCommon.APT_PACKAGES_UPDATED = True
         SystemFunctionCommon.APT_PACKAGES = None
         SystemFunctionCommon.init_apt_packages()

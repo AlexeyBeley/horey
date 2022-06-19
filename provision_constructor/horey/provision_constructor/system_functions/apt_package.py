@@ -4,6 +4,7 @@ import pdb
 class APTPackage:
     def __init__(self):
         self.name = None
+        self.package_list_name = None
         self.str_src = None
 
     def init_from_line(self, str_src):
@@ -35,6 +36,12 @@ class APTPackage:
         @param str_src:
         @return:
         """
+        package_list_names = ["focal-updates"]
+
         self.str_src = str_src
-        pdb.set_trace()
-        self.name = str_src.split(",")[0]
+
+        first_octet = str_src.split(",")[0]
+
+        self.name, self.package_list_name = first_octet.split("/")
+        if self.package_list_name not in package_list_names:
+            raise ValueError(f"package_list: {self.package_list_name} not one of {package_list_names}")
