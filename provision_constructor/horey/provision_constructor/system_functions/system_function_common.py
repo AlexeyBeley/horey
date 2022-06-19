@@ -494,10 +494,6 @@ SystemFunctionCommon.ACTION_MANAGER.register_action("compare_files",
                                                       SystemFunctionCommon.action_compare_files_parser,
                                                       SystemFunctionCommon.action_compare_files)
 
-SystemFunctionCommon.ACTION_MANAGER.register_action("check_file_contains",
-                                                    SystemFunctionCommon.action_check_file_contains_parser,
-                                                    SystemFunctionCommon.action_check_file_contains)
-
 SystemFunctionCommon.ACTION_MANAGER.register_action("perform_comment_line_replacement",
                                                     SystemFunctionCommon.action_perform_comment_line_replacement_parser,
                                                     SystemFunctionCommon.action_perform_comment_line_replacement)

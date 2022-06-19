@@ -17,6 +17,8 @@ class Provisioner(SystemFunctionCommon):
                 return
 
         self._provision()
+        
+        self.test_provisioned()
 
     def test_provisioned(self):
         self.init_apt_packages()
