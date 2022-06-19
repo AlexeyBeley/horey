@@ -220,9 +220,9 @@ class SystemFunctionCommon:
         SystemFunctionCommon.init_apt_packages()
         pdb.set_trace()
         if upgrade_version or not SystemFunctionCommon.apt_check_installed(package_name):
-            command = f"sudo apt install {package_name}"
+            command = f"sudo apt install -y {package_name}"
         else:
-            command = f"sudo apt --only-upgrade install {package_name}"
+            command = f"sudo apt --only-upgrade install -y {package_name}"
         ret = SystemFunctionCommon.run_bash(command)
 
     @staticmethod
@@ -399,13 +399,15 @@ class SystemFunctionCommon:
         parser.epilog = f"Usage: python3 {__file__} [options]"
         return parser
 
-    @staticmethod
-    def action_check_file_contains(arguments):
+    def action_check_file_contains(self, arguments):
         arguments_dict = vars(arguments)
-        SystemFunctionCommon.check_file_contains(**arguments_dict)
+        self.check_file_contains(**arguments_dict)
 
-    @staticmethod
-    def check_file_contains(src_file_path=None, dst_file_path=None):
+    def check_file_contains(self, src_file_path: str, dst_file_path):
+        if src_file_path.startswith("./"):
+            pdb.set_trace()
+            src_file_path = os.path.join(self.system_function_provisioner_dir_path, src_file_path)
+
         replacement_engine = ReplacementEngine()
         with open(src_file_path) as file_handler:
             replacement_string = file_handler.read()
