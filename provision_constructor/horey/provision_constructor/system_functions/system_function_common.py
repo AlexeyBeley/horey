@@ -47,6 +47,8 @@ class SystemFunctionCommon:
             file_handler.write(command)
             command = f"/bin/bash {file_name}"
         ret = subprocess.run([command], capture_output=True, shell=True)
+
+        os.remove(file_name)
         return ret.stdout.decode().strip("\n")
 
     @staticmethod
@@ -89,7 +91,14 @@ class SystemFunctionCommon:
     def move_file(src_file_path=None, dst_file_path=None):
         os.makedirs(os.path.dirname(dst_file_path), exist_ok=True)
         shutil.copyfile(src_file_path, dst_file_path)
-      
+
+    @staticmethod
+    def provision_file(src_file_path, dst_file_path):
+        os.makedirs(os.path.dirname(dst_file_path), exist_ok=True)
+        os.remove(dst_file_path)
+
+        shutil.copyfile(src_file_path, dst_file_path)
+
 # region compare_files
     @staticmethod
     def action_compare_files_parser():
@@ -247,7 +256,7 @@ class SystemFunctionCommon:
     @staticmethod
     def apt_purge(str_regex_name):
         pdb.set_trace()
-        SystemFunctionCommon.run_bash("apt ")
+        SystemFunctionCommon.run_bash(f"apt purge -y {str_regex_name}")
 
     @staticmethod
     def update_packages():

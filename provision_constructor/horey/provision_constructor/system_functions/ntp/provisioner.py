@@ -17,7 +17,7 @@ class Provisioner(SystemFunctionCommon):
                 return
 
         self._provision()
-        
+
         self.test_provisioned()
 
     def test_provisioned(self):
@@ -27,9 +27,19 @@ class Provisioner(SystemFunctionCommon):
                self.check_file_provisioned("./timesyncd.conf", "/etc/systemd/timesyncd.conf")
 
     def _provision(self):
+        """
+        python provisioner.py --action move_file\
+        --src_file_path "./timesyncd.conf"\
+        --dst_file_path "/etc/systemd/timesyncd.conf"
+
+        sudo timedatectl set-ntp true
+        sudo systemctl restart systemd-timedated
+
+        @return:
+        """
         pdb.set_trace()
         self.apt_purge("ntp*")
         self.apt_purge("sntp*")
         self.apt_purge("chrony*")
-
-        self.move_file("./timesyncd.conf", "/etc/systemd/timesyncd.conf")
+        self.run_bash("sudo timedatectl set-ntp false")
+        self.provision_file("./timesyncd.conf", "/etc/systemd/timesyncd.conf")
