@@ -18,8 +18,12 @@ logger = get_logger()
 class SystemFunctionCommon:
     ACTION_MANAGER = ActionsManager()
     APT_PACKAGES = None
+    APT_PACKAGES_UPDATED = False 
 
-    def __init__(self):
+    def __init__(self, system_function_provisioner_dir_path):
+        self.system_function_provisioner_dir_path = system_function_provisioner_dir_path
+        pdb.set_trace()
+        
         return
 
     @staticmethod
@@ -215,22 +219,45 @@ class SystemFunctionCommon:
         SystemFunctionCommon.apt_install(**arguments_dict)
 
     @staticmethod
-    def apt_install(service_name=None, min_uptime=None):
-        raise NotImplementedError()
-        if SystemFunctionCommon.APT_PACKAGES is None:
-            SystemFunctionCommon.init_apt_packages()
-
-        SystemFunctionCommon.run_bash("apt ")
-
-        raise TimeoutError(f"service {service_name} seams to be in restart loop after cause it can not keep {status_name} "
-                           f"status for {min_uptime} seconds. Current status duration is {seconds_duration} ")
+    def apt_install(package_name=None, upgrade_version=True):
+        SystemFunctionCommon.init_apt_packages()
+        pdb.set_trace()
+        if upgrade_version or not SystemFunctionCommon.apt_check_installed(package_name):
+            command = f"sudo apt install {package_name}"
+        else:
+            command = f"sudo apt --only-upgrade install {package_name}"
+        ret = SystemFunctionCommon.run_bash(command)
 
     @staticmethod
+    def apt_check_installed(package_name=None):
+        SystemFunctionCommon.init_apt_packages()
+        pdb.set_trace()
+
+    @staticmethod
+    def apt_purge(str_regex_name):
+        pdb.set_trace()
+        SystemFunctionCommon.run_bash("apt ")
+
+    @staticmethod
+    def update_packages():
+        if SystemFunctionCommon.APT_PACKAGES_UPDATED:
+            return
+        
+        lines = SystemFunctionCommon.run_bash("sudo apt update")
+        pdb.set_trace()
+        SystemFunctionCommon.APT_PACKAGES_UPDATED = True
+        SystemFunctionCommon.APT_PACKAGES = None
+        SystemFunctionCommon.init_apt_packages()
+        
+    @staticmethod
     def init_apt_packages():
+        SystemFunctionCommon.update_packages()
         if SystemFunctionCommon.APT_PACKAGES is None:
             SystemFunctionCommon.APT_PACKAGES = []
             lines = SystemFunctionCommon.run_bash("sudo apt list --installed")
             for line in lines.split("\n"):
+                if "Listing..." in line:
+                    continue
                 package = APTPackage()
                 package.init_from_line(line)
                 SystemFunctionCommon.APT_PACKAGES.append(package)
