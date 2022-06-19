@@ -7,7 +7,7 @@ logger = get_logger()
 class APTPackage:
     def __init__(self):
         self.name = None
-        self.package_list_name = None
+        self.package_list_names = None
         self.str_src = None
 
     def init_from_line(self, str_src):
@@ -39,18 +39,8 @@ class APTPackage:
         @param str_src:
         @return:
         """
-        package_list_names = ["focal-updates", "focal"]
-
         self.str_src = str_src
 
         first_octet = str_src.split(" ")[0]
-        try:
-            first_octet, now = first_octet.split(",")
-            logger.info(now)
-        except Exception as inst:
-            pdb.set_trace()
 
-        self.name, self.package_list_name = first_octet.split("/")
-        if self.package_list_name not in package_list_names:
-            pdb.set_trace()
-            raise ValueError(f"package_list in '{str_src}' not one of {package_list_names}")
+        self.name, self.package_list_names = first_octet.split("/")
