@@ -36,3 +36,5 @@ class APTPackage:
         @return:
         """
         self.str_src = str_src
+        pdb.set_trace()
+        self.name = str_src.split(",")[0]
