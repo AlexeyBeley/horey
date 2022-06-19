@@ -388,34 +388,21 @@ class SystemFunctionCommon:
                 lst_line = line.split(" ")
                 return lst_line
 
-    # region check_file_contains
-    @staticmethod
-    def action_check_file_contains_parser():
-        description = "check_file_contains from src_path in dst_path above comment line"
-        parser = argparse.ArgumentParser(description=description)
-        parser.add_argument("--src_file_path", required=True, type=str, help="Source file path")
-        parser.add_argument("--dst_file_path", required=True, type=str, help="Destination file path")
+    # region files
+    def check_file_provisioned(self, src_file_path: str, dst_file_path: str):
+        if not os.path.isfile(dst_file_path):
+            return False
 
-        parser.epilog = f"Usage: python3 {__file__} [options]"
-        return parser
-
-    def action_check_file_contains(self, arguments):
-        arguments_dict = vars(arguments)
-        self.check_file_contains(**arguments_dict)
-
-    def check_file_contains(self, src_file_path: str, dst_file_path):
         if src_file_path.startswith("./"):
-            pdb.set_trace()
             src_file_path = os.path.join(self.system_function_provisioner_dir_path, src_file_path)
 
         replacement_engine = ReplacementEngine()
         with open(src_file_path) as file_handler:
             replacement_string = file_handler.read()
 
-        if not replacement_engine.check_file_contains(dst_file_path, replacement_string):
-            raise RuntimeError(f"{src_file_path} -> {dst_file_path}")
+        return replacement_engine.check_file_contains(dst_file_path, replacement_string)
 
-# endregion
+    # endregion
 
     @staticmethod
     def action_add_line_to_file_parser():

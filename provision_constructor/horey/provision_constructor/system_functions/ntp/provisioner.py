@@ -22,7 +22,7 @@ class Provisioner(SystemFunctionCommon):
         self.init_apt_packages()
         return (not self.apt_check_installed("sntp*")) and \
                (not self.apt_check_installed("chrony*")) and \
-               self.check_file_contains("./timesyncd.conf", "/etc/systemd/timesyncd.conf")
+               self.check_file_provisioned("./timesyncd.conf", "/etc/systemd/timesyncd.conf")
 
     def _provision(self):
         pdb.set_trace()
