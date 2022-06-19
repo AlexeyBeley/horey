@@ -41,12 +41,12 @@ class Provisioner(SystemFunctionCommon):
         self.apt_purge("chrony*")
 
         ret = self.run_bash("sudo timedatectl set-ntp false")
-        logger.oinfo(ret)
+        logger.info(ret)
 
         self.provision_file("./timesyncd.conf", "/etc/systemd/timesyncd.conf")
 
         ret = self.run_bash("sudo timedatectl set-ntp true")
-        logger.oinfo(ret)
+        logger.info(ret)
 
         ret = self.run_bash("sudo systemctl restart systemd-timedated")
-        logger.oinfo(ret)
+        logger.info(ret)

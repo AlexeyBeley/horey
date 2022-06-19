@@ -47,6 +47,7 @@ class SystemFunctionCommon:
             file_handler.write(command)
             command = f"/bin/bash {file_name}"
         ret = subprocess.run([command], capture_output=True, shell=True)
+        pdb.set_trace()
 
         os.remove(file_name)
         return ret.stdout.decode().strip("\n")
