@@ -7,7 +7,7 @@ import os
 import time
 from horey.common_utils.actions_manager import ActionsManager
 from horey.replacement_engine.replacement_engine import ReplacementEngine
-from horey.provision_constructor.apt_package import APTPackage
+from horey.provision_constructor.system_functions.apt_package import APTPackage
 from horey.h_logger import get_logger
 import argparse
 import subprocess
