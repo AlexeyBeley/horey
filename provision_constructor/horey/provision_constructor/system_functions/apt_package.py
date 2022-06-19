@@ -44,4 +44,5 @@ class APTPackage:
 
         self.name, self.package_list_name = first_octet.split("/")
         if self.package_list_name not in package_list_names:
-            raise ValueError(f"package_list: {self.package_list_name} not one of {package_list_names}")
+            pdb.set_trace()
+            raise ValueError(f"package_list in '{str_src}' not one of {package_list_names}")
