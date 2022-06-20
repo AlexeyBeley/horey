@@ -62,6 +62,16 @@ class SystemFunctionCommon:
         return return_dict
 
     @staticmethod
+    def check_file_contains(file_path, str_content):
+        if not os.path.isfile(file_path):
+            return False
+
+        with open(file_path) as file_handler:
+            file_contents = file_handler.read()
+
+        return str_content in file_contents
+
+    @staticmethod
     def check_files_exist_parser():
         description = "Returns true if all files exist"
         parser = argparse.ArgumentParser(description=description)
