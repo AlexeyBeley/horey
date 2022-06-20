@@ -103,6 +103,8 @@ class SystemFunctionCommon:
     @staticmethod
     def provision_file(src_file_path, dst_file_path):
         os.makedirs(os.path.dirname(dst_file_path), exist_ok=True)
+        pdb.set_trace()
+        ret = SystemFunctionCommon.run_bash(f"sudo rm -rf {dst_file_path}")
         os.remove(dst_file_path)
 
         shutil.copyfile(src_file_path, dst_file_path)
