@@ -32,7 +32,6 @@ class Provisioner(SystemFunctionCommon):
                self.apt_check_installed("docker-ce")
 
     def _provision(self):
-        pdb.set_trace()
         if not self.apt_check_repository_exists("download.docker.com"):
             self.run_bash("sudo rm -rf /usr/share/keyrings/docker-archive-keyring.gpg")
             self.run_bash("curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg")
