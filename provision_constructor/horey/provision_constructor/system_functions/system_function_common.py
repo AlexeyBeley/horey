@@ -309,11 +309,11 @@ class SystemFunctionCommon:
         if SystemFunctionCommon.APT_PACKAGES_UPDATED:
             return
 
-        lines = SystemFunctionCommon.run_bash("sudo apt update")
-        if "can be upgraded" not in lines.split("\n")[-1]:
-            raise RuntimeError(lines)
+        ret = SystemFunctionCommon.run_bash("sudo apt update")
+        output = ret["stdout"]
+        if "can be upgraded" not in output.split("\n")[-1]:
+            raise RuntimeError(output)
 
-        logger.info(lines)
         SystemFunctionCommon.APT_PACKAGES_UPDATED = True
         SystemFunctionCommon.APT_PACKAGES = None
         SystemFunctionCommon.init_apt_packages()
