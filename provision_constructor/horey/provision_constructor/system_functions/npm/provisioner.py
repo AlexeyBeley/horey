@@ -25,7 +25,9 @@ class Provisioner(SystemFunctionCommon):
 
     def test_provisioned(self):
         self.init_apt_packages()
-        return self.apt_check_installed("nodejs")
+        self.apt_check_installed("nodejs")
+        ret = self.run_bash("npm -v")
+        pdb.set_trace()
 
     def _provision(self):
         """
