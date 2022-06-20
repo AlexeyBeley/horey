@@ -22,9 +22,23 @@ class SystemFunctionCommon:
     APT_PACKAGES = None
     APT_REPOSITORIES = None
     APT_PACKAGES_UPDATED = False
+    PIP_PACKAGES = None
 
     def __init__(self, system_function_provisioner_dir_path):
         self.system_function_provisioner_dir_path = system_function_provisioner_dir_path
+
+    def init_pip_packages(self):
+        ret = self.run_bash("pip3 freeze")
+
+        for line in ret["stdout"].split("\n"):
+            pdb.set_trace()
+
+    def check_pip_installed(self, package_name):
+        if self.PIP_PACKAGES is None:
+            self.init_pip_packages()
+        pdb.set_trace()
+        for pip_package in self.PIP_PACKAGES:
+            pdb.set_trace()
 
     @staticmethod
     def empty_parser():

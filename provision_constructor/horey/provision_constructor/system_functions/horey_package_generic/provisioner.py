@@ -26,11 +26,7 @@ class Provisioner(SystemFunctionCommon):
         self.test_provisioned()
 
     def test_provisioned(self):
-        try:
-            self.run_bash(f"pip3 freeze | grep horey.{self.package_name}")
-            return True
-        except SystemFunctionCommon.BashError:
-            return False
+        return self.check_pip_installed(f"horey.{self.package_name}")
 
     def _provision(self):
         self.run_bash(f"cd {self.horey_repo_path} && make recursive_install_from_source-{self.package_name}")
