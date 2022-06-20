@@ -25,6 +25,10 @@ def test_add_system_function_logstash():
     #provision_constructor.provision_system_function("ntp")
     #provision_constructor.provision_system_function("java")
     provision_constructor.provision_system_function("apt_package_generic", package_name="curl")
+    provision_constructor.provision_system_function("apt_package_generic", package_name="apt-transport-https")
+    provision_constructor.provision_system_function("apt_package_generic", package_name="ca-certificates")
+    provision_constructor.provision_system_function("apt_package_generic", package_name="gnupg")
+    provision_constructor.provision_system_function("apt_package_generic", package_name="lsb-release")
     return
     provision_constructor.add_system_function("logrotate", force=True, rotation_path="/var/log/nginx", file_name="nginx")
     provision_constructor.add_system_function("logstash", force=True)
