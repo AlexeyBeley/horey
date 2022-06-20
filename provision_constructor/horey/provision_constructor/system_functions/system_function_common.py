@@ -27,13 +27,14 @@ class SystemFunctionCommon:
     def __init__(self, system_function_provisioner_dir_path):
         self.system_function_provisioner_dir_path = system_function_provisioner_dir_path
 
-    def init_pip_packages(self):
-        ret = self.run_bash("pip3 freeze")
-        self.PIP_PACKAGES = ret["stdout"].split("\n")
+    @staticmethod
+    def init_pip_packages():
+        ret = SystemFunctionCommon.run_bash("pip3 freeze")
+        SystemFunctionCommon.PIP_PACKAGES = ret["stdout"].split("\n")
 
     def check_pip_installed(self, package_name):
-        if self.PIP_PACKAGES is None:
-            self.init_pip_packages()
+        if SystemFunctionCommon.PIP_PACKAGES is None:
+            SystemFunctionCommon.init_pip_packages()
 
         for pip_package in self.PIP_PACKAGES:
             if package_name in pip_package:
