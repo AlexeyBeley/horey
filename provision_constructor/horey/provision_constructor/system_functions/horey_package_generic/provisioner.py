@@ -26,9 +26,12 @@ class Provisioner(SystemFunctionCommon):
         self.test_provisioned()
 
     def test_provisioned(self):
-        pdb.set_trace()
-        ret = self.run_bash(f"pip3 freeze | grep horey.{self.package_name}")
-
+        try:
+            self.run_bash(f"pip3 freeze | grep horey.{self.package_name}")
+            return True
+        except SystemFunctionCommon.BashError as inst:
+            return False
 
     def _provision(self):
         ret = self.run_bash(f"cd {self.horey_repo_path} && make recursive_install_from_source-{self.package_name}")
+        pdb.set_trace()
