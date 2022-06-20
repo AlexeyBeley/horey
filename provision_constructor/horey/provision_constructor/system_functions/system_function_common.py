@@ -323,8 +323,8 @@ class SystemFunctionCommon:
         SystemFunctionCommon.update_packages()
         if SystemFunctionCommon.APT_PACKAGES is None:
             SystemFunctionCommon.APT_PACKAGES = []
-            lines = SystemFunctionCommon.run_bash("sudo apt list --installed")
-            for line in lines.split("\n"):
+            response = SystemFunctionCommon.run_bash("sudo apt list --installed")
+            for line in response["stdout"].split("\n"):
                 if "Listing..." in line:
                     continue
                 package = APTPackage()
