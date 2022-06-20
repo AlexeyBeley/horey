@@ -367,9 +367,9 @@ class SystemFunctionCommon:
             lines = file_handler.readlines()
 
         for line in lines:
-            pdb.set_trace()
             if not line.startswith("deb "):
                 continue
+            line = line.strip()
             repo = APTRepository()
             repo.init_from_line(line, file_path)
             ret.append(repo)
