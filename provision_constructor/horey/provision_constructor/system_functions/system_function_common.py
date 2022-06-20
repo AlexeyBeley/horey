@@ -9,6 +9,7 @@ import time
 from horey.common_utils.actions_manager import ActionsManager
 from horey.replacement_engine.replacement_engine import ReplacementEngine
 from horey.provision_constructor.system_functions.apt_package import APTPackage
+from horey.provision_constructor.system_functions.apt_repository import APTRepository
 from horey.h_logger import get_logger
 import argparse
 import subprocess
@@ -19,6 +20,7 @@ logger = get_logger()
 class SystemFunctionCommon:
     ACTION_MANAGER = ActionsManager()
     APT_PACKAGES = None
+    APT_REPOSITORIES = None
     APT_PACKAGES_UPDATED = False
 
     def __init__(self, system_function_provisioner_dir_path):
@@ -274,6 +276,10 @@ class SystemFunctionCommon:
     def apt_purge(str_regex_name):
         return SystemFunctionCommon.run_apt_bash_command(f"sudo apt purge -y {str_regex_name}")
 
+    def apt_add_repository(self, repo):
+        self.init_apt_repositories()
+        pdb.set_trace()
+
     @staticmethod
     def run_apt_bash_command(command):
         for unlock_counter in range(3):
@@ -330,6 +336,21 @@ class SystemFunctionCommon:
                 package = APTPackage()
                 package.init_from_line(line)
                 SystemFunctionCommon.APT_PACKAGES.append(package)
+
+    @staticmethod
+    def init_apt_repositories():
+        if SystemFunctionCommon.APT_REPOSITORIES is None:
+            SystemFunctionCommon.APT_REPOSITORIES = []
+            pdb.set_trace()
+
+            #response = SystemFunctionCommon.run_bash("sudo apt list --installed")
+
+            for root, dirname, files in os.walk("/etc/apt/sources.list.d"):
+                file_path = os.path.join(dirname, files)
+
+                repo = APTRepository()
+                repo.init_from_line(file_path, line)
+                SystemFunctionCommon.APT_REPOSITORIES.append(repo)
 
     # endregion
 
@@ -539,7 +560,7 @@ SystemFunctionCommon.ACTION_MANAGER.register_action("check_systemd_service_statu
 
 SystemFunctionCommon.ACTION_MANAGER.register_action("apt_install",
                                                     SystemFunctionCommon.action_apt_install_parser,
-                                                    SystemFunctionCommon.action_check_systemd_service_status)
+                                                    None)
 
 if __name__ == "__main__":
     SystemFunctionCommon.ACTION_MANAGER.call_action()

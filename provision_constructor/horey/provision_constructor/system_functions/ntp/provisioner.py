@@ -27,7 +27,8 @@ class Provisioner(SystemFunctionCommon):
         self.init_apt_packages()
         return (not self.apt_check_installed("sntp*")) and \
                (not self.apt_check_installed("chrony*")) and \
-               self.check_file_provisioned("./timesyncd.conf", "/etc/systemd/timesyncd.conf")
+               self.check_file_provisioned("./timesyncd.conf", "/etc/systemd/timesyncd.conf") and \
+               self.check_systemd_service_status(service_name="systemd-timesyncd", min_uptime=20)
 
     def _provision(self):
         """
