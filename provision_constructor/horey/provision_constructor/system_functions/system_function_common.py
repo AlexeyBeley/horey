@@ -271,9 +271,7 @@ class SystemFunctionCommon:
 
     @staticmethod
     def apt_purge(str_regex_name):
-        ret, error = SystemFunctionCommon.run_apt_bash_command(f"sudo apt purge -y {str_regex_name}")
-        logger.info(ret)
-        logger.error(error)
+        return SystemFunctionCommon.run_apt_bash_command(f"sudo apt purge -y {str_regex_name}")
 
     @staticmethod
     def run_apt_bash_command(command):
@@ -281,7 +279,6 @@ class SystemFunctionCommon:
             for counter in range(10):
                 try:
                     ret = SystemFunctionCommon.run_bash(command)
-                    pdb.set_trace()
                     return ret
                 except SystemFunctionCommon.BashError as inst:
                     time.sleep(0.5)
