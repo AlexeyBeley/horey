@@ -10,10 +10,9 @@ logger = get_logger()
 
 @SystemFunctionFactory.register
 class Provisioner(SystemFunctionCommon):
-    def __init__(self, deployment_dir, package_name=None):
+    def __init__(self, deployment_dir):
         super().__init__(os.path.dirname(os.path.abspath(__file__)))
         self.deployment_dir = deployment_dir
-        self.package_name = package_name
 
     def provision(self, force=False):
         if not force:
@@ -26,7 +25,21 @@ class Provisioner(SystemFunctionCommon):
 
     def test_provisioned(self):
         self.init_apt_packages()
-        return self.apt_check_installed(self.package_name)
+        return self.apt_check_installed("nodejs")
 
     def _provision(self):
-        return self.apt_install(self.package_name)
+        """
+        curl -fsSL https://deb.nodesource.com/setup_14.x | sudo -E bash -
+        sudo apt-get install -y nodejs
+        curl -L https://www.npmjs.com/install.sh >> install.sh
+        sudo chmod +x ./install.sh
+        sudo npm_install="6.14.5" ./install.sh
+
+        @return:
+        """
+
+        self.run_bash("curl -fsSL https://deb.nodesource.com/setup_14.x | sudo -E bash -")
+        self.apt_install("nodejs")
+        self.run_bash("curl -L https://www.npmjs.com/install.sh >> install.sh")
+        self.run_bash("sudo chmod +x ./install.sh")
+        self.run_bash('sudo npm_install="6.14.5" ./install.sh')

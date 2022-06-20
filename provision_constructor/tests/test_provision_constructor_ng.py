@@ -29,6 +29,7 @@ def test_add_system_function_logstash():
     provision_constructor.provision_system_function("apt_package_generic", package_name="ca-certificates")
     provision_constructor.provision_system_function("apt_package_generic", package_name="gnupg")
     provision_constructor.provision_system_function("apt_package_generic", package_name="lsb-release")
+    provision_constructor.provision_system_function("npm")
     return
     provision_constructor.add_system_function("logrotate", force=True, rotation_path="/var/log/nginx", file_name="nginx")
     provision_constructor.add_system_function("logstash", force=True)
