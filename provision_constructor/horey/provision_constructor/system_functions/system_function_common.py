@@ -1,3 +1,4 @@
+import json
 import pdb
 import shutil
 import datetime
@@ -18,7 +19,7 @@ logger = get_logger()
 class SystemFunctionCommon:
     ACTION_MANAGER = ActionsManager()
     APT_PACKAGES = None
-    APT_PACKAGES_UPDATED = False 
+    APT_PACKAGES_UPDATED = False
 
     def __init__(self, system_function_provisioner_dir_path):
         self.system_function_provisioner_dir_path = system_function_provisioner_dir_path
@@ -42,15 +43,21 @@ class SystemFunctionCommon:
 
     @staticmethod
     def run_bash(command):
+        logger.info(f"run_bash: {command}")
+
         file_name = f"tmp-{str(uuid.uuid4())}.sh"
         with open(file_name, "w") as file_handler:
             file_handler.write(command)
             command = f"/bin/bash {file_name}"
         ret = subprocess.run([command], capture_output=True, shell=True)
-        pdb.set_trace()
 
         os.remove(file_name)
-        return ret.stdout.decode().strip("\n")
+        return_dict = {"stdout": ret.stdout.decode().strip("\n"),
+                       "stderr": ret.stderr.decode().strip("\n"),
+                       "code": ret.returncode}
+        if ret.returncode != 0:
+            raise SystemFunctionCommon.BashError(json.dumps(return_dict))
+        return return_dict
 
     @staticmethod
     def check_files_exist_parser():
@@ -66,13 +73,13 @@ class SystemFunctionCommon:
             if not os.path.exists(file_path):
                 errors.append(f"File '{file_path}' does not exist")
                 continue
-                
+
             if not os.path.isfile(file_path):
                 errors.append(f"Path '{file_path}' is not a file")
 
         if errors:
             raise SystemFunctionCommon.FailedCheckError("\n".join(errors))
-    
+
     @staticmethod
     def action_move_file_parser():
         description = "move_file from src_path to dst_path"
@@ -100,7 +107,7 @@ class SystemFunctionCommon:
 
         shutil.copyfile(src_file_path, dst_file_path)
 
-# region compare_files
+    # region compare_files
     @staticmethod
     def action_compare_files_parser():
         description = "compare_files from src_path to dst_path"
@@ -128,9 +135,10 @@ class SystemFunctionCommon:
             return True
 
         raise RuntimeError(f"{src_file_path} not equals to {dst_file_path}")
-# endregion
 
-# region perform_comment_line_replacement
+    # endregion
+
+    # region perform_comment_line_replacement
     @staticmethod
     def action_perform_comment_line_replacement_parser():
         description = "perform_comment_line_replacement from src_path in dst_path above comment line"
@@ -153,10 +161,12 @@ class SystemFunctionCommon:
         with open(src_file_path) as file_handler:
             replacement_string = file_handler.read()
 
-        replacement_engine.perform_comment_line_replacement(dst_file_path, comment_line, replacement_string, keep_comment=True)
-# endregion
+        replacement_engine.perform_comment_line_replacement(dst_file_path, comment_line, replacement_string,
+                                                            keep_comment=True)
 
-# region check_systemd_service_status
+    # endregion
+
+    # region check_systemd_service_status
     @staticmethod
     def action_check_systemd_service_status_parser():
         description = "check_systemd_service_status for specific duration"
@@ -183,20 +193,23 @@ class SystemFunctionCommon:
 
         time_limit = datetime.datetime.now() + datetime.timedelta(seconds=status_change_seconds_limit)
         while service_status != status_name and datetime.datetime.now() < time_limit:
-            logger.info(f"Waiting for status to change from {service_status} to {status_name}. Going to sleep for 5 sec")
+            logger.info(
+                f"Waiting for status to change from {service_status} to {status_name}. Going to sleep for 5 sec")
             time.sleep(5)
             service_status_raw = SystemFunctionCommon.get_systemd_service_status(service_name)
             service_status = SystemFunctionCommon.extract_service_status_value(service_status_raw)
             server_time, seconds_duration = SystemFunctionCommon.extract_service_status_times(service_status_raw)
 
         if service_status != status_name:
-            raise TimeoutError(f"service {service_name} did not reach {status_name} in {status_change_seconds_limit} seconds")
+            raise TimeoutError(
+                f"service {service_name} did not reach {status_name} in {status_change_seconds_limit} seconds")
 
         if min_uptime <= seconds_duration:
             return True
 
-        logger.info(f"Waiting for status duration time: {min_uptime}. Going to sleep for {min_uptime-seconds_duration} sec")
-        time.sleep(min_uptime-seconds_duration)
+        logger.info(
+            f"Waiting for status duration time: {min_uptime}. Going to sleep for {min_uptime - seconds_duration} sec")
+        time.sleep(min_uptime - seconds_duration)
         service_status_raw = SystemFunctionCommon.get_systemd_service_status(service_name)
         service_status = SystemFunctionCommon.extract_service_status_value(service_status_raw)
         server_time, seconds_duration = SystemFunctionCommon.extract_service_status_times(service_status_raw)
@@ -206,11 +219,13 @@ class SystemFunctionCommon:
         if min_uptime <= seconds_duration:
             return True
 
-        raise TimeoutError(f"service {service_name} seams to be in restart loop after cause it can not keep {status_name} "
-                           f"status for {min_uptime} seconds. Current status duration is {seconds_duration} ")
-# endregion
+        raise TimeoutError(
+            f"service {service_name} seams to be in restart loop after cause it can not keep {status_name} "
+            f"status for {min_uptime} seconds. Current status duration is {seconds_duration} ")
 
-# region apt_install
+    # endregion
+
+    # region apt_install
     @staticmethod
     def action_apt_install_parser():
         description = "apt_install"
@@ -256,14 +271,45 @@ class SystemFunctionCommon:
 
     @staticmethod
     def apt_purge(str_regex_name):
-        ret = SystemFunctionCommon.run_bash(f"apt purge -y {str_regex_name}")
+        ret, error = SystemFunctionCommon.run_apt_bash_command(f"apt purge -y {str_regex_name}")
         logger.info(ret)
+        logger.error(error)
+
+    @staticmethod
+    def run_apt_bash_command(command):
+        for unlock_counter in range(3):
+            for counter in range(10):
+                try:
+                    ret = SystemFunctionCommon.run_bash(command)
+                    pdb.set_trace()
+                    return ret
+                except SystemFunctionCommon.BashError as inst:
+                    time.sleep(0.5)
+                    pdb.set_trace()
+            SystemFunctionCommon.unlock_dpckg_lock()
+
+    @staticmethod
+    def unlock_dpckg_lock():
+        ret = SystemFunctionCommon.run_bash("sudo lsof /var/lib/dpkg/lock-frontend | awk '/[0-9]+/{print $2}'")
+        pdb.set_trace()
+
+    def kill_process(self, str_pid):
+        """
+
+
+        @param str_pid:
+        @return:
+        """
+        ret = SystemFunctionCommon.run_bash(f'sudo kill -s 9 "{str_pid}" || true')
+        pdb.set_trace()
+
+
 
     @staticmethod
     def update_packages():
         if SystemFunctionCommon.APT_PACKAGES_UPDATED:
             return
-        
+
         lines = SystemFunctionCommon.run_bash("sudo apt update")
         if "can be upgraded" not in lines.split("\n")[-1]:
             raise RuntimeError(lines)
@@ -272,7 +318,7 @@ class SystemFunctionCommon:
         SystemFunctionCommon.APT_PACKAGES_UPDATED = True
         SystemFunctionCommon.APT_PACKAGES = None
         SystemFunctionCommon.init_apt_packages()
-        
+
     @staticmethod
     def init_apt_packages():
         SystemFunctionCommon.update_packages()
@@ -286,7 +332,7 @@ class SystemFunctionCommon:
                 package.init_from_line(line)
                 SystemFunctionCommon.APT_PACKAGES.append(package)
 
-# endregion
+    # endregion
 
     @staticmethod
     def get_systemd_service_status(service_name):
@@ -334,43 +380,43 @@ class SystemFunctionCommon:
 
         try:
             index = duration_lst.index("days")
-            days = int(duration_lst[index-1])
-            duration_lst = duration_lst[:index-1] + duration_lst[index+1:]
+            days = int(duration_lst[index - 1])
+            duration_lst = duration_lst[:index - 1] + duration_lst[index + 1:]
         except ValueError:
             days = 0
 
         try:
             index = duration_lst.index("day")
-            days = int(duration_lst[index-1])
-            duration_lst = duration_lst[:index-1] + duration_lst[index+1:]
+            days = int(duration_lst[index - 1])
+            duration_lst = duration_lst[:index - 1] + duration_lst[index + 1:]
         except ValueError:
             pass
 
         try:
             index = duration_lst.index("months")
-            months = int(duration_lst[index-1])
-            duration_lst = duration_lst[:index-1] + duration_lst[index+1:]
+            months = int(duration_lst[index - 1])
+            duration_lst = duration_lst[:index - 1] + duration_lst[index + 1:]
         except ValueError:
             months = 0
 
         try:
             index = duration_lst.index("month")
-            months = int(duration_lst[index-1])
-            duration_lst = duration_lst[:index-1] + duration_lst[index+1:]
+            months = int(duration_lst[index - 1])
+            duration_lst = duration_lst[:index - 1] + duration_lst[index + 1:]
         except ValueError:
             pass
 
         try:
             index = duration_lst.index("years")
-            years = int(duration_lst[index-1])
-            duration_lst = duration_lst[:index-1] + duration_lst[index+1:]
+            years = int(duration_lst[index - 1])
+            duration_lst = duration_lst[:index - 1] + duration_lst[index + 1:]
         except ValueError:
             years = 0
 
         try:
             index = duration_lst.index("year")
-            years = int(duration_lst[index-1])
-            duration_lst = duration_lst[:index-1] + duration_lst[index+1:]
+            years = int(duration_lst[index - 1])
+            duration_lst = duration_lst[:index - 1] + duration_lst[index + 1:]
         except ValueError:
             pass
 
@@ -387,8 +433,8 @@ class SystemFunctionCommon:
             else:
                 raise ValueError(f"{duration_part} in {duration_lst}")
 
-        days = days + 365*years + months*30
-        return days*24*60*60 + 60*60*hours + minutes*60 + seconds
+        days = days + 365 * years + months * 30
+        return days * 24 * 60 * 60 + 60 * 60 * hours + minutes * 60 + seconds
 
     @staticmethod
     def extract_service_status_line_raw(service_status_raw):
@@ -445,31 +491,12 @@ class SystemFunctionCommon:
         with open(file_path, "a+") as file_handler:
             file_handler.write(line)
 
-    @staticmethod
-    def provision_file(src_file_path, dst_location):
-        """
-
-        @param src_file_path:
-        @param dst_location:
-        @return: True if copied else False
-        """
-        if os.path.isdir(dst_location):
-            dst_location = os.path.join(dst_location, os.path.basename(src_file_path))
-        if os.path.exists(dst_location):
-            with open(dst_location, "r") as file_handler:
-                dst_content = file_handler.read()
-            with open(src_file_path, "r") as file_handler:
-                src_content = file_handler.read()
-
-            if src_content == dst_content:
-                return False
-
-        shutil.copy(src_file_path, dst_location)
-        return True
+    class BashError(RuntimeError):
+        pass
 
     def check_local_port(self):
         pdb.set_trace()
-        
+
     def check_remote_port(self):
         pdb.set_trace()
         """
@@ -482,27 +509,26 @@ class SystemFunctionCommon:
     print "Port is not open"
     sock.close()
     """
-        
+
     class FailedCheckError(RuntimeError):
         pass
 
 
 SystemFunctionCommon.ACTION_MANAGER.register_action("check_files_exist",
-                                                      SystemFunctionCommon.check_files_exist_parser,
-                                                      SystemFunctionCommon.check_files_exist)
-
+                                                    SystemFunctionCommon.check_files_exist_parser,
+                                                    SystemFunctionCommon.check_files_exist)
 
 SystemFunctionCommon.ACTION_MANAGER.register_action("add_line_to_file",
-                                                      SystemFunctionCommon.action_add_line_to_file_parser,
-                                                      SystemFunctionCommon.action_add_line_to_file)
+                                                    SystemFunctionCommon.action_add_line_to_file_parser,
+                                                    SystemFunctionCommon.action_add_line_to_file)
 
 SystemFunctionCommon.ACTION_MANAGER.register_action("move_file",
-                                                      SystemFunctionCommon.action_move_file_parser,
-                                                      SystemFunctionCommon.action_move_file)
+                                                    SystemFunctionCommon.action_move_file_parser,
+                                                    SystemFunctionCommon.action_move_file)
 
 SystemFunctionCommon.ACTION_MANAGER.register_action("compare_files",
-                                                      SystemFunctionCommon.action_compare_files_parser,
-                                                      SystemFunctionCommon.action_compare_files)
+                                                    SystemFunctionCommon.action_compare_files_parser,
+                                                    SystemFunctionCommon.action_compare_files)
 
 SystemFunctionCommon.ACTION_MANAGER.register_action("perform_comment_line_replacement",
                                                     SystemFunctionCommon.action_perform_comment_line_replacement_parser,
