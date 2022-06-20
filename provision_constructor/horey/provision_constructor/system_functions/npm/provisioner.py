@@ -30,10 +30,10 @@ class Provisioner(SystemFunctionCommon):
 
         try:
             self.run_bash("npm -v")
+            return True
         except SystemFunctionCommon.BashError as error_isntance:
-            pdb.set_trace()
-            return
-        pdb.set_trace()
+            print(error_isntance)
+            return False
 
     def _provision(self):
         """
