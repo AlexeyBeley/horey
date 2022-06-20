@@ -246,12 +246,11 @@ class SystemFunctionCommon:
     @staticmethod
     def apt_install(package_name=None, upgrade_version=True):
         SystemFunctionCommon.init_apt_packages()
-        pdb.set_trace()
         if upgrade_version or not SystemFunctionCommon.apt_check_installed(package_name):
             command = f"sudo apt install -y {package_name}"
         else:
             command = f"sudo apt --only-upgrade install -y {package_name}"
-        ret = SystemFunctionCommon.run_bash(command)
+        SystemFunctionCommon.run_apt_bash_command(command)
 
     @staticmethod
     def apt_check_installed(package_name):
