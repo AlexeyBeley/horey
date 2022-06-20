@@ -285,9 +285,8 @@ class SystemFunctionCommon:
                     return ret
                 except SystemFunctionCommon.BashError as inst:
                     time.sleep(0.5)
-                    pdb.set_trace()
                     dict_inst = json.loads(str(inst))
-                    if dict_inst["stderr"]
+                    pdb.set_trace()
             SystemFunctionCommon.unlock_dpckg_lock()
 
     @staticmethod
