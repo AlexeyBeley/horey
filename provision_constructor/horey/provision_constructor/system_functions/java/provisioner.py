@@ -28,6 +28,7 @@ class Provisioner(SystemFunctionCommon):
         return self.apt_check_installed("openjdk-11-jdk")
 
     def _provision(self):
-        self.apt_add_repository("ppa:openjdk-r/ppa")
+        if not self.apt_check_repository_exists("openjdk-r"):
+            self.apt_add_repository("ppa:openjdk-r/ppa")
 
         return self.apt_install("openjdk-11-jdk")

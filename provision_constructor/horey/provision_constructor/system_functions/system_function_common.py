@@ -276,9 +276,15 @@ class SystemFunctionCommon:
     def apt_purge(str_regex_name):
         return SystemFunctionCommon.run_apt_bash_command(f"sudo apt purge -y {str_regex_name}")
 
-    def apt_add_repository(self, repo):
+    def apt_check_repository_exists(self, repo_name):
         self.init_apt_repositories()
-        pdb.set_trace()
+        for repo in self.APT_REPOSITORIES:
+            if repo_name in repo.str_src:
+                return True
+        return False
+
+    def apt_add_repository(self, repo_name):
+        self.run_apt_bash_command(f"sudo add-apt-repository -y {repo_name}")
 
     @staticmethod
     def run_apt_bash_command(command):
@@ -340,17 +346,35 @@ class SystemFunctionCommon:
     @staticmethod
     def init_apt_repositories():
         if SystemFunctionCommon.APT_REPOSITORIES is None:
+
             SystemFunctionCommon.APT_REPOSITORIES = []
+
+            repos = SystemFunctionCommon.init_apt_repositories_from_file("/etc/apt/sources.list")
+            SystemFunctionCommon.APT_REPOSITORIES.extend(repos)
+
+            for root, dirs, files in os.walk("/etc/apt/sources.list.d"):
+                for file_name in files:
+                    if os.path.splitext(file_name)[1] != ".list":
+                        continue
+                    file_path = os.path.join(root, file_name)
+                    repos = SystemFunctionCommon.init_apt_repositories_from_file(file_path)
+                    SystemFunctionCommon.APT_REPOSITORIES.extend(repos)
+
+    @staticmethod
+    def init_apt_repositories_from_file(file_path):
+        ret = []
+        with open(file_path) as file_handler:
+            lines = file_handler.readlines()
+
+        for line in lines:
             pdb.set_trace()
+            if not line.startswith("deb "):
+                continue
+            repo = APTRepository()
+            repo.init_from_line(line, file_path)
+            ret.append(repo)
 
-            #response = SystemFunctionCommon.run_bash("sudo apt list --installed")
-
-            for root, dirname, files in os.walk("/etc/apt/sources.list.d"):
-                file_path = os.path.join(dirname, files)
-
-                repo = APTRepository()
-                repo.init_from_line(file_path, line)
-                SystemFunctionCommon.APT_REPOSITORIES.append(repo)
+        return ret
 
     # endregion
 
