@@ -257,11 +257,14 @@ class SystemFunctionCommon:
         SystemFunctionCommon.init_apt_packages()
         if "*" in package_name:
             return SystemFunctionCommon.apt_check_installed_regex(package_name)
-        raise NotImplementedError()
+
+        for package in SystemFunctionCommon.APT_PACKAGES:
+            if package.name == package_name:
+                return True
+        return False
 
     @staticmethod
     def apt_check_installed_regex(package_name: str):
-        SystemFunctionCommon.init_apt_packages()
         if package_name.count("*") == 1 and package_name.endswith("*"):
             package_name = package_name[:-1]
             for package in SystemFunctionCommon.APT_PACKAGES:
