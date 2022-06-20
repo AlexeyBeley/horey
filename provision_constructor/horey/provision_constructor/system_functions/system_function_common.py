@@ -29,16 +29,15 @@ class SystemFunctionCommon:
 
     def init_pip_packages(self):
         ret = self.run_bash("pip3 freeze")
-
-        for line in ret["stdout"].split("\n"):
-            pdb.set_trace()
+        self.PIP_PACKAGES = ret["stdout"].split("\n")
 
     def check_pip_installed(self, package_name):
         if self.PIP_PACKAGES is None:
             self.init_pip_packages()
-        pdb.set_trace()
+
         for pip_package in self.PIP_PACKAGES:
-            pdb.set_trace()
+            if package_name in pip_package:
+                return True
 
     @staticmethod
     def empty_parser():
