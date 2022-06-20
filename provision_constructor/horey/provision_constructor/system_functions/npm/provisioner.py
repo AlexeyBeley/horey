@@ -25,8 +25,14 @@ class Provisioner(SystemFunctionCommon):
 
     def test_provisioned(self):
         self.init_apt_packages()
-        self.apt_check_installed("nodejs")
-        ret = self.run_bash("npm -v")
+        if not self.apt_check_installed("nodejs"):
+            return False
+
+        try:
+            self.run_bash("npm -v")
+        except SystemFunctionCommon.BashError as error_isntance:
+            pdb.set_trace()
+            return
         pdb.set_trace()
 
     def _provision(self):
