@@ -8,3 +8,4 @@ from .logrotate import *
 from .ntp import *
 from .python import *
 from .java import *
+from .apt_package import *
