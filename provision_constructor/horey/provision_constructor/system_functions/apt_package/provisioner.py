@@ -10,11 +10,12 @@ logger = get_logger()
 
 @SystemFunctionFactory.register
 class Provisioner(SystemFunctionCommon):
-    def __init__(self, deployment_dir):
+    def __init__(self, deployment_dir, package_name=None):
         super().__init__(os.path.dirname(os.path.abspath(__file__)))
         self.deployment_dir = deployment_dir
+        self.package_name = package_name
 
-    def provision(self, force=False):
+    def provision(self, force=True):
         if not force:
             if self.test_provisioned():
                 return
@@ -25,10 +26,7 @@ class Provisioner(SystemFunctionCommon):
 
     def test_provisioned(self):
         self.init_apt_packages()
-        return self.apt_check_installed("openjdk-11-jdk")
+        return self.apt_check_installed(self.package_name)
 
     def _provision(self):
-        if not self.apt_check_repository_exists("openjdk-r"):
-            self.apt_add_repository("ppa:openjdk-r/ppa")
-
-        return self.apt_install("openjdk-11-jdk")
+        return self.apt_install(self.package_name)

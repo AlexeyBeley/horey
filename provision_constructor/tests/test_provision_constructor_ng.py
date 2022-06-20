@@ -23,7 +23,8 @@ def test_add_system_function_logstash():
     my_dir = os.path.dirname(os.path.abspath(__file__))
     provision_constructor = ProvisionConstructor()
     #provision_constructor.provision_system_function("ntp")
-    provision_constructor.provision_system_function("java")
+    #provision_constructor.provision_system_function("java")
+    provision_constructor.provision_system_function("apt_package", package_name="curl")
     return
     provision_constructor.add_system_function("logrotate", force=True, rotation_path="/var/log/nginx", file_name="nginx")
     provision_constructor.add_system_function("logstash", force=True)
