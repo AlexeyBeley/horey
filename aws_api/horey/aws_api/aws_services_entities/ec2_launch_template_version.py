@@ -1,6 +1,7 @@
 """
 Class to represent ec2 spot fleet request
 """
+import pdb
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 
@@ -33,6 +34,19 @@ class EC2LaunchTemplateVersion(AwsObject):
 
         self.init_attrs(dict_src, init_options)
 
+    def update_from_raw_response(self, dict_src):
+        init_options = {
+            "LaunchTemplateId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "LaunchTemplateName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "VersionNumber": self.init_default_attr,
+            "CreatedBy": self.init_default_attr,
+            "DefaultVersion": self.init_default_attr,
+            "LaunchTemplateData": self.init_default_attr,
+            "CreateTime": self.init_default_attr,
+        }
+
+        self.init_attrs(dict_src, init_options)
+
     def _init_ec2_launch_template_version_from_cache(self, dict_src):
         """
         Init self from preserved dict.
@@ -43,10 +57,11 @@ class EC2LaunchTemplateVersion(AwsObject):
 
         self._init_from_cache(dict_src, options)
 
-    def generate_create_request(self):
-        raise NotImplementedError()
+    def generate_create_request(self, desired_template):
+        if desired_template.launch_template_data == self.launch_template_data:
+            return None
         request = dict()
-        request["clusterName"] = self.name
-        request["tags"] = self.tags
-
+        request["SourceVersion"] = str(self.version_number)
+        request["LaunchTemplateName"] = desired_template.name
+        request["LaunchTemplateData"] = desired_template.launch_template_data
         return request

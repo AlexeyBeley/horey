@@ -575,8 +575,7 @@ class AWSAPI:
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, EC2LaunchTemplateVersion)
         else:
-            for launch_template in self.ec2_launch_templates:
-                objects += self.ec2_client.get_all_launch_template_versions(launch_template)
+            objects += self.ec2_client.get_all_launch_template_versions()
 
         self.ec2_launch_template_versions = objects
 

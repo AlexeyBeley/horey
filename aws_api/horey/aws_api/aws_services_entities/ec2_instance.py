@@ -5,6 +5,7 @@ import datetime
 import pdb
 
 from enum import Enum
+from horey.aws_api.base_entities.region import Region
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 from horey.aws_api.aws_services_entities.network_interface import NetworkInterface
 
@@ -109,6 +110,25 @@ class EC2Instance(AwsObject):
 
         for interface in lst_src:
             self.network_interfaces.append(NetworkInterface(interface, from_cache=True))
+
+    @property
+    def region(self):
+        if self._region is None:
+            az_split = self.placement["AvailabilityZone"].split("-")
+            if len(az_split) != 3:
+                raise ValueError(self.placement["AvailabilityZone"])
+
+            az_index = ""
+            for _char in az_split[2]:
+                if not _char.isdigit():
+                    break
+                az_index += _char
+            self._region = Region.get_region(f"{az_split[0]}-{az_split[1]}-{az_index}")
+        return self._region
+
+    @region.setter
+    def region(self, value):
+        self._region = value
 
     def init_interfaces(self, _, interfaces):
         """

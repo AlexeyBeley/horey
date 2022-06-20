@@ -44,6 +44,7 @@ class AMI(AwsObject):
             "BootMode": self.init_default_attr,
             "KernelId": self.init_default_attr,
             "RamdiskId": self.init_default_attr,
+            "Tags": self.init_default_attr,
                         }
 
         self.init_attrs(dict_src, init_options)
@@ -85,6 +86,7 @@ class AMI(AwsObject):
             "BootMode": self.init_default_attr,
             "KernelId": self.init_default_attr,
             "RamdiskId": self.init_default_attr,
+            "Tags": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)

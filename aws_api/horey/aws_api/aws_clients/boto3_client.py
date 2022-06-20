@@ -203,7 +203,7 @@ class Boto3Client:
                 f"Status waiter for {observed_object.id} is going to sleep for {sleep_time}. Status: {object_status}")
             time.sleep(sleep_time)
         else:
-            raise TimeoutError(f"Cluster did not become available for {timeout} seconds")
+            raise TimeoutError(f"Did not reach one of the desired status {desired_statuses} for {timeout} seconds. Current status: {object_status}")
 
         end_time = datetime.datetime.now()
         logger.info(
