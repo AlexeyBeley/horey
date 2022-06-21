@@ -72,6 +72,13 @@ class ProvisionConstructor:
         with open(os.path.join(remote_deployment_dir_path, script_path), "w") as file_handler:
             file_handler.write(
                 "#!/bin/bash\n"
+                "set +ex\n"
+                "whoami\n"
+                "tty\n"
+                "which python3.8\n"
+                "which pip\n"
+                "which pip3\n"
+                "which pip3.8\n"
                 "sudo apt update\n"
                 "sudo apt install python3.8 python3-pip -yqq\n"
                 "sudo apt install git -yqq\n"
@@ -79,7 +86,7 @@ class ProvisionConstructor:
                 "sudo rm -rf horey\n"
                 "git clone https://github.com/AlexeyBeley/horey.git\n"
                 "cd horey\n"
-                "git checkout --track origin/\n"
+                "git checkout --track origin/pip38_refactor\n"
                 "make recursive_install_from_source-provision_constructor\n"
                 "cd ..")
 
