@@ -503,7 +503,9 @@ class SystemFunctionCommon:
             raise RuntimeError(f"{duration_lst} has no 'ago'")
 
         for duration_part in duration_lst[:-1]:
-            if duration_part.endswith("s"):
+            if duration_part.endswith("ms"):
+                seconds = int(duration_part[:-2])/1000
+            elif duration_part.endswith("s"):
                 seconds = int(duration_part[:-1])
             elif duration_part.endswith("h"):
                 hours = int(duration_part[:-1])
