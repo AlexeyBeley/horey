@@ -449,7 +449,7 @@ class SystemFunctionCommon:
         @param duration_string:
         @return:
         """
-        
+
         logger.info(f"Duration string '{duration_string}'")
 
         duration_lst = duration_string.lower().split(" ")
