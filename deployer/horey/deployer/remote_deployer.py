@@ -244,7 +244,6 @@ class RemoteDeployer:
                         break
                     except IOError as error_received:
                         repr_error_received = repr(error_received)
-                        logger.error(f"Error received in helper thread: {repr_error_received}")
                         if "No such file" not in repr_error_received:
                             raise
                         logger.info(

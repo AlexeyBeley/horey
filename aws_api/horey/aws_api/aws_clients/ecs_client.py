@@ -173,14 +173,23 @@ class ECSClient(Boto3Client):
 
         return final_result
 
-    def get_all_tasks(self, cluster):
-        filters_req = {"cluster": cluster.name}
-        AWSAccount.set_aws_region(cluster.region)
+    def get_region_tasks(self, region, cluster_name=None, custom_list_filters=None):
+        AWSAccount.set_aws_region(region)
+
+        if cluster_name is not None:
+            return self.get_cluster_tasks(cluster_name, custom_list_filters)
 
         final_result = []
-        task_arns = []
+        for cluster in self.get_region_clusters(region):
+            final_result += self.get_cluster_tasks(cluster.name, custom_list_filters)
 
-        for arn in self.execute(self.client.list_tasks, "taskArns", filters_req=filters_req):
+        return final_result
+
+    def get_cluster_tasks(self, cluster_name, custom_list_filters):
+        task_arns = []
+        custom_list_filters["cluster"] = cluster_name
+
+        for arn in self.execute(self.client.list_tasks, "taskArns", filters_req=custom_list_filters):
             task_arns.append(arn)
 
         if len(task_arns) == 0:
@@ -189,9 +198,11 @@ class ECSClient(Boto3Client):
         if len(task_arns) > 100:
             raise NotImplementedError()
 
-        filters_req["tasks"] = task_arns
-        filters_req["include"] = ["TAGS"]
+        filters_req = {"cluster": cluster_name,
+                       "tasks": task_arns,
+                       "include": ["TAGS"]}
 
+        final_result = []
         for dict_src in self.execute(self.client.describe_tasks, "tasks", filters_req=filters_req):
             final_result.append(ECSTask(dict_src))
 
@@ -348,6 +359,8 @@ class ECSClient(Boto3Client):
             return response
 
     def dispose_tasks(self, tasks, cluster_name):
+        AWSAccount.set_aws_region(tasks[0].region)
+        pdb.set_trace()
         for task in tasks:
             for response in self.execute(self.client.stop_task, "task", filters_req={"cluster": cluster_name, "task": task.arn}):
                 logger.info(response)

@@ -47,6 +47,7 @@ class ECSTask(AwsObject):
             "tags": self.init_default_attr,
             "taskDefinitionArn": self.init_default_attr,
             "version": self.init_default_attr,
+            "capacityProviderName": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options, raise_on_no_option=True)
@@ -65,7 +66,6 @@ class ECSTask(AwsObject):
         if self._region is not None:
             return self._region
 
-        raise NotImplementedError()
         if self.arn is not None:
             self._region = Region.get_region(self.arn.split(":")[3])
 
