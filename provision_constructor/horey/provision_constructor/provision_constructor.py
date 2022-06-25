@@ -81,7 +81,6 @@ class ProvisionConstructor:
                 "sudo rm -rf horey\n"
                 "git clone https://github.com/AlexeyBeley/horey.git\n"
                 "cd horey\n"
-                "git checkout --track origin/pip38_refactor\n"
                 "make recursive_install_from_source-provision_constructor\n"
                 "cd ..")
 
