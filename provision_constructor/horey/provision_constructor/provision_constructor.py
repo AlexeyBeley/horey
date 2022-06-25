@@ -62,19 +62,14 @@ class ProvisionConstructor:
 
     @staticmethod
     def generate_provision_constructor_bootstrap_script(remote_deployment_dir_path, script_path):
-        # cp -r  _venv_tmp/lib/python3.8/site-packages/* _venv/lib/python3.8/site-packages/
-        # install python3.8
-        # install git
-        # install pip3.8
-        # install make
-        # make install
-        # apt-get install python3-venv -y
         with open(os.path.join(remote_deployment_dir_path, script_path), "w") as file_handler:
             file_handler.write(
                 "#!/bin/bash\n"
-                "set +ex\n"
+                "set -ex\n"
                 "sudo apt update\n"
-                "sudo apt install python3.8 python3-pip -yqq\n"
+                "sudo apt install python3.8 python3.8-distutils python3.8-dev python3.8-testsuite python3.8-stdlib -yqq\n"
+                "wget https://bootstrap.pypa.io/get-pip.py\n"
+                "sudo python3.8 get-pip.py\n"
                 "sudo ln /home/ubuntu/.local/bin/pip3.8 /usr/bin/pip3.8\n"
                 "sudo apt install git -yqq\n"
                 "sudo apt install make -yqq\n"
