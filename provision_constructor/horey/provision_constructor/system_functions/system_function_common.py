@@ -320,15 +320,19 @@ class SystemFunctionCommon:
                     ret = SystemFunctionCommon.run_bash(command)
                     return ret
                 except SystemFunctionCommon.BashError as inst:
-                    time.sleep(0.5)
                     dict_inst = json.loads(str(inst))
-                    pdb.set_trace()
+                    logger.error(dict_inst)
+                    time.sleep(0.5)
             SystemFunctionCommon.unlock_dpckg_lock()
 
     @staticmethod
     def unlock_dpckg_lock():
         ret = SystemFunctionCommon.run_bash("sudo lsof /var/lib/dpkg/lock-frontend | awk '/[0-9]+/{print $2}'")
-        pdb.set_trace()
+        logger.info(ret)
+        ret = SystemFunctionCommon.run_bash(f'sudo kill -s 9 {ret["stdout"]} || true')
+        logger.info(ret)
+
+        #raise RuntimeError(ret)
 
     def kill_process(self, str_pid):
         """
