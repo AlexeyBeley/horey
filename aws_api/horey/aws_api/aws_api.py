@@ -2645,14 +2645,14 @@ class AWSAPI:
     def get_security_group_by_vpc_and_name(self, vpc, name, full_information=False):
         filters = [
             {
-                'Name': 'vpc-id',
-                'Values': [
+                "Name": "vpc-id",
+                "Values": [
                     vpc.id
                 ]
             },
             {
-                'Name': "group-name",
-                'Values': [
+                "Name": "group-name",
+                "Values": [
                     name
                 ]
             }
