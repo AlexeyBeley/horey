@@ -577,7 +577,7 @@ class EC2Client(Boto3Client):
 
         return final_result
 
-    def create_image(self, instance: EC2Instance):
+    def create_image(self, instance: EC2Instance, timeout=600):
         # snapshots_raw = self.create_snapshots(instance)
         AWSAccount.set_aws_region(instance.region)
         ami_id = self.create_image_raw(instance.generate_create_image_request())
@@ -597,7 +597,7 @@ class EC2Client(Boto3Client):
                                                        new_ami.State.TRANSIENT,
                                                        new_ami.State.FAILED,
                                                        new_ami.State.ERROR],
-                             timeout=600)
+                             timeout=timeout)
         return new_ami
 
     def create_image_raw(self, request_dict):

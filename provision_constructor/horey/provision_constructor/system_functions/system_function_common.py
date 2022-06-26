@@ -329,10 +329,9 @@ class SystemFunctionCommon:
     def unlock_dpckg_lock():
         ret = SystemFunctionCommon.run_bash("sudo lsof /var/lib/dpkg/lock-frontend | awk '/[0-9]+/{print $2}'")
         logger.info(ret)
-        ret = SystemFunctionCommon.run_bash(f'sudo kill -s 9 {ret["stdout"]} || true')
-        logger.info(ret)
-
-        #raise RuntimeError(ret)
+        if ret["stdout"]:
+            ret = SystemFunctionCommon.run_bash(f'sudo kill -s 9 {ret["stdout"]} || true')
+            logger.info(ret)
 
     def kill_process(self, str_pid):
         """
