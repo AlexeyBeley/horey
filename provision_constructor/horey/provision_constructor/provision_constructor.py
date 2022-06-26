@@ -70,7 +70,6 @@ class ProvisionConstructor:
                 "sudo apt install python3.8 python3-venv python3.8-distutils python3.8-dev python3.8-testsuite python3.8-stdlib python3-setuptools -yqq\n"
                 "wget https://bootstrap.pypa.io/get-pip.py\n"
                 "sudo python3.8 get-pip.py\n"
-                "which pip3.8\n"
                 "set +e\n"
                 "sudo ln /home/ubuntu/.local/bin/pip3.8 /usr/bin/pip3.8\n"
                 "sudo ln /usr/local/bin/pip3.8 /usr/bin/pip3.8\n"

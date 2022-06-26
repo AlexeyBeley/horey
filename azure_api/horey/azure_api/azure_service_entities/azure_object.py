@@ -92,7 +92,7 @@ class AzureObject:
             formatted_name = attr_name
         setattr(self, formatted_name, value)
 
-    def init_attrs(self, dict_src, dict_options, raise_on_no_option=True):
+    def init_attrs(self, dict_src, dict_options, raise_on_no_option=False):
         """
         Init the object attributes according to given "recipe"
         :param dict_src:
