@@ -67,7 +67,7 @@ class ProvisionConstructor:
                 "#!/bin/bash\n"
                 "set -ex\n"
                 "sudo apt update\n"
-                "sudo apt install python3.8 python3.8-distutils python3.8-dev python3.8-testsuite python3.8-stdlib python3-setuptools -yqq\n"
+                "sudo apt install python3.8 python3-venv python3.8-distutils python3.8-dev python3.8-testsuite python3.8-stdlib python3-setuptools -yqq\n"
                 "wget https://bootstrap.pypa.io/get-pip.py\n"
                 "sudo python3.8 get-pip.py\n"
                 "which pip3.8\n"
