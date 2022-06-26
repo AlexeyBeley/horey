@@ -274,7 +274,12 @@ class SystemFunctionCommon:
             command = f"sudo apt install -y {package_name}"
         else:
             command = f"sudo apt --only-upgrade install -y {package_name}"
-        SystemFunctionCommon.run_apt_bash_command(command)
+
+        def raise_on_error_callback(response):
+            return "has no installation candidate" in response["stdout"] or \
+                   "is not available, but is referred to by another package" in response["stdout"]
+
+        SystemFunctionCommon.run_apt_bash_command(command, raise_on_error_callback=raise_on_error_callback)
 
     @staticmethod
     def apt_check_installed(package_name):
@@ -313,7 +318,7 @@ class SystemFunctionCommon:
         self.run_apt_bash_command(f"sudo add-apt-repository -y {repo_name}")
 
     @staticmethod
-    def run_apt_bash_command(command):
+    def run_apt_bash_command(command, raise_on_error_callback=None):
         for unlock_counter in range(3):
             for counter in range(10):
                 try:
@@ -321,9 +326,13 @@ class SystemFunctionCommon:
                     return ret
                 except SystemFunctionCommon.BashError as inst:
                     dict_inst = json.loads(str(inst))
+                    if raise_on_error_callback is not None and raise_on_error_callback(dict_inst):
+                        raise
                     logger.error(dict_inst)
                     time.sleep(0.5)
             SystemFunctionCommon.unlock_dpckg_lock()
+
+        raise TimeoutError(f"Timeout reached retrying '{command}'")
 
     @staticmethod
     def unlock_dpckg_lock():
