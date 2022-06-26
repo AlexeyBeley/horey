@@ -2922,11 +2922,12 @@ class AWSAPI:
         
         self.sqs_client.provision_queue(sqs_queue)
 
-    def create_image(self, instance: EC2Instance):
+    def create_image(self, instance: EC2Instance, timeout=600):
         """
         Create EC2 instance ami.
 
+        @param timeout:
         @param instance:
         @return:
         """
-        return self.ec2_client.create_image(instance)
+        return self.ec2_client.create_image(instance, timeout=timeout)
