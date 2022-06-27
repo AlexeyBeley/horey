@@ -344,15 +344,11 @@ class SystemFunctionCommon:
 
     def kill_process(self, str_pid):
         """
-
-
         @param str_pid:
         @return:
         """
         ret = SystemFunctionCommon.run_bash(f'sudo kill -s 9 "{str_pid}" || true')
-        pdb.set_trace()
-
-
+        return ret
 
     @staticmethod
     def update_packages():
@@ -366,6 +362,12 @@ class SystemFunctionCommon:
 
         SystemFunctionCommon.APT_PACKAGES_UPDATED = True
         SystemFunctionCommon.APT_PACKAGES = None
+        SystemFunctionCommon.init_apt_packages()
+
+    @staticmethod
+    def reinit_apt_packages():
+        SystemFunctionCommon.APT_PACKAGES = None
+        SystemFunctionCommon.APT_PACKAGES_UPDATED = None
         SystemFunctionCommon.init_apt_packages()
 
     @staticmethod
@@ -569,7 +571,15 @@ class SystemFunctionCommon:
         SystemFunctionCommon.add_line_to_file(**arguments_dict)
 
     @staticmethod
-    def add_line_to_file(line=None, file_path=None):
+    def add_line_to_file(line=None, file_path=None, sudo=False):
+        if not isinstance(line, str):
+            raise ValueError(line)
+
+        if not isinstance(file_path, str):
+            raise ValueError(file_path)
+
+        if sudo:
+            return SystemFunctionCommon.add_line_to_file_sudo(line=line, file_path=file_path)
         if not line.endswith("\n"):
             line = line + "\n"
 
@@ -583,6 +593,20 @@ class SystemFunctionCommon:
 
         with open(file_path, "a+") as file_handler:
             file_handler.write(line)
+
+    @staticmethod
+    def add_line_to_file_sudo(line=None, file_path=None):
+        if not isinstance(line, str):
+            raise ValueError(line)
+
+        if not isinstance(file_path, str):
+            raise ValueError(file_path)
+
+        response = SystemFunctionCommon.run_bash(f"sudo grep -F '{line}' {file_path}")
+        if response["stdout"]:
+            return
+
+        return SystemFunctionCommon.run_bash(f'echo "{line}" | sudo tee -a {file_path} > /dev/null')
 
     class BashError(RuntimeError):
         pass
