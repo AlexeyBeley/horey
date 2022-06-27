@@ -360,7 +360,6 @@ class ECSClient(Boto3Client):
 
     def dispose_tasks(self, tasks, cluster_name):
         AWSAccount.set_aws_region(tasks[0].region)
-        pdb.set_trace()
         for task in tasks:
             for response in self.execute(self.client.stop_task, "task", filters_req={"cluster": cluster_name, "task": task.arn}):
                 logger.info(response)

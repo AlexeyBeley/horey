@@ -200,7 +200,7 @@ class Boto3Client:
                     f"Permit statuses were set but {observed_object.id} is in a different status: {object_status}")
 
             logger.info(
-                f"Status waiter for {observed_object.id} is going to sleep for {sleep_time}. Status: {object_status}")
+                f"[{i*sleep_time}/{timeout} seconds] Status waiter for {observed_object.id} is going to sleep for {sleep_time}. Status: {object_status}")
             time.sleep(sleep_time)
         else:
             raise TimeoutError(f"Did not reach one of the desired status {desired_statuses} for {timeout} seconds. Current status: {object_status}")
