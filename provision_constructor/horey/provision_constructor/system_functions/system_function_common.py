@@ -58,7 +58,7 @@ class SystemFunctionCommon:
         return os.path.join(cur_dir, *(subpath.split("/")))
 
     @staticmethod
-    def run_bash(command):
+    def run_bash(command, ignore_on_error_callback=None):
         logger.info(f"run_bash: {command}")
 
         file_name = f"tmp-{str(uuid.uuid4())}.sh"
@@ -72,7 +72,9 @@ class SystemFunctionCommon:
                        "stderr": ret.stderr.decode().strip("\n"),
                        "code": ret.returncode}
         if ret.returncode != 0:
-            raise SystemFunctionCommon.BashError(json.dumps(return_dict))
+            if ignore_on_error_callback is not None and not ignore_on_error_callback(return_dict):
+                raise SystemFunctionCommon.BashError(json.dumps(return_dict))
+
         return return_dict
 
     @staticmethod
@@ -602,9 +604,14 @@ class SystemFunctionCommon:
         if not isinstance(file_path, str):
             raise ValueError(file_path)
 
-        response = SystemFunctionCommon.run_bash(f"sudo grep -F '{line}' {file_path}")
-        if response["stdout"]:
-            return
+        try:
+            response = SystemFunctionCommon.run_bash(f"sudo grep -F '{line}' {file_path}")
+            if response["stdout"]:
+                return
+        except SystemFunctionCommon.BashError as inst:
+            dict_inst = json.loads(str(inst))
+            if "No such file or directory" not in dict_inst["stderr"]:
+                raise
 
         return SystemFunctionCommon.run_bash(f'echo "{line}" | sudo tee -a {file_path} > /dev/null')
 
