@@ -28,6 +28,8 @@ class EC2Instance(AwsObject):
         self.iam_instance_profile = None
         self.max_count = None
         self.min_count = None
+        self.security_groups = None
+        self.subnet_id = None
 
         if from_cache:
             self._init_instance_from_cache(dict_src)
