@@ -60,10 +60,3 @@ function log_stdin_error() {
    done
 }
 
-#export -f log_formatted
-#export -f log_error
-#apt 2>  >(xargs -0 -n1 -I '{}' /bin/bash -c 'log_formatted "{} EOF"')
-#apt 2>  >(xargs -0 -n1 -I '{}' /bin/bash -c 'log_formatted "{}"')
-#apt 2>  >(xargs -0 -n1 -I '{}' /bin/bash -c 'log_error "{}"')
-apt 2>  >(log_stdin_error)
-

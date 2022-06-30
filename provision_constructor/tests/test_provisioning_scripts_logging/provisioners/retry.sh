@@ -31,7 +31,7 @@ for VARIABLE in {1..2}
 do
   unlock_frontend_file
 	log_info "Running: '$*'"
-  "$@"  2>  >(xargs -0 -n1 -I '{}' /bin/bash -c 'log_error "{}"')
+  "$@" 2> >(log_stdin_error)
   return_code=$?
   if [ "$return_code" == 0 ]
   then
