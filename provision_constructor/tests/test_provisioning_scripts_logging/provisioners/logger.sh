@@ -44,6 +44,9 @@ function log_error() {
 }
 
 function traceback() {
+  args="$*"
+  echo "($(basename "${BASH_SOURCE[1]}"):${BASH_LINENO[0]}) [ERROR]: ${args}. Traceback:"
+
   for (( idx=${#BASH_LINENO[@]}-1 ; idx>=0 ; idx-- )) ; do
     bash_line_number="${BASH_LINENO[idx]}"
     echo "$(get_abs_filename ${BASH_SOURCE[$((idx + 1))]}):${bash_line_number}"

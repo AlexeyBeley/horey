@@ -38,9 +38,9 @@ do
       restore_e_option
       return 0
   fi
-  echo "Retry ${VARIABLE}/10 going to sleep for 5 seconds"
+  log_info "Retry ${VARIABLE}/10 going to sleep for 5 seconds"
   sleep 5
-traceback
+traceback "timeout reached"
 exit 1
 done
 
