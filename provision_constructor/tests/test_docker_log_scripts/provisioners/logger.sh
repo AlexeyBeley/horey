@@ -6,19 +6,41 @@ get_abs_filename() {
   echo "$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"
 }
 
-function log() {
+function log_formatted() {
   args="$*"
-  echo "[$(basename "${BASH_SOURCE[1]}"):${BASH_LINENO[0]}]: ${args}"
+  echo "[$(date +"%Y/%m/%d %H:%M:%S")] $args"
 }
+
+function log_formatted() {
+  if [ -n "$1" ]
+   then
+      args="$*"
+   else
+      read args
+  fi
+
+  if [[ "$args" == *"EOF" ]]; then
+          echo "trimming EOF"
+          args=$(echo $args | sed 's/.\{3\}$//')
+  fi
+  echo "[$(date +"%Y/%m/%d %H:%M:%S")] $args"
+}
+
 
 function log_info() {
   args="$*"
-  echo "[$(basename "${BASH_SOURCE[1]}"):${BASH_LINENO[0]}] [INFO]: ${args}"
+  log_formatted "($(basename "${BASH_SOURCE[1]}"):${BASH_LINENO[0]}) [INFO]: ${args}"
 }
 
 function log_error() {
-  args="$*"
-  >&2 echo "[$(basename "${BASH_SOURCE[1]}"):${BASH_LINENO[0]}] [ERROR]: ${args}"
+    if [ -n "$1" ]
+   then
+      args="$*"
+   else
+      read args
+  fi
+
+  >&2 echo "($(basename "${BASH_SOURCE[1]}"):${BASH_LINENO[0]}) [ERROR]: ${args}"
 }
 
 function traceback() {
@@ -27,3 +49,21 @@ function traceback() {
     echo "$(get_abs_filename ${BASH_SOURCE[$((idx + 1))]}):${bash_line_number}"
   done
 }
+
+function log_stdin_error() {
+  while read line
+   do
+     if [ "${line}" != "" ]
+      then
+       >&2 echo "($(basename "${BASH_SOURCE[1]}"):${BASH_LINENO[0]}) [ERROR]: ${line}"
+     fi
+   done
+}
+
+#export -f log_formatted
+#export -f log_error
+#apt 2>  >(xargs -0 -n1 -I '{}' /bin/bash -c 'log_formatted "{} EOF"')
+#apt 2>  >(xargs -0 -n1 -I '{}' /bin/bash -c 'log_formatted "{}"')
+#apt 2>  >(xargs -0 -n1 -I '{}' /bin/bash -c 'log_error "{}"')
+apt 2>  >(log_stdin_error)
+

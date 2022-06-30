@@ -6,19 +6,30 @@ get_abs_filename() {
   echo "$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"
 }
 
-function log() {
+function log_formatted() {
   args="$*"
-  echo "[$(basename "${BASH_SOURCE[1]}"):${BASH_LINENO[0]}]: ${args}"
+  echo "[$(date +"%Y/%m/%d %H:%M:%S")] $args"
 }
+
+function log_formatted() {
+  if [ -n "$1" ]
+  then
+      args="$*"
+  else
+      read args #read -d '' args <<EOF # This reads a string from stdin and stores it in a variable called IN
+  fi
+  echo "[$(date +"%Y/%m/%d %H:%M:%S")] $args"
+}
+
 
 function log_info() {
   args="$*"
-  echo "[$(basename "${BASH_SOURCE[1]}"):${BASH_LINENO[0]}] [INFO]: ${args}"
+  log_formatted "($(basename "${BASH_SOURCE[1]}"):${BASH_LINENO[0]}) [INFO]: ${args}"
 }
 
 function log_error() {
   args="$*"
-  >&2 echo "[$(basename "${BASH_SOURCE[1]}"):${BASH_LINENO[0]}] [ERROR]: ${args}"
+  >&2 log_formatted "($(basename "${BASH_SOURCE[1]}"):${BASH_LINENO[0]}) [ERROR]: ${args}"
 }
 
 function traceback() {

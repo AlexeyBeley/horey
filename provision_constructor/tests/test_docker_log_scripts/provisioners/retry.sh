@@ -24,14 +24,14 @@ function unlock_frontend_file () {
 }
 
 function retry_10_times_sleep_5 () {
+export -f log_error
 preserve_e_option
 set +e
 for VARIABLE in {1..2}
 do
   unlock_frontend_file
-	#log_info "Running: '$*'"
-	echo "$@"
-  "$@"
+	log_info "Running: '$*'"
+  "$@"  2>  >(xargs -0 -n1 -I '{}' /bin/bash -c 'log_error "{}"')
   return_code=$?
   if [ "$return_code" == 0 ]
   then
@@ -39,8 +39,8 @@ do
       return 0
   fi
   echo "Retry ${VARIABLE}/10 going to sleep for 5 seconds"
-  sleep 5s
-#traceback
+  sleep 5
+traceback
 exit 1
 done
 
