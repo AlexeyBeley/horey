@@ -17,14 +17,7 @@ function log_info() {
 }
 
 function log_error() {
-    if [ -n "$1" ]
-   then
-      args="$*"
-   else
-      read args
-  fi
-
-  >&2 echo "($(basename "${BASH_SOURCE[1]}"):${BASH_LINENO[0]}) [ERROR]: ${args}"
+  >&2 log_formatted "($(basename "${BASH_SOURCE[1]}"):${BASH_LINENO[0]}) [ERROR]: ${args}"
 }
 
 function traceback() {
