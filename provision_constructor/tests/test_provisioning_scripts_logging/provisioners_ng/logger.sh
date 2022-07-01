@@ -11,22 +11,6 @@ function log_formatted() {
   echo "[$(date +"%Y/%m/%d %H:%M:%S")] $args"
 }
 
-function log_formatted() {
-  if [ -n "$1" ]
-   then
-      args="$*"
-   else
-      read args
-  fi
-
-  if [[ "$args" == *"EOF" ]]; then
-          echo "trimming EOF"
-          args=$(echo $args | sed 's/.\{3\}$//')
-  fi
-  echo "[$(date +"%Y/%m/%d %H:%M:%S")] $args"
-}
-
-
 function log_info() {
   args="$*"
   log_formatted "($(basename "${BASH_SOURCE[1]}"):${BASH_LINENO[0]}) [INFO]: ${args}"
