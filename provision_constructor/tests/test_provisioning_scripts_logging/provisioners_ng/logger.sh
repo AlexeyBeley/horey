@@ -40,3 +40,12 @@ function log_stdin_error() {
    done
 }
 
+function log_stdin_info() {
+  while read line
+   do
+     if [ "${line}" != "" ]
+      then
+       log_formatted "($(basename "${BASH_SOURCE[1]}"):${BASH_LINENO[0]}) [INFO]: ${line}"
+     fi
+   done
+}
