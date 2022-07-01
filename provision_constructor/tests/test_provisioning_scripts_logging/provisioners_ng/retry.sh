@@ -20,7 +20,7 @@ function unlock_frontend_file () {
   if [ -n "${PID}" ]
   then
 	    log_info "Killing process holding dpkg/lock-frontend : ${PID}"
-      kill -s 9 "${PID}" || true
+      kill -s 9 "${PID}" 2> >(log_stdin_error) || true
   fi
 }
 
