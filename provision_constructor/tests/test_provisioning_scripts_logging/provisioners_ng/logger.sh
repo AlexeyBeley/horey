@@ -28,6 +28,7 @@ function traceback() {
     bash_line_number="${BASH_LINENO[idx]}"
     echo "$(get_abs_filename ${BASH_SOURCE[$((idx + 1))]}):${bash_line_number}"
   done
+  exit 1
 }
 
 function log_stdin_error() {
