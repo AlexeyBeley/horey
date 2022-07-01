@@ -8,6 +8,6 @@ set +x
 
 source logger.sh
 
-./provision_python39.sh 1> >(log_stdin_info)
-./provision_gunicorn.sh 1> >(log_stdin_info)
-./provision_application.sh 1> >(log_stdin_info)
+./provision_python39.sh
+./provision_gunicorn.sh
+./provision_application.sh
