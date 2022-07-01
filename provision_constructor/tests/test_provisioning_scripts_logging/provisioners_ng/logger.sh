@@ -36,7 +36,7 @@ function log_stdin_error() {
    do
      if [ "${line}" != "" ]
       then
-       >&2 log_formatted "($(basename "${BASH_SOURCE[1]}"):${BASH_LINENO[0]}) [ERROR]: ${line}"
+       >&2 log_formatted "($(basename "${BASH_SOURCE[2]}"):${BASH_LINENO[1]}) [ERROR]: ${line}"
      fi
    done
 }
@@ -46,7 +46,7 @@ function log_stdin_info() {
    do
      if [ "${line}" != "" ]
       then
-       log_formatted "($(basename "${BASH_SOURCE[1]}"):${BASH_LINENO[0]}) [INFO]: ${line}"
+       log_formatted "($(basename "${BASH_SOURCE[2]}"):${BASH_LINENO[1]}) [INFO]: ${line}"
      fi
    done
 }
