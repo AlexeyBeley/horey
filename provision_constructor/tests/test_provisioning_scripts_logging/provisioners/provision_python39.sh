@@ -1,5 +1,4 @@
 #!/bin/bash
-source logger.sh
 source retry.sh
 retry_10_times_sleep_5 apt-get -qq update
 retry_10_times_sleep_5 apt-get install -y software-properties-common curl
