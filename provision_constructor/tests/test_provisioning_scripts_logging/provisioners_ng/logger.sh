@@ -36,8 +36,8 @@ function log_stdin_error() {
    do
      if [ "${line}" != "" ]
       then
-        echo "BASH_SOURCE:${BASH_SOURCE[*]}"
-        echo "BASH_LINENO:${BASH_LINENO[*]}"
+        echo "error BASH_SOURCE:${BASH_SOURCE[*]}"
+        echo "error BASH_LINENO:${BASH_LINENO[*]}"
 
        >&2 log_formatted "($(basename "${BASH_SOURCE[2]}"):${BASH_LINENO[1]}) [ERROR]: ${line}"
      fi
@@ -49,6 +49,8 @@ function log_stdin_info() {
    do
      if [ "${line}" != "" ]
       then
+        echo "info BASH_SOURCE:${BASH_SOURCE[*]}"
+        echo "info BASH_LINENO:${BASH_LINENO[*]}"
        log_formatted "($(basename "${BASH_SOURCE[2]}"):${BASH_LINENO[1]}) [INFO]: ${line}"
      fi
    done
