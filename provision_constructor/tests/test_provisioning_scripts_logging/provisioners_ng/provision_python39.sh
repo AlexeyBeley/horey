@@ -11,7 +11,7 @@ logged retry_10_times_sleep_5 add-apt-repository -y ppa:deadsnakes/ppa
 logged retry_10_times_sleep_5 apt-get purge --auto-remove -y python3.6
 
 logged retry_10_times_sleep_5 apt-get install -yqq python3.9 python3.9-distutils python3.9-dev python3.9-testsuite python3.9-stdlib
-logged "$(ln -s /usr/bin/python3.9 /usr/bin/python || true)"
+logged_ignore_exception ln -s /usr/bin/python3.9 /usr/bin/python
 logged curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
 logged python get-pip.py
 

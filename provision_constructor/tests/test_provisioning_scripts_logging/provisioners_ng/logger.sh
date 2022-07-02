@@ -54,3 +54,7 @@ function log_stdin_info() {
 function logged(){
    "$@" 1> >(log_stdin_info) 2> >(log_stdin_error) || traceback "Failed to execute $*"
 }
+
+function logged_ignore_exception(){
+   "$@" 1> >(log_stdin_info) 2> >(log_stdin_error) || true
+}
