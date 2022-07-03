@@ -22,7 +22,8 @@ function log_error() {
 
 function traceback() {
   args="$*"
-  >&2 echo "($(basename "${BASH_SOURCE[1]}"):${BASH_LINENO[0]}) [ERROR]: ${args}. Traceback:"
+  >&2 echo "($(basename "${BASH_SOURCE[1]}"):${BASH_LINENO[0]}) [ERROR]: ${args}."
+  >&2 echo "Traceback:"
 
   for (( idx=${#BASH_LINENO[@]}-1 ; idx>=0 ; idx-- )) ; do
     bash_line_number="${BASH_LINENO[idx]}"
@@ -52,7 +53,7 @@ function log_stdin_info() {
 }
 
 function logged(){
-   "$@" 1> >(log_stdin_info) 2> >(log_stdin_error) || traceback "Failed to execute $*"
+   "$@" 1> >(log_stdin_info) 2> >(log_stdin_error) || traceback "Failed to execute '$*'"
 }
 
 function logged_ignore_exception(){

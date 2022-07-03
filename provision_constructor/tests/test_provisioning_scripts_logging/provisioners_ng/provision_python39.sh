@@ -1,10 +1,12 @@
 #!/bin/bash
+
 source logger.sh
 source retry.sh
 
 log_info "Updating apt packages list"
 logged retry_10_times_sleep_5 apt-get -qq update
 log_info "Updated apt packages list"
+
 logged retry_10_times_sleep_5 apt-get install -y software-properties-common curl
 logged retry_10_times_sleep_5 add-apt-repository -y ppa:deadsnakes/ppa
 

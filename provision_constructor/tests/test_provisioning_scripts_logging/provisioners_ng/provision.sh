@@ -6,8 +6,6 @@ cd "${SCRIPT_DIR}"
 set -e
 set +x
 
-source logger.sh
-
 ./provision_python39.sh
 ./provision_gunicorn.sh
 ./provision_application.sh
