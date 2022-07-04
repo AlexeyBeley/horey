@@ -22,12 +22,14 @@ function log_error() {
 
 function traceback() {
   args="$*"
-  echo "($(basename "${BASH_SOURCE[1]}"):${BASH_LINENO[0]}) [ERROR]: ${args}. Traceback:"
+  >&2 echo "($(basename "${BASH_SOURCE[1]}"):${BASH_LINENO[0]}) [ERROR]: ${args}."
+  >&2 echo "Traceback:"
 
   for (( idx=${#BASH_LINENO[@]}-1 ; idx>=0 ; idx-- )) ; do
     bash_line_number="${BASH_LINENO[idx]}"
-    echo "$(get_abs_filename ${BASH_SOURCE[$((idx + 1))]}):${bash_line_number}"
+    >&2 echo "$(get_abs_filename ${BASH_SOURCE[$((idx + 1))]}):${bash_line_number}"
   done
+  exit 1
 }
 
 function log_stdin_error() {
@@ -35,8 +37,25 @@ function log_stdin_error() {
    do
      if [ "${line}" != "" ]
       then
-       >&2 log_formatted "($(basename "${BASH_SOURCE[1]}"):${BASH_LINENO[0]}) [ERROR]: ${line}"
+       >&2 log_formatted "($(basename "${BASH_SOURCE[2]}"):${BASH_LINENO[1]}) [ERROR]: ${line}"
      fi
    done
 }
 
+function log_stdin_info() {
+  while read line
+   do
+     if [ "${line}" != "" ]
+      then
+       log_formatted "($(basename "${BASH_SOURCE[2]}"):${BASH_LINENO[1]}) [INFO]: ${line}"
+     fi
+   done
+}
+
+function logged(){
+   "$@" 1> >(log_stdin_info) 2> >(log_stdin_error) || traceback "Failed to execute '$*'"
+}
+
+function logged_ignore_exception(){
+   "$@" 1> >(log_stdin_info) 2> >(log_stdin_error) || true
+}
