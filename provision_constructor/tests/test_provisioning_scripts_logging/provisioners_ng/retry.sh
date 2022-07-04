@@ -19,8 +19,8 @@ function unlock_frontend_file () {
   PID=$(lsof /var/lib/dpkg/lock-frontend | awk '/[0-9]+/{print $2}')
   if [ -n "${PID}" ]
   then
-	    log_info "Killing process holding dpkg/lock-frontend : ${PID}"
-      kill -s 9 "${PID}" || true
+	    #log_info "Killing process holding dpkg/lock-frontend : ${PID}"
+      kill -s 9 "${PID}" 2> >(log_stdin_error) || true
   fi
 }
 
@@ -30,8 +30,7 @@ set +e
 for VARIABLE in {1..2}
 do
   unlock_frontend_file
-	log_info "Running: '$*'"
-  "$@" 2> >(log_stdin_error)
+  "$@"
   return_code=$?
   if [ "$return_code" == 0 ]
   then
@@ -40,12 +39,9 @@ do
   fi
   log_info "Retry ${VARIABLE}/10 going to sleep for 5 seconds"
   sleep 5
-traceback "Timeout reached while executing '$*'"
 exit 1
 done
 
 restore_e_option
 return "${return_code}"
 }
-
-

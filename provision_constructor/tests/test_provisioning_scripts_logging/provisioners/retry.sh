@@ -1,7 +1,5 @@
 #!/bin/bash
 
-source logger.sh
-
 function preserve_e_option ()  {
   if [[ $- == *e* ]]
   then
@@ -16,20 +14,19 @@ restore_e_option () {
 }
 
 function unlock_frontend_file () {
-  PID=$(lsof /var/lib/dpkg/lock-frontend | awk '/[0-9]+/{print $2}')
+  PID=$(sudo lsof /var/lib/dpkg/lock-frontend | awk '/[0-9]+/{print $2}')
   if [ -n "${PID}" ]
   then
-      kill -s 9 "${PID}" || true
+      sudo kill -s 9 "${PID}" || true
   fi
 }
 
 function retry_10_times_sleep_5 () {
 preserve_e_option
 set +e
-for VARIABLE in {1..2}
+for VARIABLE in {1..10}
 do
   unlock_frontend_file
-	#log_info "Running: '$*'"
 	echo "$@"
   "$@"
   return_code=$?
@@ -40,12 +37,8 @@ do
   fi
   echo "Retry ${VARIABLE}/10 going to sleep for 5 seconds"
   sleep 5s
-#traceback
-exit 1
 done
 
 restore_e_option
 return "${return_code}"
 }
-
-
