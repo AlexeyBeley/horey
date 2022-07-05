@@ -87,6 +87,37 @@ class SQSQueue(AwsObject):
     def update_tags_from_raw_response(self, dict_src):
         self.tags = dict_src.get("Tags")
 
+    def generate_set_attributes_request(self, target_queue):
+        target_req = target_queue.generate_create_request()
+        self_req = self.generate_create_request()
+
+        changed = False
+        for target_key, target_value in target_req["Attributes"].items():
+            if self_req["Attributes"].get(target_key) != target_value:
+                self_req["Attributes"][target_key] = target_value
+                changed = True
+
+        to_del = []
+        for self_key in self_req["Attributes"]:
+            if self_key not in target_req["Attributes"]:
+                to_del.append(self_key)
+                changed = True
+
+        for key in to_del:
+            del self_req["Attributes"][key]
+
+        if target_req["tags"] != self_req["tags"]:
+            raise NotImplementedError()
+
+        if not changed:
+            return
+
+        self_req["QueueUrl"] = self.queue_url
+        del self_req["QueueName"]
+        del self_req["tags"]
+
+        return self_req
+
     def generate_create_request(self):
         request = dict()
         request["QueueName"] = self.name

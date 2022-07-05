@@ -65,14 +65,25 @@ class SQSClient(Boto3Client):
         for region_queue in region_queues:
             if region_queue.get_tagname(ignore_missing_tag=True) == queue.get_tagname():
                 queue.update_from_raw_response(region_queue.dict_src)
+                update_request = region_queue.generate_set_attributes_request(queue)
+
+                if update_request is None:
+                    self.update_queue_information(queue)
+                    return
+
+                self.set_queue_attributes_raw(update_request)
                 self.update_queue_information(queue)
                 return
 
-        AWSAccount.set_aws_region(queue.region)
         response = self.provision_queue_raw(queue.generate_create_request())
 
         dict_src = {"QueueUrl": response}
         queue.update_from_raw_response(dict_src)
+
+    def set_queue_attributes_raw(self, request_dict):
+        logger.info(f"Updating queue: {request_dict}")
+        for response in self.execute(self.client.set_queue_attributes, None, raw_data=True, filters_req=request_dict):
+            return response
 
     def provision_queue_raw(self, request_dict):
         logger.info(f"Creating queue: {request_dict}")

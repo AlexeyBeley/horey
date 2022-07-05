@@ -34,7 +34,23 @@ def test_provision_queue():
     sqs_queue.maximum_message_size = "262144"
     sqs_queue.message_retention_period = "604800"
     sqs_queue.delay_seconds = "0"
-    sqs_queue.tags = {'name': sqs_queue.name}
+    sqs_queue.tags = {"name": sqs_queue.name}
+
+    client.provision_queue(sqs_queue)
+    assert sqs_queue.queue_url is not None
+
+
+def test_provision_queue_update():
+    client = SQSClient()
+    sqs_queue = SQSQueue({})
+    sqs_queue.region = AWSAccount.get_aws_region()
+    sqs_queue.name = "sqs_queue_horey_test"
+    sqs_queue.visibility_timeout = "30"
+    sqs_queue.maximum_message_size = "262144"
+    sqs_queue.message_retention_period = "604800"
+    sqs_queue.delay_seconds = "0"
+    sqs_queue.redrive_policy = "{\"deadLetterTargetArn\":\"" + mock_values["dlq_arn"] + "\",\"maxReceiveCount\":1000}"
+    sqs_queue.tags = {"name": sqs_queue.name}
 
     client.provision_queue(sqs_queue)
     assert sqs_queue.queue_url is not None
@@ -43,4 +59,5 @@ def test_provision_queue():
 if __name__ == "__main__":
     test_init_client()
     test_provision_queue()
+    test_provision_queue_update()
 
