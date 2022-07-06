@@ -79,6 +79,7 @@ class SQSClient(Boto3Client):
 
         dict_src = {"QueueUrl": response}
         queue.update_from_raw_response(dict_src)
+        self.update_queue_information(queue)
 
     def set_queue_attributes_raw(self, request_dict):
         logger.info(f"Updating queue: {request_dict}")

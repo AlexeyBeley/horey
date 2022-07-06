@@ -209,9 +209,12 @@ class Boto3Client:
         logger.info(
             f"Finished waiting loop for {observed_object.id} to become one of {desired_statuses}. Took {end_time - start_time}")
 
-    def get_tags(self, obj):
+    def get_tags(self, obj, function=None):
+        if function is None:
+            function = self.client.get_tags
+
         logger.info(f"Getting resource tags: {obj.arn}")
-        for response in self.execute(self.client.get_tags, "Tags",
+        for response in self.execute(function, "Tags",
                                      filters_req={"ResourceArn": obj.arn}):
             return response
 

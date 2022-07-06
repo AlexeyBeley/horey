@@ -119,6 +119,10 @@ from horey.aws_api.aws_services_entities.sesv2_email_identity import SESV2EmailI
 from horey.aws_api.aws_services_entities.sesv2_configuration_set import SESV2ConfigurationSet
 from horey.aws_api.aws_services_entities.sesv2_email_template import SESV2EmailTemplate
 
+from horey.aws_api.aws_clients.sns_client import SNSClient
+from horey.aws_api.aws_services_entities.sns_subscription import SNSSubscription
+from horey.aws_api.aws_services_entities.sns_topic import SNSTopic
+
 from horey.common_utils.common_utils import CommonUtils
 
 from horey.h_logger import get_logger
@@ -152,6 +156,7 @@ class AWSAPI:
         self.ecs_client = ECSClient()
         self.dynamodb_client = DynamoDBClient()
         self.sesv2_client = SESV2Client()
+        self.sns_client = SNSClient()
         self.autoscaling_client = AutoScalingClient()
         self.cloudfront_client = CloudfrontClient()
         self.events_client = EventsClient()
@@ -231,6 +236,8 @@ class AWSAPI:
         self.lambda_event_source_mappings = []
         self.glue_databases = []
         self.glue_tables = []
+        self.sns_topics = []
+        self.sns_subscriptions = []
 
         self.configuration = configuration
         self.aws_accounts = None
@@ -371,7 +378,23 @@ class AWSAPI:
             objects = self.sesv2_client.get_all_configuration_sets(region=region)
 
         self.sesv2_configuration_sets = objects
+        
+    def init_sns_topics(self, from_cache=False, cache_file=None, region=None):
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, SNSTopic)
+        else:
+            objects = self.sns_client.get_all_topics(region=region)
 
+        self.sns_topics = objects
+    
+    def init_sns_subscriptions(self, from_cache=False, cache_file=None, region=None):
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, SNSSubscription)
+        else:
+            objects = self.sns_client.get_all_subscriptions(region=region)
+
+        self.sns_subscriptions = objects
+        
     def init_ecr_images(self, from_cache=False, cache_file=None, region=None, ecr_repositories=None):
         objects = []
         if from_cache:
@@ -655,7 +678,7 @@ class AWSAPI:
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, CloudWatchAlarm)
         else:
-            objects = self.cloud_watch_client.get_cloud_watch_alarms()
+            objects = self.cloud_watch_client.get_all_alarms()
 
         self.cloud_watch_alarms = objects
 

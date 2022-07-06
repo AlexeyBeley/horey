@@ -80,6 +80,9 @@ class SQSQueue(AwsObject):
             "DeduplicationScope": self.init_default_attr,
             "FifoThroughputLimit": self.init_default_attr,
             "ContentBasedDeduplication": self.init_default_attr,
+            "SqsManagedSseEnabled": self.init_default_attr,
+            "RedrivePolicy": self.init_default_attr,
+            "RedriveAllowPolicy": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)

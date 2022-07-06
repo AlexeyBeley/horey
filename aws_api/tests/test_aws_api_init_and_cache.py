@@ -138,6 +138,21 @@ def test_init_and_cache_sesv2_configuration_sets():
     assert isinstance(aws_api.sesv2_configuration_sets, list)
 
 
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_sns_topics():
+    aws_api.init_sns_topics()
+    aws_api.cache_objects(aws_api.sns_topics, configuration.aws_api_sns_topics_cache_file)
+    print(f"len(sns_topics) = {len(aws_api.sns_topics)}")
+    assert isinstance(aws_api.sns_topics, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_sns_subscriptions():
+    aws_api.init_sns_subscriptions()
+    aws_api.cache_objects(aws_api.sns_subscriptions, configuration.aws_api_sns_subscriptions_cache_file)
+    print(f"len(sns_subscriptions) = {len(aws_api.sns_subscriptions)}")
+    assert isinstance(aws_api.sns_subscriptions, list)
+
 @pytest.mark.skip(reason="No way of currently testing cloudwatch metrics")
 def test_init_and_cache_cloudwatch_metrics():
     aws_api.cache_raw_cloud_watch_metrics(configuration.aws_api_cloudwatch_metrics_cache_dir)
@@ -618,7 +633,7 @@ if __name__ == "__main__":
     #test_init_and_cache_elasticache_cache_subnet_groups()
     #test_init_and_cache_elasticache_replication_groups()
     #test_init_and_cache_elasticache_cache_security_groups()
-    test_init_and_cache_sqs_queues()
+    #test_init_and_cache_sqs_queues()
     #test_init_and_cache_lambda_event_source_mappings()
     #test_init_and_cache_event_bridge_rules()
     #test_init_and_cache_lambdas()
@@ -635,3 +650,5 @@ if __name__ == "__main__":
     #test_init_and_cache_sesv2_email_identities()
     #test_init_and_cache_sesv2_email_templates()
     #test_init_and_cache_sesv2_configuration_sets()
+    #test_init_and_cache_sns_topics()
+    test_init_and_cache_sns_subscriptions()

@@ -39,6 +39,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
         self._aws_api_sqs_cache_dir = None
         self._aws_api_glue_cache_dir = None
         self._aws_api_sesv2_cache_dir = None
+        self._aws_api_sns_cache_dir = None
 
     @property
     def aws_api_regions(self):
@@ -1044,4 +1045,26 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     def aws_api_sesv2_email_templates_cache_file(self):
         return os.path.join(self.aws_api_sesv2_cache_dir, "sesv2_email_templates.json")
     
+    # endregion
+
+    # region sns
+    @property
+    def aws_api_sns_cache_dir(self):
+        if self._aws_api_sns_cache_dir is None:
+            self._aws_api_sns_cache_dir = os.path.join(self.aws_api_cache_dir, self.aws_api_account, "sns")
+            os.makedirs(self._aws_api_sns_cache_dir, exist_ok=True)
+        return self._aws_api_sns_cache_dir
+
+    @aws_api_sns_cache_dir.setter
+    def aws_api_sns_cache_dir(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_sns_subscriptions_cache_file(self):
+        return os.path.join(self.aws_api_sns_cache_dir, "sns_subscriptions.json")
+
+    @property
+    def aws_api_sns_topics_cache_file(self):
+        return os.path.join(self.aws_api_sns_cache_dir, "sns_topics.json")
+
     # endregion
