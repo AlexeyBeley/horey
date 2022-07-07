@@ -28,23 +28,22 @@ def test_init_client():
 
 def test_get_region_metrics():
     client = CloudWatchClient()
-    ret = client.get_region_metrics(accounts["1111"].regions["us-west-2"])
-    assert isinstance(ret, list)
-
-
-def test_get_region_alarms():
-    client = CloudWatchClient()
-    ret = client.get_all_alarms()
-    assert isinstance(ret, list)
+    ret = client.get_region_metrics(accounts["1111"].regions['us-east-1'])
+    pdb.set_trace()
 
 
 def test_provision_alert():
+    client = CloudWatchClient()
+
+    ret = client.get_all_alarms()
+    ret2 = client.get_region_alarms(accounts["1111"].regions['us-west-2'])
+
     pdb.set_trace()
-    mock_values["arn"]
+    assert sqs_queue.queue_url is not None
 
 
 if __name__ == "__main__":
     test_init_client()
     test_get_region_metrics()
-    test_get_region_alarms()
+    test_provision_alert()
 

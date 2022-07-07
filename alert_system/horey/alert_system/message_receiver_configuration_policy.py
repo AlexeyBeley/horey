@@ -10,7 +10,6 @@ class MessageReceiverConfigurationPolicy(ConfigurationPolicy):
         self._slack_api_configuration_file = None
         self._deployment_datetime = None
         self._deployment_directory_path = None
-        self._horey_repo_path = None
 
     @property
     def slack_api_configuration_file(self):
@@ -39,33 +38,3 @@ class MessageReceiverConfigurationPolicy(ConfigurationPolicy):
     @property
     def lambda_zip_file_name(self):
         return "lambda_function.zip"
-
-    @property
-    def horey_repo_path(self):
-        if self._horey_repo_path is None:
-            raise RuntimeError()
-        return self._horey_repo_path
-
-    @horey_repo_path.setter
-    def horey_repo_path(self, value):
-        self._horey_repo_path = value
-
-    @property
-    def region(self):
-        return "us-west-2"
-
-    @property
-    def sns_topic_name(self):
-        return "alert_system_generic"
-
-    @property
-    def lambda_name(self):
-        return "generic_receiver_test"
-
-    @property
-    def lambda_role_name(self):
-        return "role-lambda-alert_system"
-
-    @property
-    def subscription_name(self):
-        return "alert_system_generic_subscription"
