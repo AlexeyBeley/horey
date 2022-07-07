@@ -26,16 +26,24 @@ def test_init_client():
     assert isinstance(CloudWatchClient(), CloudWatchClient)
 
 
+def test_get_region_metrics():
+    client = CloudWatchClient()
+    ret = client.get_region_metrics(accounts["1111"].regions['us-east-1'])
+    pdb.set_trace()
+
+
 def test_provision_alert():
     client = CloudWatchClient()
 
     ret = client.get_all_alarms()
     ret2 = client.get_region_alarms(accounts["1111"].regions['us-west-2'])
+
     pdb.set_trace()
     assert sqs_queue.queue_url is not None
 
 
 if __name__ == "__main__":
     test_init_client()
+    test_get_region_metrics()
     test_provision_alert()
 

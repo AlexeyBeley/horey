@@ -15,6 +15,11 @@ test_%: FORCE build
 
 FORCE: ;
 
-build:
+build_:
 	cd ${HOREY_DIR_PATH} &&\
-	make raw_install_from_source-docker_api
+	make raw_install_from_source-alert_system
+
+build:
+	source ${VENV_DIR}/bin/activate &&\
+	cd ${HOREY_DIR_PATH} &&\
+	make recursive_install_from_source-alert_system

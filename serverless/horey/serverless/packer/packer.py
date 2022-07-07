@@ -68,9 +68,9 @@ class Packer:
         script_content += f"source {venv_path}/bin/activate\n"
         script_content += f"{command}\n"
 
-        with open("./tmp", "w") as fh:
+        with open("./tmp_script_to_execute", "w") as fh:
             fh.write(script_content)
-        bash_cmd = ["/bin/bash", "./tmp"]
+        bash_cmd = ["/bin/bash", "./tmp_script_to_execute"]
         return self.execute(bash_cmd)
 
     @staticmethod
@@ -78,6 +78,9 @@ class Packer:
         return os.path.join(venv_dir_path, "lib", python_version, "site-packages")
 
     def zip_venv_site_packages(self, zip_file_name, venv_dir_path, python_version):
+        if zip_file_name.endswith(".zip"):
+            zip_file_name = zip_file_name[:-4]
+
         package_dir = self.get_site_packages_directory(venv_dir_path, python_version)
         shutil.make_archive(zip_file_name, 'zip', root_dir=package_dir)
 
