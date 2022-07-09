@@ -23,3 +23,23 @@ build:
 	source ${VENV_DIR}/bin/activate &&\
 	cd ${HOREY_DIR_PATH} &&\
 	make recursive_install_from_source-alert_system
+
+LAST_DEPLOYMENT_DIR := $(shell ls /tmp/alert_system |tail -1)
+ZIP_PATH := "/tmp/alert_system/${LAST_DEPLOYMENT_DIR}/lambda_function.zip"
+DIR_PATH := $(shell dirname ${ZIP_PATH})
+
+tst:
+	echo ${LAST_DEPLOYMENT_DIR}
+
+prepare_lambda_locally:
+	cd "${DIR_PATH}" &&\
+	mkdir -p "${DIR_PATH}/lambda_function" &&\
+	tar xf "${ZIP_PATH}" --directory "${DIR_PATH}/lambda_function" &&\
+	cp -i "${TESTS_DIR}/venv_tester.py" "${DIR_PATH}/lambda_function" &&\
+	cp -i "${TESTS_DIR}/test_event.json" "${DIR_PATH}/lambda_function"
+
+run_lambda_locally: prepare_lambda_locally run_lambda_locally_raw
+
+run_lambda_locally_raw:
+	cd "${DIR_PATH}/lambda_function" &&\
+	python3 venv_tester.py

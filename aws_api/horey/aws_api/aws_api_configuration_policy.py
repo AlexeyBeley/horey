@@ -33,6 +33,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
         self._aws_api_ecr_cache_dir = None
         self._aws_api_ecs_cache_dir = None
         self._aws_api_auto_scaling_cache_dir = None
+        self._aws_api_application_auto_scaling_cache_dir = None
         self._aws_api_acm_cache_dir = None
         self._aws_api_kms_cache_dir = None
         self._aws_api_elasticache_cache_dir = None
@@ -854,8 +855,35 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_auto_scaling_groups_cache_file.setter
     def aws_api_auto_scaling_groups_cache_file(self, value):
         raise ValueError(value)
+    
+    @property
+    def aws_api_auto_scaling_policies_cache_file(self):
+        return os.path.join(self.aws_api_auto_scaling_cache_dir, "auto_scaling_policies.json")
     # endregion
 
+    # region application_auto_scaling
+    @property
+    def aws_api_application_auto_scaling_cache_dir(self):
+        if self._aws_api_application_auto_scaling_cache_dir is None:
+            self._aws_api_application_auto_scaling_cache_dir = os.path.join(self.aws_api_cache_dir, self.aws_api_account,
+                                                                "application_auto_scaling")
+            os.makedirs(self._aws_api_application_auto_scaling_cache_dir, exist_ok=True)
+        return self._aws_api_application_auto_scaling_cache_dir
+
+    @aws_api_application_auto_scaling_cache_dir.setter
+    def aws_api_application_auto_scaling_cache_dir(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_application_auto_scaling_scalable_targets_cache_file(self):
+        return os.path.join(self.aws_api_application_auto_scaling_cache_dir, "application_auto_scaling_scalable_targets.json")
+
+    @property
+    def aws_api_application_auto_scaling_policies_cache_file(self):
+        return os.path.join(self.aws_api_application_auto_scaling_cache_dir, "application_auto_scaling_policies.json")
+
+    # endregion
+    
     # region acm
     @property
     def aws_api_acm_cache_dir(self):

@@ -3,6 +3,7 @@ import pdb
 
 from horey.aws_api.aws_clients.cloud_watch_client import CloudWatchClient
 from horey.aws_api.aws_services_entities.cloud_watch_metric import CloudWatchMetric
+from horey.aws_api.base_entities.region import Region
 
 from horey.h_logger import get_logger
 from horey.aws_api.base_entities.aws_account import AWSAccount
@@ -28,22 +29,23 @@ def test_init_client():
 
 def test_get_region_metrics():
     client = CloudWatchClient()
-    ret = client.get_region_metrics(accounts["1111"].regions['us-east-1'])
-    pdb.set_trace()
+    ret = client.get_region_metrics(Region.get_region("us-east-1"))
+    assert isinstance(ret, list)
+
+
+def test_get_region_alarms():
+    client = CloudWatchClient()
+    ret = client.get_all_alarms()
+    assert isinstance(ret, list)
 
 
 def test_provision_alert():
-    client = CloudWatchClient()
-
-    ret = client.get_all_alarms()
-    ret2 = client.get_region_alarms(accounts["1111"].regions['us-west-2'])
-
     pdb.set_trace()
-    assert sqs_queue.queue_url is not None
+    mock_values["arn"]
 
 
 if __name__ == "__main__":
     test_init_client()
     test_get_region_metrics()
-    test_provision_alert()
+    #test_get_region_alarms()
 

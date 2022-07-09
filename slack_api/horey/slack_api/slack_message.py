@@ -48,7 +48,7 @@ class SlackMessage:
 
         divider_block = self.DividerBlock(self.message_type)
         self._blocks.append(divider_block)
-    
+
     def add_attachment(self, attachment):
         attachment.message_type = self.message_type
         self._attachments.append(attachment)
@@ -114,18 +114,42 @@ class SlackMessage:
         def __init__(self):
             self.message_type = None
             self.text = None
+            self.link_text = None
+
+        def add_link(self, link_text, link):
+            self.text += "\n" + f"<{link}|{link_text}>"
 
         def generate_send_request(self):
             return {
-                    "text": SlackMessage.SECTION_MARKS_MAPPINGS[self.message_type.value] + self.text,
-                    "color": SlackMessage.COLOR_MAPPINGS[self.message_type.value]
+                "text": SlackMessage.SECTION_MARKS_MAPPINGS[self.message_type.value] + self.text,
+                "color": SlackMessage.COLOR_MAPPINGS[self.message_type.value]
             }
 
     class Block:
         def __init__(self, message_type):
             self.message_type = message_type
-            self.text = None
-            self.link = None
+            self._text = None
+            self._link = None
+
+        @property
+        def text(self):
+            return self._text
+        
+        @text.setter
+        def text(self, value):
+            if not isinstance(value, str):
+                raise ValueError(f"Slack Message text must be string. Got: {type(value)}: {value}")
+            self._text = value
+
+        @property
+        def link(self):
+            return self._link
+
+        @link.setter
+        def link(self, value):
+            if not isinstance(value, str):
+                raise ValueError(f"Slack Message link must be string. Got: {type(value)}: {value}")
+            self._link = value
 
     class SectionBlock(Block):
         def __init__(self, message_type=None):
@@ -147,13 +171,17 @@ class SlackMessage:
             }
 
         def generate_send_request_mrkdwn(self):
-            return {
-                "type": self.block_type,
-                "text": {
-                    "type": "mrkdwn",
-                    "text": SlackMessage.SECTION_MARKS_MAPPINGS[self.message_type.value] + self.text
+            try:
+                return {
+                    "type": self.block_type,
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": SlackMessage.SECTION_MARKS_MAPPINGS[self.message_type.value] + self.text
+                    }
                 }
-            }
+
+            except Exception as inst:
+                return {"error parsing": f"{str(self.__dict__)} self.text: {self.text}"}
 
     class HeaderBlock(Block):
         def __init__(self, message_type=None):
@@ -176,6 +204,5 @@ class SlackMessage:
 
         def generate_send_request(self):
             return {
-            "type": self.block_type
+                "type": self.block_type
             }
-

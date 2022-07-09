@@ -7,6 +7,9 @@ from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.aws_services_entities.ecr_repository import ECRRepository
 from horey.aws_api.aws_services_entities.ecr_image import ECRImage
+from horey.h_logger import get_logger
+
+logger = get_logger()
 
 
 class ECRClient(Boto3Client):
@@ -80,6 +83,7 @@ class ECRClient(Boto3Client):
         return final_result
 
     def get_region_repositories(self, region, repository_names=None):
+        logger.info(f"Getting all repositories in region {str(region)}")
         filters_req = dict()
         if repository_names is not None:
             filters_req["repositoryNames"] = repository_names

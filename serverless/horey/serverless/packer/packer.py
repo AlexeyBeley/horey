@@ -57,6 +57,9 @@ class Packer:
         return self.execute_in_venv(command, venv_path)
 
     def install_horey_requirements(self, requirements_file_path, venv_path, horey_repo_path):
+        if not os.path.isfile(requirements_file_path):
+            raise RuntimeError(f"Requirements file does not exist: {requirements_file_path}")
+
         pip_api = PipAPI(venv_dir_path=venv_path, horey_repo_path=horey_repo_path)
         pip_api.install_requirements(requirements_file_path)
 
@@ -92,6 +95,7 @@ class Packer:
     def add_files_to_zip(self, zip_file_name, files_paths):
         with zipfile.ZipFile(zip_file_name, "a") as myzip:
             for file_path in files_paths:
+                logger.info(f"Adding file to zip: {file_path}")
                 myzip.write(file_path, arcname=os.path.basename(file_path))
 
     def add_dirs_to_zip(self, zip_file_name, dir_paths):
