@@ -5,6 +5,7 @@ import shutil
 import zipfile
 
 from horey.h_logger import get_logger
+from horey.pip_api.pip_api import PipAPI
 
 logger = get_logger()
 
@@ -54,6 +55,10 @@ class Packer:
     def install_requirements(self, package_setup_path, venv_path):
         command = f"pip3 install -r {package_setup_path}/requirements.txt"
         return self.execute_in_venv(command, venv_path)
+
+    def install_horey_requirements(self, requirements_file_path, venv_path, horey_repo_path):
+        pip_api = PipAPI(venv_dir_path=venv_path, horey_repo_path=horey_repo_path)
+        pip_api.install_requirements(requirements_file_path)
 
     def uninstall_packages(self, venv_path, packages):
         for package_name in packages:

@@ -32,7 +32,7 @@ class SlackMessage:
         "WARNING": "#d1d07c",
         "PARTY": "#d40fb9"}
 
-    def __init__(self, message_type):
+    def __init__(self, message_type=None):
         self._type = None
         self.src_username = None
         self.dst_channel = None

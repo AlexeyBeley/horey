@@ -39,15 +39,24 @@ class SNSSubscription(AwsObject):
         options = {}
         self._init_from_cache(dict_src, options)
 
-    def update_from_raw_response(self, raw_value):
-        raise NotImplementedError()
+    def update_from_raw_response(self, dict_src):
+        init_options = {
+            "SubscriptionArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "Owner": self.init_default_attr,
+            "Protocol": self.init_default_attr,
+            "Endpoint": self.init_default_attr,
+            "TopicArn": self.init_default_attr,
+        }
+
+        self.init_attrs(dict_src, init_options)
 
     def generate_create_request(self):
-        raise NotImplementedError()
         request = dict()
-        request["Name"] = self.name
-        request["tags"] = self.tags
-
+        request["TopicArn"] = self.topic_arn
+        request["Protocol"] = self.protocol
+        request["Endpoint"] = self.endpoint
+        if self.attributes is not None:
+            request["Attributes"] = self.attributes
         return request
 
     @property

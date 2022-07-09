@@ -19,8 +19,19 @@ def lambda_handler(event, context):
     """
     
     config = SlackAPIConfigurationPolicy()
-    config.webhook_url = os.environ.get("SLACK_WEBHOOK")  
+    config.configuration_file_full_path = os.environ.get("SLACK_API_CONFIGURATION_FILE")
+    config.init_from_file()
     slack_api = SlackAPI(configuration=config)
+    print(event)
+    print(context)
+    logger.info(event)
+    logger.info(context)
+    message = SlackMessage()
+    return {
+        "statusCode": 200,
+        "body": json.dumps("Hello from Lambda!")
+    }
+    
     message = SlackMessage(SlackMessage.Types.INFO)
 
     block = SlackMessage.HeaderBlock()
