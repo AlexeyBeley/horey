@@ -4,7 +4,7 @@ import pdb
 
 from horey.alert_system.lambda_package.lambda_handler import lambda_handler
 
-with open("./clowdwatch_messages/sqs_alert.json") as file_handler:
+with open("./clowdwatch_messages/event_sns_opensearch.json") as file_handler:
     event = json.load(file_handler)
 
 os.environ["SLACK_API_CONFIGURATION_FILE"] = os.path.abspath(

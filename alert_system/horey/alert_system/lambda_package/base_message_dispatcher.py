@@ -23,8 +23,8 @@ class BaseMessageDispatcher:
             self.default_handler(message)
 
     def default_handler(self, message):
-        pdb.set_trace()
-        self.generate_slack_message(SlackMessage.Types.CRITICAL, "test", "test", None, None, "#test")
+        text = json.dumps(message.convert_to_dict())
+        self.generate_slack_message(SlackMessage.Types.CRITICAL, "Unhandled message in alert_system", text, None, None, "#test")
 
     def send_to_slack(self, slack_message):
         config = SlackAPIConfigurationPolicy()
@@ -36,7 +36,6 @@ class BaseMessageDispatcher:
 
     def generate_slack_message(self, slack_message_type, header, text, link, link_href, dst_channel):
         message = SlackMessage(message_type=slack_message_type)
-
         block = SlackMessage.HeaderBlock()
         block.text = f"{slack_message_type.value}: {header}"
         message.add_block(block)
@@ -45,10 +44,11 @@ class BaseMessageDispatcher:
         block.text = text
         message.add_block(block)
 
-        block = SlackMessage.SectionBlock()
-        block.text = link_href
-        block.link = link
-        message.add_block(block)
+        if link is not None:
+            block = SlackMessage.SectionBlock()
+            block.text = link_href
+            block.link = link
+            message.add_block(block)
 
         message.src_username = "slack_api"
         message.dst_channel = dst_channel
