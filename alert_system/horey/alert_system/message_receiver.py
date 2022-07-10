@@ -1,4 +1,5 @@
 import datetime
+import json
 import os
 import pdb
 
@@ -14,6 +15,7 @@ from horey.aws_api.aws_services_entities.iam_policy import IamPolicy
 
 from horey.aws_api.aws_services_entities.sns_subscription import SNSSubscription
 from horey.aws_api.aws_services_entities.sns_topic import SNSTopic
+from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlarm
 
 logger = get_logger()
 
@@ -45,14 +47,16 @@ class MessageReceiver:
         current_dir = os.getcwd()
         os.chdir(self.configuration.deployment_directory_path)
         self.packer.install_horey_requirements(
-            os.path.join(os.path.dirname(os.path.abspath(__file__)), "receiver_raw_lambda", "requirements.txt"),
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "lambda_package", "requirements.txt"),
             self.configuration.deployment_venv_path, self.configuration.horey_repo_path)
 
         self.packer.zip_venv_site_packages(self.configuration.lambda_zip_file_name,
                                            self.configuration.deployment_venv_path, "python3.8")
 
-        files_paths = [
-            os.path.join(os.path.dirname(os.path.abspath(__file__)), "receiver_raw_lambda", "lambda_handler.py"),
+        lambda_package_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "lambda_package")
+        lambda_package_files = [os.path.join(lambda_package_dir, file_name) for file_name in os.listdir(lambda_package_dir)]
+        pdb.set_trace()
+        files_paths = lambda_package_files + [
             self.configuration.slack_api_configuration_file
             ]
         self.packer.add_files_to_zip(self.configuration.lambda_zip_file_name, files_paths)
@@ -175,5 +179,39 @@ class MessageReceiver:
 
         self.aws_api.provision_sns_subscription(subscription)
 
-        
+    def provision_cloudwatch_alarm(self, dimensions, message):
+        """
+        ret = {'Records': [{'Eve
+        print(ret["Records"][0]["Sns"]["Message"].replace('"', r'\"'))
+
+        @param dimensions:
+        @param message:
+        @return:
+        """
+        topic = SNSTopic({})
+        topic.name = self.configuration.sns_topic_name
+        topic.region = self.region
+        if not self.aws_api.sns_client.update_topic_information(topic):
+            raise RuntimeError("Could not update topic information")
+
+        alarm = CloudWatchAlarm({})
+        alarm.region = self.region
+        alarm.name = "test-alarm"
+        alarm.actions_enabled = True
+        alarm.alarm_description = json.dumps(message.convert_to_dict())
+        alarm.ok_actions = [topic.arn]
+        alarm.alarm_actions = [topic.arn]
+        alarm.insufficient_data_actions = []
+        alarm.metric_name = "ApproximateNumberOfMessagesVisible"
+        alarm.namespace = "AWS/SQS"
+        alarm.statistic = "Average"
+        alarm.dimensions = dimensions
+        alarm.period = 300
+        alarm.evaluation_periods = 1
+        alarm.datapoints_to_alarm = 1
+        alarm.threshold = 500.0
+        alarm.comparison_operator = "GreaterThanThreshold"
+        alarm.treat_missing_data = "missing"
+
+        self.aws_api.cloud_watch_client.set_cloudwatch_alarm(alarm)
 

@@ -1,7 +1,9 @@
+import json
 import pdb
 
 from horey.alert_system.message_receiver import MessageReceiver
 from horey.alert_system.message_receiver_configuration_policy import MessageReceiverConfigurationPolicy
+from horey.alert_system.lambda_package.message import Message
 import os
 from horey.common_utils.common_utils import CommonUtils
 
@@ -75,7 +77,23 @@ def test_provision():
     message_receiver.provision()
 
 
+def test_provision_cloudwatch_alarm():
+    configuration = MessageReceiverConfigurationPolicy()
+    configuration.horey_repo_path = os.path.abspath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+    configuration.slack_api_configuration_file = os.path.abspath(
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore",
+                     "slack_api_configuration_values.py"))
+    message_receiver = MessageReceiver(configuration)
+    message = Message()
+    message.type = "test_message"
+    message.generate_uuid()
+    message.data = json.dumps({"key": "value", "tags": ["infra"]})
+    message_receiver.provision_cloudwatch_alarm(mock_values["alarm_dimensions"], message)
+
+
 if __name__ == "__main__":
-    test_provision_lambda()
+    #test_provision_lambda()
     #test_provision_sns_topic()
     #test_provision_sns_subscription()
+    test_provision_cloudwatch_alarm()
