@@ -18,6 +18,7 @@ class CloudWatchAlarm(AwsObject):
         """
 
         self.log_streams = []
+        self.alarm_description = None
 
         super().__init__(dict_src, from_cache=from_cache)
 
@@ -84,4 +85,6 @@ class CloudWatchAlarm(AwsObject):
             "ComparisonOperator": self.comparison_operator,
             "TreatMissingData": self.treat_missing_data,
         }
+        if self.alarm_description is not None:
+            request_dict["AlarmDescription"] = self.alarm_description
         return request_dict

@@ -2,7 +2,6 @@ import os
 import pdb
 
 from horey.aws_api.aws_clients.sns_client import SNSClient
-from horey.aws_api.aws_services_entities.cloud_watch_metric import CloudWatchMetric
 
 from horey.h_logger import get_logger
 from horey.aws_api.base_entities.aws_account import AWSAccount

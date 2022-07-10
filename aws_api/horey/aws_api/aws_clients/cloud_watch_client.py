@@ -3,6 +3,7 @@ AWS client to handle cloud watch logs.
 """
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlarm
+from horey.aws_api.aws_services_entities.cloud_watch_metric import CloudWatchMetric
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.h_logger import get_logger
 
@@ -28,6 +29,20 @@ class CloudWatchClient(Boto3Client):
             AWSAccount.set_aws_region(region)
             for response in self.execute(self.client.list_metrics, "Metrics"):
                 yield response
+
+    def get_region_metrics(self, region):
+        """
+        Get region metrics
+
+        :return:
+        """
+
+        AWSAccount.set_aws_region(region)
+        ret =[]
+        for response in self.execute(self.client.list_metrics, "Metrics"):
+            obj = CloudWatchMetric(response)
+            ret.append(obj)
+        return ret
 
     def get_all_alarms(self):
         """

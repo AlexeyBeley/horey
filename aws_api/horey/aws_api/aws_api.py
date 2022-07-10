@@ -2494,6 +2494,12 @@ class AWSAPI:
         new_certificate = self.wait_for_certificate_validation(certificate)
         certificate.update_from_raw_response(new_certificate.dict_src)
 
+    def provision_sns_topic(self, topic):
+        self.sns_client.provision_topic(topic)
+        
+    def provision_sns_subscription(self, subscription):
+        self.sns_client.provision_subscription(subscription)
+        
     def validate_certificate(self, certificate, master_hosted_zone_name):
         max_time = 5 * 60
         sleep_time = 10

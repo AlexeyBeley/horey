@@ -28,6 +28,7 @@ class AWSLambda(AwsObject):
         self.timeout = None
         self.memory_size = None
         self.ephemeral_storage = None
+        self.role = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)

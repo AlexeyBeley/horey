@@ -43,7 +43,7 @@ class DynamoDBClient(Boto3Client):
             ret = list(self.execute(self.client.describe_table, "Table", filters_req={"TableName": table_name}))
             obj = DynamoDBTable(ret[0])
             final_result.append(obj)
-            obj.tags = self.get_tags(obj.arn)
+            obj.tags = self.get_tags(obj.arn, function=self.client.list_tags_of_resource)
 
             if full_information:
                 raise NotImplementedError()
@@ -76,10 +76,6 @@ class DynamoDBClient(Boto3Client):
                 raise NotImplementedError()
 
         return final_result
-
-    def get_tags(self, arn):
-        for lst_src in self.execute(self.client.list_tags_of_resource, "Tags", filters_req={"ResourceArn": arn}):
-            return lst_src
 
     def provision_table(self, table: DynamoDBTable):
         region_template_entities = self.get_region_tables(table.region)

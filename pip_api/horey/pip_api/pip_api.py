@@ -89,7 +89,7 @@ class PipAPI:
         self.venv_dir_path = venv_dir_path
 
     def init_packages(self):
-        response = self.execute("pip freeze")
+        response = self.execute("pip3.8 freeze")
         lines = response.split("\n")
         objs = []
         for line in lines:
@@ -124,17 +124,22 @@ class PipAPI:
             self.install_requirement(requirement)
 
     def get_installed_packages(self):
-        ret = self.execute("pip freeze")
+        ret = self.execute("pip3.8 freeze")
         if not ret:
             return []
         packages_lines = ret.split("\n")
         return [Package(line) for line in packages_lines]
 
-    def install_requirement(self, requirement):
+    def install_requirement(self, requirement: Requirement):
         if requirement.name.startswith("horey."):
             return self.install_horey_requirement(requirement)
-        pdb.set_trace()
-        self.execute("pip install ")
+
+        if requirement.min_version is None:
+            raise NotImplementedError(requirement.__dict__)
+        if requirement.min_version != requirement.max_version:
+            raise NotImplementedError(requirement.__dict__)
+
+        self.execute(f"pip3.8 install {requirement.name}=={requirement.min_version}")
 
     def install_horey_requirement(self, requirement):
         _, name = requirement.name.split(".")
@@ -167,8 +172,7 @@ class PipAPI:
                 horey_package_requirements_path = os.path.join(self.horey_repo_path, package_name, "requirements.txt")
                 self.compose_requirements_recursive(horey_package_requirements_path)
             else:
-                pdb.set_trace()
-                raise NotImplementedError()
+                self.REQUIREMENTS[requirement.name] = requirement
 
     @staticmethod
     def init_requirements_raw(requirements_file_path):

@@ -1,3 +1,6 @@
 horey.configuration_policy>=1.0.0
 horey.h_logger>=1.0.0
-docker==5.0.0
+horey.aws_api >=1.0.0
+horey.serverless>=1.0.0
+
+horey.slack_api>=1.0.0
