@@ -20,23 +20,23 @@ from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlar
 logger = get_logger()
 
 
-class MessageReceiver:
+class AlertSystem:
     def __init__(self, configuration):
         self.configuration = configuration
         self.packer = Packer()
         self.aws_api = AWSAPI()
         self.region = Region.get_region(self.configuration.region)
 
-    def provision_message_receiver(self):
-        self.provision_sns_topic()
-        self.provision_lambda()
+    def provision(self, tags, lambda_files):
+        self.provision_sns_topic(tags)
+        self.provision_lambda(lambda_files)
         self.provision_sns_subscription()
 
-    def provision_lambda(self):
-        self.create_lambda_package()
+    def provision_lambda(self, files):
+        self.create_lambda_package(files)
         return self.deploy_lambda()
 
-    def create_lambda_package(self):
+    def create_lambda_package(self, files):
         """
         Create the zip package to be deployed.
 
@@ -53,9 +53,12 @@ class MessageReceiver:
         self.packer.zip_venv_site_packages(self.configuration.lambda_zip_file_name,
                                            self.configuration.deployment_venv_path, "python3.8")
 
-        lambda_package_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "lambda_package")
-        lambda_package_files = [os.path.join(lambda_package_dir, file_name) for file_name in os.listdir(lambda_package_dir)]
         pdb.set_trace()
+        external_files = {os.path.basename(file_path): file_path for file_path in files}
+        lambda_package_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "lambda_package")
+        lambda_package_files = []
+        for file_name in os.listdir(lambda_package_dir):
+            lambda_package_files.append(external_files.get(file_name) or os.path.join(lambda_package_dir, file_name))
         files_paths = lambda_package_files + [
             self.configuration.slack_api_configuration_file
             ]
@@ -95,6 +98,7 @@ class MessageReceiver:
         return iam_role
 
     def deploy_lambda(self):
+        pdb.set_trace()
         topic = SNSTopic({})
         topic.name = self.configuration.sns_topic_name
         topic.region = self.region
@@ -138,21 +142,19 @@ class MessageReceiver:
         self.aws_api.provision_aws_lambda(aws_lambda, force=True)
         return aws_lambda
 
-    def provision_sns_topic(self):
+    def provision_sns_topic(self, tags):
         """
 
         @return:
         """
-
         topic = SNSTopic({})
         topic.region = self.region
         topic.name = self.configuration.sns_topic_name
         topic.attributes = {"DisplayName": topic.name}
-        topic.tags = [{
+        topic.tags = tags
+        topic.tags.append({
             "Key": "Name",
-            "Value": topic.name},
-            {"Key": "Name_2",
-             "Value": topic.name}]
+            "Value": topic.name})
 
         self.aws_api.provision_sns_topic(topic)
 
@@ -179,7 +181,19 @@ class MessageReceiver:
 
         self.aws_api.provision_sns_subscription(subscription)
 
-    def provision_cloudwatch_alarm(self, dimensions, message):
+    def provision_cloudwatch_alarm(self, alarm):
+        topic = SNSTopic({})
+        topic.name = self.configuration.sns_topic_name
+        topic.region = self.region
+        if not self.aws_api.sns_client.update_topic_information(topic):
+            raise RuntimeError("Could not update topic information")
+
+        alarm.region = self.region
+        alarm.ok_actions = [topic.arn]
+        alarm.alarm_actions = [topic.arn]
+        self.aws_api.cloud_watch_client.set_cloudwatch_alarm(alarm)
+
+    def generate_and_provision_cloudwatch_alarm(self, dimensions, message):
         """
         ret = {'Records': [{'Eve
         print(ret["Records"][0]["Sns"]["Message"].replace('"', r'\"'))
