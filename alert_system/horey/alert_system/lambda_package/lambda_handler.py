@@ -1,8 +1,8 @@
 import json
 import pdb
 
-from .message import Message
-from .message_dispatcher import MessageDispatcher
+from message import Message
+from message_dispatcher import MessageDispatcher
 
 from horey.h_logger import get_logger
 
@@ -29,8 +29,15 @@ class MessageHandler:
         if record["EventSource"] != "aws:sns":
             raise NotImplementedError(event)
         message_dict = json.loads(record["Sns"]["Message"])
-        message = Message(event)
-        message.init_from_dict(json.loads(message_dict["AlarmDescription"]))
+        message = Message(dic_src=event)
+        dict_src = json.loads(message_dict["AlarmDescription"])
+
+        try:
+            del dict_src["dict_src"]
+        except KeyError:
+            pass
+
+        message.init_from_dict(dict_src)
         return message
 
 
@@ -41,6 +48,8 @@ def lambda_handler(event, context):
     :param context:
     :return:
     """
+    logger.info(f"Handling event: '{event}'")
+
     message_handler = MessageHandler()
     message_handler.handle_message(event, context)
     return {

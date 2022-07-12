@@ -53,15 +53,11 @@ class AlertSystem:
         self.packer.zip_venv_site_packages(self.configuration.lambda_zip_file_name,
                                            self.configuration.deployment_venv_path, "python3.8")
 
-        pdb.set_trace()
-        external_files = {os.path.basename(file_path): file_path for file_path in files}
+        external_files = [os.path.basename(file_path) for file_path in files]
         lambda_package_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "lambda_package")
-        lambda_package_files = []
-        for file_name in os.listdir(lambda_package_dir):
-            lambda_package_files.append(external_files.get(file_name) or os.path.join(lambda_package_dir, file_name))
-        files_paths = lambda_package_files + [
-            self.configuration.slack_api_configuration_file
-            ]
+        lambda_package_files = [os.path.join(lambda_package_dir, file_name)
+                                for file_name in os.listdir(lambda_package_dir) if file_name not in external_files]
+        files_paths = lambda_package_files + files + [self.configuration.slack_api_configuration_file]
         self.packer.add_files_to_zip(self.configuration.lambda_zip_file_name, files_paths)
 
         # dir_paths = [os.path.join(os.path.dirname(os.path.abspath(__file__)), "receiver_raw_lambda")]
@@ -98,7 +94,6 @@ class AlertSystem:
         return iam_role
 
     def deploy_lambda(self):
-        pdb.set_trace()
         topic = SNSTopic({})
         topic.name = self.configuration.sns_topic_name
         topic.region = self.region
@@ -228,4 +223,3 @@ class AlertSystem:
         alarm.treat_missing_data = "missing"
 
         self.aws_api.cloud_watch_client.set_cloudwatch_alarm(alarm)
-

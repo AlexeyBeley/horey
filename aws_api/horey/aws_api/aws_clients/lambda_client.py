@@ -106,6 +106,11 @@ class LambdaClient(Boto3Client):
         if current_lambda.arn is None:
             response = self.provision_lambda_raw(desired_aws_lambda.generate_create_request())
             del response["ResponseMetadata"]
+            pdb.set_trace()
+            if desired_aws_lambda.policy is not None:
+                for add_permission_request in desired_aws_lambda.generate_add_permissions_requests():
+                    self.add_permission_raw(add_permission_request)
+
             desired_aws_lambda.update_from_raw_response(response)
             return
 

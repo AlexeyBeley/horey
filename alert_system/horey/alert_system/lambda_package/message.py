@@ -25,7 +25,7 @@ class Message:
 
     @data.setter
     def data(self, value):
-        if not isinstance(value, str):
+        if not isinstance(value, dict):
             raise ValueError(value)
         self._data = value
 
