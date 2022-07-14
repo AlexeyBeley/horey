@@ -56,7 +56,7 @@ class AlertSystemConfigurationPolicy(ConfigurationPolicy):
     @property
     def region(self):
         if self._region is None:
-            raise RuntimeError()
+            raise self.UndefinedValueError("region")
 
         return self._region
 

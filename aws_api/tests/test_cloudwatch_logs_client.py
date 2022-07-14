@@ -27,13 +27,13 @@ def test_init_client():
     assert isinstance(CloudWatchLogsClient(), CloudWatchLogsClient)
 
 
-def test_get_region_cloud_watch_log_group_metric_filters():
+def test_get_region_log_group_metric_filters():
     client = CloudWatchLogsClient()
-    ret = client.get_region_cloud_watch_log_group_metric_filters(Region.get_region("us-east-1"), full_information=True)
+    ret = client.get_region_log_group_metric_filters(Region.get_region("us-east-1"))
     pdb.set_trace()
     assert isinstance(ret, list)
     
 
 if __name__ == "__main__":
     test_init_client()
-    test_get_region_cloud_watch_log_group_metric_filters()
+    test_get_region_log_group_metric_filters()

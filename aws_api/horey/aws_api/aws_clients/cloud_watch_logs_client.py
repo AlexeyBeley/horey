@@ -52,30 +52,23 @@ class CloudWatchLogsClient(Boto3Client):
 
         return final_result
 
-    def get_cloud_watch_log_group_metric_filters(self, full_information=False):
+    def get_log_group_metric_filters(self):
         """
-        Be sure you know what you do, when you set full_information=True.
-        This can kill your memory, if you have a lot of data in cloudwatch.
-        Better using yield_log_group_streams if you need.
+        Get all metric filters in all regions
 
-        :param full_information:
         :return:
         """
 
         final_result = list()
         for region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_cloud_watch_log_group_metric_filters(region, full_information=full_information)
+            final_result += self.get_region_log_group_metric_filters(region)
         return final_result
 
-    def get_region_cloud_watch_log_group_metric_filters(self, region, full_information=False):
+    def get_region_log_group_metric_filters(self, region):
         """
-        Be sure you know what you do, when you set full_information=True.
-        This can kill your memory, if you have a lot of data in cloudwatch.
-        Better using yield_log_group_streams if you need.
+        Get all metric filters in a region
 
-        :param full_information:
         :return:
-        @param full_information:
         @param region:
         """
 
@@ -83,13 +76,10 @@ class CloudWatchLogsClient(Boto3Client):
         AWSAccount.set_aws_region(region)
         for result in self.execute(self.client.describe_metric_filters, "metricFilters"):
             obj = CloudWatchLogGroupMetricFilter(result)
-            if full_information:
-                self.update_log_group_full_information(obj)
 
             obj.region = region
             final_result.append(obj)
         return final_result
-
 
     def update_log_group_full_information(self, obj):
         """
@@ -115,7 +105,7 @@ class CloudWatchLogsClient(Boto3Client):
                                      filters_req={"logGroupName": log_group.name}):
             yield response
 
-    def set_cloudwatch_group_metric_filter(self, metric_filter):
+    def provision_metric_filter(self, metric_filter: CloudWatchLogGroupMetricFilter):
         request_dict = metric_filter.generate_create_request()
         AWSAccount.set_aws_region(metric_filter.region)
         logger.info(f"Creating cloudwatch log group metric filter '{metric_filter.name}' in region '{metric_filter.region}'")

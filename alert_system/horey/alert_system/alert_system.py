@@ -16,6 +16,7 @@ from horey.aws_api.aws_services_entities.iam_policy import IamPolicy
 from horey.aws_api.aws_services_entities.sns_subscription import SNSSubscription
 from horey.aws_api.aws_services_entities.sns_topic import SNSTopic
 from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlarm
+from horey.aws_api.aws_services_entities.cloud_watch_log_group_metric_filter import CloudWatchLogGroupMetricFilter
 
 logger = get_logger()
 
@@ -223,3 +224,45 @@ class AlertSystem:
         alarm.treat_missing_data = "missing"
 
         self.aws_api.cloud_watch_client.set_cloudwatch_alarm(alarm)
+
+    def provision_cloudwatch_logs_alarm(self, log_group_name, filter_text, metric_name_raw, message):
+        """
+        Provision Cloud watch logs based alarm.
+
+        @param message:
+        @param filter_text:
+        @param log_group_name:
+        @param metric_name_raw:
+        @return:
+        """
+        metric_name = f"metric-{metric_name_raw}"
+
+        metric_filter = CloudWatchLogGroupMetricFilter({})
+        metric_filter.log_group_name = log_group_name
+        metric_filter.name = f"metric-filter-{log_group_name}-{metric_name_raw}"
+        metric_filter.filter_pattern = filter_text
+        metric_filter.metric_transformations = [
+            {
+                "metricName": metric_name,
+                "metricNamespace": log_group_name,
+                "metricValue": "1"
+            }
+        ]
+        metric_filter.region = self.region
+        self.aws_api.cloud_watch_logs_client.provision_metric_filter(metric_filter)
+
+        alarm = CloudWatchAlarm({})
+        alarm.region = self.region
+        alarm.name = "test-alarm"
+        alarm.actions_enabled = True
+        alarm.alarm_description = json.dumps(message.convert_to_dict())
+        alarm.metric_name = metric_name
+        alarm.namespace = log_group_name
+        alarm.statistic = "Sum"
+        alarm.period = 300
+        alarm.evaluation_periods = 1
+        alarm.datapoints_to_alarm = 1
+        alarm.threshold = 0.0
+        alarm.comparison_operator = "GreaterThanThreshold"
+        alarm.treat_missing_data = "notBreaching"
+        self.provision_cloudwatch_alarm(alarm)
