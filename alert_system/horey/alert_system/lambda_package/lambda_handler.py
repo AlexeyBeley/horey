@@ -48,7 +48,7 @@ def lambda_handler(event, context):
     :param context:
     :return:
     """
-    logger.info(f"Handling event: '{event}'")
+    logger.info(f"Handling event: '{json.dumps(event)}'")
 
     message_handler = MessageHandler()
     message_handler.handle_message(event, context)

@@ -1,5 +1,6 @@
 import json
 import os
+import pdb
 import traceback
 
 import requests
@@ -26,7 +27,7 @@ class BaseMessageDispatcher:
         text = json.dumps(message.convert_to_dict())
         self.generate_slack_message(SlackMessage.Types.CRITICAL, "Unhandled message in alert_system", text, None, None, "#test")
 
-    def send_to_slack(self, slack_message):
+    def send_to_slack(self, slack_message: SlackMessage):
         config = SlackAPIConfigurationPolicy()
         config.configuration_file_full_path = os.environ.get("SLACK_API_CONFIGURATION_FILE")
         config.init_from_file()
@@ -36,27 +37,27 @@ class BaseMessageDispatcher:
             slack_api.send_message(slack_message)
         except Exception as exception_inst:
             traceback_str = ''.join(traceback.format_tb(exception_inst.__traceback__))
+            logger.exception(traceback_str)
             message = SlackMessage(message_type=SlackMessage.Types.CRITICAL)
             block = SlackMessage.HeaderBlock()
-            block.text = "Was not able to send slack message"
+            block.text = "Alert system was not able to proceed the slack message"
             message.add_block(block)
 
             block = SlackMessage.SectionBlock()
-            new_text = f"slack_message: '{slack_message.__dict__}'" +\
-                       traceback_str
-
-            block.text = new_text
+            block.text = f"See logs for more information"
             message.add_block(block)
 
             message.src_username = "slack_api"
             message.dst_channel = slack_message.dst_channel
 
             slack_api.send_message(message)
+            raise
 
     def generate_slack_message(self, slack_message_type, header, text, link, link_href, dst_channel):
         try:
             return self.generate_slack_message_helper(slack_message_type, header, text, link, link_href, dst_channel)
         except Exception as exception_inst:
+            logger.exception("Slack message generation failed. Generating default message.")
             traceback_str = ''.join(traceback.format_tb(exception_inst.__traceback__))
             message = SlackMessage(message_type=SlackMessage.Types.CRITICAL)
             block = SlackMessage.HeaderBlock()
@@ -69,7 +70,8 @@ class BaseMessageDispatcher:
                        f"text: '{text}', " \
                        f"link: '{link}', " \
                        f"link_href: '{link_href}', " \
-                       f"dst_channel: '{dst_channel}'\n" +\
+                       f"dst_channel: '{dst_channel}'\n" + \
+                       repr(exception_inst) + "\n" +\
                        traceback_str
 
             block.text = new_text
@@ -88,15 +90,12 @@ class BaseMessageDispatcher:
         block.text = f"{slack_message_type.value}: {header}"
         message.add_block(block)
 
-        block = SlackMessage.SectionBlock()
-        block.text = text
-        message.add_block(block)
-
+        attachment = SlackMessage.Attachment()
+        attachment.text = text
         if link is not None:
-            block = SlackMessage.SectionBlock()
-            block.text = link_href
-            block.link = link
-            message.add_block(block)
+            attachment.add_link(link_href, link)
+
+        message.add_attachment(attachment)
 
         message.src_username = "slack_api"
         message.dst_channel = dst_channel

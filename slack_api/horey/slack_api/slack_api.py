@@ -32,11 +32,11 @@ class SlackAPI(object):
 
         response = requests.post(
             self.webhook_url, data=message.generate_send_request(),
-            headers={"Content-Type": "application/json"}
+            headers={'Content-Type': 'application/json'}
         )
         if response.status_code != 200:
             raise ValueError(
-                f"Request to slack returned an error {response.status_code}, the response is:\n{response.text}"
+                f'Request to slack returned an error {response.status_code}, the response is:\n{response.text}'
             )
 
         return True

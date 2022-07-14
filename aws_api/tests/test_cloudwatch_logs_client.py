@@ -1,7 +1,7 @@
 import os
 import pdb
 
-from horey.aws_api.aws_clients.cloud_watch_client import CloudWatchClient
+from horey.aws_api.aws_clients.cloud_watch_logs_client import CloudWatchLogsClient
 from horey.aws_api.aws_services_entities.cloud_watch_metric import CloudWatchMetric
 from horey.aws_api.base_entities.region import Region
 
@@ -24,28 +24,16 @@ mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 
 
 def test_init_client():
-    assert isinstance(CloudWatchClient(), CloudWatchClient)
+    assert isinstance(CloudWatchLogsClient(), CloudWatchLogsClient)
 
 
-def test_get_region_metrics():
-    client = CloudWatchClient()
-    ret = client.get_region_metrics(Region.get_region("us-east-1"))
-    assert isinstance(ret, list)
-
-
-def test_get_region_alarms():
-    client = CloudWatchClient()
-    ret = client.get_all_alarms()
-    assert isinstance(ret, list)
-
-
-def test_provision_alert():
+def test_get_region_cloud_watch_log_group_metric_filters():
+    client = CloudWatchLogsClient()
+    ret = client.get_region_cloud_watch_log_group_metric_filters(Region.get_region("us-east-1"), full_information=True)
     pdb.set_trace()
-    mock_values["arn"]
-
+    assert isinstance(ret, list)
+    
 
 if __name__ == "__main__":
     test_init_client()
-    test_get_region_metrics()
-    #test_get_region_alarms()
-
+    test_get_region_cloud_watch_log_group_metric_filters()

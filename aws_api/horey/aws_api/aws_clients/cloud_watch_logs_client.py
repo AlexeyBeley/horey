@@ -64,15 +64,32 @@ class CloudWatchLogsClient(Boto3Client):
 
         final_result = list()
         for region in AWSAccount.get_aws_account().regions.values():
-            AWSAccount.set_aws_region(region)
-            for result in self.execute(self.client.describe_metric_filters, "metricFilters"):
-                obj = CloudWatchLogGroupMetricFilter(result)
-                if full_information:
-                    self.update_log_group_full_information(obj)
-
-                obj.region = AWSAccount.get_aws_region()
-                final_result.append(obj)
+            final_result += self.get_region_cloud_watch_log_group_metric_filters(region, full_information=full_information)
         return final_result
+
+    def get_region_cloud_watch_log_group_metric_filters(self, region, full_information=False):
+        """
+        Be sure you know what you do, when you set full_information=True.
+        This can kill your memory, if you have a lot of data in cloudwatch.
+        Better using yield_log_group_streams if you need.
+
+        :param full_information:
+        :return:
+        @param full_information:
+        @param region:
+        """
+
+        final_result = list()
+        AWSAccount.set_aws_region(region)
+        for result in self.execute(self.client.describe_metric_filters, "metricFilters"):
+            obj = CloudWatchLogGroupMetricFilter(result)
+            if full_information:
+                self.update_log_group_full_information(obj)
+
+            obj.region = region
+            final_result.append(obj)
+        return final_result
+
 
     def update_log_group_full_information(self, obj):
         """
