@@ -3,6 +3,7 @@ import json
 import os
 import pdb
 
+
 from horey.h_logger import get_logger
 from horey.serverless.packer.packer import Packer
 from horey.aws_api.aws_services_entities.aws_lambda import AWSLambda
@@ -17,6 +18,8 @@ from horey.aws_api.aws_services_entities.sns_subscription import SNSSubscription
 from horey.aws_api.aws_services_entities.sns_topic import SNSTopic
 from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlarm
 from horey.aws_api.aws_services_entities.cloud_watch_log_group_metric_filter import CloudWatchLogGroupMetricFilter
+from horey.alert_system.lambda_package.message import Message
+
 
 logger = get_logger()
 
@@ -225,16 +228,19 @@ class AlertSystem:
 
         self.aws_api.cloud_watch_client.set_cloudwatch_alarm(alarm)
 
-    def provision_cloudwatch_logs_alarm(self, log_group_name, filter_text, metric_name_raw, message):
+    def provision_cloudwatch_logs_alarm(self, log_group_name, filter_text, metric_name_raw, message_data):
         """
         Provision Cloud watch logs based alarm.
 
-        @param message:
+        @param message_data: dict
         @param filter_text:
         @param log_group_name:
         @param metric_name_raw:
         @return:
         """
+
+        message_data["log_group_name"] = log_group_name
+        message_data["log_group_filter_pattern"] = filter_text
         metric_name = f"metric-{metric_name_raw}"
 
         metric_filter = CloudWatchLogGroupMetricFilter({})
@@ -251,6 +257,11 @@ class AlertSystem:
         metric_filter.region = self.region
         self.aws_api.cloud_watch_logs_client.provision_metric_filter(metric_filter)
 
+        message = Message()
+        message.type = "cloudwatch_logs_metric_sns_alarm"
+        message.data = message_data
+        message.generate_uuid()
+
         alarm = CloudWatchAlarm({})
         alarm.region = self.region
         alarm.name = "test-alarm"
@@ -266,3 +277,4 @@ class AlertSystem:
         alarm.comparison_operator = "GreaterThanThreshold"
         alarm.treat_missing_data = "notBreaching"
         self.provision_cloudwatch_alarm(alarm)
+

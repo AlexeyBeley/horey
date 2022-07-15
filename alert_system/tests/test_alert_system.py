@@ -105,11 +105,8 @@ def test_provision_cloudwatch_logs_alarm():
 
     alert_system = AlertSystem(configuration)
 
-    message = Message()
-    message.type = "test_message"
-    message.generate_uuid()
-    message.data = {"key": "value", "tags": ["infra"]}
-    alert_system.provision_cloudwatch_logs_alarm(mock_values["log_group_name"], "[INFO]", "clwtch-log-error", message)
+    message_data = {"key": "value", "tags": ["infra"]}
+    alert_system.provision_cloudwatch_logs_alarm(mock_values["log_group_name"], "[INFO]", "clwtch-log-error", message_data)
 
 
 def test_deploy_lambda():

@@ -35,5 +35,6 @@ run_lambda_locally:
 	mkdir -p "${DIR_PATH}/lambda_function" &&\
 	tar xf "${ZIP_PATH}" --directory "${DIR_PATH}/lambda_function" &&\
 	cp -i "${TESTS_DIR}/venv_tester.py" "${DIR_PATH}/lambda_function" &&\
+	cp -i "${TESTS_DIR}/test_event.json" "${DIR_PATH}/lambda_function" &&\
 	cd "${DIR_PATH}/lambda_function" &&\
 	python3 venv_tester.py

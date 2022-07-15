@@ -1,0 +1,11 @@
+{
+  "uuid": "9b629cc0-8a1f-42a5-8de6-fa9ad91da0c7",
+  "data": {
+    "log_group_name": "",
+    "log_group_filter_pattern": "",
+    "tags": [
+      "infra"
+    ]
+  },
+  "type": "alert_system_self_monitoring"
+}
