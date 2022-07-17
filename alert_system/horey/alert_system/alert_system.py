@@ -177,7 +177,6 @@ class AlertSystem:
         subscription.protocol = "lambda"
         subscription.topic_arn = topic.arn
         subscription.endpoint = aws_lambda.arn
-
         self.aws_api.provision_sns_subscription(subscription)
 
     def provision_cloudwatch_alarm(self, alarm):
@@ -264,7 +263,7 @@ class AlertSystem:
 
         alarm = CloudWatchAlarm({})
         alarm.region = self.region
-        alarm.name = "test-alarm"
+        alarm.name = f"alarm-{log_group_name}-{metric_name_raw}"
         alarm.actions_enabled = True
         alarm.alarm_description = json.dumps(message.convert_to_dict())
         alarm.metric_name = metric_name

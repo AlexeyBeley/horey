@@ -50,6 +50,8 @@ class SNSClient(Boto3Client):
             obj = SNSSubscription(dict_src)
             final_result.append(obj)
             if full_information:
+                if obj.arn == "PendingConfirmation":
+                    continue
                 self.update_subscription_information(obj)
 
         return final_result
