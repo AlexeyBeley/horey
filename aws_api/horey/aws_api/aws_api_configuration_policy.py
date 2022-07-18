@@ -854,6 +854,10 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_auto_scaling_groups_cache_file.setter
     def aws_api_auto_scaling_groups_cache_file(self, value):
         raise ValueError(value)
+    
+    @property
+    def aws_api_auto_scaling_policies_cache_file(self):
+        return os.path.join(self.aws_api_auto_scaling_cache_dir, "auto_scaling_policies.json")
     # endregion
 
     # region acm

@@ -225,6 +225,7 @@ class AWSAPI:
         self.ecs_clusters = []
         self.ecs_capacity_providers = []
         self.auto_scaling_groups = []
+        self.auto_scaling_policies = []
         self.ecs_task_definitions = []
         self.ecs_services = []
         self.elasticache_clusters = []
@@ -460,6 +461,14 @@ class AWSAPI:
             objects = self.autoscaling_client.get_all_auto_scaling_groups(region=region)
 
         self.auto_scaling_groups = objects
+
+    def init_auto_scaling_policies(self, from_cache=False, cache_file=None, region=None):
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, ECSCluster)
+        else:
+            objects = self.autoscaling_client.get_all_policies(region=region)
+
+        self.auto_scaling_policies = objects
 
     def init_amis(self, from_cache=False, cache_file=None):
         if from_cache:

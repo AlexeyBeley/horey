@@ -42,24 +42,28 @@ class BaseMessageDispatcher:
         return [CloudwatchAlarm(record_dict) for record_dict in message.dict_src["Records"]]
 
     def handle_cloudwatch_logs_metric_alarm(self, alarm):
-        log_group_search_url = self.generate_cloudwatch_log_search_link(alarm, alarm.alert_system_data["log_group_name"], alarm.alert_system_data["log_group_filter_pattern"])
-        if alarm.new_state == "OK":
-            slack_message_type = SlackMessage.Types.STABLE
-            header = "Cloudwatch filter back to normal"
-        elif alarm.new_state == "ALARM":
-            slack_message_type = SlackMessage.Types.CRITICAL
-            header = "Cloudwatch filter"
-        else:
-            header = f'Unknown state: {alarm.new_state}'
-            slack_message_type = SlackMessage.Types.CRITICAL
-            pdb.set_trace()
+        self._handle_cloudwatch_logs_metric_alarm(alarm)
 
-        text = f'region:{alarm.region}\n' \
+    def _handle_cloudwatch_logs_metric_alarm(self, alarm, slack_header=None, slack_message_type=None, slack_text=None):
+        log_group_search_url = self.generate_cloudwatch_log_search_link(alarm, alarm.alert_system_data["log_group_name"], alarm.alert_system_data["log_group_filter_pattern"])
+        if slack_message_type is None:
+            if alarm.new_state == "OK":
+                slack_message_type = SlackMessage.Types.STABLE
+                slack_header = slack_header or "Cloudwatch filter back to normal"
+            elif alarm.new_state == "ALARM":
+                slack_message_type = SlackMessage.Types.CRITICAL
+                slack_header = slack_header or "Cloudwatch filter"
+            else:
+                slack_header = f'Unknown state: {alarm.new_state}'
+                slack_message_type = SlackMessage.Types.CRITICAL
+
+        if slack_text is None:
+            slack_text = f'region:{alarm.region}\n' \
                f'Log group: {alarm.alert_system_data["log_group_name"]}\n' \
                f'Filter pattern: {alarm.alert_system_data["log_group_filter_pattern"]}\n\n' \
                f'{alarm.new_state_reason}'
         for channel in self.get_slack_channels(None, alarm=alarm):
-            slack_message = self.generate_slack_message(slack_message_type, header, text, log_group_search_url, "View logs in CloudWatch", channel)
+            slack_message = self.generate_slack_message(slack_message_type, slack_header, slack_text, log_group_search_url, "View logs in CloudWatch", channel)
             self.send_to_slack(slack_message)
 
     def generate_cloudwatch_log_search_link(self, alarm, log_group_name, log_group_filter_pattern, ):
@@ -165,7 +169,7 @@ class BaseMessageDispatcher:
             logger.exception(f"{repr(exception_inst)}\n{''.join(traceback.format_tb(exception_inst.__traceback__))}")
             slack_channels = [self.router.slack_system_alerts_channel]
         return slack_channels
- 
+
 
 class CloudwatchAlarm:
     def __init__(self, dict_src):
@@ -188,9 +192,9 @@ class CloudwatchAlarm:
     @property
     def alert_system_data(self):
         if self._alert_system_data is None:
-            self._alert_system_data = json.loads(self.sns_message["AlarmDescription"])
+            self._alert_system_data = json.loads(self.sns_message["AlarmDescription"])["data"]
         return self._alert_system_data
-    
+
     @property
     def start_time(self):
         """
@@ -201,11 +205,11 @@ class CloudwatchAlarm:
         if self._start_time is None:
             self._start_time = self.end_time - datetime.timedelta(seconds=self.sns_message["Trigger"]["Period"])
         return self._start_time
-    
+
     @property
     def end_time(self):
         if self._end_time is None:
-            self._end_time = json.loads(self.dict_src["Sns"]["Message"])
+            self._end_time = datetime.datetime.strptime(self.sns_message["StateChangeTime"], "%Y-%m-%dT%H:%M:%S.%f%z")
         return self._end_time
 
     @property
