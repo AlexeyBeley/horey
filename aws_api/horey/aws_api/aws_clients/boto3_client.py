@@ -201,7 +201,10 @@ class Boto3Client:
         if len(ret) == 1:
             return ret[0]
 
-        raise RuntimeError(ret)
+        if len(ret) == 0:
+            raise self.ZeroValuesException(str(ret))
+
+        raise self.ToManyValuesException(str(ret))
 
     @staticmethod
     def wait_for_status(observed_object, update_function, desired_statuses, permit_statues, error_statuses,
@@ -252,4 +255,10 @@ class Boto3Client:
         pass
 
     class ResourceNotFoundError(ValueError):
+        pass
+
+    class ZeroValuesException(RuntimeError):
+        pass
+
+    class ToManyValuesException(RuntimeError):
         pass

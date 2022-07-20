@@ -24,6 +24,7 @@ from horey.aws_api.aws_clients.glue_client import GlueClient
 
 from horey.aws_api.aws_clients.ecs_client import ECSClient
 from horey.aws_api.aws_clients.auto_scaling_client import AutoScalingClient
+from horey.aws_api.aws_clients.application_auto_scaling_client import ApplicationAutoScalingClient
 from horey.aws_api.aws_clients.s3_client import S3Client
 from horey.aws_api.aws_services_entities.s3_bucket import S3Bucket
 
@@ -158,6 +159,7 @@ class AWSAPI:
         self.sesv2_client = SESV2Client()
         self.sns_client = SNSClient()
         self.autoscaling_client = AutoScalingClient()
+        self.application_autoscaling_client = ApplicationAutoScalingClient()
         self.cloudfront_client = CloudfrontClient()
         self.events_client = EventsClient()
         self.secretsmanager_client = SecretsManagerClient()
@@ -226,6 +228,7 @@ class AWSAPI:
         self.ecs_capacity_providers = []
         self.auto_scaling_groups = []
         self.auto_scaling_policies = []
+        self.application_auto_scaling_policies = []
         self.ecs_task_definitions = []
         self.ecs_services = []
         self.elasticache_clusters = []
@@ -469,7 +472,15 @@ class AWSAPI:
             objects = self.autoscaling_client.get_all_policies(region=region)
 
         self.auto_scaling_policies = objects
+    
+    def init_application_auto_scaling_policies(self, from_cache=False, cache_file=None, region=None):
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, ECSCluster)
+        else:
+            objects = self.application_autoscaling_client.get_all_policies(region=region)
 
+        self.application_auto_scaling_policies = objects
+        
     def init_amis(self, from_cache=False, cache_file=None):
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, AMI)
@@ -2370,6 +2381,9 @@ class AWSAPI:
 
     def provision_auto_scaling_group(self, autoscaling_group):
         self.autoscaling_client.provision_auto_scaling_group(autoscaling_group)
+    
+    def provision_auto_scaling_policy(self, autoscaling_policy):
+        self.autoscaling_client.provision_policy(autoscaling_policy)
 
     def provision_glue_table(self, glue_table):
         self.glue_client.provision_table(glue_table)

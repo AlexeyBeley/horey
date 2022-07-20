@@ -15,6 +15,7 @@ class AutoScalingPolicy(AwsObject):
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self._region = None
+        self.target_tracking_configuration = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -61,7 +62,6 @@ class AutoScalingPolicy(AwsObject):
             "ScalingAdjustment": self.init_default_attr,
             "Cooldown": self.init_default_attr,
         }
-        pdb.set_trace()
         self.init_attrs(dict_src, init_options)
 
     def generate_create_request(self):
@@ -74,8 +74,11 @@ class AutoScalingPolicy(AwsObject):
 
         request["ScalingAdjustment"] = self.scaling_adjustment
         request["Cooldown"] = self.cooldown
-        request["Alarms"] = self.alarms
         request["Enabled"] = self.enabled
+
+        if self.target_tracking_configuration is not None:
+            request["TargetTrackingConfiguration"] = self.target_tracking_configuration
+
         return request
 
     def generate_update_request(self, desired_state):

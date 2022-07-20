@@ -169,3 +169,25 @@ class AutoScalingClient(Boto3Client):
             final_result.append(obj)
 
         return final_result
+
+    def provision_policy(self, autoscaling_policy: AutoScalingPolicy):
+        AWSAccount.set_aws_region(autoscaling_policy.region)
+        response = self.provision_policy_raw(autoscaling_policy.generate_create_request())
+        autoscaling_policy.update_from_raw_response(response)
+
+    def provision_policy_raw(self, request_dict):
+        logger.info(f"Creating Auto Scaling Policy: {request_dict}")
+        for response in self.execute(self.client.put_scaling_policy, None, raw_data=True, filters_req=request_dict):
+            del response["ResponseMetadata"]
+            return response
+
+    def update_policy_information(self, policy):
+        AWSAccount.set_aws_region(policy.region)
+        try:
+            dict_src = self.execute_with_single_reply(self.client.describe_policies,
+                                                       "ScalingPolicies",
+                                                       filters_req={"PolicyNames":[policy.name]})
+        except self.ZeroValuesException:
+            return False
+        policy.update_from_raw_response(dict_src)
+        return True

@@ -518,6 +518,13 @@ def test_init_and_cache_auto_scaling_policies():
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_application_auto_scaling_policies():
+    aws_api.init_application_auto_scaling_policies()
+    aws_api.cache_objects(aws_api.application_auto_scaling_policies, configuration.aws_api_application_auto_scaling_policies_cache_file)
+    assert isinstance(aws_api.application_auto_scaling_policies, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_ecs_capacity_providers():
     aws_api.init_ecs_capacity_providers()
     aws_api.cache_objects(aws_api.ecs_capacity_providers, configuration.aws_api_ecs_capacity_providers_cache_file)
@@ -662,4 +669,6 @@ if __name__ == "__main__":
     #test_init_and_cache_sns_topics()
     #test_init_and_cache_sns_subscriptions()
     #test_init_and_cache_auto_scaling_groups()
-    test_init_and_cache_auto_scaling_policies()
+    #test_init_and_cache_auto_scaling_policies()
+    #test_init_and_cache_cloudwatch_alarms()
+    test_init_and_cache_application_auto_scaling_policies()
