@@ -239,8 +239,8 @@ class Boto3Client:
         if function is None:
             function = self.client.get_tags
 
-        logger.info(f"Getting resource tags: {obj.arn}")
-        return list(self.execute(function, "Tags", filters_req={"ResourceArn": obj.arn}))
+        logger.info(f"Getting resource tags: {obj}")
+        return list(self.execute(function, "Tags", filters_req={"ResourceArn": obj}))
 
     def tag_resource(self, obj):
         logger.info(f"Tagging resource: {obj.arn}")
