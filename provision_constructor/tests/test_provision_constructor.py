@@ -22,22 +22,28 @@ def test_add_system_function_swap():
 def test_add_system_function_logstash():
     my_dir = os.path.dirname(os.path.abspath(__file__))
     provision_constructor = ProvisionConstructor(DEPLOYMENT_DIR, horey_repo_path=os.path.join(my_dir, "..", ".."))
-    provision_constructor.add_system_function("logstash")
-    provision_constructor.add_system_function("logstash.configuration",  pipeline_names=["main"])
-    provision_constructor.add_system_function("logstash.input_file", pipe_name="main", input_file_path="/var/log/test.log")
+    provision_constructor.add_system_function("ntp", force=True, rotation_path="/var/log/nginx", file_name="nginx")
+    return
+    provision_constructor.add_system_function("logrotate", force=True, rotation_path="/var/log/nginx", file_name="nginx")
+    provision_constructor.add_system_function("logstash", force=True)
+    provision_constructor.add_system_function("logstash.configuration",  pipeline_names=["main"], force=True)
+    provision_constructor.add_system_function("logstash.input_file", pipe_name="main", input_file_path="/var/log/test.log", force=True)
     logstash_test_dir = os.path.join(my_dir, "logstash")
-    provision_constructor.add_system_function("logstash.filter", pipe_name="main", filter_file_path=os.path.join(logstash_test_dir, "filter.sample"))
-    provision_constructor.add_system_function("logstash.output_file", pipe_name="main", file_path="/var/log/logstash/docker.log")
+    provision_constructor.add_system_function("logstash.filter", pipe_name="main", filter_file_path=os.path.join(logstash_test_dir, "filter.sample"), force=True)
+    provision_constructor.add_system_function("logstash.output_file", pipe_name="main", file_path="/var/log/logstash/docker.log", force=True)
     index = "horey-%{+YYYY.MM}"
-    provision_constructor.add_system_function("logstash.output_opensearch", pipe_name="main", server_address="1.1.1.1", user="user", password="pass", index=index)
-    provision_constructor.add_system_function("systemd")
-    provision_constructor.add_system_function("systemd.override", service_name="logstash")
-    provision_constructor.add_system_function("logstash.reset_service", any=["logstash.input_file",
+    provision_constructor.add_system_function("logstash.output_opensearch", pipe_name="main", server_address="1.1.1.1", user="user", password="pass", index=index, force=True)
+    provision_constructor.add_system_function("systemd", force=True)
+    provision_constructor.add_system_function("systemd.override", service_name="logstash", force=True)
+    provision_constructor.add_system_function("logstash.reset_service", trigger_on_any_provisioned=["logstash.input_file",
                                                                              "logstash.filter",
                                                                              "logstash.output_file",
                                                                              "logstash.output_opensearch",
-                                                                             "systemd.override"])
-
+                                                                             "systemd.override"], force=True)
+    #docker
+    #python3.8
+    #zabbix
+    #system_journal
     assert isinstance(provision_constructor, ProvisionConstructor)
 
 

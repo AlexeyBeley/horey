@@ -1,3 +1,6 @@
+"""
+Checking some new features
+"""
 x = "123456789"
 print(type(x))
 # >>> <class 'str'>

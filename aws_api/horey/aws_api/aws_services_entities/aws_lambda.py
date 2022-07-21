@@ -25,6 +25,10 @@ class AWSLambda(AwsObject):
         self.policy = None
         self._arn = None
         self.environment = None
+        self.timeout = None
+        self.memory_size = None
+        self.ephemeral_storage = None
+        self.role = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -163,6 +167,16 @@ class AWSLambda(AwsObject):
         request["Runtime"] = self.runtime
         request["Tags"] = self.tags
         request["Environment"] = self.environment
+
+        if self.timeout is not None:
+            request["Timeout"] = self.timeout
+
+        if self.memory_size is not None:
+            request["MemorySize"] = self.memory_size
+
+        if self.ephemeral_storage is not None:
+            request["EphemeralStorage"] = self.ephemeral_storage
+
         if self.vpc_config is not None:
             request["VpcConfig"] = self.vpc_config
 
@@ -226,7 +240,7 @@ class AWSLambda(AwsObject):
         @return:
         """
         if desired_aws_lambda.policy is None:
-            return
+            return [], []
 
         if len(desired_aws_lambda.policy["Statement"]) != 1:
             raise NotImplementedError(desired_aws_lambda.policy["Statement"])
@@ -243,7 +257,7 @@ class AWSLambda(AwsObject):
                 request["Principal"] = statement["Principal"]["Service"]
                 request["SourceArn"] = statement["Condition"]["ArnLike"]["AWS:SourceArn"]
                 requests.append(request)
-            return requests
+            return requests, []
 
         add_permissions = []
         remove_permissions = []

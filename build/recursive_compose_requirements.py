@@ -48,7 +48,7 @@ class Package:
             raise NotImplementedError('min("2.2.3", "10.0.0") = 10.0.0')
             return restriction
 
-        raise NotImplementedError("Unknown version restriction")
+        raise NotImplementedError(f"Unknown version restriction {first.lower_limit}")
 
     def init_requirement_line(self):
         line = self.name

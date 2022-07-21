@@ -155,6 +155,10 @@ class ConfigurationPolicy:
 
         return dict_ret
 
+    def print(self):
+        for key, value in self.convert_to_dict(ignore_undefined=True).items():
+            print(f"{key}: {value}")
+
     def generate_configuration_file(self, output_file_name):
         dict_values = self.convert_to_dict()
 

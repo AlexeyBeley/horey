@@ -31,14 +31,12 @@ class Provisioner(SystemFunctionCommon):
 
     @staticmethod
     def check_pipelines_yml_file():
-        pdb.set_trace()
         pipelines_file = SystemFunctionCommon.current_subpath("pipelines.yml")
         if not SystemFunctionCommon.compare_files(pipelines_file, "/etc/logstash/pipelines.yml"):
             sys.exit(1)
 
     @staticmethod
     def check_pipeline_conf_files():
-        pdb.set_trace()
         pipeline_files_dir = SystemFunctionCommon.current_subpath("pipelines")
         for file_name in os.listdir(pipeline_files_dir):
             if not os.path.exists(os.path.join("/etc/logstash/conf.d/", file_name)):

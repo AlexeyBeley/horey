@@ -58,6 +58,12 @@ class EC2LaunchTemplate(AwsObject):
         ]
         return request
 
+    def generate_modify_launch_template_request(self, version):
+        request = dict()
+        request["LaunchTemplateName"] = self.name
+        request["DefaultVersion"] = version
+        return request
+
     def generate_dispose_request(self):
         request = dict()
         request["LaunchTemplateName"] = self.name

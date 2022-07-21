@@ -36,14 +36,20 @@ class CloudWatchLogsClient(Boto3Client):
 
         final_result = list()
         for region in AWSAccount.get_aws_account().regions.values():
-            AWSAccount.set_aws_region(region)
-            for result in self.execute(self.client.describe_log_groups, "logGroups"):
-                obj = CloudWatchLogGroup(result)
-                if full_information:
-                    self.update_log_group_full_information(obj)
+            final_result += self.get_region_cloud_watch_log_groups(region, full_information=full_information)
+        return final_result
 
-                obj.region = AWSAccount.get_aws_region()
-                final_result.append(obj)
+    def get_region_cloud_watch_log_groups(self, region, full_information=False):
+        final_result = list()
+        AWSAccount.set_aws_region(region)
+        for result in self.execute(self.client.describe_log_groups, "logGroups"):
+            obj = CloudWatchLogGroup(result)
+            if full_information:
+                self.update_log_group_full_information(obj)
+
+            obj.region = AWSAccount.get_aws_region()
+            final_result.append(obj)
+
         return final_result
 
     def get_cloud_watch_log_group_metric_filters(self, full_information=False):
@@ -121,3 +127,18 @@ class CloudWatchLogsClient(Boto3Client):
                                      filters_req={"logGroupName": log_group.name, "logStreamName": stream.name, "nextToken": token}):
             if token != response["nextForwardToken"]:
                 raise ValueError()
+
+    def provision_log_group(self, log_group: CloudWatchLogGroup):
+        region_log_groups = self.get_region_cloud_watch_log_groups(log_group.region)
+        for region_log_group in region_log_groups:
+            if region_log_group.name == log_group.name:
+                log_group.update_from_raw_response(region_log_group.dict_src)
+                return
+
+        AWSAccount.set_aws_region(log_group.region)
+        self.provision_log_group_raw(log_group.generate_create_request())
+
+    def provision_log_group_raw(self, request_dict):
+        logger.info(f"Creating log group '{request_dict}'")
+        for response in self.execute(self.client.create_log_group, None, raw_data=True, filters_req=request_dict):
+            return response

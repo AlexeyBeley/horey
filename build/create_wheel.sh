@@ -27,6 +27,7 @@ if [ -d ${PACKAGE_TMP_DIR_FULL_PATH}/dist ]
 then
  echo "Removing old package before creating new wheel: ${PACKAGE_TMP_DIR_FULL_PATH}"
  rm -rf ${PACKAGE_TMP_DIR_FULL_PATH}/dist/*
+ rm -rf ${PACKAGE_TMP_DIR_FULL_PATH}/build/*
 fi
 
-python3 setup.py sdist bdist_wheel;
+python3.8 setup.py sdist bdist_wheel;

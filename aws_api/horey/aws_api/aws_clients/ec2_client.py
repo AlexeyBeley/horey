@@ -1,6 +1,8 @@
 """
 AWS ec2 client to handle ec2 service API requests.
 """
+import datetime
+
 import time
 import base64
 from horey.aws_api.aws_services_entities.subnet import Subnet
@@ -69,18 +71,18 @@ class EC2Client(Boto3Client):
 
         return final_result
 
-    def get_all_vpcs(self, region=None):
+    def get_all_vpcs(self, region=None, filters=None):
         """
         Get all interfaces in all regions.
         :return:
         """
 
         if region is not None:
-            return self.get_region_vpcs(region)
+            return self.get_region_vpcs(region, filters=filters)
 
         final_result = list()
         for region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_vpcs(region)
+            final_result += self.get_region_vpcs(region, filters=filters)
 
         return final_result
 
@@ -100,7 +102,8 @@ class EC2Client(Boto3Client):
     def init_vpc_attributes(self, vpc):
         pdb.set_trace()
         for attr_name in ["EnableDnsHostnames", "EnableDnsSupport"]:
-            for value in self.execute(self.client.describe_vpc_attribute, attr_name, filters_req={"Attribute": attr_name, "VpcId":vpc.id}):
+            for value in self.execute(self.client.describe_vpc_attribute, attr_name,
+                                      filters_req={"Attribute": attr_name, "VpcId": vpc.id}):
                 vpc.init_default_attr(attr_name, value)
 
     def get_all_availability_zones(self, region=None):
@@ -241,7 +244,7 @@ class EC2Client(Boto3Client):
             group_id = self.raw_create_security_group(security_group.generate_create_request())
             security_group.id = group_id
             # wait for propagation?
-            #for i in range(60):
+            # for i in range(60):
             #    region_groups = self.get_all_security_groups_in_region(security_group.region, full_information=False)
             #    named_region_groups = CommonUtils.find_objects_by_values(region_groups, {"name": security_group.name}, max_count=1)
             #    if len(named_region_groups) > 0:
@@ -253,7 +256,8 @@ class EC2Client(Boto3Client):
                 raise
             logger.warning(repr_exception_inst)
             region_groups = self.get_region_security_groups(security_group.region, full_information=False)
-            existing_group = CommonUtils.find_objects_by_values(region_groups, {"name": security_group.name}, max_count=1)[0]
+            existing_group = \
+            CommonUtils.find_objects_by_values(region_groups, {"name": security_group.name}, max_count=1)[0]
             security_group.update_from_raw_create(existing_group.dict_src)
 
     def raw_create_security_group(self, request_dict):
@@ -278,12 +282,15 @@ class EC2Client(Boto3Client):
     def authorize_security_group_ingress_raw(self, request_dict, ignore_exists=False):
         logger.info(f"Authorizing security group ingress: {request_dict}")
         if ignore_exists:
-            for response in self.execute(self.client.authorize_security_group_ingress, "GroupId", filters_req=request_dict,
-                                    raw_data=True, exception_ignore_callback=lambda x: "already exists" in repr(x)):
+            for response in self.execute(self.client.authorize_security_group_ingress, "GroupId",
+                                         filters_req=request_dict,
+                                         raw_data=True,
+                                         exception_ignore_callback=lambda x: "already exists" in repr(x)):
                 return response
         else:
-            for response in self.execute(self.client.authorize_security_group_ingress, "GroupId", filters_req=request_dict,
-                             raw_data=True):
+            for response in self.execute(self.client.authorize_security_group_ingress, "GroupId",
+                                         filters_req=request_dict,
+                                         raw_data=True):
                 return response
 
     def create_instance(self, request_dict):
@@ -294,12 +301,7 @@ class EC2Client(Boto3Client):
         for response in self.execute(self.client.create_key_pair, None, raw_data=True, filters_req=request_dict):
             return response
 
-    def provision_launch_template_raw(self, request_dict):
-        logger.info(f"Creating Launch Template: {request_dict}")
-        for response in self.execute(self.client.create_launch_template, "LaunchTemplate", filters_req=request_dict):
-            return response
-
-    def request_spot_fleet(self, request_dict):
+    def request_spot_fleet_raw(self, request_dict):
         for response in self.execute(self.client.request_spot_fleet, "SpotFleetRequestId", filters_req=request_dict):
             return response
 
@@ -328,11 +330,11 @@ class EC2Client(Boto3Client):
 
         return final_result
 
-    def get_region_launch_templates(self, region, full_information=False):
+    def get_region_launch_templates(self, region, full_information=False, custom_filters=None):
         AWSAccount.set_aws_region(region)
         final_result = list()
         logger.info(f"Fetching all launch templates from {region}")
-        for ret in self.execute(self.client.describe_launch_templates, "LaunchTemplates"):
+        for ret in self.execute(self.client.describe_launch_templates, "LaunchTemplates", filters_req=custom_filters):
             obj = EC2LaunchTemplate(ret)
             obj.region = region
             if full_information is True:
@@ -341,21 +343,29 @@ class EC2Client(Boto3Client):
             final_result.append(obj)
         return final_result
 
-    def get_all_launch_template_versions(self, launch_template):
+    def get_all_launch_template_versions(self, region=None):
         """
         Get all launch_template_versions in all regions.
         :return:
         """
+        if region is not None:
+            return self.get_region_launch_template_versions(region)
 
         final_result = []
-        filters_req = {"LaunchTemplateId": launch_template.id}
-        AWSAccount.set_aws_region(launch_template.region)
-        for dict_src in self.execute(self.client.describe_launch_template_versions, "LaunchTemplateVersions", filters_req=filters_req):
-            obj = EC2LaunchTemplateVersion(dict_src)
-            final_result.append(obj)
+        for region in AWSAccount.get_aws_account().regions.values():
+            final_result += self.get_region_launch_template_versions(region)
 
         return final_result
-    
+
+    def get_region_launch_template_versions(self, region, custom_filters=None):
+        AWSAccount.set_aws_region(region)
+        final_result = []
+        for dict_src in self.execute(self.client.describe_launch_template_versions, "LaunchTemplateVersions",
+                                     filters_req=custom_filters):
+            obj = EC2LaunchTemplateVersion(dict_src)
+            final_result.append(obj)
+        return final_result
+
     def get_security_group(self, security_group):
         if security_group.id is not None:
             filters_req = {"GroupIds": [security_group.id]}
@@ -366,7 +376,8 @@ class EC2Client(Boto3Client):
             vpc_filter = {'Name': 'vpc-id', 'Values': [security_group.vpc_id]}
             filters_req = {"GroupNames": [security_group.name], "Filters": [vpc_filter]}
             pdb.set_trace()
-            for response in self.execute(self.client.describe_security_groups, "SecurityGroups", filters_req=filters_req):
+            for response in self.execute(self.client.describe_security_groups, "SecurityGroups",
+                                         filters_req=filters_req):
                 pdb.set_trace()
         else:
             raise NotImplementedError()
@@ -451,10 +462,13 @@ class EC2Client(Boto3Client):
             if full_information is True:
                 # todo: replace with update_managed_prefix_list_full_information
                 filters_req = {"PrefixListId": obj.id}
-                for associations_response in self.execute(self.client.get_managed_prefix_list_associations, "PrefixListAssociations", filters_req=filters_req, exception_ignore_callback=_ignore_unsupported_operation_callback):
+                for associations_response in self.execute(self.client.get_managed_prefix_list_associations,
+                                                          "PrefixListAssociations", filters_req=filters_req,
+                                                          exception_ignore_callback=_ignore_unsupported_operation_callback):
                     obj.add_association_from_raw_response(associations_response)
 
-                for entries_response in self.execute(self.client.get_managed_prefix_list_entries, "Entries", filters_req=filters_req):
+                for entries_response in self.execute(self.client.get_managed_prefix_list_entries, "Entries",
+                                                     filters_req=filters_req):
                     obj.add_entry_from_raw_response(entries_response)
 
             final_result.append(obj)
@@ -466,7 +480,8 @@ class EC2Client(Boto3Client):
         for vpc_exists in lst_vpcs:
             if vpc_exists.get_tagname(ignore_missing_tag=True) == vpc.get_tagname():
                 if vpc_exists.cidr_block != vpc.cidr_block:
-                    raise RuntimeError(f"VPC {vpc_exists.name} exists with different cidr_block {vpc_exists.cidr_block} != {vpc.cidr_block}")
+                    raise RuntimeError(
+                        f"VPC {vpc_exists.name} exists with different cidr_block {vpc_exists.cidr_block} != {vpc.cidr_block}")
                 vpc.id = vpc_exists.id
 
         if vpc.id is None:
@@ -500,7 +515,7 @@ class EC2Client(Boto3Client):
                 if region_subnet.get_tagname(ignore_missing_tag=True) == subnet.get_tagname():
                     if region_subnet.cidr_block != subnet.cidr_block:
                         raise RuntimeError(
-                        f"Subnet {subnet.get_tagname()} exists with different cidr_block {region_subnet.cidr_block} != {subnet.cidr_block}")
+                            f"Subnet {subnet.get_tagname()} exists with different cidr_block {region_subnet.cidr_block} != {subnet.cidr_block}")
                     subnet.update_from_raw_create(region_subnet.dict_src)
 
         for subnet in subnets:
@@ -520,7 +535,8 @@ class EC2Client(Boto3Client):
             return response
 
     def provision_managed_prefix_list(self, managed_prefix_list, declarative=False):
-        raw_region_pl = self.raw_describe_managed_prefix_list(managed_prefix_list.region, prefix_list_name=managed_prefix_list.name)
+        raw_region_pl = self.raw_describe_managed_prefix_list(managed_prefix_list.region,
+                                                              prefix_list_name=managed_prefix_list.name)
 
         if raw_region_pl is None:
             AWSAccount.set_aws_region(managed_prefix_list.region.region_mark)
@@ -533,7 +549,8 @@ class EC2Client(Boto3Client):
         request = region_object.get_entries_modify_request(managed_prefix_list, declarative)
         if request is not None:
             self.raw_modify_managed_prefix_list(request)
-            raw_region_pl = self.raw_describe_managed_prefix_list(managed_prefix_list.region, prefix_list_name=managed_prefix_list.name)
+            raw_region_pl = self.raw_describe_managed_prefix_list(managed_prefix_list.region,
+                                                                  prefix_list_name=managed_prefix_list.name)
 
         managed_prefix_list.update_from_raw_create(raw_region_pl)
 
@@ -552,13 +569,52 @@ class EC2Client(Boto3Client):
 
         for response in self.execute(self.client.describe_images, "Images", filters_req=custom_filters):
             obj = AMI(response)
+            obj.region = AWSAccount.get_aws_region()
             if full_information is True:
                 pass
 
             final_result.append(obj)
 
         return final_result
-    
+
+    def create_image(self, instance: EC2Instance, timeout=600):
+        # snapshots_raw = self.create_snapshots(instance)
+        AWSAccount.set_aws_region(instance.region)
+        ami_id = self.create_image_raw(instance.generate_create_image_request())
+        filter_request = dict()
+        filter_request["ImageIds"] = [ami_id]
+
+        amis = self.get_region_amis(instance.region, custom_filters=filter_request)
+        if len(amis) != 1:
+            raise RuntimeError(filter_request)
+        new_ami = amis[0]
+
+        logger.info(f"Starting waiting loop for ami to become ready: {new_ami.id}")
+
+        self.wait_for_status(new_ami, self.update_image_information, [new_ami.State.AVAILABLE],
+                             [new_ami.State.PENDING], [new_ami.State.INVALID,
+                                                       new_ami.State.DEREGISTERED,
+                                                       new_ami.State.TRANSIENT,
+                                                       new_ami.State.FAILED,
+                                                       new_ami.State.ERROR],
+                             timeout=timeout)
+        return new_ami
+
+    def create_image_raw(self, request_dict):
+        for response in self.execute(self.client.create_image, "ImageId", filters_req=request_dict):
+            return response
+
+    def create_snapshots(self, instance):
+        start = datetime.datetime.now()
+        AWSAccount.set_aws_region(instance.region)
+        ret = self.create_snapshots_raw(instance.generate_create_snapshots_request())
+        end = datetime.datetime.now()
+        logger.info(f"Snapshot creation took {end - start}")
+        return ret
+
+    def create_snapshots_raw(self, request_dict):
+        return list(self.execute(self.client.create_snapshots, "Snapshots", filters_req=request_dict))
+
     def get_all_key_pairs(self, full_information=True, region=None):
         if region is not None:
             return self.get_region_key_pairs(region, full_information=full_information)
@@ -580,7 +636,7 @@ class EC2Client(Boto3Client):
             final_result.append(obj)
 
         return final_result
-    
+
     def get_all_internet_gateways(self, full_information=True, region=None):
         if region is not None:
             return self.get_region_internet_gateways(region, full_information=full_information)
@@ -624,7 +680,7 @@ class EC2Client(Boto3Client):
             final_result.append(obj)
 
         return final_result
-    
+
     def get_all_route_tables(self, full_information=True, region=None):
         if region is not None:
             return self.get_region_route_tables(region, full_information=full_information)
@@ -646,7 +702,7 @@ class EC2Client(Boto3Client):
             final_result.append(obj)
 
         return final_result
-   
+
     def get_all_elastic_addresses(self, full_information=True, region=None):
         if region is not None:
             return self.get_region_elastic_addresses(region, full_information=full_information)
@@ -668,7 +724,7 @@ class EC2Client(Boto3Client):
             final_result.append(obj)
 
         return final_result
-    
+
     def get_all_nat_gateways(self, full_information=True, region=None):
         if region is not None:
             return self.get_region_nat_gateways(region, full_information=full_information)
@@ -739,7 +795,7 @@ class EC2Client(Boto3Client):
             if region_elastic_address.get_tagname(ignore_missing_tag=True) == elastic_address.get_tagname():
                 elastic_address.update_from_raw_response(region_elastic_address.dict_src)
                 return
-                
+
         try:
             response = self.provision_elastic_address_raw(elastic_address.generate_create_request())
             del response["ResponseMetadata"]
@@ -756,14 +812,16 @@ class EC2Client(Boto3Client):
     def provision_vpc_peering(self, vpc_peering):
         region_vpc_peerings = self.get_region_vpc_peerings(vpc_peering.region)
         for region_vpc_peering in region_vpc_peerings:
-            if region_vpc_peering.get_status() in [region_vpc_peering.Status.DELETED, region_vpc_peering.Status.DELETING]:
+            if region_vpc_peering.get_status() in [region_vpc_peering.Status.DELETED,
+                                                   region_vpc_peering.Status.DELETING]:
                 continue
             if region_vpc_peering.get_tagname(ignore_missing_tag=True) != vpc_peering.get_tagname():
                 continue
 
             vpc_peering.update_from_raw_response(region_vpc_peering.dict_src)
 
-            if region_vpc_peering.get_status() in [region_vpc_peering.Status.ACTIVE, region_vpc_peering.Status.PROVISIONING]:
+            if region_vpc_peering.get_status() in [region_vpc_peering.Status.ACTIVE,
+                                                   region_vpc_peering.Status.PROVISIONING]:
                 return
             break
 
@@ -788,23 +846,66 @@ class EC2Client(Boto3Client):
 
     def provision_vpc_peering_raw(self, request_dict):
         logger.info(f"Creating VPC Peering: {request_dict}")
-        for response in self.execute(self.client.create_vpc_peering_connection, "VpcPeeringConnection", filters_req=request_dict):
+        for response in self.execute(self.client.create_vpc_peering_connection, "VpcPeeringConnection",
+                                     filters_req=request_dict):
             return response
 
     def accept_vpc_peering_connection_raw(self, request_dict):
-        for response in self.execute(self.client.accept_vpc_peering_connection, "VpcPeeringConnection", filters_req=request_dict):
+        for response in self.execute(self.client.accept_vpc_peering_connection, "VpcPeeringConnection",
+                                     filters_req=request_dict):
             return response
 
-    def provision_launch_template(self, launch_template):
-        region_objects = self.get_region_launch_templates(launch_template.region)
-        for region_object in region_objects:
-            if region_object.name == launch_template.name:
-                launch_template.update_from_raw_response(region_object.dict_src)
-                return
+    def find_launch_template(self, launch_template):
+        region_objects = self.get_region_launch_templates(launch_template.region, custom_filters={"LaunchTemplateNames": [launch_template.name]})
 
-        AWSAccount.set_aws_region(launch_template.region)
+        if len(region_objects) > 1:
+            raise RuntimeError(f"len(region_objects) > 1")
+
+        return region_objects[0] if region_objects else None
+
+    def find_region_launch_template_version(self, launch_template):
+        region_objects = self.get_region_launch_template_versions(launch_template.region, custom_filters={"LaunchTemplateName": launch_template.name, "Versions": ["$Latest"]})
+
+        if len(region_objects) > 1:
+            raise RuntimeError(f"len(region_objects) > 1")
+
+        return region_objects[0] if region_objects else None
+
+    def provision_launch_template(self, launch_template: EC2LaunchTemplate):
+        current_launch_template_version = self.find_region_launch_template_version(launch_template)
+        if current_launch_template_version is not None:
+            provision_version_request = current_launch_template_version.generate_create_request(launch_template)
+            if provision_version_request:
+                response = self.provision_launch_template_version_raw(provision_version_request)
+                current_launch_template_version.update_from_raw_response(response)
+                request = launch_template.generate_modify_launch_template_request(str(current_launch_template_version.version_number))
+                response = self.modify_launch_template_raw(request)
+                launch_template.update_from_raw_response(response)
+            else:
+                region_object = self.find_launch_template(launch_template)
+                launch_template.update_from_raw_response(region_object.dict_src)
+            return
+
         response = self.provision_launch_template_raw(launch_template.generate_create_request())
         launch_template.update_from_raw_response(response)
+
+    def provision_launch_template_raw(self, request_dict):
+        logger.info(f"Creating Launch Template: {request_dict}")
+        for response in self.execute(self.client.create_launch_template, "LaunchTemplate", filters_req=request_dict):
+            return response
+
+    def provision_launch_template_version_raw(self, request_dict):
+        logger.info(f"Creating Launch Template Version: {request_dict}")
+        for response in self.execute(self.client.create_launch_template_version, None, raw_data=True, filters_req=request_dict):
+            if "Warning" in str(response):
+                raise RuntimeError(response)
+            return response["LaunchTemplateVersion"]
+
+    def modify_launch_template_raw(self, request_dict):
+        logger.info(f"Modifying Launch Template Version: {request_dict}")
+        for response in self.execute(self.client.modify_launch_template, "LaunchTemplate",
+                                     filters_req=request_dict):
+            return response
 
     def provision_nat_gateway(self, nat_gateway):
         region_gateways = self.get_region_nat_gateways(nat_gateway.region)
@@ -825,7 +926,7 @@ class EC2Client(Boto3Client):
     def provision_nat_gateway_raw(self, request_dict):
         for response in self.execute(self.client.create_nat_gateway, "NatGateway", filters_req=request_dict):
             return response
-    
+
     def provision_route_table(self, route_table):
         region_route_tables = self.get_region_route_tables(route_table.region)
         for region_route_table in region_route_tables:
@@ -886,11 +987,12 @@ class EC2Client(Boto3Client):
         for instance in self.execute(self.client.describe_instances, "Reservations"):
             final_result.extend(instance['Instances'])
         return [EC2Instance(instance) for instance in final_result]
-    
-    def provision_ec2_instance(self, ec2_instance):
+
+    def provision_ec2_instance(self, ec2_instance: EC2Instance, wait_until_active=False):
         region_ec2_instances = self.get_region_ec2_instances(ec2_instance.region)
         for region_ec2_instance in region_ec2_instances:
-            if region_ec2_instance.get_state() not in [region_ec2_instance.State.RUNNING, region_ec2_instance.State.PENDING]:
+            if region_ec2_instance.get_state() not in [region_ec2_instance.State.RUNNING,
+                                                       region_ec2_instance.State.PENDING]:
                 continue
 
             if region_ec2_instance.get_tagname(ignore_missing_tag=True) == ec2_instance.get_tagname():
@@ -904,10 +1006,47 @@ class EC2Client(Boto3Client):
             logger.warning(repr(exception_inst))
             raise
 
+        if wait_until_active:
+            try:
+                self.wait_for_status(ec2_instance, self.update_instance_information, [ec2_instance.State.RUNNING],
+                                     [ec2_instance.State.PENDING], [ec2_instance.State.SHUTTING_DOWN,
+                                                                    ec2_instance.State.TERMINATED,
+                                                                    ec2_instance.State.STOPPING,
+                                                                    ec2_instance.State.STOPPED])
+            except Exception as error_instance:
+                logger.error(repr(error_instance))
+                time.sleep(30)
+                self.wait_for_status(ec2_instance, self.update_instance_information, [ec2_instance.State.RUNNING],
+                                     [ec2_instance.State.PENDING], [ec2_instance.State.SHUTTING_DOWN,
+                                                                    ec2_instance.State.TERMINATED,
+                                                                    ec2_instance.State.STOPPING,
+                                                                    ec2_instance.State.STOPPED])
+
+    def update_instance_information(self, instance: EC2Instance):
+        filters = [{
+            "Name": "instance-id",
+            "Values": [
+                instance.id
+            ]
+        }]
+        instance_new = self.get_region_instances(instance.region, filters=filters)[0]
+        instance.update_from_raw_response(instance_new.dict_src)
+
+    def update_image_information(self, ami: AMI):
+        filter_request = dict()
+        filter_request["ImageIds"] = [ami.id]
+        amis = self.get_region_amis(ami.region, custom_filters=filter_request)
+        if len(amis) != 1:
+            raise RuntimeError(filter_request)
+
+        ami_new = amis[0]
+
+        ami.update_from_raw_response(ami_new.dict_src)
+
     def provision_ec2_instance_raw(self, request_dict):
         for response in self.execute(self.client.run_instances, "Instances", filters_req=request_dict):
             return response
-    
+
     def provision_key_pair(self, key_pair):
         region_key_pairs = self.get_region_key_pairs(key_pair.region)
         for region_key_pair in region_key_pairs:
@@ -944,3 +1083,10 @@ class EC2Client(Boto3Client):
                                      exception_ignore_callback=lambda x: "NotFoundException" in repr(x)):
             return response
 
+    def dispose_instance(self, instance):
+        AWSAccount.set_aws_region(instance.region)
+        self.dispose_instance_raw(instance.generate_dispose_request())
+
+    def dispose_instance_raw(self, request_dict):
+        for response in self.execute(self.client.terminate_instances, "TerminatingInstances", filters_req=request_dict):
+            return response

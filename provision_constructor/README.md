@@ -1,16 +1,9 @@
-# Basic utils 
+# Provision Constructor 
+Provision Constructor used to provision linux based environments as a code.
 
 ##Concepts:
-* No Horey packages can be used in requirements.txt!
-* Try to make the utils as simple as possible to eliminate the need in logger.
-* If logger is needed (working with IO for example) - must be passed explicitly from outside.
-* This is in order to make use of these utils in development process itself- packaging/building/testing etc.
-
-
-##Action Manager:
-Utils to work with argparse
-
-##Common Utils:
-Searchers: Search for item in iterable
-Conversions: bytes to Mb/Gig/Tr
-
+* System_function: some function of a system. It can be as small as an apt package or 
+  set of package+cpnfiguration files. Or even a set of packages.
+* System function has unit-test: a test performed in order to check weather the system function was already deployed.
+* Provision Constructor is being deployed in the target and then provisions all the system_functions needed.  
+  

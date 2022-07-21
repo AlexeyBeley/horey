@@ -19,6 +19,8 @@ class TemplateClient(Boto3Client):
     def __init__(self):
         client_name = "Template"
         super().__init__(client_name)
+        pdb.set_trace()
+        ret = list(self.execute(self.client.get_databases, None, raw_data=True))
 
     def get_all_template_entities(self, region=None, full_information=True):
         """

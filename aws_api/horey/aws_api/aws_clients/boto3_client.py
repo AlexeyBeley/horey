@@ -32,6 +32,14 @@ class Boto3Client:
         """
 
         self.client_name = client_name
+        self._account_id = None
+
+    @property
+    def account_id(self):
+        if self._account_id is None:
+            sts_client = self.SESSIONS_MANAGER.get_client("sts")
+            self._account_id = sts_client.get_caller_identity()["Account"]
+        return self._account_id
 
     @property
     def client(self):
@@ -50,7 +58,8 @@ class Boto3Client:
         """
         raise RuntimeError(f"Nobody can set a client explicitly in{self}")
 
-    def yield_with_paginator(self, func_command, return_string, filters_req=None, raw_data=False, internal_starting_token=False, exception_ignore_callback=None):
+    def yield_with_paginator(self, func_command, return_string, filters_req=None, raw_data=False,
+                             internal_starting_token=False, exception_ignore_callback=None):
         """
         Function to yeild replies, if there is no need to get all replies.
         It can save API requests if the expected information found before.
@@ -70,7 +79,10 @@ class Boto3Client:
         while retry_counter < self.EXECUTION_RETRY_COUNT:
             try:
                 logger.info(f"Start paginating with starting_token: '{starting_token}' and args '{filters_req}'")
-                for result, new_starting_token in self.unpack_pagination_loop(starting_token, func_command.__name__, return_string, filters_req, raw_data=raw_data, internal_starting_token=internal_starting_token):
+                for result, new_starting_token in self.unpack_pagination_loop(starting_token, func_command.__name__,
+                                                                              return_string, filters_req,
+                                                                              raw_data=raw_data,
+                                                                              internal_starting_token=internal_starting_token):
                     retry_counter = 0
                     starting_token = new_starting_token
                     yield result
@@ -78,25 +90,30 @@ class Boto3Client:
             except self.NoReturnStringError:
                 raise
             except Exception as exception_instance:
-                logger.warning(f"Exception received in paginator '{func_command.__name__}' Error: {repr(exception_instance)}")
+                logger.warning(
+                    f"Exception received in paginator '{func_command.__name__}' Error: {repr(exception_instance)}")
                 exception_weight = 10
                 time_to_sleep = 1
 
                 if "Throttling" in repr(exception_instance):
                     exception_weight = 1
                     time_to_sleep = retry_counter + exception_weight
-                    logger.error(f"Retrying after Throttling '{func_command.__name__}' attempt {retry_counter}/{self.EXECUTION_RETRY_COUNT} Error: {exception_instance}")
+                    logger.error(
+                        f"Retrying after Throttling '{func_command.__name__}' attempt {retry_counter}/{self.EXECUTION_RETRY_COUNT} Error: {exception_instance}")
 
                 if exception_ignore_callback is not None and exception_ignore_callback(exception_instance):
                     return
 
                 retry_counter += exception_weight
                 time.sleep(time_to_sleep)
-                logger.warning(f"Retrying '{func_command.__name__}' attempt {retry_counter}/{self.EXECUTION_RETRY_COUNT} Error: {exception_instance}")
+                logger.warning(
+                    f"Retrying '{func_command.__name__}' attempt {retry_counter}/{self.EXECUTION_RETRY_COUNT} Error: {exception_instance}")
         else:
-            raise TimeoutError(f"Max attempts reached while executing '{func_command.__name__}': {self.EXECUTION_RETRY_COUNT}")
+            raise TimeoutError(
+                f"Max attempts reached while executing '{func_command.__name__}': {self.EXECUTION_RETRY_COUNT}")
 
-    def unpack_pagination_loop(self, starting_token, func_command_name, return_string, filters_req, raw_data=False, internal_starting_token=False):
+    def unpack_pagination_loop(self, starting_token, func_command_name, return_string, filters_req, raw_data=False,
+                               internal_starting_token=False):
         for _page in self.client.get_paginator(func_command_name).paginate(
                 PaginationConfig={self.NEXT_PAGE_REQUEST_KEY: starting_token},
                 **filters_req):
@@ -128,7 +145,8 @@ class Boto3Client:
         else:
             return _page.get(self.NEXT_PAGE_RESPONSE_KEY)
 
-    def execute(self, func_command, return_string, filters_req=None, raw_data=False, internal_starting_token=False, exception_ignore_callback=None):
+    def execute(self, func_command, return_string, filters_req=None, raw_data=False, internal_starting_token=False,
+                exception_ignore_callback=None):
         """
         Command to execute clients bound function- execute with paginator if available.
 
@@ -143,7 +161,9 @@ class Boto3Client:
             filters_req = {}
 
         if self.client.can_paginate(func_command.__name__):
-            for ret_obj in self.yield_with_paginator(func_command, return_string, filters_req=filters_req, raw_data=raw_data, internal_starting_token=internal_starting_token, exception_ignore_callback=exception_ignore_callback):
+            for ret_obj in self.yield_with_paginator(func_command, return_string, filters_req=filters_req,
+                                                     raw_data=raw_data, internal_starting_token=internal_starting_token,
+                                                     exception_ignore_callback=exception_ignore_callback):
                 yield ret_obj
             return
 
@@ -170,6 +190,19 @@ class Boto3Client:
         for ret_obj in ret_lst:
             yield ret_obj
 
+    def execute_with_single_reply(self, func_command, return_string, filters_req=None, raw_data=False,
+                                  internal_starting_token=False, exception_ignore_callback=None):
+
+        ret = list(self.execute(func_command, return_string,
+                                filters_req=filters_req,
+                                raw_data=raw_data,
+                                internal_starting_token=internal_starting_token,
+                                exception_ignore_callback=exception_ignore_callback))
+        if len(ret) == 1:
+            return ret[0]
+
+        raise RuntimeError(ret)
+
     @staticmethod
     def wait_for_status(observed_object, update_function, desired_statuses, permit_statues, error_statuses,
                         timeout=300, sleep_time=5):
@@ -192,14 +225,28 @@ class Boto3Client:
                     f"Permit statuses were set but {observed_object.id} is in a different status: {object_status}")
 
             logger.info(
-                f"Status waiter for {observed_object.id} is going to sleep for {sleep_time}. Status: {object_status}")
+                f"[{i * sleep_time}/{timeout} seconds] Status waiter for {observed_object.id} is going to sleep for {sleep_time}. Status: {object_status}")
             time.sleep(sleep_time)
         else:
-            raise TimeoutError(f"Cluster did not become available for {timeout} seconds")
+            raise TimeoutError(
+                f"Did not reach one of the desired status {desired_statuses} for {timeout} seconds. Current status: {object_status}")
 
         end_time = datetime.datetime.now()
         logger.info(
             f"Finished waiting loop for {observed_object.id} to become one of {desired_statuses}. Took {end_time - start_time}")
+
+    def get_tags(self, obj, function=None):
+        if function is None:
+            function = self.client.get_tags
+
+        logger.info(f"Getting resource tags: {obj.arn}")
+        return list(self.execute(function, "Tags", filters_req={"ResourceArn": obj.arn}))
+
+    def tag_resource(self, obj):
+        logger.info(f"Tagging resource: {obj.arn}")
+        for response in self.execute(self.client.tag_resource, "Tags",
+                                     filters_req={"ResourceArn": obj.arn, "TagsToAdd": obj.tags}, raw_data=True):
+            return response
 
     class NoReturnStringError(Exception):
         pass

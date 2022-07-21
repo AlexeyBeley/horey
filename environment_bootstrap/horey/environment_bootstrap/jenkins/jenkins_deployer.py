@@ -306,7 +306,7 @@ class JenkinsDeployer:
         lst_policy_requests = self.policies_master()
         for policy_request in lst_policy_requests:
             policy_request["RoleName"] = "role-jenkins-master-tmp"
-            response = self.aws_api.iam_client.attach_role_inline_policy(policy_request)
+            response = self.aws_api.iam_client.attach_role_inline_policy_raw(policy_request)
             print(response)
 
     def deploy_infrastructure_security_groups(self):

@@ -118,8 +118,10 @@ class DockerAPI:
 
     @staticmethod
     def kill_container(container, remove=False):
+        logger.info(f"Killing container: {container.id}.")
         container.kill()
         if remove:
+            logger.info(f"Removing container: {container.id}.")
             container.remove()
 
     def get_containers_by_image(self, image_id):
@@ -134,8 +136,10 @@ class DockerAPI:
             if "image is being used by running container" not in repr(exception_instance):
                 raise
 
+
             for container in self.get_containers_by_image(image_id):
                 self.kill_container(container, remove=True)
 
-            self.client.images.remove(image_id, force=force)
+        self.client.images.remove(image_id, force=force)
+
 

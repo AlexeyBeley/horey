@@ -19,6 +19,7 @@ class ECSService(AwsObject):
         self.propagate_tags = None
         self.service_registries = None
         self.role_arn = None
+        self.load_balancers = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -101,7 +102,12 @@ class ECSService(AwsObject):
         request["cluster"] = self.cluster_arn
         request["taskDefinition"] = self.task_definition
 
-        request["loadBalancers"] = self.load_balancers
+        if self.load_balancers is not None:
+            request["loadBalancers"] = self.load_balancers
+            request["healthCheckGracePeriodSeconds"] = self.health_check_grace_period_seconds
+            if self.role_arn is not None:
+                request["role"] = self.role_arn
+
         if self.service_registries is not None:
             request["serviceRegistries"] = self.service_registries
 
@@ -109,12 +115,8 @@ class ECSService(AwsObject):
 
         request["launchType"] = self.launch_type
 
-        if self.role_arn is not None:
-            request["role"] = self.role_arn
-
         request["deploymentConfiguration"] = self.deployment_configuration
         request["placementStrategy"] = self.placement_strategy
-        request["healthCheckGracePeriodSeconds"] = self.health_check_grace_period_seconds
         request["schedulingStrategy"] = self.scheduling_strategy
         request["enableECSManagedTags"] = self.enable_ecs_managed_tags
         if self.propagate_tags is not None:
@@ -139,7 +141,8 @@ class ECSService(AwsObject):
         request["desiredCount"] = self.desired_count
         request["deploymentConfiguration"] = self.deployment_configuration
         request["placementStrategy"] = self.placement_strategy
-        request["healthCheckGracePeriodSeconds"] = self.health_check_grace_period_seconds
+        if self.load_balancers is not None:
+            request["healthCheckGracePeriodSeconds"] = self.health_check_grace_period_seconds
         request["enableExecuteCommand"] = self.enable_execute_command
 
         return request

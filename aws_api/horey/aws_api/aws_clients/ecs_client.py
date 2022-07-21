@@ -11,6 +11,7 @@ from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.base_entities.region import Region
 from horey.aws_api.aws_services_entities.ecs_cluster import ECSCluster
 from horey.aws_api.aws_services_entities.ecs_service import ECSService
+from horey.aws_api.aws_services_entities.ecs_task import ECSTask
 from horey.aws_api.aws_services_entities.ecs_capacity_provider import ECSCapacityProvider
 from horey.aws_api.aws_services_entities.ecs_task_definition import ECSTaskDefinition
 from horey.aws_api.aws_services_entities.ecs_container_instance import ECSContainerInstance
@@ -172,6 +173,41 @@ class ECSClient(Boto3Client):
 
         return final_result
 
+    def get_region_tasks(self, region, cluster_name=None, custom_list_filters=None):
+        AWSAccount.set_aws_region(region)
+
+        if cluster_name is not None:
+            return self.get_cluster_tasks(cluster_name, custom_list_filters)
+
+        final_result = []
+        for cluster in self.get_region_clusters(region):
+            final_result += self.get_cluster_tasks(cluster.name, custom_list_filters)
+
+        return final_result
+
+    def get_cluster_tasks(self, cluster_name, custom_list_filters):
+        task_arns = []
+        custom_list_filters["cluster"] = cluster_name
+
+        for arn in self.execute(self.client.list_tasks, "taskArns", filters_req=custom_list_filters):
+            task_arns.append(arn)
+
+        if len(task_arns) == 0:
+            return []
+
+        if len(task_arns) > 100:
+            raise NotImplementedError()
+
+        filters_req = {"cluster": cluster_name,
+                       "tasks": task_arns,
+                       "include": ["TAGS"]}
+
+        final_result = []
+        for dict_src in self.execute(self.client.describe_tasks, "tasks", filters_req=filters_req):
+            final_result.append(ECSTask(dict_src))
+
+        return final_result
+
     def get_all_task_definitions(self, region=None):
         if region is not None:
             return self.get_region_task_definitions(region)
@@ -321,6 +357,12 @@ class ECSClient(Boto3Client):
         for response in self.execute(self.client.deregister_container_instance, "containerInstance",
                                      filters_req=request_dict):
             return response
+
+    def dispose_tasks(self, tasks, cluster_name):
+        AWSAccount.set_aws_region(tasks[0].region)
+        for task in tasks:
+            for response in self.execute(self.client.stop_task, "task", filters_req={"cluster": cluster_name, "task": task.arn}):
+                logger.info(response)
 
     def attach_capacity_providers_to_ecs_cluster(self, ecs_cluster, capacity_provider_names,
                                                  default_capacity_provider_strategy):

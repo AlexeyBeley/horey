@@ -5,6 +5,7 @@ import shutil
 import zipfile
 
 from horey.h_logger import get_logger
+from horey.pip_api.pip_api import PipAPI
 
 logger = get_logger()
 
@@ -55,6 +56,10 @@ class Packer:
         command = f"pip3 install -r {package_setup_path}/requirements.txt"
         return self.execute_in_venv(command, venv_path)
 
+    def install_horey_requirements(self, requirements_file_path, venv_path, horey_repo_path):
+        pip_api = PipAPI(venv_dir_path=venv_path, horey_repo_path=horey_repo_path)
+        pip_api.install_requirements(requirements_file_path)
+
     def uninstall_packages(self, venv_path, packages):
         for package_name in packages:
             logger.info(f"Uninstalling package: {package_name} in venv: {venv_path}")
@@ -68,9 +73,9 @@ class Packer:
         script_content += f"source {venv_path}/bin/activate\n"
         script_content += f"{command}\n"
 
-        with open("./tmp", "w") as fh:
+        with open("./tmp_script_to_execute", "w") as fh:
             fh.write(script_content)
-        bash_cmd = ["/bin/bash", "./tmp"]
+        bash_cmd = ["/bin/bash", "./tmp_script_to_execute"]
         return self.execute(bash_cmd)
 
     @staticmethod
@@ -78,6 +83,9 @@ class Packer:
         return os.path.join(venv_dir_path, "lib", python_version, "site-packages")
 
     def zip_venv_site_packages(self, zip_file_name, venv_dir_path, python_version):
+        if zip_file_name.endswith(".zip"):
+            zip_file_name = zip_file_name[:-4]
+
         package_dir = self.get_site_packages_directory(venv_dir_path, python_version)
         shutil.make_archive(zip_file_name, 'zip', root_dir=package_dir)
 
@@ -85,6 +93,20 @@ class Packer:
         with zipfile.ZipFile(zip_file_name, "a") as myzip:
             for file_path in files_paths:
                 myzip.write(file_path, arcname=os.path.basename(file_path))
+
+    def add_dirs_to_zip(self, zip_file_name, dir_paths):
+        for dir_path in dir_paths:
+            self.add_dir_to_zip(zip_file_name, dir_path)
+
+    def add_dir_to_zip(self, zip_file_name, dir_path: str):
+        dir_path = dir_path[:-1] if dir_path.endswith("/") else dir_path
+        prefix_len = dir_path.rfind("/") + 1
+        with zipfile.ZipFile(zip_file_name, "a") as myzip:
+            for base_path, _, files in os.walk(dir_path):
+                for file_name in files:
+                    file_path = os.path.join(base_path, file_name)
+                    arc_name = file_path[prefix_len:]
+                    myzip.write(file_path, arcname=arc_name)
 
     def pip_freeze(self):
         "pip3 freeze --all"

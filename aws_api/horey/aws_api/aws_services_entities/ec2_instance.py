@@ -1,9 +1,11 @@
 """
 Class to represent ec2 instance
 """
+import datetime
 import pdb
 
 from enum import Enum
+from horey.aws_api.base_entities.region import Region
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 from horey.aws_api.aws_services_entities.network_interface import NetworkInterface
 
@@ -26,6 +28,8 @@ class EC2Instance(AwsObject):
         self.iam_instance_profile = None
         self.max_count = None
         self.min_count = None
+        self.security_groups = None
+        self.subnet_id = None
 
         if from_cache:
             self._init_instance_from_cache(dict_src)
@@ -108,6 +112,25 @@ class EC2Instance(AwsObject):
 
         for interface in lst_src:
             self.network_interfaces.append(NetworkInterface(interface, from_cache=True))
+
+    @property
+    def region(self):
+        if self._region is None:
+            az_split = self.placement["AvailabilityZone"].split("-")
+            if len(az_split) != 3:
+                raise ValueError(self.placement["AvailabilityZone"])
+
+            az_index = ""
+            for _char in az_split[2]:
+                if not _char.isdigit():
+                    break
+                az_index += _char
+            self._region = Region.get_region(f"{az_split[0]}-{az_split[1]}-{az_index}")
+        return self._region
+
+    @region.setter
+    def region(self, value):
+        self._region = value
 
     def init_interfaces(self, _, interfaces):
         """
@@ -221,6 +244,59 @@ class EC2Instance(AwsObject):
 
         self.init_attrs(dict_src, init_options)
 
+    def generate_create_snapshots_request(self):
+        request = dict()
+        request["TagSpecifications"] = [{
+            "ResourceType": "snapshot",
+            "Tags": self.tags}]
+        request["InstanceSpecification"] = {"InstanceId": self.id, "ExcludeBootVolume": False}
+        request["Description"] = self.get_tagname()
+        request["CopyTagsFromSource"] = 'volume'
+
+        return request
+
+    def generate_dispose_request(self):
+        request = dict()
+        request["InstanceIds"] = [self.id]
+        return request
+
+    def generate_create_image_request(self, snapshots_raw=None):
+        request = dict()
+        request["Description"] = self.get_tagname()
+        request["Name"] = self.get_tagname()+datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")
+        request["InstanceId"] = self.id
+        request["NoReboot"] = False
+        request["TagSpecifications"] = [{
+            "ResourceType": "image",
+            "Tags": self.tags}]
+
+        #############
+        if snapshots_raw is not None:
+            blocks_request = []
+            for self_block in self.block_device_mappings:
+                for snapshot in snapshots_raw:
+                    if self_block["Ebs"]["VolumeId"] == snapshot["VolumeId"]:
+                        block_request = {"DeviceName": self_block["DeviceName"],
+                                      "Ebs": {
+                                          "DeleteOnTermination": self_block["Ebs"]["DeleteOnTermination"],
+                                          "SnapshotId": snapshot["SnapshotId"],
+                                          "VolumeSize": snapshot["VolumeSize"],
+                                          "VolumeType": "gp2"
+                                      }}
+                        if snapshot["VolumeSize"] == 30:
+                            block_request['VirtualName'] = "/dev/xvda"
+                        else:
+                            block_request['VirtualName'] = "/dev/sda1"
+
+                        blocks_request.append(block_request)
+                        break
+                else:
+                    raise RuntimeError(f"Can not find snapshot of {self_block}")
+
+            #request["BlockDeviceMappings"] = blocks_request
+
+        return request
+
     def generate_create_request(self):
         request = dict()
         request["InstanceInitiatedShutdownBehavior"] = self.instance_initiated_shutdown_behavior
@@ -250,6 +326,9 @@ class EC2Instance(AwsObject):
             request["IamInstanceProfile"] = self.iam_instance_profile
 
         return request
+
+    def get_status(self):
+        return self.get_state()
 
     def get_state(self):
         if self.state["Name"] == "pending":

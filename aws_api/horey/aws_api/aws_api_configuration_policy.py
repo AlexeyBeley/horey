@@ -10,6 +10,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
         self._aws_api_account = None
         self._aws_api_cache_dir = None
         self._aws_api_cleanup_cache_dir = None
+        self._aws_api_dynamodb_cache_dir = None
 
         self._aws_api_s3_cache_dir = None
         self._aws_api_s3_bucket_objects_cache_dir = None
@@ -36,6 +37,9 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
         self._aws_api_kms_cache_dir = None
         self._aws_api_elasticache_cache_dir = None
         self._aws_api_sqs_cache_dir = None
+        self._aws_api_glue_cache_dir = None
+        self._aws_api_sesv2_cache_dir = None
+        self._aws_api_sns_cache_dir = None
 
     @property
     def aws_api_regions(self):
@@ -325,7 +329,32 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     def aws_api_nat_gateways_cache_file(self, value):
         raise ValueError(value)
     # endregion
+    
+    # region glue
+    @property
+    def aws_api_glue_cache_dir(self):
+        if self._aws_api_glue_cache_dir is None:
+            self._aws_api_glue_cache_dir = os.path.join(self.aws_api_cache_dir, self.aws_api_account, "glue")
+            os.makedirs(self._aws_api_glue_cache_dir, exist_ok=True)
+        return self._aws_api_glue_cache_dir
+    
+    @property
+    def aws_api_glue_databases_cache_file(self):
+        return os.path.join(self.aws_api_glue_cache_dir, "glue_databases.json")
 
+    @aws_api_glue_databases_cache_file.setter
+    def aws_api_glue_databases_cache_file(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_glue_tables_cache_file(self):
+        return os.path.join(self.aws_api_glue_cache_dir, "glue_tables.json")
+
+    @aws_api_glue_tables_cache_file.setter
+    def aws_api_glue_tables_cache_file(self, value):
+        raise ValueError(value)
+    # endregion
+    
     # region lambda
     @property
     def aws_api_lambda_cache_dir(self):
@@ -485,6 +514,15 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_iam_roles_cache_file.setter
     def aws_api_iam_roles_cache_file(self, value):
         raise ValueError(value)
+    
+    @property
+    def aws_api_iam_instance_profiles_cache_file(self):
+        return os.path.join(self.aws_api_iam_roles_cache_dir, "instance_profiles.json")
+
+    @aws_api_iam_instance_profiles_cache_file.setter
+    def aws_api_iam_instance_profiles_cache_file(self, value):
+        raise ValueError(value)
+    
     # endregion
 
     # region databases
@@ -954,3 +992,79 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
 
     # endregion
 
+    # region dynamodb
+    @property
+    def aws_api_dynamodb_cache_dir(self):
+        if self._aws_api_dynamodb_cache_dir is None:
+            self._aws_api_dynamodb_cache_dir = os.path.join(self.aws_api_cache_dir, self.aws_api_account, "dynamodb")
+            os.makedirs(self._aws_api_dynamodb_cache_dir, exist_ok=True)
+        return self._aws_api_dynamodb_cache_dir
+
+    @aws_api_dynamodb_cache_dir.setter
+    def aws_api_dynamodb_cache_dir(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_dynamodb_tables_cache_file(self):
+        return os.path.join(self.aws_api_dynamodb_cache_dir, "dynamodb_tables.json")
+
+    @aws_api_dynamodb_tables_cache_file.setter
+    def aws_api_dynamodb_tables_cache_file(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_dynamodb_endpoints_cache_file(self):
+        return os.path.join(self.aws_api_dynamodb_cache_dir, "dynamodb_endpoints.json")
+
+    @aws_api_dynamodb_endpoints_cache_file.setter
+    def aws_api_dynamodb_endpoints_cache_file(self, value):
+        raise ValueError(value)
+    # endregion
+    
+    # region sesv2
+    @property
+    def aws_api_sesv2_cache_dir(self):
+        if self._aws_api_sesv2_cache_dir is None:
+            self._aws_api_sesv2_cache_dir = os.path.join(self.aws_api_cache_dir, self.aws_api_account, "sesv2")
+            os.makedirs(self._aws_api_sesv2_cache_dir, exist_ok=True)
+        return self._aws_api_sesv2_cache_dir
+
+    @aws_api_sesv2_cache_dir.setter
+    def aws_api_sesv2_cache_dir(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_sesv2_email_identities_cache_file(self):
+        return os.path.join(self.aws_api_sesv2_cache_dir, "sesv2_email_identities.json")
+
+    @property
+    def aws_api_sesv2_configuration_sets_cache_file(self):
+        return os.path.join(self.aws_api_sesv2_cache_dir, "sesv2_configuration_sets.json")
+
+    @property
+    def aws_api_sesv2_email_templates_cache_file(self):
+        return os.path.join(self.aws_api_sesv2_cache_dir, "sesv2_email_templates.json")
+    
+    # endregion
+
+    # region sns
+    @property
+    def aws_api_sns_cache_dir(self):
+        if self._aws_api_sns_cache_dir is None:
+            self._aws_api_sns_cache_dir = os.path.join(self.aws_api_cache_dir, self.aws_api_account, "sns")
+            os.makedirs(self._aws_api_sns_cache_dir, exist_ok=True)
+        return self._aws_api_sns_cache_dir
+
+    @aws_api_sns_cache_dir.setter
+    def aws_api_sns_cache_dir(self, value):
+        raise ValueError(value)
+
+    @property
+    def aws_api_sns_subscriptions_cache_file(self):
+        return os.path.join(self.aws_api_sns_cache_dir, "sns_subscriptions.json")
+
+    @property
+    def aws_api_sns_topics_cache_file(self):
+        return os.path.join(self.aws_api_sns_cache_dir, "sns_topics.json")
+
+    # endregion

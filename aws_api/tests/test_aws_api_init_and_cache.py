@@ -40,6 +40,16 @@ def test_init_and_cache_iam_roles():
     assert isinstance(aws_api.iam_roles, list)
 
 
+@pytest.mark.skip(reason="IAM roles will be inited explicitly")
+def test_init_and_cache_iam_instance_profiles():
+    aws_api.init_iam_policies(from_cache=True, cache_file=configuration.aws_api_iam_policies_cache_file)
+    aws_api.init_iam_instance_profiles()
+    aws_api.cache_objects(aws_api.iam_instance_profiles, configuration.aws_api_iam_instance_profiles_cache_file)
+
+    print(f"len(iam_instance_profiles) = {len(aws_api.iam_instance_profiles)}")
+    assert isinstance(aws_api.iam_instance_profiles, list)
+    
+
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_network_interfaces():
     aws_api.init_network_interfaces()
@@ -87,6 +97,61 @@ def test_init_and_cache_cloudwatch_log_groups_metric_filters():
     print(f"len(cloud_watch_log_group_metric_filters) = {len(aws_api.cloud_watch_log_groups_metric_filters)}")
     assert isinstance(aws_api.cloud_watch_log_groups_metric_filters, list)
 
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_dynamodb_tables():
+    aws_api.init_dynamodb_tables()
+    aws_api.cache_objects(aws_api.dynamodb_tables, configuration.aws_api_dynamodb_tables_cache_file)
+    print(f"len(dynamodb_tables) = {len(aws_api.dynamodb_tables)}")
+    assert isinstance(aws_api.dynamodb_tables, list)
+    
+    
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_dynamodb_endpoints():
+    aws_api.init_dynamodb_endpoints()
+    aws_api.cache_objects(aws_api.dynamodb_endpoints, configuration.aws_api_dynamodb_endpoints_cache_file)
+    print(f"len(dynamodb_endpoints) = {len(aws_api.dynamodb_endpoints)}")
+    assert isinstance(aws_api.dynamodb_endpoints, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_sesv2_email_identities():
+    aws_api.init_sesv2_email_identities()
+    aws_api.cache_objects(aws_api.sesv2_email_identities, configuration.aws_api_sesv2_email_identities_cache_file)
+    print(f"len(sesv2_email_identities) = {len(aws_api.sesv2_email_identities)}")
+    assert isinstance(aws_api.sesv2_email_identities, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_sesv2_email_templates():
+    aws_api.init_sesv2_email_templates()
+    aws_api.cache_objects(aws_api.sesv2_email_templates, configuration.aws_api_sesv2_email_templates_cache_file)
+    print(f"len(sesv2_email_templates) = {len(aws_api.sesv2_email_templates)}")
+    assert isinstance(aws_api.sesv2_email_templates, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_sesv2_configuration_sets():
+    aws_api.init_sesv2_configuration_sets()
+    aws_api.cache_objects(aws_api.sesv2_configuration_sets, configuration.aws_api_sesv2_configuration_sets_cache_file)
+    print(f"len(sesv2_configuration_sets) = {len(aws_api.sesv2_configuration_sets)}")
+    assert isinstance(aws_api.sesv2_configuration_sets, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_sns_topics():
+    aws_api.init_sns_topics()
+    aws_api.cache_objects(aws_api.sns_topics, configuration.aws_api_sns_topics_cache_file)
+    print(f"len(sns_topics) = {len(aws_api.sns_topics)}")
+    assert isinstance(aws_api.sns_topics, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_sns_subscriptions():
+    aws_api.init_sns_subscriptions()
+    aws_api.cache_objects(aws_api.sns_subscriptions, configuration.aws_api_sns_subscriptions_cache_file)
+    print(f"len(sns_subscriptions) = {len(aws_api.sns_subscriptions)}")
+    assert isinstance(aws_api.sns_subscriptions, list)
 
 @pytest.mark.skip(reason="No way of currently testing cloudwatch metrics")
 def test_init_and_cache_cloudwatch_metrics():
@@ -329,10 +394,26 @@ def test_init_and_cache_vpcs():
 
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_subnets():
-    all_regions = list(aws_api.aws_accounts.values())[0].regions
+    all_regions = list(list(aws_api.aws_accounts.values())[0].regions.values())
     aws_api.init_subnets(region=all_regions)
     aws_api.cache_objects(aws_api.subnets, configuration.aws_api_subnets_cache_file)
     assert isinstance(aws_api.subnets, list)
+    
+    
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_glue_tables():
+    all_regions = list(list(aws_api.aws_accounts.values())[0].regions.values())
+    aws_api.init_glue_tables(region=all_regions)
+    aws_api.cache_objects(aws_api.glue_tables, configuration.aws_api_glue_tables_cache_file)
+    assert isinstance(aws_api.glue_tables, list)
+    
+    
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_glue_databases():
+    all_regions = list(list(aws_api.aws_accounts.values())[0].regions.values())
+    aws_api.init_glue_databases(region=all_regions)
+    aws_api.cache_objects(aws_api.glue_databases, configuration.aws_api_glue_databases_cache_file)
+    assert isinstance(aws_api.glue_databases, list)
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
@@ -560,4 +641,14 @@ if __name__ == "__main__":
     #test_init_and_cache_servicediscovery_namespaces()
     #test_init_and_cache_vpcs()
     #test_init_and_cache_ec2_volumes()
-    test_init_and_cache_subnets()
+    #test_init_and_cache_subnets()
+    #test_init_and_cache_glue_tables()
+    #test_init_and_cache_glue_databases()
+    #test_init_and_cache_iam_instance_profiles()
+    test_init_and_cache_dynamodb_tables()
+    #test_init_and_cache_dynamodb_endpoints()
+    #test_init_and_cache_sesv2_email_identities()
+    #test_init_and_cache_sesv2_email_templates()
+    #test_init_and_cache_sesv2_configuration_sets()
+    #test_init_and_cache_sns_topics()
+    #test_init_and_cache_sns_subscriptions()

@@ -17,4 +17,6 @@ setup(name="horey.docker_api",
       license="DWTFYWTPL",
       packages=["horey.docker_api"],
       include_package_data=True,
-      zip_safe=False)
+      zip_safe=False,
+      install_requires=[]
+      )

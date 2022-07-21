@@ -70,12 +70,13 @@ class ReplacementEngine:
         with open(file_path, "w") as file_handler:
             file_handler.writelines(lines)
 
+    @staticmethod
+    def check_file_contains(dst_file_path, replacement_string):
+        with open(dst_file_path) as file_handler:
+            file_contents = file_handler.read()
+
+        return replacement_string in file_contents
+
     class UnresolvedReplacementsError(ValueError):
         pass
 
-# ls /Users/alexey.beley/private/horey/build/_build/_venv/lib/python3.8/site-packages/horey/provision_constructor/system_functions/logstash/input_file
-#    /Users/alexey.beley/private/horey/build/_build/_venv/bin/../lib/python*/site-packages/horey/provision_constructor
-
-
-
-# /Users/alexey.beley/private/horey/build/_build/_venv/bin/../lib/python*/site-packages/horey/provision_constructor

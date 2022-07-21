@@ -1,3 +1,5 @@
 horey.configuration_policy>=1.0.0
 horey.h_logger>=1.0.0
 horey.aws_api>=1.0.0
+horey.pip_api>=1.0.0
+

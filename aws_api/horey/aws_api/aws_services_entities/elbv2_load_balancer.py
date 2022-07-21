@@ -178,6 +178,7 @@ class LoadBalancer(AwsObject):
             super().__init__(dict_src)
             self.ssl_policy = None
             self.certificates = None
+            self.arn = None
 
             if from_cache:
                 self._init_object_from_cache(dict_src)

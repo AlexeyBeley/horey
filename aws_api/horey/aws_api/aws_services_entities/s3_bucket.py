@@ -16,7 +16,6 @@ class S3Bucket(AwsObject):
         self.acl = None
         self.policy = None
         self.bucket_objects = []
-        self.region = None
         self.index_document = None
         self.error_document = None
         self.redirect_all_requests_to = None
