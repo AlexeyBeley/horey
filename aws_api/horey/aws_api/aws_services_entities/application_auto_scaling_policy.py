@@ -16,6 +16,9 @@ class ApplicationAutoScalingPolicy(AwsObject):
         super().__init__(dict_src)
         self._region = None
         self.target_tracking_configuration = None
+        self.target_tracking_scaling_policy_configuration = None
+        self.policy_type = None
+        self.step_scaling_policy_configuration = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -24,6 +27,14 @@ class ApplicationAutoScalingPolicy(AwsObject):
         init_options = {
             "PolicyName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
             "PolicyARN": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "ServiceNamespace": self.init_default_attr,
+            "ResourceId": self.init_default_attr,
+            "ScalableDimension": self.init_default_attr,
+            "PolicyType": self.init_default_attr,
+            "StepScalingPolicyConfiguration": self.init_default_attr,
+            "Alarms": self.init_default_attr,
+            "CreationTime": self.init_default_attr,
+            "TargetTrackingScalingPolicyConfiguration": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options, raise_on_no_option=True)
@@ -41,16 +52,32 @@ class ApplicationAutoScalingPolicy(AwsObject):
         init_options = {
             "PolicyName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
             "PolicyARN": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "ServiceNamespace": self.init_default_attr,
+            "ResourceId": self.init_default_attr,
+            "ScalableDimension": self.init_default_attr,
+            "PolicyType": self.init_default_attr,
+            "StepScalingPolicyConfiguration": self.init_default_attr,
+            "Alarms": self.init_default_attr,
+            "CreationTime": self.init_default_attr,
+            "TargetTrackingScalingPolicyConfiguration": self.init_default_attr,
         }
         self.init_attrs(dict_src, init_options)
 
     def generate_create_request(self):
-        pdb.set_trace()
         request = dict()
         request["ServiceNamespace"] = self.service_namespace
         request["PolicyName"] = self.name
         request["ResourceId"] = self.resource_id
         request["ScalableDimension"] = self.scalable_dimension
+
+        if self.policy_type is not None:
+            request["PolicyType"] = self.policy_type
+
+        if self.step_scaling_policy_configuration is not None:
+            request["StepScalingPolicyConfiguration"] = self.step_scaling_policy_configuration
+
+        if self.target_tracking_scaling_policy_configuration is not None:
+            request["TargetTrackingScalingPolicyConfiguration"] = self.target_tracking_scaling_policy_configuration
 
         return request
 

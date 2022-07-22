@@ -22,6 +22,14 @@ class ApplicationAutoScalingScalableTarget(AwsObject):
             return
 
         init_options = {
+            "MinCapacity": self.init_default_attr,
+            "MaxCapacity": self.init_default_attr,
+            "RoleARN": self.init_default_attr,
+            "SuspendedState": self.init_default_attr,
+            "ServiceNamespace": self.init_default_attr,
+            "ResourceId": self.init_default_attr,
+            "ScalableDimension": self.init_default_attr,
+            "CreationTime": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options, raise_on_no_option=True)
@@ -41,11 +49,22 @@ class ApplicationAutoScalingScalableTarget(AwsObject):
         self.init_attrs(dict_src, init_options)
 
     def generate_create_request(self):
-        pdb.set_trace()
         request = dict()
         request["ServiceNamespace"] = self.service_namespace
         request["ResourceId"] = self.resource_id
         request["ScalableDimension"] = self.scalable_dimension
+
+        if self.min_capacity is not None:
+            request["MinCapacity"] = self.min_capacity
+
+        if self.max_capacity is not None:
+            request["MaxCapacity"] = self.max_capacity
+
+        if self.role_arn is not None:
+            request["RoleARN"] = self.role_arn
+
+        if self.suspended_state is not None:
+            request["SuspendedState"] = self.suspended_state
 
         return request
 

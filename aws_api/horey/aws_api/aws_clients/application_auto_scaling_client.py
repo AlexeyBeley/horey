@@ -24,7 +24,7 @@ class ApplicationAutoScalingClient(Boto3Client):
     def __init__(self):
         client_name = "application-autoscaling"
         super().__init__(client_name)
-        pdb.set_trace()
+        self.service_namespaces = ["ecs"]
 
     def get_all_policies(self, region=None):
         """
@@ -42,34 +42,43 @@ class ApplicationAutoScalingClient(Boto3Client):
         return final_result
 
     def get_region_policies(self, region, custom_filter=None):
-        final_result = list()
         AWSAccount.set_aws_region(region)
-        for dict_src in self.execute(self.client.describe_scaling_policies, "ScalingPolicies", filters_req=custom_filter):
+        if custom_filter is not None and "ServiceNamespace" in custom_filter:
+            return self.get_region_policies_raw(custom_filter)
+
+        final_result = list()
+        custom_filter = custom_filter if custom_filter is not None else dict()
+        for service_namespace in self.service_namespaces:
+            custom_filter["ServiceNamespace"] = service_namespace
+            final_result += self.get_region_policies_raw(custom_filter)
+
+        return final_result
+
+    def get_region_policies_raw(self, dict_request):
+        final_result = []
+        for dict_src in self.execute(self.client.describe_scaling_policies, "ScalingPolicies", filters_req=dict_request):
             obj = ApplicationAutoScalingPolicy(dict_src)
             final_result.append(obj)
 
         return final_result
 
     def provision_policy(self, autoscaling_policy):
-        pdb.set_trace()
         AWSAccount.set_aws_region(autoscaling_policy.region)
         response = self.provision_policy_raw(autoscaling_policy.generate_create_request())
         autoscaling_policy.update_from_raw_response(response)
 
     def provision_policy_raw(self, request_dict):
-        pdb.set_trace()
         logger.info(f"Creating Auto Scaling Policy: {request_dict}")
         for response in self.execute(self.client.put_scaling_policy, None, raw_data=True, filters_req=request_dict):
             del response["ResponseMetadata"]
             return response
 
     def update_policy_information(self, policy):
-        pdb.set_trace()
         AWSAccount.set_aws_region(policy.region)
         try:
-            dict_src = self.execute_with_single_reply(self.client.describe_policies,
+            dict_src = self.execute_with_single_reply(self.client.describe_scaling_policies,
                                                        "ScalingPolicies",
-                                                       filters_req={"PolicyNames":[policy.name]})
+                                                       filters_req={"ServiceNamespace": policy.service_namespace, "PolicyNames": [policy.name]})
         except self.ZeroValuesException:
             return False
         policy.update_from_raw_response(dict_src)
@@ -82,7 +91,6 @@ class ApplicationAutoScalingClient(Boto3Client):
         Get all scalable_targets in all regions.
         :return:
         """
-        pdb.set_trace()
         if region is not None:
             return self.get_region_scalable_targets(region)
 
@@ -93,25 +101,33 @@ class ApplicationAutoScalingClient(Boto3Client):
         return final_result
 
     def get_region_scalable_targets(self, region, custom_filter=None):
-        final_result = list()
         AWSAccount.set_aws_region(region)
-        for dict_src in self.execute(self.client.describe_scalable_targets, "ScalableTargets", filters_req=custom_filter):
+        if custom_filter is not None and "ServiceNamespace" in custom_filter:
+            return self.get_region_scalable_targets_raw(custom_filter)
+
+        final_result = list()
+        custom_filter = custom_filter if custom_filter is not None else dict()
+        for service_namespace in self.service_namespaces:
+            custom_filter["ServiceNamespace"] = service_namespace
+            final_result += self.get_region_scalable_targets_raw(custom_filter)
+
+        return final_result
+
+    def get_region_scalable_targets_raw(self, dict_request):
+        final_result = []
+        for dict_src in self.execute(self.client.describe_scalable_targets, "ScalableTargets", filters_req=dict_request):
             obj = ApplicationAutoScalingScalableTarget(dict_src)
             final_result.append(obj)
 
         return final_result
 
     def provision_scalable_target(self, autoscaling_scalable_target):
-        pdb.set_trace()
         AWSAccount.set_aws_region(autoscaling_scalable_target.region)
-        response = self.provision_scalable_target_raw(autoscaling_scalable_target.generate_create_request())
-        autoscaling_scalable_target.update_from_raw_response(response)
+        self.provision_scalable_target_raw(autoscaling_scalable_target.generate_create_request())
 
     def provision_scalable_target_raw(self, request_dict):
-        pdb.set_trace()
-        logger.info(f"Creating Auto Scaling Policy: {request_dict}")
-        for response in self.execute(self.client.put_scaling_scalable_target, None, raw_data=True, filters_req=request_dict):
-            del response["ResponseMetadata"]
+        logger.info(f"Registering Auto Scaling scalable target: {request_dict}")
+        for response in self.execute(self.client.register_scalable_target, None, raw_data=True, filters_req=request_dict):
             return response
 
     def update_scalable_target_information(self, scalable_target):

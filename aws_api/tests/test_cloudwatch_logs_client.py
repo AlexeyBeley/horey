@@ -1,6 +1,6 @@
 import os
 import pdb
-
+from unittest.mock import Mock
 from horey.aws_api.aws_clients.cloud_watch_logs_client import CloudWatchLogsClient
 from horey.aws_api.aws_services_entities.cloud_watch_metric import CloudWatchMetric
 from horey.aws_api.base_entities.region import Region
@@ -32,8 +32,50 @@ def test_get_region_log_group_metric_filters():
     ret = client.get_region_log_group_metric_filters(Region.get_region("us-east-1"))
     pdb.set_trace()
     assert isinstance(ret, list)
-    
+
+
+def test_yield_log_group_streams():
+    client = CloudWatchLogsClient()
+    group = Mock()
+    group.region = Region.get_region("us-east-1")
+    group.name = mock_values["us_east_1_cloudwatch_logs_group_name"]
+    ret = []
+    for stream in client.yield_log_group_streams(group):
+        ret.append(stream)
+    pdb.set_trace()
+    assert isinstance(ret, list)
+
+
+def test_yield_log_events():
+    all_errors = []
+    client = CloudWatchLogsClient()
+    group = Mock()
+    group.region = Region.get_region("eu-central-1")
+    group.region = Region.get_region("us-east-1")
+    group.name = mock_values["us_east_1_cloudwatch_logs_group_name"]
+    ret = []
+    all_streams = list(client.yield_log_group_streams(group))
+    for counter_streams, stream in enumerate(all_streams):
+
+        #if stream.name !=
+        #    continue
+
+        print(f"Stream_name: {stream.name} Streams_counter = {counter_streams}/ {len(all_streams)}")
+        ret.append(stream)
+        all_events = []
+        for event in client.yield_log_events(group, stream):
+            all_events.append(event)
+            if "and its version" in event["message"]:
+                all_errors.append(event["message"])
+        pdb.set_trace()
+
+    pdb.set_trace()
+    min([int(x.split(" ")[-1][1:]) for x in all_errors])
+    assert isinstance(ret, list)
+
 
 if __name__ == "__main__":
     test_init_client()
-    test_get_region_log_group_metric_filters()
+    #test_get_region_log_group_metric_filters()
+    #test_yield_log_group_streams()
+    test_yield_log_events()

@@ -2,11 +2,13 @@
 AWS client to handle cloud watch logs.
 """
 import pdb
+import time
 
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.cloud_watch_log_group import CloudWatchLogGroup
 from horey.aws_api.aws_services_entities.cloud_watch_log_group_metric_filter import CloudWatchLogGroupMetricFilter
 from horey.aws_api.base_entities.aws_account import AWSAccount
+from horey.aws_api.aws_services_entities.cloud_watch_log_stream import CloudWatchLogStream
 from horey.h_logger import get_logger
 
 logger = get_logger()
@@ -28,7 +30,7 @@ class CloudWatchLogsClient(Boto3Client):
         """
         Be sure you know what you do, when you set full_information=True.
         This can kill your memory, if you have a lot of data in cloudwatch.
-        Better using yield_log_group_streams if you need.
+        Better using yield_log_group_streams_raw if you need.
 
         :param full_information:
         :return:
@@ -92,7 +94,7 @@ class CloudWatchLogsClient(Boto3Client):
                                      filters_req={"logGroupName": obj.name}):
             obj.update_log_stream(response)
 
-    def yield_log_group_streams(self, log_group):
+    def yield_log_group_streams_raw(self, log_group):
         """
         Yields streams - made to handle large log groups, in order to prevent the OOM collapse.
         :param log_group:
@@ -105,6 +107,18 @@ class CloudWatchLogsClient(Boto3Client):
                                      filters_req={"logGroupName": log_group.name}):
             yield response
 
+    def yield_log_group_streams(self, log_group):
+        """
+        Yields streams - made to handle large log groups, in order to prevent the OOM collapse.
+        :param log_group:
+        :return:
+        """
+        AWSAccount.set_aws_region(log_group.region)
+
+        for response in self.execute(self.client.describe_log_streams, "logStreams",
+                                     filters_req={"logGroupName": log_group.name}):
+            yield CloudWatchLogStream(response)
+
     def provision_metric_filter(self, metric_filter: CloudWatchLogGroupMetricFilter):
         request_dict = metric_filter.generate_create_request()
         AWSAccount.set_aws_region(metric_filter.region)
@@ -113,7 +127,7 @@ class CloudWatchLogsClient(Boto3Client):
             if response["HTTPStatusCode"] != 200:
                 raise RuntimeError(f"{response}")
 
-    def yield_log_events(self, log_group, stream):
+    def yield_log_events(self, log_group: CloudWatchLogGroup, stream):
         """
         :param log_group:
         :return:
@@ -123,12 +137,27 @@ class CloudWatchLogsClient(Boto3Client):
 
         self.NEXT_PAGE_RESPONSE_KEY = "nextForwardToken"
         token = None
+        new_token = None
+        stop = False
+        while not stop:
+            filters_req = {"logGroupName": log_group.name, "logStreamName": stream.name}
+            if token is not None:
+                filters_req["nextToken"] = token
 
-        for response in self.execute(self.client.get_log_events, "events", raw_data=True,
-                                     filters_req={"logGroupName": log_group.name, "logStreamName": stream.name}):
-            token = response["nextForwardToken"]
-            yield response
+            for response in self.execute(self.client.get_log_events, "events", raw_data=True,
+                                     filters_req=filters_req):
+                new_token = response["nextForwardToken"]
+                logger.info(f"old token: {token} new token: {new_token}")
+                if new_token == token:
+                    return
+                logger.info(f"Extracted {len(response['events'])} events")
+                for event in response["events"]:
+                    yield event
+                time.sleep(10)
 
+            token = new_token
+        return
+        pdb.set_trace()
         #todo: refactor
         for response in self.execute(self.client.get_log_events, "events", raw_data=True,
                                      filters_req={"logGroupName": log_group.name, "logStreamName": stream.name, "nextToken": token}):

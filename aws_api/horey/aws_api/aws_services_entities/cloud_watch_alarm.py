@@ -22,6 +22,7 @@ class CloudWatchAlarm(AwsObject):
         self.insufficient_data_actions = None
         self.dimensions = None
         self.ok_actions = None
+        self.unit = None
 
         super().__init__(dict_src, from_cache=from_cache)
 
@@ -97,4 +98,8 @@ class CloudWatchAlarm(AwsObject):
 
         if self.alarm_description is not None:
             request_dict["AlarmDescription"] = self.alarm_description
+
+        if self.unit is not None:
+            request_dict["Unit"] = self.unit
+
         return request_dict

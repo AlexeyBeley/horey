@@ -229,6 +229,7 @@ class AWSAPI:
         self.auto_scaling_groups = []
         self.auto_scaling_policies = []
         self.application_auto_scaling_policies = []
+        self.application_auto_scaling_scalable_targets = []
         self.ecs_task_definitions = []
         self.ecs_services = []
         self.elasticache_clusters = []
@@ -480,6 +481,14 @@ class AWSAPI:
             objects = self.application_autoscaling_client.get_all_policies(region=region)
 
         self.application_auto_scaling_policies = objects
+
+    def init_application_auto_scaling_scalable_targets(self, from_cache=False, cache_file=None, region=None):
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, ECSCluster)
+        else:
+            objects = self.application_autoscaling_client.get_all_scalable_targets(region=region)
+
+        self.application_auto_scaling_scalable_targets = objects
         
     def init_amis(self, from_cache=False, cache_file=None):
         if from_cache:
@@ -749,7 +758,7 @@ class AWSAPI:
             os.makedirs(sub_dir, exist_ok=True)
             logger.info(f"Begin collecting from stream: {sub_dir}")
 
-            stream_generator = self.cloud_watch_logs_client.yield_log_group_streams(log_group)
+            stream_generator = self.cloud_watch_logs_client.yield_log_group_streams_raw(log_group)
             self.cache_objects_from_generator(stream_generator, sub_dir)
 
     def init_iam_policies(self, from_cache=False, cache_file=None):
@@ -2384,6 +2393,12 @@ class AWSAPI:
     
     def provision_auto_scaling_policy(self, autoscaling_policy):
         self.autoscaling_client.provision_policy(autoscaling_policy)
+        
+    def provision_application_auto_scaling_policy(self, autoscaling_policy):
+        self.application_autoscaling_client.provision_policy(autoscaling_policy)
+
+    def provision_application_auto_scaling_scalable_target(self, target):
+        self.application_autoscaling_client.provision_scalable_target(target)
 
     def provision_glue_table(self, glue_table):
         self.glue_client.provision_table(glue_table)
