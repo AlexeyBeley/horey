@@ -1,19 +1,23 @@
 import json
+import os
 import pdb
 
 from message import Message
-from message_dispatcher import MessageDispatcher
 
 from horey.h_logger import get_logger
+try:
+    from message_dispatcher import MessageDispatcher
+except ModuleNotFoundError:
+    from message_dispatcher_base import MessageDispatcherBase as MessageDispatcher
 
 logger = get_logger()
 
 
-class MessageHandler:
+class EventHandler:
     def __init__(self):
         self.message_dispatcher = MessageDispatcher()
 
-    def handle_message(self, event, context):
+    def handle_event(self, event, context):
         message = self.extract_message(event)
         self.message_dispatcher.dispatch(message)
 
@@ -50,8 +54,8 @@ def lambda_handler(event, context):
     """
     logger.info(f"Handling event: '{json.dumps(event)}'")
 
-    message_handler = MessageHandler()
-    message_handler.handle_message(event, context)
+    event_handler = EventHandler()
+    event_handler.handle_event(event, context)
     return {
         'statusCode': 200,
         'body': json.dumps('Hello from Lambda!')

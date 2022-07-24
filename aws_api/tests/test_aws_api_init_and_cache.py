@@ -161,7 +161,7 @@ def test_init_and_cache_cloudwatch_metrics():
 @pytest.mark.skip(reason="No way of currently testing cloudwatch metrics")
 def test_init_and_cache_cloudwatch_alarms():
     aws_api.init_cloud_watch_alarms()
-    aws_api.cache_objects(aws_api.cloud_watch_alarms, configuration.aws_api_cloudwatch_alarms_cache_file)
+    aws_api.cache_objects(aws_api.cloud_watch_alarms, configuration.aws_api_cloudwatch_alarms_cache_file, indent=4)
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
@@ -677,6 +677,6 @@ if __name__ == "__main__":
     #test_init_and_cache_sns_subscriptions()
     #test_init_and_cache_auto_scaling_groups()
     #test_init_and_cache_auto_scaling_policies()
-    #test_init_and_cache_cloudwatch_alarms()
+    test_init_and_cache_cloudwatch_alarms()
     #test_init_and_cache_application_auto_scaling_policies()
-    test_init_and_cache_application_auto_scaling_scalable_targets()
+    #test_init_and_cache_application_auto_scaling_scalable_targets()

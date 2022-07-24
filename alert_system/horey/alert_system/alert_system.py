@@ -38,6 +38,7 @@ class AlertSystem:
 
     def provision_lambda(self, files):
         self.create_lambda_package(files)
+        pdb.set_trace()
         return self.deploy_lambda()
 
     def create_lambda_package(self, files):

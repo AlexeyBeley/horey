@@ -3,16 +3,16 @@ import json
 
 
 class AlertSystemMessageRouter:
-    def __init__(self, slack_system_alerts_channel=None):
+    def __init__(self, system_alerts_slack_channel=None):
         try:
             with open("slack_address_book.json") as file_handler:
                 self.slack_mappings = json.load(file_handler)
-                if self.slack_mappings.get("system_alerts") is None and slack_system_alerts_channel is not None:
-                    self.slack_mappings["system_alerts"] = slack_system_alerts_channel
+                if self.slack_mappings.get("system_alerts") is None and system_alerts_slack_channel is not None:
+                    self.slack_mappings["system_alerts"] = system_alerts_slack_channel
         except Exception:
-            if slack_system_alerts_channel is not None:
-                self.slack_mappings = {"system_alerts": slack_system_alerts_channel} if \
-                    slack_system_alerts_channel is not None else None
+            if system_alerts_slack_channel is not None:
+                self.slack_mappings = {"system_alerts": system_alerts_slack_channel} if \
+                    system_alerts_slack_channel is not None else None
 
     def get_slack_routes(self, message, alarm=None):
         if message is None:
@@ -33,7 +33,7 @@ class AlertSystemMessageRouter:
         return lst_ret
 
     @property
-    def slack_system_alerts_channel(self):
+    def system_alerts_slack_channel(self):
         return self.slack_mappings.get("system_alerts") if self.slack_mappings is not None else None
 
     class UnknownTag(ValueError):

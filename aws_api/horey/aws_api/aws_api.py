@@ -1341,7 +1341,7 @@ class AWSAPI:
         with open(file_name) as fil:
             return [class_type(dict_src, from_cache=True) for dict_src in json.load(fil)]
 
-    def cache_objects(self, objects, file_name):
+    def cache_objects(self, objects, file_name, indent=None):
         """
         Prepare a cache file from objects.
 
@@ -1355,7 +1355,7 @@ class AWSAPI:
             os.makedirs(os.path.dirname(file_name))
 
         with open(file_name, "w") as fil:
-            fil.write(json.dumps(objects_dicts))
+            json.dump(objects_dicts, fil, indent=indent)
 
     def get_down_instances(self):
         """

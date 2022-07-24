@@ -57,8 +57,8 @@ def test_yield_log_events():
     all_streams = list(client.yield_log_group_streams(group))
     for counter_streams, stream in enumerate(all_streams):
 
-        #if stream.name !=
-        #    continue
+        if stream.name != "ecs/scoutbees-api/718616f185374504a6381d88b05f22f4":
+            continue
 
         print(f"Stream_name: {stream.name} Streams_counter = {counter_streams}/ {len(all_streams)}")
         ret.append(stream)
