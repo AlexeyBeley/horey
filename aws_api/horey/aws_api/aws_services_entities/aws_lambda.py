@@ -203,7 +203,7 @@ class AWSLambda(AwsObject):
         if self.vpc_config != desired_lambda.vpc_config:
             request["VpcConfig"] = desired_lambda.vpc_config
 
-        return request
+        return None if len(request) == 1 else request
 
     def generate_update_function_code_request(self, desired_aws_lambda):
         request = dict()
@@ -287,6 +287,18 @@ class AWSLambda(AwsObject):
             request["SourceArn"] = desired_statement["Condition"]["ArnLike"]["AWS:SourceArn"]
             add_permissions.append(request)
         return add_permissions, remove_permissions
+
+    def generate_add_permissions_requests(self):
+        ret = []
+        for desired_statement in self.policy["Statement"]:
+            request = dict()
+            request["FunctionName"] = self.name
+            request["StatementId"] = desired_statement["Sid"]
+            request["Action"] = desired_statement["Action"]
+            request["Principal"] = desired_statement["Principal"]["Service"]
+            request["SourceArn"] = desired_statement["Condition"]["ArnLike"]["AWS:SourceArn"]
+            ret.append(request)
+        return ret
 
     def get_status(self):
         return {enum_value.value: enum_value for _, enum_value in self.Status.__members__.items()}[self.last_update_status]

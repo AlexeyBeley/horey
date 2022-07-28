@@ -19,6 +19,10 @@ class CloudWatchAlarm(AwsObject):
 
         self.log_streams = []
         self.alarm_description = None
+        self.insufficient_data_actions = None
+        self.dimensions = None
+        self.ok_actions = None
+        self.unit = None
 
         super().__init__(dict_src, from_cache=from_cache)
 
@@ -71,13 +75,10 @@ class CloudWatchAlarm(AwsObject):
         request_dict = {
             "AlarmName": self.name,
             "ActionsEnabled": self.actions_enabled,
-            "OKActions": self.ok_actions,
             "AlarmActions": self.alarm_actions,
-            "InsufficientDataActions": self.insufficient_data_actions,
             "MetricName": self.metric_name,
             "Namespace": self.namespace,
             "Statistic": self.statistic,
-            "Dimensions": self.dimensions,
             "Period": self.period,
             "EvaluationPeriods": self.evaluation_periods,
             "DatapointsToAlarm": self.datapoints_to_alarm,
@@ -85,6 +86,20 @@ class CloudWatchAlarm(AwsObject):
             "ComparisonOperator": self.comparison_operator,
             "TreatMissingData": self.treat_missing_data,
         }
+
+        if self.ok_actions is not None:
+            request_dict["OKActions"] = self.ok_actions
+
+        if self.dimensions is not None:
+            request_dict["Dimensions"] = self.dimensions
+
+        if self.insufficient_data_actions is not None:
+            request_dict["InsufficientDataActions"] = self.insufficient_data_actions
+
         if self.alarm_description is not None:
             request_dict["AlarmDescription"] = self.alarm_description
+
+        if self.unit is not None:
+            request_dict["Unit"] = self.unit
+
         return request_dict

@@ -38,7 +38,8 @@ class CloudWatchClient(Boto3Client):
         """
 
         AWSAccount.set_aws_region(region)
-        ret =[]
+        ret = []
+        pdb.set_trace()
         for response in self.execute(self.client.list_metrics, "Metrics"):
             obj = CloudWatchMetric(response)
             ret.append(obj)

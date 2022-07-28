@@ -9,6 +9,7 @@ from horey.aws_api.aws_clients.boto3_client import Boto3Client
 
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.aws_services_entities.auto_scaling_group import AutoScalingGroup
+from horey.aws_api.aws_services_entities.auto_scaling_policy import AutoScalingPolicy
 
 from horey.h_logger import get_logger
 logger = get_logger()
@@ -144,3 +145,49 @@ class AutoScalingClient(Boto3Client):
         logger.info(f"Disposing Auto Scaling Group: {request_dict}")
         for response in self.execute(self.client.delete_auto_scaling_group, None, raw_data=True, filters_req=request_dict):
             return response
+
+    def get_all_policies(self, region=None):
+        """
+        Get all policies in all regions.
+        :return:
+        """
+
+        if region is not None:
+            return self.get_region_policies(region)
+
+        final_result = list()
+        for region in AWSAccount.get_aws_account().regions.values():
+            final_result += self.get_region_policies(region)
+
+        return final_result
+
+    def get_region_policies(self, region, custom_filter=None):
+        final_result = list()
+        AWSAccount.set_aws_region(region)
+        for dict_src in self.execute(self.client.describe_policies, "ScalingPolicies", filters_req=custom_filter):
+            obj = AutoScalingPolicy(dict_src)
+            final_result.append(obj)
+
+        return final_result
+
+    def provision_policy(self, autoscaling_policy: AutoScalingPolicy):
+        AWSAccount.set_aws_region(autoscaling_policy.region)
+        response = self.provision_policy_raw(autoscaling_policy.generate_create_request())
+        autoscaling_policy.update_from_raw_response(response)
+
+    def provision_policy_raw(self, request_dict):
+        logger.info(f"Creating Auto Scaling Policy: {request_dict}")
+        for response in self.execute(self.client.put_scaling_policy, None, raw_data=True, filters_req=request_dict):
+            del response["ResponseMetadata"]
+            return response
+
+    def update_policy_information(self, policy):
+        AWSAccount.set_aws_region(policy.region)
+        try:
+            dict_src = self.execute_with_single_reply(self.client.describe_policies,
+                                                       "ScalingPolicies",
+                                                       filters_req={"PolicyNames":[policy.name]})
+        except self.ZeroValuesException:
+            return False
+        policy.update_from_raw_response(dict_src)
+        return True

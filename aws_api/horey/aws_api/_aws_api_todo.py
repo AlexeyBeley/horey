@@ -189,7 +189,7 @@ class AWSAPI:
             os.makedirs(sub_dir, exist_ok=True)
             logger.info(f"Begin collecting from stream: {sub_dir}")
 
-            stream_generator = self.cloud_watch_logs_client.yield_log_group_streams(log_group)
+            stream_generator = self.cloud_watch_logs_client.yield_log_group_streams_raw(log_group)
             self.cache_large_objects_from_generator(stream_generator, sub_dir)
 
     def cache_large_objects_from_generator(self, generator, sub_dir):

@@ -17,7 +17,7 @@ setup(name="horey.alert_system",
       license="DWTFYWTPL",
       include_package_data=True,
       package_data={
-        "": ["receiver_raw_lambda/*.txt"]},
+        "": ["lambda_package/*.txt"]},
       packages=find_namespace_packages(include=["horey.alert_system", "horey.alert_system.*"]),
       zip_safe=False,
       install_requires=[]

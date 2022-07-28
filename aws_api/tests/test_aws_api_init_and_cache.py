@@ -161,7 +161,7 @@ def test_init_and_cache_cloudwatch_metrics():
 @pytest.mark.skip(reason="No way of currently testing cloudwatch metrics")
 def test_init_and_cache_cloudwatch_alarms():
     aws_api.init_cloud_watch_alarms()
-    aws_api.cache_objects(aws_api.cloud_watch_alarms, configuration.aws_api_cloudwatch_alarms_cache_file)
+    aws_api.cache_objects(aws_api.cloud_watch_alarms, configuration.aws_api_cloudwatch_alarms_cache_file, indent=4)
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
@@ -511,6 +511,27 @@ def test_init_and_cache_auto_scaling_groups():
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_auto_scaling_policies():
+    aws_api.init_auto_scaling_policies()
+    aws_api.cache_objects(aws_api.auto_scaling_policies, configuration.aws_api_auto_scaling_policies_cache_file)
+    assert isinstance(aws_api.auto_scaling_policies, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_application_auto_scaling_policies():
+    aws_api.init_application_auto_scaling_policies()
+    aws_api.cache_objects(aws_api.application_auto_scaling_policies, configuration.aws_api_application_auto_scaling_policies_cache_file)
+    assert isinstance(aws_api.application_auto_scaling_policies, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_application_auto_scaling_scalable_targets():
+    aws_api.init_application_auto_scaling_scalable_targets()
+    aws_api.cache_objects(aws_api.application_auto_scaling_scalable_targets, configuration.aws_api_application_auto_scaling_scalable_targets_cache_file)
+    assert isinstance(aws_api.application_auto_scaling_scalable_targets, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_ecs_capacity_providers():
     aws_api.init_ecs_capacity_providers()
     aws_api.cache_objects(aws_api.ecs_capacity_providers, configuration.aws_api_ecs_capacity_providers_cache_file)
@@ -612,6 +633,8 @@ if __name__ == "__main__":
     #test_init_and_cache_nat_gateways()
     #test_init_and_cache_ecr_repositories()
     #test_init_and_cache_ecs_clusters()
+    #test_init_and_cache_ecs_services()
+    #test_init_and_cache_ecs_capacity_providers()
     #test_init_and_cache_ec2_launch_template_versions()
     #test_init_and_cache_ecs_task_definitions()
     #test_add_managed_region()
@@ -645,10 +668,15 @@ if __name__ == "__main__":
     #test_init_and_cache_glue_tables()
     #test_init_and_cache_glue_databases()
     #test_init_and_cache_iam_instance_profiles()
-    test_init_and_cache_dynamodb_tables()
+    #test_init_and_cache_dynamodb_tables()
     #test_init_and_cache_dynamodb_endpoints()
     #test_init_and_cache_sesv2_email_identities()
     #test_init_and_cache_sesv2_email_templates()
     #test_init_and_cache_sesv2_configuration_sets()
     #test_init_and_cache_sns_topics()
     #test_init_and_cache_sns_subscriptions()
+    #test_init_and_cache_auto_scaling_groups()
+    #test_init_and_cache_auto_scaling_policies()
+    test_init_and_cache_cloudwatch_alarms()
+    #test_init_and_cache_application_auto_scaling_policies()
+    #test_init_and_cache_application_auto_scaling_scalable_targets()

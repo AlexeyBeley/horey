@@ -92,6 +92,8 @@ class Boto3Client:
             except Exception as exception_instance:
                 logger.warning(
                     f"Exception received in paginator '{func_command.__name__}' Error: {repr(exception_instance)}")
+                if "The security token included in the request is invalid" in repr(exception_instance):
+                    raise
                 exception_weight = 10
                 time_to_sleep = 1
 
@@ -201,7 +203,10 @@ class Boto3Client:
         if len(ret) == 1:
             return ret[0]
 
-        raise RuntimeError(ret)
+        if len(ret) == 0:
+            raise self.ZeroValuesException(str(ret))
+
+        raise self.ToManyValuesException(str(ret))
 
     @staticmethod
     def wait_for_status(observed_object, update_function, desired_statuses, permit_statues, error_statuses,
@@ -239,8 +244,8 @@ class Boto3Client:
         if function is None:
             function = self.client.get_tags
 
-        logger.info(f"Getting resource tags: {obj}")
-        return list(self.execute(function, "Tags", filters_req={"ResourceArn": obj}))
+        logger.info(f"Getting resource tags: {obj.arn}")
+        return list(self.execute(function, "Tags", filters_req={"ResourceArn": obj.arn}))
 
     def tag_resource(self, obj):
         logger.info(f"Tagging resource: {obj.arn}")
@@ -252,4 +257,10 @@ class Boto3Client:
         pass
 
     class ResourceNotFoundError(ValueError):
+        pass
+
+    class ZeroValuesException(RuntimeError):
+        pass
+
+    class ToManyValuesException(RuntimeError):
         pass

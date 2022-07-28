@@ -4,13 +4,16 @@ import os
 from horey.configuration_policy.configuration_policy import ConfigurationPolicy
 
 
-class MessageReceiverConfigurationPolicy(ConfigurationPolicy):
+class AlertSystemConfigurationPolicy(ConfigurationPolicy):
     def __init__(self):
         super().__init__()
         self._slack_api_configuration_file = None
         self._deployment_datetime = None
         self._deployment_directory_path = None
         self._horey_repo_path = None
+        self._lambda_name = None
+        self._sns_topic_name = None
+        self._region = None
 
     @property
     def slack_api_configuration_file(self):
@@ -52,15 +55,34 @@ class MessageReceiverConfigurationPolicy(ConfigurationPolicy):
 
     @property
     def region(self):
-        return "us-west-2"
+        if self._region is None:
+            raise self.UndefinedValueError("region")
+
+        return self._region
+
+    @region.setter
+    def region(self, value):
+        self._region = value
 
     @property
     def sns_topic_name(self):
-        return "alert_system_generic"
+        if self._sns_topic_name is None:
+            self._sns_topic_name = "alert_system_generic"
+        return self._sns_topic_name
+
+    @sns_topic_name.setter
+    def sns_topic_name(self, value):
+        self._sns_topic_name = value
 
     @property
     def lambda_name(self):
-        return "generic_receiver_test"
+        if self._lambda_name is None:
+            self._lambda_name = "generic_receiver_test"
+        return self._lambda_name
+    
+    @lambda_name.setter
+    def lambda_name(self, value):
+        self._lambda_name = value 
 
     @property
     def lambda_role_name(self):

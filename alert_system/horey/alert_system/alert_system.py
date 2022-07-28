@@ -3,6 +3,7 @@ import json
 import os
 import pdb
 
+
 from horey.h_logger import get_logger
 from horey.serverless.packer.packer import Packer
 from horey.aws_api.aws_services_entities.aws_lambda import AWSLambda
@@ -16,27 +17,30 @@ from horey.aws_api.aws_services_entities.iam_policy import IamPolicy
 from horey.aws_api.aws_services_entities.sns_subscription import SNSSubscription
 from horey.aws_api.aws_services_entities.sns_topic import SNSTopic
 from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlarm
+from horey.aws_api.aws_services_entities.cloud_watch_log_group_metric_filter import CloudWatchLogGroupMetricFilter
+from horey.alert_system.lambda_package.message import Message
+
 
 logger = get_logger()
 
 
-class MessageReceiver:
+class AlertSystem:
     def __init__(self, configuration):
         self.configuration = configuration
         self.packer = Packer()
         self.aws_api = AWSAPI()
         self.region = Region.get_region(self.configuration.region)
 
-    def provision_message_receiver(self):
-        self.provision_sns_topic()
-        self.provision_lambda()
+    def provision(self, tags, lambda_files):
+        self.provision_sns_topic(tags)
+        self.provision_lambda(lambda_files)
         self.provision_sns_subscription()
 
-    def provision_lambda(self):
-        self.create_lambda_package()
+    def provision_lambda(self, files):
+        self.create_lambda_package(files)
         return self.deploy_lambda()
 
-    def create_lambda_package(self):
+    def create_lambda_package(self, files):
         """
         Create the zip package to be deployed.
 
@@ -53,12 +57,11 @@ class MessageReceiver:
         self.packer.zip_venv_site_packages(self.configuration.lambda_zip_file_name,
                                            self.configuration.deployment_venv_path, "python3.8")
 
+        external_files = [os.path.basename(file_path) for file_path in files]
         lambda_package_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "lambda_package")
-        lambda_package_files = [os.path.join(lambda_package_dir, file_name) for file_name in os.listdir(lambda_package_dir)]
-        pdb.set_trace()
-        files_paths = lambda_package_files + [
-            self.configuration.slack_api_configuration_file
-            ]
+        lambda_package_files = [os.path.join(lambda_package_dir, file_name)
+                                for file_name in os.listdir(lambda_package_dir) if file_name not in external_files]
+        files_paths = lambda_package_files + files + [self.configuration.slack_api_configuration_file]
         self.packer.add_files_to_zip(self.configuration.lambda_zip_file_name, files_paths)
 
         # dir_paths = [os.path.join(os.path.dirname(os.path.abspath(__file__)), "receiver_raw_lambda")]
@@ -138,21 +141,19 @@ class MessageReceiver:
         self.aws_api.provision_aws_lambda(aws_lambda, force=True)
         return aws_lambda
 
-    def provision_sns_topic(self):
+    def provision_sns_topic(self, tags):
         """
 
         @return:
         """
-
         topic = SNSTopic({})
         topic.region = self.region
         topic.name = self.configuration.sns_topic_name
         topic.attributes = {"DisplayName": topic.name}
-        topic.tags = [{
+        topic.tags = tags
+        topic.tags.append({
             "Key": "Name",
-            "Value": topic.name},
-            {"Key": "Name_2",
-             "Value": topic.name}]
+            "Value": topic.name})
 
         self.aws_api.provision_sns_topic(topic)
 
@@ -176,10 +177,21 @@ class MessageReceiver:
         subscription.protocol = "lambda"
         subscription.topic_arn = topic.arn
         subscription.endpoint = aws_lambda.arn
-
         self.aws_api.provision_sns_subscription(subscription)
 
-    def provision_cloudwatch_alarm(self, dimensions, message):
+    def provision_cloudwatch_alarm(self, alarm):
+        topic = SNSTopic({})
+        topic.name = self.configuration.sns_topic_name
+        topic.region = self.region
+        if not self.aws_api.sns_client.update_topic_information(topic):
+            raise RuntimeError("Could not update topic information")
+
+        alarm.region = self.region
+        alarm.ok_actions = [topic.arn]
+        alarm.alarm_actions = [topic.arn]
+        self.aws_api.cloud_watch_client.set_cloudwatch_alarm(alarm)
+
+    def generate_and_provision_cloudwatch_alarm(self, dimensions, message):
         """
         ret = {'Records': [{'Eve
         print(ret["Records"][0]["Sns"]["Message"].replace('"', r'\"'))
@@ -214,4 +226,54 @@ class MessageReceiver:
         alarm.treat_missing_data = "missing"
 
         self.aws_api.cloud_watch_client.set_cloudwatch_alarm(alarm)
+
+    def provision_cloudwatch_logs_alarm(self, log_group_name, filter_text, metric_name_raw, message_data):
+        """
+        Provision Cloud watch logs based alarm.
+
+        @param message_data: dict
+        @param filter_text:
+        @param log_group_name:
+        @param metric_name_raw:
+        @return:
+        """
+
+        message_data["log_group_name"] = log_group_name
+        message_data["log_group_filter_pattern"] = filter_text
+        metric_name = f"metric-{metric_name_raw}"
+
+        metric_filter = CloudWatchLogGroupMetricFilter({})
+        metric_filter.log_group_name = log_group_name
+        metric_filter.name = f"metric-filter-{log_group_name}-{metric_name_raw}"
+        metric_filter.filter_pattern = filter_text
+        metric_filter.metric_transformations = [
+            {
+                "metricName": metric_name,
+                "metricNamespace": log_group_name,
+                "metricValue": "1"
+            }
+        ]
+        metric_filter.region = self.region
+        self.aws_api.cloud_watch_logs_client.provision_metric_filter(metric_filter)
+
+        message = Message()
+        message.type = "cloudwatch_logs_metric_sns_alarm"
+        message.data = message_data
+        message.generate_uuid()
+
+        alarm = CloudWatchAlarm({})
+        alarm.region = self.region
+        alarm.name = f"alarm-{log_group_name}-{metric_name_raw}"
+        alarm.actions_enabled = True
+        alarm.alarm_description = json.dumps(message.convert_to_dict())
+        alarm.metric_name = metric_name
+        alarm.namespace = log_group_name
+        alarm.statistic = "Sum"
+        alarm.period = 300
+        alarm.evaluation_periods = 1
+        alarm.datapoints_to_alarm = 1
+        alarm.threshold = 0.0
+        alarm.comparison_operator = "GreaterThanThreshold"
+        alarm.treat_missing_data = "notBreaching"
+        self.provision_cloudwatch_alarm(alarm)
 
