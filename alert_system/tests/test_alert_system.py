@@ -89,7 +89,7 @@ def test_provision_cloudwatch_alarm():
     message = Message()
     message.type = "test_message"
     message.generate_uuid()
-    message.data = {"key": "value", "tags": ["infra"]}
+    message.data = {"key": "value", "tags": ["team_name"]}
     alert_system.provision_cloudwatch_alarm(mock_values["alarm_dimensions"], message)
 
 
@@ -105,7 +105,7 @@ def test_provision_cloudwatch_logs_alarm():
 
     alert_system = AlertSystem(configuration)
 
-    message_data = {"key": "value", "tags": ["infra"]}
+    message_data = {"key": "value", "tags": ["team_name"]}
     alert_system.provision_cloudwatch_logs_alarm(mock_values["log_group_name"], "[INFO]", "clwtch-log-error", message_data)
 
 

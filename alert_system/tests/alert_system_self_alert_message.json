@@ -4,7 +4,7 @@
     "log_group_name": "",
     "log_group_filter_pattern": "",
     "tags": [
-      "infra"
+      "team_name"
     ]
   },
   "type": "alert_system_self_monitoring"
