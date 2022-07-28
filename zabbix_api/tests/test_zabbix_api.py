@@ -36,7 +36,7 @@ def test_init_templates():
 def test_provision_host():
     zabbix_api.init_hosts()
     for host in zabbix_api.hosts:
-        if "prod-azure-westus2-cloud-hive-0" == host.name:
+        if "template" == host.name:
             break
 
     host.name = "alexeytest"
