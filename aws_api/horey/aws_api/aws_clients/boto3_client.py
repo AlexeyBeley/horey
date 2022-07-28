@@ -92,6 +92,8 @@ class Boto3Client:
             except Exception as exception_instance:
                 logger.warning(
                     f"Exception received in paginator '{func_command.__name__}' Error: {repr(exception_instance)}")
+                if "The security token included in the request is invalid" in repr(exception_instance):
+                    raise
                 exception_weight = 10
                 time_to_sleep = 1
 

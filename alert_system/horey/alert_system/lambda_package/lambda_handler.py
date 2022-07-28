@@ -23,18 +23,22 @@ class EventHandler:
 
     def extract_message(self, event):
         if "Records" in event:
-            return self.extract_message_cloudwatch(event)
+            return self.extract_message_records(event)
         raise NotImplementedError(event)
 
-    def extract_message_cloudwatch(self, event):
+    def extract_message_records(self, event):
         if len(event["Records"]) != 1:
             raise RuntimeError(event)
+
         record = event["Records"][0]
         if record["EventSource"] != "aws:sns":
             raise NotImplementedError(event)
         message_dict = json.loads(record["Sns"]["Message"])
         message = Message(dic_src=event)
-        dict_src = json.loads(message_dict["AlarmDescription"])
+        if "AlarmDescription" in message_dict:
+            dict_src = json.loads(message_dict["AlarmDescription"])
+        else:
+            dict_src = message_dict
 
         try:
             del dict_src["dict_src"]

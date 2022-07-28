@@ -122,7 +122,7 @@ class CloudWatchLogsClient(Boto3Client):
     def provision_metric_filter(self, metric_filter: CloudWatchLogGroupMetricFilter):
         request_dict = metric_filter.generate_create_request()
         AWSAccount.set_aws_region(metric_filter.region)
-        logger.info(f"Creating cloudwatch log group metric filter '{metric_filter.name}' in region '{metric_filter.region}'")
+        logger.info(f"Creating cloudwatch log group metric filter in region '{metric_filter.region}': {request_dict}")
         for response in self.execute(self.client.put_metric_filter, "ResponseMetadata", filters_req=request_dict):
             if response["HTTPStatusCode"] != 200:
                 raise RuntimeError(f"{response}")

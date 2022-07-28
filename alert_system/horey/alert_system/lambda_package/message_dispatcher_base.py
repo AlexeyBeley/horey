@@ -61,7 +61,7 @@ class MessageDispatcherBase:
     def _handle_cloudwatch_logs_metric_alarm(self, alarm, slack_header=None, slack_message_type=None, slack_text=None):
         log_group_search_url = self.generate_cloudwatch_log_search_link(alarm, alarm.alert_system_data["log_group_name"], alarm.alert_system_data["log_group_filter_pattern"])
         if slack_text is None:
-            slack_text = f'region:{alarm.region}\n' \
+            slack_text = f'region: {alarm.region}\n' \
                f'Log group: {alarm.alert_system_data["log_group_name"]}\n' \
                f'Filter pattern: {alarm.alert_system_data["log_group_filter_pattern"]}\n\n' \
                f'{alarm.new_state_reason}'
