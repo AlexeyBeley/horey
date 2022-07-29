@@ -215,14 +215,13 @@ class IamClient(Boto3Client):
             iam_instance_profile.update_from_raw_response(response)
 
     def provision_instance_profile(self, iam_instance_profile: IamInstanceProfile):
-        for request in iam_instance_profile.generate_add_role_requests():
-            self.add_role_to_instance_profile_raw(request)
-
+        all_instance_profiles = self.get_all_instance_profiles()
+        found_role = CommonUtils.find_objects_by_values(all_instance_profiles, {"name": iam_instance_profile.name})
+        if not found_role:
+            self.provision_iam_instance_profiles_raw(iam_instance_profile.generate_create_request())
+            for request in iam_instance_profile.generate_add_role_requests():
+                self.add_role_to_instance_profile_raw(request)
         self.update_instance_profile_information(iam_instance_profile)
-
-        if iam_instance_profile.arn is None:
-            role_dict_src = self.provision_iam_instance_profiles_raw(iam_instance_profile.generate_create_request())
-            iam_instance_profile.update_from_raw_response(role_dict_src)
 
     def add_role_to_instance_profile_raw(self, request):
         for response in self.execute(self.client.add_role_to_instance_profile, None, raw_data=True, filters_req=request):
