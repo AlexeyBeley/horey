@@ -270,7 +270,7 @@ class EC2Client(Boto3Client):
         try:
             return self.authorize_security_group_ingress_raw(request_dict)
         except Exception as inst_exception:
-            if "already exists" in repr(inst_exception):
+            if "The same permission must not appear multiple times" in repr(inst_exception):
                 for request_ip_permission in request_dict["IpPermissions"]:
                     request_dict_tmp = {"GroupId": request_dict["GroupId"],
                                         "IpPermissions": [request_ip_permission]}
