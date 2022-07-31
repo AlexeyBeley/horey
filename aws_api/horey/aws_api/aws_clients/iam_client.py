@@ -1,7 +1,6 @@
 """
 AWS iam client to handle iam service API requests.
 """
-import pdb
 
 from horey.aws_api.aws_services_entities.iam_user import IamUser
 from horey.aws_api.aws_services_entities.iam_access_key import IamAccessKey
@@ -31,10 +30,12 @@ class IamClient(Boto3Client):
     def get_all_users(self, full_information=True):
         """
         Get all users.
+
         :param full_information:
         :return:
         """
-        final_result = list()
+
+        final_result = []
 
         for response in self.execute(self.client.list_users, "Users"):
             user = IamUser(response)
@@ -50,9 +51,11 @@ class IamClient(Boto3Client):
     def get_all_access_keys(self):
         """
         Get all access keys.
+
         :return:
         """
-        final_result = list()
+
+        final_result = []
         users = self.get_all_users()
 
         for user in users:
@@ -64,11 +67,13 @@ class IamClient(Boto3Client):
     def get_all_roles(self, full_information=True, policies=None):
         """
         Get all roles
+
         :param full_information:
         :param policies:
         :return:
         """
-        final_result = list()
+
+        final_result = []
         for result in self.execute(self.client.list_roles, "Roles", filters_req={"MaxItems": 1000}):
             role = IamRole(result)
             final_result.append(role)
@@ -76,9 +81,15 @@ class IamClient(Boto3Client):
                 self.update_iam_role_full_information(role, policies=policies)
 
         return final_result
-    
+
     def get_all_instance_profiles(self):
-        final_result = list()
+        """
+        Get all instance profiles.
+
+        @return:
+        """
+
+        final_result = []
         for result in self.execute(self.client.list_instance_profiles, "InstanceProfiles", filters_req={"MaxItems": 1000}):
             instance_profile = IamInstanceProfile(result)
             final_result.append(instance_profile)
@@ -147,6 +158,14 @@ class IamClient(Boto3Client):
                 iam_role.add_policy(policy)
 
     def yield_policies(self, full_information=True, filters_req=None):
+        """
+        Yield all policies objects.
+
+        @param full_information:
+        @param filters_req:
+        @return:
+        """
+
         for result in self.execute(self.client.list_policies, "Policies", filters_req=filters_req):
             pol = IamPolicy(result)
             if full_information:
@@ -156,11 +175,13 @@ class IamClient(Boto3Client):
     def get_all_policies(self, full_information=True, filters_req=None):
         """
         Get all iam policies.
+
         @param full_information:
         @param filters_req:
         @return:
         """
-        final_result = list()
+
+        final_result = []
 
         for result in self.execute(self.client.list_policies, "Policies", filters_req=filters_req):
             pol = IamPolicy(result)
@@ -172,23 +193,46 @@ class IamClient(Boto3Client):
 
     def update_policy_default_statement(self, policy):
         """
-        Fetches and pdates the policy statements
+        Fetches and updates the policy statements
+
         :param policy: The IamPolicy obj
         :return: None, raise if fails
         """
+
         for response in self.execute(self.client.get_policy_version, "PolicyVersion", filters_req={"PolicyArn": policy.arn, "VersionId": policy.default_version_id}):
             policy.update_statements(response)
 
     def attach_role_policy_raw(self, request_dict):
+        """
+        Attach a policy to role.
+
+        @param request_dict:
+        @return:
+        """
+
         logger.info(f"Attaching policy to role: {request_dict}")
         for response in self.execute(self.client.attach_role_policy, "Role", filters_req=request_dict, raw_data=True):
             return response
 
     def attach_role_inline_policy_raw(self, request_dict):
+        """
+        Attach an inline policy to role.
+
+        @param request_dict:
+        @return:
+        """
+
         for response in self.execute(self.client.put_role_policy, "ResponseMetadata", filters_req=request_dict):
             return response
 
     def provision_iam_role(self, iam_role: IamRole):
+        """
+        Provision role object
+
+        @param iam_role:
+        @return:
+        """
+
         all_roles = self.get_all_roles(full_information=False)
         found_role = CommonUtils.find_objects_by_values(all_roles, {"name": iam_role.name})
 
@@ -204,37 +248,84 @@ class IamClient(Boto3Client):
             self.attach_role_policy_raw(request)
 
     def provision_iam_role_raw(self, request_dict):
+        """
+        Provision iam role from raw request dict.
+
+        @param request_dict:
+        @return:
+        """
+
         logger.warning(f"Creating iam role: {request_dict}")
 
         for response in self.execute(self.client.create_role, "Role", filters_req=request_dict):
             return response
 
     def update_instance_profile_information(self, iam_instance_profile: IamInstanceProfile):
+        """
+        Fetch and update instance profile info.
+
+        @param iam_instance_profile:
+        @return:
+        """
+
         for response in self.execute(self.client.get_instance_profile, "InstanceProfile", filters_req={"InstanceProfileName": iam_instance_profile.name},
                                      exception_ignore_callback=lambda x: "NoSuchEntity" in repr(x)):
             iam_instance_profile.update_from_raw_response(response)
 
     def provision_instance_profile(self, iam_instance_profile: IamInstanceProfile):
+        """
+        Provision instance profile object.
+
+        @param iam_instance_profile:
+        @return:
+        """
+
         all_instance_profiles = self.get_all_instance_profiles()
-        found_role = CommonUtils.find_objects_by_values(all_instance_profiles, {"name": iam_instance_profile.name})
-        if not found_role:
-            self.provision_iam_instance_profiles_raw(iam_instance_profile.generate_create_request())
+        found_profiles = CommonUtils.find_objects_by_values(all_instance_profiles, {"name": iam_instance_profile.name})
+
+        if len(found_profiles) > 2:
+            raise RuntimeError(f"More then 1 profiles found by name: {iam_instance_profile.name}")
+
+        if len(found_profiles) == 0:
+            self.provision_iam_instance_profile_raw(iam_instance_profile.generate_create_request())
             for request in iam_instance_profile.generate_add_role_requests():
                 self.add_role_to_instance_profile_raw(request)
+
         self.update_instance_profile_information(iam_instance_profile)
 
     def add_role_to_instance_profile_raw(self, request):
+        """
+        Add role to existing instance profile.
+
+        @param request:
+        @return:
+        """
+
+        logger.info(f"add_role_to_instance_profile: {request}")
         for response in self.execute(self.client.add_role_to_instance_profile, None, raw_data=True, filters_req=request):
             return response
 
-    def provision_iam_instance_profiles_raw(self, request_dict):
+    def provision_iam_instance_profile_raw(self, request_dict):
+        """
+        Provision instance profile role from raw dict.
+
+        @param request_dict:
+        @return:
+        """
+
         logger.warning(f"create_instance_profile: {request_dict}")
 
         for response in self.execute(self.client.create_instance_profile, "InstanceProfile", filters_req=request_dict):
             return response
 
-
     def provision_policy(self, policy: IamPolicy):
+        """
+        Provision policy from object.
+
+        @param policy:
+        @return:
+        """
+
         for existing_policy in self.yield_policies(full_information=False):
             if existing_policy.name == policy.name:
                 policy.update_from_raw_response(existing_policy.dict_src)
@@ -244,6 +335,13 @@ class IamClient(Boto3Client):
         policy.update_from_raw_response(role_dict_src)
 
     def provision_policy_raw(self, request_dict):
+        """
+        Provision policy from raw dict.
+
+        @param request_dict:
+        @return:
+        """
+
         logger.warning(f"Creating iam policy: {request_dict}")
 
         for response in self.execute(self.client.create_policy, "Policy", filters_req=request_dict):

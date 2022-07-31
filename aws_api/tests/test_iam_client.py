@@ -1,14 +1,11 @@
-import os
-import sys
+# pylint: skip-file
 import json
-import pdb
 from unittest.mock import Mock
 
 
 from horey.aws_api.aws_clients.iam_client import IamClient
-from horey.aws_api.base_entities.aws_account import AWSAccount
-from horey.aws_api.base_entities.region import Region
 from horey.aws_api.aws_services_entities.iam_role import IamRole
+from horey.aws_api.aws_services_entities.iam_instance_profile import IamInstanceProfile
 
 
 def test_init_iam_client():
@@ -83,5 +80,19 @@ def test_provision_role():
     client.provision_iam_role(role)
 
 
+def test_provision_instance_profile():
+    iam_instance_profile = IamInstanceProfile({})
+    iam_instance_profile.name = "profile-alexey-test"
+    iam_instance_profile.tags = [{
+        "Key": "Name",
+        "Value": iam_instance_profile.name
+    }]
+    iam_instance_profile.roles = [{"RoleName": "role-alexey-test-lambda"}]
+
+    client = IamClient()
+    client.provision_instance_profile(iam_instance_profile)
+
+
 if __name__ == "__main__":
-    test_provision_role()
+    #test_provision_role()
+    test_provision_instance_profile()
