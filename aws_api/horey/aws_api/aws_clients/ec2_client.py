@@ -535,11 +535,20 @@ class EC2Client(Boto3Client):
             return response
 
     def provision_managed_prefix_list(self, managed_prefix_list, declarative=False):
+        """
+        Provisioning managed prefix list.
+
+        @param managed_prefix_list:
+        @param declarative:
+        @return:
+        """
+
+        logger.info(f"Manged prefix list '{managed_prefix_list.name}' in region '{managed_prefix_list.region.region_mark}'")
         raw_region_pl = self.raw_describe_managed_prefix_list(managed_prefix_list.region,
                                                               prefix_list_name=managed_prefix_list.name)
 
         if raw_region_pl is None:
-            AWSAccount.set_aws_region(managed_prefix_list.region.region_mark)
+            AWSAccount.set_aws_region(managed_prefix_list.region)
             response = self.raw_create_managed_prefix_list(managed_prefix_list.generate_create_request())
             return managed_prefix_list.update_from_raw_create(response)
 
