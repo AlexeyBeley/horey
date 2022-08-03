@@ -106,15 +106,11 @@ class ManagedPrefixList(AwsObject):
             for entry in self.entries:
                 if dst_managed_prefix_list_entry.cidr == entry.cidr or dst_managed_prefix_list_entry.description == entry.description:
                     if dst_managed_prefix_list_entry.cidr != entry.cidr or dst_managed_prefix_list_entry.description != entry.description:
-                        request_entries_add.append({
-                            "Cidr": dst_managed_prefix_list_entry.cidr,
-                            "Description": dst_managed_prefix_list_entry.description
-                        })
-
                         request_entries_remove.append({
                             "Cidr": entry.cidr
                         })
-                    break
+                    else:
+                        break
             else:
                 request_entries_add.append({
                     "Cidr": dst_managed_prefix_list_entry.cidr,
