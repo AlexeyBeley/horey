@@ -36,9 +36,14 @@ class AlertSystem:
         self.provision_lambda(lambda_files)
         self.provision_sns_subscription()
 
+        self.provision_self_monitoring()
+
     def provision_lambda(self, files):
         self.create_lambda_package(files)
         return self.deploy_lambda()
+
+    def provision_self_monitoring(self):
+        pdb.set_trace()
 
     def create_lambda_package(self, files):
         """

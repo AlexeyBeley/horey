@@ -274,8 +274,9 @@ class AWSLambda(AwsObject):
                 continue
 
             for key, desired_value in desired_statement.items():
-                logger.info(f'{key}, {desired_aws_lambda.policy["Statement"][0][key]}, {self_policy["Statement"][0][key]}')
                 if desired_value != self_statement[key]:
+                    logger.info(
+                        f'Found difference in key: {key}, current value: {self_statement[key]}, desired: {desired_value}')
                     break
             else:
                 continue

@@ -68,14 +68,44 @@ def test_provision_lambda():
 
 
 def test_provision():
-    configuration = AlertSystemConfigurationPolicy()
-    configuration.sla = os.path.abspath(
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore",
-                     "aws_api_configuration_values.py"))
-    configuration.init_from_file()
-    alert_system = AlertSystem(configuration)
+    as_configuration = AlertSystemConfigurationPolicy()
+    as_configuration.horey_repo_path = os.path.abspath(
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 
-    alert_system.provision()
+    as_configuration.region = "us-west-2"
+    as_configuration.lambda_name = "alert_system_test_deploy_lambda"
+    as_configuration.sns_topic_name = "topic_test_alert_system"
+
+    as_configuration.deployment_dir_path = "/tmp/horey_deployment"
+    as_configuration.slack_api_configuration_file = os.path.abspath(
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore",
+                     "slack_api_configuration_values.py"))
+
+    alert_system = AlertSystem(as_configuration)
+    tags = [
+        {
+            "Key": "name",
+            "Value": as_configuration.lambda_name
+        }]
+    alert_system.provision(tags, [])
+
+
+def test_provision_self_monitoring():
+    as_configuration = AlertSystemConfigurationPolicy()
+    as_configuration.horey_repo_path = os.path.abspath(
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+
+    as_configuration.region = "us-west-2"
+    as_configuration.lambda_name = "alert_system_test_deploy_lambda"
+    as_configuration.sns_topic_name = "topic_test_alert_system"
+
+    as_configuration.deployment_dir_path = "/tmp/horey_deployment"
+    as_configuration.slack_api_configuration_file = os.path.abspath(
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore",
+                     "slack_api_configuration_values.py"))
+
+    alert_system = AlertSystem(as_configuration)
+    alert_system.provision_self_monitoring()
 
 
 def test_provision_cloudwatch_alarm():
@@ -139,4 +169,6 @@ if __name__ == "__main__":
     # test_provision_sns_subscription()
     # test_provision_cloudwatch_alarm()
     #test_provision_cloudwatch_logs_alarm()
-    test_deploy_lambda()
+    #test_deploy_lambda()
+    test_provision_self_monitoring()
+    #test_provision()
