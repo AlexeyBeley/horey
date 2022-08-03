@@ -1,7 +1,6 @@
 """
 AWS Lambda representation
 """
-import pdb
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 from horey.aws_api.base_entities.region import Region
@@ -42,28 +41,57 @@ class ManagedPrefixList(AwsObject):
     def _init_object_from_cache(self, dict_src):
         """
         Init from cache
+
         :param dict_src:
         :return:
         """
+
         options = {}
         self._init_from_cache(dict_src, options)
 
     def add_entry_from_raw_response(self, raw_value):
+        """
+        Add entry from raw server response.
+
+        @param raw_value:
+        @return:
+        """
+
         entry = self.Entry(raw_value)
         self.entries.append(entry)
 
     def add_association_from_raw_response(self, raw_value):
+        """
+        Add association from raw server response.
+
+        @param raw_value:
+        @return:
+        """
+
         entry = self.Association(raw_value)
         self.associations.append(entry)
 
     @property
     def region(self):
+        """
+        Self region generator.
+
+        @return:
+        """
+
         if self.arn is not None:
             return Region.get_region(self.arn.split(":")[3])
         return self._region
 
     @region.setter
     def region(self, value):
+        """
+        Self region setter
+
+        @param value:
+        @return:
+        """
+
         if self.arn is not None:
             raise ValueError("Can not explicitly set region when arn is set")
         if not isinstance(value, Region):
@@ -71,12 +99,27 @@ class ManagedPrefixList(AwsObject):
         self._region = value
 
     def get_entries_modify_request(self, managed_prefix_list, declarative):
+        """
+        Generate modifying request.
+
+        @param managed_prefix_list:
+        @param declarative: Remove undesired entries.
+        @return:
+        """
+
         if not declarative:
             return self.get_entries_add_request(managed_prefix_list)
 
         return self.get_entries_add_remove_request(managed_prefix_list)
 
     def get_entries_add_request(self, dst_managed_prefix_list):
+        """
+        Only add entries - do not remove.
+
+        @param dst_managed_prefix_list:
+        @return:
+        """
+
         request_entries = []
         self_cidr_descriptions = {entry.cidr: entry.description for entry in self.entries}
         for dst_managed_prefix_list_entry in dst_managed_prefix_list.entries:
