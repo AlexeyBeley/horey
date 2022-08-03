@@ -16,6 +16,8 @@ class ManagedPrefixList(AwsObject):
         self.instances = []
         self.entries = []
         self.associations = []
+        self.max_entries = None
+        self.address_family = None
         self.arn = None
         self.version = None
         self._region = None
@@ -23,6 +25,7 @@ class ManagedPrefixList(AwsObject):
         if from_cache:
             self._init_object_from_cache(dict_src)
             return
+
         init_options = {
             "PrefixListId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
             "AddressFamily": self.init_default_attr,
@@ -142,6 +145,13 @@ class ManagedPrefixList(AwsObject):
         return request
 
     def get_entries_add_remove_request(self, desired_prefix_list):
+        """
+        Get declarative modifying request.
+
+        @param desired_prefix_list:
+        @return:
+        """
+
         request_entries_add = []
         request_entries_remove = []
 
@@ -175,44 +185,29 @@ class ManagedPrefixList(AwsObject):
 
     def generate_create_request(self):
         """
-        DryRun=True|False,
-    PrefixListName='string',
-    Entries=[
-        {
-            'Cidr': 'string',
-            'Description': 'string'
-        },
-    ],
-    MaxEntries=123,
-    TagSpecifications=[
-        {
-            'ResourceType': 'client-vpn-endpoint'|'customer-gateway'|'dedicated-host'|'dhcp-options'|'egress-only-internet-gateway'|'elastic-ip'|'elastic-gpu'|'export-image-task'|'export-instance-task'|'fleet'|'fpga-image'|'host-reservation'|'image'|'import-image-task'|'import-snapshot-task'|'instance'|'internet-gateway'|'key-pair'|'launch-template'|'local-gateway-route-table-vpc-association'|'natgateway'|'network-acl'|'network-interface'|'network-insights-analysis'|'network-insights-path'|'placement-group'|'reserved-instances'|'route-table'|'security-group'|'snapshot'|'spot-fleet-request'|'spot-instances-request'|'subnet'|'traffic-mirror-filter'|'traffic-mirror-session'|'traffic-mirror-target'|'transit-gateway'|'transit-gateway-attachment'|'transit-gateway-connect-peer'|'transit-gateway-multicast-domain'|'transit-gateway-route-table'|'volume'|'vpc'|'vpc-peering-connection'|'vpn-connection'|'vpn-gateway'|'vpc-flow-log',
-            'Tags': [
-                {
-                    'Key': 'string',
-                    'Value': 'string'
-                },
-            ]
-        },
-    ],
-    AddressFamily='string',
-    ClientToken='string'
+        Generate creation request
+
+        @return:
         """
-        request = dict()
-        request["PrefixListName"] = self.name
-        request["MaxEntries"] = self.max_entries
-        request["AddressFamily"] = self.address_family
-        request["TagSpecifications"] = [{
-            "ResourceType": "prefix-list",
-            "Tags": self.tags}]
-        request["Entries"] = [{
-            "Cidr": entry.cidr,
-            "Description": entry.description
-        } for entry in self.entries]
+
+        request = {"PrefixListName": self.name, "MaxEntries": self.max_entries, "AddressFamily": self.address_family,
+                   "TagSpecifications": [{
+                       "ResourceType": "prefix-list",
+                       "Tags": self.tags}], "Entries": [{
+                "Cidr": entry.cidr,
+                "Description": entry.description
+            } for entry in self.entries]}
 
         return request
 
     def update_from_raw_create(self, dict_src):
+        """
+        Update self information from raw server reply.
+
+        @param dict_src:
+        @return:
+        """
+
         init_options = {
             "PrefixListId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
             "AddressFamily": self.init_default_attr,
@@ -229,6 +224,11 @@ class ManagedPrefixList(AwsObject):
         self.init_attrs(dict_src, init_options)
 
     class Entry(AwsObject):
+        """
+        Entry representation
+
+        """
+
         def __init__(self, dict_src, from_cache=False):
             super().__init__(dict_src)
             self.instances = []
@@ -254,6 +254,11 @@ class ManagedPrefixList(AwsObject):
             self._init_from_cache(dict_src, options)
 
     class Association(AwsObject):
+        """
+        Association representation class
+
+        """
+
         def __init__(self, dict_src, from_cache=False):
             super().__init__(dict_src)
             self.instances = []
@@ -272,8 +277,10 @@ class ManagedPrefixList(AwsObject):
         def _init_object_from_cache(self, dict_src):
             """
             Init from cache
+
             :param dict_src:
             :return:
             """
+
             options = {}
             self._init_from_cache(dict_src, options)
