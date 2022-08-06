@@ -2,6 +2,7 @@ import datetime
 import json
 import os
 import pdb
+import uuid
 
 
 from horey.h_logger import get_logger
@@ -19,6 +20,7 @@ from horey.aws_api.aws_services_entities.sns_topic import SNSTopic
 from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlarm
 from horey.aws_api.aws_services_entities.cloud_watch_log_group_metric_filter import CloudWatchLogGroupMetricFilter
 from horey.alert_system.lambda_package.message import Message
+from horey.alert_system.lambda_package.notification_channel_slack_configuration_policy import NotificationChannelSlackConfigurationPolicy
 
 
 logger = get_logger()
@@ -43,11 +45,81 @@ class AlertSystem:
         return self.deploy_lambda()
 
     def provision_self_monitoring(self):
-        pdb.set_trace()
+        self.provision_self_monitoring_log_error_alarm()
+        self.provision_self_monitoring_log_timeout_alarm()
+        self.provision_self_monitoring_errors_metric_alarm()
+        self.provision_self_monitoring_duration_alarm()
+
+    def provision_self_monitoring_log_error_alarm(self):
+        """
+        /aws/lambda/alert_system_test_deploy_lambda
+
+        @return:
+        """
+
+        log_group_name = f"/aws/lambda/{self.configuration.lambda_name}"
+        filter_text = '"[ERROR]"'
+        metric_name_raw = f"{self.configuration.lambda_name}-log-error"
+        message_data = {"tags": "alert_system"}
+        self.provision_cloudwatch_logs_alarm(log_group_name, filter_text, metric_name_raw, message_data)
+
+    def provision_self_monitoring_log_timeout_alarm(self):
+        log_group_name = f"/aws/lambda/{self.configuration.lambda_name}"
+        filter_text = "Task timed out after"
+        metric_name_raw = f"{self.configuration.lambda_name}-log-timeout"
+        message_data = {"tags": "alert_system"}
+        self.provision_cloudwatch_logs_alarm(log_group_name, filter_text, metric_name_raw, message_data)
+
+    def provision_self_monitoring_duration_alarm(self):
+        message = Message()
+        message.uuid = str(uuid.uuid4())
+        message.type = "cloudwatch-metric-lambda-duration"
+        message.data = {"tags": ["alert_system"]}
+
+        alarm = CloudWatchAlarm({})
+        alarm.name = f"{self.configuration.lambda_name}-metric-duration"
+        alarm.actions_enabled = True
+        alarm.alarm_description = json.dumps(message.convert_to_dict())
+        alarm.insufficient_data_actions = []
+        alarm.metric_name = "Duration"
+        alarm.namespace = "AWS/Lambda"
+        alarm.statistic = "Average"
+        alarm.dimensions = [{"Name": "FunctionName", "Value": self.configuration.lambda_name}]
+        alarm.period = 300
+        alarm.evaluation_periods = 1
+        alarm.datapoints_to_alarm = 1
+        alarm.threshold = self.configuration.lambda_timeout * 0.6
+        alarm.comparison_operator = "GreaterThanThreshold"
+        alarm.treat_missing_data = "missing"
+        self.provision_cloudwatch_alarm(alarm)
+
+    def provision_self_monitoring_errors_metric_alarm(self):
+        message = Message()
+        message.uuid = str(uuid.uuid4())
+        message.type = "cloudwatch-metric-lambda-duration"
+        message.data = {"tags": ["alert_system"]}
+
+        alarm = CloudWatchAlarm({})
+        alarm.name = f"{self.configuration.lambda_name}-metric-errors"
+        alarm.actions_enabled = True
+        alarm.alarm_description = json.dumps(message.convert_to_dict())
+        alarm.insufficient_data_actions = []
+        alarm.metric_name = "Errors"
+        alarm.namespace = "AWS/Lambda"
+        alarm.statistic = "Average"
+        alarm.dimensions = [{"Name": "FunctionName", "Value": self.configuration.lambda_name}]
+        alarm.period = 300
+        alarm.evaluation_periods = 1
+        alarm.datapoints_to_alarm = 1
+        alarm.threshold = 1.0
+        alarm.comparison_operator = "GreaterThanThreshold"
+        alarm.treat_missing_data = "missing"
+        self.provision_cloudwatch_alarm(alarm)
 
     def create_lambda_package(self, files):
         """
         Create the zip package to be deployed.
+        NotificationChannelSlackConfigurationPolicy.CONFIGURATION_FILE_NAME can be one of the files
 
         :return:
         """
@@ -66,7 +138,7 @@ class AlertSystem:
         lambda_package_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "lambda_package")
         lambda_package_files = [os.path.join(lambda_package_dir, file_name)
                                 for file_name in os.listdir(lambda_package_dir) if file_name not in external_files]
-        files_paths = lambda_package_files + files + [self.configuration.slack_api_configuration_file]
+        files_paths = lambda_package_files + files
         self.packer.add_files_to_zip(self.configuration.lambda_zip_file_name, files_paths)
 
         # dir_paths = [os.path.join(os.path.dirname(os.path.abspath(__file__)), "receiver_raw_lambda")]
@@ -117,7 +189,7 @@ class AlertSystem:
         aws_lambda.handler = "lambda_handler.lambda_handler"
         aws_lambda.runtime = "python3.8"
         aws_lambda.role = role.arn
-        aws_lambda.timeout = 900
+        aws_lambda.timeout = self.configuration.lambda_timeout
         aws_lambda.memory_size = 512
 
         aws_lambda.tags = {"Name": aws_lambda.name}
@@ -196,7 +268,7 @@ class AlertSystem:
         alarm.alarm_actions = [topic.arn]
         self.aws_api.cloud_watch_client.set_cloudwatch_alarm(alarm)
 
-    def generate_and_provision_cloudwatch_alarm(self, dimensions, message):
+    def generate_and_provision_cloudwatch_alarm(self, metric_name, dimensions, message):
         """
         ret = {'Records': [{'Eve
         print(ret["Records"][0]["Sns"]["Message"].replace('"', r'\"'))
@@ -219,7 +291,7 @@ class AlertSystem:
         alarm.ok_actions = [topic.arn]
         alarm.alarm_actions = [topic.arn]
         alarm.insufficient_data_actions = []
-        alarm.metric_name = "ApproximateNumberOfMessagesVisible"
+        alarm.metric_name = metric_name
         alarm.namespace = "AWS/SQS"
         alarm.statistic = "Average"
         alarm.dimensions = dimensions

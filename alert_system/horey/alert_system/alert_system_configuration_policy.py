@@ -91,3 +91,7 @@ class AlertSystemConfigurationPolicy(ConfigurationPolicy):
     @property
     def subscription_name(self):
         return "alert_system_generic_subscription"
+
+    @property
+    def lambda_timeout(self):
+        return 5
