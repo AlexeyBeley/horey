@@ -9,10 +9,12 @@ class NotificationChannelSlackConfigurationPolicy(SlackAPIConfigurationPolicy):
 
     def __init__(self):
         super().__init__()
-        self._deployment_datetime = None
+        self._alert_system_monitoring_channel = None
 
     @property
-    def deployment_datetime(self):
-        if self._deployment_datetime is None:
-            self._deployment_datetime = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")
-        return self._deployment_datetime
+    def alert_system_monitoring_channel(self):
+        return self._alert_system_monitoring_channel
+
+    @alert_system_monitoring_channel.setter
+    def alert_system_monitoring_channel(self, value):
+        self._alert_system_monitoring_channel = value

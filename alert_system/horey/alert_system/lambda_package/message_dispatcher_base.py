@@ -4,9 +4,6 @@ import os
 import traceback
 import urllib.parse
 
-from horey.slack_api.slack_api import SlackAPI
-from horey.slack_api.slack_api_configuration_policy import SlackAPIConfigurationPolicy
-from horey.slack_api.slack_message import SlackMessage
 from horey.common_utils.common_utils import CommonUtils
 from notification_channel_base import NotificationChannelBase
 from notification import Notification
@@ -30,7 +27,15 @@ class MessageDispatcherBase:
             notification_channel = self.init_notification_channel(notification_channel_class)
             self.notification_channels.append(notification_channel)
 
-    def load_notification_channel(self, file_name):
+    @staticmethod
+    def load_notification_channel(file_name):
+        """
+        Load notification channel class from python module.
+
+        @param file_name:
+        @return:
+        """
+
         module_obj = CommonUtils.load_module(os.path.join(os.path.dirname(os.path.abspath(__file__)), file_name))
         candidates = []
         for attr_name in module_obj.__dict__:
@@ -47,7 +52,15 @@ class MessageDispatcherBase:
 
         return candidates[0]
 
-    def init_notification_channel(self, notification_channel_class):
+    @staticmethod
+    def init_notification_channel(notification_channel_class):
+        """
+        Load configuration file and init notification channel with configuration file.
+
+        @param notification_channel_class:
+        @return:
+        """
+
         configuration = CommonUtils.load_object_from_module(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                                             notification_channel_class.CONFIGURATION_POLICY_FILE_NAME),
                                                             notification_channel_class.CONFIGURATION_POLICY_CLASS_NAME)
@@ -55,9 +68,6 @@ class MessageDispatcherBase:
         configuration.init_from_file()
 
         return notification_channel_class(configuration)
-
-    def get_message_types(self):
-        return list(self.handler_mapper.keys())
 
     def dispatch(self, message):
         try:
@@ -78,11 +88,9 @@ class MessageDispatcherBase:
         notification.type = Notification.Types.CRITICAL
         notification.header = "Unhandled message in alert_system"
         notification.text = text
-        notification.tags = ["alert_system_monitoring"]
 
         for notification_channel in self.notification_channels:
-            notification = notification_channel.send_notifications()
-            notification_channel.send(notification)
+            notification_channel.notify_alert_system_error(notification)
 
     def handle_cloudwatch_alarm_default(self, alarms):
         for alarm in alarms:
@@ -141,32 +149,6 @@ class MessageDispatcherBase:
         log_group_search_url = f"https://{alarm.region}.console.aws.amazon.com/cloudwatch/home?region={alarm.region}#logsV2:log-groups/log-group/{log_group_name_encoded}/log-events$3Fend$3D{search_time_end}$26filterPattern$3D{log_group_filter_pattern_encoded}$26start$3D{search_time_start}"
         return log_group_search_url
 
-    def send_to_slack(self, slack_message: SlackMessage):
-        config = SlackAPIConfigurationPolicy()
-        config.configuration_file_full_path = os.environ.get("SLACK_API_CONFIGURATION_FILE")
-        config.init_from_file()
-        slack_api = SlackAPI(configuration=config)
-        logger.info(f"Sending message to slack")
-        try:
-            slack_api.send_message(slack_message)
-        except Exception as exception_inst:
-            traceback_str = ''.join(traceback.format_tb(exception_inst.__traceback__))
-            logger.exception(traceback_str)
-            message = SlackMessage(message_type=SlackMessage.Types.CRITICAL)
-            block = SlackMessage.HeaderBlock()
-            block.text = "Alert system was not able to proceed the slack message"
-            message.add_block(block)
-
-            block = SlackMessage.SectionBlock()
-            block.text = f"See logs for more information"
-            message.add_block(block)
-
-            message.src_username = "slack_api"
-            message.dst_channel = slack_message.dst_channel
-
-            slack_api.send_message(message)
-            raise
-
     def generate_slack_message(self, slack_message_type, header, text, link, link_href, dst_channel):
         try:
             return self.generate_slack_message_helper(slack_message_type, header, text, link, link_href, dst_channel)
@@ -194,26 +176,6 @@ class MessageDispatcherBase:
             message.src_username = "slack_api"
             message.dst_channel = dst_channel
             return message
-
-    def generate_slack_message_helper(self, slack_message_type, header, text, link, link_href, dst_channel):
-        if text is None:
-            raise RuntimeError("Text param can not be None")
-
-        message = SlackMessage(message_type=slack_message_type)
-        block = SlackMessage.HeaderBlock()
-        block.text = f"{slack_message_type.value}: {header}"
-        message.add_block(block)
-
-        attachment = SlackMessage.Attachment()
-        attachment.text = text
-        if link is not None:
-            attachment.add_link(link_href, link)
-
-        message.add_attachment(attachment)
-
-        message.src_username = "slack_api"
-        message.dst_channel = dst_channel
-        return message
 
     @staticmethod
     def encode_to_aws_url_format(str_src):

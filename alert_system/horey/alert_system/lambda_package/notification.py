@@ -67,8 +67,8 @@ class Notification:
 
     @type.setter
     def type(self, value):
-        pdb.set_trace()
-        Notification.Types
+        if value not in Notification.Types:
+            raise ValueError(value)
         self._type = value
 
     class Types(Enum):
