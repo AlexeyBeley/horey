@@ -149,6 +149,12 @@ class AlertSystem:
         os.chdir(current_dir)
 
     def validate_lambda_package(self):
+        """
+        Unzip in a temporary dir and init the base dispatcher class.
+        
+        @return:
+        """
+
         validation_dir_name = os.path.splitext(self.configuration.lambda_zip_file_name)[0]
         os.makedirs(validation_dir_name)
         tmp_zip_path = os.path.join(validation_dir_name, self.configuration.lambda_zip_file_name)
@@ -159,9 +165,8 @@ class AlertSystem:
         current_dir = os.getcwd()
         os.chdir(validation_dir_name)
         message_dispatcher = CommonUtils.load_object_from_module("message_dispatcher_base.py", "MessageDispatcherBase")
-        message_dispatcher.dispatch(None)
+        #message_dispatcher.dispatch(None)
         os.chdir(current_dir)
-        pdb.set_trace()
 
     def provision_lambda_role(self):
         iam_role = IamRole({})
