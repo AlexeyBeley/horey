@@ -1,5 +1,4 @@
 import pdb
-import os
 import traceback
 
 from notification_channel_base import NotificationChannelBase
@@ -20,17 +19,21 @@ class NotificationChannelSlack(NotificationChannelBase):
     def __init__(self, configuration):
         super().__init__(configuration)
         config = SlackAPIConfigurationPolicy()
-        config.configuration_file_full_path = configuration.CONFIGURATION_FILE_NAME
-        config.init_from_file()
+        config.init_from_policy(configuration, ignore_undefined=True)
         self.configuration = configuration
         self.slack_api = SlackAPI(configuration=config)
 
     def notify(self, notification: Notification):
         pdb.set_trace()
+        if notification.type not in Notification.Types:
+            notification.text = f"Error in notification type. Auto set to CRITICAL: " \
+                                f"received {str(notification.type)} must be one of {[x for x in Notification.Types]}.\n" \
+                                f"Original message {notification.text}"
+            notification.type = Notification.Types.CRITICAL
+
         for routing_tag in notification.tags:
             for dst_channel in self.map_routing_tag_to_channels(routing_tag):
-                Notification.Types.get()
-                slack_message_type = SlackMessage.Types.get(notification.type.value)
+                slack_message_type = getattr(SlackMessage.Types, notification.type.value)
                 slack_message = self.generate_slack_message(slack_message_type, notification.header,
                                                                notification.text, notification.link,
                                                                notification.link_href,
@@ -38,12 +41,16 @@ class NotificationChannelSlack(NotificationChannelBase):
                 self.send(slack_message)
 
     def map_routing_tag_to_channels(self, tag):
-        return tag
+        routes = self.configuration.tag_to_channel_mapping[tag]
+        if isinstance(routes, str):
+            routes = [routes]
+
+        return routes
 
     def notify_alert_system_error(self, notification: Notification):
         slack_message = self.generate_slack_message(SlackMessage.Types.CRITICAL, notification.header, notification.text,
                                                            notification.link, notification.link_href,
-                                                           self.configuration.alert_system_monitoring_channel)
+                                                           self.configuration.alert_system_monitoring_destination)
         self.send(slack_message)
 
     def send(self, slack_message):
@@ -77,6 +84,6 @@ class NotificationChannelSlack(NotificationChannelBase):
 
         message.add_attachment(attachment)
 
-        message.src_username = "slack_api"
+        message.src_username = "alert_system"
         message.dst_channel = dst_channel
         return message

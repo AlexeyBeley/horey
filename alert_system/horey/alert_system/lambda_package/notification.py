@@ -17,7 +17,7 @@ class Notification:
 
     @tags.setter
     def tags(self, value):
-        if not isinstance(value, str):
+        if not isinstance(value, list):
             raise ValueError(value)
         self._tags = value
 

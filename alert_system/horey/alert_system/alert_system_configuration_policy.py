@@ -7,21 +7,12 @@ from horey.configuration_policy.configuration_policy import ConfigurationPolicy
 class AlertSystemConfigurationPolicy(ConfigurationPolicy):
     def __init__(self):
         super().__init__()
-        self._slack_api_configuration_file = None
         self._deployment_datetime = None
         self._deployment_directory_path = None
         self._horey_repo_path = None
         self._lambda_name = None
         self._sns_topic_name = None
         self._region = None
-
-    @property
-    def slack_api_configuration_file(self):
-        return self._slack_api_configuration_file
-
-    @slack_api_configuration_file.setter
-    def slack_api_configuration_file(self, value):
-        self._slack_api_configuration_file = value
 
     @property
     def deployment_datetime(self):

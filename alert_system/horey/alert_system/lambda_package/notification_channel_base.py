@@ -3,6 +3,8 @@ import json
 
 
 class NotificationChannelBase:
+    NOTIFICATION_CHANNELS_ENVIRONMENT_VARIABLE = "ALERT_SYSTEM_NOTIFICATION_CHANNELS"
+
     def __init__(self, configuration):
         self.configuration = configuration
 

@@ -2,10 +2,12 @@ import datetime
 import json
 import os
 import pdb
+import shutil
 import uuid
 
 
 from horey.h_logger import get_logger
+from horey.common_utils.common_utils import CommonUtils
 from horey.serverless.packer.packer import Packer
 from horey.aws_api.aws_services_entities.aws_lambda import AWSLambda
 from horey.aws_api.base_entities.region import Region
@@ -20,7 +22,7 @@ from horey.aws_api.aws_services_entities.sns_topic import SNSTopic
 from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlarm
 from horey.aws_api.aws_services_entities.cloud_watch_log_group_metric_filter import CloudWatchLogGroupMetricFilter
 from horey.alert_system.lambda_package.message import Message
-from horey.alert_system.lambda_package.notification_channel_slack_configuration_policy import NotificationChannelSlackConfigurationPolicy
+from horey.alert_system.lambda_package.notification_channel_base import NotificationChannelBase
 
 
 logger = get_logger()
@@ -123,7 +125,6 @@ class AlertSystem:
 
         :return:
         """
-
         self.packer.create_venv(self.configuration.deployment_venv_path)
         current_dir = os.getcwd()
         os.chdir(self.configuration.deployment_directory_path)
@@ -140,11 +141,27 @@ class AlertSystem:
                                 for file_name in os.listdir(lambda_package_dir) if file_name not in external_files]
         files_paths = lambda_package_files + files
         self.packer.add_files_to_zip(self.configuration.lambda_zip_file_name, files_paths)
+        self.validate_lambda_package()
 
         # dir_paths = [os.path.join(os.path.dirname(os.path.abspath(__file__)), "receiver_raw_lambda")]
         # pdb.set_trace()
         # self.packer.add_dirs_to_zip(f"{lambda_name}.zip", dir_paths)
         os.chdir(current_dir)
+
+    def validate_lambda_package(self):
+        validation_dir_name = os.path.splitext(self.configuration.lambda_zip_file_name)[0]
+        os.makedirs(validation_dir_name)
+        tmp_zip_path = os.path.join(validation_dir_name, self.configuration.lambda_zip_file_name)
+        shutil.copyfile(self.configuration.lambda_zip_file_name, tmp_zip_path)
+        self.packer.extract(tmp_zip_path, validation_dir_name)
+
+        os.environ[NotificationChannelBase.NOTIFICATION_CHANNELS_ENVIRONMENT_VARIABLE] = "notification_channel_slack.py"
+        current_dir = os.getcwd()
+        os.chdir(validation_dir_name)
+        message_dispatcher = CommonUtils.load_object_from_module("message_dispatcher_base.py", "MessageDispatcherBase")
+        message_dispatcher.dispatch(None)
+        os.chdir(current_dir)
+        pdb.set_trace()
 
     def provision_lambda_role(self):
         iam_role = IamRole({})
@@ -206,8 +223,8 @@ class AlertSystem:
 
         aws_lambda.environment = {
             "Variables": {
-                "SLACK_API_CONFIGURATION_FILE": os.path.basename(self.configuration.slack_api_configuration_file),
-                "DISABLE": "false",
+                NotificationChannelBase.NOTIFICATION_CHANNELS_ENVIRONMENT_VARIABLE: "notification_channel_slack.py",
+                "DISABLE": "false"
             }
         }
 

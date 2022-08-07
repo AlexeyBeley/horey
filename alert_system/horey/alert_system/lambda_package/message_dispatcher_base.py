@@ -1,6 +1,7 @@
 import datetime
 import json
 import os
+import pdb
 import traceback
 import urllib.parse
 
@@ -14,14 +15,14 @@ logger = get_logger()
 
 
 class MessageDispatcherBase:
-    notification_channel_files = ["notification_channel_slack.py"]
-
     def __init__(self):
         self.handler_mapper = {"cloudwatch_logs_metric_sns_alarm": self.cloudwatch_logs_metric_sns_alarm_message_handler,
                                "cloudwatch_metric_lambda_duration": self.handle_cloudwatch_alarm_default}
 
         self.notification_channels = []
         #todo: change notification_channel_files to be comma separated environ values
+        #notification_channel_files = ["notification_channel_slack.py"]
+        self.notification_channel_files = os.environ.get(NotificationChannelBase.NOTIFICATION_CHANNELS_ENVIRONMENT_VARIABLE).split(",")
         for notification_channel_file_name in self.notification_channel_files:
             notification_channel_class = self.load_notification_channel(notification_channel_file_name)
             notification_channel = self.init_notification_channel(notification_channel_class)
@@ -74,23 +75,39 @@ class MessageDispatcherBase:
             self.handler_mapper[message.type](message)
         except KeyError:
             self.default_handler(message)
+        except Exception as error_inst:
+            traceback_str = ''.join(traceback.format_tb(error_inst.__traceback__))
+            logger.exception(f"{traceback_str}\n{repr(error_inst)}")
+
+            try:
+                text = json.dumps(message.convert_to_dict())
+            except Exception as internal_exception:
+                text = f"Could not convert message to dict: error: {repr(internal_exception)}, message: {str(message)}"
+
+            notification = Notification()
+            notification.type = Notification.Types.CRITICAL
+            notification.header = "Unhandled message in alert_system"
+            notification.text = text
+
+            for notification_channel in self.notification_channels:
+                notification_channel.notify_alert_system_error(notification)
 
     def default_handler(self, message):
         try:
             alarms = self.split_sns_message_to_alarms(message)
             self.handle_cloudwatch_alarm_default(alarms)
-            return
         except Exception as error_inst:
-            logger.exception(error_inst)
+            traceback_str = ''.join(traceback.format_tb(error_inst.__traceback__))
+            logger.exception(f"{traceback_str}\n{repr(error_inst)}")
 
-        text = json.dumps(message.convert_to_dict())
-        notification = Notification()
-        notification.type = Notification.Types.CRITICAL
-        notification.header = "Unhandled message in alert_system"
-        notification.text = text
+            text = json.dumps(message.convert_to_dict())
+            notification = Notification()
+            notification.type = Notification.Types.CRITICAL
+            notification.header = "Unhandled message in alert_system"
+            notification.text = text
 
-        for notification_channel in self.notification_channels:
-            notification_channel.notify_alert_system_error(notification)
+            for notification_channel in self.notification_channels:
+                notification_channel.notify_alert_system_error(notification)
 
     def handle_cloudwatch_alarm_default(self, alarms):
         for alarm in alarms:
@@ -105,39 +122,48 @@ class MessageDispatcherBase:
         return [CloudwatchAlarm(record_dict) for record_dict in message.dict_src["Records"]]
 
     def handle_cloudwatch_logs_metric_alarm(self, alarm):
-        self._handle_cloudwatch_logs_metric_alarm(alarm)
+        return self._handle_cloudwatch_logs_metric_alarm(alarm)
 
-    def _handle_cloudwatch_logs_metric_alarm(self, alarm, slack_header=None, slack_message_type=None, slack_text=None):
+    def _handle_cloudwatch_logs_metric_alarm(self, alarm, notification=None):
         log_group_search_url = self.generate_cloudwatch_log_search_link(alarm, alarm.alert_system_data["log_group_name"], alarm.alert_system_data["log_group_filter_pattern"])
-        if slack_text is None:
-            slack_text = f'region: {alarm.region}\n' \
+        if notification is None:
+            notification = Notification()
+
+        if notification.text is None:
+            notification.text = f'region: {alarm.region}\n' \
                f'Log group: {alarm.alert_system_data["log_group_name"]}\n' \
                f'Filter pattern: {alarm.alert_system_data["log_group_filter_pattern"]}\n\n' \
                f'{alarm.new_state_reason}'
 
-        self._handle_cloudwatch_alarm(alarm, slack_header=slack_header, slack_message_type=slack_message_type, slack_text=slack_text, alarm_url=log_group_search_url, alarm_url_href="View logs in CloudWatch")
+        notification.link = log_group_search_url
+        notification.link_href = "View logs in cloudwatch"
 
-    def _handle_cloudwatch_alarm(self, alarm, notification_header=None, notification_type=None, notification_text=None, alarm_url=None, alarm_url_href=None):
-        if notification_type is None:
+        self._handle_cloudwatch_alarm(alarm, notification=notification)
+
+    def _handle_cloudwatch_alarm(self, alarm, notification=None):
+        if notification is None:
+            notification = Notification()
+
+        notification.tags = alarm.alert_system_data["tags"]
+        if notification.type is None:
             if alarm.new_state == "OK":
-                notification_type = SlackMessage.Types.STABLE
-                notification_header = notification_header or "Default handler: Cloudwatch alarm back to normal"
+                notification.type = Notification.Types.STABLE
+                notification.header = notification.header or "Default handler: Cloudwatch alarm back to normal"
             elif alarm.new_state == "ALARM":
-                notification_type = SlackMessage.Types.CRITICAL
-                notification_header = notification_header or "Default handler: Cloudwatch alarm triggered"
+                notification.type = Notification.Types.CRITICAL
+                notification.header = notification.header or "Default handler: Cloudwatch alarm triggered"
             else:
-                notification_header = f'Unknown state: {alarm.new_state}'
-                notification_type = SlackMessage.Types.CRITICAL
+                notification.type = Notification.Types.CRITICAL
+                notification.header = f'Unknown state: {alarm.new_state}'
 
-        if notification_text is None:
-            notification_text = f'*{alarm.sns_message["AlarmName"]}*\n' \
+        if notification.text is None:
+            notification.text = f'*{alarm.sns_message["AlarmName"]}*\n' \
                          f'Region: {alarm.region}\n\n>' \
                          f'Reason: {alarm.new_state_reason}\n\n' \
                          f'Description: {alarm.sns_message["AlarmDescription"]}'
 
         for notification_channel in self.notification_channels:
-            slack_message = self.generate_slack_message(notification_type, notification_header, notification_text, alarm_url, alarm_url_href, channel)
-            self.send_to_slack(slack_message)
+            notification_channel.notify(notification)
 
     def generate_cloudwatch_log_search_link(self, alarm, log_group_name, log_group_filter_pattern, ):
         log_group_name_encoded = self.encode_to_aws_url_format(log_group_name)
