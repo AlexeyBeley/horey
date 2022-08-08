@@ -383,7 +383,7 @@ class AWSAPI:
             objects = self.sesv2_client.get_all_configuration_sets(region=region)
 
         self.sesv2_configuration_sets = objects
-        
+
     def init_sns_topics(self, from_cache=False, cache_file=None, region=None):
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, SNSTopic)
@@ -391,7 +391,7 @@ class AWSAPI:
             objects = self.sns_client.get_all_topics(region=region)
 
         self.sns_topics = objects
-    
+
     def init_sns_subscriptions(self, from_cache=False, cache_file=None, region=None):
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, SNSSubscription)
@@ -399,7 +399,7 @@ class AWSAPI:
             objects = self.sns_client.get_all_subscriptions(region=region)
 
         self.sns_subscriptions = objects
-        
+
     def init_ecr_images(self, from_cache=False, cache_file=None, region=None, ecr_repositories=None):
         objects = []
         if from_cache:
@@ -473,7 +473,7 @@ class AWSAPI:
             objects = self.autoscaling_client.get_all_policies(region=region)
 
         self.auto_scaling_policies = objects
-    
+
     def init_application_auto_scaling_policies(self, from_cache=False, cache_file=None, region=None):
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, ECSCluster)
@@ -489,7 +489,7 @@ class AWSAPI:
             objects = self.application_autoscaling_client.get_all_scalable_targets(region=region)
 
         self.application_auto_scaling_scalable_targets = objects
-        
+
     def init_amis(self, from_cache=False, cache_file=None):
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, AMI)
@@ -2222,18 +2222,55 @@ class AWSAPI:
         return lines
 
     def get_secret_value(self, secret_name, region=None, ignore_missing=False):
+        """
+        Retrieve secret value from secrets manager.
+
+        @param secret_name:
+        @param region:
+        @param ignore_missing:
+        @return:
+        """
+
         return self.secretsmanager_client.raw_get_secret_string(secret_name, region=region,
                                                                 ignore_missing=ignore_missing)
 
     def put_secret_value(self, secret_name, value, region=None):
+        """
+        Save secret in secrets manager service.
+
+        @param secret_name:
+        @param value:
+        @param region:
+        @return:
+        """
+
         return self.secretsmanager_client.raw_put_secret_string(secret_name, value, region=region)
 
     def put_secret_file(self, secret_name, file_path, region=None):
+        """
+        Read file contents into aws secrets manager service secret.
+
+        @param secret_name:
+        @param file_path:
+        @param region:
+        @return:
+        """
+
         with open(file_path) as file_handler:
             contents = file_handler.read()
         self.put_secret_value(secret_name, contents, region=region)
 
     def get_secret_file(self, secret_name, dir_path: str, region=None, file_name=None):
+        """
+        Get secrets manager value and save it to file.
+
+        @param secret_name:
+        @param dir_path:
+        @param region:
+        @param file_name:
+        @return:
+        """
+
         if dir_path.endswith(secret_name):
             dir_path = os.path.dirname(dir_path)
 
@@ -2247,20 +2284,27 @@ class AWSAPI:
             file_handler.write(contents)
 
     def copy_secrets_manager_secret_to_region(self, secret_name, region_src, region_dst):
+        """
+        Copy secrets manager secret from one region to another region.
+
+        @param secret_name:
+        @param region_src:
+        @param region_dst:
+        @return:
+        """
+
         secret = self.secretsmanager_client.get_secret(secret_name, region_name=region_src)
         self.secretsmanager_client.put_secret(secret, region_name=region_dst)
 
-    def add_ingress_to_security_group(self, security_group_name):
-        self.init_security_groups()
-        pdb.set_trace()
-
-        security_group = \
-            CommonUtils.find_objects_by_values(self.security_groups, {"name": security_group_name}, max_count=1)[0]
-
-        for ip_permission in security_group.ip_permissions:
-            pass
-
     def provision_managed_prefix_list(self, managed_prefix_list, declarative=False):
+        """
+        Self explanatory
+
+        @param managed_prefix_list:
+        @param declarative:
+        @return:
+        """
+
         cidrs = []
         for entry in managed_prefix_list.entries:
             if entry.cidr in cidrs:
@@ -2320,6 +2364,14 @@ class AWSAPI:
         self.route53_client.raw_change_resource_record_sets(request)
 
     def dispose_hosted_zone_resource_record_sets(self, hosted_zone, records):
+        """
+        Self explanatory
+
+        @param hosted_zone:
+        @param records:
+        @return:
+        """
+
         if hosted_zone.id is None:
             self.route53_client.update_hosted_zone_information(hosted_zone, full_information=True)
 
@@ -2337,9 +2389,24 @@ class AWSAPI:
         self.route53_client.raw_change_resource_record_sets(request)
 
     def dispose_load_balancer(self, load_balancer):
+        """
+        Self explanatory
+
+        @param load_balancer:
+        @return:
+        """
+
         self.elbv2_client.dispose_load_balancer(load_balancer)
 
     def add_elasticsearch_access_policy_raw_statements(self, elasticsearch_domain, raw_statements):
+        """
+        Add raw statements to Opensesarch service.
+
+        @param elasticsearch_domain:
+        @param raw_statements:
+        @return:
+        """
+
         access_policies = json.loads(elasticsearch_domain.access_policies)
         new_statements = []
         for raw_statement in raw_statements:
@@ -2368,48 +2435,153 @@ class AWSAPI:
         self.elasticsearch_client.raw_update_elasticsearch_domain_config(request, region=elasticsearch_domain.region)
 
     def provision_cloudwatch_log_group(self, log_group):
+        """
+        Self explanatory
+
+        @param log_group:
+        @return:
+        """
+
         self.cloud_watch_logs_client.provision_log_group(log_group)
 
     def provision_vpc(self, vpc):
+        """
+        Self explanatory
+
+        @param vpc:
+        @return:
+        """
+
         self.ec2_client.provision_vpc(vpc)
 
     def provision_subnets(self, subnets):
+        """
+        Self explanatory
+
+        @param subnets:
+        @return:
+        """
+
         self.ec2_client.provision_subnets(subnets)
 
     def provision_security_group(self, security_group):
+        """
+        Self explanatory
+
+        @param security_group:
+        @return:
+        """
+
         self.ec2_client.provision_security_group(security_group)
 
     def provision_internet_gateway(self, internet_gateway):
+        """
+        Self explanatory
+
+        @param internet_gateway:
+        @return:
+        """
+
         self.ec2_client.provision_internet_gateway(internet_gateway)
 
     def provision_vpc_peering(self, vpc_peering):
+        """
+        Self explanatory
+
+        @param vpc_peering:
+        @return:
+        """
+
         self.ec2_client.provision_vpc_peering(vpc_peering)
 
     def provision_launch_template(self, launch_template):
+        """
+        Self explanatory
+
+        @param launch_template:
+        @return:
+        """
+
         self.ec2_client.provision_launch_template(launch_template)
 
     def provision_auto_scaling_group(self, autoscaling_group):
+        """
+        Self explanatory
+
+        @param autoscaling_group:
+        @return:
+        """
+
         self.autoscaling_client.provision_auto_scaling_group(autoscaling_group)
-    
+
     def provision_auto_scaling_policy(self, autoscaling_policy):
+        """
+        Self explanatory
+
+        @param autoscaling_policy:
+        @return:
+        """
+
         self.autoscaling_client.provision_policy(autoscaling_policy)
-        
+
     def provision_application_auto_scaling_policy(self, autoscaling_policy):
+        """
+        Self explanatory
+
+        @param autoscaling_policy:
+        @return:
+        """
+
         self.application_autoscaling_client.provision_policy(autoscaling_policy)
 
     def provision_application_auto_scaling_scalable_target(self, target):
+        """
+        Self explanatory
+
+        @param target:
+        @return:
+        """
+
         self.application_autoscaling_client.provision_scalable_target(target)
 
     def provision_glue_table(self, glue_table):
+        """
+        Self explanatory
+
+        @param glue_table:
+        @return:
+        """
+
         self.glue_client.provision_table(glue_table)
 
     def provision_glue_database(self, glue_database):
+        """
+        Self explanatory
+
+        @param glue_database:
+        @return:
+        """
+
         self.glue_client.provision_database(glue_database)
-    
+
     def provision_dynamodb_table(self, dynamodb_table):
+        """
+        Self explanatory
+
+        @param dynamodb_table:
+        @return:
+        """
+
         self.dynamodb_client.provision_table(dynamodb_table)
-    
+
     def provision_nat_gateways(self, nat_gateways):
+        """
+        Self explanatory
+
+        @param nat_gateways:
+        @return:
+        """
+
         for nat_gateway in nat_gateways:
             self.provision_nat_gateway(nat_gateway)
 
@@ -2443,27 +2615,86 @@ class AWSAPI:
                 time.sleep(time_to_sleep)
 
     def provision_nat_gateway(self, nat_gateway):
+        """
+        Self explanatory
+
+        @param nat_gateway:
+        @return:
+        """
+
         self.ec2_client.provision_nat_gateway(nat_gateway)
 
     def provision_elastic_address(self, elastic_address):
+        """
+        Self explanatory
+
+        @param elastic_address:
+        @return:
+        """
+
         self.ec2_client.provision_elastic_address(elastic_address)
 
     def provision_route_table(self, route_table):
+        """
+        Self explanatory
+
+        @param route_table:
+        @return:
+        """
+
         self.ec2_client.provision_route_table(route_table)
 
     def provision_ec2_instance(self, ec2_instance, wait_until_active=False):
+        """
+        Self explanatory
+
+        @param ec2_instance:
+        @param wait_until_active:
+        @return:
+        """
+
         self.ec2_client.provision_ec2_instance(ec2_instance, wait_until_active=wait_until_active)
 
     def provision_ecs_capacity_provider(self, ecs_capacity_provider):
+        """
+        Self explanatory
+
+        @param ecs_capacity_provider:
+        @return:
+        """
+
         self.ecs_client.provision_capacity_provider(ecs_capacity_provider)
 
     def provision_ecs_cluster(self, ecs_cluster):
+        """
+        Self explanatory
+
+        @param ecs_cluster:
+        @return:
+        """
+
         self.ecs_client.provision_cluster(ecs_cluster)
 
     def provision_ecs_service(self, ecs_service):
+        """
+        Self explanatory
+
+        @param ecs_service:
+        @return:
+        """
+
         self.ecs_client.provision_service(ecs_service)
 
     def provision_key_pair(self, key_pair, save_to_secrets_manager=None, secrets_manager_region=None):
+        """
+        Self explanatory
+
+        @param key_pair:
+        @param save_to_secrets_manager:
+        @param secrets_manager_region:
+        @return:
+        """
+
         logger.info(f"provisioning ssh key pair {key_pair.name}")
         response = self.ec2_client.provision_key_pair(key_pair)
         if response is None:
@@ -2476,23 +2707,67 @@ class AWSAPI:
             return response
 
     def provision_load_balancer(self, load_balancer):
+        """
+        Self explanatory
+
+        @param load_balancer:
+        @return:
+        """
+
         self.elbv2_client.provision_load_balancer(load_balancer)
 
     def provision_load_balancer_target_group(self, load_balancer):
+        """
+        Self explanatory
+
+        @param load_balancer:
+        @return:
+        """
+
         self.elbv2_client.provision_load_balancer_target_group(load_balancer)
 
     def provision_load_balancer_listener(self, listener):
+        """
+        Self explanatory
+
+        @param listener:
+        @return:
+        """
+
         self.elbv2_client.provision_load_balancer_listener(listener)
 
     def provision_load_balancer_rule(self, rule):
+        """
+        Self explanatory
+
+        @param rule:
+        @return:
+        """
+
         self.elbv2_client.provision_load_balancer_rule(rule)
 
     def associate_elastic_address(self, ec2_instance, elastic_address):
+        """
+        Self explanatory
+
+        @param ec2_instance:
+        @param elastic_address:
+        @return:
+        """
+
         request = {"AllocationId": elastic_address.id,
                    "InstanceId": ec2_instance.id}
         self.ec2_client.associate_elastic_address_raw(request)
 
     def find_route_table_by_subnet(self, region, subnet):
+        """
+        Find route table attahed to subnet.
+
+        @param region:
+        @param subnet:
+        @return:
+        """
+
         self.init_route_tables(region=region)
         main_route_tables = []
         for route_table in self.route_tables:
@@ -2510,6 +2785,13 @@ class AWSAPI:
         return main_route_tables[0]
 
     def get_ecr_authorization_info(self, region=None):
+        """
+        Info needed to register to ECR service.
+
+        @param region:
+        @return:
+        """
+
         return self.ecr_client.get_authorization_info(region=region)
 
     def provision_ecs_task_definition(self, task_definition):
@@ -2517,6 +2799,14 @@ class AWSAPI:
 
     # region acm certificate
     def provision_acm_certificate(self, certificate, master_hosted_zone_name):
+        """
+        Self explanatory
+
+        @param certificate:
+        @param master_hosted_zone_name:
+        @return:
+        """
+
         self.acm_client.provision_certificate(certificate)
 
         certificate.print_dict_src()
@@ -2533,12 +2823,33 @@ class AWSAPI:
         certificate.update_from_raw_response(new_certificate.dict_src)
 
     def provision_sns_topic(self, topic):
+        """
+        Self explanatory
+
+        @param topic:
+        @return:
+        """
+
         self.sns_client.provision_topic(topic)
-        
+
     def provision_sns_subscription(self, subscription):
+        """
+        Self explanatory
+
+        @param subscription:
+        @return:
+        """
+
         self.sns_client.provision_subscription(subscription)
-        
+
     def validate_certificate(self, certificate, master_hosted_zone_name):
+        """
+        Validate https certificate with DNS record in Route53
+
+        @param certificate:
+        @param master_hosted_zone_name:
+        @return:
+        """
         max_time = 5 * 60
         sleep_time = 10
         start_time = datetime.datetime.now()
@@ -2579,6 +2890,13 @@ class AWSAPI:
         self.provision_hosted_zone(hosted_zone)
 
     def wait_for_certificate_validation(self, certificate):
+        """
+        Certificate validation takes time.
+
+        @param certificate:
+        @return:
+        """
+
         max_time = 5 * 60
         sleep_time = 30
         start_time = datetime.datetime.now()
@@ -2601,6 +2919,14 @@ class AWSAPI:
 
     # region sesv2_domain_email_identity
     def provision_sesv2_domain_email_identity(self, email_identity, wait_for_validation=True):
+        """
+        Self explanatory
+
+        @param email_identity:
+        @param wait_for_validation:
+        @return:
+        """
+
         self.sesv2_client.provision_email_identity(email_identity)
 
         if email_identity.dkim_attributes["Status"] == "SUCCESS":
@@ -2630,6 +2956,13 @@ class AWSAPI:
             self.wait_for_sesv2_domain_email_identity_validation(email_identity)
 
     def validate_sesv2_domain_email_identity(self, email_identity):
+        """
+        Validate SESv3 domain email identity.
+
+        @param email_identity:
+        @return:
+        """
+
         hosted_zones = self.route53_client.get_all_hosted_zones(name=email_identity.name)
 
         if len(hosted_zones) == 0:
@@ -2658,12 +2991,12 @@ class AWSAPI:
 
     def wait_for_sesv2_domain_email_identity_validation(self, email_identity):
         """
-        Wait for DNS records to catch
+        Wait for DNS records to catch after provisioning SESv2 email_identity
 
         @param email_identity:
         @return:
         """
-        
+
         max_time = 5 * 60
         sleep_time = 30
         start_time = datetime.datetime.now()
@@ -2681,18 +3014,18 @@ class AWSAPI:
                 raise ValueError(email_identity.dkim_attributes["Status"])
         else:
             raise TimeoutError(
-            f"Finished waiting {max_time} seconds for sesv2_domain_email_identity validation. Finished with status: {email_identity.dkim_attributes['Status']}")
+                f"Finished waiting {max_time} seconds for sesv2_domain_email_identity validation. Finished with status: {email_identity.dkim_attributes['Status']}")
 
     # endregion
-    
+
     def provision_sesv2_email_template(self, email_template):
         """
         Provision SESv2 email template
-        
-        @param email_template: 
-        @return: 
+
+        @param email_template:
+        @return:
         """
-        
+
         self.sesv2_client.provision_email_template(email_template)
 
     def provision_sesv2_configuration_set(self, configuration_set):
@@ -2700,16 +3033,25 @@ class AWSAPI:
         Provision SESv2 configuration_set
 
         @param configuration_set:
-        @return: 
+        @return:
         """
 
         self.sesv2_client.provision_configuration_set(configuration_set)
-                                                   
+
     def provision_rds_db_cluster(self, cluster, snapshot=None):
         snapshot_id = snapshot.id if snapshot is not None else None
         self.rds_client.provision_db_cluster(cluster, snapshot_id=snapshot_id)
 
     def get_security_group_by_vpc_and_name(self, vpc, name, full_information=False):
+        """
+        Find security group in a vpc by its name.
+
+        @param vpc:
+        @param name:
+        @param full_information:
+        @return:
+        """
+
         filters = [
             {
                 "Name": "vpc-id",
@@ -2733,36 +3075,113 @@ class AWSAPI:
         return security_groups[0]
 
     def provision_db_cluster_parameter_group(self, db_cluster_parameter_group):
+        """
+        Self explanatory.
+
+        @param db_cluster_parameter_group:
+        @return:
+        """
+
         self.rds_client.provision_db_cluster_parameter_group(db_cluster_parameter_group)
 
     def provision_db_parameter_group(self, db_parameter_group):
+        """
+        Self explanatory.
+
+        @param db_parameter_group:
+        @return:
+        """
+
         self.rds_client.provision_db_parameter_group(db_parameter_group)
 
     def provision_db_subnet_group(self, db_subnet_group):
+        """
+        Self explanatory.
+
+        @param db_subnet_group:
+        @return:
+        """
+
         self.rds_client.provision_db_subnet_group(db_subnet_group)
 
     def provision_db_instance(self, db_instance):
+        """
+        Self explanatory.
+
+        @param db_instance:
+        @return:
+        """
+
         self.rds_client.provision_db_instance(db_instance)
 
     def provision_elasticache_cahce_subnet_group(self, subnet_group):
+        """
+        Self explanatory.
+
+        @param subnet_group:
+        @return:
+        """
+
         self.elasticache_client.provision_subnet_group(subnet_group)
 
     def provision_elaticache_cluster(self, cluster):
+        """
+        Self explanatory.
+
+        @param cluster:
+        @return:
+        """
+
         self.elasticache_client.provision_cluster(cluster)
 
     def provision_elaticache_replication_group(self, replication_group):
+        """
+        Self explanatory.
+
+        @param replication_group:
+        @return:
+        """
+
         self.elasticache_client.provision_replication_group(replication_group)
 
     def provision_s3_bucket(self, s3_bucket):
+        """
+        Self explanatory.
+
+        @param s3_bucket:
+        @return:
+        """
+
         self.s3_client.provision_bucket(s3_bucket)
 
     def provision_cloudfront_distribution(self, cloudfront_distribution):
+        """
+        Self explanatory.
+
+        @param cloudfront_distribution:
+        @return:
+        """
+
         self.cloudfront_client.provision_distribution(cloudfront_distribution)
 
     def provision_cloudfront_origin_access_identity(self, cloudfront_origin_access_identity):
+        """
+        Self explanatory.
+
+        @param cloudfront_origin_access_identity:
+        @return:
+        """
+
         self.cloudfront_client.provision_origin_access_identity(cloudfront_origin_access_identity)
 
     def find_cloudfront_distribution(self, alias=None):
+        """
+        Find cloudfront distribution by alias.
+
+        @param alias:
+        @return:
+        """
+
         if alias is None:
             raise RuntimeError("Alias is None")
 
@@ -2771,6 +3190,13 @@ class AWSAPI:
                 return distribution
 
     def wait_for_instances_provision_ending(self, instances):
+        """
+        After a new EC2 instance provisioned it takes some time for it to become available.
+
+        @param instances:
+        @return:
+        """
+
         instance_ids = [instance.id for instance in instances]
         start_time = datetime.datetime.now()
         end_time = start_time + datetime.timedelta(minutes=15)
@@ -2792,29 +3218,90 @@ class AWSAPI:
             raise TimeoutError()
 
     def provision_ecr_repository(self, ecr_repo):
+        """
+        Self explanatory.
+
+        @param ecr_repo:
+        @return:
+        """
+
         self.ecr_client.provision_repository(ecr_repo)
 
     def dispose_ecr_repository(self, ecr_repo):
+        """
+        Self explanatory.
+
+        @param ecr_repo:
+        @return:
+        """
+
         self.ecr_client.dispose_repository(ecr_repo)
 
     def dispose_ecs_service(self, cluster, service):
+        """
+        Self explanatory.
+
+        @param service:
+        @param cluster:
+        @return:
+        """
+
         self.ecs_client.dispose_service(cluster, service)
 
     def dispose_ecs_cluster(self, cluster):
+        """
+        Self explanatory.
+
+        @param cluster:
+        @return:
+        """
+
         self.ecs_client.dispose_cluster(cluster)
 
     def dispose_auto_scaling_group(self, auto_scaling_group):
+        """
+        Self explanatory.
+
+        @param auto_scaling_group:
+        @return:
+        """
+
         self.autoscaling_client.dispose_auto_scaling_group(auto_scaling_group)
 
     def dispose_launch_template(self, launch_template):
+        """
+        Delete the EC2 launch template.
+
+        @param launch_template:
+        @return:
+        """
+
         self.ec2_client.dispose_launch_template(launch_template)
 
     def attach_capacity_providers_to_ecs_cluster(self, ecs_cluster, capacity_provider_names,
                                                  default_capacity_provider_strategy):
+        """
+        Attach Capacity provider to ECS cluster.
+
+        @param ecs_cluster:
+        @param capacity_provider_names:
+        @param default_capacity_provider_strategy:
+        @return:
+        """
+
         self.ecs_client.attach_capacity_providers_to_ecs_cluster(ecs_cluster, capacity_provider_names,
                                                                  default_capacity_provider_strategy)
 
     def provision_aws_lambda_from_filelist(self, aws_lambda, files_paths, force=False):
+        """
+        Provision AWS Lambda object with the listed files added to it.
+
+        @param aws_lambda:
+        @param files_paths:
+        @param force:
+        @return:
+        """
+
         zip_file_name = f"{aws_lambda.name}.zip"
         with zipfile.ZipFile(zip_file_name, 'w') as myzip:
             for file_path in files_paths:
@@ -2826,44 +3313,76 @@ class AWSAPI:
         self.provision_aws_lambda(aws_lambda, force=force)
 
     def provision_aws_lambda(self, aws_lambda, force=False):
+        """
+        Provision aws lambda object.
+
+        @param aws_lambda:
+        @param force: If true, the code deployment is forced and the active version set to the new one.
+        @return:
+        """
+
         self.lambda_client.provision_lambda(aws_lambda, force=force)
 
-    def provision_aws_lambda_from_venv(self, code_path, venv_dir):
-        raise NotImplementedError()
-        zip_file_name = os.path.splitext(os.path.basename(file_path))[0]
-        import shutil
-        shutil.make_archive(zip_file_name, 'zip', os.path.dirname(file_path) + "/lambda")
-        with open(zip_file_name + ".zip", "rb") as myzip:
-            aws_lambda.code = {"ZipFile": myzip.read()}
-
-        self.lambda_client.provision_lambda(aws_lambda)
-
     def provision_lambda_event_source_mapping(self, event_mapping):
+        """
+        Event source mapping - event source, which trigger Lambda.
+
+        @param event_mapping:
+        @return:
+        """
+
         self.lambda_client.provision_event_source_mapping(event_mapping)
 
     def provision_iam_role(self, iam_role):
+        """
+        Provision IAM Role object.
+
+        @param iam_role:
+        @return:
+        """
+
         self.iam_client.provision_iam_role(iam_role)
 
     def provision_iam_policy(self, iam_policy):
+        """
+        Provision IAM policy object.
+
+        @param iam_policy:
+        @return:
+        """
+
         self.iam_client.provision_policy(iam_policy)
 
     def provision_iam_instance_profile(self, instance_profile):
+        """
+        Provision EC2 instance profile
+
+        @param instance_profile:
+        @return:
+        """
+
         self.iam_client.provision_instance_profile(instance_profile)
 
     def dispose_rds_db_cluster(self, rds_cluster):
+        """
+        Delete the cluster.
+
+        @param rds_cluster:
+        @return:
+        """
+
         self.rds_client.dispose_db_cluster(rds_cluster)
 
     def get_latest_db_cluster_snapshot(self, db_cluster):
+        """
+        Get the last RDS db cluster snapshot.
+
+        @param db_cluster:
+        @return:
+        """
+
         filters_req = {"DBClusterIdentifier": db_cluster.id}
         src_region_cluster_snapshots = self.rds_client.get_region_db_cluster_snapshots(db_cluster.region,
-                                                                                       full_information=False,
-                                                                                       custom_filters=filters_req)
-
-        return src_region_cluster_snapshots[-1]
-
-    def db_snapshot_by_id(self, region, snapshot_id):
-        filters_req = {"DBClusterSnapshotIdentifier": snapshot_id}
-        src_region_cluster_snapshots = self.rds_client.get_region_db_cluster_snapshots(region,
                                                                                        full_information=False,
                                                                                        custom_filters=filters_req)
 
@@ -2872,12 +3391,12 @@ class AWSAPI:
     def copy_latest_db_cluster_snapshot(self, db_cluster, desired_snapshot: RDSDBClusterSnapshot):
         """
         Copy latest cluster snapshot according to the desired_snapshot params.
-        
-        @param db_cluster: 
-        @param desired_snapshot: 
-        @return: 
+
+        @param db_cluster:
+        @param desired_snapshot:
+        @return:
         """
-        
+
         src_snapshot = self.get_latest_db_cluster_snapshot(db_cluster)
         src_snapshot.region = db_cluster.region
 
@@ -2886,7 +3405,7 @@ class AWSAPI:
                 self.rds_client.update_db_cluster_information(db_cluster)
             src_region_keys = self.kms_client.get_region_keys(db_cluster.region, full_information=True)
             src_region_key = \
-            CommonUtils.find_objects_by_values(src_region_keys, {"arn": db_cluster.kms_key_id}, max_count=1)[0]
+                CommonUtils.find_objects_by_values(src_region_keys, {"arn": db_cluster.kms_key_id}, max_count=1)[0]
 
             desired_snapshot.kms_key_id = src_region_key.aliases[0]["AliasName"]
 
@@ -2909,21 +3428,21 @@ class AWSAPI:
     def provision_events_rule(self, events_rule):
         """
         Provision events rule
-        
-        @param events_rule: 
-        @return: 
+
+        @param events_rule:
+        @return:
         """
         self.events_client.provision_rule(events_rule)
 
     def get_vpcs_by_tags(self, key_values_map, region=None):
         """
         Find all VPCs by tag keys:values
-        
-        @param key_values_map: 
-        @param region: 
-        @return: 
+
+        @param key_values_map:
+        @param region:
+        @return:
         """
-        
+
         filters = [{
             "Name": f"tag:{tag_name}",
             "Values": tag_values
@@ -2934,12 +3453,12 @@ class AWSAPI:
     def get_alive_ec2_instance_by_name(self, region, name):
         """
         Find running ec2 instance by name tag
-        
-        @param region: 
-        @param name: 
-        @return: 
+
+        @param region:
+        @param name:
+        @return:
         """
-        
+
         filters = [{
             "Name": f"tag:Name",
             "Values": [
@@ -2965,8 +3484,8 @@ class AWSAPI:
         """
         Provision Service discovery namespace
 
-        @param namespace: 
-        @return: 
+        @param namespace:
+        @return:
         """
         self.servicediscovery_client.provision_namespace(namespace)
 
@@ -2974,20 +3493,20 @@ class AWSAPI:
         """
         Provision Service discovery service
 
-        @param service: 
-        @return: 
+        @param service:
+        @return:
         """
         self.servicediscovery_client.provision_service(service)
 
-    def provision_sqs_queue(self, sqs_queue):
+    def provision_sqs_queue(self, sqs_queue, declarative=True):
         """
         Provision SQS queue
-        
-        @param sqs_queue: 
-        @return: 
+
+        @param sqs_queue:
+        @return:
         """
-        
-        self.sqs_client.provision_queue(sqs_queue)
+
+        self.sqs_client.provision_queue(sqs_queue, declarative=declarative)
 
     def create_image(self, instance: EC2Instance, timeout=600):
         """

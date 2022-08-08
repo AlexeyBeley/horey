@@ -8,6 +8,7 @@ from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.aws_services_entities.sqs_queue import SQSQueue
 
 from horey.h_logger import get_logger
+
 logger = get_logger()
 
 
@@ -52,7 +53,7 @@ class SQSClient(Boto3Client):
         return final_result
 
     def update_queue_information(self, sqs_queue):
-        filters_req = {"QueueUrl": sqs_queue.queue_url, "AttributeNames": ['All']}
+        filters_req = {"QueueUrl": sqs_queue.queue_url, "AttributeNames": ["All"]}
         for dict_attributes in self.execute(self.client.get_queue_attributes, "Attributes", filters_req=filters_req):
             sqs_queue.update_attributes_from_raw_response(dict_attributes)
 
@@ -60,25 +61,40 @@ class SQSClient(Boto3Client):
         for dict_attributes in self.execute(self.client.list_queue_tags, None, raw_data=True, filters_req=filters_req):
             sqs_queue.update_tags_from_raw_response(dict_attributes)
 
-    def provision_queue(self, queue: SQSQueue):
-        region_queues = self.get_region_queues(queue.region)
-        for region_queue in region_queues:
-            if region_queue.get_tagname(ignore_missing_tag=True) == queue.get_tagname():
-                queue.update_from_raw_response(region_queue.dict_src)
-                update_request = region_queue.generate_set_attributes_request(queue)
+    def provision_queue(self, queue: SQSQueue, declarative=True):
+        """
+        Provision object queue.
 
-                if update_request is None:
-                    self.update_queue_information(queue)
-                    return
+        @param queue:
+        @param declarative:
+        @return:
+        """
 
-                self.set_queue_attributes_raw(update_request)
-                self.update_queue_information(queue)
-                return
+        region_queues = self.get_region_queues(queue.region, filters_req={"QueueNamePrefix": queue.name})
+        region_queues = [region_queue for region_queue in region_queues if
+                         region_queue.get_tagname(ignore_missing_tag=True) == queue.get_tagname()]
 
-        response = self.provision_queue_raw(queue.generate_create_request())
+        if len(region_queues) > 1:
+            raise RuntimeError(f"len(region_queues) > 1: {len(region_queues)}")
+        if len(region_queues) == 0:
+            response = self.provision_queue_raw(queue.generate_create_request())
+            dict_src = {"QueueUrl": response}
+            queue.update_from_raw_response(dict_src)
+            self.update_queue_information(queue)
+            return
 
-        dict_src = {"QueueUrl": response}
-        queue.update_from_raw_response(dict_src)
+        region_queue = region_queues[0]
+        if not declarative:
+            queue.update_from_raw_response(region_queue.dict_src)
+            self.update_queue_information(queue)
+            return
+
+        update_request = region_queue.generate_set_attributes_request(queue)
+
+        if update_request is not None:
+            self.set_queue_attributes_raw(update_request)
+
+        queue.update_from_raw_response(region_queue.dict_src)
         self.update_queue_information(queue)
 
     def set_queue_attributes_raw(self, request_dict):
@@ -93,12 +109,12 @@ class SQSClient(Boto3Client):
             return response
 
     def receive_message(self, queue):
-        return self.receive_message_raw({"QueueUrl": queue.queue_url, "MaxNumberOfMessages":10})
+        return self.receive_message_raw({"QueueUrl": queue.queue_url, "MaxNumberOfMessages": 10})
 
     def receive_message_raw(self, request_dict):
         logger.info(f"Receiving from queue: {request_dict}")
         return list(self.execute(self.client.receive_message, "Messages",
-                                        filters_req=request_dict))
+                                 filters_req=request_dict))
 
     def send_message(self, queue, message):
         return self.send_message_raw({"QueueUrl": queue.queue_url, "MessageBody": message})
