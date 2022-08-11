@@ -36,7 +36,7 @@ then
 fi
 }
 
-changed_files=$(git diff --name-only HEAD| grep "\.py")
+changed_files=$(git diff --diff-filter=d --name-only HEAD| grep '.*\.py$')
 
 echo "changed_files: '$changed_files'"
 

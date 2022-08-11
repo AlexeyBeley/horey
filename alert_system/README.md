@@ -1,8 +1,11 @@
-# horey
-My packages.
+# Serverless alert system 
+
+Components:
+Alert system - provisions all parts of the system.
 
 
-#Mount drive
+
+# Alert system
 docker run --name=nginx -d -v ~/nginxlogs:/var/log/nginx -p 5000:80 nginx
 
 #create image from container

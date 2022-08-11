@@ -126,7 +126,6 @@ class LambdaClient(Boto3Client):
         update_code_request = current_lambda.generate_update_function_code_request(desired_aws_lambda)
         if update_code_request is not None:
             self.update_function_code_raw(update_code_request)
-
         add_permission_requests, remove_permission_requests = current_lambda.generate_modify_permissions_requests(
             desired_aws_lambda)
 

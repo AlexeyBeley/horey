@@ -40,33 +40,10 @@ class S3Bucket(AwsObject):
         :return:
         """
         options = {
-            "acl": self._init_acl_from_cache,
             "policy": self._init_policy_from_cache,
-            "region": self._init_region_from_cache,
         }
 
         self._init_from_cache(dict_src, options)
-
-    def _init_region_from_cache(self, _, dict_src):
-        if dict_src is None:
-            return
-        self.region = Region()
-        self.region.init_from_dict(dict_src)
-
-    def _init_acl_from_cache(self, _, dict_src):
-        """
-        Init bucket ACL from previously cached dict
-        :param _:
-        :param dict_src:
-        :return:
-        """
-        if dict_src is None:
-            return
-
-        if self.acl is None:
-            self.acl = S3Bucket.ACL(dict_src, from_cache=True)
-        else:
-            raise NotImplementedError
 
     def _init_policy_from_cache(self, _, dict_src):
         """
@@ -99,7 +76,7 @@ class S3Bucket(AwsObject):
         :return:
         """
         if self.acl is None:
-            self.acl = S3Bucket.ACL(lst_src)
+            self.acl = lst_src
         else:
             raise NotImplementedError()
 
@@ -203,80 +180,27 @@ class S3Bucket(AwsObject):
 
         return request
 
-    class ACL(AwsObject):
-        """
-        Class representing S3 Bucket's ACL
-        """
+    def generate_put_bucket_acl_request(self):
+        request = dict()
+        request["ACL"] = self.acl
+        request["Bucket"] = self.name
 
-        def __init__(self, src_data, from_cache=False):
-            super(S3Bucket.ACL, self).__init__(src_data)
-            self.grants = []
+        return request
 
-            if from_cache:
-                if not isinstance(src_data, dict):
-                    raise TypeError("Not implemented - replacement of pdb.set_trace")
-                self._init_acl_from_cache(src_data)
-                return
+    @property
+    def region(self):
+        if self._region is None:
+            if self.location is None:
+                raise RuntimeError("Region and location were not set")
+            self._region = Region.get_region(self.location)
+        return self._region
 
-            if not isinstance(src_data, list):
-                raise TypeError("Not implemented - replacement of pdb.set_trace")
+    @region.setter
+    def region(self, value):
+        if not isinstance(value, Region):
+            raise ValueError(value)
 
-            for dict_grant in src_data:
-                grant = self.Grant(dict_grant)
-                self.grants.append(grant)
-
-        def _init_acl_from_cache(self, dict_src):
-            """
-            Init ACL from previously cached dict
-            :param dict_src:
-            :return:
-            """
-            options = {
-                'grants': self._init_grants_from_cache,
-            }
-
-            self._init_from_cache(dict_src, options)
-
-        def _init_grants_from_cache(self, _, lst_src):
-            """
-            Init grants from previously cached list
-            :param _:
-            :param lst_src:
-            :return:
-            """
-            if self.grants:
-                raise NotImplementedError("Can reinit yet")
-            for dict_grant in lst_src:
-                grant = self.Grant(dict_grant, from_cache=True)
-                self.grants.append(grant)
-
-        class Grant(AwsObject):
-            """
-            Class representing S3 bucket policy Grant.
-            """
-
-            def __init__(self, dict_src, from_cache=False):
-                super(S3Bucket.ACL.Grant, self).__init__(dict_src)
-                if from_cache:
-                    self._init_grant_from_cache(dict_src)
-                    return
-
-                init_options = {
-                    "Grantee": self.init_default_attr,
-                    "Permission": self.init_default_attr
-                }
-
-                self.init_attrs(dict_src, init_options)
-
-            def _init_grant_from_cache(self, dict_src):
-                """
-                Init grant from previously cached dict
-                :param dict_src:
-                :return:
-                """
-                options = {}
-
-                self._init_from_cache(dict_src, options)
+        self._region = value
 
     class Policy(AwsObject):
         """

@@ -280,20 +280,26 @@ class S3Client(Boto3Client):
             if value > max_value:
                 raise ValueError(f"{value} > {max_value}")
 
-    def yield_bucket_objects(self, bucket):
+    def yield_bucket_objects(self, bucket, custom_filters=None):
         """
         Yield over specific bucket keys in order to handle OOM issue.
+
         :param bucket:
         :return:
         """
+
         max_keys = 1000
         try:
             start_after = ""
             while start_after is not None:
                 counter = 0
+                filters_req = {"Bucket": bucket.name, "StartAfter": start_after,
+                                                             "MaxKeys": max_keys}
+                if custom_filters is not None:
+                    filters_req.update(custom_filters)
+
                 for object_info in self.execute(self.client.list_objects_v2, "Contents",
-                                                filters_req={"Bucket": bucket.name, "StartAfter": start_after,
-                                                             "MaxKeys": max_keys}):
+                                                filters_req=filters_req):
                     counter += 1
                     bucket_object = S3Bucket.BucketObject(object_info)
                     yield bucket_object
@@ -305,6 +311,85 @@ class S3Client(Boto3Client):
                 print(f"Init bucket full information failed {bucket.name}: {repr(inst)}")
             else:
                 raise
+
+    def get_bucket_object(self, bucket, bucket_object):
+        """
+        Download bucket key data.
+
+        @param bucket:
+        @param bucket_object:
+        @return:
+        """
+
+        for response in self.execute(self.client.get_object, None, raw_data=True, filters_req={"Bucket": bucket.name, "Key":bucket_object.key}):
+            return response["Body"].read()
+
+    def get_bucket_object_file(self,  bucket, bucket_object, file_path):
+        """
+        Download bucket key data and write to file.
+
+        @param bucket:
+        @param bucket_object:
+        @param file_path:
+        @return:
+        """
+
+        data = self.get_bucket_object(bucket, bucket_object)
+        with open(file_path, "wb") as file_handler:
+            file_handler.write(data)
+
+    def update_bucket_information(self, bucket: S3Bucket):
+        """
+        Update bucket full information.
+
+        @param bucket:
+        @return:
+        """
+
+        try:
+            pdb.set_trace()
+            update_info = list(
+                self.execute(self.client.get_bucket_acl, "Grants", filters_req={"Bucket": bucket.name}))
+            bucket.update_acl(update_info)
+
+            location_info = list(self.execute(self.client.get_bucket_location, "LocationConstraint",
+                                              filters_req={"Bucket": bucket.name}))
+            bucket.update_location(location_info)
+        except Exception as inst:
+            repr_inst = repr(inst)
+            if "NoSuchBucket" in repr_inst:
+                return False
+            if "AccessDenied" in repr_inst:
+                logger.error(f"Init bucket full information failed {bucket.name}: {repr_inst}")
+            elif "IllegalLocationConstraintException" in repr_inst:
+                logger.error(f"Init bucket full information failed {bucket.name}: {repr_inst}")
+            else:
+                raise
+
+        try:
+            update_info = list(
+                self.execute(self.client.get_bucket_website, "Grants", filters_req={"Bucket": bucket.name},
+                             raw_data=True))
+            bucket.update_website(update_info)
+        except Exception as inst:
+            if "NoSuchWebsiteConfiguration" in repr(inst):
+                pass
+            else:
+                raise
+
+        try:
+            for update_info in self.execute(self.client.get_bucket_policy, "Policy",
+                                            filters_req={"Bucket": bucket.name}):
+                bucket.update_policy(update_info)
+        except Exception as inst:
+            repr_inst = repr(inst)
+            if "NoSuchBucketPolicy" in repr_inst:
+                pass
+            elif "AccessDenied" in repr_inst:
+                print(f"Init bucket full information failed {bucket.name}: {repr_inst}")
+            else:
+                raise
+        return True
 
     def get_all_buckets(self, full_information=True):
         """
@@ -326,41 +411,7 @@ class S3Client(Boto3Client):
             final_result.append(obj)
 
             if full_information:
-                try:
-                    update_info = list(
-                        self.execute(self.client.get_bucket_acl, "Grants", filters_req={"Bucket": obj.name}))
-                    obj.update_acl(update_info)
-
-                    location_info = list(self.execute(self.client.get_bucket_location, "LocationConstraint",
-                                                      filters_req={"Bucket": obj.name}))
-                    obj.update_location(location_info)
-
-                    # Dangerous - must be at the end - throwable
-                    update_info = list(
-                        self.execute(self.client.get_bucket_website, "Grants", filters_req={"Bucket": obj.name},
-                                     raw_data=True))
-                    obj.update_website(update_info)
-                except Exception as inst:
-                    if "NoSuchWebsiteConfiguration" in repr(inst):
-                        pass
-                    elif "AccessDenied" in repr(inst):
-                        logger.error(f"Init bucket full information failed {obj.name}: {repr(inst)}")
-                    elif "IllegalLocationConstraintException" in repr(inst):
-                        logger.error(f"Init bucket full information failed {obj.name}: {repr(inst)}")
-                    else:
-                        raise
-
-                try:
-                    for update_info in self.execute(self.client.get_bucket_policy, "Policy",
-                                                    filters_req={"Bucket": obj.name}):
-                        obj.update_policy(update_info)
-                except Exception as inst:
-                    if "NoSuchBucketPolicy" in repr(inst):
-                        pass
-                    elif "AccessDenied" in repr(inst):
-                        print(f"Init bucket full information failed {obj.name}: {repr(inst)}")
-                    else:
-                        raise
+                self.update_bucket_information(obj)
 
         return final_result
 
@@ -803,26 +854,23 @@ class S3Client(Boto3Client):
         @param bucket:
         @return:
         """
-        filters_req = {"Bucket": bucket.name}
-        AWSAccount.set_aws_region(bucket.region)
-        try:
-            logger.info(f"Get bucket location {filters_req}")
-            for bucket_region_mark in self.execute(self.client.get_bucket_location, "LocationConstraint",
-                                                   filters_req=filters_req):
-                if bucket.region.region_mark != bucket_region_mark:
-                    raise RuntimeError(f"Provisioning bucket {bucket.name} in '{bucket.region.region_mark}' fails. "
-                                       f"Exists in region '{bucket_region_mark}'")
-        except Exception as exception_instance:
-            repr_exception_instance = repr(exception_instance)
-            logger.info(repr_exception_instance)
-            if "NoSuchBucket" not in repr_exception_instance:
-                raise
 
+        current_bucket = S3Bucket({})
+        current_bucket.name = bucket.name
+        if not self.update_bucket_information(current_bucket):
+            AWSAccount.set_aws_region(bucket.region)
             response = self.provision_bucket_raw(bucket.generate_create_request())
             bucket.location = response
+        else:
+            if bucket.region != current_bucket.region:
+                raise RuntimeError(f"Provisioning bucket {bucket.name} in '{bucket.region.region_mark}' fails. "
+                               f"Exists in region '{current_bucket.region.region_mark}'")
 
         if bucket.policy is not None:
             self.put_bucket_policy_raw(bucket.generate_put_bucket_policy_request())
+
+        if bucket.acl is not None:
+            self.put_bucket_acl_raw(bucket.generate_put_bucket_acl_request())
 
     def provision_bucket_raw(self, request_dict):
         """
@@ -844,6 +892,17 @@ class S3Client(Boto3Client):
         """
         logger.info(f"Putting Bucket policy {request_dict}")
         for response in self.execute(self.client.put_bucket_policy, "ResponseMetadata", filters_req=request_dict):
+            return response
+
+    def put_bucket_acl_raw(self, request_dict):
+        """
+        Execute raw put_bucket_acl request.
+
+        @param request_dict:
+        @return:
+        """
+        logger.info(f"Putting Bucket acl {request_dict}")
+        for response in self.execute(self.client.put_bucket_acl, "ResponseMetadata", filters_req=request_dict):
             return response
 
     def delete_objects(self, bucket):

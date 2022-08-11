@@ -112,17 +112,36 @@ class CommonUtils:
 
     @staticmethod
     def load_object_from_module(module_full_path, callback_function_name):
+        """
+        Load object from python module using call_back initiation function.
+        For example 'def main()'
+
+        @param module_full_path:
+        @param callback_function_name:
+        @return:
+        """
+
+        module = CommonUtils.load_module(module_full_path)
+        return getattr(module, callback_function_name)()
+
+    @staticmethod
+    def load_module(module_full_path):
+        """
+        Dynamically load python module.
+
+        @param module_full_path:
+        @return:
+        """
+
         module_path = os.path.dirname(module_full_path)
         sys.path.insert(0, module_path)
-        module_name = os.path.basename(module_full_path).strip(".py")
+        module_name = os.path.splitext(os.path.basename(module_full_path))[0]
         module = importlib.import_module(module_name)
         module = importlib.reload(module)
-        main_func = getattr(module, callback_function_name)
-        ret_object = main_func()
 
         popped_path = sys.path.pop(0)
         if popped_path != module_path:
             raise RuntimeError(f"System Path must not be changed while importing configuration_policy: {module_full_path}. "
                                f"Changed from {module_path} to {popped_path}")
 
-        return ret_object
+        return module

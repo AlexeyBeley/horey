@@ -112,6 +112,10 @@ class Packer:
                     arc_name = file_path[prefix_len:]
                     myzip.write(file_path, arcname=arc_name)
 
+    def extract(self, zip_file_name, dir_path):
+        with zipfile.ZipFile(zip_file_name) as myzip:
+            myzip.extractall(path=dir_path)
+
     def pip_freeze(self):
         "pip3 freeze --all"
 
