@@ -1,7 +1,10 @@
+"""
+Entry point for the receiver lambda.
+
+"""
+
 import json
-import os
-import pdb
-import time
+import traceback
 
 from message import Message
 
@@ -15,19 +18,46 @@ logger = get_logger()
 
 
 class EventHandler:
+    """
+    Class handling the received events.
+
+    """
+
     def __init__(self):
         self.message_dispatcher = MessageDispatcher()
 
-    def handle_event(self, event, context):
+    def handle_event(self, event):
+        """
+        Handle the received event.
+
+        @param event:
+        @return:
+        """
+
         message = self.extract_message(event)
         self.message_dispatcher.dispatch(message)
 
     def extract_message(self, event):
+        """
+        Build Message object from the event dictionary.
+
+        @param event:
+        @return:
+        """
+
         if "Records" in event:
             return self.extract_message_records(event)
         raise NotImplementedError(event)
 
-    def extract_message_records(self, event):
+    @staticmethod
+    def extract_message_records(event):
+        """
+        For cloudwatch message - convert records to Message objects.
+
+        @param event:
+        @return:
+        """
+
         if len(event["Records"]) != 1:
             raise RuntimeError(event)
 
@@ -50,17 +80,29 @@ class EventHandler:
         return message
 
 
-def lambda_handler(event, context):
+def lambda_handler(event, _):
     """
-    
+    Entry point for this lambda
+
     :param event:
-    :param context:
+    :param _: context
     :return:
     """
-    logger.info(f"Handling event: '{json.dumps(event)}'")
+    logger_string = json.dumps(event)
+    if "log_group_filter_pattern" in logger_string:
+        try:
+            filter_string_start_index = logger_string.index("log_group_filter_pattern")
+            filter_string_start_index = logger_string.index(r': \\\"', filter_string_start_index) + 6
+            filter_string_end_index = logger_string.index(r'\\\"}, \\\"type\\\":', filter_string_start_index)
+            logger_string = logger_string[:filter_string_start_index] + "filter_string_removed_to_exclude_recursion" + logger_string[filter_string_end_index:]
+        except Exception as error_inst:
+            traceback_str = ''.join(traceback.format_tb(error_inst.__traceback__))
+            logger.exception(f"{traceback_str}\n{repr(error_inst)}")
+
+    logger.info(f"Handling event: '{logger_string}'")
 
     event_handler = EventHandler()
-    event_handler.handle_event(event, context)
+    event_handler.handle_event(event)
     return {
         'statusCode': 200,
         'body': json.dumps('Hello from Lambda!')

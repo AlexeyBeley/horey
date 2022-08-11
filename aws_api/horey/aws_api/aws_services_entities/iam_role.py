@@ -1,7 +1,6 @@
 """
 Module handling IAM role object
 """
-import pdb
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 from horey.aws_api.base_entities.region import Region
@@ -19,6 +18,10 @@ class IamRole(AwsObject):
         self.policies = []
         self.role_last_used_time = None
         self.role_last_used_region = None
+        self.arn = None
+        self.assume_role_policy_document = None
+        self.max_session_duration = None
+        self.description = None
 
         super().__init__(dict_src)
 
@@ -83,27 +86,38 @@ class IamRole(AwsObject):
                 self.role_last_used_time = dict_src.get(key)
             elif key == "Region":
                 self.role_last_used_region = Region.get_region(dict_src.get(key))
-            else:
-                raise NotImplementedError(key)
+
+            raise NotImplementedError(key)
 
     def add_policy(self, policy):
         """
         Add single AWS Iam Policy.
+
         :param policy:
         :return:
         """
+
         self.policies.append(policy)
 
     def init_assume_role_policy_document(self, key, value):
         """
         Init assume role from AWS API response.
+
         :param key:
         :param value:
         :return:
         """
+
         raise NotImplementedError("Not yet implemented, replaced pdb.set_trace")
 
     def update_from_raw_response(self, dict_src):
+        """
+        Update self from raw server response.
+
+        @param dict_src:
+        @return:
+        """
+
         init_options = {
             "RoleId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
             "Path": self.init_default_attr,
@@ -117,16 +131,27 @@ class IamRole(AwsObject):
         self.init_attrs(dict_src, init_options)
 
     def generate_create_request(self):
-        request = dict()
-        request["RoleName"] = self.name
-        request["Description"] = self.description
-        request["AssumeRolePolicyDocument"] = self.assume_role_policy_document
-        request["MaxSessionDuration"] = self.max_session_duration
-        request["Tags"] = self.tags
+        """
+        Generate create request.
+
+        @return:
+        """
+
+        request = {"RoleName": self.name,
+                   "Description": self.description,
+                   "AssumeRolePolicyDocument": self.assume_role_policy_document,
+                   "MaxSessionDuration": self.max_session_duration,
+                   "Tags": self.tags}
 
         return request
 
-    def generate_attach_policies_requests(self, desired_role=None):
+    def generate_attach_policies_requests(self):
+        """
+        Attach policies request.
+
+        @return:
+        """
+
         return [
             {
                 "PolicyArn": policy.arn,

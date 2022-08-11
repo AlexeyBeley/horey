@@ -1,0 +1,22 @@
+{
+    "Records": [
+        {
+            "EventSource": "aws:sns",
+            "EventVersion": "1.0",
+            "EventSubscriptionArn": "arn:aws:sns:us-west-2:111111111111111:topic_test_alert_system:868e24fc-54ba-4895-b0f4-528bd4f89e7b",
+            "Sns": {
+                "Type": "Notification",
+                "MessageId": "a2219476-122c-5191-a894-cf1b66170199",
+                "TopicArn": "arn:aws:sns:us-west-2:111111111111111:topic_test_alert_system",
+                "Subject": "ALARM: \"alert_system_test_deploy_lambda-metric-duration\" in US West (Oregon)",
+                "Message": "{\"AlarmName\":\"alert_system_test_deploy_lambda-metric-duration\",\"AlarmDescription\":\"{\\\"dict_src\\\": null, \\\"uuid\\\": \\\"6941d459-3c0a-443e-b224-9009723dec15\\\", \\\"data\\\": {\\\"tags\\\": [\\\"alert_system_monitoring\\\"]}, \\\"type\\\": \\\"cloudwatch_metric_lambda_duration\\\"}\",\"AWSAccountId\":\"111111111111111\",\"AlarmConfigurationUpdatedTimestamp\":\"2022-08-10T08:52:25.756+0000\",\"NewStateValue\":\"ALARM\",\"NewStateReason\":\"Threshold Crossed: 1 out of the last 1 datapoints [839.175 (10/08/22 08:48:00)] was greater than the threshold (1.0) (minimum 1 datapoint for OK -> ALARM transition).\",\"StateChangeTime\":\"2022-08-10T08:53:15.326+0000\",\"Region\":\"US West (Oregon)\",\"AlarmArn\":\"arn:aws:cloudwatch:us-west-2:111111111111111:alarm:alert_system_test_deploy_lambda-metric-duration\",\"OldStateValue\":\"OK\",\"OKActions\":[\"arn:aws:sns:us-west-2:111111111111111:topic_test_alert_system\"],\"AlarmActions\":[\"arn:aws:sns:us-west-2:111111111111111:topic_test_alert_system\"],\"InsufficientDataActions\":[],\"Trigger\":{\"MetricName\":\"Duration\",\"Namespace\":\"AWS/Lambda\",\"StatisticType\":\"Statistic\",\"Statistic\":\"AVERAGE\",\"Unit\":null,\"Dimensions\":[{\"value\":\"alert_system_test_deploy_lambda\",\"name\":\"FunctionName\"}],\"Period\":300,\"EvaluationPeriods\":1,\"DatapointsToAlarm\":1,\"ComparisonOperator\":\"GreaterThanThreshold\",\"Threshold\":1.0,\"TreatMissingData\":\"missing\",\"EvaluateLowSampleCountPercentile\":\"\"}}",
+                "Timestamp": "2022-08-10T08:53:15.384Z",
+                "SignatureVersion": "1",
+                "Signature": "ck7uj1gRjUiHmtkh6dnFNHE21BcMJ+i65LH7J57rp20qDSC2hkQiGL0CcOvlEL3TgAVi7G+Gx+BDsb59uQYGacRp+SlAc6QBGHyGILu0lfC3IHEktmr8Qm5+KLj4BQqpudlND37uHGuv1FzlKeBWzFxQR0L+81egNCbWDP0a9nmxHCZZytadBNO4/+OjMCKcx4VsR4mcvaSv3TFmUe/5nDnqaXNOMU1rdi3la9NudW5sVHRh+URizGcqAPZGYF07rXSn4hmIZJDGrF0VSLbiEJui3dGcQi+MFDiGFYNVoU4Pv5M0QDJEAqpvU3MlDES1xEg6yB/QSt/gKud57dM8GA==",
+                "SigningCertUrl": "https://sns.us-west-2.amazonaws.com/SimpleNotificationService-56e67fcb41f6fec09b0196692625d385.pem",
+                "UnsubscribeUrl": "https://sns.us-west-2.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:us-west-2:111111111111111:topic_test_alert_system:868e24fc-54ba-4895-b0f4-528bd4f89e7b",
+                "MessageAttributes": {}
+            }
+        }
+    ]
+}

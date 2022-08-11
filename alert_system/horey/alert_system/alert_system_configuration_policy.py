@@ -1,10 +1,21 @@
+"""
+Alert system configuration policy.
+
+"""
+
 import datetime
 import os
-
 from horey.configuration_policy.configuration_policy import ConfigurationPolicy
+
+# pylint: disable=missing-function-docstring
 
 
 class AlertSystemConfigurationPolicy(ConfigurationPolicy):
+    """
+    Main class.
+
+    """
+
     def __init__(self):
         super().__init__()
         self._deployment_datetime = None
@@ -13,6 +24,7 @@ class AlertSystemConfigurationPolicy(ConfigurationPolicy):
         self._lambda_name = None
         self._sns_topic_name = None
         self._region = None
+        self._notification_channel_file_names = None
 
     @property
     def deployment_datetime(self):
@@ -68,12 +80,13 @@ class AlertSystemConfigurationPolicy(ConfigurationPolicy):
     @property
     def lambda_name(self):
         if self._lambda_name is None:
-            self._lambda_name = "generic_receiver_test"
+            raise ValueError("Lambda name was not set.")
+
         return self._lambda_name
-    
+
     @lambda_name.setter
     def lambda_name(self, value):
-        self._lambda_name = value 
+        self._lambda_name = value
 
     @property
     def lambda_role_name(self):
@@ -85,4 +98,16 @@ class AlertSystemConfigurationPolicy(ConfigurationPolicy):
 
     @property
     def lambda_timeout(self):
-        return 5
+        return 30
+
+    @property
+    def notification_channel_file_names(self):
+        return self._notification_channel_file_names
+
+    @notification_channel_file_names.setter
+    def notification_channel_file_names(self, value):
+        self._notification_channel_file_names = value
+
+    @property
+    def active_deployment_validation(self):
+        return False

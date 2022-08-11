@@ -28,15 +28,22 @@ LAST_DEPLOYMENT_DIR := $(shell ls /tmp/alert_system |tail -1)
 ZIP_PATH := "/tmp/alert_system/${LAST_DEPLOYMENT_DIR}/lambda_function.zip"
 DIR_PATH := $(shell dirname ${ZIP_PATH})
 
+UNZIPPED_DIR := "${DIR_PATH}/lambda_function"
+
 tst:
 	echo ${LAST_DEPLOYMENT_DIR}
 
-prepare_lambda_locally:
+prepare_lambda_locally_old:
 	cd "${DIR_PATH}" &&\
 	mkdir -p "${DIR_PATH}/lambda_function" &&\
 	tar xf "${ZIP_PATH}" --directory "${DIR_PATH}/lambda_function" &&\
 	cp -i "${TESTS_DIR}/venv_tester.py" "${DIR_PATH}/lambda_function" &&\
 	cp -i "${TESTS_DIR}/test_event.json" "${DIR_PATH}/lambda_function"
+
+prepare_lambda_locally:
+	cd "${UNZIPPED_DIR}" &&\
+	cp -i "${TESTS_DIR}/venv_tester.py" "${UNZIPPED_DIR}" &&\
+	cp -i "${TESTS_DIR}/test_event.json" "${UNZIPPED_DIR}"
 
 run_lambda_locally: prepare_lambda_locally run_lambda_locally_raw
 

@@ -1,0 +1,22 @@
+{
+    "Records": [
+        {
+            "EventSource": "aws:sns",
+            "EventVersion": "1.0",
+            "EventSubscriptionArn": "arn:aws:sns:us-west-2:111111111111111:topic_test_alert_system:868e24fc-54ba-4895-b0f4-528bd4f89e7b",
+            "Sns": {
+                "Type": "Notification",
+                "MessageId": "c9c2dc9a-088a-5d34-8d1f-87f4ae0689a6",
+                "TopicArn": "arn:aws:sns:us-west-2:111111111111111:topic_test_alert_system",
+                "Subject": "OK: \"alarm-/aws/lambda/alert_system_test_deploy_lambda-alert_system_test_dep...\" in US West (Oregon)",
+                "Message": "{\"AlarmName\":\"alarm-/aws/lambda/alert_system_test_deploy_lambda-alert_system_test_deploy_lambda-log-error\",\"AlarmDescription\":\"{\\\"dict_src\\\": null, \\\"uuid\\\": \\\"3b96a917-33a3-45ed-86e3-df667afe43ba\\\", \\\"data\\\": {\\\"tags\\\": [\\\"alert_system_monitoring\\\"], \\\"log_group_name\\\": \\\"/aws/lambda/alert_system_test_deploy_lambda\\\", \\\"log_group_filter_pattern\\\": \\\"\\\\\\\"[ERROR]\\\\\\\"\\\"}, \\\"type\\\": \\\"cloudwatch_logs_metric_sns_alarm\\\"}\",\"AWSAccountId\":\"111111111111111\",\"AlarmConfigurationUpdatedTimestamp\":\"2022-08-11T06:15:01.826+0000\",\"NewStateValue\":\"OK\",\"NewStateReason\":\"Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].\",\"StateChangeTime\":\"2022-08-11T06:40:11.962+0000\",\"Region\":\"US West (Oregon)\",\"AlarmArn\":\"arn:aws:cloudwatch:us-west-2:111111111111111:alarm:alarm-/aws/lambda/alert_system_test_deploy_lambda-alert_system_test_deploy_lambda-log-error\",\"OldStateValue\":\"ALARM\",\"OKActions\":[\"arn:aws:sns:us-west-2:111111111111111:topic_test_alert_system\"],\"AlarmActions\":[\"arn:aws:sns:us-west-2:111111111111111:topic_test_alert_system\"],\"InsufficientDataActions\":[],\"Trigger\":{\"MetricName\":\"metric-alert_system_test_deploy_lambda-log-error\",\"Namespace\":\"/aws/lambda/alert_system_test_deploy_lambda\",\"StatisticType\":\"Statistic\",\"Statistic\":\"SUM\",\"Unit\":null,\"Dimensions\":[],\"Period\":300,\"EvaluationPeriods\":1,\"DatapointsToAlarm\":1,\"ComparisonOperator\":\"GreaterThanThreshold\",\"Threshold\":0.0,\"TreatMissingData\":\"notBreaching\",\"EvaluateLowSampleCountPercentile\":\"\"}}",
+                "Timestamp": "2022-08-11T06:40:12.009Z",
+                "SignatureVersion": "1",
+                "Signature": "zNphqUFqEtQXZdf8ItkRsrsv+sK2brd9LyeLIo6GtDklhHSGP0Gy1KibgidBxswRvbRCXFPJf7STQ+9HRV3UWmt7R71kvk4O5yrXb4cs2hoYEr5sPY+N6b66fAtHpJ2iyUyql0C5upxzYLpOSbJhwiDPmE52gHv5A1LtM4IQhybcmE57BT0d6Qwp7TTJPWeQGn0iGbt4gA4OgAEgCeabj6XWiNb2CuLh1i6J0GCFg9r4K3iQdnQjO9xYjI8l8Q1xlIES9745l+8pXspjas2c5NU//eusOMcxkhYPywScO+VW4btEPE030Ggv8irdgYyisWDAHGaNZaZuBXucOGfiPA==",
+                "SigningCertUrl": "https://sns.us-west-2.amazonaws.com/SimpleNotificationService-56e67fcb41f6fec09b0196692625d385.pem",
+                "UnsubscribeUrl": "https://sns.us-west-2.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:us-west-2:111111111111111:topic_test_alert_system:868e24fc-54ba-4895-b0f4-528bd4f89e7b",
+                "MessageAttributes": {}
+            }
+        }
+    ]
+}

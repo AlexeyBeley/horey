@@ -1,28 +1,41 @@
+"""
+Module handling most of the basic message behavior.
+Check message type - invoke relevant handler.
+Send the notification to the channels.
+
+"""
+
 import datetime
 import json
 import os
-import pdb
 import traceback
 import urllib.parse
 
-from horey.common_utils.common_utils import CommonUtils
 from notification_channel_base import NotificationChannelBase
 from notification import Notification
 
+from horey.common_utils.common_utils import CommonUtils
 from horey.h_logger import get_logger
 
 logger = get_logger()
 
 
 class MessageDispatcherBase:
+    """
+    Main class.
+
+    """
+
     def __init__(self):
-        self.handler_mapper = {"cloudwatch_logs_metric_sns_alarm": self.cloudwatch_logs_metric_sns_alarm_message_handler,
-                               "cloudwatch_metric_lambda_duration": self.handle_cloudwatch_alarm_default}
+        self.handler_mapper = {
+            "cloudwatch_logs_metric_sns_alarm": self.cloudwatch_logs_metric_sns_alarm_message_handler,
+            "cloudwatch_sqs_visible_alarm": self.cloudwatch_sqs_visible_alarm_message_handler,
+            "cloudwatch_metric_lambda_duration": self.handle_cloudwatch_message_default,
+            }
 
         self.notification_channels = []
-        #todo: change notification_channel_files to be comma separated environ values
-        #notification_channel_files = ["notification_channel_slack.py"]
-        self.notification_channel_files = os.environ.get(NotificationChannelBase.NOTIFICATION_CHANNELS_ENVIRONMENT_VARIABLE).split(",")
+        self.notification_channel_files = os.environ.get(
+            NotificationChannelBase.NOTIFICATION_CHANNELS_ENVIRONMENT_VARIABLE).split(",")
         for notification_channel_file_name in self.notification_channel_files:
             notification_channel_class = self.load_notification_channel(notification_channel_file_name)
             notification_channel = self.init_notification_channel(notification_channel_class)
@@ -63,7 +76,7 @@ class MessageDispatcherBase:
         """
 
         configuration = CommonUtils.load_object_from_module(os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                                            notification_channel_class.CONFIGURATION_POLICY_FILE_NAME),
+                                                                         notification_channel_class.CONFIGURATION_POLICY_FILE_NAME),
                                                             notification_channel_class.CONFIGURATION_POLICY_CLASS_NAME)
         configuration.configuration_file_full_path = configuration.CONFIGURATION_FILE_NAME
         configuration.init_from_file()
@@ -71,10 +84,19 @@ class MessageDispatcherBase:
         return notification_channel_class(configuration)
 
     def dispatch(self, message):
+        """
+        Dispatch message - try to use mapped functions.
+        If failed use default cloudwatch handler.
+        If failed - notify alert_system_monitoring authority. CRITICAL
+
+        @param message:
+        @return:
+        """
+
         try:
             self.handler_mapper[message.type](message)
         except KeyError:
-            self.default_handler(message)
+            self.handle_cloudwatch_message_default(message)
         except Exception as error_inst:
             traceback_str = ''.join(traceback.format_tb(error_inst.__traceback__))
             logger.exception(f"{traceback_str}\n{repr(error_inst)}")
@@ -92,10 +114,17 @@ class MessageDispatcherBase:
             for notification_channel in self.notification_channels:
                 notification_channel.notify_alert_system_error(notification)
 
-    def default_handler(self, message):
+    def handle_cloudwatch_message_default(self, message):
+        """
+        Standard cloudwatch message handling.
+
+        @param message:
+        @return:
+        """
+
         try:
             alarms = self.split_sns_message_to_alarms(message)
-            self.handle_cloudwatch_alarm_default(alarms)
+            self.handle_cloudwatch_alarms_default(alarms)
         except Exception as error_inst:
             traceback_str = ''.join(traceback.format_tb(error_inst.__traceback__))
             logger.exception(f"{traceback_str}\n{repr(error_inst)}")
@@ -109,38 +138,125 @@ class MessageDispatcherBase:
             for notification_channel in self.notification_channels:
                 notification_channel.notify_alert_system_error(notification)
 
-    def handle_cloudwatch_alarm_default(self, alarms):
+    def handle_cloudwatch_alarms_default(self, alarms):
+        """
+        Standard cloudwatch alarms handling.
+
+        @param alarms:
+        @return:
+        """
+
         for alarm in alarms:
             self._handle_cloudwatch_alarm(alarm)
 
+    @staticmethod
+    def split_sns_message_to_alarms(message):
+        """
+        Split message records to CloudwatchAlarm objects.
+
+        @param message:
+        @return:
+        """
+
+        return [CloudwatchAlarm(record_dict) for record_dict in message.dict_src["Records"]]
+
     def cloudwatch_logs_metric_sns_alarm_message_handler(self, message):
+        """
+        Alarm received via SNS channel from cloudwatch.
+
+        @param message:
+        @return:
+        """
+
         alarms = self.split_sns_message_to_alarms(message)
         for alarm in alarms:
             self.handle_cloudwatch_logs_metric_alarm(alarm)
 
-    def split_sns_message_to_alarms(self, message):
-        return [CloudwatchAlarm(record_dict) for record_dict in message.dict_src["Records"]]
-
     def handle_cloudwatch_logs_metric_alarm(self, alarm):
+        """
+        Common scenario - found some string and notified SNS topic.
+
+        @param alarm:
+        @return:
+        """
+
         return self._handle_cloudwatch_logs_metric_alarm(alarm)
 
     def _handle_cloudwatch_logs_metric_alarm(self, alarm, notification=None):
-        log_group_search_url = self.generate_cloudwatch_log_search_link(alarm, alarm.alert_system_data["log_group_name"], alarm.alert_system_data["log_group_filter_pattern"])
+        """
+        Helper function to give the user ability to customize the notification appearance.
+
+        @param alarm:
+        @return:
+        """
+
+        log_group_search_url = self.generate_cloudwatch_log_search_link(alarm,
+                                                                        alarm.alert_system_data["log_group_name"],
+                                                                        alarm.alert_system_data[
+                                                                            "log_group_filter_pattern"])
         if notification is None:
             notification = Notification()
 
         if notification.text is None:
             notification.text = f'region: {alarm.region}\n' \
-               f'Log group: {alarm.alert_system_data["log_group_name"]}\n' \
-               f'Filter pattern: {alarm.alert_system_data["log_group_filter_pattern"]}\n\n' \
-               f'{alarm.new_state_reason}'
+                                f'Log group: {alarm.alert_system_data["log_group_name"]}\n' \
+                                f'Filter pattern: {alarm.alert_system_data["log_group_filter_pattern"]}\n\n' \
+                                f'{alarm.new_state_reason}'
 
         notification.link = log_group_search_url
         notification.link_href = "View logs in cloudwatch"
 
         self._handle_cloudwatch_alarm(alarm, notification=notification)
 
+    def cloudwatch_sqs_visible_alarm_message_handler(self, message):
+        """
+        Common scenario - cloudwatch notified SNS topic on SQS visible messages count.
+
+        @param message:
+        @return:
+        """
+
+        alarms = self.split_sns_message_to_alarms(message)
+        for alarm in alarms:
+            self.handle_cloudwatch_sqs_visible_alarm(alarm)
+
+    def handle_cloudwatch_sqs_visible_alarm(self, alarm):
+        """
+        Handle each alarm in the message.
+
+        @param alarm:
+        @return:
+        """
+
+        return self._handle_cloudwatch_sqs_visible_alarm(alarm)
+
+    def _handle_cloudwatch_sqs_visible_alarm(self, alarm, notification=None):
+        """
+        Helper function to give the user ability to customize the notification appearance.
+
+        @param alarm:
+        @return:
+        """
+        if notification is None:
+            notification = Notification()
+
+        if notification.text is None:
+            notification.text = f'region: {alarm.region}\n' \
+                                f'Queue name: {alarm.alert_system_data["queue_name"]}\n' \
+                                f'{alarm.new_state_reason}'
+
+        self._handle_cloudwatch_alarm(alarm, notification=notification)
+
     def _handle_cloudwatch_alarm(self, alarm, notification=None):
+        """
+        Handle generic cloudwatch alarm. Not to smart function, used as a default formatter,
+        so new cloudwatch alarms will have at least basic formatting.
+
+        @param alarm:
+        @param notification:
+        @return:
+        """
+
         if notification is None:
             notification = Notification()
 
@@ -158,54 +274,40 @@ class MessageDispatcherBase:
 
         if notification.text is None:
             notification.text = f'*{alarm.sns_message["AlarmName"]}*\n' \
-                         f'Region: {alarm.region}\n\n>' \
-                         f'Reason: {alarm.new_state_reason}\n\n' \
-                         f'Description: {alarm.sns_message["AlarmDescription"]}'
+                                f'Region: {alarm.region}\n\n>' \
+                                f'Reason: {alarm.new_state_reason}\n\n' \
+                                f'Description: {alarm.sns_message["AlarmDescription"]}'
 
         for notification_channel in self.notification_channels:
             notification_channel.notify(notification)
 
-    def generate_cloudwatch_log_search_link(self, alarm, log_group_name, log_group_filter_pattern, ):
+    def generate_cloudwatch_log_search_link(self, alarm, log_group_name, log_group_filter_pattern):
+        """
+        Generate comfort link to relevant search in the cloudwatch logs service.
+
+        @param alarm:
+        @param log_group_name:
+        @param log_group_filter_pattern:
+        @return:
+        """
+
         log_group_name_encoded = self.encode_to_aws_url_format(log_group_name)
         log_group_filter_pattern_encoded = self.encode_to_aws_url_format(log_group_filter_pattern)
 
         search_time_end = alarm.end_time.strftime("%Y-%m-%dT%H:%M:%SZ")
         search_time_start = alarm.start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
 
-        log_group_search_url = f"https://{alarm.region}.console.aws.amazon.com/cloudwatch/home?region={alarm.region}#logsV2:log-groups/log-group/{log_group_name_encoded}/log-events$3Fend$3D{search_time_end}$26filterPattern$3D{log_group_filter_pattern_encoded}$26start$3D{search_time_start}"
+        log_group_search_url = f"https://{alarm.region}.console.aws.amazon.com/cloudwatch/home?region=" \
+                               f"{alarm.region}#logsV2:log-groups/log-group/{log_group_name_encoded}/log-events$3Fend$3D{search_time_end}$26filterPattern$3D{log_group_filter_pattern_encoded}$26start$3D{search_time_start}"
         return log_group_search_url
-
-    def generate_slack_message(self, slack_message_type, header, text, link, link_href, dst_channel):
-        try:
-            return self.generate_slack_message_helper(slack_message_type, header, text, link, link_href, dst_channel)
-        except Exception as exception_inst:
-            logger.exception("Slack message generation failed. Generating default message.")
-            traceback_str = ''.join(traceback.format_tb(exception_inst.__traceback__))
-            message = SlackMessage(message_type=SlackMessage.Types.CRITICAL)
-            block = SlackMessage.HeaderBlock()
-            block.text = "Was not able to generate slack message"
-            message.add_block(block)
-
-            block = SlackMessage.SectionBlock()
-            new_text = f"slack_message_type: '{slack_message_type}', " \
-                       f"header: '{header}', " \
-                       f"text: '{text}', " \
-                       f"link: '{link}', " \
-                       f"link_href: '{link_href}', " \
-                       f"dst_channel: '{dst_channel}'\n" + \
-                       repr(exception_inst) + "\n" +\
-                       traceback_str
-
-            block.text = new_text
-            message.add_block(block)
-
-            message.src_username = "slack_api"
-            message.dst_channel = dst_channel
-            return message
 
     @staticmethod
     def encode_to_aws_url_format(str_src):
         """
+        AWS uses nonstandard url formatting.
+        All special characters like '/' and '"' must be encoded.
+
+        Sample:
         https://us-east-1.console.aws.amazon.com/cloudwatch/home?region=us-east-1#logsV2:log-groups/log-group/$252Fecs$252Fcontainer-name/log-events$3FfilterPattern$3D$2522$255BINFO$255D$2522
 
         @param str_src:
@@ -215,24 +317,13 @@ class MessageDispatcherBase:
         ret = urllib.parse.quote(str_src, safe='')
         return ret.replace("%", "$25")
 
-    def get_slack_channels(self, message, alarm=None):
-        """
-        Get channels based ob route tags
-
-        @param message:
-        @param alarm:
-        @return:
-        """
-
-        try:
-            slack_channels = self.router.get_slack_routes(message, alarm=alarm)
-        except self.router.UnknownTag as exception_inst:
-            logger.WARNING(f"{repr(exception_inst)}\n{''.join(traceback.format_tb(exception_inst.__traceback__))}")
-            slack_channels = [self.router.system_alerts_slack_channel]
-        return slack_channels
-
 
 class CloudwatchAlarm:
+    """
+    Object representing a standard cloudwatch alarm sent via SNS;
+
+    """
+
     def __init__(self, dict_src):
         self.dict_src = dict_src
         self._sns_message = None
@@ -242,16 +333,34 @@ class CloudwatchAlarm:
 
     @property
     def sns_message(self):
+        """
+        Internal message in the received dictionary.
+
+        @return:
+        """
+
         if self._sns_message is None:
             self._sns_message = json.loads(self.dict_src["Sns"]["Message"])
         return self._sns_message
 
     @property
     def region(self):
+        """
+        Region the alarm was sent in.
+
+        @return:
+        """
+
         return self.sns_message["AlarmArn"].split(":")[3]
 
     @property
     def alert_system_data(self):
+        """
+        Explicitly set message in the description field.
+
+        @return:
+        """
+
         if self._alert_system_data is None:
             self._alert_system_data = json.loads(self.sns_message["AlarmDescription"])["data"]
         return self._alert_system_data
@@ -259,6 +368,7 @@ class CloudwatchAlarm:
     @property
     def start_time(self):
         """
+        Alarm calculations start time
         2022-07-14T16:14:03.407+0000
 
         @return:
@@ -269,15 +379,32 @@ class CloudwatchAlarm:
 
     @property
     def end_time(self):
+        """
+        Alarm calculations end time
+
+        @return:
+        """
+
         if self._end_time is None:
             self._end_time = datetime.datetime.strptime(self.sns_message["StateChangeTime"], "%Y-%m-%dT%H:%M:%S.%f%z")
         return self._end_time
 
     @property
     def new_state(self):
+        """
+        New state reported by the alarm.
+
+        @return:
+        """
+
         return self.sns_message["NewStateValue"]
 
     @property
     def new_state_reason(self):
-        return self.sns_message["NewStateReason"]
+        """
+        New state reason reported by the alarm.
 
+        @return:
+        """
+
+        return self.sns_message["NewStateReason"]
