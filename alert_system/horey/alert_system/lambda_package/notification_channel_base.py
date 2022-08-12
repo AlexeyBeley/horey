@@ -1,7 +1,6 @@
 """
 Notification channel base class
 """
-from notification import Notification
 
 
 class NotificationChannelBase:
@@ -15,7 +14,7 @@ class NotificationChannelBase:
     def __init__(self, configuration):
         self.configuration = configuration
 
-    def notify(self, notification: Notification):
+    def notify(self, notification):
         """
         Send the notification to all the destination relevant to its tag.
 
@@ -25,7 +24,7 @@ class NotificationChannelBase:
 
         raise NotImplementedError("notify not implemented.")
 
-    def notify_alert_system_error(self, notification: Notification):
+    def notify_alert_system_error(self, notification):
         """
         Notify self monitoring problem.
 
