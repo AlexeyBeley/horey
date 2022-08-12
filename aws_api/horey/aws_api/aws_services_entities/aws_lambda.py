@@ -280,7 +280,14 @@ class AWSLambda(AwsObject):
                 desired_attr_value = getattr(desired_lambda, formatted_attr_name)
             except AttributeError:
                 continue
-            if getattr(self, formatted_attr_name) != desired_attr_value:
+
+            if desired_attr_value is None:
+                continue
+
+            self_attr_value = getattr(self, formatted_attr_name)
+            if self_attr_value != desired_attr_value:
+                logger.info(f"Updating lambda '{self.name}' config '{formatted_attr_name}' value from"
+                            f" '{self_attr_value}' to '{desired_attr_value}'")
                 request[attr_name] = desired_attr_value
 
         return request
