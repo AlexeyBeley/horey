@@ -21,6 +21,7 @@ from horey.aws_api.aws_services_entities.sns_subscription import SNSSubscription
 from horey.aws_api.aws_services_entities.sns_topic import SNSTopic
 from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlarm
 from horey.aws_api.aws_services_entities.cloud_watch_log_group_metric_filter import CloudWatchLogGroupMetricFilter
+from horey.aws_api.aws_services_entities.cloud_watch_log_group import CloudWatchLogGroup
 from horey.alert_system.lambda_package.message import Message
 from horey.alert_system.lambda_package.notification_channel_base import NotificationChannelBase
 
@@ -52,7 +53,25 @@ class AlertSystem:
         self.provision_lambda(lambda_files)
         self.provision_sns_subscription()
 
+        self.provision_log_group(tags)
+
         self.provision_self_monitoring()
+
+    def provision_log_group(self, tags):
+        """
+        Provision log group- on a fresh provisioning self monitoring will have no log group to monitor.
+        Until first lambda invocation.
+
+        @param tags:
+        @return:
+        """
+
+        log_group = CloudWatchLogGroup({})
+        log_group.region = self.region
+        log_group.name = f"/aws/lambda/{self.configuration.lambda_name}"
+        log_group.tags = {tag["Key"]: tag["Value"] for tag in tags}
+        log_group.tags["name"] = log_group.name
+        self.aws_api.provision_cloudwatch_log_group(log_group)
 
     def provision_lambda(self, files):
         """
