@@ -1,7 +1,6 @@
 """
 Module to handle cross service interaction
 """
-import pdb
 import json
 import os
 import datetime
@@ -252,23 +251,54 @@ class AWSAPI:
         """
         Sets current active account from configuration
         """
+
         if self.configuration is None:
             return
         self.aws_accounts = self.get_all_managed_accounts()
         AWSAccount.set_aws_account(self.aws_accounts[self.configuration.aws_api_account])
 
     def get_all_managed_accounts(self):
+        """
+        Get all accounts from the accounts file.
+
+        @return:
+        """
+
         return CommonUtils.load_object_from_module(self.configuration.accounts_file, "main")
 
-    def add_managed_region(self, region):
+    @staticmethod
+    def add_managed_region(region):
+        """
+        Add another region to the managed regions.
+
+        @param region:
+        @return:
+        """
+
         account = AWSAccount.get_aws_account()
         account.add_region(region)
 
-    def get_managed_regions(self):
+    @staticmethod
+    def get_managed_regions():
+        """
+        Get all regions of the current account.
+
+        @return:
+        """
         account = AWSAccount.get_aws_account()
         return account.get_regions()
 
     def init_managed_prefix_lists(self, from_cache=False, cache_file=None, region=None, full_information=True):
+        """
+        Self explanatory.
+
+        @param from_cache:
+        @param cache_file:
+        @param region:
+        @param full_information:
+        @return:
+        """
+
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, ManagedPrefixList)
         else:
@@ -277,6 +307,15 @@ class AWSAPI:
         self.managed_prefix_lists = objects
 
     def init_vpcs(self, from_cache=False, cache_file=None, region=None):
+        """
+        Self explanatory.
+
+        @param from_cache:
+        @param cache_file:
+        @param region:
+        @return:
+        """
+
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, VPC)
         else:
@@ -290,6 +329,15 @@ class AWSAPI:
         self.vpcs = objects
 
     def init_subnets(self, from_cache=False, cache_file=None, region=None):
+        """
+        Ec2 Subnets
+
+        @param from_cache:
+        @param cache_file:
+        @param region:
+        @return:
+        """
+
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, Subnet)
         else:
@@ -303,6 +351,15 @@ class AWSAPI:
         self.subnets = objects
 
     def init_glue_tables(self, from_cache=False, cache_file=None, region=None):
+        """
+        Self explanatory.
+
+        @param from_cache:
+        @param cache_file:
+        @param region:
+        @return:
+        """
+
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, Subnet)
         else:
@@ -316,6 +373,15 @@ class AWSAPI:
         self.glue_tables = objects
 
     def init_glue_databases(self, from_cache=False, cache_file=None, region=None):
+        """
+        Self explanatory.
+
+        @param from_cache:
+        @param cache_file:
+        @param region:
+        @return:
+        """
+
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, Subnet)
         else:
@@ -329,6 +395,14 @@ class AWSAPI:
         self.glue_databases = objects
 
     def init_availability_zones(self, from_cache=False, cache_file=None):
+        """
+        Self explanatory.
+
+        @param from_cache:
+        @param cache_file:
+        @return:
+        """
+
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, AvailabilityZone)
         else:
@@ -337,6 +411,15 @@ class AWSAPI:
         self.availability_zones = objects
 
     def init_nat_gateways(self, from_cache=False, cache_file=None, region=None):
+        """
+        Self explanatory.
+
+        @param from_cache:
+        @param cache_file:
+        @param region:
+        @return:
+        """
+
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, NatGateway)
         else:
@@ -345,6 +428,15 @@ class AWSAPI:
         self.nat_gateways = objects
 
     def init_dynamodb_tables(self, from_cache=False, cache_file=None, region=None):
+        """
+        Self explanatory.
+
+        @param from_cache:
+        @param cache_file:
+        @param region:
+        @return:
+        """
+
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, DynamoDBTable)
         else:
@@ -353,6 +445,15 @@ class AWSAPI:
         self.dynamodb_tables = objects
 
     def init_dynamodb_endpoints(self, from_cache=False, cache_file=None, region=None):
+        """
+        Self explanatory.
+
+        @param from_cache:
+        @param cache_file:
+        @param region:
+        @return:
+        """
+
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, DynamoDBTable)
         else:
@@ -361,6 +462,15 @@ class AWSAPI:
         self.dynamodb_endpoints = objects
 
     def init_sesv2_email_identities(self, from_cache=False, cache_file=None, region=None):
+        """
+        Self explanatory.
+
+        @param from_cache:
+        @param cache_file:
+        @param region:
+        @return:
+        """
+
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, SESV2EmailIdentity)
         else:
@@ -369,6 +479,15 @@ class AWSAPI:
         self.sesv2_email_identities = objects
 
     def init_sesv2_email_templates(self, from_cache=False, cache_file=None, region=None):
+        """
+        Self explanatory.
+
+        @param from_cache:
+        @param cache_file:
+        @param region:
+        @return:
+        """
+
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, SESV2EmailTemplate)
         else:
@@ -377,6 +496,15 @@ class AWSAPI:
         self.sesv2_email_templates = objects
 
     def init_sesv2_configuration_sets(self, from_cache=False, cache_file=None, region=None):
+        """
+        Self explanatory.
+
+        @param from_cache:
+        @param cache_file:
+        @param region:
+        @return:
+        """
+
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, SESV2ConfigurationSet)
         else:
@@ -385,6 +513,15 @@ class AWSAPI:
         self.sesv2_configuration_sets = objects
 
     def init_sns_topics(self, from_cache=False, cache_file=None, region=None):
+        """
+        Self explanatory.
+
+        @param from_cache:
+        @param cache_file:
+        @param region:
+        @return:
+        """
+
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, SNSTopic)
         else:
@@ -393,6 +530,15 @@ class AWSAPI:
         self.sns_topics = objects
 
     def init_sns_subscriptions(self, from_cache=False, cache_file=None, region=None):
+        """
+        Self explanatory.
+
+        @param from_cache:
+        @param cache_file:
+        @param region:
+        @return:
+        """
+
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, SNSSubscription)
         else:
@@ -401,6 +547,16 @@ class AWSAPI:
         self.sns_subscriptions = objects
 
     def init_ecr_images(self, from_cache=False, cache_file=None, region=None, ecr_repositories=None):
+        """
+        Self explanatory.
+
+        @param from_cache:
+        @param cache_file:
+        @param region:
+        @param ecr_repositories:
+        @return:
+        """
+
         objects = []
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, ECRImage)
@@ -415,6 +571,15 @@ class AWSAPI:
         self.ecr_images = objects
 
     def init_ecr_repositories(self, from_cache=False, cache_file=None, region=None):
+        """
+        Self explanatory.
+
+        @param from_cache:
+        @param cache_file:
+        @param region:
+        @return:
+        """
+
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, ECRRepository)
         else:
@@ -423,6 +588,15 @@ class AWSAPI:
         self.ecr_repositories = objects
 
     def init_ecs_clusters(self, from_cache=False, cache_file=None, region=None):
+        """
+        Self explanatory.
+
+        @param from_cache:
+        @param cache_file:
+        @param region:
+        @return:
+        """
+
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, ECSCluster)
         else:
@@ -431,6 +605,15 @@ class AWSAPI:
         self.ecs_clusters = objects
 
     def init_ecs_capacity_providers(self, from_cache=False, cache_file=None, region=None):
+        """
+        Self explanatory.
+
+        @param from_cache:
+        @param cache_file:
+        @param region:
+        @return:
+        """
+
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, ECSCapacityProvider)
         else:
@@ -439,6 +622,15 @@ class AWSAPI:
         self.ecs_capacity_providers = objects
 
     def init_ecs_services(self, from_cache=False, cache_file=None, region=None):
+        """
+        Self explanatory.
+
+        @param from_cache:
+        @param cache_file:
+        @param region:
+        @return:
+        """
+
         objects = []
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, ECSService)
@@ -451,6 +643,15 @@ class AWSAPI:
         self.ecs_services = objects
 
     def init_ecs_task_definitions(self, from_cache=False, cache_file=None, region=None):
+        """
+        Self explanatory.
+
+        @param from_cache:
+        @param cache_file:
+        @param region:
+        @return:
+        """
+
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, ECSService)
         else:
@@ -459,6 +660,15 @@ class AWSAPI:
         self.ecs_task_definitions = objects
 
     def init_auto_scaling_groups(self, from_cache=False, cache_file=None, region=None):
+        """
+        Self explanatory.
+
+        @param from_cache:
+        @param cache_file:
+        @param region:
+        @return:
+        """
+
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, ECSCluster)
         else:
@@ -467,6 +677,15 @@ class AWSAPI:
         self.auto_scaling_groups = objects
 
     def init_auto_scaling_policies(self, from_cache=False, cache_file=None, region=None):
+        """
+        Self explanatory.
+
+        @param from_cache:
+        @param cache_file:
+        @param region:
+        @return:
+        """
+
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, ECSCluster)
         else:
@@ -475,6 +694,15 @@ class AWSAPI:
         self.auto_scaling_policies = objects
 
     def init_application_auto_scaling_policies(self, from_cache=False, cache_file=None, region=None):
+        """
+        Self explanatory.
+
+        @param from_cache:
+        @param cache_file:
+        @param region:
+        @return:
+        """
+
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, ECSCluster)
         else:
@@ -483,6 +711,15 @@ class AWSAPI:
         self.application_auto_scaling_policies = objects
 
     def init_application_auto_scaling_scalable_targets(self, from_cache=False, cache_file=None, region=None):
+        """
+        Self explanatory.
+
+        @param from_cache:
+        @param cache_file:
+        @param region:
+        @return:
+        """
+
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, ECSCluster)
         else:
@@ -491,6 +728,14 @@ class AWSAPI:
         self.application_auto_scaling_scalable_targets = objects
 
     def init_amis(self, from_cache=False, cache_file=None):
+        """
+        Self explanatory.
+
+        @param from_cache:
+        @param cache_file:
+        @return:
+        """
+
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, AMI)
         else:
@@ -499,6 +744,14 @@ class AWSAPI:
         self.amis = objects
 
     def init_key_pairs(self, from_cache=False, cache_file=None):
+        """
+        Ec2 key pairs used for SSH.
+
+        @param from_cache:
+        @param cache_file:
+        @return:
+        """
+
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, KeyPair)
         else:
@@ -507,6 +760,14 @@ class AWSAPI:
         self.key_pairs = objects
 
     def init_internet_gateways(self, from_cache=False, cache_file=None):
+        """
+        Self explanatory.
+
+        @param from_cache:
+        @param cache_file:
+        @return:
+        """
+
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, InternetGateway)
         else:
@@ -515,6 +776,15 @@ class AWSAPI:
         self.internet_gateways = objects
 
     def init_vpc_peerings(self, from_cache=False, cache_file=None, region=None):
+        """
+        Self explanatory.
+
+        @param from_cache:
+        @param cache_file:
+        @param region:
+        @return:
+        """
+
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, VPCPeering)
         else:
@@ -523,6 +793,15 @@ class AWSAPI:
         self.vpc_peerings = objects
 
     def init_route_tables(self, from_cache=False, cache_file=None, region=None):
+        """
+        Self explanatory.
+
+        @param from_cache:
+        @param cache_file:
+        @param region:
+        @return:
+        """
+
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, RouteTable)
         else:
@@ -531,6 +810,15 @@ class AWSAPI:
         self.route_tables = objects
 
     def init_elastic_addresses(self, from_cache=False, cache_file=None, region=None):
+        """
+        Self explanatory.
+
+        @param from_cache:
+        @param cache_file:
+        @param region:
+        @return:
+        """
+
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, ElasticAddress)
         else:
@@ -704,6 +992,14 @@ class AWSAPI:
         self.cache_objects_from_generator(metrics_generator, cache_dir)
 
     def init_cloud_watch_alarms(self, from_cache=False, cache_file=None):
+        """
+        Self explanatory.
+
+        @param from_cache:
+        @param cache_file:
+        @return:
+        """
+
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, CloudWatchAlarm)
         else:
@@ -805,7 +1101,7 @@ class AWSAPI:
 
                 data_to_dump = [obj.convert_to_dict() for obj in bucket_objects[first_key_index: last_key_index]]
 
-                with open(file_path, "w") as fd:
+                with open(file_path, "w", encoding="utf-8") as fd:
                     json.dump(data_to_dump, fd)
 
             print(f"{bucket.name}: {len(bucket_objects)}")
@@ -1130,17 +1426,19 @@ class AWSAPI:
 
     def init_elasticache_cache_security_groups(self, from_cache=False, cache_file=None, region=None):
         """
+        Self explanatory.
 
         @param from_cache:
         @param cache_file:
         @return:
         """
+
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, ElasticacheCacheSecurityGroup)
         else:
             objects = self.elasticache_client.get_all_cache_security_groups(region=region)
 
-        self.elasticache_cache_security_groups = object
+        self.elasticache_cache_security_groups = objects
 
     def init_elasticache_replication_groups(self, from_cache=False, cache_file=None, region=None):
         """
@@ -1267,7 +1565,7 @@ class AWSAPI:
 
             file_path = os.path.join(sub_dir, str(total_counter))
 
-            with open(file_path, "w") as fd:
+            with open(file_path, "w", encoding="utf-8") as fd:
                 json.dump(buffer, fd)
 
             counter = 0
@@ -1280,7 +1578,7 @@ class AWSAPI:
 
         file_path = os.path.join(sub_dir, str(total_counter))
 
-        with open(file_path, "w") as fd:
+        with open(file_path, "w", encoding="utf-8") as fd:
             json.dump(buffer, fd)
 
     def cache_s3_bucket_objects(self, bucket, max_count, bucket_dir):
@@ -1314,7 +1612,7 @@ class AWSAPI:
 
             buffer = []
 
-            with open(file_path, "w") as fd:
+            with open(file_path, "w", encoding="utf-8") as fd:
                 json.dump(data_to_dump, fd)
 
         logger.info(f"Bucket {bucket.name} total count of objects: {total_counter}")
@@ -1327,7 +1625,7 @@ class AWSAPI:
 
         data_to_dump = [obj.convert_to_dict() for obj in buffer]
 
-        with open(file_path, "w") as fd:
+        with open(file_path, "w", encoding="utf-8") as fd:
             json.dump(data_to_dump, fd)
 
     def load_objects_from_cache(self, file_name, class_type):
@@ -1338,7 +1636,7 @@ class AWSAPI:
         @param class_type:
         @return:
         """
-        with open(file_name) as fil:
+        with open(file_name, encoding="utf-8") as fil:
             return [class_type(dict_src, from_cache=True) for dict_src in json.load(fil)]
 
     def cache_objects(self, objects, file_name, indent=None):
@@ -1354,7 +1652,7 @@ class AWSAPI:
         if not os.path.exists(os.path.dirname(file_name)):
             os.makedirs(os.path.dirname(file_name))
 
-        with open(file_name, "w") as fil:
+        with open(file_name, "w", encoding="utf-8") as fil:
             json.dump(objects_dicts, fil, indent=indent)
 
     def get_down_instances(self):
@@ -1430,7 +1728,7 @@ class AWSAPI:
         tb_ret.blocks.append(self.cleanup_report_lambdas_security_group())
         tb_ret.blocks.append(self.cleanup_report_lambdas_old_code())
 
-        with open(report_file_path, "w+") as file_handler:
+        with open(report_file_path, "w+", encoding="utf-8") as file_handler:
             file_handler.write(str(tb_ret))
 
         return tb_ret
@@ -1537,7 +1835,7 @@ class AWSAPI:
 
         last_file = str(max([int(file_name) for file_name in file_names]))
         with open(os.path.join(aws_api_cloudwatch_log_groups_streams_cache_dir, log_group.generate_dir_name(),
-                               last_file)) as file_handler:
+                               last_file), encoding="utf-8") as file_handler:
             last_stream = json.load(file_handler)[-1]
         if CommonUtils.timestamp_to_datetime(
                 last_stream["lastIngestionTime"] / 1000) < datetime.datetime.now() - datetime.timedelta(days=365):
@@ -1567,17 +1865,18 @@ class AWSAPI:
                         in lst_names_dates]
         return tb_ret
 
-    def cleanup_report_s3_buckets_objects(self, summarised_data_file, output_file):
+    @staticmethod
+    def cleanup_report_s3_buckets_objects(summarised_data_file, output_file):
         """
         Generating S3 cleanup report from the previously generated summarized data file.
         @param summarised_data_file:
         @param output_file:
         @return:
         """
-        with open(summarised_data_file) as fh:
+        with open(summarised_data_file, encoding="utf-8") as fh:
             all_buckets = json.load(fh)
 
-        by_bucket_sorted_data = dict()
+        by_bucket_sorted_data = {}
 
         for bucket_name, bucket_data in all_buckets.items():
             by_bucket_sorted_data[bucket_name] = {"total_size": 0, "total_keys": 0, "years": {}}
@@ -1616,12 +1915,13 @@ class AWSAPI:
 
             tb_ret.blocks.append(tb_bucket)
 
-        with open(output_file, "w") as fh:
+        with open(output_file, "w", encoding="utf-8") as fh:
             fh.write(tb_ret.format_pprint())
 
         return tb_ret
 
-    def generate_summarised_s3_cleanup_data(self, buckets_dir_path, summarised_data_file):
+    @staticmethod
+    def generate_summarised_s3_cleanup_data(buckets_dir_path, summarised_data_file):
         """
         Because the amount of data can be very large I use data summarization before generating report.
         The data is being written to a file.
@@ -1630,7 +1930,7 @@ class AWSAPI:
         @param summarised_data_file:
         @return:
         """
-        all_buckets = dict()
+        all_buckets = {}
         for bucket_dir in os.listdir(buckets_dir_path):
             by_date_split = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: {"keys": 0, "size": 0})))
             logger.info(f"Init bucket in dir '{bucket_dir}'")
@@ -1640,7 +1940,7 @@ class AWSAPI:
                 logger.info(f"Init objects chunk in dir {bucket_dir}/{objects_buffer_file}")
                 objects_buffer_file_path = os.path.join(bucket_dir_path, objects_buffer_file)
 
-                with open(objects_buffer_file_path) as fh:
+                with open(objects_buffer_file_path, encoding="utf-8") as fh:
                     lst_objects = json.load(fh)
 
                 for dict_object in lst_objects:
@@ -1650,10 +1950,11 @@ class AWSAPI:
                     by_date_split[bucket_object.last_modified.year][bucket_object.last_modified.month][
                         bucket_object.last_modified.day]["size"] += bucket_object.size
             all_buckets[bucket_dir] = by_date_split
-        with open(summarised_data_file, "w") as fh:
+        with open(summarised_data_file, "w", encoding="utf-8") as fh:
             json.dump(all_buckets, fh)
 
-    def cleanup_report_s3_buckets_objects_large(self, all_buckets):
+    @staticmethod
+    def cleanup_report_s3_buckets_objects_large(all_buckets):
         """
         Generate cleanup report for s3 large buckets- buckets, with a metadata to large for RAM.
         @param all_buckets:
@@ -1700,7 +2001,7 @@ class AWSAPI:
             if role.role_last_used_time < time_limit:
                 tb_ret.lines.append(f"Role: '{role.name}' last used: {role.role_last_used_time}")
 
-        with open(output_file, "w+") as file_handler:
+        with open(output_file, "w+", encoding="utf-8") as file_handler:
             file_handler.write(tb_ret.format_pprint())
 
         return tb_ret
@@ -1718,7 +2019,7 @@ class AWSAPI:
         for i in range(len(chunk_files)):
             chunk_file_name = chunk_files[i]
             chunk_file_path = os.path.join(metrics_dir, chunk_file_name)
-            with open(chunk_file_path) as file_handler:
+            with open(chunk_file_path, encoding="utf-8") as file_handler:
                 metrics_dicts = json.load(file_handler)
 
             metrics = [CloudWatchMetric(metric) for metric in metrics_dicts]
@@ -1738,7 +2039,7 @@ class AWSAPI:
                 metric_name in metrics_per_name]
             tb_ret.blocks.append(tb_namespace)
 
-        with open(output_file, "w+") as file_handler:
+        with open(output_file, "w+", encoding="utf-8") as file_handler:
             file_handler.write(tb_ret.format_pprint())
         return tb_ret
 
@@ -1751,10 +2052,10 @@ class AWSAPI:
         @param top_streams_count: Top most streams count to show in the report.
         @return:
         """
+
         dict_total = {"size": 0, "streams_count": 0, "data": []}
         log_group_subdirs = os.listdir(streams_dir)
-        for i in range(len(log_group_subdirs)):
-            log_group_subdir = log_group_subdirs[i]
+        for i, log_group_subdir in enumerate(log_group_subdirs):
             logger.info(f"Log group sub directory {i}/{len(log_group_subdirs)}")
             dict_log_group = {"name": log_group_subdir, "size": 0, "streams_count": 0, "data": {"streams_by_date": []}}
             log_group_full_path = os.path.join(streams_dir, log_group_subdir)
@@ -1764,7 +2065,7 @@ class AWSAPI:
                 chunk_file = log_group_chunk_files[j]
                 logger.info(f"Chunk files in log group dir {j}/{len(log_group_chunk_files)}")
 
-                with open(os.path.join(log_group_full_path, chunk_file)) as fh:
+                with open(os.path.join(log_group_full_path, chunk_file), encoding="utf-8") as fh:
                     streams = json.load(fh)
                 log_group_name = streams[0]["arn"].split(":")[6]
                 log_group = \
@@ -1782,7 +2083,7 @@ class AWSAPI:
             dict_total["data"].append(dict_log_group)
         dict_total["data"] = sorted(dict_total["data"], key=lambda x: x["size"], reverse=True)
         tb_ret = self.cleanup_report_cloud_watch_log_groups_prepare_tb(dict_total, top_streams_count)
-        with open(output_file, "w+") as file_handler:
+        with open(output_file, "w+", encoding="utf-8") as file_handler:
             file_handler.write(tb_ret.format_pprint())
         return tb_ret
 
@@ -1801,10 +2102,10 @@ class AWSAPI:
             raise ValueError("Not inited items (len=0)")
 
         i = 0
-        for i in range(len(items)):
-            if item_to_insert_weight < get_item_weight(items[i]):
+        for i, item in enumerate(items):
+            if item_to_insert_weight < get_item_weight(item):
                 logger.info(
-                    f"Found new item to insert with weight {item_to_insert_weight} at place {i} where current weight is {get_item_weight(items[i])}")
+                    f"Found new item to insert with weight {item_to_insert_weight} at place {i} where current weight is {get_item_weight(item)}")
                 break
 
         while i > -1:
@@ -1894,7 +2195,7 @@ class AWSAPI:
         if tb_ret_tmp.lines or tb_ret_tmp.blocks:
             tb_ret.blocks.append(tb_ret_tmp)
 
-        with open(output_file, "w+") as file_handler:
+        with open(output_file, "w+", encoding="utf-8") as file_handler:
             file_handler.write(tb_ret.format_pprint())
 
         return tb_ret
@@ -1975,7 +2276,7 @@ class AWSAPI:
         tb_ret.blocks.append(self.cleanup_report_unused_security_groups())
         tb_ret.blocks.append(self.cleanup_report_dangerous_security_groups())
 
-        with open(report_file_path, "w+") as file_handler:
+        with open(report_file_path, "w+", encoding="utf-8") as file_handler:
             file_handler.write(str(tb_ret))
 
         return tb_ret
@@ -1994,6 +2295,12 @@ class AWSAPI:
         return tb_ret
 
     def cleanup_report_unused_security_groups(self):
+        """
+        Unassigned security groups.
+
+        @return:
+        """
+
         tb_ret = TextBlock("Unused security groups")
         used_security_group_ids = []
         for interface in self.network_interfaces:
@@ -2006,6 +2313,12 @@ class AWSAPI:
         return tb_ret
 
     def cleanup_report_dangerous_security_groups(self):
+        """
+        Security groups with to wide permissions.
+
+        @return:
+        """
+
         tb_ret = TextBlock("Dangerously open security groups")
         for security_group in self.security_groups:
             pairs = security_group.get_ingress_pairs()
@@ -2068,6 +2381,13 @@ class AWSAPI:
         return lines
 
     def find_loadbalnacers_target_groups(self, load_balancer):
+        """
+        Find the loadbalancer's target groups.
+
+        @param load_balancer:
+        @return:
+        """
+
         return [target_group for target_group in self.target_groups if
                 load_balancer.arn in target_group.load_balancer_arns]
 
@@ -2090,27 +2410,35 @@ class AWSAPI:
                 record in records]
             tb_ret.blocks.append(tb_zone)
 
-        with open(output_file, "w+") as file_handler:
+        with open(output_file, "w+", encoding="utf-8") as file_handler:
             file_handler.write(tb_ret.format_pprint())
         return tb_ret
 
     def cleanup_report_iam_policies(self, output_file):
         """
         Clean IAM policies
+
         @return:
         """
+
         tb_ret = TextBlock("Iam Policies")
 
         tb_ret.blocks.append(self.cleanup_report_iam_unused_policies())
 
         tb_ret.blocks.append(self.cleanup_report_iam_policies_statements_optimize())
 
-        with open(output_file, "w+") as file_handler:
+        with open(output_file, "w+", encoding="utf-8") as file_handler:
             file_handler.write(tb_ret.format_pprint())
 
         return tb_ret
 
     def cleanup_report_iam_unused_policies(self):
+        """
+        Generate cleanup report
+
+        @return:
+        """
+
         used_policies = self.find_all_used_policy_names()
         lines = []
         for policy in self.iam_policies:
@@ -2186,7 +2514,8 @@ class AWSAPI:
                     f"Potential risk in too permissive not_resource. Effect: 'Allow', not_resource: '{statement.not_resource}'")
         return lines
 
-    def cleanup_report_iam_policy_statements_intersecting_statements(self, policy):
+    @staticmethod
+    def cleanup_report_iam_policy_statements_intersecting_statements(policy):
         """
         Generating report of intersecting policies.
         @param policy:
@@ -2197,9 +2526,7 @@ class AWSAPI:
 
         lines = []
 
-        for i in range(len(statements)):
-            statement_1 = statements[i]
-
+        for i, statement_1 in enumerate(statements):
             for j in range(i + 1, len(statements)):
                 statement_2 = statements[j]
                 common_resource = statement_1.intersect_resource(statement_2)
@@ -2256,7 +2583,7 @@ class AWSAPI:
         @return:
         """
 
-        with open(file_path) as file_handler:
+        with open(file_path, encoding="utf-8") as file_handler:
             contents = file_handler.read()
         self.put_secret_value(secret_name, contents, region=region)
 
@@ -2280,7 +2607,7 @@ class AWSAPI:
         if file_name is None:
             file_name = secret_name
 
-        with open(os.path.join(dir_path, file_name), "w+") as file_handler:
+        with open(os.path.join(dir_path, file_name), "w+", encoding="utf-8") as file_handler:
             file_handler.write(contents)
 
     def copy_secrets_manager_secret_to_region(self, secret_name, region_src, region_dst):
@@ -2343,6 +2670,7 @@ class AWSAPI:
 
         master_hosted_zone = hzs_master[0]
 
+        record = None
         for record in hosted_zone.records:
             if record.type == "NS" and record.name == hosted_zone.name:
                 break
@@ -2587,7 +2915,7 @@ class AWSAPI:
 
         aws_propagation_timeout = 60
         time_to_sleep = 10
-        nat_gateways_tmp = [ngw for ngw in nat_gateways]
+        nat_gateways_tmp = nat_gateways[:]
         while len(nat_gateways_tmp) > 0:
             to_del = []
             for nat_gateway_tmp in nat_gateways_tmp:
@@ -2698,13 +3026,13 @@ class AWSAPI:
         logger.info(f"provisioning ssh key pair {key_pair.name}")
         response = self.ec2_client.provision_key_pair(key_pair)
         if response is None:
-            return
+            return None
 
         if save_to_secrets_manager:
             AWSAccount.set_aws_region(secrets_manager_region)
             self.put_secret_value(key_pair.name + ".key", response["KeyMaterial"])
-        else:
-            return response
+
+        return response
 
     def provision_load_balancer(self, load_balancer):
         """
@@ -2795,6 +3123,13 @@ class AWSAPI:
         return self.ecr_client.get_authorization_info(region=region)
 
     def provision_ecs_task_definition(self, task_definition):
+        """
+        Self explanatory.
+
+        @param task_definition:
+        @return:
+        """
+
         self.ecs_client.provision_ecs_task_definition(task_definition)
 
     # region acm certificate
@@ -2906,7 +3241,8 @@ class AWSAPI:
             if certificate.status == "ISSUED":
                 logger.info(f"Finished issuing in {datetime.datetime.now() - start_time}")
                 return certificate
-            elif certificate.status == "PENDING_VALIDATION":
+
+            if certificate.status == "PENDING_VALIDATION":
                 logger.info(
                     f"Waiting for certificate validation going to sleep for {sleep_time} seconds: {certificate.arn}")
                 time.sleep(sleep_time)
@@ -3006,7 +3342,8 @@ class AWSAPI:
             if email_identity.dkim_attributes["Status"] == "SUCCESS":
                 logger.info(f"Finished validating in {datetime.datetime.now() - start_time}")
                 break
-            elif email_identity.dkim_attributes["Status"] == "PENDING":
+
+            if email_identity.dkim_attributes["Status"] == "PENDING":
                 logger.info(
                     f"Waiting for sesv2_domain_email_identity validation going to sleep for {sleep_time} seconds: {email_identity.name}")
                 time.sleep(sleep_time)
@@ -3039,6 +3376,14 @@ class AWSAPI:
         self.sesv2_client.provision_configuration_set(configuration_set)
 
     def provision_rds_db_cluster(self, cluster, snapshot=None):
+        """
+        Self explanatory.
+
+        @param cluster:
+        @param snapshot:
+        @return:
+        """
+
         snapshot_id = snapshot.id if snapshot is not None else None
         self.rds_client.provision_db_cluster(cluster, snapshot_id=snapshot_id)
 
@@ -3073,6 +3418,38 @@ class AWSAPI:
                 f"Can not find security group {name} in vpc {vpc.id}")
 
         return security_groups[0]
+
+    def get_subnet_by_vpc_and_name(self, vpc, name, full_information=False):
+        """
+        Find subnet in a vpc by its name tag.
+
+        @param vpc:
+        @param name:
+        @param full_information:
+        @return:
+        """
+
+        filters = [
+            {
+                "Name": "vpc-id",
+                "Values": [
+                    vpc.id
+                ]
+            },
+            {
+                "Name": "tag:Name",
+                "Values": [
+                    name
+                ]
+            }
+        ]
+
+        subnets = self.ec2_client.get_region_subnets(vpc.region, filters=filters)
+        if len(subnets) != 1:
+            raise RuntimeError(
+                f"Can not find subnet '{name}' in vpc {vpc.id}")
+
+        return subnets[0]
 
     def provision_db_cluster_parameter_group(self, db_cluster_parameter_group):
         """

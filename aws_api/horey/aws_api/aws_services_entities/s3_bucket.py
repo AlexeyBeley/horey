@@ -255,6 +255,8 @@ class S3Bucket(AwsObject):
 
         def __init__(self, src_data, from_cache=False):
             self.key = None
+            self.last_modified = None
+
             super(S3Bucket.BucketObject, self).__init__(src_data)
 
             if from_cache:
