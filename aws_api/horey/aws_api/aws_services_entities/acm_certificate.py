@@ -1,7 +1,6 @@
 """
 AWS Lambda representation
 """
-import pdb
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 from horey.aws_api.base_entities.region import Region
@@ -16,6 +15,10 @@ class ACMCertificate(AwsObject):
         super().__init__(dict_src)
         self._region = None
         self.status = None
+        self.arn = None
+        self.domain_name = None
+        self.validation_method = None
+        self.domain_validation_options = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -51,13 +54,22 @@ class ACMCertificate(AwsObject):
     def _init_object_from_cache(self, dict_src):
         """
         Init from cache
+
         :param dict_src:
         :return:
         """
+
         options = {}
         self._init_from_cache(dict_src, options)
 
     def update_from_raw_response(self, dict_src):
+        """
+        Update self from raw server response.
+
+        @param dict_src:
+        @return:
+        """
+
         init_options = {
             "CertificateArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
             "DomainName": self.init_default_attr,
@@ -87,30 +99,11 @@ class ACMCertificate(AwsObject):
 
     def generate_create_request(self):
         """
-        DomainName='string',
-    ValidationMethod='EMAIL'|'DNS',
-    SubjectAlternativeNames=[
-        'string',
-    ],
-    IdempotencyToken='string',
-    DomainValidationOptions=[
-        {
-            'DomainName': 'string',
-            'ValidationDomain': 'string'
-        },
-    ],
-    Options={
-        'CertificateTransparencyLoggingPreference': 'ENABLED'|'DISABLED'
-    },
-    CertificateAuthorityArn='string',
-    Tags=[
-        {
-            'Key': 'string',
-            'Value': 'string'
-        },
-    ]
-)
+        Generate raw dict request.
+
+        @return:
         """
+
         request = dict()
         request["DomainName"] = self.domain_name
         request["ValidationMethod"] = self.validation_method
@@ -121,6 +114,12 @@ class ACMCertificate(AwsObject):
 
     @property
     def region(self):
+        """
+        Self region.
+
+        @return:
+        """
+
         if self._region is not None:
             return self._region
 
@@ -131,6 +130,13 @@ class ACMCertificate(AwsObject):
 
     @region.setter
     def region(self, value):
+        """
+        Region setter.
+
+        @param value:
+        @return:
+        """
+
         if not isinstance(value, Region):
             raise ValueError(value)
 

@@ -60,10 +60,19 @@ class EC2Client(Boto3Client):
         return final_result
 
     def get_region_subnets(self, region, filters=None):
+        """
+        Get region subnets.
+
+        @param region:
+        @param filters:
+        @return:
+        """
+
         final_result = list()
-        filters_req = dict()
+        filters_req = None
         if filters is not None:
-            filters_req["Filters"] = filters
+            filters_req= {"Filters": filters}
+
         AWSAccount.set_aws_region(region)
         for dict_src in self.execute(self.client.describe_subnets, "Subnets", filters_req=filters_req):
             obj = Subnet(dict_src)

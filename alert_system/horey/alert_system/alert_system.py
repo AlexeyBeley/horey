@@ -2,7 +2,7 @@
 Alert system deployment module.
 
 """
-
+import copy
 import json
 import os
 import shutil
@@ -49,6 +49,8 @@ class AlertSystem:
         @param lambda_files:
         @return:
         """
+
+        tags = copy.deepcopy(tags)
         self.provision_sns_topic(tags)
         self.provision_lambda(lambda_files)
         self.provision_sns_subscription()

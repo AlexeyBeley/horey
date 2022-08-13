@@ -1,7 +1,6 @@
 """
-AWS Lambda representation
+AWS EC2 Subnet representation
 """
-import pdb
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 from horey.aws_api.base_entities.region import Region
@@ -9,12 +8,18 @@ from horey.aws_api.base_entities.region import Region
 
 class Subnet(AwsObject):
     """
-    AWS VPC class
+    Main class
+
     """
+
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self.instances = []
         self._region = None
+        self.cidr_block = None
+        self.vpc_id = None
+        self.availability_zone_id = None
+        self.arn = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -44,29 +49,25 @@ class Subnet(AwsObject):
     def _init_object_from_cache(self, dict_src):
         """
         Init from cache
+
         :param dict_src:
         :return:
         """
+
         options = {}
         self._init_from_cache(dict_src, options)
 
-    def update_value_from_raw_response(self, raw_value):
-        pdb.set_trace()
-
     def generate_create_request(self):
         """
-        TagSpecifications=[
-        {
-            'ResourceType': 'client-vpn-endpoint'|'customer-gateway'|'dedicated-host'|'dhcp-options'|'egress-only-internet-gateway'|'elastic-ip'|'elastic-gpu'|'export-image-task'|'export-instance-task'|'fleet'|'fpga-image'|'host-reservation'|'image'|'import-image-task'|'import-snapshot-task'|'instance'|'internet-gateway'|'key-pair'|'launch-template'|'local-gateway-route-table-vpc-association'|'natgateway'|'network-acl'|'network-interface'|'network-insights-analysis'|'network-insights-path'|'placement-group'|'reserved-instances'|'route-table'|'security-group'|'snapshot'|'spot-fleet-request'|'spot-instances-request'|'subnet'|'traffic-mirror-filter'|'traffic-mirror-session'|'traffic-mirror-target'|'transit-gateway'|'transit-gateway-attachment'|'transit-gateway-connect-peer'|'transit-gateway-multicast-domain'|'transit-gateway-route-table'|'volume'|'vpc'|'vpc-peering-connection'|'vpn-connection'|'vpn-gateway'|'vpc-flow-log',
-            'Tags': [
-                {
-                    'Key': 'string',
-                    'Value': 'string'
-                },
-            ]
-        },
-    ],
-       """
+        Generate create request dictionary.
+
+        @return:
+        """
+
+        for tag in self.tags:
+            if tag["Key"] == "name":
+                tag["Key"] = "Name"
+
         request = dict()
         request["CidrBlock"] = self.cidr_block
         request["AvailabilityZoneId"] = self.availability_zone_id
@@ -78,6 +79,13 @@ class Subnet(AwsObject):
         return request
 
     def update_from_raw_create(self, dict_src):
+        """
+        Update self from raw server response to create api call.
+
+        @param dict_src:
+        @return:
+        """
+
         init_options = {
             "SubnetId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
             "SubnetArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
@@ -102,6 +110,12 @@ class Subnet(AwsObject):
 
     @property
     def region(self):
+        """
+        Self region.
+
+        @return:
+        """
+
         if self._region is not None:
             return self._region
 
@@ -112,6 +126,13 @@ class Subnet(AwsObject):
 
     @region.setter
     def region(self, value):
+        """
+        Region setter.
+
+        @param value:
+        @return:
+        """
+
         if not isinstance(value, Region):
             raise ValueError(value)
 
