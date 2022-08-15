@@ -27,7 +27,7 @@ class Provisioner(SystemFunctionCommon):
                 dst = os.path.join(dst, os.path.basename(src))
         else:
             raise NotImplementedError(f"Src must be a file for now: '{src}'")
-        
+
         self.src = src
         self.dst = dst
 
