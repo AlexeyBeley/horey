@@ -10,10 +10,17 @@ logger = get_logger()
 
 @SystemFunctionFactory.register
 class Provisioner(SystemFunctionCommon):
-    def __init__(self, deployment_dir, horey_repo_path=None, package_name=None):
+    def __init__(self, deployment_dir, horey_repo_path=None, package_name=None, package_names=None):
         super().__init__(os.path.dirname(os.path.abspath(__file__)))
         self.deployment_dir = deployment_dir
-        self.package_name = package_name
+
+        if package_name is not None:
+            self.package_names = [package_name]
+        elif package_names is not None:
+            self.package_names = package_names
+        else:
+            raise ValueError("package_name/package_names not set")
+
         self.horey_repo_path = horey_repo_path
 
     def provision(self, force=False):
@@ -29,4 +36,6 @@ class Provisioner(SystemFunctionCommon):
         return self.check_pip_installed(f"horey.{self.package_name}")
 
     def _provision(self):
-        self.run_bash(f"cd {self.horey_repo_path} && make recursive_install_from_source-{self.package_name}")
+        for package_name in self.package_names:
+            self.run_bash(f"cd {self.horey_repo_path} && make recursive_install_from_source-{package_name}")
+
