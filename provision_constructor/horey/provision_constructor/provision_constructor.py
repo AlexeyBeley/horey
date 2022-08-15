@@ -17,6 +17,14 @@ class ProvisionConstructor:
         self.deployment_dir = None
 
     def generate_provisioning_venv_scripts_tree(self, base_dir_path, horey_repo_path=None):
+        """
+        Deprecated !!!
+
+        @param base_dir_path:
+        @param horey_repo_path:
+        @return:
+        """
+        raise DeprecationWarning("Raise")
         self.horey_repo_path = horey_repo_path
         SystemFunctionFactory.SystemFunction.HOREY_REPO_PATH = self.horey_repo_path
         self.deployment_dir = os.path.join(base_dir_path, ProvisionConstructor.PROVISIONER_CONSTRUCTOR_SUB_DIR)

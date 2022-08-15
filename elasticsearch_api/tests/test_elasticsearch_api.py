@@ -107,12 +107,12 @@ def test_provision_monitor():
 if __name__ == "__main__":
     #test_init_indices()
     #test_recreate_kibana_index()
-    #test_clear_indices()
+    test_clear_indices()
     #test_create_monitor()
     #test_init_monitors()
     #test_init_destinations()
     #test_init_monitors_from_cache()
-    test_copy_monitors_from_cache()
+    #test_copy_monitors_from_cache()
     #test_init_destinations()
     #test_provision_monitor()
 

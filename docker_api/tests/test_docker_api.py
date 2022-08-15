@@ -12,6 +12,9 @@ mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 src_aws_region = "us-west-2"
 dst_aws_region = "us-west-2"
 
+#todo: remove
+src_aws_region = "us-east-1"
+
 
 def test_init_docker_api():
     assert isinstance(DockerAPI(), DockerAPI)
@@ -78,6 +81,13 @@ def test_remove_image():
     assert image is not None
 
 
+def test_get_all_images():
+    docker_api = DockerAPI()
+    login(docker_api)
+    images = docker_api.get_all_images(repo_name=mock_values["repo_name"])
+    assert images is not None
+
+
 if __name__ == "__main__":
     #test_init_docker_api()
     #test_build()
@@ -86,4 +96,6 @@ if __name__ == "__main__":
     #test_upload_image()
     #test_pull_image()
     #test_copy_image()
-    test_remove_image()
+    #test_remove_image()
+    test_get_all_images()
+

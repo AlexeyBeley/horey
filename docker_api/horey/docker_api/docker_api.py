@@ -136,4 +136,16 @@ class DockerAPI:
 
         self.client.images.remove(image_id, force=force)
 
+    def get_all_images(self, repo_name=None):
+        """
+        List local images.
+        Caution: If you need remote images in ECR use boto3.
+
+        @param repo_name:
+        @return:
+        """
+
+        return self.client.containers.list(name=repo_name)
+
+
 

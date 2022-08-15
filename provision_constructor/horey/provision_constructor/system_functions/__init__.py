@@ -11,4 +11,5 @@ from .java import *
 from .apt_package_generic import *
 from .npm import *
 from .horey_package_generic import *
+from .copy_generic import *
 from .docker import *
