@@ -24,18 +24,17 @@ class Provisioner(SystemFunctionCommon):
         self.horey_repo_path = horey_repo_path
 
     def provision(self, force=False):
-        if not force:
-            if self.test_provisioned():
-                return
-
-        self._provision()
-
-        self.test_provisioned()
-
-    def test_provisioned(self):
-        return self.check_pip_installed(f"horey.{self.package_name}")
-
-    def _provision(self):
         for package_name in self.package_names:
-            self.run_bash(f"cd {self.horey_repo_path} && make recursive_install_from_source-{package_name}")
+            if not force and self.test_provisioned(package_name):
+                continue
+
+            self._provision(package_name)
+
+            self.test_provisioned(package_name)
+
+    def test_provisioned(self, package_name):
+        return self.check_pip_installed(f"horey.{package_name}")
+
+    def _provision(self, package_name):
+        self.run_bash(f"cd {self.horey_repo_path} && make recursive_install_from_source-{package_name}")
 
