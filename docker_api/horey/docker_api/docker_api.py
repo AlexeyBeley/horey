@@ -95,7 +95,7 @@ class DockerAPI:
         key = "status"
         if key in log_line:
             return logger.info(log_line[key])
-        
+
         key = "stream"
         if key in log_line:
             return logger.info(log_line[key])
@@ -153,7 +153,7 @@ class DockerAPI:
         logger.info(f"Pulling image from repository {repo}")
         if tag is not None and repo.find(":") > -1:
             raise RuntimeError(f"Using both repo tag and tag kwarg: {repo}, {tag}")
-        images = self.client.images.pull(repository=repo, tag=tag, all_tags=True, decode=True)
+        images = self.client.images.pull(repository=repo, tag=tag, all_tags=all_tags, decode=True)
         for image in images:
             logger.info(f"Image tags: {image.attrs['RepoTags']}")
             if repo in image.attrs["RepoTags"]:
