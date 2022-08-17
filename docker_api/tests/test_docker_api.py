@@ -1,7 +1,10 @@
-import pdb
+"""
+Testing docker_api module.
 
-from horey.docker_api.docker_api import DockerAPI
+"""
+
 import os
+from horey.docker_api.docker_api import DockerAPI
 from horey.common_utils.common_utils import CommonUtils
 from horey.aws_api.aws_api import AWSAPI
 
@@ -12,15 +15,25 @@ mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 src_aws_region = "us-west-2"
 dst_aws_region = "us-west-2"
 
-#todo: remove
-src_aws_region = "us-east-1"
-
 
 def test_init_docker_api():
+    """
+    Test basic init.
+
+    @return:
+    """
+
     assert isinstance(DockerAPI(), DockerAPI)
 
 
 def login(docker_api):
+    """
+    Login to aws region using aws_api
+
+    @param docker_api:
+    @return:
+    """
+
     aws_api = AWSAPI()
     credentials = aws_api.get_ecr_authorization_info(region=src_aws_region)
     credentials = credentials[0]
@@ -29,12 +42,17 @@ def login(docker_api):
 
 
 def test_login():
+    """
+    Test login to aws region using aws_api
+
+    @return:
+    """
     docker_api = DockerAPI()
     aws_api = AWSAPI()
     credentials = aws_api.get_ecr_authorization_info(region=src_aws_region)
 
     if len(credentials) != 1:
-        raise ValueError(f"len(credentials) != 1")
+        raise ValueError("len(credentials) != 1")
     credentials = credentials[0]
 
     registry, username, password = credentials["proxy_host"], credentials["user_name"], credentials["decoded_token"]
@@ -42,27 +60,51 @@ def test_login():
 
 
 def test_build():
+    """
+    Test building image.
+
+    @return:
+    """
+
     docker_api = DockerAPI()
     image = docker_api.build(os.path.dirname(os.path.abspath(__file__)), ["horey-test:latest"])
     assert image is not None
 
 
 def test_get_image():
+    """
+    Self explanatory.
+
+    @return:
+    """
+
     docker_api = DockerAPI()
     image = docker_api.get_image("horey-test:latest")
     assert image is not None
 
 
 def test_upload_image():
+    """
+    Self explanatory.
+
+    @return:
+    """
+
     docker_api = DockerAPI()
     login(docker_api)
     image = docker_api.get_image("horey-test:latest")
     tags = mock_values["src_image_tags"]
     docker_api.tag_image(image, tags)
-    docker_api.upload_image(tags)
+    docker_api.upload_images(tags)
 
 
 def test_pull_image():
+    """
+    Self explanatory.
+
+    @return:
+    """
+
     docker_api = DockerAPI()
     login(docker_api)
     image = docker_api.pull_image(mock_values["src_image_tags"][0])
@@ -70,18 +112,35 @@ def test_pull_image():
 
 
 def test_copy_image():
+    """
+    Test copying image from source repo to dst
+
+    @return:
+    """
+
     docker_api = DockerAPI()
     login(docker_api)
     docker_api.copy_image(mock_values["src_image_tags"][0], mock_values["dst_repo"], copy_all_tags=True)
 
 
 def test_remove_image():
+    """
+    Test removing image.
+
+    @return:
+    """
+
     docker_api = DockerAPI()
-    image = docker_api.remove_image("755fa0e2e444", force=True)
-    assert image is not None
+    docker_api.remove_image("755fa0e2e444", force=True)
 
 
 def test_get_all_images():
+    """
+    Test getting all images.
+
+    @return:
+    """
+
     docker_api = DockerAPI()
     login(docker_api)
     images = docker_api.get_all_images(repo_name=mock_values["repo_name"])
@@ -98,4 +157,3 @@ if __name__ == "__main__":
     #test_copy_image()
     #test_remove_image()
     test_get_all_images()
-
