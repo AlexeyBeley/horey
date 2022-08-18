@@ -1,23 +1,32 @@
+"""
+Common functionality to all system_functions.
+
+"""
+
 import json
-import pdb
 import shutil
 import datetime
 import uuid
 import os
-
+import argparse
+import subprocess
 import time
+
 from horey.common_utils.actions_manager import ActionsManager
 from horey.replacement_engine.replacement_engine import ReplacementEngine
 from horey.provision_constructor.system_functions.apt_package import APTPackage
 from horey.provision_constructor.system_functions.apt_repository import APTRepository
 from horey.h_logger import get_logger
-import argparse
-import subprocess
 
 logger = get_logger()
 
 
 class SystemFunctionCommon:
+    """
+    Common functionality to all system_functions.
+
+    """
+
     ACTION_MANAGER = ActionsManager()
     APT_PACKAGES = None
     APT_REPOSITORIES = None
@@ -29,10 +38,23 @@ class SystemFunctionCommon:
 
     @staticmethod
     def init_pip_packages():
+        """
+        Init installed packages.
+
+        @return:
+        """
+
         ret = SystemFunctionCommon.run_bash("pip3 freeze")
         SystemFunctionCommon.PIP_PACKAGES = ret["stdout"].split("\n")
 
     def check_pip_installed(self, package_name):
+        """
+        Check weather the package is installed.
+
+        @param package_name:
+        @return:
+        """
+
         if SystemFunctionCommon.PIP_PACKAGES is None:
             SystemFunctionCommon.init_pip_packages()
 
@@ -42,6 +64,11 @@ class SystemFunctionCommon:
 
     @staticmethod
     def empty_parser():
+        """
+        Old code.
+
+        @return:
+        """
         return argparse.ArgumentParser()
 
     @staticmethod
@@ -59,6 +86,14 @@ class SystemFunctionCommon:
 
     @staticmethod
     def run_bash(command, ignore_on_error_callback=None):
+        """
+        Run bash command, return stdout, stderr and return code.
+
+        @param command:
+        @param ignore_on_error_callback:
+        @return:
+        """
+
         logger.info(f"run_bash: {command}")
 
         file_name = f"tmp-{str(uuid.uuid4())}.sh"
@@ -79,6 +114,14 @@ class SystemFunctionCommon:
 
     @staticmethod
     def check_file_contains(file_path, str_content):
+        """
+        Self explanatory.
+
+        @param file_path:
+        @param str_content:
+        @return:
+        """
+
         if not os.path.isfile(file_path):
             return False
 
@@ -89,6 +132,12 @@ class SystemFunctionCommon:
 
     @staticmethod
     def check_files_exist_parser():
+        """
+        Self explanatory.
+
+        @return:
+        """
+
         description = "Returns true if all files exist"
         parser = argparse.ArgumentParser(description=description)
         parser.add_argument("--files_paths", required=True, type=str, help=f"Comma separated string file list")
@@ -96,6 +145,13 @@ class SystemFunctionCommon:
 
     @staticmethod
     def check_files_exist(arguments) -> None:
+        """
+        Self explanatory.
+
+        @param arguments:
+        @return:
+        """
+
         errors = []
         for file_path in arguments.files_paths.split(","):
             if not os.path.exists(file_path):
@@ -110,6 +166,12 @@ class SystemFunctionCommon:
 
     @staticmethod
     def action_move_file_parser():
+        """
+        Self explanatory.
+
+        @return:
+        """
+
         description = "move_file from src_path to dst_path"
         parser = argparse.ArgumentParser(description=description)
         parser.add_argument("--src_file_path", required=True, type=str, help="Source file path")
@@ -120,15 +182,37 @@ class SystemFunctionCommon:
 
     @staticmethod
     def action_move_file(arguments):
+        """
+        Self explanatory.
+
+        @param arguments:
+        @return:
+        """
+
         arguments_dict = vars(arguments)
         SystemFunctionCommon.move_file(**arguments_dict)
 
     @staticmethod
     def move_file(src_file_path=None, dst_file_path=None):
+        """
+        Move code using current privileges.
+
+        @param src_file_path:
+        @param dst_file_path:
+        @return:
+        """
         os.makedirs(os.path.dirname(dst_file_path), exist_ok=True)
         shutil.copyfile(src_file_path, dst_file_path)
 
     def provision_file(self, src_file_path, dst_file_path):
+        """
+        Self explanatory.
+
+        @param src_file_path:
+        @param dst_file_path:
+        @return:
+        """
+
         if src_file_path.startswith("./"):
             src_file_path = os.path.join(self.system_function_provisioner_dir_path, src_file_path)
 
@@ -139,6 +223,12 @@ class SystemFunctionCommon:
     # region compare_files
     @staticmethod
     def action_compare_files_parser():
+        """
+        Self explanatory.
+
+        @return:
+        """
+
         description = "compare_files from src_path to dst_path"
         parser = argparse.ArgumentParser(description=description)
         parser.add_argument("--src_file_path", required=True, type=str, help="Source file path")
@@ -149,11 +239,26 @@ class SystemFunctionCommon:
 
     @staticmethod
     def action_compare_files(arguments):
+        """
+        Self explanatory.
+
+        @param arguments:
+        @return:
+        """
+
         arguments_dict = vars(arguments)
         SystemFunctionCommon.compare_files(**arguments_dict)
 
     @staticmethod
     def compare_files(src_file_path=None, dst_file_path=None):
+        """
+        Compare two files.
+
+        @param src_file_path:
+        @param dst_file_path:
+        @return:
+        """
+
         with open(src_file_path) as file_handler:
             src_file_string = file_handler.read()
 
@@ -170,6 +275,12 @@ class SystemFunctionCommon:
     # region perform_comment_line_replacement
     @staticmethod
     def action_perform_comment_line_replacement_parser():
+        """
+        Parser.
+
+        @return:
+        """
+
         description = "perform_comment_line_replacement from src_path in dst_path above comment line"
         parser = argparse.ArgumentParser(description=description)
         parser.add_argument("--src_file_path", required=True, type=str, help="Source file path")
@@ -181,11 +292,27 @@ class SystemFunctionCommon:
 
     @staticmethod
     def action_perform_comment_line_replacement(arguments):
+        """
+        Self explanatory.
+
+        @param arguments:
+        @return:
+        """
+
         arguments_dict = vars(arguments)
         SystemFunctionCommon.perform_comment_line_replacement(**arguments_dict)
 
     @staticmethod
     def perform_comment_line_replacement(src_file_path=None, dst_file_path=None, comment_line=None):
+        """
+        Comment line being replaced with contents of a file.
+
+        @param src_file_path:
+        @param dst_file_path:
+        @param comment_line:
+        @return:
+        """
+
         replacement_engine = ReplacementEngine()
         with open(src_file_path) as file_handler:
             replacement_string = file_handler.read()
@@ -198,6 +325,11 @@ class SystemFunctionCommon:
     # region check_systemd_service_status
     @staticmethod
     def action_check_systemd_service_status_parser():
+        """
+        Parser.
+
+        @return:
+        """
         description = "check_systemd_service_status for specific duration"
         parser = argparse.ArgumentParser(description=description)
         parser.add_argument("--service_name", required=True, type=str, help="Service name to check")
@@ -208,11 +340,26 @@ class SystemFunctionCommon:
 
     @staticmethod
     def action_check_systemd_service_status(arguments):
+        """
+        Action to check service status.
+
+        @param arguments:
+        @return:
+        """
+
         arguments_dict = vars(arguments)
         SystemFunctionCommon.check_systemd_service_status(**arguments_dict)
 
     @staticmethod
     def check_systemd_service_status(service_name=None, min_uptime=None):
+        """
+        Check service managed by systemd is up for minimum min uptime seconds.
+
+        @param service_name:
+        @param min_uptime:
+        @return:
+        """
+
         min_uptime = int(min_uptime)
         status_name = "active"
         status_change_seconds_limit = 120
@@ -422,6 +569,13 @@ class SystemFunctionCommon:
 
     @staticmethod
     def get_systemd_service_status(service_name):
+        """
+        Check system status.
+
+        @param service_name:
+        @return:
+        """
+
         command = f"systemctl status {service_name}"
         ret = subprocess.run([command], capture_output=True, shell=True)
         decoded_ret = ret.stdout.decode().strip("\n")
@@ -429,6 +583,13 @@ class SystemFunctionCommon:
 
     @staticmethod
     def extract_service_status_value(service_status_raw):
+        """
+        Find service status value.
+
+        @param service_status_raw:
+        @return:
+        """
+
         lst_line = SystemFunctionCommon.extract_service_status_line_raw(service_status_raw)
         status = lst_line[1]
         if status not in ["active", "failed", "activating"]:
@@ -520,7 +681,7 @@ class SystemFunctionCommon:
 
         for duration_part in duration_lst[:-1]:
             if duration_part.endswith("ms"):
-                seconds = int(duration_part[:-2])/1000
+                seconds = int(duration_part[:-2]) / 1000
             elif duration_part.endswith("s"):
                 seconds = int(duration_part[:-1])
             elif duration_part.endswith("h"):
@@ -535,6 +696,12 @@ class SystemFunctionCommon:
 
     @staticmethod
     def extract_service_status_line_raw(service_status_raw):
+        """
+        Extract service status from bash output.
+
+        @param service_status_raw:
+        @return:
+        """
         for line in service_status_raw.split("\n"):
             line = line.strip(" ")
             if line.startswith("Active:"):
@@ -543,6 +710,14 @@ class SystemFunctionCommon:
 
     # region files
     def check_file_provisioned(self, src_file_path: str, dst_file_path: str):
+        """
+        Check the files exist and equal in content.
+
+        @param src_file_path:
+        @param dst_file_path:
+        @return:
+        """
+
         if not os.path.isfile(dst_file_path):
             return False
 
@@ -559,6 +734,12 @@ class SystemFunctionCommon:
 
     @staticmethod
     def action_add_line_to_file_parser():
+        """
+        Self explanatory.
+
+        @return:
+        """
+
         description = "add_line_to_file"
         parser = argparse.ArgumentParser(description=description)
         parser.add_argument("--line", required=True, type=str, help="Line to be added")
@@ -569,11 +750,27 @@ class SystemFunctionCommon:
 
     @staticmethod
     def action_add_line_to_file(arguments):
+        """
+        Self explanatory.
+
+        @param arguments:
+        @return:
+        """
+
         arguments_dict = vars(arguments)
         SystemFunctionCommon.add_line_to_file(**arguments_dict)
 
     @staticmethod
     def add_line_to_file(line=None, file_path=None, sudo=False):
+        """
+        Self explanatory.
+
+        @param line:
+        @param file_path:
+        @param sudo:
+        @return:
+        """
+
         if not isinstance(line, str):
             raise ValueError(line)
 
@@ -598,6 +795,14 @@ class SystemFunctionCommon:
 
     @staticmethod
     def add_line_to_file_sudo(line=None, file_path=None):
+        """
+        Self explanatory.
+
+        @param line:
+        @param file_path:
+        @return:
+        """
+
         if not isinstance(line, str):
             raise ValueError(line)
 
@@ -616,23 +821,34 @@ class SystemFunctionCommon:
         return SystemFunctionCommon.run_bash(f'echo "{line}" | sudo tee -a {file_path} > /dev/null')
 
     class BashError(RuntimeError):
+        """
+        Running bash command returned != 0 code.
+
+        """
+
         pass
 
-    def check_local_port(self):
-        pdb.set_trace()
-
-    def check_remote_port(self):
-        pdb.set_trace()
+    def test_local_port(self):
         """
-    import socket
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    result = sock.connect_ex(('127.0.0.1',80))
-    if result == 0:
-    print "Port is open"
-    else:
-    print "Port is not open"
-    sock.close()
-    """
+        Cehck if local port is listening.
+
+        @return:
+        """
+
+        raise NotImplementedError("TBD")
+
+    def test_remote_port(self):
+        """
+         import socket
+           sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            result = sock.connect_ex(('127.0.0.1',80))
+            if result == 0:
+            print "Port is open"
+            else:
+            print "Port is not open"
+            sock.close()
+        """
+        raise NotImplementedError("TBD")
 
     class FailedCheckError(RuntimeError):
         pass

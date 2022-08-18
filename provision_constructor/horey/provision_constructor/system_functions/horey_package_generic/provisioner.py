@@ -47,7 +47,8 @@ class Provisioner(SystemFunctionCommon):
 
             self._provision(package_name)
 
-            self.test_provisioned(package_name)
+            if not self.test_provisioned(package_name):
+                raise RuntimeError(f"Was not able to provision {package_name}")
             logger.info(f"Successfully installed horey package: {package_name}")
 
     def test_provisioned(self, package_name):

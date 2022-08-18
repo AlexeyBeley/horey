@@ -1,5 +1,9 @@
-import os.path
-import pdb
+"""
+Copy generic file or folder
+
+"""
+
+import os
 from horey.provision_constructor.system_function_factory import SystemFunctionFactory
 
 from horey.provision_constructor.system_functions.system_function_common import SystemFunctionCommon
@@ -10,23 +14,54 @@ logger = get_logger()
 
 @SystemFunctionFactory.register
 class Provisioner(SystemFunctionCommon):
+    """
+    Main class
+
+    """
+
     def __init__(self, deployment_dir, src=None, dst=None):
         super().__init__(os.path.dirname(os.path.abspath(__file__)))
         self.deployment_dir = deployment_dir
-        self.package_name = package_name
-        self.horey_repo_path = horey_repo_path
+        if not os.path.isfile(src) or not os.path.isfile(dst):
+            raise NotImplementedError("Src and dst must be files for now.")
+        self.src = src
+        self.dst = dst
 
     def provision(self, force=False):
-        if not force:
-            if self.test_provisioned():
-                return
+        """
+        Provision the copy generic file/dir
+
+        @param force:
+        @return:
+        """
+
+        if not force and self.test_provisioned():
+            logger.info(f"Skipping copy generic provisioning: from {self.src} to {self.dst}")
+            return False
 
         self._provision()
 
-        self.test_provisioned()
+        if not self.test_provisioned():
+            raise RuntimeError(f"Failed to copy generic: from {self.src} to {self.dst}")
+
+        logger.info(f"Successfully copied generic: from {self.src} to {self.dst}")
+
+        return True
 
     def test_provisioned(self):
-        return self.check_pip_installed(f"horey.{self.package_name}")
+        """
+        Test copy generic file/dir provisioned.
+
+        @return:
+        """
+
+        return self.check_file_provisioned(self.src, self.dst)
 
     def _provision(self):
-        self.run_bash(f"cd {self.horey_repo_path} && make recursive_install_from_source-{self.package_name}")
+        """
+        Provision the copy generic file/dir
+
+        @return:
+        """
+
+        self.provision_file(self.src, self.dst)
