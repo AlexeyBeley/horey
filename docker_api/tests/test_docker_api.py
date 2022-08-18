@@ -107,8 +107,8 @@ def test_pull_image():
 
     docker_api = DockerAPI()
     login(docker_api)
-    image = docker_api.pull_image(mock_values["src_image_tags"][0])
-    assert image is not None
+    images = docker_api.pull_images(mock_values["src_image_tags"][0])
+    assert images is not None
 
 
 def test_copy_image():
