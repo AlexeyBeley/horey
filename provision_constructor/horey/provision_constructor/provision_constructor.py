@@ -47,14 +47,35 @@ class ProvisionConstructor:
         subprocess.run([f"python3.8 -m venv {venv_path}"], shell=True)
 
     def provision_system_function(self, system_function_name, **kwargs):
+        """
+        Init and run system_function provision method.
+
+        @param system_function_name:
+        @param kwargs:
+        @return:
+        """
+
+        force = False
+        if "force" in kwargs:
+            force = kwargs.get("force")
+            del kwargs["force"]
+
         self.check_provisioned_ancestor(system_function_name)
         system_function = SystemFunctionFactory.REGISTERED_FUNCTIONS[system_function_name](self.deployment_dir,
                                                                          **kwargs)
 
-        system_function.provision()
+        system_function.provision(force=force)
         self.provisioned_system_functions.append(system_function_name)
 
     def add_system_function(self, system_function_name, **kwargs):
+        """
+        Old code. Not in use.
+
+        @param system_function_name:
+        @param kwargs:
+        @return:
+        """
+
         self.check_provisioned_ancestor(system_function_name)
         SystemFunctionFactory.REGISTERED_FUNCTIONS[system_function_name](self.deployment_dir,
                                                                          ProvisionConstructor.PROVISIONER_SCRIPT_NAME,
