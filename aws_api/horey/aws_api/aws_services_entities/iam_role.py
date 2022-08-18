@@ -67,7 +67,8 @@ class IamRole(AwsObject):
             "Description": self.init_default_attr,
             "RoleLastUsed": self.init_role_last_used_attr,
             "Tags": self.init_default_attr,
-            "MaxSessionDuration": self.init_default_attr}
+            "MaxSessionDuration": self.init_default_attr,
+        }
 
         self.init_attrs(dict_src, init_options)
 
@@ -84,8 +85,10 @@ class IamRole(AwsObject):
         for key in dict_src:
             if key == "LastUsedDate":
                 self.role_last_used_time = dict_src.get(key)
-            elif key == "Region":
+                continue
+            if key == "Region":
                 self.role_last_used_region = Region.get_region(dict_src.get(key))
+                continue
 
             raise NotImplementedError(key)
 
