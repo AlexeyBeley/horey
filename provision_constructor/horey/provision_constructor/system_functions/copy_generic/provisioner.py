@@ -22,8 +22,12 @@ class Provisioner(SystemFunctionCommon):
     def __init__(self, deployment_dir, src=None, dst=None):
         super().__init__(os.path.dirname(os.path.abspath(__file__)))
         self.deployment_dir = deployment_dir
-        if not os.path.isfile(src) or not os.path.isfile(dst):
-            raise NotImplementedError("Src and dst must be files for now.")
+        if os.path.isfile(src):
+            if os.path.isdir(dst):
+                dst = os.path.join(dst, os.path.basename(src))
+        else:
+            raise NotImplementedError(f"Src must be a file for now: '{src}'")
+        
         self.src = src
         self.dst = dst
 
