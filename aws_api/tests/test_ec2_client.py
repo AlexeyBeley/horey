@@ -1,6 +1,5 @@
 import os
 import pdb
-import base64
 from horey.aws_api.aws_clients.ec2_client import EC2Client
 from horey.h_logger import get_logger
 from horey.common_utils.common_utils import CommonUtils
@@ -9,6 +8,7 @@ from unittest.mock import Mock
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.aws_services_entities.ec2_launch_template import EC2LaunchTemplate
 from horey.aws_api.aws_services_entities.ec2_security_group import EC2SecurityGroup
+from horey.aws_api.base_entities.region import Region
 
 
 configuration_values_file_full_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
@@ -52,6 +52,7 @@ def test_provision_security_group():
 
     client = EC2Client()
     security_group = EC2SecurityGroup(DICT_CREATE_SECURITY_GROUP_REQUEST)
+    security_group.region = Region.get_region("us-west-2")
     security_group.ip_permissions = [
         {"IpProtocol": "tcp",
          "FromPort": 8080,

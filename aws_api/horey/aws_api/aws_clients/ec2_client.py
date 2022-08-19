@@ -248,26 +248,68 @@ class EC2Client(Boto3Client):
 
         return final_result
 
+    def update_security_group_information(self, security_group):
+        """
+        Update security group information.
+
+        @param security_group:
+        @return:
+        """
+
+        filters = [
+            {
+                "Name": "group-name",
+                "Values": [
+                    security_group.name,
+                ]
+            }
+        ]
+        
+        if security_group.vpc_id is not None:
+            filters.append({
+            "Name": "vpc-id",
+            "Values": [
+                security_group.vpc_id
+            ]
+        })
+
+        security_groups = self.get_region_security_groups(security_group.region, full_information=False,
+                                                                             filters=filters)
+        if len(security_groups) > 1:
+            raise ValueError(f"Found {len(security_groups)} > 1 security groups by filters {filters}")
+        if len(security_groups) == 0:
+            return False
+        
+        pdb.set_trace()
+        security_group.id = security_groups[0].id
+
     def provision_security_group(self, security_group):
-        try:
-            group_id = self.raw_create_security_group(security_group.generate_create_request())
+        """
+        Create/modify security group.
+
+        @param security_group:
+        @return:
+        """
+
+        security_group_region = EC2SecurityGroup({})
+        security_group_region.name = security_group.name
+        security_group_region.vpc_id = security_group.vpc_id
+        security_group_region.region = security_group.region
+        if not self.update_security_group_information(security_group_region):
+            group_id = self.provision_security_group_raw(security_group.generate_create_request())
             security_group.id = group_id
-            # wait for propagation?
-            # for i in range(60):
-            #    region_groups = self.get_all_security_groups_in_region(security_group.region, full_information=False)
-            #    named_region_groups = CommonUtils.find_objects_by_values(region_groups, {"name": security_group.name}, max_count=1)
-            #    if len(named_region_groups) > 0:
-            #        break
-            #    time.sleep(5)
-        except Exception as exception_inst:
-            repr_exception_inst = repr(exception_inst)
-            if "already exists for VPC" not in repr_exception_inst:
-                raise
-            logger.warning(repr_exception_inst)
-            region_groups = self.get_region_security_groups(security_group.region, full_information=False)
-            existing_group = \
-            CommonUtils.find_objects_by_values(region_groups, {"name": security_group.name}, max_count=1)[0]
-            security_group.update_from_raw_create(existing_group.dict_src)
+
+    def provision_security_group_raw(self, request_dict):
+        """
+        Self explanatory.
+
+        @param request_dict:
+        @return:
+        """
+
+        logger.info(f"Creating security group {request_dict}")
+        for group_id in self.execute(self.client.create_security_group, "GroupId", filters_req=request_dict):
+            return group_id
 
     def raw_create_security_group(self, request_dict):
         logger.info(f"Creating security group {request_dict}")
