@@ -8,6 +8,8 @@ from horey.common_utils.common_utils import CommonUtils
 from unittest.mock import Mock
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.aws_services_entities.ec2_launch_template import EC2LaunchTemplate
+from horey.aws_api.aws_services_entities.ec2_security_group import EC2SecurityGroup
+
 
 configuration_values_file_full_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                                    "h_logger_configuration_values.py")
@@ -31,7 +33,7 @@ def test_init_ec2_client():
 
 DICT_CREATE_SECURITY_GROUP_REQUEST = {
     "Description": "sg-test-group",
-    "GroupName": "sg-test-group",
+    "GroupName": "sg_test-group",
 }
 
 
@@ -39,6 +41,24 @@ def test_create_security_group():
     client = EC2Client()
     ret = client.raw_create_security_group(DICT_CREATE_SECURITY_GROUP_REQUEST)
     # pdb.set_trace()
+
+
+def test_provision_security_group():
+    """
+    Test provisioning.
+
+    @return:
+    """
+
+    client = EC2Client()
+    security_group = EC2SecurityGroup(DICT_CREATE_SECURITY_GROUP_REQUEST)
+    security_group.ip_permissions = [
+        {"IpProtocol": "tcp",
+         "FromPort": 8080,
+         "ToPort": 8080,
+         "IpRanges": [{"CidrIp": "1.1.1.1/32"}]},
+    ]
+    client.provision_security_group(security_group)
 
 
 SECURITY_GROUP_ID = ""
@@ -259,8 +279,8 @@ def test_provision_launch_template():
 
 
 if __name__ == "__main__":
-    # test_create_security_group()
-    test_provision_launch_template()
+    test_provision_security_group()
+    #test_provision_launch_template()
 
     # test_raw_modify_managed_prefix_list()
     # test_raw_describe_managed_prefix_list_by_id()
