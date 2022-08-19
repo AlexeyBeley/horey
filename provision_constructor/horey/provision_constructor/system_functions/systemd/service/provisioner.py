@@ -58,6 +58,7 @@ class Provisioner(SystemFunctionCommon):
             raise RuntimeError(f"Failed to provision systemd service: {self.name}")
 
         logger.info(f"Successfully provisioned systemd service: {self.name}")
+        return True
 
     def test_provisioned(self):
         """
@@ -70,8 +71,7 @@ class Provisioner(SystemFunctionCommon):
                                            os.path.join("/etc/systemd/system/", self.unit_file_name)):
             return False
 
-        if not self.check_systemd_service_status(service_name=self.name, min_uptime=60):
-            raise RuntimeError(f"Failed to provision systemd service {self.name}")
+        return self.check_systemd_service_status(service_name=self.name, min_uptime=60)
 
     def _provision(self):
         """
