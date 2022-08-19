@@ -35,6 +35,7 @@ class SystemFunctionCommon:
 
     def __init__(self, system_function_provisioner_dir_path):
         self.system_function_provisioner_dir_path = system_function_provisioner_dir_path
+        self.validate_provisioned_ancestor = True
 
     @staticmethod
     def init_pip_packages():

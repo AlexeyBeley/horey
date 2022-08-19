@@ -21,7 +21,7 @@ class Provisioner(SystemFunctionCommon):
 
     def __init__(self, deployment_dir, name=None, unit_file_location=None):
         super().__init__(os.path.dirname(os.path.abspath(__file__)))
-
+        self.validate_provisioned_ancestor = False
         self.deployment_dir = deployment_dir
 
         self.name = name

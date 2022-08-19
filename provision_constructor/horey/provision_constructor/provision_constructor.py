@@ -61,9 +61,10 @@ class ProvisionConstructor:
             force = kwargs.get("force")
             del kwargs["force"]
 
-        self.check_provisioned_ancestor(system_function_name)
         system_function = SystemFunctionFactory.REGISTERED_FUNCTIONS[system_function_name](self.deployment_dir,
                                                                          **kwargs)
+        if system_function.validate_provisioned_ancestor:
+            self.check_provisioned_ancestor(system_function_name)
 
         system_function.provision(force=force)
         self.provisioned_system_functions.append(system_function_name)
@@ -85,6 +86,13 @@ class ProvisionConstructor:
         self.provisioned_system_functions.append(system_function_name)
 
     def check_provisioned_ancestor(self, system_function_name):
+        """
+        Check if the system_function's ancestor was provisioned.
+
+        @param system_function_name:
+        @return:
+        """
+
         if "." in system_function_name:
             ancestor_name = system_function_name[:system_function_name.rfind(".")]
             if ancestor_name not in self.provisioned_system_functions:
