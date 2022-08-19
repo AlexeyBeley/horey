@@ -70,7 +70,8 @@ class Provisioner(SystemFunctionCommon):
                                            os.path.join("/etc/systemd/system/", self.unit_file_name)):
             return False
 
-        self.check_systemd_service_status(service_name=self.name, min_uptime=60)
+        if not self.check_systemd_service_status(service_name=self.name, min_uptime=60):
+            raise RuntimeError(f"Failed to provision systemd service {self.name}")
 
     def _provision(self):
         """
