@@ -1,6 +1,7 @@
 """
 AWS ec2 security group representation
 """
+import copy
 import pdb
 
 from horey.network.service import ServiceTCP, ServiceUDP, ServiceICMP, ServiceRDP
@@ -94,20 +95,72 @@ class EC2SecurityGroup(AwsObject):
 
         add_request, revoke_request = [], []
 
-        for self_permission in self.ip_permissions:
+        for self_permission in self.split_permissions(self.ip_permissions):
             if not any([self.check_permissions_equal(self_permission, target_permission)
-                        for target_permission in target_security_group.ip_permissions]):
+                        for target_permission in self.split_permissions(target_security_group.ip_permissions)]):
                 revoke_request.append(self_permission)
 
-        for target_permission in target_security_group.ip_permissions:
+        for target_permission in self.split_permissions(target_security_group.ip_permissions):
             if not any([self.check_permissions_equal(target_permission, self_permission)
-                        for self_permission in self.ip_permissions]):
+                        for self_permission in self.split_permissions(self.ip_permissions)]):
                 add_request.append(target_permission)
 
         add_request = {"GroupId": self.id, "IpPermissions": add_request} if add_request else None
         revoke_request = {"GroupId": self.id, "IpPermissions": revoke_request} if revoke_request else None
 
         return add_request, revoke_request
+
+    @staticmethod
+    def split_permissions(permissions):
+        """
+        Split permission to granular permissions.
+        Why? Because AWS!!! That's why!
+        It summarizes the permissions by proto and port and you can't just live a simple life,
+        you need this piece of garbage code to make it work!
+
+        @param permissions:
+        @return:
+        """
+
+        lst_ret = []
+        for permission in permissions:
+            base_permission = {"FromPort": permission["FromPort"],
+                               "IpProtocol": permission["IpProtocol"],
+                               "ToPort": permission["ToPort"]}
+
+            try:
+                for ip_range in permission["IpRanges"]:
+                    new_permission = copy.deepcopy(base_permission)
+                    new_permission["IpRanges"] = [ip_range]
+                    lst_ret.append(new_permission)
+            except KeyError:
+                pass
+
+            try:
+                for ipv6_range in permission["Ipv6Ranges"]:
+                    new_permission = copy.deepcopy(base_permission)
+                    new_permission["Ipv6Ranges"] = [ipv6_range]
+                    lst_ret.append(new_permission)
+            except KeyError:
+                pass
+
+            try:
+                for user_id_group_pair in permission["UserIdGroupPairs"]:
+                    new_permission = copy.deepcopy(base_permission)
+                    new_permission["UserIdGroupPairs"] = [user_id_group_pair]
+                    lst_ret.append(new_permission)
+            except KeyError:
+                pass
+
+            try:
+                for prefix_list_id in permission["PrefixListIds"]:
+                    new_permission = copy.deepcopy(base_permission)
+                    new_permission["PrefixListIds"] = [prefix_list_id]
+                    lst_ret.append(new_permission)
+            except KeyError:
+                pass
+
+        return lst_ret
 
     @staticmethod
     def check_permissions_equal(permission_1, permission_2):

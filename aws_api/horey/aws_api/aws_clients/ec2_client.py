@@ -293,6 +293,7 @@ class EC2Client(Boto3Client):
         @param security_group:
         @return:
         """
+
         security_group_region = EC2SecurityGroup({})
         security_group_region.name = security_group.name
         security_group_region.vpc_id = security_group.vpc_id
@@ -323,11 +324,26 @@ class EC2Client(Boto3Client):
             return group_id
 
     def raw_create_security_group(self, request_dict):
+        """
+        Old style function.
+        To remove!
+
+        @param request_dict:
+        @return:
+        """
+
         logger.info(f"Creating security group {request_dict}")
         for group_id in self.execute(self.client.create_security_group, "GroupId", filters_req=request_dict):
             return group_id
 
     def authorize_security_group_ingress(self, region, request_dict):
+        """
+        Old style. To remove!
+
+        @param region:
+        @param request_dict:
+        @return:
+        """
         AWSAccount.set_aws_region(region)
         try:
             return self.authorize_security_group_ingress_raw(request_dict)
@@ -354,6 +370,13 @@ class EC2Client(Boto3Client):
             return response
 
     def revoke_security_group_ingress_raw(self, request_dict):
+        """
+        Revoke permission
+
+        @param request_dict:
+        @return:
+        """
+
         logger.info(f"Revoking security group ingress: {request_dict}")
 
         for response in self.execute(self.client.revoke_security_group_ingress, "GroupId",
@@ -366,18 +389,46 @@ class EC2Client(Boto3Client):
             return response
 
     def create_instance(self, request_dict):
+        """
+        Raw create instance request.
+
+        @param request_dict:
+        @return:
+        """
+
         for response in self.execute(self.client.run_instances, "Instances", filters_req=request_dict):
             return response
 
     def create_key_pair(self, request_dict):
+        """
+        Raw create key_pair request.
+
+        @param request_dict:
+        @return:
+        """
+
         for response in self.execute(self.client.create_key_pair, None, raw_data=True, filters_req=request_dict):
             return response
 
     def request_spot_fleet_raw(self, request_dict):
+        """
+        Raw request spot fleet request.
+
+        @param request_dict:
+        @return:
+        """
+
         for response in self.execute(self.client.request_spot_fleet, "SpotFleetRequestId", filters_req=request_dict):
             return response
 
     def get_all_spot_fleet_requests(self, full_information=False):
+        """
+        Self explanatory.
+
+        @param full_information:
+        @return:
+        """
+
         final_result = list()
 
         for region in AWSAccount.get_aws_account().regions.values():
@@ -392,6 +443,14 @@ class EC2Client(Boto3Client):
         return final_result
 
     def get_all_ec2_launch_templates(self, full_information=False, region=None):
+        """
+        Standard
+
+        @param full_information:
+        @param region:
+        @return:
+        """
+
         final_result = list()
 
         if region is not None:
@@ -403,6 +462,15 @@ class EC2Client(Boto3Client):
         return final_result
 
     def get_region_launch_templates(self, region, full_information=False, custom_filters=None):
+        """
+        Standard
+
+        @param region:
+        @param full_information:
+        @param custom_filters:
+        @return:
+        """
+
         AWSAccount.set_aws_region(region)
         final_result = list()
         logger.info(f"Fetching all launch templates from {region}")
@@ -430,6 +498,14 @@ class EC2Client(Boto3Client):
         return final_result
 
     def get_region_launch_template_versions(self, region, custom_filters=None):
+        """
+        Standard
+
+        @param region:
+        @param custom_filters:
+        @return:
+        """
+
         AWSAccount.set_aws_region(region)
         final_result = []
         for dict_src in self.execute(self.client.describe_launch_template_versions, "LaunchTemplateVersions",
@@ -439,6 +515,14 @@ class EC2Client(Boto3Client):
         return final_result
 
     def raw_create_managed_prefix_list(self, request, add_client_token=False):
+        """
+        Standard
+
+        @param request:
+        @param add_client_token:
+        @return:
+        """
+
         if add_client_token:
             if "ClientToken" not in request:
                 request["ClientToken"] = request["PrefixListName"]
@@ -447,6 +531,13 @@ class EC2Client(Boto3Client):
             return response
 
     def raw_modify_managed_prefix_list(self, request):
+        """
+        Standard
+
+        @param request:
+        @return:
+        """
+
         logger.info(f"Modifying prefix list with request: {request}")
         try:
             for response in self.execute(self.client.modify_managed_prefix_list, "PrefixList", filters_req=request):
@@ -458,6 +549,15 @@ class EC2Client(Boto3Client):
             logger.info(repr(exception_instance))
 
     def raw_describe_managed_prefix_list(self, region, pl_id=None, prefix_list_name=None):
+        """
+        Standard
+
+        @param region:
+        @param pl_id:
+        @param prefix_list_name:
+        @return:
+        """
+
         AWSAccount.set_aws_region(region)
         if pl_id is None and prefix_list_name is None:
             raise ValueError("pl_id pr prefix_list_name must be specified")
@@ -476,6 +576,16 @@ class EC2Client(Boto3Client):
             return response
 
     def get_managed_prefix_list(self, region, pl_id=None, name=None, full_information=True):
+        """
+        Standard
+
+        @param region:
+        @param pl_id:
+        @param name:
+        @param full_information:
+        @return:
+        """
+
         response = self.raw_describe_managed_prefix_list(region, pl_id=pl_id, prefix_list_name=name)
         if response is None:
             return
