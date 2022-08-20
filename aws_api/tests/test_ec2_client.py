@@ -10,7 +10,6 @@ from horey.aws_api.aws_services_entities.ec2_launch_template import EC2LaunchTem
 from horey.aws_api.aws_services_entities.ec2_security_group import EC2SecurityGroup
 from horey.aws_api.base_entities.region import Region
 
-
 configuration_values_file_full_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                                    "h_logger_configuration_values.py")
 logger = get_logger(configuration_values_file_full_path=configuration_values_file_full_path)
@@ -80,6 +79,47 @@ def test_provision_security_group_revoke():
     client.provision_security_group(security_group)
 
 
+def test_provision_security_group_complex():
+    """
+    Test provisioning.
+
+    @return:
+    """
+
+    client = EC2Client()
+    security_group = EC2SecurityGroup(DICT_CREATE_SECURITY_GROUP_REQUEST)
+    security_group.region = Region.get_region("us-west-2")
+    security_group.ip_permissions = [
+        {"IpProtocol": "tcp",
+         "FromPort": 8080,
+         "ToPort": 8080,
+         "IpRanges": [{"CidrIp": "1.1.1.1/32", "Description": "test"},
+                      ]},
+        {"IpProtocol": "tcp",
+         "FromPort": 8080,
+         "ToPort": 8080,
+         "IpRanges": [{"CidrIp": "1.1.1.3/32", "Description": "test"},
+                      ]},
+    ]
+    client.provision_security_group(security_group)
+
+    security_group = EC2SecurityGroup(DICT_CREATE_SECURITY_GROUP_REQUEST)
+    security_group.region = Region.get_region("us-west-2")
+    security_group.ip_permissions = [
+        {"IpProtocol": "tcp",
+         "FromPort": 8080,
+         "ToPort": 8080,
+         "IpRanges": [{"CidrIp": "1.1.1.1/32", "Description": "test"},
+                      ]},
+        {"IpProtocol": "tcp",
+         "FromPort": 8080,
+         "ToPort": 8080,
+         "IpRanges": [{"CidrIp": "1.1.1.2/32", "Description": "test"},
+                      ]},
+    ]
+    client.provision_security_group(security_group)
+
+
 SECURITY_GROUP_ID = ""
 DICT_AUTHORIZE_SECURITY_GROUP_INGRESS_REQUEST_1 = {
     "GroupId": SECURITY_GROUP_ID,
@@ -104,6 +144,7 @@ def test_get_all_security_groups():
     client = EC2Client()
     sec_groups = client.get_all_security_groups()
     assert isinstance(sec_groups, list)
+
 
 def test_raw_create_managed_prefix_list():
     request = {"PrefixListName": "pl_test_name",
@@ -229,7 +270,7 @@ def test_provision_launch_template():
     ssh_key_pair.name = mock_values["ssh_key_pair.name"]
     user_data = ec2_client.generate_user_data_from_file("ecs_container_instance_user_data.sh")
 
-    #filter_request = dict()
+    # filter_request = dict()
     # filter_request["Filters"] = [{'Name': 'name',
     #                                  'Values': [
     #                                      "amzn2-ami-ecs-hvm-2.0.20201209-x86_64-ebs",
@@ -285,9 +326,10 @@ def test_provision_launch_template():
 
 
 if __name__ == "__main__":
-    test_provision_security_group()
-    test_provision_security_group_revoke()
-    #test_provision_launch_template()
+    # test_provision_security_group()
+    # test_provision_security_group_revoke()
+    test_provision_security_group_complex()
+    # test_provision_launch_template()
 
     # test_raw_modify_managed_prefix_list()
     # test_raw_describe_managed_prefix_list_by_id()
