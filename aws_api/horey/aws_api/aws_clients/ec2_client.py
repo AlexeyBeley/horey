@@ -71,7 +71,7 @@ class EC2Client(Boto3Client):
         final_result = list()
         filters_req = None
         if filters is not None:
-            filters_req= {"Filters": filters}
+            filters_req = {"Filters": filters}
 
         AWSAccount.set_aws_region(region)
         for dict_src in self.execute(self.client.describe_subnets, "Subnets", filters_req=filters_req):
@@ -248,26 +248,79 @@ class EC2Client(Boto3Client):
 
         return final_result
 
+    def update_security_group_information(self, security_group):
+        """
+        Update security group information.
+
+        @param security_group:
+        @return:
+        """
+
+        filters = [
+            {
+                "Name": "group-name",
+                "Values": [
+                    security_group.name,
+                ]
+            }
+        ]
+
+        if security_group.vpc_id is not None:
+            filters.append({
+                "Name": "vpc-id",
+                "Values": [
+                    security_group.vpc_id
+                ]
+            })
+
+        security_groups = self.get_region_security_groups(security_group.region, full_information=False,
+                                                          filters=filters)
+        if len(security_groups) > 1:
+            raise ValueError(f"Found {len(security_groups)} > 1 security groups by filters {filters}")
+        if len(security_groups) == 0:
+            return False
+
+        security_group.update_from_raw_response(security_groups[0].dict_src)
+        return True
+
     def provision_security_group(self, security_group):
-        try:
-            group_id = self.raw_create_security_group(security_group.generate_create_request())
+        """
+        Create/modify security group.
+        todo:
+        Generate permit_any_any on the outbound.
+        add_request, revoke_request = security_group_region.generate_modify_ip_permissions_egress_requests(
+
+        @param security_group:
+        @return:
+        """
+        security_group_region = EC2SecurityGroup({})
+        security_group_region.name = security_group.name
+        security_group_region.vpc_id = security_group.vpc_id
+        security_group_region.region = security_group.region
+        if not self.update_security_group_information(security_group_region):
+            group_id = self.provision_security_group_raw(security_group.generate_create_request())
             security_group.id = group_id
-            # wait for propagation?
-            # for i in range(60):
-            #    region_groups = self.get_all_security_groups_in_region(security_group.region, full_information=False)
-            #    named_region_groups = CommonUtils.find_objects_by_values(region_groups, {"name": security_group.name}, max_count=1)
-            #    if len(named_region_groups) > 0:
-            #        break
-            #    time.sleep(5)
-        except Exception as exception_inst:
-            repr_exception_inst = repr(exception_inst)
-            if "already exists for VPC" not in repr_exception_inst:
-                raise
-            logger.warning(repr_exception_inst)
-            region_groups = self.get_region_security_groups(security_group.region, full_information=False)
-            existing_group = \
-            CommonUtils.find_objects_by_values(region_groups, {"name": security_group.name}, max_count=1)[0]
-            security_group.update_from_raw_create(existing_group.dict_src)
+            security_group_region.ip_permissions = []
+            security_group_region.ip_permissions_egress = []
+
+        add_request, revoke_request = security_group_region.generate_modify_ip_permissions_requests(security_group)
+        if add_request:
+            self.authorize_security_group_ingress_raw(add_request)
+
+        if revoke_request:
+            self.revoke_security_group_ingress_raw(revoke_request)
+
+    def provision_security_group_raw(self, request_dict):
+        """
+        Self explanatory.
+
+        @param request_dict:
+        @return:
+        """
+
+        logger.info(f"Creating security group {request_dict}")
+        for group_id in self.execute(self.client.create_security_group, "GroupId", filters_req=request_dict):
+            return group_id
 
     def raw_create_security_group(self, request_dict):
         logger.info(f"Creating security group {request_dict}")
@@ -288,19 +341,29 @@ class EC2Client(Boto3Client):
             else:
                 raise
 
-    def authorize_security_group_ingress_raw(self, request_dict, ignore_exists=False):
+    def authorize_security_group_ingress_raw(self, request_dict):
         logger.info(f"Authorizing security group ingress: {request_dict}")
-        if ignore_exists:
-            for response in self.execute(self.client.authorize_security_group_ingress, "GroupId",
-                                         filters_req=request_dict,
-                                         raw_data=True,
-                                         exception_ignore_callback=lambda x: "already exists" in repr(x)):
-                return response
-        else:
-            for response in self.execute(self.client.authorize_security_group_ingress, "GroupId",
-                                         filters_req=request_dict,
-                                         raw_data=True):
-                return response
+
+        for response in self.execute(self.client.authorize_security_group_ingress, "GroupId",
+                                     filters_req=request_dict,
+                                     raw_data=True):
+
+            if "UnknownIpPermissions" in response:
+                raise NotImplementedError(response)
+
+            return response
+
+    def revoke_security_group_ingress_raw(self, request_dict):
+        logger.info(f"Revoking security group ingress: {request_dict}")
+
+        for response in self.execute(self.client.revoke_security_group_ingress, "GroupId",
+                                     filters_req=request_dict,
+                                     raw_data=True):
+
+            if "unknownIpPermissionSet" in response:
+                raise RuntimeError(response)
+
+            return response
 
     def create_instance(self, request_dict):
         for response in self.execute(self.client.run_instances, "Instances", filters_req=request_dict):
@@ -374,22 +437,6 @@ class EC2Client(Boto3Client):
             obj = EC2LaunchTemplateVersion(dict_src)
             final_result.append(obj)
         return final_result
-
-    def get_security_group(self, security_group):
-        if security_group.id is not None:
-            filters_req = {"GroupIds": [security_group.id]}
-            for x in self.execute(self.client.describe_security_groups, "SecurityGroups", filters_req=filters_req):
-                pdb.set_trace()
-        elif security_group.name is not None:
-            AWSAccount.set_aws_region(security_group.region)
-            vpc_filter = {'Name': 'vpc-id', 'Values': [security_group.vpc_id]}
-            filters_req = {"GroupNames": [security_group.name], "Filters": [vpc_filter]}
-            pdb.set_trace()
-            for response in self.execute(self.client.describe_security_groups, "SecurityGroups",
-                                         filters_req=filters_req):
-                pdb.set_trace()
-        else:
-            raise NotImplementedError()
 
     def raw_create_managed_prefix_list(self, request, add_client_token=False):
         if add_client_token:
@@ -512,8 +559,12 @@ class EC2Client(Boto3Client):
 
     def provision_subnets(self, subnets):
         """
+        Self explanatory.
 
+        @param subnets:
+        @return:
         """
+
         for subnet in subnets[1:]:
             if subnet.region.region_mark != subnets[0].region.region_mark:
                 raise RuntimeError("All subnets should be in one region")
@@ -540,6 +591,13 @@ class EC2Client(Boto3Client):
                 raise
 
     def provision_subnet_raw(self, request):
+        """
+        Self explanatory.
+
+        @param request:
+        @return:
+        """
+
         for response in self.execute(self.client.create_subnet, "Subnet", filters_req=request):
             return response
 
@@ -552,7 +610,8 @@ class EC2Client(Boto3Client):
         @return:
         """
 
-        logger.info(f"Manged prefix list '{managed_prefix_list.name}' in region '{managed_prefix_list.region.region_mark}'")
+        logger.info(
+            f"Manged prefix list '{managed_prefix_list.name}' in region '{managed_prefix_list.region.region_mark}'")
         raw_region_pl = self.raw_describe_managed_prefix_list(managed_prefix_list.region,
                                                               prefix_list_name=managed_prefix_list.name)
 
@@ -573,6 +632,14 @@ class EC2Client(Boto3Client):
         managed_prefix_list.update_from_raw_create(raw_region_pl)
 
     def get_all_amis(self, full_information=True, region=None):
+        """
+        Self explanatory.
+
+        @param full_information:
+        @param region:
+        @return:
+        """
+
         if region is not None:
             return self.get_region_amis(region, full_information=full_information)
 
@@ -582,6 +649,15 @@ class EC2Client(Boto3Client):
         return final_result
 
     def get_region_amis(self, region, full_information=True, custom_filters=None):
+        """
+        Self explanatory.
+
+        @param region:
+        @param full_information:
+        @param custom_filters:
+        @return:
+        """
+
         AWSAccount.set_aws_region(region)
         final_result = list()
 
@@ -596,6 +672,14 @@ class EC2Client(Boto3Client):
         return final_result
 
     def create_image(self, instance: EC2Instance, timeout=600):
+        """
+        Create ec2 image from an instance.
+
+        @param instance:
+        @param timeout:
+        @return:
+        """
+
         # snapshots_raw = self.create_snapshots(instance)
         AWSAccount.set_aws_region(instance.region)
         ami_id = self.create_image_raw(instance.generate_create_image_request())
@@ -619,10 +703,24 @@ class EC2Client(Boto3Client):
         return new_ami
 
     def create_image_raw(self, request_dict):
+        """
+        Create image from dict request.
+
+        @param request_dict:
+        @return:
+        """
+
         for response in self.execute(self.client.create_image, "ImageId", filters_req=request_dict):
             return response
 
     def create_snapshots(self, instance):
+        """
+        Create a snapshot of the instacne.
+
+        @param instance:
+        @return:
+        """
+
         start = datetime.datetime.now()
         AWSAccount.set_aws_region(instance.region)
         ret = self.create_snapshots_raw(instance.generate_create_snapshots_request())
@@ -874,7 +972,8 @@ class EC2Client(Boto3Client):
             return response
 
     def find_launch_template(self, launch_template):
-        region_objects = self.get_region_launch_templates(launch_template.region, custom_filters={"LaunchTemplateNames": [launch_template.name]})
+        region_objects = self.get_region_launch_templates(launch_template.region, custom_filters={
+            "LaunchTemplateNames": [launch_template.name]})
 
         if len(region_objects) > 1:
             raise RuntimeError(f"len(region_objects) > 1")
@@ -882,7 +981,8 @@ class EC2Client(Boto3Client):
         return region_objects[0] if region_objects else None
 
     def find_region_launch_template_version(self, launch_template):
-        region_objects = self.get_region_launch_template_versions(launch_template.region, custom_filters={"LaunchTemplateName": launch_template.name, "Versions": ["$Latest"]})
+        region_objects = self.get_region_launch_template_versions(launch_template.region, custom_filters={
+            "LaunchTemplateName": launch_template.name, "Versions": ["$Latest"]})
 
         if len(region_objects) > 1:
             raise RuntimeError(f"len(region_objects) > 1")
@@ -896,7 +996,8 @@ class EC2Client(Boto3Client):
             if provision_version_request:
                 response = self.provision_launch_template_version_raw(provision_version_request)
                 current_launch_template_version.update_from_raw_response(response)
-                request = launch_template.generate_modify_launch_template_request(str(current_launch_template_version.version_number))
+                request = launch_template.generate_modify_launch_template_request(
+                    str(current_launch_template_version.version_number))
                 response = self.modify_launch_template_raw(request)
                 launch_template.update_from_raw_response(response)
             else:
@@ -914,7 +1015,8 @@ class EC2Client(Boto3Client):
 
     def provision_launch_template_version_raw(self, request_dict):
         logger.info(f"Creating Launch Template Version: {request_dict}")
-        for response in self.execute(self.client.create_launch_template_version, None, raw_data=True, filters_req=request_dict):
+        for response in self.execute(self.client.create_launch_template_version, None, raw_data=True,
+                                     filters_req=request_dict):
             if "Warning" in str(response):
                 raise RuntimeError(response)
             return response["LaunchTemplateVersion"]

@@ -1,6 +1,5 @@
 import os
 import pdb
-import base64
 from horey.aws_api.aws_clients.ec2_client import EC2Client
 from horey.h_logger import get_logger
 from horey.common_utils.common_utils import CommonUtils
@@ -8,6 +7,9 @@ from horey.common_utils.common_utils import CommonUtils
 from unittest.mock import Mock
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.aws_services_entities.ec2_launch_template import EC2LaunchTemplate
+from horey.aws_api.aws_services_entities.ec2_security_group import EC2SecurityGroup
+from horey.aws_api.base_entities.region import Region
+
 
 configuration_values_file_full_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                                    "h_logger_configuration_values.py")
@@ -31,14 +33,51 @@ def test_init_ec2_client():
 
 DICT_CREATE_SECURITY_GROUP_REQUEST = {
     "Description": "sg-test-group",
-    "GroupName": "sg-test-group",
+    "GroupName": "sg_test-group",
 }
 
 
 def test_create_security_group():
     client = EC2Client()
     ret = client.raw_create_security_group(DICT_CREATE_SECURITY_GROUP_REQUEST)
-    # pdb.set_trace()
+
+
+def test_provision_security_group():
+    """
+    Test provisioning.
+
+    @return:
+    """
+
+    client = EC2Client()
+    security_group = EC2SecurityGroup(DICT_CREATE_SECURITY_GROUP_REQUEST)
+    security_group.region = Region.get_region("us-west-2")
+    security_group.ip_permissions = [
+        {"IpProtocol": "tcp",
+         "FromPort": 8080,
+         "ToPort": 8080,
+         "IpRanges": [{"CidrIp": "1.1.1.1/32"}]},
+    ]
+    client.provision_security_group(security_group)
+
+
+def test_provision_security_group_revoke():
+    """
+    Test provisioning.
+
+    @return:
+    """
+
+    client = EC2Client()
+    security_group = EC2SecurityGroup(DICT_CREATE_SECURITY_GROUP_REQUEST)
+    security_group.region = Region.get_region("us-west-2")
+    security_group.ip_permissions = [
+        {"IpProtocol": "tcp",
+         "FromPort": 8080,
+         "ToPort": 8081,
+         "IpRanges": [{"CidrIp": "1.1.1.1/32"}]},
+    ]
+    client.provision_security_group(security_group)
 
 
 SECURITY_GROUP_ID = ""
@@ -64,15 +103,7 @@ DICT_AUTHORIZE_SECURITY_GROUP_INGRESS_REQUEST_2 = {
 def test_get_all_security_groups():
     client = EC2Client()
     sec_groups = client.get_all_security_groups()
-    sec_groups[5]
-
-
-def test_authorize_security_group_ingress():
-    client = EC2Client()
-    pdb.set_trace()
-    client.authorize_security_group_ingress(DICT_AUTHORIZE_SECURITY_GROUP_INGRESS_REQUEST_1)
-    client.authorize_security_group_ingress(DICT_AUTHORIZE_SECURITY_GROUP_INGRESS_REQUEST_2)
-
+    assert isinstance(sec_groups, list)
 
 def test_raw_create_managed_prefix_list():
     request = {"PrefixListName": "pl_test_name",
@@ -108,8 +139,6 @@ def test_raw_create_managed_prefix_list():
         client = EC2Client()
         ret = client.raw_create_managed_prefix_list(request, add_client_token=False)
         assert isinstance(ret, dict)
-        print(ret)
-        # pdb.set_trace()
 
 
 def test_raw_modify_managed_prefix_list():
@@ -143,8 +172,6 @@ def test_raw_modify_managed_prefix_list():
 
     ret = client.raw_modify_managed_prefix_list(request)
     assert isinstance(ret, dict)
-    print(ret)
-    # pdb.set_trace()
 
 
 def test_raw_modify_managed_prefix_list_add():
@@ -163,7 +190,6 @@ def test_raw_modify_managed_prefix_list_add():
     }
     ret = client.raw_modify_managed_prefix_list(request)
     assert isinstance(ret, dict)
-    print(ret)
 
 
 def test_raw_describe_managed_prefix_list_by_id():
@@ -259,8 +285,9 @@ def test_provision_launch_template():
 
 
 if __name__ == "__main__":
-    # test_create_security_group()
-    test_provision_launch_template()
+    test_provision_security_group()
+    test_provision_security_group_revoke()
+    #test_provision_launch_template()
 
     # test_raw_modify_managed_prefix_list()
     # test_raw_describe_managed_prefix_list_by_id()
