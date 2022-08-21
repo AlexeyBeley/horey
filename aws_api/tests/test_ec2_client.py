@@ -81,7 +81,10 @@ def test_provision_security_group_revoke():
 
 def test_provision_security_group_complex():
     """
-    Test provisioning.
+    Test:
+    * Replace one rule with the other
+    * Change the description
+    * Remove the description
 
     @return:
     """
@@ -90,6 +93,11 @@ def test_provision_security_group_complex():
     security_group = EC2SecurityGroup(DICT_CREATE_SECURITY_GROUP_REQUEST)
     security_group.region = Region.get_region("us-west-2")
     security_group.ip_permissions = [
+        {"IpProtocol": "tcp",
+         "FromPort": 8080,
+         "ToPort": 8080,
+         "IpRanges": [{"CidrIp": "8.8.8.8/32", "Description": "test"},
+                      ]},
         {"IpProtocol": "tcp",
          "FromPort": 8080,
          "ToPort": 8080,
@@ -109,8 +117,13 @@ def test_provision_security_group_complex():
         {"IpProtocol": "tcp",
          "FromPort": 8080,
          "ToPort": 8080,
-         "IpRanges": [{"CidrIp": "1.1.1.1/32", "Description": "test"},
+         "IpRanges": [{"CidrIp": "8.8.8.8/32", "Description": "test-1"},
                       ]},
+        {"IpProtocol": "tcp",
+         "FromPort": 8080,
+         "ToPort": 8080,
+         "IpRanges": [{"CidrIp": "1.1.1.1/32"}]
+         },
         {"IpProtocol": "tcp",
          "FromPort": 8080,
          "ToPort": 8080,
