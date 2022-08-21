@@ -183,9 +183,13 @@ class EC2SecurityGroup(AwsObject):
         for key, value in permission_1.items():
             target_value = permission_2.get(key)
 
-            # value is default and target value was not set
-            if not value and target_value is None:
-                continue
+            # target value was not set
+            if target_value is None:
+                # value was not set
+                if not value:
+                    continue
+
+                return False
 
             if target_value == value:
                 continue
