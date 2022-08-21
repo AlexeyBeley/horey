@@ -88,8 +88,6 @@ class ELBV2TargetGroup(AwsObject):
                    "Protocol": self.protocol,
                    "Port": self.port,
                    "VpcId": self.vpc_id,
-                   "HealthCheckProtocol": self.health_check_protocol,
-                   "HealthCheckPort": self.health_check_port,
                    "HealthCheckEnabled": self.health_check_enabled,
                    "HealthCheckIntervalSeconds": self.health_check_interval_seconds,
                    "HealthCheckTimeoutSeconds": self.health_check_timeout_seconds,
@@ -99,6 +97,13 @@ class ELBV2TargetGroup(AwsObject):
 
         if self.health_check_path is not None:
             request["HealthCheckPath"] = self.health_check_path
+
+        if self.health_check_protocol is not None:
+            request["HealthCheckProtocol"] = self.health_check_protocol
+
+        if self.health_check_port is not None:
+            request["HealthCheckPort"] = self.health_check_port
+
         request["Tags"] = self.tags
 
         return request
