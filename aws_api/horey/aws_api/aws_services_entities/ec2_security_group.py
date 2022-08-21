@@ -92,23 +92,30 @@ class EC2SecurityGroup(AwsObject):
         @param target_security_group:
         @return:
         """
-
-        add_request, revoke_request = [], []
+        add_request, revoke_request, update_description = [], [], []
 
         for self_permission in self.split_permissions(self.ip_permissions):
-            if not any([self.check_permissions_equal(self_permission, target_permission)
-                        for target_permission in self.split_permissions(target_security_group.ip_permissions)]):
+            if not any([self.check_permissions_equal(self_permission, target_permission,
+                                                         check_without_description=True)
+                            for target_permission in self.split_permissions(target_security_group.ip_permissions)]):
                 revoke_request.append(self_permission)
 
         for target_permission in self.split_permissions(target_security_group.ip_permissions):
+            # No equals (Do not check description differences)
             if not any([self.check_permissions_equal(target_permission, self_permission)
                         for self_permission in self.split_permissions(self.ip_permissions)]):
-                add_request.append(target_permission)
+                # Check weather there are equal by location but differ by description.
+                if any([self.check_permissions_equal(target_permission, self_permission, check_without_description=True)
+                        for self_permission in self.split_permissions(self.ip_permissions)]):
+                    update_description.append(target_permission)
+                else:
+                    add_request.append(target_permission)
 
         add_request = {"GroupId": self.id, "IpPermissions": add_request} if add_request else None
         revoke_request = {"GroupId": self.id, "IpPermissions": revoke_request} if revoke_request else None
+        update_description = {"GroupId": self.id, "IpPermissions": update_description} if update_description else None
 
-        return add_request, revoke_request
+        return add_request, revoke_request, update_description
 
     @staticmethod
     def split_permissions(permissions):
@@ -163,19 +170,43 @@ class EC2SecurityGroup(AwsObject):
         return lst_ret
 
     @staticmethod
-    def check_permissions_equal(permission_1, permission_2):
+    def check_permissions_equal(permission_1, permission_2, check_without_description=False):
         """
         Check weather two permissions are equal.
 
         @param permission_1:
         @param permission_2:
+        @param check_without_description:
         @return:
         """
+        keys_without_description = ["FromPort", "IpProtocol", "ToPort"]
 
         for key, value in permission_1.items():
             target_value = permission_2.get(key)
-            if (value or target_value is not None) and target_value != value:
+
+            # value is default and target value was not set
+            if not value and target_value is None:
+                continue
+
+            if target_value == value:
+                continue
+
+            # raw comparison (compare value with description) OR a key is scalar
+            if not check_without_description or key in keys_without_description:
                 return False
+
+            if not isinstance(target_value, list) or not isinstance(value, list):
+                raise ValueError(f"{value}, {target_value}")
+
+            # must be split already
+            if len(target_value) != 1 or len(value) != 1:
+                raise ValueError(f"{value}, {target_value}")
+
+            value_location = {_key: _value for _key, _value in value[0].items() if _key != "Description"}
+            target_value_location = {_key: _value for _key, _value in target_value[0].items() if _key != "Description"}
+            if value_location != target_value_location:
+                return False
+
         return True
 
     def generate_modify_ip_permissions_egress_requests(self, target_security_group):
