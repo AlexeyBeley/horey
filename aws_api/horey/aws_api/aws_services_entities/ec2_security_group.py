@@ -2,7 +2,6 @@
 AWS ec2 security group representation
 """
 import copy
-import pdb
 
 from horey.network.service import ServiceTCP, ServiceUDP, ServiceICMP, ServiceRDP
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
@@ -95,18 +94,18 @@ class EC2SecurityGroup(AwsObject):
         add_request, revoke_request, update_description = [], [], []
 
         for self_permission in self.split_permissions(self.ip_permissions):
-            if not any([self.check_permissions_equal(self_permission, target_permission,
+            if not any((self.check_permissions_equal(self_permission, target_permission,
                                                          check_without_description=True)
-                            for target_permission in self.split_permissions(target_security_group.ip_permissions)]):
+                            for target_permission in self.split_permissions(target_security_group.ip_permissions))):
                 revoke_request.append(self_permission)
 
         for target_permission in self.split_permissions(target_security_group.ip_permissions):
             # No equals (Do not check description differences)
-            if not any([self.check_permissions_equal(target_permission, self_permission)
-                        for self_permission in self.split_permissions(self.ip_permissions)]):
+            if not any((self.check_permissions_equal(target_permission, self_permission)
+                        for self_permission in self.split_permissions(self.ip_permissions))):
                 # Check weather there are equal by location but differ by description.
-                if any([self.check_permissions_equal(target_permission, self_permission, check_without_description=True)
-                        for self_permission in self.split_permissions(self.ip_permissions)]):
+                if any((self.check_permissions_equal(target_permission, self_permission, check_without_description=True)
+                        for self_permission in self.split_permissions(self.ip_permissions))):
                     update_description.append(target_permission)
                 else:
                     add_request.append(target_permission)
@@ -196,7 +195,7 @@ class EC2SecurityGroup(AwsObject):
                 return False
 
             if not isinstance(target_value, list) or not isinstance(value, list):
-                raise ValueError(f"{value}, {target_value}")
+                raise ValueError(f"For key: {key}, {value}, {target_value} in {permission_1}, {permission_2}")
 
             # must be split already
             if len(target_value) != 1 or len(value) != 1:
