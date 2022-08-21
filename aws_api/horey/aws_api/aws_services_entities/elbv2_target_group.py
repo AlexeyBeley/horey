@@ -1,11 +1,11 @@
 """
 AWS ELB V2 target group
 """
-import pdb
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 
 
+# pylint: disable=too-many-instance-attributes
 class ELBV2TargetGroup(AwsObject):
     """
     Class representing AWS ELB V2 target group
@@ -22,26 +22,40 @@ class ELBV2TargetGroup(AwsObject):
         self.targets = None
         self.arn = None
 
+        self.protocol = None
+        self.port = None
+        self.vpc_id = None
+
+        self.health_check_protocol = None
+        self.health_check_port = None
+
+        self.health_check_enabled = None
+        self.health_check_interval_seconds = None
+        self.health_check_timeout_seconds = None
+        self.healthy_threshold_count = None
+        self.unhealthy_threshold_count = None
+        self.target_type = None
+
         init_options = {
-                        "TargetGroupArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
-                        "TargetGroupName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-                        "Protocol": self.init_default_attr,
-                        "Port": self.init_default_attr,
-                        "VpcId": self.init_default_attr,
-                        "HealthCheckProtocol": self.init_default_attr,
-                        "HealthCheckPort": self.init_default_attr,
-                        "HealthCheckEnabled": self.init_default_attr,
-                        "HealthCheckIntervalSeconds": self.init_default_attr,
-                        "HealthCheckTimeoutSeconds": self.init_default_attr,
-                        "HealthyThresholdCount": self.init_default_attr,
-                        "UnhealthyThresholdCount": self.init_default_attr,
-                        "HealthCheckPath": self.init_default_attr,
-                        "Matcher": self.init_default_attr,
-                        "LoadBalancerArns": self.init_default_attr,
-                        "TargetType": self.init_default_attr,
-                        "ProtocolVersion": self.init_default_attr,
-                        "IpAddressType": self.init_default_attr,
-                        }
+            "TargetGroupArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "TargetGroupName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "Protocol": self.init_default_attr,
+            "Port": self.init_default_attr,
+            "VpcId": self.init_default_attr,
+            "HealthCheckProtocol": self.init_default_attr,
+            "HealthCheckPort": self.init_default_attr,
+            "HealthCheckEnabled": self.init_default_attr,
+            "HealthCheckIntervalSeconds": self.init_default_attr,
+            "HealthCheckTimeoutSeconds": self.init_default_attr,
+            "HealthyThresholdCount": self.init_default_attr,
+            "UnhealthyThresholdCount": self.init_default_attr,
+            "HealthCheckPath": self.init_default_attr,
+            "Matcher": self.init_default_attr,
+            "LoadBalancerArns": self.init_default_attr,
+            "TargetType": self.init_default_attr,
+            "ProtocolVersion": self.init_default_attr,
+            "IpAddressType": self.init_default_attr,
+        }
 
         self.init_attrs(dict_src, init_options)
 
@@ -52,7 +66,7 @@ class ELBV2TargetGroup(AwsObject):
         :return:
         """
         options = {
-                   }
+        }
         self._init_from_cache(dict_src, options)
 
     def update_target_health(self, dict_src):
@@ -65,48 +79,24 @@ class ELBV2TargetGroup(AwsObject):
 
     def generate_create_request(self):
         """
-        client.create_target_group(
-        Name='string',
-        Protocol='HTTP'|'HTTPS'|'TCP'|'TLS'|'UDP'|'TCP_UDP'|'GENEVE',
-        ProtocolVersion='string',
-        Port=123,
-        VpcId='string',
-        HealthCheckProtocol='HTTP'|'HTTPS'|'TCP'|'TLS'|'UDP'|'TCP_UDP'|'GENEVE',
-        HealthCheckPort='string',
-        HealthCheckEnabled=True|False,
-        HealthCheckPath='string',
-        HealthCheckIntervalSeconds=123,
-        HealthCheckTimeoutSeconds=123,
-        HealthyThresholdCount=123,
-        UnhealthyThresholdCount=123,
-        Matcher={
-            'HttpCode': 'string',
-            'GrpcCode': 'string'
-        },
-        TargetType='instance'|'ip'|'lambda',
-        Tags=[
-        {
-            'Key': 'string',
-            'Value': 'string'
-        },
-    ]
-)
+        Generate create request dict
+
+        @return:
         """
-        request = dict()
-        request["Name"] = self.name
-        request["Protocol"] = self.protocol
-        request["Port"] = self.port
-        request["VpcId"] = self.vpc_id
 
-        request["HealthCheckProtocol"] = self.health_check_protocol
-        request["HealthCheckPort"] = self.health_check_port
+        request = {"Name": self.name,
+                   "Protocol": self.protocol,
+                   "Port": self.port,
+                   "VpcId": self.vpc_id,
+                   "HealthCheckProtocol": self.health_check_protocol,
+                   "HealthCheckPort": self.health_check_port,
+                   "HealthCheckEnabled": self.health_check_enabled,
+                   "HealthCheckIntervalSeconds": self.health_check_interval_seconds,
+                   "HealthCheckTimeoutSeconds": self.health_check_timeout_seconds,
+                   "HealthyThresholdCount": self.healthy_threshold_count,
+                   "UnhealthyThresholdCount": self.unhealthy_threshold_count,
+                   "TargetType": self.target_type}
 
-        request["HealthCheckEnabled"] = self.health_check_enabled
-        request["HealthCheckIntervalSeconds"] = self.health_check_interval_seconds
-        request["HealthCheckTimeoutSeconds"] = self.health_check_timeout_seconds
-        request["HealthyThresholdCount"] = self.healthy_threshold_count
-        request["UnhealthyThresholdCount"] = self.unhealthy_threshold_count
-        request["TargetType"] = self.target_type
         if self.health_check_path is not None:
             request["HealthCheckPath"] = self.health_check_path
         request["Tags"] = self.tags
@@ -114,18 +104,27 @@ class ELBV2TargetGroup(AwsObject):
         return request
 
     def generate_register_targets_request(self):
-        if self.targets is None:
-            return
+        """
+        Trivial.
 
-        request = dict()
+        @return:
+        """
+
+        if self.targets is None:
+            return None
 
         if self.arn is None:
-            raise ValueError(f"Target group '{self.name}' arn is not set")
+            raise ValueError(f"Target group '{self.name}' arn was not set")
 
-        request["TargetGroupArn"] = self.arn
-        request["Targets"] = self.targets
+        request = {"TargetGroupArn": self.arn, "Targets": self.targets}
 
         return request
 
     def generate_dispose_request(self):
+        """
+        Trivial
+
+        @return:
+        """
+
         return {"TargetGroupArn": self.arn}
