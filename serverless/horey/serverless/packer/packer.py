@@ -2,7 +2,6 @@
 Serverless packer - used to pack lambdas.
 
 """
-import pdb
 import subprocess
 import os
 import shutil
