@@ -85,15 +85,21 @@ class ELBV2TargetGroup(AwsObject):
         """
 
         request = {"Name": self.name,
-                   "Protocol": self.protocol,
-                   "Port": self.port,
-                   "VpcId": self.vpc_id,
                    "HealthCheckEnabled": self.health_check_enabled,
                    "HealthCheckIntervalSeconds": self.health_check_interval_seconds,
                    "HealthCheckTimeoutSeconds": self.health_check_timeout_seconds,
                    "HealthyThresholdCount": self.healthy_threshold_count,
                    "UnhealthyThresholdCount": self.unhealthy_threshold_count,
                    "TargetType": self.target_type}
+
+        if self.vpc_id is not None:
+            request["VpcId"] = self.vpc_id
+
+        if self.port is not None:
+            request["Port"] = self.port
+
+        if self.protocol is not None:
+            request["Protocol"] = self.protocol
 
         if self.health_check_path is not None:
             request["HealthCheckPath"] = self.health_check_path
@@ -110,7 +116,13 @@ class ELBV2TargetGroup(AwsObject):
 
     def generate_register_targets_request(self):
         """
-        Trivial.
+        Register defined targets in the target group. Format of the targets:
+        Targets=[
+        {
+            'Id': 'string',
+            'Port': 123,
+            'AvailabilityZone': 'string'
+        },
 
         @return:
         """
