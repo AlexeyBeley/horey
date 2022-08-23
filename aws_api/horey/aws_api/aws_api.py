@@ -2457,7 +2457,7 @@ class AWSAPI:
         """
         lst_ret = []
         for role in self.iam_roles:
-            lst_ret += [policy["_name"] for policy in role.policies]
+            lst_ret += [policy.name for policy in role.policies]
         return list(set(lst_ret))
 
     def cleanup_report_iam_policies_statements_optimize(self):
