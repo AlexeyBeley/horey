@@ -252,12 +252,13 @@ class Packer:
         packages_dir = self.get_site_packages_directory(venv_dir_path, python_version)
         for package_dir_name in os.listdir(packages_dir):
             src_package_dir_path = os.path.join(packages_dir, package_dir_name)
-
-            if not os.path.isdir(src_package_dir_path):
-                logger.info(f"Skipping file {src_package_dir_path}")
-                continue
-
             dst_package_dir_path = os.path.join(dst_dir_path, package_dir_name)
+
+            if os.path.isfile(src_package_dir_path):
+                if os.path.exists(dst_package_dir_path):
+                    os.remove(dst_package_dir_path)
+                shutil.copyfile(src_package_dir_path, dst_package_dir_path)
+                continue
 
             if os.path.exists(dst_package_dir_path):
                 shutil.rmtree(dst_package_dir_path)
