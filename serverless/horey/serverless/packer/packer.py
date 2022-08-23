@@ -1,4 +1,7 @@
-import pdb
+"""
+Serverless packer - used to pack lambdas.
+
+"""
 import subprocess
 import os
 import shutil
@@ -11,35 +14,46 @@ logger = get_logger()
 
 
 class Packer:
+    """
+    Serverless packer - used to pack the lambdas.
+
+    """
     def __init__(self):
         pass
 
     def create_lambda_package(self, lambda_name, deployment_path, package_setup_path):
         """
-        Warning For maximum reliability, use a fully-qualified path for the executable. To search for an unqualified name on PATH, use shutil.which(). On all platforms, passing sys.executable is the recommended way to launch the current Python interpreter again, and use the -m command-line format to launch an installed module.
-        Resolving the path of executable (or the first item of args) is platform dependent. For POSIX, see os.execvpe(), and note that when resolving or searching for the executable path, cwd overrides the current working directory and env can override the PATH environment variable. For Windows, see the documentation of the lpApplicationName and lpCommandLine parameters of WinAPI CreateProcess, and note that when resolving or searching for the executable path with shell=False, cwd does not override the current working directory and env cannot override the PATH environment variable. Using a full path avoids all of these variations.
+        Warning For maximum reliability, use a fully-qualified path for the executable.
+        To search for an unqualified name on PATH, use shutil.which(). On all platforms,
+        passing sys.executable is the recommended way to launch the current Python interpreter again,
+        and use the -m command-line format to launch an installed module.
+        Resolving the path of executable (or the first item of args) is platform dependent.
+        For POSIX, see os.execvpe(), and note that when resolving or searching for the executable path,
+        cwd overrides the current working directory and env can override the PATH environment variable.
+        For Windows, see the documentation of the lpApplicationName and lpCommandLine parameters of WinAPI
+        CreateProcess, and note that when resolving or searching for the executable path with shell=False, cwd does
+        not override the current working directory and env cannot override the PATH environment variable.
+        Using a full path avoids all of these variations.
+
         @param package_setup_path:
         @param lambda_name:
         @param deployment_path:
         @return:
         """
 
-        """
-        python3.8 -m venv ${VENV_DIR}
-        source ${VENV_DIR}/bin/activate &&\
-        pip3 install --upgrade pip &&\
-        pip3 install -U setuptools
-        
-        @param deployment_path:
-        @return: 
-        """
-
         venv_path = os.path.join(deployment_path, "_venv")
         self.create_venv(venv_path)
         self.install_requirements(package_setup_path, venv_path)
-        self.zip_venv_site_packages(lambda_name, deployment_path)
+        self.zip_venv_site_packages(lambda_name, deployment_path, "python3.8")
 
     def create_venv(self, venv_path, clean_install=True):
+        """
+        Trivial
+
+        @param venv_path:
+        @param clean_install:
+        @return:
+        """
         if clean_install:
             if os.path.exists(venv_path):
                 logger.info(f"Removing directory {venv_path}")
@@ -53,10 +67,28 @@ class Packer:
         self.execute_in_venv("pip3 install --upgrade pip", venv_path)
 
     def install_requirements(self, package_setup_path, venv_path):
+        """
+        Simple requirements.txt file installation.
+
+        @param package_setup_path:
+        @param venv_path:
+        @return:
+        """
+
         command = f"pip3 install -r {package_setup_path}/requirements.txt"
         return self.execute_in_venv(command, venv_path)
 
-    def install_horey_requirements(self, requirements_file_path, venv_path, horey_repo_path):
+    @staticmethod
+    def install_horey_requirements(requirements_file_path, venv_path, horey_repo_path):
+        """
+        Recursive install horey packages from source.
+
+        @param requirements_file_path:
+        @param venv_path:
+        @param horey_repo_path:
+        @return:
+        """
+
         if not os.path.isfile(requirements_file_path):
             raise RuntimeError(f"Requirements file does not exist: {requirements_file_path}")
 
@@ -64,45 +96,109 @@ class Packer:
         pip_api.install_requirements(requirements_file_path)
 
     def uninstall_packages(self, venv_path, packages):
+        """
+        Uninstall python package. Used by cleanups.
+
+        @param venv_path:
+        @param packages:
+        @return:
+        """
         for package_name in packages:
             logger.info(f"Uninstalling package: {package_name} in venv: {venv_path}")
             command = f"pip3 uninstall {package_name}"
             self.execute_in_venv(command, venv_path)
 
     def execute_in_venv(self, command, venv_path):
+        """
+        Execute bash command under venv activate.
+
+        @param command:
+        @param venv_path:
+        @return:
+        """
+
         logger.info(f"Executing {command} in venv")
-        script_content = f"!#/bin/bash\n"
-        script_content += f"set -xe\n"
+        script_content = "!#/bin/bash\n"
+        script_content += "set -xe\n"
         script_content += f"source {venv_path}/bin/activate\n"
         script_content += f"{command}\n"
 
-        with open("./tmp_script_to_execute", "w") as fh:
+        with open("./tmp_script_to_execute", "w", encoding="utf-8") as fh:
             fh.write(script_content)
         bash_cmd = ["/bin/bash", "./tmp_script_to_execute"]
         return self.execute(bash_cmd)
 
     @staticmethod
     def get_site_packages_directory(venv_dir_path, python_version):
+        """
+        Find the direcotry holding the site packages in the venv.
+
+        @param venv_dir_path:
+        @param python_version:
+        @return:
+        """
+
         return os.path.join(venv_dir_path, "lib", python_version, "site-packages")
 
     def zip_venv_site_packages(self, zip_file_name, venv_dir_path, python_version):
+        """
+        Make a zip from pythons' global site puckages.
+
+        @param zip_file_name:
+        @param venv_dir_path:
+        @param python_version:
+        @return:
+        """
+
         if zip_file_name.endswith(".zip"):
             zip_file_name = zip_file_name[:-4]
 
         package_dir = self.get_site_packages_directory(venv_dir_path, python_version)
         shutil.make_archive(zip_file_name, 'zip', root_dir=package_dir)
 
-    def add_files_to_zip(self, zip_file_name, files_paths):
+    @staticmethod
+    def add_files_to_zip(zip_file_name, files_paths):
+        """
+        Add multiple files to the zip file by their names.
+
+        @param zip_file_name:
+        @param files_paths:
+        @return:
+        """
+
         with zipfile.ZipFile(zip_file_name, "a") as myzip:
             for file_path in files_paths:
                 logger.info(f"Adding file to zip: {file_path}")
                 myzip.write(file_path, arcname=os.path.basename(file_path))
 
     def add_dirs_to_zip(self, zip_file_name, dir_paths):
+        """
+        Add existing directories to the package.
+
+        @param zip_file_name:
+        @param dir_paths:
+        @return:
+        """
+
         for dir_path in dir_paths:
+            if not os.path.exists(dir_path):
+                raise RuntimeError(f"{dir_path} does not exist")
+
+            if not os.path.isdir(dir_path):
+                raise RuntimeError(f"{dir_path} is not a dir")
+
             self.add_dir_to_zip(zip_file_name, dir_path)
 
-    def add_dir_to_zip(self, zip_file_name, dir_path: str):
+    @staticmethod
+    def add_dir_to_zip(zip_file_name, dir_path: str):
+        """
+        Add directory to the zip file.
+
+        @param zip_file_name:
+        @param dir_path:
+        @return:
+        """
+
         dir_path = dir_path[:-1] if dir_path.endswith("/") else dir_path
         prefix_len = dir_path.rfind("/") + 1
         with zipfile.ZipFile(zip_file_name, "a") as myzip:
@@ -112,40 +208,33 @@ class Packer:
                     arc_name = file_path[prefix_len:]
                     myzip.write(file_path, arcname=arc_name)
 
-    def extract(self, zip_file_name, dir_path):
+    @staticmethod
+    def extract(zip_file_name, dir_path):
+        """
+        Extract from zip file
+
+        @param zip_file_name:
+        @param dir_path:
+        @return:
+        """
         with zipfile.ZipFile(zip_file_name) as myzip:
             myzip.extractall(path=dir_path)
 
-    def pip_freeze(self):
-        "pip3 freeze --all"
+    @staticmethod
+    def execute(bash_cmd, shell=False):
+        """
+        Execute bash command
 
-    def execute(self, bash_cmd, shell=False):
+        @param bash_cmd:
+        @param shell:
+        @return:
+        """
+
         if isinstance(bash_cmd, str):
             bash_cmd = bash_cmd.split(" ")
 
+        # pylint: disable=subprocess-run-check
         process = subprocess.run(bash_cmd, capture_output=True, text=True, shell=shell)
         if process.returncode != 0:
             raise RuntimeError(f"{process.stdout}\n{process.stderr}")
         return process
-
-    def create_lambda_package_from_python_package(self):
-        raise NotImplementedError()
-        import sys
-        sys.argv = ["--help"]
-
-        import unittest
-        from unittest.mock import Mock
-        import pdb
-
-        setup_mock = Mock()
-        with unittest.mock.patch("setuptools.setup", setup_mock):
-            from setup import setup
-            ret = setup_mock.call_args
-
-            # function_name = setup_mock.call_args["main"]
-
-            ret.kwargs["name"]
-            ret.kwargs["python_requires"]
-            ret.kwargs["packages"]
-
-        pdb.set_trace()
