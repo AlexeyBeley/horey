@@ -1,12 +1,12 @@
 """
 Module to handle AWS RDS instances
 """
-import pdb
 from enum import Enum
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 from horey.aws_api.base_entities.region import Region
 
+# pylint: disable=too-many-instance-attributes
 
 class RDSDBCluster(AwsObject):
     """
@@ -20,6 +20,29 @@ class RDSDBCluster(AwsObject):
         self.db_subnet_group_name = None
         self.db_cluster_parameter_group_name = None
         self.kms_key_id = None
+        self.cluster_create_time = None
+
+        self.backup_retention_period = None
+        self.database_name = None
+        self.id = None
+        self.vpc_security_group_ids = None
+        self.engine = None
+        self.engine_version = None
+        self.port = None
+
+        self.master_username = None
+        self.master_user_password = None
+        self.preferred_backup_window = None
+        self.preferred_maintenance_window = None
+        self.storage_encrypted = None
+        self.enable_cloudwatch_logs_exports = None
+        self.kms_key_id = None
+        self.engine_mode = None
+        self.deletion_protection = None
+        self.copy_tags_to_snapshot = None
+        self.arn = None
+        self.status = None
+        self.skip_final_snapshot = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -81,6 +104,12 @@ class RDSDBCluster(AwsObject):
         self._init_from_cache(dict_src, options)
 
     def update_from_raw_response(self, dict_src):
+        """
+        Standard
+
+        @param dict_src:
+        @return:
+        """
         init_options = {
             "DBClusterIdentifier": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
             "DBClusterArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
@@ -129,11 +158,10 @@ class RDSDBCluster(AwsObject):
 
     def generate_create_request(self):
         """
-        response = client.create_db_cluster(
+        Standard
 
-)
         """
-        request = dict()
+        request = {}
         if self.availability_zones:
             request["AvailabilityZones"] = self.availability_zones
 
@@ -172,20 +200,34 @@ class RDSDBCluster(AwsObject):
         return request
 
     def generate_dispose_request(self):
-        request = dict()
-        request["DBClusterIdentifier"] = self.id
-        request["SkipFinalSnapshot"] = self.skip_final_snapshot
+        """
+        Standard
+
+        @return:
+        """
+        request = {"DBClusterIdentifier": self.id,
+                   "SkipFinalSnapshot": self.skip_final_snapshot}
         return request
 
     def generate_modify_request(self):
-        request = dict()
-        request["DBClusterIdentifier"] = self.id
-        request["MasterUserPassword"] = self.master_user_password
-        request["ApplyImmediately"] = True
+        """
+        Standard
+
+        @return:
+        """
+        request = {"DBClusterIdentifier": self.id,
+                   "MasterUserPassword": self.master_user_password,
+                   "ApplyImmediately": True}
         return request
 
     def generate_restore_db_cluster_from_snapshot_request(self, snapshot_id):
-        request = dict()
+        """
+        Standard
+
+        @param snapshot_id:
+        @return:
+        """
+        request = {}
         if self.availability_zones:
             request["AvailabilityZones"] = self.availability_zones
 
@@ -218,6 +260,11 @@ class RDSDBCluster(AwsObject):
 
     @property
     def region(self):
+        """
+        Standard
+
+        @return:
+        """
         if self._region is not None:
             return self._region
 
@@ -228,12 +275,23 @@ class RDSDBCluster(AwsObject):
 
     @region.setter
     def region(self, value):
+        """
+        Standard
+
+        @param value:
+        @return:
+        """
         if not isinstance(value, Region):
             raise ValueError(value)
 
         self._region = value
 
     def get_status(self):
+        """
+        Used by waiter loop.
+
+        @return:
+        """
         return {enum_value.value: enum_value for _, enum_value in self.Status.__members__.items()}[self.status]
 
     class Status(Enum):
@@ -268,7 +326,3 @@ class RDSDBCluster(AwsObject):
         STOPPED = "stopped"
         STOPPING = "stopping"
         RESETTING_MASTER_CREDENTIALS = "resetting-master-credentials"
-
-
-
-
