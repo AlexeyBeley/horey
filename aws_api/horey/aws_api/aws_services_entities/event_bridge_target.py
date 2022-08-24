@@ -49,6 +49,7 @@ class EventBridgeTarget(AwsObject):
         @param dict_src:
         @return:
         """
+
         init_options = {
             "Id": self.init_default_attr,
             "Arn": self.init_default_attr,
