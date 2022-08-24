@@ -238,3 +238,44 @@ class Packer:
         if process.returncode != 0:
             raise RuntimeError(f"{process.stdout}\n{process.stderr}")
         return process
+
+    def copy_venv_site_packages_to_dir(self, dst_dir_path, venv_dir_path, python_version):
+        """
+        Copy installed venv packages to the folder to be used for lambda creation.
+
+        @param dst_dir_path:
+        @param venv_dir_path:
+        @param python_version:
+        @return:
+        """
+
+        packages_dir = self.get_site_packages_directory(venv_dir_path, python_version)
+        for package_dir_name in os.listdir(packages_dir):
+            src_package_dir_path = os.path.join(packages_dir, package_dir_name)
+            dst_package_dir_path = os.path.join(dst_dir_path, package_dir_name)
+
+            if os.path.isfile(src_package_dir_path):
+                if os.path.exists(dst_package_dir_path):
+                    os.remove(dst_package_dir_path)
+                shutil.copyfile(src_package_dir_path, dst_package_dir_path)
+                continue
+
+            if os.path.exists(dst_package_dir_path):
+                shutil.rmtree(dst_package_dir_path)
+            shutil.copytree(src_package_dir_path, dst_package_dir_path)
+
+    def zip_prepared_directory(self, zip_file_name, src_dir_path):
+        """
+        Create a zip from prepared directory.
+
+        @param zip_file_name:
+        @param src_dir_path:
+        @return:
+        """
+
+        for file_name in os.listdir(src_dir_path):
+            full_path = os.path.join(src_dir_path, file_name)
+            if os.path.isdir(full_path):
+                self.add_dir_to_zip(zip_file_name, full_path)
+            else:
+                self.add_files_to_zip(zip_file_name, [full_path])

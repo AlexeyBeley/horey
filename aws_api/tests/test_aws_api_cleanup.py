@@ -1,4 +1,6 @@
 import os
+import pdb
+
 import pytest
 
 from horey.aws_api.aws_api import AWSAPI
@@ -17,14 +19,14 @@ aws_api = AWSAPI(configuration=configuration)
 
 @pytest.mark.skip(reason="IAM policies cleanup will be enabled explicitly")
 def test_init_from_cache_and_cleanup_report_iam_policies():
-    aws_api.init_iam_policies(from_cache=True, cache_file=configuration.aws_api_iam_policies_cache_file)
-    aws_api.init_iam_roles(from_cache=True, cache_file=configuration.aws_api_iam_roles_cache_file)
+    aws_api.init_iam_policies(from_cache=False, cache_file=configuration.aws_api_iam_policies_cache_file)
+    aws_api.init_iam_roles(from_cache=False, cache_file=configuration.aws_api_iam_roles_cache_file)
     aws_api.cleanup_report_iam_policies(configuration.aws_api_cleanups_iam_policies_report_file)
 
 
 @pytest.mark.skip(reason="IAM roles cleanup will be enabled explicitly")
 def test_init_from_cache_and_cleanup_report_iam_roles():
-    aws_api.init_iam_roles(from_cache=True, cache_file=configuration.aws_api_iam_roles_cache_file)
+    aws_api.init_iam_roles(from_cache=False, cache_file=configuration.aws_api_iam_roles_cache_file)
     aws_api.cleanup_report_iam_roles(configuration.aws_api_cleanups_iam_roles_report_file)
 
 
@@ -94,4 +96,6 @@ def test_init_from_cache_and_cleanup_report_network_interfaces():
 
 
 if __name__ == "__main__":
-    test_init_from_cache_and_cleanup_s3_buckets()
+    #test_init_from_cache_and_cleanup_s3_buckets()
+    test_init_from_cache_and_cleanup_report_iam_policies()
+    test_init_from_cache_and_cleanup_report_iam_roles()

@@ -15,6 +15,8 @@ VENV_DIR = os.path.join(DEPLOYMENT_DIR, "_venv")
 PACKAGE_SETUP_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "build", "package_test")
 ZIP_FILE_NAME = "lambda_test"
 
+SRC_PACKAGE_DIR_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_lambda_src_package_dir")
+
 
 def test_create_venv():
     packer = Packer()
@@ -85,6 +87,12 @@ def test_provision_lambda():
     assert aws_lambda.state == "Active"
 
 
+def test_copy_venv_site_packages_to_dir():
+    packer = Packer()
+    os.makedirs(SRC_PACKAGE_DIR_PATH, exist_ok=True)
+    packer.copy_venv_site_packages_to_dir(SRC_PACKAGE_DIR_PATH, VENV_DIR, "python3.8")
+
+
 if __name__ == "__main__":
     # test_create_venv()
     # test_execute_in_venv()
@@ -92,4 +100,5 @@ if __name__ == "__main__":
     # test_create_lambda_package()
     # test_zip_venv_site_packages()
     # test_add_files_to_zip()
-    test_provision_lambda()
+    #test_provision_lambda()
+    test_copy_venv_site_packages_to_dir()
