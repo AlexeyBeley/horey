@@ -410,11 +410,6 @@ class AWSLambda(AwsObject):
         return {enum_value.value: enum_value for _, enum_value in self.Status.__members__.items()}[
             self.last_update_status]
 
-    class UndefinedStatusError(RuntimeError):
-        """
-        Status was not set
-        """
-
     class Status(Enum):
         """
         Lambda status enum.
