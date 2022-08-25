@@ -1,12 +1,14 @@
 """
 AWS iam client to handle iam service API requests.
 """
+import pdb
 
 from horey.aws_api.aws_services_entities.iam_user import IamUser
 from horey.aws_api.aws_services_entities.iam_access_key import IamAccessKey
 from horey.aws_api.aws_services_entities.iam_policy import IamPolicy
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.iam_role import IamRole
+from horey.aws_api.aws_services_entities.iam_group import IamGroup
 from horey.aws_api.aws_services_entities.iam_instance_profile import IamInstanceProfile
 from horey.common_utils.common_utils import CommonUtils
 
@@ -40,11 +42,23 @@ class IamClient(Boto3Client):
         for response in self.execute(self.client.list_users, "Users"):
             user = IamUser(response)
             final_result.append(user)
+            if full_information:
+                user.policies = list(self.execute(self.client.list_user_policies,
+                                                           "PolicyNames",
+                                                           filters_req={"UserName": user.name}))
+
+                user.attached_policies = list(self.execute(self.client.list_attached_user_policies,
+                                                           "AttachedPolicies",
+                                                           filters_req={"UserName": user.name}))
+
+                user.groups = list(self.execute(self.client.list_groups_for_user,
+                                                           "Groups",
+                                                           filters_req={"UserName": user.name}))
 
         if full_information:
             for update_info in self.execute(self.client.get_account_authorization_details, "UserDetailList"):
-                user = CommonUtils.find_objects_by_values(final_result, {"id": update_info["UserId"]}, max_count=1)[0]
-                user.update_attributes(update_info)
+                _user = CommonUtils.find_objects_by_values(final_result, {"id": update_info["UserId"]}, max_count=1)[0]
+                _user.update_attributes(update_info)
 
         return final_result
 
@@ -81,6 +95,36 @@ class IamClient(Boto3Client):
                 self.update_iam_role_full_information(role, policies=policies)
 
         return final_result
+    
+    def get_all_groups(self, full_information=True):
+        """
+        Get all groups
+
+        :param full_information:
+        :param policies:
+        :return:
+        """
+
+        final_result = []
+        for result in self.execute(self.client.list_groups, "Groups", filters_req={"MaxItems": 1000}):
+            group = IamGroup(result)
+            final_result.append(group)
+            if full_information:
+                self.update_group_full_information(group)
+
+        return final_result
+
+    def update_group_full_information(self, group):
+        """
+        * Fetch inline policies' names for the group.
+        * Fetch attached policies.
+
+        @param group:
+        @return:
+        """
+
+        group.policies = list(self.execute(self.client.list_group_policies, "PolicyNames", filters_req={"MaxItems": 1000, "GroupName": group.name}))
+        group.attached_policies = list(self.execute(self.client.list_attached_group_policies, "AttachedPolicies", filters_req={"MaxItems": 1000, "GroupName": group.name}))
 
     def get_all_instance_profiles(self):
         """

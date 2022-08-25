@@ -14,6 +14,10 @@ class IamUser(AwsObject):
         :param dict_src:
         """
         super().__init__(dict_src)
+        self.attached_policies = None
+        self.policies = None
+        self.groups = None
+
         if from_cache:
             self._init_user_from_cashe(dict_src)
             return

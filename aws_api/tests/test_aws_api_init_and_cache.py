@@ -48,7 +48,25 @@ def test_init_and_cache_iam_instance_profiles():
 
     print(f"len(iam_instance_profiles) = {len(aws_api.iam_instance_profiles)}")
     assert isinstance(aws_api.iam_instance_profiles, list)
-    
+
+
+@pytest.mark.skip(reason="IAM roles will be inited explicitly")
+def test_init_and_cache_iam_groups():
+    aws_api.init_iam_groups()
+    aws_api.cache_objects(aws_api.iam_groups, configuration.aws_api_iam_groups_cache_file)
+
+    print(f"len(iam_groups) = {len(aws_api.iam_groups)}")
+    assert isinstance(aws_api.iam_groups, list)
+
+
+@pytest.mark.skip(reason="IAM roles will be inited explicitly")
+def test_init_and_cache_iam_users():
+    aws_api.init_iam_users()
+    aws_api.cache_objects(aws_api.users, configuration.aws_api_iam_users_cache_file)
+
+    print(f"len(users) = {len(aws_api.users)}")
+    assert isinstance(aws_api.users, list)
+
 
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_network_interfaces():
@@ -664,11 +682,13 @@ if __name__ == "__main__":
     #test_init_and_cache_servicediscovery_namespaces()
     #test_init_and_cache_vpcs()
     #test_init_and_cache_ec2_volumes()
-    test_init_and_cache_security_groups()
+    #test_init_and_cache_security_groups()
     #test_init_and_cache_subnets()
     #test_init_and_cache_glue_tables()
     #test_init_and_cache_glue_databases()
     #test_init_and_cache_iam_instance_profiles()
+    #test_init_and_cache_iam_groups()
+    test_init_and_cache_iam_users()
     #test_init_and_cache_dynamodb_tables()
     #test_init_and_cache_dynamodb_endpoints()
     #test_init_and_cache_sesv2_email_identities()

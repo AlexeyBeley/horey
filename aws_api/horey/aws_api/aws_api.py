@@ -172,6 +172,7 @@ class AWSAPI:
 
         self.network_interfaces = []
         self.iam_policies = []
+        self.iam_groups = []
         self.ec2_instances = []
         self.ec2_volumes = []
         self.spot_fleet_requests = []
@@ -935,7 +936,7 @@ class AWSAPI:
 
         self.s3_buckets = objects
 
-    def init_users(self, from_cache=False, cache_file=None):
+    def init_iam_users(self, from_cache=False, cache_file=None):
         """
         Init IAM users.
 
@@ -1071,6 +1072,21 @@ class AWSAPI:
             objects = self.iam_client.get_all_policies()
 
         self.iam_policies = objects
+    
+    def init_iam_groups(self, from_cache=False, cache_file=None):
+        """
+        Init iam groups.
+
+        @param from_cache:
+        @param cache_file:
+        @return:
+        """
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, IamPolicy)
+        else:
+            objects = self.iam_client.get_all_groups()
+
+        self.iam_groups = objects
 
     def init_and_cache_s3_bucket_objects_synchronous(self, buckets_objects_cache_dir):
         """
@@ -3894,3 +3910,24 @@ class AWSAPI:
         @return:
         """
         return self.ec2_client.create_image(instance, timeout=timeout)
+    
+    def generate_security_reports(self):
+        """
+        Generate all erports
+        @return:
+        """
+        self.init_iam_policies()
+        self.init_iam_roles()
+        self.init_iam_users()
+        self.init_iam_groups()
+        h_tb_users = self.generate_security_report_users()
+
+    def generate_security_report_users(self):
+        """
+        Generate all users report.
+
+        @return:
+        """
+
+        h_tb = TextBlock("AWS IAM Users:")
+        return h_tb
