@@ -6,7 +6,6 @@ import datetime
 import os
 import base64
 import hashlib
-import pdb
 import threading
 import time
 from enum import Enum
@@ -347,7 +346,6 @@ class S3Client(Boto3Client):
         """
 
         try:
-            pdb.set_trace()
             update_info = list(
                 self.execute(self.client.get_bucket_acl, "Grants", filters_req={"Bucket": bucket.name}))
             bucket.update_acl(update_info)
