@@ -63,6 +63,7 @@ def test_init_and_cache_iam_groups():
 def test_init_and_cache_iam_users():
     aws_api.init_iam_users()
     aws_api.cache_objects(aws_api.users, configuration.aws_api_iam_users_cache_file)
+    pdb.set_trace()
 
     print(f"len(users) = {len(aws_api.users)}")
     assert isinstance(aws_api.users, list)

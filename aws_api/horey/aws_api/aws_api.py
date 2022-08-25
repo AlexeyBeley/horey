@@ -3916,11 +3916,15 @@ class AWSAPI:
         Generate all erports
         @return:
         """
-        self.init_iam_policies()
-        self.init_iam_roles()
-        self.init_iam_users()
-        self.init_iam_groups()
+        h_tb = TextBlock("IAM security report")
+        #self.init_iam_policies()
+        #self.init_iam_roles()
+
+        self.init_iam_users(from_cache=True, cache_file=self.configuration.aws_api_iam_users_cache_file)
+        #self.init_iam_groups()
         h_tb_users = self.generate_security_report_users()
+        h_tb.blocks.append(h_tb_users)
+        return h_tb
 
     def generate_security_report_users(self):
         """
@@ -3929,5 +3933,21 @@ class AWSAPI:
         @return:
         """
 
+        used_policies = []
+
         h_tb = TextBlock("AWS IAM Users:")
+        for user in self.users:
+            h_tb_user = TextBlock(f"UserName: '{user.name}'")
+            h_tb_user.lines.append("#"*20)
+            
+            if user.policies:
+                policies_block = json.dumps([pol['Statement'] for pol in user.policies], indent=2)
+                h_tb_user.lines.append(f"Inline Policies: {policies_block}")
+            if user.attached_policies:
+                h_tb_user.lines.append(f"Attached Policies: {[pol['PolicyName'] for pol in user.attached_policies]}")
+                used_policies += [pol['PolicyName'] for pol in user.attached_policies if pol["PolicyArn"].split(":")[4] != "aws"]
+            if user.groups:
+                h_tb_user.lines.append(f"Groups: {[group['GroupName'] for group in user.groups]}")
+            h_tb.blocks.append(h_tb_user)
+
         return h_tb

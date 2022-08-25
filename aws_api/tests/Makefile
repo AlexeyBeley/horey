@@ -18,7 +18,8 @@ FORCE: ;
 .PHONY: build
 build:
 	cd ${HOREY_DIR_PATH} &&\
-	make raw_install_from_source-aws_api
+	make raw_install_from_source-aws_api &&\
+	make raw_install_from_source-common_utils
 
 init_venv_dir: create_build_env
 	source ${VENV_DIR}/bin/activate &&\
