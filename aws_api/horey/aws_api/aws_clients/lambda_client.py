@@ -141,7 +141,6 @@ class LambdaClient(Boto3Client):
             if desired_aws_lambda.policy is not None:
                 for add_permission_request in desired_aws_lambda.generate_add_permissions_requests():
                     self.add_permission_raw(add_permission_request)
-                    self.update_lambda_information(current_lambda)
                     self.wait_for_status(current_lambda, self.update_lambda_information, [current_lambda.Status.SUCCESSFUL],
                                      [current_lambda.Status.INPROGRESS], [current_lambda.Status.FAILED])
 

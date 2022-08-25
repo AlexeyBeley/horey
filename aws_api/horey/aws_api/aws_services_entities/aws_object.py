@@ -351,3 +351,8 @@ class AwsObject:
             raise ValueError(value)
 
         self._region = value
+
+    class UndefinedStatusError(RuntimeError):
+        """
+        Status was not set
+        """

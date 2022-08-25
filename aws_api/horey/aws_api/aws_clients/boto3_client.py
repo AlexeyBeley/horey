@@ -194,6 +194,17 @@ class Boto3Client:
 
     def execute_with_single_reply(self, func_command, return_string, filters_req=None, raw_data=False,
                                   internal_starting_token=False, exception_ignore_callback=None):
+        """
+        Wait for a single result.
+
+        @param func_command:
+        @param return_string:
+        @param filters_req:
+        @param raw_data:
+        @param internal_starting_token:
+        @param exception_ignore_callback:
+        @return:
+        """
 
         ret = list(self.execute(func_command, return_string,
                                 filters_req=filters_req,
@@ -211,13 +222,30 @@ class Boto3Client:
     @staticmethod
     def wait_for_status(observed_object, update_function, desired_statuses, permit_statues, error_statuses,
                         timeout=300, sleep_time=5):
+        """
+        Wait for status change
+
+
+        @param observed_object: AWS object to be observed. MUST have 'get_status' method.
+        @param update_function: Callback used to update the status.
+        @param desired_statuses: Statuses we want to achieve- break the loop. (Success, Available etc.)
+        @param permit_statues: Statuses we permit to be as intermediate status. (Waiting, InProgress etc.)
+        @param error_statuses: Statuses indicating failure. (Failed, Error etc.)
+        @param timeout:
+        @param sleep_time:
+        @return:
+        """
         start_time = datetime.datetime.now()
         logger.info(f"Starting waiting loop for {observed_object.id} to become one of {desired_statuses}")
 
         for i in range(timeout // sleep_time):
             update_function(observed_object)
 
-            object_status = observed_object.get_status()
+            try:
+                object_status = observed_object.get_status()
+            except observed_object.UndefinedStatusError:
+                time.sleep(sleep_time)
+                continue
 
             if object_status in desired_statuses:
                 break
