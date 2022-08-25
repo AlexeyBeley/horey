@@ -4,8 +4,6 @@ Module to handle cross service interaction
 import json
 import os
 import datetime
-import pdb
-
 import time
 import zipfile
 from collections import defaultdict
@@ -4016,4 +4014,3 @@ class AWSAPI:
             h_tb.blocks.append(h_tb_grp)
 
         return h_tb
-
