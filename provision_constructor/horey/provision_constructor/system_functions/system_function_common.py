@@ -63,6 +63,9 @@ class SystemFunctionCommon:
             if package_name in pip_package:
                 return True
 
+        for line in SystemFunctionCommon.PIP_PACKAGES:
+            logger.info(f"Installed: {line}")
+
     @staticmethod
     def empty_parser():
         """
@@ -634,13 +637,22 @@ class SystemFunctionCommon:
         hours = 0
         minutes = 0
         seconds = 0
+        days = 0
 
         try:
             index = duration_lst.index("days")
             days = int(duration_lst[index - 1])
             duration_lst = duration_lst[:index - 1] + duration_lst[index + 1:]
         except ValueError:
-            days = 0
+            pass
+
+        try:
+            index = duration_lst.index("weeks")
+            weeks = int(duration_lst[index - 1])
+            duration_lst = duration_lst[:index - 1] + duration_lst[index + 1:]
+            days += weeks * 7
+        except ValueError:
+            pass
 
         try:
             index = duration_lst.index("day")
