@@ -1,7 +1,7 @@
 """
 AWS lambda client to handle lambda service API requests.
 """
-import pdb
+
 from base64 import b64decode
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.base_entities.aws_account import AWSAccount
@@ -25,11 +25,17 @@ class ECRClient(Boto3Client):
         super().__init__(client_name)
 
     def get_authorization_info(self, region=None):
-        current_account = AWSAccount.get_aws_account()
+        """
+        Get authorization info to be used by docker client to connect the repo.
+
+        @param region:
+        @return:
+        """
 
         if region is not None:
             AWSAccount.set_aws_region(region)
-        filters_req = {"registryIds": [current_account.id]} if current_account is not None else None
+
+        filters_req = {"registryIds": [self.account_id]}
         lst_ret = list(self.execute(self.client.get_authorization_token, "authorizationData", filters_req=filters_req))
         for dict_src in lst_ret:
             auth_user_token = b64decode(dict_src['authorizationToken']).decode()
@@ -40,6 +46,13 @@ class ECRClient(Boto3Client):
         return lst_ret
 
     def provision_repository(self, repository):
+        """
+        Provision ECR repo.
+
+        @param repository:
+        @return:
+        """
+
         AWSAccount.set_aws_region(repository.region)
 
         region_repos = self.get_region_repositories(repository.region, repository_names=[repository.name])
@@ -50,15 +63,24 @@ class ECRClient(Boto3Client):
         return repository.update_from_raw_create(dict_ret)
 
     def provision_repository_raw(self, request_dict):
+        """
+        Provision ECR repo from dict request.
+
+        @param request_dict:
+        @return:
+        """
+
         for response in self.execute(self.client.create_repository, "repository", filters_req=request_dict):
             return response
 
     def get_all_images(self, repository):
         """
         Get all images in all regions.
+
         :return:
         """
-        final_result = list()
+
+        final_result = []
         AWSAccount.set_aws_region(repository.region)
         filters_req = {"repositoryName": repository.name, "filter": {"tagStatus": "ANY"}}
         for dict_src in self.execute(self.client.describe_images, "imageDetails", filters_req=filters_req):
@@ -66,7 +88,7 @@ class ECRClient(Boto3Client):
             final_result.append(obj)
 
         return final_result
-    
+
     def get_all_repositories(self, region=None):
         """
         Get all repositories in all regions.
@@ -76,19 +98,27 @@ class ECRClient(Boto3Client):
         if region is not None:
             return self.get_region_repositories(region)
 
-        final_result = list()
-        for region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_repositories(region)
+        final_result = []
+        for _region in AWSAccount.get_aws_account().regions.values():
+            final_result += self.get_region_repositories(_region)
 
         return final_result
 
     def get_region_repositories(self, region, repository_names=None):
+        """
+        Get region ECR repos.
+
+        @param region:
+        @param repository_names:
+        @return:
+        """
+
         logger.info(f"Getting all repositories in region {str(region)}")
-        filters_req = dict()
+        filters_req = {}
         if repository_names is not None:
             filters_req["repositoryNames"] = repository_names
 
-        final_result = list()
+        final_result = []
         AWSAccount.set_aws_region(region)
         for dict_src in self.execute(self.client.describe_repositories, "repositories", filters_req=filters_req,
                                      exception_ignore_callback=lambda error: "RepositoryNotFoundException" in repr(error)):
@@ -98,11 +128,25 @@ class ECRClient(Boto3Client):
         return final_result
 
     def dispose_repository(self, repository: ECRRepository):
+        """
+        Self explanatory
+
+        @param repository:
+        @return:
+        """
+
         AWSAccount.set_aws_region(repository.region)
 
         dict_ret = self.dispose_repository_raw(repository.generate_dispose_request())
         return repository.update_from_raw_create(dict_ret)
 
     def dispose_repository_raw(self, request_dict):
+        """
+        Self explanatory
+
+        @param request_dict:
+        @return:
+        """
+
         for response in self.execute(self.client.delete_repository, "repository", filters_req=request_dict):
             return response
