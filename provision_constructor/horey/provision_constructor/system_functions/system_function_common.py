@@ -217,10 +217,11 @@ class SystemFunctionCommon:
         os.makedirs(os.path.dirname(dst_file_path), exist_ok=True)
         shutil.copyfile(src_file_path, dst_file_path)
 
-    def provision_file(self, src_file_path, dst_file_path):
+    def provision_file(self, src_file_path, dst_file_path, sudo=False):
         """
         Self explanatory.
 
+        @param sudo: 
         @param src_file_path:
         @param dst_file_path:
         @return:
@@ -229,9 +230,10 @@ class SystemFunctionCommon:
         if src_file_path.startswith("./"):
             src_file_path = os.path.join(self.system_function_provisioner_dir_path, src_file_path)
 
-        os.makedirs(os.path.dirname(dst_file_path), exist_ok=True)
-        SystemFunctionCommon.run_bash(f"sudo rm -rf {dst_file_path}")
-        SystemFunctionCommon.run_bash(f"sudo cp {src_file_path} {dst_file_path}")
+        prefix = "sudo " if sudo else ""
+        SystemFunctionCommon.run_bash(f"{prefix}mkdir -p {os.path.dirname(dst_file_path)}")
+        SystemFunctionCommon.run_bash(f"{prefix}rm -rf {dst_file_path}")
+        SystemFunctionCommon.run_bash(f"{prefix}cp {src_file_path} {dst_file_path}")
 
     # region compare_files
     @staticmethod
