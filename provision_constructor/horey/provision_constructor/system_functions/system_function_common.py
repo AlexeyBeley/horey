@@ -490,7 +490,15 @@ class SystemFunctionCommon:
                     dict_inst = json.loads(str(inst))
                     if raise_on_error_callback is not None and raise_on_error_callback(dict_inst):
                         raise
-                    logger.error(dict_inst)
+                    str_uid = str(uuid.uuid4())
+                    logger.warning(f"Failed to run command '{command}' with str_uid: '{str_uid}'")
+                    try:
+                        logger.warning(f"output_uid_start_{str_uid}\n{json.load(dict_inst['stdout'])}\noutput_uid_end{str_uid}")
+                        logger.warning(f"error_uid_start_{str_uid}\n{json.load(dict_inst['stderr'])}\nerror_uid_end{str_uid}")
+                    except Exception:
+                        logger.warning(f"output_uid_start_{str_uid}\n{dict_inst['stdout']}\noutput_uid_end{str_uid}")
+                        logger.warning(f"error_uid_start_{str_uid}\n{dict_inst['stderr']}\nerror_uid_end{str_uid}")
+
                     time.sleep(0.5)
             SystemFunctionCommon.unlock_dpckg_lock()
 
