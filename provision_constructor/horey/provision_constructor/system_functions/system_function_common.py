@@ -89,10 +89,11 @@ class SystemFunctionCommon:
         return os.path.join(cur_dir, *(subpath.split("/")))
 
     @staticmethod
-    def run_bash(command, ignore_on_error_callback=None):
+    def run_bash(command, ignore_on_error_callback=None, debug=True):
         """
         Run bash command, return stdout, stderr and return code.
 
+        @param debug:
         @param command:
         @param ignore_on_error_callback:
         @return:
@@ -110,6 +111,11 @@ class SystemFunctionCommon:
         return_dict = {"stdout": ret.stdout.decode().strip("\n"),
                        "stderr": ret.stderr.decode().strip("\n"),
                        "code": ret.returncode}
+        if debug:
+            logger.info("stdout:")
+            logger.info(return_dict["stdout"])
+            logger.info("stderr:")
+            logger.info(return_dict["stderr"])
         if ret.returncode != 0:
             if ignore_on_error_callback is not None and not ignore_on_error_callback(return_dict):
                 raise SystemFunctionCommon.BashError(json.dumps(return_dict))
