@@ -89,11 +89,14 @@ class SystemFunctionCommon:
         return os.path.join(cur_dir, *(subpath.split("/")))
 
     @staticmethod
-    def run_bash(command, ignore_on_error_callback=None, debug=True):
+    def run_bash(command, ignore_on_error_callback=None, timeout=60*10, debug=True):
         """
         Run bash command, return stdout, stderr and return code.
+        Timeout is used fot stuck commands - for example if the command expects for user input.
+        Like dpkg installation approve - happens all the time with logstash package.
 
-        @param debug:
+        @param timeout: In seconds. Default 10 minutes
+        @param debug: print return code, stdout and stderr
         @param command:
         @param ignore_on_error_callback:
         @return:
@@ -105,7 +108,7 @@ class SystemFunctionCommon:
         with open(file_name, "w") as file_handler:
             file_handler.write(command)
             command = f"/bin/bash {file_name}"
-        ret = subprocess.run([command], capture_output=True, shell=True)
+        ret = subprocess.run([command], capture_output=True, shell=True, timeout=timeout)
 
         os.remove(file_name)
         return_dict = {"stdout": ret.stdout.decode().strip("\n"),
@@ -442,6 +445,7 @@ class SystemFunctionCommon:
                    "is not available, but is referred to by another package" in response["stdout"]
 
         SystemFunctionCommon.run_apt_bash_command(command, raise_on_error_callback=raise_on_error_callback)
+        SystemFunctionCommon.reinit_apt_packages()
 
     @staticmethod
     def apt_check_installed(package_name):
