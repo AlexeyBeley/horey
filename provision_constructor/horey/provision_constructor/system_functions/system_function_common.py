@@ -429,6 +429,9 @@ class SystemFunctionCommon:
     @staticmethod
     def apt_install(package_name=None, upgrade_version=True):
         SystemFunctionCommon.init_apt_packages()
+
+        logger.info(f"Installing apt package: '{package_name}'")
+
         if upgrade_version or not SystemFunctionCommon.apt_check_installed(package_name):
             command = f"sudo apt install -y {package_name}"
         else:
