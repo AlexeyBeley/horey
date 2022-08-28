@@ -42,10 +42,10 @@ class Provisioner(SystemFunctionCommon):
 
     def provision(self, force=False):
         """
-        Provision the service
+        Provision the service.
 
         @param force:
-        @return:
+        @return: True if provisioning ran, False if skipped.
         """
 
         if not force and self.test_provisioned():
@@ -81,6 +81,7 @@ class Provisioner(SystemFunctionCommon):
         """
 
         self.provision_file(os.path.join(self.unit_file_location, self.unit_file_name),
-                            os.path.join("/etc/systemd/system/", self.unit_file_name))
+                            os.path.join("/etc/systemd/system/", self.unit_file_name), sudo=True)
         self.run_bash("sudo systemctl daemon-reload")
+        self.run_bash(f"sudo systemctl restart {self.name}")
         self.run_bash(f"sudo systemctl enable {self.name}")
