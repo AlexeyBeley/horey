@@ -57,6 +57,8 @@ class SNSClient(Boto3Client):
         return final_result
 
     def update_subscription_information(self, subscription):
+        logger.info(f"Updating subscription information: 'SubscriptionArn': '{subscription.arn}'")
+
         for dict_src in self.execute(self.client.get_subscription_attributes, None, raw_data=True,
                                      filters_req={"SubscriptionArn": subscription.arn}):
             subscription.attributes = dict_src["Attributes"]
