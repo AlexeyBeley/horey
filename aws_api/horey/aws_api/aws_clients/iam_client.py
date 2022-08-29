@@ -135,8 +135,10 @@ class IamClient(Boto3Client):
         @return:
         """
 
-        group.policies = list(self.execute(self.client.list_group_policies, "PolicyNames",
+        policy_names = list(self.execute(self.client.list_group_policies, "PolicyNames",
                                            filters_req={"MaxItems": 1000, "GroupName": group.name}))
+        if policy_names:
+            breakpoint()
         group.attached_policies = list(self.execute(self.client.list_attached_group_policies, "AttachedPolicies",
                                                     filters_req={"MaxItems": 1000, "GroupName": group.name}))
 

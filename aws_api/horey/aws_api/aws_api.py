@@ -3924,6 +3924,7 @@ class AWSAPI:
 
         h_tb_users = self.generate_security_report_users()
         h_tb.blocks.append(h_tb_users)
+
         h_tb_policies = self.generate_security_report_policies()
         h_tb.blocks.append(h_tb_policies)
 
