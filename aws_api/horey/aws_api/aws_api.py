@@ -4,6 +4,8 @@ Module to handle cross service interaction
 import json
 import os
 import datetime
+import pdb
+
 import time
 import zipfile
 from collections import defaultdict
@@ -3919,13 +3921,17 @@ class AWSAPI:
         h_tb = TextBlock("IAM security report")
         self.init_iam_policies(from_cache=True, cache_file=self.configuration.aws_api_iam_policies_cache_file)
         #self.init_iam_roles()
-
         self.init_iam_users(from_cache=True, cache_file=self.configuration.aws_api_iam_users_cache_file)
-        #self.init_iam_groups()
+        self.init_iam_groups(from_cache=True, cache_file=self.configuration.aws_api_iam_groups_cache_file)
+
         h_tb_users = self.generate_security_report_users()
         h_tb.blocks.append(h_tb_users)
+
         h_tb_policies = self.generate_security_report_policies()
         h_tb.blocks.append(h_tb_policies)
+
+        h_tb_groups = self.generate_security_report_groups()
+        h_tb.blocks.append(h_tb_groups)
 
         return h_tb
 
@@ -3964,7 +3970,7 @@ class AWSAPI:
         for user in self.users:
             if not user.attached_policies:
                 continue
-            used_policies += [pol['PolicyName'] for pol in user.attached_policies if
+            used_policies += [pol["PolicyName"] for pol in user.attached_policies if
                           pol["PolicyArn"].split(":")[4] != "aws"]
 
         used_policies = list(set(used_policies))
@@ -3976,6 +3982,38 @@ class AWSAPI:
             policies_block = json.dumps(policy.document.dict_src["Statement"], indent=2)
             h_tb_pol.lines.append(policies_block)
             h_tb.blocks.append(h_tb_pol)
+
+        return h_tb
+
+    def generate_security_report_groups(self):
+        """
+        Generate all users groups report.
+
+        @return:
+        """
+
+        used_grps = []
+        h_tb = TextBlock("AWS IAM groups used by Users:")
+        for user in self.users:
+            if not user.groups:
+                continue
+            used_grps += [grp["GroupName"] for grp in user.groups]
+
+        used_grps = list(set(used_grps))
+        for group_name in used_grps:
+            group = CommonUtils.find_objects_by_values(self.iam_groups, {"name": group_name}, max_count=1)[0]
+            h_tb_grp = TextBlock(f"GroupName: '{group.name}'")
+            h_tb_grp.lines.append("#" * 20)
+            breakpoint()
+            if group.policies:
+                policies_block = json.dumps([pol["Statement"] for pol in group.policies], indent=2)
+                h_tb_grp.lines.append(f"Inline Policies: {policies_block}")
+            if group.attached_policies:
+                h_tb_grp.lines.append(f"Attached Policies: {[pol['PolicyName'] for pol in group.attached_policies]}")
+
+            policies_block = json.dumps(group.document.dict_src["Statement"], indent=2)
+            h_tb_grp.lines.append(policies_block)
+            h_tb.blocks.append(h_tb_grp)
 
         return h_tb
 
