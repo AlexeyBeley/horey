@@ -162,7 +162,7 @@ def test_add_tags():
     image = images[0]
     docker_api.tag_image(image, mock_values["src_image_no_tags_new_tags"])
     breakpoint()
-    docker_api.upload_images(mock_values["src_image_no_tags_new_tags"])
+    docker_api.upload_images(mock_values["src_image_no_tags_new_tags"][1])
 
 
 if __name__ == "__main__":
