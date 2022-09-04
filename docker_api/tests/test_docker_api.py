@@ -15,9 +15,6 @@ mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 src_aws_region = "us-west-2"
 dst_aws_region = "us-west-2"
 
-src_aws_region = "us-east-1"
-
-
 def test_init_docker_api():
     """
     Test basic init.
