@@ -15,6 +15,8 @@ mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 src_aws_region = "us-west-2"
 dst_aws_region = "us-west-2"
 
+src_aws_region = "us-east-1"
+
 
 def test_init_docker_api():
     """
@@ -146,6 +148,20 @@ def test_get_all_images():
     images = docker_api.get_all_images(repo_name=mock_values["repo_name"])
     assert images is not None
 
+def test_add_tags():
+    """
+    Pull add tags push
+
+    @return:
+    """
+
+    docker_api = DockerAPI()
+    login(docker_api)
+    images = docker_api.pull_images(mock_values["src_image_no_tags"])
+    image = images[0]
+    docker_api.tag_image(image, mock_values["src_image_no_tags_new_tags"])
+    docker_api.upload_images(mock_values["src_image_no_tags_new_tags"])
+
 
 if __name__ == "__main__":
     #test_init_docker_api()
@@ -156,4 +172,5 @@ if __name__ == "__main__":
     #test_pull_image()
     #test_copy_image()
     #test_remove_image()
-    test_get_all_images()
+    #test_get_all_images()
+    test_add_tags()

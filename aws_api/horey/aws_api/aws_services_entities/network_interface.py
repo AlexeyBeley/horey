@@ -102,7 +102,7 @@ class NetworkInterface(AwsObject):
 
     def get_public_addresses(self):
         if self.association is None:
-            raise RuntimeError(self.dict_src)
+            raise RuntimeError(f"self.association is None in  interface {self.dict_src}")
         return [IP(self.association["PublicIp"] + "/32")]
 
     def get_security_groups_endpoints(self):
