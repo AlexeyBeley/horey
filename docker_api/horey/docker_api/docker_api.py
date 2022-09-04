@@ -95,18 +95,22 @@ class DockerAPI:
         key = "status"
         if key in log_line:
             logger.info(log_line[key])
+            return
 
         key = "stream"
         if key in log_line:
             logger.info(log_line[key])
+            return
 
         key = "aux"
         if key in log_line:
             logger.info(log_line[key])
+            return
 
         key = "error"
         if key in log_line:
             logger.error(log_line[key])
+            return
 
         logger.error(f"Unknown keys in: {log_line}")
 
@@ -134,6 +138,7 @@ class DockerAPI:
 
         logger.info(f"Uploading image to repository {repo_tags}")
         for repository in repo_tags:
+            logger.info(f"Uploading {repository} to repository")
             time_start = datetime.datetime.now()
             for log_line in self.client.images.push(repository=repository, stream=True, decode=True):
                 self.print_log_line(log_line)
@@ -153,7 +158,6 @@ class DockerAPI:
         logger.info(f"Pulling image from repository {repo}")
         if tag is not None and repo.find(":") > -1:
             raise RuntimeError(f"Using both repo tag and tag kwarg: {repo}, {tag}")
-
         images = self.client.images.pull(repository=repo, tag=tag, all_tags=all_tags, decode=True)
         if not isinstance(images, list):
             images = [images]

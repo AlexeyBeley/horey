@@ -121,7 +121,8 @@ class ECRClient(Boto3Client):
         final_result = []
         AWSAccount.set_aws_region(region)
         for dict_src in self.execute(self.client.describe_repositories, "repositories", filters_req=filters_req,
-                                     exception_ignore_callback=lambda error: "RepositoryNotFoundException" in repr(error)):
+                                     exception_ignore_callback=lambda error: "RepositoryNotFoundException" in repr(
+                                         error)):
             obj = ECRRepository(dict_src)
             final_result.append(obj)
 
@@ -150,3 +151,37 @@ class ECRClient(Boto3Client):
 
         for response in self.execute(self.client.delete_repository, "repository", filters_req=request_dict):
             return response
+
+    def tag_image(self, image, new_tags):
+        """
+        Tag the image
+
+        @param image:
+        @return:
+        """
+
+        for response in self.execute(self.client.describe_images, "imageDetails",
+                                     filters_req={"repositoryName": image.repository_name,
+                                                  "imageIds": [{"imageTag": image.image_tags[0]}]}):
+
+            if all(tag in response["imageTags"] for tag in new_tags):
+                return
+
+        images = None
+        for response in self.execute(self.client.batch_get_image, None, raw_data=True,
+                                     filters_req={"repositoryName": image.repository_name,
+                                                  "imageIds": [{"imageTag": image.image_tags[0]}]}):
+            images = response["images"]
+            if response.get("failures"):
+                raise RuntimeError(response.get("failures"))
+
+        if len(images) != 1:
+            raise RuntimeError(f"len(images) != 1: {len(images)}")
+
+        image_manifest = images[0]["imageManifest"]
+        for image_new_tag in new_tags:
+            for response in self.execute(self.client.put_image, "image",
+                                         filters_req={"repositoryName": image.repository_name,
+                                                      "imageManifest": image_manifest,
+                                                      "imageTag": image_new_tag}):
+                assert response
