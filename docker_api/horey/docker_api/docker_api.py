@@ -95,18 +95,22 @@ class DockerAPI:
         key = "status"
         if key in log_line:
             logger.info(log_line[key])
+            return
 
         key = "stream"
         if key in log_line:
             logger.info(log_line[key])
+            return
 
         key = "aux"
         if key in log_line:
             logger.info(log_line[key])
+            return
 
         key = "error"
         if key in log_line:
             logger.error(log_line[key])
+            return
 
         logger.error(f"Unknown keys in: {log_line}")
 
