@@ -46,7 +46,7 @@ class Provisioner(SystemFunctionCommon):
             self._provision(package_name)
 
             if not self.test_provisioned(package_name):
-                raise RuntimeError(f"Was not able to installed {package_name}")
+                raise RuntimeError(f"Failed to install apt package '{package_name}'")
 
             logger.info(f"Successfully installed apt package: {package_name}")
 

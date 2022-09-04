@@ -22,7 +22,6 @@ class Provisioner(SystemFunctionCommon):
             self._release_codename = response["stdout"]
         return self._release_codename
 
-
     def provision(self, force=False):
         if not force:
             if self.test_provisioned():
@@ -54,5 +53,6 @@ class Provisioner(SystemFunctionCommon):
         self.apt_install("docker-ce")
         self.run_bash("sudo groupadd docker || true")
         self.run_bash('sudo usermod -aG docker "${USER}"')
+        self.run_bash("sudo chmod 0666 /var/run/docker.sock")
 
 

@@ -70,3 +70,4 @@ class Provisioner(SystemFunctionCommon):
         """
 
         self.run_bash(f"cd {self.horey_repo_path} && make recursive_install_from_source-{package_name}")
+        self.init_pip_packages()

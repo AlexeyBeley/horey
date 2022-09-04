@@ -63,6 +63,9 @@ class SystemFunctionCommon:
             if package_name in pip_package:
                 return True
 
+        for line in SystemFunctionCommon.PIP_PACKAGES:
+            logger.info(f"Installed: {line}")
+
     @staticmethod
     def empty_parser():
         """
@@ -76,9 +79,9 @@ class SystemFunctionCommon:
     def current_subpath(subpath=None):
         """
         Sub path of this current file + subpath from input.
-        
-        @param subpath: 
-        @return: 
+
+        @param subpath:
+        @return:
         """
         cur_dir = os.path.dirname(os.path.abspath(__file__))
         if subpath is None:
@@ -86,10 +89,14 @@ class SystemFunctionCommon:
         return os.path.join(cur_dir, *(subpath.split("/")))
 
     @staticmethod
-    def run_bash(command, ignore_on_error_callback=None):
+    def run_bash(command, ignore_on_error_callback=None, timeout=60*10, debug=True):
         """
         Run bash command, return stdout, stderr and return code.
+        Timeout is used fot stuck commands - for example if the command expects for user input.
+        Like dpkg installation approve - happens all the time with logstash package.
 
+        @param timeout: In seconds. Default 10 minutes
+        @param debug: print return code, stdout and stderr
         @param command:
         @param ignore_on_error_callback:
         @return:
@@ -101,14 +108,22 @@ class SystemFunctionCommon:
         with open(file_name, "w") as file_handler:
             file_handler.write(command)
             command = f"/bin/bash {file_name}"
-        ret = subprocess.run([command], capture_output=True, shell=True)
+        ret = subprocess.run([command], capture_output=True, shell=True, timeout=timeout)
 
         os.remove(file_name)
         return_dict = {"stdout": ret.stdout.decode().strip("\n"),
                        "stderr": ret.stderr.decode().strip("\n"),
                        "code": ret.returncode}
+        if debug:
+            logger.info("stdout:")
+            logger.info(return_dict["stdout"])
+            logger.info("stderr:")
+            logger.info(return_dict["stderr"])
         if ret.returncode != 0:
-            if ignore_on_error_callback is not None and not ignore_on_error_callback(return_dict):
+            if ignore_on_error_callback is None:
+                raise SystemFunctionCommon.BashError(json.dumps(return_dict))
+
+            if not ignore_on_error_callback(return_dict):
                 raise SystemFunctionCommon.BashError(json.dumps(return_dict))
 
         return return_dict
@@ -205,10 +220,11 @@ class SystemFunctionCommon:
         os.makedirs(os.path.dirname(dst_file_path), exist_ok=True)
         shutil.copyfile(src_file_path, dst_file_path)
 
-    def provision_file(self, src_file_path, dst_file_path):
+    def provision_file(self, src_file_path, dst_file_path, sudo=False):
         """
         Self explanatory.
 
+        @param sudo:
         @param src_file_path:
         @param dst_file_path:
         @return:
@@ -217,9 +233,10 @@ class SystemFunctionCommon:
         if src_file_path.startswith("./"):
             src_file_path = os.path.join(self.system_function_provisioner_dir_path, src_file_path)
 
-        os.makedirs(os.path.dirname(dst_file_path), exist_ok=True)
-        SystemFunctionCommon.run_bash(f"sudo rm -rf {dst_file_path}")
-        SystemFunctionCommon.run_bash(f"sudo cp {src_file_path} {dst_file_path}")
+        prefix = "sudo " if sudo else ""
+        SystemFunctionCommon.run_bash(f"{prefix}mkdir -p {os.path.dirname(dst_file_path)}")
+        SystemFunctionCommon.run_bash(f"{prefix}rm -rf {dst_file_path}")
+        SystemFunctionCommon.run_bash(f"{prefix}cp {src_file_path} {dst_file_path}")
 
     # region compare_files
     @staticmethod
@@ -362,24 +379,35 @@ class SystemFunctionCommon:
         """
 
         min_uptime = int(min_uptime)
-        status_name = "active"
+        desired_status_name = "active"
         status_change_seconds_limit = 120
         service_status_raw = SystemFunctionCommon.get_systemd_service_status(service_name)
         service_status = SystemFunctionCommon.extract_service_status_value(service_status_raw)
+
+        if service_status in ["inactive", "failed"]:
+            return False
+
         server_time, seconds_duration = SystemFunctionCommon.extract_service_status_times(service_status_raw)
 
         time_limit = datetime.datetime.now() + datetime.timedelta(seconds=status_change_seconds_limit)
-        while service_status != status_name and datetime.datetime.now() < time_limit:
+        while service_status != desired_status_name and datetime.datetime.now() < time_limit:
             logger.info(
-                f"Waiting for status to change from {service_status} to {status_name}. Going to sleep for 5 sec")
+                f"Waiting for status to change from {service_status} to {desired_status_name}. Going to sleep for 5 sec")
             time.sleep(5)
             service_status_raw = SystemFunctionCommon.get_systemd_service_status(service_name)
             service_status = SystemFunctionCommon.extract_service_status_value(service_status_raw)
+
+            if service_status == "inactive":
+                raise RuntimeError("Service is inactive. Should be something else.")
+
+            if service_status == "failed":
+                return False
+
             server_time, seconds_duration = SystemFunctionCommon.extract_service_status_times(service_status_raw)
 
-        if service_status != status_name:
+        if service_status != desired_status_name:
             raise TimeoutError(
-                f"service {service_name} did not reach {status_name} in {status_change_seconds_limit} seconds")
+                f"service {service_name} did not reach {desired_status_name} in {status_change_seconds_limit} seconds")
 
         if min_uptime <= seconds_duration:
             return True
@@ -389,15 +417,19 @@ class SystemFunctionCommon:
         time.sleep(min_uptime - seconds_duration)
         service_status_raw = SystemFunctionCommon.get_systemd_service_status(service_name)
         service_status = SystemFunctionCommon.extract_service_status_value(service_status_raw)
+
+        if service_status == "inactive":
+            raise RuntimeError("Service is inactive. Should be something else.")
+
         server_time, seconds_duration = SystemFunctionCommon.extract_service_status_times(service_status_raw)
-        if service_status != status_name:
+        if service_status != desired_status_name:
             raise TimeoutError(f"service {service_name} seams to be in restart loop")
 
         if min_uptime <= seconds_duration:
             return True
 
         raise TimeoutError(
-            f"service {service_name} seams to be in restart loop after cause it can not keep {status_name} "
+            f"service {service_name} seams to be in restart loop after cause it can not keep {desired_status_name} "
             f"status for {min_uptime} seconds. Current status duration is {seconds_duration} ")
 
     # endregion
@@ -405,6 +437,11 @@ class SystemFunctionCommon:
     # region apt_install
     @staticmethod
     def action_apt_install_parser():
+        """
+        Used by actor.
+
+        @return:
+        """
         description = "apt_install"
         parser = argparse.ArgumentParser(description=description)
         parser.add_argument("--packages", required=True, type=str, help="Service name to check")
@@ -414,12 +451,30 @@ class SystemFunctionCommon:
 
     @staticmethod
     def action_apt_install(arguments):
+        """
+        Used by actor.
+
+        @param arguments:
+        @return:
+        """
+
         arguments_dict = vars(arguments)
         SystemFunctionCommon.apt_install(**arguments_dict)
 
     @staticmethod
     def apt_install(package_name=None, upgrade_version=True):
+        """
+        Run apt install or upgrade.
+
+        @param package_name:
+        @param upgrade_version:
+        @return:
+        """
+
         SystemFunctionCommon.init_apt_packages()
+
+        logger.info(f"Installing apt package: '{package_name}'")
+
         if upgrade_version or not SystemFunctionCommon.apt_check_installed(package_name):
             command = f"sudo apt install -y {package_name}"
         else:
@@ -430,9 +485,16 @@ class SystemFunctionCommon:
                    "is not available, but is referred to by another package" in response["stdout"]
 
         SystemFunctionCommon.run_apt_bash_command(command, raise_on_error_callback=raise_on_error_callback)
+        SystemFunctionCommon.reinit_apt_packages()
 
     @staticmethod
     def apt_check_installed(package_name):
+        """
+        Check if the package or prefix+wildcard was installed.
+
+        @param package_name:
+        @return:
+        """
         SystemFunctionCommon.init_apt_packages()
         if "*" in package_name:
             return SystemFunctionCommon.apt_check_installed_regex(package_name)
@@ -444,6 +506,12 @@ class SystemFunctionCommon:
 
     @staticmethod
     def apt_check_installed_regex(package_name: str):
+        """
+        Check installed by prefix and wildcard. e.g. 'logstash*'
+
+        @param package_name:
+        @return:
+        """
         if package_name.count("*") == 1 and package_name.endswith("*"):
             package_name = package_name[:-1]
             for package in SystemFunctionCommon.APT_PACKAGES:
@@ -455,9 +523,21 @@ class SystemFunctionCommon:
 
     @staticmethod
     def apt_purge(str_regex_name):
+        """
+        Self explanatory.
+
+        @param str_regex_name:
+        @return:
+        """
         return SystemFunctionCommon.run_apt_bash_command(f"sudo apt purge -y {str_regex_name}")
 
     def apt_check_repository_exists(self, repo_name):
+        """
+        Check weather we already have this repo.
+
+        @param repo_name:
+        @return:
+        """
         self.init_apt_repositories()
         for repo in self.APT_REPOSITORIES:
             if repo_name in repo.str_src:
@@ -465,10 +545,25 @@ class SystemFunctionCommon:
         return False
 
     def apt_add_repository(self, repo_name):
+        """
+        Apt add repo by name.
+
+        @param repo_name:
+        @return:
+        """
+
         self.run_apt_bash_command(f"sudo add-apt-repository -y {repo_name}")
 
     @staticmethod
     def run_apt_bash_command(command, raise_on_error_callback=None):
+        """
+        Run apt commands with status checks unlocking the frontend.lock file and retries.
+
+        @param command:
+        @param raise_on_error_callback:
+        @return:
+        """
+
         for unlock_counter in range(3):
             for counter in range(10):
                 try:
@@ -478,7 +573,8 @@ class SystemFunctionCommon:
                     dict_inst = json.loads(str(inst))
                     if raise_on_error_callback is not None and raise_on_error_callback(dict_inst):
                         raise
-                    logger.error(dict_inst)
+                    logger.warning(f"Failed to run command '{command}' Retrying...")
+
                     time.sleep(0.5)
             SystemFunctionCommon.unlock_dpckg_lock()
 
@@ -502,6 +598,12 @@ class SystemFunctionCommon:
 
     @staticmethod
     def update_packages():
+        """
+        Update the information from apt repositories.
+        If we update the repo list we need to run update.
+
+        @return:
+        """
         if SystemFunctionCommon.APT_PACKAGES_UPDATED:
             return
 
@@ -516,12 +618,22 @@ class SystemFunctionCommon:
 
     @staticmethod
     def reinit_apt_packages():
+        """
+        After we modify the apt packages' statuses (install, update, remove...) we need to reinit.
+
+        @return:
+        """
         SystemFunctionCommon.APT_PACKAGES = None
         SystemFunctionCommon.APT_PACKAGES_UPDATED = None
         SystemFunctionCommon.init_apt_packages()
 
     @staticmethod
     def init_apt_packages():
+        """
+        Init installed packages list.
+
+        @return:
+        """
         SystemFunctionCommon.update_packages()
         if SystemFunctionCommon.APT_PACKAGES is None:
             SystemFunctionCommon.APT_PACKAGES = []
@@ -535,6 +647,12 @@ class SystemFunctionCommon:
 
     @staticmethod
     def init_apt_repositories():
+        """
+        Init all repositories from all .list files.
+        Used to validate we have all the needed repos added already.
+
+        @return:
+        """
         if SystemFunctionCommon.APT_REPOSITORIES is None:
 
             SystemFunctionCommon.APT_REPOSITORIES = []
@@ -552,8 +670,16 @@ class SystemFunctionCommon:
 
     @staticmethod
     def init_apt_repositories_from_file(file_path):
+        """
+        Init the list of repositories from files.
+        Repos are being used by APT for 'update' functionality.
+        These repositories can be added manually by changing sources.list files.
+
+        @param file_path:
+        @return:
+        """
         ret = []
-        with open(file_path) as file_handler:
+        with open(file_path, encoding="utf-8") as file_handler:
             lines = file_handler.readlines()
 
         for line in lines:
@@ -593,8 +719,8 @@ class SystemFunctionCommon:
 
         lst_line = SystemFunctionCommon.extract_service_status_line_raw(service_status_raw)
         status = lst_line[1]
-        if status not in ["active", "failed", "activating"]:
-            raise NotImplementedError(f"status is {status}")
+        if status not in ["active", "failed", "activating", "inactive"]:
+            raise NotImplementedError(f"status is '{status}'")
         return status
 
     @staticmethod
@@ -634,13 +760,22 @@ class SystemFunctionCommon:
         hours = 0
         minutes = 0
         seconds = 0
+        days = 0
 
         try:
             index = duration_lst.index("days")
             days = int(duration_lst[index - 1])
             duration_lst = duration_lst[:index - 1] + duration_lst[index + 1:]
         except ValueError:
-            days = 0
+            pass
+
+        try:
+            index = duration_lst.index("weeks")
+            weeks = int(duration_lst[index - 1])
+            duration_lst = duration_lst[:index - 1] + duration_lst[index + 1:]
+            days += weeks * 7
+        except ValueError:
+            pass
 
         try:
             index = duration_lst.index("day")
@@ -813,7 +948,7 @@ class SystemFunctionCommon:
         try:
             response = SystemFunctionCommon.run_bash(f"sudo grep -F '{line}' {file_path}")
             if response["stdout"]:
-                return
+                return response
         except SystemFunctionCommon.BashError as inst:
             dict_inst = json.loads(str(inst))
             if "No such file or directory" not in dict_inst["stderr"]:
@@ -852,7 +987,9 @@ class SystemFunctionCommon:
         raise NotImplementedError("TBD")
 
     class FailedCheckError(RuntimeError):
-        pass
+        """
+        System function test has failed.
+        """
 
 
 SystemFunctionCommon.ACTION_MANAGER.register_action("check_files_exist",

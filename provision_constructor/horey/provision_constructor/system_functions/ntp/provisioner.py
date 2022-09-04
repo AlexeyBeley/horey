@@ -44,7 +44,7 @@ class Provisioner(SystemFunctionCommon):
         ret = self.run_bash("sudo timedatectl set-ntp false")
         logger.info(ret)
 
-        self.provision_file("./timesyncd.conf", "/etc/systemd/timesyncd.conf")
+        self.provision_file("./timesyncd.conf", "/etc/systemd/timesyncd.conf", sudo=True)
 
         ret = self.run_bash("sudo timedatectl set-ntp true")
         logger.info(ret)

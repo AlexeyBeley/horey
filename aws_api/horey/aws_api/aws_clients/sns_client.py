@@ -50,9 +50,14 @@ class SNSClient(Boto3Client):
             obj = SNSSubscription(dict_src)
             final_result.append(obj)
             if full_information:
-                if obj.arn == "PendingConfirmation":
+                if obj.arn in ["PendingConfirmation", "Deleted"]:
                     continue
-                self.update_subscription_information(obj)
+                try:
+                    self.update_subscription_information(obj)
+                except Exception as error_instance:
+                    if "Invalid parameter" not in repr(error_instance):
+                        raise
+                    logger.warning(f"failed to fetch data for sns subscription: {obj.dict_src}")
 
         return final_result
 

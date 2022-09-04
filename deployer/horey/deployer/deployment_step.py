@@ -17,7 +17,7 @@ class DeploymentStep:
 
         self.configuration = configuration
         self.status = None
-        self.status_code = None #  "success"/"failure"/"error"
+        self.status_code = None  # "success"/"failure"/"error"
         self.output = None
 
     def update_finish_status(self, local_deployment_data_dir_path):

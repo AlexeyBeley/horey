@@ -19,7 +19,7 @@ class Provisioner(SystemFunctionCommon):
 
     """
 
-    def __init__(self, deployment_dir, src=None, dst=None):
+    def __init__(self, deployment_dir, src=None, dst=None, sudo=False):
         super().__init__(os.path.dirname(os.path.abspath(__file__)))
         self.deployment_dir = deployment_dir
         if os.path.isfile(src):
@@ -27,9 +27,10 @@ class Provisioner(SystemFunctionCommon):
                 dst = os.path.join(dst, os.path.basename(src))
         else:
             raise NotImplementedError(f"Src must be a file for now: '{src}'")
-        
+
         self.src = src
         self.dst = dst
+        self.sudo = sudo
 
     def provision(self, force=False):
         """
@@ -68,4 +69,4 @@ class Provisioner(SystemFunctionCommon):
         @return:
         """
 
-        self.provision_file(self.src, self.dst)
+        self.provision_file(self.src, self.dst, sudo=self.sudo)
