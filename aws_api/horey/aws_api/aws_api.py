@@ -4,6 +4,8 @@ Module to handle cross service interaction
 import json
 import os
 import datetime
+import pdb
+
 import time
 import zipfile
 from collections import defaultdict
@@ -1072,7 +1074,7 @@ class AWSAPI:
             objects = self.iam_client.get_all_policies()
 
         self.iam_policies = objects
-    
+
     def init_iam_groups(self, from_cache=False, cache_file=None):
         """
         Init iam groups.
@@ -3128,6 +3130,86 @@ class AWSAPI:
 
         return main_route_tables[0]
 
+    def find_subnet_public_addresses(self, subnet: Subnet):
+        """
+        Find 0.0.0.0 route and its public IP.
+
+        @return:
+        """
+
+        route_table = self.find_route_table_by_subnet(subnet.region, subnet)
+        for route in route_table.routes:
+            if route["State"] != "active":
+                continue
+            if route["DestinationCidrBlock"] != "0.0.0.0/0":
+                continue
+
+            nat_gateway_id = route.get("NatGatewayId")
+            if nat_gateway_id is not None:
+                custom_filters = [
+                {
+                    "Name": "nat-gateway-id",
+                    "Values": [
+                        nat_gateway_id
+                    ]
+                }
+                ]
+                nat_gateways = self.ec2_client.get_region_nat_gateways(region=subnet.region, custom_filters=custom_filters)
+                if len(nat_gateways) != 1:
+                    raise RuntimeError(f"len(nat_gateways) = {len(nat_gateways)}")
+                nat_gateway = nat_gateways[0]
+                if nat_gateway.connectivity_type != "public":
+                    raise NotImplementedError(nat_gateway.dict_src)
+
+                return nat_gateway.get_public_ip_addresses()
+
+            gateway_id = route.get("GatewayId")
+            if gateway_id is not None:
+                return []
+
+        raise RuntimeError(f"Could not find public address for subnet {subnet.id} in region {subnet.region.region_mark}")
+
+    def find_subnet_default_route_nat_gateway(self, subnet):
+        """
+        Find subnets 0.0.0.0/0 route nat gateway is there is such.
+
+        @param subnet:
+        @return:
+        """
+
+        route_table = self.find_route_table_by_subnet(subnet.region, subnet)
+        for route in route_table.routes:
+            if route["State"] != "active":
+                continue
+
+            if route.get("DestinationCidrBlock") is None:
+                if route.get("DestinationIpv6CidrBlock") is None:
+                    raise RuntimeError(f"Can't analyze route: {route}")
+                continue
+
+            if route.get("DestinationCidrBlock") != "0.0.0.0/0":
+                continue
+
+            nat_gateway_id = route.get("NatGatewayId")
+            if nat_gateway_id is not None:
+                custom_filters = [
+                    {
+                        "Name": "nat-gateway-id",
+                        "Values": [
+                            nat_gateway_id
+                        ]
+                    }
+                ]
+                nat_gateways = self.ec2_client.get_region_nat_gateways(region=subnet.region, custom_filters=custom_filters)
+                if len(nat_gateways) != 1:
+                    raise RuntimeError(f"len(nat_gateways) = {len(nat_gateways)}")
+                nat_gateway = nat_gateways[0]
+                if nat_gateway.connectivity_type != "public":
+                    raise NotImplementedError(nat_gateway.dict_src)
+
+                return nat_gateway
+        return None
+
     def get_ecr_authorization_info(self, region=None):
         """
         Info needed to register to ECR service.
@@ -3910,7 +3992,7 @@ class AWSAPI:
         @return:
         """
         return self.ec2_client.create_image(instance, timeout=timeout)
-    
+
     def generate_security_reports(self):
         """
         Generate all erports
@@ -3918,7 +4000,7 @@ class AWSAPI:
         """
         h_tb = TextBlock("IAM security report")
         self.init_iam_policies(from_cache=True, cache_file=self.configuration.aws_api_iam_policies_cache_file)
-        #self.init_iam_roles()
+        # self.init_iam_roles()
         self.init_iam_users(from_cache=True, cache_file=self.configuration.aws_api_iam_users_cache_file)
         self.init_iam_groups(from_cache=True, cache_file=self.configuration.aws_api_iam_groups_cache_file)
 
@@ -3943,7 +4025,7 @@ class AWSAPI:
         h_tb = TextBlock("AWS IAM Users:")
         for user in self.users:
             h_tb_user = TextBlock(f"UserName: '{user.name}'")
-            h_tb_user.lines.append("#"*20)
+            h_tb_user.lines.append("#" * 20)
 
             if user.policies:
                 policies_block = json.dumps([pol["Statement"] for pol in user.policies], indent=2)
@@ -3969,7 +4051,7 @@ class AWSAPI:
             if not user.attached_policies:
                 continue
             used_policies += [pol["PolicyName"] for pol in user.attached_policies if
-                          pol["PolicyArn"].split(":")[4] != "aws"]
+                              pol["PolicyArn"].split(":")[4] != "aws"]
 
         used_policies = list(set(used_policies))
         for policy_name in used_policies:
@@ -3998,19 +4080,33 @@ class AWSAPI:
             used_grps += [grp["GroupName"] for grp in user.groups]
 
         used_grps = list(set(used_grps))
+        used_policies = []
         for group_name in used_grps:
             group = CommonUtils.find_objects_by_values(self.iam_groups, {"name": group_name}, max_count=1)[0]
             h_tb_grp = TextBlock(f"GroupName: '{group.name}'")
             h_tb_grp.lines.append("#" * 20)
-            breakpoint()
-            if group.policies:
-                policies_block = json.dumps([pol["Statement"] for pol in group.policies], indent=2)
-                h_tb_grp.lines.append(f"Inline Policies: {policies_block}")
-            if group.attached_policies:
-                h_tb_grp.lines.append(f"Attached Policies: {[pol['PolicyName'] for pol in group.attached_policies]}")
 
-            policies_block = json.dumps(group.document.dict_src["Statement"], indent=2)
-            h_tb_grp.lines.append(policies_block)
+            if group.policies:
+                policies_block = json.dumps([pol for pol in group.policies], indent=2)
+                h_tb_grp.lines.append(f"Inline Policies: {policies_block}")
+
+            if group.attached_policies:
+                attached_policies = [pol['PolicyName'] for pol in group.attached_policies]
+                h_tb_grp.lines.append(f"Attached Policies: {attached_policies}")
+                used_policies += attached_policies
             h_tb.blocks.append(h_tb_grp)
+
+        used_policies = list(set(used_policies))
+        h_tb_policies = TextBlock(f"Attached Policies used by Groups")
+        for policy_name in used_policies:
+            h_tb_pol = TextBlock(f"PolicyName: {policy_name}")
+            policy = CommonUtils.find_objects_by_values(self.iam_policies, {"name": policy_name}, max_count=1)[0]
+            policies_block = json.dumps(policy.document.dict_src['Statement'], indent=2)
+            h_tb_pol.lines.append(policies_block)
+
+            h_tb_pol.lines.append("#" * 20)
+            h_tb_policies.blocks.append(h_tb_pol)
+
+        h_tb.blocks.append(h_tb_policies)
 
         return h_tb

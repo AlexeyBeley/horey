@@ -15,6 +15,13 @@ class IP:
         return IP.ANY
 
     def __init__(self, address, **kwargs):
+        """
+        String ip address ipv4 or v6
+
+        :param address: "1.1.1.1", "1.1.1.1/32"
+        :param kwargs: int_mask=32
+        """
+
         self.type = None
         self._str_int_mask = None
         self._int_mask = None
