@@ -138,6 +138,7 @@ class DockerAPI:
 
         logger.info(f"Uploading image to repository {repo_tags}")
         for repository in repo_tags:
+            logger.info(f"Uploading {repository} to repository")
             time_start = datetime.datetime.now()
             for log_line in self.client.images.push(repository=repository, stream=True, decode=True):
                 self.print_log_line(log_line)
