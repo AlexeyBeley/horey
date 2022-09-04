@@ -7,7 +7,6 @@ import os
 
 from horey.aws_api.aws_clients.ecr_client import ECRClient
 from horey.h_logger import get_logger
-from horey.aws_api.base_entities.region import Region
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.common_utils.common_utils import CommonUtils
 
@@ -18,12 +17,10 @@ accounts_file_full_path = os.path.abspath(os.path.join(os.path.dirname(os.path.a
 
 accounts = CommonUtils.load_object_from_module(accounts_file_full_path, "main")
 AWSAccount.set_aws_account(accounts["1111"])
-AWSAccount.set_aws_region(accounts["1111"].regions['us-west-2'])
+AWSAccount.set_aws_region(accounts["1111"].regions["us-west-2"])
 
 mock_values_file_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "ignore", "mock_values.py"))
 mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
-
-region = Region.get_region("us-east-1")
 
 
 def test_init_ecr_client():
@@ -55,7 +52,7 @@ def test_tag_image():
     """
 
     client = ECRClient()
-    repos = client.get_region_repositories(region)
+    repos = client.get_region_repositories(accounts["1111"].regions["us-west-2"])
     images = client.get_all_images(repos[4])
     client.tag_image(images[3], ["test_tag"])
 
