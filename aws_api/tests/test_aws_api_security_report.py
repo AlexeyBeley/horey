@@ -20,7 +20,9 @@ aws_api = AWSAPI(configuration=configuration)
 @pytest.mark.skip(reason="IAM policies cleanup will be enabled explicitly")
 def test_report():
     tb_ret = aws_api.generate_security_reports()
-    print(tb_ret.format_pprint(multiline=True))
+    breakpoint()
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "ignore", "security_report.txt"), "w") as file_handler:
+        file_handler.write(tb_ret.format_pprint(multiline=True))
 
 
 if __name__ == "__main__":

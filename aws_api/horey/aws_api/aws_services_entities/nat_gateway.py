@@ -1,9 +1,9 @@
 """
 AWS Lambda representation
 """
-import pdb
 from enum import Enum
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
+from horey.network.ip import IP
 
 
 class NatGateway(AwsObject):
@@ -13,6 +13,9 @@ class NatGateway(AwsObject):
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self.instances = []
+        self.nat_gateway_addresses = None
+        self.subnet_id = None
+        self.allocation_id = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -73,6 +76,15 @@ class NatGateway(AwsObject):
         }
 
         self.init_attrs(dict_src, init_options)
+
+    def get_public_ip_addresses(self):
+        """
+        Get all the public IPs
+
+        @return:
+        """
+
+        return [IP(address["PublicIp"], int_mask=32) for address in self.nat_gateway_addresses]
 
     @property
     def name(self):

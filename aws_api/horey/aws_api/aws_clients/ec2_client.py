@@ -918,18 +918,19 @@ class EC2Client(Boto3Client):
             final_result += self.get_region_internet_gateways(region, full_information=full_information)
         return final_result
 
-    def get_region_internet_gateways(self, region, full_information=True):
+    def get_region_internet_gateways(self, region, full_information=True, custom_filters=None):
         """
         Standard
 
+        @param custom_filters:
         @param region:
         @param full_information:
         @return:
         """
         AWSAccount.set_aws_region(region)
         final_result = []
-
-        for response in self.execute(self.client.describe_internet_gateways, "InternetGateways"):
+        filters_req = None if custom_filters is None else {"Filters": custom_filters}
+        for response in self.execute(self.client.describe_internet_gateways, "InternetGateways", filters_req=filters_req):
             obj = InternetGateway(response)
             if full_information is True:
                 pass
@@ -1062,18 +1063,20 @@ class EC2Client(Boto3Client):
             final_result += self.get_region_nat_gateways(_region, full_information=full_information)
         return final_result
 
-    def get_region_nat_gateways(self, region, full_information=True):
+    def get_region_nat_gateways(self, region, full_information=True, custom_filters=None,):
         """
         Standard
 
+        @param custom_filters:
         @param region:
         @param full_information:
         @return:
         """
         AWSAccount.set_aws_region(region)
         final_result = []
+        filters_req = None if custom_filters is None else {"Filters": custom_filters}
 
-        for response in self.execute(self.client.describe_nat_gateways, "NatGateways"):
+        for response in self.execute(self.client.describe_nat_gateways, "NatGateways", filters_req=filters_req):
             obj = NatGateway(response)
             if full_information is True:
                 pass
