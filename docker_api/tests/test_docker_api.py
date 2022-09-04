@@ -149,22 +149,6 @@ def test_get_all_images():
     assert images is not None
 
 
-def test_add_tags():
-    """
-    Pull add tags push
-
-    @return:
-    """
-
-    docker_api = DockerAPI()
-    login(docker_api)
-    images = docker_api.pull_images(mock_values["src_image_no_tags"], all_tags=True)
-    image = images[0]
-    docker_api.tag_image(image, mock_values["src_image_no_tags_new_tags"])
-    breakpoint()
-    docker_api.upload_images([mock_values["src_image_no_tags_new_tags"][1]])
-
-
 if __name__ == "__main__":
     #test_init_docker_api()
     #test_build()
@@ -174,5 +158,4 @@ if __name__ == "__main__":
     #test_pull_image()
     #test_copy_image()
     #test_remove_image()
-    #test_get_all_images()
-    test_add_tags()
+    test_get_all_images()
