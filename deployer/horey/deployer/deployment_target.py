@@ -8,6 +8,7 @@ class DeploymentTarget:
     Single server deployment
     """
     def __init__(self):
+        self.hostame = None
         self.remote_deployment_dir_path = None
         self.deployment_data_dir_name = None
 
