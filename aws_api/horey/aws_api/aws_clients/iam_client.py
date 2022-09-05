@@ -43,24 +43,36 @@ class IamClient(Boto3Client):
             user = IamUser(response)
             final_result.append(user)
             if full_information:
-                user.policies = list(self.execute(self.client.list_user_policies,
-                                                           "PolicyNames",
-                                                           filters_req={"UserName": user.name}))
+                policies = list(self.execute(self.client.list_user_policies,
+                                             "PolicyNames",
+                                             filters_req={"UserName": user.name}))
+
+                user.policies = [list(self.execute(self.client.get_user_policy,
+                                                   "PolicyDocument",
+                                                   filters_req={"UserName": user.name, "PolicyName": policy_name}))[0]
+                                 for policy_name in policies]
 
                 user.attached_policies = list(self.execute(self.client.list_attached_user_policies,
                                                            "AttachedPolicies",
                                                            filters_req={"UserName": user.name}))
 
                 user.groups = list(self.execute(self.client.list_groups_for_user,
-                                                           "Groups",
-                                                           filters_req={"UserName": user.name}))
-
-        if full_information:
-            for update_info in self.execute(self.client.get_account_authorization_details, "UserDetailList"):
-                _user = CommonUtils.find_objects_by_values(final_result, {"id": update_info["UserId"]}, max_count=1)[0]
-                _user.update_attributes(update_info)
+                                                "Groups",
+                                                filters_req={"UserName": user.name}))
 
         return final_result
+
+    def get_account_authorization_details(self):
+        """
+        Account's security details.
+
+        @return:
+        """
+
+        ret = []
+        for update_info in self.execute(self.client.get_account_authorization_details, None, raw_data=True):
+            ret.append(update_info)
+        return ret
 
     def get_all_access_keys(self):
         """
@@ -73,7 +85,8 @@ class IamClient(Boto3Client):
         users = self.get_all_users()
 
         for user in users:
-            for result in self.execute(self.client.list_access_keys, "AccessKeyMetadata", filters_req={"UserName": user.name}):
+            for result in self.execute(self.client.list_access_keys, "AccessKeyMetadata",
+                                       filters_req={"UserName": user.name}):
                 final_result.append(IamAccessKey(result))
 
         return final_result
@@ -95,13 +108,12 @@ class IamClient(Boto3Client):
                 self.update_iam_role_full_information(role, policies=policies)
 
         return final_result
-    
+
     def get_all_groups(self, full_information=True):
         """
         Get all groups
 
         :param full_information:
-        :param policies:
         :return:
         """
 
@@ -123,8 +135,12 @@ class IamClient(Boto3Client):
         @return:
         """
 
-        group.policies = list(self.execute(self.client.list_group_policies, "PolicyNames", filters_req={"MaxItems": 1000, "GroupName": group.name}))
-        group.attached_policies = list(self.execute(self.client.list_attached_group_policies, "AttachedPolicies", filters_req={"MaxItems": 1000, "GroupName": group.name}))
+        policy_names = list(self.execute(self.client.list_group_policies, "PolicyNames",
+                                           filters_req={"MaxItems": 1000, "GroupName": group.name}))
+        if policy_names:
+            breakpoint()
+        group.attached_policies = list(self.execute(self.client.list_attached_group_policies, "AttachedPolicies",
+                                                    filters_req={"MaxItems": 1000, "GroupName": group.name}))
 
     def get_all_instance_profiles(self):
         """
@@ -134,7 +150,8 @@ class IamClient(Boto3Client):
         """
 
         final_result = []
-        for result in self.execute(self.client.list_instance_profiles, "InstanceProfiles", filters_req={"MaxItems": 1000}):
+        for result in self.execute(self.client.list_instance_profiles, "InstanceProfiles",
+                                   filters_req={"MaxItems": 1000}):
             instance_profile = IamInstanceProfile(result)
             final_result.append(instance_profile)
         return final_result
@@ -176,7 +193,8 @@ class IamClient(Boto3Client):
         if policies is None:
             return
 
-        for managed_policy in self.execute(self.client.list_attached_role_policies, "AttachedPolicies", filters_req={"RoleName": iam_role.name, "MaxItems": 1000}):
+        for managed_policy in self.execute(self.client.list_attached_role_policies, "AttachedPolicies",
+                                           filters_req={"RoleName": iam_role.name, "MaxItems": 1000}):
             found_policies = CommonUtils.find_objects_by_values(policies, {"arn": managed_policy["PolicyArn"]})
 
             if len(found_policies) != 1:
@@ -191,8 +209,10 @@ class IamClient(Boto3Client):
         :param iam_role:
         :return:
         """
-        for poilcy_name in self.execute(self.client.list_role_policies, "PolicyNames", filters_req={"RoleName": iam_role.name, "MaxItems": 1000}):
-            for document_dict in self.execute(self.client.get_role_policy, "PolicyDocument", filters_req={"RoleName": iam_role.name, "PolicyName": poilcy_name}):
+        for poilcy_name in self.execute(self.client.list_role_policies, "PolicyNames",
+                                        filters_req={"RoleName": iam_role.name, "MaxItems": 1000}):
+            for document_dict in self.execute(self.client.get_role_policy, "PolicyDocument",
+                                              filters_req={"RoleName": iam_role.name, "PolicyName": poilcy_name}):
                 policy_dict = {"PolicyName": poilcy_name}
                 policy = IamPolicy(policy_dict)
 
@@ -243,7 +263,8 @@ class IamClient(Boto3Client):
         :return: None, raise if fails
         """
 
-        for response in self.execute(self.client.get_policy_version, "PolicyVersion", filters_req={"PolicyArn": policy.arn, "VersionId": policy.default_version_id}):
+        for response in self.execute(self.client.get_policy_version, "PolicyVersion",
+                                     filters_req={"PolicyArn": policy.arn, "VersionId": policy.default_version_id}):
             policy.update_statements(response)
 
     def attach_role_policy_raw(self, request_dict):
@@ -312,7 +333,8 @@ class IamClient(Boto3Client):
         @return:
         """
 
-        for response in self.execute(self.client.get_instance_profile, "InstanceProfile", filters_req={"InstanceProfileName": iam_instance_profile.name},
+        for response in self.execute(self.client.get_instance_profile, "InstanceProfile",
+                                     filters_req={"InstanceProfileName": iam_instance_profile.name},
                                      exception_ignore_callback=lambda x: "NoSuchEntity" in repr(x)):
             iam_instance_profile.update_from_raw_response(response)
 
@@ -346,7 +368,8 @@ class IamClient(Boto3Client):
         """
 
         logger.info(f"add_role_to_instance_profile: {request}")
-        for response in self.execute(self.client.add_role_to_instance_profile, None, raw_data=True, filters_req=request):
+        for response in self.execute(self.client.add_role_to_instance_profile, None, raw_data=True,
+                                     filters_req=request):
             return response
 
     def provision_iam_instance_profile_raw(self, request_dict):

@@ -63,6 +63,7 @@ def test_init_and_cache_iam_groups():
 def test_init_and_cache_iam_users():
     aws_api.init_iam_users()
     aws_api.cache_objects(aws_api.users, configuration.aws_api_iam_users_cache_file)
+    pdb.set_trace()
 
     print(f"len(users) = {len(aws_api.users)}")
     assert isinstance(aws_api.users, list)
@@ -687,8 +688,9 @@ if __name__ == "__main__":
     #test_init_and_cache_glue_tables()
     #test_init_and_cache_glue_databases()
     #test_init_and_cache_iam_instance_profiles()
-    #test_init_and_cache_iam_groups()
-    test_init_and_cache_iam_users()
+    test_init_and_cache_iam_groups()
+    #test_init_and_cache_iam_users()
+    #test_init_and_cache_iam_policies()
     #test_init_and_cache_dynamodb_tables()
     #test_init_and_cache_dynamodb_endpoints()
     #test_init_and_cache_sesv2_email_identities()
