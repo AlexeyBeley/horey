@@ -53,8 +53,8 @@ def test_tag_image():
 
     client = ECRClient()
     repos = client.get_region_repositories(accounts["1111"].regions["us-west-2"])
-    images = client.get_all_images(repos[4])
-    client.tag_image(images[3], ["test_tag"])
+    images = client.get_all_images(repos[-17])
+    client.tag_image(images[2], ["test_tag"])
 
 
 if __name__ == "__main__":
