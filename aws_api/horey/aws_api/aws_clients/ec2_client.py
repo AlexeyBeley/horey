@@ -710,17 +710,18 @@ class EC2Client(Boto3Client):
         """
 
         if region is not None:
-            return self.get_all_managed_prefix_lists_in_region(region, full_information=full_information)
+            return self.get_region_managed_prefix_lists(region, full_information=full_information)
 
         final_result = []
         for _region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_all_managed_prefix_lists_in_region(_region, full_information=full_information)
+            final_result += self.get_region_managed_prefix_lists(_region, full_information=full_information)
         return final_result
 
-    def get_all_managed_prefix_lists_in_region(self, region, full_information=True):
+    def get_region_managed_prefix_lists(self, region, full_information=True, custom_filters=None):
         """
         Standard
 
+        @param custom_filters:
         @param region:
         @param full_information:
         @return:
@@ -728,7 +729,7 @@ class EC2Client(Boto3Client):
         AWSAccount.set_aws_region(region)
         final_result = []
 
-        for response in self.execute(self.client.describe_managed_prefix_lists, "PrefixLists"):
+        for response in self.execute(self.client.describe_managed_prefix_lists, "PrefixLists", filters_req=custom_filters):
             obj = ManagedPrefixList(response)
             if full_information is True:
                 self.update_managed_prefix_list_full_information(obj)
@@ -1584,7 +1585,9 @@ class EC2Client(Boto3Client):
 
             if region_ec2_instance.get_tagname(ignore_missing_tag=True) == ec2_instance.get_tagname():
                 ec2_instance.update_from_raw_response(region_ec2_instance.dict_src)
-                raise RuntimeError("Filter by tag Name did not work.")
+                return
+
+            raise RuntimeError("Filter by tag Name did not work.")
 
         try:
             response = self.provision_ec2_instance_raw(ec2_instance.generate_create_request())
