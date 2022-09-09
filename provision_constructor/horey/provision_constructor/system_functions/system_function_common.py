@@ -2,7 +2,7 @@
 Common functionality to all system_functions.
 
 """
-
+# pylint: disable=too-many-lines
 import json
 import shutil
 import datetime
@@ -63,8 +63,7 @@ class SystemFunctionCommon:
             if package_name in pip_package:
                 return True
 
-        for line in SystemFunctionCommon.PIP_PACKAGES:
-            logger.info(f"Installed: {line}")
+        return False
 
     @staticmethod
     def empty_parser():
@@ -105,9 +104,10 @@ class SystemFunctionCommon:
         logger.info(f"run_bash: {command}")
 
         file_name = f"tmp-{str(uuid.uuid4())}.sh"
-        with open(file_name, "w") as file_handler:
+        with open(file_name, "w", encoding="utf-8") as file_handler:
             file_handler.write(command)
             command = f"/bin/bash {file_name}"
+        # pylint: disable=subprocess-run-check
         ret = subprocess.run([command], capture_output=True, shell=True, timeout=timeout)
 
         os.remove(file_name)
@@ -115,10 +115,9 @@ class SystemFunctionCommon:
                        "stderr": ret.stderr.decode().strip("\n"),
                        "code": ret.returncode}
         if debug:
-            logger.info("stdout:")
-            logger.info(return_dict["stdout"])
-            logger.info("stderr:")
-            logger.info(return_dict["stderr"])
+            logger.info(f"return_code:{return_dict['code']}")
+            logger.info(f"stdout:\n{return_dict['stdout']}")
+            logger.info(f"stderr:\n{return_dict['stderr']}")
         if ret.returncode != 0:
             if ignore_on_error_callback is None:
                 raise SystemFunctionCommon.BashError(json.dumps(return_dict))
@@ -141,7 +140,7 @@ class SystemFunctionCommon:
         if not os.path.isfile(file_path):
             return False
 
-        with open(file_path) as file_handler:
+        with open(file_path, encoding="utf-8") as file_handler:
             file_contents = file_handler.read()
 
         return str_content in file_contents
@@ -156,7 +155,7 @@ class SystemFunctionCommon:
 
         description = "Returns true if all files exist"
         parser = argparse.ArgumentParser(description=description)
-        parser.add_argument("--files_paths", required=True, type=str, help=f"Comma separated string file list")
+        parser.add_argument("--files_paths", required=True, type=str, help="Comma separated string file list")
         return parser
 
     @staticmethod
@@ -277,10 +276,10 @@ class SystemFunctionCommon:
         @return:
         """
 
-        with open(src_file_path) as file_handler:
+        with open(src_file_path, encoding="utf-8") as file_handler:
             src_file_string = file_handler.read()
 
-        with open(dst_file_path) as file_handler:
+        with open(dst_file_path, encoding="utf-8") as file_handler:
             dst_file_string = file_handler.read()
 
         if src_file_string == dst_file_string:
@@ -332,7 +331,7 @@ class SystemFunctionCommon:
         """
 
         replacement_engine = ReplacementEngine()
-        with open(src_file_path) as file_handler:
+        with open(src_file_path, encoding="utf-8") as file_handler:
             replacement_string = file_handler.read()
 
         replacement_engine.perform_comment_line_replacement(dst_file_path, comment_line, replacement_string,
@@ -387,7 +386,7 @@ class SystemFunctionCommon:
         if service_status in ["inactive", "failed"]:
             return False
 
-        server_time, seconds_duration = SystemFunctionCommon.extract_service_status_times(service_status_raw)
+        _, seconds_duration = SystemFunctionCommon.extract_service_status_times(service_status_raw)
 
         time_limit = datetime.datetime.now() + datetime.timedelta(seconds=status_change_seconds_limit)
         while service_status != desired_status_name and datetime.datetime.now() < time_limit:
@@ -403,7 +402,7 @@ class SystemFunctionCommon:
             if service_status == "failed":
                 return False
 
-            server_time, seconds_duration = SystemFunctionCommon.extract_service_status_times(service_status_raw)
+            _, seconds_duration = SystemFunctionCommon.extract_service_status_times(service_status_raw)
 
         if service_status != desired_status_name:
             raise TimeoutError(
@@ -421,7 +420,7 @@ class SystemFunctionCommon:
         if service_status == "inactive":
             raise RuntimeError("Service is inactive. Should be something else.")
 
-        server_time, seconds_duration = SystemFunctionCommon.extract_service_status_times(service_status_raw)
+        _, seconds_duration = SystemFunctionCommon.extract_service_status_times(service_status_raw)
         if service_status != desired_status_name:
             raise TimeoutError(f"service {service_name} seams to be in restart loop")
 
@@ -564,8 +563,8 @@ class SystemFunctionCommon:
         @return:
         """
 
-        for unlock_counter in range(3):
-            for counter in range(10):
+        for _ in range(3):
+            for __ in range(10):
                 try:
                     ret = SystemFunctionCommon.run_bash(command)
                     return ret
@@ -582,13 +581,18 @@ class SystemFunctionCommon:
 
     @staticmethod
     def unlock_dpckg_lock():
+        """
+        Force unlocking - kill processes using the lock.
+        @return:
+        """
         ret = SystemFunctionCommon.run_bash("sudo lsof /var/lib/dpkg/lock-frontend | awk '/[0-9]+/{print $2}'")
         logger.info(ret)
         if ret["stdout"]:
             ret = SystemFunctionCommon.run_bash(f'sudo kill -s 9 {ret["stdout"]} || true')
             logger.info(ret)
 
-    def kill_process(self, str_pid):
+    @staticmethod
+    def kill_process(str_pid):
         """
         @param str_pid:
         @return:
@@ -660,7 +664,7 @@ class SystemFunctionCommon:
             repos = SystemFunctionCommon.init_apt_repositories_from_file("/etc/apt/sources.list")
             SystemFunctionCommon.APT_REPOSITORIES.extend(repos)
 
-            for root, dirs, files in os.walk("/etc/apt/sources.list.d"):
+            for root, _, files in os.walk("/etc/apt/sources.list.d"):
                 for file_name in files:
                     if os.path.splitext(file_name)[1] != ".list":
                         continue
@@ -702,7 +706,7 @@ class SystemFunctionCommon:
         @param service_name:
         @return:
         """
-
+        # pylint: disable= subprocess-run-check
         command = f"systemctl status {service_name}"
         ret = subprocess.run([command], capture_output=True, shell=True)
         decoded_ret = ret.stdout.decode().strip("\n")
@@ -753,7 +757,7 @@ class SystemFunctionCommon:
         @param duration_string:
         @return:
         """
-
+        # pylint: disable=too-many-statements, too-many-branches
         logger.info(f"Duration string '{duration_string}'")
 
         duration_lst = duration_string.lower().split(" ")
@@ -838,11 +842,13 @@ class SystemFunctionCommon:
         @param service_status_raw:
         @return:
         """
+
         for line in service_status_raw.split("\n"):
             line = line.strip(" ")
             if line.startswith("Active:"):
                 lst_line = line.split(" ")
                 return lst_line
+        return None
 
     # region files
     def check_file_provisioned(self, src_file_path: str, dst_file_path: str):
@@ -861,7 +867,7 @@ class SystemFunctionCommon:
             src_file_path = os.path.join(self.system_function_provisioner_dir_path, src_file_path)
 
         replacement_engine = ReplacementEngine()
-        with open(src_file_path) as file_handler:
+        with open(src_file_path, encoding="utf-8") as file_handler:
             replacement_string = file_handler.read()
 
         return replacement_engine.check_file_contains(dst_file_path, replacement_string)
@@ -919,15 +925,17 @@ class SystemFunctionCommon:
             line = line + "\n"
 
         try:
-            with open(file_path, "r") as file_handler:
+            with open(file_path, "r", encoding="utf-8") as file_handler:
                 lines = file_handler.readlines()
                 if line in lines:
-                    return
+                    return None
         except FileNotFoundError:
             pass
 
-        with open(file_path, "a+") as file_handler:
+        with open(file_path, "a+", encoding="utf-8") as file_handler:
             file_handler.write(line)
+
+        return None
 
     @staticmethod
     def add_line_to_file_sudo(line=None, file_path=None):
@@ -961,8 +969,6 @@ class SystemFunctionCommon:
         Running bash command returned != 0 code.
 
         """
-
-        pass
 
     def test_local_port(self):
         """

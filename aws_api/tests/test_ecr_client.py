@@ -8,6 +8,7 @@ import os
 from horey.aws_api.aws_clients.ecr_client import ECRClient
 from horey.h_logger import get_logger
 from horey.aws_api.base_entities.aws_account import AWSAccount
+from horey.aws_api.base_entities.region import Region
 from horey.common_utils.common_utils import CommonUtils
 
 configuration_values_file_full_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "h_logger_configuration_values.py")
@@ -52,9 +53,9 @@ def test_tag_image():
     """
 
     client = ECRClient()
-    repos = client.get_region_repositories(accounts["1111"].regions["us-west-2"])
-    images = client.get_all_images(repos[4])
-    client.tag_image(images[3], ["test_tag"])
+    repos = client.get_region_repositories(Region.get_region("us-east-1"))
+    images = client.get_all_images(repos[5])
+    client.tag_image(images[3], ["test_version"])
 
 
 if __name__ == "__main__":

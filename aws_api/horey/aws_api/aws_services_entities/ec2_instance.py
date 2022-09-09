@@ -1,6 +1,7 @@
 """
 Class to represent ec2 instance
 """
+import copy
 import datetime
 import pdb
 
@@ -139,6 +140,7 @@ class EC2Instance(AwsObject):
         :param interfaces:
         :return:
         """
+        self.network_interfaces = []
         for interface in interfaces:
             self.network_interfaces.append(NetworkInterface(interface))
 
@@ -318,12 +320,20 @@ class EC2Instance(AwsObject):
         request["MaxCount"] = self.max_count
         request["MinCount"] = self.min_count
 
-        request["TagSpecifications"] = [{
-            "ResourceType": "instance",
-            "Tags": self.tags}]
-
         if self.iam_instance_profile is not None:
             request["IamInstanceProfile"] = self.iam_instance_profile
+
+        tags = copy.deepcopy(self.tags)
+        for tag in tags:
+            if tag["Key"].lower() == "name":
+                tag["Key"] = "Name"
+                break
+        else:
+            raise RuntimeError(f"Tag 'Name' must present when provisioning ec2 instance. {request}")
+
+        request["TagSpecifications"] = [{
+            "ResourceType": "instance",
+            "Tags": tags}]
 
         return request
 

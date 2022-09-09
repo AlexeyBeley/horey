@@ -1,7 +1,6 @@
 """
 AWS ELB V2 handling
 """
-import pdb
 from enum import Enum
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 
@@ -17,6 +16,12 @@ class LoadBalancer(AwsObject):
         self.listeners = []
         self.rules = []
         self.arn = None
+        self.subnets = None
+        self.scheme = None
+        self.type = None
+        self.ip_address_type = None
+        self.state = None
+
         if from_cache:
             self._init_object_from_cache(dict_src)
             return
@@ -48,6 +53,13 @@ class LoadBalancer(AwsObject):
         self._init_from_cache(dict_src, options)
 
     def init_listeners_from_cache(self, _, lst_src):
+        """
+        Init objects
+
+        @param _:
+        @param lst_src:
+        @return:
+        """
         for dict_listener in lst_src:
             listener = self.Listener(dict_listener, from_cache=True)
             self.listeners.append(listener)
@@ -73,9 +85,9 @@ class LoadBalancer(AwsObject):
         grps = grps if grps is not None else []
 
         for sg in grps:
-            endpoint = {"sg_id": sg}
-            endpoint["dns"] = self.dns_name
-            endpoint["description"] = "lb: {}".format(self.name)
+            endpoint = {"sg_id": sg,
+                        "dns": self.dns_name,
+                        "description": f"lb: {self.name}"}
             ret.append(endpoint)
 
         return ret
@@ -91,6 +103,13 @@ class LoadBalancer(AwsObject):
         self.listeners.append(listener)
 
     def add_raw_rule(self, dict_src):
+        """
+        Add rule object from dict_src like dict
+
+        @param dict_src:
+        @return:
+        """
+
         rule = self.Rule(dict_src)
 
         self.rules.append(rule)
@@ -120,9 +139,8 @@ class LoadBalancer(AwsObject):
         CustomerOwnedIpv4Pool='string'
         """
 
-        request = dict()
-        request["Name"] = self.name
-        request["Subnets"] = self.subnets
+        request = {"Name": self.name,
+                   "Subnets": self.subnets}
 
         if self.security_groups is not None:
             request["SecurityGroups"] = self.security_groups
@@ -135,6 +153,12 @@ class LoadBalancer(AwsObject):
         return request
 
     def update_from_raw_response(self, dict_src):
+        """
+        Standard
+
+        @param dict_src:
+        @return:
+        """
         init_options = {
                         "LoadBalancerArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
                         "LoadBalancerName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
@@ -153,32 +177,55 @@ class LoadBalancer(AwsObject):
         self.init_attrs(dict_src, init_options)
 
     def generate_dispose_request(self):
+        """
+        Standard
+
+        @return:
+        """
         return {"LoadBalancerArn": self.arn}
 
     def get_state(self):
+        """
+        Used in waiter.
+
+        @return:
+        """
+        # pylint: disable=unsubscriptable-object
         if self.state["Code"] == "active":
             return self.State.ACTIVE
-        elif self.state["Code"] == "provisioning":
+        if self.state["Code"] == "provisioning":
             return self.State.PROVISIONING
-        elif self.state["Code"] == "active_impaired":
+        if self.state["Code"] == "active_impaired":
             return self.State.ACTIVE_IMPAIRED
-        elif self.state["Code"] == "failed":
+        if self.state["Code"] == "failed":
             return self.State.FAILED
-        else:
-            raise NotImplementedError(self.state["Code"])
+
+        raise NotImplementedError(self.state["Code"])
 
     class State(Enum):
+        """
+        Load balancer possible states
+
+        """
         ACTIVE = 0
         PROVISIONING = 1
         ACTIVE_IMPAIRED = 2
         FAILED = 3
 
     class Listener(AwsObject):
+        """
+        LB Listener
+
+        """
         def __init__(self, dict_src, from_cache=False):
             super().__init__(dict_src)
             self.ssl_policy = None
             self.certificates = None
             self.arn = None
+            self.protocol = None
+            self.port = None
+            self.load_balancer_arn = None
+            self.default_actions = None
 
             if from_cache:
                 self._init_object_from_cache(dict_src)
@@ -206,7 +253,12 @@ class LoadBalancer(AwsObject):
             self._init_from_cache(dict_src, options)
 
         def generate_create_request(self):
-            request = dict()
+            """
+            Standard
+
+            @return:
+            """
+            request = {}
 
             if self.ssl_policy is not None:
                 request["SslPolicy"] = self.ssl_policy
@@ -221,13 +273,26 @@ class LoadBalancer(AwsObject):
             return request
 
         def generate_dispose_request(self):
-            request = dict()
-            request["ListenerArn"] = self.arn
+            """
+            Standard
+
+            @return:
+            """
+
+            request = {"ListenerArn": self.arn}
             return request
 
     class Rule(AwsObject):
+        """
+        Listener rule
+
+        """
         def __init__(self, dict_src, from_cache=False):
             super().__init__(dict_src)
+            self.listener_arn = None
+            self.conditions = None
+            self.priority = None
+            self.actions = None
 
             if from_cache:
                 self._init_object_from_cache(dict_src)
@@ -253,24 +318,38 @@ class LoadBalancer(AwsObject):
             self._init_from_cache(dict_src, options)
 
         def generate_create_request(self):
-            request = dict()
+            """
+            Standard
 
-            request["ListenerArn"] = self.listener_arn
+            @return:
+            """
+            request = {"ListenerArn": self.listener_arn,
+                       "Conditions": self.conditions,
+                       "Priority": self.priority,
+                       "Actions": self.actions,
+                       "Tags": self.tags}
 
-            request["Conditions"] = self.conditions
-
-            request["Priority"] = self.priority
-            request["Actions"] = self.actions
-            request["Tags"] = self.tags
             return request
 
         def generate_dispose_request(self):
-            raise NotImplementedError()
+            """
+            Standard
+
+            @return:
+            """
+
+            raise NotImplementedError("""
             request = dict()
             request["ListenerArn"] = self.arn
-            return request
+            return request""")
 
         def update_from_raw_response(self, dict_src):
+            """
+            Standard
+
+            @param dict_src:
+            @return:
+            """
             init_options = {
                 "RuleArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
                 "Priority": self.init_default_attr,
