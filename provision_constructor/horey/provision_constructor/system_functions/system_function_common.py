@@ -613,7 +613,8 @@ class SystemFunctionCommon:
 
         ret = SystemFunctionCommon.run_bash("sudo apt update")
         output = ret["stdout"]
-        if "can be upgraded" not in output.split("\n")[-1]:
+        last_line = output.split("\n")[-1]
+        if "can be upgraded" not in last_line and "All packages are up to date." not in last_line:
             raise RuntimeError(output)
 
         SystemFunctionCommon.APT_PACKAGES_UPDATED = True
