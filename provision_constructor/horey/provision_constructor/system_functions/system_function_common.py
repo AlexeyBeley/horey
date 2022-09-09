@@ -116,9 +116,15 @@ class SystemFunctionCommon:
                        "code": ret.returncode}
         if debug:
             logger.info(f"return_code:{return_dict['code']}")
+
             stdout_log = "stdout:\n" + str(return_dict["stdout"])
-            logger.info(stdout_log)
-            logger.info(f"stderr:\n{return_dict['stderr']}")
+            for line in stdout_log.split("\n"):
+                logger.info(line)
+
+            stderr_log = "stderr:\n" + str(return_dict["stderr"])
+            for line in stderr_log.split("\n"):
+                logger.info(line)
+
         if ret.returncode != 0:
             if ignore_on_error_callback is None:
                 raise SystemFunctionCommon.BashError(json.dumps(return_dict))
