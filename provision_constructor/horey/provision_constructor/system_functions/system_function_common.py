@@ -116,7 +116,8 @@ class SystemFunctionCommon:
                        "code": ret.returncode}
         if debug:
             logger.info(f"return_code:{return_dict['code']}")
-            logger.info(f"stdout:\n{return_dict['stdout']}")
+            stdout_log = "stdout:\n" + str(return_dict["stdout"])
+            logger.info(stdout_log)
             logger.info(f"stderr:\n{return_dict['stderr']}")
         if ret.returncode != 0:
             if ignore_on_error_callback is None:
