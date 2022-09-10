@@ -347,6 +347,7 @@ class EC2Client(Boto3Client):
         if not self.update_security_group_information(existing_security_group):
             group_id = self.provision_security_group_raw(desired_security_group.generate_create_request())
             desired_security_group.id = group_id
+            existing_security_group.id = group_id
             existing_security_group.ip_permissions = []
             existing_security_group.ip_permissions_egress = []
 
