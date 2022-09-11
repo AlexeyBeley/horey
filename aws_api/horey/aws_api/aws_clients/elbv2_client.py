@@ -224,6 +224,7 @@ class ELBV2Client(Boto3Client):
             if region_load_balancer.get_state() not in [region_load_balancer.State.PROVISIONING, region_load_balancer.State.ACTIVE, region_load_balancer.State.ACTIVE_IMPAIRED]:
                 continue
             load_balancer.arn = region_load_balancer.arn
+            load_balancer.dns_name = region_load_balancer.dns_name
             return
 
         response = self.provision_load_balancer_raw(load_balancer.generate_create_request())

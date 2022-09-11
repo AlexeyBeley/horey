@@ -583,8 +583,12 @@ class EC2Client(Boto3Client):
 
         AWSAccount.set_aws_region(region)
         final_result = []
+
+        def _callback_not_found_exception(exception_inst):
+            return "NotFoundException" in repr(exception_inst)
+
         for dict_src in self.execute(self.client.describe_launch_template_versions, "LaunchTemplateVersions",
-                                     filters_req=custom_filters):
+                                     filters_req=custom_filters, exception_ignore_callback=_callback_not_found_exception):
             obj = EC2LaunchTemplateVersion(dict_src)
             final_result.append(obj)
         return final_result
@@ -1371,6 +1375,7 @@ class EC2Client(Boto3Client):
         @param launch_template:
         @return:
         """
+
         current_launch_template_version = self.find_region_launch_template_version(launch_template)
         if current_launch_template_version is not None:
             provision_version_request = current_launch_template_version.generate_create_request(launch_template)
