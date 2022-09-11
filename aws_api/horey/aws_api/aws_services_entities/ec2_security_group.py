@@ -130,9 +130,17 @@ class EC2SecurityGroup(AwsObject):
 
         lst_ret = []
         for permission in permissions:
-            base_permission = {"FromPort": permission["FromPort"],
-                               "IpProtocol": permission["IpProtocol"],
-                               "ToPort": permission["ToPort"]}
+            base_permission = {"IpProtocol": permission["IpProtocol"]}
+
+            try:
+                base_permission["FromPort"] = permission["FromPort"]
+            except KeyError:
+                pass
+
+            try:
+                base_permission["ToPort"] = permission["ToPort"]
+            except KeyError:
+                pass
 
             try:
                 for ip_range in permission["IpRanges"]:

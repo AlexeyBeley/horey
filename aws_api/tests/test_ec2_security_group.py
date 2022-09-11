@@ -98,8 +98,33 @@ def test_generate_modify_ip_permissions_requests_no_ip_ranges():
     assert update_description is None
 
 
+def test_split_permissions():
+    """
+    Test split All permissions.
+
+    @return:
+    """
+
+    src_permissions = [
+        {
+            "IpProtocol": "-1",
+            "IpRanges": [
+                {
+                    "CidrIp": "1.1.1.1/32",
+                    "Description": "1111 description"
+                }
+            ],
+            "Ipv6Ranges": [],
+            "PrefixListIds": []
+        }
+    ]
+    permissions = EC2SecurityGroup.split_permissions(src_permissions)
+    assert len(permissions) == 1
+
+
 if __name__ == "__main__":
     test_check_permissions_equal()
     test_generate_modify_ip_permissions_requests()
     test_generate_modify_ip_permissions_requests_2()
     test_generate_modify_ip_permissions_requests_no_ip_ranges()
+    test_split_permissions()
