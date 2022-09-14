@@ -174,7 +174,7 @@ class DockerAPI:
         @return:
         """
 
-        images = self.pull_images(src_repo_with_tag)
+        images = self.pull_images(src_repo_with_tag, all_tags=copy_all_tags)
         if len(images) != 1:
             raise RuntimeError(f"Expected 1 docker image with tag: {src_repo_with_tag}, found: {len(images)}")
 
