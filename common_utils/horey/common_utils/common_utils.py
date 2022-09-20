@@ -5,12 +5,33 @@ import datetime
 import importlib
 import os
 import sys
+import re
 
 
 class CommonUtils:
     """
     Some stuff to be reused
     """
+    _FIRST_CAP_RE = None
+    _ALL_CAP_RE = None
+
+    @staticmethod
+    def camel_case_to_snake_case(name):
+        """
+        Camel case to snake case
+
+        @param name:
+        @return:
+        """
+
+        if CommonUtils._FIRST_CAP_RE is None:
+            CommonUtils._FIRST_CAP_RE = re.compile('(.)([A-Z][a-z]+)')
+            CommonUtils._ALL_CAP_RE = re.compile('([a-z0-9])([A-Z])')
+
+        s1 = CommonUtils._FIRST_CAP_RE.sub(r'\1_\2', name)
+        s1 = s1.replace("__", "_")
+        return CommonUtils._ALL_CAP_RE.sub(r'\1_\2', s1).lower()
+
     @staticmethod
     def find_objects_by_values(objects, values, max_count=None):
         """

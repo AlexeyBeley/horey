@@ -75,8 +75,12 @@ class EventHandler:
             del dict_src["dict_src"]
         except KeyError:
             pass
+        try:
+            message.init_from_dict(dict_src)
+        except Exception as error_inst:
+            traceback_str = ''.join(traceback.format_tb(error_inst.__traceback__))
+            logger.exception(f"{traceback_str}\n{repr(error_inst)}")
 
-        message.init_from_dict(dict_src)
         return message
 
 

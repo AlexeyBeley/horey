@@ -91,8 +91,11 @@ class NetworkClient(AzureClient):
     def get_all_load_balancers(self, resource_group):
         return [LoadBalancer(obj.as_dict()) for obj in self.client.load_balancers.list(resource_group.name)]
 
-    def get_all_nat_gateways(self, resource_group):
-        return [NatGateway(obj.as_dict()) for obj in self.client.nat_gateways.list(resource_group.name)]
+    def get_all_nat_gateways(self, resource_group, resource_group_name=None):
+        if resource_group_name is None:
+            resource_group_name = resource_group.name
+
+        return [NatGateway(obj.as_dict()) for obj in self.client.nat_gateways.list(resource_group_name)]
 
     def get_all_network_interfaces(self, resource_group):
         return [NetworkInterface(obj.as_dict()) for obj in self.client.network_interfaces.list(resource_group.name)]

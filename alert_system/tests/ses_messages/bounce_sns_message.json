@@ -1,0 +1,22 @@
+{
+    "Records": [
+        {
+            "EventSource": "aws:sns",
+            "EventVersion": "1.0",
+            "EventSubscriptionArn": "arn:aws:sns:us-east-1:111111111111111:topic-alert_system_backend_api_production:5e52845d-5dd0-4d90-b5cc-7b208682769c",
+            "Sns": {
+                "Type": "Notification",
+                "MessageId": "090a1541-7d7e-54e7-b543-4ee010364b15",
+                "TopicArn": "arn:aws:sns:us-east-1:111111111111111:topic-alert_system_backend_api_production",
+                "Subject": null,
+                "Message": "{\"notificationType\":\"Bounce\",\"bounce\":{\"feedbackId\":\"0100018351fa179a-72867147-6411-4a0d-aaaa-37c77e11133b-000000\",\"bounceType\":\"Permanent\",\"bounceSubType\":\"OnAccountSuppressionList\",\"bouncedRecipients\":[{\"emailAddress\":\"doe.johns@gmail.com\",\"action\":\"failed\",\"status\":\"5.1.1\",\"diagnosticCode\":\"Amazon SES did not send the message to this address because it is on the suppression list for your account. For more information about removing addresses from the suppression list, see the Amazon SES Developer Guide at https://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-email-suppression-list.html\"}],\"timestamp\":\"2022-09-18T19:01:28.000Z\",\"reportingMTA\":\"dns; amazonses.com\"},\"mail\":{\"timestamp\":\"2022-09-18T19:01:27.718Z\",\"source\":\"Horey alert_system <horey.alert_system@horey.com>\",\"sourceArn\":\"arn:aws:ses:us-east-1:111111111111111:identity/horey.alert_system@horey.com\",\"sourceIp\":\"1.1.1.1\",\"callerIdentity\":\"alert_system_lambda-us-east-1-role\",\"sendingAccountId\":\"111111111111111\",\"messageId\":\"0100018351fa1626-d8cce068-6e62-43d8-aaaa-75912426078a-000000\",\"destination\":[\"doe.john@horey-system.com\"],\"headersTruncated\":false,\"headers\":[{\"name\":\"Date\",\"value\":\"Sun, 18 Sep 2022 19:01:27 +0000\"},{\"name\":\"From\",\"value\":\"horey alert system <alert_system@horey.com>\"},{\"name\":\"To\",\"value\":\"doe.john@horey-system.com\"},{\"name\":\"Message-ID\",\"value\":\"<1848239329.551890.1663527687904@ip-1-1-1-1.ec2.internal>\"},{\"name\":\"Subject\",\"value\":\"Horey alert system\"},{\"name\":\"MIME-Version\",\"value\":\"1.0\"},{\"name\":\"Content-Type\",\"value\":\"multipart/alternative;  boundary=\\\"----=_Part_551889_2108849738.1663527687903\\\"\"}],\"commonHeaders\":{\"from\":[\"Horey alert system <horey@horey.com>\"],\"date\":\"Sun, 18 Sep 2022 19:01:27 +0000\",\"to\":[\"doe.john@horey-system.com\"],\"messageId\":\"<1848239329.551890.1663527687904@ip-1-1-1-1.ec2.internal>\",\"subject\":\"Horey alert system\"}}}",
+                "Timestamp": "2022-09-18T19:01:28.305Z",
+                "SignatureVersion": "1",
+                "Signature": "okde781RvH9kAEv7xHIR36M60gGgJUjp8FLpkQ6NNxPvHJiTDAAkG1eZNSlH2DKHhd+YKfRdPyfMjPgPd0aFiD1hug24FJ4q4cVHZIeZIKH5OB/h1BJ9mJOiSTfNY6rejneeGJPKLQpcGJscxkLJ6Y9jPByOV6xlmVI1Y1YW2Fhtgfl5HohbgY20Ff1NtzvmBK+PhJ03Zv8CQpyd1vvKRP4+mt0UHFU32XNaiIoQ4nZf9tFU72KHgPKpK4ZE8TdlBff3OZ97OW5xUODqAYiSHUgFWtmFq2t4MbruhUuOA7MTF1/J8ucmTjBp5zOE3b0GMzZ7pujcAGe1a6j/Ykw+JQ==",
+                "SigningCertUrl": "https://sns.us-east-1.amazonaws.com/SimpleNotificationService-56e67fcb41f6fec0944496692625d385.pem",
+                "UnsubscribeUrl": "https://sns.us-east-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:us-east-1:111111111111111:topic-horey_alert_system:5e52845d-5dd0-4d90-b1cc-7b208682769c",
+                "MessageAttributes": {}
+            }
+        }
+    ]
+}

@@ -4,6 +4,7 @@ Message being received by the receiver lambda.
 """
 
 import uuid
+from horey.common_utils.common_utils import CommonUtils
 
 
 class Message:
@@ -125,11 +126,15 @@ class Message:
         @param dict_src:
         @return:
         """
-        private_attrs = [key[1:] for key in self.__dict__ if key.startswith("_")]
+
         for key, value in dict_src.items():
-            if key not in private_attrs:
-                raise ValueError(key)
-            setattr(self, key, value)
+            setattr(self, CommonUtils.camel_case_to_snake_case(key), value)
+
+        if "type" not in dict_src:
+            self.init_default_type()
+
+    def init_default_type(self):
+        self.type = ""
 
     def convert_to_dict(self):
         """

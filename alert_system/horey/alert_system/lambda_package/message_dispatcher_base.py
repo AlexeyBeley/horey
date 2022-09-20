@@ -94,9 +94,14 @@ class MessageDispatcherBase:
         """
 
         try:
-            self.handler_mapper[message.type](message)
+            return self.handler_mapper[message.type](message)
         except KeyError:
-            self.handle_cloudwatch_message_default(message)
+            return self.handle_cloudwatch_message_default(message, notify_on_failure=False)
+        except Exception:
+            pass
+
+        try:
+            return self.handle_ses_message_default(message)
         except Exception as error_inst:
             traceback_str = ''.join(traceback.format_tb(error_inst.__traceback__))
             logger.exception(f"{traceback_str}\n{repr(error_inst)}")
@@ -114,10 +119,11 @@ class MessageDispatcherBase:
             for notification_channel in self.notification_channels:
                 notification_channel.notify_alert_system_error(notification)
 
-    def handle_cloudwatch_message_default(self, message):
+    def handle_cloudwatch_message_default(self, message, notify_on_failure=True):
         """
         Standard cloudwatch message handling.
 
+        @param notify_on_failure:
         @param message:
         @return:
         """
@@ -126,6 +132,9 @@ class MessageDispatcherBase:
             alarms = self.split_sns_message_to_alarms(message)
             self.handle_cloudwatch_alarms_default(alarms)
         except Exception as error_inst:
+            if not notify_on_failure:
+                return
+
             traceback_str = ''.join(traceback.format_tb(error_inst.__traceback__))
             logger.exception(f"{traceback_str}\n{repr(error_inst)}")
 
@@ -316,6 +325,35 @@ class MessageDispatcherBase:
 
         ret = urllib.parse.quote(str_src, safe='')
         return ret.replace("%", "$25")
+
+    def handle_ses_message_default(self, message, notify_on_failure=True):
+        """
+        Standard AWS SES message handling.
+
+        @param notify_on_failure:
+        @param message:
+        @return:
+        """
+
+        try:
+            breakpoint()
+            alarms = self.split_sns_message_to_alarms(message)
+            self.handle_cloudwatch_alarms_default(alarms)
+        except Exception as error_inst:
+            if not notify_on_failure:
+                return
+
+            traceback_str = ''.join(traceback.format_tb(error_inst.__traceback__))
+            logger.exception(f"{traceback_str}\n{repr(error_inst)}")
+
+            text = json.dumps(message.convert_to_dict())
+            notification = Notification()
+            notification.type = Notification.Types.CRITICAL
+            notification.header = "Unhandled message in alert_system"
+            notification.text = text
+
+            for notification_channel in self.notification_channels:
+                notification_channel.notify_alert_system_error(notification)
 
 
 class CloudwatchAlarm:

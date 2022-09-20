@@ -23,7 +23,7 @@ class AzureAPI:
         self.compute_client = ComputeClient()
         self.resource_client = ResourceClient()
         self.network_client = NetworkClient()
-        
+
         self.resource_groups = []
         self.virtual_machines = []
         self.disks = []
@@ -34,7 +34,7 @@ class AzureAPI:
         self.network_security_groups = []
         self.ssh_keys = []
         self.virtual_networks = []
-        
+
         self.configuration = configuration
         self.init_configuration()
 
@@ -46,11 +46,11 @@ class AzureAPI:
             return
         accounts = CommonUtils.load_object_from_module(self.configuration.accounts_file, "main")
         AzureAccount.set_azure_account(accounts[self.configuration.azure_account])
-    
+
     def init_disks(self):
         objects = self.compute_client.get_all_disks()
         self.disks += objects
-    
+
     def init_nat_gateways(self):
         if len(self.resource_groups) == 0:
             raise RuntimeError(f"resource_groups must be inited before running init_nat_gateways")
@@ -58,7 +58,7 @@ class AzureAPI:
         for resource_group in self.resource_groups:
             objects = self.network_client.get_all_nat_gateways(resource_group)
             self.nat_gateways += objects
-  
+
     def init_load_balancers(self):
         if len(self.resource_groups) == 0:
             raise RuntimeError(f"resource_groups must be inited before running init_load_balancers")
@@ -66,7 +66,7 @@ class AzureAPI:
         for resource_group in self.resource_groups:
             objects = self.network_client.get_all_load_balancers(resource_group)
             self.load_balancers += objects
-        
+
     def init_network_interfaces(self):
         if len(self.resource_groups) == 0:
             raise RuntimeError(f"resource_groups must be inited before running init_network_interfaces")
@@ -74,7 +74,7 @@ class AzureAPI:
         for resource_group in self.resource_groups:
             objects = self.network_client.get_all_network_interfaces(resource_group)
             self.network_interfaces += objects
-        
+
     def init_public_ip_addresses(self):
         if len(self.resource_groups) == 0:
             raise RuntimeError(f"resource_groups must be inited before running init_public_ip_addresses")
@@ -82,7 +82,7 @@ class AzureAPI:
         for resource_group in self.resource_groups:
             objects = self.network_client.get_all_public_ip_addresses(resource_group)
             self.public_ip_addresses += objects
-    
+
     def init_network_security_groups(self):
         if len(self.resource_groups) == 0:
             raise RuntimeError(f"resource_groups must be inited before running init_network_security_groups")
@@ -90,7 +90,7 @@ class AzureAPI:
         for resource_group in self.resource_groups:
             objects = self.network_client.get_all_network_security_groups(resource_group)
             self.network_security_groups += objects
-        
+
     def init_virtual_machines(self):
         if len(self.resource_groups) == 0:
             raise RuntimeError(f"resource_groups must be inited before running init_virtual_machines")
@@ -98,7 +98,7 @@ class AzureAPI:
         for resource_group in self.resource_groups:
             objects = self.compute_client.get_all_virtual_machines(resource_group)
             self.virtual_machines += objects
-    
+
     def init_virtual_networks(self):
         if len(self.resource_groups) == 0:
             raise RuntimeError(f"resource_groups must be inited before running init_virtual_networks")
@@ -106,7 +106,7 @@ class AzureAPI:
         for resource_group in self.resource_groups:
             objects = self.network_client.get_all_virtual_networks(resource_group)
             self.virtual_networks += objects
-            
+
     def init_ssh_keys(self):
         if len(self.resource_groups) == 0:
             raise RuntimeError(f"resource_groups must be inited before running init_ssh_keys")
@@ -114,7 +114,7 @@ class AzureAPI:
         for resource_group in self.resource_groups:
             objects = self.compute_client.get_all_ssh_keys(resource_group)
             self.ssh_keys += objects
-    
+
     def init_resource_groups(self):
         objects = self.resource_client.get_all_resource_groups()
         self.resource_groups += objects
@@ -159,6 +159,11 @@ class AzureAPI:
     def provision_nat_gateway(self, building_block):
         response = self.network_client.raw_create_nat_gateway(building_block.generate_create_request())
         building_block.update_after_creation(response)
+        nat_gateways = self.network_client.get_all_nat_gateways(None,
+                                                                resource_group_name=building_block.resource_group_name)
+        for nat_gateway in nat_gateways:
+            if nat_gateway.id == building_block.id:
+                return
 
     def provision_network_interface(self, building_block):
         response = self.network_client.raw_create_network_interfaces(building_block.generate_create_request())

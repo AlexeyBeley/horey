@@ -84,6 +84,7 @@ class AlertSystem:
         """
 
         self.create_lambda_package(files)
+        breakpoint()
         return self.deploy_lambda()
 
     def provision_self_monitoring(self):
