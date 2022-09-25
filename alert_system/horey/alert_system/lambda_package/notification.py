@@ -38,8 +38,6 @@ class Notification:
         @return:
         """
 
-        if not isinstance(value, list):
-            raise ValueError(value)
         self._tags = value
 
     @property

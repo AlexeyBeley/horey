@@ -8,6 +8,8 @@ VENV_DIR := $(realpath ${BUILD_TMP_DIR}/_venv)
 
 TEST_EVENT_PATH := "${TESTS_DIR}/test_event.json"
 TEST_EVENT_PATH := "/Users/alexey.beley/private/horey/alert_system/tests/ses_messages/bounce_sns_message.json"
+TEST_EVENT_PATH := "/Users/alexey.beley/private/horey/alert_system/tests/clowdwatch_messages/raw_cloudwatch_event.json"
+TEST_EVENT_PATH := "/Users/alexey.beley/private/horey/alert_system/tests/clowdwatch_messages/event_sns_sqs.json"
 
 
 bla:

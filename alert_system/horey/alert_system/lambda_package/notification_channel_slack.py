@@ -46,8 +46,20 @@ class NotificationChannelSlack(NotificationChannelBase):
                                 f"Original message {notification.text}"
             notification.type = Notification.Types.CRITICAL
 
+        base_text = notification.text
+        if not notification.tags:
+            notification.tags = [self.configuration.ALERT_SYSTEM_MONITORING_ROUTING_TAG]
+            notification.text = "Warning: Routing tags were not set. Using system monitoring.\n" + base_text
+
         for routing_tag in notification.tags:
-            for dst_channel in self.map_routing_tag_to_channels(routing_tag):
+            try:
+                dst_channels = self.map_routing_tag_to_channels(routing_tag)
+            except self.UnknownTagError:
+                dst_channels = self.map_routing_tag_to_channels(self.configuration.ALERT_SYSTEM_MONITORING_ROUTING_TAG)
+                notification.text = f"!!!WARNING!!!:\n Routing tag '{routing_tag}' has no mapping.\n" \
+                                    f" Using system monitoring routing tag.\n\n" + base_text
+
+            for dst_channel in dst_channels:
                 slack_message_type = getattr(SlackMessage.Types, notification.type.value)
                 slack_message = self.generate_slack_message(slack_message_type, notification.header,
                                                                notification.text, notification.link,
@@ -62,7 +74,10 @@ class NotificationChannelSlack(NotificationChannelBase):
         @param tag:
         @return:
         """
-        routes = self.configuration.tag_to_channel_mapping[tag]
+        routes = self.configuration.tag_to_channel_mapping.get(tag)
+        if routes is None:
+            raise self.UnknownTagError(tag)
+
         if isinstance(routes, str):
             routes = [routes]
 
@@ -135,3 +150,9 @@ class NotificationChannelSlack(NotificationChannelBase):
         message.src_username = "alert_system"
         message.dst_channel = dst_channel
         return message
+
+    class UnknownTagError(ValueError):
+        """
+        Can not find the tag in the routes mapping.
+
+        """

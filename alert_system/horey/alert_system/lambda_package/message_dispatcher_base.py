@@ -31,7 +31,9 @@ class MessageDispatcherBase:
             "cloudwatch_logs_metric_sns_alarm": self.cloudwatch_logs_metric_sns_alarm_message_handler,
             "cloudwatch_sqs_visible_alarm": self.cloudwatch_sqs_visible_alarm_message_handler,
             "cloudwatch_metric_lambda_duration": self.handle_cloudwatch_message_default,
-            }
+            "cloudwatch_default": self.handle_cloudwatch_message_default,
+            "ses_default": self.handle_ses_message_default,
+        }
 
         self.notification_channels = []
         self.notification_channel_files = os.environ.get(
@@ -95,13 +97,6 @@ class MessageDispatcherBase:
 
         try:
             return self.handler_mapper[message.type](message)
-        except KeyError:
-            return self.handle_cloudwatch_message_default(message, notify_on_failure=False)
-        except Exception:
-            pass
-
-        try:
-            return self.handle_ses_message_default(message)
         except Exception as error_inst:
             traceback_str = ''.join(traceback.format_tb(error_inst.__traceback__))
             logger.exception(f"{traceback_str}\n{repr(error_inst)}")
@@ -118,6 +113,7 @@ class MessageDispatcherBase:
 
             for notification_channel in self.notification_channels:
                 notification_channel.notify_alert_system_error(notification)
+        return None
 
     def handle_cloudwatch_message_default(self, message, notify_on_failure=True):
         """
@@ -269,7 +265,8 @@ class MessageDispatcherBase:
         if notification is None:
             notification = Notification()
 
-        notification.tags = alarm.alert_system_data["tags"]
+        notification.tags = alarm.routing_tags
+
         if notification.type is None:
             if alarm.new_state == "OK":
                 notification.type = Notification.Types.STABLE
@@ -326,34 +323,57 @@ class MessageDispatcherBase:
         ret = urllib.parse.quote(str_src, safe='')
         return ret.replace("%", "$25")
 
-    def handle_ses_message_default(self, message, notify_on_failure=True):
+    def handle_ses_message_default(self, message):
         """
         Standard AWS SES message handling.
 
-        @param notify_on_failure:
         @param message:
         @return:
         """
 
+        bounce = None
         try:
-            breakpoint()
-            alarms = self.split_sns_message_to_alarms(message)
-            self.handle_cloudwatch_alarms_default(alarms)
-        except Exception as error_inst:
-            if not notify_on_failure:
-                return
+            bounce = message.bounce
+        except AttributeError:
+            pass
 
-            traceback_str = ''.join(traceback.format_tb(error_inst.__traceback__))
-            logger.exception(f"{traceback_str}\n{repr(error_inst)}")
+        mail = None
+        try:
+            mail = message.mail
+        except AttributeError:
+            pass
 
-            text = json.dumps(message.convert_to_dict())
-            notification = Notification()
-            notification.type = Notification.Types.CRITICAL
-            notification.header = "Unhandled message in alert_system"
-            notification.text = text
+        self.handle_ses_message_bounce(bounce, mail)
 
-            for notification_channel in self.notification_channels:
-                notification_channel.notify_alert_system_error(notification)
+    def handle_ses_message_bounce(self, bounce, mail):
+        """
+        Handle bounce messages.
+        https://eu-central-1.console.aws.amazon.com/ses/home?region=eu-central-1#/suppression-list
+
+        @param bounce:
+        @param mail:
+        @return:
+        """
+
+        notification = Notification()
+
+        notification.type = Notification.Types.CRITICAL
+        notification.header = notification.header or "Default SES handler: Bounce received"
+        try:
+            region = mail["sourceArn"].split(":")[3]
+        except Exception:
+            region = "Unknown"
+
+        notification.text = f'*Email Bounce*\n' \
+                            f'Region: {region}\n\n>' \
+                            f'bounceType: {bounce["bounceType"]}\n\n' \
+                            f'bounceSubType: {bounce["bounceSubType"]}\n\n' \
+                            f'bouncedRecipients: {bounce["bouncedRecipients"]}\n\n' \
+                            f'headers: mail["headers"]\n\n'
+
+        for notification_channel in self.notification_channels:
+            notification.tags = [notification_channel.configuration.ALERT_SYSTEM_MONITORING_ROUTING_TAG]
+            notification_channel.notify(notification)
 
 
 class CloudwatchAlarm:
@@ -400,8 +420,19 @@ class CloudwatchAlarm:
         """
 
         if self._alert_system_data is None:
-            self._alert_system_data = json.loads(self.sns_message["AlarmDescription"])["data"]
+            self._alert_system_data = json.loads(self.sns_message["AlarmDescription"]).get("data")
         return self._alert_system_data
+
+    @property
+    def routing_tags(self):
+        """
+        Get the routing tags if exist.
+
+        @return:
+        """
+        if self.alert_system_data is not None:
+            return self.alert_system_data["tags"]
+        return None
 
     @property
     def start_time(self):

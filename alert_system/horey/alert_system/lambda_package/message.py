@@ -4,7 +4,11 @@ Message being received by the receiver lambda.
 """
 
 import uuid
+import json
 from horey.common_utils.common_utils import CommonUtils
+from horey.h_logger import get_logger
+
+logger = get_logger()
 
 
 class Message:
@@ -127,14 +131,39 @@ class Message:
         @return:
         """
 
+        if "AlarmDescription" in dict_src:
+            self.type = "cloudwatch_default"
+            try:
+                dict_src = json.loads(dict_src["AlarmDescription"])
+            except Exception:
+                logger.warning(f"Was not able to json load AlarmDescription: {dict_src}")
+                return
+
+        try:
+            del dict_src["dict_src"]
+        except KeyError:
+            pass
+
         for key, value in dict_src.items():
             setattr(self, CommonUtils.camel_case_to_snake_case(key), value)
 
-        if "type" not in dict_src:
-            self.init_default_type()
+        self.init_default_type()
 
     def init_default_type(self):
-        self.type = ""
+        """
+        Init type based on message structure.
+
+        @return:
+        """
+
+        if self.type is not None:
+            return
+
+        if hasattr(self, "bounce"):
+            self.type = "ses_default"
+            return
+
+        raise NotImplementedError(self.dict_src)
 
     def convert_to_dict(self):
         """
