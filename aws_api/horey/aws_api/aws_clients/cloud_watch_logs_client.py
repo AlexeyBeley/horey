@@ -140,7 +140,7 @@ class CloudWatchLogsClient(Boto3Client):
         new_token = None
         stop = False
         while not stop:
-            filters_req = {"logGroupName": log_group.name, "logStreamName": stream.name}
+            filters_req = {"logGroupName": log_group.name, "logStreamName": stream.name, "startFromHead": True}
             if token is not None:
                 filters_req["nextToken"] = token
 
