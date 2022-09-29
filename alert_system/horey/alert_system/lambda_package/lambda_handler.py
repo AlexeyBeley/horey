@@ -64,19 +64,15 @@ class EventHandler:
         record = event["Records"][0]
         if record["EventSource"] != "aws:sns":
             raise NotImplementedError(event)
-        message_dict = json.loads(record["Sns"]["Message"])
+
+        dict_src = json.loads(record["Sns"]["Message"])
         message = Message(dic_src=event)
-        if "AlarmDescription" in message_dict:
-            dict_src = json.loads(message_dict["AlarmDescription"])
-        else:
-            dict_src = message_dict
-
         try:
-            del dict_src["dict_src"]
-        except KeyError:
-            pass
+            message.init_from_dict(dict_src)
+        except Exception as error_inst:
+            traceback_str = ''.join(traceback.format_tb(error_inst.__traceback__))
+            logger.exception(f"{traceback_str}\n{repr(error_inst)}")
 
-        message.init_from_dict(dict_src)
         return message
 
 

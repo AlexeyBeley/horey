@@ -9,7 +9,9 @@
 
 # Run pylint on the changed files
 function run_pylint () {
-echo "$changed_files" | while read -r line
+return_code=0
+
+for line in $changed_files
 do
   if [ -d "./build/_build/_venv/lib/python3.8/site-packages/pylint" ]
   then
@@ -23,17 +25,16 @@ do
 
   if [ "$ret" != "0" ]
   then
-      echo "FAILED: $command"
-      exit $ret
+      echo "PYLINT_FAILED: ${command}"
+      return_code=1
   fi
 done
 
-ret=$?
-if [ "$ret" != "0" ]
+if [ "$return_code" != "0" ]
 then
-    echo "FAILED to commit!!! Pylint check failed!!! Return code $ret"
-    exit $ret
+  exit $return_code
 fi
+echo "SUCCESS!!!"
 }
 
 changed_files=$(git diff --diff-filter=d --name-only HEAD| grep '.*\.py$')

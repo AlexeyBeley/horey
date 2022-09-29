@@ -6,6 +6,12 @@ BUILD_DIR := ${HOREY_DIR_PATH}/build
 BUILD_TMP_DIR := ${BUILD_DIR}/_build
 VENV_DIR := $(realpath ${BUILD_TMP_DIR}/_venv)
 
+TEST_EVENT_PATH := "${TESTS_DIR}/test_event.json"
+TEST_EVENT_PATH := "/Users/alexey.beley/private/horey/alert_system/tests/ses_messages/bounce_sns_message.json"
+TEST_EVENT_PATH := "/Users/alexey.beley/private/horey/alert_system/tests/clowdwatch_messages/raw_cloudwatch_event.json"
+TEST_EVENT_PATH := "/Users/alexey.beley/private/horey/alert_system/tests/clowdwatch_messages/event_sns_sqs.json"
+
+
 bla:
 	echo ${VENV_DIR}
 
@@ -43,7 +49,7 @@ prepare_lambda_locally_old:
 prepare_lambda_locally:
 	cd "${UNZIPPED_DIR}" &&\
 	cp -i "${TESTS_DIR}/venv_tester.py" "${UNZIPPED_DIR}" &&\
-	cp -i "${TESTS_DIR}/test_event.json" "${UNZIPPED_DIR}"
+	cp -i "${TEST_EVENT_PATH}" "${UNZIPPED_DIR}/test_event.json"
 
 run_lambda_locally: prepare_lambda_locally run_lambda_locally_raw
 

@@ -83,7 +83,7 @@ def test_provision_lambda():
     """
     alert_system = AlertSystem(as_configuration)
 
-    alert_system.provision_lambda([])
+    alert_system.provision_lambda([notification_channel_slack_configuration_file])
 
 
 def test_provision():
@@ -206,6 +206,6 @@ if __name__ == "__main__":
     #test_provision_cloudwatch_logs_alarm()
     #test_deploy_lambda()
     #test_provision_self_monitoring()
-    #test_create_lambda_package()
-    test_provision()
+    test_create_lambda_package()
+    #test_provision()
     #test_provision_cloudwatch_sqs_visible_alarm()
