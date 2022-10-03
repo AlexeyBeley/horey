@@ -101,7 +101,7 @@ class ECSClient(Boto3Client):
         @param capacity_provider:
         @return:
         """
-        #breakpoint()
+
         region_objects = self.get_region_capacity_providers(capacity_provider.region)
         for region_object in region_objects:
             if region_object.name == capacity_provider.name:
