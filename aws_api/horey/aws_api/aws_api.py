@@ -3934,12 +3934,12 @@ class AWSAPI:
         @return:
         """
 
-        filters = [{
+        filters = {"Filters": [{
             "Name": f"tag:Name",
             "Values": [
                 name
             ]
-        }]
+        }]}
         ec2_instances = self.ec2_client.get_region_instances(region, filters=filters)
 
         ret_instances = []

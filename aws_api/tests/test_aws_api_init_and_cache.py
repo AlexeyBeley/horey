@@ -657,7 +657,7 @@ if __name__ == "__main__":
     #test_init_and_cache_ec2_launch_template_versions()
     #test_init_and_cache_ecs_task_definitions()
     #test_add_managed_region()
-    test_init_and_cache_load_balancers()
+    #test_init_and_cache_load_balancers()
     #test_init_and_cache_target_groups()
     #test_init_and_cache_acm_certificates()
     #test_init_and_cache_rds_db_instances()
@@ -703,3 +703,4 @@ if __name__ == "__main__":
     #test_init_and_cache_cloudwatch_alarms()
     #test_init_and_cache_application_auto_scaling_policies()
     #test_init_and_cache_application_auto_scaling_scalable_targets()
+    test_init_and_cache_spot_fleet_requests()

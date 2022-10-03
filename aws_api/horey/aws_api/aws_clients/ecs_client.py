@@ -96,8 +96,12 @@ class ECSClient(Boto3Client):
 
     def provision_capacity_provider(self, capacity_provider):
         """
-        self.client.delete_capacity_provider(capacityProvider='test-capacity-provider')
+        Provision capacity provider
+
+        @param capacity_provider:
+        @return:
         """
+        #breakpoint()
         region_objects = self.get_region_capacity_providers(capacity_provider.region)
         for region_object in region_objects:
             if region_object.name == capacity_provider.name:

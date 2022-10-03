@@ -201,13 +201,8 @@ class EC2Client(Boto3Client):
         AWSAccount.set_aws_region(region)
         final_result = []
 
-        if filters is not None:
-            filters_req = {"Filters": filters}
-        else:
-            filters_req = None
-
-        for instance in self.execute(self.client.describe_instances, "Reservations", filters_req=filters_req):
-            final_result.extend(instance['Instances'])
+        for instance in self.execute(self.client.describe_instances, "Reservations", filters_req=filters):
+            final_result.extend(instance["Instances"])
 
         return [EC2Instance(instance) for instance in final_result]
 
@@ -1625,12 +1620,12 @@ class EC2Client(Boto3Client):
         @param instance:
         @return:
         """
-        filters = [{
+        filters = {"Filters": [{
             "Name": "instance-id",
             "Values": [
                 instance.id
             ]
-        }]
+        }]}
         instance_new = self.get_region_instances(instance.region, filters=filters)[0]
         instance.update_from_raw_response(instance_new.dict_src)
 
