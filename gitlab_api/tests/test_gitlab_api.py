@@ -1,7 +1,10 @@
-import pdb
+"""
+Testing gitlab api functionality.
 
-import pytest
+"""
+
 import os
+import pytest
 
 from horey.gitlab_api.gitlab_api import GitlabAPI
 from horey.gitlab_api.gitlab_api_configuration_policy import GitlabAPIConfigurationPolicy
@@ -14,11 +17,13 @@ configuration.init_from_file()
 
 gitlab_api = GitlabAPI(configuration=configuration)
 
+# pylint: disable=missing-function-docstring
+
 
 @pytest.mark.skip(reason="Can not test")
 def test_init_gitlab_api():
-    gitlab_api = GitlabAPI(configuration=configuration)
-    assert isinstance(gitlab_api, GitlabAPI)
+    _gitlab_api = GitlabAPI(configuration=configuration)
+    assert isinstance(_gitlab_api, GitlabAPI)
 
 
 @pytest.mark.skip(reason="Can not test")
@@ -31,9 +36,9 @@ def test_init_projects():
 def test_add_user_to_projects():
     gitlab_api.init_projects()
     user_id = ""
-    pdb.set_trace()
     gitlab_api.add_user_to_projects(gitlab_api.projects, user_id=user_id)
     assert isinstance(gitlab_api.projects, list)
+
 
 if __name__ == "__main__":
     #test_init_gitlab_api()
