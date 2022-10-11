@@ -10,22 +10,21 @@
 # Run pylint on the changed files
 function run_pylint () {
 return_code=0
+  if [ -d "./build/_build/_venv/lib/python3.8/site-packages/pylint" ]
+  then
+      make -e install_pylint
+  fi
 
 for line in $changed_files
 do
-  if [ -d "./build/_build/_venv/lib/python3.8/site-packages/pylint" ]
-  then
-      command="PYLINT_TARGET=$line make -e pylint_raw"
-      PYLINT_TARGET=$line make -e pylint_raw
-  else
-      command="PYLINT_TARGET=$line make -e pylint"
-      PYLINT_TARGET=$line make -e pylint
-  fi
+  #command="PYLINT_TARGET=$line make -e pylint_raw"
+  PYLINT_TARGET=$line make -e pylint_raw >pylint_report.tmp 2>&1
   ret=$?
 
   if [ "$ret" != "0" ]
   then
-      echo "PYLINT_FAILED: ${command}"
+      #echo "PYLINT_FAILED: ${command}"
+      cat pylint_report.tmp
       return_code=1
   fi
 done
