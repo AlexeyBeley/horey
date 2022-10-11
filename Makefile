@@ -52,11 +52,11 @@ raw_install_from_source-%: package_source-%
 recursive_install_from_source-%: create_build_env
 	${BUILD_DIR}/recursive_install_from_source.sh --root_dir ${ROOT_DIR} --package_name horey.$(subst recursive_install_from_source-,,$@)
 
-install_pylint:
+install_pylint: init_venv_dir
 	source ${VENV_DIR}/bin/activate &&\
 	pip3 install pylint
 
-pylint: init_venv_dir install_pylint pylint_raw
+pylint: install_pylint pylint_raw
 pylint_raw:
 	source ${VENV_DIR}/bin/activate &&\
 	pylint --rcfile=${BUILD_DIR}/.pylintrc ${PYLINT_TARGET}
