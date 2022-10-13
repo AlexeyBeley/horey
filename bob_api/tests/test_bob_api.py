@@ -58,8 +58,32 @@ def test_get_future_timeoffs():
     bob_api.get_future_timeoffs()
 
 
+@pytest.mark.skip(reason="Can not test")
+def test_get_team_future_timeoffs():
+    bob_api.init_employees(from_cache=True)
+    team_employees = bob_api.get_reportees(mock_values["manager_display_name_2"])
+    ret = bob_api.get_future_timeoffs(display_names=[employee["displayName"] for employee in team_employees])
+    assert isinstance(ret, dict)
+
+
+@pytest.mark.skip(reason="Can not test")
+def test_get_team_current_timeoffs():
+    bob_api.init_employees(from_cache=True)
+    team_employees = bob_api.get_reportees(mock_values["manager_display_name_3"])
+
+    ret = bob_api.get_current_timeoffs(display_names=[employee["displayName"] for employee in team_employees])
+    for team_member_name, vacations in ret.items():
+        if len(vacations) != 1:
+            raise RuntimeError(f"More then ongoing vacation: {len(vacations)}")
+        vacation = vacations[0]
+        print(f"{team_member_name}: {vacation}")
+
+    assert isinstance(ret, dict)
+
+
 if __name__ == "__main__":
     #test_init_bob_api()
     #test_init_employees()
     #test_get_future_timeoffs()
-    test_get_reportees()
+    #test_get_reportees()
+    test_get_team_current_timeoffs()

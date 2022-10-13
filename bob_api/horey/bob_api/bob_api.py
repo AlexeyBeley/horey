@@ -4,7 +4,6 @@ https://github.com/lukecyca/pyslack
 """
 import datetime
 import json
-
 import requests
 from horey.h_logger import get_logger
 from horey.bob_api.bob_api_configuration_policy import BobAPIConfigurationPolicy
@@ -172,27 +171,78 @@ class BobAPI:
 
         return ret
 
-    def get_future_timeoffs(self):
+    def get_current_timeoffs(self, display_names=None):
         """
         Get future timeoffs requested last year.
 
         @return:
         """
-        ret = self.get("v1/people?humanReadable=false&includeHumanReadable=false")
-        self.employees = ret["employees"]
 
         date_now = datetime.datetime.now()
         start_date = date_now - datetime.timedelta(days=365)
         start_date.strftime("%Y-%m-%dT00:00-00:00")
         ret = self.get(f"v1/timeoff/requests/changes?since={start_date.strftime('%Y-%m-%dT00:00-00:00')}")
         timeoff_requests = ret["changes"]
-        actual_timeoffs = []
+
+        actual_timeoffs = {}
         for timeoff_request in timeoff_requests:
+            if display_names and timeoff_request["employeeDisplayName"] not in display_names:
+                continue
+
             end_date = timeoff_request.get("endDate")
             if not end_date:
                 end_date = timeoff_request.get("date")
+
+            date_timeoff_end = datetime.datetime.strptime(end_date, "%Y-%m-%d")
+            if date_timeoff_end < date_now:
+                continue
+
+            start_date = timeoff_request.get("startDate")
+            if not start_date:
+                start_date = timeoff_request.get("date")
+
+            date_timeoff_start = datetime.datetime.strptime(start_date, "%Y-%m-%d")
+            if date_timeoff_start > date_now:
+                continue
+
+            try:
+                actual_timeoffs[timeoff_request["employeeDisplayName"]].append(timeoff_request)
+            except KeyError:
+                actual_timeoffs[timeoff_request["employeeDisplayName"]] = []
+                actual_timeoffs[timeoff_request["employeeDisplayName"]].append(timeoff_request)
+
+        return actual_timeoffs
+
+    def get_future_timeoffs(self, display_names=None):
+        """
+        Get future timeoffs requested last year.
+
+        @return:
+        """
+
+        date_now = datetime.datetime.now()
+        start_date = date_now - datetime.timedelta(days=365)
+        start_date.strftime("%Y-%m-%dT00:00-00:00")
+        ret = self.get(f"v1/timeoff/requests/changes?since={start_date.strftime('%Y-%m-%dT00:00-00:00')}")
+        timeoff_requests = ret["changes"]
+
+        actual_timeoffs = {}
+        for timeoff_request in timeoff_requests:
+            if display_names and timeoff_request["employeeDisplayName"] not in display_names:
+                continue
+
+            end_date = timeoff_request.get("endDate")
+            if not end_date:
+                end_date = timeoff_request.get("date")
+
             timeoff_date = datetime.datetime.strptime(end_date, "%Y-%m-%d")
             if timeoff_date < date_now:
                 continue
-            actual_timeoffs.append(timeoff_request)
+
+            try:
+                actual_timeoffs[timeoff_request["employeeDisplayName"]].append(timeoff_request)
+            except KeyError:
+                actual_timeoffs[timeoff_request["employeeDisplayName"]] = []
+                actual_timeoffs[timeoff_request["employeeDisplayName"]].append(timeoff_request)
+
         return actual_timeoffs
