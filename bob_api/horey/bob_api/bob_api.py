@@ -300,6 +300,8 @@ class BobAPI:
         else:
             return_string += "NO TEAM VACATIONS!\n"
 
+        return_string += "##############################\n"
+
         dict_ret = self.get_current_timeoffs(employees=self.employees)
         if dict_ret:
             return_string += "COMPANY VACATIONS:\n"
