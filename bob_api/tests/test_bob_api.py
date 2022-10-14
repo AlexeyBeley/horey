@@ -25,65 +25,87 @@ mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 
 @pytest.mark.skip(reason="Can not test")
 def test_init_bob_api():
-    """
-    Test Grafana API initiation
-    @return:
-    """
     _bob_api = BobAPI(configuration=configuration)
     assert isinstance(_bob_api, BobAPI)
 
 
 @pytest.mark.skip(reason="Can not test")
 def test_init_employees():
-    """
-    Dashboard folders initiation
-    @return:
-    """
-    bob_api.init_employees(cache=True)
+    bob_api.init_employees()
+
+
+@pytest.mark.skip(reason="Can not test")
+def test_init_timeoff_requests():
+    bob_api.init_timeoff_requests()
 
 
 @pytest.mark.skip(reason="Can not test")
 def test_get_reportees():
-    """
-    Dashboard folders initiation
-    @return:
-    """
     bob_api.init_employees(from_cache=True)
-    ret = bob_api.get_reportees(mock_values["manager_display_name_2"])
+    manager = CommonUtils.find_objects_by_values(bob_api.employees, {"display_name": mock_values["manager_display_name_2"]}, max_count=1)[0]
+    ret = bob_api.get_reportees(manager)
+    print(ret)
     assert isinstance(ret, list)
 
 
 @pytest.mark.skip(reason="Can not test")
 def test_get_future_timeoffs():
-    bob_api.get_future_timeoffs()
+    ret = bob_api.get_future_timeoffs()
+    assert isinstance(ret, dict)
 
 
 @pytest.mark.skip(reason="Can not test")
 def test_get_team_future_timeoffs():
     bob_api.init_employees(from_cache=True)
-    team_employees = bob_api.get_reportees(mock_values["manager_display_name_2"])
-    ret = bob_api.get_future_timeoffs(display_names=[employee["displayName"] for employee in team_employees])
+    manager = CommonUtils.find_objects_by_values(bob_api.employees, {"display_name": mock_values["manager_display_name_2"]}, max_count=1)[0]
+    team_employees = bob_api.get_reportees(manager)
+    ret = bob_api.get_future_timeoffs(employees=team_employees)
     assert isinstance(ret, dict)
 
 
 @pytest.mark.skip(reason="Can not test")
 def test_get_team_current_timeoffs():
     bob_api.init_employees(from_cache=True)
-    team_employees = bob_api.get_reportees(mock_values["manager_display_name_3"])
+    manager = CommonUtils.find_objects_by_values(bob_api.employees, {"display_name": mock_values["my_manager_display_name"]}, max_count=1)[0]
+    team_employees = bob_api.get_reportees(manager)
 
-    ret = bob_api.get_current_timeoffs(display_names=[employee["displayName"] for employee in team_employees])
-    for team_member_name, vacations in ret.items():
-        if len(vacations) != 1:
-            raise RuntimeError(f"More then ongoing vacation: {len(vacations)}")
-        vacation = vacations[0]
-        print(f"{team_member_name}: {vacation}")
+    ret = bob_api.get_current_timeoffs(employees=team_employees)
+    print("TEAM VACATIONS!")
+    print("TEAM VACATIONS!!")
+    print("TEAM VACATIONS!!!")
+
+    for _, vacations in ret.items():
+        vacation = sorted(vacations, key=lambda vacation: vacation.date_end)[-1]
+        print(vacation.generate_current_vacation_string())
+
+    print("TEAM VACATIONS!!!")
+    print("TEAM VACATIONS!!")
+    print("TEAM VACATIONS!")
 
     assert isinstance(ret, dict)
+
+
+@pytest.mark.skip(reason="Can not test")
+def test_get_vacation_report():
+    bob_api.init_employees(from_cache=True)
+    bob_api.init_timeoff_requests()
+    manager = CommonUtils.find_objects_by_values(bob_api.employees, {"display_name": mock_values["my_manager_display_name"]}, max_count=1)[0]
+    ret = bob_api.get_vacation_report(manager)
+    print(ret)
+
+
+def test_print_employees_per_manager():
+    bob_api.init_employees(from_cache=True)
+    bob_api.print_employees_per_manager()
 
 
 if __name__ == "__main__":
     #test_init_bob_api()
     #test_init_employees()
+    #test_init_timeoff_requests()
     #test_get_future_timeoffs()
     #test_get_reportees()
-    test_get_team_current_timeoffs()
+    #test_get_team_future_timeoffs()
+    #test_get_team_current_timeoffs()
+    #test_print_employees_per_manager()
+    test_get_vacation_report()

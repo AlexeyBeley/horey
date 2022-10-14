@@ -60,3 +60,11 @@ class BobAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def employees_cache_file_path(self):
         return os.path.join(self.cache_dir_path, "employees_cache_file.json")
+
+    @property
+    def timeoff_requests_cache_file_path(self):
+        return os.path.join(self.cache_dir_path, "timeoff_requests_cache_file.json")
+
+    @property
+    def cache(self):
+        return True
