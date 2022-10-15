@@ -21,7 +21,7 @@ pipeline {
         }
         stage('Build') {
             steps {
-                sh 'if [ "${check_pipeline_dry_run}" = "true" ]; exit 1; fi'
+                sh 'if [ "${check_pipeline_dry_run}" = "true" ]; then exit 1; fi'
                 sh '#cd ./horey && make recursive_install_from_source-serverless'
                 sh 'cd horey/gitlab_api/horey/gitlab_api/jenkins_authorization/authorization_actor.py IDENTITY=${identity} make -e validate_gitlab_identity'
             }
