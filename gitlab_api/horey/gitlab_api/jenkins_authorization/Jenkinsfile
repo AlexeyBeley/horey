@@ -1,0 +1,30 @@
+pipeline {
+        agent {
+     node {
+          label 'jenkins-agent-fleet'
+     }
+    }
+    parameters {
+        string(name: 'identity', defaultValue: "none", description: 'Gitlab identity')
+        string(name: 'jenkins_job_json', defaultValue: "none", description: "Job details to be validated against")
+
+
+        booleanParam(name: 'check_pipeline_dry_run', defaultValue: false, description: 'Ugly solution to make Jenkins work')
+    }
+    stages {
+        stage('SCM') {
+            steps {
+                dir('horey') {
+                git branch: 'gitlab_jenkins_connector', url: 'https://github.com/AlexeyBeley/horey.git'
+                }
+            }
+        }
+        stage('Build') {
+            steps {
+                sh 'if [ "${check_pipeline_dry_run}" = "true" ]; exit 1; fi'
+                sh '#cd ./horey && make recursive_install_from_source-serverless'
+                sh 'cd horey/gitlab_api/horey/gitlab_api/jenkins_authorization/authorization_actor.py IDENTITY=${identity} make -e validate_gitlab_identity'
+            }
+        }
+    }
+}
