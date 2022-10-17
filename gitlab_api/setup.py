@@ -1,10 +1,16 @@
+"""
+from
+"""
 import os
 import sys
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-from horey.gitlab_api import __version__
 from setuptools import setup, find_namespace_packages
 
-with open("README.md") as file_handler:
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+
+# pylint: disable= wrong-import-order
+from horey.gitlab_api import __version__
+
+with open("README.md", encoding="utf-8") as file_handler:
     readme_file = file_handler.read()
 
 setup(
@@ -17,4 +23,7 @@ setup(
     license="DWTFYWTPL",
     packages=find_namespace_packages(include=["horey.gitlab_api", "horey.gitlab_api.*"]),
     include_package_data=True,
+    package_data={
+        "": ["gitlab_api/gitlab_runner/remote_scripts/*.sh"]
+    },
     zip_safe=False)

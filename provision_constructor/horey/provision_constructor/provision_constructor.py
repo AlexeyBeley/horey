@@ -1,16 +1,20 @@
 #!/usr/bin/python
-import pdb
-
-from horey.provision_constructor.system_functions import *
-from horey.provision_constructor.system_function_factory import SystemFunctionFactory
+"""
+Provision constructor.
+"""
 import os
-import shutil
-import subprocess
+from horey.provision_constructor.system_function_factory import SystemFunctionFactory
 
 
 class ProvisionConstructor:
+    """
+    Main class.
+
+    """
+
     PROVISIONER_SCRIPT_NAME = "main.sh"
     PROVISIONER_CONSTRUCTOR_SUB_DIR = "provision_constructor_deployment_dir"
+    PROVISION_CONSTRUCTOR_BOOTSTRAP_SCRIPT_NAME = "provision_constructor_bootstrap_script.sh"
 
     def __init__(self):
         self.provisioned_system_functions = []
@@ -24,7 +28,6 @@ class ProvisionConstructor:
         @param base_dir_path:
         @param horey_repo_path:
         @return:
-        """
         raise DeprecationWarning("Raise")
         self.horey_repo_path = horey_repo_path
         SystemFunctionFactory.SystemFunction.HOREY_REPO_PATH = self.horey_repo_path
@@ -46,6 +49,7 @@ class ProvisionConstructor:
         venv_path = os.path.join(self.deployment_dir, "_venv")
         os.makedirs(venv_path, exist_ok=True)
         subprocess.run([f"python3.8 -m venv {venv_path}"], shell=True)
+        """
 
     def provision_system_function(self, system_function_name, **kwargs):
         """
@@ -100,7 +104,15 @@ class ProvisionConstructor:
 
     @staticmethod
     def generate_provision_constructor_bootstrap_script(remote_deployment_dir_path, script_path):
-        with open(os.path.join(remote_deployment_dir_path, script_path), "w") as file_handler:
+        """
+        Provision constructor remote machine bootstrap script.
+
+        @param remote_deployment_dir_path:
+        @param script_path:
+        @return:
+        """
+
+        with open(os.path.join(remote_deployment_dir_path, script_path), "w", encoding="utf-8") as file_handler:
             file_handler.write(
                 "#!/bin/bash\n"
                 "set -ex\n"

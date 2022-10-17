@@ -2,11 +2,19 @@
 Shamelessly stolen from:
 https://github.com/lukecyca/pyslack
 """
+import os
 import json
+import shutil
 
 import requests
 from horey.h_logger import get_logger
 from horey.gitlab_api.gitlab_api_configuration_policy import GitlabAPIConfigurationPolicy
+from horey.deployer.remote_deployer import RemoteDeployer
+from horey.deployer.deployment_target import DeploymentTarget
+from horey.deployer.deployment_step_configuration_policy import DeploymentStepConfigurationPolicy
+from horey.deployer.deployment_step import DeploymentStep
+# pylint: disable=no-name-in-module
+from horey.provision_constructor.provision_constructor import ProvisionConstructor
 
 logger = get_logger()
 
@@ -21,6 +29,8 @@ class GitlabAPI:
         self.token = configuration.token
         self.group_id = configuration.group_id
         self.base_address = "https://gitlab.com"
+
+        self.ssh_key_file_path = "/tmp/jenkins-dev-master.pem"
 
     def get(self, request_path):
         """
@@ -160,3 +170,75 @@ class GitlabAPI:
                 logger.error(f"{dict_src['name']} : {repr(inst)}")
                 if "An error 403" not in repr(inst):
                     raise
+
+    def provision_gitlab_runner_with_jenkins_authenticator(self, public_ip_address, ssh_key_file_path):
+        """
+        Provision all jenkins-agent services and system functionality.
+        Boostrap the provision_constructor script.
+        Using provision constructor provision the system.
+
+        :return:
+        """
+        target = DeploymentTarget()
+
+        target.deployment_target_address = public_ip_address
+        target.deployment_target_user_name = "ubuntu"
+        target.deployment_target_ssh_key_path = ssh_key_file_path
+
+        self.generate_deployment_dir_bootstrap_files(target.local_deployment_dir_path)
+        target.add_step(self.generate_provision_constructor_bootstrap_step())
+        target.add_step(self.generate_application_software_provisioning_step())
+
+        remote_deployer = RemoteDeployer()
+        remote_deployer.deploy_target(target)
+
+        if target.status_code != target.StatusCode.SUCCESS:
+            raise RuntimeError(target.status_code)
+
+    @staticmethod
+    def generate_deployment_dir_bootstrap_files(local_deployment_dir_path):
+        """
+        Generate deployment files and prepare the local dir.
+
+        @param local_deployment_dir_path:
+        @return:
+        """
+        os.makedirs(local_deployment_dir_path, exist_ok=True)
+
+        source_scripts_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gitlab_runner", "remote_scripts")
+
+        for filename in os.listdir(source_scripts_dir):
+            shutil.copyfile(os.path.join(source_scripts_dir, filename), os.path.join(local_deployment_dir_path, filename))
+
+        ProvisionConstructor.generate_provision_constructor_bootstrap_script(local_deployment_dir_path,
+                                                                             ProvisionConstructor.PROVISION_CONSTRUCTOR_BOOTSTRAP_SCRIPT_NAME)
+
+    @staticmethod
+    def generate_provision_constructor_bootstrap_step():
+        """
+        Generate the deployment step used to bootstrap provision_constructor.
+
+        :return:
+        """
+
+        step_configuration = DeploymentStepConfigurationPolicy("ProvisionConstructorBootstrap")
+        step_configuration.script_name = ProvisionConstructor.PROVISION_CONSTRUCTOR_BOOTSTRAP_SCRIPT_NAME
+
+        step = DeploymentStep(step_configuration)
+        step_configuration.generate_configuration_file(step_configuration.script_configuration_file_path)
+        return step
+
+    @staticmethod
+    def generate_application_software_provisioning_step():
+        """
+        Generate the deployment step used to provision all the needed services.
+
+        :return:
+        """
+
+        step_configuration = DeploymentStepConfigurationPolicy("AgentApplicationDeployment")
+        step_configuration.script_name = "provision_gitlab_runner.sh"
+
+        step = DeploymentStep(step_configuration)
+        step_configuration.generate_configuration_file(step_configuration.script_configuration_file_path)
+        return step

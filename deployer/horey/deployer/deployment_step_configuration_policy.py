@@ -1,10 +1,18 @@
+"""
+Step configuration.
+
+"""
+
 import os
-import pdb
 from uuid import uuid4
 from horey.configuration_policy.configuration_policy import ConfigurationPolicy
 
 
+# pylint: disable= missing-function-docstring
 class DeploymentStepConfigurationPolicy(ConfigurationPolicy):
+    """
+    Main class
+    """
     def __init__(self, name):
         super().__init__()
         self._name = name
@@ -26,7 +34,7 @@ class DeploymentStepConfigurationPolicy(ConfigurationPolicy):
     @name.setter
     def name(self, value):
         self._name = value
-        
+
     @property
     def step_data_dir_name(self):
         if self._step_data_dir_name is None:
@@ -49,7 +57,7 @@ class DeploymentStepConfigurationPolicy(ConfigurationPolicy):
 
     @property
     def script_name(self):
-        if self._script_name is None :
+        if self._script_name is None:
             raise ValueError("script_name not set")
         return self._script_name
 
