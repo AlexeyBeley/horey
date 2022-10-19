@@ -5,10 +5,6 @@ Provision constructor tests.
 import os
 from horey.provision_constructor.provision_constructor import ProvisionConstructor
 
-# following import is needed cause __ini__ registers system functions
-# pylint: disable = unused-import
-from horey.provision_constructor.system_functions.system_function_common import SystemFunctionCommon
-
 # pylint: disable = missing-function-docstring
 DEPLOYMENT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "provision_constructor_deployment")
 

@@ -17,5 +17,6 @@ FORCE: ;
 
 build:
 	cd ${HOREY_DIR_PATH} &&\
-	make raw_install_from_source-gitlab_api
+	make recursive_install_from_source_local_venv-gitlab_api
+	#make raw_install_from_source-gitlab_api
 	#make recursive_install_from_source_local_venv-gitlab_api
