@@ -6,6 +6,10 @@ cd "${SCRIPT_DIR}"
 
 sudo mkdir -p /opt/jenkins_jobs_starter
 
+sudu chmod -R 666 /opt/jenkins_jobs_starter
+
+python3.8 -m venv /opt/jenkins_jobs_starter/venv
+
 python3.8 ./provision_gitlab_runner.py
 
 sudo chmod +x ./register_gitlab_runner.sh
