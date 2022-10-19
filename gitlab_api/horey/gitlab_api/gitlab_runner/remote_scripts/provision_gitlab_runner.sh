@@ -10,7 +10,7 @@ sudo mkdir -p /opt/jenkins_jobs_starter
 
 sudo chown -R ubuntu:ubuntu /opt/jenkins_jobs_starter
 
-chmod -R 744 /opt/jenkins_jobs_starter/
+chmod -R 755 /opt/jenkins_jobs_starter/
 
 mkdir -p /opt/jenkins_jobs_starter/venv
 
