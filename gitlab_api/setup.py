@@ -24,6 +24,6 @@ setup(
     packages=find_namespace_packages(include=["horey.gitlab_api", "horey.gitlab_api.*"]),
     include_package_data=True,
     package_data={
-        "": ["gitlab_api/gitlab_runner/remote_scripts/*.sh"]
+        "": ["gitlab_runner/remote_scripts/*.sh"]
     },
     zip_safe=False)

@@ -12,14 +12,15 @@ from horey.h_logger import get_logger
 logger = get_logger()
 
 
+# pylint: disable= abstract-method
 @SystemFunctionFactory.register
 class Provisioner(SystemFunctionCommon):
     """
     Provisioner class.
 
     """
-
-    def __init__(self, deployment_dir, horey_repo_path=None, package_name=None, package_names=None):
+    # pylint: disable= too-many-arguments
+    def __init__(self, deployment_dir, horey_repo_path=None, package_name=None, package_names=None, venv_path=None):
         super().__init__(os.path.dirname(os.path.abspath(__file__)))
         self.deployment_dir = deployment_dir
 
@@ -31,6 +32,7 @@ class Provisioner(SystemFunctionCommon):
             raise ValueError("package_name/package_names not set")
 
         self.horey_repo_path = horey_repo_path
+        self.venv_path = venv_path
 
     def provision(self, force=False):
         """
@@ -59,7 +61,7 @@ class Provisioner(SystemFunctionCommon):
         @return:
         """
 
-        return self.check_pip_installed(f"horey.{package_name}")
+        return self.check_pip_installed(f"horey.{package_name.replace('_', '-')}")
 
     def _provision(self, package_name):
         """
@@ -69,5 +71,10 @@ class Provisioner(SystemFunctionCommon):
         @return:
         """
 
-        self.run_bash(f"cd {self.horey_repo_path} && make recursive_install_from_source-{package_name}")
+        command = f"cd {self.horey_repo_path} && make recursive_install_from_source-{package_name}"
+
+        if self.venv_path is not None:
+            command = self.activate + " && " + command
+
+        self.run_bash(command)
         self.init_pip_packages()

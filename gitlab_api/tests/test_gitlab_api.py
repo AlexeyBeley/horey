@@ -50,7 +50,8 @@ def test_add_user_to_projects():
 def test_provision_gitlab_runner_with_jenkins_authenticator():
     public_ip_address = mock_values["public_ip_address"]
     ssh_key_file_path = mock_values["ssh_key_file_path"]
-    gitlab_api.provision_gitlab_runner_with_jenkins_authenticator(public_ip_address, ssh_key_file_path)
+    gitlab_registration_token = mock_values["gitlab_registration_token"]
+    gitlab_api.provision_gitlab_runner_with_jenkins_authenticator(public_ip_address, ssh_key_file_path, gitlab_registration_token)
 
 
 if __name__ == "__main__":

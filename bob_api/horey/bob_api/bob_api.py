@@ -220,7 +220,7 @@ class BobAPI:
             if not recursive:
                 ret.append(employee)
                 continue
-            ret += self.get_reportees(employee)
+            ret += [employee] + self.get_reportees(employee)
 
         return ret
 
@@ -289,7 +289,7 @@ class BobAPI:
         """
         return_string = "##############################\n"
         team_employees = self.get_reportees(manager)
-        dict_ret = self.get_current_timeoffs(employees=team_employees)
+        dict_ret = self.get_current_timeoffs(employees=[manager] + team_employees)
         if dict_ret:
             return_string += "TEAM VACATIONS:\n"
 

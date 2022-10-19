@@ -29,8 +29,19 @@ class GitlabAPI:
         self.token = configuration.token
         self.group_id = configuration.group_id
         self.base_address = "https://gitlab.com"
+        self._deployer = None
 
-        self.ssh_key_file_path = "/tmp/jenkins-dev-master.pem"
+    @property
+    def deployer(self):
+        """
+        Remote deployer, initialized if needed.
+
+        @return:
+        """
+
+        if self._deployer is None:
+            self._deployer = RemoteDeployer()
+        return self._deployer
 
     def get(self, request_path):
         """
@@ -171,7 +182,7 @@ class GitlabAPI:
                 if "An error 403" not in repr(inst):
                     raise
 
-    def provision_gitlab_runner_with_jenkins_authenticator(self, public_ip_address, ssh_key_file_path):
+    def provision_gitlab_runner_with_jenkins_authenticator(self, public_ip_address, ssh_key_file_path, gitlab_registration_token):
         """
         Provision all jenkins-agent services and system functionality.
         Boostrap the provision_constructor script.
@@ -185,30 +196,39 @@ class GitlabAPI:
         target.deployment_target_user_name = "ubuntu"
         target.deployment_target_ssh_key_path = ssh_key_file_path
 
-        self.generate_deployment_dir_bootstrap_files(target.local_deployment_dir_path)
+        self.generate_deployment_dir_bootstrap_files(target.local_deployment_dir_path, target.deployment_data_dir_name, gitlab_registration_token)
+
         target.add_step(self.generate_provision_constructor_bootstrap_step())
         target.add_step(self.generate_application_software_provisioning_step())
 
-        remote_deployer = RemoteDeployer()
-        remote_deployer.deploy_target(target)
+        self.deployer.deploy_target(target)
 
         if target.status_code != target.StatusCode.SUCCESS:
             raise RuntimeError(target.status_code)
 
-    @staticmethod
-    def generate_deployment_dir_bootstrap_files(local_deployment_dir_path):
+    def generate_deployment_dir_bootstrap_files(self, local_deployment_dir_path, deployment_data_dir_name,
+                                                gitlab_registration_token):
         """
         Generate deployment files and prepare the local dir.
 
+        @param gitlab_registration_token:
+        @param deployment_data_dir_name:
         @param local_deployment_dir_path:
         @return:
         """
-        os.makedirs(local_deployment_dir_path, exist_ok=True)
+        shutil.rmtree(local_deployment_dir_path)
+        os.makedirs(os.path.join(local_deployment_dir_path, deployment_data_dir_name), exist_ok=True)
 
         source_scripts_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gitlab_runner", "remote_scripts")
 
         for filename in os.listdir(source_scripts_dir):
             shutil.copyfile(os.path.join(source_scripts_dir, filename), os.path.join(local_deployment_dir_path, filename))
+
+        string_replacements = {
+            "STRING_REPLACEMENT_GITLAB_REGISTRATION_TOKEN": gitlab_registration_token
+        }
+
+        self.deployer.perform_recursive_replacements(local_deployment_dir_path, string_replacements)
 
         ProvisionConstructor.generate_provision_constructor_bootstrap_script(local_deployment_dir_path,
                                                                              ProvisionConstructor.PROVISION_CONSTRUCTOR_BOOTSTRAP_SCRIPT_NAME)

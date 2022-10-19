@@ -28,24 +28,39 @@ class SystemFunctionCommon:
     """
 
     ACTION_MANAGER = ActionsManager()
-    APT_PACKAGES = None
-    APT_REPOSITORIES = None
+    APT_PACKAGES = []
+    APT_REPOSITORIES = []
     APT_PACKAGES_UPDATED = False
-    PIP_PACKAGES = None
+    PIP_PACKAGES = []
 
     def __init__(self, system_function_provisioner_dir_path):
         self.system_function_provisioner_dir_path = system_function_provisioner_dir_path
         self.validate_provisioned_ancestor = True
+        self.venv_path = None
 
-    @staticmethod
-    def init_pip_packages():
+    @property
+    def activate(self):
+        """
+        Generate activate venv string.
+
+        @return:
+        """
+
+        return f"source {self.venv_path}/bin/activate"
+
+    def init_pip_packages(self):
         """
         Init installed packages.
 
         @return:
         """
 
-        ret = SystemFunctionCommon.run_bash("pip3 freeze")
+        command = "pip3 freeze"
+
+        if self.venv_path is not None:
+            command = self.activate + " && " + command
+
+        ret = SystemFunctionCommon.run_bash(command)
         SystemFunctionCommon.PIP_PACKAGES = ret["stdout"].split("\n")
 
     def check_pip_installed(self, package_name):
@@ -56,8 +71,8 @@ class SystemFunctionCommon:
         @return:
         """
 
-        if SystemFunctionCommon.PIP_PACKAGES is None:
-            SystemFunctionCommon.init_pip_packages()
+        if not SystemFunctionCommon.PIP_PACKAGES:
+            self.init_pip_packages()
 
         for pip_package in self.PIP_PACKAGES:
             if package_name in pip_package:
@@ -88,7 +103,7 @@ class SystemFunctionCommon:
         return os.path.join(cur_dir, *(subpath.split("/")))
 
     @staticmethod
-    def run_bash(command, ignore_on_error_callback=None, timeout=60*10, debug=True):
+    def run_bash(command, ignore_on_error_callback=None, timeout=60 * 10, debug=True):
         """
         Run bash command, return stdout, stderr and return code.
         Timeout is used fot stuck commands - for example if the command expects for user input.
@@ -625,7 +640,7 @@ class SystemFunctionCommon:
             raise RuntimeError(output)
 
         SystemFunctionCommon.APT_PACKAGES_UPDATED = True
-        SystemFunctionCommon.APT_PACKAGES = None
+        SystemFunctionCommon.APT_PACKAGES = []
         SystemFunctionCommon.init_apt_packages()
 
     @staticmethod
@@ -635,7 +650,7 @@ class SystemFunctionCommon:
 
         @return:
         """
-        SystemFunctionCommon.APT_PACKAGES = None
+        SystemFunctionCommon.APT_PACKAGES = []
         SystemFunctionCommon.APT_PACKAGES_UPDATED = None
         SystemFunctionCommon.init_apt_packages()
 
@@ -647,8 +662,7 @@ class SystemFunctionCommon:
         @return:
         """
         SystemFunctionCommon.update_packages()
-        if SystemFunctionCommon.APT_PACKAGES is None:
-            SystemFunctionCommon.APT_PACKAGES = []
+        if not SystemFunctionCommon.APT_PACKAGES:
             response = SystemFunctionCommon.run_bash("sudo apt list --installed")
             for line in response["stdout"].split("\n"):
                 if "Listing..." in line:
@@ -665,9 +679,7 @@ class SystemFunctionCommon:
 
         @return:
         """
-        if SystemFunctionCommon.APT_REPOSITORIES is None:
-
-            SystemFunctionCommon.APT_REPOSITORIES = []
+        if not SystemFunctionCommon.APT_REPOSITORIES:
 
             repos = SystemFunctionCommon.init_apt_repositories_from_file("/etc/apt/sources.list")
             SystemFunctionCommon.APT_REPOSITORIES.extend(repos)
@@ -980,25 +992,40 @@ class SystemFunctionCommon:
 
     def test_local_port(self):
         """
-        Cehck if local port is listening.
+        TBD
+        Check if local port is listening.
 
         @return:
         """
 
-        raise NotImplementedError("TBD")
+        print(self)
+        command = "netstat - na"
+
+        ret = SystemFunctionCommon.run_bash(command)
+
+        return ret["todo"]
 
     def test_remote_port(self):
         """
-         import socket
-           sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            result = sock.connect_ex(('127.0.0.1',80))
-            if result == 0:
-            print "Port is open"
-            else:
-            print "Port is not open"
-            sock.close()
+        TBD
+               import socket
+                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                  result = sock.connect_ex(('127.0.0.1',80))
+                  if result == 0:
+                  print "Port is open"
+                  else:
+                  print "Port is not open"
+                  sock.close()
+
+        @return:
         """
-        raise NotImplementedError("TBD")
+
+        print(self)
+        command = "netstat - na"
+
+        ret = SystemFunctionCommon.run_bash(command)
+
+        return ret["todo"]
 
     class FailedCheckError(RuntimeError):
         """

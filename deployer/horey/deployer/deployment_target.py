@@ -14,7 +14,7 @@ class DeploymentTarget:
     """
     def __init__(self):
         self.hostame = None
-        self.remote_deployment_dir_path = "/tmp"
+        self.remote_deployment_dir_path = "/tmp/remote_deployer"
         self.deployment_data_dir_name = "deployment_data"
 
         self.bastion_address = None
@@ -30,7 +30,7 @@ class DeploymentTarget:
         self.deployment_code_provisioning_ended = False
         self.deployment_ended = False
 
-        self.local_deployment_dir_path = "/tmp"
+        self.local_deployment_dir_path = "/tmp/remote_deployer"
 
         self.remote_deployer_infrastructure_provisioning_finished = False
         self.remote_deployer_infrastructure_provisioning_succeeded = None

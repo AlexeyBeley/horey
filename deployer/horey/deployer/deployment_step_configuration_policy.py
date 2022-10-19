@@ -70,7 +70,7 @@ class DeploymentStepConfigurationPolicy(ConfigurationPolicy):
     @property
     def deployment_dir_path(self):
         if self._deployment_dir_path is None:
-            return "/tmp"
+            return "/tmp/remote_deployer"
         return self._deployment_dir_path
 
     @deployment_dir_path.setter
