@@ -23,7 +23,7 @@ pipeline {
             steps {
                 sh 'if [ "${check_pipeline_dry_run}" = "true" ]; then exit 1; fi'
                 sh '#cd ./horey && make recursive_install_from_source-serverless'
-                sh 'cd horey/gitlab_api/horey/gitlab_api/jenkins_authorization/ IDENTITY=${identity} make -e validate_gitlab_identity'
+                sh 'cd horey/gitlab_api/horey/gitlab_api/jenkins_authorization/ && IDENTITY=${identity} JENKINS_JOB_JSON=${jenkins_job_json} make -e validate_gitlab_identity'
             }
         }
     }
