@@ -75,7 +75,7 @@ class Provisioner(SystemFunctionCommon):
 
         if self.venv_path is not None:
             command = self.activate + " && " + command
-            self.run_bash(self.activate + " && " + "pip3 install --upgrade setuptools")
+            #self.run_bash(self.activate + " && " + "pip3 install --upgrade setuptools")
 
         self.run_bash(command)
         self.init_pip_packages()
