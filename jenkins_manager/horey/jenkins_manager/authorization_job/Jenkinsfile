@@ -5,8 +5,7 @@ pipeline {
      }
     }
     parameters {
-        string(name: 'identity', defaultValue: "none", description: 'Gitlab identity')
-        string(name: 'jenkins_job_json', defaultValue: "none", description: "Job details to be validated against")
+        string(name: 'request', defaultValue: "none", description: 'Jenkins job run request')
 
 
         booleanParam(name: 'check_pipeline_dry_run', defaultValue: false, description: 'Ugly solution to make Jenkins work')
