@@ -1,19 +1,20 @@
-import sys
-import pdb
+"""
+Docker api entry point script.
+
+"""
+
 import argparse
-import json
+import logging
 import docker
 
-sys.path.insert(0, "~/private/aws_api/src/aws_clients")
-sys.path.insert(0, "~/private/aws_api/ignore")
-
-import logging
 logger = logging.Logger(__name__)
 
 from horey.common_utils.actions_manager import ActionsManager
 
 docker_client = docker.from_env()
 action_manager = ActionsManager()
+
+# pylint: disable= missing-function-docstring
 
 
 # region create_repository
