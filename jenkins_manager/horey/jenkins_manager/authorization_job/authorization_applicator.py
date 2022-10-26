@@ -70,7 +70,14 @@ class AuthorizationApplicator:
         Request for jenkins job run.
 
         """
+        SPECIAL_CHARS_MAP = {"<": "horey_special_char_replacement_less",
+                             ">": "horey_special_char_replacement_more"}
+
         def __init__(self, str_src):
+
+            for special_char, replacement in self.SPECIAL_CHARS_MAP.items():
+                str_src = str_src.replace(replacement, special_char)
+
             dict_src = json.loads(str_src)
             self.dict_src = dict_src
             self.user_identity = dict_src.get("user_identity")
@@ -83,7 +90,12 @@ class AuthorizationApplicator:
 
             @return:
             """
-            return json.dumps(self.convert_to_dict())
+            ret = json.dumps(self.convert_to_dict())
+
+            for special_char, replacement in self.SPECIAL_CHARS_MAP.items():
+                ret = ret.replace(special_char, replacement)
+
+            return ret
 
         def convert_to_dict(self):
             """

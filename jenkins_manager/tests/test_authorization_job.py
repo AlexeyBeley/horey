@@ -40,7 +40,6 @@ def test_authorization_applicator_serialize():
     authorization_applicator.append_rule(rule)
     authorization_applicator.serialize(configuration.authorization_map_file_path)
 
-
 @pytest.mark.skip(reason="Can not test")
 def test_authorization_applicator_deserialize():
     authorization_applicator = AuthorizationApplicator()
@@ -56,12 +55,29 @@ def test_authorization_applicator_request_init():
 
 
 @pytest.mark.skip(reason="Can not test")
+def test_authorization_applicator_request_init_special_chars():
+    request = AuthorizationApplicator.Request('{"user_identity": "john.doe horey_special_char_replacement_lessjohn.doe@gmail.comhorey_special_char_replacement_more", "job_name": "job_name", "parameters": {"var_1": "val_1"}}')
+    assert request.job_name == "job_name"
+    assert request.parameters == {"var_1": "val_1"}
+    assert request.user_identity == "john.doe <john.doe@gmail.com>"
+
+
+@pytest.mark.skip(reason="Can not test")
 def test_authorization_applicator_request_serialize():
     request = AuthorizationApplicator.Request('{}')
     request.job_name = "job_name"
     request.parameters = {"var_1": "val_1"}
     request.user_identity = "user_identity"
     assert json.loads(request.serialize()) == {"job_name": "job_name", "parameters": {"var_1": "val_1"}, "user_identity": "user_identity"}
+
+
+@pytest.mark.skip(reason="Can not test")
+def test_authorization_applicator_request_serialize_special_chars():
+    request = AuthorizationApplicator.Request('{}')
+    request.job_name = "job_name"
+    request.parameters = {"var_1": "val_1"}
+    request.user_identity = "john.doe <john.doe@gmail.com>"
+    assert request.serialize() == '{"user_identity": "john.doe horey_special_char_replacement_lessjohn.doe@gmail.comhorey_special_char_replacement_more", "job_name": "job_name", "parameters": {"var_1": "val_1"}}'
 
 
 @pytest.mark.skip(reason="Can not test")
@@ -104,3 +120,5 @@ if __name__ == "__main__":
     test_authorization_job_authorize_deny_val()
     test_authorization_job_authorize_deny_identity()
     test_authorization_job_authorize_deny_job_name()
+    test_authorization_applicator_request_serialize_special_chars()
+    test_authorization_applicator_request_init_special_chars()

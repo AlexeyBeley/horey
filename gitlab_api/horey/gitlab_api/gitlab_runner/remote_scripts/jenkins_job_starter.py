@@ -12,13 +12,13 @@ Jenkins job being authorized and started.
  - source /opt/jenkins_jobs_starter/venv/bin/activate && python3.8 /opt/jenkins_jobs_starter/jenkins_job_starter.py --job_name "jobname" --user_identity "{\"CI_COMMIT_AUTHOR\":\"${CI_COMMIT_AUTHOR}\"}" --parameters "{\"arg_1\":\"val_1\"}"
 """
 
-import json
 import argparse
 import os
 
 from horey.jenkins_manager.jenkins_manager import JenkinsManager
 from horey.jenkins_manager.jenkins_configuration_policy import JenkinsConfigurationPolicy
 from horey.jenkins_manager.jenkins_job import JenkinsJob
+from horey.jenkins_manager.authorization_job.authorization_applicator import AuthorizationApplicator
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -31,10 +31,13 @@ if __name__ == "__main__":
                                                               "jenkins_manager_configuration.py")
     configuration.init_from_file()
     jenkins_manager = JenkinsManager(configuration)
-    request = {"job_name": configuration_args.job_name,
-               "user_identity": configuration_args.user_identity,
-               "parameters": json.loads(configuration_args.parameters)}
 
-    report = jenkins_manager.execute_jobs([JenkinsJob("authenticator", {"request": f"'{json.dumps(request)}'"},
+    request_obj = AuthorizationApplicator.Request('{}')
+    request_obj.job_name = configuration_args.job_name
+    request_obj.user_identity = configuration_args.user_identity
+    request_obj.parameters = configuration_args.parameters
+    request = request_obj.serialize()
+
+    report = jenkins_manager.execute_jobs([JenkinsJob("authenticator", {"request": request},
                                                       uid_parameter_name="data")])
     print(report)
