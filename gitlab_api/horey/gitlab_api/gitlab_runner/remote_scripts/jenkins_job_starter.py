@@ -35,6 +35,6 @@ if __name__ == "__main__":
                "user_identity": configuration_args.user_identity,
                "parameters": json.loads(configuration_args.parameters)}
 
-    report = jenkins_manager.execute_jobs([JenkinsJob("authenticator", {"request": json.dumps(request)},
+    report = jenkins_manager.execute_jobs([JenkinsJob("authenticator", {"request": f"'{json.dumps(request)}'"},
                                                       uid_parameter_name="data")])
     print(report)
