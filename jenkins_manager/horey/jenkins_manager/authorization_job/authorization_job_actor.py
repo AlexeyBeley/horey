@@ -26,7 +26,7 @@ def authorize_parser():
 
     description = "Authorize user identity to run specific job."
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument("--request", type=str)
+    parser.add_argument("--request_file", type=str)
     return parser
 
 
@@ -39,7 +39,10 @@ def authorize(arguments) -> None:
     """
 
     configuration = AuthorizationJobConfigurationPolicy()
-    request = AuthorizationApplicator.Request(arguments.request)
+
+    with open(arguments.request_file, encoding="utf-8") as file_handler:
+        request = AuthorizationApplicator.Request(file_handler.read())
+
     configuration.authorization_map_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                                              "authorization_map.json")
 
