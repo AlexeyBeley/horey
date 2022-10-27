@@ -26,8 +26,11 @@ class Requirement:
             self.name, version = requirement_str.split(">=")
             self.min_version = version
             self.include_min = True
+        elif "<=" in requirement_str:
+            self.name, version = requirement_str.split("<=")
+            self.max_version = version
+            self.include_max = True
         else:
-            pdb.set_trace()
             raise ValueError(requirement_str)
 
 
@@ -83,10 +86,11 @@ class Package:
 class PipAPI:
     REQUIREMENTS = dict()
 
-    def __init__(self, venv_dir_path=None, horey_repo_path=None):
+    def __init__(self, venv_dir_path=None, horey_repo_path=None, configuration=None):
         self.horey_repo_path = horey_repo_path
         self.packages = None
         self.venv_dir_path = venv_dir_path
+        self.configuration = configuration
 
     def init_packages(self):
         response = self.execute("pip3.8 freeze")
