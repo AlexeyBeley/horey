@@ -20,13 +20,11 @@ class AuthorizationJob:
         self.authorization_applicator = AuthorizationApplicator()
         self.authorization_applicator.deserialize(configuration.authorization_map_file_path)
 
-    def authorize(self, str_request):
+    def authorize(self, request):
         """
         Authorize user.
 
         @return:
         """
-
-        request = AuthorizationApplicator.Request(str_request)
 
         return self.authorization_applicator.authorize(request)
