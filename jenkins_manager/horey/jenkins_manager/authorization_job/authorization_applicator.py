@@ -74,10 +74,11 @@ class AuthorizationApplicator:
                              ">": "horey_special_char_replacement_more"}
 
         def __init__(self, str_src):
-
+            logger.info(f"Base request: {str_src}")
             for special_char, replacement in self.SPECIAL_CHARS_MAP.items():
                 str_src = str_src.replace(replacement, special_char)
 
+            logger.info(f"Request after cleanup: {str_src}")
             dict_src = json.loads(str_src)
             self.dict_src = dict_src
             self.user_identity = dict_src.get("user_identity")
