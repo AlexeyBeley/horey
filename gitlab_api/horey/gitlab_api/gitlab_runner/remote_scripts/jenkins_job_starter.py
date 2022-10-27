@@ -14,6 +14,7 @@ Jenkins job being authorized and started.
 
 import argparse
 import os
+import json
 
 from horey.jenkins_manager.jenkins_manager import JenkinsManager
 from horey.jenkins_manager.jenkins_configuration_policy import JenkinsConfigurationPolicy
@@ -36,7 +37,7 @@ if __name__ == "__main__":
     request_obj.job_name = configuration_args.job_name
     request_obj.user_identity = configuration_args.user_identity
     request_obj.parameters = configuration_args.parameters
-    request = request_obj.serialize()
+    request = json.dumps(request_obj.serialize())
 
     report = jenkins_manager.execute_jobs([JenkinsJob("authenticator", {"request": request},
                                                       uid_parameter_name="data")])
