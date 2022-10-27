@@ -1,11 +1,17 @@
+"""
+Compose multiple packages' requirements into single file
+"""
+
 import argparse
-import sys
 import os
-import pdb
 from enum import Enum
 
 
 class Package:
+    """
+    Python Package
+
+    """
     PROJECT_PACKAGES = {}
     PACKAGE_VERSION_POLICY = 0
 
@@ -16,6 +22,7 @@ class Package:
         self.dependencies = []
 
         if package_name in Package.PROJECT_PACKAGES:
+            print(f"package_name: {package_name}")
             Package.PROJECT_PACKAGES[package_name].version_restriction = self.select_package_version_restriction(self.version_restriction, Package.PROJECT_PACKAGES[package_name].version_restriction)
         else:
             Package.PROJECT_PACKAGES[package_name] = self
@@ -24,6 +31,15 @@ class Package:
 
     @staticmethod
     def select_package_version_restriction(first, second):
+        """
+        Select the restriction to be used.
+        Happens when 2 packages require the same package.
+
+        @param first:
+        @param second:
+        @return:
+        """
+
         if str(first) == str(second):
             return first
 
@@ -38,7 +54,7 @@ class Package:
         first_upper_limit = "100000.0.0" if first.lower_limit is None else first.lower_limit
         second_upper_limit = "100000.0.0" if second.lower_limit is None else second.lower_limit
 
-        if Package.PACKAGE_VERSION_POLICY == Package.PackageVersionPolicy.UPGRADE:
+        if Package.PACKAGE_VERSION_POLICY == Package.PackageVersionPolicy.UPGRADE.value:
             restriction = Package.VersionRestriction()
             restriction.lower_limit = max(first_lower_limit, second_lower_limit)
             restriction.contains_lower_limit = first.contains_lower_limit if restriction.lower_limit == first.lower_limit else second.contains_lower_limit
@@ -46,27 +62,42 @@ class Package:
             restriction.upper_limit = max(first_upper_limit, second_upper_limit)
             restriction.contains_upper_limit = first.contains_upper_limit if restriction.upper_limit == first.upper_limit else second.contains_upper_limit
             raise NotImplementedError('min("2.2.3", "10.0.0") = 10.0.0')
-            return restriction
-
         raise NotImplementedError(f"Unknown version restriction {first.lower_limit}")
 
     def init_requirement_line(self):
+        """
+        Initiate a line from self to be added to requirements file.
+
+        @return:
+        """
+
         line = self.name
         if self.version_restriction is not None:
             line += str(self.version_restriction)
         return line
 
     def __str__(self):
+        """
+        Create string from all dependencies.
+
+        @return:
+        """
         ret = self.init_requirement_line()
         for dependency in self.dependencies:
             ret += "\n" + str(dependency)
         return ret
 
     def _init_horey_dependencies(self):
+        """
+        Search for "horey." lines. Init packages from them.
+
+        @return:
+        """
+
+        requirements_file_path = os.path.join(self.root_dir, self.name[len("horey."):], "requirements.txt")
         try:
-            requirements_file_path = os.path.join(self.root_dir, self.name[len("horey."):], "requirements.txt")
-            with open(requirements_file_path) as file_handler:
-                lines = [line.strip() for line in file_handler.readlines()]
+            with open(requirements_file_path, encoding="utf-8") as _file_handler:
+                lines = [line.strip() for line in _file_handler.readlines()]
         except FileNotFoundError as exception_received:
             print(f"{repr(exception_received)}: {requirements_file_path}")
             return
@@ -85,6 +116,12 @@ class Package:
             self.dependencies.append(dependency_package)
 
     def order_requirements(self):
+        """
+        Order requirements to be installed in.
+
+        @return:
+        """
+
         lines = []
         for dependency in self.dependencies:
             requirements_lines = dependency.order_requirements()
@@ -96,6 +133,7 @@ class Package:
     @staticmethod
     def split_dependency_line(line):
         """
+        Split by math signs.
 
         :param line:
         :return: dependency_name, dependency_restriction, version
@@ -119,6 +157,9 @@ class Package:
         return dependency_name, dependency_restriction, version
 
     class VersionRestriction:
+        """
+        Restrictions of a package version.
+        """
         def __init__(self):
             self.lower_limit = None
             self.contains_lower_limit = None
@@ -148,8 +189,16 @@ class Package:
                 ret += self.upper_limit
 
             return ret
-
+        # pylint: disable= too-many-branches
         def add_restriction(self, restriction_key, restriction_value):
+            """
+            Add another restriction
+
+            @param restriction_key:
+            @param restriction_value:
+            @return:
+            """
+
             if restriction_key is None:
                 if restriction_value is not None:
                     raise ValueError()
@@ -190,20 +239,31 @@ class Package:
             raise ValueError(f"{restriction_key}, {restriction_value}")
 
     class PackageVersionPolicy(Enum):
+        """
+        How to handle version conflicts.
+
+        """
         UPGRADE = 0
         DOWNGRADE = 1
         RAISE_EXCEPTION = 2
 
 
-def split(requirements):
-    horey_req, global_req = [], []
-    for req in requirements:
+def split(_requirements):
+    """
+    Split to horey and global.
+
+    @param _requirements:
+    @return:
+    """
+
+    _horey_req, _global_req = [], []
+    for req in _requirements:
         if req.startswith("horey."):
             dependency_name, _, _ = Package.split_dependency_line(req)
-            horey_req.append(dependency_name[len("horey."):])
+            _horey_req.append(dependency_name[len("horey."):])
         else:
-            global_req.append(req)
-    return horey_req, global_req
+            _global_req.append(req)
+    return _horey_req, _global_req
 
 
 if __name__ == "__main__":
@@ -219,8 +279,8 @@ if __name__ == "__main__":
     requirements = packages_tree.order_requirements()
     horey_req, global_req = split(requirements)
 
-    with open(arguments.output_horey_file, "w+") as file_handler:
+    with open(arguments.output_horey_file, "w+", encoding="utf-8") as file_handler:
         file_handler.write("\n".join(horey_req) + "\n")
 
-    with open(arguments.output_requirements_file, "w+") as file_handler:
+    with open(arguments.output_requirements_file, "w+", encoding="utf-8") as file_handler:
         file_handler.write("\n".join(global_req) + "\n")

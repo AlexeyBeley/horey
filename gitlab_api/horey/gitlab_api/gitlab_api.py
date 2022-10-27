@@ -2,11 +2,19 @@
 Shamelessly stolen from:
 https://github.com/lukecyca/pyslack
 """
+import os
 import json
+import shutil
 
 import requests
 from horey.h_logger import get_logger
 from horey.gitlab_api.gitlab_api_configuration_policy import GitlabAPIConfigurationPolicy
+from horey.deployer.remote_deployer import RemoteDeployer
+from horey.deployer.deployment_target import DeploymentTarget
+from horey.deployer.deployment_step_configuration_policy import DeploymentStepConfigurationPolicy
+from horey.deployer.deployment_step import DeploymentStep
+# pylint: disable=no-name-in-module
+from horey.provision_constructor.provision_constructor import ProvisionConstructor
 
 logger = get_logger()
 
@@ -21,6 +29,19 @@ class GitlabAPI:
         self.token = configuration.token
         self.group_id = configuration.group_id
         self.base_address = "https://gitlab.com"
+        self._deployer = None
+
+    @property
+    def deployer(self):
+        """
+        Remote deployer, initialized if needed.
+
+        @return:
+        """
+
+        if self._deployer is None:
+            self._deployer = RemoteDeployer()
+        return self._deployer
 
     def get(self, request_path):
         """
@@ -160,3 +181,84 @@ class GitlabAPI:
                 logger.error(f"{dict_src['name']} : {repr(inst)}")
                 if "An error 403" not in repr(inst):
                     raise
+
+    def provision_gitlab_runner_with_jenkins_authenticator(self, public_ip_address, ssh_key_file_path, gitlab_registration_token):
+        """
+        Provision all jenkins-agent services and system functionality.
+        Boostrap the provision_constructor script.
+        Using provision constructor provision the system.
+
+        :return:
+        """
+        target = DeploymentTarget()
+
+        target.deployment_target_address = public_ip_address
+        target.deployment_target_user_name = "ubuntu"
+        target.deployment_target_ssh_key_path = ssh_key_file_path
+
+        self.generate_deployment_dir_bootstrap_files(target.local_deployment_dir_path, target.deployment_data_dir_name, gitlab_registration_token)
+
+        target.add_step(self.generate_provision_constructor_bootstrap_step())
+        target.add_step(self.generate_application_software_provisioning_step())
+
+        self.deployer.deploy_target(target)
+
+        if target.status_code != target.StatusCode.SUCCESS:
+            raise RuntimeError(target.status_code)
+
+    def generate_deployment_dir_bootstrap_files(self, local_deployment_dir_path, deployment_data_dir_name,
+                                                gitlab_registration_token):
+        """
+        Generate deployment files and prepare the local dir.
+
+        @param gitlab_registration_token:
+        @param deployment_data_dir_name:
+        @param local_deployment_dir_path:
+        @return:
+        """
+        shutil.rmtree(local_deployment_dir_path)
+        os.makedirs(os.path.join(local_deployment_dir_path, deployment_data_dir_name), exist_ok=True)
+
+        source_scripts_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gitlab_runner", "remote_scripts")
+
+        for filename in os.listdir(source_scripts_dir):
+            shutil.copyfile(os.path.join(source_scripts_dir, filename), os.path.join(local_deployment_dir_path, filename))
+
+        string_replacements = {
+            "STRING_REPLACEMENT_GITLAB_REGISTRATION_TOKEN": gitlab_registration_token
+        }
+
+        self.deployer.perform_recursive_replacements(local_deployment_dir_path, string_replacements)
+
+        ProvisionConstructor.generate_provision_constructor_bootstrap_script(local_deployment_dir_path,
+                                                                             ProvisionConstructor.PROVISION_CONSTRUCTOR_BOOTSTRAP_SCRIPT_NAME)
+
+    @staticmethod
+    def generate_provision_constructor_bootstrap_step():
+        """
+        Generate the deployment step used to bootstrap provision_constructor.
+
+        :return:
+        """
+
+        step_configuration = DeploymentStepConfigurationPolicy("ProvisionConstructorBootstrap")
+        step_configuration.script_name = ProvisionConstructor.PROVISION_CONSTRUCTOR_BOOTSTRAP_SCRIPT_NAME
+
+        step = DeploymentStep(step_configuration)
+        step_configuration.generate_configuration_file(step_configuration.script_configuration_file_path)
+        return step
+
+    @staticmethod
+    def generate_application_software_provisioning_step():
+        """
+        Generate the deployment step used to provision all the needed services.
+
+        :return:
+        """
+
+        step_configuration = DeploymentStepConfigurationPolicy("AgentApplicationDeployment")
+        step_configuration.script_name = "provision_gitlab_runner.sh"
+
+        step = DeploymentStep(step_configuration)
+        step_configuration.generate_configuration_file(step_configuration.script_configuration_file_path)
+        return step

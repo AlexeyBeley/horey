@@ -48,3 +48,15 @@ raw_create_jobs:
 clear: build_folder
 	rm -rf ./_build/*
 	rmdir ./_build
+
+
+test_%: FORCE build
+	source ${HOREY_ROOT}/build/_build/_venv/bin/activate &&\
+	python3 ${ROOT_DIR}/${@}
+
+FORCE: ;
+
+build:
+	cd ${HOREY_ROOT} &&\
+	make raw_install_from_source-jenkins_manager
+	#make recursive_install_from_source_local_venv-jenkins_manager

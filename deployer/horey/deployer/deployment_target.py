@@ -1,16 +1,21 @@
+"""
+Deployment target machine.
+
+"""
+
 import os.path
-import pdb
 from enum import Enum
 
 
+# pylint: disable=too-many-instance-attributes
 class DeploymentTarget:
     """
     Single server deployment
     """
     def __init__(self):
         self.hostame = None
-        self.remote_deployment_dir_path = None
-        self.deployment_data_dir_name = None
+        self.remote_deployment_dir_path = "/tmp/remote_deployer"
+        self.deployment_data_dir_name = "deployment_data"
 
         self.bastion_address = None
         self.bastion_user_name = None
@@ -25,7 +30,7 @@ class DeploymentTarget:
         self.deployment_code_provisioning_ended = False
         self.deployment_ended = False
 
-        self.local_deployment_dir_path = None
+        self.local_deployment_dir_path = "/tmp/remote_deployer"
 
         self.remote_deployer_infrastructure_provisioning_finished = False
         self.remote_deployer_infrastructure_provisioning_succeeded = None
@@ -46,9 +51,21 @@ class DeploymentTarget:
         return os.path.join(self.local_deployment_dir_path, self.deployment_data_dir_name)
 
     def add_step(self, step):
+        """
+        Add deployment step.
+
+        @param step:
+        @return:
+        """
+
         self.steps.append(step)
 
     class StatusCode(Enum):
+        """
+        Deployment statuses.
+
+        """
+
         SUCCESS = 0
         FAILURE = 1
         ERROR = 2
