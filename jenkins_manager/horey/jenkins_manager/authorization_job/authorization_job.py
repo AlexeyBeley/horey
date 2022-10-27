@@ -20,11 +20,12 @@ class AuthorizationJob:
         self.authorization_applicator = AuthorizationApplicator()
         self.authorization_applicator.deserialize(configuration.authorization_map_file_path)
 
-    def authorize(self, request):
+    def authorize(self, request: AuthorizationApplicator.Request):
         """
         Authorize user.
 
         @return:
         """
 
-        return self.authorization_applicator.authorize(request)
+        if not self.authorization_applicator.authorize(request):
+            raise RuntimeError(f"User {request.user_identity} unauthorized to run {request.job_name}, with params {request.parameters}")
