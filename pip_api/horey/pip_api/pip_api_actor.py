@@ -4,7 +4,6 @@ The entry point script to run authorization.
 """
 
 import argparse
-import os.path
 
 from horey.pip_api.pip_api import PipAPI
 from horey.pip_api.pip_api_configuration_policy import PipAPIConfigurationPolicy
@@ -32,7 +31,7 @@ def install_parser():
 
 def install(arguments) -> None:
     """
-    install request.
+    Install request
 
     @param arguments:
     @return:

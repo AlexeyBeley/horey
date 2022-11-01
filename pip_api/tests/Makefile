@@ -18,4 +18,6 @@ FORCE: ;
 build:
 	cd ${HOREY_DIR_PATH} &&\
 	make raw_install_from_source-pip_api
-	#make recursive_install_from_source_local_venv-provision_constructor
+	#make recursive_install_from_source_local_venv-pip_api
+	#make raw_install_from_source-pip_api
+	#make recursive_install_from_source_local_venv-pip_api

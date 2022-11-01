@@ -1,4 +1,4 @@
-pip==21.1.2
+pip>=22.3
 setuptools-rust==0.12.1
 cryptography==3.4.7
 horey.configuration_policy>=1.0.0
