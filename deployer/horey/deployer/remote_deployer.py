@@ -172,16 +172,20 @@ class RemoteDeployer:
                 logger.info(f"sftp: mkdir {deployment_target.remote_deployment_dir_path}")
                 sftp_client.mkdir(deployment_target.remote_deployment_dir_path, ignore_existing=True)
 
-                #remote_output_dir = os.path.join(deployment_target.remote_deployment_dir_path,
-                #                             "output")
-                #logger.info(f"sftp: mkdir {remote_output_dir}")
-                #sftp_client.mkdir(remote_output_dir, ignore_existing=True)
-
                 logger.info(f"sftp: put_dir from local {deployment_target.local_deployment_dir_path} to "
                             f"{deployment_target.deployment_target_address}:{deployment_target.remote_deployment_dir_path}")
 
-                sftp_client.put_dir(deployment_target.local_deployment_dir_path,
+                retry_counter = 5
+                for counter in range(retry_counter):
+                    try:
+                        sftp_client.put_dir(deployment_target.local_deployment_dir_path,
                                     deployment_target.remote_deployment_dir_path)
+                        break
+                    except Exception as error_instance:
+                        time.sleep(5)
+                        logger.warning(f"Failed to sftp copy dir, retrying {counter}/{retry_counter}: {repr(error_instance)}")
+                else:
+                    raise RemoteDeployer.DeployerError(f"Failed to sftp copy dir after {retry_counter} retries")
 
                 logger.info(
                     f"sftp: Uploading '{os.path.join(deployment_target.remote_deployment_dir_path, 'remote_step_executor.sh')}'")
