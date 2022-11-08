@@ -56,8 +56,12 @@ class Package:
 
         requirement_int_version_lst = [int(sub_ver) for sub_ver in requirement.min_version.split(".")]
         for index, package_sub_ver_value in enumerate(self_int_version_lst):
-            if package_sub_ver_value > requirement_int_version_lst[index]:
+            try:
+                if package_sub_ver_value > requirement_int_version_lst[index]:
+                    break
+            except IndexError:
                 break
+
             if package_sub_ver_value < requirement_int_version_lst[index]:
                 return False
 
@@ -183,15 +187,15 @@ class PipAPI:
                        "stderr": ret.stderr.decode().strip("\n"),
                        "code": ret.returncode}
         if debug:
-            logger.info(f"return_code:{return_dict['code']}")
+            logger.info(f"return_code: {return_dict['code']}")
 
             stdout_log = "stdout:\n" + str(return_dict["stdout"])
             for line in stdout_log.split("\n"):
-                logger.info(line)
+                logger.info(f"stdout_log line: {line}")
 
             stderr_log = "stderr:\n" + str(return_dict["stderr"])
             for line in stderr_log.split("\n"):
-                logger.info(line)
+                logger.info(f"stderr_log line: {line}")
 
         if ret.returncode != 0:
             if ignore_on_error_callback is None:
@@ -226,7 +230,7 @@ class PipAPI:
 
         return ret["stdout"]
 
-    def install_requirements(self, requirements_file_path):
+    def install_requirements(self, requirements_file_path, update=False, update_from_source=False):
         """
         Prepare list of requirements to be installed and install those missing.
 
@@ -240,9 +244,19 @@ class PipAPI:
         if not self.REQUIREMENTS:
             return
         for requirement in reversed(self.REQUIREMENTS.values()):
-            if self.requirement_satisfied(requirement):
+            if not self.requirement_satisfied(requirement):
+                self.install_requirement(requirement)
                 continue
-            self.install_requirement(requirement)
+
+            if update:
+                self.install_requirement(requirement)
+                continue
+
+            if update_from_source:
+                for prefix in self.multi_package_repos_prefix_map:
+                    if requirement.name.startswith(prefix):
+                        self.install_requirement(requirement)
+                        break
 
     def get_installed_packages(self):
         """
@@ -264,11 +278,6 @@ class PipAPI:
                 requirement.multi_package_repo_prefix = prefix
                 requirement.multi_package_repo_path = repo_path
                 return self.install_multi_package_repo_requirement(requirement)
-
-        if requirement.min_version is None:
-            raise NotImplementedError(requirement.__dict__)
-        if requirement.min_version != requirement.max_version:
-            raise NotImplementedError(requirement.__dict__)
 
         return self.execute(f"pip3.8 install {requirement.generate_install_string()}")
 
@@ -357,27 +366,27 @@ class PipAPI:
         """
         current = self.REQUIREMENTS[requirement.name]
 
-        if current.min_version != requirement.min_version:
+        if requirement.min_version is not None and current.min_version != requirement.min_version:
             if current.min_version is None:
                 current.min_version = requirement.min_version
                 current.include_min = requirement.include_min
             else:
                 raise NotImplementedError()
-        if current.include_min != requirement.include_min:
+        if requirement.include_min is not None and current.include_min != requirement.include_min:
             if current.include_min is None:
                 current.include_min = requirement.include_min
             else:
                 raise NotImplementedError()
 
-        if current.max_version != requirement.max_version:
+        if requirement.max_version is not None and current.max_version != requirement.max_version:
             if current.max_version is None:
                 current.max_version = requirement.max_version
                 current.include_max = requirement.include_max
             else:
-                raise NotImplementedError()
+                raise NotImplementedError(f"{current.max_version}/{requirement.max_version}")
 
-        if current.include_max != requirement.include_max:
-            if current.include_maxis is None:
+        if requirement.include_max is not None and current.include_max != requirement.include_max:
+            if current.include_max is None:
                 current.include_max = requirement.include_max
             else:
                 raise NotImplementedError()

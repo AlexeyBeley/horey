@@ -33,6 +33,7 @@ class AWSLambda(AwsObject):
         self.runtime = None
         self.last_update_status = None
         self.revision_id = None
+        self.state = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)

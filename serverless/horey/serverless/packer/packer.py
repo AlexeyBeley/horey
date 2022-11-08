@@ -9,6 +9,7 @@ import zipfile
 
 from horey.h_logger import get_logger
 from horey.pip_api.pip_api import PipAPI
+from horey.pip_api.pip_api_configuration_policy import PipAPIConfigurationPolicy
 
 logger = get_logger()
 
@@ -92,7 +93,10 @@ class Packer:
         if not os.path.isfile(requirements_file_path):
             raise RuntimeError(f"Requirements file does not exist: {requirements_file_path}")
 
-        pip_api = PipAPI(venv_dir_path=venv_path, horey_repo_path=horey_repo_path)
+        configuration = PipAPIConfigurationPolicy()
+        configuration.multi_package_repositories = [horey_repo_path]
+        configuration.venv_dir_path = venv_path
+        pip_api = PipAPI(configuration=configuration)
         pip_api.install_requirements(requirements_file_path)
 
     def uninstall_packages(self, venv_path, packages):

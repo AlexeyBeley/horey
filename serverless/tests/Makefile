@@ -21,4 +21,7 @@ FORCE: ;
 build:
 	cd ${HOREY_DIR_PATH} &&\
 	make raw_install_from_source-serverless &&\
-	make raw_install_from_source-aws_api
+	make recursive_install_from_source_local_venv-pip_api &&\
+	make recursive_install_from_source_local_venv-aws_api
+
+	#make raw_install_from_source-aws_api

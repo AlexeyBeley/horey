@@ -75,8 +75,22 @@ def test_provision_system_function_horey_package_generic_venv():
                                                     venv_path=os.path.join(this_dir, "test_venv"))
 
 
+def test_provision_system_function_pip_api_package_venv():
+    """
+    python3.8 -m venv ./test_venv
+
+    @return:
+    """
+
+    provision_constructor = ProvisionConstructor()
+    this_dir = os.path.dirname(os.path.abspath(__file__))
+    provision_constructor.provision_system_function("pip_api_package", requirements_file_path=os.path.join(this_dir, "pip_api_tests_data", "requirements.txt"),
+                                                    pip_api_configuration_file=os.path.join(this_dir, "pip_api_tests_data", "pip_api_configuration.py"))
+
+
 if __name__ == "__main__":
     #test_init()
     #test_add_system_function_swap()
     #test_add_system_function_logstash()
-    test_provision_system_function_horey_package_generic_venv()
+    #test_provision_system_function_horey_package_generic_venv()
+    test_provision_system_function_pip_api_package_venv()

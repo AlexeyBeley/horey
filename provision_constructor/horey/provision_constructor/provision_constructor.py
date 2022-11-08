@@ -132,7 +132,7 @@ class ProvisionConstructor:
                 "sudo rm -rf horey\n"
                 "git clone https://github.com/AlexeyBeley/horey.git\n"
                 "cd horey\n"
-                "git checkout --track origin/gitlab_jenkins_connector\n"
+                "git checkout --track origin/pip_api_enhance\n"
                 "make recursive_install_from_source-provision_constructor\n"
                 "cd ..")
 

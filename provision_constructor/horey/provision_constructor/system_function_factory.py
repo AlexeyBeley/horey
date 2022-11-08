@@ -1,25 +1,46 @@
-import pdb
+"""
+Factory which holds all registered system functions
+
+"""
+
 import os
 import shutil
 import sys
 
 from horey.pip_api.pip_api import PipAPI
+from horey.pip_api.pip_api_configuration_policy import PipAPIConfigurationPolicy
 from horey.h_logger import get_logger
 
 logger = get_logger()
 
 
 class SystemFunctionFactory:
-    REGISTERED_FUNCTIONS = dict()
+    """
+    Main class
+
+    """
+    REGISTERED_FUNCTIONS = {}
 
     @staticmethod
-    def register(cls):
-        name = cls.__module__[len("horey.provision_constructor.system_functions."):]
+    def register(system_function_class):
+        """
+        Register a class- can be initialized and "provision"ed
+
+        :param system_function_class:
+        :return:
+        """
+
+        name = system_function_class.__module__[len("horey.provision_constructor.system_functions."):]
         package_name = name[:name.rfind(".")]
         logger.info(f"Registering system function {package_name}")
-        SystemFunctionFactory.REGISTERED_FUNCTIONS[package_name] = cls
+        SystemFunctionFactory.REGISTERED_FUNCTIONS[package_name] = system_function_class
 
+    # pylint: disable= too-many-arguments
     class SystemFunction:
+        """
+        Old code to be deleted.
+
+        """
         HOREY_REPO_PATH = None
 
         def __init__(self, root_deployment_dir, provisioner_script_name, force=False, trigger_on_any_provisioned=None, explicitly_add_system_function=True):
@@ -36,23 +57,48 @@ class SystemFunctionFactory:
             self.submodules = self.__module__[len("horey.provision_constructor.system_functions."):self.__module__.rfind(".")]
             self.deployment_dir = os.path.join(root_deployment_dir, *self.submodules.split("."))
             os.makedirs(self.deployment_dir, exist_ok=True)
-            self.pip_api = PipAPI(venv_dir_path=os.path.join(root_deployment_dir, "_venv"), horey_repo_path=self.HOREY_REPO_PATH)
+
+            configuration = PipAPIConfigurationPolicy()
+            configuration.multi_package_repositories = [self.HOREY_REPO_PATH]
+            configuration.venv_dir_path = os.path.join(root_deployment_dir, "_venv")
+
+            self.pip_api = PipAPI(configuration=configuration)
             self.move_system_function_to_deployment_dir()
             if explicitly_add_system_function:
                 self.add_system_function(force=force, trigger_on_any_provisioned=trigger_on_any_provisioned)
 
         def add_system_function(self, force=False, trigger_on_any_provisioned=None):
+            """
+            Olde
+            :param force:
+            :param trigger_on_any_provisioned:
+            :return:
+            """
             self.install_system_function_requirements()
             self.add_system_function_to_provisioner_script(force=force, trigger_on_any_provisioned=trigger_on_any_provisioned)
 
         def move_system_function_to_deployment_dir(self):
+            """
+            Olde
+            :return:
+            """
             shutil.copytree(os.path.dirname(sys.modules[self.__module__].__file__), self.deployment_dir, dirs_exist_ok=True)
 
         def install_system_function_requirements(self):
+            """
+            Olde
+            :return:
+            """
             requirements_path = os.path.join(self.deployment_dir, "requirements.txt")
             self.pip_api.install_requirements(requirements_path)
 
         def add_system_function_to_provisioner_script(self, force=False, trigger_on_any_provisioned=None):
+            """
+            Olde
+            :param force:
+            :param trigger_on_any_provisioned:
+            :return:
+            """
             system_functions_provisioners = []
             system_functions_unittests = []
             system_functions_chmods = []
@@ -70,7 +116,7 @@ class SystemFunctionFactory:
 
             provisioner_script_path = os.path.join(self.root_deployment_dir, self.provisioner_script_name)
             main_function_name = f"main_{self.submodules}"
-            with open(provisioner_script_path, "a") as file_handler:
+            with open(provisioner_script_path, "a", encoding="utf-8") as file_handler:
                 file_handler.write(f"function {main_function_name}()" + " {\n")
                 file_handler.write(self.add_indentation("#---------CHANGE_MODES---------\n", 1))
                 file_handler.writelines(self.add_indentation(system_functions_chmods, 1))
@@ -92,10 +138,16 @@ class SystemFunctionFactory:
             logger.info(f"Finished generating '{provisioner_script_path}'")
 
         def generate_trigger_on_any_provisioned(self, trigger_on_any_provisioned, main_function_name):
+            """
+            Olde
+            :param trigger_on_any_provisioned:
+            :param main_function_name:
+            :return:
+            """
             lst_ret = []
             check_function_name = f"run_{main_function_name}_check_if_any"
             lst_ret.append(f"function {check_function_name}()"+"{")
-            lst_ret.append(self.add_indentation(f"set +e", 1))
+            lst_ret.append(self.add_indentation("set +e", 1))
             for check_provisioned in trigger_on_any_provisioned:
                 lst_ret.append(self.add_indentation("contains \"${ProvisionedSystemFunctions[@]}\"" + f" \"{check_provisioned}\"", 1))
                 lst_ret.append(self.add_indentation("result=$?", 1))
@@ -111,6 +163,11 @@ class SystemFunctionFactory:
             return "\n".join(lst_ret)
 
         def generate_preprovisioning_tests(self, system_functions_unittests):
+            """
+            Olde
+            :param system_functions_unittests:
+            :return:
+            """
             function_name = f"unittests_{self.submodules}"
             ret = [f"function {function_name}()" + "  { \n"]
             for command in system_functions_unittests:
@@ -121,19 +178,25 @@ class SystemFunctionFactory:
             ret.append(self.add_indentation("return 0\n", 1))
             ret.append("}\n\n")
 
-            ret.append(f"set +e\n")
+            ret.append("set +e\n")
             ret.append(f"{function_name}\n")
 
             ret.append("result=$?\n")
-            ret.append(f"set -e\n")
+            ret.append("set -e\n")
             ret.append("if [[ \"${result}\" -eq 0 ]]; then return 0; fi\n")
 
             return ret
 
         def add_indentation(self, src_obj, count):
+            """
+            Olde
+            :param src_obj:
+            :param count:
+            :return:
+            """
             if isinstance(src_obj, list):
                 return [self.add_indentation(line, count) for line in src_obj]
-            elif not isinstance(src_obj, str):
+            if not isinstance(src_obj, str):
                 raise ValueError(src_obj)
 
             if not src_obj.startswith("\n"):
