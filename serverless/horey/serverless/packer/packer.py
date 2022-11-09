@@ -146,7 +146,7 @@ class Packer:
 
     def zip_venv_site_packages(self, zip_file_name, venv_dir_path, python_version):
         """
-        Make a zip from pythons' global site puckages.
+        Make a zip from pythons' global site packages.
 
         @param zip_file_name:
         @param venv_dir_path:
