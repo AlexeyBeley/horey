@@ -1,8 +1,20 @@
+"""
+AWS API config
+
+"""
+
 import os
 from horey.configuration_policy.configuration_policy import ConfigurationPolicy
 
+# pylint: disable= missing-function-docstring, too-many-lines, too-many-instance-attributes
+
 
 class AWSAPIConfigurationPolicy(ConfigurationPolicy):
+    """
+    Main class
+
+    """
+
     def __init__(self):
         super().__init__()
         self._aws_api_regions = None
@@ -91,7 +103,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_s3_cache_dir.setter
     def aws_api_s3_cache_dir(self, value):
         raise ValueError(value)
-    
+
     @property
     def aws_api_s3_buckets_cache_file(self):
         return os.path.join(self.aws_api_s3_cache_dir, "buckets.json")
@@ -173,7 +185,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
         raise ValueError(value)
 
     # endregion
-    
+
     # region ec2
     @property
     def aws_api_ec2_cache_dir(self):
@@ -193,7 +205,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_ec2_instances_cache_file.setter
     def aws_api_ec2_instances_cache_file(self, value):
         raise ValueError(value)
-    
+
     @property
     def aws_api_ec2_volumes_cache_file(self):
         return os.path.join(self.aws_api_ec2_cache_dir, "volumes.json")
@@ -225,7 +237,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_ec2_launch_templates_cache_file.setter
     def aws_api_ec2_launch_templates_cache_file(self, value):
         raise ValueError(value)
-    
+
     @property
     def aws_api_ec2_launch_template_versions_cache_file(self):
         return os.path.join(self.aws_api_ec2_cache_dir, "ec2_launch_template_versions.json")
@@ -233,7 +245,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_ec2_launch_template_versions_cache_file.setter
     def aws_api_ec2_launch_template_versions_cache_file(self, value):
         raise ValueError(value)
-    
+
     @property
     def aws_api_ec2_network_interfaces_cache_file(self):
         return os.path.join(self.aws_api_ec2_cache_dir, "network_interfaces.json")
@@ -257,7 +269,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_vpcs_cache_file.setter
     def aws_api_vpcs_cache_file(self, value):
         raise ValueError(value)
-    
+
     @property
     def aws_api_subnets_cache_file(self):
         return os.path.join(self.aws_api_ec2_cache_dir, "subnets.json")
@@ -265,7 +277,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_subnets_cache_file.setter
     def aws_api_subnets_cache_file(self, value):
         raise ValueError(value)
-    
+
     @property
     def aws_api_availability_zones_cache_file(self):
         return os.path.join(self.aws_api_ec2_cache_dir, "availability_zones.json")
@@ -273,7 +285,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_availability_zones_cache_file.setter
     def aws_api_availability_zones_cache_file(self, value):
         raise ValueError(value)
-    
+
     @property
     def aws_api_amis_cache_file(self):
         return os.path.join(self.aws_api_ec2_cache_dir, "amis.json")
@@ -281,7 +293,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_amis_cache_file.setter
     def aws_api_amis_cache_file(self, value):
         raise ValueError(value)
-    
+
     @property
     def aws_api_key_pairs_cache_file(self):
         return os.path.join(self.aws_api_ec2_cache_dir, "key_pairs.json")
@@ -289,7 +301,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_key_pairs_cache_file.setter
     def aws_api_key_pairs_cache_file(self, value):
         raise ValueError(value)
-    
+
     @property
     def aws_api_internet_gateways_cache_file(self):
         return os.path.join(self.aws_api_ec2_cache_dir, "internet_gateways.json")
@@ -297,7 +309,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_internet_gateways_cache_file.setter
     def aws_api_internet_gateways_cache_file(self, value):
         raise ValueError(value)
-    
+
     @property
     def aws_api_vpc_peerings_cache_file(self):
         return os.path.join(self.aws_api_ec2_cache_dir, "vpc_peerings.json")
@@ -305,7 +317,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_vpc_peerings_cache_file.setter
     def aws_api_vpc_peerings_cache_file(self, value):
         raise ValueError(value)
-    
+
     @property
     def aws_api_route_tables_cache_file(self):
         return os.path.join(self.aws_api_ec2_cache_dir, "route_tables.json")
@@ -313,7 +325,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_route_tables_cache_file.setter
     def aws_api_route_tables_cache_file(self, value):
         raise ValueError(value)
-    
+
     @property
     def aws_api_elastic_addresses_cache_file(self):
         return os.path.join(self.aws_api_ec2_cache_dir, "elastic_addresses.json")
@@ -321,7 +333,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_elastic_addresses_cache_file.setter
     def aws_api_elastic_addresses_cache_file(self, value):
         raise ValueError(value)
-    
+
     @property
     def aws_api_nat_gateways_cache_file(self):
         return os.path.join(self.aws_api_ec2_cache_dir, "nat_gateways.json")
@@ -330,7 +342,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     def aws_api_nat_gateways_cache_file(self, value):
         raise ValueError(value)
     # endregion
-    
+
     # region glue
     @property
     def aws_api_glue_cache_dir(self):
@@ -338,7 +350,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
             self._aws_api_glue_cache_dir = os.path.join(self.aws_api_cache_dir, self.aws_api_account, "glue")
             os.makedirs(self._aws_api_glue_cache_dir, exist_ok=True)
         return self._aws_api_glue_cache_dir
-    
+
     @property
     def aws_api_glue_databases_cache_file(self):
         return os.path.join(self.aws_api_glue_cache_dir, "glue_databases.json")
@@ -355,7 +367,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     def aws_api_glue_tables_cache_file(self, value):
         raise ValueError(value)
     # endregion
-    
+
     # region lambda
     @property
     def aws_api_lambda_cache_dir(self):
@@ -375,7 +387,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_lambdas_cache_file.setter
     def aws_api_lambdas_cache_file(self, value):
         raise ValueError(value)
-    
+
     @property
     def aws_api_lambda_event_source_mappings_cache_file(self):
         return os.path.join(self.aws_api_lambda_cache_dir, "lambda_event_source_mappings.json")
@@ -384,7 +396,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     def aws_api_lambda_event_source_mappings_cache_file(self, value):
         raise ValueError(value)
     # endregion
-    
+
     # region ecr
     @property
     def aws_api_ecr_cache_dir(self):
@@ -404,7 +416,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_ecr_images_cache_file.setter
     def aws_api_ecr_images_cache_file(self, value):
         raise ValueError(value)
-    
+
     @property
     def aws_api_ecr_repositories_cache_file(self):
         return os.path.join(self.aws_api_ecr_cache_dir, "ecr_repositories.json")
@@ -413,7 +425,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     def aws_api_ecr_repositories_cache_file(self, value):
         raise ValueError(value)
     # endregion
-    
+
     # region classic_loadbalancers
     @property
     def aws_api_classic_loadbalancers_cache_dir(self):
@@ -515,7 +527,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_iam_roles_cache_file.setter
     def aws_api_iam_roles_cache_file(self, value):
         raise ValueError(value)
-    
+
     @property
     def aws_api_iam_instance_profiles_cache_file(self):
         return os.path.join(self.aws_api_iam_roles_cache_dir, "instance_profiles.json")
@@ -554,7 +566,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_rds_db_instances_cache_file.setter
     def aws_api_rds_db_instances_cache_file(self, value):
         raise ValueError(value)
-    
+
     @property
     def aws_api_rds_db_clusters_cache_file(self):
         return os.path.join(self.aws_api_rds_cache_dir, "rds_db_clusters.json")
@@ -570,7 +582,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_rds_db_subnet_groups_cache_file.setter
     def aws_api_rds_db_subnet_groups_cache_file(self, value):
         raise ValueError(value)
-    
+
     @property
     def aws_api_rds_db_parameter_groups_cache_file(self):
         return os.path.join(self.aws_api_rds_cache_dir, "rds_db_parameter_groups.json")
@@ -578,7 +590,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_rds_db_parameter_groups_cache_file.setter
     def aws_api_rds_db_parameter_groups_cache_file(self, value):
         raise ValueError(value)
-    
+
     @property
     def aws_api_rds_db_cluster_parameter_groups_cache_file(self):
         return os.path.join(self.aws_api_rds_cache_dir, "rds_db_cluster_parameter_groups.json")
@@ -586,7 +598,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_rds_db_cluster_parameter_groups_cache_file.setter
     def aws_api_rds_db_cluster_parameter_groups_cache_file(self, value):
         raise ValueError(value)
-    
+
     @property
     def aws_api_rds_db_cluster_snapshots_cache_file(self):
         return os.path.join(self.aws_api_rds_cache_dir, "rds_db_cluster_snapshots.json")
@@ -594,9 +606,9 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_rds_db_cluster_snapshots_cache_file.setter
     def aws_api_rds_db_cluster_snapshots_cache_file(self, value):
         raise ValueError(value)
-    
+
     # endregion
-    
+
     # region elasticache
     @property
     def aws_api_elasticache_cache_dir(self):
@@ -617,7 +629,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_elasticache_clusters_cache_file.setter
     def aws_api_elasticache_clusters_cache_file(self, value):
         raise ValueError(value)
-    
+
     @property
     def aws_api_elasticache_cache_subnet_groups_cache_file(self):
         return os.path.join(self.aws_api_elasticache_cache_dir, "elasticache_cache_subnet_groups.json")
@@ -625,7 +637,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_elasticache_cache_subnet_groups_cache_file.setter
     def aws_api_elasticache_cache_subnet_groups_cache_file(self, value):
         raise ValueError(value)
-    
+
     @property
     def aws_api_elasticache_cache_security_groups_cache_file(self):
         return os.path.join(self.aws_api_elasticache_cache_dir, "elasticache_cache_security_groups.json")
@@ -633,7 +645,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_elasticache_cache_security_groups_cache_file.setter
     def aws_api_elasticache_cache_security_groups_cache_file(self, value):
         raise ValueError(value)
-    
+
     @property
     def aws_api_elasticache_cache_parameter_groups_cache_file(self):
         return os.path.join(self.aws_api_elasticache_cache_dir, "elasticache_cache_parameter_groups.json")
@@ -641,7 +653,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_elasticache_cache_parameter_groups_cache_file.setter
     def aws_api_elasticache_cache_parameter_groups_cache_file(self, value):
         raise ValueError(value)
-    
+
     @property
     def aws_api_elasticache_replication_groups_cache_file(self):
         return os.path.join(self.aws_api_elasticache_cache_dir, "elasticache_replication_groups.json")
@@ -649,9 +661,9 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_elasticache_replication_groups_cache_file.setter
     def aws_api_elasticache_replication_groups_cache_file(self, value):
         raise ValueError(value)
-    
+
     # endregion
-    
+
     # region hosted_zones
     @property
     def aws_api_hosted_zones_cache_dir(self):
@@ -674,7 +686,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
         raise ValueError(value)
 
     # endregion
-    
+
     # region cloudfront
     @property
     def aws_api_cloudfront_cache_dir(self):
@@ -725,7 +737,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     def aws_api_event_bridge_rules_cache_file(self, value):
         raise ValueError(value)
     # endregion
-    
+
     # region servicediscovery
     @property
     def aws_api_servicediscovery_cache_dir(self):
@@ -745,7 +757,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_servicediscovery_services_cache_file.setter
     def aws_api_servicediscovery_services_cache_file(self, value):
         raise ValueError(value)
-    
+
     @property
     def aws_api_servicediscovery_namespaces_cache_file(self):
         return os.path.join(self.aws_api_servicediscovery_cache_dir, "servicediscovery_namespaces.json")
@@ -753,9 +765,9 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_servicediscovery_namespaces_cache_file.setter
     def aws_api_servicediscovery_namespaces_cache_file(self, value):
         raise ValueError(value)
-    
+
     # endregion
-    
+
     # region elasticsearch
     @property
     def aws_api_elasticsearch_cache_dir(self):
@@ -776,7 +788,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     def aws_api_elasticsearch_domains_cache_file(self, value):
         raise ValueError(value)
     # endregion
-    
+
     # region ecs
     @property
     def aws_api_ecs_cache_dir(self):
@@ -796,7 +808,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_ecs_clusters_cache_file.setter
     def aws_api_ecs_clusters_cache_file(self, value):
         raise ValueError(value)
-    
+
     @property
     def aws_api_ecs_capacity_providers_cache_file(self):
         return os.path.join(self.aws_api_ecs_cache_dir, "ecs_capacity_providers.json")
@@ -804,7 +816,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_ecs_capacity_providers_cache_file.setter
     def aws_api_ecs_capacity_providers_cache_file(self, value):
         raise ValueError(value)
-    
+
     @property
     def aws_api_ecs_services_cache_file(self):
         return os.path.join(self.aws_api_ecs_cache_dir, "ecs_services.json")
@@ -817,10 +829,10 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     def aws_api_ecs_task_definitions_cache_file(self):
         return os.path.join(self.aws_api_ecs_cache_dir, "ecs_task_definitions.json")
 
-    @aws_api_ecs_task_definitions_cache_file.setter
-    def aws_api_ecs_task_definitions_cache_file(self, value):
-        raise ValueError(value)
-    
+    @property
+    def aws_api_ecs_tasks_cache_file(self):
+        return os.path.join(self.aws_api_ecs_cache_dir, "ecs_tasks.json")
+
     # endregion
 
     # region sqs
@@ -843,7 +855,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     def aws_api_sqs_queues_cache_file(self, value):
         raise ValueError(value)
     # endregion
-    
+
     # region auto_scaling
     @property
     def aws_api_auto_scaling_cache_dir(self):
@@ -863,7 +875,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_auto_scaling_groups_cache_file.setter
     def aws_api_auto_scaling_groups_cache_file(self, value):
         raise ValueError(value)
-    
+
     @property
     def aws_api_auto_scaling_policies_cache_file(self):
         return os.path.join(self.aws_api_auto_scaling_cache_dir, "auto_scaling_policies.json")
@@ -891,7 +903,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
         return os.path.join(self.aws_api_application_auto_scaling_cache_dir, "application_auto_scaling_policies.json")
 
     # endregion
-    
+
     # region acm
     @property
     def aws_api_acm_cache_dir(self):
@@ -933,7 +945,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     def aws_api_kms_keys_cache_file(self, value):
         raise ValueError(value)
     # endregion
-    
+
     # region cleanup
     @property
     def aws_api_cleanup_reports_dir(self):
@@ -1056,7 +1068,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     def aws_api_dynamodb_endpoints_cache_file(self, value):
         raise ValueError(value)
     # endregion
-    
+
     # region sesv2
     @property
     def aws_api_sesv2_cache_dir(self):
@@ -1080,7 +1092,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def aws_api_sesv2_email_templates_cache_file(self):
         return os.path.join(self.aws_api_sesv2_cache_dir, "sesv2_email_templates.json")
-    
+
     # endregion
 
     # region sns

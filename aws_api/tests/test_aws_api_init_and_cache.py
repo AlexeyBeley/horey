@@ -1,15 +1,19 @@
+"""
+Init and cache AWS objects.
+
+"""
+
+import os
 import json
-import pdb
 
 import pytest
-import os
 from horey.aws_api.aws_api import AWSAPI
 from horey.h_logger import get_logger
 from horey.aws_api.aws_api_configuration_policy import AWSAPIConfigurationPolicy
 from horey.aws_api.base_entities.region import Region
 
 
-#Uncomment next line to save error lines to /tmp/error.log
+# Uncomment next line to save error lines to /tmp/error.log
 configuration_values_file_full_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "h_logger_configuration_values.py")
 
 logger = get_logger(configuration_values_file_full_path=configuration_values_file_full_path)
@@ -20,6 +24,7 @@ configuration.init_from_file()
 
 aws_api = AWSAPI(configuration=configuration)
 
+# pylint: disable= missing-function-docstring
 
 # region done
 @pytest.mark.skip(reason="IAM policies will be inited explicitly")
@@ -63,8 +68,6 @@ def test_init_and_cache_iam_groups():
 def test_init_and_cache_iam_users():
     aws_api.init_iam_users()
     aws_api.cache_objects(aws_api.users, configuration.aws_api_iam_users_cache_file)
-    pdb.set_trace()
-
     print(f"len(users) = {len(aws_api.users)}")
     assert isinstance(aws_api.users, list)
 
@@ -123,8 +126,8 @@ def test_init_and_cache_dynamodb_tables():
     aws_api.cache_objects(aws_api.dynamodb_tables, configuration.aws_api_dynamodb_tables_cache_file)
     print(f"len(dynamodb_tables) = {len(aws_api.dynamodb_tables)}")
     assert isinstance(aws_api.dynamodb_tables, list)
-    
-    
+
+
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_dynamodb_endpoints():
     aws_api.init_dynamodb_endpoints()
@@ -260,16 +263,16 @@ def test_init_and_cache_elasticache_replication_groups():
     aws_api.cache_objects(aws_api.elasticache_replication_groups, configuration.aws_api_elasticache_replication_groups_cache_file)
     print(f"len(elasticache_replication_groups) = {len(aws_api.elasticache_replication_groups)}")
     assert isinstance(aws_api.elasticache_replication_groups, list)
-    
-    
+
+
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_elasticache_cache_parameter_groups():
     aws_api.init_elasticache_cache_parameter_groups()
     aws_api.cache_objects(aws_api.elasticache_cache_parameter_groups, configuration.aws_api_elasticache_cache_parameter_groups_cache_file)
     print(f"len(elasticache_cache_parameter_groups) = {len(aws_api.elasticache_cache_parameter_groups)}")
     assert isinstance(aws_api.elasticache_cache_parameter_groups, list)
-    
-    
+
+
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_elasticache_cache_subnet_groups():
     aws_api.init_elasticache_cache_subnet_groups()
@@ -317,8 +320,8 @@ def test_init_and_cache_rds_db_parameter_groups():
     aws_api.cache_objects(aws_api.rds_db_parameter_groups, configuration.aws_api_rds_db_parameter_groups_cache_file)
     print(f"len(rds_db_parameter_groups) = {len(aws_api.rds_db_parameter_groups)}")
     assert isinstance(aws_api.rds_db_parameter_groups, list)
-    
-    
+
+
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_hosted_zones():
     aws_api.init_hosted_zones()
@@ -338,8 +341,8 @@ def test_init_and_cache_cloudfront_origin_access_identities():
     aws_api.init_cloudfront_origin_access_identities()
     aws_api.cache_objects(aws_api.cloudfront_origin_access_identities, configuration.aws_api_cloudfront_origin_access_identities_cache_file)
     assert isinstance(aws_api.cloudfront_origin_access_identities, list)
-    
-    
+
+
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_spot_fleet_requests():
     aws_api.init_spot_fleet_requests()
@@ -417,16 +420,16 @@ def test_init_and_cache_subnets():
     aws_api.init_subnets(region=all_regions)
     aws_api.cache_objects(aws_api.subnets, configuration.aws_api_subnets_cache_file)
     assert isinstance(aws_api.subnets, list)
-    
-    
+
+
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_glue_tables():
     all_regions = list(list(aws_api.aws_accounts.values())[0].regions.values())
     aws_api.init_glue_tables(region=all_regions)
     aws_api.cache_objects(aws_api.glue_tables, configuration.aws_api_glue_tables_cache_file)
     assert isinstance(aws_api.glue_tables, list)
-    
-    
+
+
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_glue_databases():
     all_regions = list(list(aws_api.aws_accounts.values())[0].regions.values())
@@ -504,7 +507,7 @@ def test_init_and_cache_ecr_repositories():
     aws_api.init_ecr_repositories()
     aws_api.cache_objects(aws_api.ecr_repositories, configuration.aws_api_ecr_repositories_cache_file)
     assert isinstance(aws_api.ecr_repositories, list)
-    
+
 # endregion
 
 
@@ -563,13 +566,20 @@ def test_init_and_cache_ecs_services():
     aws_api.init_ecs_services()
     aws_api.cache_objects(aws_api.ecs_services, configuration.aws_api_ecs_services_cache_file)
     assert isinstance(aws_api.ecs_services, list)
-    
-    
+
+
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_ecs_task_definitions():
     aws_api.init_ecs_task_definitions()
     aws_api.cache_objects(aws_api.ecs_task_definitions, configuration.aws_api_ecs_task_definitions_cache_file)
     assert isinstance(aws_api.ecs_task_definitions, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_ecs_tasks():
+    aws_api.init_ecs_tasks()
+    aws_api.cache_objects(aws_api.ecs_tasks, configuration.aws_api_ecs_tasks_cache_file)
+    assert isinstance(aws_api.ecs_tasks, list)
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
@@ -589,12 +599,12 @@ def test_init_and_cache_lambda_event_source_mappings():
     print(f"len(lambda_event_source_mappings) = {len(aws_api.lambda_event_source_mappings)}")
     assert isinstance(aws_api.lambda_event_source_mappings, list)
 
-    
+
 def find_stream():
     log_group_dir = "dirpath"
     for file_name in os.listdir(log_group_dir):
         print(f"checking {file_name}")
-        with open(os.path.join(log_group_dir, file_name)) as fh:
+        with open(os.path.join(log_group_dir, file_name), encoding="utf-8") as fh:
             ret = json.load(fh)
         for dict_stream in ret:
             if "something" in dict_stream["logStreamName"]:
@@ -603,7 +613,7 @@ def find_stream():
 
 def find_ami():
     region = "us-east-1"
-    filter_request = dict()
+    filter_request = {}
     filter_request["Filters"] = [{'Name': 'owner-id',
                                   'Values': [
                                       '591542846629',
@@ -656,6 +666,7 @@ if __name__ == "__main__":
     #test_init_and_cache_ecs_capacity_providers()
     #test_init_and_cache_ec2_launch_template_versions()
     #test_init_and_cache_ecs_task_definitions()
+    test_init_and_cache_ecs_tasks()
     #test_add_managed_region()
     #test_init_and_cache_load_balancers()
     #test_init_and_cache_target_groups()
@@ -703,4 +714,4 @@ if __name__ == "__main__":
     #test_init_and_cache_cloudwatch_alarms()
     #test_init_and_cache_application_auto_scaling_policies()
     #test_init_and_cache_application_auto_scaling_scalable_targets()
-    test_init_and_cache_spot_fleet_requests()
+    #test_init_and_cache_spot_fleet_requests()

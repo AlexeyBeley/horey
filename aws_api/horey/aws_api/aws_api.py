@@ -1,10 +1,12 @@
 """
 Module to handle cross service interaction
+
 """
+# pylint: disable= too-many-lines
+
 import json
 import os
 import datetime
-import pdb
 
 import time
 import zipfile
@@ -137,12 +139,13 @@ from horey.aws_api.base_entities.aws_account import AWSAccount
 logger = get_logger()
 
 
-# pylint: disable=R0904
+# pylint: disable=too-many-instance-attributes
 class AWSAPI:
     """
     AWS access management and some small functionality to coordinate different services.
     """
 
+    # pylint: disable= too-many-statements
     def __init__(self, configuration=None):
         self.glue_client = GlueClient()
         self.ec2_client = EC2Client()
@@ -233,6 +236,7 @@ class AWSAPI:
         self.application_auto_scaling_policies = []
         self.application_auto_scaling_scalable_targets = []
         self.ecs_task_definitions = []
+        self.ecs_tasks = []
         self.ecs_services = []
         self.elasticache_clusters = []
         self.elasticache_cache_parameter_groups = []
@@ -662,6 +666,23 @@ class AWSAPI:
 
         self.ecs_task_definitions = objects
 
+    def init_ecs_tasks(self, from_cache=False, cache_file=None, region=None):
+        """
+        Self explanatory.
+
+        @param from_cache:
+        @param cache_file:
+        @param region:
+        @return:
+        """
+
+        if from_cache:
+            objects = self.load_objects_from_cache(cache_file, ECSService)
+        else:
+            objects = self.ecs_client.get_all_tasks(region=region)
+
+        self.ecs_tasks = objects
+
     def init_auto_scaling_groups(self, from_cache=False, cache_file=None, region=None):
         """
         Self explanatory.
@@ -1036,7 +1057,7 @@ class AWSAPI:
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, CloudWatchLogGroupMetricFilter)
         else:
-            objects = self.cloud_watch_logs_client.get_cloud_watch_log_group_metric_filters()
+            objects = self.cloud_watch_logs_client.get_log_group_metric_filters()
 
         self.cloud_watch_log_groups_metric_filters = objects
 
@@ -1612,6 +1633,7 @@ class AWSAPI:
         counter = 0
 
         buffer = []
+        bucket_object = None
         for bucket_object in bucket_objects_iterator:
             counter += 1
             total_counter += 1
@@ -1688,15 +1710,17 @@ class AWSAPI:
     def prepare_hosted_zones_mapping(self):
         """
         Prepare mapping of a known objects into hosted zones Map
+
         @return:
         """
+
         dns_map = DNSMap(self.hosted_zones)
         seed_end_points = []
 
         for obj in self.ec2_instances:
             seed_end_points.append(obj)
 
-        for obj in self.databases:
+        for obj in self.rds_db_clusters:
             seed_end_points.append(obj)
 
         for obj in self.load_balancers:
@@ -1719,6 +1743,13 @@ class AWSAPI:
         return dns_map
 
     def cleanup_report_network_interfaces(self, output_file):
+        """
+        Cleanup report.
+
+        :param output_file:
+        :return:
+        """
+
         tb_ret = TextBlock("Unused network interfaces")
         for interface in self.network_interfaces:
             if interface.attachment is None:
@@ -1839,19 +1870,22 @@ class AWSAPI:
 
         return tb_ret
 
-    def cleanup_report_lambdas_not_running_stream_analysis(self, log_group,
+    @staticmethod
+    def cleanup_report_lambdas_not_running_stream_analysis(log_group,
                                                            aws_api_cloudwatch_log_groups_streams_cache_dir):
         """
         Lambda report checking if the last log stream is to old
+
         @param log_group:
         @param aws_api_cloudwatch_log_groups_streams_cache_dir:
         @return:
         """
+
         lines = []
         file_names = os.listdir(
             os.path.join(aws_api_cloudwatch_log_groups_streams_cache_dir, log_group.generate_dir_name()))
 
-        last_file = str(max([int(file_name) for file_name in file_names]))
+        last_file = str(max(int(file_name) for file_name in file_names))
         with open(os.path.join(aws_api_cloudwatch_log_groups_streams_cache_dir, log_group.generate_dir_name(),
                                last_file), encoding="utf-8") as file_handler:
             last_stream = json.load(file_handler)[-1]
@@ -1887,10 +1921,13 @@ class AWSAPI:
     def cleanup_report_s3_buckets_objects(summarised_data_file, output_file):
         """
         Generating S3 cleanup report from the previously generated summarized data file.
+
         @param summarised_data_file:
         @param output_file:
         @return:
         """
+
+        # pylint: disable= too-many-locals
         with open(summarised_data_file, encoding="utf-8") as fh:
             all_buckets = json.load(fh)
 
@@ -1906,7 +1943,7 @@ class AWSAPI:
 
                 for month, month_data in sorted(year_data.items(), key=lambda x: int(x[0])):
                     year_dict["months"][month] = {"total_size": 0, "total_keys": 0}
-                    for day, day_data in month_data.items():
+                    for day_data in month_data.values():
                         year_dict["months"][month]["total_size"] += day_data["size"]
                         year_dict["months"][month]["total_keys"] += day_data["keys"]
                     year_dict["total_size"] += year_dict["months"][month]["total_size"]
@@ -1975,13 +2012,15 @@ class AWSAPI:
     def cleanup_report_s3_buckets_objects_large(all_buckets):
         """
         Generate cleanup report for s3 large buckets- buckets, with a metadata to large for RAM.
+
         @param all_buckets:
         @return:
         """
+
         tb_ret = TextBlock(header="Large buckets")
         lst_buckets_total = []
         for bucket_name, by_year_split in all_buckets:
-            bucket_total = sum([per_year_data["size"] for per_year_data in by_year_split.values()])
+            bucket_total = sum(per_year_data["size"] for per_year_data in by_year_split.values())
             lst_buckets_total.append((bucket_name, bucket_total))
 
         lst_buckets_total_sorted = sorted(lst_buckets_total, reverse=True, key=lambda x: x[1])
@@ -2009,6 +2048,13 @@ class AWSAPI:
         return account_id
 
     def cleanup_report_iam_roles(self, output_file):
+        """
+        Generate report
+
+        :param output_file:
+        :return:
+        """
+
         time_limit = datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(days=30)
         tb_ret = TextBlock("Unused IAM roles. Last use time > 30 days")
 
@@ -2024,7 +2070,8 @@ class AWSAPI:
 
         return tb_ret
 
-    def cleanup_report_cloud_watch_metrics(self, metrics_dir, output_file):
+    @staticmethod
+    def cleanup_report_cloud_watch_metrics(metrics_dir, output_file):
         """
         800 150 130 +50
 
@@ -2032,10 +2079,11 @@ class AWSAPI:
         @param output_file:
         @return:
         """
+
         tb_ret = TextBlock("Cloudwatch metrics report")
         chunk_files = os.listdir(metrics_dir)
-        for i in range(len(chunk_files)):
-            chunk_file_name = chunk_files[i]
+        metrics = None
+        for chunk_file_name in chunk_files:
             chunk_file_path = os.path.join(metrics_dir, chunk_file_name)
             with open(chunk_file_path, encoding="utf-8") as file_handler:
                 metrics_dicts = json.load(file_handler)
@@ -2070,6 +2118,7 @@ class AWSAPI:
         @param top_streams_count: Top most streams count to show in the report.
         @return:
         """
+        # pylint: disable= too-many-locals
 
         dict_total = {"size": 0, "streams_count": 0, "data": []}
         log_group_subdirs = os.listdir(streams_dir)
@@ -2079,8 +2128,7 @@ class AWSAPI:
             log_group_full_path = os.path.join(streams_dir, log_group_subdir)
 
             log_group_chunk_files = os.listdir(log_group_full_path)
-            for j in range(len(log_group_chunk_files)):
-                chunk_file = log_group_chunk_files[j]
+            for j, chunk_file in enumerate(log_group_chunk_files):
                 logger.info(f"Chunk files in log group dir {j}/{len(log_group_chunk_files)}")
 
                 with open(os.path.join(log_group_full_path, chunk_file), encoding="utf-8") as fh:
@@ -2509,7 +2557,6 @@ class AWSAPI:
             if len(lines) > 0:
                 tb_ret.lines += lines
 
-        # todo: test and remove
         lines = self.cleanup_report_iam_policy_statements_intersecting_statements(policy)
         tb_ret.lines += lines
 
@@ -3289,6 +3336,7 @@ class AWSAPI:
         end_time = start_time + datetime.timedelta(seconds=max_time)
         while datetime.datetime.now() < end_time:
             certificate = self.acm_client.get_certificate(certificate.arn)
+            # pylint: disable= unsubscriptable-object
             if certificate.domain_validation_options[0].get("ResourceRecord") is not None:
                 break
 
@@ -3517,13 +3565,12 @@ class AWSAPI:
 
         return security_groups[0]
 
-    def get_subnet_by_vpc_and_name(self, vpc, name, full_information=False):
+    def get_subnet_by_vpc_and_name(self, vpc, name):
         """
         Find subnet in a vpc by its name tag.
 
         @param vpc:
         @param name:
-        @param full_information:
         @return:
         """
 
@@ -3663,6 +3710,8 @@ class AWSAPI:
         for distribution in self.cloudfront_distributions:
             if alias in distribution.aliases["Items"]:
                 return distribution
+
+        return None
 
     def wait_for_instances_provision_ending(self, instances):
         """
@@ -3935,7 +3984,7 @@ class AWSAPI:
         """
 
         filters = {"Filters": [{
-            "Name": f"tag:Name",
+            "Name": "tag:Name",
             "Values": [
                 name
             ]
@@ -4087,7 +4136,7 @@ class AWSAPI:
             h_tb_grp.lines.append("#" * 20)
 
             if group.policies:
-                policies_block = json.dumps([pol for pol in group.policies], indent=2)
+                policies_block = json.dumps(list(group.policies), indent=2)
                 h_tb_grp.lines.append(f"Inline Policies: {policies_block}")
 
             if group.attached_policies:
@@ -4097,7 +4146,7 @@ class AWSAPI:
             h_tb.blocks.append(h_tb_grp)
 
         used_policies = list(set(used_policies))
-        h_tb_policies = TextBlock(f"Attached Policies used by Groups")
+        h_tb_policies = TextBlock("Attached Policies used by Groups")
         for policy_name in used_policies:
             h_tb_pol = TextBlock(f"PolicyName: {policy_name}")
             policy = CommonUtils.find_objects_by_values(self.iam_policies, {"name": policy_name}, max_count=1)[0]
