@@ -469,3 +469,27 @@ class AlertSystem:
         alarm.treat_missing_data = "notBreaching"
 
         self.provision_cloudwatch_alarm(alarm)
+
+    def test_provision(self, lambda_files, event_json_file_path):
+        """
+        Locally test event in the being provisioned infra.
+
+        :param lambda_files:
+        :param event_json_file_path:
+        :return:
+        """
+
+        self.create_lambda_package(lambda_files)
+
+        validation_dir_name = os.path.splitext(self.configuration.lambda_zip_file_name)[0]
+        validation_dir_path = os.path.join(self.configuration.deployment_directory_path, validation_dir_name)
+        current_dir = os.getcwd()
+        os.chdir(validation_dir_path)
+
+        event_handler = CommonUtils.load_object_from_module("lambda_handler.py", "EventHandler")
+        with open(event_json_file_path, encoding="utf-8") as file_handler:
+            event = json.load(file_handler)
+
+        event_handler.handle_event(event)
+
+        os.chdir(current_dir)
