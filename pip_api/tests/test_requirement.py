@@ -62,7 +62,13 @@ def test_init_less():
 
 
 def test_generate_install_string():
-    for test_string in ["test<1.0.0", "test>1.0.0", "test<=1.0.0", "test>=1.0.0", "test==1.0.0"]:
+    for test_string in [
+        "test<1.0.0",
+        "test>1.0.0",
+        "test<=1.0.0",
+        "test>=1.0.0",
+        "test==1.0.0",
+    ]:
         logger.info(f"test_string: '{test_string}'")
         requirement = Requirement(test_string)
         assert requirement.generate_install_string() == test_string

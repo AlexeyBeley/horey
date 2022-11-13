@@ -6,10 +6,12 @@ from horey.network.dns import DNS
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 import pdb
 
+
 class ClassicLoadBalancer(AwsObject):
     """
     Classic Loadbalancer representation.
     """
+
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self.dns_name = None
@@ -21,23 +23,25 @@ class ClassicLoadBalancer(AwsObject):
             return
 
         init_options = {
-                        "LoadBalancerName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-                        "DNSName": self.init_default_attr,
-                        "CanonicalHostedZoneNameID": self.init_default_attr,
-                        "ListenerDescriptions": self.init_listener_descriptions,
-                        "Policies": self.init_default_attr,
-                        "BackendServerDescriptions": self.init_default_attr,
-                        "Subnets": self.init_default_attr,
-                        "VPCId": self.init_default_attr,
-                        "Instances": self.init_default_attr,
-                        "HealthCheck": self.init_default_attr,
-                        "SourceSecurityGroup": self.init_default_attr,
-                        "CreatedTime": self.init_default_attr,
-                        "SecurityGroups": self.init_default_attr,
-                        "Scheme": self.init_default_attr,
-                        "AvailabilityZones": self.init_default_attr,
-                        "CanonicalHostedZoneName": self.init_default_attr,
-                        }
+            "LoadBalancerName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
+            "DNSName": self.init_default_attr,
+            "CanonicalHostedZoneNameID": self.init_default_attr,
+            "ListenerDescriptions": self.init_listener_descriptions,
+            "Policies": self.init_default_attr,
+            "BackendServerDescriptions": self.init_default_attr,
+            "Subnets": self.init_default_attr,
+            "VPCId": self.init_default_attr,
+            "Instances": self.init_default_attr,
+            "HealthCheck": self.init_default_attr,
+            "SourceSecurityGroup": self.init_default_attr,
+            "CreatedTime": self.init_default_attr,
+            "SecurityGroups": self.init_default_attr,
+            "Scheme": self.init_default_attr,
+            "AvailabilityZones": self.init_default_attr,
+            "CanonicalHostedZoneName": self.init_default_attr,
+        }
 
         self.init_attrs(dict_src, init_options)
 
@@ -93,7 +97,9 @@ class ClassicLoadBalancer(AwsObject):
         def init_listener(self, _, dict_src):
             init_options = {
                 "Protocol": self.init_default_attr,
-                "LoadBalancerPort": lambda x, y: self.init_default_attr(x, y, formatted_name="port"),
+                "LoadBalancerPort": lambda x, y: self.init_default_attr(
+                    x, y, formatted_name="port"
+                ),
                 "InstanceProtocol": self.init_default_attr,
                 "InstancePort": self.init_default_attr,
                 "SSLCertificateId": self.init_default_attr,

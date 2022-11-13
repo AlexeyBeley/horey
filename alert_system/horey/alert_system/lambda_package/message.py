@@ -136,7 +136,9 @@ class Message:
             try:
                 dict_src = json.loads(dict_src["AlarmDescription"])
             except Exception:
-                logger.warning(f"Was not able to json load AlarmDescription: {dict_src}")
+                logger.warning(
+                    f"Was not able to json load AlarmDescription: {dict_src}"
+                )
                 return
 
         try:
@@ -172,4 +174,8 @@ class Message:
         @return:
         """
 
-        return {key[1:]: value for key, value in self.__dict__.items() if key.startswith("_")}
+        return {
+            key[1:]: value
+            for key, value in self.__dict__.items()
+            if key.startswith("_")
+        }

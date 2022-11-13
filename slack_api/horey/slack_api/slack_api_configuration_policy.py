@@ -3,7 +3,6 @@ from enum import Enum
 
 
 class SlackAPIConfigurationPolicy(ConfigurationPolicy):
-
     def __init__(self):
         self._webhook_url = None
 
@@ -18,10 +17,12 @@ class SlackAPIConfigurationPolicy(ConfigurationPolicy):
     @webhook_url.setter
     def webhook_url(self, value):
         if not isinstance(value, str):
-            raise ValueError(f"webhook_url must be string received {value} of type: {type(value)}")
+            raise ValueError(
+                f"webhook_url must be string received {value} of type: {type(value)}"
+            )
 
         self._webhook_url = value
-        
+
     class Types(Enum):
         STABLE = 0
         WARNING = 1

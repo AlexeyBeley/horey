@@ -22,7 +22,9 @@ class SESV2ConfigurationSet(AwsObject):
             return
 
         init_options = {
-            "ConfigurationSetName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "ConfigurationSetName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
             "TrackingOptions": self.init_default_attr,
             "ReputationOptions": self.init_default_attr,
             "SendingOptions": self.init_default_attr,
@@ -42,7 +44,9 @@ class SESV2ConfigurationSet(AwsObject):
 
     def update_from_raw_response(self, dict_src):
         init_options = {
-            "ConfigurationSetName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "ConfigurationSetName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
             "TrackingOptions": self.init_default_attr,
             "ReputationOptions": self.init_default_attr,
             "SendingOptions": self.init_default_attr,

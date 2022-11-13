@@ -11,6 +11,7 @@ class RouteTable(AwsObject):
     """
     AWS AvailabilityZone class
     """
+
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self.instances = []
@@ -20,14 +21,16 @@ class RouteTable(AwsObject):
             self._init_object_from_cache(dict_src)
             return
         init_options = {
-            "RouteTableId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "RouteTableId": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="id"
+            ),
             "Associations": self.init_default_attr,
             "PropagatingVgws": self.init_default_attr,
             "Routes": self.init_default_attr,
             "Tags": self.init_default_attr,
             "VpcId": self.init_default_attr,
             "OwnerId": self.init_default_attr,
-                        }
+        }
 
         self.init_attrs(dict_src, init_options)
 
@@ -42,23 +45,25 @@ class RouteTable(AwsObject):
 
     def update_from_raw_response(self, dict_src):
         init_options = {
-            "RouteTableId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "RouteTableId": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="id"
+            ),
             "Associations": self.init_default_attr,
             "PropagatingVgws": self.init_default_attr,
             "Routes": self.init_default_attr,
             "Tags": self.init_default_attr,
             "VpcId": self.init_default_attr,
             "OwnerId": self.init_default_attr,
-                        }
+        }
 
         self.init_attrs(dict_src, init_options)
 
     def generate_create_request(self):
         request = dict()
         request["VpcId"] = self.vpc_id
-        request["TagSpecifications"] = [{
-            "ResourceType": "route-table",
-            "Tags": self.tags}]
+        request["TagSpecifications"] = [
+            {"ResourceType": "route-table", "Tags": self.tags}
+        ]
 
         return request
 
@@ -97,4 +102,3 @@ class RouteTable(AwsObject):
             lst_ret.append(request)
 
         return lst_ret
-

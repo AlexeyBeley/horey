@@ -6,6 +6,7 @@ import argparse
 
 from horey.h_logger import get_logger
 from horey.common_utils.common_utils import CommonUtils
+
 logger = get_logger()
 import pdb
 
@@ -24,13 +25,13 @@ class ConfigurationPolicy:
         Save all the files used to configure - used for prints in
         """
         self._configuration_file_full_path = []
-    
+
     @property
     def configuration_file_full_path(self):
         if len(self._configuration_file_full_path) > 0:
             return self._configuration_file_full_path[-1]
         return None
-    
+
     @configuration_file_full_path.setter
     def configuration_file_full_path(self, value):
         if not os.path.exists(value):
@@ -46,13 +47,19 @@ class ConfigurationPolicy:
     def configuration_files_history(self, _):
         raise ValueError("Readonly property")
 
-    def _set_attribute_value(self, attribute_name, attribute_value, ignore_undefined=False):
+    def _set_attribute_value(
+        self, attribute_name, attribute_value, ignore_undefined=False
+    ):
         if not hasattr(self, f"_{attribute_name}"):
             if ignore_undefined:
-                logger.info(f"{attribute_name} value is not set - no attribute definition")
+                logger.info(
+                    f"{attribute_name} value is not set - no attribute definition"
+                )
                 return
 
-            raise ValueError(f"No attribute found with name _{attribute_name} in {self.__class__.__name__}")
+            raise ValueError(
+                f"No attribute found with name _{attribute_name} in {self.__class__.__name__}"
+            )
 
         setattr(self, attribute_name, attribute_value)
 
@@ -66,11 +73,18 @@ class ConfigurationPolicy:
         namespace_arguments = parser.parse_args()
         dict_arguments = vars(namespace_arguments)
 
-        dict_arguments = {key: value for key, value in dict_arguments.items() if value is not None}
+        dict_arguments = {
+            key: value for key, value in dict_arguments.items() if value is not None
+        }
 
-        self.init_from_dictionary(dict_arguments, custom_source_log="Init attribute '{}' from command line argument")
+        self.init_from_dictionary(
+            dict_arguments,
+            custom_source_log="Init attribute '{}' from command line argument",
+        )
 
-    def init_from_dictionary(self, dict_src, custom_source_log=None, ignore_undefined=False):
+    def init_from_dictionary(
+        self, dict_src, custom_source_log=None, ignore_undefined=False
+    ):
         """
 
         :param dict_src:
@@ -89,9 +103,11 @@ class ConfigurationPolicy:
         for key_tmp, value in os.environ.items():
             key = key_tmp.lower()
             if key.startswith(self.ENVIRON_ATTRIBUTE_PREFIX):
-                key = key[len(self.ENVIRON_ATTRIBUTE_PREFIX):]
+                key = key[len(self.ENVIRON_ATTRIBUTE_PREFIX) :]
 
-                log_line = f"Init attribute '{key}' from environment variable '{key_tmp}'"
+                log_line = (
+                    f"Init attribute '{key}' from environment variable '{key_tmp}'"
+                )
                 logger.info(log_line)
 
                 self._set_attribute_value(key, value)
@@ -109,13 +125,25 @@ class ConfigurationPolicy:
         raise TypeError(self.configuration_file_full_path)
 
     def init_from_python_file(self):
-        config = CommonUtils.load_object_from_module(self.configuration_file_full_path, "main")
-        self.init_from_dictionary(config.__dict__, custom_source_log="Init attribute '{}' from python file: '" + self.configuration_file_full_path + "'")
+        config = CommonUtils.load_object_from_module(
+            self.configuration_file_full_path, "main"
+        )
+        self.init_from_dictionary(
+            config.__dict__,
+            custom_source_log="Init attribute '{}' from python file: '"
+            + self.configuration_file_full_path
+            + "'",
+        )
 
     def init_from_json_file(self):
         with open(self.configuration_file_full_path) as file_handler:
             dict_arguments = json.load(file_handler)
-        self.init_from_dictionary(dict_arguments, custom_source_log="Init attribute '{}' from json file: '" + self.configuration_file_full_path + "'")
+        self.init_from_dictionary(
+            dict_arguments,
+            custom_source_log="Init attribute '{}' from json file: '"
+            + self.configuration_file_full_path
+            + "'",
+        )
 
     def generate_parser(self):
         """
@@ -146,9 +174,13 @@ class ConfigurationPolicy:
                 dict_ret[attr_name] = getattr(self, attr_name)
             except self.UndefinedValueError as received_exception:
                 if not ignore_undefined:
-                    raise ValueError(f"Value can not be accessed for attribute: {attr_name}") from received_exception
+                    raise ValueError(
+                        f"Value can not be accessed for attribute: {attr_name}"
+                    ) from received_exception
             except Exception as received_exception:
-                raise ValueError(f"Value can not be accessed for attribute: {attr_name}") from received_exception
+                raise ValueError(
+                    f"Value can not be accessed for attribute: {attr_name}"
+                ) from received_exception
 
         if dict_ret["configuration_file_full_path"] is None:
             del dict_ret["configuration_file_full_path"]
@@ -166,13 +198,21 @@ class ConfigurationPolicy:
             json.dump(dict_values, file_handler, indent=4)
 
     def init_from_policy(self, configuration, ignore_undefined=False):
-        self_definable_attrs = [attr_name[1:] for attr_name in self.__dict__ if attr_name.startswith("_")]
-        for attr_name, value in configuration.convert_to_dict(ignore_undefined=ignore_undefined).items():
+        self_definable_attrs = [
+            attr_name[1:] for attr_name in self.__dict__ if attr_name.startswith("_")
+        ]
+        for attr_name, value in configuration.convert_to_dict(
+            ignore_undefined=ignore_undefined
+        ).items():
             if attr_name not in self_definable_attrs:
-                logger.info(f"Skipping attribute {attr_name} from {type(configuration)} policy")
+                logger.info(
+                    f"Skipping attribute {attr_name} from {type(configuration)} policy"
+                )
                 continue
             try:
-                log_line = f"Init attribute '{attr_name}' from {type(configuration)} policy"
+                log_line = (
+                    f"Init attribute '{attr_name}' from {type(configuration)} policy"
+                )
                 setattr(self, attr_name, value)
                 logger.info(log_line)
             except AttributeError:
@@ -187,14 +227,19 @@ class ConfigurationPolicy:
             def function_wrapper(*args, **kwargs):
                 if isinstance(types, list):
                     if type(args[0]) not in types:
-                        raise ValueError(f"Received type '{type(args[0])}' while expecting one of '{types}'")
+                        raise ValueError(
+                            f"Received type '{type(args[0])}' while expecting one of '{types}'"
+                        )
                 else:
                     if isinstance(args[0], types):
-                        raise ValueError(f"Received type '{type(args[0])}' while expecting '{types}'")
+                        raise ValueError(
+                            f"Received type '{type(args[0])}' while expecting '{types}'"
+                        )
 
                 func(*args, **kwargs)
 
             return function_wrapper
+
         return function_receiver
 
     @staticmethod
@@ -210,10 +255,15 @@ class ConfigurationPolicy:
         @param property_getter_function:
         @return:
         """
+
         def property_function(configuration_instance):
-            _value = getattr(configuration_instance, "_" + property_getter_function.__name__)
+            _value = getattr(
+                configuration_instance, "_" + property_getter_function.__name__
+            )
             if _value is None:
-                raise ConfigurationPolicy.UndefinedValueError(f"_{property_getter_function.__name__} is None")
+                raise ConfigurationPolicy.UndefinedValueError(
+                    f"_{property_getter_function.__name__} is None"
+                )
             return property_getter_function(configuration_instance)
 
         return property_function
@@ -223,4 +273,3 @@ class ConfigurationPolicy:
 
     class UndefinedValueError(RuntimeError):
         pass
-

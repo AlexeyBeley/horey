@@ -19,7 +19,9 @@ class GCPAPIConfigurationPolicy(ConfigurationPolicy):
     @gcp_api_regions.setter
     def gcp_api_regions(self, value):
         if not isinstance(value, list):
-            raise ValueError(f"gcp_api_regions must be a list received {value} of type: {type(value)}")
+            raise ValueError(
+                f"gcp_api_regions must be a list received {value} of type: {type(value)}"
+            )
 
         self._gcp_api_regions = value
 
@@ -40,7 +42,9 @@ class GCPAPIConfigurationPolicy(ConfigurationPolicy):
     @gcp_account.setter
     def gcp_account(self, value):
         if not isinstance(value, str):
-            raise ValueError(f"gcp_account must be a string received {value} of type: {type(value)}")
+            raise ValueError(
+                f"gcp_account must be a string received {value} of type: {type(value)}"
+            )
 
         self._gcp_account = value
 

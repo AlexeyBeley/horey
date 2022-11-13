@@ -48,51 +48,50 @@ class LoadBalancer(AzureObject):
         self._init_from_cache(dict_src, options)
 
     def construct_fip_id(subscription_id):
-        """Build the future FrontEndId based on components name.
-        """
-        return ('/subscriptions/{}'
-                '/resourceGroups/{}'
-                '/providers/Microsoft.Network'
-                '/loadBalancers/{}'
-                '/frontendIPConfigurations/{}').format(
-            subscription_id, GROUP_NAME, LB_NAME, FIP_NAME
-        )
+        """Build the future FrontEndId based on components name."""
+        return (
+            "/subscriptions/{}"
+            "/resourceGroups/{}"
+            "/providers/Microsoft.Network"
+            "/loadBalancers/{}"
+            "/frontendIPConfigurations/{}"
+        ).format(subscription_id, GROUP_NAME, LB_NAME, FIP_NAME)
 
     def construct_bap_id(subscription_id):
-        """Build the future BackEndId based on components name.
-        """
-        return ('/subscriptions/{}'
-                '/resourceGroups/{}'
-                '/providers/Microsoft.Network'
-                '/loadBalancers/{}'
-                '/backendAddressPools/{}').format(
-            subscription_id, GROUP_NAME, LB_NAME, ADDRESS_POOL_NAME
-        )
+        """Build the future BackEndId based on components name."""
+        return (
+            "/subscriptions/{}"
+            "/resourceGroups/{}"
+            "/providers/Microsoft.Network"
+            "/loadBalancers/{}"
+            "/backendAddressPools/{}"
+        ).format(subscription_id, GROUP_NAME, LB_NAME, ADDRESS_POOL_NAME)
 
     def construct_probe_id(subscription_id):
-        """Build the future ProbeId based on components name.
-        """
-        return ('/subscriptions/{}'
-                '/resourceGroups/{}'
-                '/providers/Microsoft.Network'
-                '/loadBalancers/{}'
-                '/probes/{}').format(
-            subscription_id, GROUP_NAME, LB_NAME, PROBE_NAME
-        )
+        """Build the future ProbeId based on components name."""
+        return (
+            "/subscriptions/{}"
+            "/resourceGroups/{}"
+            "/providers/Microsoft.Network"
+            "/loadBalancers/{}"
+            "/probes/{}"
+        ).format(subscription_id, GROUP_NAME, LB_NAME, PROBE_NAME)
 
     def generate_create_request(self):
 
-        return [self.resource_group_name,
-                self.name,
-                {"location": self.location,
-                 "frontend_ip_configurations": self.frontend_ip_configurations,
-                 "backend_address_pools": self.backend_address_pools,
-                 "probes": self.probes,
-                 "load_balancing_rules": self.load_balancing_rules,
-                 "sku": self.sku,
-                 "tags": self.tags
-                 }
-                ]
+        return [
+            self.resource_group_name,
+            self.name,
+            {
+                "location": self.location,
+                "frontend_ip_configurations": self.frontend_ip_configurations,
+                "backend_address_pools": self.backend_address_pools,
+                "probes": self.probes,
+                "load_balancing_rules": self.load_balancing_rules,
+                "sku": self.sku,
+                "tags": self.tags,
+            },
+        ]
 
     def update_after_creation(self, load_balancer):
         self.id = load_balancer.id

@@ -9,6 +9,7 @@ class TimeoffRequest(BobObject):
     """
     Main class
     """
+
     def __init__(self, dict_src):
         self.employee_display_name = None
         self.end_date = None

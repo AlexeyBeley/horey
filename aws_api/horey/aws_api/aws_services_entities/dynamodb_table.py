@@ -27,7 +27,9 @@ class DynamoDBTable(AwsObject):
 
         init_options = {
             "TableArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
-            "TableName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "TableName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
             "TableId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
             "TableStatus": self.init_default_attr,
             "AttributeDefinitions": self.init_default_attr,
@@ -57,7 +59,9 @@ class DynamoDBTable(AwsObject):
     def update_from_raw_response(self, dict_src):
         init_options = {
             "TableArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
-            "TableName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "TableName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
             "TableId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
             "TableStatus": self.init_default_attr,
             "AttributeDefinitions": self.init_default_attr,

@@ -21,7 +21,9 @@ class ECSTaskDefinition(AwsObject):
             self._init_object_from_cache(dict_src)
             return
         init_options = {
-            "taskDefinitionArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "taskDefinitionArn": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
             "containerDefinitions": self.init_default_attr,
             "family": self.init_default_attr,
             "taskRoleArn": self.init_default_attr,
@@ -53,7 +55,9 @@ class ECSTaskDefinition(AwsObject):
 
     def update_from_raw_response(self, dict_src):
         init_options = {
-            "taskDefinitionArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "taskDefinitionArn": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
             "containerDefinitions": self.init_default_attr,
             "family": self.init_default_attr,
             "taskRoleArn": self.init_default_attr,

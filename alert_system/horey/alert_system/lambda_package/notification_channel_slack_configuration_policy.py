@@ -34,5 +34,7 @@ class NotificationChannelSlackConfigurationPolicy(SlackAPIConfigurationPolicy):
             raise ValueError(value)
 
         if not isinstance(value.get(self.ALERT_SYSTEM_MONITORING_ROUTING_TAG), str):
-            raise ValueError(f"Key {self.ALERT_SYSTEM_MONITORING_ROUTING_TAG} is incorrect in mappings: {value}")
+            raise ValueError(
+                f"Key {self.ALERT_SYSTEM_MONITORING_ROUTING_TAG} is incorrect in mappings: {value}"
+            )
         self._tag_to_channel_mapping = value

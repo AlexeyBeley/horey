@@ -3,6 +3,7 @@
 Provision constructor.
 """
 import os
+
 # pylint: disable= wildcard-import, unused-wildcard-import
 from horey.provision_constructor.system_functions import *
 from horey.provision_constructor.system_function_factory import SystemFunctionFactory
@@ -16,14 +17,18 @@ class ProvisionConstructor:
 
     PROVISIONER_SCRIPT_NAME = "main.sh"
     PROVISIONER_CONSTRUCTOR_SUB_DIR = "provision_constructor_deployment_dir"
-    PROVISION_CONSTRUCTOR_BOOTSTRAP_SCRIPT_NAME = "provision_constructor_bootstrap_script.sh"
+    PROVISION_CONSTRUCTOR_BOOTSTRAP_SCRIPT_NAME = (
+        "provision_constructor_bootstrap_script.sh"
+    )
 
     def __init__(self):
         self.provisioned_system_functions = []
         self.horey_repo_path = None
         self.deployment_dir = None
 
-    def generate_provisioning_venv_scripts_tree(self, base_dir_path, horey_repo_path=None):
+    def generate_provisioning_venv_scripts_tree(
+        self, base_dir_path, horey_repo_path=None
+    ):
         """
         Deprecated !!!
 
@@ -67,8 +72,9 @@ class ProvisionConstructor:
             force = kwargs.get("force")
             del kwargs["force"]
 
-        system_function = SystemFunctionFactory.REGISTERED_FUNCTIONS[system_function_name](self.deployment_dir,
-                                                                         **kwargs)
+        system_function = SystemFunctionFactory.REGISTERED_FUNCTIONS[
+            system_function_name
+        ](self.deployment_dir, **kwargs)
         if system_function.validate_provisioned_ancestor:
             self.check_provisioned_ancestor(system_function_name)
 
@@ -85,10 +91,12 @@ class ProvisionConstructor:
         """
 
         self.check_provisioned_ancestor(system_function_name)
-        SystemFunctionFactory.REGISTERED_FUNCTIONS[system_function_name](self.deployment_dir,
-                                                                         ProvisionConstructor.PROVISIONER_SCRIPT_NAME,
-                                                                         **kwargs)
-        SystemFunctionFactory.REGISTERED_FUNCTIONS[system_function_name].add_system_function_common()
+        SystemFunctionFactory.REGISTERED_FUNCTIONS[system_function_name](
+            self.deployment_dir, ProvisionConstructor.PROVISIONER_SCRIPT_NAME, **kwargs
+        )
+        SystemFunctionFactory.REGISTERED_FUNCTIONS[
+            system_function_name
+        ].add_system_function_common()
         self.provisioned_system_functions.append(system_function_name)
 
     def check_provisioned_ancestor(self, system_function_name):
@@ -100,12 +108,16 @@ class ProvisionConstructor:
         """
 
         if "." in system_function_name:
-            ancestor_name = system_function_name[:system_function_name.rfind(".")]
+            ancestor_name = system_function_name[: system_function_name.rfind(".")]
             if ancestor_name not in self.provisioned_system_functions:
-                raise RuntimeError(f"'{system_function_name}' ancestor '{ancestor_name}' was not found")
+                raise RuntimeError(
+                    f"'{system_function_name}' ancestor '{ancestor_name}' was not found"
+                )
 
     @staticmethod
-    def generate_provision_constructor_bootstrap_script(remote_deployment_dir_path, script_path):
+    def generate_provision_constructor_bootstrap_script(
+        remote_deployment_dir_path, script_path
+    ):
         """
         Provision constructor remote machine bootstrap script.
 
@@ -114,7 +126,9 @@ class ProvisionConstructor:
         @return:
         """
 
-        with open(os.path.join(remote_deployment_dir_path, script_path), "w", encoding="utf-8") as file_handler:
+        with open(
+            os.path.join(remote_deployment_dir_path, script_path), "w", encoding="utf-8"
+        ) as file_handler:
             file_handler.write(
                 "#!/bin/bash\n"
                 "set -ex\n"
@@ -134,6 +148,7 @@ class ProvisionConstructor:
                 "cd horey\n"
                 "git checkout --track origin/pip_api_enhance\n"
                 "make recursive_install_from_source-provision_constructor\n"
-                "cd ..")
+                "cd .."
+            )
 
         # download_horey

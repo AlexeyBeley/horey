@@ -25,13 +25,17 @@ class EC2LaunchTemplate(AwsObject):
             return
 
         init_options = {
-            "LaunchTemplateName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "LaunchTemplateName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
             "CreateTime": self.init_default_attr,
             "CreatedBy": self.init_default_attr,
             "DefaultVersionNumber": self.init_default_attr,
             "LatestVersionNumber": self.init_default_attr,
-            "LaunchTemplateId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
-            "Tags": self.init_default_attr
+            "LaunchTemplateId": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="id"
+            ),
+            "Tags": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -51,10 +55,7 @@ class EC2LaunchTemplate(AwsObject):
         request["LaunchTemplateName"] = self.name
         request["LaunchTemplateData"] = self.launch_template_data
         request["TagSpecifications"] = [
-            {
-                'ResourceType': 'launch-template',
-                'Tags': self.tags
-            },
+            {"ResourceType": "launch-template", "Tags": self.tags},
         ]
         return request
 
@@ -72,13 +73,17 @@ class EC2LaunchTemplate(AwsObject):
 
     def update_from_raw_response(self, dict_src):
         init_options = {
-            "LaunchTemplateName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "LaunchTemplateName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
             "CreateTime": self.init_default_attr,
             "CreatedBy": self.init_default_attr,
             "DefaultVersionNumber": self.init_default_attr,
             "LatestVersionNumber": self.init_default_attr,
-            "LaunchTemplateId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
-            "Tags": self.init_default_attr
+            "LaunchTemplateId": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="id"
+            ),
+            "Tags": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)

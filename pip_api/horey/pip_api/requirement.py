@@ -11,10 +11,13 @@ class Requirement:
     """
     Main class.
     """
+
     def __init__(self, requirement_str_src):
         requirement_str = requirement_str_src.replace(" ", "")
 
-        logger.info(f"Initializing requirement from string '{requirement_str_src}', after cleanup '{requirement_str}'")
+        logger.info(
+            f"Initializing requirement from string '{requirement_str_src}', after cleanup '{requirement_str}'"
+        )
         self.name = None
         self.min_version = None
         self.max_version = None

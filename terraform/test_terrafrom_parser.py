@@ -11,6 +11,7 @@ sys.path.insert(0, "~/private/aws_api/src/base_entities")
 from terraform_parser import TerraformParser
 import ignore_me
 import logging
+
 logger = logging.Logger(__name__)
 from horey.aws_api.base_entities.aws_account import AWSAccount
 
@@ -23,5 +24,6 @@ terraform_parser = TerraformParser("~/private/aws_api/ignore/prod_eu_tf_state.js
 
 def test_parse_to_objects():
     terraform_parser.parse_to_objects()
+
 
 test_parse_to_objects()

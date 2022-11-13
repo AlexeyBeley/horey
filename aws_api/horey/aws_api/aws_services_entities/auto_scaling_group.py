@@ -24,8 +24,12 @@ class AutoScalingGroup(AwsObject):
             return
 
         init_options = {
-            "AutoScalingGroupName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-            "AutoScalingGroupARN": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "AutoScalingGroupName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
+            "AutoScalingGroupARN": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
             "LaunchTemplate": self.init_default_attr,
             "MinSize": self.init_default_attr,
             "MaxSize": self.init_default_attr,
@@ -62,8 +66,12 @@ class AutoScalingGroup(AwsObject):
 
     def update_from_raw_response(self, dict_src):
         init_options = {
-            "AutoScalingGroupName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-            "AutoScalingGroupARN": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "AutoScalingGroupName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
+            "AutoScalingGroupARN": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
             "LaunchTemplate": self.init_default_attr,
             "MinSize": self.init_default_attr,
             "MaxSize": self.init_default_attr,
@@ -96,13 +104,14 @@ class AutoScalingGroup(AwsObject):
         request["MinSize"] = self.min_size
         request["MaxSize"] = self.max_size
         request["Tags"] = [
-                   {
-                       "ResourceType": "auto-scaling-group",
-                       "Key": tag["Key"],
-                       "Value": tag["Value"],
-                       "PropagateAtLaunch": True
-                   } for tag in self.tags
-               ]
+            {
+                "ResourceType": "auto-scaling-group",
+                "Key": tag["Key"],
+                "Value": tag["Value"],
+                "PropagateAtLaunch": True,
+            }
+            for tag in self.tags
+        ]
         request["ServiceLinkedRoleARN"] = self.service_linked_role_arn
         request["DesiredCapacity"] = self.desired_capacity
         request["DefaultCooldown"] = self.default_cooldown
@@ -112,7 +121,9 @@ class AutoScalingGroup(AwsObject):
         request["HealthCheckGracePeriod"] = self.health_check_grace_period
         request["VPCZoneIdentifier"] = self.vpc_zone_identifier
         request["TerminationPolicies"] = self.termination_policies
-        request["NewInstancesProtectedFromScaleIn"] = self.new_instances_protected_from_scale_in
+        request[
+            "NewInstancesProtectedFromScaleIn"
+        ] = self.new_instances_protected_from_scale_in
         return request
 
     def generate_update_request(self, desired_state):

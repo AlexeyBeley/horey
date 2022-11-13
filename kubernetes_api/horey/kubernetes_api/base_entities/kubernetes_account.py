@@ -10,6 +10,7 @@ class KubernetesAccount:
     """
     Class defining account metadata and the connection steps to perform in order to manage the account.
     """
+
     _CURRENT_ACCOUNT = None
     _CURRENT_REGION = None
     KNOWN_IDS = []
@@ -109,6 +110,7 @@ class KubernetesAccount:
         """
         Single step to perform in a chain of steps to connect
         """
+
         class Type(Enum):
             """
             Connection step types

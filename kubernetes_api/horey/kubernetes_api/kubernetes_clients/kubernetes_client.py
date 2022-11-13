@@ -34,7 +34,9 @@ class KubernetesClient:
         pdb.set_trace()
         account = KubernetesAccount.get_kubernetes_account()
         for connection_step in account.connection_steps:
-            self._client = self.CLIENT_CLASS(project=connection_step.project, credentials=connection_step.credentials)
+            self._client = self.CLIENT_CLASS(
+                project=connection_step.project, credentials=connection_step.credentials
+            )
 
     def execute(self, function, args=None, kwargs=None):
         if args is None:

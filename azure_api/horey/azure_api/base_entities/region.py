@@ -7,6 +7,7 @@ class Region:
     """
     Azure Region class
     """
+
     REGIONS = {}
 
     @staticmethod

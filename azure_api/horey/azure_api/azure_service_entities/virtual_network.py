@@ -56,18 +56,26 @@ class VirtualNetwork(AzureObject):
         subnets = []
         for subnet in self.subnets:
             subnet_copy = copy.deepcopy(subnet)
-            subnet_copy["address_prefix"] = subnet_copy["address_prefix"].str_address_slash_short_mask()
+            subnet_copy["address_prefix"] = subnet_copy[
+                "address_prefix"
+            ].str_address_slash_short_mask()
             subnets.append(subnet_copy)
 
-        ret = [self.resource_group_name,
-               self.name,
-               {"location": self.location,
-                "address_space": {"address_prefixes": [ip.str_address_slash_short_mask() for ip in
-                                                       self.address_space["address_prefixes"]]},
+        ret = [
+            self.resource_group_name,
+            self.name,
+            {
+                "location": self.location,
+                "address_space": {
+                    "address_prefixes": [
+                        ip.str_address_slash_short_mask()
+                        for ip in self.address_space["address_prefixes"]
+                    ]
+                },
                 "subnets": subnets,
-                "tags": self.tags
-                }
-               ]
+                "tags": self.tags,
+            },
+        ]
 
         return ret
 

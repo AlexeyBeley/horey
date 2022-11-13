@@ -8,6 +8,7 @@ class ConfigValues:
     """
     Main class
     """
+
     def __init__(self):
         self.prefix = "horey."
 

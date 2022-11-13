@@ -3,7 +3,9 @@ import os
 from enum import Enum
 import pdb
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "src"))
+sys.path.insert(
+    0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "src")
+)
 
 
 from grade_configuration_policy import GradeConfigurationPolicy
@@ -33,7 +35,9 @@ class JenkinsConfigurationPolicy(GradeConfigurationPolicy):
     @jenkins_host.setter
     def jenkins_host(self, value):
         if self.int_grade > self.GradeValue.LOCAL.value:
-            raise ValueError(f"Setting hostname to {value} in environment grade {self.grade}")
+            raise ValueError(
+                f"Setting hostname to {value} in environment grade {self.grade}"
+            )
         self._jenkins_host = value
 
     @property

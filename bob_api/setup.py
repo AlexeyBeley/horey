@@ -24,4 +24,5 @@ setup(
     license="DWTFYWTPL",
     packages=find_namespace_packages(include=["horey.bob_api", "horey.bob_api.*"]),
     include_package_data=True,
-    zip_safe=False)
+    zip_safe=False,
+)

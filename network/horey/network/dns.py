@@ -7,6 +7,7 @@ class DNS:
     """
     Main class to represent dns record.
     """
+
     def __init__(self, fqdn):
         self.fqdn = fqdn
 

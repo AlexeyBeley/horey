@@ -21,6 +21,7 @@ class Package:
     Installed package.
 
     """
+
     def __init__(self, dict_src):
         self.name = dict_src["name"]
         self.version = dict_src["version"]
@@ -35,8 +36,9 @@ class Package:
         """
         self_int_version_lst = [int(sub_ver) for sub_ver in self.version.split(".")]
 
-        return self.check_version_min_requirement(requirement, self_int_version_lst) and \
-               self.check_version_max_requirement(requirement, self_int_version_lst)
+        return self.check_version_min_requirement(
+            requirement, self_int_version_lst
+        ) and self.check_version_max_requirement(requirement, self_int_version_lst)
 
     def check_version_min_requirement(self, requirement, self_int_version_lst):
         """
@@ -54,7 +56,9 @@ class Package:
         if requirement.min_version is None:
             return True
 
-        requirement_int_version_lst = [int(sub_ver) for sub_ver in requirement.min_version.split(".")]
+        requirement_int_version_lst = [
+            int(sub_ver) for sub_ver in requirement.min_version.split(".")
+        ]
         for index, package_sub_ver_value in enumerate(self_int_version_lst):
             try:
                 if package_sub_ver_value > requirement_int_version_lst[index]:
@@ -114,8 +118,13 @@ class PipAPI:
             self.init_multi_package_repository(repo_path)
 
         if self.configuration.venv_dir_path is not None:
-            if not os.path.exists(os.path.join(self.configuration.venv_dir_path, "bin", "activate")):
-                self.execute(f"python3.8 -m venv {self.configuration.venv_dir_path} --system-site-packages", ignore_venv=True)
+            if not os.path.exists(
+                os.path.join(self.configuration.venv_dir_path, "bin", "activate")
+            ):
+                self.execute(
+                    f"python3.8 -m venv {self.configuration.venv_dir_path} --system-site-packages",
+                    ignore_venv=True,
+                )
                 self.execute("pip3.8 install --upgrade pip")
                 self.execute("pip3.8 install setuptools>=45")
 
@@ -127,7 +136,9 @@ class PipAPI:
         :return:
         """
 
-        repo_package_prefix = CommonUtils.load_object_from_module(os.path.join(repo_path, "multi_package_repository_configuration.py"), "main")
+        repo_package_prefix = CommonUtils.load_object_from_module(
+            os.path.join(repo_path, "multi_package_repository_configuration.py"), "main"
+        )
         self.multi_package_repos_prefix_map[repo_package_prefix.prefix] = repo_path
 
     def init_packages(self):
@@ -160,7 +171,9 @@ class PipAPI:
 
         """
 
-    def run_bash(self, command, ignore_on_error_callback=None, timeout=60 * 10, debug=True):
+    def run_bash(
+        self, command, ignore_on_error_callback=None, timeout=60 * 10, debug=True
+    ):
         """
         Run bash command, return stdout, stderr and return code.
         Timeout is used fot stuck commands - for example if the command expects for user input.
@@ -180,12 +193,16 @@ class PipAPI:
             file_handler.write(command)
             command = f"/bin/bash {file_name}"
         # pylint: disable=subprocess-run-check
-        ret = subprocess.run([command], capture_output=True, shell=True, timeout=timeout)
+        ret = subprocess.run(
+            [command], capture_output=True, shell=True, timeout=timeout
+        )
 
-        #os.remove(file_name)
-        return_dict = {"stdout": ret.stdout.decode().strip("\n"),
-                       "stderr": ret.stderr.decode().strip("\n"),
-                       "code": ret.returncode}
+        # os.remove(file_name)
+        return_dict = {
+            "stdout": ret.stdout.decode().strip("\n"),
+            "stderr": ret.stderr.decode().strip("\n"),
+            "code": ret.returncode,
+        }
         if debug:
             logger.info(f"return_code: {return_dict['code']}")
 
@@ -216,13 +233,19 @@ class PipAPI:
         :return:
         """
         logger.info(f"executing: '{command}'")
-        if not ignore_venv and self.configuration is not None and self.configuration.venv_dir_path is not None:
+        if (
+            not ignore_venv
+            and self.configuration is not None
+            and self.configuration.venv_dir_path is not None
+        ):
             command = f"source {os.path.join(self.configuration.venv_dir_path, 'bin/activate')} && {command}"
         ret = self.run_bash(command)
 
         return ret["stdout"]
 
-    def install_requirements(self, requirements_file_path, update=False, update_from_source=False):
+    def install_requirements(
+        self, requirements_file_path, update=False, update_from_source=False
+    ):
         """
         Prepare list of requirements to be installed and install those missing.
 
@@ -282,12 +305,16 @@ class PipAPI:
         """
 
         package_dirname = requirement.name.split(".")[-1]
-        ret = self.execute(f"cd {requirement.multi_package_repo_path} && make install_wheel-{package_dirname}")
+        ret = self.execute(
+            f"cd {requirement.multi_package_repo_path} && make install_wheel-{package_dirname}"
+        )
         lines = ret.split("\n")
 
         index = -2 if "Leaving directory" in lines[-1] else -1
         if lines[index] != f"done installing {package_dirname}":
-            raise RuntimeError(f"Could not install {package_dirname} from source code:\n {ret}")
+            raise RuntimeError(
+                f"Could not install {package_dirname} from source code:\n {ret}"
+            )
 
     def requirement_satisfied(self, requirement: Requirement):
         """
@@ -323,8 +350,12 @@ class PipAPI:
             for prefix, repo_path in self.multi_package_repos_prefix_map.items():
                 if requirement.name.startswith(prefix):
                     package_dir_name = requirement.name.split(".")[-1]
-                    multi_package_repo_requirements_file_path = os.path.join(repo_path, package_dir_name, "requirements.txt")
-                    self.compose_requirements_recursive(multi_package_repo_requirements_file_path)
+                    multi_package_repo_requirements_file_path = os.path.join(
+                        repo_path, package_dir_name, "requirements.txt"
+                    )
+                    self.compose_requirements_recursive(
+                        multi_package_repo_requirements_file_path
+                    )
                     break
             else:
                 self.REQUIREMENTS[requirement.name] = requirement
@@ -344,7 +375,9 @@ class PipAPI:
         requirements = []
 
         with open(requirements_file_path, "r", encoding="utf-8") as file_handler:
-            lines = [line.strip("\n") for line in file_handler.readlines() if line != "\n"]
+            lines = [
+                line.strip("\n") for line in file_handler.readlines() if line != "\n"
+            ]
 
         for line in lines:
             requirements.append(Requirement(line))
@@ -358,26 +391,40 @@ class PipAPI:
         """
         current = self.REQUIREMENTS[requirement.name]
 
-        if requirement.min_version is not None and current.min_version != requirement.min_version:
+        if (
+            requirement.min_version is not None
+            and current.min_version != requirement.min_version
+        ):
             if current.min_version is None:
                 current.min_version = requirement.min_version
                 current.include_min = requirement.include_min
             else:
                 raise NotImplementedError()
-        if requirement.include_min is not None and current.include_min != requirement.include_min:
+        if (
+            requirement.include_min is not None
+            and current.include_min != requirement.include_min
+        ):
             if current.include_min is None:
                 current.include_min = requirement.include_min
             else:
                 raise NotImplementedError()
 
-        if requirement.max_version is not None and current.max_version != requirement.max_version:
+        if (
+            requirement.max_version is not None
+            and current.max_version != requirement.max_version
+        ):
             if current.max_version is None:
                 current.max_version = requirement.max_version
                 current.include_max = requirement.include_max
             else:
-                raise NotImplementedError(f"{current.max_version}/{requirement.max_version}")
+                raise NotImplementedError(
+                    f"{current.max_version}/{requirement.max_version}"
+                )
 
-        if requirement.include_max is not None and current.include_max != requirement.include_max:
+        if (
+            requirement.include_max is not None
+            and current.include_max != requirement.include_max
+        ):
             if current.include_max is None:
                 current.include_max = requirement.include_max
             else:

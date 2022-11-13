@@ -13,6 +13,7 @@ class DeploymentStepConfigurationPolicy(ConfigurationPolicy):
     """
     Main class
     """
+
     def __init__(self, name):
         super().__init__()
         self._name = name
@@ -76,12 +77,16 @@ class DeploymentStepConfigurationPolicy(ConfigurationPolicy):
     @deployment_dir_path.setter
     def deployment_dir_path(self, value):
         if not isinstance(value, str):
-            raise ValueError(f"deployment_dir_path must be str, received: '{type(value)}'")
+            raise ValueError(
+                f"deployment_dir_path must be str, received: '{type(value)}'"
+            )
         self._deployment_dir_path = value
 
     @property
     def finish_status_file_name(self):
-        return f"{self.get_script_file_name_without_extension_with_uuid()}_finish_status"
+        return (
+            f"{self.get_script_file_name_without_extension_with_uuid()}_finish_status"
+        )
 
     @finish_status_file_name.setter
     def finish_status_file_name(self, _):
@@ -105,7 +110,9 @@ class DeploymentStepConfigurationPolicy(ConfigurationPolicy):
     @finish_status_file_path.setter
     def finish_status_file_path(self, value):
         if not isinstance(value, str):
-            raise ValueError(f"finish_status_file_path must be str, received: '{type(value)}'")
+            raise ValueError(
+                f"finish_status_file_path must be str, received: '{type(value)}'"
+            )
         self._finish_status_file_path = value
 
     @property
@@ -136,7 +143,10 @@ class DeploymentStepConfigurationPolicy(ConfigurationPolicy):
         """
         This is the base file path+name+uid use to generate output, status and configuration files
         """
-        return os.path.join(self.step_data_dir_path, self.get_script_file_name_without_extension_with_uuid())
+        return os.path.join(
+            self.step_data_dir_path,
+            self.get_script_file_name_without_extension_with_uuid(),
+        )
 
     def get_script_file_name_without_extension_with_uuid(self):
         file_name_without_extension = os.path.splitext(self.script_name)[0]
@@ -151,7 +161,9 @@ class DeploymentStepConfigurationPolicy(ConfigurationPolicy):
     @script_configuration_file_name.setter
     def script_configuration_file_name(self, value):
         if not isinstance(value, str):
-            raise ValueError(f"script_configuration_file_name must be str, received: '{type(value)}'")
+            raise ValueError(
+                f"script_configuration_file_name must be str, received: '{type(value)}'"
+            )
         self._script_configuration_file_name = value
 
     @property
@@ -162,7 +174,9 @@ class DeploymentStepConfigurationPolicy(ConfigurationPolicy):
         if self.step_data_dir_path is None:
             raise ValueError()
 
-        return os.path.join(self.step_data_dir_path, self.script_configuration_file_name)
+        return os.path.join(
+            self.step_data_dir_path, self.script_configuration_file_name
+        )
 
     @script_configuration_file_path.setter
     def script_configuration_file_path(self, _):

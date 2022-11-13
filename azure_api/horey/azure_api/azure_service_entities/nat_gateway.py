@@ -41,14 +41,16 @@ class NatGateway(AzureObject):
         raise NotImplementedError()
 
     def generate_create_request(self):
-        return [self.resource_group_name,
-                self.name,
-                {"location": self.location,
-                 "public_ip_addresses": self.public_ip_addresses,
-                 "sku": self.sku,
-                 "tags": self.tags
-                 }
-                ]
+        return [
+            self.resource_group_name,
+            self.name,
+            {
+                "location": self.location,
+                "public_ip_addresses": self.public_ip_addresses,
+                "sku": self.sku,
+                "tags": self.tags,
+            },
+        ]
 
     def update_after_creation(self, nat_gateway):
         self.id = nat_gateway.id

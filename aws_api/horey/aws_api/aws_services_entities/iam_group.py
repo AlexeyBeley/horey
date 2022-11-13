@@ -26,7 +26,9 @@ class IamGroup(AwsObject):
 
         init_options = {
             "GroupId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
-            "GroupName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "GroupName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
             "Arn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
             "Path": self.init_default_attr,
             "CreateDate": self.init_default_attr,

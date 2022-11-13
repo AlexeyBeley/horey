@@ -13,7 +13,9 @@ from dateutil.tz import tzlocal
 from horey.h_logger import get_logger
 
 from horey.aws_api.base_entities.aws_account import AWSAccount
+
 logger = get_logger()
+
 
 class LockAcquiringFailError(Exception):
     """
@@ -25,6 +27,7 @@ class SessionsManager:
     """
     Class to handle multiple sessions to different accounts.
     """
+
     CONNECTIONS = {}  # {Session: {client_name: client}}
     ASSUME_ROLE_SESSION_EXPIRY_WINDOW_SECONDS = 60 * 15
 
@@ -32,6 +35,7 @@ class SessionsManager:
         """
         Class to handle a connection on the same AWS API session to multiple clients.
         """
+
         LOCK = threading.Lock()
 
         def __init__(self, session):
@@ -45,8 +49,15 @@ class SessionsManager:
             :return:
             """
             aws_region = AWSAccount.get_aws_region()
-            region_mark = aws_region.region_mark if aws_region is not None else self.session.region_name
-            if region_mark not in self.clients or client_name not in self.clients[region_mark]:
+            region_mark = (
+                aws_region.region_mark
+                if aws_region is not None
+                else self.session.region_name
+            )
+            if (
+                region_mark not in self.clients
+                or client_name not in self.clients[region_mark]
+            ):
                 self.connect_client(region_mark, client_name)
 
             return self.clients[region_mark][client_name]
@@ -64,7 +75,9 @@ class SessionsManager:
                     if region_mark not in self.clients:
                         self.clients[region_mark] = {}
 
-                    self.clients[region_mark][client_name] = self.session.client(client_name, region_name=region_mark)
+                    self.clients[region_mark][client_name] = self.session.client(
+                        client_name, region_name=region_mark
+                    )
                 else:
                     raise LockAcquiringFailError()
             finally:
@@ -119,14 +132,22 @@ class SessionsManager:
             if session is not None:
                 raise RuntimeError("Initial session is not None")
 
-            session = boto3.session.Session(profile_name=connection_step.profile_name,
-                                            region_name=connection_step.region.region_mark)
+            session = boto3.session.Session(
+                profile_name=connection_step.profile_name,
+                region_name=connection_step.region.region_mark,
+            )
         elif connection_step.type == connection_step.Type.ASSUME_ROLE:
-            session = SessionsManager.start_assuming_role(connection_step.role_arn, session, extra_args=extra_args)
+            session = SessionsManager.start_assuming_role(
+                connection_step.role_arn, session, extra_args=extra_args
+            )
         elif connection_step.type == connection_step.Type.CURRENT_ROLE:
-            session = boto3.session.Session(region_name=connection_step.region.region_mark)
+            session = boto3.session.Session(
+                region_name=connection_step.region.region_mark
+            )
         else:
-            raise NotImplementedError(f"Unknown connection_step type: {connection_step.type}")
+            raise NotImplementedError(
+                f"Unknown connection_step type: {connection_step.type}"
+            )
 
         return session
 
@@ -143,10 +164,14 @@ class SessionsManager:
             session = boto3.session.Session()
         else:
             for connection_step in aws_account.connection_steps:
-                session = SessionsManager.execute_connection_step(connection_step, session)
+                session = SessionsManager.execute_connection_step(
+                    connection_step, session
+                )
 
         if session is None:
-            raise RuntimeError(f"Could not establish session for aws_account {aws_account.id}")
+            raise RuntimeError(
+                f"Could not establish session for aws_account {aws_account.id}"
+            )
         return session
 
     @staticmethod
@@ -182,13 +207,13 @@ class SessionsManager:
             source_credentials=session.get_credentials(),
             role_arn=role_arn,
             expiry_window_seconds=SessionsManager.ASSUME_ROLE_SESSION_EXPIRY_WINDOW_SECONDS,
-            extra_args=extra_args
+            extra_args=extra_args,
         )
 
         creds = botocore.credentials.DeferredRefreshableCredentials(
-            method='assume-role',
+            method="assume-role",
             refresh_using=fetcher.fetch_credentials,
-            time_fetcher=lambda: datetime.datetime.now(tzlocal())
+            time_fetcher=lambda: datetime.datetime.now(tzlocal()),
         )
         botocore_session = botocore.session.Session()
         botocore_session._credentials = creds

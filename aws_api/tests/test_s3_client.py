@@ -9,7 +9,7 @@ from horey.aws_api.aws_services_entities.s3_bucket import S3Bucket
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.base_entities.region import Region
 
-AWSAccount.set_aws_region(Region.get_region('us-west-2'))
+AWSAccount.set_aws_region(Region.get_region("us-west-2"))
 
 TEST_BUCKET_NAME = "horey-test-bucket"
 
@@ -35,7 +35,7 @@ def test_provision_s3_bucket():
             "Effect": "Allow",
             "Principal": "*",
             "Action": "s3:GetObject",
-            "Resource": f"arn:aws:s3:::{s3_bucket.name}/*"
+            "Resource": f"arn:aws:s3:::{s3_bucket.name}/*",
         }
     ]
 
@@ -67,7 +67,9 @@ def test_upload_small_file_to_s3():
     s3_client = S3Client()
     src_data_path = path
     dst_root_key = "root"
-    s3_client.upload(TEST_BUCKET_NAME, src_data_path, dst_root_key, keep_src_object_name=False)
+    s3_client.upload(
+        TEST_BUCKET_NAME, src_data_path, dst_root_key, keep_src_object_name=False
+    )
 
 
 def test_upload_small_file_with_extra_args_to_s3():
@@ -81,8 +83,18 @@ def test_upload_small_file_with_extra_args_to_s3():
     src_data_path = path
     dst_root_key = "root"
     # extra_args = {"Metadata": {"Content-Type": "text/html"}, "CacheControl": "max-age=2592000", "ContentType": "text/html"}
-    extra_args = {"Metadata": {"Content-Type": "text/html"}, "CacheControl": "no-cache", "ContentType": "text/html"}
-    s3_client.upload(TEST_BUCKET_NAME, src_data_path, dst_root_key, keep_src_object_name=True, extra_args=extra_args)
+    extra_args = {
+        "Metadata": {"Content-Type": "text/html"},
+        "CacheControl": "no-cache",
+        "ContentType": "text/html",
+    }
+    s3_client.upload(
+        TEST_BUCKET_NAME,
+        src_data_path,
+        dst_root_key,
+        keep_src_object_name=True,
+        extra_args=extra_args,
+    )
 
 
 def test_upload_large_file_with_extra_args_to_s3():
@@ -96,8 +108,18 @@ def test_upload_large_file_with_extra_args_to_s3():
     src_data_path = path
     dst_root_key = "root"
     # extra_args = {"Metadata": {"Content-Type": "text/html"}, "CacheControl": "max-age=2592000", "ContentType": "text/html"}
-    extra_args = {"Metadata": {"Content-Type": "text/html"}, "CacheControl": "no-cache", "ContentType": "text/html"}
-    s3_client.upload(TEST_BUCKET_NAME, src_data_path, dst_root_key, keep_src_object_name=True, extra_args=extra_args)
+    extra_args = {
+        "Metadata": {"Content-Type": "text/html"},
+        "CacheControl": "no-cache",
+        "ContentType": "text/html",
+    }
+    s3_client.upload(
+        TEST_BUCKET_NAME,
+        src_data_path,
+        dst_root_key,
+        keep_src_object_name=True,
+        extra_args=extra_args,
+    )
 
 
 def test_upload_small_dir_to_s3():
@@ -113,7 +135,9 @@ def test_upload_small_dir_to_s3():
     s3_client = S3Client()
     src_data_path = dir_path
     dst_root_key = "root"
-    s3_client.upload(TEST_BUCKET_NAME, src_data_path, dst_root_key, keep_src_object_name=True)
+    s3_client.upload(
+        TEST_BUCKET_NAME, src_data_path, dst_root_key, keep_src_object_name=True
+    )
 
 
 def test_upload_large_file_to_s3():
@@ -129,7 +153,9 @@ def test_upload_large_file_to_s3():
     s3_client = S3Client()
     src_data_path = path
     dst_root_key = "root"
-    s3_client.upload(TEST_BUCKET_NAME, src_data_path, dst_root_key, keep_src_object_name=True)
+    s3_client.upload(
+        TEST_BUCKET_NAME, src_data_path, dst_root_key, keep_src_object_name=True
+    )
 
 
 def test_upload_large_files_directory_to_s3():
@@ -146,7 +172,9 @@ def test_upload_large_files_directory_to_s3():
     s3_client = S3Client()
     src_data_path = dir_path
     dst_root_key = "root"
-    s3_client.upload(TEST_BUCKET_NAME, src_data_path, dst_root_key, keep_src_object_name=True)
+    s3_client.upload(
+        TEST_BUCKET_NAME, src_data_path, dst_root_key, keep_src_object_name=True
+    )
 
 
 def test_upload_small_files_directory_to_s3():
@@ -163,7 +191,9 @@ def test_upload_small_files_directory_to_s3():
     s3_client = S3Client()
     src_data_path = dir_path
     dst_root_key = "root"
-    s3_client.upload(TEST_BUCKET_NAME, src_data_path, dst_root_key, keep_src_object_name=True)
+    s3_client.upload(
+        TEST_BUCKET_NAME, src_data_path, dst_root_key, keep_src_object_name=True
+    )
 
 
 def test_upload_file_thread_without_validation():
@@ -228,7 +258,9 @@ def test_upload_large_file_to_s3_with_md5_validation():
     s3_client.md5_validate = True
     src_data_path = path
     dst_root_key = "root"
-    s3_client.upload(TEST_BUCKET_NAME, src_data_path, dst_root_key, keep_src_object_name=True)
+    s3_client.upload(
+        TEST_BUCKET_NAME, src_data_path, dst_root_key, keep_src_object_name=True
+    )
 
 
 def test_upload_large_files_directory_to_s3_with_md5_validation():
@@ -246,7 +278,9 @@ def test_upload_large_files_directory_to_s3_with_md5_validation():
     s3_client.md5_validate = True
     src_data_path = dir_path
     dst_root_key = "root"
-    s3_client.upload(TEST_BUCKET_NAME, src_data_path, dst_root_key, keep_src_object_name=True)
+    s3_client.upload(
+        TEST_BUCKET_NAME, src_data_path, dst_root_key, keep_src_object_name=True
+    )
 
 
 def test_upload_small_files_directory_to_s3_with_md5_validation():
@@ -266,7 +300,9 @@ def test_upload_small_files_directory_to_s3_with_md5_validation():
     s3_client.md5_validate = True
     src_data_path = dir_path
     dst_root_key = "root"
-    s3_client.upload(TEST_BUCKET_NAME, src_data_path, dst_root_key, keep_src_object_name=True)
+    s3_client.upload(
+        TEST_BUCKET_NAME, src_data_path, dst_root_key, keep_src_object_name=True
+    )
 
 
 def test_delete_bucket_objects():
@@ -298,38 +334,56 @@ def test_get_bucket_keys_extensions():
 
 
 def test_upload_with_metadata_callback():
-    extensions_mapping = {"js": {"ContentType": "application/javascript", "CacheControl": "max-age=2592000"},
-                          "json": {"ContentType": "application/json", "CacheControl": "max-age=2592000"},
-                          "svg": {"ContentType": "image/svg+xml", "CacheControl": "max-age=2592000"},
-                          "woff": {"ContentType": "font/woff", "CacheControl": "max-age=2592000"},
-                          "woff2": {"ContentType": "font/woff2", "CacheControl": "max-age=2592000"},
-                          "ttf": {"ContentType": "font/ttf", "CacheControl": "max-age=2592000"},
-                          "html": {"ContentType": "text/html", "CacheControl": "max-age=2592000"},
-                          "ico": {"ContentType": "image/vnd.microsoft.icon", "CacheControl": "max-age=2592000"},
-                          "css": {"ContentType": "text/css", "CacheControl": "max-age=2592000"},
-                          "eot": {"ContentType": "application/vnd.ms-fontobject", "CacheControl": "max-age=2592000"},
-                          "png": {"ContentType": "image/png", "CacheControl": "max-age=2592000"},
-                          "txt": {"ContentType": "text/plain", "CacheControl": "max-age=2592000"}
-                          }
+    extensions_mapping = {
+        "js": {
+            "ContentType": "application/javascript",
+            "CacheControl": "max-age=2592000",
+        },
+        "json": {"ContentType": "application/json", "CacheControl": "max-age=2592000"},
+        "svg": {"ContentType": "image/svg+xml", "CacheControl": "max-age=2592000"},
+        "woff": {"ContentType": "font/woff", "CacheControl": "max-age=2592000"},
+        "woff2": {"ContentType": "font/woff2", "CacheControl": "max-age=2592000"},
+        "ttf": {"ContentType": "font/ttf", "CacheControl": "max-age=2592000"},
+        "html": {"ContentType": "text/html", "CacheControl": "max-age=2592000"},
+        "ico": {
+            "ContentType": "image/vnd.microsoft.icon",
+            "CacheControl": "max-age=2592000",
+        },
+        "css": {"ContentType": "text/css", "CacheControl": "max-age=2592000"},
+        "eot": {
+            "ContentType": "application/vnd.ms-fontobject",
+            "CacheControl": "max-age=2592000",
+        },
+        "png": {"ContentType": "image/png", "CacheControl": "max-age=2592000"},
+        "txt": {"ContentType": "text/plain", "CacheControl": "max-age=2592000"},
+    }
 
     def metadata_callback_func(file_path):
         _, extension_string = os.path.splitext(file_path)
         return extensions_mapping[extension_string.strip(".")]
 
-    metadata_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "metadata_files_dir")
+    metadata_dir = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "metadata_files_dir"
+    )
     os.makedirs(metadata_dir, exist_ok=True)
 
     size = 20 * 1024 * 1024  # 20 MB
-    #size = 10  # 20 MB
+    # size = 10  # 20 MB
 
     for ext_key in list(extensions_mapping.keys())[:1]:
-        with open(os.path.join(metadata_dir, "test."+ext_key), "w+") as file_handler:
+        with open(os.path.join(metadata_dir, "test." + ext_key), "w+") as file_handler:
             file_handler.write("a" * size)
 
     s3_client = S3Client()
     src_data_path = metadata_dir
     dst_root_key = "root"
-    s3_client.upload(TEST_BUCKET_NAME, src_data_path, dst_root_key, keep_src_object_name=True, metadata_callback=metadata_callback_func)
+    s3_client.upload(
+        TEST_BUCKET_NAME,
+        src_data_path,
+        dst_root_key,
+        keep_src_object_name=True,
+        metadata_callback=metadata_callback_func,
+    )
 
 
 if __name__ == "__main__":

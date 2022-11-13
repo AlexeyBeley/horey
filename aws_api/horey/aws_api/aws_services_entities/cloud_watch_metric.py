@@ -12,6 +12,7 @@ class CloudWatchMetric(AwsObject):
     """
     The class to represent instances of the log group objects.
     """
+
     def __init__(self, dict_src, from_cache=False):
         """
         Init with boto3 dict
@@ -27,10 +28,12 @@ class CloudWatchMetric(AwsObject):
             return
 
         init_options = {
-                        "Namespace": self.init_default_attr,
-                        "MetricName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-                        "Dimensions": self.init_default_attr,
-                        }
+            "Namespace": self.init_default_attr,
+            "MetricName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
+            "Dimensions": self.init_default_attr,
+        }
 
         self.init_attrs(dict_src, init_options)
 

@@ -28,8 +28,12 @@ class ApplicationAutoScalingPolicy(AwsObject):
             return
 
         init_options = {
-            "PolicyName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-            "PolicyARN": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "PolicyName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
+            "PolicyARN": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
             "ServiceNamespace": self.init_default_attr,
             "ResourceId": self.init_default_attr,
             "ScalableDimension": self.init_default_attr,
@@ -62,8 +66,12 @@ class ApplicationAutoScalingPolicy(AwsObject):
         """
 
         init_options = {
-            "PolicyName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-            "PolicyARN": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "PolicyName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
+            "PolicyARN": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
             "ServiceNamespace": self.init_default_attr,
             "ResourceId": self.init_default_attr,
             "ScalableDimension": self.init_default_attr,
@@ -86,10 +94,14 @@ class ApplicationAutoScalingPolicy(AwsObject):
             request["PolicyType"] = self.policy_type
 
         if self.step_scaling_policy_configuration is not None:
-            request["StepScalingPolicyConfiguration"] = self.step_scaling_policy_configuration
+            request[
+                "StepScalingPolicyConfiguration"
+            ] = self.step_scaling_policy_configuration
 
         if self.target_tracking_scaling_policy_configuration is not None:
-            request["TargetTrackingScalingPolicyConfiguration"] = self.target_tracking_scaling_policy_configuration
+            request[
+                "TargetTrackingScalingPolicyConfiguration"
+            ] = self.target_tracking_scaling_policy_configuration
 
         return request
 

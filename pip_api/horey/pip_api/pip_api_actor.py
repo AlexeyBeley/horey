@@ -45,7 +45,11 @@ def install(arguments) -> None:
     update = arguments.update.lower() == "true"
     update_from_source = arguments.update_from_source.lower() == "true"
 
-    PipAPI(configuration=configuration).install_requirements(arguments.requirements_file_path, update=update, update_from_source=update_from_source)
+    PipAPI(configuration=configuration).install_requirements(
+        arguments.requirements_file_path,
+        update=update,
+        update_from_source=update_from_source,
+    )
 
 
 action_manager.register_action("install", install_parser, install)

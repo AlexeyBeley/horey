@@ -13,19 +13,20 @@ class CommonREUtils:
     """
     Some stuff to be reused
     """
+
     _FIRST_CAP_RE = None
     _ALL_CAP_RE = None
 
     @property
     def first_cap_re(self):
         if CommonREUtils._FIRST_CAP_RE is None:
-            CommonREUtils._FIRST_CAP_RE = re.compile('(.)([A-Z][a-z]+)')
+            CommonREUtils._FIRST_CAP_RE = re.compile("(.)([A-Z][a-z]+)")
         return CommonREUtils._FIRST_CAP_RE
 
     @property
     def all_cap_re(self):
         if CommonREUtils._ALL_CAP_RE is None:
-            CommonREUtils._ALL_CAP_RE = re.compile('([a-z0-9])([A-Z])')
+            CommonREUtils._ALL_CAP_RE = re.compile("([a-z0-9])([A-Z])")
         return CommonREUtils._ALL_CAP_RE
 
     def pascal_case_case_to_snake_case(self, name):
@@ -49,6 +50,6 @@ class CommonREUtils:
         :return:
         """
 
-        s1 = self.first_cap_re.sub(r'\1_\2', name)
+        s1 = self.first_cap_re.sub(r"\1_\2", name)
         s1 = s1.replace("__", "_")
-        return self.all_cap_re.sub(r'\1_\2', s1).lower()
+        return self.all_cap_re.sub(r"\1_\2", s1).lower()

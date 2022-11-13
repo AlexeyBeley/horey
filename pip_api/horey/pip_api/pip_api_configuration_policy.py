@@ -10,6 +10,7 @@ class PipAPIConfigurationPolicy(ConfigurationPolicy):
     Main class
 
     """
+
     def __init__(self):
         super().__init__()
         self._multi_package_repositories = None

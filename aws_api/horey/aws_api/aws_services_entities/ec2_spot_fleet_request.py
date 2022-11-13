@@ -23,7 +23,9 @@ class EC2SpotFleetRequest(AwsObject):
             return
 
         init_options = {
-            "SpotFleetRequestId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "SpotFleetRequestId": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="id"
+            ),
             "ActivityStatus": self.init_default_attr,
             "CreateTime": self.init_default_attr,
             "SpotFleetRequestConfig": self.init_default_attr,

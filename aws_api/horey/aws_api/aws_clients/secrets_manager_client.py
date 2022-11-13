@@ -6,7 +6,9 @@ import pdb
 
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.base_entities.aws_account import AWSAccount
-from horey.aws_api.aws_services_entities.secrets_manager_secret import SecretsManagerSecret
+from horey.aws_api.aws_services_entities.secrets_manager_secret import (
+    SecretsManagerSecret,
+)
 from horey.h_logger import get_logger
 
 
@@ -65,8 +67,12 @@ class SecretsManagerClient(Boto3Client):
 
     def get_secret_value(self, secret_id):
         try:
-            for response in self.execute(self.client.get_secret_value, None, raw_data=True,
-                                     filters_req={"SecretId": secret_id}):
+            for response in self.execute(
+                self.client.get_secret_value,
+                None,
+                raw_data=True,
+                filters_req={"SecretId": secret_id},
+            ):
                 return response
         except Exception:
             logger.error(f"Can not find secret {secret_id}")
@@ -78,20 +84,32 @@ class SecretsManagerClient(Boto3Client):
             AWSAccount.set_aws_region(region)
 
         try:
-            for response in self.execute(self.client.get_secret_value, None, raw_data=True,
-                                     filters_req={"SecretId": secret_id}):
+            for response in self.execute(
+                self.client.get_secret_value,
+                None,
+                raw_data=True,
+                filters_req={"SecretId": secret_id},
+            ):
                 return response["SecretString"]
         except Exception as exception_instance:
             logger.error(f"Can not find secret {secret_id}")
 
-            if "ResourceNotFoundException" in repr(exception_instance) and ignore_missing:
+            if (
+                "ResourceNotFoundException" in repr(exception_instance)
+                and ignore_missing
+            ):
                 return
 
             raise
 
     def raw_create_secret_string(self, secret_id, value):
         try:
-            for response in self.execute(self.client.create_secret, None, raw_data=True, filters_req={"Name": secret_id, "SecretString": value}):
+            for response in self.execute(
+                self.client.create_secret,
+                None,
+                raw_data=True,
+                filters_req={"Name": secret_id, "SecretString": value},
+            ):
                 return response
         except Exception as exception_received:
             print(repr(exception_received))
@@ -101,7 +119,12 @@ class SecretsManagerClient(Boto3Client):
         if region is not None:
             AWSAccount.set_aws_region(region)
         try:
-            for response in self.execute(self.client.put_secret_value, None, raw_data=True, filters_req={"SecretId": secret_id, "SecretString": value}):
+            for response in self.execute(
+                self.client.put_secret_value,
+                None,
+                raw_data=True,
+                filters_req={"SecretId": secret_id, "SecretString": value},
+            ):
                 return response
         except Exception as exception_received:
             if "ResourceNotFoundException" in repr(exception_received):

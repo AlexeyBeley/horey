@@ -53,7 +53,9 @@ class Check(SystemFunctionCommon):
         file_content = "vm.swappiness=1"
         ret = self.run_bash(f"cat /etc/sysctl.conf | grep {file_content}")
         if ret != file_content:
-            raise RuntimeError(f"can not find {file_content} in /etc/sysctl.conf: {ret}")
+            raise RuntimeError(
+                f"can not find {file_content} in /etc/sysctl.conf: {ret}"
+            )
 
 
 action_manager = ActionsManager()
@@ -71,7 +73,9 @@ def check_swappiness(arguments) -> None:
     Check().check_swappiness()
 
 
-action_manager.register_action("check_swappiness", check_swappiness_parser, check_swappiness)
+action_manager.register_action(
+    "check_swappiness", check_swappiness_parser, check_swappiness
+)
 # endregion
 
 
@@ -90,9 +94,10 @@ def check_swap_size(arguments) -> None:
     Check().check_swap_size(**arguments_dict)
 
 
-action_manager.register_action("check_swap_size", check_swap_size_parser, check_swap_size)
+action_manager.register_action(
+    "check_swap_size", check_swap_size_parser, check_swap_size
+)
 # endregion
 
 if __name__ == "__main__":
     action_manager.call_action()
-

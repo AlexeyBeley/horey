@@ -27,7 +27,7 @@ class ZipUtils:
         if zip_file_name.endswith(".zip"):
             zip_file_name = zip_file_name[:-4]
 
-        shutil.make_archive(zip_file_name, 'zip', root_dir=root_dir)
+        shutil.make_archive(zip_file_name, "zip", root_dir=root_dir)
 
     @staticmethod
     def add_files_to_zip(zip_file_name, files_paths):

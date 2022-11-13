@@ -10,6 +10,7 @@ class ElasticacheReplicationGroup(AwsObject):
     """
     Elasticache Cluster class
     """
+
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self.security_group_ids = None
@@ -19,8 +20,10 @@ class ElasticacheReplicationGroup(AwsObject):
             return
         init_options = {
             "ARN": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
-            "LogDeliveryConfigurations":  self.init_default_attr,
-            "ReplicationGroupId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "LogDeliveryConfigurations": self.init_default_attr,
+            "ReplicationGroupId": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="id"
+            ),
             "Description": self.init_default_attr,
             "GlobalReplicationGroupInfo": self.init_default_attr,
             "Status": self.init_default_attr,
@@ -37,7 +40,7 @@ class ElasticacheReplicationGroup(AwsObject):
             "AuthTokenEnabled": self.init_default_attr,
             "TransitEncryptionEnabled": self.init_default_attr,
             "AtRestEncryptionEnabled": self.init_default_attr,
-            }
+        }
 
         self.init_attrs(dict_src, init_options)
 
@@ -82,8 +85,10 @@ class ElasticacheReplicationGroup(AwsObject):
     def update_from_raw_response(self, dict_src):
         init_options = {
             "ARN": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
-            "LogDeliveryConfigurations":  self.init_default_attr,
-            "ReplicationGroupId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "LogDeliveryConfigurations": self.init_default_attr,
+            "ReplicationGroupId": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="id"
+            ),
             "Description": self.init_default_attr,
             "GlobalReplicationGroupInfo": self.init_default_attr,
             "Status": self.init_default_attr,
@@ -100,7 +105,7 @@ class ElasticacheReplicationGroup(AwsObject):
             "AuthTokenEnabled": self.init_default_attr,
             "TransitEncryptionEnabled": self.init_default_attr,
             "AtRestEncryptionEnabled": self.init_default_attr,
-            }
+        }
 
         self.init_attrs(dict_src, init_options)
 

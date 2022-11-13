@@ -25,7 +25,9 @@ class ACMCertificate(AwsObject):
             return
 
         init_options = {
-            "CertificateArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "CertificateArn": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
             "DomainName": self.init_default_attr,
             "SubjectAlternativeNames": self.init_default_attr,
             "DomainValidationOptions": self.init_default_attr,
@@ -71,7 +73,9 @@ class ACMCertificate(AwsObject):
         """
 
         init_options = {
-            "CertificateArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "CertificateArn": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
             "DomainName": self.init_default_attr,
             "SubjectAlternativeNames": self.init_default_attr,
             "DomainValidationOptions": self.init_default_attr,

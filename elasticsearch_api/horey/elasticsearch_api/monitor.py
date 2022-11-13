@@ -22,12 +22,7 @@ class Monitor:
 
     def convert_to_dict(self):
         ret = {}
-        for key in ["id",
-                    "name",
-                    "inputs",
-                    "enabled",
-                    "schedule",
-                    "triggers"]:
+        for key in ["id", "name", "inputs", "enabled", "schedule", "triggers"]:
             ret[key] = getattr(self, key)
 
         return ret
@@ -44,6 +39,6 @@ class Monitor:
             "enabled": True,
             "schedule": self.schedule,
             "inputs": self.inputs,
-            "triggers": self.triggers
+            "triggers": self.triggers,
         }
         return request

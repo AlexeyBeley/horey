@@ -19,6 +19,7 @@ class Packer:
     Serverless packer - used to pack the lambdas.
 
     """
+
     def __init__(self):
         pass
 
@@ -91,7 +92,9 @@ class Packer:
         """
 
         if not os.path.isfile(requirements_file_path):
-            raise RuntimeError(f"Requirements file does not exist: {requirements_file_path}")
+            raise RuntimeError(
+                f"Requirements file does not exist: {requirements_file_path}"
+            )
 
         configuration = PipAPIConfigurationPolicy()
         configuration.multi_package_repositories = [horey_repo_path]
@@ -158,7 +161,7 @@ class Packer:
             zip_file_name = zip_file_name[:-4]
 
         package_dir = self.get_site_packages_directory(venv_dir_path, python_version)
-        shutil.make_archive(zip_file_name, 'zip', root_dir=package_dir)
+        shutil.make_archive(zip_file_name, "zip", root_dir=package_dir)
 
     @staticmethod
     def add_files_to_zip(zip_file_name, files_paths):
@@ -243,7 +246,9 @@ class Packer:
             raise RuntimeError(f"{process.stdout}\n{process.stderr}")
         return process
 
-    def copy_venv_site_packages_to_dir(self, dst_dir_path, venv_dir_path, python_version):
+    def copy_venv_site_packages_to_dir(
+        self, dst_dir_path, venv_dir_path, python_version
+    ):
         """
         Copy installed venv packages to the folder to be used for lambda creation.
 

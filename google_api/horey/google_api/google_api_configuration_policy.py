@@ -19,7 +19,9 @@ class GoogleAPIConfigurationPolicy(ConfigurationPolicy):
     @google_api_regions.setter
     def google_api_regions(self, value):
         if not isinstance(value, list):
-            raise ValueError(f"google_api_regions must be a list received {value} of type: {type(value)}")
+            raise ValueError(
+                f"google_api_regions must be a list received {value} of type: {type(value)}"
+            )
 
         self._google_api_regions = value
 
@@ -40,7 +42,9 @@ class GoogleAPIConfigurationPolicy(ConfigurationPolicy):
     @google_api_account.setter
     def google_api_account(self, value):
         if not isinstance(value, str):
-            raise ValueError(f"google_api_account must be a string received {value} of type: {type(value)}")
+            raise ValueError(
+                f"google_api_account must be a string received {value} of type: {type(value)}"
+            )
 
         self._google_api_account = value
 

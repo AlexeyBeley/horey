@@ -10,6 +10,7 @@ class ElasticacheCacheSubnetGroup(AwsObject):
     """
     Elasticache Cluster class
     """
+
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self.instances = []
@@ -19,11 +20,13 @@ class ElasticacheCacheSubnetGroup(AwsObject):
             return
         init_options = {
             "ARN": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
-            "CacheSubnetGroupName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-            "CacheSubnetGroupDescription":  self.init_default_attr,
-            "VpcId":  self.init_default_attr,
-            "Subnets":  self.init_default_attr,
-            }
+            "CacheSubnetGroupName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
+            "CacheSubnetGroupDescription": self.init_default_attr,
+            "VpcId": self.init_default_attr,
+            "Subnets": self.init_default_attr,
+        }
 
         self.init_attrs(dict_src, init_options)
 
@@ -39,11 +42,13 @@ class ElasticacheCacheSubnetGroup(AwsObject):
     def update_from_raw_response(self, dict_src):
         init_options = {
             "ARN": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
-            "CacheSubnetGroupName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-            "CacheSubnetGroupDescription":  self.init_default_attr,
-            "VpcId":  self.init_default_attr,
-            "Subnets":  self.init_default_attr,
-            }
+            "CacheSubnetGroupName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
+            "CacheSubnetGroupDescription": self.init_default_attr,
+            "VpcId": self.init_default_attr,
+            "Subnets": self.init_default_attr,
+        }
 
         self.init_attrs(dict_src, init_options)
 

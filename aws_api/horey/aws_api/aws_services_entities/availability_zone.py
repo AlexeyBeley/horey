@@ -10,6 +10,7 @@ class AvailabilityZone(AwsObject):
     """
     AWS AvailabilityZone class
     """
+
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self.instances = []
@@ -19,7 +20,9 @@ class AvailabilityZone(AwsObject):
             return
         init_options = {
             "ZoneId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
-            "ZoneName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "ZoneName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
             "State": self.init_default_attr,
             "OptInStatus": self.init_default_attr,
             "Messages": self.init_default_attr,
@@ -29,7 +32,7 @@ class AvailabilityZone(AwsObject):
             "ZoneType": self.init_default_attr,
             "ParentZoneName": self.init_default_attr,
             "ParentZoneId": self.init_default_attr,
-                        }
+        }
 
         self.init_attrs(dict_src, init_options)
 

@@ -18,7 +18,7 @@ class AzureObject:
             self.dict_src = dict_src
         self.name = None
         self.id = None
-    
+
     def convert_to_dict(self):
         """
         Convert self to a cache dict
@@ -43,23 +43,37 @@ class AzureObject:
             for key, value in obj_src.items():
                 if type(key) not in [int, str]:
                     raise Exception
-                ret[key] = AzureObject.convert_to_dict_static(value, custom_types=custom_types)
+                ret[key] = AzureObject.convert_to_dict_static(
+                    value, custom_types=custom_types
+                )
             return ret
 
         if isinstance(obj_src, list):
-            return [AzureObject.convert_to_dict_static(value, custom_types=custom_types) for value in obj_src]
+            return [
+                AzureObject.convert_to_dict_static(value, custom_types=custom_types)
+                for value in obj_src
+            ]
 
         if isinstance(obj_src, AzureObject):
             return obj_src.convert_to_dict()
 
         if isinstance(obj_src, datetime.datetime):
-            return {AzureObject.SELF_CACHED_TYPE_KEY_NAME: "datetime", "value": obj_src.strftime("%Y-%m-%d %H:%M:%S.%f%z")}
+            return {
+                AzureObject.SELF_CACHED_TYPE_KEY_NAME: "datetime",
+                "value": obj_src.strftime("%Y-%m-%d %H:%M:%S.%f%z"),
+            }
 
         if isinstance(obj_src, Region):
-            return {AzureObject.SELF_CACHED_TYPE_KEY_NAME: "region", "value": obj_src.convert_to_dict()}
+            return {
+                AzureObject.SELF_CACHED_TYPE_KEY_NAME: "region",
+                "value": obj_src.convert_to_dict(),
+            }
 
         if isinstance(obj_src, IP):
-            return {AzureObject.SELF_CACHED_TYPE_KEY_NAME: "ip", "value": obj_src.convert_to_dict()}
+            return {
+                AzureObject.SELF_CACHED_TYPE_KEY_NAME: "ip",
+                "value": obj_src.convert_to_dict(),
+            }
 
         if isinstance(obj_src, Enum):
             return obj_src.value
@@ -68,7 +82,9 @@ class AzureObject:
         # Ugly but efficient
         try:
             assert obj_src.convert_to_dict
-            raise DeprecationWarning(f"'return obj_src.convert_to_dict()' Use the new SELF_CACHED_TYPE_KEY_NAME format: {obj_src}")
+            raise DeprecationWarning(
+                f"'return obj_src.convert_to_dict()' Use the new SELF_CACHED_TYPE_KEY_NAME format: {obj_src}"
+            )
         except AttributeError:
             pass
 
@@ -116,7 +132,9 @@ class AzureObject:
                     continue
 
                 print("\n".join(composed_errors))
-                raise self.UnknownKeyError("\n".join(composed_errors)) from caught_exception
+                raise self.UnknownKeyError(
+                    "\n".join(composed_errors)
+                ) from caught_exception
 
     def _init_from_cache(self, dict_src, dict_options):
         """
@@ -128,7 +146,10 @@ class AzureObject:
         """
 
         for key_src, value in dict_src.items():
-            if isinstance(value, dict) and value.get(self.SELF_CACHED_TYPE_KEY_NAME) is not None:
+            if (
+                isinstance(value, dict)
+                and value.get(self.SELF_CACHED_TYPE_KEY_NAME) is not None
+            ):
                 raise NotImplementedError()
             elif key_src in dict_options:
                 dict_options[key_src](key_src, value)

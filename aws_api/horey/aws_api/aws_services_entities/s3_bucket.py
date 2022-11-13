@@ -28,7 +28,7 @@ class S3Bucket(AwsObject):
 
         init_options = {
             "Name": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-            "CreationDate": self.init_default_attr
+            "CreationDate": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -99,7 +99,7 @@ class S3Bucket(AwsObject):
             "IndexDocument": self.init_default_attr,
             "ErrorDocument": self.init_default_attr,
             "RedirectAllRequestsTo": self.init_default_attr,
-            "ResponseMetadata": lambda x, y: 0
+            "ResponseMetadata": lambda x, y: 0,
         }
 
         for dict_src in lst_src:
@@ -130,47 +130,56 @@ class S3Bucket(AwsObject):
         """
 
         mappings = {
-                    "us-east-2": ".",
-                    "us-east-1": "-",
-                    "us-west-1": "-",
-                    "us-west-2": "-",
-                    "af-south-1": ".",
-                    "ap-east-1": ".",
-                    "ap-south-1": ".",
-                    "ap-northeast-3": ".",
-                    "ap-northeast-2": ".",
-                    "ap-southeast-1": "-",
-                    "ap-southeast-2": "-",
-                    "ap-northeast-1": "-",
-                    "eu-west-1": "-",
-                    "sa-east-1": "-",
-                    "us-gov-west-1": "-",
-                    "ca-central-1": ".",
-                    "cn-northwest-1": ".",
-                    "eu-central-1": ".",
-                    "eu-west-2": ".",
-                    "eu-south-1": ".",
-                    "eu-west-3": ".",
-                    "eu-north-1": ".",
-                    "me-south-1": ".",
-                    "us-gov-east-1": "."}
+            "us-east-2": ".",
+            "us-east-1": "-",
+            "us-west-1": "-",
+            "us-west-2": "-",
+            "af-south-1": ".",
+            "ap-east-1": ".",
+            "ap-south-1": ".",
+            "ap-northeast-3": ".",
+            "ap-northeast-2": ".",
+            "ap-southeast-1": "-",
+            "ap-southeast-2": "-",
+            "ap-northeast-1": "-",
+            "eu-west-1": "-",
+            "sa-east-1": "-",
+            "us-gov-west-1": "-",
+            "ca-central-1": ".",
+            "cn-northwest-1": ".",
+            "eu-central-1": ".",
+            "eu-west-2": ".",
+            "eu-south-1": ".",
+            "eu-west-3": ".",
+            "eu-north-1": ".",
+            "me-south-1": ".",
+            "us-gov-east-1": ".",
+        }
 
-        if self.index_document is None and self.error_document is None and self.redirect_all_requests_to is None:
+        if (
+            self.index_document is None
+            and self.error_document is None
+            and self.redirect_all_requests_to is None
+        ):
             return []
 
-        return [f"{self.name}.s3-website{mappings[self.location]}{self.location}.amazonaws.com"]
+        return [
+            f"{self.name}.s3-website{mappings[self.location]}{self.location}.amazonaws.com"
+        ]
 
     def generate_create_request(self):
         """
-            ACL='private'|'public-read'|'public-read-write'|'authenticated-read',
-            'LocationConstraint': 'af-south-1'|'ap-east-1'|'ap-northeast-1'|'ap-northeast-2'|'ap-northeast-3'|'ap-south-1'|'ap-southeast-1'|'ap-southeast-2'|'ca-central-1'|'cn-north-1'|'cn-northwest-1'|'EU'|'eu-central-1'|'eu-north-1'|'eu-south-1'|'eu-west-1'|'eu-west-2'|'eu-west-3'|'me-south-1'|'sa-east-1'|'us-east-2'|'us-gov-east-1'|'us-gov-west-1'|'us-west-1'|'us-west-2'
-            }
+        ACL='private'|'public-read'|'public-read-write'|'authenticated-read',
+        'LocationConstraint': 'af-south-1'|'ap-east-1'|'ap-northeast-1'|'ap-northeast-2'|'ap-northeast-3'|'ap-south-1'|'ap-southeast-1'|'ap-southeast-2'|'ca-central-1'|'cn-north-1'|'cn-northwest-1'|'EU'|'eu-central-1'|'eu-north-1'|'eu-south-1'|'eu-west-1'|'eu-west-2'|'eu-west-3'|'me-south-1'|'sa-east-1'|'us-east-2'|'us-gov-east-1'|'us-gov-west-1'|'us-west-1'|'us-west-2'
+        }
         """
         request = dict()
         request["ACL"] = self.acl
         request["Bucket"] = self.name
 
-        request["CreateBucketConfiguration"] = {"LocationConstraint": self.region.region_mark}
+        request["CreateBucketConfiguration"] = {
+            "LocationConstraint": self.region.region_mark
+        }
         return request
 
     def generate_put_bucket_policy_request(self):
@@ -265,10 +274,10 @@ class S3Bucket(AwsObject):
 
             init_options = {
                 "Key": self.init_default_attr,
-                "LastModified":  self.init_default_attr,
-                "ETag":  self.init_default_attr,
-                "Size":  self.init_default_attr,
-                "StorageClass":  self.init_default_attr,
+                "LastModified": self.init_default_attr,
+                "ETag": self.init_default_attr,
+                "Size": self.init_default_attr,
+                "StorageClass": self.init_default_attr,
             }
             self.init_attrs(src_data, init_options)
 

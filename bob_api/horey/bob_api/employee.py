@@ -8,6 +8,7 @@ class Employee(BobObject):
     """
     Main class
     """
+
     def __init__(self, dict_src):
         self.full_name = None
         self.work = None

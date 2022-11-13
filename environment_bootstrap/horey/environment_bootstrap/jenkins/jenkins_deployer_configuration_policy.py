@@ -23,7 +23,7 @@ class JenkinsDeployerConfigurationPolicy(ConfigurationPolicy):
     @aws_api_configuration_values_file_path.setter
     def aws_api_configuration_values_file_path(self, value):
         self._aws_api_configuration_values_file_path = value
-        
+
     @property
     def jenkins_manager_configuration_values_file_path(self):
         return self._jenkins_manager_configuration_values_file_path

@@ -123,12 +123,16 @@ class SystemFunctionCommon:
             file_handler.write(command)
             command = f"/bin/bash {file_name}"
         # pylint: disable=subprocess-run-check
-        ret = subprocess.run([command], capture_output=True, shell=True, timeout=timeout)
+        ret = subprocess.run(
+            [command], capture_output=True, shell=True, timeout=timeout
+        )
 
         os.remove(file_name)
-        return_dict = {"stdout": ret.stdout.decode().strip("\n"),
-                       "stderr": ret.stderr.decode().strip("\n"),
-                       "code": ret.returncode}
+        return_dict = {
+            "stdout": ret.stdout.decode().strip("\n"),
+            "stderr": ret.stderr.decode().strip("\n"),
+            "code": ret.returncode,
+        }
         if debug:
             logger.info(f"return_code:{return_dict['code']}")
 
@@ -177,7 +181,12 @@ class SystemFunctionCommon:
 
         description = "Returns true if all files exist"
         parser = argparse.ArgumentParser(description=description)
-        parser.add_argument("--files_paths", required=True, type=str, help="Comma separated string file list")
+        parser.add_argument(
+            "--files_paths",
+            required=True,
+            type=str,
+            help="Comma separated string file list",
+        )
         return parser
 
     @staticmethod
@@ -211,8 +220,12 @@ class SystemFunctionCommon:
 
         description = "move_file from src_path to dst_path"
         parser = argparse.ArgumentParser(description=description)
-        parser.add_argument("--src_file_path", required=True, type=str, help="Source file path")
-        parser.add_argument("--dst_file_path", required=True, type=str, help="Destination file path")
+        parser.add_argument(
+            "--src_file_path", required=True, type=str, help="Source file path"
+        )
+        parser.add_argument(
+            "--dst_file_path", required=True, type=str, help="Destination file path"
+        )
 
         parser.epilog = f"Usage: python3 {__file__} [options]"
         return parser
@@ -252,10 +265,14 @@ class SystemFunctionCommon:
         """
 
         if src_file_path.startswith("./"):
-            src_file_path = os.path.join(self.system_function_provisioner_dir_path, src_file_path)
+            src_file_path = os.path.join(
+                self.system_function_provisioner_dir_path, src_file_path
+            )
 
         prefix = "sudo " if sudo else ""
-        SystemFunctionCommon.run_bash(f"{prefix}mkdir -p {os.path.dirname(dst_file_path)}")
+        SystemFunctionCommon.run_bash(
+            f"{prefix}mkdir -p {os.path.dirname(dst_file_path)}"
+        )
         SystemFunctionCommon.run_bash(f"{prefix}rm -rf {dst_file_path}")
         SystemFunctionCommon.run_bash(f"{prefix}cp {src_file_path} {dst_file_path}")
 
@@ -270,8 +287,12 @@ class SystemFunctionCommon:
 
         description = "compare_files from src_path to dst_path"
         parser = argparse.ArgumentParser(description=description)
-        parser.add_argument("--src_file_path", required=True, type=str, help="Source file path")
-        parser.add_argument("--dst_file_path", required=True, type=str, help="Destination file path")
+        parser.add_argument(
+            "--src_file_path", required=True, type=str, help="Source file path"
+        )
+        parser.add_argument(
+            "--dst_file_path", required=True, type=str, help="Destination file path"
+        )
 
         parser.epilog = f"Usage: python3 {__file__} [options]"
         return parser
@@ -322,9 +343,15 @@ class SystemFunctionCommon:
 
         description = "perform_comment_line_replacement from src_path in dst_path above comment line"
         parser = argparse.ArgumentParser(description=description)
-        parser.add_argument("--src_file_path", required=True, type=str, help="Source file path")
-        parser.add_argument("--dst_file_path", required=True, type=str, help="Destination file path")
-        parser.add_argument("--comment_line", required=True, type=str, help="Destination file path")
+        parser.add_argument(
+            "--src_file_path", required=True, type=str, help="Source file path"
+        )
+        parser.add_argument(
+            "--dst_file_path", required=True, type=str, help="Destination file path"
+        )
+        parser.add_argument(
+            "--comment_line", required=True, type=str, help="Destination file path"
+        )
 
         parser.epilog = f"Usage: python3 {__file__} [options]"
         return parser
@@ -342,7 +369,9 @@ class SystemFunctionCommon:
         SystemFunctionCommon.perform_comment_line_replacement(**arguments_dict)
 
     @staticmethod
-    def perform_comment_line_replacement(src_file_path=None, dst_file_path=None, comment_line=None):
+    def perform_comment_line_replacement(
+        src_file_path=None, dst_file_path=None, comment_line=None
+    ):
         """
         Comment line being replaced with contents of a file.
 
@@ -356,8 +385,9 @@ class SystemFunctionCommon:
         with open(src_file_path, encoding="utf-8") as file_handler:
             replacement_string = file_handler.read()
 
-        replacement_engine.perform_comment_line_replacement(dst_file_path, comment_line, replacement_string,
-                                                            keep_comment=True)
+        replacement_engine.perform_comment_line_replacement(
+            dst_file_path, comment_line, replacement_string, keep_comment=True
+        )
 
     # endregion
 
@@ -371,8 +401,15 @@ class SystemFunctionCommon:
         """
         description = "check_systemd_service_status for specific duration"
         parser = argparse.ArgumentParser(description=description)
-        parser.add_argument("--service_name", required=True, type=str, help="Service name to check")
-        parser.add_argument("--min_uptime", required=True, type=str, help="Check running duration in seconds")
+        parser.add_argument(
+            "--service_name", required=True, type=str, help="Service name to check"
+        )
+        parser.add_argument(
+            "--min_uptime",
+            required=True,
+            type=str,
+            help="Check running duration in seconds",
+        )
 
         parser.epilog = f"Usage: python3 {__file__} [options]"
         return parser
@@ -402,21 +439,37 @@ class SystemFunctionCommon:
         min_uptime = int(min_uptime)
         desired_status_name = "active"
         status_change_seconds_limit = 120
-        service_status_raw = SystemFunctionCommon.get_systemd_service_status(service_name)
-        service_status = SystemFunctionCommon.extract_service_status_value(service_status_raw)
+        service_status_raw = SystemFunctionCommon.get_systemd_service_status(
+            service_name
+        )
+        service_status = SystemFunctionCommon.extract_service_status_value(
+            service_status_raw
+        )
 
         if service_status in ["inactive", "failed"]:
             return False
 
-        _, seconds_duration = SystemFunctionCommon.extract_service_status_times(service_status_raw)
+        _, seconds_duration = SystemFunctionCommon.extract_service_status_times(
+            service_status_raw
+        )
 
-        time_limit = datetime.datetime.now() + datetime.timedelta(seconds=status_change_seconds_limit)
-        while service_status != desired_status_name and datetime.datetime.now() < time_limit:
+        time_limit = datetime.datetime.now() + datetime.timedelta(
+            seconds=status_change_seconds_limit
+        )
+        while (
+            service_status != desired_status_name
+            and datetime.datetime.now() < time_limit
+        ):
             logger.info(
-                f"Waiting for status to change from {service_status} to {desired_status_name}. Going to sleep for 5 sec")
+                f"Waiting for status to change from {service_status} to {desired_status_name}. Going to sleep for 5 sec"
+            )
             time.sleep(5)
-            service_status_raw = SystemFunctionCommon.get_systemd_service_status(service_name)
-            service_status = SystemFunctionCommon.extract_service_status_value(service_status_raw)
+            service_status_raw = SystemFunctionCommon.get_systemd_service_status(
+                service_name
+            )
+            service_status = SystemFunctionCommon.extract_service_status_value(
+                service_status_raw
+            )
 
             if service_status == "inactive":
                 raise RuntimeError("Service is inactive. Should be something else.")
@@ -424,25 +477,35 @@ class SystemFunctionCommon:
             if service_status == "failed":
                 return False
 
-            _, seconds_duration = SystemFunctionCommon.extract_service_status_times(service_status_raw)
+            _, seconds_duration = SystemFunctionCommon.extract_service_status_times(
+                service_status_raw
+            )
 
         if service_status != desired_status_name:
             raise TimeoutError(
-                f"service {service_name} did not reach {desired_status_name} in {status_change_seconds_limit} seconds")
+                f"service {service_name} did not reach {desired_status_name} in {status_change_seconds_limit} seconds"
+            )
 
         if min_uptime <= seconds_duration:
             return True
 
         logger.info(
-            f"Waiting for status duration time: {min_uptime}. Going to sleep for {min_uptime - seconds_duration} sec")
+            f"Waiting for status duration time: {min_uptime}. Going to sleep for {min_uptime - seconds_duration} sec"
+        )
         time.sleep(min_uptime - seconds_duration)
-        service_status_raw = SystemFunctionCommon.get_systemd_service_status(service_name)
-        service_status = SystemFunctionCommon.extract_service_status_value(service_status_raw)
+        service_status_raw = SystemFunctionCommon.get_systemd_service_status(
+            service_name
+        )
+        service_status = SystemFunctionCommon.extract_service_status_value(
+            service_status_raw
+        )
 
         if service_status == "inactive":
             raise RuntimeError("Service is inactive. Should be something else.")
 
-        _, seconds_duration = SystemFunctionCommon.extract_service_status_times(service_status_raw)
+        _, seconds_duration = SystemFunctionCommon.extract_service_status_times(
+            service_status_raw
+        )
         if service_status != desired_status_name:
             raise TimeoutError(f"service {service_name} seams to be in restart loop")
 
@@ -451,7 +514,8 @@ class SystemFunctionCommon:
 
         raise TimeoutError(
             f"service {service_name} seams to be in restart loop after cause it can not keep {desired_status_name} "
-            f"status for {min_uptime} seconds. Current status duration is {seconds_duration} ")
+            f"status for {min_uptime} seconds. Current status duration is {seconds_duration} "
+        )
 
     # endregion
 
@@ -465,7 +529,9 @@ class SystemFunctionCommon:
         """
         description = "apt_install"
         parser = argparse.ArgumentParser(description=description)
-        parser.add_argument("--packages", required=True, type=str, help="Service name to check")
+        parser.add_argument(
+            "--packages", required=True, type=str, help="Service name to check"
+        )
 
         parser.epilog = f"Usage: python3 {__file__} [options]"
         return parser
@@ -496,16 +562,23 @@ class SystemFunctionCommon:
 
         logger.info(f"Installing apt package: '{package_name}'")
 
-        if upgrade_version or not SystemFunctionCommon.apt_check_installed(package_name):
+        if upgrade_version or not SystemFunctionCommon.apt_check_installed(
+            package_name
+        ):
             command = f"sudo apt install -y {package_name}"
         else:
             command = f"sudo apt --only-upgrade install -y {package_name}"
 
         def raise_on_error_callback(response):
-            return "has no installation candidate" in response["stdout"] or \
-                   "is not available, but is referred to by another package" in response["stdout"]
+            return (
+                "has no installation candidate" in response["stdout"]
+                or "is not available, but is referred to by another package"
+                in response["stdout"]
+            )
 
-        SystemFunctionCommon.run_apt_bash_command(command, raise_on_error_callback=raise_on_error_callback)
+        SystemFunctionCommon.run_apt_bash_command(
+            command, raise_on_error_callback=raise_on_error_callback
+        )
         SystemFunctionCommon.reinit_apt_packages()
 
     @staticmethod
@@ -550,7 +623,9 @@ class SystemFunctionCommon:
         @param str_regex_name:
         @return:
         """
-        return SystemFunctionCommon.run_apt_bash_command(f"sudo apt purge -y {str_regex_name}")
+        return SystemFunctionCommon.run_apt_bash_command(
+            f"sudo apt purge -y {str_regex_name}"
+        )
 
     def apt_check_repository_exists(self, repo_name):
         """
@@ -592,7 +667,9 @@ class SystemFunctionCommon:
                     return ret
                 except SystemFunctionCommon.BashError as inst:
                     dict_inst = json.loads(str(inst))
-                    if raise_on_error_callback is not None and raise_on_error_callback(dict_inst):
+                    if raise_on_error_callback is not None and raise_on_error_callback(
+                        dict_inst
+                    ):
                         raise
                     logger.warning(f"Failed to run command '{command}' Retrying...")
 
@@ -607,10 +684,14 @@ class SystemFunctionCommon:
         Force unlocking - kill processes using the lock.
         @return:
         """
-        ret = SystemFunctionCommon.run_bash("sudo lsof /var/lib/dpkg/lock-frontend | awk '/[0-9]+/{print $2}'")
+        ret = SystemFunctionCommon.run_bash(
+            "sudo lsof /var/lib/dpkg/lock-frontend | awk '/[0-9]+/{print $2}'"
+        )
         logger.info(ret)
         if ret["stdout"]:
-            ret = SystemFunctionCommon.run_bash(f'sudo kill -s 9 {ret["stdout"]} || true')
+            ret = SystemFunctionCommon.run_bash(
+                f'sudo kill -s 9 {ret["stdout"]} || true'
+            )
             logger.info(ret)
 
     @staticmethod
@@ -636,7 +717,10 @@ class SystemFunctionCommon:
         ret = SystemFunctionCommon.run_bash("sudo apt update")
         output = ret["stdout"]
         last_line = output.split("\n")[-1]
-        if "can be upgraded" not in last_line and "All packages are up to date." not in last_line:
+        if (
+            "can be upgraded" not in last_line
+            and "All packages are up to date." not in last_line
+        ):
             raise RuntimeError(output)
 
         SystemFunctionCommon.APT_PACKAGES_UPDATED = True
@@ -681,7 +765,9 @@ class SystemFunctionCommon:
         """
         if not SystemFunctionCommon.APT_REPOSITORIES:
 
-            repos = SystemFunctionCommon.init_apt_repositories_from_file("/etc/apt/sources.list")
+            repos = SystemFunctionCommon.init_apt_repositories_from_file(
+                "/etc/apt/sources.list"
+            )
             SystemFunctionCommon.APT_REPOSITORIES.extend(repos)
 
             for root, _, files in os.walk("/etc/apt/sources.list.d"):
@@ -689,7 +775,9 @@ class SystemFunctionCommon:
                     if os.path.splitext(file_name)[1] != ".list":
                         continue
                     file_path = os.path.join(root, file_name)
-                    repos = SystemFunctionCommon.init_apt_repositories_from_file(file_path)
+                    repos = SystemFunctionCommon.init_apt_repositories_from_file(
+                        file_path
+                    )
                     SystemFunctionCommon.APT_REPOSITORIES.extend(repos)
 
     @staticmethod
@@ -741,7 +829,9 @@ class SystemFunctionCommon:
         @return:
         """
 
-        lst_line = SystemFunctionCommon.extract_service_status_line_raw(service_status_raw)
+        lst_line = SystemFunctionCommon.extract_service_status_line_raw(
+            service_status_raw
+        )
         status = lst_line[1]
         if status not in ["active", "failed", "activating", "inactive"]:
             raise NotImplementedError(f"status is '{status}'")
@@ -755,9 +845,11 @@ class SystemFunctionCommon:
         @param service_status_raw:
         @return: server_time, duration
         """
-        lst_line = SystemFunctionCommon.extract_service_status_line_raw(service_status_raw)
+        lst_line = SystemFunctionCommon.extract_service_status_line_raw(
+            service_status_raw
+        )
         since_index = lst_line.index("since")
-        str_time_data = " ".join(lst_line[since_index + 1:])
+        str_time_data = " ".join(lst_line[since_index + 1 :])
         start_date_str, duration_string = str_time_data.split("; ")
         if "GMT" in start_date_str:
             timezone = "GMT"
@@ -765,8 +857,12 @@ class SystemFunctionCommon:
             timezone = "UTC"
         else:
             raise ValueError(start_date_str)
-        start_date = datetime.datetime.strptime(start_date_str, f"%a %Y-%m-%d %H:%M:%S {timezone}")
-        return start_date, SystemFunctionCommon.extract_service_status_seconds_duration(duration_string)
+        start_date = datetime.datetime.strptime(
+            start_date_str, f"%a %Y-%m-%d %H:%M:%S {timezone}"
+        )
+        return start_date, SystemFunctionCommon.extract_service_status_seconds_duration(
+            duration_string
+        )
 
     @staticmethod
     def extract_service_status_seconds_duration(duration_string):
@@ -789,14 +885,14 @@ class SystemFunctionCommon:
         try:
             index = duration_lst.index("days")
             days = int(duration_lst[index - 1])
-            duration_lst = duration_lst[:index - 1] + duration_lst[index + 1:]
+            duration_lst = duration_lst[: index - 1] + duration_lst[index + 1 :]
         except ValueError:
             pass
 
         try:
             index = duration_lst.index("weeks")
             weeks = int(duration_lst[index - 1])
-            duration_lst = duration_lst[:index - 1] + duration_lst[index + 1:]
+            duration_lst = duration_lst[: index - 1] + duration_lst[index + 1 :]
             days += weeks * 7
         except ValueError:
             pass
@@ -804,35 +900,35 @@ class SystemFunctionCommon:
         try:
             index = duration_lst.index("day")
             days = int(duration_lst[index - 1])
-            duration_lst = duration_lst[:index - 1] + duration_lst[index + 1:]
+            duration_lst = duration_lst[: index - 1] + duration_lst[index + 1 :]
         except ValueError:
             pass
 
         try:
             index = duration_lst.index("months")
             months = int(duration_lst[index - 1])
-            duration_lst = duration_lst[:index - 1] + duration_lst[index + 1:]
+            duration_lst = duration_lst[: index - 1] + duration_lst[index + 1 :]
         except ValueError:
             months = 0
 
         try:
             index = duration_lst.index("month")
             months = int(duration_lst[index - 1])
-            duration_lst = duration_lst[:index - 1] + duration_lst[index + 1:]
+            duration_lst = duration_lst[: index - 1] + duration_lst[index + 1 :]
         except ValueError:
             pass
 
         try:
             index = duration_lst.index("years")
             years = int(duration_lst[index - 1])
-            duration_lst = duration_lst[:index - 1] + duration_lst[index + 1:]
+            duration_lst = duration_lst[: index - 1] + duration_lst[index + 1 :]
         except ValueError:
             years = 0
 
         try:
             index = duration_lst.index("year")
             years = int(duration_lst[index - 1])
-            duration_lst = duration_lst[:index - 1] + duration_lst[index + 1:]
+            duration_lst = duration_lst[: index - 1] + duration_lst[index + 1 :]
         except ValueError:
             pass
 
@@ -884,7 +980,9 @@ class SystemFunctionCommon:
             return False
 
         if src_file_path.startswith("./"):
-            src_file_path = os.path.join(self.system_function_provisioner_dir_path, src_file_path)
+            src_file_path = os.path.join(
+                self.system_function_provisioner_dir_path, src_file_path
+            )
 
         replacement_engine = ReplacementEngine()
         with open(src_file_path, encoding="utf-8") as file_handler:
@@ -905,7 +1003,9 @@ class SystemFunctionCommon:
         description = "add_line_to_file"
         parser = argparse.ArgumentParser(description=description)
         parser.add_argument("--line", required=True, type=str, help="Line to be added")
-        parser.add_argument("--file_path", required=True, type=str, help="Path to the file")
+        parser.add_argument(
+            "--file_path", required=True, type=str, help="Path to the file"
+        )
 
         parser.epilog = f"Usage: python3 {__file__} [options]"
         return parser
@@ -940,7 +1040,9 @@ class SystemFunctionCommon:
             raise ValueError(file_path)
 
         if sudo:
-            return SystemFunctionCommon.add_line_to_file_sudo(line=line, file_path=file_path)
+            return SystemFunctionCommon.add_line_to_file_sudo(
+                line=line, file_path=file_path
+            )
         if not line.endswith("\n"):
             line = line + "\n"
 
@@ -974,7 +1076,9 @@ class SystemFunctionCommon:
             raise ValueError(file_path)
 
         try:
-            response = SystemFunctionCommon.run_bash(f"sudo grep -F '{line}' {file_path}")
+            response = SystemFunctionCommon.run_bash(
+                f"sudo grep -F '{line}' {file_path}"
+            )
             if response["stdout"]:
                 return response
         except SystemFunctionCommon.BashError as inst:
@@ -982,7 +1086,9 @@ class SystemFunctionCommon:
             if "No such file or directory" not in dict_inst["stderr"]:
                 raise
 
-        return SystemFunctionCommon.run_bash(f'echo "{line}" | sudo tee -a {file_path} > /dev/null')
+        return SystemFunctionCommon.run_bash(
+            f'echo "{line}" | sudo tee -a {file_path} > /dev/null'
+        )
 
     class BashError(RuntimeError):
         """
@@ -1033,33 +1139,45 @@ class SystemFunctionCommon:
         """
 
 
-SystemFunctionCommon.ACTION_MANAGER.register_action("check_files_exist",
-                                                    SystemFunctionCommon.check_files_exist_parser,
-                                                    SystemFunctionCommon.check_files_exist)
+SystemFunctionCommon.ACTION_MANAGER.register_action(
+    "check_files_exist",
+    SystemFunctionCommon.check_files_exist_parser,
+    SystemFunctionCommon.check_files_exist,
+)
 
-SystemFunctionCommon.ACTION_MANAGER.register_action("add_line_to_file",
-                                                    SystemFunctionCommon.action_add_line_to_file_parser,
-                                                    SystemFunctionCommon.action_add_line_to_file)
+SystemFunctionCommon.ACTION_MANAGER.register_action(
+    "add_line_to_file",
+    SystemFunctionCommon.action_add_line_to_file_parser,
+    SystemFunctionCommon.action_add_line_to_file,
+)
 
-SystemFunctionCommon.ACTION_MANAGER.register_action("move_file",
-                                                    SystemFunctionCommon.action_move_file_parser,
-                                                    SystemFunctionCommon.action_move_file)
+SystemFunctionCommon.ACTION_MANAGER.register_action(
+    "move_file",
+    SystemFunctionCommon.action_move_file_parser,
+    SystemFunctionCommon.action_move_file,
+)
 
-SystemFunctionCommon.ACTION_MANAGER.register_action("compare_files",
-                                                    SystemFunctionCommon.action_compare_files_parser,
-                                                    SystemFunctionCommon.action_compare_files)
+SystemFunctionCommon.ACTION_MANAGER.register_action(
+    "compare_files",
+    SystemFunctionCommon.action_compare_files_parser,
+    SystemFunctionCommon.action_compare_files,
+)
 
-SystemFunctionCommon.ACTION_MANAGER.register_action("perform_comment_line_replacement",
-                                                    SystemFunctionCommon.action_perform_comment_line_replacement_parser,
-                                                    SystemFunctionCommon.action_perform_comment_line_replacement)
+SystemFunctionCommon.ACTION_MANAGER.register_action(
+    "perform_comment_line_replacement",
+    SystemFunctionCommon.action_perform_comment_line_replacement_parser,
+    SystemFunctionCommon.action_perform_comment_line_replacement,
+)
 
-SystemFunctionCommon.ACTION_MANAGER.register_action("check_systemd_service_status",
-                                                    SystemFunctionCommon.action_check_systemd_service_status_parser,
-                                                    SystemFunctionCommon.action_check_systemd_service_status)
+SystemFunctionCommon.ACTION_MANAGER.register_action(
+    "check_systemd_service_status",
+    SystemFunctionCommon.action_check_systemd_service_status_parser,
+    SystemFunctionCommon.action_check_systemd_service_status,
+)
 
-SystemFunctionCommon.ACTION_MANAGER.register_action("apt_install",
-                                                    SystemFunctionCommon.action_apt_install_parser,
-                                                    None)
+SystemFunctionCommon.ACTION_MANAGER.register_action(
+    "apt_install", SystemFunctionCommon.action_apt_install_parser, None
+)
 
 if __name__ == "__main__":
     SystemFunctionCommon.ACTION_MANAGER.call_action()

@@ -10,10 +10,20 @@ from horey.h_logger import get_logger
 from horey.oci_api.oci_api_configuration_policy import OCIAPIConfigurationPolicy
 from horey.oci_api.oci_service_entities.vm_host import VMHost
 from unittest import mock
+
 logger = get_logger()
 
 configuration = OCIAPIConfigurationPolicy()
-configuration.configuration_file_full_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore", "oci_api_configuration_values.py"))
+configuration.configuration_file_full_path = os.path.abspath(
+    os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "..",
+        "..",
+        "..",
+        "ignore",
+        "oci_api_configuration_values.py",
+    )
+)
 configuration.init_from_file()
 
 
@@ -28,4 +38,3 @@ def test_provision_vm():
 
 if __name__ == "__main__":
     test_provision_vm()
-

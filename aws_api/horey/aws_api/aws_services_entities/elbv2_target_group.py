@@ -37,8 +37,12 @@ class ELBV2TargetGroup(AwsObject):
         self.target_type = None
 
         init_options = {
-            "TargetGroupArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
-            "TargetGroupName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "TargetGroupArn": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
+            "TargetGroupName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
             "Protocol": self.init_default_attr,
             "Port": self.init_default_attr,
             "VpcId": self.init_default_attr,
@@ -65,8 +69,7 @@ class ELBV2TargetGroup(AwsObject):
         :param dict_src:
         :return:
         """
-        options = {
-        }
+        options = {}
         self._init_from_cache(dict_src, options)
 
     def update_target_health(self, dict_src):
@@ -84,13 +87,15 @@ class ELBV2TargetGroup(AwsObject):
         @return:
         """
 
-        request = {"Name": self.name,
-                   "HealthCheckEnabled": self.health_check_enabled,
-                   "HealthCheckIntervalSeconds": self.health_check_interval_seconds,
-                   "HealthCheckTimeoutSeconds": self.health_check_timeout_seconds,
-                   "HealthyThresholdCount": self.healthy_threshold_count,
-                   "UnhealthyThresholdCount": self.unhealthy_threshold_count,
-                   "TargetType": self.target_type}
+        request = {
+            "Name": self.name,
+            "HealthCheckEnabled": self.health_check_enabled,
+            "HealthCheckIntervalSeconds": self.health_check_interval_seconds,
+            "HealthCheckTimeoutSeconds": self.health_check_timeout_seconds,
+            "HealthyThresholdCount": self.healthy_threshold_count,
+            "UnhealthyThresholdCount": self.unhealthy_threshold_count,
+            "TargetType": self.target_type,
+        }
 
         if self.vpc_id is not None:
             request["VpcId"] = self.vpc_id

@@ -28,10 +28,7 @@ def test_provision_rule():
     rule.event_bus_name = "default"
     rule.state = "ENABLED"
     rule.tags = [
-        {
-            'Key': 'string',
-            'Value': 'string'
-        },
+        {"Key": "string", "Value": "string"},
     ]
 
     target = EventBridgeTarget({})
@@ -42,9 +39,8 @@ def test_provision_rule():
     client = EventsClient()
     client.provision_rule(rule)
 
-    
 
 if __name__ == "__main__":
-    #test_init_lambda_client()
-    #test_get_region_events()
+    # test_init_lambda_client()
+    # test_get_region_events()
     test_provision_rule()

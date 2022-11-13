@@ -70,8 +70,11 @@ class AuthorizationApplicator:
         Request for jenkins job run.
 
         """
-        SPECIAL_CHARS_MAP = {"<": "horey_special_char_replacement_less",
-                             ">": "horey_special_char_replacement_more"}
+
+        SPECIAL_CHARS_MAP = {
+            "<": "horey_special_char_replacement_less",
+            ">": "horey_special_char_replacement_more",
+        }
 
         def __init__(self, str_src):
             logger.info(f"Base request: {str_src}")
@@ -105,9 +108,11 @@ class AuthorizationApplicator:
             @return:
             """
 
-            return {"user_identity": self.user_identity,
-                    "job_name": self.job_name,
-                    "parameters": self.parameters}
+            return {
+                "user_identity": self.user_identity,
+                "job_name": self.job_name,
+                "parameters": self.parameters,
+            }
 
     class Rule:
         """
@@ -121,8 +126,10 @@ class AuthorizationApplicator:
                 raise NotImplementedError("REGex not yet supported, only *")
 
             self.user_identity = dict_src["user_identity"]
-            self.parameters_restrictions = [AuthorizationApplicator.ParameterRestriction(param_dict_src) for
-                                            param_dict_src in dict_src["parameters_restrictions"]]
+            self.parameters_restrictions = [
+                AuthorizationApplicator.ParameterRestriction(param_dict_src)
+                for param_dict_src in dict_src["parameters_restrictions"]
+            ]
 
         def convert_to_dict(self):
             """
@@ -130,10 +137,14 @@ class AuthorizationApplicator:
 
             @return:
             """
-            return {"job_name": self.job_name,
-                    "user_identity": self.user_identity,
-                    "parameters_restrictions": [parameters_restriction.convert_to_dict() for parameters_restriction in
-                                                self.parameters_restrictions]}
+            return {
+                "job_name": self.job_name,
+                "user_identity": self.user_identity,
+                "parameters_restrictions": [
+                    parameters_restriction.convert_to_dict()
+                    for parameters_restriction in self.parameters_restrictions
+                ],
+            }
 
         def authorize(self, request):
             """
@@ -184,9 +195,7 @@ class AuthorizationApplicator:
             @return:
             """
 
-            return {"name": self.name,
-                    "value": self.value,
-                    "required": self.required}
+            return {"name": self.name, "value": self.value, "required": self.required}
 
         def authorize(self, var, val):
             """

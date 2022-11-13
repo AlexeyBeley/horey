@@ -2,7 +2,9 @@ import os.path
 import pdb
 from horey.provision_constructor.system_function_factory import SystemFunctionFactory
 
-from horey.provision_constructor.system_functions.system_function_common import SystemFunctionCommon
+from horey.provision_constructor.system_functions.system_function_common import (
+    SystemFunctionCommon,
+)
 from horey.h_logger import get_logger
 
 logger = get_logger()
@@ -25,10 +27,16 @@ class Provisioner(SystemFunctionCommon):
 
     def test_provisioned(self):
         self.init_apt_packages()
-        return (not self.apt_check_installed("sntp*")) and \
-               (not self.apt_check_installed("chrony*")) and \
-               self.check_file_provisioned("./timesyncd.conf", "/etc/systemd/timesyncd.conf") and \
-               self.check_systemd_service_status(service_name="systemd-timesyncd", min_uptime=20)
+        return (
+            (not self.apt_check_installed("sntp*"))
+            and (not self.apt_check_installed("chrony*"))
+            and self.check_file_provisioned(
+                "./timesyncd.conf", "/etc/systemd/timesyncd.conf"
+            )
+            and self.check_systemd_service_status(
+                service_name="systemd-timesyncd", min_uptime=20
+            )
+        )
 
     def _provision(self):
         """
@@ -44,7 +52,9 @@ class Provisioner(SystemFunctionCommon):
         ret = self.run_bash("sudo timedatectl set-ntp false")
         logger.info(ret)
 
-        self.provision_file("./timesyncd.conf", "/etc/systemd/timesyncd.conf", sudo=True)
+        self.provision_file(
+            "./timesyncd.conf", "/etc/systemd/timesyncd.conf", sudo=True
+        )
 
         ret = self.run_bash("sudo timedatectl set-ntp true")
         logger.info(ret)

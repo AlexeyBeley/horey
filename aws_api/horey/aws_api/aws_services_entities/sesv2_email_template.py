@@ -22,8 +22,10 @@ class SESV2EmailTemplate(AwsObject):
             return
 
         init_options = {
-            "TemplateName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-            "CreatedTimestamp":  self.init_default_attr,
+            "TemplateName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
+            "CreatedTimestamp": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -39,8 +41,10 @@ class SESV2EmailTemplate(AwsObject):
 
     def update_from_raw_response(self, dict_src):
         init_options = {
-            "TemplateName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-            "TemplateContent":  self.init_default_attr,
+            "TemplateName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
+            "TemplateContent": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)

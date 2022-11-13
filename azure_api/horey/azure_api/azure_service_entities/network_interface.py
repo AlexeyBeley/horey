@@ -39,7 +39,7 @@ class NetworkInterface(AzureObject):
             "enable_ip_forwarding": self.init_default_attr,
             "hosted_workloads": self.init_default_attr,
             "nic_type": self.init_default_attr,
-            "vnet_encryption_supported": self.init_default_attr
+            "vnet_encryption_supported": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -54,16 +54,19 @@ class NetworkInterface(AzureObject):
         self._init_from_cache(dict_src, options)
 
     def generate_create_request(self):
-        return [self.resource_group_name,
-                self.name,
-                {"location": self.location,
-                 "ip_configurations": self.ip_configurations,
-                 "network_security_group": self.network_security_group,
-                 "tags": self.tags
-                 }
-                ]
+        return [
+            self.resource_group_name,
+            self.name,
+            {
+                "location": self.location,
+                "ip_configurations": self.ip_configurations,
+                "network_security_group": self.network_security_group,
+                "tags": self.tags,
+            },
+        ]
 
     def update_after_creation(self, network_interface):
-        self.ip_configurations = [config.as_dict() for config in network_interface.ip_configurations]
+        self.ip_configurations = [
+            config.as_dict() for config in network_interface.ip_configurations
+        ]
         self.id = network_interface.id
-

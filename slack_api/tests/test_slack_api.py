@@ -10,8 +10,15 @@ from horey.slack_api.slack_message import SlackMessage
 
 configuration = SlackAPIConfigurationPolicy()
 configuration.configuration_file_full_path = os.path.abspath(
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore",
-                 "slack_api_configuration_values.py"))
+    os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "..",
+        "..",
+        "..",
+        "ignore",
+        "slack_api_configuration_values.py",
+    )
+)
 configuration.init_from_file()
 
 slack_api = SlackAPI(configuration=configuration)
@@ -21,7 +28,9 @@ slack_api = SlackAPI(configuration=configuration)
 def test_send_message_stable():
     message = SlackMessage(SlackMessage.Types.STABLE)
     block = SlackMessage.HeaderBlock()
-    block.text = "Resolved in 2m 0s: Load average is too high (per CPU load over 1.5 for 15m)"
+    block.text = (
+        "Resolved in 2m 0s: Load average is too high (per CPU load over 1.5 for 15m)"
+    )
 
     message.add_block(block)
 
@@ -60,12 +69,14 @@ def test_send_message_warning():
     message.add_block(block)
 
     attachment = SlackMessage.Attachment()
-    attachment.text = "Problem started at 10:00:00 on 2011.11.11\n" \
-                      "Problem name: Load average is too high (per CPU load over 1.5 for 15m)\n" \
-                      "Host: horey-ui-host\n" \
-                      "Severity: Average\n" \
-                      "Operational data: Load averages(1m 5m 15m): (4.42 3.41 2.78), # of CPUs: 2\n" \
-                      "Original problem ID: 8888"
+    attachment.text = (
+        "Problem started at 10:00:00 on 2011.11.11\n"
+        "Problem name: Load average is too high (per CPU load over 1.5 for 15m)\n"
+        "Host: horey-ui-host\n"
+        "Severity: Average\n"
+        "Operational data: Load averages(1m 5m 15m): (4.42 3.41 2.78), # of CPUs: 2\n"
+        "Original problem ID: 8888"
+    )
 
     message.add_attachment(attachment)
 

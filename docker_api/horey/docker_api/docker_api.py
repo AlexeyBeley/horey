@@ -58,11 +58,15 @@ class DockerAPI:
 
         logger.info(f"Starting building image {dockerfile_directory_path}, {tags}")
         if not isinstance(tags, list):
-            raise ValueError(f"'tags' must be of a type 'list' received {tags}: type: {type(tags)}")
+            raise ValueError(
+                f"'tags' must be of a type 'list' received {tags}: type: {type(tags)}"
+            )
 
         tag = tags[0] if len(tags) > 0 else "latest"
         try:
-            docker_image, build_log = self.client.images.build(path=dockerfile_directory_path, tag=tag, nocache=nocache)
+            docker_image, build_log = self.client.images.build(
+                path=dockerfile_directory_path, tag=tag, nocache=nocache
+            )
         except BuildError as exception_instance:
             self.print_log(exception_instance.build_log)
             raise
@@ -140,10 +144,14 @@ class DockerAPI:
         for repository in repo_tags:
             logger.info(f"Uploading {repository} to repository")
             time_start = datetime.datetime.now()
-            for log_line in self.client.images.push(repository=repository, stream=True, decode=True):
+            for log_line in self.client.images.push(
+                repository=repository, stream=True, decode=True
+            ):
                 self.print_log_line(log_line)
             time_end = datetime.datetime.now()
-            logger.info(f"Uploading repository {repository} took {time_end-time_start} time.")
+            logger.info(
+                f"Uploading repository {repository} took {time_end-time_start} time."
+            )
 
     def pull_images(self, repo, tag=None, all_tags=False):
         """
@@ -158,7 +166,9 @@ class DockerAPI:
         logger.info(f"Pulling image from repository {repo}")
         if tag is not None and repo.find(":") > -1:
             raise RuntimeError(f"Using both repo tag and tag kwarg: {repo}, {tag}")
-        images = self.client.images.pull(repository=repo, tag=tag, all_tags=all_tags, decode=True)
+        images = self.client.images.pull(
+            repository=repo, tag=tag, all_tags=all_tags, decode=True
+        )
         if not isinstance(images, list):
             images = [images]
 
@@ -176,14 +186,19 @@ class DockerAPI:
 
         images = self.pull_images(src_repo_with_tag, all_tags=copy_all_tags)
         if len(images) < 1:
-            raise RuntimeError(f"Expected > 1 docker image with tag: {src_repo_with_tag}")
+            raise RuntimeError(
+                f"Expected > 1 docker image with tag: {src_repo_with_tag}"
+            )
 
         image = images[0]
         repo, tag = self.split_repo_with_tag(src_repo_with_tag)
         if copy_all_tags:
             logger.info(f"Preparing dst tags: {image.attrs['RepoTags']}")
-            dst_tags = [f"{dst_repo_name}:{self.split_repo_with_tag(image_tag)[1]}"
-                        for image_tag in image.attrs["RepoTags"] if image_tag.startswith(repo)]
+            dst_tags = [
+                f"{dst_repo_name}:{self.split_repo_with_tag(image_tag)[1]}"
+                for image_tag in image.attrs["RepoTags"]
+                if image_tag.startswith(repo)
+            ]
         else:
             dst_tags = [f"{dst_repo_name}:{tag}"]
 
@@ -232,7 +247,11 @@ class DockerAPI:
         @return:
         """
 
-        ret = [container for container in self.client.containers.list(all=all_containers) if image_id == container.image.id]
+        ret = [
+            container
+            for container in self.client.containers.list(all=all_containers)
+            if image_id == container.image.id
+        ]
         return ret
 
     def remove_image(self, image_id, force=True):

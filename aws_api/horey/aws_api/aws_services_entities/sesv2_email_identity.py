@@ -23,7 +23,9 @@ class SESV2EmailIdentity(AwsObject):
             return
 
         init_options = {
-            "IdentityName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "IdentityName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
             "IdentityType": self.init_default_attr,
             "SendingEnabled": self.init_default_attr,
         }
@@ -41,7 +43,9 @@ class SESV2EmailIdentity(AwsObject):
 
     def update_from_raw_response(self, dict_src):
         init_options = {
-            "IdentityName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "IdentityName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
             "IdentityType": self.init_default_attr,
             "FeedbackForwardingStatus": self.init_default_attr,
             "VerifiedForSendingStatus": self.init_default_attr,

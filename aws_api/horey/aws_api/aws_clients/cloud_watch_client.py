@@ -11,6 +11,8 @@ logger = get_logger()
 
 
 import pdb
+
+
 class CloudWatchClient(Boto3Client):
     """
     Client to work with cloud watch logs API.
@@ -80,7 +82,11 @@ class CloudWatchClient(Boto3Client):
     def set_cloudwatch_alarm(self, alarm):
         request_dict = alarm.generate_create_request()
         AWSAccount.set_aws_region(alarm.region)
-        logger.info(f"Creating cloudwatch alarm '{alarm.name}' in region '{alarm.region}'")
-        for response in self.execute(self.client.put_metric_alarm, "ResponseMetadata", filters_req=request_dict):
+        logger.info(
+            f"Creating cloudwatch alarm '{alarm.name}' in region '{alarm.region}'"
+        )
+        for response in self.execute(
+            self.client.put_metric_alarm, "ResponseMetadata", filters_req=request_dict
+        ):
             if response["HTTPStatusCode"] != 200:
                 raise RuntimeError(f"{response}")

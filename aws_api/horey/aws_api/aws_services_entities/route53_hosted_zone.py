@@ -64,10 +64,11 @@ class HostedZone(AwsObject):
             self.records.append(self.Record(record, from_cache=True))
 
     def generate_create_request(self):
-        request = {"Name": self.name,
-                   "CallerReference": self.name + str(datetime.datetime.now()),
-                   "HostedZoneConfig": self.config,
-                   }
+        request = {
+            "Name": self.name,
+            "CallerReference": self.name + str(datetime.datetime.now()),
+            "HostedZoneConfig": self.config,
+        }
         if len(self.vpc_associations) > 0:
             request["VPC"] = self.vpc_associations[0]
 
@@ -85,7 +86,9 @@ class HostedZone(AwsObject):
                 return
 
             init_options = {
-                "Name": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+                "Name": lambda x, y: self.init_default_attr(
+                    x, y, formatted_name="name"
+                ),
                 "Type": self.init_default_attr,
                 "AliasTarget": self.init_default_attr,
                 "TTL": self.init_default_attr,
@@ -110,14 +113,14 @@ class HostedZone(AwsObject):
 
         def generate_dispose_request(self):
             return {
-                    'Action': 'DELETE',
-                    'ResourceRecordSet': {
-                        'Name': self.name,
-                        'Type': self.type,
-                        'TTL': self.ttl,
-                        'ResourceRecords': self.resource_records
-                    }
-                }
+                "Action": "DELETE",
+                "ResourceRecordSet": {
+                    "Name": self.name,
+                    "Type": self.type,
+                    "TTL": self.ttl,
+                    "ResourceRecords": self.resource_records,
+                },
+            }
 
     def update_from_raw_response(self, dict_src):
         init_options = {

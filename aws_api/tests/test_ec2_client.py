@@ -10,19 +10,31 @@ from horey.aws_api.aws_services_entities.ec2_launch_template import EC2LaunchTem
 from horey.aws_api.aws_services_entities.ec2_security_group import EC2SecurityGroup
 from horey.aws_api.base_entities.region import Region
 
-configuration_values_file_full_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                                   "h_logger_configuration_values.py")
-logger = get_logger(configuration_values_file_full_path=configuration_values_file_full_path)
+configuration_values_file_full_path = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "h_logger_configuration_values.py"
+)
+logger = get_logger(
+    configuration_values_file_full_path=configuration_values_file_full_path
+)
 
 accounts_file_full_path = os.path.abspath(
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "ignore", "aws_api_managed_accounts.py"))
+    os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "..",
+        "ignore",
+        "aws_api_managed_accounts.py",
+    )
+)
 
 accounts = CommonUtils.load_object_from_module(accounts_file_full_path, "main")
 AWSAccount.set_aws_account(accounts["1111"])
-AWSAccount.set_aws_region(accounts["1111"].regions['us-west-2'])
+AWSAccount.set_aws_region(accounts["1111"].regions["us-west-2"])
 
 mock_values_file_path = os.path.abspath(
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "ignore", "mock_values.py"))
+    os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "..", "ignore", "mock_values.py"
+    )
+)
 mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 
 
@@ -52,10 +64,12 @@ def test_provision_security_group():
     security_group = EC2SecurityGroup(DICT_CREATE_SECURITY_GROUP_REQUEST)
     security_group.region = Region.get_region("us-west-2")
     security_group.ip_permissions = [
-        {"IpProtocol": "tcp",
-         "FromPort": 8080,
-         "ToPort": 8080,
-         "IpRanges": [{"CidrIp": "1.1.1.1/32"}]},
+        {
+            "IpProtocol": "tcp",
+            "FromPort": 8080,
+            "ToPort": 8080,
+            "IpRanges": [{"CidrIp": "1.1.1.1/32"}],
+        },
     ]
     client.provision_security_group(security_group)
 
@@ -71,10 +85,12 @@ def test_provision_security_group_revoke():
     security_group = EC2SecurityGroup(DICT_CREATE_SECURITY_GROUP_REQUEST)
     security_group.region = Region.get_region("us-west-2")
     security_group.ip_permissions = [
-        {"IpProtocol": "tcp",
-         "FromPort": 8080,
-         "ToPort": 8081,
-         "IpRanges": [{"CidrIp": "1.1.1.1/32"}]},
+        {
+            "IpProtocol": "tcp",
+            "FromPort": 8080,
+            "ToPort": 8081,
+            "IpRanges": [{"CidrIp": "1.1.1.1/32"}],
+        },
     ]
     client.provision_security_group(security_group)
 
@@ -93,42 +109,58 @@ def test_provision_security_group_complex():
     security_group = EC2SecurityGroup(DICT_CREATE_SECURITY_GROUP_REQUEST)
     security_group.region = Region.get_region("us-west-2")
     security_group.ip_permissions = [
-        {"IpProtocol": "tcp",
-         "FromPort": 8080,
-         "ToPort": 8080,
-         "IpRanges": [{"CidrIp": "8.8.8.8/32", "Description": "test"},
-                      ]},
-        {"IpProtocol": "tcp",
-         "FromPort": 8080,
-         "ToPort": 8080,
-         "IpRanges": [{"CidrIp": "1.1.1.1/32", "Description": "test"},
-                      ]},
-        {"IpProtocol": "tcp",
-         "FromPort": 8080,
-         "ToPort": 8080,
-         "IpRanges": [{"CidrIp": "1.1.1.3/32", "Description": "test"},
-                      ]},
+        {
+            "IpProtocol": "tcp",
+            "FromPort": 8080,
+            "ToPort": 8080,
+            "IpRanges": [
+                {"CidrIp": "8.8.8.8/32", "Description": "test"},
+            ],
+        },
+        {
+            "IpProtocol": "tcp",
+            "FromPort": 8080,
+            "ToPort": 8080,
+            "IpRanges": [
+                {"CidrIp": "1.1.1.1/32", "Description": "test"},
+            ],
+        },
+        {
+            "IpProtocol": "tcp",
+            "FromPort": 8080,
+            "ToPort": 8080,
+            "IpRanges": [
+                {"CidrIp": "1.1.1.3/32", "Description": "test"},
+            ],
+        },
     ]
     client.provision_security_group(security_group)
 
     security_group = EC2SecurityGroup(DICT_CREATE_SECURITY_GROUP_REQUEST)
     security_group.region = Region.get_region("us-west-2")
     security_group.ip_permissions = [
-        {"IpProtocol": "tcp",
-         "FromPort": 8080,
-         "ToPort": 8080,
-         "IpRanges": [{"CidrIp": "8.8.8.8/32", "Description": "test-1"},
-                      ]},
-        {"IpProtocol": "tcp",
-         "FromPort": 8080,
-         "ToPort": 8080,
-         "IpRanges": [{"CidrIp": "1.1.1.1/32"}]
-         },
-        {"IpProtocol": "tcp",
-         "FromPort": 8080,
-         "ToPort": 8080,
-         "IpRanges": [{"CidrIp": "1.1.1.2/32", "Description": "test"},
-                      ]},
+        {
+            "IpProtocol": "tcp",
+            "FromPort": 8080,
+            "ToPort": 8080,
+            "IpRanges": [
+                {"CidrIp": "8.8.8.8/32", "Description": "test-1"},
+            ],
+        },
+        {
+            "IpProtocol": "tcp",
+            "FromPort": 8080,
+            "ToPort": 8080,
+            "IpRanges": [{"CidrIp": "1.1.1.1/32"}],
+        },
+        {
+            "IpProtocol": "tcp",
+            "FromPort": 8080,
+            "ToPort": 8080,
+            "IpRanges": [
+                {"CidrIp": "1.1.1.2/32", "Description": "test"},
+            ],
+        },
     ]
     client.provision_security_group(security_group)
 
@@ -137,20 +169,26 @@ SECURITY_GROUP_ID = ""
 DICT_AUTHORIZE_SECURITY_GROUP_INGRESS_REQUEST_1 = {
     "GroupId": SECURITY_GROUP_ID,
     "IpPermissions": [
-        {"IpProtocol": "tcp",
-         "FromPort": 8080,
-         "ToPort": 8080,
-         "IpRanges": [{"CidrIp": "1.1.1.1/32"}]},
-    ]}
+        {
+            "IpProtocol": "tcp",
+            "FromPort": 8080,
+            "ToPort": 8080,
+            "IpRanges": [{"CidrIp": "1.1.1.1/32"}],
+        },
+    ],
+}
 
 DICT_AUTHORIZE_SECURITY_GROUP_INGRESS_REQUEST_2 = {
     "GroupId": SECURITY_GROUP_ID,
     "IpPermissions": [
-        {"IpProtocol": "tcp",
-         "FromPort": 80,
-         "ToPort": 80,
-         "IpRanges": [{"CidrIp": "0.0.0.0/0"}]},
-    ]}
+        {
+            "IpProtocol": "tcp",
+            "FromPort": 80,
+            "ToPort": 80,
+            "IpRanges": [{"CidrIp": "0.0.0.0/0"}],
+        },
+    ],
+}
 
 
 def test_get_all_security_groups():
@@ -160,36 +198,29 @@ def test_get_all_security_groups():
 
 
 def test_raw_create_managed_prefix_list():
-    request = {"PrefixListName": "pl_test_name",
-               "Entries": [
-                   {
-                       "Cidr": "2.2.2.2/32",
-                       "Description": "string"
-                   }],
-               "MaxEntries": 1000,
-               "AddressFamily": "IPv4",
-               }
+    request = {
+        "PrefixListName": "pl_test_name",
+        "Entries": [{"Cidr": "2.2.2.2/32", "Description": "string"}],
+        "MaxEntries": 1000,
+        "AddressFamily": "IPv4",
+    }
 
     for region in AWSAccount.get_aws_account().regions.values():
         AWSAccount.set_aws_region(region)
 
         prefix_list_name = "test"
 
-        request = {"PrefixListName": prefix_list_name,
-                   "MaxEntries": 60,
-                   "AddressFamily": "IPv4",
-                   "TagSpecifications": [
-                       {
-                           'ResourceType': 'prefix-list',
-                           'Tags': [
-                               {
-                                   'Key': 'Name',
-                                   'Value': prefix_list_name
-                               }
-                           ]
-                       },
-                   ],
-                   }
+        request = {
+            "PrefixListName": prefix_list_name,
+            "MaxEntries": 60,
+            "AddressFamily": "IPv4",
+            "TagSpecifications": [
+                {
+                    "ResourceType": "prefix-list",
+                    "Tags": [{"Key": "Name", "Value": prefix_list_name}],
+                },
+            ],
+        }
         client = EC2Client()
         ret = client.raw_create_managed_prefix_list(request, add_client_token=False)
         assert isinstance(ret, dict)
@@ -202,12 +233,7 @@ def test_raw_modify_managed_prefix_list():
     request = {
         "CurrentVersion": base_version,
         "PrefixListId": pl_id,
-        "AddEntries": [
-            {
-                "Cidr": "1.1.1.1/32",
-                "Description": "string_1"
-            }
-        ]
+        "AddEntries": [{"Cidr": "1.1.1.1/32", "Description": "string_1"}],
     }
     ret = client.raw_modify_managed_prefix_list(request)
     assert isinstance(ret, dict)
@@ -217,11 +243,7 @@ def test_raw_modify_managed_prefix_list():
     request = {
         "CurrentVersion": base_version,
         "PrefixListId": pl_id,
-        "RemoveEntries": [
-            {
-                "Cidr": "1.1.1.1/32"
-            }
-        ]
+        "RemoveEntries": [{"Cidr": "1.1.1.1/32"}],
     }
 
     ret = client.raw_modify_managed_prefix_list(request)
@@ -235,12 +257,7 @@ def test_raw_modify_managed_prefix_list_add():
     request = {
         "CurrentVersion": base_version,
         "PrefixListId": pl_id,
-        "AddEntries": [
-            {
-                "Cidr": "1.1.1.1/32",
-                "Description": "string_1"
-            }
-        ]
+        "AddEntries": [{"Cidr": "1.1.1.1/32", "Description": "string_1"}],
     }
     ret = client.raw_modify_managed_prefix_list(request)
     assert isinstance(ret, dict)
@@ -281,7 +298,9 @@ def test_provision_launch_template():
 
     ssh_key_pair = Mock()
     ssh_key_pair.name = mock_values["ssh_key_pair.name"]
-    user_data = ec2_client.generate_user_data_from_file("ecs_container_instance_user_data.sh")
+    user_data = ec2_client.generate_user_data_from_file(
+        "ecs_container_instance_user_data.sh"
+    )
 
     # filter_request = dict()
     # filter_request["Filters"] = [{'Name': 'name',
@@ -292,47 +311,32 @@ def test_provision_launch_template():
 
     launch_template = EC2LaunchTemplate({})
     launch_template.name = "test_launch_template_name"
-    launch_template.tags = [{
-        'Key': 'lvl',
-        'Value': "tst"
-    }]
+    launch_template.tags = [{"Key": "lvl", "Value": "tst"}]
     launch_template.region = AWSAccount.get_aws_region()
-    launch_template.tags.append({
-        'Key': 'Name',
-        'Value': launch_template.name
-    })
-    launch_template.launch_template_data = {"EbsOptimized": False,
-                                            "IamInstanceProfile": {
-                                                "Arn": iam_instance_profile.arn
-                                            },
-                                            "BlockDeviceMappings": [
-                                                {
-                                                    "DeviceName": "/dev/xvda",
-                                                    "Ebs": {
-                                                        "VolumeSize": 40,
-                                                        "VolumeType": "gp2"
-                                                    }
-                                                }
-                                            ],
-                                            'NetworkInterfaces': [
-                                                {
-                                                    'AssociatePublicIpAddress': True,
-                                                    'DeleteOnTermination': True,
-                                                    'DeviceIndex': 0,
-                                                    'Groups': [
-                                                        security_group.id,
-                                                    ],
-                                                    'SubnetId': subnet.id,
-                                                },
-                                            ],
-                                            "ImageId": ami.id,
-                                            "InstanceType": "c5.large",
-                                            "KeyName": ssh_key_pair.name,
-                                            "Monitoring": {
-                                                "Enabled": False
-                                            },
-                                            "UserData": user_data
-                                            }
+    launch_template.tags.append({"Key": "Name", "Value": launch_template.name})
+    launch_template.launch_template_data = {
+        "EbsOptimized": False,
+        "IamInstanceProfile": {"Arn": iam_instance_profile.arn},
+        "BlockDeviceMappings": [
+            {"DeviceName": "/dev/xvda", "Ebs": {"VolumeSize": 40, "VolumeType": "gp2"}}
+        ],
+        "NetworkInterfaces": [
+            {
+                "AssociatePublicIpAddress": True,
+                "DeleteOnTermination": True,
+                "DeviceIndex": 0,
+                "Groups": [
+                    security_group.id,
+                ],
+                "SubnetId": subnet.id,
+            },
+        ],
+        "ImageId": ami.id,
+        "InstanceType": "c5.large",
+        "KeyName": ssh_key_pair.name,
+        "Monitoring": {"Enabled": False},
+        "UserData": user_data,
+    }
 
     ec2_client.provision_launch_template(launch_template)
     assert launch_template.id is not None

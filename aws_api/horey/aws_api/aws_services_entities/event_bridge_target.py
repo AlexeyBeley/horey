@@ -66,8 +66,7 @@ class EventBridgeTarget(AwsObject):
 
         @return:
         """
-        request = {"Id": self.id,
-                   "Arn": self.arn}
+        request = {"Id": self.id, "Arn": self.arn}
         if self.role_arn is not None:
             request["RoleArn"] = self.role_arn
 

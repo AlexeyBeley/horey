@@ -65,18 +65,19 @@ class PublicIpAddress(AzureObject):
         if self.resource_group_name is None:
             raise ValueError()
 
-        ret = [self.resource_group_name,
-               self.name,
-               {"location": self.location,
+        ret = [
+            self.resource_group_name,
+            self.name,
+            {
+                "location": self.location,
                 "sku": self.sku,
                 "public_ip_allocation_method": self.public_ip_allocation_method,
                 "public_ip_address_version": self.public_ip_address_version,
-                "tags": self.tags
-                }
-               ]
+                "tags": self.tags,
+            },
+        ]
         return ret
 
     def update_after_creation(self, public_ip_address):
         self.id = public_ip_address.id
         self.ip_address = public_ip_address.ip_address
-

@@ -20,8 +20,12 @@ class RDSDBClusterParameterGroup(AwsObject):
             return
 
         init_options = {
-            "DBClusterParameterGroupName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-            "DBClusterParameterGroupArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "DBClusterParameterGroupName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
+            "DBClusterParameterGroupArn": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
             "DBParameterGroupFamily": self.init_default_attr,
             "Description": self.init_default_attr,
         }
@@ -39,8 +43,12 @@ class RDSDBClusterParameterGroup(AwsObject):
 
     def update_from_raw_response(self, dict_src):
         init_options = {
-            "DBClusterParameterGroupName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-            "DBClusterParameterGroupArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "DBClusterParameterGroupName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
+            "DBClusterParameterGroupArn": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
             "DBParameterGroupFamily": self.init_default_attr,
             "Description": self.init_default_attr,
         }

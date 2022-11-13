@@ -23,7 +23,9 @@ class OCIComputeClient(OCIClient):
         self.provision_dedicated_vm_host_raw(*host.generate_create_request())
 
     def provision_dedicated_vm_host_raw(self, args, kwargs):
-        self.execute(self.client.create_dedicated_vm_host_details, args=args, kwargs=kwargs)
+        self.execute(
+            self.client.create_dedicated_vm_host_details, args=args, kwargs=kwargs
+        )
 
     def get_all_vm_hosts(self, region=None):
         """
@@ -46,7 +48,9 @@ class OCIComputeClient(OCIClient):
         pdb.set_trace()
         OCIAccount.set_oci_region(region)
 
-        for dict_src in self.execute(self.client.list_dedicated_vm_hosts, None, args=args):
+        for dict_src in self.execute(
+            self.client.list_dedicated_vm_hosts, None, args=args
+        ):
             obj = VMHost(dict_src)
             final_result.append(obj)
 

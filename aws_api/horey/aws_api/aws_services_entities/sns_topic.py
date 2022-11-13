@@ -69,7 +69,7 @@ class SNSTopic(AwsObject):
             raise ValueError(value)
 
         self._region = value
-    
+
     @property
     def name(self):
         if self._name is None:

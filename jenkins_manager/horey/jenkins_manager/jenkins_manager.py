@@ -24,16 +24,21 @@ def retry_on_errors(exceptions_to_catch, count=5, timeout=5):
     :param timeout:
     :return:
     """
+
     def func_wrapper(base_func):
         def func_base(*args, **kwargs):
             for i in range(count):
                 try:
                     return base_func(*args, **kwargs)
                 except exceptions_to_catch:
-                    logger.info(f"{base_func.__name__} failed, retry {i} after {timeout} seconds")
+                    logger.info(
+                        f"{base_func.__name__} failed, retry {i} after {timeout} seconds"
+                    )
                 time.sleep(timeout)
             raise TimeoutError(f"count: {count} timeout: {timeout}")
+
         return func_base
+
     return func_wrapper
 
 
@@ -42,6 +47,7 @@ class JenkinsManager:
     Perform several tasks against Jenkins server.
     Main task- trigger multiple jobs and follow their execution.
     """
+
     JOBS_START_TIMEOUT = 20 * 60
     JOBS_FINISH_TIMEOUT = 20 * 60
     SLEEP_TIME = 5
@@ -55,7 +61,12 @@ class JenkinsManager:
         port = configuration.jenkins_port
         timeout = configuration.jenkins_timeout
 
-        self.server = jenkins.Jenkins(f"{protocol}://{jenkins_address}:{port}", username=username, password=password, timeout=timeout)
+        self.server = jenkins.Jenkins(
+            f"{protocol}://{jenkins_address}:{port}",
+            username=username,
+            password=password,
+            timeout=timeout,
+        )
         self.hostname = jenkins_address
 
     def execute_jobs(self, jobs):
@@ -80,7 +91,9 @@ class JenkinsManager:
         """
         for job in jobs:
             if job.name not in self.BUILDS_PER_JOB:
-                self.BUILDS_PER_JOB[job.name][self.get_next_build_number(job.name)] = None
+                self.BUILDS_PER_JOB[job.name][
+                    self.get_next_build_number(job.name)
+                ] = None
 
     def trigger_jobs(self, jobs, multithreaded=True):
         """
@@ -93,12 +106,16 @@ class JenkinsManager:
         logger.info("Begin triggering jobs")
         for job in jobs:
             if multithreaded:
-                single_job_thread = threading.Thread(target=self.thread_trigger_job, args=(job,))
+                single_job_thread = threading.Thread(
+                    target=self.thread_trigger_job, args=(job,)
+                )
                 single_job_thread.start()
             else:
                 self.thread_trigger_job(job)
 
-        logger.info(f"Finished triggering jobs took {datetime.datetime.now() - start_time}")
+        logger.info(
+            f"Finished triggering jobs took {datetime.datetime.now() - start_time}"
+        )
 
     @retry_on_errors((requests.exceptions.ConnectionError,), count=5, timeout=5)
     def thread_trigger_job(self, job):
@@ -121,8 +138,10 @@ class JenkinsManager:
         """
         start_time = datetime.datetime.now()
 
-        while any([job.build_id is None for job in jobs]) and (
-                datetime.datetime.now() - start_time).seconds < self.JOBS_START_TIMEOUT:
+        while (
+            any([job.build_id is None for job in jobs])
+            and (datetime.datetime.now() - start_time).seconds < self.JOBS_START_TIMEOUT
+        ):
 
             for job in jobs:
                 if job.queue_item_id is None:
@@ -134,15 +153,21 @@ class JenkinsManager:
                 try:
                     self.update_job_build_id_by_queue_id(job)
                 except jenkins.JenkinsException as exception_received:
-                    if f"queue number[{job.queue_item_id}] does not exist" not in repr(exception_received):
+                    if f"queue number[{job.queue_item_id}] does not exist" not in repr(
+                        exception_received
+                    ):
                         raise
-                    logger.info(f"Queue item '{job.queue_item_id}' does not exist anymore updating with parameter")
+                    logger.info(
+                        f"Queue item '{job.queue_item_id}' does not exist anymore updating with parameter"
+                    )
                     self.update_job_build_id_by_parameter_uid(job)
 
             if all([job.build_id is not None for job in jobs]):
                 break
 
-            logger.info(f"wait_for_builds_to_start_execution going to sleep for: {self.SLEEP_TIME}")
+            logger.info(
+                f"wait_for_builds_to_start_execution going to sleep for: {self.SLEEP_TIME}"
+            )
             time.sleep(self.SLEEP_TIME)
 
     @retry_on_errors((requests.exceptions.ConnectionError,), count=5, timeout=5)
@@ -173,7 +198,9 @@ class JenkinsManager:
             if self.BUILDS_PER_JOB[job.name][build_id] is None:
                 self.update_build_status(job.name, build_id)
 
-            uid_parameter_value = self.get_uid_parameter_value_from_build_info(self.BUILDS_PER_JOB[job.name][build_id], job.uid_parameter_name)
+            uid_parameter_value = self.get_uid_parameter_value_from_build_info(
+                self.BUILDS_PER_JOB[job.name][build_id], job.uid_parameter_name
+            )
             if job.uid == uid_parameter_value:
                 job.build_id = build_id
                 logger.info(f"Found build uid {build_id}")
@@ -201,19 +228,30 @@ class JenkinsManager:
         :return:
         """
         start_time = datetime.datetime.now()
-        while any([job.build_status is None for job in jobs]) and (datetime.datetime.now() - start_time).seconds < self.JOBS_FINISH_TIMEOUT:
+        while (
+            any([job.build_status is None for job in jobs])
+            and (datetime.datetime.now() - start_time).seconds
+            < self.JOBS_FINISH_TIMEOUT
+        ):
             try:
                 self.update_builds_statuses(jobs)
             except jenkins.JenkinsException as jenkins_error:
                 repr_jenkins_error = repr(jenkins_error)
-                if "number[" not in repr_jenkins_error or "does not exist" not in repr_jenkins_error:
-                    logger.info(f"wait_for_builds_to_finish_execution waits for jobs to start execution {repr_jenkins_error}")
+                if (
+                    "number[" not in repr_jenkins_error
+                    or "does not exist" not in repr_jenkins_error
+                ):
+                    logger.info(
+                        f"wait_for_builds_to_finish_execution waits for jobs to start execution {repr_jenkins_error}"
+                    )
                     raise
 
             if all([job.build_status is not None for job in jobs]):
                 break
 
-            logger.info(f"wait_for_builds_to_finish_execution going to sleep for: {self.SLEEP_TIME}")
+            logger.info(
+                f"wait_for_builds_to_finish_execution going to sleep for: {self.SLEEP_TIME}"
+            )
 
             time.sleep(self.SLEEP_TIME)
 
@@ -231,7 +269,9 @@ class JenkinsManager:
 
             job.build_status = self.update_build_status(job.name, job.build_id)
             if job.build_status is not None:
-                logger.info(f"Finished execution build_id: {job.build_id} with result: {job.build_status}")
+                logger.info(
+                    f"Finished execution build_id: {job.build_id} with result: {job.build_status}"
+                )
 
     @retry_on_errors((requests.exceptions.ConnectionError,), count=5, timeout=5)
     def update_build_status(self, job_name, build_id):
@@ -350,12 +390,14 @@ class JenkinsManager:
             if not file_name.endswith(".xml"):
                 continue
 
-            job_name = file_name[:-len(".xml")]
+            job_name = file_name[: -len(".xml")]
             if job_name not in jobs_names:
                 continue
 
             job = JenkinsJob(job_name, {})
-            self.create_job(job, os.path.join(backups_dir, file_name), overwrite=overwrite)
+            self.create_job(
+                job, os.path.join(backups_dir, file_name), overwrite=overwrite
+            )
 
     @retry_on_errors((requests.exceptions.HTTPError,), count=5, timeout=5)
     def delete_jobs(self, jobs):
@@ -399,19 +441,31 @@ class JenkinsManager:
                 continue
 
             build_info = self.server.get_build_info(job["name"], last_build["number"])
-            last_build_date = datetime.datetime.fromtimestamp(build_info["timestamp"]/1000)
+            last_build_date = datetime.datetime.fromtimestamp(
+                build_info["timestamp"] / 1000
+            )
             if now - last_build_date > time_limit:
                 report_line = f"{job['name']}: last_build_date {(now - last_build_date).days} days ago"
-                lst_ret_exceeded_time.append((report_line, (now - last_build_date).days))
+                lst_ret_exceeded_time.append(
+                    (report_line, (now - last_build_date).days)
+                )
             else:
                 for build in job_info["builds"]:
                     self.update_build_status(job["name"], build["number"])
-                    if self.BUILDS_PER_JOB[job["name"]][build["number"]]["result"] == "SUCCESS":
+                    if (
+                        self.BUILDS_PER_JOB[job["name"]][build["number"]]["result"]
+                        == "SUCCESS"
+                    ):
                         break
                 else:
-                    lst_ret.append(f"{job['name']}: last {len(job_info['builds'])} builds were not SUCCESS")
+                    lst_ret.append(
+                        f"{job['name']}: last {len(job_info['builds'])} builds were not SUCCESS"
+                    )
 
-        lst_ret = [x[0] for x in sorted(lst_ret_exceeded_time, key=lambda x: x[1], reverse=True)] + lst_ret
+        lst_ret = [
+            x[0]
+            for x in sorted(lst_ret_exceeded_time, key=lambda x: x[1], reverse=True)
+        ] + lst_ret
         report = "\n".join(lst_ret)
         if output_file:
             with open(output_file, "w+") as file_handler:
@@ -446,7 +500,9 @@ class JenkinsManager:
                 continue
 
             logger.info(f"Start backing up job {job['name']}")
-            self.save_job_config(job["name"], os.path.join(backup_dir_path, f"{job['name']}.xml"))
+            self.save_job_config(
+                job["name"], os.path.join(backup_dir_path, f"{job['name']}.xml")
+            )
             logger.info(f"End backing up job '{job['name']}'")
 
     @staticmethod
@@ -462,7 +518,13 @@ class JenkinsManager:
             self.server.disable_job(job_name)
 
     def delete_jobs_from_file(self, jobs_file_path):
-        jobs = [JenkinsJob(job_name, {}, ) for job_name in self.load_job_names_from_file(jobs_file_path)]
+        jobs = [
+            JenkinsJob(
+                job_name,
+                {},
+            )
+            for job_name in self.load_job_names_from_file(jobs_file_path)
+        ]
         self.delete_jobs(jobs)
 
     def find_build(self, jobs_names, search_string):
@@ -470,5 +532,12 @@ class JenkinsManager:
             job_info = self.get_job_info(job_name)
             for build in job_info["builds"]:
                 self.update_build_status(job_name, build["number"])
-                if str(self.BUILDS_PER_JOB[job_name][build["number"]]).find(search_string) > -1:
-                    logger.info(f"Found in Job: '{job_name}' Build: '{build['number']}'")
+                if (
+                    str(self.BUILDS_PER_JOB[job_name][build["number"]]).find(
+                        search_string
+                    )
+                    > -1
+                ):
+                    logger.info(
+                        f"Found in Job: '{job_name}' Build: '{build['number']}'"
+                    )

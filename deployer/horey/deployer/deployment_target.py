@@ -12,6 +12,7 @@ class DeploymentTarget:
     """
     Single server deployment
     """
+
     def __init__(self):
         self.hostame = None
         self.remote_deployment_dir_path = "/tmp/remote_deployer"
@@ -48,7 +49,9 @@ class DeploymentTarget:
         if self.local_deployment_dir_path is None:
             raise ValueError("local_deployment_dir_path was not set")
 
-        return os.path.join(self.local_deployment_dir_path, self.deployment_data_dir_name)
+        return os.path.join(
+            self.local_deployment_dir_path, self.deployment_data_dir_name
+        )
 
     def add_step(self, step):
         """

@@ -7,9 +7,15 @@ from horey.aws_api.aws_clients.rds_client import RDSClient
 from horey.aws_api.aws_services_entities.rds_db_cluster import RDSDBCluster
 from horey.aws_api.aws_services_entities.rds_db_instance import RDSDBInstance
 from horey.aws_api.aws_services_entities.rds_db_subnet_group import RDSDBSubnetGroup
-from horey.aws_api.aws_services_entities.rds_db_cluster_parameter_group import RDSDBClusterParameterGroup
-from horey.aws_api.aws_services_entities.rds_db_cluster_snapshot import RDSDBClusterSnapshot
-from horey.aws_api.aws_services_entities.rds_db_parameter_group import RDSDBParameterGroup
+from horey.aws_api.aws_services_entities.rds_db_cluster_parameter_group import (
+    RDSDBClusterParameterGroup,
+)
+from horey.aws_api.aws_services_entities.rds_db_cluster_snapshot import (
+    RDSDBClusterSnapshot,
+)
+from horey.aws_api.aws_services_entities.rds_db_parameter_group import (
+    RDSDBParameterGroup,
+)
 
 from horey.h_logger import get_logger
 from horey.aws_api.base_entities.aws_account import AWSAccount
@@ -17,16 +23,32 @@ from horey.aws_api.base_entities.region import Region
 from horey.common_utils.common_utils import CommonUtils
 
 from unittest.mock import Mock
-configuration_values_file_full_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "h_logger_configuration_values.py")
-logger = get_logger(configuration_values_file_full_path=configuration_values_file_full_path)
 
-accounts_file_full_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "ignore", "aws_api_managed_accounts.py"))
+configuration_values_file_full_path = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "h_logger_configuration_values.py"
+)
+logger = get_logger(
+    configuration_values_file_full_path=configuration_values_file_full_path
+)
+
+accounts_file_full_path = os.path.abspath(
+    os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "..",
+        "ignore",
+        "aws_api_managed_accounts.py",
+    )
+)
 
 accounts = CommonUtils.load_object_from_module(accounts_file_full_path, "main")
 AWSAccount.set_aws_account(accounts["1111"])
-AWSAccount.set_aws_region(accounts["1111"].regions['us-west-2'])
+AWSAccount.set_aws_region(accounts["1111"].regions["us-west-2"])
 
-mock_values_file_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "ignore", "mock_values.py"))
+mock_values_file_path = os.path.abspath(
+    os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "..", "ignore", "mock_values.py"
+    )
+)
 mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 
 
@@ -54,26 +76,16 @@ def test_provision_cluster():
     cluster.preferred_backup_window = "09:23-09:53"
     cluster.preferred_maintenance_window = "sun:03:30-sun:04:00"
     cluster.storage_encrypted = True
-    #cluster.kms_key_id = True
+    # cluster.kms_key_id = True
     cluster.engine_mode = "provisioned"
 
     cluster.deletion_protection = False
     cluster.copy_tags_to_snapshot = True
-    cluster.enable_cloudwatch_logs_exports = [
-        "audit",
-        "error",
-        "general",
-        "slowquery"
-    ]
+    cluster.enable_cloudwatch_logs_exports = ["audit", "error", "general", "slowquery"]
 
     cluster.tags = [
-        {
-            'Key': 'lvl',
-            'Value': "tst"
-        }, {
-            'Key': 'name',
-            'Value': cluster.db_cluster_identifier
-        }
+        {"Key": "lvl", "Value": "tst"},
+        {"Key": "name", "Value": cluster.db_cluster_identifier},
     ]
 
     client.provision_db_cluster(cluster)
@@ -101,26 +113,16 @@ def test_provision_cluster_from_snapshot():
     cluster.preferred_backup_window = "09:23-09:53"
     cluster.preferred_maintenance_window = "sun:03:30-sun:04:00"
     cluster.storage_encrypted = True
-    #cluster.kms_key_id = True
+    # cluster.kms_key_id = True
     cluster.engine_mode = "provisioned"
 
     cluster.deletion_protection = False
     cluster.copy_tags_to_snapshot = True
-    cluster.enable_cloudwatch_logs_exports = [
-        "audit",
-        "error",
-        "general",
-        "slowquery"
-    ]
+    cluster.enable_cloudwatch_logs_exports = ["audit", "error", "general", "slowquery"]
 
     cluster.tags = [
-        {
-            'Key': 'lvl',
-            'Value': "tst"
-        }, {
-            'Key': 'name',
-            'Value': cluster.id
-        }
+        {"Key": "lvl", "Value": "tst"},
+        {"Key": "name", "Value": cluster.id},
     ]
 
     client.provision_db_cluster(cluster, snapshot_id="horey-test-snapshot-id")
@@ -158,13 +160,8 @@ def test_provision_db_instance():
     db_instance.copy_tags_to_snapshot = True
 
     db_instance.tags = [
-        {
-            'Key': 'lvl',
-            'Value': "tst"
-        }, {
-            'Key': 'name',
-            'Value': db_instance.id
-        }
+        {"Key": "lvl", "Value": "tst"},
+        {"Key": "name", "Value": db_instance.id},
     ]
 
     client.provision_db_instance(db_instance)
@@ -180,13 +177,8 @@ def test_provision_subnet_group():
     subnet_group.db_subnet_group_description = "db subnet test"
     subnet_group.subnet_ids = ["subnet-yy", "subnet-xx"]
     subnet_group.tags = [
-        {
-            'Key': 'lvl',
-            'Value': "tst"
-        }, {
-            'Key': 'name',
-            'Value': subnet_group.name
-        }
+        {"Key": "lvl", "Value": "tst"},
+        {"Key": "name", "Value": subnet_group.name},
     ]
     client.provision_db_subnet_group(subnet_group)
 
@@ -201,13 +193,8 @@ def test_provision_db_parameter_group():
     db_parameter_group.db_parameter_group_family = "aurora-mysql5.7"
     db_parameter_group.description = "test"
     db_parameter_group.tags = [
-        {
-            'Key': 'lvl',
-            'Value': "tst"
-        }, {
-            'Key': 'name',
-            'Value': db_parameter_group.name
-        }
+        {"Key": "lvl", "Value": "tst"},
+        {"Key": "name", "Value": db_parameter_group.name},
     ]
     client.provision_db_parameter_group(db_parameter_group)
 
@@ -222,13 +209,8 @@ def test_provision_db_cluster_parameter_group():
     db_cluster_parameter_group.db_parameter_group_family = "aurora-mysql5.7"
     db_cluster_parameter_group.description = "test"
     db_cluster_parameter_group.tags = [
-        {
-            'Key': 'lvl',
-            'Value': "tst"
-        }, {
-            'Key': 'name',
-            'Value': db_cluster_parameter_group.name
-        }
+        {"Key": "lvl", "Value": "tst"},
+        {"Key": "name", "Value": db_cluster_parameter_group.name},
     ]
     client.provision_db_cluster_parameter_group(db_cluster_parameter_group)
 
@@ -239,29 +221,26 @@ def test_copy_db_cluster_snapshot():
     client = RDSClient()
     snapshot_src = RDSDBClusterSnapshot({})
     snapshot_src.region = Region.get_region("us-east-1")
-    snapshot_src.db_cluster_identifier = mock_values["snapshot_src.db_cluster_identifier"]
+    snapshot_src.db_cluster_identifier = mock_values[
+        "snapshot_src.db_cluster_identifier"
+    ]
 
     snapshot_dst = RDSDBClusterSnapshot({})
     snapshot_dst.region = Region.get_region("us-west-2")
     snapshot_dst.id = "horey-test-snapshot-id"
     snapshot_dst.tags = [
-        {
-            'Key': 'lvl',
-            'Value': "tst"
-        }, {
-            'Key': 'name',
-            'Value': snapshot_dst.id
-        }
+        {"Key": "lvl", "Value": "tst"},
+        {"Key": "name", "Value": snapshot_dst.id},
     ]
     client.copy_db_cluster_snapshot(snapshot_src, snapshot_dst)
 
 
 if __name__ == "__main__":
-    #test_provision_subnet_group()
-    #test_provision_db_parameter_group()
-    #test_provision_db_cluster_parameter_group()
-    #test_provision_cluster()
-    #test_provision_db_instance()
-    #test_copy_db_cluster_snapshot()
-    #test_provision_cluster_from_snapshot()
+    # test_provision_subnet_group()
+    # test_provision_db_parameter_group()
+    # test_provision_db_cluster_parameter_group()
+    # test_provision_cluster()
+    # test_provision_db_instance()
+    # test_copy_db_cluster_snapshot()
+    # test_provision_cluster_from_snapshot()
     test_dispose_db_cluster()

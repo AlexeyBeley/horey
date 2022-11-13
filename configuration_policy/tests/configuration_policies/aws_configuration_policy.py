@@ -12,9 +12,7 @@ class AWSConfigurationPolicy(InfrastructureConfigurationPolicy):
 
     @property
     def region_human_readable_name(self):
-        all_values = {
-            self.RegionMark.USEAST1: "N.Virginia"
-        }
+        all_values = {self.RegionMark.USEAST1: "N.Virginia"}
         return all_values[self.region_mark]
 
     @region_human_readable_name.setter

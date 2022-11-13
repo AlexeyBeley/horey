@@ -22,7 +22,9 @@ class NotificationChannelSlack(NotificationChannelBase):
 
     """
 
-    CONFIGURATION_POLICY_FILE_NAME = "notification_channel_slack_configuration_policy.py"
+    CONFIGURATION_POLICY_FILE_NAME = (
+        "notification_channel_slack_configuration_policy.py"
+    )
     CONFIGURATION_POLICY_CLASS_NAME = "NotificationChannelSlackConfigurationPolicy"
 
     def __init__(self, configuration):
@@ -41,30 +43,45 @@ class NotificationChannelSlack(NotificationChannelBase):
         """
 
         if notification.type not in Notification.Types:
-            notification.text = f"Error in notification type. Auto set to CRITICAL: " \
-                                f"received {str(notification.type)} must be one of {list(Notification.Types)}.\n" \
-                                f"Original message {notification.text}"
+            notification.text = (
+                f"Error in notification type. Auto set to CRITICAL: "
+                f"received {str(notification.type)} must be one of {list(Notification.Types)}.\n"
+                f"Original message {notification.text}"
+            )
             notification.type = Notification.Types.CRITICAL
 
         base_text = notification.text
         if not notification.tags:
             notification.tags = [self.configuration.ALERT_SYSTEM_MONITORING_ROUTING_TAG]
-            notification.text = "Warning: Routing tags were not set. Using system monitoring.\n" + base_text
+            notification.text = (
+                "Warning: Routing tags were not set. Using system monitoring.\n"
+                + base_text
+            )
 
         for routing_tag in notification.tags:
             try:
                 dst_channels = self.map_routing_tag_to_channels(routing_tag)
             except self.UnknownTagError:
-                dst_channels = self.map_routing_tag_to_channels(self.configuration.ALERT_SYSTEM_MONITORING_ROUTING_TAG)
-                notification.text = f"!!!WARNING!!!:\n Routing tag '{routing_tag}' has no mapping.\n" \
-                                    f" Using system monitoring routing tag.\n\n" + base_text
+                dst_channels = self.map_routing_tag_to_channels(
+                    self.configuration.ALERT_SYSTEM_MONITORING_ROUTING_TAG
+                )
+                notification.text = (
+                    f"!!!WARNING!!!:\n Routing tag '{routing_tag}' has no mapping.\n"
+                    f" Using system monitoring routing tag.\n\n" + base_text
+                )
 
             for dst_channel in dst_channels:
-                slack_message_type = getattr(SlackMessage.Types, notification.type.value)
-                slack_message = self.generate_slack_message(slack_message_type, notification.header,
-                                                               notification.text, notification.link,
-                                                               notification.link_href,
-                                                               dst_channel)
+                slack_message_type = getattr(
+                    SlackMessage.Types, notification.type.value
+                )
+                slack_message = self.generate_slack_message(
+                    slack_message_type,
+                    notification.header,
+                    notification.text,
+                    notification.link,
+                    notification.link_href,
+                    dst_channel,
+                )
                 self.send(slack_message)
 
     def map_routing_tag_to_channels(self, tag):
@@ -91,9 +108,14 @@ class NotificationChannelSlack(NotificationChannelBase):
         @return:
         """
 
-        slack_message = self.generate_slack_message(SlackMessage.Types.CRITICAL, notification.header, notification.text,
-                                                           notification.link, notification.link_href,
-                                                           self.configuration.alert_system_monitoring_destination)
+        slack_message = self.generate_slack_message(
+            SlackMessage.Types.CRITICAL,
+            notification.header,
+            notification.text,
+            notification.link,
+            notification.link_href,
+            self.configuration.alert_system_monitoring_destination,
+        )
         self.send(slack_message)
 
     def send(self, slack_message):
@@ -108,18 +130,22 @@ class NotificationChannelSlack(NotificationChannelBase):
         try:
             self.slack_api.send_message(slack_message)
         except Exception as exception_inst:
-            traceback_str = ''.join(traceback.format_tb(exception_inst.__traceback__))
+            traceback_str = "".join(traceback.format_tb(exception_inst.__traceback__))
             logger.exception(traceback_str)
 
             notification = Notification()
-            notification.header = "Alert system was not able to proceed the slack message"
+            notification.header = (
+                "Alert system was not able to proceed the slack message"
+            )
             notification.text = "See logs for more information"
             self.notify_alert_system_error(notification)
             raise
 
     # pylint: disable=too-many-arguments
     @staticmethod
-    def generate_slack_message(slack_message_type, header, text, link, link_href, dst_channel):
+    def generate_slack_message(
+        slack_message_type, header, text, link, link_href, dst_channel
+    ):
         """
         Generate slack message to be sent.
 

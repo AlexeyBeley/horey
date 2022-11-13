@@ -25,10 +25,12 @@ class ElasticsearchAPIConfigurationPolicy(ConfigurationPolicy):
     @server_address.setter
     def server_address(self, value):
         if not isinstance(value, str):
-            raise ValueError(f"server_address must be string received {value} of type: {type(value)}")
+            raise ValueError(
+                f"server_address must be string received {value} of type: {type(value)}"
+            )
 
         self._server_address = value
-        
+
     @property
     def cache_dir(self):
         if self._cache_dir is None:
@@ -38,6 +40,8 @@ class ElasticsearchAPIConfigurationPolicy(ConfigurationPolicy):
     @cache_dir.setter
     def cache_dir(self, value):
         if not isinstance(value, str):
-            raise ValueError(f"cache_dir must be string received {value} of type: {type(value)}")
+            raise ValueError(
+                f"cache_dir must be string received {value} of type: {type(value)}"
+            )
 
         self._cache_dir = value

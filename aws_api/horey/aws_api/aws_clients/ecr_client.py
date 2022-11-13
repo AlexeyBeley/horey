@@ -36,13 +36,19 @@ class ECRClient(Boto3Client):
             AWSAccount.set_aws_region(region)
 
         filters_req = {"registryIds": [self.account_id]}
-        lst_ret = list(self.execute(self.client.get_authorization_token, "authorizationData", filters_req=filters_req))
+        lst_ret = list(
+            self.execute(
+                self.client.get_authorization_token,
+                "authorizationData",
+                filters_req=filters_req,
+            )
+        )
         for dict_src in lst_ret:
-            auth_user_token = b64decode(dict_src['authorizationToken']).decode()
+            auth_user_token = b64decode(dict_src["authorizationToken"]).decode()
             user_name, decoded_token = auth_user_token.split(":")
             dict_src["user_name"] = user_name
             dict_src["decoded_token"] = decoded_token
-            dict_src["proxy_host"] = dict_src["proxyEndpoint"][len("https://"):]
+            dict_src["proxy_host"] = dict_src["proxyEndpoint"][len("https://") :]
         return lst_ret
 
     def provision_repository(self, repository):
@@ -55,7 +61,9 @@ class ECRClient(Boto3Client):
 
         AWSAccount.set_aws_region(repository.region)
 
-        region_repos = self.get_region_repositories(repository.region, repository_names=[repository.name])
+        region_repos = self.get_region_repositories(
+            repository.region, repository_names=[repository.name]
+        )
         if len(region_repos) == 1:
             return repository.update_from_raw_create(region_repos[0].dict_src)
 
@@ -70,7 +78,9 @@ class ECRClient(Boto3Client):
         @return:
         """
 
-        for response in self.execute(self.client.create_repository, "repository", filters_req=request_dict):
+        for response in self.execute(
+            self.client.create_repository, "repository", filters_req=request_dict
+        ):
             return response
 
     def get_all_images(self, repository):
@@ -82,8 +92,13 @@ class ECRClient(Boto3Client):
 
         final_result = []
         AWSAccount.set_aws_region(repository.region)
-        filters_req = {"repositoryName": repository.name, "filter": {"tagStatus": "ANY"}}
-        for dict_src in self.execute(self.client.describe_images, "imageDetails", filters_req=filters_req):
+        filters_req = {
+            "repositoryName": repository.name,
+            "filter": {"tagStatus": "ANY"},
+        }
+        for dict_src in self.execute(
+            self.client.describe_images, "imageDetails", filters_req=filters_req
+        ):
             obj = ECRImage(dict_src)
             final_result.append(obj)
 
@@ -120,9 +135,13 @@ class ECRClient(Boto3Client):
 
         final_result = []
         AWSAccount.set_aws_region(region)
-        for dict_src in self.execute(self.client.describe_repositories, "repositories", filters_req=filters_req,
-                                     exception_ignore_callback=lambda error: "RepositoryNotFoundException" in repr(
-                                         error)):
+        for dict_src in self.execute(
+            self.client.describe_repositories,
+            "repositories",
+            filters_req=filters_req,
+            exception_ignore_callback=lambda error: "RepositoryNotFoundException"
+            in repr(error),
+        ):
             obj = ECRRepository(dict_src)
             final_result.append(obj)
 
@@ -149,7 +168,9 @@ class ECRClient(Boto3Client):
         @return:
         """
 
-        for response in self.execute(self.client.delete_repository, "repository", filters_req=request_dict):
+        for response in self.execute(
+            self.client.delete_repository, "repository", filters_req=request_dict
+        ):
             return response
 
     def tag_image(self, image, new_tags):
@@ -160,17 +181,28 @@ class ECRClient(Boto3Client):
         @return:
         """
 
-        for response in self.execute(self.client.describe_images, "imageDetails",
-                                     filters_req={"repositoryName": image.repository_name,
-                                                  "imageIds": [{"imageTag": image.image_tags[0]}]}):
+        for response in self.execute(
+            self.client.describe_images,
+            "imageDetails",
+            filters_req={
+                "repositoryName": image.repository_name,
+                "imageIds": [{"imageTag": image.image_tags[0]}],
+            },
+        ):
 
             if all(tag in response["imageTags"] for tag in new_tags):
                 return
 
         images = None
-        for response in self.execute(self.client.batch_get_image, None, raw_data=True,
-                                     filters_req={"repositoryName": image.repository_name,
-                                                  "imageIds": [{"imageTag": image.image_tags[0]}]}):
+        for response in self.execute(
+            self.client.batch_get_image,
+            None,
+            raw_data=True,
+            filters_req={
+                "repositoryName": image.repository_name,
+                "imageIds": [{"imageTag": image.image_tags[0]}],
+            },
+        ):
             images = response["images"]
             if response.get("failures"):
                 raise RuntimeError(response.get("failures"))
@@ -180,8 +212,13 @@ class ECRClient(Boto3Client):
 
         image_manifest = images[0]["imageManifest"]
         for image_new_tag in new_tags:
-            for response in self.execute(self.client.put_image, "image",
-                                         filters_req={"repositoryName": image.repository_name,
-                                                      "imageManifest": image_manifest,
-                                                      "imageTag": image_new_tag}):
+            for response in self.execute(
+                self.client.put_image,
+                "image",
+                filters_req={
+                    "repositoryName": image.repository_name,
+                    "imageManifest": image_manifest,
+                    "imageTag": image_new_tag,
+                },
+            ):
                 assert response

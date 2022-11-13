@@ -10,6 +10,7 @@ class ElasticacheCacheParameterGroup(AwsObject):
     """
     Elasticache Cluster class
     """
+
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self.instances = []
@@ -19,11 +20,13 @@ class ElasticacheCacheParameterGroup(AwsObject):
             return
         init_options = {
             "ARN": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
-            "CacheParameterGroupName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "CacheParameterGroupName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
             "CacheParameterGroupFamily": self.init_default_attr,
             "Description": self.init_default_attr,
             "IsGlobal": self.init_default_attr,
-            }
+        }
 
         self.init_attrs(dict_src, init_options)
 

@@ -18,10 +18,7 @@ class Destination:
 
     def convert_to_dict(self):
         ret = {}
-        for key in ["id",
-                    "name",
-                    "type",
-                    "sns"]:
+        for key in ["id", "name", "type", "sns"]:
             ret[key] = getattr(self, key)
 
         return ret

@@ -20,8 +20,12 @@ class RDSDBParameterGroup(AwsObject):
             return
 
         init_options = {
-            "DBParameterGroupName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-            "DBParameterGroupArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "DBParameterGroupName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
+            "DBParameterGroupArn": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
             "DBParameterGroupFamily": self.init_default_attr,
             "Description": self.init_default_attr,
         }
@@ -39,8 +43,12 @@ class RDSDBParameterGroup(AwsObject):
 
     def update_from_raw_response(self, dict_src):
         init_options = {
-            "DBParameterGroupName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-            "DBParameterGroupArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "DBParameterGroupName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
+            "DBParameterGroupArn": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
             "DBParameterGroupFamily": self.init_default_attr,
             "Description": self.init_default_attr,
         }

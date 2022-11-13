@@ -10,6 +10,7 @@ class GoogleAccount:
     """
     Class defining account metadata and the connection steps to perform in order to manage the account.
     """
+
     _CURRENT_ACCOUNT = None
     _CURRENT_REGION = None
     KNOWN_IDS = []

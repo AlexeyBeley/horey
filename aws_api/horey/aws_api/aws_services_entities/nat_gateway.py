@@ -10,6 +10,7 @@ class NatGateway(AwsObject):
     """
     AWS AvailabilityZone class
     """
+
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self.instances = []
@@ -21,7 +22,9 @@ class NatGateway(AwsObject):
             self._init_object_from_cache(dict_src)
             return
         init_options = {
-            "NatGatewayId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "NatGatewayId": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="id"
+            ),
             "CreateTime": self.init_default_attr,
             "NatGatewayAddresses": self.init_default_attr,
             "State": self.init_default_attr,
@@ -32,7 +35,7 @@ class NatGateway(AwsObject):
             "DeleteTime": self.init_default_attr,
             "FailureCode": self.init_default_attr,
             "FailureMessage": self.init_default_attr,
-                        }
+        }
 
         self.init_attrs(dict_src, init_options)
 
@@ -54,15 +57,17 @@ class NatGateway(AwsObject):
         request = dict()
         request["SubnetId"] = self.subnet_id
         request["AllocationId"] = self.allocation_id
-        request["TagSpecifications"] = [{
-            "ResourceType": "natgateway",
-            "Tags": self.tags}]
+        request["TagSpecifications"] = [
+            {"ResourceType": "natgateway", "Tags": self.tags}
+        ]
 
         return request
 
     def update_from_raw_response(self, dict_src):
         init_options = {
-            "NatGatewayId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "NatGatewayId": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="id"
+            ),
             "CreateTime": self.init_default_attr,
             "NatGatewayAddresses": self.init_default_attr,
             "State": self.init_default_attr,
@@ -84,7 +89,10 @@ class NatGateway(AwsObject):
         @return:
         """
 
-        return [IP(address["PublicIp"], int_mask=32) for address in self.nat_gateway_addresses]
+        return [
+            IP(address["PublicIp"], int_mask=32)
+            for address in self.nat_gateway_addresses
+        ]
 
     @property
     def name(self):

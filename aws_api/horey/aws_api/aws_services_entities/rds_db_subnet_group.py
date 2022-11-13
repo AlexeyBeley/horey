@@ -19,8 +19,12 @@ class RDSDBSubnetGroup(AwsObject):
             return
 
         init_options = {
-            "DBSubnetGroupName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-            "DBSubnetGroupArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "DBSubnetGroupName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
+            "DBSubnetGroupArn": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
             "DBSubnetGroupDescription": self.init_default_attr,
             "VpcId": self.init_default_attr,
             "SubnetGroupStatus": self.init_default_attr,
@@ -40,8 +44,12 @@ class RDSDBSubnetGroup(AwsObject):
 
     def update_from_raw_response(self, dict_src):
         init_options = {
-            "DBSubnetGroupName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-            "DBSubnetGroupArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "DBSubnetGroupName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
+            "DBSubnetGroupArn": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
             "DBSubnetGroupDescription": self.init_default_attr,
             "VpcId": self.init_default_attr,
             "SubnetGroupStatus": self.init_default_attr,

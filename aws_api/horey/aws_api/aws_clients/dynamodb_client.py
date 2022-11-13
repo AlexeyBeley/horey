@@ -9,6 +9,7 @@ from horey.aws_api.aws_services_entities.dynamodb_table import DynamoDBTable
 from horey.aws_api.aws_services_entities.dynamodb_endpoint import DynamoDBEndpoint
 
 from horey.h_logger import get_logger
+
 logger = get_logger()
 
 
@@ -32,7 +33,9 @@ class DynamoDBClient(Boto3Client):
 
         final_result = []
         for _region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_tables(_region, full_information=full_information)
+            final_result += self.get_region_tables(
+                _region, full_information=full_information
+            )
 
         return final_result
 
@@ -48,7 +51,13 @@ class DynamoDBClient(Boto3Client):
         final_result = []
         AWSAccount.set_aws_region(region)
         for table_name in self.execute(self.client.list_tables, "TableNames"):
-            ret = list(self.execute(self.client.describe_table, "Table", filters_req={"TableName": table_name}))
+            ret = list(
+                self.execute(
+                    self.client.describe_table,
+                    "Table",
+                    filters_req={"TableName": table_name},
+                )
+            )
             obj = DynamoDBTable(ret[0])
             final_result.append(obj)
             obj.tags = self.get_tags(obj, function=self.client.list_tags_of_resource)
@@ -69,7 +78,9 @@ class DynamoDBClient(Boto3Client):
 
         final_result = []
         for _region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_endpoints(_region, full_information=full_information)
+            final_result += self.get_region_endpoints(
+                _region, full_information=full_information
+            )
 
         return final_result
 
@@ -120,6 +131,7 @@ class DynamoDBClient(Boto3Client):
         """
 
         logger.info(f"Creating table: {request_dict}")
-        for response in self.execute(self.client.create_table, "TableDescription",
-                                     filters_req=request_dict):
+        for response in self.execute(
+            self.client.create_table, "TableDescription", filters_req=request_dict
+        ):
             return response

@@ -1,16 +1,21 @@
 import os
 import pdb
 from enum import Enum
-from horey.deployer.deployment_step_configuration_policy import DeploymentStepConfigurationPolicy
+from horey.deployer.deployment_step_configuration_policy import (
+    DeploymentStepConfigurationPolicy,
+)
 
 
 class DeploymentStep:
     """
     Single server deployment step
     """
+
     def __init__(self, configuration):
         if not isinstance(configuration, DeploymentStepConfigurationPolicy):
-            raise ValueError(f"configuration is not instance of DeploymentStepConfigurationPolicy: {configuration}")
+            raise ValueError(
+                f"configuration is not instance of DeploymentStepConfigurationPolicy: {configuration}"
+            )
 
         if configuration.name is None:
             raise RuntimeError("Step configuration name was not set")
@@ -22,7 +27,12 @@ class DeploymentStep:
 
     def update_finish_status(self, local_deployment_data_dir_path):
         try:
-            with open(os.path.join(local_deployment_data_dir_path, self.configuration.finish_status_file_name)) as file_handler:
+            with open(
+                os.path.join(
+                    local_deployment_data_dir_path,
+                    self.configuration.finish_status_file_name,
+                )
+            ) as file_handler:
                 status = file_handler.read()
         except FileNotFoundError:
             self.status_code = DeploymentStep.StatusCode.ERROR
@@ -36,7 +46,11 @@ class DeploymentStep:
             self.status_code = DeploymentStep.StatusCode.ERROR
 
     def update_output(self, local_deployment_data_dir_path):
-        with open(os.path.join(local_deployment_data_dir_path, self.configuration.output_file_name)) as file_handler:
+        with open(
+            os.path.join(
+                local_deployment_data_dir_path, self.configuration.output_file_name
+            )
+        ) as file_handler:
             self.output = file_handler.read()
 
     class StatusCode(Enum):

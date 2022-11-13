@@ -6,6 +6,7 @@ import traceback
 import pytest
 import os
 from horey.h_logger import get_logger
+
 logger = get_logger()
 
 
@@ -20,4 +21,3 @@ def test_log_multiline():
 
 if __name__ == "__main__":
     test_log_multiline()
-

@@ -6,7 +6,9 @@ Provision horey packages from source.
 import os.path
 from horey.provision_constructor.system_function_factory import SystemFunctionFactory
 
-from horey.provision_constructor.system_functions.system_function_common import SystemFunctionCommon
+from horey.provision_constructor.system_functions.system_function_common import (
+    SystemFunctionCommon,
+)
 from horey.h_logger import get_logger
 
 logger = get_logger()
@@ -19,8 +21,16 @@ class Provisioner(SystemFunctionCommon):
     Provisioner class.
 
     """
+
     # pylint: disable= too-many-arguments
-    def __init__(self, deployment_dir, horey_repo_path=None, package_name=None, package_names=None, venv_path=None):
+    def __init__(
+        self,
+        deployment_dir,
+        horey_repo_path=None,
+        package_name=None,
+        package_names=None,
+        venv_path=None,
+    ):
         super().__init__(os.path.dirname(os.path.abspath(__file__)))
         self.deployment_dir = deployment_dir
 
@@ -75,7 +85,7 @@ class Provisioner(SystemFunctionCommon):
 
         if self.venv_path is not None:
             command = self.activate + " && " + command
-            #self.run_bash(self.activate + " && " + "pip3 install --upgrade setuptools")
+            # self.run_bash(self.activate + " && " + "pip3 install --upgrade setuptools")
 
         self.run_bash(command)
         self.init_pip_packages()

@@ -109,5 +109,7 @@ install_black: init_venv_dir
 	source ${VENV_DIR}/bin/activate &&\
 	pip3.8 install black
 
-black: install_black
+black: install_black black_raw
+black_raw:
+	source ${VENV_DIR}/bin/activate &&\
 	black ${ROOT_DIR}

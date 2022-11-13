@@ -1,5 +1,6 @@
 import os
 import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 from horey.serverless import __version__
 from setuptools import setup, find_namespace_packages
@@ -15,6 +16,9 @@ setup(
     author="Horey",
     author_email="alexey.beley@gmail.com",
     license="DWTFYWTPL",
-    packages=find_namespace_packages(include=["horey.serverless", "horey.serverless.*"]),
+    packages=find_namespace_packages(
+        include=["horey.serverless", "horey.serverless.*"]
+    ),
     include_package_data=True,
-    zip_safe=False)
+    zip_safe=False,
+)

@@ -11,6 +11,7 @@ class SecretsManagerSecret(AwsObject):
     """
     SecretsManager Secret class
     """
+
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self.secret_string = None
@@ -30,7 +31,7 @@ class SecretsManagerSecret(AwsObject):
             "SecretString": self.init_default_attr,
             "VersionStages": self.init_default_attr,
             "ResponseMetadata": self.init_null,
-                        }
+        }
 
         self.init_attrs(dict_src, init_options)
 

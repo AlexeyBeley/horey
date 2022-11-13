@@ -33,7 +33,7 @@ class ServicediscoveryService(AwsObject):
             "HealthCheckCustomConfig": self.init_default_attr,
             "CreateDate": self.init_default_attr,
             "Description": self.init_default_attr,
-                        }
+        }
 
         self.init_attrs(dict_src, init_options)
 
@@ -83,7 +83,6 @@ class ServicediscoveryService(AwsObject):
             "NamespaceId": self.namespace_id,
             "DnsConfig": self.dns_config,
             "HealthCheckCustomConfig": self.health_check_custom_config,
-
         }
         if self.type is not None:
             request_dict["Type"] = self.type

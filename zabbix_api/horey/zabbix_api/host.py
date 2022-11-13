@@ -100,15 +100,21 @@ class Host(ZabbixObject):
         request["host"] = self.host
         request["status"] = self.status
         request["groups"] = [{"groupid": group["groupid"]} for group in self.groups]
-        request["interfaces"] = [{"ip": interface["ip"],
-                                  "type": interface["type"],
-                                  "main": interface["main"],
-                                  "useip": interface["useip"],
-                                  "dns": interface["dns"],
-                                  "port": interface["port"]
-                                  } for interface in self.interfaces]
+        request["interfaces"] = [
+            {
+                "ip": interface["ip"],
+                "type": interface["type"],
+                "main": interface["main"],
+                "useip": interface["useip"],
+                "dns": interface["dns"],
+                "port": interface["port"],
+            }
+            for interface in self.interfaces
+        ]
 
-        request["templates"] = [{"templateid": template["templateid"]} for template in self.parent_templates]
+        request["templates"] = [
+            {"templateid": template["templateid"]} for template in self.parent_templates
+        ]
 
         return request
 

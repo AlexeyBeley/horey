@@ -34,7 +34,9 @@ class BobAPIConfigurationPolicy(ConfigurationPolicy):
         """
 
         if not isinstance(value, str):
-            raise ValueError(f"server_address must be string received {value} of type: {type(value)}")
+            raise ValueError(
+                f"server_address must be string received {value} of type: {type(value)}"
+            )
 
         self._server_address = value
 
@@ -45,7 +47,9 @@ class BobAPIConfigurationPolicy(ConfigurationPolicy):
     @token.setter
     def token(self, value):
         if not isinstance(value, str) and value is not None:
-            raise ValueError(f"token must be string or None received {value} of type: {type(value)}")
+            raise ValueError(
+                f"token must be string or None received {value} of type: {type(value)}"
+            )
 
         self._token = value
 

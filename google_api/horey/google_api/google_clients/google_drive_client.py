@@ -15,8 +15,12 @@ class GoogleDriveClient(GoogleClient):
 
     def list_files(self):
         request_kwargs = {}
-        results = self.client.files().list(pageSize=10, fields="nextPageToken, files(id, name)").execute()
-        items = results.get('files', [])
+        results = (
+            self.client.files()
+            .list(pageSize=10, fields="nextPageToken, files(id, name)")
+            .execute()
+        )
+        items = results.get("files", [])
         pdb.set_trace()
         return self.execute(self.client.files().list, kwargs=request_kwargs)
         bucket = self.client.create_bucket(bucket.name)

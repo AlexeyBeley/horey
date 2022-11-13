@@ -5,13 +5,16 @@ import sys
 import os
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
-from horey.aws_api.aws_services_entities.cloud_watch_log_stream import CloudWatchLogStream
+from horey.aws_api.aws_services_entities.cloud_watch_log_stream import (
+    CloudWatchLogStream,
+)
 
 
 class CloudWatchLogGroup(AwsObject):
     """
     The class to represent instances of the log group objects.
     """
+
     def __init__(self, dict_src, from_cache=False):
         """
         Init with boto3 dict
@@ -27,13 +30,15 @@ class CloudWatchLogGroup(AwsObject):
             return
 
         init_options = {
-                        "logGroupName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-                        "creationTime": self.init_default_attr,
-                        "metricFilterCount": self.init_default_attr,
-                        "arn": self.init_default_attr,
-                        "storedBytes": self.init_default_attr,
-                        "retentionInDays": self.init_default_attr,
-                        }
+            "logGroupName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
+            "creationTime": self.init_default_attr,
+            "metricFilterCount": self.init_default_attr,
+            "arn": self.init_default_attr,
+            "storedBytes": self.init_default_attr,
+            "retentionInDays": self.init_default_attr,
+        }
 
         self.init_attrs(dict_src, init_options)
 
@@ -54,7 +59,9 @@ class CloudWatchLogGroup(AwsObject):
 
     def update_from_raw_response(self, dict_src):
         init_options = {
-            "logGroupName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "logGroupName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
             "creationTime": self.init_default_attr,
             "metricFilterCount": self.init_default_attr,
             "arn": self.init_default_attr,

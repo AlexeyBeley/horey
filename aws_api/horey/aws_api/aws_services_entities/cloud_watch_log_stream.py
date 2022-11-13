@@ -16,15 +16,21 @@ class CloudWatchLogStream(AwsObject):
             self.init_log_stream_from_cache(dict_src)
             return
 
-        init_options = {"logStreamName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-                        "creationTime": lambda name, value: (name, CommonUtils.timestamp_to_datetime(value / 1000.0)),
-                        "firstEventTimestamp": self.init_default_attr,
-                        "lastEventTimestamp": self.init_default_attr,
-                        "lastIngestionTime": self.init_default_attr,
-                        "uploadSequenceToken": self.init_default_attr,
-                        "arn": self.init_default_attr,
-                        "storedBytes": self.init_default_attr
-                        }
+        init_options = {
+            "logStreamName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
+            "creationTime": lambda name, value: (
+                name,
+                CommonUtils.timestamp_to_datetime(value / 1000.0),
+            ),
+            "firstEventTimestamp": self.init_default_attr,
+            "lastEventTimestamp": self.init_default_attr,
+            "lastIngestionTime": self.init_default_attr,
+            "uploadSequenceToken": self.init_default_attr,
+            "arn": self.init_default_attr,
+            "storedBytes": self.init_default_attr,
+        }
 
         self.init_attrs(dict_src, init_options)
 

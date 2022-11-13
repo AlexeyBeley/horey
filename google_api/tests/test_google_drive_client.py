@@ -7,11 +7,23 @@ import pytest
 import os
 from horey.google_api.google_clients.google_drive_client import GoogleDriveClient
 from horey.h_logger import get_logger
-from horey.google_api.google_api_configuration_policy import GoogleAPIConfigurationPolicy
+from horey.google_api.google_api_configuration_policy import (
+    GoogleAPIConfigurationPolicy,
+)
+
 logger = get_logger()
 
 configuration = GoogleAPIConfigurationPolicy()
-configuration.configuration_file_full_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore", "google_api_configuration_values.py"))
+configuration.configuration_file_full_path = os.path.abspath(
+    os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "..",
+        "..",
+        "..",
+        "ignore",
+        "google_api_configuration_values.py",
+    )
+)
 configuration.init_from_file()
 
 
@@ -24,4 +36,3 @@ def test_list_files():
 
 if __name__ == "__main__":
     test_list_files()
-

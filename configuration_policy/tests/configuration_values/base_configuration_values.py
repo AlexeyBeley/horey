@@ -6,4 +6,3 @@ class ConfigurationValues:
 def main():
     configs = ConfigurationValues()
     return configs
-

@@ -9,6 +9,7 @@ class LoadBalancer(AwsObject):
     """
     AWS ELB V2 representation
     """
+
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self.dns_name = None
@@ -27,19 +28,23 @@ class LoadBalancer(AwsObject):
             return
 
         init_options = {
-                        "LoadBalancerArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
-                        "LoadBalancerName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-                        "DNSName": self.init_default_attr,
-                        "CanonicalHostedZoneId": self.init_default_attr,
-                        "CreatedTime": self.init_default_attr,
-                        "Scheme": self.init_default_attr,
-                        "VpcId": self.init_default_attr,
-                        "State": self.init_default_attr,
-                        "Type": self.init_default_attr,
-                        "IpAddressType": self.init_default_attr,
-                        "AvailabilityZones": self.init_default_attr,
-                        "SecurityGroups": self.init_default_attr,
-                        }
+            "LoadBalancerArn": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
+            "LoadBalancerName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
+            "DNSName": self.init_default_attr,
+            "CanonicalHostedZoneId": self.init_default_attr,
+            "CreatedTime": self.init_default_attr,
+            "Scheme": self.init_default_attr,
+            "VpcId": self.init_default_attr,
+            "State": self.init_default_attr,
+            "Type": self.init_default_attr,
+            "IpAddressType": self.init_default_attr,
+            "AvailabilityZones": self.init_default_attr,
+            "SecurityGroups": self.init_default_attr,
+        }
 
         self.init_attrs(dict_src, init_options)
 
@@ -85,9 +90,11 @@ class LoadBalancer(AwsObject):
         grps = grps if grps is not None else []
 
         for sg in grps:
-            endpoint = {"sg_id": sg,
-                        "dns": self.dns_name,
-                        "description": f"lb: {self.name}"}
+            endpoint = {
+                "sg_id": sg,
+                "dns": self.dns_name,
+                "description": f"lb: {self.name}",
+            }
             ret.append(endpoint)
 
         return ret
@@ -139,8 +146,7 @@ class LoadBalancer(AwsObject):
         CustomerOwnedIpv4Pool='string'
         """
 
-        request = {"Name": self.name,
-                   "Subnets": self.subnets}
+        request = {"Name": self.name, "Subnets": self.subnets}
 
         if self.security_groups is not None:
             request["SecurityGroups"] = self.security_groups
@@ -160,19 +166,23 @@ class LoadBalancer(AwsObject):
         @return:
         """
         init_options = {
-                        "LoadBalancerArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
-                        "LoadBalancerName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-                        "DNSName": self.init_default_attr,
-                        "CanonicalHostedZoneId": self.init_default_attr,
-                        "CreatedTime": self.init_default_attr,
-                        "Scheme": self.init_default_attr,
-                        "VpcId": self.init_default_attr,
-                        "State": self.init_default_attr,
-                        "Type": self.init_default_attr,
-                        "IpAddressType": self.init_default_attr,
-                        "AvailabilityZones": self.init_default_attr,
-                        "SecurityGroups": self.init_default_attr,
-                        }
+            "LoadBalancerArn": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
+            "LoadBalancerName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
+            "DNSName": self.init_default_attr,
+            "CanonicalHostedZoneId": self.init_default_attr,
+            "CreatedTime": self.init_default_attr,
+            "Scheme": self.init_default_attr,
+            "VpcId": self.init_default_attr,
+            "State": self.init_default_attr,
+            "Type": self.init_default_attr,
+            "IpAddressType": self.init_default_attr,
+            "AvailabilityZones": self.init_default_attr,
+            "SecurityGroups": self.init_default_attr,
+        }
 
         self.init_attrs(dict_src, init_options)
 
@@ -207,6 +217,7 @@ class LoadBalancer(AwsObject):
         Load balancer possible states
 
         """
+
         ACTIVE = 0
         PROVISIONING = 1
         ACTIVE_IMPAIRED = 2
@@ -217,6 +228,7 @@ class LoadBalancer(AwsObject):
         LB Listener
 
         """
+
         def __init__(self, dict_src, from_cache=False):
             super().__init__(dict_src)
             self.ssl_policy = None
@@ -232,7 +244,9 @@ class LoadBalancer(AwsObject):
                 return
 
             init_options = {
-                "ListenerArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+                "ListenerArn": lambda x, y: self.init_default_attr(
+                    x, y, formatted_name="arn"
+                ),
                 "LoadBalancerArn": self.init_default_attr,
                 "Port": self.init_default_attr,
                 "Protocol": self.init_default_attr,
@@ -287,6 +301,7 @@ class LoadBalancer(AwsObject):
         Listener rule
 
         """
+
         def __init__(self, dict_src, from_cache=False):
             super().__init__(dict_src)
             self.listener_arn = None
@@ -299,7 +314,9 @@ class LoadBalancer(AwsObject):
                 return
 
             init_options = {
-                "RuleArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+                "RuleArn": lambda x, y: self.init_default_attr(
+                    x, y, formatted_name="arn"
+                ),
                 "Priority": self.init_default_attr,
                 "Conditions": self.init_default_attr,
                 "Actions": self.init_default_attr,
@@ -323,11 +340,13 @@ class LoadBalancer(AwsObject):
 
             @return:
             """
-            request = {"ListenerArn": self.listener_arn,
-                       "Conditions": self.conditions,
-                       "Priority": self.priority,
-                       "Actions": self.actions,
-                       "Tags": self.tags}
+            request = {
+                "ListenerArn": self.listener_arn,
+                "Conditions": self.conditions,
+                "Priority": self.priority,
+                "Actions": self.actions,
+                "Tags": self.tags,
+            }
 
             return request
 
@@ -338,10 +357,12 @@ class LoadBalancer(AwsObject):
             @return:
             """
 
-            raise NotImplementedError("""
+            raise NotImplementedError(
+                """
             request = dict()
             request["ListenerArn"] = self.arn
-            return request""")
+            return request"""
+            )
 
         def update_from_raw_response(self, dict_src):
             """
@@ -351,7 +372,9 @@ class LoadBalancer(AwsObject):
             @return:
             """
             init_options = {
-                "RuleArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+                "RuleArn": lambda x, y: self.init_default_attr(
+                    x, y, formatted_name="arn"
+                ),
                 "Priority": self.init_default_attr,
                 "Conditions": self.init_default_attr,
                 "Actions": self.init_default_attr,

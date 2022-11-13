@@ -10,6 +10,7 @@ class AuthorizationJobConfigurationPolicy(ConfigurationPolicy):
     Main class
 
     """
+
     def __init__(self):
         super().__init__()
         self._authorization_map_file_path = None

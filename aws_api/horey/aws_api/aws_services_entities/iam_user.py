@@ -8,6 +8,7 @@ class IamUser(AwsObject):
     """
     Class representing IAM user.
     """
+
     def __init__(self, dict_src, from_cache=False):
         """
         Init Iam user with boto3 dict
@@ -23,12 +24,15 @@ class IamUser(AwsObject):
             return
 
         init_options = {
-                        "UserId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
-                        "Path": self.init_default_attr,
-                        "UserName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-                        "Arn": self.init_default_attr,
-                        "CreateDate": self.init_default_attr,
-                        "PasswordLastUsed": self.init_default_attr}
+            "UserId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "Path": self.init_default_attr,
+            "UserName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
+            "Arn": self.init_default_attr,
+            "CreateDate": self.init_default_attr,
+            "PasswordLastUsed": self.init_default_attr,
+        }
 
         self.init_attrs(dict_src, init_options)
 

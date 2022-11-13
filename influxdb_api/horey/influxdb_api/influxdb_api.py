@@ -7,7 +7,9 @@ import pdb
 
 import requests
 from horey.h_logger import get_logger
-from horey.influxdb_api.influxdb_api_configuration_policy import InfluxDBAPIConfigurationPolicy
+from horey.influxdb_api.influxdb_api_configuration_policy import (
+    InfluxDBAPIConfigurationPolicy,
+)
 
 logger = get_logger()
 
@@ -55,25 +57,21 @@ class InfluxDBAPI:
 
     def get(self, request_path, is_link=False):
         request = self.create_request(request_path, is_link=is_link)
-        response = requests.get(
-            request,
-            headers={'Content-Type': 'application/json'}
-        )
+        response = requests.get(request, headers={"Content-Type": "application/json"})
         if response.status_code != 200:
             raise RuntimeError(
-                f'Request to influxdb api returned an error {response.status_code}, the response is:\n{response.text}'
+                f"Request to influxdb api returned an error {response.status_code}, the response is:\n{response.text}"
             )
         return response.json()
 
     def post(self, request_path, data, is_link=False):
         request = self.create_request(request_path, is_link=is_link)
         response = requests.post(
-            request, data=json.dumps(data),
-            headers={'Content-Type': 'application/json'}
+            request, data=json.dumps(data), headers={"Content-Type": "application/json"}
         )
         if response.status_code != 200:
             raise RuntimeError(
-                f'Request to influxdb api returned an error {response.status_code}, the response is:\n{response.text}'
+                f"Request to influxdb api returned an error {response.status_code}, the response is:\n{response.text}"
             )
         return response.json()
 

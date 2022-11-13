@@ -6,7 +6,9 @@ sys.path.insert(0, "/Users/alexey.beley/private/horey/aws_api")
 from horey.aws_api.aws_api import AWSAPI
 from horey.aws_api.aws_services_entities.ec2_instance import EC2Instance
 from horey.aws_api.aws_api_configuration_policy import AWSAPIConfigurationPolicy
-from horey.jenkins_manager.jenkins_configuration_policy import JenkinsConfigurationPolicy
+from horey.jenkins_manager.jenkins_configuration_policy import (
+    JenkinsConfigurationPolicy,
+)
 from horey.jenkins_manager.jenkins_manager import JenkinsManager
 
 
@@ -17,12 +19,16 @@ class JenkinsDeployer:
 
     def __init__(self, configuration):
         aws_api_conf = AWSAPIConfigurationPolicy()
-        aws_api_conf.configuration_file_full_path = configuration.aws_api_configuration_values_file_path
+        aws_api_conf.configuration_file_full_path = (
+            configuration.aws_api_configuration_values_file_path
+        )
         aws_api_conf.init_from_file()
         self.aws_api = AWSAPI(configuration=aws_api_conf)
 
         jenkins_conf = JenkinsConfigurationPolicy()
-        jenkins_conf.configuration_file_full_path = configuration.jenkins_manager_configuration_values_file_path
+        jenkins_conf.configuration_file_full_path = (
+            configuration.jenkins_manager_configuration_values_file_path
+        )
         jenkins_conf.init_from_file()
         self.jenkins_manager = JenkinsManager(configuration=jenkins_conf)
 
@@ -48,38 +54,29 @@ class JenkinsDeployer:
     def agent_spot_fleet(self):
         return {
             "SpotFleetRequestConfig": {
-            "ReplaceUnhealthyInstances": True,
-            "Type": "maintain",
-            "IamFleetRole": f"arn:aws:iam::{ACCOUNT_ID}:role/spot-fleet_requester-role",
-            "LaunchTemplateConfigs": [
-                {
-                    'LaunchTemplateSpecification': {
-                        'LaunchTemplateName': 'launch_template_jenkins_agent',
-                        "Version": "$Latest"
-                    }
-                },
-            ],
-            "TargetCapacity": 1,
-            'TagSpecifications': [
-                {
-                    'ResourceType': 'spot-fleet-request',
-                    'Tags': [
-                        {
-                            'Key': 'Name',
-                            'Value': 'spot-fleet-request-agents-tmp'
-                        },
-                        {
-                            'Key': 'env_name',
-                            'Value': 'production'
-                        },
-                        {
-                            'Key': 'env_level',
-                            'Value': 'production'
-                        },
-                    ]
-                },
-            ]
-        }
+                "ReplaceUnhealthyInstances": True,
+                "Type": "maintain",
+                "IamFleetRole": f"arn:aws:iam::{ACCOUNT_ID}:role/spot-fleet_requester-role",
+                "LaunchTemplateConfigs": [
+                    {
+                        "LaunchTemplateSpecification": {
+                            "LaunchTemplateName": "launch_template_jenkins_agent",
+                            "Version": "$Latest",
+                        }
+                    },
+                ],
+                "TargetCapacity": 1,
+                "TagSpecifications": [
+                    {
+                        "ResourceType": "spot-fleet-request",
+                        "Tags": [
+                            {"Key": "Name", "Value": "spot-fleet-request-agents-tmp"},
+                            {"Key": "env_name", "Value": "production"},
+                            {"Key": "env_level", "Value": "production"},
+                        ],
+                    },
+                ],
+            }
         }
 
     def deploy_agent_spot_fleet(self, deploy_agent_spot_fleet):
@@ -91,80 +88,56 @@ class JenkinsDeployer:
         return {
             "LaunchTemplateName": "launch_template_jenkins_agent",
             "LaunchTemplateData": {
-                "InstanceInitiatedShutdownBehavior": 'terminate',
+                "InstanceInitiatedShutdownBehavior": "terminate",
                 "NetworkInterfaces": [
                     {
-                        'AssociatePublicIpAddress': False,
-                        'DeleteOnTermination': True,
-                        'DeviceIndex': 0,
-                        'Groups': [
+                        "AssociatePublicIpAddress": False,
+                        "DeleteOnTermination": True,
+                        "DeviceIndex": 0,
+                        "Groups": [
                             security_group_id,
                         ],
-                        'Ipv6AddressCount': 0,
-                        'SubnetId': SUBNET_ID,
-                        'InterfaceType': 'interface',
-                        'NetworkCardIndex': 0
+                        "Ipv6AddressCount": 0,
+                        "SubnetId": SUBNET_ID,
+                        "InterfaceType": "interface",
+                        "NetworkCardIndex": 0,
                     },
                 ],
-                "CreditSpecification": {
-                    'CpuCredits': 'unlimited'
-                },
+                "CreditSpecification": {"CpuCredits": "unlimited"},
                 "BlockDeviceMappings": [
                     {
-                        'DeviceName': '/dev/sda1',
-                        'Ebs': {
-                            'DeleteOnTermination': True,
-                            'VolumeSize': 20,
-                            'VolumeType': 'standard',
+                        "DeviceName": "/dev/sda1",
+                        "Ebs": {
+                            "DeleteOnTermination": True,
+                            "VolumeSize": 20,
+                            "VolumeType": "standard",
                         },
                     }
                 ],
                 "ImageId": IMAGE_ID,
-                "InstanceType": 't2.micro',
-                "KeyName": 'jenkins-key',
-                "Monitoring": {
-                    'Enabled': True
-                },
+                "InstanceType": "t2.micro",
+                "KeyName": "jenkins-key",
+                "Monitoring": {"Enabled": True},
                 "TagSpecifications": [
                     {
-                        'ResourceType': 'instance',
-                        'Tags': [
-                            {
-                                'Key': 'Name',
-                                'Value': 'jenkins-agent-tmp'
-                            },
-                            {
-                                'Key': 'env_level',
-                                'Value': 'production'
-                            },
-                            {
-                                'Key': 'env_name',
-                                'Value': 'production'
-                            }
-                        ]
+                        "ResourceType": "instance",
+                        "Tags": [
+                            {"Key": "Name", "Value": "jenkins-agent-tmp"},
+                            {"Key": "env_level", "Value": "production"},
+                            {"Key": "env_name", "Value": "production"},
+                        ],
                     },
                 ],
-                "IamInstanceProfile": {
-                    'Name': 'service-role-jenkins'
-                }
+                "IamInstanceProfile": {"Name": "service-role-jenkins"},
             },
             "TagSpecifications": [
                 {
-                    'ResourceType': 'launch-template',
-                    'Tags': [
-                        {
-                            'Key': 'Name',
-                            'Value': 'launch_template_jenkins-agent-tmp'
-                        },
-                        {
-                            'Key': 'env_level',
-                            'Value': 'production'
-                        },
-                        {
-                            'Key': 'env_name',
-                            'Value': 'production'
-                        }
-                    ]
+                    "ResourceType": "launch-template",
+                    "Tags": [
+                        {"Key": "Name", "Value": "launch_template_jenkins-agent-tmp"},
+                        {"Key": "env_level", "Value": "production"},
+                        {"Key": "env_name", "Value": "production"},
+                    ],
                 },
             ],
         }
@@ -197,27 +170,21 @@ class JenkinsDeployer:
         }"""
 
         return {
-            "RoleName": 'role-jenkins-master-tmp',
+            "RoleName": "role-jenkins-master-tmp",
             "AssumeRolePolicyDocument": assume_role_policy,
             "Tags": [
-                {
-                    'Key': 'Name',
-                    'Value': 'role-jenkins-master-tmp'
-                },
-                {
-                    'Key': 'env_name',
-                    'Value': 'production'
-                },
-                {
-                    'Key': 'env_level',
-                    'Value': 'production'
-                },
-            ]
+                {"Key": "Name", "Value": "role-jenkins-master-tmp"},
+                {"Key": "env_name", "Value": "production"},
+                {"Key": "env_level", "Value": "production"},
+            ],
         }
 
     def policies_master(self):
         lst_ret = []
-        lst_ret.append({"PolicyName": "spot-fleet", "PolicyDocument": """{
+        lst_ret.append(
+            {
+                "PolicyName": "spot-fleet",
+                "PolicyDocument": """{
     "Version": "2012-10-17",
     "Statement": [
         {
@@ -252,9 +219,13 @@ class JenkinsDeployer:
             "Resource": "*"
         }
     ]
-}"""}
-                       )
-        lst_ret.append({"PolicyName": "packer", "PolicyDocument": """{
+}""",
+            }
+        )
+        lst_ret.append(
+            {
+                "PolicyName": "packer",
+                "PolicyDocument": """{
     "Version": "2012-10-17",
     "Statement": [
         {
@@ -297,7 +268,9 @@ class JenkinsDeployer:
             "Resource": "*"
         }
     ]
-        }"""})
+        }""",
+            }
+        )
         return lst_ret
 
     def deploy_infrastructure_master_role(self):
@@ -306,7 +279,9 @@ class JenkinsDeployer:
         lst_policy_requests = self.policies_master()
         for policy_request in lst_policy_requests:
             policy_request["RoleName"] = "role-jenkins-master-tmp"
-            response = self.aws_api.iam_client.attach_role_inline_policy_raw(policy_request)
+            response = self.aws_api.iam_client.attach_role_inline_policy_raw(
+                policy_request
+            )
             print(response)
 
     def deploy_infrastructure_security_groups(self):
@@ -321,13 +296,10 @@ class JenkinsDeployer:
             "VpcId": VPC_ID,
             "TagSpecifications": [
                 {
-                    'ResourceType': 'security-group',
-                    'Tags': [
-                        {
-                            'Key': 'Name',
-                            'Value': 'security_group_jenkins_master'
-                        },
-                    ]
+                    "ResourceType": "security-group",
+                    "Tags": [
+                        {"Key": "Name", "Value": "security_group_jenkins_master"},
+                    ],
                 },
             ],
         }
@@ -336,11 +308,14 @@ class JenkinsDeployer:
         input_ports_request = {
             "GroupId": sg_id,
             "IpPermissions": [
-                {'IpProtocol': 'tcp',
-                 'FromPort': 8080,
-                 'ToPort': 8080,
-                 'IpRanges': [{'CidrIp': '0.0.0.0/0'}]},
-            ]}
+                {
+                    "IpProtocol": "tcp",
+                    "FromPort": 8080,
+                    "ToPort": 8080,
+                    "IpRanges": [{"CidrIp": "0.0.0.0/0"}],
+                },
+            ],
+        }
         self.aws_api.ec2_client.authorize_security_group_ingress(input_ports_request)
         return sg_id
 
@@ -351,13 +326,10 @@ class JenkinsDeployer:
             "VpcId": VPC_ID,
             "TagSpecifications": [
                 {
-                    'ResourceType': 'security-group',
-                    'Tags': [
-                        {
-                            'Key': 'Name',
-                            'Value': 'security_group_jenkins_agent'
-                        },
-                    ]
+                    "ResourceType": "security-group",
+                    "Tags": [
+                        {"Key": "Name", "Value": "security_group_jenkins_agent"},
+                    ],
                 },
             ],
         }
@@ -366,98 +338,84 @@ class JenkinsDeployer:
         input_ports_request = {
             "GroupId": sg_agent_id,
             "IpPermissions": [
-                {'IpProtocol': 'tcp',
-                 'FromPort': 22,
-                 'ToPort': 22,
-                 "UserIdGroupPairs": [
-                     {
-                         "GroupId": sg_id_master,
-                     }
-                 ]
-                 },
-            ]}
-        #pdb.set_trace()
+                {
+                    "IpProtocol": "tcp",
+                    "FromPort": 22,
+                    "ToPort": 22,
+                    "UserIdGroupPairs": [
+                        {
+                            "GroupId": sg_id_master,
+                        }
+                    ],
+                },
+            ],
+        }
+        # pdb.set_trace()
         self.aws_api.ec2_client.authorize_security_group_ingress(input_ports_request)
         return sg_agent_id
 
     def instance_master(self):
         return {
             "DisableApiTermination": True,
-            "InstanceInitiatedShutdownBehavior": 'stop',
+            "InstanceInitiatedShutdownBehavior": "stop",
             "NetworkInterfaces": [
                 {
-                    'AssociatePublicIpAddress': True,
-                    'DeleteOnTermination': True,
-                    'DeviceIndex': 0,
-                    'Groups': [
+                    "AssociatePublicIpAddress": True,
+                    "DeleteOnTermination": True,
+                    "DeviceIndex": 0,
+                    "Groups": [
                         SEC_GROUP,
                     ],
-                    'Ipv6AddressCount': 0,
-                    'SubnetId': SUBNET,
-                    'InterfaceType': 'interface',
-                    'NetworkCardIndex': 0
+                    "Ipv6AddressCount": 0,
+                    "SubnetId": SUBNET,
+                    "InterfaceType": "interface",
+                    "NetworkCardIndex": 0,
                 },
             ],
-            "CreditSpecification": {
-                'CpuCredits': 'unlimited'
-            },
+            "CreditSpecification": {"CpuCredits": "unlimited"},
             "BlockDeviceMappings": [
                 {
-                    'DeviceName': '/dev/sda1',
-                    'Ebs': {
-                        'DeleteOnTermination': True,
-                        'VolumeSize': 20,
-                        'VolumeType': 'standard',
+                    "DeviceName": "/dev/sda1",
+                    "Ebs": {
+                        "DeleteOnTermination": True,
+                        "VolumeSize": 20,
+                        "VolumeType": "standard",
                     },
                 },
                 {
-                    'DeviceName': '/dev/sdb',
-                    'Ebs': {
-                        'DeleteOnTermination': False,
-                        'VolumeSize': 40,
-                        'VolumeType': 'standard',
+                    "DeviceName": "/dev/sdb",
+                    "Ebs": {
+                        "DeleteOnTermination": False,
+                        "VolumeSize": 40,
+                        "VolumeType": "standard",
                     },
                 },
                 {
-                    'DeviceName': '/dev/sdc',
-                    'Ebs': {
-                        'DeleteOnTermination': True,
-                        'VolumeSize': 20,
-                        'VolumeType': 'standard',
+                    "DeviceName": "/dev/sdc",
+                    "Ebs": {
+                        "DeleteOnTermination": True,
+                        "VolumeSize": 20,
+                        "VolumeType": "standard",
                     },
                 },
             ],
             "ImageId": AMI_ID,
-            "InstanceType": 't2.micro',
-            "KeyName": 'jenkins-key',
-            "Monitoring": {
-                'Enabled': True
-            },
+            "InstanceType": "t2.micro",
+            "KeyName": "jenkins-key",
+            "Monitoring": {"Enabled": True},
             "TagSpecifications": [
                 {
-                    'ResourceType': 'instance',
-                    'Tags': [
-                        {
-                            'Key': 'Name',
-                            'Value': 'jenkins-master-tmp'
-                        },
-                        {
-                            'Key': 'env_level',
-                            'Value': 'production'
-                        },
-                        {
-                            'Key': 'env_name',
-                            'Value': 'production'
-                        },
-
-                    ]
+                    "ResourceType": "instance",
+                    "Tags": [
+                        {"Key": "Name", "Value": "jenkins-master-tmp"},
+                        {"Key": "env_level", "Value": "production"},
+                        {"Key": "env_name", "Value": "production"},
+                    ],
                 },
             ],
-            "IamInstanceProfile": {
-                'Name': 'service-role-jenkins'
-            },
+            "IamInstanceProfile": {"Name": "service-role-jenkins"},
             "MaxCount": 1,
-            "MinCount": 1
+            "MinCount": 1,
         }
 
     def deploy_infrastructure_master_instance(self):
@@ -466,31 +424,27 @@ class JenkinsDeployer:
 
     def deploy_key_pairs(self):
         key_master_req = {
-            "KeyName": 'jenkins_master_key',
+            "KeyName": "jenkins_master_key",
             "TagSpecifications": [
                 {
-                    'ResourceType': 'key-pair',
-                    'Tags': [
-                        {
-                            'Key': 'Name',
-                            'Value': 'jenkins_master_key'
-                        },
-                    ]
+                    "ResourceType": "key-pair",
+                    "Tags": [
+                        {"Key": "Name", "Value": "jenkins_master_key"},
+                    ],
                 },
-            ]}
+            ],
+        }
         self.aws_api.ec2_client.create_key_pair(key_master_req)
 
         key_agent_req = {
-            "KeyName": 'jenkins_agent_key',
+            "KeyName": "jenkins_agent_key",
             "TagSpecifications": [
                 {
-                    'ResourceType': 'key-pair',
-                    'Tags': [
-                        {
-                            'Key': 'Name',
-                            'Value': 'jenkins_agent_key'
-                        },
-                    ]
+                    "ResourceType": "key-pair",
+                    "Tags": [
+                        {"Key": "Name", "Value": "jenkins_agent_key"},
+                    ],
                 },
-            ]}
+            ],
+        }
         self.aws_api.ec2_client.create_key_pair(key_agent_req)

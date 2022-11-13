@@ -6,7 +6,7 @@ except Exception as inst:
 
 
 def fetch_ip_from_google():
-    ns_address, query_address = 'ns1.google.com', 'o-o.myaddr.l.google.com'
+    ns_address, query_address = "ns1.google.com", "o-o.myaddr.l.google.com"
     resolver = dns.resolver.Resolver(configure=True)
 
     resp = resolver.resolve(ns_address)
@@ -14,7 +14,7 @@ def fetch_ip_from_google():
     ns_ip = resp[0].to_text()
     resolver.nameservers = [ns_ip]
 
-    resp_two = resolver.resolve(query_address, 'TXT')
+    resp_two = resolver.resolve(query_address, "TXT")
     ip = resp_two[0].to_text()
-    ip = ip.replace('"', '')
+    ip = ip.replace('"', "")
     return ip

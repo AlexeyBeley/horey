@@ -9,28 +9,32 @@ class SlackMessage:
         "STABLE": ":white_check_mark:",
         "WARNING": ":warning:",
         "CRITICAL": ":bangbang:",
-        "PARTY": ":tada:"}
+        "PARTY": ":tada:",
+    }
 
     SECTION_MARKS_MAPPINGS = {
         "CRITICAL": ":exclamation:",
         "INFO": ":bulb:",
         "STABLE": ":bee:",
         "WARNING": ":mega:",
-        "PARTY": ":clinking_glasses:"}
+        "PARTY": ":clinking_glasses:",
+    }
 
     SECONDARY_MARKS_MAPPINGS = {
         "CRITICAL": ":red_circle:",
         "INFO": ":radio_button:",
         "STABLE": ":large_green_circle:",
         "WARNING": ":large_yellow_circle:",
-        "PARTY": ":large_purple_circle:"}
+        "PARTY": ":large_purple_circle:",
+    }
 
     COLOR_MAPPINGS = {
         "CRITICAL": "danger",
         "INFO": "#454442",
         "STABLE": "#7CD197",
         "WARNING": "#d1d07c",
-        "PARTY": "#d40fb9"}
+        "PARTY": "#d40fb9",
+    }
 
     def __init__(self, message_type=None):
         self._type = None
@@ -69,8 +73,13 @@ class SlackMessage:
         for attachment in self._attachments:
             attachments.append(attachment.generate_send_request())
 
-        slack_data = {"blocks": blocks, "channel": self.dst_channel, "username": self.src_username,
-                      "icon_emoji": self.icon_emoji, "attachments": attachments}
+        slack_data = {
+            "blocks": blocks,
+            "channel": self.dst_channel,
+            "username": self.src_username,
+            "icon_emoji": self.icon_emoji,
+            "attachments": attachments,
+        }
 
         return json.dumps(slack_data)
 
@@ -86,7 +95,9 @@ class SlackMessage:
     @type.setter
     def type(self, value):
         if not isinstance(value, self.Types):
-            raise ValueError(f"type must be {self.Types} received {value} of type: {type(value)}")
+            raise ValueError(
+                f"type must be {self.Types} received {value} of type: {type(value)}"
+            )
 
         self._type = value
 
@@ -99,7 +110,9 @@ class SlackMessage:
     @icon_emoji.setter
     def icon_emoji(self, value):
         if not isinstance(value, str):
-            raise ValueError(f"icon_emoji must be string received {value} of icon_emoji: {type(value)}")
+            raise ValueError(
+                f"icon_emoji must be string received {value} of icon_emoji: {type(value)}"
+            )
 
         self._icon_emoji = value
 
@@ -121,8 +134,9 @@ class SlackMessage:
 
         def generate_send_request(self):
             return {
-                "text": SlackMessage.SECTION_MARKS_MAPPINGS[self.message_type.value] + self.text,
-                "color": SlackMessage.COLOR_MAPPINGS[self.message_type.value]
+                "text": SlackMessage.SECTION_MARKS_MAPPINGS[self.message_type.value]
+                + self.text,
+                "color": SlackMessage.COLOR_MAPPINGS[self.message_type.value],
             }
 
     class Block:
@@ -134,11 +148,13 @@ class SlackMessage:
         @property
         def text(self):
             return self._text
-        
+
         @text.setter
         def text(self, value):
             if not isinstance(value, str):
-                raise ValueError(f"Slack Message text must be string. Got: {type(value)}: {value}")
+                raise ValueError(
+                    f"Slack Message text must be string. Got: {type(value)}: {value}"
+                )
             self._text = value
 
         @property
@@ -148,7 +164,9 @@ class SlackMessage:
         @link.setter
         def link(self, value):
             if not isinstance(value, str):
-                raise ValueError(f"Slack Message link must be string. Got: {type(value)}: {value}")
+                raise ValueError(
+                    f"Slack Message link must be string. Got: {type(value)}: {value}"
+                )
             self._link = value
 
     class SectionBlock(Block):
@@ -164,10 +182,7 @@ class SlackMessage:
         def generate_send_request_mrkdwn_link(self):
             return {
                 "type": self.block_type,
-                "text": {
-                    "type": "mrkdwn",
-                    "text": f"<{self.link}|{self.text}>"
-                }
+                "text": {"type": "mrkdwn", "text": f"<{self.link}|{self.text}>"},
             }
 
         def generate_send_request_mrkdwn(self):
@@ -176,8 +191,11 @@ class SlackMessage:
                     "type": self.block_type,
                     "text": {
                         "type": "mrkdwn",
-                        "text": SlackMessage.SECTION_MARKS_MAPPINGS[self.message_type.value] + self.text
-                    }
+                        "text": SlackMessage.SECTION_MARKS_MAPPINGS[
+                            self.message_type.value
+                        ]
+                        + self.text,
+                    },
                 }
 
             except Exception as inst:
@@ -193,8 +211,11 @@ class SlackMessage:
                 "type": self.block_type,
                 "text": {
                     "type": "plain_text",
-                    "text": SlackMessage.SECONDARY_MARKS_MAPPINGS[self.message_type.value] + self.text
-                }
+                    "text": SlackMessage.SECONDARY_MARKS_MAPPINGS[
+                        self.message_type.value
+                    ]
+                    + self.text,
+                },
             }
 
     class DividerBlock(Block):
@@ -203,6 +224,4 @@ class SlackMessage:
             super().__init__(message_type)
 
         def generate_send_request(self):
-            return {
-                "type": self.block_type
-            }
+            return {"type": self.block_type}

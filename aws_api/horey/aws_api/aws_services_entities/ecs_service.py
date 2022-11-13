@@ -25,8 +25,12 @@ class ECSService(AwsObject):
             self._init_object_from_cache(dict_src)
             return
         init_options = {
-            "serviceArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
-            "serviceName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "serviceArn": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
+            "serviceName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
             "clusterArn": self.init_default_attr,
             "loadBalancers": self.init_default_attr,
             "serviceRegistries": self.init_default_attr,
@@ -66,8 +70,12 @@ class ECSService(AwsObject):
 
     def update_from_raw_response(self, dict_src):
         init_options = {
-            "serviceArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
-            "serviceName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "serviceArn": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
+            "serviceName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
             "clusterArn": self.init_default_attr,
             "loadBalancers": self.init_default_attr,
             "serviceRegistries": self.init_default_attr,
@@ -104,7 +112,9 @@ class ECSService(AwsObject):
 
         if self.load_balancers is not None:
             request["loadBalancers"] = self.load_balancers
-            request["healthCheckGracePeriodSeconds"] = self.health_check_grace_period_seconds
+            request[
+                "healthCheckGracePeriodSeconds"
+            ] = self.health_check_grace_period_seconds
             if self.role_arn is not None:
                 request["role"] = self.role_arn
 
@@ -142,7 +152,9 @@ class ECSService(AwsObject):
         request["deploymentConfiguration"] = self.deployment_configuration
         request["placementStrategy"] = self.placement_strategy
         if self.load_balancers is not None:
-            request["healthCheckGracePeriodSeconds"] = self.health_check_grace_period_seconds
+            request[
+                "healthCheckGracePeriodSeconds"
+            ] = self.health_check_grace_period_seconds
         request["enableExecuteCommand"] = self.enable_execute_command
 
         return request

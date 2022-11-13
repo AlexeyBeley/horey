@@ -9,16 +9,31 @@ from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.common_utils.common_utils import CommonUtils
 
 
-configuration_values_file_full_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "h_logger_configuration_values.py")
-logger = get_logger(configuration_values_file_full_path=configuration_values_file_full_path)
+configuration_values_file_full_path = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "h_logger_configuration_values.py"
+)
+logger = get_logger(
+    configuration_values_file_full_path=configuration_values_file_full_path
+)
 
-accounts_file_full_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "ignore", "aws_api_managed_accounts.py"))
+accounts_file_full_path = os.path.abspath(
+    os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "..",
+        "ignore",
+        "aws_api_managed_accounts.py",
+    )
+)
 
 accounts = CommonUtils.load_object_from_module(accounts_file_full_path, "main")
 AWSAccount.set_aws_account(accounts["1111"])
-AWSAccount.set_aws_region(accounts["1111"].regions['us-west-2'])
+AWSAccount.set_aws_region(accounts["1111"].regions["us-west-2"])
 
-mock_values_file_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "ignore", "mock_values.py"))
+mock_values_file_path = os.path.abspath(
+    os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "..", "ignore", "mock_values.py"
+    )
+)
 mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 
 
@@ -65,7 +80,11 @@ def test_provision_queue_update():
     sqs_queue.maximum_message_size = "262144"
     sqs_queue.message_retention_period = "604800"
     sqs_queue.delay_seconds = "0"
-    sqs_queue.redrive_policy = "{\"deadLetterTargetArn\":\"" + mock_values["dlq_arn"] + "\",\"maxReceiveCount\":1000}"
+    sqs_queue.redrive_policy = (
+        '{"deadLetterTargetArn":"'
+        + mock_values["dlq_arn"]
+        + '","maxReceiveCount":1000}'
+    )
     sqs_queue.tags = {"name": sqs_queue.name}
 
     client.provision_queue(sqs_queue)
@@ -77,4 +96,3 @@ if __name__ == "__main__":
     test_provision_queue_dlq()
     test_provision_queue()
     test_provision_queue_update()
-

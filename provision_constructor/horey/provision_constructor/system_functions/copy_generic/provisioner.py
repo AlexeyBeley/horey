@@ -6,7 +6,9 @@ Copy generic file or folder
 import os
 from horey.provision_constructor.system_function_factory import SystemFunctionFactory
 
-from horey.provision_constructor.system_functions.system_function_common import SystemFunctionCommon
+from horey.provision_constructor.system_functions.system_function_common import (
+    SystemFunctionCommon,
+)
 from horey.h_logger import get_logger
 
 logger = get_logger()
@@ -41,7 +43,9 @@ class Provisioner(SystemFunctionCommon):
         """
 
         if not force and self.test_provisioned():
-            logger.info(f"Skipping copy generic provisioning: from {self.src} to {self.dst}")
+            logger.info(
+                f"Skipping copy generic provisioning: from {self.src} to {self.dst}"
+            )
             return False
 
         self._provision()

@@ -27,11 +27,17 @@ class ManagedPrefixList(AwsObject):
             return
 
         init_options = {
-            "PrefixListId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "PrefixListId": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="id"
+            ),
             "AddressFamily": self.init_default_attr,
             "State": self.init_default_attr,
-            "PrefixListArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
-            "PrefixListName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "PrefixListArn": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
+            "PrefixListName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
             "MaxEntries": self.init_default_attr,
             "Version": self.init_default_attr,
             "Tags": self.init_default_attr,
@@ -124,15 +130,21 @@ class ManagedPrefixList(AwsObject):
         """
 
         request_entries = []
-        self_cidr_descriptions = {entry.cidr: entry.description for entry in self.entries}
+        self_cidr_descriptions = {
+            entry.cidr: entry.description for entry in self.entries
+        }
         for dst_managed_prefix_list_entry in dst_managed_prefix_list.entries:
-            if dst_managed_prefix_list_entry.cidr not in self_cidr_descriptions or \
-                    dst_managed_prefix_list_entry.description != self_cidr_descriptions[
-                dst_managed_prefix_list_entry.cidr]:
-                request_entries.append({
-                    "Cidr": dst_managed_prefix_list_entry.cidr,
-                    "Description": dst_managed_prefix_list_entry.description
-                })
+            if (
+                dst_managed_prefix_list_entry.cidr not in self_cidr_descriptions
+                or dst_managed_prefix_list_entry.description
+                != self_cidr_descriptions[dst_managed_prefix_list_entry.cidr]
+            ):
+                request_entries.append(
+                    {
+                        "Cidr": dst_managed_prefix_list_entry.cidr,
+                        "Description": dst_managed_prefix_list_entry.description,
+                    }
+                )
 
         if len(request_entries) == 0:
             return None
@@ -140,7 +152,7 @@ class ManagedPrefixList(AwsObject):
         request = {
             "CurrentVersion": self.version,
             "PrefixListId": self.id,
-            "AddEntries": request_entries
+            "AddEntries": request_entries,
         }
         return request
 
@@ -158,19 +170,26 @@ class ManagedPrefixList(AwsObject):
         for dst_managed_prefix_list_entry in desired_prefix_list.entries:
             found = False
             for entry in self.entries:
-                if dst_managed_prefix_list_entry.cidr == entry.cidr or dst_managed_prefix_list_entry.description == entry.description:
-                    if dst_managed_prefix_list_entry.cidr != entry.cidr or dst_managed_prefix_list_entry.description != entry.description:
-                        request_entries_remove.append({
-                            "Cidr": entry.cidr
-                        })
+                if (
+                    dst_managed_prefix_list_entry.cidr == entry.cidr
+                    or dst_managed_prefix_list_entry.description == entry.description
+                ):
+                    if (
+                        dst_managed_prefix_list_entry.cidr != entry.cidr
+                        or dst_managed_prefix_list_entry.description
+                        != entry.description
+                    ):
+                        request_entries_remove.append({"Cidr": entry.cidr})
                     else:
                         found = True
 
             if not found:
-                request_entries_add.append({
-                    "Cidr": dst_managed_prefix_list_entry.cidr,
-                    "Description": dst_managed_prefix_list_entry.description
-                })
+                request_entries_add.append(
+                    {
+                        "Cidr": dst_managed_prefix_list_entry.cidr,
+                        "Description": dst_managed_prefix_list_entry.description,
+                    }
+                )
 
         if len(request_entries_add) == 0:
             return None
@@ -179,7 +198,7 @@ class ManagedPrefixList(AwsObject):
             "CurrentVersion": self.version,
             "PrefixListId": self.id,
             "AddEntries": request_entries_add,
-            "RemoveEntries": request_entries_remove
+            "RemoveEntries": request_entries_remove,
         }
         return request
 
@@ -190,13 +209,16 @@ class ManagedPrefixList(AwsObject):
         @return:
         """
 
-        request = {"PrefixListName": self.name, "MaxEntries": self.max_entries, "AddressFamily": self.address_family,
-                   "TagSpecifications": [{
-                       "ResourceType": "prefix-list",
-                       "Tags": self.tags}], "Entries": [{
-                "Cidr": entry.cidr,
-                "Description": entry.description
-            } for entry in self.entries]}
+        request = {
+            "PrefixListName": self.name,
+            "MaxEntries": self.max_entries,
+            "AddressFamily": self.address_family,
+            "TagSpecifications": [{"ResourceType": "prefix-list", "Tags": self.tags}],
+            "Entries": [
+                {"Cidr": entry.cidr, "Description": entry.description}
+                for entry in self.entries
+            ],
+        }
 
         return request
 
@@ -209,11 +231,17 @@ class ManagedPrefixList(AwsObject):
         """
 
         init_options = {
-            "PrefixListId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "PrefixListId": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="id"
+            ),
             "AddressFamily": self.init_default_attr,
             "State": self.init_default_attr,
-            "PrefixListArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
-            "PrefixListName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "PrefixListArn": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
+            "PrefixListName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
             "MaxEntries": self.init_default_attr,
             "Version": self.init_default_attr,
             "Tags": self.init_default_attr,

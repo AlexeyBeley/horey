@@ -2,7 +2,9 @@ import logging
 import pdb
 import datetime
 
-formatter = logging.Formatter("[%(asctime)s] %(levelname)s:%(filename)s:%(lineno)s: %(message)s")
+formatter = logging.Formatter(
+    "[%(asctime)s] %(levelname)s:%(filename)s:%(lineno)s: %(message)s"
+)
 
 
 class MultilineFormatter(logging.Formatter):

@@ -23,8 +23,12 @@ class EC2LaunchTemplateVersion(AwsObject):
             return
 
         init_options = {
-            "LaunchTemplateId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
-            "LaunchTemplateName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "LaunchTemplateId": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="id"
+            ),
+            "LaunchTemplateName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
             "VersionNumber": self.init_default_attr,
             "CreatedBy": self.init_default_attr,
             "DefaultVersion": self.init_default_attr,
@@ -36,8 +40,12 @@ class EC2LaunchTemplateVersion(AwsObject):
 
     def update_from_raw_response(self, dict_src):
         init_options = {
-            "LaunchTemplateId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
-            "LaunchTemplateName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "LaunchTemplateId": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="id"
+            ),
+            "LaunchTemplateName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
             "VersionNumber": self.init_default_attr,
             "CreatedBy": self.init_default_attr,
             "DefaultVersion": self.init_default_attr,
