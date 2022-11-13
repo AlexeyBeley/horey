@@ -43,4 +43,20 @@ restore_e_option
 return "${return_code}"
 }
 
+function retry_3_times_sleep_5_with_timeout_30 () {
+set +e
+for VARIABLE in {1..3}
+do
+  output=$(timeout --kill-after=30 30 "$@" 2>&1)
+  return_code=$?
+  if [ "$return_code" == 0 ]
+  then
+      return 0
+  fi
+  sleep 5s
+  echo "Retry ${VARIABLE}/3"
+done
 
+set -e
+return "${return_code}"
+}

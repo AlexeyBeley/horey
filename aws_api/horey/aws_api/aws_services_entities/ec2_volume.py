@@ -39,7 +39,7 @@ class EC2Volume(AwsObject):
             "MultiAttachEnabled": self.init_default_attr,
         }
 
-        self.init_attrs(dict_src, init_options, raise_on_no_option=True)
+        self.init_attrs(dict_src, init_options)
 
         tag_name = self.get_tagname("Name")
         self.name = tag_name if tag_name else self.id

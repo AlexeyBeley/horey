@@ -358,4 +358,4 @@ class LoadBalancer(AwsObject):
                 "IsDefault": self.init_default_attr,
             }
 
-            self.init_attrs(dict_src, init_options, raise_on_no_option=True)
+            self.init_attrs(dict_src, init_options)

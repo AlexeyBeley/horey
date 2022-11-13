@@ -28,7 +28,7 @@ class SESV2EmailIdentity(AwsObject):
             "SendingEnabled": self.init_default_attr,
         }
 
-        self.init_attrs(dict_src, init_options, raise_on_no_option=True)
+        self.init_attrs(dict_src, init_options)
 
     def _init_object_from_cache(self, dict_src):
         """
@@ -52,7 +52,7 @@ class SESV2EmailIdentity(AwsObject):
             "SendingEnabled": self.init_default_attr,
         }
 
-        self.init_attrs(dict_src, init_options, raise_on_no_option=True)
+        self.init_attrs(dict_src, init_options)
 
     def generate_create_request(self):
         request = dict()
