@@ -117,7 +117,7 @@ class PipAPI:
             if not os.path.exists(os.path.join(self.configuration.venv_dir_path, "bin", "activate")):
                 self.execute(f"python3.8 -m venv {self.configuration.venv_dir_path} --system-site-packages", ignore_venv=True)
                 self.execute("pip3.8 install --upgrade pip")
-                self.execute("pip3.8 install setuptools==45")
+                self.execute("pip3.8 install setuptools>=45")
 
     def init_multi_package_repository(self, repo_path):
         """
@@ -212,21 +212,13 @@ class PipAPI:
         Execute bash command.
 
         :param command:
-        :param ignore_venv:
+        :param ignore_venv: do not run in venv
         :return:
         """
         logger.info(f"executing: '{command}'")
-        file_name = None
         if not ignore_venv and self.configuration is not None and self.configuration.venv_dir_path is not None:
-            file_name = f"tmp-{str(uuid.uuid4())}.sh"
-            with open(file_name, "w", encoding="utf-8") as file_handler:
-                file_handler.write(f"source {os.path.join(self.configuration.venv_dir_path, 'bin/activate')}\n{command}")
-                command = f"/bin/bash {file_name}"
-
+            command = f"source {os.path.join(self.configuration.venv_dir_path, 'bin/activate')} && {command}"
         ret = self.run_bash(command)
-
-        if file_name:
-            os.remove(file_name)
 
         return ret["stdout"]
 
