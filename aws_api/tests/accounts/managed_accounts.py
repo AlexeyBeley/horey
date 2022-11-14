@@ -24,9 +24,18 @@ def main():
     acc_staging.name = "staging_account"
     acc_staging.id = "109876543210"
 
-    cs1 = AWSAccount.ConnectionStep({"profile": "horey_account", "region_mark": "us-east-1"})
-    cs2 = AWSAccount.ConnectionStep({"assume_role": "arn:aws:iam::109876543210:role/sts-management-role"})
-    cs3 = AWSAccount.ConnectionStep({"assume_role": f"arn:aws:iam::{acc_staging.id}:role/sts-ec2-management-role", "external_id": "ABCDE123456"})
+    cs1 = AWSAccount.ConnectionStep(
+        {"profile": "horey_account", "region_mark": "us-east-1"}
+    )
+    cs2 = AWSAccount.ConnectionStep(
+        {"assume_role": "arn:aws:iam::109876543210:role/sts-management-role"}
+    )
+    cs3 = AWSAccount.ConnectionStep(
+        {
+            "assume_role": f"arn:aws:iam::{acc_staging.id}:role/sts-ec2-management-role",
+            "external_id": "ABCDE123456",
+        }
+    )
 
     acc_staging.connection_steps.append(cs1)
     acc_staging.connection_steps.append(cs2)

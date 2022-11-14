@@ -39,18 +39,17 @@ class Bucket(AzureObject):
                 }
             }
         """
-        return [self.resource_group_name,
-                self.name,
-                {"location": self.location,
-                 'disk_size_gb': self.disk_size_gb,
-                 'creation_data': {
-                     'create_option': DiskCreateOption.empty
-                 },
-                 "tags": self.tags
-                 }
-                ]
+        return [
+            self.resource_group_name,
+            self.name,
+            {
+                "location": self.location,
+                "disk_size_gb": self.disk_size_gb,
+                "creation_data": {"create_option": DiskCreateOption.empty},
+                "tags": self.tags,
+            },
+        ]
 
     def update_after_creation(self, disk):
         self.id = disk.id
         self.unique_id = disk.unique_id
-

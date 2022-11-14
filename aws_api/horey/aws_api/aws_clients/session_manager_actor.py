@@ -16,7 +16,12 @@ def set_session_credentials_parser():
     # export AWS_PROFILE=user1d
     description = "Get session credentials"
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument("--profile_name", required=True, type=str, help="profile name in .aws/credentials")
+    parser.add_argument(
+        "--profile_name",
+        required=True,
+        type=str,
+        help="profile name in .aws/credentials",
+    )
 
     return parser
 
@@ -45,7 +50,7 @@ def set_session_credentials(arguments, configs_dict) -> None:
         start_index = contents.index(f"[{arguments.profile_name}]")
 
         try:
-            end_index = contents.index("[", start_index+1)
+            end_index = contents.index("[", start_index + 1)
             tail_string = "\n\n" + contents[end_index:].strip("\n")
         except ValueError:
             tail_string = ""
@@ -58,7 +63,10 @@ def set_session_credentials(arguments, configs_dict) -> None:
         with open("~/.aws/credentials", "a+") as file_handler:
             file_handler.write(ret)
 
-action_manager.register_action("set_session_credentials", set_session_credentials_parser, set_session_credentials)
+
+action_manager.register_action(
+    "set_session_credentials", set_session_credentials_parser, set_session_credentials
+)
 # endregion
 
 

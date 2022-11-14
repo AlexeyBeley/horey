@@ -11,6 +11,7 @@ class VPC(AwsObject):
     """
     AWS VPC class
     """
+
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self.instances = []
@@ -32,7 +33,7 @@ class VPC(AwsObject):
             "IsDefault": self.init_default_attr,
             "Tags": self.init_default_attr,
             "Ipv6CidrBlockAssociationSet": self.init_default_attr,
-                        }
+        }
 
         self.init_attrs(dict_src, init_options)
 
@@ -55,12 +56,10 @@ class VPC(AwsObject):
         Ipv6CidrBlockNetworkBorderGroup='string',
         TagSpecifications=
         )
-       """
+        """
         request = dict()
         request["CidrBlock"] = self.cidr_block
-        request["TagSpecifications"] = [{
-                                        "ResourceType": "vpc",
-                                        "Tags": self.tags}]
+        request["TagSpecifications"] = [{"ResourceType": "vpc", "Tags": self.tags}]
 
         return request
 
@@ -91,7 +90,7 @@ class VPC(AwsObject):
             "IsDefault": self.init_default_attr,
             "Tags": self.init_default_attr,
             "Ipv6CidrBlockAssociationSet": self.init_default_attr,
-                        }
+        }
 
         self.init_attrs(dict_src, init_options)
 
@@ -106,4 +105,7 @@ class VPC(AwsObject):
         raise NotImplementedError()
 
     def get_associated_cidr_ips(self):
-        return [IP(association_set["CidrBlock"]) for association_set in self.cidr_block_association_set]
+        return [
+            IP(association_set["CidrBlock"])
+            for association_set in self.cidr_block_association_set
+        ]

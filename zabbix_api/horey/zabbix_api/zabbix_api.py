@@ -7,14 +7,16 @@ import pdb
 import requests
 import json
 from horey.h_logger import get_logger
-from horey.zabbix_api.zabbix_api_configuration_policy import ZabbixAPIConfigurationPolicy
+from horey.zabbix_api.zabbix_api_configuration_policy import (
+    ZabbixAPIConfigurationPolicy,
+)
 from horey.zabbix_api.host import Host
 
 logger = get_logger()
 
 
 class ZabbixAPIException(Exception):
-    """ generic zabbix api exception
+    """generic zabbix api exception
     code list:
          -32700 - invalid JSON. An error occurred on the server while parsing the JSON text (typo, wrong quotes, etc.)
          -32600 - received JSON is not a valid JSON-RPC Request
@@ -40,14 +42,16 @@ class ZabbixAPI(object):
             self.session = requests.Session()
 
         # Default headers for all requests
-        self.session.headers.update({
-            'Content-Type': 'application/json-rpc',
-            'User-Agent': 'python/pyzabbix',
-            'Cache-Control': 'no-cache'
-        })
+        self.session.headers.update(
+            {
+                "Content-Type": "application/json-rpc",
+                "User-Agent": "python/pyzabbix",
+                "Cache-Control": "no-cache",
+            }
+        )
 
         self.configuration = configuration
-        self.auth = ''
+        self.auth = ""
         self.id = 0
 
         self.timeout = configuration.timeout
@@ -67,15 +71,15 @@ class ZabbixAPI(object):
 
     def login(self):
         """Convenience method for calling user.authenticate and storing the resulting auth token
-           for further commands.
-           If use_authenticate is set, it uses the older (Zabbix 1.8) authentication command
-           :param password: Password used to login into Zabbix
-           :param user: Username used to login into Zabbix
+        for further commands.
+        If use_authenticate is set, it uses the older (Zabbix 1.8) authentication command
+        :param password: Password used to login into Zabbix
+        :param user: Username used to login into Zabbix
         """
 
         # If we have an invalid auth token, we are not allowed to send a login
         # request. Clear it before trying.
-        self.auth = ''
+        self.auth = ""
         if self.configuration.user_authenticate:
             raise NotImplementedError()
             # self.auth = self.user.authenticate(user=user, password=password)
@@ -95,41 +99,43 @@ class ZabbixAPI(object):
             return False
         return True
 
-    def confimport(self, confformat='', source='', rules=''):
+    def confimport(self, confformat="", source="", rules=""):
         """Alias for configuration.import because it clashes with
-           Python's import reserved keyword
-           :param rules:
-           :param source:
-           :param confformat:
+        Python's import reserved keyword
+        :param rules:
+        :param source:
+        :param confformat:
         """
 
         return self.do_request(
             method="configuration.import",
-            params={"format": confformat, "source": source, "rules": rules}
-        )['result']
+            params={"format": confformat, "source": source, "rules": rules},
+        )["result"]
 
     def api_version(self):
         return self.apiinfo.version()
 
     def do_request(self, method, params=None):
         request_json = {
-            'jsonrpc': '2.0',
-            'method': method,
-            'params': params or {},
-            'id': self.id,
+            "jsonrpc": "2.0",
+            "method": method,
+            "params": params or {},
+            "id": self.id,
         }
 
         # We don't have to pass the auth token if asking for the apiinfo.version or user.checkAuthentication
-        if self.auth and method != 'apiinfo.version' and method != 'user.checkAuthentication':
-            request_json['auth'] = self.auth
+        if (
+            self.auth
+            and method != "apiinfo.version"
+            and method != "user.checkAuthentication"
+        ):
+            request_json["auth"] = self.auth
 
-        logger.debug("Sending: %s", json.dumps(request_json,
-                                               indent=4,
-                                               separators=(',', ': ')))
+        logger.debug(
+            "Sending: %s", json.dumps(request_json, indent=4, separators=(",", ": "))
+        )
         response = self.session.post(
-            self.url,
-            data=json.dumps(request_json),
-            timeout=self.timeout
+            self.url, data=json.dumps(request_json), timeout=self.timeout
         )
         logger.debug("Response Code: %s", str(response.status_code))
 
@@ -143,24 +149,27 @@ class ZabbixAPI(object):
         try:
             response_json = json.loads(response.text)
         except ValueError:
-            raise ZabbixAPIException(
-                "Unable to parse json: %s" % response.text
-            )
-        logger.debug("Response Body: %s", json.dumps(response_json,
-                                                     indent=4,
-                                                     separators=(',', ': ')))
+            raise ZabbixAPIException("Unable to parse json: %s" % response.text)
+        logger.debug(
+            "Response Body: %s",
+            json.dumps(response_json, indent=4, separators=(",", ": ")),
+        )
 
         self.id += 1
 
-        if 'error' in response_json:  # some exception
-            if 'data' not in response_json['error']:  # some errors don't contain 'data': workaround for ZBX-9340
-                response_json['error']['data'] = "No data"
-            msg = u"Error {code}: {message}, {data}".format(
-                code=response_json['error']['code'],
-                message=response_json['error']['message'],
-                data=response_json['error']['data']
+        if "error" in response_json:  # some exception
+            if (
+                "data" not in response_json["error"]
+            ):  # some errors don't contain 'data': workaround for ZBX-9340
+                response_json["error"]["data"] = "No data"
+            msg = "Error {code}: {message}, {data}".format(
+                code=response_json["error"]["code"],
+                message=response_json["error"]["message"],
+                data=response_json["error"]["data"],
             )
-            raise ZabbixAPIException(msg, response_json['error']['code'], error=response_json['error'])
+            raise ZabbixAPIException(
+                msg, response_json["error"]["code"], error=response_json["error"]
+            )
 
         return response_json
 
@@ -170,8 +179,19 @@ class ZabbixAPI(object):
 
     def init_hosts(self):
         self.login()
-        host_dicts = self.host.get(selectGroups="extend", selectInterfaces=
-        ["interfaceid", "ip", "type", "main", "useip", "dns", "port"], selectParentTemplates=[ "templateid", "name"])
+        host_dicts = self.host.get(
+            selectGroups="extend",
+            selectInterfaces=[
+                "interfaceid",
+                "ip",
+                "type",
+                "main",
+                "useip",
+                "dns",
+                "port",
+            ],
+            selectParentTemplates=["templateid", "name"],
+        )
 
         self.hosts = [Host(host_dict) for host_dict in host_dicts]
 
@@ -221,13 +241,16 @@ class ZabbixAPI(object):
             response = self.raw_create_host(host.generate_create_request())
         except ZabbixAPIException as exception_instance:
             repr_exception = repr(exception_instance)
-            if f'Host with the same name "{host.host}" already exists' not in repr_exception:
+            if (
+                f'Host with the same name "{host.host}" already exists'
+                not in repr_exception
+            ):
                 raise
             logger.warning(repr_exception)
             host.id = self.get_host_id(host)
             response = self.raw_update_host(host.generate_update_request())
-            #self.delete_host(host)
-            #response = self.raw_create_host(host.generate_create_request())
+            # self.delete_host(host)
+            # response = self.raw_create_host(host.generate_create_request())
 
         return response
 
@@ -245,8 +268,7 @@ class ZabbixAPIObjectClass(object):
                 raise TypeError("Found both args and kwargs")
 
             return self.parent.do_request(
-                '{0}.{1}'.format(self.name, attr),
-                args or kwargs
-            )['result']
+                "{0}.{1}".format(self.name, attr), args or kwargs
+            )["result"]
 
         return fn

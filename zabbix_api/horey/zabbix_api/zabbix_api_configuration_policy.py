@@ -32,10 +32,12 @@ class ZabbixAPIConfigurationPolicy(ConfigurationPolicy):
     @server.setter
     def server(self, value):
         if not isinstance(value, str):
-            raise ValueError(f"server must be string received {value} of type: {type(value)}")
+            raise ValueError(
+                f"server must be string received {value} of type: {type(value)}"
+            )
 
         self._server = value
-        
+
     @property
     def server_address(self):
         if self._server_address is None:
@@ -45,14 +47,19 @@ class ZabbixAPIConfigurationPolicy(ConfigurationPolicy):
     @server_address.setter
     def server_address(self, value):
         if not isinstance(value, str):
-            raise ValueError(f"server_address must be string received {value} of type: {type(value)}")
+            raise ValueError(
+                f"server_address must be string received {value} of type: {type(value)}"
+            )
 
         self._server_address = value
-        
+
     @property
     def url(self):
-        return self.server + '/api_jsonrpc.php' if not self.server.endswith(
-            '/api_jsonrpc.php') else self.server
+        return (
+            self.server + "/api_jsonrpc.php"
+            if not self.server.endswith("/api_jsonrpc.php")
+            else self.server
+        )
 
     @property
     def session(self):

@@ -18,13 +18,17 @@ setup(
     author="Horey",
     author_email="alexey.beley@gmail.com",
     license="DWTFYWTPL",
-    packages=find_namespace_packages(include=["horey.deployer", "horey.deployer.*",
-                                              "horey.deployer.system_functions",
-                                              "horey.deployer.system_functions.*"]),
+    packages=find_namespace_packages(
+        include=[
+            "horey.deployer",
+            "horey.deployer.*",
+            "horey.deployer.system_functions",
+            "horey.deployer.system_functions.*",
+        ]
+    ),
     package_data={
-        "": ["data/*.sh",
-             "system_functions/**/*.sh"
-             ],
+        "": ["data/*.sh", "system_functions/**/*.sh"],
     },
     include_package_data=True,
-    zip_safe=False)
+    zip_safe=False,
+)

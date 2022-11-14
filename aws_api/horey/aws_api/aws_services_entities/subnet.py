@@ -26,7 +26,9 @@ class Subnet(AwsObject):
             return
         init_options = {
             "SubnetId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
-            "SubnetArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "SubnetArn": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
             "AvailabilityZone": self.init_default_attr,
             "AvailabilityZoneId": self.init_default_attr,
             "AvailableIpAddressCount": self.init_default_attr,
@@ -42,7 +44,7 @@ class Subnet(AwsObject):
             "Tags": self.init_default_attr,
             "PrivateDnsNameOptionsOnLaunch": self.init_default_attr,
             "EnableDns64": self.init_default_attr,
-                        }
+        }
 
         self.init_attrs(dict_src, init_options)
 
@@ -72,9 +74,7 @@ class Subnet(AwsObject):
         request["CidrBlock"] = self.cidr_block
         request["AvailabilityZoneId"] = self.availability_zone_id
         request["VpcId"] = self.vpc_id
-        request["TagSpecifications"] = [{
-                                        "ResourceType": "subnet",
-                                        "Tags": self.tags}]
+        request["TagSpecifications"] = [{"ResourceType": "subnet", "Tags": self.tags}]
 
         return request
 
@@ -88,7 +88,9 @@ class Subnet(AwsObject):
 
         init_options = {
             "SubnetId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
-            "SubnetArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "SubnetArn": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
             "AvailabilityZone": self.init_default_attr,
             "AvailabilityZoneId": self.init_default_attr,
             "AvailableIpAddressCount": self.init_default_attr,
@@ -104,7 +106,7 @@ class Subnet(AwsObject):
             "Tags": self.init_default_attr,
             "PrivateDnsNameOptionsOnLaunch": self.init_default_attr,
             "EnableDns64": self.init_default_attr,
-                        }
+        }
 
         self.init_attrs(dict_src, init_options)
 

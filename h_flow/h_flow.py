@@ -7,6 +7,7 @@ class HFlowFilter:
     """
     Filter representation
     """
+
     def __init__(self):
         self.src = self.TunnelEdgeFilter()
         self.dst = self.TunnelEdgeFilter()
@@ -19,6 +20,7 @@ class HFlowFilter:
         """
         Edge filter class
         """
+
         def __init__(self):
             self.ip = None
             self.service = None
@@ -32,6 +34,7 @@ class HFlow:
     """
     Class representing HFlow.
     """
+
     def __init__(self):
         self.tunnel = None
         self.end_point_src = None
@@ -62,14 +65,18 @@ class HFlow:
         """
         lst_ret = []
 
-        for traffic_start, traffic_end in self.tunnel.traffic_start.apply_dst_filter(h_filter):
+        for traffic_start, traffic_end in self.tunnel.traffic_start.apply_dst_filter(
+            h_filter
+        ):
             if traffic_start is None or traffic_end is None:
                 continue
 
             h_flow_ret = HFlow()
             h_flow_ret.end_point_src = self.end_point_src
             h_flow_ret.end_point_dst = self.end_point_dst
-            h_flow_ret.tunnel = HFlow.Tunnel(traffic_start=traffic_start, traffic_end=traffic_end)
+            h_flow_ret.tunnel = HFlow.Tunnel(
+                traffic_start=traffic_start, traffic_end=traffic_end
+            )
             lst_ret.append(h_flow_ret)
 
         return lst_ret
@@ -92,6 +99,7 @@ class HFlow:
         This is abstract object representing hflow next stop.
 
         """
+
         def __init__(self):
             self._ip = None
             self._dns = None
@@ -164,17 +172,21 @@ class HFlow:
         """
         Class representing H_Flow Tunnel
         """
+
         def __init__(self, traffic_start=None, traffic_end=None):
             self.traffic_start = traffic_start
             self.traffic_end = traffic_end
 
         def __str__(self):
-            return "{} ==>\n==> {}".format(str(self.traffic_start), str(self.traffic_end))
+            return "{} ==>\n==> {}".format(
+                str(self.traffic_start), str(self.traffic_end)
+            )
 
         class Traffic:
             """
             Class representing a single traffic flow
             """
+
             ANY = None
 
             def __init__(self):
@@ -188,7 +200,14 @@ class HFlow:
                 self.service_dst = self.any()
 
             def __str__(self):
-                return "[ip:{} , dns:{} , service:{} -> ip:{} , dns:{} , service:{}]".format(self.ip_src, self.dns_src, self.service_src, self.ip_dst, self.dns_dst, self.service_dst)
+                return "[ip:{} , dns:{} , service:{} -> ip:{} , dns:{} , service:{}]".format(
+                    self.ip_src,
+                    self.dns_src,
+                    self.service_src,
+                    self.ip_dst,
+                    self.dns_dst,
+                    self.service_dst,
+                )
 
             def intersect(self, self_end_point, other_end_point):
                 """
@@ -211,7 +230,9 @@ class HFlow:
                 if ip_src_intersect is None:
                     return []
 
-                service_src_intersect = self.intersect(self.service_src, h_filter.service_src)
+                service_src_intersect = self.intersect(
+                    self.service_src, h_filter.service_src
+                )
                 if service_src_intersect is None:
                     return []
 
@@ -219,7 +240,9 @@ class HFlow:
                 if ip_dst_intersect is None:
                     return []
 
-                service_dst_intersect = self.intersect(self.service_dst, h_filter.service_dst)
+                service_dst_intersect = self.intersect(
+                    self.service_dst, h_filter.service_dst
+                )
                 if service_dst_intersect is None:
                     return []
 
@@ -284,6 +307,7 @@ class HFlow:
                 """
                 Class representing singleton ANY
                 """
+
                 def __str__(self):
                     return "any"
 
@@ -326,11 +350,19 @@ class HFlow:
             Readable representation of in
             :return:
             """
-            return "[ip:{} , dns:{} , service:{}]".format(self.traffic_start.ip_src, self.traffic_start.dns_src, self.traffic_start.service_src)
+            return "[ip:{} , dns:{} , service:{}]".format(
+                self.traffic_start.ip_src,
+                self.traffic_start.dns_src,
+                self.traffic_start.service_src,
+            )
 
         def repr_out(self):
             """
             Readable representation of out
             :return:
             """
-            return "[ip:{} , dns:{} , service:{}]".format(self.traffic_start.ip_dst, self.traffic_start.dns_dst, self.traffic_start.service_dst)
+            return "[ip:{} , dns:{} , service:{}]".format(
+                self.traffic_start.ip_dst,
+                self.traffic_start.dns_dst,
+                self.traffic_start.service_dst,
+            )

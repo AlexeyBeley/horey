@@ -20,8 +20,8 @@ setup(
     license="DWTFYWTPL",
     packages=find_namespace_packages(include=["horey.pip_api", "horey.pip_api.*"]),
     package_data={
-        "": ["pip_api/**/*.sh"
-             ],
+        "": ["pip_api/**/*.sh"],
     },
     include_package_data=True,
-    zip_safe=False)
+    zip_safe=False,
+)

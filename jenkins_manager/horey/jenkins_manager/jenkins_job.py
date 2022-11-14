@@ -48,4 +48,3 @@ class JenkinsJob:
     def init_from_cache_dict(self, dict_src):
         for key in self.CACHE_VALUES:
             setattr(self, key, dict_src[key])
-

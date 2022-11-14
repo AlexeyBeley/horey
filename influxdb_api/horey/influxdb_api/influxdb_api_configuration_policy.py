@@ -2,7 +2,6 @@ from horey.configuration_policy.configuration_policy import ConfigurationPolicy
 
 
 class InfluxDBAPIConfigurationPolicy(ConfigurationPolicy):
-
     def __init__(self):
         self._server_address = None
 
@@ -23,6 +22,8 @@ class InfluxDBAPIConfigurationPolicy(ConfigurationPolicy):
         """
 
         if not isinstance(value, str):
-            raise ValueError(f"server_address must be string received {value} of type: {type(value)}")
+            raise ValueError(
+                f"server_address must be string received {value} of type: {type(value)}"
+            )
 
         self._server_address = value

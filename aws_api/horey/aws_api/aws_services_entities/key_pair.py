@@ -10,6 +10,7 @@ class KeyPair(AwsObject):
     """
     AWS AvailabilityZone class
     """
+
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self.instances = []
@@ -23,7 +24,7 @@ class KeyPair(AwsObject):
             "KeyFingerprint": self.init_default_attr,
             "Tags": self.init_default_attr,
             "KeyType": self.init_default_attr,
-                        }
+        }
 
         self.init_attrs(dict_src, init_options)
 
@@ -39,8 +40,6 @@ class KeyPair(AwsObject):
     def generate_create_request(self):
         request = dict()
         request["KeyName"] = self.name
-        request["TagSpecifications"] = [{
-            "ResourceType": "key-pair",
-            "Tags": self.tags}]
+        request["TagSpecifications"] = [{"ResourceType": "key-pair", "Tags": self.tags}]
 
         return request

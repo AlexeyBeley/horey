@@ -10,6 +10,7 @@ class ElasticacheCacheSecurityGroup(AwsObject):
     """
     Elasticache Cluster class
     """
+
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self.instances = []
@@ -19,9 +20,11 @@ class ElasticacheCacheSecurityGroup(AwsObject):
             return
         init_options = {
             "ARN": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
-            "CacheSubnetGroupName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-            "CacheSubnetGroupDescription":  self.init_default_attr,
-            }
+            "CacheSubnetGroupName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
+            "CacheSubnetGroupDescription": self.init_default_attr,
+        }
 
         self.init_attrs(dict_src, init_options)
 

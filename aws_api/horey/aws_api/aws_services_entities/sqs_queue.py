@@ -140,7 +140,9 @@ class SQSQueue(AwsObject):
             attributes["Policy"] = self.policy
 
         if self.receive_message_wait_time_seconds is not None:
-            attributes["ReceiveMessageWaitTimeSeconds"] = self.receive_message_wait_time_seconds
+            attributes[
+                "ReceiveMessageWaitTimeSeconds"
+            ] = self.receive_message_wait_time_seconds
 
         if self.visibility_timeout is not None:
             attributes["VisibilityTimeout"] = self.visibility_timeout
@@ -158,7 +160,9 @@ class SQSQueue(AwsObject):
             attributes["KmsMasterKeyId"] = self.kms_master_key_id
 
         if self.kms_data_key_reuse_period_seconds is not None:
-            attributes["KmsDataKeyReusePeriodSeconds"] = self.kms_data_key_reuse_period_seconds
+            attributes[
+                "KmsDataKeyReusePeriodSeconds"
+            ] = self.kms_data_key_reuse_period_seconds
 
         if self.fifo_queue is not None:
             attributes["FifoQueue"] = self.fifo_queue

@@ -21,7 +21,9 @@ class ECSContainerInstance(AwsObject):
             return
 
         init_options = {
-            "containerInstanceArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "containerInstanceArn": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
             "ec2InstanceId": self.init_default_attr,
             "capacityProviderName": self.init_default_attr,
             "version": self.init_default_attr,
@@ -51,8 +53,7 @@ class ECSContainerInstance(AwsObject):
         self._init_from_cache(dict_src, options)
 
     def update_from_raw_response(self, dict_src):
-        init_options = {
-        }
+        init_options = {}
 
         self.init_attrs(dict_src, init_options)
 

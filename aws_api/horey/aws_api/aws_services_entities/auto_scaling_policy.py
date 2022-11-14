@@ -31,8 +31,12 @@ class AutoScalingPolicy(AwsObject):
             return
 
         init_options = {
-            "PolicyName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-            "PolicyARN": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "PolicyName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
+            "PolicyARN": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
             "AutoScalingGroupName": self.init_default_attr,
             "PolicyType": self.init_default_attr,
             "StepAdjustments": self.init_default_attr,
@@ -45,7 +49,7 @@ class AutoScalingPolicy(AwsObject):
             "Cooldown": self.init_default_attr,
         }
 
-        self.init_attrs(dict_src, init_options, raise_on_no_option=True)
+        self.init_attrs(dict_src, init_options)
 
     def _init_object_from_cache(self, dict_src):
         """
@@ -64,8 +68,12 @@ class AutoScalingPolicy(AwsObject):
         @return:
         """
         init_options = {
-            "PolicyName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-            "PolicyARN": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "PolicyName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
+            "PolicyARN": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
             "AutoScalingGroupName": self.init_default_attr,
             "PolicyType": self.init_default_attr,
             "StepAdjustments": self.init_default_attr,
@@ -85,13 +93,15 @@ class AutoScalingPolicy(AwsObject):
 
         @return:
         """
-        request = {"AutoScalingGroupName": self.auto_scaling_group_name,
-                   "PolicyName": self.name,
-                   "PolicyType": self.policy_type,
-                   "AdjustmentType": self.adjustment_type,
-                   "ScalingAdjustment": self.scaling_adjustment,
-                   "Cooldown": self.cooldown,
-                   "Enabled": self.enabled}
+        request = {
+            "AutoScalingGroupName": self.auto_scaling_group_name,
+            "PolicyName": self.name,
+            "PolicyType": self.policy_type,
+            "AdjustmentType": self.adjustment_type,
+            "ScalingAdjustment": self.scaling_adjustment,
+            "Cooldown": self.cooldown,
+            "Enabled": self.enabled,
+        }
 
         if self.target_tracking_configuration is not None:
             request["TargetTrackingConfiguration"] = self.target_tracking_configuration

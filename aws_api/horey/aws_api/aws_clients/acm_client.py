@@ -8,6 +8,7 @@ from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.aws_services_entities.acm_certificate import ACMCertificate
 
 from horey.h_logger import get_logger
+
 logger = get_logger()
 
 
@@ -40,20 +41,34 @@ class ACMClient(Boto3Client):
     def yield_region_certificates(self, region, full_information=False):
         AWSAccount.set_aws_region(region)
 
-        for dict_src_arn in self.execute(self.client.list_certificates, "CertificateSummaryList"):
-            obj = self.get_certificate(dict_src_arn["CertificateArn"], full_information=full_information)
+        for dict_src_arn in self.execute(
+            self.client.list_certificates, "CertificateSummaryList"
+        ):
+            obj = self.get_certificate(
+                dict_src_arn["CertificateArn"], full_information=full_information
+            )
             yield obj
 
     def get_region_certificates(self, region, full_information=False):
-        return list(self.yield_region_certificates(region, full_information=full_information))
+        return list(
+            self.yield_region_certificates(region, full_information=full_information)
+        )
 
     def update_certificate_full_information(self, cert):
         filters_req = {"CertificateArn": cert.arn}
-        cert.tags = list(self.execute(self.client.list_tags_for_certificate, "Tags", filters_req=filters_req))
+        cert.tags = list(
+            self.execute(
+                self.client.list_tags_for_certificate, "Tags", filters_req=filters_req
+            )
+        )
 
     def get_certificate(self, arn, full_information=False):
         filters_req = {"CertificateArn": arn}
-        certs_dicts = list(self.execute(self.client.describe_certificate, "Certificate", filters_req=filters_req))
+        certs_dicts = list(
+            self.execute(
+                self.client.describe_certificate, "Certificate", filters_req=filters_req
+            )
+        )
 
         if len(certs_dicts) == 0:
             return None
@@ -76,7 +91,9 @@ class ACMClient(Boto3Client):
                 return certificate.arn
 
         AWSAccount.set_aws_region(certificate.region)
-        response_arn = self.provision_certificate_raw(certificate.generate_create_request())
+        response_arn = self.provision_certificate_raw(
+            certificate.generate_create_request()
+        )
         certificate.arn = response_arn
 
         region_certificates = self.get_region_certificates(certificate.region)
@@ -90,23 +107,31 @@ class ACMClient(Boto3Client):
         Returns ARN
         """
         logger.info(f"Creating certificate: {request_dict}")
-        for response in self.execute(self.client.request_certificate, "CertificateArn",
-                                     filters_req=request_dict):
+        for response in self.execute(
+            self.client.request_certificate, "CertificateArn", filters_req=request_dict
+        ):
             return response
 
     def get_certificate_by_tags(self, region, dict_tags, ignore_missing_tag=False):
         ret = []
         for cert in self.yield_region_certificates(region, full_information=True):
             for tag_key, tag_value in dict_tags.items():
-                if cert.get_tag(tag_key, ignore_missing_tag=ignore_missing_tag) != tag_value:
+                if (
+                    cert.get_tag(tag_key, ignore_missing_tag=ignore_missing_tag)
+                    != tag_value
+                ):
                     break
             else:
                 ret.append(cert)
 
         if len(ret) > 1:
-            raise ValueError(f"Found more then 1 certificate in region '{str(region)}' with tags: {dict_tags}")
+            raise ValueError(
+                f"Found more then 1 certificate in region '{str(region)}' with tags: {dict_tags}"
+            )
 
         try:
             return ret[0]
         except IndexError:
-            raise self.ResourceNotFoundError(f"Certificate in region '{str(region)}' with tags: {dict_tags}")
+            raise self.ResourceNotFoundError(
+                f"Certificate in region '{str(region)}' with tags: {dict_tags}"
+            )

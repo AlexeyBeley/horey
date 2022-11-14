@@ -20,5 +20,7 @@ class StorageClient(KubernetesClient):
         request_args = [bucket.name]
         request_kwargs = {"location": self.location}
 
-        self.execute(self.client.create_bucket, args=request_args, kwargs=request_kwargs)
+        self.execute(
+            self.client.create_bucket, args=request_args, kwargs=request_kwargs
+        )
         bucket = self.client.create_bucket(bucket.name)

@@ -13,5 +13,3 @@ class EnvironmentConfigurationPolicy(ConfigurationPolicy):
     @name.setter
     def name(self, value):
         self._name = value
-
-

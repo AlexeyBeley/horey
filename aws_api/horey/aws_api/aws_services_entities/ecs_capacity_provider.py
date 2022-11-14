@@ -20,7 +20,9 @@ class ECSCapacityProvider(AwsObject):
             self._init_object_from_cache(dict_src)
             return
         init_options = {
-            "capacityProviderArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "capacityProviderArn": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
             "status": self.init_default_attr,
             "name": self.init_default_attr,
             "tags": self.init_default_attr,
@@ -42,7 +44,9 @@ class ECSCapacityProvider(AwsObject):
 
     def update_from_raw_response(self, dict_src):
         init_options = {
-            "capacityProviderArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "capacityProviderArn": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
             "status": self.init_default_attr,
             "name": self.init_default_attr,
             "tags": self.init_default_attr,

@@ -21,7 +21,9 @@ class SNSSubscription(AwsObject):
             return
 
         init_options = {
-            "SubscriptionArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "SubscriptionArn": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
             "Owner": self.init_default_attr,
             "Protocol": self.init_default_attr,
             "Endpoint": self.init_default_attr,
@@ -41,7 +43,9 @@ class SNSSubscription(AwsObject):
 
     def update_from_raw_response(self, dict_src):
         init_options = {
-            "SubscriptionArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "SubscriptionArn": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
             "Owner": self.init_default_attr,
             "Protocol": self.init_default_attr,
             "Endpoint": self.init_default_attr,

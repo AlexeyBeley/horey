@@ -7,9 +7,12 @@ import sys
 sys.path.insert(0, "/Users/alexey.beley/private/horey/environment_bootstrap")
 
 from horey.environment_bootstrap.jenkins.jenkins_deployer import JenkinsDeployer
-from horey.environment_bootstrap.jenkins.jenkins_deployer_configuration_policy import JenkinsDeployerConfigurationPolicy
-#from horey.jenkins_manager.jenkins_configuration_policy import JenkinsConfigurationPolicy
-#from horey.jenkins_manager.jenkins_job import JenkinsJob
+from horey.environment_bootstrap.jenkins.jenkins_deployer_configuration_policy import (
+    JenkinsDeployerConfigurationPolicy,
+)
+
+# from horey.jenkins_manager.jenkins_configuration_policy import JenkinsConfigurationPolicy
+# from horey.jenkins_manager.jenkins_job import JenkinsJob
 from horey.common_utils.actions_manager import ActionsManager
 
 action_manager = ActionsManager()
@@ -30,7 +33,9 @@ def deploy_infrastructure(arguments, configs_dict) -> None:
     jenkins_deployer.deploy_infrastructure()
 
 
-action_manager.register_action("deploy_infrastructure", deploy_infrastructure_parser, deploy_infrastructure)
+action_manager.register_action(
+    "deploy_infrastructure", deploy_infrastructure_parser, deploy_infrastructure
+)
 # endregion
 
 

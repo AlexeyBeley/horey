@@ -8,6 +8,7 @@ class DNSMapNode:
     """
     Class representing dns map node.
     """
+
     POINTER = "pointer"
     RESOURCE = "res"
 
@@ -24,6 +25,7 @@ class DNSMap:
     """
     DNS map class
     """
+
     def __init__(self, hosted_zones):
         self.nodes = {}
         self.hosted_zones = hosted_zones
@@ -99,7 +101,9 @@ class DNSMap:
         dict_types = self.split_records_by_type()
         self.prepare_map_add_atype_records(dict_types)
 
-        left_dns_records = [x for x in dict_types["CNAME"]] + [x for x in dict_types["A"] if hasattr(x, "alias_target")]
+        left_dns_records = [x for x in dict_types["CNAME"]] + [
+            x for x in dict_types["A"] if hasattr(x, "alias_target")
+        ]
         if "SRV" in dict_types:
             left_dns_records += [x for x in dict_types["SRV"]]
         self.unmapped_records = self.recursive_prepare_map(left_dns_records)
@@ -127,7 +131,10 @@ class DNSMap:
             if not hasattr(record, "resource_records"):
                 raise Exception()
 
-            pointed_dnss = [rr["Value"].rsplit(" ", 1)[-1].rstrip(".") for rr in record.resource_records]
+            pointed_dnss = [
+                rr["Value"].rsplit(" ", 1)[-1].rstrip(".")
+                for rr in record.resource_records
+            ]
         else:
             raise NotImplementedError("Replacement of pdb.set_trace")
 

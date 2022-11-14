@@ -6,7 +6,9 @@ from horey.azure_api.azure_service_entities.load_balancer import LoadBalancer
 from horey.azure_api.azure_service_entities.nat_gateway import NatGateway
 from horey.azure_api.azure_service_entities.network_interface import NetworkInterface
 from horey.azure_api.azure_service_entities.public_ip_address import PublicIpAddress
-from horey.azure_api.azure_service_entities.network_security_group import NetworkSecurityGroup
+from horey.azure_api.azure_service_entities.network_security_group import (
+    NetworkSecurityGroup,
+)
 from horey.azure_api.azure_service_entities.virtual_network import VirtualNetwork
 
 from horey.h_logger import get_logger
@@ -68,14 +70,22 @@ class NetworkClient(AzureClient):
         return response.result()
 
     def raw_delete_load_balancer(self, obj_repr):
-        logger.info(f"Begin load balancer deletion: '{obj_repr.resource_group_name} {obj_repr.name}'")
-        response = self.client.load_balancers.begin_delete(obj_repr.resource_group_name, obj_repr.name)
+        logger.info(
+            f"Begin load balancer deletion: '{obj_repr.resource_group_name} {obj_repr.name}'"
+        )
+        response = self.client.load_balancers.begin_delete(
+            obj_repr.resource_group_name, obj_repr.name
+        )
         response.wait()
         return response.status() == "Succeeded"
 
     def raw_delete_network_interface(self, obj_repr):
-        logger.info(f"Begin network interface deletion: '{obj_repr.resource_group_name} {obj_repr.name}'")
-        response = self.client.network_interfaces.begin_delete(obj_repr.resource_group_name, obj_repr.name)
+        logger.info(
+            f"Begin network interface deletion: '{obj_repr.resource_group_name} {obj_repr.name}'"
+        )
+        response = self.client.network_interfaces.begin_delete(
+            obj_repr.resource_group_name, obj_repr.name
+        )
         response.wait()
         return response.status() == "Succeeded"
 
@@ -83,28 +93,50 @@ class NetworkClient(AzureClient):
         """
         #nsg = network_client.network_security_groups.begin_create_or_update(resource_group_name, "testnsg", parameters=nsg_params)
         """
-        logger.info(f"Begin network security group creation: '{lst_args[0]} {lst_args[1]}'")
+        logger.info(
+            f"Begin network security group creation: '{lst_args[0]} {lst_args[1]}'"
+        )
         response = self.client.network_security_groups.begin_create_or_update(*lst_args)
         response.wait()
         return response.result()
 
     def get_all_load_balancers(self, resource_group):
-        return [LoadBalancer(obj.as_dict()) for obj in self.client.load_balancers.list(resource_group.name)]
+        return [
+            LoadBalancer(obj.as_dict())
+            for obj in self.client.load_balancers.list(resource_group.name)
+        ]
 
     def get_all_nat_gateways(self, resource_group, resource_group_name=None):
         if resource_group_name is None:
             resource_group_name = resource_group.name
 
-        return [NatGateway(obj.as_dict()) for obj in self.client.nat_gateways.list(resource_group_name)]
+        return [
+            NatGateway(obj.as_dict())
+            for obj in self.client.nat_gateways.list(resource_group_name)
+        ]
 
     def get_all_network_interfaces(self, resource_group):
-        return [NetworkInterface(obj.as_dict()) for obj in self.client.network_interfaces.list(resource_group.name)]
+        return [
+            NetworkInterface(obj.as_dict())
+            for obj in self.client.network_interfaces.list(resource_group.name)
+        ]
 
     def get_all_public_ip_addresses(self, resource_group):
-        return [PublicIpAddress(obj.as_dict()) for obj in self.client.public_ip_addresses.list(resource_group.name)]
+        return [
+            PublicIpAddress(obj.as_dict())
+            for obj in self.client.public_ip_addresses.list(resource_group.name)
+        ]
 
     def get_all_network_security_groups(self, network_resource_group):
-        return [NetworkSecurityGroup(obj.as_dict()) for obj in self.client.network_security_groups.list(network_resource_group.name)]
+        return [
+            NetworkSecurityGroup(obj.as_dict())
+            for obj in self.client.network_security_groups.list(
+                network_resource_group.name
+            )
+        ]
 
     def get_all_virtual_networks(self, resource_group):
-        return [VirtualNetwork(obj.as_dict()) for obj in self.client.virtual_networks.list(resource_group.name)]
+        return [
+            VirtualNetwork(obj.as_dict())
+            for obj in self.client.virtual_networks.list(resource_group.name)
+        ]

@@ -27,7 +27,9 @@ class DynamoDBTable(AwsObject):
 
         init_options = {
             "TableArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
-            "TableName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "TableName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
             "TableId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
             "TableStatus": self.init_default_attr,
             "AttributeDefinitions": self.init_default_attr,
@@ -43,7 +45,7 @@ class DynamoDBTable(AwsObject):
             "BillingModeSummary": self.init_default_attr,
         }
 
-        self.init_attrs(dict_src, init_options, raise_on_no_option=True)
+        self.init_attrs(dict_src, init_options)
 
     def _init_object_from_cache(self, dict_src):
         """
@@ -57,7 +59,9 @@ class DynamoDBTable(AwsObject):
     def update_from_raw_response(self, dict_src):
         init_options = {
             "TableArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
-            "TableName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "TableName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
             "TableId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
             "TableStatus": self.init_default_attr,
             "AttributeDefinitions": self.init_default_attr,
@@ -73,7 +77,7 @@ class DynamoDBTable(AwsObject):
             "BillingModeSummary": self.init_default_attr,
         }
 
-        self.init_attrs(dict_src, init_options, raise_on_no_option=True)
+        self.init_attrs(dict_src, init_options)
 
     def generate_create_request(self):
         request = dict()

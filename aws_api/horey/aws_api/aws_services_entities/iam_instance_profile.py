@@ -25,14 +25,18 @@ class IamInstanceProfile(AwsObject):
 
         init_options = {
             "Path": self.init_default_attr,
-            "InstanceProfileName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-            "InstanceProfileId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "InstanceProfileName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
+            "InstanceProfileId": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="id"
+            ),
             "Arn": self.init_default_attr,
             "CreateDate": self.init_default_attr,
             "Roles": self.init_default_attr,
             "Tags": self.init_default_attr,
         }
-        self.init_attrs(dict_src, init_options, raise_on_no_option=True)
+        self.init_attrs(dict_src, init_options)
 
     def _init_instance_profile_from_cache(self, dict_src):
         """
@@ -51,23 +55,26 @@ class IamInstanceProfile(AwsObject):
         :return:
         """
 
-        init_options = {
-            "MaxSessionDuration": self.init_default_attr}
+        init_options = {"MaxSessionDuration": self.init_default_attr}
 
         self.init_attrs(dict_src, init_options)
 
     def update_from_raw_response(self, dict_src):
         init_options = {
             "Path": self.init_default_attr,
-            "InstanceProfileName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-            "InstanceProfileId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "InstanceProfileName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
+            "InstanceProfileId": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="id"
+            ),
             "Arn": self.init_default_attr,
             "CreateDate": self.init_default_attr,
             "Roles": self.init_default_attr,
             "Tags": self.init_default_attr,
         }
 
-        self.init_attrs(dict_src, init_options, raise_on_no_option=True)
+        self.init_attrs(dict_src, init_options)
 
     def generate_create_request(self):
         request = dict()
@@ -78,8 +85,6 @@ class IamInstanceProfile(AwsObject):
 
     def generate_add_role_requests(self):
         return [
-            {
-                "InstanceProfileName": self.name,
-                "RoleName": role["RoleName"]
-            }
-            for role in self.roles]
+            {"InstanceProfileName": self.name, "RoleName": role["RoleName"]}
+            for role in self.roles
+        ]

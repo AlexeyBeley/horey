@@ -8,6 +8,7 @@ from horey.aws_api.base_entities.region import Region
 
 # pylint: disable=too-many-instance-attributes
 
+
 class RDSDBCluster(AwsObject):
     """
     Class representing RDS DB instance
@@ -49,8 +50,12 @@ class RDSDBCluster(AwsObject):
             return
 
         init_options = {
-            "DBClusterIdentifier": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
-            "DBClusterArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "DBClusterIdentifier": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="id"
+            ),
+            "DBClusterArn": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
             "AllocatedStorage": self.init_default_attr,
             "AvailabilityZones": self.init_default_attr,
             "BackupRetentionPeriod": self.init_default_attr,
@@ -111,8 +116,12 @@ class RDSDBCluster(AwsObject):
         @return:
         """
         init_options = {
-            "DBClusterIdentifier": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
-            "DBClusterArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "DBClusterIdentifier": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="id"
+            ),
+            "DBClusterArn": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
             "AllocatedStorage": self.init_default_attr,
             "AvailabilityZones": self.init_default_attr,
             "BackupRetentionPeriod": self.init_default_attr,
@@ -169,7 +178,9 @@ class RDSDBCluster(AwsObject):
             request["DBSubnetGroupName"] = self.db_subnet_group_name
 
         if self.db_cluster_parameter_group_name:
-            request["DBClusterParameterGroupName"] = self.db_cluster_parameter_group_name
+            request[
+                "DBClusterParameterGroupName"
+            ] = self.db_cluster_parameter_group_name
 
         request["BackupRetentionPeriod"] = self.backup_retention_period
         request["DatabaseName"] = self.database_name
@@ -205,8 +216,10 @@ class RDSDBCluster(AwsObject):
 
         @return:
         """
-        request = {"DBClusterIdentifier": self.id,
-                   "SkipFinalSnapshot": self.skip_final_snapshot}
+        request = {
+            "DBClusterIdentifier": self.id,
+            "SkipFinalSnapshot": self.skip_final_snapshot,
+        }
         return request
 
     def generate_modify_request(self):
@@ -215,9 +228,11 @@ class RDSDBCluster(AwsObject):
 
         @return:
         """
-        request = {"DBClusterIdentifier": self.id,
-                   "MasterUserPassword": self.master_user_password,
-                   "ApplyImmediately": True}
+        request = {
+            "DBClusterIdentifier": self.id,
+            "MasterUserPassword": self.master_user_password,
+            "ApplyImmediately": True,
+        }
         return request
 
     def generate_restore_db_cluster_from_snapshot_request(self, snapshot_id):
@@ -235,7 +250,9 @@ class RDSDBCluster(AwsObject):
             request["DBSubnetGroupName"] = self.db_subnet_group_name
 
         if self.db_cluster_parameter_group_name:
-            request["DBClusterParameterGroupName"] = self.db_cluster_parameter_group_name
+            request[
+                "DBClusterParameterGroupName"
+            ] = self.db_cluster_parameter_group_name
 
         request["SnapshotIdentifier"] = snapshot_id
         request["DBClusterIdentifier"] = self.id
@@ -292,7 +309,10 @@ class RDSDBCluster(AwsObject):
 
         @return:
         """
-        return {enum_value.value: enum_value for _, enum_value in self.Status.__members__.items()}[self.status]
+        return {
+            enum_value.value: enum_value
+            for _, enum_value in self.Status.__members__.items()
+        }[self.status]
 
     class Status(Enum):
         """
@@ -317,6 +337,7 @@ class RDSDBCluster(AwsObject):
         "storage-optimization"
         "upgrading"
         """
+
         AVAILABLE = "available"
         CREATING = "creating"
         DELETING = "deleting"

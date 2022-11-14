@@ -9,6 +9,7 @@ import zipfile
 
 from horey.h_logger import get_logger
 from horey.pip_api.pip_api import PipAPI
+from horey.pip_api.pip_api_configuration_policy import PipAPIConfigurationPolicy
 
 logger = get_logger()
 
@@ -18,6 +19,7 @@ class Packer:
     Serverless packer - used to pack the lambdas.
 
     """
+
     def __init__(self):
         pass
 
@@ -90,9 +92,14 @@ class Packer:
         """
 
         if not os.path.isfile(requirements_file_path):
-            raise RuntimeError(f"Requirements file does not exist: {requirements_file_path}")
+            raise RuntimeError(
+                f"Requirements file does not exist: {requirements_file_path}"
+            )
 
-        pip_api = PipAPI(venv_dir_path=venv_path, horey_repo_path=horey_repo_path)
+        configuration = PipAPIConfigurationPolicy()
+        configuration.multi_package_repositories = [horey_repo_path]
+        configuration.venv_dir_path = venv_path
+        pip_api = PipAPI(configuration=configuration)
         pip_api.install_requirements(requirements_file_path)
 
     def uninstall_packages(self, venv_path, packages):
@@ -142,7 +149,7 @@ class Packer:
 
     def zip_venv_site_packages(self, zip_file_name, venv_dir_path, python_version):
         """
-        Make a zip from pythons' global site puckages.
+        Make a zip from pythons' global site packages.
 
         @param zip_file_name:
         @param venv_dir_path:
@@ -154,7 +161,7 @@ class Packer:
             zip_file_name = zip_file_name[:-4]
 
         package_dir = self.get_site_packages_directory(venv_dir_path, python_version)
-        shutil.make_archive(zip_file_name, 'zip', root_dir=package_dir)
+        shutil.make_archive(zip_file_name, "zip", root_dir=package_dir)
 
     @staticmethod
     def add_files_to_zip(zip_file_name, files_paths):
@@ -239,7 +246,9 @@ class Packer:
             raise RuntimeError(f"{process.stdout}\n{process.stderr}")
         return process
 
-    def copy_venv_site_packages_to_dir(self, dst_dir_path, venv_dir_path, python_version):
+    def copy_venv_site_packages_to_dir(
+        self, dst_dir_path, venv_dir_path, python_version
+    ):
         """
         Copy installed venv packages to the folder to be used for lambda creation.
 

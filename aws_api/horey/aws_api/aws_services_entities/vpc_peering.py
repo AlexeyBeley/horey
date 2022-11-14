@@ -11,6 +11,7 @@ class VPCPeering(AwsObject):
     """
     AWS AvailabilityZone class
     """
+
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self.instances = []
@@ -19,13 +20,15 @@ class VPCPeering(AwsObject):
             self._init_object_from_cache(dict_src)
             return
         init_options = {
-            "VpcPeeringConnectionId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "VpcPeeringConnectionId": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="id"
+            ),
             "AccepterVpcInfo": self.init_default_attr,
             "RequesterVpcInfo": self.init_default_attr,
             "Status": self.init_default_attr,
             "Tags": self.init_default_attr,
             "ExpirationTime": self.init_default_attr,
-                        }
+        }
 
         self.init_attrs(dict_src, init_options)
 
@@ -48,9 +51,9 @@ class VPCPeering(AwsObject):
         request["PeerVpcId"] = self.peer_vpc_id
         request["VpcId"] = self.vpc_id
         request["PeerRegion"] = self.peer_region
-        request["TagSpecifications"] = [{
-            "ResourceType": "vpc-peering-connection",
-            "Tags": self.tags}]
+        request["TagSpecifications"] = [
+            {"ResourceType": "vpc-peering-connection", "Tags": self.tags}
+        ]
 
         return request
 
@@ -67,19 +70,20 @@ class VPCPeering(AwsObject):
 
     def update_from_raw_response(self, dict_src):
         init_options = {
-            "VpcPeeringConnectionId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "VpcPeeringConnectionId": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="id"
+            ),
             "AccepterVpcInfo": self.init_default_attr,
             "RequesterVpcInfo": self.init_default_attr,
             "Status": self.init_default_attr,
             "Tags": self.init_default_attr,
             "ExpirationTime": self.init_default_attr,
-                        }
+        }
 
         self.init_attrs(dict_src, init_options)
 
     def get_status(self):
-        """
-        """
+        """ """
         if self.status["Code"] == "initiating-request":
             return self.Status.INITIATING_REQUEST
         elif self.status["Code"] == "pending-acceptance":
@@ -111,4 +115,3 @@ class VPCPeering(AwsObject):
         EXPIRED = 6
         PROVISIONING = 7
         DELETING = 8
-

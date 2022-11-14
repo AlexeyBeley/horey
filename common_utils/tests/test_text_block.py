@@ -37,4 +37,3 @@ def test_text_block_format_pprint():
 
 if __name__ == "__main__":
     test_text_block_format_pprint()
-

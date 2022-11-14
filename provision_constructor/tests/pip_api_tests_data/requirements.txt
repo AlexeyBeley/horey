@@ -1,0 +1,5 @@
+horey.h_logger>=1.0.0
+horey.configuration_policy>=1.0.0
+horey.jenkins_manager>=1.0.0
+horey.gitlab_api>=1.0.0
+horey.docker_api>=1.0.0

@@ -65,11 +65,14 @@ class CloudfrontDistribution(AwsObject):
 
     def generate_create_request_with_tags(self):
         request = dict()
-        request["DistributionConfigWithTags"] = {"DistributionConfig": self.distribution_config,
-                                                 "Tags": self.tags
-                                                 }
+        request["DistributionConfigWithTags"] = {
+            "DistributionConfig": self.distribution_config,
+            "Tags": self.tags,
+        }
 
-        request["DistributionConfigWithTags"]["DistributionConfig"]["CallerReference"] = str(datetime.datetime.now())
+        request["DistributionConfigWithTags"]["DistributionConfig"][
+            "CallerReference"
+        ] = str(datetime.datetime.now())
         return request
 
     def get_tag(self, key, ignore_missing_tag=False):
@@ -79,11 +82,15 @@ class CloudfrontDistribution(AwsObject):
             raise RuntimeError("No tags associated")
         for tag in self.tags["Items"]:
             tag_key_value = tag.get("Key")
-            tag_key_value = tag_key_value if tag_key_value is not None else tag.get("key")
+            tag_key_value = (
+                tag_key_value if tag_key_value is not None else tag.get("key")
+            )
 
             if tag_key_value.lower() == key:
                 tag_value_value = tag.get("Value")
-                return tag_value_value if tag_value_value is not None else tag.get("value")
+                return (
+                    tag_value_value if tag_value_value is not None else tag.get("value")
+                )
 
         if ignore_missing_tag:
             return None
@@ -122,13 +129,11 @@ class CloudfrontDistribution(AwsObject):
         self.init_attrs(dict_src, init_options)
 
     def generate_create_invalidation(self, paths):
-        dict_ret = {"DistributionId": self.id,
-                    "InvalidationBatch": {
-                        "Paths": {
-                            "Quantity": len(paths),
-                            "Items": paths
-                        },
-                        "CallerReference": str(datetime.datetime.now())
-                    }
-                    }
+        dict_ret = {
+            "DistributionId": self.id,
+            "InvalidationBatch": {
+                "Paths": {"Quantity": len(paths), "Items": paths},
+                "CallerReference": str(datetime.datetime.now()),
+            },
+        }
         return dict_ret

@@ -7,6 +7,7 @@ from horey.aws_api.aws_services_entities.aws_object import AwsObject
 from horey.aws_api.base_entities.region import Region
 from enum import Enum
 
+
 class ECSCluster(AwsObject):
     """
     AWS VPC class
@@ -23,8 +24,12 @@ class ECSCluster(AwsObject):
             return
 
         init_options = {
-            "clusterArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
-            "clusterName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "clusterArn": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
+            "clusterName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
             "status": self.init_default_attr,
             "registeredContainerInstancesCount": self.init_default_attr,
             "runningTasksCount": self.init_default_attr,
@@ -52,8 +57,12 @@ class ECSCluster(AwsObject):
 
     def update_from_raw_response(self, dict_src):
         init_options = {
-            "clusterArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
-            "clusterName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "clusterArn": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
+            "clusterName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
             "status": self.init_default_attr,
             "registeredContainerInstancesCount": self.init_default_attr,
             "runningTasksCount": self.init_default_attr,
@@ -79,7 +88,9 @@ class ECSCluster(AwsObject):
         if self.capacity_providers is not None:
             request["capacityProviders"] = self.capacity_providers
         if self.default_capacity_provider_strategy is not None:
-            request["defaultCapacityProviderStrategy"] = self.default_capacity_provider_strategy
+            request[
+                "defaultCapacityProviderStrategy"
+            ] = self.default_capacity_provider_strategy
 
         return request
 
@@ -87,8 +98,12 @@ class ECSCluster(AwsObject):
         raise NotImplementedError()
         pdb.set_trace()
         init_options = {
-            "ECSClusterId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
-            "ECSClusterArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "ECSClusterId": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="id"
+            ),
+            "ECSClusterArn": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
             "AvailabilityZone": self.init_default_attr,
             "AvailabilityZoneId": self.init_default_attr,
             "AvailableIpAddressCount": self.init_default_attr,

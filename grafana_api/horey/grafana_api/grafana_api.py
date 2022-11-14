@@ -7,7 +7,9 @@ import pdb
 
 import requests
 from horey.h_logger import get_logger
-from horey.grafana_api.grafana_api_configuration_policy import GrafanaAPIConfigurationPolicy
+from horey.grafana_api.grafana_api_configuration_policy import (
+    GrafanaAPIConfigurationPolicy,
+)
 from horey.grafana_api.dashboard import Dashboard
 from horey.grafana_api.data_source import DataSource
 
@@ -21,6 +23,7 @@ class GrafanaAPI:
     """
     API to work with Grafana 8 API
     """
+
     def __init__(self, configuration: GrafanaAPIConfigurationPolicy = None):
         self.dashboards = []
         self.folders = []
@@ -45,13 +48,10 @@ class GrafanaAPI:
         if self.token is not None:
             headers["Authorization"] = f"Bearer {self.token}"
 
-        response = requests.get(
-            request,
-            headers=headers
-        )
+        response = requests.get(request, headers=headers)
         if response.status_code != 200:
             raise RuntimeError(
-                f'Request to grafana api returned an error {response.status_code}, the response is:\n{response.text}'
+                f"Request to grafana api returned an error {response.status_code}, the response is:\n{response.text}"
             )
         return response.json()
 
@@ -67,13 +67,11 @@ class GrafanaAPI:
         if self.token is not None:
             headers["Authorization"] = f"Bearer {self.token}"
 
-        response = requests.post(
-            request, data=json.dumps(data),
-            headers=headers)
+        response = requests.post(request, data=json.dumps(data), headers=headers)
 
         if response.status_code != 200:
             raise RuntimeError(
-                f'Request to grafana api returned an error {response.status_code}, the response is:\n{response.text}'
+                f"Request to grafana api returned an error {response.status_code}, the response is:\n{response.text}"
             )
         return response.json()
 
@@ -89,13 +87,11 @@ class GrafanaAPI:
         if self.token is not None:
             headers["Authorization"] = f"Bearer {self.token}"
 
-        response = requests.put(
-            request, data=json.dumps(data),
-            headers=headers)
+        response = requests.put(request, data=json.dumps(data), headers=headers)
 
         if response.status_code != 200:
             raise RuntimeError(
-                f'Request to grafana api returned an error {response.status_code}, the response is:\n{response.text}'
+                f"Request to grafana api returned an error {response.status_code}, the response is:\n{response.text}"
             )
         return response.json()
 
@@ -111,13 +107,10 @@ class GrafanaAPI:
         if self.token is not None:
             headers["Authorization"] = f"Bearer {self.token}"
 
-        response = requests.delete(
-            request,
-            headers=headers
-        )
+        response = requests.delete(request, headers=headers)
         if response.status_code != 200:
             raise RuntimeError(
-                f'Request to grafana api returned an error {response.status_code}, the response is:\n{response.text}'
+                f"Request to grafana api returned an error {response.status_code}, the response is:\n{response.text}"
             )
         return response.json()
 
@@ -152,7 +145,9 @@ class GrafanaAPI:
                 logger.info(f"Found user {user} in organisation: {response}")
                 return
 
-        response = self.post(f"/orgs/{org_id}/users", {"loginOrEmail": user, "role": "Admin"})
+        response = self.post(
+            f"/orgs/{org_id}/users", {"loginOrEmail": user, "role": "Admin"}
+        )
         logger.info(f"Added user {user} to organisation: {response}")
 
     def generate_token(self, configuration):
@@ -162,7 +157,9 @@ class GrafanaAPI:
         @param configuration:
         @return:
         """
-        self.base_address = self.base_address.replace("//", f"//{configuration.user}:{configuration.password}@")
+        self.base_address = self.base_address.replace(
+            "//", f"//{configuration.user}:{configuration.password}@"
+        )
 
         org_id = "1"
         response = self.post(f"/user/using/{org_id}", {})
@@ -274,8 +271,12 @@ class GrafanaAPI:
         try:
             self.post("datasources", datasource.generate_create_request())
         except Exception as exception_instance:
-            if "data source with the same name already exists" in repr(exception_instance):
-                self.put(f"datasources/{datasource.id}", datasource.generate_create_request())
+            if "data source with the same name already exists" in repr(
+                exception_instance
+            ):
+                self.put(
+                    f"datasources/{datasource.id}", datasource.generate_create_request()
+                )
 
     @staticmethod
     def get_next_refid(ref_id):
@@ -290,4 +291,4 @@ class GrafanaAPI:
         if ref_id == "Z":
             raise NotImplementedError()
 
-        return chr(ord(ref_id)+1)
+        return chr(ord(ref_id) + 1)

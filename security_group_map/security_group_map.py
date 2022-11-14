@@ -12,6 +12,7 @@ class SecurityGroupMapEdge:
     """
     Class representing Edge.
     """
+
     # pylint: disable=R0913
     def __init__(self, edge_type, value, ip_protocol, from_port, to_port, description):
         self.type = edge_type
@@ -24,7 +25,14 @@ class SecurityGroupMapEdge:
 
     def __str__(self):
         return "SecurityGroupMapEdge: {} {} {} {} {} {} {}".format(
-            self.type, self.dst, self.ip_protocol, self.from_port, self.to_port, self.description, self._service)
+            self.type,
+            self.dst,
+            self.ip_protocol,
+            self.from_port,
+            self.to_port,
+            self.description,
+            self._service,
+        )
 
     @property
     def service(self):
@@ -51,7 +59,7 @@ class SecurityGroupMapEdge:
 
     class Type(Enum):
         """
-            Possible Security group values
+        Possible Security group values
         """
 
         SECURITY_GROUP = 0
@@ -62,6 +70,7 @@ class SecurityGroupMapNode:
     """
     Class representing a node
     """
+
     def __init__(self, security_group):
         self.security_group = security_group
         self.outgoing_edges = []
@@ -149,7 +158,9 @@ class SecurityGroupMapNode:
         edge_type = SecurityGroupMapEdge.Type.SECURITY_GROUP
         for dict_pair in permission.user_id_group_pairs:
             description = dict_pair["GroupName"] if "GroupName" in dict_pair else None
-            description = dict_pair["Description"] if "Description" in dict_pair else description
+            description = (
+                dict_pair["Description"] if "Description" in dict_pair else description
+            )
             for key in dict_pair:
                 if key not in ["Description", "GroupId", "UserId", "GroupName"]:
                     raise Exception(key)
@@ -163,10 +174,16 @@ class SecurityGroupMapNode:
             lst_ret.append((edge_type, addr.ip, addr.description))
 
         for edge_type, value, description in lst_ret:
-            ip_protocol = permission.ip_protocol if hasattr(permission, "ip_protocol") else None
-            from_port = permission.from_port if hasattr(permission, "from_port") else None
+            ip_protocol = (
+                permission.ip_protocol if hasattr(permission, "ip_protocol") else None
+            )
+            from_port = (
+                permission.from_port if hasattr(permission, "from_port") else None
+            )
             to_port = permission.to_port if hasattr(permission, "to_port") else None
-            edge = SecurityGroupMapEdge(edge_type, value, ip_protocol, from_port, to_port, description)
+            edge = SecurityGroupMapEdge(
+                edge_type, value, ip_protocol, from_port, to_port, description
+            )
             dst_lst.append(edge)
 
         if permission.prefix_list_ids:
@@ -185,6 +202,7 @@ class SecurityGroupsMap:
     """
     Class representing the map
     """
+
     def __init__(self):
         self.nodes = {}
 
@@ -249,5 +267,7 @@ class SecurityGroupsMap:
                 lst_path.append(edge.dst)
                 return lst_path
             if edge.type == SecurityGroupMapEdge.Type.SECURITY_GROUP:
-                return self.recursive_apply_dst_h_flow_filters_multihop(self.nodes[edge.dst], lst_path, [])
+                return self.recursive_apply_dst_h_flow_filters_multihop(
+                    self.nodes[edge.dst], lst_path, []
+                )
             raise NotImplementedError("Replacement of pdb.set_trace")

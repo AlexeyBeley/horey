@@ -8,7 +8,7 @@ class RemoteDeployerConfigurationPolicy(ConfigurationPolicy):
 
     @property
     def cleanup(self):
-        if self._cleanup is None :
+        if self._cleanup is None:
             raise ValueError("Cleanup not set")
         return self._cleanup
 

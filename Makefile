@@ -26,8 +26,8 @@ create_build_env:
 init_venv_dir: create_build_env
 	python3.8 -m venv ${VENV_DIR} &&\
 	source ${VENV_DIR}/bin/activate &&\
-	pip3 install --upgrade pip &&\
-	pip3 install -U setuptools
+	pip3.8 install --upgrade pip &&\
+	pip3.8 install -U setuptools~=54.1.2
 
 prepare_package_wheel-%: init_venv_dir
 	${BUILD_DIR}/create_wheel.sh $(subst prepare_package_wheel-,,$@)
@@ -54,7 +54,7 @@ recursive_install_from_source-%: create_build_env
 
 install_pylint: init_venv_dir
 	source ${VENV_DIR}/bin/activate &&\
-	pip3 install pylint
+	pip3.8 install pylint
 
 pylint: install_pylint pylint_raw
 pylint_raw:
@@ -104,3 +104,12 @@ unzip_env:
 
 deploy_client_hooks:
 	cp ${BUILD_DIR}/pre-commit ${ROOT_DIR}/.git/hooks/pre-commit
+
+install_black: init_venv_dir
+	source ${VENV_DIR}/bin/activate &&\
+	pip3.8 install black
+
+black: install_black black_raw
+black_raw:
+	source ${VENV_DIR}/bin/activate &&\
+	black ${ROOT_DIR}

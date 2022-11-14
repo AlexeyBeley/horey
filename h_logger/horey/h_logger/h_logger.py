@@ -6,8 +6,10 @@ from horey.h_logger.formatter import MultilineFormatter
 import pdb
 
 handler = logging.StreamHandler()
-formatter = logging.Formatter("[%(asctime)s] %(levelname)s:%(filename)s:%(lineno)s: %(message)s")
-#formatter = logging.Formatter("[%(created)f] %(levelname)s:%(filename)s:%(lineno)s: %(message)s")
+formatter = logging.Formatter(
+    "[%(asctime)s] %(levelname)s:%(filename)s:%(lineno)s: %(message)s"
+)
+# formatter = logging.Formatter("[%(created)f] %(levelname)s:%(filename)s:%(lineno)s: %(message)s")
 formatter = MultilineFormatter()
 handler.setFormatter(formatter)
 _logger = logging.getLogger("main")
@@ -25,9 +27,14 @@ def get_logger(configuration_values_file_full_path=None):
     global _inited
     if not _inited:
         if configuration_values_file_full_path is not None:
-            from horey.h_logger.h_logger_configuration_policy import HLoggerConfigurationPolicy
+            from horey.h_logger.h_logger_configuration_policy import (
+                HLoggerConfigurationPolicy,
+            )
+
             configuration = HLoggerConfigurationPolicy()
-            configuration.configuration_file_full_path = configuration_values_file_full_path
+            configuration.configuration_file_full_path = (
+                configuration_values_file_full_path
+            )
             configuration.init_from_file()
 
             if configuration.error_level_file_path is not None:

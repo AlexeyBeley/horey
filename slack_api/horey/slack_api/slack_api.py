@@ -14,8 +14,7 @@ logger = get_logger()
 
 
 class SlackAPIException(Exception):
-    """ generic slack api exception
-    """
+    """generic slack api exception"""
 
     def __init__(self, *args, **kwargs):
         super(SlackAPIException, self).__init__(*args)
@@ -31,8 +30,9 @@ class SlackAPI(object):
         logger.info(f"Sending message")
 
         response = requests.post(
-            self.webhook_url, data=message.generate_send_request(),
-            headers={"Content-Type": "application/json"}
+            self.webhook_url,
+            data=message.generate_send_request(),
+            headers={"Content-Type": "application/json"},
         )
         if response.status_code != 200:
             raise ValueError(
@@ -40,6 +40,3 @@ class SlackAPI(object):
             )
 
         return True
-
-
-

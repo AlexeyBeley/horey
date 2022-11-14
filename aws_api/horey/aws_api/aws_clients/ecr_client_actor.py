@@ -7,6 +7,7 @@ import json
 import ignore_me
 from ecr_client import ECRClient
 import logging
+
 logger = logging.Logger(__name__)
 from horey.aws_api.base_entities.aws_account import AWSAccount
 
@@ -20,7 +21,13 @@ action_manager = ActionsManager()
 def get_authorization_information_parser():
     description = "Fetch authorization ECR repository information and write it to file"
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument("--output_file_name", required=False, type=str, default="aws_auth_info.json", help="Name of the output file")
+    parser.add_argument(
+        "--output_file_name",
+        required=False,
+        type=str,
+        default="aws_auth_info.json",
+        help="Name of the output file",
+    )
     return parser
 
 
@@ -35,7 +42,11 @@ def get_authorization_information(arguments) -> None:
         json.dump(lst_info, file_handler, indent=4)
 
 
-action_manager.register_action("get_authorization_information", get_authorization_information_parser, get_authorization_information)
+action_manager.register_action(
+    "get_authorization_information",
+    get_authorization_information_parser,
+    get_authorization_information,
+)
 # endregion
 
 
@@ -43,7 +54,9 @@ action_manager.register_action("get_authorization_information", get_authorizatio
 def create_repository_parser():
     description = "Create containers repository"
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument("--repository_name", required=True, type=str, help="Name repository to create")
+    parser.add_argument(
+        "--repository_name", required=True, type=str, help="Name repository to create"
+    )
     return parser
 
 
@@ -51,7 +64,9 @@ def create_repository(arguments) -> None:
     ECRClient().create_repository(arguments.repository_name)
 
 
-action_manager.register_action("create_repository", create_repository_parser, create_repository)
+action_manager.register_action(
+    "create_repository", create_repository_parser, create_repository
+)
 # endregion
 
 if __name__ == "__main__":

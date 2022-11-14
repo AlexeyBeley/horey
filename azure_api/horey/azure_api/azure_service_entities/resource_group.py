@@ -34,20 +34,16 @@ class ResourceGroup(AzureObject):
 
     def generate_create_request(self):
         """
-            return list:
+        return list:
 
 
-            "PythonAzureExample-rg",
-            {
-             "location": "centralus"
-             "tags": { "environment":"test", "department":"tech" }
-            }
+        "PythonAzureExample-rg",
+        {
+         "location": "centralus"
+         "tags": { "environment":"test", "department":"tech" }
+        }
         """
-        return [self.name,
-                {"location": self.location,
-                 "tags": self.tags
-                 }
-                ]
+        return [self.name, {"location": self.location, "tags": self.tags}]
 
     def update_after_creation(self, resource_group):
         self.id = resource_group.id

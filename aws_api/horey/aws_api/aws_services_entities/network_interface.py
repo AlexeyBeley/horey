@@ -28,7 +28,9 @@ class NetworkInterface(AwsObject):
             return
 
         init_options = {
-            "NetworkInterfaceId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "NetworkInterfaceId": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="id"
+            ),
             "PrivateIpAddress": self._init_private_ip_address,
             "Attachment": self.init_default_attr,
             "Description": self.init_default_attr,
@@ -60,7 +62,7 @@ class NetworkInterface(AwsObject):
         :return:
         """
         options = {
-            'private_ip_address': self._init_private_ip_address_from_cache,
+            "private_ip_address": self._init_private_ip_address_from_cache,
         }
 
         self._init_from_cache(dict_src, options)
@@ -102,7 +104,9 @@ class NetworkInterface(AwsObject):
 
     def get_public_addresses(self):
         if self.association is None:
-            raise RuntimeError(f"self.association is None in  interface {self.dict_src}")
+            raise RuntimeError(
+                f"self.association is None in  interface {self.dict_src}"
+            )
         return [IP(self.association["PublicIp"] + "/32")]
 
     def get_security_groups_endpoints(self):
@@ -117,17 +121,30 @@ class NetworkInterface(AwsObject):
         for sec_grp in self.groups:
             for dict_addr in self.private_ip_addresses:
                 # Public
-                description = "Inteface: SubnetId: {} NetworkInterfaceId: {}- '{}'".format(
-                    self.subnet_id, self.id, self.description)
-                dict_ret = {"sg_id": sec_grp["GroupId"], "sg_name": sec_grp["GroupName"], "description": description}
+                description = (
+                    "Inteface: SubnetId: {} NetworkInterfaceId: {}- '{}'".format(
+                        self.subnet_id, self.id, self.description
+                    )
+                )
+                dict_ret = {
+                    "sg_id": sec_grp["GroupId"],
+                    "sg_name": sec_grp["GroupName"],
+                    "description": description,
+                }
                 if "Association" in dict_addr:
                     all_addresses.append(dict_addr["Association"]["PublicIp"])
-                    dict_ret["ip"] = IP(dict_addr["Association"]["PublicIp"], int_mask=32)
+                    dict_ret["ip"] = IP(
+                        dict_addr["Association"]["PublicIp"], int_mask=32
+                    )
                     dict_ret["dns"] = dict_addr["Association"]["PublicDnsName"]
                     lst_ret.append(dict_ret)
 
                 # Private
-                dict_ret = {"sg_id": sec_grp["GroupId"], "sg_name": sec_grp["GroupName"], "description": description}
+                dict_ret = {
+                    "sg_id": sec_grp["GroupId"],
+                    "sg_name": sec_grp["GroupName"],
+                    "description": description,
+                }
                 all_addresses.append(dict_addr["PrivateIpAddress"])
                 dict_ret["ip"] = IP(dict_addr["PrivateIpAddress"], int_mask=32)
                 if "PrivateDnsName" in dict_addr:
@@ -151,5 +168,3 @@ class NetworkInterface(AwsObject):
 
     def get_used_security_group_ids(self):
         return [group["GroupId"] for group in self.groups]
-
-

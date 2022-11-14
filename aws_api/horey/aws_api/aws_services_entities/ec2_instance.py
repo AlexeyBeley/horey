@@ -37,7 +37,9 @@ class EC2Instance(AwsObject):
             return
 
         init_options = {
-            "InstanceId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "InstanceId": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="id"
+            ),
             "NetworkInterfaces": self.init_interfaces,
             "Tags": self.init_default_attr,
             "AmiLaunchIndex": self.init_default_attr,
@@ -163,7 +165,9 @@ class EC2Instance(AwsObject):
         Get all self ips.
         :return:
         """
-        return [end_point["ip"].copy() for end_point in self.get_security_groups_endpoints()]
+        return [
+            end_point["ip"].copy() for end_point in self.get_security_groups_endpoints()
+        ]
 
     def get_private_addresses(self):
         lst_ret = []
@@ -195,7 +199,9 @@ class EC2Instance(AwsObject):
 
     def update_from_raw_response(self, dict_src):
         init_options = {
-            "InstanceId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "InstanceId": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="id"
+            ),
             "NetworkInterfaces": self.init_interfaces,
             "Tags": self.init_default_attr,
             "AmiLaunchIndex": self.init_default_attr,
@@ -248,12 +254,13 @@ class EC2Instance(AwsObject):
 
     def generate_create_snapshots_request(self):
         request = dict()
-        request["TagSpecifications"] = [{
-            "ResourceType": "snapshot",
-            "Tags": self.tags}]
-        request["InstanceSpecification"] = {"InstanceId": self.id, "ExcludeBootVolume": False}
+        request["TagSpecifications"] = [{"ResourceType": "snapshot", "Tags": self.tags}]
+        request["InstanceSpecification"] = {
+            "InstanceId": self.id,
+            "ExcludeBootVolume": False,
+        }
         request["Description"] = self.get_tagname()
-        request["CopyTagsFromSource"] = 'volume'
+        request["CopyTagsFromSource"] = "volume"
 
         return request
 
@@ -265,12 +272,12 @@ class EC2Instance(AwsObject):
     def generate_create_image_request(self, snapshots_raw=None):
         request = dict()
         request["Description"] = self.get_tagname()
-        request["Name"] = self.get_tagname()+datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")
+        request["Name"] = self.get_tagname() + datetime.datetime.now().strftime(
+            "%Y_%m_%d_%H_%M"
+        )
         request["InstanceId"] = self.id
         request["NoReboot"] = False
-        request["TagSpecifications"] = [{
-            "ResourceType": "image",
-            "Tags": self.tags}]
+        request["TagSpecifications"] = [{"ResourceType": "image", "Tags": self.tags}]
 
         #############
         if snapshots_raw is not None:
@@ -278,30 +285,36 @@ class EC2Instance(AwsObject):
             for self_block in self.block_device_mappings:
                 for snapshot in snapshots_raw:
                     if self_block["Ebs"]["VolumeId"] == snapshot["VolumeId"]:
-                        block_request = {"DeviceName": self_block["DeviceName"],
-                                      "Ebs": {
-                                          "DeleteOnTermination": self_block["Ebs"]["DeleteOnTermination"],
-                                          "SnapshotId": snapshot["SnapshotId"],
-                                          "VolumeSize": snapshot["VolumeSize"],
-                                          "VolumeType": "gp2"
-                                      }}
+                        block_request = {
+                            "DeviceName": self_block["DeviceName"],
+                            "Ebs": {
+                                "DeleteOnTermination": self_block["Ebs"][
+                                    "DeleteOnTermination"
+                                ],
+                                "SnapshotId": snapshot["SnapshotId"],
+                                "VolumeSize": snapshot["VolumeSize"],
+                                "VolumeType": "gp2",
+                            },
+                        }
                         if snapshot["VolumeSize"] == 30:
-                            block_request['VirtualName'] = "/dev/xvda"
+                            block_request["VirtualName"] = "/dev/xvda"
                         else:
-                            block_request['VirtualName'] = "/dev/sda1"
+                            block_request["VirtualName"] = "/dev/sda1"
 
                         blocks_request.append(block_request)
                         break
                 else:
                     raise RuntimeError(f"Can not find snapshot of {self_block}")
 
-            #request["BlockDeviceMappings"] = blocks_request
+            # request["BlockDeviceMappings"] = blocks_request
 
         return request
 
     def generate_create_request(self):
         request = dict()
-        request["InstanceInitiatedShutdownBehavior"] = self.instance_initiated_shutdown_behavior
+        request[
+            "InstanceInitiatedShutdownBehavior"
+        ] = self.instance_initiated_shutdown_behavior
         request["NetworkInterfaces"] = self.network_interfaces
         # request["CreditSpecification"] = {
         #        'CpuCredits': 'unlimited'
@@ -329,11 +342,11 @@ class EC2Instance(AwsObject):
                 tag["Key"] = "Name"
                 break
         else:
-            raise RuntimeError(f"Tag 'Name' must present when provisioning ec2 instance. {request}")
+            raise RuntimeError(
+                f"Tag 'Name' must present when provisioning ec2 instance. {request}"
+            )
 
-        request["TagSpecifications"] = [{
-            "ResourceType": "instance",
-            "Tags": tags}]
+        request["TagSpecifications"] = [{"ResourceType": "instance", "Tags": tags}]
 
         return request
 

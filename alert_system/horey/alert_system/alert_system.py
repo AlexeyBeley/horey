@@ -20,10 +20,14 @@ from horey.aws_api.aws_services_entities.iam_policy import IamPolicy
 from horey.aws_api.aws_services_entities.sns_subscription import SNSSubscription
 from horey.aws_api.aws_services_entities.sns_topic import SNSTopic
 from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlarm
-from horey.aws_api.aws_services_entities.cloud_watch_log_group_metric_filter import CloudWatchLogGroupMetricFilter
+from horey.aws_api.aws_services_entities.cloud_watch_log_group_metric_filter import (
+    CloudWatchLogGroupMetricFilter,
+)
 from horey.aws_api.aws_services_entities.cloud_watch_log_group import CloudWatchLogGroup
 from horey.alert_system.lambda_package.message import Message
-from horey.alert_system.lambda_package.notification_channel_base import NotificationChannelBase
+from horey.alert_system.lambda_package.notification_channel_base import (
+    NotificationChannelBase,
+)
 
 
 logger = get_logger()
@@ -109,7 +113,9 @@ class AlertSystem:
         filter_text = '"[ERROR]"'
         metric_name_raw = f"{self.configuration.lambda_name}-log-error"
         message_data = {"tags": ["alert_system_monitoring"]}
-        self.provision_cloudwatch_logs_alarm(log_group_name, filter_text, metric_name_raw, message_data)
+        self.provision_cloudwatch_logs_alarm(
+            log_group_name, filter_text, metric_name_raw, message_data
+        )
 
     def provision_self_monitoring_log_timeout_alarm(self):
         """
@@ -122,7 +128,9 @@ class AlertSystem:
         filter_text = "Task timed out after"
         metric_name_raw = f"{self.configuration.lambda_name}-log-timeout"
         message_data = {"tags": ["alert_system_monitoring"]}
-        self.provision_cloudwatch_logs_alarm(log_group_name, filter_text, metric_name_raw, message_data)
+        self.provision_cloudwatch_logs_alarm(
+            log_group_name, filter_text, metric_name_raw, message_data
+        )
 
     def provision_self_monitoring_duration_alarm(self):
         """
@@ -144,7 +152,9 @@ class AlertSystem:
         alarm.metric_name = "Duration"
         alarm.namespace = "AWS/Lambda"
         alarm.statistic = "Average"
-        alarm.dimensions = [{"Name": "FunctionName", "Value": self.configuration.lambda_name}]
+        alarm.dimensions = [
+            {"Name": "FunctionName", "Value": self.configuration.lambda_name}
+        ]
         alarm.period = 300
         alarm.evaluation_periods = 1
         alarm.datapoints_to_alarm = 1
@@ -174,7 +184,9 @@ class AlertSystem:
         alarm.metric_name = "Errors"
         alarm.namespace = "AWS/Lambda"
         alarm.statistic = "Average"
-        alarm.dimensions = [{"Name": "FunctionName", "Value": self.configuration.lambda_name}]
+        alarm.dimensions = [
+            {"Name": "FunctionName", "Value": self.configuration.lambda_name}
+        ]
         alarm.period = 300
         alarm.evaluation_periods = 1
         alarm.datapoints_to_alarm = 1
@@ -194,18 +206,34 @@ class AlertSystem:
         current_dir = os.getcwd()
         os.chdir(self.configuration.deployment_directory_path)
         self.packer.install_horey_requirements(
-            os.path.join(os.path.dirname(os.path.abspath(__file__)), "lambda_package", "requirements.txt"),
-            self.configuration.deployment_venv_path, self.configuration.horey_repo_path)
+            os.path.join(
+                os.path.dirname(os.path.abspath(__file__)),
+                "lambda_package",
+                "requirements.txt",
+            ),
+            self.configuration.deployment_venv_path,
+            self.configuration.horey_repo_path,
+        )
 
-        self.packer.zip_venv_site_packages(self.configuration.lambda_zip_file_name,
-                                           self.configuration.deployment_venv_path, "python3.8")
+        self.packer.zip_venv_site_packages(
+            self.configuration.lambda_zip_file_name,
+            self.configuration.deployment_venv_path,
+            "python3.8",
+        )
 
         external_files = [os.path.basename(file_path) for file_path in files]
-        lambda_package_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "lambda_package")
-        lambda_package_files = [os.path.join(lambda_package_dir, file_name)
-                                for file_name in os.listdir(lambda_package_dir) if file_name not in external_files]
+        lambda_package_dir = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "lambda_package"
+        )
+        lambda_package_files = [
+            os.path.join(lambda_package_dir, file_name)
+            for file_name in os.listdir(lambda_package_dir)
+            if file_name not in external_files
+        ]
         files_paths = lambda_package_files + files
-        self.packer.add_files_to_zip(self.configuration.lambda_zip_file_name, files_paths)
+        self.packer.add_files_to_zip(
+            self.configuration.lambda_zip_file_name, files_paths
+        )
         self.validate_lambda_package()
 
         os.chdir(current_dir)
@@ -217,17 +245,25 @@ class AlertSystem:
         @return:
         """
 
-        validation_dir_name = os.path.splitext(self.configuration.lambda_zip_file_name)[0]
+        validation_dir_name = os.path.splitext(self.configuration.lambda_zip_file_name)[
+            0
+        ]
         os.makedirs(validation_dir_name)
-        tmp_zip_path = os.path.join(validation_dir_name, self.configuration.lambda_zip_file_name)
+        tmp_zip_path = os.path.join(
+            validation_dir_name, self.configuration.lambda_zip_file_name
+        )
         shutil.copyfile(self.configuration.lambda_zip_file_name, tmp_zip_path)
         self.packer.extract(tmp_zip_path, validation_dir_name)
 
-        os.environ[NotificationChannelBase.NOTIFICATION_CHANNELS_ENVIRONMENT_VARIABLE] = self.configuration.notification_channel_file_names
+        os.environ[
+            NotificationChannelBase.NOTIFICATION_CHANNELS_ENVIRONMENT_VARIABLE
+        ] = self.configuration.notification_channel_file_names
         current_dir = os.getcwd()
         os.chdir(validation_dir_name)
 
-        message_dispatcher = CommonUtils.load_object_from_module("message_dispatcher_base.py", "MessageDispatcherBase")
+        message_dispatcher = CommonUtils.load_object_from_module(
+            "message_dispatcher_base.py", "MessageDispatcherBase"
+        )
         if self.configuration.active_deployment_validation:
             message_dispatcher.dispatch(None)
         os.chdir(current_dir)
@@ -259,10 +295,7 @@ class AlertSystem:
         policy.arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
         iam_role.policies.append(policy)
         iam_role.policies.append(policy)
-        iam_role.tags = [{
-            "Key": "Name",
-            "Value": iam_role.name
-        }]
+        iam_role.tags = [{"Key": "Name", "Value": iam_role.name}]
         self.aws_api.provision_iam_role(iam_role)
         return iam_role
 
@@ -292,26 +325,35 @@ class AlertSystem:
         aws_lambda.ephemeral_storage = {"Size": 512}
 
         aws_lambda.tags = {"Name": aws_lambda.name}
-        aws_lambda.policy = {"Version": "2012-10-17",
-                             "Id": "default",
-                             "Statement": [
-                                 {"Sid": f"trigger_from_topic_{topic.name}",
-                                  "Effect": "Allow",
-                                  "Principal": {"Service": "sns.amazonaws.com"},
-                                  "Action": "lambda:InvokeFunction",
-                                  "Resource": None,
-                                  "Condition": {"ArnLike": {
-                                      "AWS:SourceArn": topic.arn}}}]}
+        aws_lambda.policy = {
+            "Version": "2012-10-17",
+            "Id": "default",
+            "Statement": [
+                {
+                    "Sid": f"trigger_from_topic_{topic.name}",
+                    "Effect": "Allow",
+                    "Principal": {"Service": "sns.amazonaws.com"},
+                    "Action": "lambda:InvokeFunction",
+                    "Resource": None,
+                    "Condition": {"ArnLike": {"AWS:SourceArn": topic.arn}},
+                }
+            ],
+        }
 
         aws_lambda.environment = {
             "Variables": {
                 NotificationChannelBase.NOTIFICATION_CHANNELS_ENVIRONMENT_VARIABLE: self.configuration.notification_channel_file_names,
-                "DISABLE": "false"
+                "DISABLE": "false",
             }
         }
 
-        with open(os.path.join(self.configuration.deployment_directory_path, self.configuration.lambda_zip_file_name),
-                  "rb") as myzip:
+        with open(
+            os.path.join(
+                self.configuration.deployment_directory_path,
+                self.configuration.lambda_zip_file_name,
+            ),
+            "rb",
+        ) as myzip:
             aws_lambda.code = {"ZipFile": myzip.read()}
         self.aws_api.provision_aws_lambda(aws_lambda, force=True)
         return aws_lambda
@@ -327,9 +369,7 @@ class AlertSystem:
         topic.name = self.configuration.sns_topic_name
         topic.attributes = {"DisplayName": topic.name}
         topic.tags = tags
-        topic.tags.append({
-            "Key": "Name",
-            "Value": topic.name})
+        topic.tags.append({"Key": "Name", "Value": topic.name})
 
         self.aws_api.provision_sns_topic(topic)
 
@@ -350,7 +390,9 @@ class AlertSystem:
         aws_lambda.name = self.configuration.lambda_name
         aws_lambda.region = self.region
 
-        if not self.aws_api.lambda_client.update_lambda_information(aws_lambda, full_information=False):
+        if not self.aws_api.lambda_client.update_lambda_information(
+            aws_lambda, full_information=False
+        ):
             raise RuntimeError("Could not update aws_lambda information")
 
         subscription = SNSSubscription({})
@@ -380,7 +422,9 @@ class AlertSystem:
         alarm.alarm_actions = [topic.arn]
         self.aws_api.cloud_watch_client.set_cloudwatch_alarm(alarm)
 
-    def provision_cloudwatch_logs_alarm(self, log_group_name, filter_text, metric_name_raw, message_data):
+    def provision_cloudwatch_logs_alarm(
+        self, log_group_name, filter_text, metric_name_raw, message_data
+    ):
         """
         Provision Cloud watch logs based alarm.
 
@@ -391,7 +435,9 @@ class AlertSystem:
         @return:
         """
         if not isinstance(message_data["tags"], list):
-            raise ValueError(f"Routing tags must be a list, received: '{message_data['tags']}'")
+            raise ValueError(
+                f"Routing tags must be a list, received: '{message_data['tags']}'"
+            )
         if len(message_data["tags"]) == 0:
             raise ValueError(f"No routing tags: received: '{message_data['tags']}'")
 
@@ -407,7 +453,7 @@ class AlertSystem:
             {
                 "metricName": metric_name,
                 "metricNamespace": log_group_name,
-                "metricValue": "1"
+                "metricValue": "1",
             }
         ]
         metric_filter.region = self.region
@@ -434,7 +480,9 @@ class AlertSystem:
         alarm.treat_missing_data = "notBreaching"
         self.provision_cloudwatch_alarm(alarm)
 
-    def provision_cloudwatch_sqs_visible_alarm(self, sqs_queue_name, threshold, message_data):
+    def provision_cloudwatch_sqs_visible_alarm(
+        self, sqs_queue_name, threshold, message_data
+    ):
         """
         Number of SQS visible messages.
 
@@ -452,15 +500,16 @@ class AlertSystem:
 
         alarm = CloudWatchAlarm({})
         alarm.region = self.region
-        alarm.name = f"alert_system_alarm-{sqs_queue_name}-ApproximateNumberOfMessagesVisible"
+        alarm.name = (
+            f"alert_system_alarm-{sqs_queue_name}-ApproximateNumberOfMessagesVisible"
+        )
         alarm.actions_enabled = True
         alarm.alarm_description = json.dumps(message.convert_to_dict())
         alarm.insufficient_data_actions = []
         alarm.metric_name = "ApproximateNumberOfMessagesVisible"
         alarm.namespace = "AWS/SQS"
         alarm.statistic = "Average"
-        alarm.dimensions = [{"Name": "QueueName",
-                             "Value": sqs_queue_name}]
+        alarm.dimensions = [{"Name": "QueueName", "Value": sqs_queue_name}]
         alarm.period = 300
         alarm.evaluation_periods = 1
         alarm.datapoints_to_alarm = 1

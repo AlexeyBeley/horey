@@ -6,9 +6,13 @@ import time
 
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.cloud_watch_log_group import CloudWatchLogGroup
-from horey.aws_api.aws_services_entities.cloud_watch_log_group_metric_filter import CloudWatchLogGroupMetricFilter
+from horey.aws_api.aws_services_entities.cloud_watch_log_group_metric_filter import (
+    CloudWatchLogGroupMetricFilter,
+)
 from horey.aws_api.base_entities.aws_account import AWSAccount
-from horey.aws_api.aws_services_entities.cloud_watch_log_stream import CloudWatchLogStream
+from horey.aws_api.aws_services_entities.cloud_watch_log_stream import (
+    CloudWatchLogStream,
+)
 from horey.h_logger import get_logger
 
 logger = get_logger()
@@ -18,6 +22,7 @@ class CloudWatchLogsClient(Boto3Client):
     """
     Client to work with cloud watch logs API.
     """
+
     NEXT_PAGE_REQUEST_KEY = "nextToken"
     NEXT_PAGE_RESPONSE_KEY = "nextToken"
     NEXT_PAGE_INITIAL_KEY = ""
@@ -38,7 +43,9 @@ class CloudWatchLogsClient(Boto3Client):
 
         final_result = list()
         for region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_cloud_watch_log_groups(region, full_information=full_information)
+            final_result += self.get_region_cloud_watch_log_groups(
+                region, full_information=full_information
+            )
         return final_result
 
     def get_region_cloud_watch_log_groups(self, region, full_information=False):
@@ -76,7 +83,9 @@ class CloudWatchLogsClient(Boto3Client):
 
         final_result = list()
         AWSAccount.set_aws_region(region)
-        for result in self.execute(self.client.describe_metric_filters, "metricFilters"):
+        for result in self.execute(
+            self.client.describe_metric_filters, "metricFilters"
+        ):
             obj = CloudWatchLogGroupMetricFilter(result)
 
             obj.region = region
@@ -90,8 +99,11 @@ class CloudWatchLogsClient(Boto3Client):
         :return: None, raise if fails
         """
 
-        for response in self.execute(self.client.describe_log_streams, "logStreams",
-                                     filters_req={"logGroupName": obj.name}):
+        for response in self.execute(
+            self.client.describe_log_streams,
+            "logStreams",
+            filters_req={"logGroupName": obj.name},
+        ):
             obj.update_log_stream(response)
 
     def yield_log_group_streams_raw(self, log_group):
@@ -102,9 +114,12 @@ class CloudWatchLogsClient(Boto3Client):
         """
         if AWSAccount.get_aws_region() != log_group.region:
             AWSAccount.set_aws_region(log_group.region)
-            
-        for response in self.execute(self.client.describe_log_streams, "logStreams",
-                                     filters_req={"logGroupName": log_group.name}):
+
+        for response in self.execute(
+            self.client.describe_log_streams,
+            "logStreams",
+            filters_req={"logGroupName": log_group.name},
+        ):
             yield response
 
     def yield_log_group_streams(self, log_group):
@@ -115,15 +130,22 @@ class CloudWatchLogsClient(Boto3Client):
         """
         AWSAccount.set_aws_region(log_group.region)
 
-        for response in self.execute(self.client.describe_log_streams, "logStreams",
-                                     filters_req={"logGroupName": log_group.name}):
+        for response in self.execute(
+            self.client.describe_log_streams,
+            "logStreams",
+            filters_req={"logGroupName": log_group.name},
+        ):
             yield CloudWatchLogStream(response)
 
     def provision_metric_filter(self, metric_filter: CloudWatchLogGroupMetricFilter):
         request_dict = metric_filter.generate_create_request()
         AWSAccount.set_aws_region(metric_filter.region)
-        logger.info(f"Creating cloudwatch log group metric filter in region '{metric_filter.region}': {request_dict}")
-        for response in self.execute(self.client.put_metric_filter, "ResponseMetadata", filters_req=request_dict):
+        logger.info(
+            f"Creating cloudwatch log group metric filter in region '{metric_filter.region}': {request_dict}"
+        )
+        for response in self.execute(
+            self.client.put_metric_filter, "ResponseMetadata", filters_req=request_dict
+        ):
             if response["HTTPStatusCode"] != 200:
                 raise RuntimeError(f"{response}")
 
@@ -140,12 +162,20 @@ class CloudWatchLogsClient(Boto3Client):
         new_token = None
         stop = False
         while not stop:
-            filters_req = {"logGroupName": log_group.name, "logStreamName": stream.name, "startFromHead": True}
+            filters_req = {
+                "logGroupName": log_group.name,
+                "logStreamName": stream.name,
+                "startFromHead": True,
+            }
             if token is not None:
                 filters_req["nextToken"] = token
 
-            for response in self.execute(self.client.get_log_events, "events", raw_data=True,
-                                     filters_req=filters_req):
+            for response in self.execute(
+                self.client.get_log_events,
+                "events",
+                raw_data=True,
+                filters_req=filters_req,
+            ):
                 new_token = response["nextForwardToken"]
                 logger.info(f"old token: {token} new token: {new_token}")
                 if new_token == token:
@@ -158,9 +188,17 @@ class CloudWatchLogsClient(Boto3Client):
             token = new_token
         return
         pdb.set_trace()
-        #todo: refactor
-        for response in self.execute(self.client.get_log_events, "events", raw_data=True,
-                                     filters_req={"logGroupName": log_group.name, "logStreamName": stream.name, "nextToken": token}):
+        # todo: refactor
+        for response in self.execute(
+            self.client.get_log_events,
+            "events",
+            raw_data=True,
+            filters_req={
+                "logGroupName": log_group.name,
+                "logStreamName": stream.name,
+                "nextToken": token,
+            },
+        ):
             if token != response["nextForwardToken"]:
                 raise ValueError()
 
@@ -176,5 +214,7 @@ class CloudWatchLogsClient(Boto3Client):
 
     def provision_log_group_raw(self, request_dict):
         logger.info(f"Creating log group '{request_dict}'")
-        for response in self.execute(self.client.create_log_group, None, raw_data=True, filters_req=request_dict):
+        for response in self.execute(
+            self.client.create_log_group, None, raw_data=True, filters_req=request_dict
+        ):
             return response

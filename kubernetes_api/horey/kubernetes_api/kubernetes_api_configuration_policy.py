@@ -19,7 +19,9 @@ class KubernetesAPIConfigurationPolicy(ConfigurationPolicy):
     @kubernetes_api_regions.setter
     def kubernetes_api_regions(self, value):
         if not isinstance(value, list):
-            raise ValueError(f"kubernetes_api_regions must be a list received {value} of type: {type(value)}")
+            raise ValueError(
+                f"kubernetes_api_regions must be a list received {value} of type: {type(value)}"
+            )
 
         self._kubernetes_api_regions = value
 
@@ -40,7 +42,9 @@ class KubernetesAPIConfigurationPolicy(ConfigurationPolicy):
     @kubernetes_account.setter
     def kubernetes_account(self, value):
         if not isinstance(value, str):
-            raise ValueError(f"kubernetes_account must be a string received {value} of type: {type(value)}")
+            raise ValueError(
+                f"kubernetes_account must be a string received {value} of type: {type(value)}"
+            )
 
         self._kubernetes_account = value
 

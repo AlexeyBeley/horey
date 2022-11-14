@@ -16,7 +16,9 @@ class ResourceClient(AzureClient):
         super().__init__()
 
     def get_all_resource_groups(self):
-        return [ResourceGroup(obj.as_dict()) for obj in self.client.resource_groups.list()]
+        return [
+            ResourceGroup(obj.as_dict()) for obj in self.client.resource_groups.list()
+        ]
 
     def raw_create_resource_group(self, lst_args):
         response = self.client.resource_groups.create_or_update(*lst_args)
@@ -27,4 +29,3 @@ class ResourceClient(AzureClient):
         response = self.client.resource_groups.begin_delete(name)
         response.wait()
         return response.status() == "Succeeded"
-

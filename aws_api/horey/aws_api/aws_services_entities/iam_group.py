@@ -26,13 +26,15 @@ class IamGroup(AwsObject):
 
         init_options = {
             "GroupId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
-            "GroupName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "GroupName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
             "Arn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
             "Path": self.init_default_attr,
             "CreateDate": self.init_default_attr,
         }
 
-        self.init_attrs(dict_src, init_options, raise_on_no_option=True)
+        self.init_attrs(dict_src, init_options)
 
     def _init_group_from_cache(self, dict_src):
         """

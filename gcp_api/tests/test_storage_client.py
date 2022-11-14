@@ -9,10 +9,20 @@ from horey.gcp_api.gcp_service_entities.bucket import Bucket
 from horey.gcp_api.gcp_clients.storage_client import StorageClient
 from horey.h_logger import get_logger
 from horey.gcp_api.gcp_api_configuration_policy import GCPAPIConfigurationPolicy
+
 logger = get_logger()
 
 configuration = GCPAPIConfigurationPolicy()
-configuration.configuration_file_full_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore", "gcp_api_configuration_values.py"))
+configuration.configuration_file_full_path = os.path.abspath(
+    os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "..",
+        "..",
+        "..",
+        "ignore",
+        "gcp_api_configuration_values.py",
+    )
+)
 configuration.init_from_file()
 
 
@@ -28,4 +38,3 @@ def test_provision_bucket():
 
 if __name__ == "__main__":
     test_provision_bucket()
-

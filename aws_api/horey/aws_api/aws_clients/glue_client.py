@@ -34,7 +34,9 @@ class GlueClient(Boto3Client):
 
         final_result = list()
         for region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_tables(region, full_information=full_information)
+            final_result += self.get_region_tables(
+                region, full_information=full_information
+            )
 
         return final_result
 
@@ -43,7 +45,11 @@ class GlueClient(Boto3Client):
         final_result = list()
         AWSAccount.set_aws_region(region)
         for database in self.get_region_databases(region):
-            for dict_src in self.execute(self.client.get_tables, "TableList", filters_req={"DatabaseName": database.name}):
+            for dict_src in self.execute(
+                self.client.get_tables,
+                "TableList",
+                filters_req={"DatabaseName": database.name},
+            ):
                 obj = GlueTable(dict_src)
                 final_result.append(obj)
                 if full_information:
@@ -55,8 +61,13 @@ class GlueClient(Boto3Client):
 
     def update_table_information(self, table: GlueTable):
         AWSAccount.set_aws_region(table.region)
-        for dict_src in self.execute(self.client.get_table, "Table", filters_req={"DatabaseName": table.database_name, "Name": table.name},
-                                     exception_ignore_callback=lambda x: f"Table {table.name} not found" in repr(x)):
+        for dict_src in self.execute(
+            self.client.get_table,
+            "Table",
+            filters_req={"DatabaseName": table.database_name, "Name": table.name},
+            exception_ignore_callback=lambda x: f"Table {table.name} not found"
+            in repr(x),
+        ):
             table.update_from_raw_response(dict_src)
             table.account_id = self.account_id
 
@@ -77,9 +88,11 @@ class GlueClient(Boto3Client):
 
     def provision_table_raw(self, request_dict):
         logger.info(f"Creating table: {request_dict}")
-        for response in self.execute(self.client.create_table, None, raw_data=True,
-                                     filters_req=request_dict):
+        for response in self.execute(
+            self.client.create_table, None, raw_data=True, filters_req=request_dict
+        ):
             return response
+
     # endregion
 
     # region database
@@ -94,7 +107,9 @@ class GlueClient(Boto3Client):
 
         final_result = list()
         for region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_databases(region, full_information=full_information)
+            final_result += self.get_region_databases(
+                region, full_information=full_information
+            )
 
         return final_result
 
@@ -114,8 +129,13 @@ class GlueClient(Boto3Client):
 
     def update_database_information(self, database: GlueDatabase):
         AWSAccount.set_aws_region(database.region)
-        for dict_src in self.execute(self.client.get_database, "Database", filters_req={"Name": database.name},
-                                     exception_ignore_callback=lambda x: f"Database {database.name} not found" in repr(x)):
+        for dict_src in self.execute(
+            self.client.get_database,
+            "Database",
+            filters_req={"Name": database.name},
+            exception_ignore_callback=lambda x: f"Database {database.name} not found"
+            in repr(x),
+        ):
             database.update_from_raw_response(dict_src)
             database.account_id = self.account_id
 
@@ -135,7 +155,9 @@ class GlueClient(Boto3Client):
 
     def provision_database_raw(self, request_dict):
         logger.info(f"Creating database: {request_dict}")
-        for response in self.execute(self.client.create_database, None, raw_data=True,
-                                     filters_req=request_dict):
+        for response in self.execute(
+            self.client.create_database, None, raw_data=True, filters_req=request_dict
+        ):
             return response
+
     # endregion

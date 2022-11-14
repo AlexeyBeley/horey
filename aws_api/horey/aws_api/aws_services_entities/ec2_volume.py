@@ -39,7 +39,7 @@ class EC2Volume(AwsObject):
             "MultiAttachEnabled": self.init_default_attr,
         }
 
-        self.init_attrs(dict_src, init_options, raise_on_no_option=True)
+        self.init_attrs(dict_src, init_options)
 
         tag_name = self.get_tagname("Name")
         self.name = tag_name if tag_name else self.id
@@ -56,7 +56,9 @@ class EC2Volume(AwsObject):
 
     def update_from_raw_response(self, dict_src):
         init_options = {
-            "InstanceId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "InstanceId": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="id"
+            ),
             "NetworkInterfaces": self.init_interfaces,
         }
 
@@ -65,7 +67,9 @@ class EC2Volume(AwsObject):
     def generate_create_request(self):
         pdb.set_trace()
         request = dict()
-        request["InstanceInitiatedShutdownBehavior"] = self.instance_initiated_shutdown_behavior
+        request[
+            "InstanceInitiatedShutdownBehavior"
+        ] = self.instance_initiated_shutdown_behavior
         return request
 
     def get_state(self):

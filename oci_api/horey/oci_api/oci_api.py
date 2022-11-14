@@ -12,7 +12,7 @@ class OCIAPI:
         self.compute_client = OCIComputeClient()
 
         self.vm_hosts = []
-        
+
         self.configuration = configuration
         self.init_configuration()
 
@@ -22,7 +22,9 @@ class OCIAPI:
         """
         if self.configuration is None:
             return
-        accounts = CommonUtils.load_object_from_module(self.configuration.accounts_file, "main")
+        accounts = CommonUtils.load_object_from_module(
+            self.configuration.accounts_file, "main"
+        )
         OCIAccount.set_oci_account(accounts[self.configuration.oci_account])
 
     @staticmethod

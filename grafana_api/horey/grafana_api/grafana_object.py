@@ -7,6 +7,7 @@ class GrafanaObject:
     """
     Parent class for all grafana objects
     """
+
     def __init__(self):
         self.dict_src = {}
 

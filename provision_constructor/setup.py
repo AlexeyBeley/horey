@@ -18,20 +18,27 @@ setup(
     author="Horey",
     author_email="alexey.beley@gmail.com",
     license="DWTFYWTPL",
-    packages=find_namespace_packages(include=["horey.provision_constructor", "horey.provision_constructor.*",
-                                              "horey.provision_constructor.system_functions",
-                                              "horey.provision_constructor.system_functions.*"]),
+    packages=find_namespace_packages(
+        include=[
+            "horey.provision_constructor",
+            "horey.provision_constructor.*",
+            "horey.provision_constructor.system_functions",
+            "horey.provision_constructor.system_functions.*",
+        ]
+    ),
     package_data={
-        "": ["bash_tools/*.sh",
-             "system_functions/**/*.sh",
-             "system_functions/**/*.txt",
-             "system_functions/**/*.conf",
-             "system_functions/**/**/*.conf",
-             "system_functions/**/**/*.yml",
-             "system_functions/**/**/*.txt",
-             "system_functions/**/**/*.sh",
-             "system_functions/*.txt"
-             ],
+        "": [
+            "bash_tools/*.sh",
+            "system_functions/**/*.sh",
+            "system_functions/**/*.txt",
+            "system_functions/**/*.conf",
+            "system_functions/**/**/*.conf",
+            "system_functions/**/**/*.yml",
+            "system_functions/**/**/*.txt",
+            "system_functions/**/**/*.sh",
+            "system_functions/*.txt",
+        ],
     },
     include_package_data=True,
-    zip_safe=False)
+    zip_safe=False,
+)

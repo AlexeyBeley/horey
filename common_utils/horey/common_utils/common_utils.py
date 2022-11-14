@@ -12,6 +12,7 @@ class CommonUtils:
     """
     Some stuff to be reused
     """
+
     _FIRST_CAP_RE = None
     _ALL_CAP_RE = None
 
@@ -25,12 +26,12 @@ class CommonUtils:
         """
 
         if CommonUtils._FIRST_CAP_RE is None:
-            CommonUtils._FIRST_CAP_RE = re.compile('(.)([A-Z][a-z]+)')
-            CommonUtils._ALL_CAP_RE = re.compile('([a-z0-9])([A-Z])')
+            CommonUtils._FIRST_CAP_RE = re.compile("(.)([A-Z][a-z]+)")
+            CommonUtils._ALL_CAP_RE = re.compile("([a-z0-9])([A-Z])")
 
-        s1 = CommonUtils._FIRST_CAP_RE.sub(r'\1_\2', name)
+        s1 = CommonUtils._FIRST_CAP_RE.sub(r"\1_\2", name)
         s1 = s1.replace("__", "_")
-        return CommonUtils._ALL_CAP_RE.sub(r'\1_\2', s1).lower()
+        return CommonUtils._ALL_CAP_RE.sub(r"\1_\2", s1).lower()
 
     @staticmethod
     def find_objects_by_values(objects, values, max_count=None):
@@ -69,7 +70,7 @@ class CommonUtils:
         if not isinstance(number, int):
             raise ValueError(number)
 
-        str_ret = '{:,}'.format(number)
+        str_ret = "{:,}".format(number)
 
         return str_ret
 
@@ -90,12 +91,12 @@ class CommonUtils:
             return "0"
 
         mapping = {
-                    1: "Bytes",
-                    1024: "KiB",
-                    1024 ** 2: "MiB",
-                    1024 ** 3: "GiB",
-                    1024 ** 4: "TiB",
-                    1024 ** 5: "PiB"
+            1: "Bytes",
+            1024: "KiB",
+            1024**2: "MiB",
+            1024**3: "GiB",
+            1024**4: "TiB",
+            1024**5: "PiB",
         }
 
         key_limit = 1
@@ -105,7 +106,7 @@ class CommonUtils:
                 break
             key_limit = key_limit_tmp
         quotient, remainder = divmod(number, key_limit)
-        int_percent_reminder = round((remainder/key_limit)*100)
+        int_percent_reminder = round((remainder / key_limit) * 100)
         if int_percent_reminder == 0:
             return_number = str(quotient)
         else:
@@ -162,7 +163,9 @@ class CommonUtils:
 
         popped_path = sys.path.pop(0)
         if popped_path != module_path:
-            raise RuntimeError(f"System Path must not be changed while importing configuration_policy: {module_full_path}. "
-                               f"Changed from {module_path} to {popped_path}")
+            raise RuntimeError(
+                f"System Path must not be changed while importing configuration_policy: {module_full_path}. "
+                f"Changed from {module_path} to {popped_path}"
+            )
 
         return module

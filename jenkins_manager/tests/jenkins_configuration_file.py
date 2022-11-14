@@ -11,4 +11,3 @@ class Configuration:
 def main():
     configs = Configuration()
     return configs
-

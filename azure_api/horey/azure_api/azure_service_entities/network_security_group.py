@@ -40,13 +40,15 @@ class NetworkSecurityGroup(AzureObject):
         raise NotImplementedError()
 
     def generate_create_request(self):
-        return [self.resource_group_name,
-                self.name,
-                {"location": self.location,
-                 "security_rules": self.security_rules,
-                 "tags": self.tags
-                 }
-                ]
+        return [
+            self.resource_group_name,
+            self.name,
+            {
+                "location": self.location,
+                "security_rules": self.security_rules,
+                "tags": self.tags,
+            },
+        ]
 
     def update_after_creation(self, network_security_group):
         self.id = network_security_group.id

@@ -37,10 +37,15 @@ class MessageDispatcherBase:
 
         self.notification_channels = []
         self.notification_channel_files = os.environ.get(
-            NotificationChannelBase.NOTIFICATION_CHANNELS_ENVIRONMENT_VARIABLE).split(",")
+            NotificationChannelBase.NOTIFICATION_CHANNELS_ENVIRONMENT_VARIABLE
+        ).split(",")
         for notification_channel_file_name in self.notification_channel_files:
-            notification_channel_class = self.load_notification_channel(notification_channel_file_name)
-            notification_channel = self.init_notification_channel(notification_channel_class)
+            notification_channel_class = self.load_notification_channel(
+                notification_channel_file_name
+            )
+            notification_channel = self.init_notification_channel(
+                notification_channel_class
+            )
             self.notification_channels.append(notification_channel)
 
     @staticmethod
@@ -52,7 +57,9 @@ class MessageDispatcherBase:
         @return:
         """
 
-        module_obj = CommonUtils.load_module(os.path.join(os.path.dirname(os.path.abspath(__file__)), file_name))
+        module_obj = CommonUtils.load_module(
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), file_name)
+        )
         candidates = []
         for attr_name in module_obj.__dict__:
             if attr_name == "NotificationChannelBase":
@@ -77,10 +84,16 @@ class MessageDispatcherBase:
         @return:
         """
 
-        configuration = CommonUtils.load_object_from_module(os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                                                         notification_channel_class.CONFIGURATION_POLICY_FILE_NAME),
-                                                            notification_channel_class.CONFIGURATION_POLICY_CLASS_NAME)
-        configuration.configuration_file_full_path = configuration.CONFIGURATION_FILE_NAME
+        configuration = CommonUtils.load_object_from_module(
+            os.path.join(
+                os.path.dirname(os.path.abspath(__file__)),
+                notification_channel_class.CONFIGURATION_POLICY_FILE_NAME,
+            ),
+            notification_channel_class.CONFIGURATION_POLICY_CLASS_NAME,
+        )
+        configuration.configuration_file_full_path = (
+            configuration.CONFIGURATION_FILE_NAME
+        )
         configuration.init_from_file()
 
         return notification_channel_class(configuration)
@@ -98,7 +111,7 @@ class MessageDispatcherBase:
         try:
             return self.handler_mapper[message.type](message)
         except Exception as error_inst:
-            traceback_str = ''.join(traceback.format_tb(error_inst.__traceback__))
+            traceback_str = "".join(traceback.format_tb(error_inst.__traceback__))
             logger.exception(f"{traceback_str}\n{repr(error_inst)}")
 
             try:
@@ -131,7 +144,7 @@ class MessageDispatcherBase:
             if not notify_on_failure:
                 return
 
-            traceback_str = ''.join(traceback.format_tb(error_inst.__traceback__))
+            traceback_str = "".join(traceback.format_tb(error_inst.__traceback__))
             logger.exception(f"{traceback_str}\n{repr(error_inst)}")
 
             text = json.dumps(message.convert_to_dict())
@@ -163,7 +176,9 @@ class MessageDispatcherBase:
         @return:
         """
 
-        return [CloudwatchAlarm(record_dict) for record_dict in message.dict_src["Records"]]
+        return [
+            CloudwatchAlarm(record_dict) for record_dict in message.dict_src["Records"]
+        ]
 
     def cloudwatch_logs_metric_sns_alarm_message_handler(self, message):
         """
@@ -195,18 +210,21 @@ class MessageDispatcherBase:
         @return:
         """
 
-        log_group_search_url = self.generate_cloudwatch_log_search_link(alarm,
-                                                                        alarm.alert_system_data["log_group_name"],
-                                                                        alarm.alert_system_data[
-                                                                            "log_group_filter_pattern"])
+        log_group_search_url = self.generate_cloudwatch_log_search_link(
+            alarm,
+            alarm.alert_system_data["log_group_name"],
+            alarm.alert_system_data["log_group_filter_pattern"],
+        )
         if notification is None:
             notification = Notification()
 
         if notification.text is None:
-            notification.text = f'region: {alarm.region}\n' \
-                                f'Log group: {alarm.alert_system_data["log_group_name"]}\n' \
-                                f'Filter pattern: {alarm.alert_system_data["log_group_filter_pattern"]}\n\n' \
-                                f'{alarm.new_state_reason}'
+            notification.text = (
+                f"region: {alarm.region}\n"
+                f'Log group: {alarm.alert_system_data["log_group_name"]}\n'
+                f'Filter pattern: {alarm.alert_system_data["log_group_filter_pattern"]}\n\n'
+                f"{alarm.new_state_reason}"
+            )
 
         notification.link = log_group_search_url
         notification.link_href = "View logs in cloudwatch"
@@ -246,9 +264,11 @@ class MessageDispatcherBase:
             notification = Notification()
 
         if notification.text is None:
-            notification.text = f'region: {alarm.region}\n' \
-                                f'Queue name: {alarm.alert_system_data["queue_name"]}\n' \
-                                f'{alarm.new_state_reason}'
+            notification.text = (
+                f"region: {alarm.region}\n"
+                f'Queue name: {alarm.alert_system_data["queue_name"]}\n'
+                f"{alarm.new_state_reason}"
+            )
 
         self._handle_cloudwatch_alarm(alarm, notification=notification)
 
@@ -270,24 +290,33 @@ class MessageDispatcherBase:
         if notification.type is None:
             if alarm.new_state == "OK":
                 notification.type = Notification.Types.STABLE
-                notification.header = notification.header or "Default handler: Cloudwatch alarm back to normal"
+                notification.header = (
+                    notification.header
+                    or "Default handler: Cloudwatch alarm back to normal"
+                )
             elif alarm.new_state == "ALARM":
                 notification.type = Notification.Types.CRITICAL
-                notification.header = notification.header or "Default handler: Cloudwatch alarm triggered"
+                notification.header = (
+                    notification.header or "Default handler: Cloudwatch alarm triggered"
+                )
             else:
                 notification.type = Notification.Types.CRITICAL
-                notification.header = f'Unknown state: {alarm.new_state}'
+                notification.header = f"Unknown state: {alarm.new_state}"
 
         if notification.text is None:
-            notification.text = f'*{alarm.sns_message["AlarmName"]}*\n' \
-                                f'Region: {alarm.region}\n\n>' \
-                                f'Reason: {alarm.new_state_reason}\n\n' \
-                                f'Description: {alarm.sns_message["AlarmDescription"]}'
+            notification.text = (
+                f'*{alarm.sns_message["AlarmName"]}*\n'
+                f"Region: {alarm.region}\n\n>"
+                f"Reason: {alarm.new_state_reason}\n\n"
+                f'Description: {alarm.sns_message["AlarmDescription"]}'
+            )
 
         for notification_channel in self.notification_channels:
             notification_channel.notify(notification)
 
-    def generate_cloudwatch_log_search_link(self, alarm, log_group_name, log_group_filter_pattern):
+    def generate_cloudwatch_log_search_link(
+        self, alarm, log_group_name, log_group_filter_pattern
+    ):
         """
         Generate comfort link to relevant search in the cloudwatch logs service.
 
@@ -298,13 +327,17 @@ class MessageDispatcherBase:
         """
 
         log_group_name_encoded = self.encode_to_aws_url_format(log_group_name)
-        log_group_filter_pattern_encoded = self.encode_to_aws_url_format(log_group_filter_pattern)
+        log_group_filter_pattern_encoded = self.encode_to_aws_url_format(
+            log_group_filter_pattern
+        )
 
         search_time_end = alarm.end_time.strftime("%Y-%m-%dT%H:%M:%SZ")
         search_time_start = alarm.start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
 
-        log_group_search_url = f"https://{alarm.region}.console.aws.amazon.com/cloudwatch/home?region=" \
-                               f"{alarm.region}#logsV2:log-groups/log-group/{log_group_name_encoded}/log-events$3Fend$3D{search_time_end}$26filterPattern$3D{log_group_filter_pattern_encoded}$26start$3D{search_time_start}"
+        log_group_search_url = (
+            f"https://{alarm.region}.console.aws.amazon.com/cloudwatch/home?region="
+            f"{alarm.region}#logsV2:log-groups/log-group/{log_group_name_encoded}/log-events$3Fend$3D{search_time_end}$26filterPattern$3D{log_group_filter_pattern_encoded}$26start$3D{search_time_start}"
+        )
         return log_group_search_url
 
     @staticmethod
@@ -320,7 +353,7 @@ class MessageDispatcherBase:
         @return:
         """
 
-        ret = urllib.parse.quote(str_src, safe='')
+        ret = urllib.parse.quote(str_src, safe="")
         return ret.replace("%", "$25")
 
     def handle_ses_message_default(self, message):
@@ -358,21 +391,27 @@ class MessageDispatcherBase:
         notification = Notification()
 
         notification.type = Notification.Types.CRITICAL
-        notification.header = notification.header or "Default SES handler: Bounce received"
+        notification.header = (
+            notification.header or "Default SES handler: Bounce received"
+        )
         try:
             region = mail["sourceArn"].split(":")[3]
         except Exception:
             region = "Unknown"
 
-        notification.text = f'*Email Bounce*\n' \
-                            f'Region: {region}\n\n>' \
-                            f'bounceType: {bounce["bounceType"]}\n\n' \
-                            f'bounceSubType: {bounce["bounceSubType"]}\n\n' \
-                            f'bouncedRecipients: {bounce["bouncedRecipients"]}\n\n' \
-                            f'headers: mail["headers"]\n\n'
+        notification.text = (
+            f"*Email Bounce*\n"
+            f"Region: {region}\n\n>"
+            f'bounceType: {bounce["bounceType"]}\n\n'
+            f'bounceSubType: {bounce["bounceSubType"]}\n\n'
+            f'bouncedRecipients: {bounce["bouncedRecipients"]}\n\n'
+            f'headers: mail["headers"]\n\n'
+        )
 
         for notification_channel in self.notification_channels:
-            notification.tags = [notification_channel.configuration.ALERT_SYSTEM_MONITORING_ROUTING_TAG]
+            notification.tags = [
+                notification_channel.configuration.ALERT_SYSTEM_MONITORING_ROUTING_TAG
+            ]
             notification_channel.notify(notification)
 
 
@@ -420,7 +459,9 @@ class CloudwatchAlarm:
         """
 
         if self._alert_system_data is None:
-            self._alert_system_data = json.loads(self.sns_message["AlarmDescription"]).get("data")
+            self._alert_system_data = json.loads(
+                self.sns_message["AlarmDescription"]
+            ).get("data")
         return self._alert_system_data
 
     @property
@@ -443,7 +484,9 @@ class CloudwatchAlarm:
         @return:
         """
         if self._start_time is None:
-            self._start_time = self.end_time - datetime.timedelta(seconds=self.sns_message["Trigger"]["Period"])
+            self._start_time = self.end_time - datetime.timedelta(
+                seconds=self.sns_message["Trigger"]["Period"]
+            )
         return self._start_time
 
     @property
@@ -455,7 +498,9 @@ class CloudwatchAlarm:
         """
 
         if self._end_time is None:
-            self._end_time = datetime.datetime.strptime(self.sns_message["StateChangeTime"], "%Y-%m-%dT%H:%M:%S.%f%z")
+            self._end_time = datetime.datetime.strptime(
+                self.sns_message["StateChangeTime"], "%Y-%m-%dT%H:%M:%S.%f%z"
+            )
         return self._end_time
 
     @property

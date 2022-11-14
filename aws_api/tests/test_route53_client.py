@@ -12,8 +12,15 @@ logger = get_logger()
 
 configuration = AWSAPIConfigurationPolicy()
 configuration.configuration_file_full_path = os.path.abspath(
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore",
-                 "aws_api_configuration_values.py"))
+    os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "..",
+        "..",
+        "..",
+        "ignore",
+        "aws_api_configuration_values.py",
+    )
+)
 configuration.init_from_file()
 
 accounts = CommonUtils.load_object_from_module(configuration.accounts_file, "main")

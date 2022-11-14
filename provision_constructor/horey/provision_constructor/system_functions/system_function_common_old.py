@@ -20,6 +20,7 @@ class SystemFunctionCommon:
         with open(file_path, "a") as file_handler:
             file_handler.write(line)
 
+
 def add_line_to_file_parser():
     description = "add_line_to_file"
     parser = argparse.ArgumentParser(description=description)
@@ -34,16 +35,17 @@ def add_line_to_file(arguments) -> None:
     arguments_dict = vars(arguments)
     SystemFunctionCommon.add_line_to_file(**arguments_dict)
 
+
 action_manager = ActionsManager()
 
 
 # region add_line_to_file
 
 
-
-action_manager.register_action("add_line_to_file", add_line_to_file_parser, add_line_to_file)
+action_manager.register_action(
+    "add_line_to_file", add_line_to_file_parser, add_line_to_file
+)
 # endregion
 
 if __name__ == "__main__":
     action_manager.call_action()
-

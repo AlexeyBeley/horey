@@ -32,12 +32,15 @@ class IamRole(AwsObject):
         init_options = {
             "RoleId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
             "Path": self.init_default_attr,
-            "RoleName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "RoleName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
             "Arn": self.init_default_attr,
             "CreateDate": self.init_default_attr,
             "AssumeRolePolicyDocument": self.init_default_attr,
             "Description": self.init_default_attr,
-            "MaxSessionDuration": self.init_default_attr}
+            "MaxSessionDuration": self.init_default_attr,
+        }
         self.init_attrs(dict_src, init_options)
 
     def _init_iam_role_from_cache(self, dict_src):
@@ -60,7 +63,9 @@ class IamRole(AwsObject):
         init_options = {
             "RoleId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
             "Path": self.init_default_attr,
-            "RoleName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "RoleName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
             "Arn": self.init_default_attr,
             "CreateDate": self.init_default_attr,
             "AssumeRolePolicyDocument": self.init_default_attr,
@@ -124,12 +129,15 @@ class IamRole(AwsObject):
         init_options = {
             "RoleId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
             "Path": self.init_default_attr,
-            "RoleName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "RoleName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
             "Arn": self.init_default_attr,
             "CreateDate": self.init_default_attr,
             "AssumeRolePolicyDocument": self.init_default_attr,
             "Description": self.init_default_attr,
-            "MaxSessionDuration": self.init_default_attr}
+            "MaxSessionDuration": self.init_default_attr,
+        }
 
         self.init_attrs(dict_src, init_options)
 
@@ -140,11 +148,13 @@ class IamRole(AwsObject):
         @return:
         """
 
-        request = {"RoleName": self.name,
-                   "Description": self.description,
-                   "AssumeRolePolicyDocument": self.assume_role_policy_document,
-                   "MaxSessionDuration": self.max_session_duration,
-                   "Tags": self.tags}
+        request = {
+            "RoleName": self.name,
+            "Description": self.description,
+            "AssumeRolePolicyDocument": self.assume_role_policy_document,
+            "MaxSessionDuration": self.max_session_duration,
+            "Tags": self.tags,
+        }
 
         return request
 
@@ -156,8 +166,5 @@ class IamRole(AwsObject):
         """
 
         return [
-            {
-                "PolicyArn": policy.arn,
-                "RoleName": self.name
-            }
-            for policy in self.policies]
+            {"PolicyArn": policy.arn, "RoleName": self.name} for policy in self.policies
+        ]

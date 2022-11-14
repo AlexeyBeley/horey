@@ -5,10 +5,12 @@ from enum import Enum
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 import pdb
 
+
 class IamPolicy(AwsObject):
     """
     Class representing AWS Iam Policy object
     """
+
     def __init__(self, dict_src, from_cache=False):
         """
         Init with boto3 dict
@@ -22,16 +24,19 @@ class IamPolicy(AwsObject):
             return
 
         init_options = {
-                        "PolicyId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
-                        "Path": self.init_default_attr,
-                        "PolicyName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-                        "Arn": self.init_default_attr,
-                        "CreateDate": self.init_default_attr,
-                        "DefaultVersionId": self.init_default_attr,
-                        "AttachmentCount": self.init_default_attr,
-                        "PermissionsBoundaryUsageCount": self.init_default_attr,
-                        "IsAttachable": self.init_default_attr,
-                        "UpdateDate": self.init_default_attr}
+            "PolicyId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "Path": self.init_default_attr,
+            "PolicyName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
+            "Arn": self.init_default_attr,
+            "CreateDate": self.init_default_attr,
+            "DefaultVersionId": self.init_default_attr,
+            "AttachmentCount": self.init_default_attr,
+            "PermissionsBoundaryUsageCount": self.init_default_attr,
+            "IsAttachable": self.init_default_attr,
+            "UpdateDate": self.init_default_attr,
+        }
 
         self.init_attrs(dict_src, init_options)
 
@@ -42,8 +47,8 @@ class IamPolicy(AwsObject):
         :return:
         """
         options = {
-                   "document": self.init_document_from_cache,
-                   }
+            "document": self.init_document_from_cache,
+        }
 
         self._init_from_cache(dict_src, options)
 
@@ -62,11 +67,12 @@ class IamPolicy(AwsObject):
         :param dict_src:
         :return:
         """
-        init_options = {"CreateDate": self.init_default_attr,
-                        "IsDefaultVersion": self.init_default_attr,
-                        "VersionId": self.init_default_attr,
-                        "Document": self.init_document
-                        }
+        init_options = {
+            "CreateDate": self.init_default_attr,
+            "IsDefaultVersion": self.init_default_attr,
+            "VersionId": self.init_default_attr,
+            "Document": self.init_document,
+        }
 
         self.init_attrs(dict_src, init_options)
 
@@ -92,14 +98,17 @@ class IamPolicy(AwsObject):
         init_options = {
             "PolicyId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
             "Path": self.init_default_attr,
-            "PolicyName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "PolicyName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
             "Arn": self.init_default_attr,
             "CreateDate": self.init_default_attr,
             "DefaultVersionId": self.init_default_attr,
             "AttachmentCount": self.init_default_attr,
             "PermissionsBoundaryUsageCount": self.init_default_attr,
             "IsAttachable": self.init_default_attr,
-            "UpdateDate": self.init_default_attr}
+            "UpdateDate": self.init_default_attr,
+        }
 
         self.init_attrs(dict_src, init_options)
 
@@ -107,6 +116,7 @@ class IamPolicy(AwsObject):
         """
         Class representing AWS Policy Document object.
         """
+
         def __init__(self, dict_src, from_cache=False):
             self.statements = []
 
@@ -116,10 +126,11 @@ class IamPolicy(AwsObject):
                 self.init_document_from_cache(dict_src)
                 return
 
-            init_options = {"Version": self.init_default_attr,
-                            "Statement": self.init_statement,
-                            "Id": self.init_default_attr,
-                            }
+            init_options = {
+                "Version": self.init_default_attr,
+                "Statement": self.init_statement,
+                "Id": self.init_default_attr,
+            }
 
             self.init_attrs(dict_src, init_options)
 
@@ -129,8 +140,11 @@ class IamPolicy(AwsObject):
             :param dict_src:
             :return:
             """
-            options = {"statements": lambda key, value: self.init_statement(key, value, from_cache=True),
-                       }
+            options = {
+                "statements": lambda key, value: self.init_statement(
+                    key, value, from_cache=True
+                ),
+            }
 
             self._init_from_cache(dict_src, options)
 
@@ -146,7 +160,9 @@ class IamPolicy(AwsObject):
                 lst_src = [lst_src]
 
             for dict_src in lst_src:
-                statement = IamPolicy.Document.Statement(dict_src, from_cache=from_cache)
+                statement = IamPolicy.Document.Statement(
+                    dict_src, from_cache=from_cache
+                )
 
                 self.statements.append(statement)
 
@@ -162,20 +178,23 @@ class IamPolicy(AwsObject):
                 self.resource = None
                 self.not_resource = None
                 self.condition = None
-                super(IamPolicy.Document.Statement, self).__init__(dict_src, from_cache=from_cache)
+                super(IamPolicy.Document.Statement, self).__init__(
+                    dict_src, from_cache=from_cache
+                )
 
                 if from_cache:
                     self.init_statement_from_cache(dict_src)
                     return
 
-                init_options = {"Sid": self.init_default_attr,
-                                "Effect": self.init_effect,
-                                "Action": self.init_action,
-                                "Resource": self.init_resource,
-                                "Condition": self.init_default_attr,
-                                "NotAction": self.init_action,
-                                "NotResource": self.init_resource,
-                                }
+                init_options = {
+                    "Sid": self.init_default_attr,
+                    "Effect": self.init_effect,
+                    "Action": self.init_action,
+                    "Resource": self.init_resource,
+                    "Condition": self.init_default_attr,
+                    "NotAction": self.init_action,
+                    "NotResource": self.init_resource,
+                }
 
                 self.init_attrs(dict_src, init_options)
 
@@ -208,7 +227,9 @@ class IamPolicy(AwsObject):
                             action[str_action] = str_action
                             continue
 
-                        raise NotImplementedError("Not yet implemented, replaced pdb.set_trace")
+                        raise NotImplementedError(
+                            "Not yet implemented, replaced pdb.set_trace"
+                        )
 
                     service_name, action_value = str_action.split(":", 1)
 
@@ -266,13 +287,13 @@ class IamPolicy(AwsObject):
 
                 if i == len(str_1):
                     # "asd*", "asd12456"
-                    if str_1[i-1] == "*":
+                    if str_1[i - 1] == "*":
                         return str_2
                     # "asd" "asd*"
                     if str_2[i] == "*":
                         return str_1
                 elif i == len(str_2):
-                    if str_2[i-1] == "*":
+                    if str_2[i - 1] == "*":
                         return str_1
                     if str_1[i] == "*":
                         return str_2
@@ -303,7 +324,9 @@ class IamPolicy(AwsObject):
                     elif lst_arn_2[i] == "*":
                         lst_ret.append(lst_arn_1[i])
                     elif "*" in lst_arn_1[i] or "*" in lst_arn_2[i]:
-                        ret = self.tail_position_regexes_intersect(lst_arn_1[i], lst_arn_2[i])
+                        ret = self.tail_position_regexes_intersect(
+                            lst_arn_1[i], lst_arn_2[i]
+                        )
                         if ret is None:
                             return []
                         lst_ret.append(ret)
@@ -335,7 +358,9 @@ class IamPolicy(AwsObject):
                             return [self_resource for self_resource in self.resource]
 
                         if "*" in self_resource or "*" in other_resource:
-                            lst_ret += self.intersect_resource_value_regex(self_resource, other_resource)
+                            lst_ret += self.intersect_resource_value_regex(
+                                self_resource, other_resource
+                            )
                         elif self_resource == other_resource:
                             lst_ret.append(self_resource)
 
@@ -422,7 +447,9 @@ class IamPolicy(AwsObject):
                 for self_service, self_action in self.action.items():
                     for other_service, other_action in other.action.items():
                         if self.check_service_intersect(self_service, other_service):
-                            lst_ret += self.action_lists_values_intersect(self_action, other_action)
+                            lst_ret += self.action_lists_values_intersect(
+                                self_action, other_action
+                            )
 
                 return lst_ret
 
@@ -430,6 +457,7 @@ class IamPolicy(AwsObject):
                 """
                 Possible values for effect statement.
                 """
+
                 ALLOW = "Allow"
                 DENY = "Deny"
 
@@ -439,15 +467,17 @@ class IamPolicy(AwsObject):
                 ARN built by this specs:
                 https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html
                 """
-                INIT_PARTS = {1: "partition",
-                              2: "service",
-                              3: "region",
-                              4: "account_id",
-                              5: "resource_type",
-                              6: "resource_id",
-                              7: "resource_data_0",  # I want to vomit :(
-                              8: "resource_data_1"
-                              }
+
+                INIT_PARTS = {
+                    1: "partition",
+                    2: "service",
+                    3: "region",
+                    4: "account_id",
+                    5: "resource_type",
+                    6: "resource_id",
+                    7: "resource_data_0",  # I want to vomit :(
+                    8: "resource_data_1",
+                }
 
                 def __init__(self, str_src):
                     self.str_src = str_src
@@ -480,7 +510,9 @@ class IamPolicy(AwsObject):
                             if lst_arn[part_index] == "*":
                                 setattr(self, self.INIT_PARTS[part_index], arn_part)
                             else:
-                                raise NotImplementedError("Not yet implemented, replaced pdb.set_trace")
+                                raise NotImplementedError(
+                                    "Not yet implemented, replaced pdb.set_trace"
+                                )
                         else:
                             setattr(self, self.INIT_PARTS[part_index], arn_part)
 
@@ -498,13 +530,17 @@ class IamPolicy(AwsObject):
                     """
                     lst_ret = []
                     for value in self.INIT_PARTS.values():
-                        lst_part = self._intersect_arn_part(getattr(self, value), getattr(other, value))
+                        lst_part = self._intersect_arn_part(
+                            getattr(self, value), getattr(other, value)
+                        )
                         if len(lst_part) == 0:
                             return []
                         if len(lst_part) > 1:
                             raise NotImplementedError(lst_part)
                         lst_ret.append(lst_part[0])
-                    raise NotImplementedError("Not yet implemented, replaced pdb.set_trace")
+                    raise NotImplementedError(
+                        "Not yet implemented, replaced pdb.set_trace"
+                    )
 
                 @staticmethod
                 def _intersect_arn_part(self_part, other_part):
@@ -524,4 +560,6 @@ class IamPolicy(AwsObject):
                     if "*" not in self_part and "*" not in other_part:
                         return [self_part] if self_part == other_part else None
 
-                    raise NotImplementedError("Not yet implemented, replaced pdb.set_trace")
+                    raise NotImplementedError(
+                        "Not yet implemented, replaced pdb.set_trace"
+                    )

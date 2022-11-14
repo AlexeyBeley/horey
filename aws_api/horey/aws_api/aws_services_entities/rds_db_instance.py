@@ -12,6 +12,7 @@ class RDSDBInstance(AwsObject):
     """
     Class representing RDS DB instance
     """
+
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self.endpoint = None
@@ -29,60 +30,64 @@ class RDSDBInstance(AwsObject):
             return
 
         init_options = {
-                        "DBInstanceIdentifier": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
-                        "DBInstanceArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
-                        "DBInstanceClass": self.init_default_attr,
-                        "Engine": self.init_default_attr,
-                        "DBInstanceStatus": self.init_default_attr,
-                        "MasterUsername": self.init_default_attr,
-                        "Endpoint": self.init_default_attr,
-                        "AllocatedStorage": self.init_default_attr,
-                        "InstanceCreateTime": self.init_default_attr,
-                        "PreferredBackupWindow": self.init_default_attr,
-                        "BackupRetentionPeriod": self.init_default_attr,
-                        "DBSecurityGroups": self.init_default_attr,
-                        "VpcSecurityGroups": self.init_default_attr,
-                        "DBParameterGroups": self.init_default_attr,
-                        "AvailabilityZone": self.init_default_attr,
-                        "DBSubnetGroup": self.init_default_attr,
-                        "PreferredMaintenanceWindow": self.init_default_attr,
-                        "PendingModifiedValues": self.init_default_attr,
-                        "LatestRestorableTime": self.init_default_attr,
-                        "MultiAZ": self.init_default_attr,
-                        "EngineVersion": self.init_default_attr,
-                        "AutoMinorVersionUpgrade": self.init_default_attr,
-                        "ReadReplicaDBInstanceIdentifiers": self.init_default_attr,
-                        "LicenseModel": self.init_default_attr,
-                        "OptionGroupMemberships": self.init_default_attr,
-                        "PubliclyAccessible": self.init_default_attr,
-                        "StorageType": self.init_default_attr,
-                        "DbInstancePort": self.init_default_attr,
-                        "StorageEncrypted": self.init_default_attr,
-                        "KmsKeyId": self.init_default_attr,
-                        "DbiResourceId": self.init_default_attr,
-                        "CACertificateIdentifier": self.init_default_attr,
-                        "DomainMemberships": self.init_default_attr,
-                        "CopyTagsToSnapshot": self.init_default_attr,
-                        "MonitoringInterval": self.init_default_attr,
-                        "IAMDatabaseAuthenticationEnabled": self.init_default_attr,
-                        "PerformanceInsightsEnabled": self.init_default_attr,
-                        "DeletionProtection": self.init_default_attr,
-                        "EnhancedMonitoringResourceArn": self.init_default_attr,
-                        "MonitoringRoleArn": self.init_default_attr,
-                        "DBName": self.init_default_attr,
-                        "ReadReplicaSourceDBInstanceIdentifier": self.init_default_attr,
-                        "StatusInfos": self.init_default_attr,
-                        "SecondaryAvailabilityZone": self.init_default_attr,
-                        "DBClusterIdentifier": self.init_default_attr,
-                        "PromotionTier": self.init_default_attr,
-                        "AssociatedRoles": self.init_default_attr,
-                        "TagList": self.init_default_attr,
-                        "CustomerOwnedIpEnabled": self.init_default_attr,
-                        "PerformanceInsightsKMSKeyId": self.init_default_attr,
-                        "PerformanceInsightsRetentionPeriod": self.init_default_attr,
-                        "EnabledCloudwatchLogsExports": self.init_default_attr,
-                        "BackupTarget": self.init_default_attr,
-                        }
+            "DBInstanceIdentifier": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="id"
+            ),
+            "DBInstanceArn": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
+            "DBInstanceClass": self.init_default_attr,
+            "Engine": self.init_default_attr,
+            "DBInstanceStatus": self.init_default_attr,
+            "MasterUsername": self.init_default_attr,
+            "Endpoint": self.init_default_attr,
+            "AllocatedStorage": self.init_default_attr,
+            "InstanceCreateTime": self.init_default_attr,
+            "PreferredBackupWindow": self.init_default_attr,
+            "BackupRetentionPeriod": self.init_default_attr,
+            "DBSecurityGroups": self.init_default_attr,
+            "VpcSecurityGroups": self.init_default_attr,
+            "DBParameterGroups": self.init_default_attr,
+            "AvailabilityZone": self.init_default_attr,
+            "DBSubnetGroup": self.init_default_attr,
+            "PreferredMaintenanceWindow": self.init_default_attr,
+            "PendingModifiedValues": self.init_default_attr,
+            "LatestRestorableTime": self.init_default_attr,
+            "MultiAZ": self.init_default_attr,
+            "EngineVersion": self.init_default_attr,
+            "AutoMinorVersionUpgrade": self.init_default_attr,
+            "ReadReplicaDBInstanceIdentifiers": self.init_default_attr,
+            "LicenseModel": self.init_default_attr,
+            "OptionGroupMemberships": self.init_default_attr,
+            "PubliclyAccessible": self.init_default_attr,
+            "StorageType": self.init_default_attr,
+            "DbInstancePort": self.init_default_attr,
+            "StorageEncrypted": self.init_default_attr,
+            "KmsKeyId": self.init_default_attr,
+            "DbiResourceId": self.init_default_attr,
+            "CACertificateIdentifier": self.init_default_attr,
+            "DomainMemberships": self.init_default_attr,
+            "CopyTagsToSnapshot": self.init_default_attr,
+            "MonitoringInterval": self.init_default_attr,
+            "IAMDatabaseAuthenticationEnabled": self.init_default_attr,
+            "PerformanceInsightsEnabled": self.init_default_attr,
+            "DeletionProtection": self.init_default_attr,
+            "EnhancedMonitoringResourceArn": self.init_default_attr,
+            "MonitoringRoleArn": self.init_default_attr,
+            "DBName": self.init_default_attr,
+            "ReadReplicaSourceDBInstanceIdentifier": self.init_default_attr,
+            "StatusInfos": self.init_default_attr,
+            "SecondaryAvailabilityZone": self.init_default_attr,
+            "DBClusterIdentifier": self.init_default_attr,
+            "PromotionTier": self.init_default_attr,
+            "AssociatedRoles": self.init_default_attr,
+            "TagList": self.init_default_attr,
+            "CustomerOwnedIpEnabled": self.init_default_attr,
+            "PerformanceInsightsKMSKeyId": self.init_default_attr,
+            "PerformanceInsightsRetentionPeriod": self.init_default_attr,
+            "EnabledCloudwatchLogsExports": self.init_default_attr,
+            "BackupTarget": self.init_default_attr,
+        }
 
         self.init_attrs(dict_src, init_options)
 
@@ -129,9 +134,9 @@ class RDSDBInstance(AwsObject):
 
     def generate_create_request(self):
         """
-        response = client.create_db_cluster(
+                response = client.create_db_cluster(
 
-)
+        )
         """
         request = dict()
         if self.availability_zones:
@@ -201,65 +206,70 @@ class RDSDBInstance(AwsObject):
 
     def update_from_raw_response(self, dict_src):
         init_options = {
-                        "DBInstanceIdentifier": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
-                        "DBInstanceClass": self.init_default_attr,
-                        "Engine": self.init_default_attr,
-                        "DBInstanceStatus": self.init_default_attr,
-                        "MasterUsername": self.init_default_attr,
-                        "Endpoint": self.init_default_attr,
-                        "AllocatedStorage": self.init_default_attr,
-                        "InstanceCreateTime": self.init_default_attr,
-                        "PreferredBackupWindow": self.init_default_attr,
-                        "BackupRetentionPeriod": self.init_default_attr,
-                        "DBSecurityGroups": self.init_default_attr,
-                        "VpcSecurityGroups": self.init_default_attr,
-                        "DBParameterGroups": self.init_default_attr,
-                        "AvailabilityZone": self.init_default_attr,
-                        "DBSubnetGroup": self.init_default_attr,
-                        "PreferredMaintenanceWindow": self.init_default_attr,
-                        "PendingModifiedValues": self.init_default_attr,
-                        "LatestRestorableTime": self.init_default_attr,
-                        "MultiAZ": self.init_default_attr,
-                        "EngineVersion": self.init_default_attr,
-                        "AutoMinorVersionUpgrade": self.init_default_attr,
-                        "ReadReplicaDBInstanceIdentifiers": self.init_default_attr,
-                        "LicenseModel": self.init_default_attr,
-                        "OptionGroupMemberships": self.init_default_attr,
-                        "PubliclyAccessible": self.init_default_attr,
-                        "StorageType": self.init_default_attr,
-                        "DbInstancePort": self.init_default_attr,
-                        "StorageEncrypted": self.init_default_attr,
-                        "KmsKeyId": self.init_default_attr,
-                        "DbiResourceId": self.init_default_attr,
-                        "CACertificateIdentifier": self.init_default_attr,
-                        "DomainMemberships": self.init_default_attr,
-                        "CopyTagsToSnapshot": self.init_default_attr,
-                        "MonitoringInterval": self.init_default_attr,
-                        "DBInstanceArn": self.init_default_attr,
-                        "IAMDatabaseAuthenticationEnabled": self.init_default_attr,
-                        "PerformanceInsightsEnabled": self.init_default_attr,
-                        "DeletionProtection": self.init_default_attr,
-                        "EnhancedMonitoringResourceArn": self.init_default_attr,
-                        "MonitoringRoleArn": self.init_default_attr,
-                        "DBName": self.init_default_attr,
-                        "ReadReplicaSourceDBInstanceIdentifier": self.init_default_attr,
-                        "StatusInfos": self.init_default_attr,
-                        "SecondaryAvailabilityZone": self.init_default_attr,
-                        "DBClusterIdentifier": self.init_default_attr,
-                        "PromotionTier": self.init_default_attr,
-                        "AssociatedRoles": self.init_default_attr,
-                        "TagList": self.init_default_attr,
-                        "CustomerOwnedIpEnabled": self.init_default_attr,
-                        "PerformanceInsightsKMSKeyId": self.init_default_attr,
-                        "PerformanceInsightsRetentionPeriod": self.init_default_attr,
-                        "EnabledCloudwatchLogsExports": self.init_default_attr,
-                        "BackupTarget": self.init_default_attr,
-                        }
+            "DBInstanceIdentifier": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="id"
+            ),
+            "DBInstanceClass": self.init_default_attr,
+            "Engine": self.init_default_attr,
+            "DBInstanceStatus": self.init_default_attr,
+            "MasterUsername": self.init_default_attr,
+            "Endpoint": self.init_default_attr,
+            "AllocatedStorage": self.init_default_attr,
+            "InstanceCreateTime": self.init_default_attr,
+            "PreferredBackupWindow": self.init_default_attr,
+            "BackupRetentionPeriod": self.init_default_attr,
+            "DBSecurityGroups": self.init_default_attr,
+            "VpcSecurityGroups": self.init_default_attr,
+            "DBParameterGroups": self.init_default_attr,
+            "AvailabilityZone": self.init_default_attr,
+            "DBSubnetGroup": self.init_default_attr,
+            "PreferredMaintenanceWindow": self.init_default_attr,
+            "PendingModifiedValues": self.init_default_attr,
+            "LatestRestorableTime": self.init_default_attr,
+            "MultiAZ": self.init_default_attr,
+            "EngineVersion": self.init_default_attr,
+            "AutoMinorVersionUpgrade": self.init_default_attr,
+            "ReadReplicaDBInstanceIdentifiers": self.init_default_attr,
+            "LicenseModel": self.init_default_attr,
+            "OptionGroupMemberships": self.init_default_attr,
+            "PubliclyAccessible": self.init_default_attr,
+            "StorageType": self.init_default_attr,
+            "DbInstancePort": self.init_default_attr,
+            "StorageEncrypted": self.init_default_attr,
+            "KmsKeyId": self.init_default_attr,
+            "DbiResourceId": self.init_default_attr,
+            "CACertificateIdentifier": self.init_default_attr,
+            "DomainMemberships": self.init_default_attr,
+            "CopyTagsToSnapshot": self.init_default_attr,
+            "MonitoringInterval": self.init_default_attr,
+            "DBInstanceArn": self.init_default_attr,
+            "IAMDatabaseAuthenticationEnabled": self.init_default_attr,
+            "PerformanceInsightsEnabled": self.init_default_attr,
+            "DeletionProtection": self.init_default_attr,
+            "EnhancedMonitoringResourceArn": self.init_default_attr,
+            "MonitoringRoleArn": self.init_default_attr,
+            "DBName": self.init_default_attr,
+            "ReadReplicaSourceDBInstanceIdentifier": self.init_default_attr,
+            "StatusInfos": self.init_default_attr,
+            "SecondaryAvailabilityZone": self.init_default_attr,
+            "DBClusterIdentifier": self.init_default_attr,
+            "PromotionTier": self.init_default_attr,
+            "AssociatedRoles": self.init_default_attr,
+            "TagList": self.init_default_attr,
+            "CustomerOwnedIpEnabled": self.init_default_attr,
+            "PerformanceInsightsKMSKeyId": self.init_default_attr,
+            "PerformanceInsightsRetentionPeriod": self.init_default_attr,
+            "EnabledCloudwatchLogsExports": self.init_default_attr,
+            "BackupTarget": self.init_default_attr,
+        }
 
         self.init_attrs(dict_src, init_options)
 
     def get_status(self):
-        return {enum_value.value: enum_value for _, enum_value in self.Status.__members__.items()}[self.db_instance_status]
+        return {
+            enum_value.value: enum_value
+            for _, enum_value in self.Status.__members__.items()
+        }[self.db_instance_status]
 
     class Status(Enum):
         """
@@ -284,6 +294,7 @@ class RDSDBInstance(AwsObject):
         "storage-optimization"
         "upgrading"
         """
+
         AVAILABLE = "available"
         CREATING = "creating"
         DELETING = "deleting"
@@ -293,8 +304,3 @@ class RDSDBInstance(AwsObject):
         STOPPED = "stopped"
         STOPPING = "stopping"
         CONFIGURING_LOG_EXPORTS = "configuring-log-exports"
-
-
-
-
-

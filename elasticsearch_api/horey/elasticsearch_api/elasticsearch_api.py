@@ -9,7 +9,9 @@ import pdb
 
 from elasticsearch.client.utils import _make_path
 from horey.h_logger import get_logger
-from horey.elasticsearch_api.elasticsearch_api_configuration_policy import ElasticsearchAPIConfigurationPolicy
+from horey.elasticsearch_api.elasticsearch_api_configuration_policy import (
+    ElasticsearchAPIConfigurationPolicy,
+)
 from elasticsearch import Elasticsearch
 from horey.common_utils.common_utils import CommonUtils
 from horey.elasticsearch_api.monitor import Monitor
@@ -58,10 +60,13 @@ class ElasticsearchAPI(object):
             if es_index_name.startswith("."):
                 continue
 
-            created_date = CommonUtils.timestamp_to_datetime(es_index["settings"]["index"]["creation_date"],
-                                                             microseconds_value=True)
+            created_date = CommonUtils.timestamp_to_datetime(
+                es_index["settings"]["index"]["creation_date"], microseconds_value=True
+            )
             if created_date < time_limit:
-                logger.info(f"Deleting index '{es_index_name}' created at {created_date}")
+                logger.info(
+                    f"Deleting index '{es_index_name}' created at {created_date}"
+                )
                 to_del_indices.append(es_index_name)
         pdb.set_trace()
         self.client.indices.delete(to_del_indices)
@@ -71,7 +76,9 @@ class ElasticsearchAPI(object):
         pdb.set_trace()
         self.client.indices.delete([".kibana"])
 
-        ret = self.client.indices.create(".kibana", body={"mappings": {"dynamic": True}})
+        ret = self.client.indices.create(
+            ".kibana", body={"mappings": {"dynamic": True}}
+        )
 
     def create_alarm(self):
         """
@@ -87,10 +94,18 @@ class ElasticsearchAPI(object):
             "GET", _make_path("_cat", "indices", None), params=None, headers=None
         )
 
-        self.client.transport.perform_request("POST", _make_path("_plugins", "_alerting", "monitors"), params=None,
-                                              headers=None)
-        self.client.transport.perform_request("GET", _make_path("_plugins", "_alerting", "monitors", "alerts"),
-                                              params=None, headers=None)
+        self.client.transport.perform_request(
+            "POST",
+            _make_path("_plugins", "_alerting", "monitors"),
+            params=None,
+            headers=None,
+        )
+        self.client.transport.perform_request(
+            "GET",
+            _make_path("_plugins", "_alerting", "monitors", "alerts"),
+            params=None,
+            headers=None,
+        )
         ""
 
     def create_monitor(self, monitor):
@@ -102,15 +117,23 @@ class ElasticsearchAPI(object):
         request["triggers"][0]["actions"] = []
         pdb.set_trace()
 
-        self.client.transport.perform_request("POST", _make_path("_plugins", "_alerting", "monitors"),
-                                              params=None, headers=None, body=request)
+        self.client.transport.perform_request(
+            "POST",
+            _make_path("_plugins", "_alerting", "monitors"),
+            params=None,
+            headers=None,
+            body=request,
+        )
 
     def init_monitors(self, from_cache=False, cache_filename=None):
         if from_cache:
             self.monitors = self.init_objects_from_cache(Monitor, cache_filename)
             return
-        search_result = self.client.transport.perform_request("GET", _make_path("_plugins", "_alerting", "monitors", "_search"),
-                                                    body={"query": {"regexp": {"monitor.name": ".*"}}})
+        search_result = self.client.transport.perform_request(
+            "GET",
+            _make_path("_plugins", "_alerting", "monitors", "_search"),
+            body={"query": {"regexp": {"monitor.name": ".*"}}},
+        )
         monitors = []
         for monitor_metadata in search_result["hits"]["hits"]:
             monitor = Monitor()
@@ -130,16 +153,18 @@ class ElasticsearchAPI(object):
             ret.append(obj)
 
         return ret
-    
+
     def init_destinations(self):
-        search_result = self.client.transport.perform_request("GET", _make_path("_plugins", "_alerting", "destinations"))
+        search_result = self.client.transport.perform_request(
+            "GET", _make_path("_plugins", "_alerting", "destinations")
+        )
         destinations = []
         for _metadata in search_result["destinations"]:
             destination = Destination()
             destination.init_from_search_reply(_metadata)
             destinations.append(destination)
         self.destinations = destinations
-        
+
     def cache_objects(self, objects, file_name):
         pdb.set_trace()
         cache_file_path = os.path.join(self.configuration.cache_dir, file_name)

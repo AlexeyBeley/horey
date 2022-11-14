@@ -18,10 +18,12 @@ setup(
     author="Horey",
     author_email="alexey.beley@gmail.com",
     license="DWTFYWTPL",
-    packages=find_namespace_packages(include=["horey.replacement_engine", "horey.replacement_engine.*"]),
+    packages=find_namespace_packages(
+        include=["horey.replacement_engine", "horey.replacement_engine.*"]
+    ),
     package_data={
-        "": ["replacement_engine/**/*.sh"
-             ],
+        "": ["replacement_engine/**/*.sh"],
     },
     include_package_data=True,
-    zip_safe=False)
+    zip_safe=False,
+)

@@ -22,14 +22,16 @@ class SESV2ConfigurationSet(AwsObject):
             return
 
         init_options = {
-            "ConfigurationSetName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "ConfigurationSetName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
             "TrackingOptions": self.init_default_attr,
             "ReputationOptions": self.init_default_attr,
             "SendingOptions": self.init_default_attr,
             "Tags": self.init_default_attr,
         }
 
-        self.init_attrs(dict_src, init_options, raise_on_no_option=True)
+        self.init_attrs(dict_src, init_options)
 
     def _init_object_from_cache(self, dict_src):
         """
@@ -42,14 +44,16 @@ class SESV2ConfigurationSet(AwsObject):
 
     def update_from_raw_response(self, dict_src):
         init_options = {
-            "ConfigurationSetName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "ConfigurationSetName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
             "TrackingOptions": self.init_default_attr,
             "ReputationOptions": self.init_default_attr,
             "SendingOptions": self.init_default_attr,
             "Tags": self.init_default_attr,
         }
 
-        self.init_attrs(dict_src, init_options, raise_on_no_option=True)
+        self.init_attrs(dict_src, init_options)
 
     def generate_create_request(self):
         request = dict()

@@ -23,7 +23,9 @@ class GCPClient:
         pdb.set_trace()
         account = GCPAccount.get_gcp_account()
         for connection_step in account.connection_steps:
-            self._client = self.CLIENT_CLASS(project=connection_step.project, credentials=connection_step.credentials)
+            self._client = self.CLIENT_CLASS(
+                project=connection_step.project, credentials=connection_step.credentials
+            )
 
     def execute(self, function, args=None, kwargs=None):
         if args is None:

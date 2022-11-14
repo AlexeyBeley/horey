@@ -33,14 +33,19 @@ class AWSLambda(AwsObject):
         self.runtime = None
         self.last_update_status = None
         self.revision_id = None
+        self.state = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
             return
 
         init_options = {
-            "FunctionName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-            "FunctionArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "FunctionName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
+            "FunctionArn": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
             "Runtime": self.init_default_attr,
             "Role": self.init_default_attr,
             "Handler": self.init_default_attr,
@@ -48,9 +53,9 @@ class AWSLambda(AwsObject):
             "Description": self.init_default_attr,
             "Timeout": self.init_default_attr,
             "MemorySize": self.init_default_attr,
-            "LastModified": lambda attr_name, value: self.init_date_attr_from_formatted_string(attr_name,
-                                                                                               self.format_last_modified_time(
-                                                                                                   value)),
+            "LastModified": lambda attr_name, value: self.init_date_attr_from_formatted_string(
+                attr_name, self.format_last_modified_time(value)
+            ),
             "CodeSha256": self.init_default_attr,
             "Version": self.init_default_attr,
             "VpcConfig": self.init_default_attr,
@@ -90,7 +95,7 @@ class AWSLambda(AwsObject):
         if value.endswith(self.name):
             self._arn = value
         else:
-            self._arn = value[:value.rfind(":")]
+            self._arn = value[: value.rfind(":")]
 
     @staticmethod
     def format_last_modified_time(str_value):
@@ -168,8 +173,12 @@ class AWSLambda(AwsObject):
         @return:
         """
         init_options = {
-            "FunctionName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-            "FunctionArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "FunctionName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
+            "FunctionArn": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
             "Runtime": self.init_default_attr,
             "Role": self.init_default_attr,
             "Handler": self.init_default_attr,
@@ -177,9 +186,9 @@ class AWSLambda(AwsObject):
             "Description": self.init_default_attr,
             "Timeout": self.init_default_attr,
             "MemorySize": self.init_default_attr,
-            "LastModified": lambda attr_name, value: self.init_date_attr_from_formatted_string(attr_name,
-                                                                                               self.format_last_modified_time(
-                                                                                                   value)),
+            "LastModified": lambda attr_name, value: self.init_date_attr_from_formatted_string(
+                attr_name, self.format_last_modified_time(value)
+            ),
             "CodeSha256": self.init_default_attr,
             "Version": self.init_default_attr,
             "VpcConfig": self.init_default_attr,
@@ -230,13 +239,15 @@ class AWSLambda(AwsObject):
         @return:
         """
 
-        request = {"Code": self.code,
-                   "FunctionName": self.name,
-                   "Role": self.role,
-                   "Handler": self.handler,
-                   "Runtime": self.runtime,
-                   "Tags": self.tags,
-                   "Environment": self.environment}
+        request = {
+            "Code": self.code,
+            "FunctionName": self.name,
+            "Role": self.role,
+            "Handler": self.handler,
+            "Runtime": self.runtime,
+            "Tags": self.tags,
+            "Environment": self.environment,
+        }
 
         if self.timeout is not None:
             request["Timeout"] = self.timeout
@@ -255,14 +266,20 @@ class AWSLambda(AwsObject):
     def generate_update_function_configuration_request(self, desired_lambda):
         """
         Generate Update configuration request to make this lambda look like desired one.
+        must be one of: FunctionName, Role, Handler, Description, Timeout, MemorySize, VpcConfig, Environment, Runtime, DeadLetterConfig, KMSKeyArn, TracingConfig, RevisionId, Layers, FileSystemConfigs, ImageConfig
 
         @param desired_lambda:
         @return:
         """
 
         attr_names = [
-            "Role", "Handler", "Description", "Timeout",
-            "MemorySize", "VpcConfig", "Environment",
+            "Role",
+            "Handler",
+            "Description",
+            "Timeout",
+            "MemorySize",
+            "VpcConfig",
+            "Environment",
             "Runtime",
             "DeadLetterConfig",
             "KMSKeyArn",
@@ -270,8 +287,7 @@ class AWSLambda(AwsObject):
             "RevisionId",
             "Layers",
             "FileSystemConfigs",
-            "ImageConfig",
-            "EphemeralStorage",
+            "ImageConfig"
         ]
         request = {"FunctionName": self.name}
         for attr_name in attr_names:
@@ -286,8 +302,10 @@ class AWSLambda(AwsObject):
 
             self_attr_value = getattr(self, formatted_attr_name)
             if self_attr_value != desired_attr_value:
-                logger.info(f"Updating lambda '{self.name}' config '{formatted_attr_name}' value from"
-                            f" '{self_attr_value}' to '{desired_attr_value}'")
+                logger.info(
+                    f"Updating lambda '{self.name}' config '{formatted_attr_name}' value from"
+                    f" '{self_attr_value}' to '{desired_attr_value}'"
+                )
                 request[attr_name] = desired_attr_value
 
         return request
@@ -344,11 +362,13 @@ class AWSLambda(AwsObject):
         if self.policy is None:
             requests = []
             for statement in desired_aws_lambda.policy["Statement"]:
-                request = {"FunctionName": self.name,
-                           "StatementId": statement["Sid"],
-                           "Action": statement["Action"],
-                           "Principal": statement["Principal"]["Service"],
-                           "SourceArn": statement["Condition"]["ArnLike"]["AWS:SourceArn"]}
+                request = {
+                    "FunctionName": self.name,
+                    "StatementId": statement["Sid"],
+                    "Action": statement["Action"],
+                    "Principal": statement["Principal"]["Service"],
+                    "SourceArn": statement["Condition"]["ArnLike"]["AWS:SourceArn"],
+                }
                 requests.append(request)
             return requests, []
 
@@ -361,23 +381,29 @@ class AWSLambda(AwsObject):
                 if desired_statement["Sid"] == self_statement["Sid"]:
                     break
             else:
-                request = {"FunctionName": self.name, "StatementId": self_statement["Sid"]}
+                request = {
+                    "FunctionName": self.name,
+                    "StatementId": self_statement["Sid"],
+                }
                 remove_permissions.append(request)
                 continue
 
             for key, desired_value in desired_statement.items():
                 if desired_value != self_statement[key]:
                     logger.info(
-                        f'Found difference in key: {key}, current value: {self_statement[key]}, desired: {desired_value}')
+                        f"Found difference in key: {key}, current value: {self_statement[key]}, desired: {desired_value}"
+                    )
                     break
             else:
                 continue
 
-            request = {"FunctionName": self.name,
-                       "StatementId": desired_statement["Sid"],
-                       "Action": desired_statement["Action"],
-                       "Principal": desired_statement["Principal"]["Service"],
-                       "SourceArn": desired_statement["Condition"]["ArnLike"]["AWS:SourceArn"]}
+            request = {
+                "FunctionName": self.name,
+                "StatementId": desired_statement["Sid"],
+                "Action": desired_statement["Action"],
+                "Principal": desired_statement["Principal"]["Service"],
+                "SourceArn": desired_statement["Condition"]["ArnLike"]["AWS:SourceArn"],
+            }
 
             add_permissions.append(request)
         return add_permissions, remove_permissions
@@ -391,11 +417,13 @@ class AWSLambda(AwsObject):
 
         ret = []
         for desired_statement in self.policy["Statement"]:
-            request = {"FunctionName": self.name,
-                       "StatementId": desired_statement["Sid"],
-                       "Action": desired_statement["Action"],
-                       "Principal": desired_statement["Principal"]["Service"],
-                       "SourceArn": desired_statement["Condition"]["ArnLike"]["AWS:SourceArn"]}
+            request = {
+                "FunctionName": self.name,
+                "StatementId": desired_statement["Sid"],
+                "Action": desired_statement["Action"],
+                "Principal": desired_statement["Principal"]["Service"],
+                "SourceArn": desired_statement["Condition"]["ArnLike"]["AWS:SourceArn"],
+            }
             ret.append(request)
         return ret
 
@@ -407,8 +435,10 @@ class AWSLambda(AwsObject):
         """
         if self.last_update_status is None:
             raise self.UndefinedStatusError()
-        return {enum_value.value: enum_value for _, enum_value in self.Status.__members__.items()}[
-            self.last_update_status]
+        return {
+            enum_value.value: enum_value
+            for _, enum_value in self.Status.__members__.items()
+        }[self.last_update_status]
 
     class Status(Enum):
         """

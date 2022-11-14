@@ -6,7 +6,9 @@ import argparse
 
 from horey.configuration_policy.configuration_policy import ConfigurationPolicy
 
-configuration_values_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "configuration_values")
+configuration_values_dir = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "configuration_values"
+)
 
 
 def test_init():
@@ -15,7 +17,9 @@ def test_init():
 
 # @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_from_dictionary():
-    configuration_values = {"configuration_file_full_path": "/fun_horey/configuration_policy.py"}
+    configuration_values = {
+        "configuration_file_full_path": "/fun_horey/configuration_policy.py"
+    }
     os_path_exists_mock = mock.Mock()
     os_path_exists_mock.return_value = True
 
@@ -26,7 +30,11 @@ def test_init_from_dictionary():
 
 # @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_from_command_line():
-    testargs = ["prog", "--configuration_file_full_path", "/fun_horey/configuration_policy.py"]
+    testargs = [
+        "prog",
+        "--configuration_file_full_path",
+        "/fun_horey/configuration_policy.py",
+    ]
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--configuration_file_full_path", required=True, type=str)
@@ -41,7 +49,9 @@ def test_init_from_command_line():
 
 # @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_from_environ():
-    testargs = {f"{ConfigurationPolicy.ENVIRON_ATTRIBUTE_PREFIX.upper()}CONFIGURATION_FILE_FULL_PATH": "/fun_horey/configuration_policy.py"}
+    testargs = {
+        f"{ConfigurationPolicy.ENVIRON_ATTRIBUTE_PREFIX.upper()}CONFIGURATION_FILE_FULL_PATH": "/fun_horey/configuration_policy.py"
+    }
 
     os_path_exists_mock = mock.Mock()
     os_path_exists_mock.return_value = True
@@ -79,7 +89,10 @@ class ConfigurationSon(ConfigurationPolicy):
 # @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_from_python_file():
     config_values = {
-        "configuration_file_full_path": os.path.join(configuration_values_dir, "base_configuration_values.py")}
+        "configuration_file_full_path": os.path.join(
+            configuration_values_dir, "base_configuration_values.py"
+        )
+    }
 
     config = ConfigurationSon()
     config.init_from_dictionary(config_values)
@@ -89,7 +102,10 @@ def test_init_from_python_file():
 # @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_from_json_file():
     config_values = {
-        "configuration_file_full_path": os.path.join(configuration_values_dir, "base_configuration_values.json")}
+        "configuration_file_full_path": os.path.join(
+            configuration_values_dir, "base_configuration_values.json"
+        )
+    }
 
     config = ConfigurationSon()
     config.init_from_dictionary(config_values)

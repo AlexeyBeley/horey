@@ -10,6 +10,7 @@ class ServicediscoveryNamespace(AwsObject):
     """
     ServicediscoveryNamespace Namespace class
     """
+
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self.instances = []
@@ -22,10 +23,10 @@ class ServicediscoveryNamespace(AwsObject):
             "Id": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
             "Name": self.init_default_attr,
             "Type": self.init_default_attr,
-            "Properties":  self.init_default_attr,
+            "Properties": self.init_default_attr,
             "Description": self.init_default_attr,
             "CreateDate": self.init_default_attr,
-                        }
+        }
 
         self.init_attrs(dict_src, init_options)
 
@@ -57,6 +58,6 @@ class ServicediscoveryNamespace(AwsObject):
             "Description": self.description,
             "Tags": self.tags,
             "Properties": self.properties,
-            "Vpc": self.vpc.id
+            "Vpc": self.vpc.id,
         }
         return request_dict

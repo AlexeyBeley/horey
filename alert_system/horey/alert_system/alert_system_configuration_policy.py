@@ -29,13 +29,17 @@ class AlertSystemConfigurationPolicy(ConfigurationPolicy):
     @property
     def deployment_datetime(self):
         if self._deployment_datetime is None:
-            self._deployment_datetime = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")
+            self._deployment_datetime = datetime.datetime.now().strftime(
+                "%Y_%m_%d_%H_%M"
+            )
         return self._deployment_datetime
 
     @property
     def deployment_directory_path(self):
         if self._deployment_directory_path is None:
-            self._deployment_directory_path = f"/tmp/alert_system/{self.deployment_datetime}"
+            self._deployment_directory_path = (
+                f"/tmp/alert_system/{self.deployment_datetime}"
+            )
         return self._deployment_directory_path
 
     @property

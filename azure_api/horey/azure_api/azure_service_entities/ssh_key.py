@@ -33,21 +33,20 @@ class SSHKey(AzureObject):
 
     def generate_create_request(self):
         """
-            return list:
+        return list:
 
 
-            "PythonAzureExample-rg",
-            {
-             "location": "centralus"
-             "tags": { "environment":"test", "department":"tech" }
-            }
+        "PythonAzureExample-rg",
+        {
+         "location": "centralus"
+         "tags": { "environment":"test", "department":"tech" }
+        }
         """
-        return [self.resource_group_name,
-                self.name,
-                {"location": self.location,
-                 "tags": self.tags
-                 }
-                ]
+        return [
+            self.resource_group_name,
+            self.name,
+            {"location": self.location, "tags": self.tags},
+        ]
 
     def update_after_creation(self, ssh_key):
         self.id = ssh_key.id

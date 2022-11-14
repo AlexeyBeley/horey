@@ -53,7 +53,9 @@ class UploadTask:
     Vertical bar / pipe ("|")
     """
 
-    def __init__(self, task_id, task_type, file_path, bucket_name, key_name, extra_args=None):
+    def __init__(
+        self, task_id, task_type, file_path, bucket_name, key_name, extra_args=None
+    ):
         self.id = task_id
         self.task_type = task_type
         self.file_path = file_path
@@ -83,6 +85,7 @@ class TasksQueue:
     Tasks waiting to be uploaded. Tasks can be in an uploading state, waiting for upload beginning,
     upload failed or upload finished states.
     """
+
     TASKS_DICT = {}
 
     def __init__(self, max_queue_size):
@@ -149,8 +152,9 @@ class TasksQueue:
                 task.finished = False
                 task.started = False
             elif task.error is not None:
-                raise self.TaskThreadError(f"Thread failed with error: {repr(task.error)}").with_traceback(
-                    task.error.__traceback__)
+                raise self.TaskThreadError(
+                    f"Thread failed with error: {repr(task.error)}"
+                ).with_traceback(task.error.__traceback__)
 
         for task in finished_tasks:
             self.remove(task)
@@ -186,6 +190,7 @@ class S3Client(Boto3Client):
     """
     Client to handle specific aws service API calls.
     """
+
     TASKS_QUEUE = None
     THREAD_POOL_EXECUTOR = None
 
@@ -243,7 +248,9 @@ class S3Client(Boto3Client):
     @property
     def thread_pool_executor(self):
         if S3Client.THREAD_POOL_EXECUTOR is None:
-            S3Client.THREAD_POOL_EXECUTOR = ThreadPoolExecutor(max_workers=self.max_concurrent_requests)
+            S3Client.THREAD_POOL_EXECUTOR = ThreadPoolExecutor(
+                max_workers=self.max_concurrent_requests
+            )
         return S3Client.THREAD_POOL_EXECUTOR
 
     @property
@@ -265,7 +272,9 @@ class S3Client(Boto3Client):
         self._max_concurrent_requests = value
 
         if S3Client.THREAD_POOL_EXECUTOR is not None:
-            raise RuntimeError("Can not change max_concurrent_requests for running executor")
+            raise RuntimeError(
+                "Can not change max_concurrent_requests for running executor"
+            )
 
     @staticmethod
     def validate_int(value, min_value=1, max_value=None):
@@ -292,13 +301,17 @@ class S3Client(Boto3Client):
             start_after = ""
             while start_after is not None:
                 counter = 0
-                filters_req = {"Bucket": bucket.name, "StartAfter": start_after,
-                                                             "MaxKeys": max_keys}
+                filters_req = {
+                    "Bucket": bucket.name,
+                    "StartAfter": start_after,
+                    "MaxKeys": max_keys,
+                }
                 if custom_filters is not None:
                     filters_req.update(custom_filters)
 
-                for object_info in self.execute(self.client.list_objects_v2, "Contents",
-                                                filters_req=filters_req):
+                for object_info in self.execute(
+                    self.client.list_objects_v2, "Contents", filters_req=filters_req
+                ):
                     counter += 1
                     bucket_object = S3Bucket.BucketObject(object_info)
                     yield bucket_object
@@ -307,7 +320,9 @@ class S3Client(Boto3Client):
 
         except Exception as inst:
             if "AccessDenied" in repr(inst):
-                print(f"Init bucket full information failed {bucket.name}: {repr(inst)}")
+                print(
+                    f"Init bucket full information failed {bucket.name}: {repr(inst)}"
+                )
             else:
                 raise
 
@@ -320,10 +335,15 @@ class S3Client(Boto3Client):
         @return:
         """
 
-        for response in self.execute(self.client.get_object, None, raw_data=True, filters_req={"Bucket": bucket.name, "Key":bucket_object.key}):
+        for response in self.execute(
+            self.client.get_object,
+            None,
+            raw_data=True,
+            filters_req={"Bucket": bucket.name, "Key": bucket_object.key},
+        ):
             return response["Body"].read()
 
-    def get_bucket_object_file(self,  bucket, bucket_object, file_path):
+    def get_bucket_object_file(self, bucket, bucket_object, file_path):
         """
         Download bucket key data and write to file.
 
@@ -347,27 +367,46 @@ class S3Client(Boto3Client):
 
         try:
             update_info = list(
-                self.execute(self.client.get_bucket_acl, "Grants", filters_req={"Bucket": bucket.name}))
+                self.execute(
+                    self.client.get_bucket_acl,
+                    "Grants",
+                    filters_req={"Bucket": bucket.name},
+                )
+            )
             bucket.update_acl(update_info)
 
-            location_info = list(self.execute(self.client.get_bucket_location, "LocationConstraint",
-                                              filters_req={"Bucket": bucket.name}))
+            location_info = list(
+                self.execute(
+                    self.client.get_bucket_location,
+                    "LocationConstraint",
+                    filters_req={"Bucket": bucket.name},
+                )
+            )
             bucket.update_location(location_info)
         except Exception as inst:
             repr_inst = repr(inst)
             if "NoSuchBucket" in repr_inst:
                 return False
             if "AccessDenied" in repr_inst:
-                logger.error(f"Init bucket full information failed {bucket.name}: {repr_inst}")
+                logger.error(
+                    f"Init bucket full information failed {bucket.name}: {repr_inst}"
+                )
             elif "IllegalLocationConstraintException" in repr_inst:
-                logger.error(f"Init bucket full information failed {bucket.name}: {repr_inst}")
+                logger.error(
+                    f"Init bucket full information failed {bucket.name}: {repr_inst}"
+                )
             else:
                 raise
 
         try:
             update_info = list(
-                self.execute(self.client.get_bucket_website, "Grants", filters_req={"Bucket": bucket.name},
-                             raw_data=True))
+                self.execute(
+                    self.client.get_bucket_website,
+                    "Grants",
+                    filters_req={"Bucket": bucket.name},
+                    raw_data=True,
+                )
+            )
             bucket.update_website(update_info)
         except Exception as inst:
             if "NoSuchWebsiteConfiguration" in repr(inst):
@@ -376,8 +415,11 @@ class S3Client(Boto3Client):
                 raise
 
         try:
-            for update_info in self.execute(self.client.get_bucket_policy, "Policy",
-                                            filters_req={"Bucket": bucket.name}):
+            for update_info in self.execute(
+                self.client.get_bucket_policy,
+                "Policy",
+                filters_req={"Bucket": bucket.name},
+            ):
                 bucket.update_policy(update_info)
         except Exception as inst:
             repr_inst = repr(inst)
@@ -413,7 +455,15 @@ class S3Client(Boto3Client):
 
         return final_result
 
-    def upload(self, bucket_name, src_object_path, dst_root_key, keep_src_object_name=True, extra_args=None, metadata_callback=None):
+    def upload(
+        self,
+        bucket_name,
+        src_object_path,
+        dst_root_key,
+        keep_src_object_name=True,
+        extra_args=None,
+        metadata_callback=None,
+    ):
         """
         Upload file or directory tree to s3 bucket.
         extra_args values
@@ -438,8 +488,14 @@ class S3Client(Boto3Client):
         thread = threading.Thread(target=self.start_tasks_manager_thread)
         thread.start()
 
-        self.start_uploading_object(bucket_name, src_object_path, dst_root_key,
-                                    keep_src_object_name=keep_src_object_name, extra_args=extra_args, metadata_callback=metadata_callback)
+        self.start_uploading_object(
+            bucket_name,
+            src_object_path,
+            dst_root_key,
+            keep_src_object_name=keep_src_object_name,
+            extra_args=extra_args,
+            metadata_callback=metadata_callback,
+        )
         self.finished_uploading_flow = True
 
         sleep_time = 0.5
@@ -448,19 +504,35 @@ class S3Client(Boto3Client):
             if self._tasks_manager_thread_keepalive is None:
                 raise RuntimeError("Tasks manager thread is dead")
 
-            if self._tasks_manager_thread_keepalive + self._tasks_manager_thread_progress_time_limit < datetime.datetime.now():
+            if (
+                self._tasks_manager_thread_keepalive
+                + self._tasks_manager_thread_progress_time_limit
+                < datetime.datetime.now()
+            ):
                 raise TimeoutError(
-                    f"Tasks manager thread was not updated for {self._tasks_manager_thread_progress_time_limit}")
+                    f"Tasks manager thread was not updated for {self._tasks_manager_thread_progress_time_limit}"
+                )
 
-            logger.info(f"Main thread waiting for all tasks to finish. Going to sleep for {sleep_time}")
+            logger.info(
+                f"Main thread waiting for all tasks to finish. Going to sleep for {sleep_time}"
+            )
             time.sleep(sleep_time)
 
         end_time = datetime.datetime.now()
-        logger.info(f"Upload with args {bucket_name, src_object_path, dst_root_key, keep_src_object_name} "
-                    f"finished in {end_time - start_time}")
+        logger.info(
+            f"Upload with args {bucket_name, src_object_path, dst_root_key, keep_src_object_name} "
+            f"finished in {end_time - start_time}"
+        )
 
-    def start_uploading_object(self, bucket_name, src_object_path, dst_root_key, keep_src_object_name=True,
-                               extra_args=None, metadata_callback=None):
+    def start_uploading_object(
+        self,
+        bucket_name,
+        src_object_path,
+        dst_root_key,
+        keep_src_object_name=True,
+        extra_args=None,
+        metadata_callback=None,
+    ):
         """
         Start the flow of uploading local object - file or folder.
 
@@ -472,18 +544,36 @@ class S3Client(Boto3Client):
         """
         logger.info(f"Uploading '{src_object_path}' to S3 bucket '{bucket_name}'")
 
-        key_name = dst_root_key if not keep_src_object_name else f"{dst_root_key}/{os.path.basename(src_object_path)}"
+        key_name = (
+            dst_root_key
+            if not keep_src_object_name
+            else f"{dst_root_key}/{os.path.basename(src_object_path)}"
+        )
         key_name = key_name.strip("/")
         if os.path.isdir(src_object_path):
-            return self.upload_directory(bucket_name, src_object_path, key_name, extra_args=extra_args, metadata_callback=metadata_callback)
+            return self.upload_directory(
+                bucket_name,
+                src_object_path,
+                key_name,
+                extra_args=extra_args,
+                metadata_callback=metadata_callback,
+            )
 
         if not os.path.exists(src_object_path):
             raise ValueError(f"Local object does not exist {src_object_path}")
 
         if key_name == "":
-            raise ValueError("key_name is not set while keep_src_object_name is set to False")
+            raise ValueError(
+                "key_name is not set while keep_src_object_name is set to False"
+            )
 
-        return self.start_uploading_file_task(bucket_name, src_object_path, key_name, extra_args=extra_args, metadata_callback=metadata_callback)
+        return self.start_uploading_file_task(
+            bucket_name,
+            src_object_path,
+            key_name,
+            extra_args=extra_args,
+            metadata_callback=metadata_callback,
+        )
 
     def start_tasks_manager_thread(self):
         """
@@ -494,12 +584,16 @@ class S3Client(Boto3Client):
 
         @return:
         """
-        progress_time_limit = datetime.datetime.now() + self._tasks_manager_thread_progress_time_limit
+        progress_time_limit = (
+            datetime.datetime.now() + self._tasks_manager_thread_progress_time_limit
+        )
 
         for _ in range(60):
             if not self.tasks_queue.empty():
                 break
-            logger.info("Tasks manager thread waiting for first tasks in tasks queue to start running")
+            logger.info(
+                "Tasks manager thread waiting for first tasks in tasks queue to start running"
+            )
             time.sleep(0.5)
         else:
             raise TimeoutError()
@@ -522,17 +616,23 @@ class S3Client(Boto3Client):
             if task is None:
                 if datetime.datetime.now() > progress_time_limit:
                     self._tasks_manager_thread_keepalive = None
-                    raise TimeoutError(f"tasks_manager_thread can not fetch ready task for"
-                                       f" {self._tasks_manager_thread_progress_time_limit}")
+                    raise TimeoutError(
+                        f"tasks_manager_thread can not fetch ready task for"
+                        f" {self._tasks_manager_thread_progress_time_limit}"
+                    )
                 logger.info(f"Tasks manager thread waiting for tasks in tasks queue")
                 time.sleep(0.5)
                 continue
 
-            progress_time_limit = datetime.datetime.now() + self._tasks_manager_thread_progress_time_limit
+            progress_time_limit = (
+                datetime.datetime.now() + self._tasks_manager_thread_progress_time_limit
+            )
 
             if task.attempts and "Access Denied" in task.attempts[-1]:
                 self._tasks_manager_thread_keepalive = None
-                raise RuntimeError(f"Uploading file {task.file_path} failed with {task.attempts[-1]}")
+                raise RuntimeError(
+                    f"Uploading file {task.file_path} failed with {task.attempts[-1]}"
+                )
 
             self.execute_s3_upload_task(task)
 
@@ -558,21 +658,35 @@ class S3Client(Boto3Client):
                 logger.info(f"Completing multipart upload of file {task.key_name}")
 
                 task = self.multipart_uploads[task.upload_id][0]
-                filters_req = {"Bucket": task.bucket_name,
-                               "Key": task.key_name,
-                               "UploadId": task.upload_id,
-                               "MultipartUpload": {
-                                   'Parts': [
-                                       {"ETag": part.raw_response["ETag"].strip('"'), "PartNumber": part.part_number}
-                                       for part in self.multipart_uploads[task.upload_id]]
-                               }}
+                filters_req = {
+                    "Bucket": task.bucket_name,
+                    "Key": task.key_name,
+                    "UploadId": task.upload_id,
+                    "MultipartUpload": {
+                        "Parts": [
+                            {
+                                "ETag": part.raw_response["ETag"].strip('"'),
+                                "PartNumber": part.part_number,
+                            }
+                            for part in self.multipart_uploads[task.upload_id]
+                        ]
+                    },
+                }
 
                 finished_uploads = list(
-                    self.execute(self.client.complete_multipart_upload, None, raw_data=True, filters_req=filters_req))
+                    self.execute(
+                        self.client.complete_multipart_upload,
+                        None,
+                        raw_data=True,
+                        filters_req=filters_req,
+                    )
+                )
 
                 if len(finished_uploads) != 1:
-                    raise ValueError(f"Was not able to finish multipart upload with params {filters_req}. "
-                                     f"len(finished_uploads) = {len(finished_uploads)} != 1")
+                    raise ValueError(
+                        f"Was not able to finish multipart upload with params {filters_req}. "
+                        f"len(finished_uploads) = {len(finished_uploads)} != 1"
+                    )
 
     def execute_s3_upload_task(self, task):
         """
@@ -614,7 +728,11 @@ class S3Client(Boto3Client):
             file_data = file_handler.read()
 
         start_time = datetime.datetime.now()
-        filters_req = {"Bucket": task.bucket_name, "Key": task.key_name, "Body": file_data}
+        filters_req = {
+            "Bucket": task.bucket_name,
+            "Key": task.key_name,
+            "Body": file_data,
+        }
 
         if task.extra_args is not None:
             filters_req.update(task.extra_args)
@@ -623,18 +741,24 @@ class S3Client(Boto3Client):
             self.add_md5_to_request(filters_req, file_data)
 
         try:
-            for response in self.execute(self.client.put_object, None, filters_req=filters_req, raw_data=True):
+            for response in self.execute(
+                self.client.put_object, None, filters_req=filters_req, raw_data=True
+            ):
                 task.raw_response = response
             task.succeed = True
         except Exception as exception_inst:
             exception_repr = repr(exception_inst)
-            logger.warning(f"Failed to upload to s3 {filters_req} with exception {exception_repr}")
+            logger.warning(
+                f"Failed to upload to s3 {filters_req} with exception {exception_repr}"
+            )
             task.attempts.append(exception_repr)
             task.succeed = False
 
         task.finished = True
         end_time = datetime.datetime.now()
-        logger.info(f"Uploaded {task.key_name}, {len(file_data)} bytes took {end_time - start_time}")
+        logger.info(
+            f"Uploaded {task.key_name}, {len(file_data)} bytes took {end_time - start_time}"
+        )
 
     @staticmethod
     def add_md5_to_request(filters_req, file_data):
@@ -646,7 +770,7 @@ class S3Client(Boto3Client):
         @return:
         """
         md = hashlib.md5(file_data).digest()
-        content_md5_string = base64.b64encode(md).decode('utf-8')
+        content_md5_string = base64.b64encode(md).decode("utf-8")
         filters_req["ContentMD5"] = content_md5_string
 
     def upload_file_part_thread(self, task):
@@ -669,19 +793,22 @@ class S3Client(Boto3Client):
         @param task: UpdateTask has all the relevant information for the upload - offset, length etc.
         @return:
         """
-        logger.info(f"Reading file {task.file_path} offset {task.offset_index}, offset_length {task.offset_length}")
+        logger.info(
+            f"Reading file {task.file_path} offset {task.offset_index}, offset_length {task.offset_length}"
+        )
 
         with open(task.file_path, "rb") as file_handler:
             file_handler.seek(task.offset_index)
             byte_chunk = file_handler.read(task.offset_length)
 
         logger.info(f"Uploading {len(byte_chunk)} bytes part {task.part_number}")
-        filters_req = {"Bucket": task.bucket_name,
-                       "Body": byte_chunk,
-                       "UploadId": task.upload_id,
-                       "PartNumber": task.part_number,
-                       "Key": task.key_name
-                       }
+        filters_req = {
+            "Bucket": task.bucket_name,
+            "Body": byte_chunk,
+            "UploadId": task.upload_id,
+            "PartNumber": task.part_number,
+            "Key": task.key_name,
+        }
 
         if task.extra_args is not None:
             filters_req.update(task.extra_args)
@@ -691,8 +818,9 @@ class S3Client(Boto3Client):
 
         start_time = datetime.datetime.now()
         try:
-            for response in self.execute(self.client.upload_part, None, raw_data=True,
-                                         filters_req=filters_req):
+            for response in self.execute(
+                self.client.upload_part, None, raw_data=True, filters_req=filters_req
+            ):
                 task.raw_response = response
             task.succeed = True
         except Exception as exception_inst:
@@ -702,9 +830,13 @@ class S3Client(Boto3Client):
         task.finished = True
 
         end_time = datetime.datetime.now()
-        logger.info(f"Uploaded {len(byte_chunk)} bytes part {task.part_number}: took {end_time - start_time}")
+        logger.info(
+            f"Uploaded {len(byte_chunk)} bytes part {task.part_number}: took {end_time - start_time}"
+        )
 
-    def start_uploading_file_task(self, bucket_name, file_path, key_name, extra_args=None, metadata_callback=None):
+    def start_uploading_file_task(
+        self, bucket_name, file_path, key_name, extra_args=None, metadata_callback=None
+    ):
         """
         Uploads a file to S3 bucket.
         File name is not preserved.
@@ -722,18 +854,30 @@ class S3Client(Boto3Client):
 
         file_size = os.path.getsize(file_path)
         if file_size >= self.multipart_threshold:
-            return self.start_multipart_uploading_file_task(bucket_name, file_path, key_name, extra_args=extra_args, metadata_callback=metadata_callback)
+            return self.start_multipart_uploading_file_task(
+                bucket_name,
+                file_path,
+                key_name,
+                extra_args=extra_args,
+                metadata_callback=metadata_callback,
+            )
 
         task_id = key_name
         task_type = UploadTask.Type.FILE
 
-        extra_args = self.add_callback_metadata(file_path, extra_args, metadata_callback)
+        extra_args = self.add_callback_metadata(
+            file_path, extra_args, metadata_callback
+        )
 
-        task = UploadTask(task_id, task_type, file_path, bucket_name, key_name, extra_args=extra_args)
+        task = UploadTask(
+            task_id, task_type, file_path, bucket_name, key_name, extra_args=extra_args
+        )
         task.start_time = datetime.datetime.now()
         return self.insert_task_into_tasks_queue(task)
 
-    def start_multipart_uploading_file_task(self, bucket_name, file_path, key_name, extra_args=None, metadata_callback=None):
+    def start_multipart_uploading_file_task(
+        self, bucket_name, file_path, key_name, extra_args=None, metadata_callback=None
+    ):
         """
         S3 limitation:
         Part number of part being uploaded. This is a positive integer between 1 and 10,000.
@@ -748,11 +892,11 @@ class S3Client(Boto3Client):
         if os.path.getsize(file_path) / self.multipart_chunk_size >= 100000:
             raise ValueError("Can not split file to more then 10000 parts")
 
-        filters_req = {"Bucket": bucket_name,
-                       "Key": key_name
-                       }
+        filters_req = {"Bucket": bucket_name, "Key": key_name}
 
-        extra_args = self.add_callback_metadata(file_path, extra_args, metadata_callback)
+        extra_args = self.add_callback_metadata(
+            file_path, extra_args, metadata_callback
+        )
 
         if extra_args is not None:
             filters_req.update(extra_args)
@@ -760,11 +904,16 @@ class S3Client(Boto3Client):
         logger.info(f"Creating multipart upload: {filters_req}")
 
         multipart_upload_ids = list(
-            self.execute(self.client.create_multipart_upload, "UploadId", filters_req=filters_req))
+            self.execute(
+                self.client.create_multipart_upload, "UploadId", filters_req=filters_req
+            )
+        )
 
         if len(multipart_upload_ids) != 1:
-            raise ValueError(f"Was not able to create multipart upload with params {filters_req}. "
-                             f"len(multipart_upload) = {len(multipart_upload_ids)} != 1")
+            raise ValueError(
+                f"Was not able to create multipart upload with params {filters_req}. "
+                f"len(multipart_upload) = {len(multipart_upload_ids)} != 1"
+            )
 
         upload_id = multipart_upload_ids[0]
         fh = open(file_path, "ab")
@@ -776,7 +925,9 @@ class S3Client(Boto3Client):
         part_number = 0
         for part_number in range(1, full_chunks + 1):
             task_id = f"{key_name}%{part_number}"
-            task = UploadTask(task_id, UploadTask.Type.PART, file_path, bucket_name, key_name)
+            task = UploadTask(
+                task_id, UploadTask.Type.PART, file_path, bucket_name, key_name
+            )
             task.part_number = part_number
             task.offset_index = self.multipart_chunk_size * (part_number - 1)
             task.offset_length = self.multipart_chunk_size
@@ -787,7 +938,9 @@ class S3Client(Boto3Client):
         if part_chunk > 0:
             part_number += 1
             task_id = f"{key_name}%{part_number}"
-            task = UploadTask(task_id, UploadTask.Type.PART, file_path, bucket_name, key_name)
+            task = UploadTask(
+                task_id, UploadTask.Type.PART, file_path, bucket_name, key_name
+            )
             task.part_number = part_number
             task.offset_index = self.multipart_chunk_size * (part_number - 1)
             task.offset_length = self.multipart_chunk_size
@@ -826,7 +979,14 @@ class S3Client(Boto3Client):
 
         raise TimeoutError(f"Timeout reached waiting to put a task into tasks queue")
 
-    def upload_directory(self, bucket_name, src_data_path, dst_root_key, extra_args=None, metadata_callback=None):
+    def upload_directory(
+        self,
+        bucket_name,
+        src_data_path,
+        dst_root_key,
+        extra_args=None,
+        metadata_callback=None,
+    ):
         """
         Recursively uploads directory contents.
         Keeps its tree structure.
@@ -842,8 +1002,14 @@ class S3Client(Boto3Client):
             src_object_full_path = os.path.join(src_data_path, src_object_name)
             new_dst_root_key = f"{dst_root_key}/{src_object_name}"
             new_dst_root_key = new_dst_root_key.strip("/")
-            self.start_uploading_object(bucket_name, src_object_full_path, new_dst_root_key, keep_src_object_name=False,
-                                        extra_args=extra_args, metadata_callback=metadata_callback)
+            self.start_uploading_object(
+                bucket_name,
+                src_object_full_path,
+                new_dst_root_key,
+                keep_src_object_name=False,
+                extra_args=extra_args,
+                metadata_callback=metadata_callback,
+            )
 
     def provision_bucket(self, bucket):
         """
@@ -861,8 +1027,10 @@ class S3Client(Boto3Client):
             bucket.location = response
         else:
             if bucket.region != current_bucket.region:
-                raise RuntimeError(f"Provisioning bucket {bucket.name} in '{bucket.region.region_mark}' fails. "
-                               f"Exists in region '{current_bucket.region.region_mark}'")
+                raise RuntimeError(
+                    f"Provisioning bucket {bucket.name} in '{bucket.region.region_mark}' fails. "
+                    f"Exists in region '{current_bucket.region.region_mark}'"
+                )
 
         if bucket.policy is not None:
             self.put_bucket_policy_raw(bucket.generate_put_bucket_policy_request())
@@ -878,7 +1046,9 @@ class S3Client(Boto3Client):
         @return:
         """
         logger.info(f"Creating S3 bucket '{request_dict}'")
-        for response in self.execute(self.client.create_bucket, "Location", filters_req=request_dict):
+        for response in self.execute(
+            self.client.create_bucket, "Location", filters_req=request_dict
+        ):
             return response
 
     def put_bucket_policy_raw(self, request_dict):
@@ -889,7 +1059,9 @@ class S3Client(Boto3Client):
         @return:
         """
         logger.info(f"Putting Bucket policy {request_dict}")
-        for response in self.execute(self.client.put_bucket_policy, "ResponseMetadata", filters_req=request_dict):
+        for response in self.execute(
+            self.client.put_bucket_policy, "ResponseMetadata", filters_req=request_dict
+        ):
             return response
 
     def put_bucket_acl_raw(self, request_dict):
@@ -900,7 +1072,9 @@ class S3Client(Boto3Client):
         @return:
         """
         logger.info(f"Putting Bucket acl {request_dict}")
-        for response in self.execute(self.client.put_bucket_acl, "ResponseMetadata", filters_req=request_dict):
+        for response in self.execute(
+            self.client.put_bucket_acl, "ResponseMetadata", filters_req=request_dict
+        ):
             return response
 
     def delete_objects(self, bucket):
@@ -914,8 +1088,15 @@ class S3Client(Boto3Client):
         while len(keys_to_delete) != 0:
             deletion_list = [{"Key": obj.key} for obj in keys_to_delete[:1000]]
             request_dict = {"Bucket": bucket.name, "Delete": {"Objects": deletion_list}}
-            for response in self.execute(self.client.delete_objects, None, raw_data=True, filters_req=request_dict):
-                logger.info(f"Deleted {len(deletion_list)} keys from bucket '{bucket.name}'")
+            for response in self.execute(
+                self.client.delete_objects,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
+            ):
+                logger.info(
+                    f"Deleted {len(deletion_list)} keys from bucket '{bucket.name}'"
+                )
                 if "Errors" in response:
                     raise RuntimeError(response)
 

@@ -7,6 +7,7 @@ from horey.aws_api.aws_services_entities.event_bridge_target import EventBridgeT
 
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.h_logger import get_logger
+
 logger = get_logger()
 
 import pdb
@@ -32,14 +33,18 @@ class EventsClient(Boto3Client):
 
         final_result = list()
         for region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_rules(region, full_information=full_information)
+            final_result += self.get_region_rules(
+                region, full_information=full_information
+            )
 
         return final_result
 
     def get_region_rules(self, region, full_information=True, custom_filter=None):
         final_result = list()
         AWSAccount.set_aws_region(region)
-        for dict_src in self.execute(self.client.list_rules, "Rules", filters_req=custom_filter):
+        for dict_src in self.execute(
+            self.client.list_rules, "Rules", filters_req=custom_filter
+        ):
             obj = EventBridgeRule(dict_src)
             final_result.append(obj)
             if full_information:
@@ -52,28 +57,51 @@ class EventsClient(Boto3Client):
     def update_rule_targets(self, rule):
         filters_req = {"Rule": rule.name}
         rule.targets = []
-        for dict_src in self.execute(self.client.list_targets_by_rule, "Targets", filters_req=filters_req):
+        for dict_src in self.execute(
+            self.client.list_targets_by_rule, "Targets", filters_req=filters_req
+        ):
             obj = EventBridgeTarget(dict_src)
             rule.targets.append(obj)
 
     def update_rule_tags(self, rule):
         filters_req = {"ResourceARN": rule.arn}
         rule.tags = []
-        for dict_src in self.execute(self.client.list_tags_for_resource, "Tags", filters_req=filters_req):
+        for dict_src in self.execute(
+            self.client.list_tags_for_resource, "Tags", filters_req=filters_req
+        ):
             rule.targets.append(dict_src)
 
     def get_samples(self):
         ret = list(self.execute(self.client.list_connections, None, raw_data=True))
         ret = list(self.execute(self.client.list_event_buses, None, raw_data=True))
         ret = list(self.execute(self.client.list_event_sources, None, raw_data=True))
-        ret = list(self.execute(self.client.list_partner_event_source_accounts, None, raw_data=True))
-        ret = list(self.execute(self.client.list_partner_event_sources, None, raw_data=True))
+        ret = list(
+            self.execute(
+                self.client.list_partner_event_source_accounts, None, raw_data=True
+            )
+        )
+        ret = list(
+            self.execute(self.client.list_partner_event_sources, None, raw_data=True)
+        )
         ret = list(self.execute(self.client.list_replays, None, raw_data=True))
-        ret = list(self.execute(self.client.list_rule_names_by_target, None, raw_data=True))
-        ret = list(self.execute(self.client.list_targets_by_rule, None, raw_data=True, filters_req={"Rule":"initiator-production-InitiatorEventsRuleSchedule1-MWYJ6917GUN9"}))
+        ret = list(
+            self.execute(self.client.list_rule_names_by_target, None, raw_data=True)
+        )
+        ret = list(
+            self.execute(
+                self.client.list_targets_by_rule,
+                None,
+                raw_data=True,
+                filters_req={
+                    "Rule": "initiator-production-InitiatorEventsRuleSchedule1-MWYJ6917GUN9"
+                },
+            )
+        )
 
     def update_rule_information(self, rule):
-        region_rules = self.get_region_rules(rule.region, custom_filter={"NamePrefix": rule.name})
+        region_rules = self.get_region_rules(
+            rule.region, custom_filter={"NamePrefix": rule.name}
+        )
         if len(region_rules) == 1:
             rule.update_from_raw_response(region_rules[0].dict_src)
             return
@@ -95,13 +123,16 @@ class EventsClient(Boto3Client):
 
     def provision_rule_raw(self, request_dict):
         logger.info(f"Creating rule: {request_dict}")
-        for response in self.execute(self.client.put_rule, None, raw_data=True,
-                                     filters_req=request_dict):
+        for response in self.execute(
+            self.client.put_rule, None, raw_data=True, filters_req=request_dict
+        ):
             return response
 
     def put_targets_raw(self, request_dict):
         logger.info(f"Putting targets: {request_dict}")
-        for response in self.execute(self.client.put_targets, None, raw_data=True, filters_req=request_dict):
+        for response in self.execute(
+            self.client.put_targets, None, raw_data=True, filters_req=request_dict
+        ):
             if response.get("FailedEntryCount") != 0:
                 raise RuntimeError(response)
 

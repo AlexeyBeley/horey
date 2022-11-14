@@ -3,6 +3,7 @@ import sys
 import pdb
 from unittest import mock
 import pytest
+
 sys.path.insert(0, os.path.abspath("../horey/deployer"))
 
 tests_dir = os.path.dirname(os.path.abspath(__file__))
@@ -52,4 +53,3 @@ def test_update_output():
 
 if __name__ == "__main__":
     test_update_output()
-

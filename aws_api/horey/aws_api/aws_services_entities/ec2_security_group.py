@@ -25,7 +25,9 @@ class EC2SecurityGroup(AwsObject):
             return
 
         init_options = {
-            "GroupName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "GroupName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
             "Description": self.init_default_attr,
             "IpPermissions": self.init_default_attr,
             "OwnerId": self.init_default_attr,
@@ -94,25 +96,60 @@ class EC2SecurityGroup(AwsObject):
         add_request, revoke_request, update_description = [], [], []
 
         for self_permission in self.split_permissions(self.ip_permissions):
-            if not any((self.check_permissions_equal(self_permission, target_permission,
-                                                         check_without_description=True)
-                            for target_permission in self.split_permissions(target_security_group.ip_permissions))):
+            if not any(
+                (
+                    self.check_permissions_equal(
+                        self_permission,
+                        target_permission,
+                        check_without_description=True,
+                    )
+                    for target_permission in self.split_permissions(
+                        target_security_group.ip_permissions
+                    )
+                )
+            ):
                 revoke_request.append(self_permission)
 
-        for target_permission in self.split_permissions(target_security_group.ip_permissions):
+        for target_permission in self.split_permissions(
+            target_security_group.ip_permissions
+        ):
             # No equals (Do not check description differences)
-            if not any((self.check_permissions_equal(target_permission, self_permission)
-                        for self_permission in self.split_permissions(self.ip_permissions))):
+            if not any(
+                (
+                    self.check_permissions_equal(target_permission, self_permission)
+                    for self_permission in self.split_permissions(self.ip_permissions)
+                )
+            ):
                 # Check weather there are equal by location but differ by description.
-                if any((self.check_permissions_equal(target_permission, self_permission, check_without_description=True)
-                        for self_permission in self.split_permissions(self.ip_permissions))):
+                if any(
+                    (
+                        self.check_permissions_equal(
+                            target_permission,
+                            self_permission,
+                            check_without_description=True,
+                        )
+                        for self_permission in self.split_permissions(
+                            self.ip_permissions
+                        )
+                    )
+                ):
                     update_description.append(target_permission)
                 else:
                     add_request.append(target_permission)
 
-        add_request = {"GroupId": self.id, "IpPermissions": add_request} if add_request else None
-        revoke_request = {"GroupId": self.id, "IpPermissions": revoke_request} if revoke_request else None
-        update_description = {"GroupId": self.id, "IpPermissions": update_description} if update_description else None
+        add_request = (
+            {"GroupId": self.id, "IpPermissions": add_request} if add_request else None
+        )
+        revoke_request = (
+            {"GroupId": self.id, "IpPermissions": revoke_request}
+            if revoke_request
+            else None
+        )
+        update_description = (
+            {"GroupId": self.id, "IpPermissions": update_description}
+            if update_description
+            else None
+        )
 
         return add_request, revoke_request, update_description
 
@@ -177,7 +214,9 @@ class EC2SecurityGroup(AwsObject):
         return lst_ret
 
     @staticmethod
-    def check_permissions_equal(permission_1, permission_2, check_without_description=False):
+    def check_permissions_equal(
+        permission_1, permission_2, check_without_description=False
+    ):
         """
         Check weather two permissions are equal.
 
@@ -207,14 +246,24 @@ class EC2SecurityGroup(AwsObject):
                 return False
 
             if not isinstance(target_value, list) or not isinstance(value, list):
-                raise ValueError(f"For key: {key}, {value}, {target_value} in {permission_1}, {permission_2}")
+                raise ValueError(
+                    f"For key: {key}, {value}, {target_value} in {permission_1}, {permission_2}"
+                )
 
             # must be split already
             if len(target_value) != 1 or len(value) != 1:
                 raise ValueError(f"{value}, {target_value}")
 
-            value_location = {_key: _value for _key, _value in value[0].items() if _key != "Description"}
-            target_value_location = {_key: _value for _key, _value in target_value[0].items() if _key != "Description"}
+            value_location = {
+                _key: _value
+                for _key, _value in value[0].items()
+                if _key != "Description"
+            }
+            target_value_location = {
+                _key: _value
+                for _key, _value in target_value[0].items()
+                if _key != "Description"
+            }
             if value_location != target_value_location:
                 return False
 
@@ -228,7 +277,9 @@ class EC2SecurityGroup(AwsObject):
         @return:
         """
 
-        raise NotImplementedError(f"generate_modify_ip_permissions_egress_requests: {target_security_group.name}")
+        raise NotImplementedError(
+            f"generate_modify_ip_permissions_egress_requests: {target_security_group.name}"
+        )
 
     def generate_create_request(self):
         """
@@ -241,9 +292,9 @@ class EC2SecurityGroup(AwsObject):
         if self.vpc_id is not None:
             request["VpcId"] = self.vpc_id
         if self.tags is not None:
-            request["TagSpecifications"] = [{
-                "ResourceType": "security-group",
-                "Tags": self.tags}]
+            request["TagSpecifications"] = [
+                {"ResourceType": "security-group", "Tags": self.tags}
+            ]
 
         return request
 
@@ -256,7 +307,9 @@ class EC2SecurityGroup(AwsObject):
         """
 
         init_options = {
-            "GroupName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "GroupName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
             "Description": self.init_default_attr,
             "IpPermissions": self.init_default_attr,
             "OwnerId": self.init_default_attr,
@@ -277,7 +330,9 @@ class EC2SecurityGroup(AwsObject):
         """
 
         init_options = {
-            "GroupName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "GroupName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
             "Description": self.init_default_attr,
             "IpPermissions": self.init_default_attr,
             "OwnerId": self.init_default_attr,

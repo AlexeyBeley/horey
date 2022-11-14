@@ -12,6 +12,7 @@ class AWSAccount:
     """
     Class defining account metadata and the connection steps to perform in order to manage the account.
     """
+
     _CURRENT_ACCOUNT = None
     _CURRENT_REGION = None
     KNOWN_IDS = []
@@ -123,10 +124,12 @@ class AWSAccount:
         """
         Single step to perform in a chain of steps to connect
         """
+
         class Type(Enum):
             """
             Connection step types
             """
+
             CREDENTIALS = 0
             PROFILE = 1
             ASSUME_ROLE = 2
@@ -148,7 +151,9 @@ class AWSAccount:
                 raise NotImplementedError()
 
             if "profile" in dict_src:
-                logger.info(f"Setting connection step type to AWSAccount.ConnectionStep.Type.PROFILE: {dict_src}")
+                logger.info(
+                    f"Setting connection step type to AWSAccount.ConnectionStep.Type.PROFILE: {dict_src}"
+                )
                 self.type = AWSAccount.ConnectionStep.Type.PROFILE
                 self.profile_name = dict_src["profile"]
             elif "assume_role" in dict_src:
@@ -157,7 +162,9 @@ class AWSAccount:
             elif "role" in dict_src:
                 if dict_src["role"] != "current":
                     raise ValueError(dict_src["role"])
-                logger.info(f"Setting connection step type to AWSAccount.ConnectionStep.Type.CURRENT_ROLE: {dict_src}")
+                logger.info(
+                    f"Setting connection step type to AWSAccount.ConnectionStep.Type.CURRENT_ROLE: {dict_src}"
+                )
                 self.type = AWSAccount.ConnectionStep.Type.CURRENT_ROLE
             else:
                 raise NotImplementedError(f"Unknown {dict_src}")

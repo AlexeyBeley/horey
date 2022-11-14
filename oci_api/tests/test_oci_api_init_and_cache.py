@@ -10,13 +10,25 @@ import os
 from horey.oci_api.oci_api import OCIAPI
 from horey.h_logger import get_logger
 from horey.oci_api.oci_api_configuration_policy import OCIAPIConfigurationPolicy
-#Uncomment next line to save error lines to /tmp/error.log
-#configuration_values_file_full_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), "h_logger_configuration_values.py")
+
+# Uncomment next line to save error lines to /tmp/error.log
+# configuration_values_file_full_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), "h_logger_configuration_values.py")
 configuration_values_file_full_path = None
-logger = get_logger(configuration_values_file_full_path=configuration_values_file_full_path)
+logger = get_logger(
+    configuration_values_file_full_path=configuration_values_file_full_path
+)
 
 configuration = OCIAPIConfigurationPolicy()
-configuration.configuration_file_full_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore", "oci_api_configuration_values.py"))
+configuration.configuration_file_full_path = os.path.abspath(
+    os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "..",
+        "..",
+        "..",
+        "ignore",
+        "oci_api_configuration_values.py",
+    )
+)
 configuration.init_from_file()
 
 oci_api = OCIAPI(configuration=configuration)
@@ -34,4 +46,3 @@ def test_init_and_cache_vm_hosts():
 
 if __name__ == "__main__":
     test_init_and_cache_vm_hosts()
-

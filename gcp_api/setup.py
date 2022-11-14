@@ -1,5 +1,6 @@
 import os
 import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 from horey.gcp_api import __version__
 from setuptools import setup, find_namespace_packages
@@ -17,4 +18,5 @@ setup(
     license="DWTFYWTPL",
     packages=find_namespace_packages(include=["horey.gcp_api", "horey.gcp_api.*"]),
     include_package_data=True,
-    zip_safe=False)
+    zip_safe=False,
+)

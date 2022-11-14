@@ -5,19 +5,26 @@ import argparse
 import json
 
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src"))
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "configuration_policies"))
+sys.path.insert(
+    0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src")
+)
+sys.path.insert(
+    0,
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "configuration_policies"),
+)
 
 from environment_configuration_policy import EnvironmentConfigurationPolicy
 
-configuration_values_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "configuration_values")
+configuration_values_dir = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "configuration_values"
+)
 
 
 def test_init():
     assert isinstance(EnvironmentConfigurationPolicy(), EnvironmentConfigurationPolicy)
 
 
-#@pytest.mark.skip(reason="No way of currently testing this")
+# @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_from_command_line():
     description = "Working environment configuration_policy"
     parser = argparse.ArgumentParser(description=description)
@@ -29,7 +36,7 @@ def test_init_from_command_line():
         config.init_from_command_line(parser)
 
 
-#@pytest.mark.skip(reason="No way of currently testing this")
+# @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_from_dictionary():
     config = EnvironmentConfigurationPolicy()
     config.init_from_dictionary({"name": "Production"})
@@ -37,10 +44,11 @@ def test_init_from_dictionary():
 
 # @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_from_json_file():
-    file_path = os.path.join(configuration_values_dir, "environment_configuration_values.json")
+    file_path = os.path.join(
+        configuration_values_dir, "environment_configuration_values.json"
+    )
 
-    config_values = {
-        "configuration_file_full_path": file_path}
+    config_values = {"configuration_file_full_path": file_path}
 
     config = EnvironmentConfigurationPolicy()
     config.init_from_dictionary(config_values)

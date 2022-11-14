@@ -22,7 +22,9 @@ class Provisioner(SystemFunctionCommon):
     def add_pipeline_conf_files():
         pipeline_files_dir = SystemFunctionCommon.current_subpath("pipelines")
         for file_name in os.listdir(pipeline_files_dir):
-            SystemFunctionCommon.provision_file(os.path.join(pipeline_files_dir, file_name), "/etc/logstash/conf.d/")
+            SystemFunctionCommon.provision_file(
+                os.path.join(pipeline_files_dir, file_name), "/etc/logstash/conf.d/"
+            )
 
     @staticmethod
     def check_configuration_files(_):
@@ -33,7 +35,9 @@ class Provisioner(SystemFunctionCommon):
     def check_pipelines_yml_file():
         pdb.set_trace()
         pipelines_file = SystemFunctionCommon.current_subpath("pipelines.yml")
-        if not SystemFunctionCommon.compare_files(pipelines_file, "/etc/logstash/pipelines.yml"):
+        if not SystemFunctionCommon.compare_files(
+            pipelines_file, "/etc/logstash/pipelines.yml"
+        ):
             sys.exit(1)
 
     @staticmethod
@@ -45,14 +49,18 @@ class Provisioner(SystemFunctionCommon):
                 sys.exit(1)
 
 
-Provisioner.ACTION_MANAGER.register_action("add_logstash_configuration_files",
-                                           Provisioner.empty_parser,
-                                           Provisioner.add_logstash_configuration_files)
+Provisioner.ACTION_MANAGER.register_action(
+    "add_logstash_configuration_files",
+    Provisioner.empty_parser,
+    Provisioner.add_logstash_configuration_files,
+)
 
 
-Provisioner.ACTION_MANAGER.register_action("check_configuration_files",
-                                           Provisioner.empty_parser,
-                                           Provisioner.check_configuration_files)
+Provisioner.ACTION_MANAGER.register_action(
+    "check_configuration_files",
+    Provisioner.empty_parser,
+    Provisioner.check_configuration_files,
+)
 
 if __name__ == "__main__":
     Provisioner.ACTION_MANAGER.call_action()

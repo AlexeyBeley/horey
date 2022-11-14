@@ -7,6 +7,7 @@ import json
 import ignore_me
 from kms_client import KMSClient
 from horey.h_logger import get_logger
+
 logger = get_logger()
 from horey.aws_api.base_entities.aws_account import AWSAccount
 
@@ -20,7 +21,12 @@ action_manager = ActionsManager()
 def create_key_parser():
     description = "Create KMS key"
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument("--name", required=True, type=str, help="Tag name will be added, description and alias set")
+    parser.add_argument(
+        "--name",
+        required=True,
+        type=str,
+        help="Tag name will be added, description and alias set",
+    )
     return parser
 
 

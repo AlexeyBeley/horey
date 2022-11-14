@@ -19,6 +19,7 @@ class BobAPI:
     """
     API to work with Grafana 8 API
     """
+
     def __init__(self, configuration: BobAPIConfigurationPolicy = None):
         self.employees = None
 
@@ -39,13 +40,10 @@ class BobAPI:
         if self.token is not None:
             headers["Authorization"] = self.token
 
-        response = requests.get(
-            request,
-            headers=headers
-        )
+        response = requests.get(request, headers=headers)
         if response.status_code != 200:
             raise RuntimeError(
-                f'Request to grafana api returned an error {response.status_code}, the response is:\n{response.text}'
+                f"Request to grafana api returned an error {response.status_code}, the response is:\n{response.text}"
             )
         return response.json()
 
@@ -61,13 +59,11 @@ class BobAPI:
         if self.token is not None:
             headers["Authorization"] = self.token
 
-        response = requests.post(
-            request, data=json.dumps(data),
-            headers=headers)
+        response = requests.post(request, data=json.dumps(data), headers=headers)
 
         if response.status_code != 200:
             raise RuntimeError(
-                f'Request to grafana api returned an error {response.status_code}, the response is:\n{response.text}'
+                f"Request to grafana api returned an error {response.status_code}, the response is:\n{response.text}"
             )
         return response.json()
 
@@ -83,13 +79,11 @@ class BobAPI:
         if self.token is not None:
             headers["Authorization"] = f"Bearer {self.token}"
 
-        response = requests.put(
-            request, data=json.dumps(data),
-            headers=headers)
+        response = requests.put(request, data=json.dumps(data), headers=headers)
 
         if response.status_code != 200:
             raise RuntimeError(
-                f'Request to grafana api returned an error {response.status_code}, the response is:\n{response.text}'
+                f"Request to grafana api returned an error {response.status_code}, the response is:\n{response.text}"
             )
         return response.json()
 
@@ -105,13 +99,10 @@ class BobAPI:
         if self.token is not None:
             headers["Authorization"] = self.token
 
-        response = requests.delete(
-            request,
-            headers=headers
-        )
+        response = requests.delete(request, headers=headers)
         if response.status_code != 200:
             raise RuntimeError(
-                f'Request to grafana api returned an error {response.status_code}, the response is:\n{response.text}'
+                f"Request to grafana api returned an error {response.status_code}, the response is:\n{response.text}"
             )
         return response.json()
 
@@ -134,7 +125,9 @@ class BobAPI:
         """
 
         if from_cache:
-            self.employees = self.init_objects_from_cache(self.configuration.employees_cache_file_path, Employee)
+            self.employees = self.init_objects_from_cache(
+                self.configuration.employees_cache_file_path, Employee
+            )
             return
 
         ret = self.get("v1/people?humanReadable=false&includeHumanReadable=false")
@@ -143,7 +136,9 @@ class BobAPI:
         cache = cache if cache is not None else self.configuration.cache
 
         if cache:
-            self.cache_objects(self.configuration.employees_cache_file_path, self.employees)
+            self.cache_objects(
+                self.configuration.employees_cache_file_path, self.employees
+            )
 
     def init_timeoff_requests(self, requested_before=365, cache=None, from_cache=False):
         """
@@ -156,17 +151,23 @@ class BobAPI:
         """
 
         if from_cache:
-            return self.init_objects_from_cache(self.configuration.timeoff_requests_cache_file_path, TimeoffRequest)
+            return self.init_objects_from_cache(
+                self.configuration.timeoff_requests_cache_file_path, TimeoffRequest
+            )
 
         date_now = datetime.datetime.now()
         start_date = date_now - datetime.timedelta(days=requested_before)
-        ret = self.get(f"v1/timeoff/requests/changes?since={start_date.strftime('%Y-%m-%dT00:00-00:00')}")
+        ret = self.get(
+            f"v1/timeoff/requests/changes?since={start_date.strftime('%Y-%m-%dT00:00-00:00')}"
+        )
         timeoff_requests = [TimeoffRequest(dict_src) for dict_src in ret["changes"]]
 
         cache = cache if cache is not None else self.configuration.cache
 
         if cache:
-            self.cache_objects(self.configuration.timeoff_requests_cache_file_path, timeoff_requests)
+            self.cache_objects(
+                self.configuration.timeoff_requests_cache_file_path, timeoff_requests
+            )
 
         return timeoff_requests
 
@@ -215,7 +216,9 @@ class BobAPI:
                 continue
 
             if not employee.work.get("isManager"):
-                raise NotImplementedError(f"{employee.display_name} has directReports but is not isManager")
+                raise NotImplementedError(
+                    f"{employee.display_name} has directReports but is not isManager"
+                )
 
             if not recursive:
                 ret.append(employee)
@@ -235,7 +238,10 @@ class BobAPI:
         date_now = datetime.datetime.now()
         actual_timeoffs = {}
         for timeoff_request in timeoff_requests:
-            if display_names and timeoff_request.employee_display_name not in display_names:
+            if (
+                display_names
+                and timeoff_request.employee_display_name not in display_names
+            ):
                 continue
 
             if timeoff_request.date_end < date_now:
@@ -245,10 +251,14 @@ class BobAPI:
                 continue
 
             try:
-                actual_timeoffs[timeoff_request.employee_display_name].append(timeoff_request)
+                actual_timeoffs[timeoff_request.employee_display_name].append(
+                    timeoff_request
+                )
             except KeyError:
                 actual_timeoffs[timeoff_request.employee_display_name] = []
-                actual_timeoffs[timeoff_request.employee_display_name].append(timeoff_request)
+                actual_timeoffs[timeoff_request.employee_display_name].append(
+                    timeoff_request
+                )
 
         return actual_timeoffs
 
@@ -259,24 +269,35 @@ class BobAPI:
         @return:
         """
 
-        display_names = None if employees is None else [employee.display_name for employee in employees]
+        display_names = (
+            None
+            if employees is None
+            else [employee.display_name for employee in employees]
+        )
 
         timeoff_requests = self.init_timeoff_requests(from_cache=True)
         date_now = datetime.datetime.now()
 
         actual_timeoffs = {}
         for timeoff_request in timeoff_requests:
-            if display_names and timeoff_request.employee_display_name not in display_names:
+            if (
+                display_names
+                and timeoff_request.employee_display_name not in display_names
+            ):
                 continue
 
             if timeoff_request.date_end < date_now:
                 continue
 
             try:
-                actual_timeoffs[timeoff_request.employee_display_name].append(timeoff_request)
+                actual_timeoffs[timeoff_request.employee_display_name].append(
+                    timeoff_request
+                )
             except KeyError:
                 actual_timeoffs[timeoff_request.employee_display_name] = []
-                actual_timeoffs[timeoff_request.employee_display_name].append(timeoff_request)
+                actual_timeoffs[timeoff_request.employee_display_name].append(
+                    timeoff_request
+                )
 
         return actual_timeoffs
 

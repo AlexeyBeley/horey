@@ -6,6 +6,7 @@ class IP:
     """
     Class for network engineers usage
     """
+
     ANY = None
 
     @staticmethod
@@ -129,13 +130,17 @@ class IP:
             type_mask_len = 128
 
         mask_len = self.init_int_mask()
-        str_address = "{}{}".format(self.init_str_bit_address()[:mask_len], "0"*(type_mask_len-mask_len))
+        str_address = "{}{}".format(
+            self.init_str_bit_address()[:mask_len], "0" * (type_mask_len - mask_len)
+        )
         str_address = self.address_from_str_binary(str_address)
         ip_ret = IP("{}/{}".format(str_address, str(mask_len)))
         return ip_ret
 
     def address_from_str_binary(self, str_address):
-        return ".".join([str(int(str_address[i*8: i*8 + 8], 2)) for i in range(0, 4)])
+        return ".".join(
+            [str(int(str_address[i * 8 : i * 8 + 8], 2)) for i in range(0, 4)]
+        )
 
     def init_from_dict(self, dict_src):
         if self.str_address or self.str_int_mask:
@@ -165,9 +170,11 @@ class IP:
             self.int_mask = kwargs["int_mask"]
 
         if "/" in str_src:
-            if (self._str_mask is not None) or \
-                    (self._int_mask is not None) or \
-                    (self._str_int_mask is not None):
+            if (
+                (self._str_mask is not None)
+                or (self._int_mask is not None)
+                or (self._str_int_mask is not None)
+            ):
                 raise NotImplementedError()
 
             self.str_address, str_mask = str_src.split("/")
@@ -208,7 +215,9 @@ class IP:
             raise NotImplementedError()
 
     def init_str_bit_address(self):
-        return "".join([format(int(octet), '08b') for octet in self.str_address.split(".")])
+        return "".join(
+            [format(int(octet), "08b") for octet in self.str_address.split(".")]
+        )
 
     def init_str_int_mask(self):
         if self.str_int_mask:
@@ -303,7 +312,9 @@ class IP:
                 count += len(pre.split(":"))
             if post:
                 count += len(post.split(":"))
-            str_src = str_src.replace("::", ":"+":".join(["0000" for x in range(8-count)])+":")
+            str_src = str_src.replace(
+                "::", ":" + ":".join(["0000" for x in range(8 - count)]) + ":"
+            )
             str_src = str_src.strip(":")
 
         lst_src = str_src.split(":")
@@ -393,10 +404,10 @@ class IP:
 
     def convert_to_dict(self):
         return {
-                "str_address": self.init_str_address(),
-                "str_int_mask": self.init_str_int_mask(),
-                "type": self.type
-               }
+            "str_address": self.init_str_address(),
+            "str_int_mask": self.init_str_int_mask(),
+            "type": self.type,
+        }
 
     def copy(self):
         ip = IP(self.init_str_address(), int_mask=self.init_int_mask())
@@ -410,15 +421,20 @@ class IP:
             raise NotImplementedError()
         str_address_bits = self.init_str_bit_address()
 
-        base_net_part = str_address_bits[:self.int_mask]
+        base_net_part = str_address_bits[: self.int_mask]
 
-        hosts_part = "0"*(32 - mask_length)
+        hosts_part = "0" * (32 - mask_length)
 
-        permutations_part_length = (mask_length- self.int_mask)
+        permutations_part_length = mask_length - self.int_mask
 
         permutations = self.get_bit_permutations(permutations_part_length)
 
-        return [IP(f"{self.address_from_str_binary(base_net_part+permutation+hosts_part)}/{mask_length}") for permutation in permutations]
+        return [
+            IP(
+                f"{self.address_from_str_binary(base_net_part+permutation+hosts_part)}/{mask_length}"
+            )
+            for permutation in permutations
+        ]
 
     @staticmethod
     def get_bit_permutations(count):
@@ -428,5 +444,7 @@ class IP:
         if count == 0:
             return [""]
 
-        sub_permutations = IP.get_bit_permutations(count-1)
-        return ["0"+permutation for permutation in sub_permutations] + ["1"+permutation for permutation in sub_permutations]
+        sub_permutations = IP.get_bit_permutations(count - 1)
+        return ["0" + permutation for permutation in sub_permutations] + [
+            "1" + permutation for permutation in sub_permutations
+        ]

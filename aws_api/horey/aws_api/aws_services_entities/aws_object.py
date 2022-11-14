@@ -19,10 +19,12 @@ class AwsObject:
     """
 
     # Regex for manipulating CamelCase attr names
-    _FIRST_CAP_RE = re.compile('(.)([A-Z][a-z]+)')
-    _ALL_CAP_RE = re.compile('([a-z0-9])([A-Z])')
+    _FIRST_CAP_RE = re.compile("(.)([A-Z][a-z]+)")
+    _ALL_CAP_RE = re.compile("([a-z0-9])([A-Z])")
     #'2017-07-26 15:54:10.000000+0000'
-    _DATE_MICROSECONDS_FORMAT_RE = re.compile('([0-9]{4})-([0-9]{2})-([0-9]{2}) ([0-9]{2}):([0-9]{2}):([0-9]{2})\.([0-9]{6})\+([0-9]{4})')
+    _DATE_MICROSECONDS_FORMAT_RE = re.compile(
+        "([0-9]{4})-([0-9]{2})-([0-9]{2}) ([0-9]{2}):([0-9]{2}):([0-9]{2})\.([0-9]{6})\+([0-9]{4})"
+    )
     SELF_CACHED_TYPE_KEY_NAME = "horey_cached_type"
 
     def __init__(self, dict_src, from_cache=False):
@@ -45,7 +47,10 @@ class AwsObject:
         """
 
         for key_src, value in dict_src.items():
-            if isinstance(value, dict) and value.get(self.SELF_CACHED_TYPE_KEY_NAME) is not None:
+            if (
+                isinstance(value, dict)
+                and value.get(self.SELF_CACHED_TYPE_KEY_NAME) is not None
+            ):
                 self.init_horey_cached_type(key_src, value)
             elif key_src in dict_options:
                 dict_options[key_src](key_src, value)
@@ -62,7 +67,9 @@ class AwsObject:
 
         if value.get(self.SELF_CACHED_TYPE_KEY_NAME) == "datetime":
             # Example: datetime.datetime.strptime('2017-07-26 15:54:10.000000+0000', '%Y-%m-%d %H:%M:%S.%f%z')
-            new_value = datetime.datetime.strptime(value["value"], "%Y-%m-%d %H:%M:%S.%f%z")
+            new_value = datetime.datetime.strptime(
+                value["value"], "%Y-%m-%d %H:%M:%S.%f%z"
+            )
         elif value.get(self.SELF_CACHED_TYPE_KEY_NAME) == "ip":
             new_value = IP(value["value"], from_dict=True)
         elif value.get(self.SELF_CACHED_TYPE_KEY_NAME) == "region":
@@ -73,7 +80,9 @@ class AwsObject:
             if inited_region.region_name is not None:
                 if new_value.region_name is not None:
                     if new_value.region_name != inited_region.region_name:
-                        raise ValueError(f"{new_value.region_name} != {inited_region.region_name}")
+                        raise ValueError(
+                            f"{new_value.region_name} != {inited_region.region_name}"
+                        )
                 else:
                     new_value.region_name = inited_region.region_name
         else:
@@ -145,7 +154,9 @@ class AwsObject:
             formatted_name = self.format_attr_name(attr_name)
         setattr(self, formatted_name, value)
 
-    def init_date_attr_from_formatted_string(self, attr_name, value, custom_format=None):
+    def init_date_attr_from_formatted_string(
+        self, attr_name, value, custom_format=None
+    ):
         """
         "%Y-%m-%d %H:%M:%S.%f%z"
 
@@ -186,7 +197,9 @@ class AwsObject:
                     continue
 
                 print("\n".join(composed_errors))
-                raise self.UnknownKeyError("\n".join(composed_errors)) from caught_exception
+                raise self.UnknownKeyError(
+                    "\n".join(composed_errors)
+                ) from caught_exception
 
     def update_attributes(self, dict_src):
         """
@@ -218,9 +231,9 @@ class AwsObject:
         :return:
         """
 
-        s1 = self._FIRST_CAP_RE.sub(r'\1_\2', name)
+        s1 = self._FIRST_CAP_RE.sub(r"\1_\2", name)
         s1 = s1.replace("__", "_")
-        return self._ALL_CAP_RE.sub(r'\1_\2', s1).lower()
+        return self._ALL_CAP_RE.sub(r"\1_\2", s1).lower()
 
     def convert_to_dict(self):
         """
@@ -247,23 +260,37 @@ class AwsObject:
             for key, value in obj_src.items():
                 if type(key) not in [int, str]:
                     raise Exception
-                ret[key] = AwsObject.convert_to_dict_static(value, custom_types=custom_types)
+                ret[key] = AwsObject.convert_to_dict_static(
+                    value, custom_types=custom_types
+                )
             return ret
 
         if isinstance(obj_src, list):
-            return [AwsObject.convert_to_dict_static(value, custom_types=custom_types) for value in obj_src]
+            return [
+                AwsObject.convert_to_dict_static(value, custom_types=custom_types)
+                for value in obj_src
+            ]
 
         if isinstance(obj_src, AwsObject):
             return obj_src.convert_to_dict()
 
         if isinstance(obj_src, datetime.datetime):
-            return {AwsObject.SELF_CACHED_TYPE_KEY_NAME: "datetime", "value": obj_src.strftime("%Y-%m-%d %H:%M:%S.%f%z")}
+            return {
+                AwsObject.SELF_CACHED_TYPE_KEY_NAME: "datetime",
+                "value": obj_src.strftime("%Y-%m-%d %H:%M:%S.%f%z"),
+            }
 
         if isinstance(obj_src, Region):
-            return {AwsObject.SELF_CACHED_TYPE_KEY_NAME: "region", "value": obj_src.convert_to_dict()}
+            return {
+                AwsObject.SELF_CACHED_TYPE_KEY_NAME: "region",
+                "value": obj_src.convert_to_dict(),
+            }
 
         if isinstance(obj_src, IP):
-            return {AwsObject.SELF_CACHED_TYPE_KEY_NAME: "ip", "value": obj_src.convert_to_dict()}
+            return {
+                AwsObject.SELF_CACHED_TYPE_KEY_NAME: "ip",
+                "value": obj_src.convert_to_dict(),
+            }
 
         if isinstance(obj_src, Enum):
             return obj_src.value
@@ -272,7 +299,9 @@ class AwsObject:
         # Ugly but efficient
         try:
             assert obj_src.convert_to_dict
-            raise DeprecationWarning(f"'return obj_src.convert_to_dict()' Use the new SELF_CACHED_TYPE_KEY_NAME format: {obj_src}")
+            raise DeprecationWarning(
+                f"'return obj_src.convert_to_dict()' Use the new SELF_CACHED_TYPE_KEY_NAME format: {obj_src}"
+            )
         except AttributeError:
             pass
 
@@ -294,7 +323,13 @@ class AwsObject:
         Can't parse the object while initializing.
         """
 
-    def get_tag(self, key, ignore_missing_tag=False, tag_key_specifier="Key", tag_value_specifier="Value"):
+    def get_tag(
+        self,
+        key,
+        ignore_missing_tag=False,
+        tag_key_specifier="Key",
+        tag_value_specifier="Value",
+    ):
         if self.tags is None:
             if ignore_missing_tag:
                 return None
@@ -302,11 +337,19 @@ class AwsObject:
 
         for tag in self.tags:
             tag_key_value = tag.get(tag_key_specifier)
-            tag_key_value = tag_key_value if tag_key_value is not None else tag.get(tag_key_specifier.lower())
+            tag_key_value = (
+                tag_key_value
+                if tag_key_value is not None
+                else tag.get(tag_key_specifier.lower())
+            )
 
             if tag_key_value.lower() == key:
                 tag_value_value = tag.get(tag_value_specifier)
-                return tag_value_value if tag_value_value is not None else tag.get(tag_value_specifier.lower())
+                return (
+                    tag_value_value
+                    if tag_value_value is not None
+                    else tag.get(tag_value_specifier.lower())
+                )
 
         if ignore_missing_tag:
             return None

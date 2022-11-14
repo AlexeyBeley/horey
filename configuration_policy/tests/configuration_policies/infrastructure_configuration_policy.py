@@ -35,7 +35,9 @@ class InfrastructureConfigurationPolicy(GradeConfiguration):
     @property
     def jenkins_host_name(self):
         if self.grade != self.Grade.GradeValue.PROD:
-            return f"jenkins.{self.dns_grade_extension}.{self.corporate_dns_extension}.com"
+            return (
+                f"jenkins.{self.dns_grade_extension}.{self.corporate_dns_extension}.com"
+            )
 
         return f"jenkins.{self.corporate_dns_extension}.com"
 

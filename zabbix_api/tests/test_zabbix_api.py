@@ -4,14 +4,27 @@ import pytest
 import os
 
 from horey.zabbix_api.zabbix_api import ZabbixAPI
-from horey.zabbix_api.zabbix_api_configuration_policy import ZabbixAPIConfigurationPolicy
+from horey.zabbix_api.zabbix_api_configuration_policy import (
+    ZabbixAPIConfigurationPolicy,
+)
 from horey.h_logger import get_logger
 
 configuration_values_file_full_path = None
-logger = get_logger(configuration_values_file_full_path=configuration_values_file_full_path)
+logger = get_logger(
+    configuration_values_file_full_path=configuration_values_file_full_path
+)
 
 configuration = ZabbixAPIConfigurationPolicy()
-configuration.configuration_file_full_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore", "zabbix_api_configuration_values.py"))
+configuration.configuration_file_full_path = os.path.abspath(
+    os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "..",
+        "..",
+        "..",
+        "ignore",
+        "zabbix_api_configuration_values.py",
+    )
+)
 configuration.init_from_file()
 
 zabbix_api = ZabbixAPI(configuration=configuration)
@@ -53,4 +66,3 @@ def test_provision_host():
 
 if __name__ == "__main__":
     test_provision_host()
-

@@ -2,7 +2,6 @@ from horey.configuration_policy.configuration_policy import ConfigurationPolicy
 
 
 class GrafanaAPIConfigurationPolicy(ConfigurationPolicy):
-
     def __init__(self):
         self._server_address = None
         self._user = None
@@ -26,10 +25,12 @@ class GrafanaAPIConfigurationPolicy(ConfigurationPolicy):
         """
 
         if not isinstance(value, str):
-            raise ValueError(f"server_address must be string received {value} of type: {type(value)}")
+            raise ValueError(
+                f"server_address must be string received {value} of type: {type(value)}"
+            )
 
         self._server_address = value
-        
+
     @property
     def user(self):
         if self._user is None:
@@ -39,7 +40,9 @@ class GrafanaAPIConfigurationPolicy(ConfigurationPolicy):
     @user.setter
     def user(self, value):
         if not isinstance(value, str):
-            raise ValueError(f"user must be string received {value} of type: {type(value)}")
+            raise ValueError(
+                f"user must be string received {value} of type: {type(value)}"
+            )
 
         self._user = value
 
@@ -52,7 +55,9 @@ class GrafanaAPIConfigurationPolicy(ConfigurationPolicy):
     @password.setter
     def password(self, value):
         if not isinstance(value, str):
-            raise ValueError(f"password must be string received {value} of type: {type(value)}")
+            raise ValueError(
+                f"password must be string received {value} of type: {type(value)}"
+            )
 
         self._password = value
 
@@ -63,6 +68,8 @@ class GrafanaAPIConfigurationPolicy(ConfigurationPolicy):
     @token.setter
     def token(self, value):
         if not isinstance(value, str) and value is not None:
-            raise ValueError(f"token must be string or None received {value} of type: {type(value)}")
+            raise ValueError(
+                f"token must be string or None received {value} of type: {type(value)}"
+            )
 
         self._token = value

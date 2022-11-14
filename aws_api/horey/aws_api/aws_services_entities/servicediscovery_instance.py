@@ -10,6 +10,7 @@ class ServicediscoveryInstance(AwsObject):
     """
     ServicediscoveryService Service class
     """
+
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self.instances = []
@@ -20,7 +21,7 @@ class ServicediscoveryInstance(AwsObject):
         init_options = {
             "Id": self.init_default_attr,
             "Attributes": self.init_default_attr,
-                        }
+        }
 
         self.init_attrs(dict_src, init_options)
 

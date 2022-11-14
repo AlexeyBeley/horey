@@ -42,4 +42,3 @@ class VMHost(OCIObject):
     def update_after_creation(self, disk):
         self.id = disk.id
         self.unique_id = disk.unique_id
-

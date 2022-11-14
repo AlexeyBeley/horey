@@ -10,6 +10,7 @@ class ElasticsearchDomain(AwsObject):
     """
     Elasticsearch domain class
     """
+
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self.instances = []
@@ -19,7 +20,9 @@ class ElasticsearchDomain(AwsObject):
             return
         init_options = {
             "DomainId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
-            "DomainName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "DomainName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
             "ARN": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
             "Created": self.init_default_attr,
             "Deleted": self.init_default_attr,
@@ -39,7 +42,7 @@ class ElasticsearchDomain(AwsObject):
             "DomainEndpointOptions": self.init_default_attr,
             "AdvancedSecurityOptions": self.init_default_attr,
             "AutoTuneOptions": self.init_default_attr,
-                        }
+        }
 
         self.init_attrs(dict_src, init_options)
 

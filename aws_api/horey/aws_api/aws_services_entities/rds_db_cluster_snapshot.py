@@ -24,8 +24,12 @@ class RDSDBClusterSnapshot(AwsObject):
             return
 
         init_options = {
-            "DBClusterSnapshotIdentifier": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
-            "DBClusterSnapshotArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "DBClusterSnapshotIdentifier": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="id"
+            ),
+            "DBClusterSnapshotArn": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
             "AvailabilityZones": self.init_default_attr,
             "DBClusterIdentifier": self.init_default_attr,
             "SnapshotCreateTime": self.init_default_attr,
@@ -61,8 +65,12 @@ class RDSDBClusterSnapshot(AwsObject):
 
     def update_from_raw_response(self, dict_src):
         init_options = {
-            "DBClusterSnapshotIdentifier": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
-            "DBClusterSnapshotArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "DBClusterSnapshotIdentifier": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="id"
+            ),
+            "DBClusterSnapshotArn": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
             "AvailabilityZones": self.init_default_attr,
             "DBClusterIdentifier": self.init_default_attr,
             "SnapshotCreateTime": self.init_default_attr,
@@ -82,7 +90,7 @@ class RDSDBClusterSnapshot(AwsObject):
             "KmsKeyId": self.init_default_attr,
             "IAMDatabaseAuthenticationEnabled": self.init_default_attr,
             "TagList": self.init_default_attr,
-            "SourceDBClusterSnapshotArn": self.init_default_attr
+            "SourceDBClusterSnapshotArn": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -114,10 +122,7 @@ class RDSDBClusterSnapshot(AwsObject):
         return request
 
     def get_src_snapshot_id_tag(self):
-        return {
-            "Key": "src_snapshot_id",
-            "Value": self.arn
-        }
+        return {"Key": "src_snapshot_id", "Value": self.arn}
 
     @property
     def region(self):

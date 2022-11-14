@@ -31,7 +31,9 @@ class CloudWatchAlarm(AwsObject):
             return
 
         init_options = {
-            "AlarmName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "AlarmName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
             "AlarmArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
             "AlarmConfigurationUpdatedTimestamp": self.init_default_attr,
             "ActionsEnabled": self.init_default_attr,

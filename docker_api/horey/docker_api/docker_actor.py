@@ -21,7 +21,9 @@ action_manager = ActionsManager()
 def build_parser():
     description = "Build docker image"
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument("--tag", required=True, type=str, help="Name repository to create")
+    parser.add_argument(
+        "--tag", required=True, type=str, help="Name repository to create"
+    )
     return parser
 
 
@@ -44,8 +46,13 @@ def login_parser():
 
 
 def login(arguments) -> None:
-    ret = docker_client.login(registry=arguments.host, username=arguments.username, password=arguments.password)
+    ret = docker_client.login(
+        registry=arguments.host,
+        username=arguments.username,
+        password=arguments.password,
+    )
     logger.info(ret)
+
 
 action_manager.register_action("login", login_parser, login)
 # endregion
@@ -63,9 +70,20 @@ def push_parser():
 
 
 def push(arguments) -> None:
-    auth_config = {"host": arguments.host, "username": arguments.username, "password": arguments.password}
-    for line in docker_client.images.push(repository=arguments.repository, tag=arguments.tag, auth_config=auth_config, stream=True, decode=True):
+    auth_config = {
+        "host": arguments.host,
+        "username": arguments.username,
+        "password": arguments.password,
+    }
+    for line in docker_client.images.push(
+        repository=arguments.repository,
+        tag=arguments.tag,
+        auth_config=auth_config,
+        stream=True,
+        decode=True,
+    ):
         print(line)
+
 
 action_manager.register_action("push", push_parser, push)
 # endregion

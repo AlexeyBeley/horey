@@ -161,6 +161,7 @@ class Notification:
         Possible types of the Notification.
 
         """
+
         INFO = "INFO"
         STABLE = "STABLE"
         WARNING = "WARNING"

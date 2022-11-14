@@ -21,9 +21,10 @@ setup(
     author="Horey",
     author_email="alexey.beley@gmail.com",
     license="DWTFYWTPL",
-    packages=find_namespace_packages(include=["horey.gitlab_api", "horey.gitlab_api.*"]),
+    packages=find_namespace_packages(
+        include=["horey.gitlab_api", "horey.gitlab_api.*"]
+    ),
     include_package_data=True,
-    package_data={
-        "": ["gitlab_runner/remote_scripts/*.sh"]
-    },
-    zip_safe=False)
+    package_data={"": ["gitlab_runner/remote_scripts/*.sh"]},
+    zip_safe=False,
+)

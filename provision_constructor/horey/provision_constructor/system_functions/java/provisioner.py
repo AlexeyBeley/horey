@@ -2,7 +2,9 @@ import os.path
 import pdb
 from horey.provision_constructor.system_function_factory import SystemFunctionFactory
 
-from horey.provision_constructor.system_functions.system_function_common import SystemFunctionCommon
+from horey.provision_constructor.system_functions.system_function_common import (
+    SystemFunctionCommon,
+)
 from horey.h_logger import get_logger
 
 logger = get_logger()

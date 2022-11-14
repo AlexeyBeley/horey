@@ -27,7 +27,9 @@ class CloudWatchLogGroupMetricFilter(AwsObject):
             return
 
         init_options = {
-            "filterName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "filterName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
             "metricTransformations": self.init_default_attr,
             "creationTime": self.init_default_attr,
             "logGroupName": self.init_default_attr,
@@ -73,7 +75,7 @@ class CloudWatchLogGroupMetricFilter(AwsObject):
             "logGroupName": self.log_group_name,
             "filterName": self.name,
             "filterPattern": self.filter_pattern,
-            "metricTransformations": self.metric_transformations
+            "metricTransformations": self.metric_transformations,
         }
         return request_dict
 
@@ -85,22 +87,27 @@ class CloudWatchLogGroupMetricFilter(AwsObject):
         def __init__(self, dict_src, from_cache=False):
             self.statements = []
 
-            super(CloudWatchLogGroup.LogStream, self).__init__(dict_src, from_cache=from_cache)
+            super(CloudWatchLogGroup.LogStream, self).__init__(
+                dict_src, from_cache=from_cache
+            )
 
             if from_cache:
                 self.init_log_stream_from_cache(dict_src)
                 return
 
-            init_options = {"logStreamName": self.init_default_attr,
-                            "creationTime": lambda name, value: (
-                            name, CommonUtils.timestamp_to_datetime(value / 1000.0)),
-                            "firstEventTimestamp": self.init_default_attr,
-                            "lastEventTimestamp": self.init_default_attr,
-                            "lastIngestionTime": self.init_default_attr,
-                            "uploadSequenceToken": self.init_default_attr,
-                            "arn": self.init_default_attr,
-                            "storedBytes": self.init_default_attr
-                            }
+            init_options = {
+                "logStreamName": self.init_default_attr,
+                "creationTime": lambda name, value: (
+                    name,
+                    CommonUtils.timestamp_to_datetime(value / 1000.0),
+                ),
+                "firstEventTimestamp": self.init_default_attr,
+                "lastEventTimestamp": self.init_default_attr,
+                "lastIngestionTime": self.init_default_attr,
+                "uploadSequenceToken": self.init_default_attr,
+                "arn": self.init_default_attr,
+                "storedBytes": self.init_default_attr,
+            }
 
             self.init_attrs(dict_src, init_options)
 

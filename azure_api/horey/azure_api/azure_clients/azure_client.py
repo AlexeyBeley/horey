@@ -24,6 +24,11 @@ class AzureClient:
     def connect(self):
         account = AzureAccount.get_azure_account()
         for connection_step in account.connection_steps:
-            credential = ClientSecretCredential(tenant_id=connection_step.tenant_id, client_id=connection_step.client_id,
-                                                client_secret=connection_step.secret)
-            self._client = self.CLIENT_CLASS(credential, connection_step.subscription_id)
+            credential = ClientSecretCredential(
+                tenant_id=connection_step.tenant_id,
+                client_id=connection_step.client_id,
+                client_secret=connection_step.secret,
+            )
+            self._client = self.CLIENT_CLASS(
+                credential, connection_step.subscription_id
+            )

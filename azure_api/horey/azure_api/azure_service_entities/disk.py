@@ -51,31 +51,30 @@ class Disk(AzureObject):
 
     def generate_create_request(self):
         """
-            return list:
+        return list:
 
 
-            'my_resource_group',
-            'my_disk_name',
-            {
-                'location': 'eastus',
-                'disk_size_gb': 20,
-                'creation_data': {
-                    'create_option': DiskCreateOption.empty
-                }
+        'my_resource_group',
+        'my_disk_name',
+        {
+            'location': 'eastus',
+            'disk_size_gb': 20,
+            'creation_data': {
+                'create_option': DiskCreateOption.empty
             }
+        }
         """
-        return [self.resource_group_name,
-                self.name,
-                {"location": self.location,
-                 'disk_size_gb': self.disk_size_gb,
-                 'creation_data': {
-                     'create_option': DiskCreateOption.empty
-                 },
-                 "tags": self.tags
-                 }
-                ]
+        return [
+            self.resource_group_name,
+            self.name,
+            {
+                "location": self.location,
+                "disk_size_gb": self.disk_size_gb,
+                "creation_data": {"create_option": DiskCreateOption.empty},
+                "tags": self.tags,
+            },
+        ]
 
     def update_after_creation(self, disk):
         self.id = disk.id
         self.unique_id = disk.unique_id
-

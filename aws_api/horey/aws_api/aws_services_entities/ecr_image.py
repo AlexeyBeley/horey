@@ -11,6 +11,7 @@ class ECRImage(AwsObject):
     """
     AWS VPC class
     """
+
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self._region = None
@@ -19,7 +20,7 @@ class ECRImage(AwsObject):
         if from_cache:
             self._init_object_from_cache(dict_src)
             return
-        
+
         init_options = {
             "registryId": self.init_default_attr,
             "repositoryName": self.init_default_attr,
@@ -31,7 +32,7 @@ class ECRImage(AwsObject):
             "imageScanFindingsSummary": self.init_default_attr,
             "imageManifestMediaType": self.init_default_attr,
             "artifactMediaType": self.init_default_attr,
-                        }
+        }
 
         self.init_attrs(dict_src, init_options)
 
@@ -67,9 +68,7 @@ class ECRImage(AwsObject):
         request["CidrBlock"] = self.cidr_block
         request["AvailabilityZoneId"] = self.availability_zone_id
         request["VpcId"] = self.vpc_id
-        request["TagSpecifications"] = [{
-                                        "ResourceType": "subnet",
-                                        "Tags": self.tags}]
+        request["TagSpecifications"] = [{"ResourceType": "subnet", "Tags": self.tags}]
 
         return request
 
@@ -77,8 +76,12 @@ class ECRImage(AwsObject):
         raise NotImplementedError()
         pdb.set_trace()
         init_options = {
-            "ECRImageId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
-            "ECRImageArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "ECRImageId": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="id"
+            ),
+            "ECRImageArn": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
             "AvailabilityZone": self.init_default_attr,
             "AvailabilityZoneId": self.init_default_attr,
             "AvailableIpAddressCount": self.init_default_attr,
@@ -92,7 +95,7 @@ class ECRImage(AwsObject):
             "AssignIpv6AddressOnCreation": self.init_default_attr,
             "Ipv6CidrBlockAssociationSet": self.init_default_attr,
             "Tags": self.init_default_attr,
-                        }
+        }
 
         self.init_attrs(dict_src, init_options)
 

@@ -1,10 +1,19 @@
-import datetime
-import os
+"""
+Notification channel configuration policy
+
+"""
 
 from horey.slack_api.slack_api_configuration_policy import SlackAPIConfigurationPolicy
 
+# pylint: disable= missing-function-docstring
+
 
 class NotificationChannelSlackConfigurationPolicy(SlackAPIConfigurationPolicy):
+    """
+    Main class
+
+    """
+
     CONFIGURATION_FILE_NAME = "notification_channel_slack_configuration_values.py"
     ALERT_SYSTEM_MONITORING_ROUTING_TAG = "alert_system_monitoring"
 
@@ -34,5 +43,7 @@ class NotificationChannelSlackConfigurationPolicy(SlackAPIConfigurationPolicy):
             raise ValueError(value)
 
         if not isinstance(value.get(self.ALERT_SYSTEM_MONITORING_ROUTING_TAG), str):
-            raise ValueError(f"Key {self.ALERT_SYSTEM_MONITORING_ROUTING_TAG} is incorrect in mappings: {value}")
+            raise ValueError(
+                f"Key {self.ALERT_SYSTEM_MONITORING_ROUTING_TAG} is incorrect in mappings: {value}"
+            )
         self._tag_to_channel_mapping = value

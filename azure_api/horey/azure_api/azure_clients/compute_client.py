@@ -17,6 +17,7 @@ class ComputeClient(AzureClient):
     """
     Main class - implements the compute client API
     """
+
     CLIENT_CLASS = ComputeManagementClient
 
     def provision_virtual_machine(self, virtual_machine):
@@ -26,13 +27,17 @@ class ComputeClient(AzureClient):
         @param virtual_machine:
         @return:
         """
-        all_machines = self.get_all_virtual_machines(virtual_machine.resource_group_name)
+        all_machines = self.get_all_virtual_machines(
+            virtual_machine.resource_group_name
+        )
         for existing_machine in all_machines:
             if existing_machine.name == virtual_machine.name:
                 virtual_machine.update_after_creation(existing_machine)
                 return virtual_machine
 
-        return self.raw_create_virtual_machines(virtual_machine.generate_create_request())
+        return self.raw_create_virtual_machines(
+            virtual_machine.generate_create_request()
+        )
 
     def raw_create_virtual_machines(self, lst_args):
         """
@@ -72,7 +77,12 @@ class ComputeClient(AzureClient):
         @param resource_group:
         @return:
         """
-        return [SSHKey(obj.as_dict()) for obj in self.client.ssh_public_keys.list_by_resource_group(resource_group.name)]
+        return [
+            SSHKey(obj.as_dict())
+            for obj in self.client.ssh_public_keys.list_by_resource_group(
+                resource_group.name
+            )
+        ]
 
     def get_all_virtual_machines(self, resource_group_name):
         """
@@ -81,7 +91,10 @@ class ComputeClient(AzureClient):
         @param resource_group_name:
         @return:
         """
-        return [VirtualMachine(obj.as_dict()) for obj in self.client.virtual_machines.list(resource_group_name)]
+        return [
+            VirtualMachine(obj.as_dict())
+            for obj in self.client.virtual_machines.list(resource_group_name)
+        ]
 
     def raw_create_disk(self, lst_args):
         """
@@ -115,8 +128,12 @@ class ComputeClient(AzureClient):
         @param obj_repr:
         @return:
         """
-        logger.info(f"Begin virtual machine deletion: '{obj_repr.resource_group_name} {obj_repr.name}'")
-        response = self.client.virtual_machines.begin_delete(obj_repr.resource_group_name, obj_repr.name)
+        logger.info(
+            f"Begin virtual machine deletion: '{obj_repr.resource_group_name} {obj_repr.name}'"
+        )
+        response = self.client.virtual_machines.begin_delete(
+            obj_repr.resource_group_name, obj_repr.name
+        )
         response.wait()
         return response.status() == "Succeeded"
 

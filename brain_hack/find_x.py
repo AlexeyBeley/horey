@@ -30,10 +30,9 @@ x = "555666777"
 print(x[::-1])
 
 
-
-#print(x)
-#if (x := len(x)) == 10:
+# print(x)
+# if (x := len(x)) == 10:
 #    print(True)
-#x = 1
-#y = (x := 2)
-#print(x, y)
+# x = 1
+# y = (x := 2)
+# print(x, y)
