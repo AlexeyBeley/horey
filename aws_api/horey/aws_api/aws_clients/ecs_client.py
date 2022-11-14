@@ -290,15 +290,9 @@ class ECSClient(Boto3Client):
         """
 
         task_arns = []
-
-        if custom_list_filters is None:
-            custom_list_filters = {}
-
         custom_list_filters["cluster"] = cluster_name
 
-        for arn in self.execute(
-            self.client.list_tasks, "taskArns", filters_req=custom_list_filters
-        ):
+        for arn in self.execute(self.client.list_tasks, "taskArns", filters_req=custom_list_filters):
             task_arns.append(arn)
 
         if len(task_arns) == 0:
