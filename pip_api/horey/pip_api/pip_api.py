@@ -192,12 +192,13 @@ class PipAPI:
         with open(file_name, "w", encoding="utf-8") as file_handler:
             file_handler.write(command)
             command = f"/bin/bash {file_name}"
-        # pylint: disable=subprocess-run-check
+
         ret = subprocess.run(
-            [command], capture_output=True, shell=True, timeout=timeout
+            [command], capture_output=True, shell=True, timeout=timeout, check=False
         )
 
-        # os.remove(file_name)
+        os.remove(file_name)
+
         return_dict = {
             "stdout": ret.stdout.decode().strip("\n"),
             "stderr": ret.stderr.decode().strip("\n"),
@@ -221,7 +222,6 @@ class PipAPI:
             if not ignore_on_error_callback(return_dict):
                 raise self.BashError(json.dumps(return_dict))
 
-        os.remove(file_name)
         return return_dict
 
     def execute(self, command, ignore_venv=False):

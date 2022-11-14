@@ -266,6 +266,7 @@ class AWSLambda(AwsObject):
     def generate_update_function_configuration_request(self, desired_lambda):
         """
         Generate Update configuration request to make this lambda look like desired one.
+        must be one of: FunctionName, Role, Handler, Description, Timeout, MemorySize, VpcConfig, Environment, Runtime, DeadLetterConfig, KMSKeyArn, TracingConfig, RevisionId, Layers, FileSystemConfigs, ImageConfig
 
         @param desired_lambda:
         @return:
@@ -286,8 +287,7 @@ class AWSLambda(AwsObject):
             "RevisionId",
             "Layers",
             "FileSystemConfigs",
-            "ImageConfig",
-            "EphemeralStorage",
+            "ImageConfig"
         ]
         request = {"FunctionName": self.name}
         for attr_name in attr_names:
