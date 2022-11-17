@@ -1,9 +1,9 @@
 """
 Module handling AWS Iam Policy object
 """
+import json
 from enum import Enum
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
-import pdb
 
 
 class IamPolicy(AwsObject):
@@ -17,6 +17,9 @@ class IamPolicy(AwsObject):
         :param dict_src:
         """
         self.document = None
+        self.arn = None
+        self.versions = None
+        self.description = None
 
         super().__init__(dict_src, from_cache=from_cache)
         if from_cache:
@@ -87,14 +90,73 @@ class IamPolicy(AwsObject):
         self.init_default_attr("document", document)
 
     def generate_create_request(self):
-        dict_ret = dict()
-        dict_ret["PolicyName"] = self.name
-        dict_ret["PolicyDocument"] = self.document
-        dict_ret["Description"] = self.description
-        dict_ret["Tags"] = self.tags
+        """
+        Generate creation request.
+
+        :return:
+        """
+
+        dict_ret = {"PolicyName": self.name, "PolicyDocument": self.document, "Description": self.description,
+                    "Tags": self.tags}
         return dict_ret
 
+    def generate_delete_policy_version_request(self):
+        """
+        Generate delete version request if reached max versions.
+
+        :return:
+        """
+
+        if self.versions is None:
+            raise RuntimeError(f"policy {self.name}.versions was not inited")
+        # pylint: disable= not-an-iterable
+        if len(self.versions) == 5:
+            min_version = min(int(version["VersionId"][1:]) for version in self.versions)
+            return {"PolicyArn": self.arn,
+                    "VersionId": f"v{min_version}"}
+
+        return None
+
+    def generate_create_policy_version_request(self, policy_desired):
+        """
+        Generate request to change
+
+        :param policy_desired:
+        :return:
+        """
+        if not isinstance(policy_desired.document, str):
+            raise NotImplementedError(f"policy_desired.document must be a string but in {policy_desired.name} it is "
+                                      f"{type(policy_desired.document)}")
+
+        if not isinstance(self.document, self.Document):
+            raise NotImplementedError(f"self.document must be a IamPolicy.Document but in {self.name} it is "
+                                      f"{type(self.document)}")
+
+        document_desired = json.loads(policy_desired.document)
+
+        if not self.document.dict_src:
+            raise AttributeError(f"policy {self.name} document was not initialized from server")
+
+        if policy_desired.document is None:
+            raise AttributeError(f"policy {policy_desired.document} document is None")
+
+        if self.document.dict_src == document_desired:
+            return None
+
+        return {
+            "PolicyArn": self.arn,
+            "PolicyDocument": json.dumps(document_desired),
+            "SetAsDefault": True
+        }
+
     def update_from_raw_response(self, dict_src):
+        """
+        Update self data from server response.
+
+        :param dict_src:
+        :return:
+        """
+
         init_options = {
             "PolicyId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
             "Path": self.init_default_attr,
@@ -108,9 +170,21 @@ class IamPolicy(AwsObject):
             "PermissionsBoundaryUsageCount": self.init_default_attr,
             "IsAttachable": self.init_default_attr,
             "UpdateDate": self.init_default_attr,
+            "Tags": self.init_default_attr,
+            "Description": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
+
+    def generate_arn(self, account_id):
+        """
+        Trying to guess my ARN
+
+        :param account_id:
+        :return:
+        """
+
+        return f"arn:aws:iam::{account_id}:policy/{self.name}"
 
     class Document(AwsObject):
         """

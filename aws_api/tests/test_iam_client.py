@@ -5,6 +5,7 @@ from unittest.mock import Mock
 
 from horey.aws_api.aws_clients.iam_client import IamClient
 from horey.aws_api.aws_services_entities.iam_role import IamRole
+from horey.aws_api.aws_services_entities.iam_policy import IamPolicy
 from horey.aws_api.aws_services_entities.iam_instance_profile import IamInstanceProfile
 
 
@@ -86,6 +87,64 @@ def test_provision_instance_profile():
     client.provision_instance_profile(iam_instance_profile)
 
 
+def test_provision_policy():
+    policy = IamPolicy({})
+    policy.document = {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Action": [
+                    "logs:CreateLogStream",
+                ],
+                "Resource": [
+                    f"arn:aws:logs:*:211921183446:log-group:horey-test"
+                ],
+                "Effect": "Allow"
+            }
+        ]
+    }
+    policy.document = json.dumps(policy.document)
+    policy.name = "pol-test-provision"
+    policy.description = "pol-test-provision"
+    policy.tags = [{
+        "Key": "Name",
+        "Value": policy.name
+    }]
+
+    client = IamClient()
+    client.provision_policy(policy)
+
+
+def test_provision_change_policy():
+    policy = IamPolicy({})
+    policy.document = {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Action": [
+                    "logs:CreateLogStream",
+                    "logs:CreateLogGroup"
+                ],
+                "Resource": [
+                    f"arn:aws:logs:*:211921183446:log-group:horey-test"
+                ],
+                "Effect": "Allow"
+            }
+        ]
+    }
+    policy.document = json.dumps(policy.document)
+    policy.name = "pol-test-provision"
+    policy.description = "pol-test-provision"
+    policy.tags = [{
+        "Key": "Name",
+        "Value": policy.name
+    }]
+
+    client = IamClient()
+    client.provision_policy(policy)
+
 if __name__ == "__main__":
     # test_provision_role()
-    test_provision_instance_profile()
+    #test_provision_instance_profile()
+    test_provision_policy()
+    test_provision_change_policy()
