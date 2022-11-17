@@ -1,7 +1,6 @@
 """
 AWS iam client to handle iam service API requests.
 """
-import pdb
 
 from horey.aws_api.aws_services_entities.iam_user import IamUser
 from horey.aws_api.aws_services_entities.iam_access_key import IamAccessKey
@@ -345,6 +344,25 @@ class IamClient(Boto3Client):
         ):
             policy.update_statements(response)
 
+    def update_policy_versions(self, policy: IamPolicy):
+        """
+        Fetches and updates the policy documents' versions
+
+        :param policy: The IamPolicy obj
+        :return: None, raise if fails
+        """
+        ret = []
+        for response in self.execute(
+            self.client.list_policy_versions,
+            "Versions",
+            filters_req={
+                "PolicyArn": policy.arn
+            },
+        ):
+            ret.append(response)
+
+        policy.versions = ret
+
     def attach_role_policy_raw(self, request_dict):
         """
         Attach a policy to role.
@@ -495,21 +513,72 @@ class IamClient(Boto3Client):
         ):
             return response
 
-    def provision_policy(self, policy: IamPolicy):
+    def update_policy_information(self, policy, full_information=False):
+        """
+        Update policy data.
+
+        :param policy:
+        :param full_information:
+        :return:
+        """
+
+        request_dict = {"PolicyArn": policy.arn}
+        try:
+            for response in self.execute(
+                self.client.get_policy,
+                "Policy",
+                filters_req=request_dict,
+            ):
+
+                policy.update_from_raw_response(response)
+                if full_information:
+                    self.update_policy_default_statement(policy)
+                    self.update_policy_versions(policy)
+
+                return True
+        except Exception as error_instance:
+            if "NoSuchEntity" in repr(error_instance):
+                return False
+            raise
+
+    def provision_policy(self, policy_desired: IamPolicy):
         """
         Provision policy from object.
 
-        @param policy:
+        @param policy_desired:
         @return:
         """
 
-        for existing_policy in self.yield_policies(full_information=False):
-            if existing_policy.name == policy.name:
-                policy.update_from_raw_response(existing_policy.dict_src)
+        existing_policy = IamPolicy({})
+        existing_policy.arn = policy_desired.generate_arn(self.account_id)
+        if not self.update_policy_information(existing_policy, full_information=True):
+            for existing_policy in self.yield_policies(full_information=False):
+                if existing_policy.name == policy_desired.name:
+                    break
+            else:
+                dict_src = self.provision_policy_raw(policy_desired.generate_create_request())
+                policy_desired.update_from_raw_response(dict_src)
                 return
 
-        role_dict_src = self.provision_policy_raw(policy.generate_create_request())
-        policy.update_from_raw_response(role_dict_src)
+        create_version_request = existing_policy.generate_create_policy_version_request(policy_desired)
+        if create_version_request is None:
+            policy_desired.arn = existing_policy.arn
+            self.update_policy_information(policy_desired, full_information=True)
+            return
+
+        delete_version_request = existing_policy.generate_delete_policy_version_request()
+        if delete_version_request is not None:
+            for _ in self.execute(
+                    self.client.delete_policy_version, None, raw_data=True, filters_req=delete_version_request
+            ):
+                break
+
+        logger.info(f"Updating policy: {create_version_request}")
+        for _ in self.execute(
+            self.client.create_policy_version, "PolicyVersion", filters_req=create_version_request
+        ):
+            policy_desired.arn = existing_policy.arn
+            self.update_policy_information(policy_desired, full_information=True)
 
     def provision_policy_raw(self, request_dict):
         """
