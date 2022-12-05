@@ -122,7 +122,7 @@ def test_send_email_with_config_set():
     from_address = mock_values["from_address_private"]
     from_address = mock_values["from_address_domain"]
     to_address = mock_values["to_address"]
-    to_address = "alexey.beley@gmail.com"
+    to_address = "horey@gmail.com"
 
     dict_request = {"FromEmailAddress": from_address,
                     "Destination": {"ToAddresses": [to_address, ]},
@@ -151,7 +151,7 @@ def test_send_email_with_config_set_html():
     from_address = mock_values["from_address_private"]
     from_address = mock_values["from_address_domain2"]
     to_address = mock_values["to_address"]
-    to_address = "alexey.beley@gmail.com"
+    to_address = "horey@gmail.com"
 
     dict_request = {"FromEmailAddress": from_address,
                     "Destination": {"ToAddresses": [to_address, ]},
