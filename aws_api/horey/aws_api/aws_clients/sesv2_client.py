@@ -149,7 +149,18 @@ class SESV2Client(Boto3Client):
             final_result.append(obj)
 
             if full_information:
-                raise NotImplementedError()
+                obj.event_destinations = []
+                for response in self.execute(
+                        self.client.get_configuration_set_event_destinations,
+                        None,
+                        raw_data=True,
+                        filters_req={"ConfigurationSetName": name},
+                    ):
+                    del response["ResponseMetadata"]
+                    try:
+                        obj.event_destinations += response["EventDestinations"]
+                    except KeyError:
+                        pass
 
         return final_result
 
@@ -234,12 +245,16 @@ class SESV2Client(Boto3Client):
                 configuration_set.update_from_raw_response(
                     region_configuration_set.dict_src
                 )
-                return
+                break
+        else:
+            AWSAccount.set_aws_region(configuration_set.region)
+            self.provision_configuration_set_raw(
+                configuration_set.generate_create_request()
+            )
 
-        AWSAccount.set_aws_region(configuration_set.region)
-        self.provision_configuration_set_raw(
-            configuration_set.generate_create_request()
-        )
+        create_requests = configuration_set.generate_create_requests_event_destinations()
+        for create_request in create_requests:
+            self.create_request_event_destination_raw(create_request)
 
     def provision_configuration_set_raw(self, request_dict):
         """
@@ -252,6 +267,23 @@ class SESV2Client(Boto3Client):
         logger.info(f"Creating configuration_set: {request_dict}")
         for response in self.execute(
             self.client.create_configuration_set,
+            None,
+            raw_data=True,
+            filters_req=request_dict,
+        ):
+            return response
+
+    def create_request_event_destination_raw(self, request_dict):
+        """
+        Standard
+
+        @param request_dict:
+        @return:
+        """
+
+        logger.info(f"Creating configuration_set event_destination: {request_dict}")
+        for response in self.execute(
+            self.client.create_configuration_set_event_destination,
             None,
             raw_data=True,
             filters_req=request_dict,
@@ -370,3 +402,29 @@ class SESV2Client(Boto3Client):
                 ret.append(response)
 
         return ret
+
+    def send_email_raw(self, request_dict):
+        """
+        Send an email.
+
+        :return:
+        """
+
+        for response in self.execute(
+            self.client.send_email,
+            None,
+            raw_data=True,
+            filters_req=request_dict,
+        ):
+            del response["ResponseMetadata"]
+            conf_set_name = request_dict.get("ConfigurationSetName")
+            if conf_set_name:
+                log_message = f"Email sent: from '{request_dict.get('FromEmailAddress')}', to " \
+                          f"'{request_dict.get('Destination')}', message_id: '{response.get('MessageId')}', " \
+                              f"configuration set: '{conf_set_name}'"
+            else:
+                log_message = f"Email sent: from '{request_dict.get('FromEmailAddress')}', to " \
+                              f"'{request_dict.get('Destination')}', message_id: '{response.get('MessageId')}'"
+
+            logger.info(log_message)
+            return response

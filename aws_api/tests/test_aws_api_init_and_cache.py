@@ -203,7 +203,7 @@ def test_init_and_cache_sesv2_email_templates():
 
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_sesv2_configuration_sets():
-    aws_api.init_sesv2_configuration_sets()
+    aws_api.init_sesv2_configuration_sets(full_information=True)
     aws_api.cache_objects(
         aws_api.sesv2_configuration_sets,
         configuration.aws_api_sesv2_configuration_sets_cache_file,
@@ -881,7 +881,7 @@ if __name__ == "__main__":
     # test_init_and_cache_ecs_capacity_providers()
     # test_init_and_cache_ec2_launch_template_versions()
     # test_init_and_cache_ecs_task_definitions()
-    test_init_and_cache_ecs_tasks()
+    # test_init_and_cache_ecs_tasks()
     # test_add_managed_region()
     # test_init_and_cache_load_balancers()
     # test_init_and_cache_target_groups()
@@ -921,7 +921,7 @@ if __name__ == "__main__":
     # test_init_and_cache_dynamodb_endpoints()
     # test_init_and_cache_sesv2_email_identities()
     # test_init_and_cache_sesv2_email_templates()
-    # test_init_and_cache_sesv2_configuration_sets()
+    test_init_and_cache_sesv2_configuration_sets()
     # test_init_and_cache_sns_topics()
     # test_init_and_cache_sns_subscriptions()
     # test_init_and_cache_auto_scaling_groups()

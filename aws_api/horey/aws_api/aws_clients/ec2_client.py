@@ -78,7 +78,7 @@ class EC2Client(Boto3Client):
 
         AWSAccount.set_aws_region(region)
         for dict_src in self.execute(
-            self.client.describe_subnets, "Subnets", filters_req=filters_req
+                self.client.describe_subnets, "Subnets", filters_req=filters_req
         ):
             obj = Subnet(dict_src)
             final_result.append(obj)
@@ -116,7 +116,7 @@ class EC2Client(Boto3Client):
             filters_req["Filters"] = filters
 
         for dict_src in self.execute(
-            self.client.describe_vpcs, "Vpcs", filters_req=filters_req
+                self.client.describe_vpcs, "Vpcs", filters_req=filters_req
         ):
             obj = VPC(dict_src)
             obj.region = region
@@ -133,9 +133,9 @@ class EC2Client(Boto3Client):
 
         for attr_name in ["EnableDnsHostnames", "EnableDnsSupport"]:
             for value in self.execute(
-                self.client.describe_vpc_attribute,
-                attr_name,
-                filters_req={"Attribute": attr_name, "VpcId": vpc.id},
+                    self.client.describe_vpc_attribute,
+                    attr_name,
+                    filters_req={"Attribute": attr_name, "VpcId": vpc.id},
             ):
                 vpc.init_default_attr(attr_name, value)
 
@@ -165,7 +165,7 @@ class EC2Client(Boto3Client):
 
         final_result = []
         for dict_src in self.execute(
-            self.client.describe_availability_zones, "AvailabilityZones"
+                self.client.describe_availability_zones, "AvailabilityZones"
         ):
             obj = AvailabilityZone(dict_src)
             final_result.append(obj)
@@ -181,7 +181,7 @@ class EC2Client(Boto3Client):
         for _region in AWSAccount.get_aws_account().regions.values():
             AWSAccount.set_aws_region(_region)
             for dict_src in self.execute(
-                self.client.describe_network_interfaces, "NetworkInterfaces"
+                    self.client.describe_network_interfaces, "NetworkInterfaces"
             ):
                 interface = NetworkInterface(dict_src)
                 final_result.append(interface)
@@ -217,7 +217,7 @@ class EC2Client(Boto3Client):
         final_result = []
 
         for instance in self.execute(
-            self.client.describe_instances, "Reservations", filters_req=filters
+                self.client.describe_instances, "Reservations", filters_req=filters
         ):
             final_result.extend(instance["Instances"])
 
@@ -258,7 +258,7 @@ class EC2Client(Boto3Client):
             filters_req = None
 
         for dict_src in self.execute(
-            self.client.describe_volumes, "Volumes", filters_req=filters_req
+                self.client.describe_volumes, "Volumes", filters_req=filters_req
         ):
             final_result.append(EC2Volume(dict_src))
 
@@ -275,7 +275,7 @@ class EC2Client(Boto3Client):
         for _region in AWSAccount.get_aws_account().regions.values():
             AWSAccount.set_aws_region(_region)
             for ret in self.execute(
-                self.client.describe_security_groups, "SecurityGroups"
+                    self.client.describe_security_groups, "SecurityGroups"
             ):
                 obj = EC2SecurityGroup(ret)
                 if full_information is True:
@@ -301,9 +301,9 @@ class EC2Client(Boto3Client):
         if filters is not None:
             filters_req["Filters"] = filters
         for ret in self.execute(
-            self.client.describe_security_groups,
-            "SecurityGroups",
-            filters_req=filters_req,
+                self.client.describe_security_groups,
+                "SecurityGroups",
+                filters_req=filters_req,
         ):
             obj = EC2SecurityGroup(ret)
             if full_information is True:
@@ -399,7 +399,7 @@ class EC2Client(Boto3Client):
 
         logger.info(f"Creating security group {request_dict}")
         for group_id in self.execute(
-            self.client.create_security_group, "GroupId", filters_req=request_dict
+                self.client.create_security_group, "GroupId", filters_req=request_dict
         ):
             return group_id
 
@@ -414,7 +414,7 @@ class EC2Client(Boto3Client):
 
         logger.info(f"Creating security group {request_dict}")
         for group_id in self.execute(
-            self.client.create_security_group, "GroupId", filters_req=request_dict
+                self.client.create_security_group, "GroupId", filters_req=request_dict
         ):
             return group_id
 
@@ -431,7 +431,7 @@ class EC2Client(Boto3Client):
             return self.authorize_security_group_ingress_raw(request_dict)
         except Exception as inst_exception:
             if "The same permission must not appear multiple times" in repr(
-                inst_exception
+                    inst_exception
             ):
                 for request_ip_permission in request_dict["IpPermissions"]:
                     request_dict_tmp = {
@@ -455,10 +455,10 @@ class EC2Client(Boto3Client):
         logger.info(f"Authorizing security group ingress: {request_dict}")
 
         for response in self.execute(
-            self.client.authorize_security_group_ingress,
-            "GroupId",
-            filters_req=request_dict,
-            raw_data=True,
+                self.client.authorize_security_group_ingress,
+                "GroupId",
+                filters_req=request_dict,
+                raw_data=True,
         ):
 
             if "UnknownIpPermissions" in response:
@@ -477,10 +477,10 @@ class EC2Client(Boto3Client):
         logger.info(f"Revoking security group ingress: {request_dict}")
 
         for response in self.execute(
-            self.client.revoke_security_group_ingress,
-            "GroupId",
-            filters_req=request_dict,
-            raw_data=True,
+                self.client.revoke_security_group_ingress,
+                "GroupId",
+                filters_req=request_dict,
+                raw_data=True,
         ):
 
             if "unknownIpPermissionSet" in response:
@@ -498,10 +498,10 @@ class EC2Client(Boto3Client):
 
         logger.info(f"Updating security group description ingress: {request_dict}")
         for response in self.execute(
-            self.client.update_security_group_rule_descriptions_ingress,
-            "GroupId",
-            filters_req=request_dict,
-            raw_data=True,
+                self.client.update_security_group_rule_descriptions_ingress,
+                "GroupId",
+                filters_req=request_dict,
+                raw_data=True,
         ):
             return response
 
@@ -514,7 +514,7 @@ class EC2Client(Boto3Client):
         """
 
         for response in self.execute(
-            self.client.run_instances, "Instances", filters_req=request_dict
+                self.client.run_instances, "Instances", filters_req=request_dict
         ):
             return response
 
@@ -527,7 +527,7 @@ class EC2Client(Boto3Client):
         """
 
         for response in self.execute(
-            self.client.create_key_pair, None, raw_data=True, filters_req=request_dict
+                self.client.create_key_pair, None, raw_data=True, filters_req=request_dict
         ):
             return response
 
@@ -540,9 +540,9 @@ class EC2Client(Boto3Client):
         """
 
         for response in self.execute(
-            self.client.request_spot_fleet,
-            "SpotFleetRequestId",
-            filters_req=request_dict,
+                self.client.request_spot_fleet,
+                "SpotFleetRequestId",
+                filters_req=request_dict,
         ):
             return response
 
@@ -559,7 +559,7 @@ class EC2Client(Boto3Client):
         for _region in AWSAccount.get_aws_account().regions.values():
             AWSAccount.set_aws_region(_region)
             for ret in self.execute(
-                self.client.describe_spot_fleet_requests, "SpotFleetRequestConfigs"
+                    self.client.describe_spot_fleet_requests, "SpotFleetRequestConfigs"
             ):
                 obj = EC2SpotFleetRequest(ret)
                 if full_information is True:
@@ -593,7 +593,7 @@ class EC2Client(Boto3Client):
         return final_result
 
     def get_region_launch_templates(
-        self, region, full_information=False, custom_filters=None
+            self, region, full_information=False, custom_filters=None
     ):
         """
         Standard
@@ -608,9 +608,9 @@ class EC2Client(Boto3Client):
         final_result = []
         logger.info(f"Fetching all launch templates from {region}")
         for ret in self.execute(
-            self.client.describe_launch_templates,
-            "LaunchTemplates",
-            filters_req=custom_filters,
+                self.client.describe_launch_templates,
+                "LaunchTemplates",
+                filters_req=custom_filters,
         ):
             obj = EC2LaunchTemplate(ret)
             obj.region = region
@@ -650,10 +650,10 @@ class EC2Client(Boto3Client):
             return "NotFoundException" in repr(exception_inst)
 
         for dict_src in self.execute(
-            self.client.describe_launch_template_versions,
-            "LaunchTemplateVersions",
-            filters_req=custom_filters,
-            exception_ignore_callback=_callback_not_found_exception,
+                self.client.describe_launch_template_versions,
+                "LaunchTemplateVersions",
+                filters_req=custom_filters,
+                exception_ignore_callback=_callback_not_found_exception,
         ):
             obj = EC2LaunchTemplateVersion(dict_src)
             final_result.append(obj)
@@ -673,7 +673,7 @@ class EC2Client(Boto3Client):
                 request["ClientToken"] = request["PrefixListName"]
 
         for response in self.execute(
-            self.client.create_managed_prefix_list, "PrefixList", filters_req=request
+                self.client.create_managed_prefix_list, "PrefixList", filters_req=request
         ):
             return response
 
@@ -688,9 +688,9 @@ class EC2Client(Boto3Client):
         logger.info(f"Modifying prefix list with request: {request}")
         try:
             for response in self.execute(
-                self.client.modify_managed_prefix_list,
-                "PrefixList",
-                filters_req=request,
+                    self.client.modify_managed_prefix_list,
+                    "PrefixList",
+                    filters_req=request,
             ):
                 return response
         except Exception as exception_instance:
@@ -702,7 +702,7 @@ class EC2Client(Boto3Client):
         return None
 
     def raw_describe_managed_prefix_list(
-        self, region, pl_id=None, prefix_list_name=None
+            self, region, pl_id=None, prefix_list_name=None
     ):
         """
         Standard
@@ -727,14 +727,14 @@ class EC2Client(Boto3Client):
             ]
 
         for response in self.execute(
-            self.client.describe_managed_prefix_lists,
-            "PrefixLists",
-            filters_req=request,
+                self.client.describe_managed_prefix_lists,
+                "PrefixLists",
+                filters_req=request,
         ):
             return response
 
     def get_managed_prefix_list(
-        self, region, pl_id=None, name=None, full_information=True
+            self, region, pl_id=None, name=None, full_information=True
     ):
         """
         Standard
@@ -773,25 +773,25 @@ class EC2Client(Boto3Client):
             """
             exception_message = repr(exception_instance)
             if (
-                "UnsupportedOperation" in exception_message
-                and "AWS-managed prefix list" in exception_message
+                    "UnsupportedOperation" in exception_message
+                    and "AWS-managed prefix list" in exception_message
             ):
                 return True
             return False
 
         filters_req = {"PrefixListId": prefix_list.id}
         for associations_response in self.execute(
-            self.client.get_managed_prefix_list_associations,
-            "PrefixListAssociations",
-            filters_req=filters_req,
-            exception_ignore_callback=_ignore_unsupported_operation_callback,
+                self.client.get_managed_prefix_list_associations,
+                "PrefixListAssociations",
+                filters_req=filters_req,
+                exception_ignore_callback=_ignore_unsupported_operation_callback,
         ):
             prefix_list.add_association_from_raw_response(associations_response)
 
         for entries_response in self.execute(
-            self.client.get_managed_prefix_list_entries,
-            "Entries",
-            filters_req=filters_req,
+                self.client.get_managed_prefix_list_entries,
+                "Entries",
+                filters_req=filters_req,
         ):
             prefix_list.add_entry_from_raw_response(entries_response)
 
@@ -817,7 +817,7 @@ class EC2Client(Boto3Client):
         return final_result
 
     def get_region_managed_prefix_lists(
-        self, region, full_information=True, custom_filters=None
+            self, region, full_information=True, custom_filters=None
     ):
         """
         Standard
@@ -831,9 +831,9 @@ class EC2Client(Boto3Client):
         final_result = []
 
         for response in self.execute(
-            self.client.describe_managed_prefix_lists,
-            "PrefixLists",
-            filters_req=custom_filters,
+                self.client.describe_managed_prefix_lists,
+                "PrefixLists",
+                filters_req=custom_filters,
         ):
             obj = ManagedPrefixList(response)
             if full_information is True:
@@ -876,7 +876,7 @@ class EC2Client(Boto3Client):
         @return:
         """
         for response in self.execute(
-            self.client.create_vpc, "Vpc", filters_req=request
+                self.client.create_vpc, "Vpc", filters_req=request
         ):
             return response
 
@@ -889,7 +889,7 @@ class EC2Client(Boto3Client):
         """
         logger.info(f"Modifying VPC {request}")
         for response in self.execute(
-            self.client.modify_vpc_attribute, None, filters_req=request, raw_data=True
+                self.client.modify_vpc_attribute, None, filters_req=request, raw_data=True
         ):
             return response
 
@@ -909,8 +909,8 @@ class EC2Client(Boto3Client):
         for subnet in subnets:
             for region_subnet in region_subnets:
                 if (
-                    region_subnet.get_tagname(ignore_missing_tag=True)
-                    == subnet.get_tagname()
+                        region_subnet.get_tagname(ignore_missing_tag=True)
+                        == subnet.get_tagname()
                 ):
                     if region_subnet.cidr_block != subnet.cidr_block:
                         raise RuntimeError(
@@ -941,7 +941,7 @@ class EC2Client(Boto3Client):
         """
 
         for response in self.execute(
-            self.client.create_subnet, "Subnet", filters_req=request
+                self.client.create_subnet, "Subnet", filters_req=request
         ):
             return response
 
@@ -1018,7 +1018,7 @@ class EC2Client(Boto3Client):
         final_result = []
 
         for response in self.execute(
-            self.client.describe_images, "Images", filters_req=custom_filters
+                self.client.describe_images, "Images", filters_req=custom_filters
         ):
             obj = AMI(response)
             obj.region = AWSAccount.get_aws_region()
@@ -1075,7 +1075,7 @@ class EC2Client(Boto3Client):
         """
 
         for response in self.execute(
-            self.client.create_image, "ImageId", filters_req=request_dict
+                self.client.create_image, "ImageId", filters_req=request_dict
         ):
             return response
 
@@ -1166,7 +1166,7 @@ class EC2Client(Boto3Client):
         return final_result
 
     def get_region_internet_gateways(
-        self, region, full_information=True, custom_filters=None
+            self, region, full_information=True, custom_filters=None
     ):
         """
         Standard
@@ -1180,9 +1180,9 @@ class EC2Client(Boto3Client):
         final_result = []
         filters_req = None if custom_filters is None else {"Filters": custom_filters}
         for response in self.execute(
-            self.client.describe_internet_gateways,
-            "InternetGateways",
-            filters_req=filters_req,
+                self.client.describe_internet_gateways,
+                "InternetGateways",
+                filters_req=filters_req,
         ):
             obj = InternetGateway(response)
             if full_information is True:
@@ -1224,7 +1224,7 @@ class EC2Client(Boto3Client):
         final_result = []
 
         for response in self.execute(
-            self.client.describe_vpc_peering_connections, "VpcPeeringConnections"
+                self.client.describe_vpc_peering_connections, "VpcPeeringConnections"
         ):
             obj = VPCPeering(response)
             if full_information is True:
@@ -1335,10 +1335,10 @@ class EC2Client(Boto3Client):
         return final_result
 
     def get_region_nat_gateways(
-        self,
-        region,
-        full_information=True,
-        custom_filters=None,
+            self,
+            region,
+            full_information=True,
+            custom_filters=None,
     ):
         """
         Standard
@@ -1353,7 +1353,7 @@ class EC2Client(Boto3Client):
         filters_req = None if custom_filters is None else {"Filters": custom_filters}
 
         for response in self.execute(
-            self.client.describe_nat_gateways, "NatGateways", filters_req=filters_req
+                self.client.describe_nat_gateways, "NatGateways", filters_req=filters_req
         ):
             obj = NatGateway(response)
             if full_information is True:
@@ -1373,8 +1373,8 @@ class EC2Client(Boto3Client):
         region_gateways = self.get_region_internet_gateways(internet_gateway.region)
         for region_gateway in region_gateways:
             if (
-                region_gateway.get_tagname(ignore_missing_tag=True)
-                == internet_gateway.get_tagname()
+                    region_gateway.get_tagname(ignore_missing_tag=True)
+                    == internet_gateway.get_tagname()
             ):
                 internet_gateway.id = region_gateway.id
                 break
@@ -1412,7 +1412,7 @@ class EC2Client(Boto3Client):
         @return:
         """
         for response in self.execute(
-            self.client.create_internet_gateway, "InternetGateway", filters_req=request
+                self.client.create_internet_gateway, "InternetGateway", filters_req=request
         ):
             return response
 
@@ -1425,7 +1425,7 @@ class EC2Client(Boto3Client):
         """
         logger.info(request)
         for response in self.execute(
-            self.client.attach_internet_gateway, "ResponseMetadata", filters_req=request
+                self.client.attach_internet_gateway, "ResponseMetadata", filters_req=request
         ):
             return response
 
@@ -1441,8 +1441,8 @@ class EC2Client(Boto3Client):
         )
         for region_elastic_address in region_elastic_addresses:
             if (
-                region_elastic_address.get_tagname(ignore_missing_tag=True)
-                == elastic_address.get_tagname()
+                    region_elastic_address.get_tagname(ignore_missing_tag=True)
+                    == elastic_address.get_tagname()
             ):
                 elastic_address.update_from_raw_response(
                     region_elastic_address.dict_src
@@ -1468,7 +1468,7 @@ class EC2Client(Boto3Client):
         @return:
         """
         for response in self.execute(
-            self.client.allocate_address, "", filters_req=request_dict, raw_data=True
+                self.client.allocate_address, "", filters_req=request_dict, raw_data=True
         ):
             return response
 
@@ -1487,8 +1487,8 @@ class EC2Client(Boto3Client):
             ]:
                 continue
             if (
-                region_vpc_peering.get_tagname(ignore_missing_tag=True)
-                != vpc_peering.get_tagname()
+                    region_vpc_peering.get_tagname(ignore_missing_tag=True)
+                    != vpc_peering.get_tagname()
             ):
                 continue
 
@@ -1536,9 +1536,9 @@ class EC2Client(Boto3Client):
         """
         logger.info(f"Creating VPC Peering: {request_dict}")
         for response in self.execute(
-            self.client.create_vpc_peering_connection,
-            "VpcPeeringConnection",
-            filters_req=request_dict,
+                self.client.create_vpc_peering_connection,
+                "VpcPeeringConnection",
+                filters_req=request_dict,
         ):
             return response
 
@@ -1550,9 +1550,9 @@ class EC2Client(Boto3Client):
         @return:
         """
         for response in self.execute(
-            self.client.accept_vpc_peering_connection,
-            "VpcPeeringConnection",
-            filters_req=request_dict,
+                self.client.accept_vpc_peering_connection,
+                "VpcPeeringConnection",
+                filters_req=request_dict,
         ):
             return response
 
@@ -1637,9 +1637,9 @@ class EC2Client(Boto3Client):
         """
         logger.info(f"Creating Launch Template: {request_dict}")
         for response in self.execute(
-            self.client.create_launch_template,
-            "LaunchTemplate",
-            filters_req=request_dict,
+                self.client.create_launch_template,
+                "LaunchTemplate",
+                filters_req=request_dict,
         ):
             return response
 
@@ -1652,10 +1652,10 @@ class EC2Client(Boto3Client):
         """
         logger.info(f"Creating Launch Template Version: {request_dict}")
         for response in self.execute(
-            self.client.create_launch_template_version,
-            None,
-            raw_data=True,
-            filters_req=request_dict,
+                self.client.create_launch_template_version,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
         ):
             if "Warning" in str(response):
                 raise RuntimeError(response)
@@ -1670,9 +1670,9 @@ class EC2Client(Boto3Client):
         """
         logger.info(f"Modifying Launch Template Version: {request_dict}")
         for response in self.execute(
-            self.client.modify_launch_template,
-            "LaunchTemplate",
-            filters_req=request_dict,
+                self.client.modify_launch_template,
+                "LaunchTemplate",
+                filters_req=request_dict,
         ):
             return response
 
@@ -1691,8 +1691,8 @@ class EC2Client(Boto3Client):
             ]:
                 continue
             if (
-                region_gateway.get_tagname(ignore_missing_tag=True)
-                == nat_gateway.get_tagname()
+                    region_gateway.get_tagname(ignore_missing_tag=True)
+                    == nat_gateway.get_tagname()
             ):
                 nat_gateway.update_from_raw_response(region_gateway.dict_src)
                 return
@@ -1714,7 +1714,7 @@ class EC2Client(Boto3Client):
         @return:
         """
         for response in self.execute(
-            self.client.create_nat_gateway, "NatGateway", filters_req=request_dict
+                self.client.create_nat_gateway, "NatGateway", filters_req=request_dict
         ):
             return response
 
@@ -1728,8 +1728,8 @@ class EC2Client(Boto3Client):
         region_route_tables = self.get_region_route_tables(route_table.region)
         for region_route_table in region_route_tables:
             if (
-                region_route_table.get_tagname(ignore_missing_tag=True)
-                == route_table.get_tagname()
+                    region_route_table.get_tagname(ignore_missing_tag=True)
+                    == route_table.get_tagname()
             ):
                 route_table.id = region_route_table.id
                 break
@@ -1782,7 +1782,7 @@ class EC2Client(Boto3Client):
         @return:
         """
         for response in self.execute(
-            self.client.create_route_table, "RouteTable", filters_req=request_dict
+                self.client.create_route_table, "RouteTable", filters_req=request_dict
         ):
             return response
 
@@ -1795,7 +1795,7 @@ class EC2Client(Boto3Client):
         """
         logger.info(f"Associating route table: {request_dict}")
         for response in self.execute(
-            self.client.associate_route_table, "AssociationId", filters_req=request_dict
+                self.client.associate_route_table, "AssociationId", filters_req=request_dict
         ):
             return response
 
@@ -1808,7 +1808,7 @@ class EC2Client(Boto3Client):
         """
         logger.info(f"Creating route {request_dict}")
         for response in self.execute(
-            self.client.create_route, "Return", filters_req=request_dict
+                self.client.create_route, "Return", filters_req=request_dict
         ):
             return response
 
@@ -1821,7 +1821,7 @@ class EC2Client(Boto3Client):
         """
         logger.info(f"Replacing route {request_dict}")
         for response in self.execute(
-            self.client.replace_route, None, filters_req=request_dict, raw_data=True
+                self.client.replace_route, None, filters_req=request_dict, raw_data=True
         ):
             return response
 
@@ -1836,13 +1836,13 @@ class EC2Client(Boto3Client):
         AWSAccount.set_aws_region(region)
         final_result = []
         for instance in self.execute(
-            self.client.describe_instances, "Reservations", filters_req=custom_filters
+                self.client.describe_instances, "Reservations", filters_req=custom_filters
         ):
             final_result.extend(instance["Instances"])
         return [EC2Instance(instance) for instance in final_result]
 
     def provision_ec2_instance(
-        self, ec2_instance: EC2Instance, wait_until_active=False
+            self, ec2_instance: EC2Instance, wait_until_active=False
     ):
         """
         Standard
@@ -1865,8 +1865,8 @@ class EC2Client(Boto3Client):
                 continue
 
             if (
-                region_ec2_instance.get_tagname(ignore_missing_tag=True)
-                == ec2_instance.get_tagname()
+                    region_ec2_instance.get_tagname(ignore_missing_tag=True)
+                    == ec2_instance.get_tagname()
             ):
                 ec2_instance.update_from_raw_response(region_ec2_instance.dict_src)
                 return
@@ -1947,7 +1947,7 @@ class EC2Client(Boto3Client):
         @return:
         """
         for response in self.execute(
-            self.client.run_instances, "Instances", filters_req=request_dict
+                self.client.run_instances, "Instances", filters_req=request_dict
         ):
             return response
 
@@ -1978,7 +1978,7 @@ class EC2Client(Boto3Client):
         @return:
         """
         for response in self.execute(
-            self.client.create_key_pair, None, filters_req=request_dict, raw_data=True
+                self.client.create_key_pair, None, filters_req=request_dict, raw_data=True
         ):
             return response
 
@@ -1990,7 +1990,7 @@ class EC2Client(Boto3Client):
         @return:
         """
         for response in self.execute(
-            self.client.associate_address, None, filters_req=request_dict, raw_data=True
+                self.client.associate_address, None, filters_req=request_dict, raw_data=True
         ):
             return response
 
@@ -2026,10 +2026,10 @@ class EC2Client(Boto3Client):
         """
 
         for response in self.execute(
-            self.client.delete_launch_template,
-            "LaunchTemplate",
-            filters_req=request_dict,
-            exception_ignore_callback=lambda x: "NotFoundException" in repr(x),
+                self.client.delete_launch_template,
+                "LaunchTemplate",
+                filters_req=request_dict,
+                exception_ignore_callback=lambda x: "NotFoundException" in repr(x),
         ):
             return response
 
@@ -2053,8 +2053,31 @@ class EC2Client(Boto3Client):
         """
 
         for response in self.execute(
-            self.client.terminate_instances,
-            "TerminatingInstances",
-            filters_req=request_dict,
+                self.client.terminate_instances,
+                "TerminatingInstances",
+                filters_req=request_dict,
         ):
             return response
+
+    def stop_instance(self, ec2_instance):
+        """
+        Stop the instance. Wait for stopped state.
+
+        :param ec2_instance:
+        :return:
+        """
+        list(self.execute(self.client.stop_instances, "StoppingInstances",
+                          filters_req={"InstanceIds": [ec2_instance.id], "Force": True}))
+
+        self.wait_for_status(
+            ec2_instance,
+            self.update_instance_information,
+            [ec2_instance.State.STOPPED],
+            [ec2_instance.State.RUNNING,
+             ec2_instance.State.PENDING,
+             ec2_instance.State.SHUTTING_DOWN,
+             ec2_instance.State.STOPPING],
+            [
+                ec2_instance.State.TERMINATED
+            ],
+        )
