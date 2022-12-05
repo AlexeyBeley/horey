@@ -553,7 +553,7 @@ class AWSAPI:
         self.sesv2_email_templates = objects
 
     def init_sesv2_configuration_sets(
-        self, from_cache=False, cache_file=None, region=None
+        self, from_cache=False, cache_file=None, region=None, full_information=False
     ):
         """
         Self explanatory.
@@ -562,12 +562,13 @@ class AWSAPI:
         @param cache_file:
         @param region:
         @return:
+        :param full_information:
         """
 
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, SESV2ConfigurationSet)
         else:
-            objects = self.sesv2_client.get_all_configuration_sets(region=region)
+            objects = self.sesv2_client.get_all_configuration_sets(region=region, full_information=full_information)
 
         self.sesv2_configuration_sets = objects
 

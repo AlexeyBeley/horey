@@ -90,9 +90,95 @@ def test_provision_configuration_set():
     client.provision_configuration_set(configuration_set)
 
 
+def test_send_email():
+    AWSAccount.set_aws_region("us-west-2")
+    client = SESV2Client()
+    from_address = mock_values["from_address_private"]
+    from_address = mock_values["from_address_domain"]
+    to_address = mock_values["to_address"]
+
+    dict_request = {"FromEmailAddress": from_address,
+                    "Destination": {"ToAddresses": [to_address, ]},
+                    "Content": {'Simple': {"Subject": {
+                        "Data": "Hello"},
+                        "Body": {
+                            "Text": {
+                                "Data": "world",
+                            }}
+                    }},
+                    "EmailTags": [
+                        {
+                            "Name": "Name",
+                            "Value": "Horey"
+                        },
+                    ],
+                    }
+    client.send_email_raw(dict_request)
+
+
+def test_send_email_with_config_set():
+    AWSAccount.set_aws_region("us-west-2")
+    client = SESV2Client()
+    from_address = mock_values["from_address_private"]
+    from_address = mock_values["from_address_domain"]
+    to_address = mock_values["to_address"]
+    to_address = "alexey.beley@gmail.com"
+
+    dict_request = {"FromEmailAddress": from_address,
+                    "Destination": {"ToAddresses": [to_address, ]},
+                    "Content": {'Simple': {"Subject": {
+                        "Data": "Hello config set"},
+                        "Body": {
+                            "Text": {
+                                "Data": "world",
+                            }}
+                    }},
+                    "EmailTags": [
+                        {
+                            "Name": "Name",
+                            "Value": "Horey"
+                        },
+                    ],
+                    "ConfigurationSetName": mock_values["ConfigurationSetName"],
+                    }
+    client.send_email_raw(dict_request)
+
+
+def test_send_email_with_config_set_html():
+    body_ = """<html><head></head><body><h1>A header 1</h1><br>Some text."""
+    AWSAccount.set_aws_region("us-west-2")
+    client = SESV2Client()
+    from_address = mock_values["from_address_private"]
+    from_address = mock_values["from_address_domain2"]
+    to_address = mock_values["to_address"]
+    to_address = "alexey.beley@gmail.com"
+
+    dict_request = {"FromEmailAddress": from_address,
+                    "Destination": {"ToAddresses": [to_address, ]},
+                    "Content": {'Simple': {"Subject": {
+                        "Data": "Hello config set"},
+                        "Body": {
+                            "Html": {
+                                "Data": body_,
+                            }}
+                    }},
+                    "EmailTags": [
+                        {
+                            "Name": "Name",
+                            "Value": "Horey"
+                        },
+                    ],
+                    "ConfigurationSetName": mock_values["ConfigurationSetName2"],
+                    }
+    client.send_email_raw(dict_request)
+
+
 if __name__ == "__main__":
     # test_init_sesv2_client()
     # test_provision_email_identity()
     # test_provision_configuration_set()
     # test_provision_email_template()
-    test_get_region_suppressed_destinations()
+    # test_get_region_suppressed_destinations()
+    # test_send_email()
+    # test_send_email_with_config_set()
+    test_send_email_with_config_set_html()
