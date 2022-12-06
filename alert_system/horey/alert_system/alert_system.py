@@ -322,7 +322,6 @@ class AlertSystem:
         aws_lambda.role = role.arn
         aws_lambda.timeout = self.configuration.lambda_timeout
         aws_lambda.memory_size = 512
-        aws_lambda.ephemeral_storage = {"Size": 512}
 
         aws_lambda.tags = {"Name": aws_lambda.name}
         aws_lambda.policy = {
