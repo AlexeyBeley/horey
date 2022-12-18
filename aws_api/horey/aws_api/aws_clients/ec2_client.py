@@ -1626,6 +1626,7 @@ class EC2Client(Boto3Client):
         response = self.provision_launch_template_raw(
             launch_template.generate_create_request()
         )
+
         launch_template.update_from_raw_response(response)
 
     def provision_launch_template_raw(self, request_dict):
