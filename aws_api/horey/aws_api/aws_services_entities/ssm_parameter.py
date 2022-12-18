@@ -1,18 +1,17 @@
 """
-TemplateEntity representation
+SSMParameter representation
 """
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 from horey.aws_api.base_entities.region import Region
 
 
-class TemplateEntity(AwsObject):
+class SSMParameter(AwsObject):
     """
-    AWS TemplateEntity class
+    AWS SSMParameter class
     """
 
     def __init__(self, dict_src, from_cache=False):
-        self.arn = None
         super().__init__(dict_src)
 
         if from_cache:
@@ -20,10 +19,15 @@ class TemplateEntity(AwsObject):
             return
 
         init_options = {
-            "Arn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
             "Name": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-            "Id": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
-            "status": self.init_default_attr,
+            "Type": self.init_default_attr,
+            "Value": self.init_default_attr,
+            "Version": self.init_default_attr,
+            "Selector": self.init_default_attr,
+            "SourceResult": self.init_default_attr,
+            "LastModifiedDate": self.init_default_attr,
+            "ARN": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "DataType": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -35,36 +39,13 @@ class TemplateEntity(AwsObject):
         :param dict_src:
         :return:
         """
-
         options = {}
         self._init_from_cache(dict_src, options)
-
-    def update_from_raw_response(self, raw_value):
-        """
-        Update the object from server response.
-
-        :param raw_value:
-        :return:
-        """
-        raise NotImplementedError()
-
-    def generate_create_request(self):
-        """
-        Generate request to create the resource.
-
-        :return:
-        """
-
-        request = {"Name": self.name, "tags": self.tags}
-        return request
 
     @property
     def region(self):
         if self._region is not None:
             return self._region
-
-        if self.arn is not None:
-            self._region = Region.get_region(self.arn.split(":")[3])
 
         raise NotImplementedError()
 
