@@ -1,23 +1,35 @@
 """
-AWS Lambda representation
+AWS EC2 auto scaling group.
 """
-import pdb
 
+from enum import Enum
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 from horey.aws_api.base_entities.region import Region
-from enum import Enum
 
 
 class AutoScalingGroup(AwsObject):
     """
     AWS AutoScalingGroup class
     """
+    # pylint: disable = too-many-instance-attributes
 
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self._region = None
         self.status = None
         self.availability_zones = None
+        self.desired_capacity = None
+        self.max_size = None
+        self.min_size = None
+        self.instances = None
+        self.launch_template = None
+        self.service_linked_role_arn = None
+        self.default_cooldown = None
+        self.health_check_type = None
+        self.health_check_grace_period = None
+        self.vpc_zone_identifier = None
+        self.termination_policies = None
+        self.new_instances_protected_from_scale_in = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -58,13 +70,22 @@ class AutoScalingGroup(AwsObject):
     def _init_object_from_cache(self, dict_src):
         """
         Init from cache
+
         :param dict_src:
         :return:
         """
+
         options = {}
         self._init_from_cache(dict_src, options)
 
     def update_from_raw_response(self, dict_src):
+        """
+        Update instance from AWS server API raw response.
+
+        :param dict_src:
+        :return:
+        """
+
         init_options = {
             "AutoScalingGroupName": lambda x, y: self.init_default_attr(
                 x, y, formatted_name="name"
@@ -98,23 +119,26 @@ class AutoScalingGroup(AwsObject):
         self.init_attrs(dict_src, init_options)
 
     def generate_create_request(self):
-        request = dict()
-        request["AutoScalingGroupName"] = self.name
-        request["LaunchTemplate"] = self.launch_template
-        request["MinSize"] = self.min_size
-        request["MaxSize"] = self.max_size
-        request["Tags"] = [
-            {
-                "ResourceType": "auto-scaling-group",
-                "Key": tag["Key"],
-                "Value": tag["Value"],
-                "PropagateAtLaunch": True,
-            }
-            for tag in self.tags
-        ]
-        request["ServiceLinkedRoleARN"] = self.service_linked_role_arn
-        request["DesiredCapacity"] = self.desired_capacity
-        request["DefaultCooldown"] = self.default_cooldown
+        """
+        Generate create new scaling group request
+
+        :return:
+        """
+        if self.tags is None:
+            self.tags = []
+
+        request = {"AutoScalingGroupName": self.name, "LaunchTemplate": self.launch_template, "MinSize": self.min_size,
+                   "MaxSize": self.max_size, "Tags": [
+                {
+                    "ResourceType": "auto-scaling-group",
+                    "Key": tag["Key"],
+                    "Value": tag["Value"],
+                    "PropagateAtLaunch": True,
+                }
+                for tag in self.tags
+            ], "ServiceLinkedRoleARN": self.service_linked_role_arn, "DesiredCapacity": self.desired_capacity,
+                   "DefaultCooldown": self.default_cooldown}
+
         if self.availability_zones is not None:
             request["AvailabilityZones"] = self.availability_zones
         request["HealthCheckType"] = self.health_check_type
@@ -127,7 +151,14 @@ class AutoScalingGroup(AwsObject):
         return request
 
     def generate_update_request(self, desired_state):
-        request = dict()
+        """
+        Generate update request to change current status to desired.
+
+        :param desired_state:
+        :return:
+        """
+
+        request = {}
 
         if self.max_size != desired_state.max_size:
             request["AutoScalingGroupName"] = desired_state.name
@@ -136,43 +167,72 @@ class AutoScalingGroup(AwsObject):
         return request if request else None
 
     def generate_dispose_request(self):
-        request = dict()
-        request["AutoScalingGroupName"] = self.name
-        request["ForceDelete"] = True
+        """
+        Standard.
+
+        :return:
+        """
+
+        request = {"AutoScalingGroupName": self.name, "ForceDelete": True}
         return request
 
     def generate_desired_capacity_request(self):
-        request = dict()
-        request["AutoScalingGroupName"] = self.name
-        request["DesiredCapacity"] = self.desired_capacity
+        """
+        Generate changing desired capacity request.
+
+        :return:
+        """
+
+        request = {"AutoScalingGroupName": self.name, "DesiredCapacity": self.desired_capacity}
         return request
 
     @property
     def region(self):
+        """
+        Self region.
+
+        :return:
+        """
+
         if self._region is not None:
             return self._region
 
         raise NotImplementedError()
-        if self.arn is not None:
-            self._region = Region.get_region(self.arn.split(":")[3])
-
-        return self._region
 
     @region.setter
     def region(self, value):
+        """
+        Region setter.
+
+        :param value:
+        :return:
+        """
+
         if not isinstance(value, Region):
             raise ValueError(value)
 
         self._region = value
 
     def get_status(self):
+        """
+        Get status Enum value
+
+        :return:
+        """
+
         if self.status is None:
             return self.Status.ACTIVE
-        elif self.status == "Delete in progress":
+
+        if self.status == "Delete in progress":
             return self.Status.DELETING
-        else:
-            raise NotImplementedError(self.status)
+
+        raise NotImplementedError(self.status)
 
     class Status(Enum):
+        """
+        Possible statuses.
+
+        """
+
         ACTIVE = 0
         DELETING = 1
