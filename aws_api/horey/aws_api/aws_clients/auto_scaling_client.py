@@ -1,7 +1,6 @@
 """
 AWS lambda client to handle lambda service API requests.
 """
-import pdb
 
 import time
 
@@ -34,15 +33,23 @@ class AutoScalingClient(Boto3Client):
         if region is not None:
             return self.get_region_auto_scaling_groups(region)
 
-        final_result = list()
-        for region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_auto_scaling_groups(region)
+        final_result = []
+        for _region in AWSAccount.get_aws_account().regions.values():
+            final_result += self.get_region_auto_scaling_groups(_region)
 
         return final_result
 
     def get_region_auto_scaling_groups(self, region, names=None):
-        final_result = list()
-        filters_req = dict()
+        """
+        Standard.
+
+        :param region:
+        :param names:
+        :return:
+        """
+
+        final_result = []
+        filters_req = {}
         if names is not None:
             filters_req["AutoScalingGroupNames"] = names
         AWSAccount.set_aws_region(region)
@@ -56,7 +63,15 @@ class AutoScalingClient(Boto3Client):
 
         return final_result
 
+    # pylint: disable = too-many-branches
     def provision_auto_scaling_group(self, autoscaling_group: AutoScalingGroup):
+        """
+        Provision - add or update autoscaling group.
+
+        :param autoscaling_group:
+        :return:
+        """
+
         region_objects = self.get_region_auto_scaling_groups(
             autoscaling_group.region, names=[autoscaling_group.name]
         )
@@ -168,6 +183,13 @@ class AutoScalingClient(Boto3Client):
         autoscaling_group.update_from_raw_response(region_objects[0].dict_src)
 
     def set_desired_capacity_raw(self, request_dict):
+        """
+        Standard.
+
+        :param request_dict:
+        :return:
+        """
+
         logger.info(f"Modifying Scaling Group: {request_dict}")
         for response in self.execute(
             self.client.set_desired_capacity,
@@ -178,6 +200,13 @@ class AutoScalingClient(Boto3Client):
             return response
 
     def update_auto_scaling_group_raw(self, request_dict):
+        """
+        Standard.
+
+        :param request_dict:
+        :return:
+        """
+
         logger.info(f"Modifying Auto Scaling Group: {request_dict}")
         for response in self.execute(
             self.client.update_auto_scaling_group,
@@ -188,6 +217,13 @@ class AutoScalingClient(Boto3Client):
             return response
 
     def provision_auto_scaling_group_raw(self, request_dict):
+        """
+        Standard.
+
+        :param request_dict:
+        :return:
+        """
+
         logger.info(f"Creating Auto Scaling Group: {request_dict}")
         for response in self.execute(
             self.client.create_auto_scaling_group,
@@ -198,12 +234,26 @@ class AutoScalingClient(Boto3Client):
             return response
 
     def dispose_auto_scaling_group(self, autoscaling_group):
+        """
+        Standard.
+
+        :param autoscaling_group:
+        :return:
+        """
+
         AWSAccount.set_aws_region(autoscaling_group.region)
         self.dispose_auto_scaling_group_raw(
             autoscaling_group.generate_dispose_request()
         )
 
     def dispose_auto_scaling_group_raw(self, request_dict):
+        """
+        Standard.
+
+        :param request_dict:
+        :return:
+        """
+
         logger.info(f"Disposing Auto Scaling Group: {request_dict}")
         for response in self.execute(
             self.client.delete_auto_scaling_group,
@@ -222,14 +272,22 @@ class AutoScalingClient(Boto3Client):
         if region is not None:
             return self.get_region_policies(region)
 
-        final_result = list()
-        for region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_policies(region)
+        final_result = []
+        for _region in AWSAccount.get_aws_account().regions.values():
+            final_result += self.get_region_policies(_region)
 
         return final_result
 
     def get_region_policies(self, region, custom_filter=None):
-        final_result = list()
+        """
+        Standard.
+
+        :param region:
+        :param custom_filter:
+        :return:
+        """
+
+        final_result = []
         AWSAccount.set_aws_region(region)
         for dict_src in self.execute(
             self.client.describe_policies, "ScalingPolicies", filters_req=custom_filter
@@ -240,6 +298,13 @@ class AutoScalingClient(Boto3Client):
         return final_result
 
     def provision_policy(self, autoscaling_policy: AutoScalingPolicy):
+        """
+        Standard.
+
+        :param autoscaling_policy:
+        :return:
+        """
+
         AWSAccount.set_aws_region(autoscaling_policy.region)
         response = self.provision_policy_raw(
             autoscaling_policy.generate_create_request()
@@ -247,6 +312,13 @@ class AutoScalingClient(Boto3Client):
         autoscaling_policy.update_from_raw_response(response)
 
     def provision_policy_raw(self, request_dict):
+        """
+        Standard.
+
+        :param request_dict:
+        :return:
+        """
+
         logger.info(f"Creating Auto Scaling Policy: {request_dict}")
         for response in self.execute(
             self.client.put_scaling_policy,
@@ -258,6 +330,13 @@ class AutoScalingClient(Boto3Client):
             return response
 
     def update_policy_information(self, policy):
+        """
+        Fetch policy information from AWS api.
+
+        :param policy:
+        :return:
+        """
+
         AWSAccount.set_aws_region(policy.region)
         try:
             dict_src = self.execute_with_single_reply(
