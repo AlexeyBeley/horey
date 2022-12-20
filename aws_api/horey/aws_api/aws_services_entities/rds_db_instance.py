@@ -1,7 +1,6 @@
 """
 Module to handle AWS RDS instances
 """
-import pdb
 from enum import Enum
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
@@ -12,11 +11,12 @@ class RDSDBInstance(AwsObject):
     """
     Class representing RDS DB instance
     """
+    # pylint: disable = too-many-instance-attributes
 
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
-        self.endpoint = None
-        self.vpc_security_groups = None
+        self.endpoint = {}
+        self.vpc_security_groups = []
         self.availability_zones = None
         self.kms_key_id = None
         self.deletion_protection = None
@@ -24,6 +24,18 @@ class RDSDBInstance(AwsObject):
         self.master_user_password = None
         self.master_username = None
         self.db_name = None
+        self.db_subnet_group_name = None
+        self.db_parameter_group_name = None
+        self.db_cluster_identifier = None
+        self.db_instance_class = None
+        self.engine_version = None
+        self.preferred_maintenance_window = None
+        self.storage_encrypted = None
+        self.skip_final_snapshot = None
+        self.copy_tags_to_snapshot = None
+        self.db_instance_status = None
+        self.engine = None
+        self.arn = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -116,18 +128,15 @@ class RDSDBInstance(AwsObject):
         :return:
         """
         ret = []
-        # pylint: disable=E1133
         for sg in self.vpc_security_groups:
             if sg["Status"] != "active":
                 raise Exception("Unknown status")
 
-            # pylint: disable=E1136
-            endpoint = {"sg_id": sg["VpcSecurityGroupId"]}
-            endpoint["dns"] = self.endpoint["Address"]
-            # pylint: disable=E1136
-            endpoint["port"] = self.endpoint["Port"]
+            endpoint = {"sg_id": sg["VpcSecurityGroupId"],
+                        "dns": self.endpoint["Address"],
+                        "port": self.endpoint["Port"],
+                        "description": f"rds: {self.name}"}
 
-            endpoint["description"] = "rds: {}".format(self.name)
             ret.append(endpoint)
 
         return ret
@@ -138,7 +147,7 @@ class RDSDBInstance(AwsObject):
 
         )
         """
-        request = dict()
+        request = {}
         if self.availability_zones:
             request["AvailabilityZones"] = self.availability_zones
 
@@ -155,7 +164,7 @@ class RDSDBInstance(AwsObject):
         if self.db_name is not None:
             request["DBName"] = self.db_name
 
-        request["Engine"] = self.engine = "aurora-mysql"
+        request["Engine"] = self.engine
         request["EngineVersion"] = self.engine_version
 
         if self.master_username is not None:
@@ -180,15 +189,25 @@ class RDSDBInstance(AwsObject):
         return request
 
     def generate_dispose_request(self):
-        request = dict()
-        request["DBInstanceIdentifier"] = self.id
-        request["SkipFinalSnapshot"] = self.skip_final_snapshot
+        """
+        Standard.
+
+        :return:
+        """
+
+        request = {"DBInstanceIdentifier": self.id, "SkipFinalSnapshot": self.skip_final_snapshot}
         if self.skip_final_snapshot:
             request["DeleteAutomatedBackups"] = True
         return request
 
     @property
     def region(self):
+        """
+        Standard.
+
+        :return:
+        """
+
         if self._region is not None:
             return self._region
 
@@ -199,12 +218,26 @@ class RDSDBInstance(AwsObject):
 
     @region.setter
     def region(self, value):
+        """
+        Standard.
+
+        :param value:
+        :return:
+        """
+
         if not isinstance(value, Region):
             raise ValueError(value)
 
         self._region = value
 
     def update_from_raw_response(self, dict_src):
+        """
+        Standard.
+
+        :param dict_src:
+        :return:
+        """
+
         init_options = {
             "DBInstanceIdentifier": lambda x, y: self.init_default_attr(
                 x, y, formatted_name="id"
@@ -266,6 +299,12 @@ class RDSDBInstance(AwsObject):
         self.init_attrs(dict_src, init_options)
 
     def get_status(self):
+        """
+        Instance status.
+
+        :return:
+        """
+
         return {
             enum_value.value: enum_value
             for _, enum_value in self.Status.__members__.items()
@@ -273,26 +312,8 @@ class RDSDBInstance(AwsObject):
 
     class Status(Enum):
         """
-        CONFIGURING_ENHANCED_MONITORING = "configuring-enhanced-monitoring"
-        CONFIGURING_IA"configuring-iam-database-auth"
-        BACKING_UP = "backing-up"
-        "configuring-log-exports"
-        "converting-to-vpc"
-        "inaccessible-encryption-credentials"
-        "incompatible-network"
-        "incompatible-option-group"
-        "incompatible-parameters"
-        "incompatible-restore"
-        "insufficient-capacity"
-        "maintenance"
-        "moving-to-vpc"
-        "rebooting"
-        "resetting-master-credentials"
-        "renaming"
-        "restore-error"
-        "storage-full"
-        "storage-optimization"
-        "upgrading"
+        Instance status.
+
         """
 
         AVAILABLE = "available"
@@ -303,4 +324,5 @@ class RDSDBInstance(AwsObject):
         STARTING = "starting"
         STOPPED = "stopped"
         STOPPING = "stopping"
+        CONFIGURING_ENHANCED_MONITORING = "configuring-enhanced-monitoring"
         CONFIGURING_LOG_EXPORTS = "configuring-log-exports"
