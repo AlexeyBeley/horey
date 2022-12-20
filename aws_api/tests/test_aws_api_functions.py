@@ -93,7 +93,7 @@ def test_provision_aws_lambda_from_filelist():
         os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
         for filename in ["lambda_test.py", "lambda_test_2.py"]
     ]
-    aws_api.provision_aws_lambda_from_filelist(aws_lambda, files_paths, force=True)
+    aws_api.provision_aws_lambda_from_filelist(aws_lambda, files_paths, update_code=True)
 
     assert aws_lambda.state == "Active"
 

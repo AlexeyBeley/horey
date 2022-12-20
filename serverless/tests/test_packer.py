@@ -120,7 +120,7 @@ def test_provision_lambda():
         ],
     }
 
-    aws_api.provision_aws_lambda(aws_lambda, force=True)
+    aws_api.provision_aws_lambda(aws_lambda, update_code=True)
 
     assert aws_lambda.state == "Active"
 

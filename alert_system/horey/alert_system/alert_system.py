@@ -354,7 +354,7 @@ class AlertSystem:
             "rb",
         ) as myzip:
             aws_lambda.code = {"ZipFile": myzip.read()}
-        self.aws_api.provision_aws_lambda(aws_lambda, force=True)
+        self.aws_api.provision_aws_lambda(aws_lambda, update_code=True)
         return aws_lambda
 
     def provision_sns_topic(self, tags):

@@ -139,14 +139,19 @@ class LambdaClient(Boto3Client):
 
         return True
 
-    def provision_lambda(self, desired_aws_lambda: AWSLambda, force=False):
+    def provision_lambda(self, desired_aws_lambda: AWSLambda, force=None, update_code=False):
         """
-        Add or update Lambda and all its parts.
+        Add or update the Lambda configuration and Lambda code.
 
         @param desired_aws_lambda:
-        @param force:
+        @param force: deprecated
+        @param update_code: Update the lambda code or update the configuration only.
         @return:
         """
+
+        if force is not None:
+            logger.warning("Deprecation: 'force' is going to be deprecated use update_code instead")
+            update_code = force
 
         AWSAccount.set_aws_region(desired_aws_lambda.region)
 
@@ -219,8 +224,9 @@ class LambdaClient(Boto3Client):
                 [current_lambda.Status.FAILED],
             )
 
-        if not force:
+        if not update_code:
             self.update_lambda_information(desired_aws_lambda, full_information=False)
+            return
 
         update_code_request = current_lambda.generate_update_function_code_request(
             desired_aws_lambda

@@ -4180,15 +4180,20 @@ class AWSAPI:
             ecs_cluster, capacity_provider_names, default_capacity_provider_strategy
         )
 
-    def provision_aws_lambda_from_filelist(self, aws_lambda, files_paths, force=False):
+    def provision_aws_lambda_from_filelist(self, aws_lambda, files_paths, force=None, update_code=False):
         """
         Provision AWS Lambda object with the listed files added to it.
 
         @param aws_lambda:
         @param files_paths:
-        @param force:
+        @param force: Deprecated.
+        @param update_code:
         @return:
         """
+
+        if force is not None:
+            logger.warning("Deprecation: 'force' is going to be deprecated use update_code instead")
+            update_code = force
 
         zip_file_name = f"{aws_lambda.name}.zip"
         with zipfile.ZipFile(zip_file_name, "w") as myzip:
@@ -4198,18 +4203,23 @@ class AWSAPI:
         with open(zip_file_name, "rb") as myzip:
             aws_lambda.code = {"ZipFile": myzip.read()}
 
-        self.provision_aws_lambda(aws_lambda, force=force)
+        self.provision_aws_lambda(aws_lambda, update_code=update_code)
 
-    def provision_aws_lambda(self, aws_lambda, force=False):
+    def provision_aws_lambda(self, aws_lambda, force=None, update_code=False):
         """
         Provision aws lambda object.
 
         @param aws_lambda:
-        @param force: If true, the code deployment is forced and the active version set to the new one.
+        @param force: Deprecated.
+        @param update_code: If true, the code deployment is forced and the active version set to the new one.
         @return:
         """
 
-        self.lambda_client.provision_lambda(aws_lambda, force=force)
+        if force is not None:
+            logger.warning("Deprecation: 'force' is going to be deprecated use update_code instead")
+            update_code = force
+
+        self.lambda_client.provision_lambda(aws_lambda, update_code=update_code)
 
     def provision_lambda_event_source_mapping(self, event_mapping):
         """
