@@ -1,7 +1,7 @@
 """
 AWS lambda client to handle lambda service API requests.
 """
-import pdb
+
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.h_logger import get_logger
 from horey.aws_api.base_entities.aws_account import AWSAccount
@@ -28,16 +28,24 @@ class KMSClient(Boto3Client):
         if region is not None:
             return self.get_region_keys(region, full_information=full_information)
 
-        final_result = list()
-        for region in AWSAccount.get_aws_account().regions.values():
+        final_result = []
+        for _region in AWSAccount.get_aws_account().regions.values():
             final_result += self.get_region_keys(
-                region, full_information=full_information
+                _region, full_information=full_information
             )
 
         return final_result
 
     def get_region_keys(self, region, full_information=True):
-        final_result = list()
+        """
+        All keys in region.
+
+        :param region:
+        :param full_information:
+        :return:
+        """
+
+        final_result = []
         AWSAccount.set_aws_region(region)
         for dict_src in self.execute(self.client.list_keys, "Keys"):
             obj = KMSKey(dict_src)
@@ -78,6 +86,15 @@ class KMSClient(Boto3Client):
         return final_result
 
     def get_key_by_tag(self, region, key_name, key_value):
+        """
+        Find specific key by tag.
+
+        :param region:
+        :param key_name:
+        :param key_value:
+        :return:
+        """
+
         region_keys = self.get_region_keys(region)
         for region_key in region_keys:
             if (
@@ -91,7 +108,16 @@ class KMSClient(Boto3Client):
             ):
                 return region_key
 
+        return None
+
     def provision_key(self, key):
+        """
+        Provision key and it's alias.
+
+        :param key:
+        :return:
+        """
+
         region_key = self.get_key_by_tag(
             key.region,
             "name",
@@ -99,22 +125,65 @@ class KMSClient(Boto3Client):
                 "name", tag_key_specifier="TagKey", tag_value_specifier="TagValue"
             ),
         )
-        if region_key is not None:
-            key.update_from_raw_response(region_key.dict_src)
 
-        AWSAccount.set_aws_region(key.region)
-        response = self.provision_key_raw(key.generate_create_request())
-        key.update_from_raw_response(response)
+        if region_key is None:
+            AWSAccount.set_aws_region(key.region)
+            response = self.provision_key_raw(key.generate_create_request())
+            region_key = KMSKey({})
+            region_key.update_from_raw_response(response)
+
+        del_requests, create_requests = region_key.generate_alias_provision_requests(key)
+
+        for del_request in del_requests:
+            self.delete_alias_raw(del_request)
+
+        for create_request in create_requests:
+            self.create_alias_raw(create_request)
 
     def provision_key_raw(self, request_dict):
+        """
+        Standard.
+
+        :param request_dict:
+        :return:
+        """
+
         logger.info(f"Creating key: {request_dict}")
         for response in self.execute(
             self.client.create_key, "KeyMetadata", filters_req=request_dict
         ):
             return response
 
+    def delete_alias_raw(self, request_dict):
+        """
+        Delete the alias from a key.
+
+        :param request_dict:
+        :return:
+        """
+        logger.info(f"Deleting key alias: {request_dict}")
+        for response in self.execute(
+            self.client.delete_alias, None, raw_data=True, filters_req=request_dict
+        ):
+            return response
+
+    def create_alias_raw(self, request_dict):
+        """
+        Create and alias.
+
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Creating key alias: {request_dict}")
+        for response in self.execute(
+            self.client.create_alias, None, raw_data=True, filters_req=request_dict
+        ):
+            return response
+
     def create_key(self, name=None):
-        filters_req = dict()
+        """
+                filters_req = dict()
         if name is not None:
             filters_req["Tags"] = ({"TagKey": "name", "TagValue": name},)
             filters_req["Description"] = name
@@ -148,3 +217,9 @@ class KMSClient(Boto3Client):
             self.client.create_alias, "ResponseMetadata", filters_req=filters_req
         ):
             logger.info(f"Created {filters_req['AliasName']} for KMS key")
+
+        :param name:
+        :return:
+        """
+
+        raise RuntimeError("Deprecated")
