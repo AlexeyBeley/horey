@@ -18,6 +18,7 @@ class KMSKey(AwsObject):
         self.arn = None
         self.key_usage = None
         self.description = None
+        self.enabled = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -106,6 +107,17 @@ class KMSKey(AwsObject):
         """
 
         request = {"KeyUsage": self.key_usage, "Description": self.description, "Tags": self.tags}
+
+        return request
+
+    def generate_schedule_key_deletion_request(self, days):
+        """
+        Standard.
+
+        :return:
+        """
+
+        request = {"KeyId": self.id, "PendingWindowInDays": days}
 
         return request
 

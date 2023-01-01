@@ -14,6 +14,8 @@ class KMSClient(Boto3Client):
     """
     Client to handle specific aws service API calls.
     """
+    NEXT_PAGE_REQUEST_KEY = "Marker"
+    NEXT_PAGE_RESPONSE_KEY = "NextMarker"
 
     def __init__(self):
         client_name = "kms"
@@ -47,6 +49,7 @@ class KMSClient(Boto3Client):
 
         final_result = []
         AWSAccount.set_aws_region(region)
+
         for dict_src in self.execute(self.client.list_keys, "Keys"):
             obj = KMSKey(dict_src)
 
@@ -96,7 +99,14 @@ class KMSClient(Boto3Client):
         """
 
         region_keys = self.get_region_keys(region)
+        found_keys = []
         for region_key in region_keys:
+            if region_key.enabled is None:
+                raise RuntimeError("Looks like AWS broke the API again. 'Enabled' was not set.")
+
+            if not region_key.enabled:
+                continue
+
             if (
                 region_key.get_tag(
                     key_name,
@@ -106,11 +116,17 @@ class KMSClient(Boto3Client):
                 )
                 == key_value
             ):
-                return region_key
+                found_keys.append(region_key)
 
-        return None
+        if len(found_keys) == 0:
+            return None
 
-    def provision_key(self, key):
+        if len(found_keys) == 1:
+            return found_keys[0]
+
+        raise RuntimeError(f"Found more then 1 key with the same name: {len(found_keys)}")
+
+    def provision_key(self, key: KMSKey):
         """
         Provision key and it's alias.
 
@@ -139,6 +155,38 @@ class KMSClient(Boto3Client):
 
         for create_request in create_requests:
             self.create_alias_raw(create_request)
+
+        key.id = region_key.id
+
+    def deprecate_key(self, key: KMSKey, days=7):
+        """
+        Deprecate key - schedule key deletion to specified period.
+
+        :param days:
+        :param key:
+        :return:
+        """
+
+        if key.id is None:
+            raise NotImplementedError("Key must have 'id' set")
+
+        AWSAccount.set_aws_region(key.region)
+        response = self.schedule_key_deletion_raw(key.generate_schedule_key_deletion_request(days))
+        return response
+
+    def schedule_key_deletion_raw(self, request_dict):
+        """
+        Standard.
+
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Deleting key: {request_dict}")
+        for response in self.execute(
+            self.client.schedule_key_deletion, None, raw_data=True, filters_req=request_dict
+        ):
+            return response
 
     def provision_key_raw(self, request_dict):
         """

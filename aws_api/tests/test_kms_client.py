@@ -55,7 +55,7 @@ def test_init_client():
 
 def test_provision_key():
     key = KMSKey({})
-    key.region = Region.get_region("us-west-1")
+    key.region = Region.get_region("us-west-2")
     key.name = "horey_test_key"
     key.tags = [
         {
@@ -69,6 +69,22 @@ def test_provision_key():
     client.provision_key(key)
 
 
+def test_deprecate_key():
+    key = KMSKey({})
+    key.region = Region.get_region("us-west-1")
+    key.name = "horey_test_key"
+    key.tags = [
+        {
+            "TagKey": "name",
+            "TagValue": key.name
+        },
+    ]
+    key.aliases = [{"AliasName": "alias/AliasName1"}, {"AliasName": f"alias/{key.name}"}]
+    client.provision_key(key)
+    client.deprecate_key(key)
+
+
 if __name__ == "__main__":
-    test_init_client()
+    #test_init_client()
     test_provision_key()
+    #test_deprecate_key()
