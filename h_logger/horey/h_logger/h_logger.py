@@ -3,9 +3,6 @@ logging handler
 """
 import logging
 from horey.h_logger.formatter import MultilineFormatter
-from horey.h_logger.h_logger_configuration_policy import (
-    HLoggerConfigurationPolicy,
-)
 
 handler = logging.StreamHandler()
 formatter = logging.Formatter(
@@ -29,6 +26,10 @@ def get_logger(configuration_values_file_full_path=None):
 
     if not logger_initialized:
         if configuration_values_file_full_path is not None:
+            # pylint: disable= import-outside-toplevel
+            from horey.h_logger.h_logger_configuration_policy import (
+                HLoggerConfigurationPolicy,
+            )
             configuration = HLoggerConfigurationPolicy()
             configuration.configuration_file_full_path = (
                 configuration_values_file_full_path
