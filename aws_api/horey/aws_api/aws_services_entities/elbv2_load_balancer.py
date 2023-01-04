@@ -232,12 +232,13 @@ class LoadBalancer(AwsObject):
         def __init__(self, dict_src, from_cache=False):
             super().__init__(dict_src)
             self.ssl_policy = None
-            self.certificates = None
+            self.certificates = []
             self.arn = None
             self.protocol = None
             self.port = None
             self.load_balancer_arn = None
             self.default_actions = None
+            self.rules = []
 
             if from_cache:
                 self._init_object_from_cache(dict_src)
@@ -277,14 +278,25 @@ class LoadBalancer(AwsObject):
             if self.ssl_policy is not None:
                 request["SslPolicy"] = self.ssl_policy
 
-            if self.certificates is not None:
-                request["Certificates"] = self.certificates
+            if self.certificates:
+                request["Certificates"] = self.certificates[:1]
 
             request["Protocol"] = self.protocol
             request["Port"] = self.port
             request["LoadBalancerArn"] = self.load_balancer_arn
             request["DefaultActions"] = self.default_actions
             return request
+
+        def generate_add_certificate_requests(self):
+            """
+            Only one certificate can be added per request.
+
+            :return:
+            """
+
+            return [{"ListenerArn": self.arn,
+                     "Certificates": [cert
+                                      ]} for cert in self.certificates[1:]]
 
         def generate_dispose_request(self):
             """

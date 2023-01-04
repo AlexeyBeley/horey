@@ -1,126 +1,119 @@
 """
-Shamelessly stolen from:
-https://github.com/lukecyca/pyslack
-"""
-import json
-import pdb
+Working with influx toolset
 
-import requests
+"""
+
+import datetime
+import os
+
 from horey.h_logger import get_logger
-from horey.influxdb_api.influxdb_api_configuration_policy import (
-    InfluxDBAPIConfigurationPolicy,
-)
+from horey.common_utils.text_block import TextBlock
 
 logger = get_logger()
 
 
-class InfluxDBObject:
-    def __init__(self, dict_src):
-        self.dict_src = dict_src
-        for key, value in dict_src.items():
-            setattr(self, key, value)
-
-
-class Source(InfluxDBObject):
-    def __init__(self, dict_src):
-        super().__init__(dict_src)
-
-
-class Kapacitor(InfluxDBObject):
-    def __init__(self, dict_src):
-        super().__init__(dict_src)
-
-
-class Rule(InfluxDBObject):
-    def __init__(self, dict_src):
-        super().__init__(dict_src)
-
-
 class InfluxDBAPI:
-    def __init__(self, configuration: InfluxDBAPIConfigurationPolicy = None):
-        self.base_address = configuration.server_address
-        self.version = "v1"
-        self.sources = []
-        self.kapacitors = []
-        self.rules = []
+    """
+    InfluxDB toolset
+    """
+    def __init__(self):
+        pass
 
-    def init_sources(self):
-        logger.info(f"Initializing influxdb sources")
-        response = self.get("sources")
-
-        objs = []
-        for dict_src in response["sources"]:
-            obj = Source(dict_src)
-            objs.append(obj)
-
-        self.sources = objs
-
-    def get(self, request_path, is_link=False):
-        request = self.create_request(request_path, is_link=is_link)
-        response = requests.get(request, headers={"Content-Type": "application/json"})
-        if response.status_code != 200:
-            raise RuntimeError(
-                f"Request to influxdb api returned an error {response.status_code}, the response is:\n{response.text}"
-            )
-        return response.json()
-
-    def post(self, request_path, data, is_link=False):
-        request = self.create_request(request_path, is_link=is_link)
-        response = requests.post(
-            request, data=json.dumps(data), headers={"Content-Type": "application/json"}
-        )
-        if response.status_code != 200:
-            raise RuntimeError(
-                f"Request to influxdb api returned an error {response.status_code}, the response is:\n{response.text}"
-            )
-        return response.json()
-
-    def create_request(self, request, is_link=False):
+    @staticmethod
+    def parse_journalctl(file_path):
         """
-        http://127.0.0.1:8888/chronograf/v1/sources
+        journalctl -u influxdb.service >> /tmp/journalctl.txt
+        :return:
         """
-        if is_link:
-            return f"{self.base_address}{request}"
+        with open(file_path, encoding="utf-8") as file:
+            lines = file.readlines()
+        line = lines[0]
+        lst_line = line.split(" ")
 
-        return f"{self.base_address}/chronograf/{self.version}/{request}"
+        # date_string = "2022-12-31_21:08:35"
+        date_string = f"{lst_line[5]}_{lst_line[6]}"
+        datetime_start = datetime.datetime.strptime(date_string, "%Y-%m-%d_%H:%M:%S")
 
-    def init_kapacitors(self):
+        date_string = f"{lst_line[11]}_{lst_line[12]}"
+        datetime_end = datetime.datetime.strptime(date_string, "%Y-%m-%d_%H:%M:%S")
+        timedelta = datetime_end - datetime_start
+
+        get, post = [], []
+        for line in lines:
+            if "GET " in line:
+                get.append(line.strip("\n"))
+            if "POST " in line:
+                post.append(line.strip("\n"))
+
+        tb_ret = TextBlock(f"Analysing requests' logs: '{os.path.basename(file_path)}'")
+        post = InfluxDBAPI.parse_journalctl_post(post, timedelta.seconds)
+        tb_ret.blocks.append(post)
+        get = InfluxDBAPI.parse_journalctl_get(get, timedelta.seconds)
+        tb_ret.blocks.append(get)
+        print(tb_ret)
+        return tb_ret
+
+    @staticmethod
+    def parse_journalctl_post(lines, seconds):
         """
-        http://127.0.0.1:8888/chronograf/v1/sources/{id}/kapacitors
-        @return:
+        Parse and analise the logs.
+
+        :param lines:
+        :param seconds:
+        :return:
         """
-        if not self.sources:
-            self.init_sources()
-        logger.info(f"Initializing influxdb kapacitors")
 
-        objs = []
-        for source in self.sources:
-            response = self.get(f"sources/{source.id}/kapacitors")
+        tb_ret = TextBlock("Analysing POST requests")
+        tb_ret.lines.append(f"Average requests per second: {len(lines)//seconds} rps")
 
-            for dict_src in response["kapacitors"]:
-                obj = Kapacitor(dict_src)
-                objs.append(obj)
+        response_times = []
+        response_sizes = []
+        for line in lines:
+            response_times.append(int(line.split(" ")[-1]))
+            lst_line = line.split(" ")
+            if lst_line[15] == "0":
+                continue
+            response_sizes.append(int(lst_line[15]))
 
-        self.kapacitors = objs
+        tb_ret.lines.append(f"Min response time: {min(response_times)} microseconds")
+        tb_ret.lines.append(f"Max response time: {max(response_times)} microseconds")
+        tb_ret.lines.append(f"Average response time: {sum(response_times)//len(lines)} microseconds")
+        tb_ret.lines.append(f"Min sent data: {min(response_sizes)} bytes")
+        tb_ret.lines.append(f"Max sent data: {max(response_sizes)} bytes")
+        tb_ret.lines.append(f"Average sent data: {sum(response_sizes)//len(response_sizes)} bytes")
+        return tb_ret
 
-    def init_rules(self):
+    @staticmethod
+    def parse_journalctl_get(lines, seconds):
         """
-        http://127.0.0.1:8888/chronograf/v1/sources/{id}/kapacitors/{kapa_id}/rules
+        Parse and analise the logs.
 
-        @return:
+        :param lines:
+        :param seconds:
+        :return:
         """
-        if not self.kapacitors:
-            self.init_kapacitors()
-        objs = []
-        for kapacitor in self.kapacitors:
-            response = self.get(kapacitor.links["rules"], is_link=True)
 
-            for dict_src in response["rules"]:
-                obj = Rule(dict_src)
-                objs.append(obj)
+        tb_ret = TextBlock("Analysing GET requests")
+        tb_ret.lines.append(f"Average requests per minute: {len(lines)*60//seconds} rpm")
 
-        self.rules = objs
+        response_times = []
+        response_sizes = []
+        unparsable_lines = []
+        for line in lines:
+            if len(line) >= 49200:
+                unparsable_lines.append(line)
+                continue
 
-    def provision_dashboard(self, dashboard):
-        pdb.set_trace()
-        self.post("dashboards", dashboard.dict_src)
+            response_times.append(int(line.split(" ")[-1]))
+            lst_line = line.split(" ")
+            if lst_line[15] == "0":
+                continue
+            response_sizes.append(int(lst_line[15]))
+
+        tb_ret.lines.append(f"Min response time: {min(response_times)} microseconds")
+        tb_ret.lines.append(f"Max response time: {max(response_times)} microseconds")
+        tb_ret.lines.append(f"Average response time: {sum(response_times)//len(lines)} microseconds")
+        tb_ret.lines.append(f"Min sent data: {min(response_sizes)} bytes")
+        tb_ret.lines.append(f"Max sent data: {max(response_sizes)} bytes")
+        tb_ret.lines.append(f"Average sent data: {sum(response_sizes)//len(response_sizes)} bytes")
+        return tb_ret

@@ -3,7 +3,9 @@ logging handler
 """
 import logging
 from horey.h_logger.formatter import MultilineFormatter
-import pdb
+from horey.h_logger.h_logger_configuration_policy import (
+    HLoggerConfigurationPolicy,
+)
 
 handler = logging.StreamHandler()
 formatter = logging.Formatter(
@@ -16,7 +18,7 @@ _logger = logging.getLogger("main")
 _logger.setLevel("INFO")
 _logger.addHandler(handler)
 
-_inited = False
+logger_initialized = False
 
 
 def get_logger(configuration_values_file_full_path=None):
@@ -24,13 +26,9 @@ def get_logger(configuration_values_file_full_path=None):
     Reuse logger
     :return:
     """
-    global _inited
-    if not _inited:
-        if configuration_values_file_full_path is not None:
-            from horey.h_logger.h_logger_configuration_policy import (
-                HLoggerConfigurationPolicy,
-            )
 
+    if not logger_initialized:
+        if configuration_values_file_full_path is not None:
             configuration = HLoggerConfigurationPolicy()
             configuration.configuration_file_full_path = (
                 configuration_values_file_full_path

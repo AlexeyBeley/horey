@@ -109,14 +109,14 @@ class ELBV2Client(Boto3Client):
             filters_req={"LoadBalancerArn": load_balancer.arn},
         ):
 
-            load_balancer.add_raw_listener(listener_response)
+            listener = load_balancer.Listener(listener_response)
+            load_balancer.listeners.append(listener)
 
-            for rule_response in self.execute(
+            listener.rules = list(self.execute(
                 self.client.describe_rules,
                 "Rules",
                 filters_req={"ListenerArn": listener_response["ListenerArn"]},
-            ):
-                load_balancer.add_raw_rule(rule_response)
+            ))
 
     def get_all_target_groups(self, full_information=True):
         """
@@ -293,7 +293,7 @@ class ELBV2Client(Boto3Client):
         @param request_dict:
         @return:
         """
-
+        logger.info(f"Provisioning load balancer: {request_dict}")
         for response in self.execute(
             self.client.create_load_balancer, "LoadBalancers", filters_req=request_dict
         ):
@@ -334,6 +334,8 @@ class ELBV2Client(Boto3Client):
         @param request_dict:
         @return:
         """
+
+        logger.info(f"Provisioning load balancer's target group: {request_dict}")
         for response in self.execute(
             self.client.create_target_group, "TargetGroups", filters_req=request_dict
         ):
@@ -346,12 +348,14 @@ class ELBV2Client(Boto3Client):
         @param request_dict:
         @return:
         """
+        logger.info(f"Registering load balancers' targets: {request_dict}")
+
         for response in self.execute(
             self.client.register_targets, None, filters_req=request_dict, raw_data=True
         ):
             return response
 
-    def provision_load_balancer_listener(self, listener):
+    def provision_load_balancer_listener(self, listener: LoadBalancer.Listener):
         """
         Standard
 
@@ -373,6 +377,9 @@ class ELBV2Client(Boto3Client):
         )
         listener.arn = response["ListenerArn"]
 
+        for request in listener.generate_add_certificate_requests():
+            self.add_listener_certificates_raw(request)
+
     def provision_load_balancer_listener_raw(self, request_dict):
         """
         Standard
@@ -380,8 +387,25 @@ class ELBV2Client(Boto3Client):
         @param request_dict:
         @return:
         """
+        logger.info(f"Provisioning load balancer's listener: {request_dict}")
+
         for response in self.execute(
             self.client.create_listener, "Listeners", filters_req=request_dict
+        ):
+            return response
+
+    def add_listener_certificates_raw(self, request_dict):
+        """
+        Standard
+
+        @param request_dict:
+        @return:
+        """
+
+        logger.info(f"Adding load balancer listener's certificate: {request_dict}")
+
+        for response in self.execute(
+            self.client.add_listener_certificates, "Certificates", filters_req=request_dict
         ):
             return response
 
@@ -410,6 +434,8 @@ class ELBV2Client(Boto3Client):
         @param request_dict:
         @return:
         """
+
+        logger.info(f"Provisioning load balancer listener's rule: {request_dict}")
 
         for response in self.execute(
             self.client.create_rule, "Rules", filters_req=request_dict
@@ -461,6 +487,8 @@ class ELBV2Client(Boto3Client):
         @param request:
         @return:
         """
+        logger.info(f"Disposing load balancer's target group: {request}")
+
         for response in self.execute(
             self.client.delete_target_group, None, raw_data=True, filters_req=request
         ):
@@ -473,6 +501,8 @@ class ELBV2Client(Boto3Client):
         @param request:
         @return:
         """
+        logger.info(f"Disposing load balancer: {request}")
+
         for response in self.execute(
             self.client.delete_load_balancer, None, raw_data=True, filters_req=request
         ):
@@ -485,6 +515,7 @@ class ELBV2Client(Boto3Client):
         @param request:
         @return:
         """
+        logger.info(f"Disposing load balancer's listener: {request}")
 
         for response in self.execute(
             self.client.delete_listener, None, raw_data=True, filters_req=request
