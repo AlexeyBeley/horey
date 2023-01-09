@@ -399,7 +399,7 @@ class PipAPI:
                 current.min_version = requirement.min_version
                 current.include_min = requirement.include_min
             else:
-                raise NotImplementedError()
+                raise NotImplementedError(f"requirement.name: {requirement.name} current.min_version: {current.min_version}, requirement.min_version: {requirement.min_version}")
         if (
             requirement.include_min is not None
             and current.include_min != requirement.include_min

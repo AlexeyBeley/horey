@@ -1,8 +1,6 @@
 """
 Cloud watch specific log group representation
 """
-import sys
-import os
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 from horey.aws_api.aws_services_entities.cloud_watch_log_stream import (
@@ -22,6 +20,7 @@ class CloudWatchLogGroup(AwsObject):
         """
 
         self.log_streams = []
+        self.arn = None
 
         super().__init__(dict_src, from_cache=from_cache)
 
@@ -52,12 +51,24 @@ class CloudWatchLogGroup(AwsObject):
         self._init_from_cache(dict_src, options)
 
     def generate_create_request(self):
-        ret = dict()
-        ret["logGroupName"] = self.name
-        ret["tags"] = self.tags
+        """
+        Standard.
+
+        :return:
+        """
+
+        ret = {"logGroupName": self.name, "tags": self.tags}
+
         return ret
 
     def update_from_raw_response(self, dict_src):
+        """
+        Standard.
+
+        :param dict_src:
+        :return:
+        """
+
         init_options = {
             "logGroupName": lambda x, y: self.init_default_attr(
                 x, y, formatted_name="name"
@@ -82,4 +93,10 @@ class CloudWatchLogGroup(AwsObject):
         self.log_streams.append(ls)
 
     def generate_dir_name(self):
+        """
+        Generate dir name from self name.
+
+        :return:
+        """
+
         return self.name.lower().replace("/", "_")

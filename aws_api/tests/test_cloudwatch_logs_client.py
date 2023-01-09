@@ -1,8 +1,11 @@
+"""
+Test client.
+
+"""
+
 import os
-import pdb
 from unittest.mock import Mock
 from horey.aws_api.aws_clients.cloud_watch_logs_client import CloudWatchLogsClient
-from horey.aws_api.aws_services_entities.cloud_watch_metric import CloudWatchMetric
 from horey.aws_api.base_entities.region import Region
 
 from horey.h_logger import get_logger
@@ -37,6 +40,8 @@ mock_values_file_path = os.path.abspath(
 )
 mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 
+# pylint: disable= missing-function-docstring
+
 
 def test_init_client():
     assert isinstance(CloudWatchLogsClient(), CloudWatchLogsClient)
@@ -45,7 +50,6 @@ def test_init_client():
 def test_get_region_log_group_metric_filters():
     client = CloudWatchLogsClient()
     ret = client.get_region_log_group_metric_filters(Region.get_region("us-east-1"))
-    pdb.set_trace()
     assert isinstance(ret, list)
 
 
@@ -57,7 +61,6 @@ def test_yield_log_group_streams():
     ret = []
     for stream in client.yield_log_group_streams(group):
         ret.append(stream)
-    pdb.set_trace()
     assert isinstance(ret, list)
 
 
@@ -80,15 +83,20 @@ def test_yield_log_events():
             all_events.append(event)
             if "and its version" in event["message"]:
                 all_errors.append(event["message"])
-        pdb.set_trace()
 
-    pdb.set_trace()
-    min([int(x.split(" ")[-1][1:]) for x in all_errors])
+    min(int(x.split(' ')[-1][1:]) for x in all_errors)
+    assert isinstance(ret, list)
+
+
+def test_get_region_cloud_watch_log_groups():
+    client = CloudWatchLogsClient()
+    ret = client.get_region_cloud_watch_log_groups("us-west-2")
     assert isinstance(ret, list)
 
 
 if __name__ == "__main__":
-    test_init_client()
+    # test_init_client()
     # test_get_region_log_group_metric_filters()
     # test_yield_log_group_streams()
-    test_yield_log_events()
+    # test_yield_log_events()
+    test_get_region_cloud_watch_log_groups()

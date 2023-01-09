@@ -1,7 +1,6 @@
 """
 AWS client to handle cloud watch logs.
 """
-import pdb
 import time
 
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
@@ -41,20 +40,41 @@ class CloudWatchLogsClient(Boto3Client):
         :return:
         """
 
-        final_result = list()
+        final_result = []
         for region in AWSAccount.get_aws_account().regions.values():
             final_result += self.get_region_cloud_watch_log_groups(
                 region, full_information=full_information
             )
         return final_result
 
-    def get_region_cloud_watch_log_groups(self, region, full_information=False):
-        final_result = list()
+    def get_region_cloud_watch_log_groups(self, region, full_information=False, get_tags=True):
+        """
+        Get region log groups.
+
+        :param region:
+        :param full_information:
+        :param get_tags:
+        :return:
+        """
+
+        final_result = []
         AWSAccount.set_aws_region(region)
         for result in self.execute(self.client.describe_log_groups, "logGroups"):
             obj = CloudWatchLogGroup(result)
             if full_information:
                 self.update_log_group_full_information(obj)
+            if get_tags:
+                arn = obj.arn
+                if arn.endswith(":*"):
+                    # WHY? Because AWS has f*ng bug!!! They end "insights" ARN with ":*" FFFFFFK
+                    # pylint: disable= unsubscriptable-object
+                    arn = obj.arn[:-2]
+
+                request = {"resourceArn": arn}
+                tags = list(self.execute(self.client.list_tags_for_resource, "tags", filters_req=request))
+
+                if tags != [{}]:
+                    obj.tags = tags
 
             obj.region = AWSAccount.get_aws_region()
             final_result.append(obj)
@@ -68,7 +88,7 @@ class CloudWatchLogsClient(Boto3Client):
         :return:
         """
 
-        final_result = list()
+        final_result = []
         for region in AWSAccount.get_aws_account().regions.values():
             final_result += self.get_region_log_group_metric_filters(region)
         return final_result
@@ -81,7 +101,7 @@ class CloudWatchLogsClient(Boto3Client):
         @param region:
         """
 
-        final_result = list()
+        final_result = []
         AWSAccount.set_aws_region(region)
         for result in self.execute(
             self.client.describe_metric_filters, "metricFilters"
@@ -138,6 +158,13 @@ class CloudWatchLogsClient(Boto3Client):
             yield CloudWatchLogStream(response)
 
     def provision_metric_filter(self, metric_filter: CloudWatchLogGroupMetricFilter):
+        """
+        Standard.
+
+        :param metric_filter:
+        :return:
+        """
+
         request_dict = metric_filter.generate_create_request()
         AWSAccount.set_aws_region(metric_filter.region)
         logger.info(
@@ -151,9 +178,25 @@ class CloudWatchLogsClient(Boto3Client):
 
     def yield_log_events(self, log_group: CloudWatchLogGroup, stream):
         """
+
+        # todo: refactor
+        for response in self.execute(
+                self.client.get_log_events,
+                "events",
+                raw_data=True,
+                filters_req={
+                    "logGroupName": log_group.name,
+                    "logStreamName": stream.name,
+                    "nextToken": token,
+                },
+        ):
+            if token != response["nextForwardToken"]:
+                raise ValueError()
+
         :param log_group:
         :return:
         """
+
         if AWSAccount.get_aws_region() != log_group.region:
             AWSAccount.set_aws_region(log_group.region)
 
@@ -187,22 +230,15 @@ class CloudWatchLogsClient(Boto3Client):
 
             token = new_token
         return
-        pdb.set_trace()
-        # todo: refactor
-        for response in self.execute(
-            self.client.get_log_events,
-            "events",
-            raw_data=True,
-            filters_req={
-                "logGroupName": log_group.name,
-                "logStreamName": stream.name,
-                "nextToken": token,
-            },
-        ):
-            if token != response["nextForwardToken"]:
-                raise ValueError()
 
     def provision_log_group(self, log_group: CloudWatchLogGroup):
+        """
+        Standard.
+
+        :param log_group:
+        :return:
+        """
+
         region_log_groups = self.get_region_cloud_watch_log_groups(log_group.region)
         for region_log_group in region_log_groups:
             if region_log_group.name == log_group.name:
@@ -213,6 +249,13 @@ class CloudWatchLogsClient(Boto3Client):
         self.provision_log_group_raw(log_group.generate_create_request())
 
     def provision_log_group_raw(self, request_dict):
+        """
+        Standard.
+
+        :param request_dict:
+        :return:
+        """
+
         logger.info(f"Creating log group '{request_dict}'")
         for response in self.execute(
             self.client.create_log_group, None, raw_data=True, filters_req=request_dict
