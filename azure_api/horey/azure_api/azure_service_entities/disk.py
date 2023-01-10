@@ -1,16 +1,24 @@
-import pdb
+"""
+Azure Disk obj.
 
-from horey.azure_api.azure_service_entities.azure_object import AzureObject
+"""
+
 from azure.mgmt.compute.models import DiskCreateOption
+from horey.azure_api.azure_service_entities.azure_object import AzureObject
 
 
 class Disk(AzureObject):
+    """
+    Main Class
+
+    """
+
     def __init__(self, dict_src, from_cache=False):
         self.name = None
         self.id = None
         self.location = None
         self.tags = {}
-        self.resource_group_name = None
+        self._resource_group_name = None
         self.disk_size_gb = None
         self.unique_id = None
 
@@ -46,7 +54,42 @@ class Disk(AzureObject):
 
         self.init_attrs(dict_src, init_options)
 
+    @property
+    def resource_group_name(self):
+        """
+        Generate or use one explicitly set.
+
+        :return:
+        """
+
+        if self._resource_group_name is None:
+            if self.id is not None:
+                lst_id = self.id.split("/")
+                if lst_id[3] != "resourceGroups":
+                    raise RuntimeError(f"Can not parse ID: {lst_id}")
+                self._resource_group_name = lst_id[4]
+
+        return self._resource_group_name
+
+    @resource_group_name.setter
+    def resource_group_name(self, value):
+        """
+        Setter.
+
+        :param value:
+        :return:
+        """
+
+        self._resource_group_name = value
+
     def init_disk_from_cache(self, dict_src):
+        """
+        Standard.
+
+        :param dict_src:
+        :return:
+        """
+
         raise NotImplementedError()
 
     def generate_create_request(self):
@@ -76,5 +119,12 @@ class Disk(AzureObject):
         ]
 
     def update_after_creation(self, disk):
+        """
+        Update self from existing object.
+
+        :param disk:
+        :return:
+        """
+
         self.id = disk.id
         self.unique_id = disk.unique_id

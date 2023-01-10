@@ -1,5 +1,9 @@
+"""
+Azure API
+
+"""
+# pylint: disable= too-many-instance-attributes
 import json
-import pdb
 from horey.azure_api.azure_clients.compute_client import ComputeClient
 from horey.azure_api.azure_clients.resource_client import ResourceClient
 from horey.azure_api.azure_clients.network_client import NetworkClient
@@ -21,6 +25,11 @@ from horey.azure_api.azure_service_entities.load_balancer import LoadBalancer
 
 
 class AzureAPI:
+    """
+    Main class.
+
+    """
+
     def __init__(self, configuration=None):
         self.compute_client = ComputeClient()
         self.resource_client = ResourceClient()
@@ -52,13 +61,25 @@ class AzureAPI:
         AzureAccount.set_azure_account(accounts[self.configuration.azure_account])
 
     def init_disks(self):
+        """
+        Request from API and init objects.
+
+        :return:
+        """
+
         objects = self.compute_client.get_all_disks()
         self.disks += objects
 
     def init_nat_gateways(self):
+        """
+        Request from API and init objects.
+
+        :return:
+        """
+
         if len(self.resource_groups) == 0:
             raise RuntimeError(
-                f"resource_groups must be inited before running init_nat_gateways"
+                "resource_groups must be inited before running init_nat_gateways"
             )
 
         for resource_group in self.resource_groups:
@@ -66,9 +87,15 @@ class AzureAPI:
             self.nat_gateways += objects
 
     def init_load_balancers(self):
+        """
+        Request from API and init objects.
+
+        :return:
+        """
+
         if len(self.resource_groups) == 0:
             raise RuntimeError(
-                f"resource_groups must be inited before running init_load_balancers"
+                "resource_groups must be inited before running init_load_balancers"
             )
 
         for resource_group in self.resource_groups:
@@ -76,9 +103,15 @@ class AzureAPI:
             self.load_balancers += objects
 
     def init_network_interfaces(self):
+        """
+        Request from API and init objects.
+
+        :return:
+        """
+
         if len(self.resource_groups) == 0:
             raise RuntimeError(
-                f"resource_groups must be inited before running init_network_interfaces"
+                "resource_groups must be inited before running init_network_interfaces"
             )
 
         for resource_group in self.resource_groups:
@@ -86,9 +119,15 @@ class AzureAPI:
             self.network_interfaces += objects
 
     def init_public_ip_addresses(self):
+        """
+        Request from API and init objects.
+
+        :return:
+        """
+
         if len(self.resource_groups) == 0:
             raise RuntimeError(
-                f"resource_groups must be inited before running init_public_ip_addresses"
+                "resource_groups must be inited before running init_public_ip_addresses"
             )
 
         for resource_group in self.resource_groups:
@@ -96,9 +135,15 @@ class AzureAPI:
             self.public_ip_addresses += objects
 
     def init_network_security_groups(self):
+        """
+        Request from API and init objects.
+
+        :return:
+        """
+
         if len(self.resource_groups) == 0:
             raise RuntimeError(
-                f"resource_groups must be inited before running init_network_security_groups"
+                "resource_groups must be inited before running init_network_security_groups"
             )
 
         for resource_group in self.resource_groups:
@@ -108,19 +153,31 @@ class AzureAPI:
             self.network_security_groups += objects
 
     def init_virtual_machines(self):
+        """
+        Request from API and init objects.
+
+        :return:
+        """
+
         if len(self.resource_groups) == 0:
             raise RuntimeError(
-                f"resource_groups must be inited before running init_virtual_machines"
+                "resource_groups must be inited before running init_virtual_machines"
             )
 
         for resource_group in self.resource_groups:
-            objects = self.compute_client.get_all_virtual_machines(resource_group)
+            objects = self.compute_client.get_all_virtual_machines(resource_group.name)
             self.virtual_machines += objects
 
     def init_virtual_networks(self):
+        """
+        Request from API and init objects.
+
+        :return:
+        """
+
         if len(self.resource_groups) == 0:
             raise RuntimeError(
-                f"resource_groups must be inited before running init_virtual_networks"
+                "resource_groups must be inited before running init_virtual_networks"
             )
 
         for resource_group in self.resource_groups:
@@ -128,9 +185,15 @@ class AzureAPI:
             self.virtual_networks += objects
 
     def init_ssh_keys(self):
+        """
+        Request from API and init objects.
+
+        :return:
+        """
+
         if len(self.resource_groups) == 0:
             raise RuntimeError(
-                f"resource_groups must be inited before running init_ssh_keys"
+                "resource_groups must be inited before running init_ssh_keys"
             )
 
         for resource_group in self.resource_groups:
@@ -138,55 +201,138 @@ class AzureAPI:
             self.ssh_keys += objects
 
     def init_resource_groups(self):
+        """
+        Request from API and init objects.
+
+        :return:
+        """
+
         objects = self.resource_client.get_all_resource_groups()
         self.resource_groups += objects
 
     def cache_objects(self, objects, cache_file_path):
+        """
+        Save objects as serialized dicts.
+
+        :param objects:
+        :param cache_file_path:
+        :return:
+        """
+
         lst_dicts = [obj.convert_to_dict() for obj in objects]
-        with open(cache_file_path, "w+") as file_handler:
+        with open(cache_file_path, "w+", encoding="utf-8") as file_handler:
             json.dump(lst_dicts, file_handler, indent=4)
 
     def provision_resource_group(self, resource_group):
+        """
+        Create or update
+
+        :param resource_group:
+        :return:
+        """
+
         response = self.resource_client.raw_create_resource_group(
             resource_group.generate_create_request()
         )
         resource_group.update_after_creation(response)
 
     def provision_virtual_network(self, virtual_network):
+        """
+        Create or update
+
+        :param virtual_network:
+        :return:
+        """
+
         response = self.network_client.raw_create_virtual_networks(
             virtual_network.generate_create_request()
         )
         virtual_network.update_after_creation(response)
 
     def provision_ssh_key(self, ssh_key):
+        """
+        Create or update
+
+        :param ssh_key:
+        :return:
+        """
+
         response = self.compute_client.raw_create_ssh_key(
             ssh_key.generate_create_request()
         )
         ssh_key.update_after_creation(response)
 
-    def provision_disk(self, disk):
+    def provision_disk(self, disk: Disk):
+        """
+        Create or update
+
+        :param disk:
+        :return:
+        """
+
         response = self.compute_client.raw_create_disk(disk.generate_create_request())
         disk.update_after_creation(response)
 
     def delete_disk(self, disk):
+        """
+        Dispose the resource.
+
+        :param disk:
+        :return:
+        """
+
         return self.compute_client.raw_delete_disk(disk.resource_group_name, disk.name)
 
     def delete_virtual_machine(self, object_repr):
+        """
+        Dispose the resource.
+
+        :param object_repr:
+        :return:
+        """
+
         return self.compute_client.raw_delete_virtual_machine(object_repr)
 
     def delete_network_interface(self, object_repr):
+        """
+        Dispose the resource.
+
+        :param object_repr:
+        :return:
+        """
+
         return self.network_client.raw_delete_network_interface(object_repr)
 
     def delete_load_balancer(self, object_repr):
+        """
+        Dispose the resource.
+
+        :param object_repr:
+        :return:
+        """
+
         return self.network_client.raw_delete_load_balancer(object_repr)
 
     def provision_public_ip_address(self, public_ip_address):
+        """
+        Create or update
+
+        :param public_ip_address:
+        :return:
+        """
         response = self.network_client.raw_create_public_ip_addresses(
             public_ip_address.generate_create_request()
         )
         public_ip_address.update_after_creation(response)
 
     def provision_nat_gateway(self, building_block):
+        """
+        Create or update
+
+        :param building_block:
+        :return:
+        """
+
         response = self.network_client.raw_create_nat_gateway(
             building_block.generate_create_request()
         )
@@ -199,27 +345,62 @@ class AzureAPI:
                 return
 
     def provision_network_interface(self, building_block):
+        """
+        Create or update
+
+        :param building_block:
+        :return:
+        """
+
         response = self.network_client.raw_create_network_interfaces(
             building_block.generate_create_request()
         )
         building_block.update_after_creation(response)
 
     def provision_network_security_group(self, building_block):
+        """
+        Create or update
+
+        :param building_block:
+        :return:
+        """
+
         response = self.network_client.raw_create_network_security_group(
             building_block.generate_create_request()
         )
         building_block.update_after_creation(response)
 
     def provision_load_balancer(self, building_block):
+        """
+        Create or update
+
+        :param building_block:
+        :return:
+        """
+
         response = self.network_client.raw_create_load_balancer(
             building_block.generate_create_request()
         )
         building_block.update_after_creation(response)
 
     def provision_virtual_machine(self, building_block):
+        """
+        Create or update
+
+        :param building_block:
+        :return:
+        """
+
         self.compute_client.provision_virtual_machine(building_block)
 
     def provision(self, building_block):
+        """
+        Create or update
+
+        :param building_block:
+        :return:
+        """
+
         if isinstance(building_block, ResourceGroup):
             self.provision_resource_group(building_block)
         elif isinstance(building_block, VirtualNetwork):
@@ -246,9 +427,23 @@ class AzureAPI:
             )
 
     def delete_resource_group(self, resource_group):
+        """
+        Dispose resource
+
+        :param resource_group:
+        :return:
+        """
+
         self.resource_client.raw_delete_resource_group(resource_group.name)
 
     def delete(self, building_block):
+        """
+        Dispose resource.
+
+        :param building_block:
+        :return:
+        """
+
         if isinstance(building_block, ResourceGroup):
             self.delete_resource_group(building_block)
         elif isinstance(building_block, Disk):
@@ -263,3 +458,25 @@ class AzureAPI:
             raise NotImplementedError(
                 f"Not yet implemented deployment for {type(building_block)}"
             )
+
+    def resize_vm_disk(self, vm, disk_size_gb):
+        """
+        Resize VM managed disk
+        vm.storage_profile["os_disk"]["disk_size_gb"]
+        objects[0].storage_profile["os_disk"]["managed_disk"]["id"]
+
+        :param vm:
+        :return:
+        """
+
+        self.compute_client.stop_vm(vm)
+        disk_id = vm.storage_profile["os_disk"]["managed_disk"]["id"]
+        lst_disk_id = disk_id.split("/")
+        if lst_disk_id[3] != "resourceGroups":
+            raise RuntimeError(lst_disk_id)
+        resource_group_name = lst_disk_id[4]
+        disk_name = lst_disk_id[-1]
+        disk = self.compute_client.get_disk(resource_group_name, disk_name)
+        disk.disk_size_gb = disk_size_gb
+        self.provision_disk(disk)
+        self.compute_client.start_vm(vm)

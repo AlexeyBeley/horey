@@ -1,19 +1,27 @@
-import pdb
+"""
+Azure VM object.
+
+"""
 
 from horey.azure_api.azure_service_entities.azure_object import AzureObject
 
 
 class VirtualMachine(AzureObject):
+    """
+    Main class
+
+    """
+
     def __init__(self, dict_src, from_cache=False):
         self.name = None
-        self.resource_group_name = None
+        self._resource_group_name = None
         self.id = None
         self.location = None
         self.tags = {}
         self.hardware_profile = None
         self.storage_profile = None
         self.os_profile = None
-        self.network_profile = None
+        self.network_profile = {}
 
         super().__init__(dict_src, from_cache=from_cache)
 
@@ -39,6 +47,34 @@ class VirtualMachine(AzureObject):
         }
 
         self.init_attrs(dict_src, init_options)
+
+    @property
+    def resource_group_name(self):
+        """
+        Generate or use one explicitly set.
+
+        :return:
+        """
+
+        if self._resource_group_name is None:
+            if self.network_profile:
+                lst_id = self.network_profile["network_interfaces"][0]["id"].split("/")
+                if lst_id[3] != "resourceGroups":
+                    raise RuntimeError(f"Can not parse ID: {lst_id}")
+                self._resource_group_name = lst_id[4]
+
+        return self._resource_group_name
+
+    @resource_group_name.setter
+    def resource_group_name(self, value):
+        """
+        Setter.
+
+        :param value:
+        :return:
+        """
+
+        self._resource_group_name = value
 
     def init_virtual_machine_from_cache(self, dict_src):
         """
@@ -74,4 +110,11 @@ class VirtualMachine(AzureObject):
         ]
 
     def update_after_creation(self, virtual_machine):
+        """
+        Update self from existing object.
+
+        :param virtual_machine:
+        :return:
+        """
+
         self.id = virtual_machine.id

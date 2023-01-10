@@ -39,6 +39,45 @@ class ComputeClient(AzureClient):
             virtual_machine.generate_create_request()
         )
 
+    def get_vm(self, resource_group_name, name):
+        """
+        Get VM object.
+
+        :param resource_group_name:
+        :param name:
+        :return:
+        """
+
+        for vm in self.get_all_virtual_machines(resource_group_name):
+            if vm.name == name:
+                return vm
+
+        return None
+
+    def stop_vm(self, vm: VirtualMachine):
+        """
+        Stop VM.
+
+        :param vm:
+        :return:
+        """
+
+        response = self.client.virtual_machines.begin_power_off(vm.resource_group_name, vm.name)
+        response.wait()
+        return response.result()
+
+    def start_vm(self, vm: VirtualMachine):
+        """
+        Start VM.
+
+        :param vm:
+        :return:
+        """
+
+        response = self.client.virtual_machines.begin_start(vm.resource_group_name, vm.name)
+        response.wait()
+        return response.result()
+
     def raw_create_virtual_machines(self, lst_args):
         """
         Create a vm.
@@ -69,6 +108,21 @@ class ComputeClient(AzureClient):
         @return:
         """
         return [Disk(obj.as_dict()) for obj in self.client.disks.list()]
+
+    def get_disk(self, resource_group_name, disk_name):
+        """
+        Get object.
+
+        :param resource_group_name:
+        :param disk_name:
+        :return:
+        """
+
+        for obj in self.client.disks.list_by_resource_group(resource_group_name):
+            disk = Disk(obj.as_dict())
+            if disk.name == disk_name:
+                return disk
+        return None
 
     def get_all_ssh_keys(self, resource_group):
         """
@@ -103,6 +157,7 @@ class ComputeClient(AzureClient):
         @param lst_args:
         @return:
         """
+
         logger.info(f"Begin disk creation: '{lst_args[1]}'")
         response = self.client.disks.begin_create_or_update(*lst_args)
         response.wait()

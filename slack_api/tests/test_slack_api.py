@@ -1,11 +1,14 @@
-import pdb
+"""
+Testing slack api
+"""
 
-import pytest
 import os
+import pytest
 
 from horey.slack_api.slack_api import SlackAPI
 from horey.slack_api.slack_api_configuration_policy import SlackAPIConfigurationPolicy
 from horey.slack_api.slack_message import SlackMessage
+from horey.common_utils.common_utils import CommonUtils
 
 
 configuration = SlackAPIConfigurationPolicy()
@@ -19,9 +22,20 @@ configuration.configuration_file_full_path = os.path.abspath(
         "slack_api_configuration_values.py",
     )
 )
+
+mock_values_file_path = os.path.abspath(
+    os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore", "slack_api_mock_values.py"
+    )
+)
+mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
+
+
 configuration.init_from_file()
 
 slack_api = SlackAPI(configuration=configuration)
+
+# pylint: disable= missing-function-docstring
 
 
 @pytest.mark.skip(reason="Can not test")
@@ -54,7 +68,7 @@ def test_send_message_stable():
     message.add_block(block)
 
     message.src_username = "slack_api"
-    message.dst_channel = "#test"
+    message.dst_channel = mock_values["dst_channel"]
 
     ret = slack_api.send_message(message)
     assert ret
@@ -86,7 +100,7 @@ def test_send_message_warning():
     message.add_block(block)
 
     message.src_username = "slack_api"
-    message.dst_channel = "#test"
+    message.dst_channel = mock_values["dst_channel"]
 
     ret = slack_api.send_message(message)
     assert ret
@@ -110,7 +124,7 @@ def test_send_message_critical():
     message.add_block(block)
 
     message.src_username = "slack_api"
-    message.dst_channel = "#test"
+    message.dst_channel = mock_values["dst_channel"]
 
     ret = slack_api.send_message(message)
     assert ret
@@ -134,7 +148,7 @@ def test_send_message_info():
     message.add_block(block)
 
     message.src_username = "slack_api"
-    message.dst_channel = "#test"
+    message.dst_channel = mock_values["dst_channel"]
 
     ret = slack_api.send_message(message)
     assert ret
@@ -158,7 +172,7 @@ def test_send_message_party():
     message.add_block(block)
 
     message.src_username = "slack_api"
-    message.dst_channel = "#test"
+    message.dst_channel = mock_values["dst_channel"]
 
     ret = slack_api.send_message(message)
     assert ret
