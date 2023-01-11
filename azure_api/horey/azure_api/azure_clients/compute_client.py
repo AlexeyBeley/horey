@@ -2,6 +2,7 @@
 Compute service API.
 
 """
+import datetime
 
 from azure.mgmt.compute import ComputeManagementClient
 from horey.azure_api.azure_clients.azure_client import AzureClient
@@ -62,8 +63,17 @@ class ComputeClient(AzureClient):
         :return:
         """
 
+        logger.info(f"Stopping VM {vm.resource_group_name}/{vm.name}")
+
+        start_time = datetime.datetime.now()
+
         response = self.client.virtual_machines.begin_power_off(vm.resource_group_name, vm.name)
         response.wait()
+
+        end_time = datetime.datetime.now()
+
+        logger.info(f"Stopped VM {vm.resource_group_name}/{vm.name}, took: {end_time - start_time}")
+
         return response.result()
 
     def start_vm(self, vm: VirtualMachine):
