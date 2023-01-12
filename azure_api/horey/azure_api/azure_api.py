@@ -480,3 +480,13 @@ class AzureAPI:
         disk.disk_size_gb = disk_size_gb
         self.provision_disk(disk)
         self.compute_client.start_vm(vm)
+
+    def print_vm_disk_sizes(self):
+        """
+        All OS-disK sizes.
+
+        :return:
+        """
+
+        for disk in self.compute_client.get_all_disks():
+            print(f"{disk.name} - {disk.disk_size_gb} GB")

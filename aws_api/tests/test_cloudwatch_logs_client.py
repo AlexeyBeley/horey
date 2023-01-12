@@ -91,6 +91,8 @@ def test_yield_log_events():
 def test_get_region_cloud_watch_log_groups():
     client = CloudWatchLogsClient()
     ret = client.get_region_cloud_watch_log_groups("us-west-2")
+    ret = client.get_region_cloud_watch_log_groups("us-east-1")
+    ret = client.get_region_cloud_watch_log_groups("us-east-1")
     assert isinstance(ret, list)
 
 

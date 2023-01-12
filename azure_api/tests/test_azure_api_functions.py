@@ -57,6 +57,10 @@ def test_resize_vm_disk():
     azure_api.resize_vm_disk(vm, disk_size_gb)
 
 
+def test_print_vm_disk_sizes():
+    azure_api.print_vm_disk_sizes()
+
+
 if __name__ == "__main__":
     #test_init_virtual_machines()
-    test_resize_vm_disk()
+    test_print_vm_disk_sizes()

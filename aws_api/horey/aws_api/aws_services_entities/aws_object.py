@@ -1,7 +1,6 @@
 """
 A base class for working with aws objects - parsing, caching and initiation.
 """
-import pdb
 import re
 import datetime
 from enum import Enum
@@ -21,6 +20,7 @@ class AwsObject:
     # Regex for manipulating CamelCase attr names
     _FIRST_CAP_RE = re.compile("(.)([A-Z][a-z]+)")
     _ALL_CAP_RE = re.compile("([a-z0-9])([A-Z])")
+    # pylint: disable= anomalous-backslash-in-string
     #'2017-07-26 15:54:10.000000+0000'
     _DATE_MICROSECONDS_FORMAT_RE = re.compile(
         "([0-9]{4})-([0-9]{2})-([0-9]{2}) ([0-9]{2}):([0-9]{2}):([0-9]{2})\.([0-9]{6})\+([0-9]{4})"
@@ -36,6 +36,7 @@ class AwsObject:
         self.id = None
         self.tags = None
         self._region = None
+        self.arn = None
 
     def _init_from_cache(self, dict_src, dict_options):
         """
@@ -98,7 +99,6 @@ class AwsObject:
         """
         return self.__class__.__name__
 
-    # pylint: disable=R0201
     @h_class_name.setter
     def h_class_name(self, _):
         """
@@ -188,9 +188,9 @@ class AwsObject:
             except KeyError as caught_exception:
                 for key_src_ in dict_src:
                     if key_src_ not in dict_options:
-                        line_to_add = '"{}":  self.init_default_attr,'.format(key_src_)
+                        line_to_add = f'"{key_src_}":  self.init_default_attr,'
                         composed_errors.append(line_to_add)
-                        logger.error(line_to_add)
+                        logger.warning(f"{self.__class__.__name__}: {line_to_add}")
 
                 if not raise_on_no_option:
                     self.init_default_attr(key_src, value)
@@ -244,7 +244,6 @@ class AwsObject:
 
     @staticmethod
     def convert_to_dict_static(obj_src, custom_types=None):
-        # pylint: disable=R0911
         """
         Converts all known attribute types to a specific form available to be init from cache.
 
@@ -252,6 +251,8 @@ class AwsObject:
         :param custom_types: list of dicts: {type:converter_function}
         :return:
         """
+
+        # pylint: disable=too-many-branches,too-many-return-statements
         if type(obj_src) in [str, int, bool, type(None)]:
             return obj_src
 
@@ -330,11 +331,22 @@ class AwsObject:
         tag_key_specifier="Key",
         tag_value_specifier="Value",
     ):
+        """
+        Get tag value by name
+
+        :param key:
+        :param ignore_missing_tag:
+        :param tag_key_specifier:
+        :param tag_value_specifier:
+        :return:
+        """
+
         if self.tags is None:
             if ignore_missing_tag:
                 return None
             raise RuntimeError("No tags associated")
 
+        # pylint: disable= not-an-iterable
         for tag in self.tags:
             tag_key_value = tag.get(tag_key_specifier)
             tag_key_value = (
@@ -357,9 +369,22 @@ class AwsObject:
         raise RuntimeError(f"No tag '{key}' associated")
 
     def get_tagname(self, ignore_missing_tag=False):
+        """
+        Get value if the tag 'name'
+
+        :param ignore_missing_tag:
+        :return:
+        """
+
         return self.get_tag("name", ignore_missing_tag=ignore_missing_tag)
 
     def print_dict_src(self):
+        """
+        PPrint dict_src items
+
+        :return:
+        """
+
         for key, value in self.dict_src.items():
             if isinstance(value, str):
                 print(f'"{key}" : "{value}"')
@@ -368,6 +393,12 @@ class AwsObject:
             print(f"{key}: {value}")
 
     def print(self):
+        """
+        Print self attributes.
+
+        :return:
+        """
+
         for key, value in self.__dict__.items():
             if isinstance(value, str):
                 print(f'"{key}" : "{value}"')
@@ -377,6 +408,12 @@ class AwsObject:
 
     @property
     def region(self):
+        """
+        Region getter
+
+        :return:
+        """
+
         if self._region is not None:
             return self._region
 
@@ -387,6 +424,13 @@ class AwsObject:
 
     @region.setter
     def region(self, value):
+        """
+        Setter.
+
+        :param value:
+        :return:
+        """
+
         if isinstance(value, str):
             value = Region.get_region(value)
 
