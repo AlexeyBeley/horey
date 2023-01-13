@@ -1,10 +1,14 @@
+"""
+Testing EC2 client
+
+"""
+
 import os
-import pdb
+from unittest.mock import Mock
 from horey.aws_api.aws_clients.ec2_client import EC2Client
 from horey.h_logger import get_logger
 from horey.common_utils.common_utils import CommonUtils
 
-from unittest.mock import Mock
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.aws_services_entities.ec2_launch_template import EC2LaunchTemplate
 from horey.aws_api.aws_services_entities.ec2_security_group import EC2SecurityGroup
@@ -37,6 +41,8 @@ mock_values_file_path = os.path.abspath(
 )
 mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 
+# pylint: disable= missing-function-docstring
+
 
 def test_init_ec2_client():
     assert isinstance(EC2Client(), EC2Client)
@@ -51,6 +57,7 @@ DICT_CREATE_SECURITY_GROUP_REQUEST = {
 def test_create_security_group():
     client = EC2Client()
     ret = client.raw_create_security_group(DICT_CREATE_SECURITY_GROUP_REQUEST)
+    assert ret is not None
 
 
 def test_provision_security_group():
@@ -266,20 +273,15 @@ def test_raw_modify_managed_prefix_list_add():
 def test_raw_describe_managed_prefix_list_by_id():
     pl_id = "pl-111111111"
     client = EC2Client()
-    ret = client.raw_describe_managed_prefix_list(pl_id=pl_id)
+    ret = client.raw_describe_managed_prefix_list(Region.get_region("us-west-2"), pl_id=pl_id)
     print(ret)
 
 
 def test_raw_describe_managed_prefix_list_by_name():
     prefix_list_name = "pl_horey_test-name"
     client = EC2Client()
-    ret = client.raw_describe_managed_prefix_list(prefix_list_name=prefix_list_name)
+    ret = client.raw_describe_managed_prefix_list(Region.get_region("us-west-2"), prefix_list_name=prefix_list_name)
     print(ret)
-
-
-def test_debug():
-    client = EC2Client()
-    client.test_debug()
 
 
 def test_provision_launch_template():
@@ -342,12 +344,23 @@ def test_provision_launch_template():
     assert launch_template.id is not None
 
 
+def test_find_launch_template():
+    launch_template = Mock()
+    launch_template.region = Region.get_region("us-west-2")
+    launch_template.name = mock_values["launch_template.name"]
+
+    ec2_client = EC2Client()
+    ret = ec2_client.find_launch_template(launch_template)
+    assert ret is not None
+
+
 if __name__ == "__main__":
     # test_provision_security_group()
     # test_provision_security_group_revoke()
-    test_provision_security_group_complex()
+    # test_provision_security_group_complex()
     # test_provision_launch_template()
 
     # test_raw_modify_managed_prefix_list()
     # test_raw_describe_managed_prefix_list_by_id()
     # test_raw_describe_managed_prefix_list_by_name()
+    test_find_launch_template()
