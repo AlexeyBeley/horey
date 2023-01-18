@@ -87,7 +87,8 @@ class Package:
             if requirement.include_max:
                 return True
             return False
-        raise NotImplementedError("todo:")
+        raise NotImplementedError(f"todo: requirement.name: {requirement.name}, requirement.max_version: {requirement.max_version}, "
+                                  f"self.version: {self.version}")
 
 
 class PipAPI:
