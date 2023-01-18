@@ -6,9 +6,20 @@ import os
 
 from horey.influxdb_api.kapacitor_api import KapacitorAPI
 from horey.influxdb_api.kapacitor_api_configuration_policy import KapacitorAPIConfigurationPolicy
+from horey.influxdb_api.kapacitor_api import Task
+from horey.common_utils.common_utils import CommonUtils
+
+
+kapacitor_ignore_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore", "kapacitor")
+
+mock_values_file_path = os.path.abspath(
+    os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "..", "ignore", "mock_values.py"
+    )
+)
+mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 
 configuration = KapacitorAPIConfigurationPolicy()
-kapacitor_ignore_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore", "kapacitor")
 configuration.configuration_file_full_path = os.path.join(kapacitor_ignore_dir, "kapacitor_api_config.py")
 configuration.init_from_file()
 kapacitor_api = KapacitorAPI(configuration)
@@ -30,6 +41,24 @@ def test_cache_tasks():
     kapacitor_api.cache_tasks(os.path.join(kapacitor_ignore_dir, "tasks.json"))
 
 
+def test_provision_task():
+    dict_src = {
+            "id": "test-id",
+            "type": "",
+            "dbrps": [
+      {
+        "db": "tests",
+        "rp": "autogen"
+      }
+    ],
+            "script": mock_values["provision_alert_script"],
+            "status": "disabled"
+        }
+    task = Task(dict_src)
+
+    kapacitor_api.provision_task(task)
+
 if __name__ == "__main__":
     # test_init_tasks()
-    test_cache_tasks()
+    # test_cache_tasks()
+    test_provision_task()

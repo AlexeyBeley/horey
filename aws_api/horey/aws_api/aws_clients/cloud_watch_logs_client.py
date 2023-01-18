@@ -261,3 +261,17 @@ class CloudWatchLogsClient(Boto3Client):
             self.client.create_log_group, None, raw_data=True, filters_req=request_dict
         ):
             return response
+
+    def put_log_events_raw(self, request_dict):
+        """
+        Standard.
+
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Writing log events: '{request_dict}'")
+        for response in self.execute(
+            self.client.put_log_events, None, raw_data=True, filters_req=request_dict
+        ):
+            return response

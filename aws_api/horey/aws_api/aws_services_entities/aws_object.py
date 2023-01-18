@@ -36,7 +36,7 @@ class AwsObject:
         self.id = None
         self.tags = None
         self._region = None
-        self.arn = None
+        self._arn = None
 
     def _init_from_cache(self, dict_src, dict_options):
         """
@@ -417,8 +417,8 @@ class AwsObject:
         if self._region is not None:
             return self._region
 
-        if self.arn is not None:
-            self._region = Region.get_region(self.arn.split(":")[3])
+        if self._arn is not None:
+            self._region = Region.get_region(self._arn.split(":")[3])
 
         return self._region
 

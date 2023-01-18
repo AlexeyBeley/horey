@@ -14,9 +14,30 @@ class Task:
     """
     Kapacitor task
     """
+
     def __init__(self, dict_src):
         self.dict_src = dict_src
         self.id = dict_src["id"]
+        self.status = dict_src["status"]
+        self.script = dict_src["script"]
+        self.dbrps = dict_src["dbrps"]
+        self.type = dict_src["id"]
+
+    def generate_provision_request(self):
+        """
+        Generate
+
+        :return:
+        """
+
+        breakpoint()
+        return {
+            "id": self.id,
+            "type": self.type,
+            "dbrps": self.dbrps,
+            "script": self.script,
+            "status": self.status
+        }
 
 
 class KapacitorAPI:
@@ -62,6 +83,18 @@ class KapacitorAPI:
         response = self.session.get(self.generate_request(request_params), timeout=60)
         return response.json()
 
+    def post(self, request_params, data):
+        """
+        POST request.
+
+        :param request_params:
+        :param data:
+        :return:
+        """
+        breakpoint()
+        response = self.session.post(self.generate_request(request_params), data=data, timeout=60)
+        return response.json()
+
     def generate_request(self, request_params):
         """
         Generate request from address, API url and request params.
@@ -70,7 +103,7 @@ class KapacitorAPI:
         :return:
         """
 
-        return self.configuration.server_address+"/kapacitor/v1/" + request_params.strip("/")
+        return self.configuration.server_address + "/kapacitor/v1/" + request_params.strip("/")
 
     def cache_tasks(self, file_path):
         """
@@ -84,3 +117,13 @@ class KapacitorAPI:
         tasks_source = [task.dict_src for task in self.tasks]
         with open(file_path, "w", encoding="utf-8") as file_handler:
             file_handler.write(json.dumps(tasks_source))
+
+    def provision_task(self, task: Task):
+        """
+        Provision task.
+
+        :param task:
+        :return:
+        """
+
+        self.post("tasks", task.generate_provision_request())

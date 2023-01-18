@@ -76,7 +76,7 @@ class AWSLambda(AwsObject):
     @property
     def arn(self):
         """
-        Lambda function arn.
+        Object arn.
 
         @return:
         """

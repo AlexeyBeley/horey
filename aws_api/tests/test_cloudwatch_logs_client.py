@@ -2,7 +2,7 @@
 Test client.
 
 """
-
+import datetime
 import os
 from unittest.mock import Mock
 from horey.aws_api.aws_clients.cloud_watch_logs_client import CloudWatchLogsClient
@@ -11,7 +11,6 @@ from horey.aws_api.base_entities.region import Region
 from horey.h_logger import get_logger
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.common_utils.common_utils import CommonUtils
-
 
 configuration_values_file_full_path = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "h_logger_configuration_values.py"
@@ -39,6 +38,7 @@ mock_values_file_path = os.path.abspath(
     )
 )
 mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
+
 
 # pylint: disable= missing-function-docstring
 
@@ -96,9 +96,25 @@ def test_get_region_cloud_watch_log_groups():
     assert isinstance(ret, list)
 
 
+def test_put_log_events_raw():
+    client = CloudWatchLogsClient()
+    dict_request = {"logGroupName": mock_values["logGroupName_provision_events"],
+                    "logStreamName": mock_values["logStreamName_provision_events"],
+                    "logEvents": [{
+                        "timestamp": int(datetime.datetime.now().timestamp()*1000),
+                        "message": "[ERROR]: Leonid, don't do it!"
+                    }]
+                    }
+
+    AWSAccount.set_aws_region("us-east-1")
+    ret = client.put_log_events_raw(dict_request)
+    assert ret.get("rejectedLogEventsInfo") is not None
+
+
 if __name__ == "__main__":
     # test_init_client()
     # test_get_region_log_group_metric_filters()
     # test_yield_log_group_streams()
     # test_yield_log_events()
-    test_get_region_cloud_watch_log_groups()
+    # test_get_region_cloud_watch_log_groups()
+    test_put_log_events_raw()

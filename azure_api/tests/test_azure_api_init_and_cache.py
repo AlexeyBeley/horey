@@ -5,10 +5,9 @@ sudo mount -t nfs4 -o  nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,re
 import sys
 
 sys.path.insert(0, "/Users/alexey.beley/private/horey/azure_api")
-import pdb
 
-import pytest
 import os
+import pytest
 from horey.azure_api.azure_api import AzureAPI
 from horey.h_logger import get_logger
 from horey.azure_api.azure_api_configuration_policy import AzureAPIConfigurationPolicy
@@ -34,6 +33,8 @@ configuration.configuration_file_full_path = os.path.abspath(
 configuration.init_from_file()
 
 azure_api = AzureAPI(configuration=configuration)
+
+# pylint: disable= missing-function-docstring
 
 
 # region done
@@ -151,11 +152,11 @@ def test_init_and_cache_virtual_networks():
 if __name__ == "__main__":
     # test_init_and_cache_resource_groups()
     # test_init_and_cache_disks()
-    test_init_and_cache_load_balancers()
+    #test_init_and_cache_load_balancers()
     # test_init_and_cache_nat_gateways()
-    test_init_and_cache_network_interfaces()
+    #test_init_and_cache_network_interfaces()
     test_init_and_cache_public_ip_addresses()
-    test_init_and_cache_network_security_groups()
+    #test_init_and_cache_network_security_groups()
     # test_init_and_cache_ssh_keys()
-    test_init_and_cache_virtual_machines()
+    #test_init_and_cache_virtual_machines()
     # test_init_and_cache_virtual_networks()
