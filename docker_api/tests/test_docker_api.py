@@ -164,8 +164,8 @@ def test_get_all_images():
 
 if __name__ == "__main__":
     # test_init_docker_api()
-    # test_build()
-    # test_get_image()
+    test_build()
+    test_get_image()
     # test_login()
     # test_upload_image()
     # test_pull_image()

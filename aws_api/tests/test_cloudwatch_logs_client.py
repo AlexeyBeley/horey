@@ -102,13 +102,14 @@ def test_put_log_events_raw():
                     "logStreamName": mock_values["logStreamName_provision_events"],
                     "logEvents": [{
                         "timestamp": int(datetime.datetime.now().timestamp()*1000),
-                        "message": "[ERROR]: Leonid, don't do it!"
+                        "message": "[ERROR]: Neo, the Horey has you!"
                     }]
                     }
 
     AWSAccount.set_aws_region("us-east-1")
+    #AWSAccount.set_aws_region("eu-central-1")
     ret = client.put_log_events_raw(dict_request)
-    assert ret.get("rejectedLogEventsInfo") is not None
+    assert ret.get("rejectedLogEventsInfo") is None
 
 
 if __name__ == "__main__":
