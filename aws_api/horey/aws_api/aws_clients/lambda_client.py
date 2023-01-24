@@ -71,6 +71,7 @@ class LambdaClient(Boto3Client):
         @param obj:
         @return:
         """
+
         for response in self.execute(
             self.client.get_policy,
             None,
@@ -80,6 +81,14 @@ class LambdaClient(Boto3Client):
         ):
             del response["ResponseMetadata"]
             obj.update_policy_from_get_policy_raw_response(response)
+
+        for response in self.execute(
+            self.client.get_function_concurrency,
+            None,
+            raw_data=True,
+            filters_req={"FunctionName": obj.name}
+        ):
+            obj.reserved_concurrent_executions = response.get("ReservedConcurrentExecutions")
 
     def get_all_event_source_mappings(self, region=None):
         """
@@ -148,7 +157,6 @@ class LambdaClient(Boto3Client):
         @param update_code: Update the lambda code or update the configuration only.
         @return:
         """
-
         if force is not None:
             logger.warning("Deprecation: 'force' is going to be deprecated use update_code instead")
             update_code = force
@@ -199,6 +207,33 @@ class LambdaClient(Boto3Client):
                 [current_lambda.Status.FAILED],
             )
 
+        # concurrency:
+        update_function_concurrency_request = (
+            current_lambda.generate_update_function_concurrency_request(
+                desired_aws_lambda
+            )
+        )
+
+        if update_function_concurrency_request is not None:
+            self.wait_for_status(
+                current_lambda,
+                self.update_lambda_information,
+                [current_lambda.Status.SUCCESSFUL],
+                [current_lambda.Status.INPROGRESS],
+                [current_lambda.Status.FAILED],
+            )
+            self.put_function_concurrency_raw(
+                update_function_concurrency_request
+            )
+            self.wait_for_status(
+                current_lambda,
+                self.update_lambda_information,
+                [current_lambda.Status.SUCCESSFUL],
+                [current_lambda.Status.INPROGRESS],
+                [current_lambda.Status.FAILED],
+            )
+
+        # permissions:
         (
             add_permission_requests,
             remove_permission_requests,
@@ -235,6 +270,21 @@ class LambdaClient(Boto3Client):
             self.update_function_code_raw(update_code_request)
 
         self.update_lambda_information(desired_aws_lambda, full_information=True)
+
+    def put_function_concurrency_raw(self, request_dict):
+        """
+        Put concurrency.
+
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Updating concurrency lambda: {request_dict}")
+
+        for response in self.execute(
+            self.client.put_function_concurrency, None, raw_data=True, filters_req=request_dict
+        ):
+            return response
 
     def provision_lambda_raw(self, request_dict):
         """

@@ -1,11 +1,7 @@
 """
 sudo mount -t nfs4 -o  nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport  172.31.14.49:/ /home/ubuntu/efs
 """
-import json
-import sys
-import pdb
 
-import pytest
 import os
 from horey.aws_api.aws_api import AWSAPI
 from horey.h_logger import get_logger
@@ -49,6 +45,8 @@ mock_values_file_path = os.path.abspath(
 )
 mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 
+# pylint: disable = missing-function-docstring
+
 
 def test_add_managed_region():
     aws_api.add_managed_region(Region.get_region("us-west-2"))
@@ -77,7 +75,7 @@ def test_provision_sesv2_domain_email_identity():
     email_identity.tags = [{"Key": "name", "Value": "value"}]
     aws_api.provision_sesv2_domain_email_identity(email_identity)
 
-    assert email_identity.status == "ISSUED"
+    assert email_identity.verified_for_sending_status == "ISSUED"
 
 
 def test_provision_aws_lambda_from_filelist():
@@ -88,6 +86,9 @@ def test_provision_aws_lambda_from_filelist():
     aws_lambda.handler = "lambda_test.lambda_handler"
     aws_lambda.runtime = "python3.8"
     aws_lambda.tags = {"lvl": "tst", "name": "horey-test"}
+    aws_lambda.reserved_concurrent_executions = 2
+    aws_lambda.timeout = 300
+    aws_lambda.memory_size = 512
 
     files_paths = [
         os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
@@ -114,7 +115,7 @@ def test_provision_lambda_event_source_mapping():
 
 if __name__ == "__main__":
     # test_provision_certificate()
-    # test_provision_aws_lambda_from_filelist()
+    test_provision_aws_lambda_from_filelist()
     # test_provision_lambda_event_source_mapping()
     # test_copy_ecr_image()
-    test_provision_sesv2_domain_email_identity()
+    # test_provision_sesv2_domain_email_identity()

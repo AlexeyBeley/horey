@@ -34,6 +34,7 @@ class AWSLambda(AwsObject):
         self.last_update_status = None
         self.revision_id = None
         self.state = None
+        self.reserved_concurrent_executions = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -69,6 +70,7 @@ class AWSLambda(AwsObject):
             "Architectures": self.init_default_attr,
             "LastUpdateStatusReason": self.init_default_attr,
             "LastUpdateStatusReasonCode": self.init_default_attr,
+            "EphemeralStorage": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -206,6 +208,7 @@ class AWSLambda(AwsObject):
             "Architectures": self.init_default_attr,
             "LastUpdateStatusReason": self.init_default_attr,
             "LastUpdateStatusReasonCode": self.init_default_attr,
+            "EphemeralStorage": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -309,6 +312,18 @@ class AWSLambda(AwsObject):
                 request[attr_name] = desired_attr_value
 
         return request
+
+    def generate_update_function_concurrency_request(self, desired_aws_lambda):
+        """
+        Generate updating request.
+        :param desired_aws_lambda:
+        :return:
+        """
+
+        if desired_aws_lambda.reserved_concurrent_executions != self.reserved_concurrent_executions:
+            return {"FunctionName": self.name, "ReservedConcurrentExecutions": desired_aws_lambda.reserved_concurrent_executions}
+
+        return None
 
     def generate_update_function_code_request(self, desired_aws_lambda):
         """

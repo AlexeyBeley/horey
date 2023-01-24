@@ -936,16 +936,17 @@ class RemoteDeployer:
 
         logger.info(f"Finished target deployment: {target.deployment_target_address}")
 
-    def deploy_targets(self, targets):
+    def deploy_targets(self, targets, asynchronous=True):
         """
         Deploy multiple targets.
 
+        :param asynchronous:
         :param targets:
         :return:
         """
 
         for target in targets:
-            self.deploy_target(target, asynchronous=True)
+            self.deploy_target(target, asynchronous=asynchronous)
             time.sleep(10)
 
         self.wait_to_finish(
