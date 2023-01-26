@@ -222,8 +222,7 @@ class RemoteDeployer:
         with self.get_deployment_target_client_context(deployment_target) as client:
             try:
                 command = f"rm -rf {deployment_target.remote_deployment_dir_path}"
-                logger.info(f"[REMOTE] {command}")
-                client.exec_command(command)
+                self.execute_remote(client, command)
 
                 transport = client.get_transport()
                 sftp_client = HoreySFTPClient.from_transport(transport)
@@ -259,10 +258,8 @@ class RemoteDeployer:
                 )
                 sftp_client.put(unziper_file_path, remote_unzip_file_path)
                 command = f"/bin/bash {remote_unzip_file_path}"
-                _, channel_file, stderr_file = client.exec_command(command)
 
-                logger.info(channel_file.read().decode("utf-8"))
-                logger.info(stderr_file.read().decode("utf-8"))
+                self.execute_remote(client, command)
 
                 sftp_client.put(
                     os.path.join(
@@ -292,13 +289,11 @@ class RemoteDeployer:
                 )
 
                 command = f"sudo chmod +x {os.path.join(deployment_target.remote_deployment_dir_path, 'remote_step_executor.sh')}"
-                logger.info(f"[REMOTE] {command}")
-                client.exec_command(command)
+                self.execute_remote(client, command)
 
                 if deployment_target.linux_distro == "redhat":
                     command = "sudo yum install screen -y"
-                    logger.info(f"[REMOTE] {command}")
-                    client.exec_command(command)
+                    self.execute_remote(client, command)
                 deployment_target.remote_deployer_infrastructure_provisioning_succeeded = (
                     True
                 )
@@ -316,9 +311,26 @@ class RemoteDeployer:
                 deployment_target.remote_deployer_infrastructure_provisioning_succeeded = (
                     False
                 )
-                raise RemoteDeployer.DeployerError(
-                    repr(error_instance)
-                ) from error_instance
+                raise RemoteDeployer.DeployerError from error_instance
+
+    @staticmethod
+    def execute_remote(client, command):
+        """
+        Execute command with SSH using connected client.
+
+        :param client:
+        :param command:
+        :return:
+        """
+
+        logger.info(f"[REMOTE] {command}")
+        _, stdout, stderr = client.exec_command(command, timeout=60)
+        stdout = stdout.read().decode("utf-8")
+        stderr = stderr.read().decode("utf-8")
+        if stdout:
+            logger.info(stdout)
+        if stderr:
+            raise RemoteDeployer.DeployerError(stderr)
 
     def deploy_target_step(self, deployment_target, step, asynchronous=False):
         """
