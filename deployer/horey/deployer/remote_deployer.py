@@ -259,7 +259,11 @@ class RemoteDeployer:
                 sftp_client.put(unziper_file_path, remote_unzip_file_path)
                 command = f"/bin/bash {remote_unzip_file_path}"
 
-                self.execute_remote(client, command)
+                try:
+                    self.execute_remote(client, command)
+                except RemoteDeployer.DeployerError as error_instance:
+                    if "apt does not have a stable CLI interface" not in repr(error_instance):
+                        raise
 
                 sftp_client.put(
                     os.path.join(
