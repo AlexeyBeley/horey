@@ -168,8 +168,7 @@ class InfluxDBAPI:
         """
         return
         breakpoint()
-        ret = self.get(f"query?db={db_name}&q=" + urllib.parse.quote_plus(f'SELECT count(*) FROM "{measurement}"'))
-        ret = self.get(f"query?db={db_name}&q=" + urllib.parse.quote_plus(f'SELECT status_code FROM "{measurement}"'))
+        ret = self.get(f"query?db={db_name}&q=" + urllib.parse.quote_plus('SHOW MEASUREMENTS'))
 
     def yield_series(self, db_name, measurement):
         """
