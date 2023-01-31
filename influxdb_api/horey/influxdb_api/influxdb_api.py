@@ -178,14 +178,11 @@ class InfluxDBAPI:
         :param db_name:
         :return:
         """
-        #response = self.get(f"query?db={db_name}&q=" + urllib.parse.quote_plus(f'SELECT count(status_code) FROM "{measurement}"'))
 
-        #response = self.get(f"query?db={db_name}&q=" + urllib.parse.quote_plus(f'SELECT * FROM "{measurement}" LIMIT 3 OFFSET 2382478'))
         offset = 0
         limit = 100000
         while True:
             response = self.get(f"query?db={db_name}&q=" + urllib.parse.quote_plus(f'SELECT * FROM "{measurement}" LIMIT {limit} OFFSET {offset}'))
-            #response = self.get(f"query?db={db_name}&q=" + urllib.parse.quote_plus(f'SELECT * FROM "{measurement}" SLIMIT {limit} SOFFSET {offset}'))
 
             measurement_series = self.extract_values_from_response(response)
             if measurement_series is None:
@@ -194,7 +191,8 @@ class InfluxDBAPI:
             logger.info(f"Total fetched count: {offset}")
             yield measurement_series
 
-    def extract_values_from_response(self, response):
+    @staticmethod
+    def extract_values_from_response(response):
         if list(response.keys()) != ["results"]:
             raise RuntimeError(response.keys())
 
@@ -261,7 +259,9 @@ class InfluxDBAPI:
 
         if isinstance(value, int):
             if fields_types is not None and fields_types[field_name] != int:
-                raise ValueError("Cast error")
+                breakpoint()
+                raise ValueError(f"Cast error while inserting field '{field_name}' value '{value}' of type '{type(value)}'."
+                                 f" InfluxDB expects type '{fields_types[field_name]}'")
             return f"{field_name}={str(value)}i"
 
         if isinstance(value, str):
@@ -282,6 +282,7 @@ class InfluxDBAPI:
         :param values:
         :return:
         """
+        breakpoint()
         tag_keys = self.get_measurement_tag_keys(db_name, measurement)
         fields_types = self.get_measurement_fields_types(db_name, measurement)
         dict_values = {pair[0]: pair[1] for pair in zip(columns, values)}
@@ -305,4 +306,63 @@ class InfluxDBAPI:
         str_data = f"{measurement},{','.join(tags)} {','.join(fields)} {timestamp}"
         ret = self.post(f"write?db={db_name}", str_data)
         logger.info(ret)
+        return ret
+
+    def write_batch(self, db_name: str, measurement: str, columns: list, lst_values: list):
+        """
+        Write fields and tags.
+
+        :param db_name:
+        :param measurement:
+        :param columns:
+        :param lst_values:
+        :return:
+        """
+        lst_data = []
+        for values in lst_values:
+            tag_keys = self.get_measurement_tag_keys(db_name, measurement)
+            fields_types = self.get_measurement_fields_types(db_name, measurement)
+            dict_values = {pair[0]: pair[1] for pair in zip(columns, values)}
+            tags = []
+            for tag_key in tag_keys:
+                tag_value = dict_values.pop(tag_key)
+                if not tag_value:
+                    continue
+                tags.append(f"{tag_key}={tag_value}")
+
+            # '2022-02-07T17:29:44.72004Z'
+            strip_time, subsecond = dict_values.pop("time").split(".")
+            date_time = datetime.datetime.strptime(strip_time, "%Y-%m-%dT%H:%M:%S")
+            if not subsecond.endswith("Z"):
+                raise RuntimeError(subsecond)
+            subsecond = subsecond[:-1]
+            subsecond_int = int(subsecond) * (10**(9-len(subsecond)))
+            #date_time = datetime.datetime.strptime(strip_time, "%Y-%m-%dT%H:%M:%S.%f%z")
+            timestamp = int(date_time.timestamp()*1000000000)
+            timestamp += subsecond_int
+
+            fields = []
+            for field_key, value in dict_values.items():
+                if not value:
+                    continue
+                fields.append(self.field_value_to_str(field_key, value, fields_types=fields_types))
+
+            str_data = f"{measurement},{','.join(tags)} {','.join(fields)} {timestamp}"
+            lst_data.append(str_data)
+        ret = self.post(f"write?db={db_name}", "\n".join(lst_data))
+        logger.info(f"Total wrote count: {len(lst_data)}")
+        return ret
+
+    def cast_measurement(self, db_name, measurement):
+        """
+        Rewrite all data.
+
+        :param db_name:
+        :param measurement:
+        :return:
+        """
+
+        for measurement_series in self.yield_series(db_name, measurement):
+            ret = self.write_batch(db_name, measurement, measurement_series["columns"],  measurement_series["values"])
+            breakpoint()
 

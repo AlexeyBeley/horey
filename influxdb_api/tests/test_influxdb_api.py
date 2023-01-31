@@ -55,6 +55,16 @@ def test_yield_series():
                 breakpoint()
 
 
+def test_cast_measurement():
+    """
+    Parse get/post request.
+
+    :return:
+    """
+
+    influxdb_api.cast_measurement(mock_values["db_name"], mock_values["measurement"])
+
+
 def test_write():
     influxdb_api.write(mock_values["db_name"], mock_values["measurement"], mock_values["columns"], mock_values["values"])
 
@@ -63,4 +73,5 @@ if __name__ == "__main__":
     #test_parse_journalctl()
     #test_init_measurements()
     #test_yield_series()
-    test_write()
+    #test_write()
+    test_cast_measurement()
