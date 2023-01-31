@@ -126,8 +126,13 @@ class PipAPI:
                     f"python3.8 -m venv {self.configuration.venv_dir_path} --system-site-packages",
                     ignore_venv=True,
                 )
+
                 self.execute("pip3.8 install --upgrade pip")
                 self.execute("pip3.8 install setuptools>=45")
+
+                # todo:
+                #self.execute("wget https://bootstrap.pypa.io/get-pip.py")
+                #self.execute("python3.8 get-pip.py")
 
     def init_multi_package_repository(self, repo_path):
         """
