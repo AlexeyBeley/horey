@@ -208,8 +208,8 @@ class LambdaClient(Boto3Client):
             )
 
         # concurrency:
-        update_function_concurrency_request = (
-            current_lambda.generate_update_function_concurrency_request(
+        update_function_concurrency_request, delete_function_concurrency_request = (
+            current_lambda.generate_update_function_concurrency_requests(
                 desired_aws_lambda
             )
         )
@@ -224,6 +224,24 @@ class LambdaClient(Boto3Client):
             )
             self.put_function_concurrency_raw(
                 update_function_concurrency_request
+            )
+            self.wait_for_status(
+                current_lambda,
+                self.update_lambda_information,
+                [current_lambda.Status.SUCCESSFUL],
+                [current_lambda.Status.INPROGRESS],
+                [current_lambda.Status.FAILED],
+            )
+        elif delete_function_concurrency_request is not None:
+            self.wait_for_status(
+                current_lambda,
+                self.update_lambda_information,
+                [current_lambda.Status.SUCCESSFUL],
+                [current_lambda.Status.INPROGRESS],
+                [current_lambda.Status.FAILED],
+            )
+            self.delete_function_concurrency_raw(
+                delete_function_concurrency_request
             )
             self.wait_for_status(
                 current_lambda,
@@ -283,6 +301,21 @@ class LambdaClient(Boto3Client):
 
         for response in self.execute(
             self.client.put_function_concurrency, None, raw_data=True, filters_req=request_dict
+        ):
+            return response
+
+    def delete_function_concurrency_raw(self, request_dict):
+        """
+        Put concurrency.
+
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Deleting concurrency lambda: {request_dict}")
+
+        for response in self.execute(
+            self.client.delete_function_concurrency, None, raw_data=True, filters_req=request_dict
         ):
             return response
 
