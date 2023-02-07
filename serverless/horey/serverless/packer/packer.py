@@ -2,7 +2,6 @@
 Serverless packer - used to pack lambdas.
 
 """
-import subprocess
 import os
 import shutil
 import zipfile
@@ -10,6 +9,7 @@ import zipfile
 from horey.h_logger import get_logger
 from horey.pip_api.pip_api import PipAPI
 from horey.pip_api.pip_api_configuration_policy import PipAPIConfigurationPolicy
+from horey.common_utils.bash_executor import BashExecutor
 
 logger = get_logger()
 
@@ -20,8 +20,13 @@ class Packer:
 
     """
 
-    def __init__(self):
-        pass
+    def __init__(self, python_version="3.8"):
+        supported_versions = ["3.8", "3.9"]
+        if python_version not in supported_versions:
+            raise ValueError(f"python_versions supported: {supported_versions}. Received: '{python_version}'")
+
+        self.python_version = python_version
+        self.bash_executor = BashExecutor()
 
     def create_lambda_package(self, lambda_name, deployment_path, package_setup_path):
         """
@@ -46,7 +51,7 @@ class Packer:
         venv_path = os.path.join(deployment_path, "_venv")
         self.create_venv(venv_path)
         self.install_requirements(package_setup_path, venv_path)
-        self.zip_venv_site_packages(lambda_name, deployment_path, "python3.8")
+        self.zip_venv_site_packages(lambda_name, deployment_path)
 
     def create_venv(self, venv_path, clean_install=True):
         """
@@ -64,7 +69,7 @@ class Packer:
 
         logger.info(f"Created venv dir: {venv_path}")
 
-        bash_cmd = f"python3.8 -m venv {venv_path}"
+        bash_cmd = f"python{self.python_version} -m venv {venv_path}"
         self.execute(bash_cmd)
         self.execute_in_venv("pip3 install --upgrade pip", venv_path)
 
@@ -147,20 +152,19 @@ class Packer:
 
         return os.path.join(venv_dir_path, "lib", python_version, "site-packages")
 
-    def zip_venv_site_packages(self, zip_file_name, venv_dir_path, python_version):
+    def zip_venv_site_packages(self, zip_file_name, venv_dir_path):
         """
         Make a zip from pythons' global site packages.
 
         @param zip_file_name:
         @param venv_dir_path:
-        @param python_version:
         @return:
         """
 
         if zip_file_name.endswith(".zip"):
             zip_file_name = zip_file_name[:-4]
 
-        package_dir = self.get_site_packages_directory(venv_dir_path, python_version)
+        package_dir = self.get_site_packages_directory(venv_dir_path, f"python{self.python_version}")
         shutil.make_archive(zip_file_name, "zip", root_dir=package_dir)
 
     @staticmethod
@@ -228,37 +232,32 @@ class Packer:
             myzip.extractall(path=dir_path)
 
     @staticmethod
-    def execute(bash_cmd, shell=False):
+    def execute(bash_cmd):
         """
         Execute bash command
 
         @param bash_cmd:
-        @param shell:
         @return:
         """
+        if not isinstance(bash_cmd, str):
+            bash_cmd = " ".join(bash_cmd)
 
-        if isinstance(bash_cmd, str):
-            bash_cmd = bash_cmd.split(" ")
-
-        # pylint: disable=subprocess-run-check
-        process = subprocess.run(bash_cmd, capture_output=True, text=True, shell=shell)
-        if process.returncode != 0:
-            raise RuntimeError(f"{process.stdout}\n{process.stderr}")
-        return process
+        bash_executor = BashExecutor()
+        dict_ret = bash_executor.run_bash(bash_cmd, logger=logger)
+        return dict_ret["stdout"]
 
     def copy_venv_site_packages_to_dir(
-        self, dst_dir_path, venv_dir_path, python_version
+        self, dst_dir_path, venv_dir_path
     ):
         """
         Copy installed venv packages to the folder to be used for lambda creation.
 
         @param dst_dir_path:
         @param venv_dir_path:
-        @param python_version:
         @return:
         """
 
-        packages_dir = self.get_site_packages_directory(venv_dir_path, python_version)
+        packages_dir = self.get_site_packages_directory(venv_dir_path, f"python{self.python_version}")
         for package_dir_name in os.listdir(packages_dir):
             src_package_dir_path = os.path.join(packages_dir, package_dir_name)
             dst_package_dir_path = os.path.join(dst_dir_path, package_dir_name)

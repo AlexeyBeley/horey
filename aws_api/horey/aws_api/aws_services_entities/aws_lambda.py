@@ -313,17 +313,20 @@ class AWSLambda(AwsObject):
 
         return request
 
-    def generate_update_function_concurrency_request(self, desired_aws_lambda):
+    def generate_update_function_concurrency_requests(self, desired_aws_lambda):
         """
         Generate updating request.
         :param desired_aws_lambda:
         :return:
         """
 
-        if desired_aws_lambda.reserved_concurrent_executions != self.reserved_concurrent_executions:
-            return {"FunctionName": self.name, "ReservedConcurrentExecutions": desired_aws_lambda.reserved_concurrent_executions}
+        if desired_aws_lambda.reserved_concurrent_executions is None:
+            return None, {"FunctionName": self.name}
 
-        return None
+        if desired_aws_lambda.reserved_concurrent_executions != self.reserved_concurrent_executions:
+            return {"FunctionName": self.name, "ReservedConcurrentExecutions": desired_aws_lambda.reserved_concurrent_executions}, None
+
+        return None, None
 
     def generate_update_function_code_request(self, desired_aws_lambda):
         """

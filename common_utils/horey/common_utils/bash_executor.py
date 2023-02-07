@@ -8,14 +8,22 @@ import logging
 import uuid
 
 
-handler = logging.StreamHandler()
-formatter = logging.Formatter(
-    "[%(asctime)s] %(levelname)s:%(filename)s:%(lineno)s: %(message)s"
-)
-handler.setFormatter(formatter)
-_logger = logging.getLogger("main")
-_logger.setLevel("INFO")
-_logger.addHandler(handler)
+def get_logger():
+    """
+    Generate local logger.
+
+    :return:
+    """
+
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter(
+        "[%(asctime)s] %(levelname)s:%(filename)s:%(lineno)s: %(message)s"
+    )
+    handler.setFormatter(formatter)
+    _logger = logging.getLogger("main")
+    _logger.setLevel("INFO")
+    _logger.addHandler(handler)
+    return _logger
 
 
 class BashExecutor:
@@ -38,7 +46,7 @@ class BashExecutor:
         @return:
         """
 
-        logger = logger if logger is not None else _logger
+        logger = logger if logger is not None else get_logger()
 
         logger.info(f"run_bash: {command}")
 
@@ -64,9 +72,11 @@ class BashExecutor:
             for line in stdout_log.split("\n"):
                 logger.info(line)
 
-            stderr_log = "stderr:\n" + str(return_dict["stderr"])
-            for line in stderr_log.split("\n"):
-                logger.info(line)
+            error_str = str(return_dict["stderr"])
+            if error_str:
+                stderr_log = "stderr:\n" + error_str
+                for line in stderr_log.split("\n"):
+                    logger.info(line)
 
         if ret.returncode != 0:
             if ignore_on_error_callback is None:

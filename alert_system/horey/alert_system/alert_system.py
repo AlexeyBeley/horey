@@ -217,8 +217,7 @@ class AlertSystem:
 
         self.packer.zip_venv_site_packages(
             self.configuration.lambda_zip_file_name,
-            self.configuration.deployment_venv_path,
-            "python3.8",
+            self.configuration.deployment_venv_path
         )
 
         external_files = [os.path.basename(file_path) for file_path in files]
@@ -318,7 +317,7 @@ class AlertSystem:
         aws_lambda.region = self.region
         aws_lambda.name = self.configuration.lambda_name
         aws_lambda.handler = "lambda_handler.lambda_handler"
-        aws_lambda.runtime = "python3.8"
+        aws_lambda.runtime = "python3.9"
         aws_lambda.role = role.arn
         aws_lambda.timeout = self.configuration.lambda_timeout
         aws_lambda.memory_size = 512

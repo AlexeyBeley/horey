@@ -5,11 +5,11 @@ Working with influx toolset
 
 import datetime
 import os
-import requests
+import json
 import urllib.parse
+import requests
 from horey.h_logger import get_logger
 from horey.common_utils.text_block import TextBlock
-import json
 
 logger = get_logger()
 
@@ -136,7 +136,13 @@ class InfluxDBAPI:
         :return:
         """
         response = self.session.get(self.generate_request(request_params), timeout=60)
-        return response.json()
+
+        try:
+            return response.json()
+        except Exception as inst:
+            logger.error(repr(inst))
+            logger.error(response.text)
+            raise
 
     def post(self, request_params, data):
         """
@@ -146,9 +152,13 @@ class InfluxDBAPI:
         :param data:
         :return:
         """
+
         response = self.session.post(self.generate_request(request_params), data=data.encode("utf-8"), timeout=60)
+
         if response.status_code not in [200, 204]:
             raise RuntimeError(response.text)
+
+        return response
 
     def generate_request(self, request_params):
         """
@@ -166,9 +176,8 @@ class InfluxDBAPI:
         :param db_name:
         :return:
         """
-        return
-        breakpoint()
         ret = self.get(f"query?db={db_name}&q=" + urllib.parse.quote_plus('SHOW MEASUREMENTS'))
+        return ret
 
     def yield_series(self, db_name, measurement):
         """
@@ -180,6 +189,7 @@ class InfluxDBAPI:
 
         offset = 0
         limit = 100000
+        limit = 10000
         while True:
             response = self.get(f"query?db={db_name}&q=" + urllib.parse.quote_plus(f'SELECT * FROM "{measurement}" LIMIT {limit} OFFSET {offset}'))
 
@@ -192,6 +202,13 @@ class InfluxDBAPI:
 
     @staticmethod
     def extract_values_from_response(response):
+        """
+        Extract series' values from server response.
+
+        :param response:
+        :return:
+        """
+
         if list(response.keys()) != ["results"]:
             raise RuntimeError(response.keys())
 
@@ -258,7 +275,6 @@ class InfluxDBAPI:
 
         if isinstance(value, int):
             if fields_types is not None and fields_types[field_name] != int:
-                breakpoint()
                 raise ValueError(f"Cast error while inserting field '{field_name}' value '{value}' of type '{type(value)}'."
                                  f" InfluxDB expects type '{fields_types[field_name]}'")
             return f"{field_name}={str(value)}i"
@@ -271,6 +287,7 @@ class InfluxDBAPI:
 
         raise ValueError(f"{field_name}: {value}")
 
+    # pylint: disable= too-many-locals
     def write(self, db_name: str, measurement: str, columns: list, values: list):
         """
         Write fields and tags.
@@ -281,7 +298,6 @@ class InfluxDBAPI:
         :param values:
         :return:
         """
-        breakpoint()
         tag_keys = self.get_measurement_tag_keys(db_name, measurement)
         fields_types = self.get_measurement_fields_types(db_name, measurement)
         dict_values = {pair[0]: pair[1] for pair in zip(columns, values)}
@@ -307,10 +323,12 @@ class InfluxDBAPI:
         logger.info(ret)
         return ret
 
-    def write_batch(self, db_name: str, measurement: str, columns: list, lst_values: list):
+    # pylint: disable= too-many-locals, too-many-arguments
+    def write_batch(self, db_name: str, measurement: str, columns: list, lst_values: list, force_cast=False):
         """
         Write fields and tags.
 
+        :param force_cast:
         :param db_name:
         :param measurement:
         :param columns:
@@ -318,25 +336,41 @@ class InfluxDBAPI:
         :return:
         """
         lst_data = []
+        tag_keys = self.get_measurement_tag_keys(db_name, measurement)
+        fields_types = self.get_measurement_fields_types(db_name, measurement)
+
         for values in lst_values:
-            tag_keys = self.get_measurement_tag_keys(db_name, measurement)
-            fields_types = self.get_measurement_fields_types(db_name, measurement)
             dict_values = {pair[0]: pair[1] for pair in zip(columns, values)}
             tags = []
             for tag_key in tag_keys:
-                tag_value = dict_values.pop(tag_key)
+                try:
+                    tag_value = dict_values.pop(tag_key)
+                except KeyError:
+                    continue
+
                 if not tag_value:
                     continue
                 tags.append(f"{tag_key}={tag_value}")
 
             # '2022-02-07T17:29:44.72004Z'
-            strip_time, subsecond = dict_values.pop("time").split(".")
+            time_field = dict_values.pop("time")
+            try:
+                strip_time, subsecond = time_field.split(".")
+            except ValueError as exception_instance:
+                # 2023-01-26T02:55:00Z
+                # 2023-02-02T03:06:14Z
+                if not time_field[-4] != ":":
+                    raise ValueError(time_field) from exception_instance
+                strip_time = time_field[:-1]
+                subsecond = "000000000Z"
+
             date_time = datetime.datetime.strptime(strip_time, "%Y-%m-%dT%H:%M:%S")
             if not subsecond.endswith("Z"):
                 raise RuntimeError(subsecond)
+
             subsecond = subsecond[:-1]
             subsecond_int = int(subsecond) * (10**(9-len(subsecond)))
-            #date_time = datetime.datetime.strptime(strip_time, "%Y-%m-%dT%H:%M:%S.%f%z")
+            # date_time = datetime.datetime.strptime(strip_time, "%Y-%m-%dT%H:%M:%S.%f%z")
             timestamp = int(date_time.timestamp()*1000000000)
             timestamp += subsecond_int
 
@@ -344,6 +378,10 @@ class InfluxDBAPI:
             for field_key, value in dict_values.items():
                 if not value:
                     continue
+
+                if force_cast:
+                    value = fields_types[field_key](value)
+
                 fields.append(self.field_value_to_str(field_key, value, fields_types=fields_types))
 
             str_data = f"{measurement},{','.join(tags)} {','.join(fields)} {timestamp}"
@@ -352,16 +390,59 @@ class InfluxDBAPI:
         logger.info(f"Total wrote count: {len(lst_data)}")
         return ret
 
-    def cast_measurement(self, db_name, measurement):
+    @staticmethod
+    def backup_batch(file_path, db_name, measurement, columns, values):
+        """
+        Save data in a json file
+
+        :param file_path:
+        :param db_name:
+        :param measurement:
+        :param columns:
+        :param values:
+        :return:
+        """
+        dict_ret = {"db_name": db_name, "measurement": measurement, "columns": columns, "values": values}
+        with open(file_path, "w", encoding="utf-8") as file_handler:
+            json.dump(dict_ret, file_handler)
+
+    def cast_measurement(self, src_db_name, db_name, measurement):
         """
         Rewrite all data.
+
+        :param src_db_name:
+        :param db_name:
+        :param measurement:
+        :return:
+        """
+        for measurement_series in self.yield_series(src_db_name, measurement):
+            logger.info(f"Fetched data from '{measurement}'")
+            start = datetime.datetime.now()
+            self.write_batch(db_name, measurement, measurement_series["columns"],  measurement_series["values"],
+                                   force_cast=True)
+            logger.info(f"Wrote batch. Took: {datetime.datetime.now() - start}")
+
+    def count_measurement(self, db_name, measurement):
+        """
+        Get count of all fields.
 
         :param db_name:
         :param measurement:
         :return:
         """
+        response = self.get(f"query?db={db_name}&q=" + urllib.parse.quote_plus(
+            f'SELECT count(*) FROM "{measurement}"'))
 
-        for measurement_series in self.yield_series(db_name, measurement):
-            ret = self.write_batch(db_name, measurement, measurement_series["columns"],  measurement_series["values"])
-            breakpoint()
+        return list(zip([column.lstrip("count_") for column in response["results"][0]["series"][0]["columns"][1:]]
+                        , response["results"][0]["series"][0]["values"][0][1:]))
 
+    def find_max_count(self, db_name, measurement):
+        """
+        Find maximum field count.
+
+        :param db_name:
+        :param measurement:
+        :return:
+        """
+        ret = self.count_measurement(db_name, measurement)
+        return max(ret, key=lambda x: x[1])
