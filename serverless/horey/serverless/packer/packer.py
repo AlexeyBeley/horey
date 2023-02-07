@@ -164,7 +164,7 @@ class Packer:
         if zip_file_name.endswith(".zip"):
             zip_file_name = zip_file_name[:-4]
 
-        package_dir = self.get_site_packages_directory(venv_dir_path, f"python_{self.python_version}")
+        package_dir = self.get_site_packages_directory(venv_dir_path, f"python{self.python_version}")
         shutil.make_archive(zip_file_name, "zip", root_dir=package_dir)
 
     @staticmethod
@@ -257,7 +257,7 @@ class Packer:
         @return:
         """
 
-        packages_dir = self.get_site_packages_directory(venv_dir_path, f"python_{self.python_version}")
+        packages_dir = self.get_site_packages_directory(venv_dir_path, f"python{self.python_version}")
         for package_dir_name in os.listdir(packages_dir):
             src_package_dir_path = os.path.join(packages_dir, package_dir_name)
             dst_package_dir_path = os.path.join(dst_dir_path, package_dir_name)

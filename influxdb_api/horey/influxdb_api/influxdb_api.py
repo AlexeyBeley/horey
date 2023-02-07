@@ -416,7 +416,7 @@ class InfluxDBAPI:
         :return:
         """
         for measurement_series in self.yield_series(src_db_name, measurement):
-            logger.info("Fetched data")
+            logger.info(f"Fetched data from '{measurement}'")
             start = datetime.datetime.now()
             self.write_batch(db_name, measurement, measurement_series["columns"],  measurement_series["values"],
                                    force_cast=True)

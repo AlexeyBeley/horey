@@ -80,11 +80,11 @@ def test_find_max_count():
 
 
 if __name__ == "__main__":
-    test_parse_journalctl()
+    #test_parse_journalctl()
     #test_init_measurements()
     #test_yield_series()
     #test_write()
     #test_count_measurement()
     #test_find_max_count()
     #breakpoint()
-    #test_cast_measurement()
+    test_cast_measurement()

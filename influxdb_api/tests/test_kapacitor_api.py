@@ -14,9 +14,10 @@ kapacitor_ignore_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 
 
 mock_values_file_path = os.path.abspath(
     os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "..", "ignore", "mock_values.py"
+        kapacitor_ignore_dir, "mock_values.py"
     )
 )
+
 mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 
 configuration = KapacitorAPIConfigurationPolicy()
@@ -41,10 +42,14 @@ def test_cache_tasks():
     kapacitor_api.cache_tasks(os.path.join(kapacitor_ignore_dir, "tasks.json"))
 
 
+def test_provision_from_cache():
+    kapacitor_api.provision_from_cache(os.path.join(kapacitor_ignore_dir, "tasks.json"))
+
+
 def test_provision_task():
     dict_src = {
             "id": "test-id",
-            "type": "",
+            "type": "stream",
             "dbrps": [
       {
         "db": "tests",
@@ -52,13 +57,25 @@ def test_provision_task():
       }
     ],
             "script": mock_values["provision_alert_script"],
-            "status": "disabled"
+            "status": "enabled"
         }
     task = Task(dict_src)
 
     kapacitor_api.provision_task(task)
 
+
+def test_disable_all_tasks():
+    kapacitor_api.disable_all_tasks()
+
+
+def test_enable_all_tasks():
+    kapacitor_api.enable_all_tasks()
+
+
 if __name__ == "__main__":
     # test_init_tasks()
-    # test_cache_tasks()
-    test_provision_task()
+    # test_provision_task()
+    test_disable_all_tasks()
+    # test_enable_all_tasks()
+    #test_cache_tasks()
+    #test_provision_from_cache()
