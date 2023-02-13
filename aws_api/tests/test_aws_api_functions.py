@@ -10,6 +10,7 @@ from horey.aws_api.base_entities.region import Region
 from horey.aws_api.aws_services_entities.acm_certificate import ACMCertificate
 from horey.aws_api.aws_services_entities.sesv2_email_identity import SESV2EmailIdentity
 from horey.aws_api.aws_services_entities.aws_lambda import AWSLambda
+from horey.aws_api.aws_services_entities.key_pair import KeyPair
 from horey.aws_api.aws_services_entities.lambda_event_source_mapping import (
     LambdaEventSourceMapping,
 )
@@ -119,10 +120,22 @@ def test_find_cloudfront_distributions():
     assert ret is not None
 
 
+def test_provision_key_pair():
+    key_pair = KeyPair({})
+    key_pair.name = "test-default-type-key"
+    key_pair.tags = [{
+        "Key": "Name",
+        "Value": key_pair.name
+    }]
+    key_pair.region = Region.get_region("us-west-2")
+    aws_api.provision_key_pair(key_pair, save_to_secrets_manager=True, secrets_manager_region="us-west-2")
+
+
 if __name__ == "__main__":
     # test_provision_certificate()
     # test_provision_aws_lambda_from_filelist()
     # test_provision_lambda_event_source_mapping()
     # test_copy_ecr_image()
     # test_provision_sesv2_domain_email_identity()
-    test_find_cloudfront_distributions()
+    # test_find_cloudfront_distributions()
+    test_provision_key_pair()

@@ -23,6 +23,7 @@ class KeyPair(AwsObject):
             "KeyFingerprint": self.init_default_attr,
             "Tags": self.init_default_attr,
             "KeyType": self.init_default_attr,
+            "CreateTime": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)

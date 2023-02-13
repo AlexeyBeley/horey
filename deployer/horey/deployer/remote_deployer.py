@@ -10,7 +10,6 @@ import threading
 import stat
 import traceback
 
-from io import StringIO
 from contextlib import contextmanager
 from typing import List
 import paramiko
@@ -606,12 +605,7 @@ class RemoteDeployer:
         :return:
         """
 
-        with open(
-            block_to_deploy.deployment_target_ssh_key_path, "r", encoding="utf-8"
-        ) as ssh_key_file_handler:
-            deployment_target_key = paramiko.RSAKey.from_private_key(
-                StringIO(ssh_key_file_handler.read())
-            )
+        deployment_target_key = RemoteDeployer.load_ssh_key_from_file(block_to_deploy.deployment_target_ssh_key_path, block_to_deploy.deployment_target_ssh_key_type)
 
         if block_to_deploy.bastion_address is None:
             with paramiko.SSHClient() as client:
@@ -631,13 +625,7 @@ class RemoteDeployer:
                 yield client
             return
 
-        with open(
-            block_to_deploy.bastion_ssh_key_path, "r", encoding="utf-8"
-        ) as bastion_key_file_handler:
-            bastion_key = paramiko.RSAKey.from_private_key(
-                StringIO(bastion_key_file_handler.read())
-            )
-
+        bastion_key = RemoteDeployer.load_ssh_key_from_file(block_to_deploy.bastion_ssh_key_path, block_to_deploy.bastion_ssh_key_type)
         with RemoteDeployer.get_client_context_with_bastion(
             block_to_deploy.bastion_address,
             block_to_deploy.bastion_user_name,
@@ -647,6 +635,25 @@ class RemoteDeployer:
             deployment_target_key,
         ) as client:
             yield client
+
+    @staticmethod
+    def load_ssh_key_from_file(file_path, key_type):
+        """
+        Load key from file to object.
+
+        :param file_path:
+        :param key_type:
+        :return:
+        """
+
+        key_type_lower = str(key_type).lower()
+        if key_type_lower not in DeploymentTarget.SupportedSSHKeys:
+            raise ValueError(f"Only {DeploymentTarget.SupportedSSHKeys} are supported")
+
+        if key_type_lower == "ed25519key":
+            return paramiko.Ed25519Key.from_private_key_file(file_path)
+
+        return paramiko.RSAKey.from_private_key_file(file_path)
 
     @staticmethod
     @contextmanager

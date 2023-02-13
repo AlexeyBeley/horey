@@ -12,6 +12,7 @@ class DeploymentTarget:
     """
     Single server deployment
     """
+    SupportedSSHKeys = ["rsa", "ed25519key"]
 
     def __init__(self):
         self.hostame = None
@@ -21,8 +22,10 @@ class DeploymentTarget:
         self.bastion_address = None
         self.bastion_user_name = None
         self.bastion_ssh_key_path = None
+        self.bastion_ssh_key_type = "rsa"  # or ed25519key
 
         self.deployment_target_ssh_key_path = None
+        self.deployment_target_ssh_key_type = "rsa"  # or ed25519key
         self.deployment_target_address = None
         self.deployment_target_user_name = None
 
