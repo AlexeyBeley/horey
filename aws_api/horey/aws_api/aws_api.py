@@ -3430,7 +3430,7 @@ class AWSAPI:
         self.ecs_client.provision_service(ecs_service)
 
     def provision_key_pair(
-        self, key_pair, save_to_secrets_manager=None, secrets_manager_region=None
+        self, key_pair: KeyPair, save_to_secrets_manager=None, secrets_manager_region=None
     ):
         """
         Self explanatory
@@ -3442,6 +3442,9 @@ class AWSAPI:
         """
 
         logger.info(f"provisioning ssh key pair {key_pair.name}")
+        if key_pair.key_type is None:
+            key_pair.key_type = "ed25519"
+
         response = self.ec2_client.provision_key_pair(key_pair)
         if response is None:
             return None
@@ -4056,20 +4059,55 @@ class AWSAPI:
 
     def find_cloudfront_distribution(self, alias=None):
         """
-        Find cloudfront distribution by alias.
+        Find cloudfront distribution.
 
         @param alias:
         @return:
         """
 
-        if alias is None:
-            raise RuntimeError("Alias is None")
+        if not self.cloudfront_distributions:
+            self.init_cloudfront_distributions()
 
         for distribution in self.cloudfront_distributions:
             if alias in distribution.aliases["Items"]:
                 return distribution
 
-        return None
+        raise RuntimeError("Search parameters were not set")
+
+    def find_cloudfront_distributions(self, alias=None, tags=None):
+        """
+        Find cloudfront distributions.
+
+        @param alias:
+        @return:
+        """
+
+        if not self.cloudfront_distributions:
+            self.init_cloudfront_distributions()
+
+        if alias is not None:
+            for distribution in self.cloudfront_distributions:
+                if alias in distribution.aliases["Items"]:
+                    return [distribution]
+            return []
+
+        ret = []
+        if tags is not None:
+            for distribution in self.cloudfront_distributions:
+                if not distribution.tags:
+                    continue
+                for tag in tags:
+                    for distribution_tag in distribution.tags:
+                        if tag["Key"] == distribution_tag["Key"] and tag["Value"] == distribution_tag["Value"]:
+                            break
+                    else:
+                        break
+                else:
+                    ret.append(distribution)
+
+            return ret
+
+        raise RuntimeError("Search parameters were not set")
 
     def wait_for_instances_provision_ending(self, instances):
         """

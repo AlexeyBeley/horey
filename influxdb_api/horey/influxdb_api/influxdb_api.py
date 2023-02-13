@@ -359,7 +359,7 @@ class InfluxDBAPI:
             except ValueError as exception_instance:
                 # 2023-01-26T02:55:00Z
                 # 2023-02-02T03:06:14Z
-                if not time_field[-4] != ":":
+                if time_field[-4] != ":":
                     raise ValueError(time_field) from exception_instance
                 strip_time = time_field[:-1]
                 subsecond = "000000000Z"
@@ -386,6 +386,7 @@ class InfluxDBAPI:
 
             str_data = f"{measurement},{','.join(tags)} {','.join(fields)} {timestamp}"
             lst_data.append(str_data)
+
         ret = self.post(f"write?db={db_name}", "\n".join(lst_data))
         logger.info(f"Total wrote count: {len(lst_data)}")
         return ret

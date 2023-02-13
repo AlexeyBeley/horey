@@ -107,7 +107,6 @@ class KapacitorAPI:
         """
         response = self.session.post(self.generate_request(request_params), data=json.dumps(data), timeout=60)
         if response.status_code not in [200]:
-            breakpoint()
             raise RuntimeError(f"Request: params- {request_params}, data- {data}. Response: {response.text}")
         return response.json()
 
@@ -157,8 +156,6 @@ class KapacitorAPI:
             tasks_source = json.load(file_handler)
 
         for task_src in tasks_source:
-            #self.delete_task(Task(task_src))
-            #continue
             task_src["status"] = "disabled"
             self.provision_task(Task(task_src))
 
@@ -193,6 +190,17 @@ class KapacitorAPI:
         for task in self.init_tasks():
             self.patch(f"tasks/{task.id}", {"status": "disabled"})
             logger.info(f"Disabled task: {task.id}")
+
+    def delete_all_tasks(self):
+        """
+        Delete all tasks
+
+        :return:
+        """
+
+        for task in self.init_tasks():
+            logger.info(f"Deleting task: {task.id}")
+            self.delete_task(task)
 
     def enable_all_tasks(self):
         """

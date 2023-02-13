@@ -1952,7 +1952,7 @@ class EC2Client(Boto3Client):
         ):
             return response
 
-    def provision_key_pair(self, key_pair):
+    def provision_key_pair(self, key_pair: KeyPair):
         """
         Standard
 

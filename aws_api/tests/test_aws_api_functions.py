@@ -113,9 +113,16 @@ def test_provision_lambda_event_source_mapping():
     assert event_mapping.state == "Enabled"
 
 
+def test_find_cloudfront_distributions():
+    aws_api.init_cloudfront_distributions()
+    ret = aws_api.find_cloudfront_distributions(tags=[{"Key": "test_tag", "Value": "test_value"}])
+    assert ret is not None
+
+
 if __name__ == "__main__":
     # test_provision_certificate()
-    test_provision_aws_lambda_from_filelist()
+    # test_provision_aws_lambda_from_filelist()
     # test_provision_lambda_event_source_mapping()
     # test_copy_ecr_image()
     # test_provision_sesv2_domain_email_identity()
+    test_find_cloudfront_distributions()

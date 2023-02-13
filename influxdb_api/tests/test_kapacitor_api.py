@@ -72,10 +72,15 @@ def test_enable_all_tasks():
     kapacitor_api.enable_all_tasks()
 
 
+def test_delete_all_tasks():
+    kapacitor_api.delete_all_tasks()
+
+
 if __name__ == "__main__":
     # test_init_tasks()
-    # test_provision_task()
-    test_disable_all_tasks()
-    # test_enable_all_tasks()
+    #test_provision_task()
+    #test_disable_all_tasks()
+    #test_delete_all_tasks()
+    test_enable_all_tasks()
     #test_cache_tasks()
     #test_provision_from_cache()

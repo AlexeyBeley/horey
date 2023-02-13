@@ -62,7 +62,6 @@ def test_cast_measurement():
 
     :return:
     """
-
     influxdb_api.cast_measurement(mock_values["db_name"]+"_tmp", mock_values["db_name"], mock_values["measurement"])
 
 

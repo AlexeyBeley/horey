@@ -40,7 +40,7 @@ class BobAPI:
         if self.token is not None:
             headers["Authorization"] = self.token
 
-        response = requests.get(request, headers=headers)
+        response = requests.get(request, headers=headers, timeout=60)
         if response.status_code != 200:
             raise RuntimeError(
                 f"Request to grafana api returned an error {response.status_code}, the response is:\n{response.text}"
@@ -59,7 +59,7 @@ class BobAPI:
         if self.token is not None:
             headers["Authorization"] = self.token
 
-        response = requests.post(request, data=json.dumps(data), headers=headers)
+        response = requests.post(request, data=json.dumps(data), headers=headers, timeout=60)
 
         if response.status_code != 200:
             raise RuntimeError(
@@ -79,7 +79,7 @@ class BobAPI:
         if self.token is not None:
             headers["Authorization"] = f"Bearer {self.token}"
 
-        response = requests.put(request, data=json.dumps(data), headers=headers)
+        response = requests.put(request, data=json.dumps(data), headers=headers, timeout=60)
 
         if response.status_code != 200:
             raise RuntimeError(
@@ -99,7 +99,7 @@ class BobAPI:
         if self.token is not None:
             headers["Authorization"] = self.token
 
-        response = requests.delete(request, headers=headers)
+        response = requests.delete(request, headers=headers, timeout=60)
         if response.status_code != 200:
             raise RuntimeError(
                 f"Request to grafana api returned an error {response.status_code}, the response is:\n{response.text}"
@@ -259,7 +259,6 @@ class BobAPI:
                 actual_timeoffs[timeoff_request.employee_display_name].append(
                     timeoff_request
                 )
-
         return actual_timeoffs
 
     def get_future_timeoffs(self, employees=None):

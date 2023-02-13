@@ -11,7 +11,6 @@ from horey.aws_api.aws_services_entities.cloudfront_distribution import (
 from horey.h_logger import get_logger
 
 logger = get_logger()
-import pdb
 
 
 class CloudfrontClient(Boto3Client):
@@ -33,7 +32,7 @@ class CloudfrontClient(Boto3Client):
         :param full_information:
         :return:
         """
-        final_result = list()
+        final_result = []
 
         for response in self.execute(
             self.client.list_distributions,
@@ -47,8 +46,10 @@ class CloudfrontClient(Boto3Client):
                 obj = CloudfrontDistribution(item)
                 final_result.append(obj)
 
-            if full_information:
-                pass
+                if full_information:
+                    for response_tags in self.execute(self.client.list_tags_for_resource, "Tags", filters_req={"Resource": obj.arn}):
+                        obj.tags = response_tags["Items"]
+                        obj.tags = response_tags["Items"]
 
         return final_result
 
@@ -74,6 +75,12 @@ class CloudfrontClient(Boto3Client):
         distribution.update_from_raw_create(response)
 
     def provision_distribution_raw(self, request_dict):
+        """
+        Standard.
+
+        :param request_dict:
+        :return:
+        """
         logger.info(f"Creating distribution {request_dict}")
         for response in self.execute(
             self.client.create_distribution_with_tags,
@@ -87,7 +94,7 @@ class CloudfrontClient(Boto3Client):
         :param full_information:
         :return:
         """
-        final_result = list()
+        final_result = []
 
         for response in self.execute(
             self.client.list_cloud_front_origin_access_identities,
@@ -107,6 +114,13 @@ class CloudfrontClient(Boto3Client):
         return final_result
 
     def provision_origin_access_identity(self, origin_access_identity):
+        """
+        Standard.
+
+        :param origin_access_identity:
+        :return:
+        """
+
         existing_origin_access_identities = self.get_all_origin_access_identities()
         for existing_origin_access_identity in existing_origin_access_identities:
             if (
@@ -122,6 +136,13 @@ class CloudfrontClient(Boto3Client):
         origin_access_identity.id = response["Id"]
 
     def provision_origin_access_identity_raw(self, request_dict):
+        """
+        Standard.
+
+        :param request_dict:
+        :return:
+        """
+
         for response in self.execute(
             self.client.create_cloud_front_origin_access_identity,
             "CloudFrontOriginAccessIdentity",
@@ -130,9 +151,24 @@ class CloudfrontClient(Boto3Client):
             return response
 
     def create_invalidation(self, distribution, paths):
+        """
+        Standard.
+
+        :param distribution:
+        :param paths:
+        :return:
+        """
+
         self.create_invalidation_raw(distribution.generate_create_invalidation(paths))
 
     def create_invalidation_raw(self, request):
+        """
+        Standard.
+
+        :param request:
+        :return:
+        """
+
         for response in self.execute(
             self.client.create_invalidation, "Invalidation", filters_req=request
         ):
