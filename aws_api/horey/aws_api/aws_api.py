@@ -4059,11 +4059,14 @@ class AWSAPI:
 
     def find_cloudfront_distribution(self, alias=None):
         """
-        Find cloudfront distribution.
+        Find cloudfront distribution by alias.
 
         @param alias:
         @return:
         """
+
+        if alias is None:
+            raise RuntimeError("Alias is None")
 
         if not self.cloudfront_distributions:
             self.init_cloudfront_distributions()
@@ -4072,7 +4075,7 @@ class AWSAPI:
             if alias in distribution.aliases["Items"]:
                 return distribution
 
-        raise RuntimeError("Search parameters were not set")
+        return None
 
     def find_cloudfront_distributions(self, alias=None, tags=None):
         """
