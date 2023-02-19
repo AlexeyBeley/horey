@@ -548,7 +548,7 @@ class EC2Client(Boto3Client):
 
     def get_all_spot_fleet_requests(self, full_information=False):
         """
-        Self explanatory.
+        Standard.
 
         @param full_information:
         @return:
@@ -557,15 +557,31 @@ class EC2Client(Boto3Client):
         final_result = []
 
         for _region in AWSAccount.get_aws_account().regions.values():
-            AWSAccount.set_aws_region(_region)
-            for ret in self.execute(
-                    self.client.describe_spot_fleet_requests, "SpotFleetRequestConfigs"
-            ):
-                obj = EC2SpotFleetRequest(ret)
-                if full_information is True:
-                    raise NotImplementedError()
+            region_results = self.get_region_spot_fleet_requests(_region, full_information=full_information)
+            final_result += region_results
 
-                final_result.append(obj)
+        return final_result
+
+    def get_region_spot_fleet_requests(self, region, full_information=False):
+        """
+        Standard.
+
+        :param full_information:
+        :param region:
+        :return:
+        """
+
+        AWSAccount.set_aws_region(region)
+        final_result = []
+
+        for ret in self.execute(
+                self.client.describe_spot_fleet_requests, "SpotFleetRequestConfigs"
+        ):
+            obj = EC2SpotFleetRequest(ret)
+            if full_information is True:
+                raise NotImplementedError()
+
+            final_result.append(obj)
 
         return final_result
 

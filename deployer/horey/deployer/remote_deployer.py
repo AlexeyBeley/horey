@@ -218,9 +218,19 @@ class RemoteDeployer:
             local_zip_file_path, deployment_target.local_deployment_dir_path
         )
 
+        # Verify ZIP file was creted
+        for _ in range(10):
+            if os.path.exists(local_zip_file_path):
+                time.sleep(5)
+                break
+            logger.info(f"Waiting for '{local_zip_file_path}'")
+            time.sleep(5)
+        else:
+            raise RemoteDeployer.DeployerError(f"Was not able to create '{local_zip_file_path}'")
+
         with self.get_deployment_target_client_context(deployment_target) as client:
             try:
-                command = f"rm -rf {deployment_target.remote_deployment_dir_path}"
+                command = f"sudo rm -rf {deployment_target.remote_deployment_dir_path}"
                 self.execute_remote(client, command)
 
                 transport = client.get_transport()
