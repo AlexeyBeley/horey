@@ -2,5 +2,5 @@ horey.configuration_policy>=1.0.0
 horey.h_logger>=1.0.0
 horey.common_utils>=1.0.0
 horey.network>=1.0.0
-boto3
+boto3>=1.26.51
 pyOpenSSL==23.0.0
