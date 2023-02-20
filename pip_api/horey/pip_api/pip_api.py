@@ -141,10 +141,13 @@ class PipAPI:
         :param repo_path:
         :return:
         """
+        try:
+            repo_package_prefix = CommonUtils.load_object_from_module(
+                os.path.join(repo_path, "multi_package_repository_configuration.py"), "main"
+            )
+        except Exception as exception_isnt:
+            raise RuntimeError(f"Can not load multi package repo config from: '{repo_path}'") from exception_isnt
 
-        repo_package_prefix = CommonUtils.load_object_from_module(
-            os.path.join(repo_path, "multi_package_repository_configuration.py"), "main"
-        )
         self.multi_package_repos_prefix_map[repo_package_prefix.prefix] = repo_path
 
     def init_packages(self):
