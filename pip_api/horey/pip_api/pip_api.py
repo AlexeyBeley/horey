@@ -282,7 +282,6 @@ class PipAPI:
         logger.info(f"Installing requirements from file: '{requirements_file_path}'")
         self.init_packages()
         self.compose_requirements_recursive(requirements_file_path)
-        breakpoint()
         if not self.REQUIREMENTS:
             return
         for requirement in reversed(self.REQUIREMENTS.values()):
@@ -321,7 +320,7 @@ class PipAPI:
                 requirement.multi_package_repo_path = repo_path
                 return self.install_multi_package_repo_requirement(requirement)
 
-        return self.execute(f"pip3.8 install {requirement.generate_install_string()}")
+        return self.execute(f"pip3.8 install --force-reinstall {requirement.generate_install_string()}")
 
     def install_multi_package_repo_requirement(self, requirement):
         """
