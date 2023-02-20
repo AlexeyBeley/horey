@@ -3,7 +3,6 @@ Class to represent ec2 instance
 """
 import copy
 import datetime
-import pdb
 
 from enum import Enum
 from horey.aws_api.base_entities.region import Region
@@ -11,6 +10,7 @@ from horey.aws_api.aws_services_entities.aws_object import AwsObject
 from horey.aws_api.aws_services_entities.network_interface import NetworkInterface
 
 
+# pylint: disable= too-many-instance-attributes
 class EC2Instance(AwsObject):
     """
     Class to represent ec2 instance
@@ -21,6 +21,7 @@ class EC2Instance(AwsObject):
         Init EC2 instance with boto3 dict
         :param dict_src:
         """
+
         super().__init__(dict_src)
         self.private_dns_name = None
         self.public_dns_name = None
@@ -31,6 +32,15 @@ class EC2Instance(AwsObject):
         self.min_count = None
         self.security_groups = None
         self.subnet_id = None
+        self.state = {}
+        self.instance_initiated_shutdown_behavior = None
+        self.block_device_mappings = []
+        self.image_id = None
+        self.instance_type = None
+        self.ebs_optimized = None
+        self.key_name = None
+        self.monitoring = None
+        self.placement = {}
 
         if from_cache:
             self._init_instance_from_cache(dict_src)
@@ -86,6 +96,7 @@ class EC2Instance(AwsObject):
             "UsageOperation": self.init_default_attr,
             "UsageOperationUpdateTime": self.init_default_attr,
             "PrivateDnsNameOptions": self.init_default_attr,
+            "MaintenanceOptions": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -118,6 +129,12 @@ class EC2Instance(AwsObject):
 
     @property
     def region(self):
+        """
+        Getter
+
+        :return:
+        """
+
         if self._region is None:
             az_split = self.placement["AvailabilityZone"].split("-")
             if len(az_split) != 3:
@@ -133,15 +150,24 @@ class EC2Instance(AwsObject):
 
     @region.setter
     def region(self, value):
+        """
+        Setter
+
+        :param value:
+        :return:
+        """
+
         self._region = value
 
     def init_interfaces(self, _, interfaces):
         """
         Init interface self objects
+
         :param _:
         :param interfaces:
         :return:
         """
+
         self.network_interfaces = []
         for interface in interfaces:
             self.network_interfaces.append(NetworkInterface(interface))
@@ -149,8 +175,10 @@ class EC2Instance(AwsObject):
     def get_dns_records(self):
         """
         Get all self dns records.
+
         :return:
         """
+
         ret = []
         if self.private_dns_name:
             ret.append(self.private_dns_name)
@@ -163,19 +191,33 @@ class EC2Instance(AwsObject):
     def get_all_ips(self):
         """
         Get all self ips.
+
         :return:
         """
+
         return [
             end_point["ip"].copy() for end_point in self.get_security_groups_endpoints()
         ]
 
     def get_private_addresses(self):
+        """
+        Extract from all NICs
+
+        :return:
+        """
+
         lst_ret = []
         for inter in self.network_interfaces:
             lst_ret += inter.get_private_addresses()
         return lst_ret
 
     def get_public_addresses(self):
+        """
+        Extract from all NICs.
+
+        :return:
+        """
+
         lst_ret = []
         for inter in self.network_interfaces:
             lst_ret += inter.get_public_addresses()
@@ -184,8 +226,10 @@ class EC2Instance(AwsObject):
     def get_security_groups_endpoints(self):
         """
         Return security group endpoints - what end points the security group protects.
+
         :return:
         """
+
         lst_ret = []
         for inter in self.network_interfaces:
             lst_ret_inter = inter.get_security_groups_endpoints()
@@ -198,6 +242,13 @@ class EC2Instance(AwsObject):
         return lst_ret
 
     def update_from_raw_response(self, dict_src):
+        """
+        Response from server.
+
+        :param dict_src:
+        :return:
+        """
+
         init_options = {
             "InstanceId": lambda x, y: self.init_default_attr(
                 x, y, formatted_name="id"
@@ -248,36 +299,47 @@ class EC2Instance(AwsObject):
             "UsageOperation": self.init_default_attr,
             "UsageOperationUpdateTime": self.init_default_attr,
             "PrivateDnsNameOptions": self.init_default_attr,
+            "MaintenanceOptions": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
 
     def generate_create_snapshots_request(self):
-        request = dict()
-        request["TagSpecifications"] = [{"ResourceType": "snapshot", "Tags": self.tags}]
-        request["InstanceSpecification"] = {
+        """
+        Standard.
+
+        :return:
+        """
+
+        request = {"TagSpecifications": [{"ResourceType": "snapshot", "Tags": self.tags}], "InstanceSpecification": {
             "InstanceId": self.id,
             "ExcludeBootVolume": False,
-        }
-        request["Description"] = self.get_tagname()
-        request["CopyTagsFromSource"] = "volume"
+        }, "Description": self.get_tagname(), "CopyTagsFromSource": "volume"}
 
         return request
 
     def generate_dispose_request(self):
-        request = dict()
-        request["InstanceIds"] = [self.id]
+        """
+        Standard.
+
+        :return:
+        """
+
+        request = {"InstanceIds": [self.id]}
         return request
 
     def generate_create_image_request(self, snapshots_raw=None):
-        request = dict()
-        request["Description"] = self.get_tagname()
-        request["Name"] = self.get_tagname() + datetime.datetime.now().strftime(
+        """
+        Standard.
+
+        :param snapshots_raw:
+        :return:
+        """
+
+        request = {"Description": self.get_tagname(), "Name": self.get_tagname() + datetime.datetime.now().strftime(
             "%Y_%m_%d_%H_%M"
-        )
-        request["InstanceId"] = self.id
-        request["NoReboot"] = False
-        request["TagSpecifications"] = [{"ResourceType": "image", "Tags": self.tags}]
+        ), "InstanceId": self.id, "NoReboot": False,
+                   "TagSpecifications": [{"ResourceType": "image", "Tags": self.tags}]}
 
         #############
         if snapshots_raw is not None:
@@ -311,27 +373,21 @@ class EC2Instance(AwsObject):
         return request
 
     def generate_create_request(self):
-        request = dict()
-        request[
-            "InstanceInitiatedShutdownBehavior"
-        ] = self.instance_initiated_shutdown_behavior
-        request["NetworkInterfaces"] = self.network_interfaces
+        """
+        Generate run instance request.
+
+        :return:
+        """
+
+        request = {"InstanceInitiatedShutdownBehavior": self.instance_initiated_shutdown_behavior,
+                   "NetworkInterfaces": self.network_interfaces, "BlockDeviceMappings": self.block_device_mappings,
+                   "ImageId": self.image_id, "InstanceType": self.instance_type, "KeyName": self.key_name,
+                   "Monitoring": self.monitoring, "MaxCount": self.max_count, "MinCount": self.min_count}
         # request["CreditSpecification"] = {
         #        'CpuCredits': 'unlimited'
         #    }
-        request["BlockDeviceMappings"] = self.block_device_mappings
-
-        request["ImageId"] = self.image_id
-
-        request["InstanceType"] = self.instance_type
 
         # request["EbsOptimized"] = self.ebs_optimized
-
-        request["KeyName"] = self.key_name
-        request["Monitoring"] = self.monitoring
-
-        request["MaxCount"] = self.max_count
-        request["MinCount"] = self.min_count
 
         if self.iam_instance_profile is not None:
             request["IamInstanceProfile"] = self.iam_instance_profile
@@ -351,25 +407,42 @@ class EC2Instance(AwsObject):
         return request
 
     def get_status(self):
+        """
+        Fet instance state- renamed to be integrated into waiter.
+
+        :return:
+        """
+
         return self.get_state()
 
     def get_state(self):
+        """
+        State string to enum.
+
+        :return:
+        """
+
         if self.state["Name"] == "pending":
             return self.State.PENDING
-        elif self.state["Name"] == "running":
+        if self.state["Name"] == "running":
             return self.State.RUNNING
-        elif self.state["Name"] == "shutting-down":
+        if self.state["Name"] == "shutting-down":
             return self.State.SHUTTING_DOWN
-        elif self.state["Name"] == "terminated":
+        if self.state["Name"] == "terminated":
             return self.State.TERMINATED
-        elif self.state["Name"] == "stopping":
+        if self.state["Name"] == "stopping":
             return self.State.STOPPING
-        elif self.state["Name"] == "stopped":
+        if self.state["Name"] == "stopped":
             return self.State.STOPPED
-        else:
-            raise NotImplementedError(self.state["Name"])
+
+        raise NotImplementedError(self.state["Name"])
 
     class State(Enum):
+        """
+        Possible states.
+
+        """
+
         PENDING = 0
         RUNNING = 1
         SHUTTING_DOWN = 2
