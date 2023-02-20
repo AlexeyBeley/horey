@@ -585,6 +585,18 @@ class EC2Client(Boto3Client):
 
         return final_result
 
+    def cancel_spot_fleet_requests_raw(self, request):
+        """
+        Standard.
+
+        @param request:
+        @return:
+        """
+        for response in self.execute(
+                self.client.cancel_spot_fleet_requests, None, raw_data=True, filters_req=request
+        ):
+            return response
+
     def get_all_ec2_launch_templates(self, full_information=False, region=None):
         """
         Standard
