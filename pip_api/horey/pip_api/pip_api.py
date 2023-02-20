@@ -194,7 +194,7 @@ class PipAPI:
         @param ignore_on_error_callback:
         @return:
         """
-        BashExecutor.run_bash(command, ignore_on_error_callback=ignore_on_error_callback, timeout=timeout, debug=debug,
+        return BashExecutor.run_bash(command, ignore_on_error_callback=ignore_on_error_callback, timeout=timeout, debug=debug,
                               logger=logger)
 
     def run_bash_old(
