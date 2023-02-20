@@ -12,6 +12,7 @@ from horey.h_logger import get_logger
 from horey.pip_api.requirement import Requirement
 from horey.pip_api.pip_api_configuration_policy import PipAPIConfigurationPolicy
 from horey.common_utils.common_utils import CommonUtils
+from horey.common_utils.bash_executor import BashExecutor
 
 logger = get_logger()
 
@@ -180,7 +181,23 @@ class PipAPI:
 
         """
 
-    def run_bash(
+    @staticmethod
+    def run_bash(command, ignore_on_error_callback=None, timeout=60 * 10, debug=True):
+        """
+        Run bash command, return stdout, stderr and return code.
+        Timeout is used fot stuck commands - for example if the command expects for user input.
+        Like dpkg installation approve - happens all the time with logstash package.
+
+        @param timeout: In seconds. Default 10 minutes
+        @param debug: print return code, stdout and stderr
+        @param command:
+        @param ignore_on_error_callback:
+        @return:
+        """
+        BashExecutor.run_bash(command, ignore_on_error_callback=ignore_on_error_callback, timeout=timeout, debug=debug,
+                              logger=logger)
+
+    def run_bash_old(
         self, command, ignore_on_error_callback=None, timeout=60 * 10, debug=True
     ):
         """
