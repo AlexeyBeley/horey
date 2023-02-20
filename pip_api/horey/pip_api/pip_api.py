@@ -282,7 +282,7 @@ class PipAPI:
         logger.info(f"Installing requirements from file: '{requirements_file_path}'")
         self.init_packages()
         self.compose_requirements_recursive(requirements_file_path)
-
+        breakpoint()
         if not self.REQUIREMENTS:
             return
         for requirement in reversed(self.REQUIREMENTS.values()):
