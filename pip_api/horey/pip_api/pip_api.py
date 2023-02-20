@@ -258,6 +258,8 @@ class PipAPI:
         :param ignore_venv: do not run in venv
         :return:
         """
+        if "install_wheel-pypi" in command:
+            breakpoint()
         logger.info(f"executing: '{command}'")
         if (
             not ignore_venv
