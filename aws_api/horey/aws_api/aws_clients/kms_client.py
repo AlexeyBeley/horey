@@ -124,8 +124,8 @@ class KMSClient(Boto3Client):
         if len(found_keys) == 1:
             return found_keys[0]
 
-        raise RuntimeError(f"Found more then 1 key with the same '{key_name}:{key_value}'."
-                           f" Appears {len(found_keys)} times")
+        raise RuntimeError(f"Found more then 1 key with the same '{key_name}: {key_value}'."
+                           f" Appears {len(found_keys)} times.")
 
     def provision_key(self, key: KMSKey):
         """
