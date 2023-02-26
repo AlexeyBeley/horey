@@ -7,6 +7,7 @@ import os
 import subprocess
 import uuid
 import json
+import shutil
 
 from horey.h_logger import get_logger
 from horey.pip_api.requirement import Requirement
@@ -466,3 +467,38 @@ class PipAPI:
         return self.init_requirements_raw(horey_package_requirements_path)
         """
         raise NotImplementedError("Old code.")
+
+    def create_wheel(self, setup_dir_path, build_dir_path):
+        """
+        Create wheel.
+
+        :param setup_dir_path: Path to the directory with setup.py
+        :param build_dir_path: Tmp build dir
+        :return:
+        """
+
+        shutil.rmtree(build_dir_path)
+        shutil.copytree(setup_dir_path, build_dir_path)
+        old_cwd = os.getcwd()
+        os.chdir(build_dir_path)
+        try:
+            command = "python3.8 setup.py sdist bdist_wheel;"
+            self.run_bash(command, debug=True)
+        finally:
+            os.chdir(old_cwd)
+
+        return os.path.join(build_dir_path, "dist")
+
+    def upload(self, username, password, repo_url, dist_path):
+        """
+        Upload package to pypi repo
+
+        :param username:
+        :param password:
+        :param repo_url:
+        :param dist_path:
+        :return:
+        """
+
+        command = f"python3 -m twine upload -u {username} -p {password} --repository-url {repo_url} {dist_path}/*"
+        self.run_bash(command, debug=True)
