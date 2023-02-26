@@ -476,8 +476,10 @@ class PipAPI:
         :param build_dir_path: Tmp build dir
         :return:
         """
-
-        shutil.rmtree(build_dir_path)
+        try:
+            shutil.rmtree(build_dir_path)
+        except FileNotFoundError:
+            pass
         shutil.copytree(setup_dir_path, build_dir_path)
         old_cwd = os.getcwd()
         os.chdir(build_dir_path)
