@@ -69,13 +69,13 @@ class Requirement:
             if self.min_version == self.max_version:
                 ret += f"=={self.min_version}"
                 return ret
-            ret += ">"
+            ret += r">"
             if self.include_min:
                 ret += "="
             ret += self.min_version
 
         if self.max_version:
-            ret += "<"
+            ret += r"<"
             if self.include_max:
                 ret += "="
 

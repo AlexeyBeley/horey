@@ -81,7 +81,9 @@ class Package:
         :param self_int_version_lst:
         :return:
         """
-        print(self_int_version_lst)
+
+        logger.info(f"{requirement.name}: {self_int_version_lst}")
+
         if requirement.max_version is None:
             return True
 
@@ -89,8 +91,14 @@ class Package:
             if requirement.include_max:
                 return True
             return False
-        raise NotImplementedError(f"todo: requirement.name: {requirement.name}, requirement.max_version: {requirement.max_version}, "
-                                  f"self.version: {self.version}")
+
+        lst_max_version = requirement.max_version.split(".")
+        for i, self_subver in enumerate(self_int_version_lst):
+            if int(self_subver) > int(lst_max_version[i]):
+                return False
+            if int(self_subver) < int(lst_max_version[i]):
+                return True
+        return True
 
 
 class PipAPI:
@@ -272,33 +280,37 @@ class PipAPI:
         return ret["stdout"]
 
     def install_requirements(
-        self, requirements_file_path, update=False, update_from_source=False
+        self, requirements_file_path, upgrade=False, update_from_source=False, extra_index_url=None
     ):
         """
         Prepare list of requirements to be installed and install those missing.
 
+        :param upgrade:
         :param requirements_file_path:
         :return:
         """
+
         logger.info(f"Installing requirements from file: '{requirements_file_path}'")
+
         self.init_packages()
         self.compose_requirements_recursive(requirements_file_path)
         if not self.REQUIREMENTS:
             return
+
+        unsatisfied_requirements = []
         for requirement in reversed(self.REQUIREMENTS.values()):
-            if not self.requirement_satisfied(requirement):
-                self.install_requirement(requirement)
+            if self.requirement_satisfied(requirement) and not upgrade:
                 continue
 
-            if update:
-                self.install_requirement(requirement)
+            if update_from_source and self.install_requirement_from_source(requirement):
                 continue
 
-            if update_from_source:
-                for prefix in self.multi_package_repos_prefix_map:
-                    if requirement.name.startswith(prefix):
-                        self.install_requirement(requirement)
-                        break
+            unsatisfied_requirements.append(requirement)
+
+        try:
+            self.install_requirements_from_pypi(unsatisfied_requirements, upgrade=upgrade, extra_index_url=extra_index_url)
+        except BashExecutor.BashError as error_inst:
+            raise RuntimeError(json.loads(str(error_inst))["stderr"]) from error_inst
 
     def get_installed_packages(self):
         """
@@ -307,9 +319,9 @@ class PipAPI:
         """
         raise DeprecationWarning("Use init")
 
-    def install_requirement(self, requirement: Requirement):
+    def install_requirement_from_source(self, requirement: Requirement):
         """
-        Install single requirement.
+        Install single requirement from source
 
         :param requirement:
         :return:
@@ -319,9 +331,65 @@ class PipAPI:
             if requirement.name.startswith(prefix):
                 requirement.multi_package_repo_prefix = prefix
                 requirement.multi_package_repo_path = repo_path
-                return self.install_multi_package_repo_requirement(requirement)
+                self.install_multi_package_repo_requirement(requirement)
+                return True
 
-        return self.execute(f"pip3.8 install --force-reinstall {requirement.generate_install_string()}")
+        return False
+
+    def install_requirements_from_pypi(self, requirements, upgrade: bool=False, extra_index_url: str=None):
+        """
+        Install single requirement.
+
+        :param upgrade: for example req<=2.0.0 you have 1.0.0 and there us 1.0.1 in pypi
+        :param requirements:
+        :param extra_index_url:
+        :return:
+        """
+        generated_requirements_file_name = "tmp_generated_requirements_by_horey_pip_api.txt"
+        with open(generated_requirements_file_name, "w") as file_handler:
+            file_handler.write("\n".join([requirement.generate_install_string() for requirement in requirements]))
+
+        command = f"python3.8 -m pip install --force-reinstall"
+        if extra_index_url is not None:
+            command += f" --extra-index-url {extra_index_url}"
+
+        if upgrade:
+            command += " --upgrade"
+
+        command += f" -r {generated_requirements_file_name}"
+        breakpoint()
+        self.execute(command)
+        os.remove(generated_requirements_file_name)
+
+    def install_requirement(self, requirement: Requirement, update_from_source: bool, upgrade: bool=False,
+                            extra_index_url: str=None):
+        """
+        Install single requirement.
+
+        :param upgrade: for example req<=2.0.0 you have 1.0.0 and there us 1.0.1 in pypi
+        :param update_from_source:
+        :param requirement:
+        :param extra_index_url:
+        :return:
+        """
+
+        if update_from_source:
+            for prefix, repo_path in self.multi_package_repos_prefix_map.items():
+                if requirement.name.startswith(prefix):
+                    requirement.multi_package_repo_prefix = prefix
+                    requirement.multi_package_repo_path = repo_path
+                    return self.install_multi_package_repo_requirement(requirement)
+
+        command = f"python3.8 -m pip install --force-reinstall"
+        if extra_index_url is not None:
+            command += f" --extra-index-url {extra_index_url}"
+
+        if upgrade:
+            command += " --upgrade"
+
+        command += " " + requirement.generate_install_string().replace("<", r"\<").replace(">", r"\>")
+
+        return self.execute(command)
 
     def install_multi_package_repo_requirement(self, requirement):
         """

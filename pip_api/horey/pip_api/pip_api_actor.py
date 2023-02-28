@@ -26,8 +26,9 @@ def install_parser():
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("--pip_api_configuration", type=str)
     parser.add_argument("--requirements_file_path", type=str)
-    parser.add_argument("--update", type=str, default="false")
+    parser.add_argument("--upgrade", type=str, default="false")
     parser.add_argument("--update_from_source", type=str, default="false")
+    parser.add_argument("--extra_index_url", type=str, default="none")
     return parser
 
 
@@ -42,13 +43,14 @@ def install(arguments) -> None:
     configuration = PipAPIConfigurationPolicy()
     configuration.configuration_file_full_path = arguments.pip_api_configuration
     configuration.init_from_file()
-    update = arguments.update.lower() == "true"
+    upgrade = arguments.upgrade.lower() == "true"
     update_from_source = arguments.update_from_source.lower() == "true"
 
     PipAPI(configuration=configuration).install_requirements(
         arguments.requirements_file_path,
-        update=update,
+        upgrade=upgrade,
         update_from_source=update_from_source,
+        extra_index_url=arguments.extra_index_url if arguments.extra_index_url != "none" else None
     )
 
 
