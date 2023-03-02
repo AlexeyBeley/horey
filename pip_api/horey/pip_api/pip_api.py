@@ -345,6 +345,7 @@ class PipAPI:
         :param extra_index_url:
         :return:
         """
+
         generated_requirements_file_name = "tmp_generated_requirements_by_horey_pip_api.txt"
         with open(generated_requirements_file_name, "w") as file_handler:
             file_handler.write("\n".join([requirement.generate_install_string() for requirement in requirements]))
@@ -357,7 +358,7 @@ class PipAPI:
             command += " --upgrade"
 
         command += f" -r {generated_requirements_file_name}"
-        breakpoint()
+
         self.execute(command)
         os.remove(generated_requirements_file_name)
 
