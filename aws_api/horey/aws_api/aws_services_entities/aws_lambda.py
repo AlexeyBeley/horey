@@ -71,6 +71,7 @@ class AWSLambda(AwsObject):
             "LastUpdateStatusReason": self.init_default_attr,
             "LastUpdateStatusReasonCode": self.init_default_attr,
             "EphemeralStorage": self.init_default_attr,
+            "SnapStart": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -209,6 +210,7 @@ class AWSLambda(AwsObject):
             "LastUpdateStatusReason": self.init_default_attr,
             "LastUpdateStatusReasonCode": self.init_default_attr,
             "EphemeralStorage": self.init_default_attr,
+            "SnapStart": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)

@@ -72,6 +72,8 @@ class LambdaClient(Boto3Client):
         @return:
         """
 
+        logger.info(f"Fetching Lambda's '{obj.name}' policy if exists.")
+
         for response in self.execute(
             self.client.get_policy,
             None,

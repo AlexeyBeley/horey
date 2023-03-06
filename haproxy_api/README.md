@@ -1,6 +1,6 @@
 
 
-#help 
+#help
 echo "?" | sudo -u haproxy socat stdio unix-connect:/var/run/haproxy/admin.sock
 
 # show backend fleet
