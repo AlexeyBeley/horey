@@ -2,10 +2,10 @@
 Test aws ecr client.
 
 """
-
 import os
 
 from horey.aws_api.aws_clients.ecr_client import ECRClient
+from horey.aws_api.aws_services_entities.ecr_repository import ECRRepository
 from horey.h_logger import get_logger
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.base_entities.region import Region
@@ -37,6 +37,8 @@ mock_values_file_path = os.path.abspath(
     )
 )
 mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
+
+# pylint: disable= missing-function-docstring§
 
 
 def test_init_ecr_client():
@@ -73,6 +75,31 @@ def test_tag_image():
     client.tag_image(images[3], ["test_version"])
 
 
+def test_get_region_repositories():
+    """
+    Tag image with new tags.
+
+    @return:
+    """
+
+    client = ECRClient()
+    client.get_region_repositories(Region.get_region("us-east-1"))
+
+
+def test_provision_repository():
+    client = ECRClient()
+    repo = ECRRepository({})
+    repo.region = Region.get_region("us-west-2")
+    repo.name = "test_tags"
+    repo.tags = [{
+        "Key": "Name",
+        "Value": repo.name
+    }]
+    client.provision_repository(repo)
+
+
 if __name__ == "__main__":
     # test_get_authorization_info()
-    test_tag_image()
+    # test_tag_image()
+    # test_get_region_repositories()
+    test_provision_repository()

@@ -5,7 +5,6 @@ import datetime
 
 import time
 from horey.aws_api.aws_clients.sessions_manager import SessionsManager
-import pdb
 from horey.h_logger import get_logger
 
 logger = get_logger()
@@ -37,6 +36,12 @@ class Boto3Client:
 
     @property
     def account_id(self):
+        """
+        AWS account id - str
+
+        :return:
+        """
+
         if self._account_id is None:
             sts_client = self.SESSIONS_MANAGER.get_client("sts")
             self._account_id = sts_client.get_caller_identity()["Account"]
@@ -59,6 +64,7 @@ class Boto3Client:
         """
         raise RuntimeError(f"Nobody can set a client explicitly in{self}")
 
+    # pylint: disable= too-many-arguments
     def yield_with_paginator(
         self,
         func_command,
@@ -136,6 +142,7 @@ class Boto3Client:
                 f"Max attempts reached while executing '{func_command.__name__}': {self.EXECUTION_RETRY_COUNT}"
             )
 
+    # pylint: disable= too-many-arguments
     def unpack_pagination_loop(
         self,
         starting_token,
@@ -145,6 +152,18 @@ class Boto3Client:
         raw_data=False,
         internal_starting_token=False,
     ):
+        """
+        Fetch data from single pagination loop run.
+
+        :param starting_token:
+        :param func_command_name:
+        :param return_string:
+        :param filters_req:
+        :param raw_data:
+        :param internal_starting_token:
+        :return:
+        """
+
         for _page in self.client.get_paginator(func_command_name).paginate(
             PaginationConfig={self.NEXT_PAGE_REQUEST_KEY: starting_token}, **filters_req
         ):
@@ -181,11 +200,21 @@ class Boto3Client:
     def unpack_pagination_loop_starting_token(
         self, _page, return_string, internal_starting_token
     ):
+        """
+        Fetch starting token from internal data.
+
+        :param _page:
+        :param return_string:
+        :param internal_starting_token:
+        :return:
+        """
+
         if internal_starting_token:
             return _page.get(return_string).get(self.NEXT_PAGE_RESPONSE_KEY)
-        else:
-            return _page.get(self.NEXT_PAGE_RESPONSE_KEY)
 
+        return _page.get(self.NEXT_PAGE_RESPONSE_KEY)
+
+    # pylint: disable= too-many-arguments
     def execute(
         self,
         func_command,
@@ -242,15 +271,12 @@ class Boto3Client:
         elif type(response[return_string]) in [str, dict, type(None), bool]:
             ret_lst = [response[return_string]]
         else:
-            raise NotImplementedError(
-                "{} type:{}".format(
-                    response[return_string], type(response[return_string])
-                )
-            )
+            raise NotImplementedError(f"{response[return_string]} type:{type(response[return_string])}")
 
         for ret_obj in ret_lst:
             yield ret_obj
 
+    # pylint: disable= too-many-arguments
     def execute_with_single_reply(
         self,
         func_command,
@@ -290,6 +316,7 @@ class Boto3Client:
 
         raise self.ToManyValuesException(str(ret))
 
+    # pylint: disable= too-many-arguments
     @staticmethod
     def wait_for_status(
         observed_object,
@@ -354,33 +381,64 @@ class Boto3Client:
             f"Finished waiting loop for {observed_object.id} to become one of {desired_statuses}. Took {end_time - start_time}"
         )
 
-    def get_tags(self, obj, function=None):
+    def get_tags(self, obj, function=None, arn_identifier="ResourceArn", tags_identifier="Tags"):
+        """
+        Get tags for resource.
+
+        :param obj:
+        :param function:
+        :param arn_identifier:
+        :param tags_identifier:
+        :return:
+        """
+
         if function is None:
             function = self.client.get_tags
 
         logger.info(f"Getting resource tags: {obj.arn}")
         return list(
-            self.execute(function, "Tags", filters_req={"ResourceArn": obj.arn})
+            self.execute(function, tags_identifier, filters_req={arn_identifier: obj.arn})
         )
 
-    def tag_resource(self, obj):
+    def tag_resource(self, obj, arn_identifier="ResourceArn", tags_identifier="TagsToAdd"):
+        """
+        Tag resource.
+
+        :param obj:
+        :param arn_identifier:
+        :param tags_identifier:
+        :return:
+        """
+
         logger.info(f"Tagging resource: {obj.arn}")
         for response in self.execute(
             self.client.tag_resource,
             "Tags",
-            filters_req={"ResourceArn": obj.arn, "TagsToAdd": obj.tags},
+            filters_req={arn_identifier: obj.arn, tags_identifier: obj.tags},
             raw_data=True,
         ):
             return response
 
     class NoReturnStringError(Exception):
-        pass
+        """
+        No such return string in response.
+
+        """
 
     class ResourceNotFoundError(ValueError):
-        pass
+        """
+        No such resource.
+
+        """
 
     class ZeroValuesException(RuntimeError):
-        pass
+        """
+        No values.
+
+        """
 
     class ToManyValuesException(RuntimeError):
-        pass
+        """
+        To many values.
+
+        """

@@ -62,13 +62,14 @@ class ECRClient(Boto3Client):
         AWSAccount.set_aws_region(repository.region)
 
         region_repos = self.get_region_repositories(
-            repository.region, repository_names=[repository.name]
-        )
+            repository.region, repository_names=[repository.name], get_tags=False)
         if len(region_repos) == 1:
-            return repository.update_from_raw_create(region_repos[0].dict_src)
+            repository.update_from_raw_create(region_repos[0].dict_src)
+        else:
+            dict_ret = self.provision_repository_raw(repository.generate_create_request())
+            repository.update_from_raw_create(dict_ret)
 
-        dict_ret = self.provision_repository_raw(repository.generate_create_request())
-        return repository.update_from_raw_create(dict_ret)
+        self.tag_resource(repository, arn_identifier="resourceArn", tags_identifier="tags")
 
     def provision_repository_raw(self, request_dict):
         """
@@ -119,12 +120,13 @@ class ECRClient(Boto3Client):
 
         return final_result
 
-    def get_region_repositories(self, region, repository_names=None):
+    def get_region_repositories(self, region, repository_names=None, get_tags=True):
         """
         Get region ECR repos.
 
         @param region:
         @param repository_names:
+        @param get_tags:
         @return:
         """
 
@@ -144,6 +146,8 @@ class ECRClient(Boto3Client):
         ):
             obj = ECRRepository(dict_src)
             final_result.append(obj)
+            if get_tags:
+                obj.tags = self.get_tags(obj, function=self.client.list_tags_for_resource, arn_identifier="resourceArn", tags_identifier="tags")
 
         return final_result
 
