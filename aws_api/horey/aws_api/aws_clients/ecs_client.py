@@ -30,6 +30,9 @@ class ECSClient(Boto3Client):
     Client to handle specific aws service API calls.
     """
 
+    NEXT_PAGE_REQUEST_KEY = "nextToken"
+    NEXT_PAGE_RESPONSE_KEY = "nextToken"
+
     def __init__(self):
         client_name = "ecs"
         super().__init__(client_name)

@@ -1,5 +1,11 @@
+"""
+Testing ecs client.
+
+"""
+
 import os
-import sys
+
+from unittest.mock import Mock
 
 from horey.aws_api.aws_clients.ecs_client import ECSClient
 from horey.aws_api.aws_services_entities.ecs_capacity_provider import (
@@ -7,13 +13,11 @@ from horey.aws_api.aws_services_entities.ecs_capacity_provider import (
 )
 from horey.aws_api.aws_services_entities.ecs_cluster import ECSCluster
 from horey.aws_api.aws_services_entities.ecs_service import ECSService
-import pdb
 from horey.h_logger import get_logger
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.base_entities.region import Region
 from horey.common_utils.common_utils import CommonUtils
 
-from unittest.mock import Mock
 
 configuration_values_file_full_path = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "h_logger_configuration_values.py"
@@ -41,6 +45,8 @@ mock_values_file_path = os.path.abspath(
     )
 )
 mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
+
+# pylint: disable= missing-function-docstring
 
 
 def test_init_ecs_client():
@@ -233,7 +239,7 @@ dict_create_cluster_request = {
 
 def test_create_cluster():
     client = ECSClient()
-    client.create_cluster(dict_create_cluster_request)
+    client.client.create_cluster(dict_create_cluster_request)
 
 
 def test_run_task():
@@ -355,7 +361,14 @@ def test_provision_service():
     ecs_client.provision_service(ecs_service)
 
 
+def test_get_all_task_definitions():
+    client = ECSClient()
+    ret = client.get_all_task_definitions(region=Region.get_region("us-east-1"))
+    assert type(ret) == list
+
+
 if __name__ == "__main__":
     # test_register_task_definition()
     # test_provision_cluster()
-    test_provision_service()
+    # test_provision_service()
+    test_get_all_task_definitions()
