@@ -247,7 +247,12 @@ class AlertSystem:
         validation_dir_name = os.path.splitext(self.configuration.lambda_zip_file_name)[
             0
         ]
-        os.makedirs(validation_dir_name)
+        try:
+            os.makedirs(validation_dir_name)
+        except FileExistsError:
+            shutil.rmtree(validation_dir_name)
+            os.makedirs(validation_dir_name)
+
         tmp_zip_path = os.path.join(
             validation_dir_name, self.configuration.lambda_zip_file_name
         )

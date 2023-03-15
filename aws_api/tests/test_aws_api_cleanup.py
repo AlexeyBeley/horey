@@ -1,5 +1,9 @@
+"""
+Testing aws_api cleanup utils
+
+"""
+
 import os
-import pdb
 
 import pytest
 
@@ -8,7 +12,7 @@ from horey.aws_api.aws_api import AWSAPI
 from horey.h_logger import get_logger
 from horey.aws_api.aws_api_configuration_policy import AWSAPIConfigurationPolicy
 
-
+# pylint: disable= missing-function-docstring
 logger = get_logger()
 configuration = AWSAPIConfigurationPolicy()
 configuration.configuration_file_full_path = os.path.join(
@@ -30,7 +34,6 @@ def test_init_from_cache_and_cleanup_report_iam_policies():
     aws_api.cleanup_report_iam_policies(
         configuration.aws_api_cleanups_iam_policies_report_file
     )
-    pdb.set_trace()
 
 
 @pytest.mark.skip(reason="IAM roles cleanup will be enabled explicitly")
@@ -38,10 +41,19 @@ def test_init_from_cache_and_cleanup_report_iam_roles():
     aws_api.init_iam_roles(
         from_cache=False, cache_file=configuration.aws_api_iam_roles_cache_file
     )
-    ret = aws_api.cleanup_report_iam_roles(
+    aws_api.cleanup_report_iam_roles(
         configuration.aws_api_cleanups_iam_roles_report_file
     )
-    pdb.set_trace()
+
+
+@pytest.mark.skip(reason="")
+def test_init_from_cache_and_cleanup_report_ec2_instances():
+    aws_api.init_ec2_instances(
+        from_cache=False, cache_file=configuration.aws_api_ec2_instances_cache_file
+    )
+    aws_api.cleanup_report_ec2_instances(
+        configuration.aws_api_cleanups_ec2_instnaces_report_file
+    )
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
@@ -186,4 +198,5 @@ def test_init_from_cache_and_cleanup_report_network_interfaces():
 if __name__ == "__main__":
     # test_init_from_cache_and_cleanup_s3_buckets()
     # test_init_from_cache_and_cleanup_report_iam_policies()
-    test_init_from_cache_and_cleanup_report_iam_roles()
+    # test_init_from_cache_and_cleanup_report_iam_roles()
+    test_init_from_cache_and_cleanup_report_ec2_instances()

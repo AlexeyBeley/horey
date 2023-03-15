@@ -40,7 +40,7 @@ class SlackAPI:
         :param message:
         :return:
         """
-        logger.info("Sending message using Slack APP")
+        logger.info(f"Sending message using Slack APP to '{message.dst_channel}' from '{message.src_username}'")
 
         response = requests.post(
             "https://slack.com/api/chat.postMessage",

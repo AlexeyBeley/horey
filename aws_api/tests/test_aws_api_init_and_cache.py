@@ -904,7 +904,7 @@ if __name__ == "__main__":
     # test_init_and_cache_sqs_queues()
     # test_init_and_cache_lambda_event_source_mappings()
     # test_init_and_cache_event_bridge_rules()
-    test_init_and_cache_lambdas()
+    # test_init_and_cache_lambdas()
     # test_init_and_cache_lambda_event_source_mappings()
     # test_init_and_cache_servicediscovery_namespaces()
     # test_init_and_cache_vpcs()
@@ -930,3 +930,4 @@ if __name__ == "__main__":
     # test_init_and_cache_application_auto_scaling_policies()
     # test_init_and_cache_application_auto_scaling_scalable_targets()
     # test_init_and_cache_spot_fleet_requests()
+    test_init_and_cache_ec2_instances()

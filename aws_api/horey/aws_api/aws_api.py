@@ -2309,6 +2309,26 @@ class AWSAPI:
 
         return tb_ret
 
+    def cleanup_report_ec2_instances(self, output_file):
+        """
+        Genreate cleanup report for EC2 instances.
+
+        :param output_file:
+        :return:
+        """
+
+        tb_ret = TextBlock("EC2 Instances")
+        for inst in self.ec2_instances:
+            try:
+                name = inst.get_tagname()
+            except RuntimeError as exception_instance:
+                if "No tag" not in repr(exception_instance):
+                    raise
+                name = inst.id
+            logger.info(f"{name}: {inst.cpu_options}")
+        with open(output_file, "w+", encoding="utf-8") as file_handler:
+            file_handler.write(tb_ret.format_pprint())
+
     @staticmethod
     def cleanup_report_cloud_watch_metrics(metrics_dir, output_file):
         """
