@@ -1,0 +1,43 @@
+{
+  "dashboard": {
+    "annotations": {
+      "list": [
+        {
+          "builtIn": 1,
+          "datasource": {
+            "type": "grafana",
+            "uid": "-- Grafana --"
+          },
+          "enable": true,
+          "hide": false,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "target": {
+            "limit": 100,
+            "matchAny": false,
+            "tags": [],
+            "type": "dashboard"
+          },
+          "type": "dashboard"
+        }
+      ]
+    },
+    "id": null,
+    "uid": null,
+    "title": "InfluxDB Monitoring Dashboard",
+    "tags": [
+      "influxdb"
+    ],
+    "timezone": "browser",
+    "schemaVersion": 16,
+    "version": 0,
+    "refresh": "25s",
+    "panels": [
+
+    ]
+  },
+  "folderId": null,
+  "folderUid": null,
+  "message": "Made changes to xyz",
+  "overwrite": true
+}

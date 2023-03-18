@@ -1,0 +1,10 @@
+name: disk
+fieldKey     fieldType
+--------     ---------
+free         integer
+inodes_free  integer
+inodes_total integer
+inodes_used  integer
+total        integer
+used         integer
+used_percent float

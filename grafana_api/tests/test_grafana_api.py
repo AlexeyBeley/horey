@@ -10,6 +10,7 @@ from horey.grafana_api.grafana_api_configuration_policy import (
     GrafanaAPIConfigurationPolicy,
 )
 from horey.grafana_api.dashboard import Dashboard
+from horey.grafana_api.panel import Panel
 
 
 ignore_dir_path = os.path.join(
@@ -30,6 +31,8 @@ configuration.init_from_file()
 
 grafana_api = GrafanaAPI(configuration=configuration)
 
+# pylint: disable= missing-function-docstring
+
 
 @pytest.mark.skip(reason="Can not test")
 def test_init_grafana_api():
@@ -49,6 +52,75 @@ def test_provision_dashboard():
     """
     dashboard = Dashboard({})
     dashboard.title = "test dashboard1"
+    grafana_api.provision_dashboard(dashboard)
+
+
+def generate_line_panel(file_name):
+    panel = Panel({
+        "collapsed": False,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": None,
+          "y": None
+        },
+        "id": None,
+        "title": f"{file_name} monitoring graphs",
+        "type": "row"
+      })
+    return panel
+
+
+self_path = os.path.dirname(os.path.abspath(__file__))
+
+
+def generate_influx_monitoring_panel(measurement_name, panel_name):
+    with open(os.path.join(self_path, "test_panel", "panel_1.json"), encoding="utf-8") as fh:
+        dict_src = json.load(fh)
+    #with open(os.path.join(self_path, "test_panel", "panel_count_interval.json")) as fh:
+    #    dict_src = json.load(fh)
+
+    panel = Panel(dict_src)
+    panel.title = panel_name
+
+    panel.targets[0]["measurement"] = measurement_name
+    panel.targets[0]["select"][0][0]["params"][0] = panel_name
+
+    return panel
+
+
+@pytest.mark.skip(reason="Can not test")
+def test_create_influxdb_monitor_dashboard():
+    """
+    mkdir ./telegraf_structure
+    influx -database telegraf -execute 'show measurements' >> ./telegraf_structure/measurements
+    influx -database telegraf -execute 'show field keys from influxdb_httpd' >> ./telegraf_structure/influxdb_httpd
+    """
+
+    dashboard = Dashboard({})
+    dashboard.id = "1111"
+    dashboard.title = "InfluxDB Monitoring"
+    dashboard.tags = ["monitoring"]
+
+    with open("./telegraf_structure/measurements", encoding="utf-8") as fh:
+        lines = [line.strip() for line in fh.readlines()]
+        lines = lines[3:]
+    for measurement in lines:
+        print(f"influx -database telegraf -execute 'show field keys from {measurement}' >> ./telegraf_structure/{measurement}")
+
+    for file_name in os.listdir("./telegraf_structure"):
+        if file_name == "measurements":
+            continue
+
+        panel = generate_line_panel(file_name)
+        dashboard.add_panel(panel)
+
+        with open(os.path.join("./telegraf_structure", file_name), encoding="utf-8") as fh:
+            lines = [line.strip() for line in fh.readlines()]
+            lines = lines[3:]
+        for line in lines:
+            panel = generate_influx_monitoring_panel(file_name, line.split()[0])
+            dashboard.add_panel(panel)
     grafana_api.provision_dashboard(dashboard)
 
 
@@ -84,8 +156,8 @@ def test_create_dashboard_raw():
 @pytest.mark.skip(reason="Can not test")
 def test_create_rule_raw():
     request = {}
-    with open(os.path.join(cache_dir, "dashboards.json")) as file_handler:
-        pass
+    #with open(os.path.join(cache_dir, "dashboards.json"), encoding="utf-8") as file_handler:
+    #    pass
 
     namespace = "critical_alerts"
     grafana_api.create_rule_raw(request, namespace)
@@ -225,4 +297,5 @@ if __name__ == "__main__":
     # test_init_rule_namespaces()
     # test_init_folders()
     # test_init_datasources()
-    test_create_rule_raw()
+    #test_create_rule_raw()
+    test_create_influxdb_monitor_dashboard()

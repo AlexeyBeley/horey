@@ -1,0 +1,14 @@
+name: processes
+fieldKey      fieldType
+--------      ---------
+blocked       integer
+dead          integer
+idle          integer
+paging        integer
+running       integer
+sleeping      integer
+stopped       integer
+total         integer
+total_threads integer
+unknown       integer
+zombies       integer

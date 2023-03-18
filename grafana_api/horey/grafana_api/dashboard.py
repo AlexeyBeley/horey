@@ -11,7 +11,7 @@ class Dashboard(GrafanaObject):
 
     def __init__(self, dict_src):
         self.rows = None
-        self.panels = None
+        self.panels = []
         self.id = None
         self.uid = None
         self.title = None
@@ -75,15 +75,61 @@ class Dashboard(GrafanaObject):
         Generate create dashboard raw request
         @return:
         """
-        return {
+
+        self.generate_panels_positions()
+
+        ret = {
             "dashboard": {
                 "id": self.id,
                 "title": self.title,
                 "tags": self.tags,
                 "timezone": "browser",
-                "rows": [{}],
+                "panels": [panel.generate_create_request() for panel in self.panels],
                 "schemaVersion": 6,
                 "version": 0,
             },
-            "overwrite": False,
+            "overwrite": True,
         }
+
+        return ret
+
+    def add_panel(self, panel):
+        """
+        Add another panel to dashbaord.
+
+        :param panel:
+        :return:
+        """
+
+        try:
+            panel.id = self.panels[-1].id+1
+        except IndexError:
+            panel.id = 1
+
+        self.panels.append(panel)
+
+    def generate_panels_positions(self):
+        """
+        Generate x,y according to panels' sizes.
+
+        :return:
+        """
+
+        y = 0
+        x = 0
+        last_panel_height = 0
+        last_panel_width = 0
+
+        for panel in self.panels:
+            if panel.width == 24:
+                x = 0
+                y = y + last_panel_height
+            else:
+                x = x + last_panel_width
+                if x == 24:
+                    y = y + last_panel_height
+                    x = 0
+
+            panel.generate_position(x, y)
+            last_panel_height = panel.height
+            last_panel_width = panel.width

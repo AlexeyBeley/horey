@@ -3,7 +3,6 @@ Shamelessly stolen from:
 https://github.com/lukecyca/pyslack
 """
 import json
-import pdb
 
 import requests
 from horey.h_logger import get_logger
@@ -48,7 +47,7 @@ class GrafanaAPI:
         if self.token is not None:
             headers["Authorization"] = f"Bearer {self.token}"
 
-        response = requests.get(request, headers=headers)
+        response = requests.get(request, headers=headers, timeout=60)
         if response.status_code != 200:
             raise RuntimeError(
                 f"Request to grafana api returned an error {response.status_code}, the response is:\n{response.text}"
@@ -67,7 +66,7 @@ class GrafanaAPI:
         if self.token is not None:
             headers["Authorization"] = f"Bearer {self.token}"
 
-        response = requests.post(request, data=json.dumps(data), headers=headers)
+        response = requests.post(request, data=json.dumps(data), headers=headers, timeout=60)
 
         if response.status_code != 200:
             raise RuntimeError(
@@ -87,7 +86,7 @@ class GrafanaAPI:
         if self.token is not None:
             headers["Authorization"] = f"Bearer {self.token}"
 
-        response = requests.put(request, data=json.dumps(data), headers=headers)
+        response = requests.put(request, data=json.dumps(data), headers=headers, timeout=60)
 
         if response.status_code != 200:
             raise RuntimeError(
@@ -107,7 +106,7 @@ class GrafanaAPI:
         if self.token is not None:
             headers["Authorization"] = f"Bearer {self.token}"
 
-        response = requests.delete(request, headers=headers)
+        response = requests.delete(request, headers=headers, timeout=60)
         if response.status_code != 200:
             raise RuntimeError(
                 f"Request to grafana api returned an error {response.status_code}, the response is:\n{response.text}"
@@ -235,7 +234,7 @@ class GrafanaAPI:
         dashboard.update_full_info({"meta": ret["meta"], **ret["dashboard"]})
         return dashboard
 
-    def provision_dashboard(self, dashboard):
+    def provision_dashboard(self, dashboard: Dashboard):
         """
         Provision dashboard - create or update based on title.
         @param dashboard:
@@ -258,7 +257,6 @@ class GrafanaAPI:
         @param dict_dashboard:
         @return: None
         """
-        pdb.set_trace()
         self.post(f"ruler/grafana/api/v1/rules/{namespace}", dict_request)
         logger.info(f"Created Alerts '{'a'}'")
 

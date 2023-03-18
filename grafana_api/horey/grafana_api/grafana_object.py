@@ -2,6 +2,8 @@
 Parent module for all grafana objects
 """
 
+from horey.common_utils.common_utils import CommonUtils
+
 
 class GrafanaObject:
     """
@@ -43,4 +45,5 @@ class GrafanaObject:
         @param value:
         @return:
         """
+        key = CommonUtils.camel_case_to_snake_case(key)
         setattr(self, key, value)
