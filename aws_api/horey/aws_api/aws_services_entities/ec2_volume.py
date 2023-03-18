@@ -1,7 +1,6 @@
 """
 Class to represent ec2 instance
 """
-import pdb
 from enum import Enum
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
@@ -18,6 +17,13 @@ class EC2Volume(AwsObject):
         :param dict_src:
         """
         super().__init__(dict_src)
+        self.encrypted = None
+        self.availability_zone = None
+        self.iops = None
+        self.size = None
+        self.volume_type = None
+        self.state = None
+        self.id = None
 
         if from_cache:
             self._init_instance_from_cache(dict_src)
@@ -55,44 +61,64 @@ class EC2Volume(AwsObject):
         self._init_from_cache(dict_src, options)
 
     def update_from_raw_response(self, dict_src):
+        """
+        dict_src from create volume request.
+
+        :param dict_src:
+        :return:
+        """
+
         init_options = {
-            "InstanceId": lambda x, y: self.init_default_attr(
-                x, y, formatted_name="id"
-            ),
-            "NetworkInterfaces": self.init_interfaces,
+            "VolumeId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "Attachments": self.init_default_attr,
+            "AvailabilityZone": self.init_default_attr,
+            "CreateTime": self.init_default_attr,
+            "Encrypted": self.init_default_attr,
+            "KmsKeyId": self.init_default_attr,
+            "Size": self.init_default_attr,
+            "SnapshotId": self.init_default_attr,
+            "State": self.init_default_attr,
+            "Iops": self.init_default_attr,
+            "Tags": self.init_default_attr,
+            "VolumeType": self.init_default_attr,
+            "MultiAttachEnabled": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
 
     def generate_create_request(self):
-        pdb.set_trace()
-        request = dict()
-        request[
-            "InstanceInitiatedShutdownBehavior"
-        ] = self.instance_initiated_shutdown_behavior
+        """
+        Standard.
+
+        :return:
+        """
+
+        request = {"Encrypted": self.encrypted,
+                   "AvailabilityZone": self.availability_zone,
+                   "Iops": self.iops,
+                   "Size": self.size,
+                   "VolumeType": self.volume_type,
+                   "TagSpecifications": [{"ResourceType": "volume", "Tags": self.tags}]}
+
         return request
 
     def get_state(self):
-        pdb.set_trace()
-        if self.state["Name"] == "creating":
-            return self.State.creating
-        elif self.state["Name"] == "available":
-            return self.State.available
-        elif self.state["Name"] == "in-use":
-            return self.State.in_use
-        elif self.state["Name"] == "deleting":
-            return self.State.deleting
-        elif self.state["Name"] == "deleted":
-            return self.State.deleted
-        elif self.state["Name"] == "error":
-            return self.State.error
-        else:
-            raise NotImplementedError(self.state["Name"])
+        """
+        Get state.
+
+        """
+        mapping = {key.lower(): value for key, value in self.State.__members__.items()}
+        return mapping[self.state]
 
     class State(Enum):
-        creating = 0
-        available = 1
-        in_use = 2
-        deleting = 3
-        deleted = 4
-        error = 5
+        """
+        Volume state.
+
+        """
+
+        CREATING = 0
+        AVAILABLE = 1
+        IN_USE = 2
+        DELETING = 3
+        DELETED = 4
+        ERROR = 5

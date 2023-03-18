@@ -240,22 +240,17 @@ class EC2Client(Boto3Client):
 
         return final_result
 
-    def get_region_volumes(self, region, filters=None):
+    def get_region_volumes(self, region, filters_req=None):
         """
         Standard
 
         @param region:
-        @param filters:
+        @param filters_req:
         @return:
         """
 
         AWSAccount.set_aws_region(region)
         final_result = []
-
-        if filters is not None:
-            filters_req = {"Filters": filters}
-        else:
-            filters_req = None
 
         for dict_src in self.execute(
                 self.client.describe_volumes, "Volumes", filters_req=filters_req
@@ -2110,3 +2105,128 @@ class EC2Client(Boto3Client):
                 ec2_instance.State.TERMINATED
             ],
         )
+
+    def update_volume_information(self, volume):
+        """
+        Update current status.
+
+        :param volume:
+        :return:
+        """
+
+        AWSAccount.set_aws_region(volume.region)
+
+        if volume.id is not None:
+            filters_req = {"Filters": [{"Name": "volume-id", "Values": [volume.id]}]}
+        else:
+            filters_req = {"Filters": [{"Name": "tag:Name", "Values": [volume.get_tagname()]}]}
+
+        lst_ret = self.get_region_volumes(volume.region, filters_req=filters_req)
+
+        if len(lst_ret) > 1:
+            raise RuntimeError(f"Found more then 1 ec2 volume with filter: {filters_req}")
+
+        if len(lst_ret) == 1:
+            volume.update_from_raw_response(lst_ret[0].dict_src)
+            return
+
+        if volume.id:
+            raise RuntimeError(f"Didn't find volume by id: {filters_req}")
+
+    def provision_volume(self, volume):
+        """
+        Standard.
+
+        :param volume:
+        :return:
+        """
+
+        self.update_volume_information(volume)
+        if volume.id is not None:
+            if volume.get_state() in [volume.State.AVAILABLE, volume.State.IN_USE]:
+                return
+
+            if volume.get_state() == volume.State.ERROR:
+                raise RuntimeError(f"Volume '{volume.id}' is in ERROR state")
+
+            if volume.get_state() == volume.State.CREATING:
+                self.wait_for_status(
+                    volume,
+                    self.update_volume_information,
+                    [volume.State.AVAILABLE, volume.State.IN_USE],
+                    [volume.State.CREATING],
+                    [
+                        volume.State.DELETED,
+                        volume.State.ERROR,
+                    ]
+                )
+                return
+
+            if volume.get_state() == volume.State.DELETING:
+                self.wait_for_status(
+                    volume,
+                    self.update_volume_information,
+                    [volume.State.DELETING],
+                    [volume.State.DELETED],
+                    [
+                        volume.State.ERROR,
+                    ]
+                )
+            else:
+                raise ValueError(volume.get_state())
+
+        response = self.create_volume_raw(volume.generate_create_request())
+        volume.update_from_raw_response(response)
+        self.wait_for_status(
+            volume,
+            self.update_volume_information,
+            [volume.State.AVAILABLE, volume.State.IN_USE],
+            [volume.State.CREATING, volume.State.DELETING],
+            [
+                volume.State.DELETED,
+                volume.State.ERROR,
+            ]
+        )
+
+    def create_volume_raw(self, dict_request):
+        """
+        Standard.
+
+        :param dict_request:
+        :return:
+        """
+
+        for response in self.execute(self.client.create_volume, None, raw_data=True,
+                          filters_req=dict_request):
+            del response["ResponseMetadata"]
+            return response
+
+    def dispose_volume(self, volume):
+        """
+        Dispose EC2 volume.
+
+        :param volume:
+        :return:
+        """
+
+        self.update_volume_information(volume)
+        if volume.id is None:
+            return None
+
+        for response in self.execute(self.client.delete_volume, None, raw_data=True, filters_req={"VolumeId": volume.id}):
+            return response
+
+        return None
+
+    def attach_volume_raw(self, dict_req):
+        """
+        Device='string',
+        InstanceId='string',
+        VolumeId='string',
+        DryRun=True|False
+
+        :return:
+        """
+
+        for response in self.execute(self.client.attach_volume, None, raw_data=True, filters_req=dict_req):
+            return response

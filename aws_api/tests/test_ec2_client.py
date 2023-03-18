@@ -12,6 +12,7 @@ from horey.common_utils.common_utils import CommonUtils
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.aws_services_entities.ec2_launch_template import EC2LaunchTemplate
 from horey.aws_api.aws_services_entities.ec2_security_group import EC2SecurityGroup
+from horey.aws_api.aws_services_entities.ec2_volume import EC2Volume
 from horey.aws_api.base_entities.region import Region
 
 configuration_values_file_full_path = os.path.join(
@@ -344,6 +345,29 @@ def test_provision_launch_template():
     assert launch_template.id is not None
 
 
+def test_provision_volume():
+    ec2_client = EC2Client()
+    volume = EC2Volume({})
+    volume.encrypted = True
+    volume.availability_zone = "us-west-2a"
+    volume.iops = 1000
+    volume.size = 200
+    volume.region = Region.get_region("us-west-2")
+    volume.volume_type = "io2"
+    volume.tags = [{"Key": "Name", "Value": "test"}]
+    ec2_client.provision_volume(volume)
+    assert volume.id is not None
+
+
+def test_dispose_volume():
+    ec2_client = EC2Client()
+    volume = EC2Volume({})
+    volume.region = Region.get_region("us-west-2")
+    volume.tags = [{"Key": "Name", "Value": "test"}]
+    ec2_client.dispose_volume(volume)
+    assert volume.id is not None
+
+
 def test_find_launch_template():
     launch_template = Mock()
     launch_template.region = Region.get_region("us-west-2")
@@ -363,4 +387,6 @@ if __name__ == "__main__":
     # test_raw_modify_managed_prefix_list()
     # test_raw_describe_managed_prefix_list_by_id()
     # test_raw_describe_managed_prefix_list_by_name()
-    test_find_launch_template()
+    # test_find_launch_template()
+    test_provision_volume()
+    test_dispose_volume()
