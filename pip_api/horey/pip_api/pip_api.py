@@ -89,8 +89,15 @@ class Package:
             if requirement.include_max:
                 return True
             return False
-        raise NotImplementedError(f"todo: requirement.name: {requirement.name}, requirement.max_version: {requirement.max_version}, "
-                                  f"self.version: {self.version}")
+
+        exception_text = f"todo: requirement.name: {requirement.name}, " \
+                         f"self.version: {self.version}, " \
+                         f"requirement.max_version: {requirement.max_version}"
+
+        if requirement.requirements_file_path is not None:
+            exception_text += f", requirements_file_path: {requirement.requirements_file_path}"
+
+        raise NotImplementedError(exception_text)
 
 
 class PipAPI:
@@ -407,7 +414,8 @@ class PipAPI:
             ]
 
         for line in lines:
-            requirements.append(Requirement(line))
+            logger.info(f"Initializing requirement '{line}' from file '{requirements_file_path}'")
+            requirements.append(Requirement(requirements_file_path, line))
 
         return requirements
 

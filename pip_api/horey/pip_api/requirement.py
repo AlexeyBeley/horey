@@ -12,7 +12,8 @@ class Requirement:
     Main class.
     """
 
-    def __init__(self, requirement_str_src):
+    def __init__(self, requirements_file_path, requirement_str_src):
+        self.requirements_file_path = requirements_file_path
         requirement_str = requirement_str_src.replace(" ", "")
 
         logger.info(
