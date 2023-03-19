@@ -1,7 +1,6 @@
 """
 AWS Lambda representation
 """
-import pdb
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 from enum import Enum
@@ -14,6 +13,7 @@ class AMI(AwsObject):
 
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
+        self.state = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -48,6 +48,7 @@ class AMI(AwsObject):
             "KernelId": self.init_default_attr,
             "RamdiskId": self.init_default_attr,
             "Tags": self.init_default_attr,
+            "DeprecationTime": self.init_default_attr
         }
 
         self.init_attrs(dict_src, init_options)
@@ -62,6 +63,13 @@ class AMI(AwsObject):
         self._init_from_cache(dict_src, options)
 
     def update_from_raw_response(self, dict_src):
+        """
+        Standard.
+
+        :param dict_src:
+        :return:
+        """
+
         init_options = {
             "ImageId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
             "Architecture": self.init_default_attr,
@@ -91,32 +99,50 @@ class AMI(AwsObject):
             "KernelId": self.init_default_attr,
             "RamdiskId": self.init_default_attr,
             "Tags": self.init_default_attr,
+            "DeprecationTime": self.init_default_attr
         }
 
         self.init_attrs(dict_src, init_options)
 
     def get_status(self):
+        """
+        Get status - used by waiters.
+
+        :return:
+        """
+
         return self.get_state()
 
     def get_state(self):
+        """
+        Get self state.
+
+        :return:
+        """
+
         if self.state == "pending":
             return self.State.PENDING
-        elif self.state == "available":
+        if self.state == "available":
             return self.State.AVAILABLE
-        elif self.state == "invalid":
+        if self.state == "invalid":
             return self.State.INVALID
-        elif self.state == "deregistered":
+        if self.state == "deregistered":
             return self.State.DEREGISTERED
-        elif self.state == "transient":
+        if self.state == "transient":
             return self.State.TRANSIENT
-        elif self.state == "failed":
+        if self.state == "failed":
             return self.State.FAILED
-        elif self.state == "error":
+        if self.state == "error":
             return self.State.ERROR
-        else:
-            raise NotImplementedError(self.state)
+
+        raise NotImplementedError(self.state)
 
     class State(Enum):
+        """
+        Image state.
+
+        """
+
         PENDING = 0
         AVAILABLE = 1
         INVALID = 2
