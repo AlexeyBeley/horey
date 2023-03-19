@@ -102,6 +102,13 @@ class EC2Volume(AwsObject):
 
         return request
 
+    def get_status(self):
+        """
+        Return status.
+
+        """
+        return self.get_state()
+
     def get_state(self):
         """
         Get state.

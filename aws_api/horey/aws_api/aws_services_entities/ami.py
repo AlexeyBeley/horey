@@ -2,8 +2,8 @@
 AWS Lambda representation
 """
 
-from horey.aws_api.aws_services_entities.aws_object import AwsObject
 from enum import Enum
+from horey.aws_api.aws_services_entities.aws_object import AwsObject
 
 
 class AMI(AwsObject):
@@ -113,6 +113,7 @@ class AMI(AwsObject):
 
         return self.get_state()
 
+    # pylint: disable=too-many-return-statements
     def get_state(self):
         """
         Get self state.
