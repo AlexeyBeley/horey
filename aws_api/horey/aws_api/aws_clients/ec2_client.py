@@ -2218,6 +2218,34 @@ class EC2Client(Boto3Client):
 
         return None
 
+    def attach_volume(self, volume, device_name, instance_id):
+        """
+        Attach if not attached.
+
+        :return:
+        """
+
+        if volume.id is None:
+            self.update_volume_information(volume)
+
+        for attachment in volume.attachments:
+            current_attachment_instance_id = attachment["InstanceId"]
+            if current_attachment_instance_id == instance_id:
+                current_attachment_device_name = attachment["Device"]
+                if current_attachment_device_name == device_name:
+                    return True
+
+                raise RuntimeError(f"Volume must be attached to {instance_id}: {device_name}, but attached to"
+                                   f" {current_attachment_instance_id}: {current_attachment_device_name}")
+
+        dict_req = {
+                   "Device": device_name,
+                   "InstanceId": instance_id,
+                   "VolumeId": volume.id
+                   }
+
+        return self.attach_volume_raw(dict_req)
+
     def attach_volume_raw(self, dict_req):
         """
         Device='string',

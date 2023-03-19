@@ -114,7 +114,7 @@ class EC2Volume(AwsObject):
         Get state.
 
         """
-        mapping = {key.lower(): value for key, value in self.State.__members__.items()}
+        mapping = {key.lower().replace("_", "-"): value for key, value in self.State.__members__.items()}
         return mapping[self.state]
 
     class State(Enum):
