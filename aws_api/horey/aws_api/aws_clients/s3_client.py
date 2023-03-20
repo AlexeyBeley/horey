@@ -288,21 +288,23 @@ class S3Client(Boto3Client):
             if value > max_value:
                 raise ValueError(f"{value} > {max_value}")
 
-    def yield_bucket_objects(self, bucket, custom_filters=None):
+    def yield_bucket_objects(self, bucket, custom_filters=None, bucket_name=None):
         """
         Yield over specific bucket keys in order to handle OOM issue.
 
+        :param bucket_name:
         :param bucket:
         :return:
         """
 
+        bucket_name = bucket_name if bucket_name is not None else bucket.name
         max_keys = 1000
         try:
             start_after = ""
             while start_after is not None:
                 counter = 0
                 filters_req = {
-                    "Bucket": bucket.name,
+                    "Bucket": bucket_name,
                     "StartAfter": start_after,
                     "MaxKeys": max_keys,
                 }
