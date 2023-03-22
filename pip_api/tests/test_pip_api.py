@@ -141,7 +141,7 @@ def test_update_existing_requirement_exception_1():
 if __name__ == "__main__":
     #test_init()
     test_init_configuration()
-    #test_init_packages()
+    test_init_packages()
     #test_install_requirements()
     #test_install_requirements_real_data()
     test_update_existing_requirement_no_max()

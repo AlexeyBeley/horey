@@ -162,8 +162,7 @@ class PipAPI:
 
         :return:
         """
-
-        response = self.execute("pip list --format json")
+        response = self.execute("python -m pip list --format json")
         lst_packages = json.loads(response)
 
         objects = []
