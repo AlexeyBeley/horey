@@ -162,7 +162,9 @@ class PipAPI:
 
         :return:
         """
-        response = self.execute("python -m pip list --format json")
+
+        response = self.execute(f"{self.get_python_interpreter_command()} -m pip list --format json")
+
         lst_packages = json.loads(response)
 
         objects = []
@@ -321,7 +323,19 @@ class PipAPI:
                 requirement.multi_package_repo_path = repo_path
                 return self.install_multi_package_repo_requirement(requirement)
 
-        return self.execute(f"python -m pip install --force-reinstall {requirement.generate_install_string()}")
+        return self.execute(f"{self.get_python_interpreter_command()} -m pip install --force-reinstall {requirement.generate_install_string()}")
+
+    def get_python_interpreter_command(self):
+        """
+        Generate "python" command depends on whether running in venv.
+
+        :return:
+        """
+
+        if self.configuration is not None and self.configuration.venv_dir_path is not None:
+            return "python"
+
+        return sys.executable
 
     def install_multi_package_repo_requirement(self, requirement):
         """
