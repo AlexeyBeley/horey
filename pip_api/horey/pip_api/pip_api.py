@@ -3,6 +3,7 @@ PIP API module.
 
 """
 
+import sys
 import os
 import subprocess
 import uuid
@@ -132,16 +133,12 @@ class PipAPI:
                 os.path.join(self.configuration.venv_dir_path, "bin", "activate")
             ):
                 self.execute(
-                    f"python3.8 -m venv {self.configuration.venv_dir_path} --system-site-packages",
+                    f"{sys.executable} -m venv {self.configuration.venv_dir_path} --system-site-packages",
                     ignore_venv=True,
                 )
 
-                self.execute("pip3.8 install --upgrade pip")
-                self.execute("pip3.8 install setuptools>=45")
-
-                # todo:
-                #self.execute("wget https://bootstrap.pypa.io/get-pip.py")
-                #self.execute("python3.8 get-pip.py")
+                self.execute("python -m pip install --upgrade pip")
+                self.execute("python -m pip install --upgrade setuptools>=45")
 
     def init_multi_package_repository(self, repo_path):
         """
@@ -165,11 +162,7 @@ class PipAPI:
 
         :return:
         """
-
-        response = self.execute("pip3.8 list --format json")
-        # response = self.execute("pip3.8 uninstall -y horey.common-utils")
-        # response = self.execute("pip3.8 uninstall -y horey.h-logger")
-        # response = self.execute("pip3.8 uninstall -y horey.configuration_policy")
+        response = self.execute("python -m pip list --format json")
         lst_packages = json.loads(response)
 
         objects = []
@@ -328,7 +321,7 @@ class PipAPI:
                 requirement.multi_package_repo_path = repo_path
                 return self.install_multi_package_repo_requirement(requirement)
 
-        return self.execute(f"pip3.8 install --force-reinstall {requirement.generate_install_string()}")
+        return self.execute(f"python -m pip install --force-reinstall {requirement.generate_install_string()}")
 
     def install_multi_package_repo_requirement(self, requirement):
         """
@@ -419,51 +412,130 @@ class PipAPI:
 
         return requirements
 
+    @staticmethod
+    def get_common_min_requirement(this: Requirement, other: Requirement):
+        """
+        Get the common requirement for minimum version.
+
+        :param this:
+        :param other:
+        :return:
+        """
+
+        if this.min_version is None:
+            return other
+
+        if other.min_version is None:
+            return this
+
+        if this.min_version == other.min_version:
+            return this if not this.include_min else other
+
+        lst_this = [int(x) for x in this.min_version.split(".")]
+        lst_other = [int(x) for x in other.min_version.split(".")]
+        if len(lst_other) != len(lst_this):
+            raise NotImplementedError()
+        for i, this_part in enumerate(lst_this):
+            if lst_other[i] > this_part:
+                return other
+            if this_part > lst_other[i]:
+                return this
+        raise RuntimeError(f"This should be unreachable: this_min: {this.min_version}, other_min: {other.min_version}")
+
+    @staticmethod
+    def get_common_max_requirement(this: Requirement, other: Requirement):
+        """
+        Get the common requirement for maximum version.
+
+        :param this:
+        :param other:
+        :return:
+        """
+        if this.max_version is None:
+            return other
+
+        if other.max_version is None:
+            return this
+
+        if this.max_version == other.max_version:
+            return this if not this.include_max else other
+
+        lst_this = [int(x) for x in this.min_version.split(".")]
+        lst_other = [int(x) for x in other.min_version.split(".")]
+        if len(lst_other) != len(lst_this):
+            raise NotImplementedError()
+        for i, this_part in enumerate(lst_this):
+            if lst_other[i] < this_part:
+                return other
+            if this_part < lst_other[i]:
+                return this
+        raise RuntimeError(f"This should be unreachable: this_min: {this.min_version}, other_min: {other.min_version}")
+
+    # pylint: disable= too-many-branches
     def update_existing_requirement(self, requirement: Requirement):
         """
         Update with new requirements.
 
         """
+
+        error_requirement = f"requirement.name: {requirement.name}"
+
         current = self.REQUIREMENTS[requirement.name]
+        common_min_requirement = self.get_common_min_requirement(current, requirement)
+        common_max_requirement = self.get_common_max_requirement(current, requirement)
+        if common_min_requirement.min_version is None:
+            if current.min_version is not None:
+                raise RuntimeError(f"Unreachable state: Current min version: {current.min_version} "
+                                   f"required min version: {common_min_requirement.min_version}, ")
 
-        if (
-            requirement.min_version is not None
-            and current.min_version != requirement.min_version
-        ):
-            if current.min_version is None:
-                current.min_version = requirement.min_version
-                current.include_min = requirement.include_min
-            else:
-                raise NotImplementedError(f"requirement.name: {requirement.name} current.min_version: {current.min_version}, requirement.min_version: {requirement.min_version}")
-        if (
-            requirement.include_min is not None
-            and current.include_min != requirement.include_min
-        ):
-            if current.include_min is None:
-                current.include_min = requirement.include_min
-            else:
-                raise NotImplementedError()
+        if common_max_requirement.max_version is None:
+            if current.max_version is not None:
+                raise RuntimeError(f"Unreachable state: Current max version: {current.max_version} "
+                                   f"required max version: {common_max_requirement.max_version}, ")
 
-        if (
-            requirement.max_version is not None
-            and current.max_version != requirement.max_version
-        ):
-            if current.max_version is None:
-                current.max_version = requirement.max_version
-                current.include_max = requirement.include_max
-            else:
-                raise NotImplementedError(
-                    f"{current.max_version}/{requirement.max_version}"
-                )
+        current.min_version = common_min_requirement.min_version
+        current.include_min = common_min_requirement.include_min
+        current.max_version = common_max_requirement.max_version
+        current.include_max = common_max_requirement.include_max
 
-        if (
-            requirement.include_max is not None
-            and current.include_max != requirement.include_max
-        ):
-            if current.include_max is None:
-                current.include_max = requirement.include_max
-            else:
-                raise NotImplementedError()
+        min_is_none = False
+        if current.min_version is None:
+            if current.include_min is not None:
+                raise Exception(f"current.min_version: {current.min_version}, current.include_min: {current.include_min}")
+            min_is_none = True
+
+        if current.max_version is None:
+            if current.include_max is not None:
+                raise Exception(
+                    f"current.max_version: {current.max_version}, current.include_max: {current.include_max}")
+            return
+
+        if min_is_none:
+            return
+
+        if current.min_version == current.max_version:
+            if not current.include_min or not current.include_max:
+                raise RuntimeError(f"common_requirement min_version: {current.min_version}, "
+                                   f"common_requirement max_version: {current.max_version}, "
+                                   f"common_requirement include_min: {current.include_min}, "
+                                   f"common_requirement include_max: {current.include_max}, "
+                                   f"first requirements file: {current.requirements_file_path}, "
+                                   f"second requirements file: {requirement.requirements_file_path}")
+
+            return
+
+        lst_min = common_min_requirement.min_version.split(".")
+        lst_max = common_max_requirement.max_version.split(".")
+
+        if len(lst_min) != len(lst_max):
+            raise RuntimeError(f"{error_requirement} len min {lst_min} != len max {lst_max}")
+
+        for x, y in zip(lst_min, lst_max):
+            if x < y:
+                return
+
+            if x > y:
+                raise ValueError(f"{error_requirement} min {lst_min} > max {lst_max}")
 
     def get_horey_package_requirements(self, package_name):
         """
@@ -492,7 +564,7 @@ class PipAPI:
         old_cwd = os.getcwd()
         os.chdir(build_dir_path)
         try:
-            command = "python3.8 setup.py sdist bdist_wheel;"
+            command = f"{sys.executable} setup.py sdist bdist_wheel;"
             self.run_bash(command, debug=True)
         finally:
             os.chdir(old_cwd)
@@ -510,5 +582,5 @@ class PipAPI:
         :return:
         """
 
-        command = f"python3 -m twine upload -u {username} -p {password} --repository-url {repo_url} {dist_path}/*"
+        command = f"{sys.executable} -m twine upload -u {username} -p {password} --repository-url {repo_url} {dist_path}/*"
         self.run_bash(command, debug=True)
