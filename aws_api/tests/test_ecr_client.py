@@ -93,13 +93,49 @@ def test_provision_repository():
     repo.name = "test_tags"
     repo.tags = [{
         "Key": "Name",
-        "Value": repo.name
+        "Value": "some_other_name"
     }]
     client.provision_repository(repo)
+
+
+def test_provision_repository_change_tags():
+    client = ECRClient()
+    repo = ECRRepository({})
+    repo.region = Region.get_region("us-west-2")
+    repo.name = "test_tags"
+    repo.tags = [{
+        "Key": "Name",
+        "Value": "some_other_name"
+    }]
+    client.provision_repository(repo)
+
+    region_repos = client.get_region_repositories(
+        repo.region, repository_names=[repo.name], get_tags=True)
+
+    if len(region_repos) != 1:
+        raise RuntimeError("len(region_repos) != 1")
+
+    assert region_repos[0].tags == repo.tags
+
+    repo.tags = [{
+        "Key": "Name",
+        "Value": repo.name
+    }]
+
+    client.provision_repository(repo)
+
+    region_repos = client.get_region_repositories(
+        repo.region, repository_names=[repo.name], get_tags=True)
+
+    if len(region_repos) != 1:
+        raise RuntimeError("len(region_repos) != 1")
+
+    assert region_repos[0].tags == repo.tags
 
 
 if __name__ == "__main__":
     # test_get_authorization_info()
     # test_tag_image()
     # test_get_region_repositories()
-    test_provision_repository()
+    # test_provision_repository()
+    test_provision_repository_change_tags()
