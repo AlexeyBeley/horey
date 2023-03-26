@@ -609,9 +609,8 @@ class PipAPI:
             raise RuntimeError(f"Can not find main/master branch in {branches}")
 
         self.run_bash(f"git checkout {main_branch}")
-        breakpoint()
         self.run_bash(f"git branch -D {branch_name}",
-                      ignore_on_error_callback=lambda return_dict: f"error: branch '{branch_name}' not found." in return_dict["stdout"])
+                      ignore_on_error_callback=lambda return_dict: f"error: branch '{branch_name}' not found." in return_dict["stderr"])
         self.run_bash(f"git checkout origin/{branch_name}")
 
     def upload(self, username, password, repo_url, dist_path):
