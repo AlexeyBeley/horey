@@ -17,6 +17,4 @@ FORCE: ;
 
 build:
 	cd ${HOREY_DIR_PATH} &&\
-	make recursive_install_from_source_local_venv-pip_api
-	#make raw_install_from_source-pip_api
-	#make recursive_install_from_source_local_venv-pip_api
+	make raw_install_from_source-azure_devops_api
