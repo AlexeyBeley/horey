@@ -515,12 +515,12 @@ class PipAPI:
         min_is_none = False
         if current.min_version is None:
             if current.include_min is not None:
-                raise Exception(f"current.min_version: {current.min_version}, current.include_min: {current.include_min}")
+                raise RuntimeError(f"current.min_version: {current.min_version}, current.include_min: {current.include_min}")
             min_is_none = True
 
         if current.max_version is None:
             if current.include_max is not None:
-                raise Exception(
+                raise RuntimeError(
                     f"current.max_version: {current.max_version}, current.include_max: {current.include_max}")
             return
 
@@ -562,7 +562,7 @@ class PipAPI:
         """
         raise NotImplementedError("Old code.")
 
-    def create_wheel(self, setup_dir_path, build_dir_path):
+    def create_wheel(self, setup_dir_path, build_dir_path, branch_name=None):
         """
         Create wheel.
 
@@ -570,6 +570,7 @@ class PipAPI:
         :param build_dir_path: Tmp build dir
         :return:
         """
+
         try:
             shutil.rmtree(build_dir_path)
         except FileNotFoundError:
@@ -577,6 +578,8 @@ class PipAPI:
         shutil.copytree(setup_dir_path, build_dir_path)
         old_cwd = os.getcwd()
         os.chdir(build_dir_path)
+        if branch_name:
+            self.checkout_branch(branch_name)
         try:
             command = f"{sys.executable} setup.py sdist bdist_wheel;"
             self.run_bash(command, debug=True)
@@ -584,6 +587,30 @@ class PipAPI:
             os.chdir(old_cwd)
 
         return os.path.join(build_dir_path, "dist")
+
+    def checkout_branch(self, branch_name):
+        """
+        Checkout remote branch.
+
+        :param branch_name:
+        :return:
+        """
+
+        self.run_bash(f"chmod 400 {self.configuration.git_ssh_key_file_path}")
+        script = f"eval `ssh-agent -s` && ssh-add {self.configuration.git_ssh_key_file_path} && git fetch"
+        self.run_bash(script)
+        ret = self.run_bash("git branch")
+        branches = ret["stdout"].replace(" ", "").split()
+        if "*main" in branches or "main" in branches:
+            main_branch = "main"
+        elif "*master" in branches or "master" in branches:
+            main_branch = "master"
+        else:
+            raise RuntimeError(f"Can not find main/master branch in {branches}")
+
+        self.run_bash(f"git checkout {main_branch}")
+        self.run_bash(f"git branch -D {branch_name}")
+        self.run_bash(f"git checkout origin/{branch_name}")
 
     def upload(self, username, password, repo_url, dist_path):
         """

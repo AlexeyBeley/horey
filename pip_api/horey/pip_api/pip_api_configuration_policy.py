@@ -15,6 +15,7 @@ class PipAPIConfigurationPolicy(ConfigurationPolicy):
         super().__init__()
         self._multi_package_repositories = None
         self._venv_dir_path = None
+        self._git_ssh_key_file_path = None
 
     @property
     def multi_package_repositories(self):
@@ -43,3 +44,17 @@ class PipAPIConfigurationPolicy(ConfigurationPolicy):
     @venv_dir_path.setter
     def venv_dir_path(self, value):
         self._venv_dir_path = value
+
+    @property
+    def git_ssh_key_file_path(self):
+        """
+        venv directory paths
+
+        @return:
+        """
+
+        return self._git_ssh_key_file_path
+
+    @git_ssh_key_file_path.setter
+    def git_ssh_key_file_path(self, value):
+        self._git_ssh_key_file_path = value
