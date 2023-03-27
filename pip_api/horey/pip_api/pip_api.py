@@ -572,15 +572,20 @@ class PipAPI:
         :return:
         """
 
+        old_cwd = os.getcwd()
+
         try:
             shutil.rmtree(build_dir_path)
         except FileNotFoundError:
             pass
-        shutil.copytree(setup_dir_path, build_dir_path)
-        old_cwd = os.getcwd()
-        os.chdir(build_dir_path)
+
         if branch_name:
+            os.chdir(setup_dir_path)
             self.checkout_branch(branch_name)
+
+        shutil.copytree(setup_dir_path, build_dir_path)
+        os.chdir(build_dir_path)
+
         try:
             command = f"{sys.executable} setup.py sdist bdist_wheel;"
             self.run_bash(command, debug=True)
