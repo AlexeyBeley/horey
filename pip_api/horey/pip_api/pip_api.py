@@ -125,8 +125,9 @@ class PipAPI:
         if self.configuration is None:
             return
 
-        for repo_path in self.configuration.multi_package_repositories:
-            self.init_multi_package_repository(repo_path)
+        if self.configuration.multi_package_repositories is not None:
+            for repo_path in self.configuration.multi_package_repositories:
+                self.init_multi_package_repository(repo_path)
 
         if self.configuration.venv_dir_path is not None:
             if not os.path.exists(
