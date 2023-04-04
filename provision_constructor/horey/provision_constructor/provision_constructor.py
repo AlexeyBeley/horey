@@ -72,13 +72,18 @@ class ProvisionConstructor:
             force = kwargs.get("force")
             del kwargs["force"]
 
+        upgrade = False
+        if "upgrade" in kwargs:
+            force = kwargs.get("upgrade")
+            del kwargs["upgrade"]
+
         system_function = SystemFunctionFactory.REGISTERED_FUNCTIONS[
             system_function_name
         ](self.deployment_dir, **kwargs)
         if system_function.validate_provisioned_ancestor:
             self.check_provisioned_ancestor(system_function_name)
 
-        system_function.provision(force=force)
+        system_function.provision(force=force, upgrade=upgrade)
         self.provisioned_system_functions.append(system_function_name)
 
     def add_system_function(self, system_function_name, **kwargs):

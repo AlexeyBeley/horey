@@ -16,15 +16,6 @@ class Provisioner(SystemFunctionCommon):
         super().__init__(os.path.dirname(os.path.abspath(__file__)))
         self.deployment_dir = deployment_dir
 
-    def provision(self, force=False):
-        if not force:
-            if self.test_provisioned():
-                return
-
-        self._provision()
-
-        self.test_provisioned()
-
     def test_provisioned(self):
         self.init_apt_packages()
         return (
@@ -38,7 +29,7 @@ class Provisioner(SystemFunctionCommon):
             )
         )
 
-    def _provision(self):
+    def _provision(self, upgrade=False):
         """
 
         sudo systemctl restart systemd-timedated

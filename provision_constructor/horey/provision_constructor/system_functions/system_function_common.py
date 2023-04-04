@@ -38,6 +38,41 @@ class SystemFunctionCommon:
         self.validate_provisioned_ancestor = True
         self.venv_path = None
 
+    def provision(self, force=False, upgrade=False):
+        """
+        Provision logic entrypoint.
+
+        :param force:
+        :param upgrade:
+        :return:
+        """
+
+        if not force:
+            if self.test_provisioned():
+                return
+
+        self._provision(upgrade=upgrade)
+
+        self.test_provisioned()
+
+    def test_provisioned(self):
+        """
+        Test the system_function was provisioned.
+
+        :return:
+        """
+
+        raise NotImplementedError("test_provisioned not implemented")
+
+    def _provision(self, upgrade=False):
+        """
+        Each sytem_function implements its _provision.
+
+        :return:
+        """
+
+        raise NotImplementedError("_provision not implemented")
+
     @property
     def activate(self):
         """
@@ -562,7 +597,7 @@ class SystemFunctionCommon:
 
         logger.info(f"Installing apt package: '{package_name}'")
 
-        if upgrade_version or not SystemFunctionCommon.apt_check_installed(
+        if not upgrade_version or not SystemFunctionCommon.apt_check_installed(
             package_name
         ):
             command = f"sudo apt install -y {package_name}"
