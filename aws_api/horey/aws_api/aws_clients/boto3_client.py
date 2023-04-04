@@ -285,10 +285,12 @@ class Boto3Client:
         raw_data=False,
         internal_starting_token=False,
         exception_ignore_callback=None,
+        instant_raise=False,
     ):
         """
         Command to execute clients bound function- execute with paginator if available.
 
+        :param instant_raise: Raise without protection
         :param func_command: Bound method from _client instance
         :param return_string: string to retrive the infromation from reply dict
         :param filters_req: filters dict passed to the API client to filter the response
@@ -311,7 +313,7 @@ class Boto3Client:
                 yield ret_obj
             return
 
-        response = self.execute_without_pagination(func_command, return_string, filters_req=filters_req, raw_data=raw_data, exception_ignore_callback=exception_ignore_callback)
+        response = self.execute_without_pagination(func_command, return_string, filters_req=filters_req, raw_data=raw_data, exception_ignore_callback=exception_ignore_callback, instant_raise=instant_raise)
 
         if raw_data:
             yield response
@@ -320,10 +322,11 @@ class Boto3Client:
         for ret_obj in response:
             yield ret_obj
 
-    def execute_without_pagination(self, func_command, return_string, filters_req=None, raw_data=False, exception_ignore_callback=None):
+    def execute_without_pagination(self, func_command, return_string, filters_req=None, raw_data=False, exception_ignore_callback=None, instant_raise=False):
         """
         Protected execution of an API call.
 
+        :param instant_raise:
         :param return_string:
         :param func_command:
         :param filters_req:
@@ -357,6 +360,8 @@ class Boto3Client:
                     logger.error(
                         f"Retrying after Throttling '{func_command.__name__}' attempt {retry_counter}/{self.EXECUTION_RETRY_COUNT} Error: {exception_instance}"
                     )
+                elif instant_raise:
+                    raise
 
                 if exception_ignore_callback is not None and exception_ignore_callback(
                     exception_instance
