@@ -130,7 +130,7 @@ class Route53Client(Boto3Client):
             self.client.associate_vpc_with_hosted_zone,
             "ChangeInfo",
             filters_req=request_dict,
-            exception_ignore_callback=lambda repr_exception: "ConflictingDomainExists" in repr_exception
+            exception_ignore_callback=lambda exception: "ConflictingDomainExists" in repr(exception)
         ):
             return response
 
