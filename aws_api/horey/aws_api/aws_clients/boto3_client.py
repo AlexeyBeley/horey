@@ -311,7 +311,7 @@ class Boto3Client:
                 yield ret_obj
             return
 
-        response = self.execute_without_pagination(func_command, return_string, filters_req=filters_req, raw_data=False, exception_ignore_callback=exception_ignore_callback)
+        response = self.execute_without_pagination(func_command, return_string, filters_req=filters_req, raw_data=raw_data, exception_ignore_callback=exception_ignore_callback)
 
         if raw_data:
             yield response
