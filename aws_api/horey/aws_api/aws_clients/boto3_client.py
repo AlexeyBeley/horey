@@ -339,17 +339,7 @@ class Boto3Client:
                     f"Executing: '{func_command.__name__}' and args '{filters_req}'"
                 )
                 response = func_command(**filters_req)
-
-                if raw_data:
-                    return response
-
-                if isinstance(response[return_string], list):
-                    return response[return_string]
-                elif type(response[return_string]) in [str, dict, type(None), bool]:
-                    return [response[return_string]]
-                else:
-                    raise NotImplementedError(f"{response[return_string]} type:{type(response[return_string])}")
-
+                break
             except Exception as exception_instance:
                 logger.warning(
                     f"Exception received in paginator '{func_command.__name__}' Error: {repr(exception_instance)}"
@@ -378,15 +368,25 @@ class Boto3Client:
                 logger.warning(
                     f"Retrying '{func_command.__name__}' attempt {retry_counter}/{self.EXECUTION_RETRY_COUNT} Error: {exception_instance}"
                 )
+        else:
+            raise TimeoutError(
+                    f"Max attempts reached while executing '{func_command.__name__}': {self.EXECUTION_RETRY_COUNT}"
+                )
 
-        raise TimeoutError(
-                f"Max attempts reached while executing '{func_command.__name__}': {self.EXECUTION_RETRY_COUNT}"
-            )
+        if raw_data:
+            return response
+
+        if isinstance(response[return_string], list):
+            return response[return_string]
+        elif type(response[return_string]) in [str, dict, type(None), bool]:
+            return [response[return_string]]
+        else:
+            raise NotImplementedError(f"{response[return_string]} type:{type(response[return_string])}")
 
     # pylint: disable= too-many-arguments
     def execute_with_single_reply(
-        self,
-        func_command,
+            self,
+            func_command,
         return_string,
         filters_req=None,
         raw_data=False,
