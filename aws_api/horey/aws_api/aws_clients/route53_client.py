@@ -118,19 +118,21 @@ class Route53Client(Boto3Client):
             return response
 
     def raw_associate_vpc_with_hosted_zone(self, request_dict):
+        """
+        Standard.
+
+        :param request_dict:
+        :return:
+        """
+
         logger.info(f"Associating VPC with hosted zone: {request_dict}")
-        try:
-            for response in self.execute(
-                self.client.associate_vpc_with_hosted_zone,
-                "ChangeInfo",
-                filters_req=request_dict,
-            ):
-                return response
-        except Exception as exception_instance:
-            repr_exception = repr(exception_instance)
-            logger.warning(repr_exception)
-            if "ConflictingDomainExists" not in repr_exception:
-                raise
+        for response in self.execute(
+            self.client.associate_vpc_with_hosted_zone,
+            "ChangeInfo",
+            filters_req=request_dict,
+            exception_ignore_callback=lambda repr_exception: "ConflictingDomainExists" in repr_exception
+        ):
+            return response
 
     def raw_change_resource_record_sets(self, request_dict):
         logger.info(f"Updating hosted zone record set: {request_dict}")
