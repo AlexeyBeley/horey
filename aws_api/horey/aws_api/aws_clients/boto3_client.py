@@ -311,26 +311,20 @@ class Boto3Client:
                 yield ret_obj
             return
 
-        response =  self.execute_without_pagination(func_command, filters_req, exception_ignore_callback=exception_ignore_callback)
+        response = self.execute_without_pagination(func_command, return_string, filters_req=filters_req, raw_data=False, exception_ignore_callback=exception_ignore_callback)
 
         if raw_data:
             yield response
             return
 
-        if isinstance(response[return_string], list):
-            ret_lst = response[return_string]
-        elif type(response[return_string]) in [str, dict, type(None), bool]:
-            ret_lst = [response[return_string]]
-        else:
-            raise NotImplementedError(f"{response[return_string]} type:{type(response[return_string])}")
-
-        for ret_obj in ret_lst:
+        for ret_obj in response:
             yield ret_obj
 
-    def execute_without_pagination(self, func_command, filters_req, exception_ignore_callback=None):
+    def execute_without_pagination(self, func_command, return_string, filters_req=None, raw_data=False, exception_ignore_callback=None):
         """
         Protected execution of an API call.
 
+        :param return_string:
         :param func_command:
         :param filters_req:
         :param exception_ignore_callback:
@@ -344,7 +338,18 @@ class Boto3Client:
                 logger.info(
                     f"Executing: '{func_command.__name__}' and args '{filters_req}'"
                 )
-                return func_command(**filters_req)
+                response = func_command(**filters_req)
+
+                if raw_data:
+                    return response
+
+                if isinstance(response[return_string], list):
+                    return response[return_string]
+                elif type(response[return_string]) in [str, dict, type(None), bool]:
+                    return [response[return_string]]
+                else:
+                    raise NotImplementedError(f"{response[return_string]} type:{type(response[return_string])}")
+
             except Exception as exception_instance:
                 logger.warning(
                     f"Exception received in paginator '{func_command.__name__}' Error: {repr(exception_instance)}"
@@ -366,7 +371,7 @@ class Boto3Client:
                 if exception_ignore_callback is not None and exception_ignore_callback(
                     exception_instance
                 ):
-                    return None
+                    return [None]
 
                 retry_counter += exception_weight
                 time.sleep(time_to_sleep)
