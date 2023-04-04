@@ -83,24 +83,14 @@ class SecretsManagerClient(Boto3Client):
         if region is not None:
             AWSAccount.set_aws_region(region)
 
-        try:
-            for response in self.execute(
-                self.client.get_secret_value,
-                None,
-                raw_data=True,
-                filters_req={"SecretId": secret_id},
-            ):
-                return response["SecretString"]
-        except Exception as exception_instance:
-            logger.error(f"Can not find secret {secret_id}")
-
-            if (
-                "ResourceNotFoundException" in repr(exception_instance)
-                and ignore_missing
-            ):
-                return
-
-            raise
+        for response in self.execute(
+            self.client.get_secret_value,
+            None,
+            raw_data=True,
+            filters_req={"SecretId": secret_id},
+            exception_ignore_callback=lambda exception_instance: "ResourceNotFoundException" in repr(exception_instance) and ignore_missing
+        ):
+            return response["SecretString"]
 
     def raw_create_secret_string(self, secret_id, value):
         try:
