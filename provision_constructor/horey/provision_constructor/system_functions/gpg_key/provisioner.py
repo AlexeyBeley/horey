@@ -31,7 +31,7 @@ class Provisioner(SystemFunctionCommon):
         :return:
         """
 
-        self.run_bash(f"wget -qO - {self.src_url} | sudo gpg --dearmor -o {self.dst_file_path}")
+        self.run_bash(f"wget -qO - {self.src_url} | sudo gpg --batch --yes --dearmor -o {self.dst_file_path}")
 
     def test_provisioned(self):
         """
