@@ -43,7 +43,7 @@ class Provisioner(SystemFunctionCommon):
         SystemFunctionFactory.REGISTERED_FUNCTIONS["gpg_key"](self.deployment_dir, self.force,
                                                               self.upgrade, src_url=src_url,
                                                               dst_file_path=dst_file_path).provision()
-
+        breakpoint()
         SystemFunctionFactory.REGISTERED_FUNCTIONS["java"](self.deployment_dir, self.force, self.upgrade)
 
     def test_provisioned(self):
