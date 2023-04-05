@@ -46,14 +46,17 @@ class Provisioner(SystemFunctionCommon):
         SystemFunctionFactory.REGISTERED_FUNCTIONS["gpg_key"](self.deployment_dir, self.force,
                                                               self.upgrade, src_url=src_url,
                                                               dst_file_path=dst_file_path).provision()
-        breakpoint()
-        if self.check_files_exist("/etc/apt/sources.list.d/elastic-7.x.list"):
+        if self.check_files_exist(["/etc/apt/sources.list.d/elastic-7.x.list"]):
             self.remove_file("/etc/apt/sources.list.d/elastic-7.x.list", sudo=True)
             breakpoint()
 
         line = f"deb [signed-by={dst_file_path}] https://artifacts.elastic.co/packages/8.x/apt stable main"
         self.add_line_to_file(line=line, file_path="/etc/apt/sources.list.d/elastic-8.x.list", sudo=True)
         self.reinit_apt_packages()
+        self.apt_install("logstash")
+        self.run_bash("sudo systemctl daemon-reload")
+        self.run_bash(f"sudo systemctl restart logstash")
+        self.run_bash(f"sudo systemctl enable logstash")
 
     def test_provisioned(self):
         """
