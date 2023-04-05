@@ -40,7 +40,7 @@ class Provisioner(SystemFunctionCommon):
 
         :return:
         """
-        breakpoint()
 
+        self.update_packages()
         self.apt_install("default-jre")
         self.apt_install("default-jdk")
