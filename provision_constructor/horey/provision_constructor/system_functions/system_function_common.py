@@ -149,7 +149,7 @@ class SystemFunctionCommon:
         :return:
         """
 
-        BashExecutor.run_bash(command, ignore_on_error_callback=ignore_on_error_callback, timeout=timeout, debug=debug, logger=logger)
+        return BashExecutor.run_bash(command, ignore_on_error_callback=ignore_on_error_callback, timeout=timeout, debug=debug, logger=logger)
 
     @staticmethod
     def check_file_contains(file_path, str_content):
