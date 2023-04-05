@@ -6,7 +6,6 @@ Common functionality to all system_functions.
 import json
 import shutil
 import datetime
-import uuid
 import os
 import argparse
 import subprocess
@@ -17,6 +16,7 @@ from horey.replacement_engine.replacement_engine import ReplacementEngine
 from horey.provision_constructor.system_functions.apt_package import APTPackage
 from horey.provision_constructor.system_functions.apt_repository import APTRepository
 from horey.h_logger import get_logger
+from horey.common_utils.bash_executor import BashExecutor
 
 logger = get_logger()
 
@@ -33,25 +33,25 @@ class SystemFunctionCommon:
     APT_PACKAGES_UPDATED = False
     PIP_PACKAGES = []
 
-    def __init__(self, system_function_provisioner_dir_path):
+    def __init__(self, system_function_provisioner_dir_path, force, upgrade):
         self.system_function_provisioner_dir_path = system_function_provisioner_dir_path
         self.validate_provisioned_ancestor = True
         self.venv_path = None
+        self.force = force
+        self.upgrade = upgrade
 
-    def provision(self, force=False, upgrade=False):
+    def provision(self):
         """
         Provision logic entrypoint.
 
-        :param force:
-        :param upgrade:
         :return:
         """
 
-        if not force:
+        if not self.force:
             if self.test_provisioned():
                 return
 
-        self._provision(upgrade=upgrade)
+        self._provision()
 
         self.test_provisioned()
 
@@ -64,7 +64,7 @@ class SystemFunctionCommon:
 
         raise NotImplementedError("test_provisioned not implemented")
 
-    def _provision(self, upgrade=False):
+    def _provision(self):
         """
         Each sytem_function implements its _provision.
 
@@ -140,53 +140,16 @@ class SystemFunctionCommon:
     @staticmethod
     def run_bash(command, ignore_on_error_callback=None, timeout=60 * 10, debug=True):
         """
-        Run bash command, return stdout, stderr and return code.
-        Timeout is used fot stuck commands - for example if the command expects for user input.
-        Like dpkg installation approve - happens all the time with logstash package.
+        Use bash executor to run the bash command.
 
-        @param timeout: In seconds. Default 10 minutes
-        @param debug: print return code, stdout and stderr
-        @param command:
-        @param ignore_on_error_callback:
-        @return:
+        :param command:
+        :param ignore_on_error_callback:
+        :param timeout:
+        :param debug:
+        :return:
         """
 
-        logger.info(f"run_bash: {command}")
-
-        file_name = f"tmp-{str(uuid.uuid4())}.sh"
-        with open(file_name, "w", encoding="utf-8") as file_handler:
-            file_handler.write(command)
-            command = f"/bin/bash {file_name}"
-        # pylint: disable=subprocess-run-check
-        ret = subprocess.run(
-            [command], capture_output=True, shell=True, timeout=timeout
-        )
-
-        os.remove(file_name)
-        return_dict = {
-            "stdout": ret.stdout.decode().strip("\n"),
-            "stderr": ret.stderr.decode().strip("\n"),
-            "code": ret.returncode,
-        }
-        if debug:
-            logger.info(f"return_code:{return_dict['code']}")
-
-            stdout_log = "stdout:\n" + str(return_dict["stdout"])
-            for line in stdout_log.split("\n"):
-                logger.info(line)
-
-            stderr_log = "stderr:\n" + str(return_dict["stderr"])
-            for line in stderr_log.split("\n"):
-                logger.info(line)
-
-        if ret.returncode != 0:
-            if ignore_on_error_callback is None:
-                raise SystemFunctionCommon.BashError(json.dumps(return_dict))
-
-            if not ignore_on_error_callback(return_dict):
-                raise SystemFunctionCommon.BashError(json.dumps(return_dict))
-
-        return return_dict
+        BashExecutor.run_bash(command, ignore_on_error_callback=ignore_on_error_callback, timeout=timeout, debug=debug, logger=logger)
 
     @staticmethod
     def check_file_contains(file_path, str_content):

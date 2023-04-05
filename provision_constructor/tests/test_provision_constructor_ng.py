@@ -187,8 +187,7 @@ def test_provision_system_function_pip_api_package_venv():
 
 def test_provision_system_function_logstash():
     provision_constructor = ProvisionConstructor()
-    this_dir = os.path.dirname(os.path.abspath(__file__))
-    provision_constructor.provision_system_function("logstash",)
+    provision_constructor.provision_system_function("logstash", force=True, upgrade=True)
 
 
 if __name__ == "__main__":
@@ -197,4 +196,4 @@ if __name__ == "__main__":
     # test_add_system_function_logstash()
     # test_provision_system_function_horey_package_generic_venv()
     # test_provision_system_function_pip_api_package_venv()
-     test_provision_system_function_logstash()
+    test_provision_system_function_logstash()

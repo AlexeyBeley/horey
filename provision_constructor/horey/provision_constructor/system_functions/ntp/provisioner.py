@@ -1,5 +1,9 @@
+"""
+Provision ntp service.
+
+"""
+
 import os.path
-import pdb
 from horey.provision_constructor.system_function_factory import SystemFunctionFactory
 
 from horey.provision_constructor.system_functions.system_function_common import (
@@ -12,8 +16,14 @@ logger = get_logger()
 
 @SystemFunctionFactory.register
 class Provisioner(SystemFunctionCommon):
-    def __init__(self, deployment_dir):
-        super().__init__(os.path.dirname(os.path.abspath(__file__)))
+    """
+    Provision ntp service.
+    Remove all others.
+
+    """
+
+    def __init__(self, deployment_dir, force, upgrade):
+        super().__init__(os.path.dirname(os.path.abspath(__file__)), force, upgrade)
         self.deployment_dir = deployment_dir
 
     def test_provisioned(self):
@@ -29,13 +39,13 @@ class Provisioner(SystemFunctionCommon):
             )
         )
 
-    def _provision(self, upgrade=False):
+    def _provision(self):
         """
-
-        sudo systemctl restart systemd-timedated
+        Provision ntp.
 
         @return:
         """
+
         self.apt_purge("ntp*")
         self.apt_purge("sntp*")
         self.apt_purge("chrony*")

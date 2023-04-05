@@ -28,10 +28,11 @@ class Provisioner(SystemFunctionCommon):
     def __init__(
         self,
         deployment_dir,
+        force, upgrade,
         requirements_file_path=None,
         pip_api_configuration_file=None,
     ):
-        super().__init__(os.path.dirname(os.path.abspath(__file__)))
+        super().__init__(os.path.dirname(os.path.abspath(__file__)), force, upgrade)
         self.deployment_dir = deployment_dir
         self.requirements_file_path = requirements_file_path
 
@@ -40,7 +41,7 @@ class Provisioner(SystemFunctionCommon):
         configuration.init_from_file()
         self.pip_api = PipAPI(configuration=configuration)
 
-    def provision(self, force=False):
+    def _provision(self):
         """
         Provision all packages.
 
@@ -48,4 +49,4 @@ class Provisioner(SystemFunctionCommon):
         @return:
         """
 
-        self.pip_api.install_requirements(self.requirements_file_path, update=force)
+        self.pip_api.install_requirements(self.requirements_file_path, update=self.force)

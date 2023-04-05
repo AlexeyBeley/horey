@@ -14,3 +14,4 @@ from .horey_package_generic import *
 from .copy_generic import *
 from .docker import *
 from .pip_api_package import *
+from .gpg_key import *

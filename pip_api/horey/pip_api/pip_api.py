@@ -449,7 +449,7 @@ class PipAPI:
         lst_this = [int(x) for x in this.min_version.split(".")]
         lst_other = [int(x) for x in other.min_version.split(".")]
         if len(lst_other) != len(lst_this):
-            raise NotImplementedError()
+            raise NotImplementedError(f"Requirement for '{this.name}' in {os.path.abspath(this.requirements_file_path)}:{lst_this} vs {os.path.abspath(other.requirements_file_path)}:{lst_other}")
         for i, this_part in enumerate(lst_this):
             if lst_other[i] > this_part:
                 return other
