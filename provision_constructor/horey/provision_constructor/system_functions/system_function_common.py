@@ -220,6 +220,18 @@ class SystemFunctionCommon:
             raise SystemFunctionCommon.FailedCheckError("\n".join(errors))
 
     @staticmethod
+    def remove_file(file_path, sudo=False):
+        """
+        Delete file.
+
+        :param file_path:
+        :param sudo:
+        :return:
+        """
+
+        breakpoint()
+
+    @staticmethod
     def action_move_file_parser():
         """
         Self explanatory.
