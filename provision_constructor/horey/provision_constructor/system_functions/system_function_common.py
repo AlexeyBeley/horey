@@ -188,7 +188,7 @@ class SystemFunctionCommon:
         return parser
 
     @staticmethod
-    def check_files_exist(arguments) -> None:
+    def check_files_exist_action(arguments) -> None:
         """
         Self explanatory.
 
@@ -196,8 +196,19 @@ class SystemFunctionCommon:
         @return:
         """
 
+        SystemFunctionCommon.check_files_exist(arguments.files_paths.split(","))
+
+    @staticmethod
+    def check_files_exist(files_paths) -> None:
+        """
+        Self explanatory.
+
+        @param files_paths: [str, str]
+        @return:
+        """
+
         errors = []
-        for file_path in arguments.files_paths.split(","):
+        for file_path in files_paths:
             if not os.path.exists(file_path):
                 errors.append(f"File '{file_path}' does not exist")
                 continue
@@ -1140,7 +1151,7 @@ class SystemFunctionCommon:
 SystemFunctionCommon.ACTION_MANAGER.register_action(
     "check_files_exist",
     SystemFunctionCommon.check_files_exist_parser,
-    SystemFunctionCommon.check_files_exist,
+    SystemFunctionCommon.check_files_exist_action,
 )
 
 SystemFunctionCommon.ACTION_MANAGER.register_action(

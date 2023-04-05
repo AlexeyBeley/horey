@@ -39,4 +39,5 @@ class Provisioner(SystemFunctionCommon):
 
         :return:
         """
-        breakpoint()
+
+        self.check_files_exist([self.dst_file_path])
