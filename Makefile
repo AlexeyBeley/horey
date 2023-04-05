@@ -24,10 +24,10 @@ create_build_env:
 	pip3 install --upgrade setuptools
 
 init_venv_dir: create_build_env
-	python3.8 -m venv ${VENV_DIR} &&\
+	python3 -m venv ${VENV_DIR} &&\
 	source ${VENV_DIR}/bin/activate &&\
-	pip3.8 install --upgrade pip &&\
-	pip3.8 install -U setuptools\>=54.1.2
+	pip3 install --upgrade pip &&\
+	pip3 install -U setuptools\>=54.1.2
 
 prepare_package_wheel-%: init_venv_dir
 	${BUILD_DIR}/create_wheel.sh $(subst prepare_package_wheel-,,$@)
