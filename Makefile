@@ -12,7 +12,7 @@ ALL_PACKAGES := $(wildcard *)
 EXCLUSIONS := LICENSE Makefile README.md build dns_map docker terraform security_group_map pypi_infra h_flow network
 SRC_FILES := $(filter-out $(EXCLUSIONS), $(ALL_PACKAGES))
 
-#apt install python3.8 python3.8-venv python3-venv
+#apt install python3.10-venv -y
 install-pip:
 	sudo apt-get update
 	sudo apt-get -y install python3-pip
@@ -35,7 +35,7 @@ prepare_package_wheel-%: init_venv_dir
 install_wheel-%: init_venv_dir raw_install_wheel-%
 	echo "done installing $(subst install_wheel-,,$@)"
 raw_install_wheel-%: package_source-%
-	pip3.8 install --force-reinstall ${BUILD_TMP_DIR}/$(subst raw_install_wheel-,,$@)/dist/*.whl
+	pip3 install --force-reinstall ${BUILD_TMP_DIR}/$(subst raw_install_wheel-,,$@)/dist/*.whl
 
 recursive_install_from_source_local_venv-%: init_venv_dir
 	source ${VENV_DIR}/bin/activate &&\
@@ -47,14 +47,14 @@ package_source-%:
 install_from_source-%: init_venv_dir raw_install_from_source-%
 raw_install_from_source-%: package_source-%
 	source ${VENV_DIR}/bin/activate &&\
-	pip3.8 install --force-reinstall ${BUILD_TMP_DIR}/$(subst raw_install_from_source-,,$@)/dist/*.whl
+	pip3 install --force-reinstall ${BUILD_TMP_DIR}/$(subst raw_install_from_source-,,$@)/dist/*.whl
 
 recursive_install_from_source-%: create_build_env
 	${BUILD_DIR}/recursive_install_from_source.sh --root_dir ${ROOT_DIR} --package_name horey.$(subst recursive_install_from_source-,,$@)
 
 install_pylint: init_venv_dir
 	source ${VENV_DIR}/bin/activate &&\
-	pip3.8 install pylint
+	pip3 install pylint
 
 pylint: install_pylint pylint_raw
 pylint_raw:
@@ -79,12 +79,12 @@ clean:
 test_azure_api: install_from_source-azure_api
 	source ${VENV_DIR}/bin/activate &&\
 	cd ${ROOT_DIR}/azure_api/tests &&\
-	python3.8 test_azure_api_init_and_cache.py
+	python3 test_azure_api_init_and_cache.py
 
 test_aws_api: recursive_install_from_source_local_venv-aws_api
 	source ${VENV_DIR}/bin/activate &&\
 	cd ${ROOT_DIR}/aws_api/tests &&\
-	python3.8 test_aws_api_init_and_cache.py
+	python3 test_aws_api_init_and_cache.py
 
 install_azure_api_prerequisites:
 	source ${VENV_DIR}/bin/activate &&\
@@ -93,7 +93,7 @@ install_azure_api_prerequisites:
 test_zabbix_api: install_from_source-zabbix_api
 	source ${VENV_DIR}/bin/activate &&\
 	cd ${ROOT_DIR}/zabbix_api/tests &&\
-	python3.8 test_zabbix_api.py
+	python3 test_zabbix_api.py
 
 zip_env:
 	cd "/Users/alexey.beley/private/horey/provision_constructor/tests/provision_constructor_deployment" &&\
@@ -107,7 +107,7 @@ deploy_client_hooks:
 
 install_black: init_venv_dir
 	source ${VENV_DIR}/bin/activate &&\
-	pip3.8 install black
+	pip3 install black
 
 black: install_black black_raw
 black_raw:
