@@ -527,43 +527,11 @@ class SystemFunctionCommon:
         )
 
     # endregion
-
-    # region apt_install
-    @staticmethod
-    def action_apt_install_parser():
-        """
-        Used by actor.
-
-        @return:
-        """
-        description = "apt_install"
-        parser = argparse.ArgumentParser(description=description)
-        parser.add_argument(
-            "--packages", required=True, type=str, help="Service name to check"
-        )
-
-        parser.epilog = f"Usage: python3 {__file__} [options]"
-        return parser
-
-    @staticmethod
-    def action_apt_install(arguments):
-        """
-        Used by actor.
-
-        @param arguments:
-        @return:
-        """
-
-        arguments_dict = vars(arguments)
-        SystemFunctionCommon.apt_install(**arguments_dict)
-
-    @staticmethod
-    def apt_install(package_name=None, upgrade_version=True):
+    def apt_install(self, package_name):
         """
         Run apt install or upgrade.
 
         @param package_name:
-        @param upgrade_version:
         @return:
         """
 
@@ -571,12 +539,10 @@ class SystemFunctionCommon:
 
         logger.info(f"Installing apt package: '{package_name}'")
 
-        if not upgrade_version or not SystemFunctionCommon.apt_check_installed(
-            package_name
-        ):
-            command = f"sudo apt install -y {package_name}"
+        if self.upgrade:
+            command = f"sudo apt --upgrade install -y {package_name}"
         else:
-            command = f"sudo apt --only-upgrade install -y {package_name}"
+            command = f"sudo apt install -y {package_name}"
 
         def raise_on_error_callback(response):
             return (
@@ -588,6 +554,7 @@ class SystemFunctionCommon:
         SystemFunctionCommon.run_apt_bash_command(
             command, raise_on_error_callback=raise_on_error_callback
         )
+
         SystemFunctionCommon.reinit_apt_packages()
 
     @staticmethod
@@ -1182,10 +1149,6 @@ SystemFunctionCommon.ACTION_MANAGER.register_action(
     "check_systemd_service_status",
     SystemFunctionCommon.action_check_systemd_service_status_parser,
     SystemFunctionCommon.action_check_systemd_service_status,
-)
-
-SystemFunctionCommon.ACTION_MANAGER.register_action(
-    "apt_install", SystemFunctionCommon.action_apt_install_parser, None
 )
 
 if __name__ == "__main__":

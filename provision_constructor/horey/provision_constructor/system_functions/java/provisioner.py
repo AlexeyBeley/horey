@@ -16,13 +16,31 @@ class Provisioner(SystemFunctionCommon):
         self.deployment_dir = deployment_dir
 
     def test_provisioned(self):
-        breakpoint()
+        """
+        jre:
+        openjdk-11-jre-headless/jammy-updates,jammy-security,now 11.0.18+10-0ubuntu1~22.04 amd64 [installed,automatic]
+        openjdk-11-jre/jammy-updates,jammy-security,now 11.0.18+10-0ubuntu1~22.04 amd64 [installed,automatic]
+
+        jdk:
+        openjdk-11-jdk-headless/jammy-updates,jammy-security,now 11.0.18+10-0ubuntu1~22.04 amd64 [installed,automatic]
+        openjdk-11-jdk/jammy-updates,jammy-security,now 11.0.18+10-0ubuntu1~22.04 amd64 [installed,automatic]
+        :return:
+        """
         self.init_apt_packages()
-        return self.apt_check_installed("openjdk-11-jdk")
+        return self.apt_check_installed("openjdk-11-jdk") and \
+               self.apt_check_installed("openjdk-11-jre")
 
     def _provision(self):
-        breakpoint()
-        if not self.apt_check_repository_exists("openjdk-r"):
-            self.apt_add_repository("ppa:openjdk-r/ppa")
+        """
+        retry_10_times_sleep_5 apt install --upgrade default-jre -y
+        retry_10_times_sleep_5 apt install --upgrade default-jdk -y
 
-        return self.apt_install("openjdk-11-jdk")
+        old:
+        self.apt_add_repository("ppa:openjdk-r/ppa")
+
+        :return:
+        """
+        breakpoint()
+
+        self.apt_install("default-jre")
+        self.apt_install("default-jdk")
