@@ -255,6 +255,12 @@ class SystemFunctionCommon:
         :return:
         """
 
+        try:
+            return SystemFunctionCommon.check_file_exists(file_path, sudo=sudo)
+        except SystemFunctionCommon.FailedCheckError as error:
+            breakpoint()
+            pass
+        SystemFunctionCommon.run_bash(f"sudo rm -rf {file_path}")
         breakpoint()
 
     @staticmethod
@@ -1095,7 +1101,7 @@ class SystemFunctionCommon:
             return SystemFunctionCommon.run_bash(
                 f'echo "{line}" | sudo tee -a {file_path} > /dev/null'
             )
-            
+
         try:
             response = SystemFunctionCommon.run_bash(
                 f"sudo grep -F '{line}' {file_path}"

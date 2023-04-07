@@ -46,6 +46,7 @@ class Provisioner(SystemFunctionCommon):
         SystemFunctionFactory.REGISTERED_FUNCTIONS["gpg_key"](self.deployment_dir, self.force,
                                                               self.upgrade, src_url=src_url,
                                                               dst_file_path=dst_file_path).provision()
+        breakpoint()
         if self.check_files_exist(["/etc/apt/sources.list.d/elastic-7.x.list"], sudo=True):
             self.remove_file("/etc/apt/sources.list.d/elastic-7.x.list", sudo=True)
             breakpoint()
