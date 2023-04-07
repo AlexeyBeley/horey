@@ -199,7 +199,7 @@ class SystemFunctionCommon:
         SystemFunctionCommon.check_files_exist(arguments.files_paths.split(","))
 
     @staticmethod
-    def check_files_exist(files_paths, sudo=False) -> None:
+    def check_files_exist(files_paths, sudo=False) -> bool:
         """
         Self explanatory.
 
@@ -256,7 +256,7 @@ class SystemFunctionCommon:
         :param sudo:
         :return:
         """
-
+        breakpoint()
         try:
             return SystemFunctionCommon.check_file_exists(file_path, sudo=sudo)
         except SystemFunctionCommon.FailedCheckError as error:
