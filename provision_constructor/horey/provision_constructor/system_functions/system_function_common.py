@@ -199,25 +199,43 @@ class SystemFunctionCommon:
         SystemFunctionCommon.check_files_exist(arguments.files_paths.split(","))
 
     @staticmethod
-    def check_files_exist(files_paths) -> None:
+    def check_files_exist(files_paths, sudo=False) -> None:
         """
         Self explanatory.
 
         @param files_paths: [str, str]
+        @param sudo:
         @return:
         """
 
         errors = []
         for file_path in files_paths:
-            if not os.path.exists(file_path):
-                errors.append(f"File '{file_path}' does not exist")
-                continue
-
-            if not os.path.isfile(file_path):
-                errors.append(f"Path '{file_path}' is not a file")
+            try:
+                SystemFunctionCommon.check_file_exists(file_path, sudo=sudo)
+            except SystemFunctionCommon.FailedCheckError as error_handler:
+                errors.append(repr(error_handler))
 
         if errors:
             raise SystemFunctionCommon.FailedCheckError("\n".join(errors))
+
+    @staticmethod
+    def check_file_exists(file_path, sudo=False) -> bool:
+        """
+        Self explanatory.
+
+        @param file_path: str
+        @param sudo:
+        @return:
+        """
+        if not sudo:
+            if not os.path.exists(file_path):
+                raise SystemFunctionCommon.FailedCheckError(f"File '{file_path}' does not exist")
+            if not os.path.isfile(file_path):
+                raise SystemFunctionCommon.FailedCheckError(f"Path '{file_path}' is not a file")
+            return True
+        breakpoint()
+        command = f'if sudo test -f "{file_path}"; then echo "true"; else echo "false"; fi'
+        ret = SystemFunctionCommon.run_bash(command)
 
     @staticmethod
     def remove_file(file_path, sudo=False):
