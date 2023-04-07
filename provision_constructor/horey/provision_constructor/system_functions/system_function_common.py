@@ -256,14 +256,14 @@ class SystemFunctionCommon:
         :param sudo:
         :return:
         """
-        breakpoint()
+
         try:
-            return SystemFunctionCommon.check_file_exists(file_path, sudo=sudo)
-        except SystemFunctionCommon.FailedCheckError as error:
-            breakpoint()
+            if SystemFunctionCommon.check_file_exists(file_path, sudo=sudo):
+                SystemFunctionCommon.run_bash(f"sudo rm -rf {file_path}")
+        except SystemFunctionCommon.FailedCheckError:
             pass
-        SystemFunctionCommon.run_bash(f"sudo rm -rf {file_path}")
-        breakpoint()
+
+        return True
 
     @staticmethod
     def action_move_file_parser():
