@@ -50,7 +50,6 @@ class Provisioner(SystemFunctionCommon):
         if self.check_files_exist(["/etc/apt/sources.list.d/elastic-7.x.list"], sudo=True):
             self.remove_file("/etc/apt/sources.list.d/elastic-7.x.list", sudo=True)
 
-        breakpoint()
         line = f"deb [signed-by={dst_file_path}] https://artifacts.elastic.co/packages/8.x/apt stable main"
         self.add_line_to_file(line=line, file_path="/etc/apt/sources.list.d/elastic-8.x.list", sudo=True)
         self.reinit_apt_packages()
@@ -65,3 +64,4 @@ class Provisioner(SystemFunctionCommon):
 
         :return:
         """
+        self.check_systemd_service_status(service_name="logstash", min_uptime=60)
