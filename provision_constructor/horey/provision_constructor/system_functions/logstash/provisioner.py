@@ -47,8 +47,7 @@ class Provisioner(SystemFunctionCommon):
                                                               self.upgrade, src_url=src_url,
                                                               dst_file_path=dst_file_path).provision()
 
-        if self.check_files_exist(["/etc/apt/sources.list.d/elastic-7.x.list"], sudo=True):
-            self.remove_file("/etc/apt/sources.list.d/elastic-7.x.list", sudo=True)
+        self.remove_file("/etc/apt/sources.list.d/elastic-7.x.list", sudo=True)
 
         line = f"deb [signed-by={dst_file_path}] https://artifacts.elastic.co/packages/8.x/apt stable main"
         self.add_line_to_file(line=line, file_path="/etc/apt/sources.list.d/elastic-8.x.list", sudo=True)
