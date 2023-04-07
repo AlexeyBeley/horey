@@ -63,4 +63,4 @@ class Provisioner(SystemFunctionCommon):
 
         :return:
         """
-        self.check_systemd_service_status(service_name="logstash", min_uptime=60)
+        return self.apt_check_installed("logstash")
