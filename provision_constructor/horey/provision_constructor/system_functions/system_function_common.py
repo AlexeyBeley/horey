@@ -233,9 +233,17 @@ class SystemFunctionCommon:
             if not os.path.isfile(file_path):
                 raise SystemFunctionCommon.FailedCheckError(f"Path '{file_path}' is not a file")
             return True
-        breakpoint()
+
         command = f'if sudo test -f "{file_path}"; then echo "true"; else echo "false"; fi'
         ret = SystemFunctionCommon.run_bash(command)
+
+        if ret["stdout"] == "true":
+            return True
+
+        if ret["stdout"] == "false":
+            raise SystemFunctionCommon.FailedCheckError(f"File '{file_path}' does not exist or is not a file")
+
+        raise RuntimeError(f"Expected true/false, received: {ret}")
 
     @staticmethod
     def remove_file(file_path, sudo=False):
@@ -1081,6 +1089,13 @@ class SystemFunctionCommon:
         if not isinstance(file_path, str):
             raise ValueError(file_path)
 
+        try:
+            SystemFunctionCommon.check_file_exists(file_path, sudo=True)
+        except SystemFunctionCommon.FailedCheckError:
+            return SystemFunctionCommon.run_bash(
+                f'echo "{line}" | sudo tee -a {file_path} > /dev/null'
+            )
+            
         try:
             response = SystemFunctionCommon.run_bash(
                 f"sudo grep -F '{line}' {file_path}"
