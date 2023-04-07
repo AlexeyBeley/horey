@@ -218,6 +218,8 @@ class SystemFunctionCommon:
         if errors:
             raise SystemFunctionCommon.FailedCheckError("\n".join(errors))
 
+        return True
+
     @staticmethod
     def check_file_exists(file_path, sudo=False) -> bool:
         """
