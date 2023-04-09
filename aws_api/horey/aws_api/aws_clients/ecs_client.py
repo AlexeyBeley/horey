@@ -429,7 +429,32 @@ class ECSClient(Boto3Client):
         cluster.region = Region.get_region(cluster_arn.split(":")[3])
         return cluster
 
-    def provision_service(self, service):
+    def update_service_information(self, service):
+        """
+        Update service info if exists.
+
+        @param service:
+        @return:
+
+        AWSAccount.set_aws_region(service.region)
+        for response in self.execute(
+            self.client.get_function,
+            None,
+            raw_data=True,
+            filters_req={"FunctionName": service.name},
+            exception_ignore_callback=lambda x: "ResourceNotFoundException" in repr(x),
+        ):
+            del response["ResponseMetadata"]
+            service.update_from_raw_get_function_response(response)
+            break
+        else:
+            return False
+
+        return True
+        """
+        raise NotImplementedError()
+
+    def provision_service(self, service: ECSService):
         """
         Standard
 
@@ -444,11 +469,17 @@ class ECSClient(Boto3Client):
                 AWSAccount.set_aws_region(service.region)
                 response = self.update_service_raw(service.generate_update_request())
                 service.update_from_raw_response(response)
-                return
+                break
+        else:
+            AWSAccount.set_aws_region(service.region)
+            response = self.create_service_raw(service.generate_create_request())
+            service.update_from_raw_response(response)
 
-        AWSAccount.set_aws_region(service.region)
-        response = self.create_service_raw(service.generate_create_request())
-        service.update_from_raw_response(response)
+        self.wait_for_status(service,
+                self.update_service_information,
+                [service.Status.ACTIVE],
+                [service.Status.INACTIVE],
+                [service.Status.DRAINING])
 
     def create_service_raw(self, request_dict):
         """

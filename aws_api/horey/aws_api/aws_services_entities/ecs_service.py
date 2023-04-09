@@ -1,13 +1,12 @@
 """
 AWS Lambda representation
 """
-import pdb
 
-from horey.aws_api.aws_services_entities.aws_object import AwsObject
-from horey.aws_api.base_entities.region import Region
 from enum import Enum
+from horey.aws_api.aws_services_entities.aws_object import AwsObject
 
 
+# pylint: disable=too-many-instance-attributes
 class ECSService(AwsObject):
     """
     AWS ECSService class
@@ -20,10 +19,24 @@ class ECSService(AwsObject):
         self.service_registries = None
         self.role_arn = None
         self.load_balancers = None
+        self.cluster_arn = None
+        self.task_definition = None
+
+        self.deployment_configuration = None
+        self.placement_strategy = None
+        self.health_check_grace_period_seconds = None
+        self.enable_execute_command = None
+        self.status = None
+        self.desired_count = None
+
+        self.launch_type = None
+        self.scheduling_strategy = None
+        self.enable_ecs_managed_tags = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
             return
+
         init_options = {
             "serviceArn": lambda x, y: self.init_default_attr(
                 x, y, formatted_name="arn"
@@ -62,13 +75,22 @@ class ECSService(AwsObject):
     def _init_object_from_cache(self, dict_src):
         """
         Init from cache
+
         :param dict_src:
         :return:
         """
+
         options = {}
         self._init_from_cache(dict_src, options)
 
     def update_from_raw_response(self, dict_src):
+        """
+        Standard.
+
+        :param dict_src:
+        :return:
+        """
+
         init_options = {
             "serviceArn": lambda x, y: self.init_default_attr(
                 x, y, formatted_name="arn"
@@ -105,10 +127,13 @@ class ECSService(AwsObject):
         self.init_attrs(dict_src, init_options)
 
     def generate_create_request(self):
-        request = dict()
-        request["serviceName"] = self.name
-        request["cluster"] = self.cluster_arn
-        request["taskDefinition"] = self.task_definition
+        """
+        Standard.
+
+        :return:
+        """
+
+        request = {"serviceName": self.name, "cluster": self.cluster_arn, "taskDefinition": self.task_definition}
 
         if self.load_balancers is not None:
             request["loadBalancers"] = self.load_balancers
@@ -137,20 +162,26 @@ class ECSService(AwsObject):
         return request
 
     def generate_dispose_request(self, cluster):
-        request = dict()
-        request["service"] = self.name
-        request["cluster"] = cluster.name
-        request["force"] = True
+        """
+        Standard.
+
+        :param cluster:
+        :return:
+        """
+
+        request = {"service": self.name, "cluster": cluster.name, "force": True}
         return request
 
     def generate_update_request(self):
-        request = dict()
-        request["service"] = self.name
-        request["cluster"] = self.cluster_arn
-        request["taskDefinition"] = self.task_definition
-        request["desiredCount"] = self.desired_count
-        request["deploymentConfiguration"] = self.deployment_configuration
-        request["placementStrategy"] = self.placement_strategy
+        """
+        Standard.
+
+        :return:
+        """
+
+        request = {"service": self.name, "cluster": self.cluster_arn, "taskDefinition": self.task_definition,
+                   "desiredCount": self.desired_count, "deploymentConfiguration": self.deployment_configuration,
+                   "placementStrategy": self.placement_strategy}
         if self.load_balancers is not None:
             request[
                 "healthCheckGracePeriodSeconds"
@@ -159,33 +190,53 @@ class ECSService(AwsObject):
 
         return request
 
-    @property
-    def region(self):
-        if self._region is not None:
-            return self._region
-
-        raise NotImplementedError()
-        if self.arn is not None:
-            self._region = Region.get_region(self.arn.split(":")[3])
-
-        return self._region
-
-    @region.setter
-    def region(self, value):
-        if not isinstance(value, Region):
-            raise ValueError(value)
-
-        self._region = value
-
     def get_status(self):
-        raise NotImplementedError()
-        if self.status is None:
-            return self.Status.ACTIVE
-        elif self.status == "Delete in progress":
-            return self.Status.DELETING
-        else:
-            raise NotImplementedError(self.status)
+        """
+
+        :return:
+        """
+
+        raise NotImplementedError(self.status)
 
     class Status(Enum):
+        """
+        Standard.
+        """
         ACTIVE = 0
-        DELETING = 1
+        DRAINING = 1
+        INACTIVE = 2
+
+    class Deployment(AwsObject):
+        """
+        Single deployment.
+
+        """
+
+        def __init__(self, dict_src, from_cache=False):
+            super().__init__(dict_src)
+            self._region = None
+            self.status = None
+
+            if from_cache:
+                self._init_object_from_cache(dict_src)
+                return
+
+            init_options = {
+                "serviceArn": lambda x, y: self.init_default_attr(
+                    x, y, formatted_name="arn"
+                ),
+                "status": self.init_default_attr,
+            }
+
+            self.init_attrs(dict_src, init_options)
+
+        def _init_object_from_cache(self, dict_src):
+            """
+            Init from cache
+
+            :param dict_src:
+            :return:
+            """
+
+            options = {}
+            self._init_from_cache(dict_src, options)
