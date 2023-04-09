@@ -4,6 +4,7 @@ Provision ntp service.
 """
 
 import os.path
+import platform
 from horey.provision_constructor.system_function_factory import SystemFunctionFactory
 
 from horey.provision_constructor.system_functions.system_function_common import (
@@ -49,7 +50,11 @@ class Provisioner(SystemFunctionCommon):
         self.apt_purge("ntp*")
         self.apt_purge("sntp*")
         self.apt_purge("chrony*")
-        self.apt_install("systemd-timesyncd")
+        release = platform.release()
+        float_release = float(release[:release.find(".", release.find(".")+1)])
+
+        if float_release < 5.15:
+            self.apt_install("systemd-timesyncd")
 
         ret = self.run_bash("sudo timedatectl set-ntp false")
         logger.info(ret)
