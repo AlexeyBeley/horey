@@ -382,7 +382,7 @@ def test_provision_service_without_tg():
     ecs_service.cluster_arn = ecs_cluster.arn
     ecs_service.task_definition = ecs_task_definition.arn
 
-    ecs_service.desired_count = 1
+    ecs_service.desired_count = 20
 
     ecs_service.launch_type = "EC2"
 

@@ -2,7 +2,7 @@
 AWS lambda client to handle lambda service API requests.
 
 """
-
+import datetime
 import time
 
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
@@ -470,14 +470,49 @@ class ECSClient(Boto3Client):
             AWSAccount.set_aws_region(service.region)
             response = self.create_service_raw(service.generate_create_request())
             service.update_from_raw_response(response)
-        self.wait_for_status(service,
-                self.update_service_information,
-                [service.Status.ACTIVE],
-                [service.Status.INACTIVE],
-                [service.Status.DRAINING])
-        deployments = [ECSService.Deployment(dict_src) for dict_src in service.deployments]
 
-        breakpoint()
+        self.wait_for_deployment_end(service)
+
+    def wait_for_deployment_end(self, service, timeout=10*60):
+        """
+        Wait for deployment to end.
+
+        :param timeout: Seconds
+        :param service:
+        :return:
+        """
+
+        self.wait_for_status(service,
+                         self.update_service_information,
+                         [service.Status.ACTIVE],
+                         [service.Status.INACTIVE],
+                         [service.Status.DRAINING])
+
+        start_time = datetime.datetime.now()
+        datetime_limit = start_time + datetime.timedelta(seconds=timeout)
+        while datetime.datetime.now() < datetime_limit:
+            self.update_service_information(service)
+            deployments = [ECSService.Deployment(dict_src) for dict_src in service.deployments]
+            for deployment in deployments:
+                if deployment.status == "PRIMARY":
+                    break
+            else:
+                raise ValueError("No primary deployment")
+
+            if deployment.rollout_state == "COMPLETED":
+                logger.info(f"Deployed '{service.name}' in {datetime.datetime.now() - start_time}")
+                return True
+
+            if deployment.rollout_state == "IN_PROGRESS":
+                sleeping_time = min(6, (deployment.desired_count + 1 - deployment.running_count)) * 10
+                logger.info(f"Deploying '{service.name}' [{deployment.running_count}/{deployment.desired_count}]. "
+                            f"Going to sleep for {sleeping_time} seconds")
+                time.sleep(sleeping_time)
+                continue
+
+            raise ValueError(f"Unknown deployment rollout state: {deployment.rollout_state}")
+
+        raise TimeoutError(f"Reached timeout: {timeout} seconds")
 
     def create_service_raw(self, request_dict):
         """
