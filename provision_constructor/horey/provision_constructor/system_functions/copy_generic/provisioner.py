@@ -21,8 +21,9 @@ class Provisioner(SystemFunctionCommon):
 
     """
 
-    def __init__(self, deployment_dir, src=None, dst=None, sudo=False):
-        super().__init__(os.path.dirname(os.path.abspath(__file__)))
+    # pylint: disable= too-many-arguments
+    def __init__(self, deployment_dir, force, upgrade, src=None, dst=None, sudo=False):
+        super().__init__(os.path.dirname(os.path.abspath(__file__)), force, upgrade)
         self.deployment_dir = deployment_dir
         if os.path.isfile(src):
             if os.path.isdir(dst):
@@ -33,29 +34,6 @@ class Provisioner(SystemFunctionCommon):
         self.src = src
         self.dst = dst
         self.sudo = sudo
-
-    def provision(self, force=False):
-        """
-        Provision the copy generic file/dir
-
-        @param force:
-        @return:
-        """
-
-        if not force and self.test_provisioned():
-            logger.info(
-                f"Skipping copy generic provisioning: from {self.src} to {self.dst}"
-            )
-            return False
-
-        self._provision()
-
-        if not self.test_provisioned():
-            raise RuntimeError(f"Failed to copy generic: from {self.src} to {self.dst}")
-
-        logger.info(f"Successfully copied generic: from {self.src} to {self.dst}")
-
-        return True
 
     def test_provisioned(self):
         """
