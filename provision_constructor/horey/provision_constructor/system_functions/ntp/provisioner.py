@@ -49,6 +49,7 @@ class Provisioner(SystemFunctionCommon):
         self.apt_purge("ntp*")
         self.apt_purge("sntp*")
         self.apt_purge("chrony*")
+        self.apt_install("systemd-timesyncd")
 
         ret = self.run_bash("sudo timedatectl set-ntp false")
         logger.info(ret)
