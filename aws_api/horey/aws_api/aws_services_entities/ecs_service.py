@@ -32,6 +32,7 @@ class ECSService(AwsObject):
         self.launch_type = None
         self.scheduling_strategy = None
         self.enable_ecs_managed_tags = None
+        self.arn = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -68,6 +69,7 @@ class ECSService(AwsObject):
             "status": self.init_default_attr,
             "launchType": self.init_default_attr,
             "tags": self.init_default_attr,
+            "deploymentController": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -122,6 +124,7 @@ class ECSService(AwsObject):
             "status": self.init_default_attr,
             "launchType": self.init_default_attr,
             "tags": self.init_default_attr,
+            "deploymentController": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -195,16 +198,18 @@ class ECSService(AwsObject):
 
         :return:
         """
-
-        raise NotImplementedError(self.status)
+        return {
+            enum_value.value: enum_value
+            for _, enum_value in self.Status.__members__.items()
+        }[self.status]
 
     class Status(Enum):
         """
         Standard.
         """
-        ACTIVE = 0
-        DRAINING = 1
-        INACTIVE = 2
+        ACTIVE = "ACTIVE"
+        DRAINING = "DRAINING"
+        INACTIVE = "INACTIVE"
 
     class Deployment(AwsObject):
         """
@@ -222,13 +227,21 @@ class ECSService(AwsObject):
                 return
 
             init_options = {
-                "serviceArn": lambda x, y: self.init_default_attr(
-                    x, y, formatted_name="arn"
-                ),
+                "id": self.init_default_attr,
                 "status": self.init_default_attr,
+                "taskDefinition": self.init_default_attr,
+                "desiredCount": self.init_default_attr,
+                "pendingCount": self.init_default_attr,
+                "runningCount": self.init_default_attr,
+                "failedTasks": self.init_default_attr,
+                "createdAt": self.init_default_attr,
+                "updatedAt": self.init_default_attr,
+                "launchType": self.init_default_attr,
+                "rolloutState": self.init_default_attr,
+                "rolloutStateReason": self.init_default_attr,
             }
 
-            self.init_attrs(dict_src, init_options)
+            self.init_attrs(dict_src, init_options, raise_on_no_option=True)
 
         def _init_object_from_cache(self, dict_src):
             """
