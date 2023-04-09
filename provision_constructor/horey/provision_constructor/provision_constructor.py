@@ -7,6 +7,9 @@ import os
 # pylint: disable= wildcard-import, unused-wildcard-import
 from horey.provision_constructor.system_functions import *
 from horey.provision_constructor.system_function_factory import SystemFunctionFactory
+from horey.h_logger import get_logger
+
+logger = get_logger()
 
 
 class ProvisionConstructor:
@@ -44,6 +47,7 @@ class ProvisionConstructor:
             force = kwargs.get("upgrade")
             del kwargs["upgrade"]
 
+        logger.info(f"Initializing system_function '{system_function_name}' with args: {kwargs}")
         system_function = SystemFunctionFactory.REGISTERED_FUNCTIONS[
             system_function_name
         ](self.deployment_dir, force, upgrade, **kwargs)
