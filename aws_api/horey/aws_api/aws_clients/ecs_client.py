@@ -490,6 +490,7 @@ class ECSClient(Boto3Client):
 
         start_time = datetime.datetime.now()
         datetime_limit = start_time + datetime.timedelta(seconds=timeout)
+        last_running_count = 0
         while datetime.datetime.now() < datetime_limit:
             self.update_service_information(service)
             deployments = [ECSService.Deployment(dict_src) for dict_src in service.deployments]
@@ -504,6 +505,10 @@ class ECSClient(Boto3Client):
                 return True
 
             if deployment.rollout_state == "IN_PROGRESS":
+                if last_running_count < deployment.running_count:
+                    last_running_count = deployment.running_count
+                    datetime_limit = datetime.datetime.now() + datetime.timedelta(seconds=timeout)
+
                 sleeping_time = min(6, (deployment.desired_count + 1 - deployment.running_count)) * 10
                 logger.info(f"Deploying '{service.name}' [{deployment.running_count}/{deployment.desired_count}]. "
                             f"Going to sleep for {sleeping_time} seconds")
