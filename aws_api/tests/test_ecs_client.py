@@ -370,5 +370,5 @@ def test_get_all_task_definitions():
 if __name__ == "__main__":
     # test_register_task_definition()
     # test_provision_cluster()
-    # test_provision_service()
-    test_get_all_task_definitions()
+    test_provision_service()
+    # test_get_all_task_definitions()
