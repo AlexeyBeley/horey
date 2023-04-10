@@ -6,17 +6,18 @@ pip3 install wheel
 
 echo "Generating composed requirements.txt file"
 
-python3 "${CURRENT_SCRIPT_FULL_PATH}/recursive_compose_requirements.py" "$@" --output_horey_file "${CURRENT_SCRIPT_FULL_PATH}/_build/required_horey_packages.txt" --output_requirements_file "${CURRENT_SCRIPT_FULL_PATH}/_build/requirements.txt"
+python "${CURRENT_SCRIPT_FULL_PATH}/recursive_compose_requirements.py" "$@" --output_horey_file "${CURRENT_SCRIPT_FULL_PATH}/_build/required_horey_packages.txt" --output_requirements_file "${CURRENT_SCRIPT_FULL_PATH}/_build/requirements.txt"
 
 echo "Created recursive_compose_requirements"
 
+pip3_path=$(which pip3)
+python_subver=$(python -V |awk '{print $2}' | awk -F. '{print $2}')
 while read LINE; do
    set +ex
    pip3 uninstall -y "horey.${LINE}"
    set -ex
 
-   pip3_path=$(which pip3)
-   rm -rf "${pip3_path%/*}/../lib/python3/site-packages/horey/${LINE}"
+   rm -rf "${pip3_path%/*}/../lib/python3.${python_subver}/site-packages/horey/${LINE}"
 
    "${CURRENT_SCRIPT_FULL_PATH}/create_wheel.sh" "${LINE}"
    echo "After create_wheel.sh ${LINE}"

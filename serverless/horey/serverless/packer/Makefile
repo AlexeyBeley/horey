@@ -14,7 +14,7 @@ SRC_FILES := $(filter-out $(EXCLUSIONS), $(ALL_FILES))
 
 venv_dir:
 	mkdir -p ${BUILD_DIR}
-	python3 -m venv ${VENV_DIR} && \
+	python -m venv ${VENV_DIR} && \
 	pip3 install pylint &&\
 	pip3 install wheel
 
@@ -22,7 +22,7 @@ package_source_requirements: venv_dir
 	for VARIABLE in ${REQUIREMENTS}; do \
 	cd $$VARIABLE; \
 	rm -rf $$VARIABLE\dist; \
-	python3 setup.py sdist bdist_wheel; \
+	python setup.py sdist bdist_wheel; \
 	done
 
 install_source_requirements: package_source_requirements
@@ -46,11 +46,11 @@ zip_src_raw:
 
 invoke: install_source_requirements
 	source ${VENV_DIR}/bin/activate &&\
-	python3 invoke_me.py
+	python invoke_me.py
 
 raw_invoke:
 	source ${VENV_DIR}/bin/activate &&\
-	python3 invoke_me.py
+	python invoke_me.py
 
 clear:
 	rm -rf ${VENV_DIR}

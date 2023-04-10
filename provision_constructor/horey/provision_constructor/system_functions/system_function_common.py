@@ -282,7 +282,7 @@ class SystemFunctionCommon:
             "--dst_file_path", required=True, type=str, help="Destination file path"
         )
 
-        parser.epilog = f"Usage: python3 {__file__} [options]"
+        parser.epilog = f"Usage: python {__file__} [options]"
         return parser
 
     @staticmethod
@@ -349,7 +349,7 @@ class SystemFunctionCommon:
             "--dst_file_path", required=True, type=str, help="Destination file path"
         )
 
-        parser.epilog = f"Usage: python3 {__file__} [options]"
+        parser.epilog = f"Usage: python {__file__} [options]"
         return parser
 
     @staticmethod
@@ -408,7 +408,7 @@ class SystemFunctionCommon:
             "--comment_line", required=True, type=str, help="Destination file path"
         )
 
-        parser.epilog = f"Usage: python3 {__file__} [options]"
+        parser.epilog = f"Usage: python {__file__} [options]"
         return parser
 
     @staticmethod
@@ -466,7 +466,7 @@ class SystemFunctionCommon:
             help="Check running duration in seconds",
         )
 
-        parser.epilog = f"Usage: python3 {__file__} [options]"
+        parser.epilog = f"Usage: python {__file__} [options]"
         return parser
 
     @staticmethod
@@ -1031,7 +1031,7 @@ class SystemFunctionCommon:
             "--file_path", required=True, type=str, help="Path to the file"
         )
 
-        parser.epilog = f"Usage: python3 {__file__} [options]"
+        parser.epilog = f"Usage: python {__file__} [options]"
         return parser
 
     @staticmethod

@@ -10,7 +10,7 @@
 # Run pylint on the changed files
 function run_pylint () {
 return_code=0
-  if [ ! -d "./build/_build/_venv/lib/python3.8/site-packages/pylint" ]
+  if [ ! -d "./build/_build/_venv/lib/python/site-packages/pylint" ]
   then
       make -e install_pylint
   fi

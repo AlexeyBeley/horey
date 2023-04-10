@@ -30,4 +30,4 @@ then
  rm -rf ${PACKAGE_TMP_DIR_FULL_PATH}/build/*
 fi
 
-python3 setup.py sdist bdist_wheel;
+python setup.py sdist bdist_wheel;

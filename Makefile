@@ -12,7 +12,7 @@ ALL_PACKAGES := $(wildcard *)
 EXCLUSIONS := LICENSE Makefile README.md build dns_map docker terraform security_group_map pypi_infra h_flow network
 SRC_FILES := $(filter-out $(EXCLUSIONS), $(ALL_PACKAGES))
 
-#apt install python3.10-venv -y
+#apt install python.10-venv -y
 install-pip:
 	sudo apt-get update
 	sudo apt-get -y install python3-pip
@@ -24,7 +24,7 @@ create_build_env:
 	pip3 install --upgrade setuptools
 
 init_venv_dir: create_build_env
-	python3 -m venv ${VENV_DIR} &&\
+	python -m venv ${VENV_DIR} &&\
 	source ${VENV_DIR}/bin/activate &&\
 	pip3 install --upgrade pip &&\
 	pip3 install -U setuptools\>=54.1.2
@@ -79,12 +79,12 @@ clean:
 test_azure_api: install_from_source-azure_api
 	source ${VENV_DIR}/bin/activate &&\
 	cd ${ROOT_DIR}/azure_api/tests &&\
-	python3 test_azure_api_init_and_cache.py
+	python test_azure_api_init_and_cache.py
 
 test_aws_api: recursive_install_from_source_local_venv-aws_api
 	source ${VENV_DIR}/bin/activate &&\
 	cd ${ROOT_DIR}/aws_api/tests &&\
-	python3 test_aws_api_init_and_cache.py
+	python test_aws_api_init_and_cache.py
 
 install_azure_api_prerequisites:
 	source ${VENV_DIR}/bin/activate &&\
@@ -93,7 +93,7 @@ install_azure_api_prerequisites:
 test_zabbix_api: install_from_source-zabbix_api
 	source ${VENV_DIR}/bin/activate &&\
 	cd ${ROOT_DIR}/zabbix_api/tests &&\
-	python3 test_zabbix_api.py
+	python test_zabbix_api.py
 
 zip_env:
 	cd "/Users/alexey.beley/private/horey/provision_constructor/tests/provision_constructor_deployment" &&\
