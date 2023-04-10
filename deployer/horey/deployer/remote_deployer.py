@@ -193,12 +193,11 @@ class RemoteDeployer:
         command = (
             "#!/bin/bash\n"
             "set -xe\n"
-            "sudo apt update\n"
-            "sudo apt install -y unzip\n"
+            "export unzip_installed=0\n"
+            "unzip -v || export unzip_installed=1\n"
+            f"if [[ $unzip_installed == '1' ]]; then sudo apt update && sudo apt install -y unzip; fi\n"
             f"unzip {remote_zip_path} -d {deployment_target.remote_deployment_dir_path}\n"
             f"rm {remote_zip_path}\n"
-            f"sleep 80\n"
-            "echo 'FINISHED_UNZIPPING_REMOTE_SCRIPT'\n"
         )
         logger.info(f"[REMOTE] {command}")
         return command
