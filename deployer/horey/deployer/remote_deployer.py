@@ -370,10 +370,7 @@ class RemoteDeployer:
                 # our finish command ends with the exit status
                 exit_status = int(str(line).rsplit(maxsplit=1)[1])
                 if exit_status:
-                    # stderr is combined with stdout.
-                    # thus, swap sherr with shout in a case of failure.
-                    sherr = shout
-                    shout = []
+                    raise RemoteDeployer.DeployerError(f"{shout}: exit status: {exit_status}")
                 break
             else:
                 shout.append(line)
