@@ -227,7 +227,7 @@ dict_register_td_request = {
 
 def test_register_task_definition():
     client = ECSClient()
-    client.register_task_definition(dict_register_td_request)
+    client.provision_ecs_task_definition(dict_register_td_request)
 
 
 CLUSTER_NAME = "my-cluster-name"
@@ -284,7 +284,7 @@ def test_provision_capacity_provider():
         "managedTerminationProtection": "DISABLED",
     }
     ecs_client.provision_capacity_provider(capacity_provider)
-    assert capacity_provider.arn is not None
+    assert capacity_provider._arn is not None
 
 
 def test_provision_cluster():
@@ -309,7 +309,7 @@ def test_provision_cluster():
     assert cluster.arn is not None
 
 
-def test_provision_service():
+def test_provision_service_with_tg():
     region = Region.get_region("us-west-2")
     ecs_client = ECSClient()
     ecs_task_definition = Mock()
@@ -361,14 +361,57 @@ def test_provision_service():
     ecs_client.provision_service(ecs_service)
 
 
+def test_provision_service_without_tg():
+    region = Region.get_region("us-west-2")
+    ecs_client = ECSClient()
+    ecs_task_definition = Mock()
+    ecs_task_definition.arn = mock_values["ecs_task_definition.arn"]
+    ecs_cluster = Mock()
+    ecs_cluster.arn = mock_values["ecs_cluster.arn"]
+    service_name = mock_values["service_name"]
+    role_arn = mock_values["ecs_service.role_arn"]
+    ecs_service = ECSService({})
+    ecs_service.region = region
+
+    ecs_service.tags = [
+        {"key": "env", "value": "test"},
+        {"key": "Name", "value": "test"},
+    ]
+
+    ecs_service.name = service_name
+    ecs_service.cluster_arn = ecs_cluster.arn
+    ecs_service.task_definition = ecs_task_definition.arn
+
+    ecs_service.desired_count = 30
+
+    ecs_service.launch_type = "EC2"
+
+    ecs_service.role_arn = role_arn
+    ecs_service.deployment_configuration = {
+        "deploymentCircuitBreaker": {"enable": False, "rollback": False},
+        "maximumPercent": 200,
+        "minimumHealthyPercent": 100,
+    }
+    ecs_service.placement_strategy = [
+        {"type": "spread", "field": "attribute:ecs.availability-zone"},
+        {"type": "spread", "field": "instanceId"},
+    ]
+    ecs_service.health_check_grace_period_seconds = 10
+    ecs_service.scheduling_strategy = "REPLICA"
+    ecs_service.enable_ecs_managed_tags = False
+    ecs_service.enable_execute_command = False
+
+    ecs_client.provision_service(ecs_service)
+
+
 def test_get_all_task_definitions():
     client = ECSClient()
     ret = client.get_all_task_definitions(region=Region.get_region("us-east-1"))
-    assert type(ret) == list
+    assert isinstance(ret, list)
 
 
 if __name__ == "__main__":
     # test_register_task_definition()
     # test_provision_cluster()
-    # test_provision_service()
-    test_get_all_task_definitions()
+    test_provision_service_without_tg()
+    # test_get_all_task_definitions()
