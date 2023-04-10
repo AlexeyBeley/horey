@@ -687,9 +687,11 @@ class SystemFunctionCommon:
                 try:
                     ret = SystemFunctionCommon.run_bash(command)
                     return ret
-                except SystemFunctionCommon.BashError as inst:
+                except BashExecutor.BashError as inst:
                     dict_inst = json.loads(str(inst))
-                    if raise_on_error_callback is not None and raise_on_error_callback(
+                    if "TimeoutExpired" in dict_inst["stderr"]:
+                        SystemFunctionCommon.unlock_dpckg_lock()
+                    elif raise_on_error_callback is not None and raise_on_error_callback(
                         dict_inst
                     ):
                         raise
