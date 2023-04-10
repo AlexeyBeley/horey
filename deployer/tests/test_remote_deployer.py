@@ -57,6 +57,7 @@ def test_provision_target_remote_deployer_infrastructure_rsa_ed25519key():
     target.bastion_ssh_key_type = "rsa"
     deployer.provision_target_remote_deployer_infrastructure_raw(target)
 
+
 if __name__ == "__main__":
     #test_provision_target_remote_deployer_infrastructure_raw()
     test_provision_target_remote_deployer_infrastructure_rsa_ed25519key()
