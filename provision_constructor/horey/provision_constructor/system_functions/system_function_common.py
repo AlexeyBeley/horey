@@ -691,6 +691,9 @@ class SystemFunctionCommon:
                     dict_inst = json.loads(str(inst))
                     if "TimeoutExpired" in dict_inst["stderr"]:
                         SystemFunctionCommon.unlock_dpckg_lock()
+                    elif "sudo dpkg --configure -a" in dict_inst["stderr"]:
+                        _command = "echo Y | sudo dpkg --configure -a"
+                        SystemFunctionCommon.run_bash(_command)
                     elif raise_on_error_callback is not None and raise_on_error_callback(
                         dict_inst
                     ):
