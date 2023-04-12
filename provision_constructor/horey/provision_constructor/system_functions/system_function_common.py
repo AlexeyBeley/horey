@@ -573,22 +573,27 @@ class SystemFunctionCommon:
         )
 
     # endregion
-    def apt_install(self, package_name):
+    def apt_install(self, package_name, package_names=None):
         """
         Run apt install or upgrade.
 
         @param package_name:
+        @param package_names:
         @return:
         """
 
+        if package_name is not None:
+            if package_names is not None:
+                raise ValueError(f"Either package_name or package_names must be set but not both: {package_name}/{package_names} ")
+            package_names = [package_name]
         SystemFunctionCommon.init_apt_packages()
 
-        logger.info(f"Installing apt package: '{package_name}'")
+        logger.info(f"Installing apt packages: {package_names}")
 
         if self.upgrade:
-            command = f"sudo apt --upgrade install -y {package_name}"
+            command = f"sudo apt --upgrade install -y {' '.join(package_names)}"
         else:
-            command = f"sudo apt install -y {package_name}"
+            command = f"sudo apt install -y {' '.join(package_names)}"
 
         def raise_on_error_callback(response):
             return (

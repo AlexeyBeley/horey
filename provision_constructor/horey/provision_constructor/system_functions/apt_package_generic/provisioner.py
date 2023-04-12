@@ -41,6 +41,10 @@ class Provisioner(SystemFunctionCommon):
         """
 
         self.init_apt_packages()
+        if self.package_names == ["all"]:
+            ret = self.run_bash("sudo apt list --upgradeable")
+            return ret["stdout"] in ["Listing... Done", "Listing..."]
+
         return all(self.apt_check_installed(package_name)
                    for package_name in self.package_names)
 
@@ -50,6 +54,16 @@ class Provisioner(SystemFunctionCommon):
 
         @return:
         """
+        if self.package_names == ["all"]:
+            return self._provision_upgrade_full()
 
-        for package_name in self.package_names:
-            self.apt_install(package_name)
+        return self.apt_install(None, package_names=self.package_names)
+
+    def _provision_upgrade_full(self):
+        """
+        Upgrade all system packages system.
+
+        :return:
+        """
+
+        return self.run_bash("sudo apt full-upgrade -y")
