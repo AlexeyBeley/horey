@@ -24,4 +24,4 @@ def test_get_region_lambdas():
 
 if __name__ == "__main__":
     test_init_lambda_client()
-    #test_get_region_lambdas()
+    test_get_region_lambdas()

@@ -315,10 +315,6 @@ class Boto3Client:
 
         response = self.execute_without_pagination(func_command, return_string, filters_req=filters_req, raw_data=raw_data, exception_ignore_callback=exception_ignore_callback, instant_raise=instant_raise)
 
-        if raw_data:
-            yield response
-            return
-
         for ret_obj in response:
             yield ret_obj
 
@@ -366,7 +362,7 @@ class Boto3Client:
                 if exception_ignore_callback is not None and exception_ignore_callback(
                     exception_instance
                 ):
-                    return [None]
+                    return []
 
                 retry_counter += exception_weight
                 time.sleep(time_to_sleep)
@@ -379,14 +375,17 @@ class Boto3Client:
                 )
 
         if raw_data:
-            return response
-
-        if isinstance(response[return_string], list):
-            return response[return_string]
-        elif type(response[return_string]) in [str, dict, type(None), bool]:
-            return [response[return_string]]
+            ret_value = response
         else:
-            raise NotImplementedError(f"{response[return_string]} type:{type(response[return_string])}")
+            ret_value = response[return_string]
+
+        if isinstance(ret_value, list):
+            return ret_value
+
+        if type(ret_value) in [str, dict, type(None), bool]:
+            return [ret_value]
+
+        raise NotImplementedError(f"{ret_value} type:{type(ret_value)}")
 
     # pylint: disable= too-many-arguments
     def execute_with_single_reply(
