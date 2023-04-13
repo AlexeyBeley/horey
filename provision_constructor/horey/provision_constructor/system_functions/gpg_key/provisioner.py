@@ -1,5 +1,5 @@
 """
-Logstash filter provisioner.
+Provision GPG key.
 
 """
 
@@ -13,16 +13,26 @@ from horey.provision_constructor.system_functions.system_function_common import 
 @SystemFunctionFactory.register
 class Provisioner(SystemFunctionCommon):
     """
-    Main class.
+    Main provisioner.
 
     """
 
-    def __init__(self, deployment_dir, force, upgrade):
+    # pylint: disable= too-many-arguments
+    def __init__(self, deployment_dir, force, upgrade, src_url=None, dst_file_path=None):
         super().__init__(os.path.dirname(os.path.abspath(__file__)), force, upgrade)
         self.deployment_dir = deployment_dir
+        self.src_url = src_url
+        self.dst_file_path = dst_file_path
 
     def _provision(self):
-        breakpoint()
+        """
+        Provision GPG key.
+
+        :return:
+        """
+
+        self.run_bash(f"wget -qO - {self.src_url} | sudo gpg --batch --yes --dearmor -o {self.dst_file_path}")
+        self.update_packages()
 
     def test_provisioned(self):
         """
@@ -30,4 +40,5 @@ class Provisioner(SystemFunctionCommon):
 
         :return:
         """
-        return self.apt_check_installed("logstash")
+
+        self.check_files_exist([self.dst_file_path])

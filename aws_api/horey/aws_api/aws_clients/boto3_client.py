@@ -215,7 +215,7 @@ class Boto3Client:
         return _page.get(self.NEXT_PAGE_RESPONSE_KEY)
 
     # pylint: disable= too-many-arguments
-    def execute(
+    def execute_old(
         self,
         func_command,
         return_string,
@@ -275,11 +275,123 @@ class Boto3Client:
 
         for ret_obj in ret_lst:
             yield ret_obj
+    # pylint: disable= too-many-arguments
+
+    def execute(
+        self,
+        func_command,
+        return_string,
+        filters_req=None,
+        raw_data=False,
+        internal_starting_token=False,
+        exception_ignore_callback=None,
+        instant_raise=False,
+    ):
+        """
+        Command to execute clients bound function- execute with paginator if available.
+
+        :param instant_raise: Raise without protection
+        :param func_command: Bound method from _client instance
+        :param return_string: string to retrive the infromation from reply dict
+        :param filters_req: filters dict passed to the API client to filter the response
+        :param exception_ignore_callback: called on exception if returns true - do not retries on exception
+        :return: list of replies
+        """
+
+        if filters_req is None:
+            filters_req = {}
+
+        if self.client.can_paginate(func_command.__name__):
+            for ret_obj in self.yield_with_paginator(
+                func_command,
+                return_string,
+                filters_req=filters_req,
+                raw_data=raw_data,
+                internal_starting_token=internal_starting_token,
+                exception_ignore_callback=exception_ignore_callback,
+            ):
+                yield ret_obj
+            return
+
+        response = self.execute_without_pagination(func_command, return_string, filters_req=filters_req, raw_data=raw_data, exception_ignore_callback=exception_ignore_callback, instant_raise=instant_raise)
+
+        if raw_data:
+            yield response
+            return
+
+        for ret_obj in response:
+            yield ret_obj
+
+    def execute_without_pagination(self, func_command, return_string, filters_req=None, raw_data=False, exception_ignore_callback=None, instant_raise=False):
+        """
+        Protected execution of an API call.
+
+        :param instant_raise:
+        :param return_string:
+        :param func_command:
+        :param filters_req:
+        :param exception_ignore_callback:
+        :return:
+        """
+
+        retry_counter = 0
+        while retry_counter < self.EXECUTION_RETRY_COUNT:
+            Boto3Client.EXEC_COUNT += 1
+            try:
+                logger.info(
+                    f"Executing: '{func_command.__name__}' and args '{filters_req}'"
+                )
+                response = func_command(**filters_req)
+                break
+            except Exception as exception_instance:
+                logger.warning(
+                    f"Exception received in paginator '{func_command.__name__}' Error: {repr(exception_instance)}"
+                )
+                if "The security token included in the request is invalid" in repr(
+                    exception_instance
+                ):
+                    raise
+                exception_weight = 10
+                time_to_sleep = 1
+
+                if "Throttling" in repr(exception_instance):
+                    exception_weight = 1
+                    time_to_sleep = retry_counter + exception_weight
+                    logger.error(
+                        f"Retrying after Throttling '{func_command.__name__}' attempt {retry_counter}/{self.EXECUTION_RETRY_COUNT} Error: {exception_instance}"
+                    )
+                elif instant_raise:
+                    raise
+
+                if exception_ignore_callback is not None and exception_ignore_callback(
+                    exception_instance
+                ):
+                    return [None]
+
+                retry_counter += exception_weight
+                time.sleep(time_to_sleep)
+                logger.warning(
+                    f"Retrying '{func_command.__name__}' attempt {retry_counter}/{self.EXECUTION_RETRY_COUNT} Error: {exception_instance}"
+                )
+        else:
+            raise TimeoutError(
+                    f"Max attempts reached while executing '{func_command.__name__}': {self.EXECUTION_RETRY_COUNT}"
+                )
+
+        if raw_data:
+            return response
+
+        if isinstance(response[return_string], list):
+            return response[return_string]
+        elif type(response[return_string]) in [str, dict, type(None), bool]:
+            return [response[return_string]]
+        else:
+            raise NotImplementedError(f"{response[return_string]} type:{type(response[return_string])}")
 
     # pylint: disable= too-many-arguments
     def execute_with_single_reply(
-        self,
-        func_command,
+            self,
+            func_command,
         return_string,
         filters_req=None,
         raw_data=False,

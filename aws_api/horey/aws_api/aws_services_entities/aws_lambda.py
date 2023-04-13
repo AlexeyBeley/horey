@@ -251,7 +251,6 @@ class AWSLambda(AwsObject):
             "Handler": self.handler,
             "Runtime": self.runtime,
             "Tags": self.tags,
-            "Environment": self.environment,
         }
 
         if self.timeout is not None:
@@ -265,6 +264,9 @@ class AWSLambda(AwsObject):
 
         if self.vpc_config is not None:
             request["VpcConfig"] = self.vpc_config
+
+        if self.environment is not None:
+            request["Environment"] = self.environment
 
         return request
 

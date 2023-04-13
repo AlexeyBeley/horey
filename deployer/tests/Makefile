@@ -19,4 +19,5 @@ build:
 	cd ${HOREY_DIR_PATH} &&\
 	make raw_install_from_source-deployer
 	#make recursive_install_from_source_local_venv-deployer
+	#make recursive_install_from_source_local_venv-deployer
 	#make raw_install_from_source-deployer

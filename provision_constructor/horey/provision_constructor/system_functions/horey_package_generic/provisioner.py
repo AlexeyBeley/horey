@@ -26,12 +26,13 @@ class Provisioner(SystemFunctionCommon):
     def __init__(
         self,
         deployment_dir,
+        force, upgrade,
         horey_repo_path=None,
         package_name=None,
         package_names=None,
         venv_path=None,
     ):
-        super().__init__(os.path.dirname(os.path.abspath(__file__)))
+        super().__init__(os.path.dirname(os.path.abspath(__file__)), force, upgrade)
         self.deployment_dir = deployment_dir
 
         if package_name is not None:
@@ -44,48 +45,27 @@ class Provisioner(SystemFunctionCommon):
         self.horey_repo_path = horey_repo_path
         self.venv_path = venv_path
 
-    def provision(self, force=False):
+    def test_provisioned(self):
         """
-        Provision all packages.
+        Test all packages are provisioned.
 
-        @param force:
+        @return:
+        """
+        return all(self.check_pip_installed(f"horey.{package_name.replace('_', '-')}")
+                   for package_name in self.package_names)
+
+    def _provision(self):
+        """
+        Provision single packages.
+
         @return:
         """
 
         for package_name in self.package_names:
-            if not force and self.test_provisioned(package_name):
-                logger.info(f"Skipping horey package installation: {package_name}")
-                continue
+            command = f"cd {self.horey_repo_path} && make recursive_install_from_source-{package_name}"
 
-            self._provision(package_name)
+            if self.venv_path is not None:
+                command = self.activate + " && " + command
 
-            if not self.test_provisioned(package_name):
-                raise RuntimeError(f"Was not able to provision {package_name}")
-            logger.info(f"Successfully installed horey package: {package_name}")
-
-    def test_provisioned(self, package_name):
-        """
-        Test single package provisioned.
-
-        @param package_name:
-        @return:
-        """
-
-        return self.check_pip_installed(f"horey.{package_name.replace('_', '-')}")
-
-    def _provision(self, package_name):
-        """
-        Provision single packages.
-
-        @param package_name:
-        @return:
-        """
-
-        command = f"cd {self.horey_repo_path} && make recursive_install_from_source-{package_name}"
-
-        if self.venv_path is not None:
-            command = self.activate + " && " + command
-            # self.run_bash(self.activate + " && " + "pip3 install --upgrade setuptools")
-
-        self.run_bash(command)
-        self.init_pip_packages()
+            self.run_bash(command)
+            self.init_pip_packages()

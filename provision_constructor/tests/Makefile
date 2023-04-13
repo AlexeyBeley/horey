@@ -12,7 +12,7 @@ bla:
 test_%: FORCE build
 	echo ${VENV_DIR} &&\
 	source ${VENV_DIR}/bin/activate &&\
-	python3 ${TESTS_DIR}/${@}
+	python ${TESTS_DIR}/${@}
 
 FORCE: ;
 

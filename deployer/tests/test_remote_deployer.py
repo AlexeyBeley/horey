@@ -54,8 +54,12 @@ def test_provision_target_remote_deployer_infrastructure_rsa_ed25519key():
     target.bastion_user_name = mock_values["target_username"]
     target.bastion_ssh_key_path = mock_values["target_bastion_ssh_key"]
     target.remote_deployment_dir_path = "/tmp/deployment_test"
+    os.makedirs(target.remote_deployment_dir_path, exist_ok=True)
+    with open(os.path.join(target.remote_deployment_dir_path, "test_file.txt"), "w", encoding="utf-8") as file_handler:
+        file_handler.write("some data")
     target.bastion_ssh_key_type = "rsa"
     deployer.provision_target_remote_deployer_infrastructure_raw(target)
+
 
 if __name__ == "__main__":
     #test_provision_target_remote_deployer_infrastructure_raw()

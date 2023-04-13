@@ -55,9 +55,17 @@ class BashExecutor:
             file_handler.write(command)
             command = f"/bin/bash {file_name}"
 
-        ret = subprocess.run(
-            [command], capture_output=True, shell=True, timeout=timeout, check=False
-        )
+        try:
+            ret = subprocess.run(
+                [command], capture_output=True, shell=True, timeout=timeout, check=False
+            )
+        except subprocess.TimeoutExpired as error:
+            return_dict = {
+                "stdout": "",
+                "stderr": "TimeoutExpired: " + repr(error),
+                "code": 1,
+            }
+            raise BashExecutor.BashError(json.dumps(return_dict))
 
         os.remove(file_name)
         return_dict = {

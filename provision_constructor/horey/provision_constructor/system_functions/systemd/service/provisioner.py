@@ -21,8 +21,9 @@ class Provisioner(SystemFunctionCommon):
 
     """
 
-    def __init__(self, deployment_dir, name=None, unit_file_location=None):
-        super().__init__(os.path.dirname(os.path.abspath(__file__)))
+    # pylint: disable=too-many-arguments
+    def __init__(self, deployment_dir, force, upgrade, name=None, unit_file_location=None):
+        super().__init__(os.path.dirname(os.path.abspath(__file__)), force, upgrade)
         self.validate_provisioned_ancestor = False
         self.deployment_dir = deployment_dir
 
@@ -46,26 +47,6 @@ class Provisioner(SystemFunctionCommon):
                         f"Unit file does not exist: {os.path.join(unit_file_location, self.unit_file_name)}"
                     )
                 self.unit_file_location = unit_file_location
-
-    def provision(self, force=False):
-        """
-        Provision the service.
-
-        @param force:
-        @return: True if provisioning ran, False if skipped.
-        """
-
-        if not force and self.test_provisioned():
-            logger.info(f"Skipping service provisioning: {self.name}")
-            return False
-
-        self._provision()
-
-        if not self.test_provisioned():
-            raise RuntimeError(f"Failed to provision systemd service: {self.name}")
-
-        logger.info(f"Successfully provisioned systemd service: {self.name}")
-        return True
 
     def test_provisioned(self):
         """

@@ -1834,7 +1834,7 @@ class EC2Client(Boto3Client):
         """
         logger.info(f"Creating route {request_dict}")
         for response in self.execute(
-                self.client.create_route, "Return", filters_req=request_dict
+                self.client.create_route, "Return", filters_req=request_dict, instant_raise=True,
         ):
             return response
 

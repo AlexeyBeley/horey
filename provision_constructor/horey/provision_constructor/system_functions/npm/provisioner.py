@@ -12,18 +12,9 @@ logger = get_logger()
 
 @SystemFunctionFactory.register
 class Provisioner(SystemFunctionCommon):
-    def __init__(self, deployment_dir):
-        super().__init__(os.path.dirname(os.path.abspath(__file__)))
+    def __init__(self, deployment_dir, force, upgrade):
+        super().__init__(os.path.dirname(os.path.abspath(__file__)), force, upgrade)
         self.deployment_dir = deployment_dir
-
-    def provision(self, force=False):
-        if not force:
-            if self.test_provisioned():
-                return
-
-        self._provision()
-
-        self.test_provisioned()
 
     def test_provisioned(self):
         self.init_apt_packages()

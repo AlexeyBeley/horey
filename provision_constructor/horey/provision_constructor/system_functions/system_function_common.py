@@ -6,7 +6,6 @@ Common functionality to all system_functions.
 import json
 import shutil
 import datetime
-import uuid
 import os
 import argparse
 import subprocess
@@ -17,6 +16,7 @@ from horey.replacement_engine.replacement_engine import ReplacementEngine
 from horey.provision_constructor.system_functions.apt_package import APTPackage
 from horey.provision_constructor.system_functions.apt_repository import APTRepository
 from horey.h_logger import get_logger
+from horey.common_utils.bash_executor import BashExecutor
 
 logger = get_logger()
 
@@ -33,10 +33,45 @@ class SystemFunctionCommon:
     APT_PACKAGES_UPDATED = False
     PIP_PACKAGES = []
 
-    def __init__(self, system_function_provisioner_dir_path):
+    def __init__(self, system_function_provisioner_dir_path, force, upgrade):
         self.system_function_provisioner_dir_path = system_function_provisioner_dir_path
         self.validate_provisioned_ancestor = True
         self.venv_path = None
+        self.force = force
+        self.upgrade = upgrade
+
+    def provision(self):
+        """
+        Provision logic entrypoint.
+
+        :return:
+        """
+
+        if not self.force:
+            if self.test_provisioned():
+                return
+
+        self._provision()
+
+        self.test_provisioned()
+
+    def test_provisioned(self):
+        """
+        Test the system_function was provisioned.
+
+        :return:
+        """
+
+        raise NotImplementedError("test_provisioned not implemented")
+
+    def _provision(self):
+        """
+        Each sytem_function implements its _provision.
+
+        :return:
+        """
+
+        raise NotImplementedError("_provision not implemented")
 
     @property
     def activate(self):
@@ -105,53 +140,16 @@ class SystemFunctionCommon:
     @staticmethod
     def run_bash(command, ignore_on_error_callback=None, timeout=60 * 10, debug=True):
         """
-        Run bash command, return stdout, stderr and return code.
-        Timeout is used fot stuck commands - for example if the command expects for user input.
-        Like dpkg installation approve - happens all the time with logstash package.
+        Use bash executor to run the bash command.
 
-        @param timeout: In seconds. Default 10 minutes
-        @param debug: print return code, stdout and stderr
-        @param command:
-        @param ignore_on_error_callback:
-        @return:
+        :param command:
+        :param ignore_on_error_callback:
+        :param timeout:
+        :param debug:
+        :return:
         """
 
-        logger.info(f"run_bash: {command}")
-
-        file_name = f"tmp-{str(uuid.uuid4())}.sh"
-        with open(file_name, "w", encoding="utf-8") as file_handler:
-            file_handler.write(command)
-            command = f"/bin/bash {file_name}"
-        # pylint: disable=subprocess-run-check
-        ret = subprocess.run(
-            [command], capture_output=True, shell=True, timeout=timeout
-        )
-
-        os.remove(file_name)
-        return_dict = {
-            "stdout": ret.stdout.decode().strip("\n"),
-            "stderr": ret.stderr.decode().strip("\n"),
-            "code": ret.returncode,
-        }
-        if debug:
-            logger.info(f"return_code:{return_dict['code']}")
-
-            stdout_log = "stdout:\n" + str(return_dict["stdout"])
-            for line in stdout_log.split("\n"):
-                logger.info(line)
-
-            stderr_log = "stderr:\n" + str(return_dict["stderr"])
-            for line in stderr_log.split("\n"):
-                logger.info(line)
-
-        if ret.returncode != 0:
-            if ignore_on_error_callback is None:
-                raise SystemFunctionCommon.BashError(json.dumps(return_dict))
-
-            if not ignore_on_error_callback(return_dict):
-                raise SystemFunctionCommon.BashError(json.dumps(return_dict))
-
-        return return_dict
+        return BashExecutor.run_bash(command, ignore_on_error_callback=ignore_on_error_callback, timeout=timeout, debug=debug, logger=logger)
 
     @staticmethod
     def check_file_contains(file_path, str_content):
@@ -190,7 +188,7 @@ class SystemFunctionCommon:
         return parser
 
     @staticmethod
-    def check_files_exist(arguments) -> None:
+    def check_files_exist_action(arguments) -> None:
         """
         Self explanatory.
 
@@ -198,17 +196,74 @@ class SystemFunctionCommon:
         @return:
         """
 
-        errors = []
-        for file_path in arguments.files_paths.split(","):
-            if not os.path.exists(file_path):
-                errors.append(f"File '{file_path}' does not exist")
-                continue
+        SystemFunctionCommon.check_files_exist(arguments.files_paths.split(","))
 
-            if not os.path.isfile(file_path):
-                errors.append(f"Path '{file_path}' is not a file")
+    @staticmethod
+    def check_files_exist(files_paths, sudo=False) -> bool:
+        """
+        Self explanatory.
+
+        @param files_paths: [str, str]
+        @param sudo:
+        @return:
+        """
+
+        errors = []
+        for file_path in files_paths:
+            try:
+                SystemFunctionCommon.check_file_exists(file_path, sudo=sudo)
+            except SystemFunctionCommon.FailedCheckError as error_handler:
+                errors.append(repr(error_handler))
 
         if errors:
             raise SystemFunctionCommon.FailedCheckError("\n".join(errors))
+
+        return True
+
+    @staticmethod
+    def check_file_exists(file_path, sudo=False) -> bool:
+        """
+        Self explanatory.
+
+        @param file_path: str
+        @param sudo:
+        @return:
+        """
+        if not sudo:
+            if not os.path.exists(file_path):
+                raise SystemFunctionCommon.FailedCheckError(f"File '{file_path}' does not exist")
+            if not os.path.isfile(file_path):
+                raise SystemFunctionCommon.FailedCheckError(f"Path '{file_path}' is not a file")
+            return True
+
+        command = f'if sudo test -f "{file_path}"; then echo "true"; else echo "false"; fi'
+        ret = SystemFunctionCommon.run_bash(command)
+
+        if ret["stdout"] == "true":
+            return True
+
+        if ret["stdout"] == "false":
+            raise SystemFunctionCommon.FailedCheckError(f"File '{file_path}' does not exist or is not a file")
+
+        raise RuntimeError(f"Expected true/false, received: {ret}")
+
+    @staticmethod
+    def remove_file(file_path, sudo=False):
+        """
+        Delete file.
+
+        :param file_path:
+        :param sudo:
+        :return:
+        """
+
+        try:
+            if SystemFunctionCommon.check_file_exists(file_path, sudo=sudo):
+                SystemFunctionCommon.run_bash(f"sudo rm -rf {file_path}")
+        except SystemFunctionCommon.FailedCheckError:
+            pass
+
+        return True
 
     @staticmethod
     def action_move_file_parser():
@@ -227,7 +282,7 @@ class SystemFunctionCommon:
             "--dst_file_path", required=True, type=str, help="Destination file path"
         )
 
-        parser.epilog = f"Usage: python3 {__file__} [options]"
+        parser.epilog = f"Usage: python {__file__} [options]"
         return parser
 
     @staticmethod
@@ -294,7 +349,7 @@ class SystemFunctionCommon:
             "--dst_file_path", required=True, type=str, help="Destination file path"
         )
 
-        parser.epilog = f"Usage: python3 {__file__} [options]"
+        parser.epilog = f"Usage: python {__file__} [options]"
         return parser
 
     @staticmethod
@@ -353,7 +408,7 @@ class SystemFunctionCommon:
             "--comment_line", required=True, type=str, help="Destination file path"
         )
 
-        parser.epilog = f"Usage: python3 {__file__} [options]"
+        parser.epilog = f"Usage: python {__file__} [options]"
         return parser
 
     @staticmethod
@@ -411,7 +466,7 @@ class SystemFunctionCommon:
             help="Check running duration in seconds",
         )
 
-        parser.epilog = f"Usage: python3 {__file__} [options]"
+        parser.epilog = f"Usage: python {__file__} [options]"
         return parser
 
     @staticmethod
@@ -518,56 +573,27 @@ class SystemFunctionCommon:
         )
 
     # endregion
-
-    # region apt_install
-    @staticmethod
-    def action_apt_install_parser():
-        """
-        Used by actor.
-
-        @return:
-        """
-        description = "apt_install"
-        parser = argparse.ArgumentParser(description=description)
-        parser.add_argument(
-            "--packages", required=True, type=str, help="Service name to check"
-        )
-
-        parser.epilog = f"Usage: python3 {__file__} [options]"
-        return parser
-
-    @staticmethod
-    def action_apt_install(arguments):
-        """
-        Used by actor.
-
-        @param arguments:
-        @return:
-        """
-
-        arguments_dict = vars(arguments)
-        SystemFunctionCommon.apt_install(**arguments_dict)
-
-    @staticmethod
-    def apt_install(package_name=None, upgrade_version=True):
+    def apt_install(self, package_name, package_names=None):
         """
         Run apt install or upgrade.
 
         @param package_name:
-        @param upgrade_version:
+        @param package_names:
         @return:
         """
 
+        if package_name is not None:
+            if package_names is not None:
+                raise ValueError(f"Either package_name or package_names must be set but not both: {package_name}/{package_names} ")
+            package_names = [package_name]
         SystemFunctionCommon.init_apt_packages()
 
-        logger.info(f"Installing apt package: '{package_name}'")
+        logger.info(f"Installing apt packages: {package_names}")
 
-        if upgrade_version or not SystemFunctionCommon.apt_check_installed(
-            package_name
-        ):
-            command = f"sudo apt install -y {package_name}"
+        if self.upgrade:
+            command = f"sudo apt --upgrade install -y {' '.join(package_names)}"
         else:
-            command = f"sudo apt --only-upgrade install -y {package_name}"
+            command = f"sudo apt install -y {' '.join(package_names)}"
 
         def raise_on_error_callback(response):
             return (
@@ -579,6 +605,7 @@ class SystemFunctionCommon:
         SystemFunctionCommon.run_apt_bash_command(
             command, raise_on_error_callback=raise_on_error_callback
         )
+
         SystemFunctionCommon.reinit_apt_packages()
 
     @staticmethod
@@ -665,9 +692,14 @@ class SystemFunctionCommon:
                 try:
                     ret = SystemFunctionCommon.run_bash(command)
                     return ret
-                except SystemFunctionCommon.BashError as inst:
+                except BashExecutor.BashError as inst:
                     dict_inst = json.loads(str(inst))
-                    if raise_on_error_callback is not None and raise_on_error_callback(
+                    if "TimeoutExpired" in dict_inst["stderr"]:
+                        SystemFunctionCommon.unlock_dpckg_lock()
+                    elif "sudo dpkg --configure -a" in dict_inst["stderr"]:
+                        _command = "echo Y | sudo dpkg --configure -a"
+                        SystemFunctionCommon.run_bash(_command)
+                    elif raise_on_error_callback is not None and raise_on_error_callback(
                         dict_inst
                     ):
                         raise
@@ -1007,7 +1039,7 @@ class SystemFunctionCommon:
             "--file_path", required=True, type=str, help="Path to the file"
         )
 
-        parser.epilog = f"Usage: python3 {__file__} [options]"
+        parser.epilog = f"Usage: python {__file__} [options]"
         return parser
 
     @staticmethod
@@ -1076,6 +1108,13 @@ class SystemFunctionCommon:
             raise ValueError(file_path)
 
         try:
+            SystemFunctionCommon.check_file_exists(file_path, sudo=True)
+        except SystemFunctionCommon.FailedCheckError:
+            return SystemFunctionCommon.run_bash(
+                f'echo "{line}" | sudo tee -a {file_path} > /dev/null'
+            )
+
+        try:
             response = SystemFunctionCommon.run_bash(
                 f"sudo grep -F '{line}' {file_path}"
             )
@@ -1142,7 +1181,7 @@ class SystemFunctionCommon:
 SystemFunctionCommon.ACTION_MANAGER.register_action(
     "check_files_exist",
     SystemFunctionCommon.check_files_exist_parser,
-    SystemFunctionCommon.check_files_exist,
+    SystemFunctionCommon.check_files_exist_action,
 )
 
 SystemFunctionCommon.ACTION_MANAGER.register_action(
@@ -1173,10 +1212,6 @@ SystemFunctionCommon.ACTION_MANAGER.register_action(
     "check_systemd_service_status",
     SystemFunctionCommon.action_check_systemd_service_status_parser,
     SystemFunctionCommon.action_check_systemd_service_status,
-)
-
-SystemFunctionCommon.ACTION_MANAGER.register_action(
-    "apt_install", SystemFunctionCommon.action_apt_install_parser, None
 )
 
 if __name__ == "__main__":

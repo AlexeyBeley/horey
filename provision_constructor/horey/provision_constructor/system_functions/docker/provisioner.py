@@ -21,8 +21,8 @@ class Provisioner(SystemFunctionCommon):
 
     """
 
-    def __init__(self, deployment_dir):
-        super().__init__(os.path.dirname(os.path.abspath(__file__)))
+    def __init__(self, deployment_dir, force, upgrade):
+        super().__init__(os.path.dirname(os.path.abspath(__file__)), force, upgrade)
         self.deployment_dir = deployment_dir
         self._release_codename = None
 
@@ -38,22 +38,6 @@ class Provisioner(SystemFunctionCommon):
             response = self.run_bash("lsb_release -cs")
             self._release_codename = response["stdout"]
         return self._release_codename
-
-    def provision(self, force=False):
-        """
-        Provision if not.
-
-        :param force:
-        :return:
-        """
-
-        if not force:
-            if self.test_provisioned():
-                return
-
-        self._provision()
-
-        self.test_provisioned()
 
     def test_provisioned(self):
         """

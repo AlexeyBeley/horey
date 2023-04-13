@@ -1,5 +1,10 @@
+"""
+Provision ntp service.
+
+"""
+
 import os.path
-import pdb
+import platform
 from horey.provision_constructor.system_function_factory import SystemFunctionFactory
 
 from horey.provision_constructor.system_functions.system_function_common import (
@@ -12,18 +17,15 @@ logger = get_logger()
 
 @SystemFunctionFactory.register
 class Provisioner(SystemFunctionCommon):
-    def __init__(self, deployment_dir):
-        super().__init__(os.path.dirname(os.path.abspath(__file__)))
+    """
+    Provision ntp service.
+    Remove all others.
+
+    """
+
+    def __init__(self, deployment_dir, force, upgrade):
+        super().__init__(os.path.dirname(os.path.abspath(__file__)), force, upgrade)
         self.deployment_dir = deployment_dir
-
-    def provision(self, force=False):
-        if not force:
-            if self.test_provisioned():
-                return
-
-        self._provision()
-
-        self.test_provisioned()
 
     def test_provisioned(self):
         self.init_apt_packages()
@@ -40,14 +42,19 @@ class Provisioner(SystemFunctionCommon):
 
     def _provision(self):
         """
-
-        sudo systemctl restart systemd-timedated
+        Provision ntp.
 
         @return:
         """
+
         self.apt_purge("ntp*")
         self.apt_purge("sntp*")
         self.apt_purge("chrony*")
+        release = platform.release()
+        float_release = float(release[:release.find(".", release.find(".")+1)])
+
+        if float_release < 5.15:
+            self.apt_install("systemd-timesyncd")
 
         ret = self.run_bash("sudo timedatectl set-ntp false")
         logger.info(ret)

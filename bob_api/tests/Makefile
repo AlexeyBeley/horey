@@ -11,10 +11,11 @@ bla:
 
 test_%: FORCE build
 	source ${VENV_DIR}/bin/activate &&\
-	python3 ${TESTS_DIR}/${@}
+	python ${TESTS_DIR}/${@}
 
 FORCE: ;
 
 build:
 	cd ${HOREY_DIR_PATH} &&\
 	make raw_install_from_source-bob_api
+	#make recursive_install_from_source_local_venv-bob_api

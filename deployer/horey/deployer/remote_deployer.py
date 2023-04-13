@@ -1,8 +1,10 @@
+# pylint: disable= too-many-lines
 """
 Remote targets deployer.
 
 """
 
+import re
 import os
 import datetime
 import time
@@ -98,6 +100,7 @@ class RemoteDeployer:
     Remote target deployer.
 
     """
+    REGEX_CLEANER = re.compile(r'(\x9B|\x1B\[)[0-?]*[ -/]*[@-~]')
 
     def __init__(self, configuration=None):
         self.configuration = configuration
@@ -190,15 +193,16 @@ class RemoteDeployer:
         command = (
             "#!/bin/bash\n"
             "set -xe\n"
-            "sudo apt update\n"
-            "sudo apt install -y unzip\n"
+            "export unzip_installed=0\n"
+            "unzip -v || export unzip_installed=1\n"
+            f"if [[ $unzip_installed == '1' ]]; then sudo apt update && sudo apt install -y unzip; fi\n"
             f"unzip {remote_zip_path} -d {deployment_target.remote_deployment_dir_path}\n"
-            f"rm {remote_zip_path}"
+            f"rm {remote_zip_path}\n"
         )
-
         logger.info(f"[REMOTE] {command}")
         return command
 
+    # pylint: disable = too-many-statements
     def provision_target_remote_deployer_infrastructure_raw(self, deployment_target):
         """
         Single attempt to provision. Should be enclosed in retries.
@@ -231,7 +235,11 @@ class RemoteDeployer:
         with self.get_deployment_target_client_context(deployment_target) as client:
             try:
                 command = f"sudo rm -rf {deployment_target.remote_deployment_dir_path}"
-                self.execute_remote(client, command)
+                channel = client.invoke_shell()
+
+                stdin = channel.makefile('wb')
+                stdout = channel.makefile('r')
+                self.execute_remote_shell(stdin, stdout, command)
 
                 transport = client.get_transport()
                 sftp_client = HoreySFTPClient.from_transport(transport)
@@ -252,10 +260,10 @@ class RemoteDeployer:
                 )
 
                 sftp_client.put(local_zip_file_path, remote_zip_path)
-                unziper_file_path = os.path.join(
+                local_unziper_file_path = os.path.join(
                     deployment_target.local_deployment_dir_path, "unzip_script.sh"
                 )
-                with open(unziper_file_path, "w", encoding="utf-8") as file_handler:
+                with open(local_unziper_file_path, "w", encoding="utf-8") as file_handler:
                     file_handler.write(
                         self.generate_unzip_script_file_contents(
                             remote_zip_path, deployment_target
@@ -265,11 +273,12 @@ class RemoteDeployer:
                 remote_unzip_file_path = os.path.join(
                     deployment_target.remote_deployment_dir_path, "unzip_script.sh"
                 )
-                sftp_client.put(unziper_file_path, remote_unzip_file_path)
+                sftp_client.put(local_unziper_file_path, remote_unzip_file_path)
+                os.remove(local_unziper_file_path)
                 command = f"/bin/bash {remote_unzip_file_path}"
 
                 try:
-                    self.execute_remote(client, command)
+                    self.execute_remote_shell(stdin, stdout, command)
                 except RemoteDeployer.DeployerError as error_instance:
                     if "apt does not have a stable CLI interface" not in repr(error_instance):
                         raise
@@ -302,11 +311,11 @@ class RemoteDeployer:
                 )
 
                 command = f"sudo chmod +x {os.path.join(deployment_target.remote_deployment_dir_path, 'remote_step_executor.sh')}"
-                self.execute_remote(client, command)
+                self.execute_remote_shell(stdin, stdout, command)
 
                 if deployment_target.linux_distro == "redhat":
                     command = "sudo yum install screen -y"
-                    self.execute_remote(client, command)
+                    self.execute_remote_shell(stdin, stdout, command)
                 deployment_target.remote_deployer_infrastructure_provisioning_succeeded = (
                     True
                 )
@@ -327,6 +336,57 @@ class RemoteDeployer:
                 raise RemoteDeployer.DeployerError from error_instance
 
     @staticmethod
+    def execute_remote_shell(stdin, stdout, cmd):
+        """
+
+        :param cmd: the command to be executed on the remote computer
+        :examples:  execute('ls')
+                    execute('finger')
+                    execute('cd folder_name')
+        """
+
+        logger.info(f"[REMOTE->] {cmd}")
+
+        cmd = cmd.strip('\n')
+        finish = 'end of stdOUT buffer. finished with exit status'
+        echo_cmd = f"echo {finish} $?"
+        stdin.write(f"{cmd} ; {echo_cmd}\n")
+        shin = stdin
+        stdin.flush()
+
+        shout = []
+        sherr = []
+        exit_status = 0
+        for line in stdout:
+            # get rid of 'coloring and formatting' special characters
+            line = RemoteDeployer.REGEX_CLEANER.sub('', line).replace('\b', '').replace('\r', '')
+
+            logger.info(f"[REMOTE<-] {line}")
+            if str(line).startswith(cmd) or str(line).startswith(echo_cmd):
+                # up for now filled with shell junk from stdin
+                shout = []
+            elif str(line).startswith(finish):
+                # our finish command ends with the exit status
+                exit_status = int(str(line).rsplit(maxsplit=1)[1])
+                if exit_status:
+                    raise RemoteDeployer.DeployerError(f"{shout}: exit status: {exit_status}")
+                break
+            else:
+                shout.append(line)
+
+        # first and last lines of shout/sherr contain a prompt
+        if shout and echo_cmd in shout[-1]:
+            shout.pop()
+        if shout and cmd in shout[0]:
+            shout.pop(0)
+        if sherr and echo_cmd in sherr[-1]:
+            sherr.pop()
+        if sherr and cmd in sherr[0]:
+            sherr.pop(0)
+
+        return shin, shout, sherr, exit_status
+
+    @staticmethod
     def execute_remote(client, command):
         """
         Execute command with SSH using connected client.
@@ -334,16 +394,17 @@ class RemoteDeployer:
         :param client:
         :param command:
         :return:
+
+        shell = client.invoke_shell(term='vt100', width=80, height=24, width_pixels=0, height_pixels=0, environment=None)
         """
 
-        logger.info(f"[REMOTE] {command}")
-        _, stdout, stderr = client.exec_command(command, timeout=60)
-        stdout = stdout.read().decode("utf-8")
-        stderr = stderr.read().decode("utf-8")
-        if stdout:
-            logger.info(stdout)
-        if stderr:
-            raise RemoteDeployer.DeployerError(stderr)
+        _, stdout, stderr = client.exec_command(command, timeout=120)
+        stdout_string = stdout.read().decode("utf-8")
+        stderr_string = stderr.read().decode("utf-8")
+        if stdout_string:
+            logger.info(stdout_string)
+        if stderr_string:
+            raise RemoteDeployer.DeployerError(stderr_string)
 
     def deploy_target_step(self, deployment_target, step, asynchronous=False):
         """
