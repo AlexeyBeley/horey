@@ -91,9 +91,13 @@ class S3Bucket(AwsObject):
         else:
             raise NotImplementedError()
 
-    def update_website(self, lst_src):
-        if len(lst_src) > 1:
-            raise ValueError(lst_src)
+    def update_website(self, dict_src):
+        """
+        Update website config.
+
+        :param dict_src:
+        :return:
+        """
 
         init_options = {
             "IndexDocument": self.init_default_attr,
@@ -102,8 +106,7 @@ class S3Bucket(AwsObject):
             "ResponseMetadata": lambda x, y: 0,
         }
 
-        for dict_src in lst_src:
-            self.init_attrs(dict_src, init_options)
+        self.init_attrs(dict_src, init_options)
 
     def update_location(self, lst_src):
         """

@@ -400,37 +400,22 @@ class S3Client(Boto3Client):
             else:
                 raise
 
-        try:
-            update_info = list(
-                self.execute(
+        for dict_src_tmp in self.execute(
                     self.client.get_bucket_website,
                     "Grants",
                     filters_req={"Bucket": bucket.name},
                     raw_data=True,
-                )
-            )
-            bucket.update_website(update_info)
-        except Exception as inst:
-            if "NoSuchWebsiteConfiguration" in repr(inst):
-                pass
-            else:
-                raise
+                    exception_ignore_callback=lambda error_inst: "NoSuchWebsiteConfiguration" in repr(error_inst)
+                ):
+            bucket.update_website(dict_src_tmp)
 
-        try:
-            for update_info in self.execute(
+        for update_info in self.execute(
                 self.client.get_bucket_policy,
                 "Policy",
                 filters_req={"Bucket": bucket.name},
-            ):
-                bucket.update_policy(update_info)
-        except Exception as inst:
-            repr_inst = repr(inst)
-            if "NoSuchBucketPolicy" in repr_inst:
-                pass
-            elif "AccessDenied" in repr_inst:
-                print(f"Init bucket full information failed {bucket.name}: {repr_inst}")
-            else:
-                raise
+                exception_ignore_callback=lambda error_inst: "NoSuchBucketPolicy" in repr(error_inst) or
+                                                             "AccessDenied" in repr(error_inst)):
+            bucket.update_policy(update_info)
         return True
 
     def get_all_buckets(self, full_information=True):
