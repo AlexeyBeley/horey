@@ -972,6 +972,7 @@ class AWSAPI:
         @param cache_file:
         @return:
         """
+
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, EC2SpotFleetRequest)
         else:
@@ -2981,7 +2982,8 @@ class AWSAPI:
             contents = file_handler.read()
         self.put_secret_value(secret_name, contents, region=region)
 
-    def get_secret_file(self, secret_name, dir_path: str, region=None, file_name=None):
+    #pylint: disable= too-many-arguments
+    def get_secret_file(self, secret_name, dir_path: str, region=None, file_name=None, ignore_missing=False):
         """
         Get secrets manager value and save it to file.
 
@@ -2989,6 +2991,8 @@ class AWSAPI:
         @param dir_path:
         @param region:
         @param file_name:
+        @param ignore_missing:
+
         @return:
         """
 
@@ -2996,7 +3000,7 @@ class AWSAPI:
             dir_path = os.path.dirname(dir_path)
 
         os.makedirs(dir_path, exist_ok=True)
-        contents = self.get_secret_value(secret_name, region=region)
+        contents = self.get_secret_value(secret_name, region=region, ignore_missing=ignore_missing)
 
         if file_name is None:
             file_name = secret_name
@@ -3035,7 +3039,7 @@ class AWSAPI:
         cidrs = []
         for entry in managed_prefix_list.entries:
             if entry.cidr in cidrs:
-                raise Exception(
+                raise ValueError(
                     f"{managed_prefix_list.name} [{managed_prefix_list.region.region_mark}] -"
                     f" multiple entries with same cidr {entry.cidr}"
                 )
@@ -3045,7 +3049,7 @@ class AWSAPI:
             descriptions = []
             for entry in managed_prefix_list.entries:
                 if entry.description in descriptions:
-                    raise Exception(
+                    raise ValueError(
                         f"{managed_prefix_list.name} [{managed_prefix_list.region.region_mark}] -"
                         f" multiple entries with same description '{entry.description}'"
                     )
@@ -3471,7 +3475,8 @@ class AWSAPI:
 
         if save_to_secrets_manager:
             AWSAccount.set_aws_region(secrets_manager_region)
-            self.put_secret_value(key_pair.name + ".key", response["KeyMaterial"])
+            self.put_secret_value(key_pair.name if key_pair.name.endswith(".key") else key_pair.name+".key",
+                                  response["KeyMaterial"])
 
         return response
 

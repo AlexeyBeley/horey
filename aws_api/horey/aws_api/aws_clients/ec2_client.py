@@ -2003,6 +2003,9 @@ class EC2Client(Boto3Client):
         @param request_dict:
         @return:
         """
+
+        logger.info(f"Provisioning key_pair: {request_dict}")
+
         for response in self.execute(
                 self.client.create_key_pair, None, filters_req=request_dict, raw_data=True
         ):

@@ -1,8 +1,6 @@
 """
-AWS clietn to handle service API requests.
+AWS client to handle service API requests.
 """
-import pdb
-
 
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.base_entities.aws_account import AWSAccount
@@ -17,7 +15,7 @@ logger = get_logger()
 
 class SecretsManagerClient(Boto3Client):
     """
-    Client to handle specific aws service API calls.
+    Client to handle secrets aws service API calls.
     """
 
     def __init__(self):
@@ -25,6 +23,14 @@ class SecretsManagerClient(Boto3Client):
         super().__init__(client_name)
 
     def get_secret(self, secret_name, region_name=None):
+        """
+        Standard.
+
+        :param secret_name:
+        :param region_name:
+        :return:
+        """
+
         if region_name is not None:
             AWSAccount.set_aws_region(region_name)
 
@@ -34,6 +40,14 @@ class SecretsManagerClient(Boto3Client):
         return obj
 
     def put_secret(self, secret, region_name=None):
+        """
+        Standard.
+
+        :param secret:
+        :param region_name:
+        :return:
+        """
+
         if region_name is not None:
             AWSAccount.set_aws_region(region_name)
 
@@ -51,7 +65,7 @@ class SecretsManagerClient(Boto3Client):
         :param full_information:
         :return:
         """
-        final_result = list()
+        final_result = []
 
         for region in AWSAccount.get_aws_account().regions.values():
             AWSAccount.set_aws_region(region)
@@ -66,6 +80,13 @@ class SecretsManagerClient(Boto3Client):
         return final_result
 
     def get_secret_value(self, secret_id):
+        """
+        Standard.
+
+        :param secret_id:
+        :return:
+        """
+
         try:
             for response in self.execute(
                 self.client.get_secret_value,
@@ -79,6 +100,15 @@ class SecretsManagerClient(Boto3Client):
             raise
 
     def raw_get_secret_string(self, secret_id, region=None, ignore_missing=False):
+        """
+        Get secret.
+
+        :param secret_id:
+        :param region:
+        :param ignore_missing:
+        :return:
+        """
+
         logger.info(f"Fetching secret value for secret '{secret_id}'")
         if region is not None:
             AWSAccount.set_aws_region(region)
@@ -88,11 +118,20 @@ class SecretsManagerClient(Boto3Client):
             None,
             raw_data=True,
             filters_req={"SecretId": secret_id},
-            exception_ignore_callback=lambda exception_instance: "ResourceNotFoundException" in repr(exception_instance) and ignore_missing
+            exception_ignore_callback=lambda exception_instance: "ResourceNotFoundException" in repr(exception_instance) and ignore_missing,
+            instant_raise=True
         ):
             return response["SecretString"]
 
     def raw_create_secret_string(self, secret_id, value):
+        """
+        Create secret.
+
+        :param secret_id:
+        :param value:
+        :return:
+        """
+
         try:
             for response in self.execute(
                 self.client.create_secret,
@@ -106,17 +145,24 @@ class SecretsManagerClient(Boto3Client):
             raise
 
     def raw_put_secret_string(self, secret_id, value, region=None):
+        """
+        Put or create a secret.
+
+        :param secret_id:
+        :param value:
+        :param region:
+        :return:
+        """
+
         if region is not None:
             AWSAccount.set_aws_region(region)
-        try:
-            for response in self.execute(
-                self.client.put_secret_value,
-                None,
-                raw_data=True,
-                filters_req={"SecretId": secret_id, "SecretString": value},
+        for response in self.execute(
+            self.client.put_secret_value,
+            None,
+            raw_data=True,
+            filters_req={"SecretId": secret_id, "SecretString": value},
+            exception_ignore_callback=lambda exception_received: "ResourceNotFoundException" in repr(exception_received)
             ):
-                return response
-        except Exception as exception_received:
-            if "ResourceNotFoundException" in repr(exception_received):
-                return self.raw_create_secret_string(secret_id, value)
-            raise
+            return response
+
+        return self.raw_create_secret_string(secret_id, value)
