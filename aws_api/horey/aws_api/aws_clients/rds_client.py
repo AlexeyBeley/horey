@@ -461,7 +461,7 @@ class RDSClient(Boto3Client):
             db_instance,
             self.update_db_instance_information,
             [db_instance.Status.AVAILABLE],
-            [db_instance.Status.CREATING, db_instance.Status.CONFIGURING_LOG_EXPORTS],
+            [db_instance.Status.CREATING, db_instance.Status.CONFIGURING_LOG_EXPORTS, db_instance.Status.CONFIGURING_ENHANCED_MONITORING],
             [db_instance.Status.DELETING, db_instance.Status.FAILED],
             timeout=20 * 60 * 60,
         )
