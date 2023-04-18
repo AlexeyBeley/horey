@@ -62,9 +62,11 @@ class SecretsManagerClient(Boto3Client):
     def get_all_secrets(self, full_information=True):
         """
         Get all lambda in all regions
+
         :param full_information:
         :return:
         """
+
         final_result = []
 
         for region in AWSAccount.get_aws_account().regions.values():

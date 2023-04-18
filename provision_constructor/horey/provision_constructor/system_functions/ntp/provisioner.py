@@ -5,11 +5,13 @@ Provision ntp service.
 
 import os.path
 import platform
+import json
 from horey.provision_constructor.system_function_factory import SystemFunctionFactory
 
 from horey.provision_constructor.system_functions.system_function_common import (
     SystemFunctionCommon,
 )
+from horey.common_utils.bash_executor import BashExecutor
 from horey.h_logger import get_logger
 
 logger = get_logger()
@@ -56,8 +58,15 @@ class Provisioner(SystemFunctionCommon):
         if float_release < 5.15:
             self.apt_install("systemd-timesyncd")
 
-        ret = self.run_bash("sudo timedatectl set-ntp false")
-        logger.info(ret)
+        try:
+            ret = self.run_bash("sudo timedatectl set-ntp false")
+            logger.info(ret)
+        except BashExecutor.BashError as error_inst:
+            dict_inst = json.loads(str(error_inst))
+            if "NTP not supported" in dict_inst["stderr"]:
+                self.apt_install("systemd-timesyncd")
+                ret = self.run_bash("sudo timedatectl set-ntp false")
+                logger.info(ret)
 
         self.provision_file(
             "./timesyncd.conf", "/etc/systemd/timesyncd.conf", sudo=True
