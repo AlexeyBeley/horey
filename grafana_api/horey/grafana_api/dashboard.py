@@ -33,6 +33,8 @@ class Dashboard(GrafanaObject):
             "folderTitle": self.init_default,
             "folderUrl": self.init_default,
             "sortMeta": self.init_default,
+            "description": self.init_default,
+            "gnetId": self.init_default,
         }
 
         self.init_values(dict_src, options)
@@ -67,6 +69,8 @@ class Dashboard(GrafanaObject):
             "weekStart": self.init_default,
             "rows": self.init_default,
             "refresh": self.init_default,
+            "description": self.init_default,
+            "gnetId": self.init_default,
         }
         self.init_values(dict_src, options)
 
