@@ -130,7 +130,7 @@ class RDSDBInstance(AwsObject):
         ret = []
         for sg in self.vpc_security_groups:
             if sg["Status"] != "active":
-                raise Exception("Unknown status")
+                raise ValueError("Unknown status")
 
             endpoint = {"sg_id": sg["VpcSecurityGroupId"],
                         "dns": self.endpoint["Address"],
@@ -326,3 +326,5 @@ class RDSDBInstance(AwsObject):
         STOPPING = "stopping"
         CONFIGURING_ENHANCED_MONITORING = "configuring-enhanced-monitoring"
         CONFIGURING_LOG_EXPORTS = "configuring-log-exports"
+        CONFIGURING_IAM_DATABASE_AUTH = "configuring-iam-database-auth"
+        CONVERTING_TO_VPC = "converting-to-vpc"
