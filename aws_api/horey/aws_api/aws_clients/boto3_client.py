@@ -356,13 +356,14 @@ class Boto3Client:
                     logger.error(
                         f"Retrying after Throttling '{func_command.__name__}' attempt {retry_counter}/{self.EXECUTION_RETRY_COUNT} Error: {exception_instance}"
                     )
-                elif instant_raise:
-                    raise
 
                 if exception_ignore_callback is not None and exception_ignore_callback(
                     exception_instance
                 ):
                     return []
+
+                if instant_raise:
+                    raise
 
                 retry_counter += exception_weight
                 time.sleep(time_to_sleep)

@@ -131,6 +131,11 @@ def test_provision_key_pair():
     aws_api.provision_key_pair(key_pair, save_to_secrets_manager=True, secrets_manager_region="us-west-2")
 
 
+def test_get_secret_value():
+    ret = aws_api.get_secret_value("test", ignore_missing=True)
+    assert ret is None
+
+
 if __name__ == "__main__":
     # test_provision_certificate()
     # test_provision_aws_lambda_from_filelist()
@@ -138,4 +143,5 @@ if __name__ == "__main__":
     # test_copy_ecr_image()
     # test_provision_sesv2_domain_email_identity()
     # test_find_cloudfront_distributions()
-    test_provision_key_pair()
+    # test_provision_key_pair()
+    test_get_secret_value()
