@@ -80,6 +80,7 @@ def test_generate_clean_report():
     azure_devops_api.init_iterations(cache_file_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore",
                                      "azure_devops", "iterations.json"))
     h_tb = azure_devops_api.generate_clean_report()
+    print(h_tb)
     assert h_tb is not None
 
 

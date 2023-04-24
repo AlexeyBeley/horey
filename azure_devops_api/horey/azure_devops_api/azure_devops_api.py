@@ -447,8 +447,12 @@ class AzureDevopsAPI:
             else:
                 backlogs[work_item.iteration_path].append(work_item.iteration_path)
 
+        tb_ret = self.generate_clean_report_current_iteration(current_iteration_work_items)
+        h_tb.blocks.append(tb_ret)
+
         tb_ret = self.generate_clean_report_two_iterations(current_iteration_work_items, future_iterations_work_items)
         h_tb.blocks.append(tb_ret)
+
         return h_tb
 
     def generate_clean_report_two_iterations(self, current_iteration_work_items, future_iterations_work_items):
@@ -460,9 +464,11 @@ class AzureDevopsAPI:
         :return:
         """
 
-        h_tb = TextBlock("Current and following sprints cleanup")
         current_iteration = self.get_iteration()
         next_iteration = self.get_iteration(date_find=datetime.datetime.now() + datetime.timedelta(weeks=2))
+
+        h_tb = TextBlock(f"Current ({current_iteration.path}) and following ({next_iteration.path}) sprints cleanup")
+
         next_iteration_work_items = [work_item for work_item in future_iterations_work_items if work_item.iteration_path == next_iteration.path]
         current_iteration_hours = current_iteration.get_hours()
         next_iteration_hours = next_iteration.get_hours()
@@ -473,6 +479,28 @@ class AzureDevopsAPI:
             total_remaining_hours = sum(work_item.get_remaining_work(default=3.0) for work_item in work_items)
             if total_hours < total_remaining_hours:
                 h_tb.lines.append(f"Worker {worker_name} has {total_remaining_hours} remaining tasks' hours but only {total_hours} working hours left")
+
+        return h_tb
+
+    def generate_clean_report_current_iteration(self, current_iteration_work_items):
+        """
+        Current iteration.
+
+        :return:
+        """
+
+        current_iteration = self.get_iteration()
+        h_tb = TextBlock(f"Current ({current_iteration.path}) sprint cleanup")
+
+        current_iteration_hours = current_iteration.get_hours()
+        total_hours = current_iteration_hours
+        work_items_by_worker = self.split_work_items_by_worker(current_iteration_work_items)
+
+        for worker_name, work_items in work_items_by_worker.items():
+            total_remaining_hours = sum(work_item.get_remaining_work(default=3.0) for work_item in work_items)
+            if total_hours < total_remaining_hours:
+                h_tb.lines.append(
+                    f"Worker {worker_name} has {total_remaining_hours} remaining tasks' hours but only {total_hours} working hours left")
 
         return h_tb
 
