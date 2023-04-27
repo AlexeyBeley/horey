@@ -36,7 +36,7 @@ class EventHandler:
         """
 
         message = self.extract_message(event)
-        self.message_dispatcher.dispatch(message)
+        return self.message_dispatcher.dispatch(message)
 
     def extract_message(self, event):
         """

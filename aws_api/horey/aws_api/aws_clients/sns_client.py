@@ -54,9 +54,9 @@ class SNSClient(Boto3Client):
             )
 
         final_result = []
-        for region in AWSAccount.get_aws_account().regions.values():
+        for _region in AWSAccount.get_aws_account().regions.values():
             final_result += self.get_region_subscriptions(
-                region, full_information=full_information
+                _region, full_information=full_information
             )
 
         return final_result
@@ -119,9 +119,9 @@ class SNSClient(Boto3Client):
             return self.get_region_topics(region, full_information=full_information)
 
         final_result = []
-        for region in AWSAccount.get_aws_account().regions.values():
+        for _region in AWSAccount.get_aws_account().regions.values():
             final_result += self.get_region_topics(
-                region, full_information=full_information
+                _region, full_information=full_information
             )
 
         return final_result
@@ -145,21 +145,25 @@ class SNSClient(Boto3Client):
 
         return final_result
 
-    def update_topic_information(self, topic):
+    def update_topic_information(self, topic, full_information=True):
         """
         Standard.
 
+        :param full_information:
         :param topic:
         :return:
         """
 
         if topic.arn is None:
-            for _topic in self.get_region_topics(topic.region):
+            for _topic in self.get_region_topics(topic.region, full_information=False):
                 if _topic.name == topic.name:
                     topic.arn = _topic.arn
                     break
             else:
                 return False
+
+        if not full_information:
+            return True
 
         dict_src = self.execute_with_single_reply(
             self.client.get_topic_attributes,

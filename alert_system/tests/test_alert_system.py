@@ -15,9 +15,9 @@ from horey.common_utils.common_utils import CommonUtils
 from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlarm
 
 mock_values_file_path = os.path.abspath(
-    os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "..", "ignore", "mock_values.py"
-    )
+    os.path.abspath(os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore", "alert_system_mock_values.py"
+    ))
 )
 mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 
@@ -42,6 +42,8 @@ notification_channel_slack_configuration_file = os.path.abspath(
         "notification_channel_slack_configuration_values.py",
     )
 )
+
+# pylint: disable=missing-function-docstring
 
 
 def test_init_alert_system():
@@ -109,6 +111,30 @@ def test_provision():
     alert_system = AlertSystem(as_configuration)
     tags = [{"Key": "name", "Value": as_configuration.lambda_name}]
     alert_system.provision(tags, [notification_channel_slack_configuration_file])
+
+
+def test_provision_and_trigger_locally_lambda_handler():
+    """
+    Test provisioned lambda locally
+
+    @return:
+    """
+
+    alert_system = AlertSystem(as_configuration)
+    alert_system.provision_and_trigger_locally_lambda_handler([notification_channel_slack_configuration_file],
+                                                              os.path.join(os.path.dirname(os.path.abspath(__file__)), "raw_messages", "sns_form_raw_1.json"))
+
+
+def test_provision_and_trigger_locally_lambda_handler_info():
+    """
+    Test provisioned lambda locally
+
+    @return:
+    """
+
+    alert_system = AlertSystem(as_configuration)
+    alert_system.provision_and_trigger_locally_lambda_handler([notification_channel_slack_configuration_file],
+                                                              os.path.join(os.path.dirname(os.path.abspath(__file__)), "raw_messages", "sns_form_raw_info.json"))
 
 
 def test_create_lambda_package():
@@ -207,6 +233,15 @@ def test_provision_cloudwatch_sqs_visible_alarm():
     )
 
 
+def test_send_message_to_sns():
+    message = Message()
+    message.uuid = "test1-test2"
+    message.type = "raw"
+    message.data = {"tags": ["alert_system"], "level": "alert"}
+    alert_system = AlertSystem(as_configuration)
+    alert_system.send_message_to_sns(message)
+
+
 if __name__ == "__main__":
     # test_provision_lambda()
     # test_provision_sns_topic()
@@ -215,6 +250,9 @@ if __name__ == "__main__":
     # test_provision_cloudwatch_logs_alarm()
     # test_deploy_lambda()
     # test_provision_self_monitoring()
-    test_create_lambda_package()
-    # test_provision()
+    # test_create_lambda_package()
+    #test_provision()
+    #test_provision_and_trigger_locally_lambda_handler()
+    test_provision_and_trigger_locally_lambda_handler_info()
     # test_provision_cloudwatch_sqs_visible_alarm()
+    #test_send_message_to_sns()

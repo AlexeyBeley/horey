@@ -233,7 +233,9 @@ class AlertSystem:
         self.packer.add_files_to_zip(
             self.configuration.lambda_zip_file_name, files_paths
         )
+
         self.validate_lambda_package()
+        logger.info(f"Created lambda package: {self.configuration.deployment_directory_path}/{self.configuration.lambda_zip_file_name}")
 
         os.chdir(current_dir)
 
@@ -522,7 +524,7 @@ class AlertSystem:
 
         self.provision_cloudwatch_alarm(alarm)
 
-    def test_provision(self, lambda_files, event_json_file_path):
+    def provision_and_trigger_locally_lambda_handler(self, lambda_files, event_json_file_path):
         """
         Locally test event in the being provisioned infra.
 
@@ -542,6 +544,21 @@ class AlertSystem:
         with open(event_json_file_path, encoding="utf-8") as file_handler:
             event = json.load(file_handler)
 
-        event_handler.handle_event(event)
+        ret = event_handler.handle_event(event)
 
         os.chdir(current_dir)
+        return ret
+
+    def send_message_to_sns(self, message):
+        """
+        Send message to self sns_topic.
+
+        :param message:
+        :return:
+        """
+
+        topic = SNSTopic({})
+        topic.name = self.configuration.sns_topic_name
+        topic.region = self.region
+        self.aws_api.sns_client.update_topic_information(topic, full_information=False)
+        self.aws_api.sns_client.raw_publish(topic.arn, message.type, json.dumps(message.convert_to_dict()))
