@@ -1,7 +1,4 @@
 import os
-import pdb
-
-import sys
 
 from horey.aws_api.aws_clients.rds_client import RDSClient
 from horey.aws_api.aws_services_entities.rds_db_cluster import RDSDBCluster
@@ -22,7 +19,6 @@ from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.base_entities.region import Region
 from horey.common_utils.common_utils import CommonUtils
 
-from unittest.mock import Mock
 
 configuration_values_file_full_path = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "h_logger_configuration_values.py"
@@ -50,6 +46,8 @@ mock_values_file_path = os.path.abspath(
     )
 )
 mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
+
+# pylint: disable= missing-function-docstring
 
 
 def test_init_rds_client():
@@ -235,6 +233,11 @@ def test_copy_db_cluster_snapshot():
     client.copy_db_cluster_snapshot(snapshot_src, snapshot_dst)
 
 
+def test_get_default_engine_version():
+    client = RDSClient()
+    client.get_default_engine_version(Region.get_region("us-west-2"), "aurora-mysql")
+
+
 if __name__ == "__main__":
     # test_provision_subnet_group()
     # test_provision_db_parameter_group()
@@ -243,4 +246,5 @@ if __name__ == "__main__":
     # test_provision_db_instance()
     # test_copy_db_cluster_snapshot()
     # test_provision_cluster_from_snapshot()
-    test_dispose_db_cluster()
+    # test_dispose_db_cluster()
+    test_get_default_engine_version()
