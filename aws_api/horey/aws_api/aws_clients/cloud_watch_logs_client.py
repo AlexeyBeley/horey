@@ -239,7 +239,7 @@ class CloudWatchLogsClient(Boto3Client):
         :return:
         """
 
-        region_log_groups = self.get_region_cloud_watch_log_groups(log_group.region)
+        region_log_groups = self.get_region_cloud_watch_log_groups(log_group.region, get_tags=False)
         for region_log_group in region_log_groups:
             if region_log_group.name == log_group.name:
                 log_group.update_from_raw_response(region_log_group.dict_src)

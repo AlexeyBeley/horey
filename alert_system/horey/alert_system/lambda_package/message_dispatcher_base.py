@@ -33,6 +33,7 @@ class MessageDispatcherBase:
             "cloudwatch_metric_lambda_duration": self.handle_cloudwatch_message_default,
             "cloudwatch_default": self.handle_cloudwatch_message_default,
             "ses_default": self.handle_ses_message_default,
+            "sns_raw": self.handle_sns_raw_message,
         }
 
         self.notification_channels = []
@@ -413,6 +414,29 @@ class MessageDispatcherBase:
                 notification_channel.configuration.ALERT_SYSTEM_MONITORING_ROUTING_TAG
             ]
             notification_channel.notify(notification)
+
+    def handle_sns_raw_message(self, message):
+        """
+        Handle raw message. Send the data.
+
+        :param message:
+        :return:
+        """
+
+        notification = Notification()
+
+        message_type = message.data.get("type")
+        message_type = Notification.Types.__members__[message_type] if message_type in Notification.Types.__members__ else Notification.Types.CRITICAL
+        notification.type = message_type
+
+        notification.header = message.data.get("header") or "Default 'header'"
+        notification.text = message.data.get("text") or "Default 'text'"
+
+        for notification_channel in self.notification_channels:
+            notification.tags = message.data.get("tags") or [notification_channel.configuration.ALERT_SYSTEM_MONITORING_ROUTING_TAG]
+            notification_channel.notify(notification)
+
+        return notification
 
 
 class CloudwatchAlarm:

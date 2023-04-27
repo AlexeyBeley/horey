@@ -1,7 +1,6 @@
 """
-AWS Lambda representation
+AWS SNS subscription representation
 """
-import pdb
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 from horey.aws_api.base_entities.region import Region
@@ -17,6 +16,8 @@ class SNSSubscription(AwsObject):
         self.attributes = None
         self.topic_arn = None
         self.endpoint = None
+        self.arn = None
+        self.protocol = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -44,6 +45,13 @@ class SNSSubscription(AwsObject):
         self._init_from_cache(dict_src, options)
 
     def update_from_raw_response(self, dict_src):
+        """
+        Standard.
+
+        :param dict_src:
+        :return:
+        """
+
         init_options = {
             "SubscriptionArn": lambda x, y: self.init_default_attr(
                 x, y, formatted_name="arn"
@@ -57,10 +65,13 @@ class SNSSubscription(AwsObject):
         self.init_attrs(dict_src, init_options)
 
     def generate_create_request(self):
-        request = dict()
-        request["TopicArn"] = self.topic_arn
-        request["Protocol"] = self.protocol
-        request["Endpoint"] = self.endpoint
+        """
+        Standard.
+
+        :return:
+        """
+
+        request = {"TopicArn": self.topic_arn, "Protocol": self.protocol, "Endpoint": self.endpoint}
         if self.attributes is not None:
             request["Attributes"] = self.attributes
         return request
@@ -70,7 +81,6 @@ class SNSSubscription(AwsObject):
         if self._region is not None:
             return self._region
 
-        raise NotImplementedError()
         if self.arn is not None:
             self._region = Region.get_region(self.arn.split(":")[3])
 

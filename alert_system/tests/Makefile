@@ -15,7 +15,7 @@ TEST_EVENT_PATH := "/Users/alexey.beley/private/horey/alert_system/tests/clowdwa
 bla:
 	echo ${VENV_DIR}
 
-test_%: FORCE build
+test_%: FORCE build_
 	source ${VENV_DIR}/bin/activate &&\
 	python3 ${TESTS_DIR}/${@}
 
