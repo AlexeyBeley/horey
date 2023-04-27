@@ -1,5 +1,5 @@
 """
-Jenkins Manager script' entry points
+Alert system script' entry points
 
 """
 # pylint: disable=missing-function-docstring
@@ -16,7 +16,7 @@ action_manager = ActionsManager()
 
 # region send_message_to_sns
 def send_message_to_sns_parser():
-    description = "Update jenkins agent"
+    description = "Send message to sns topic"
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("--subject", required=True, type=str)
     parser.add_argument("--message_file_path", required=True, type=str)
