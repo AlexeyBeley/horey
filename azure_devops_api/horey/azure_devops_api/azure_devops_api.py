@@ -455,6 +455,16 @@ class AzureDevopsAPI:
 
         return h_tb
 
+    def get_iteration_work_items(self, iteration):
+        """
+        Get iteration work items.
+
+        :param iteration:
+        :return:
+        """
+
+        return [work_item for work_item in self.work_items if work_item.iteration_path == iteration.path]
+
     def generate_clean_report_two_iterations(self, current_iteration_work_items, future_iterations_work_items):
         """
         Don't put off till tomorrow what you can do today.
