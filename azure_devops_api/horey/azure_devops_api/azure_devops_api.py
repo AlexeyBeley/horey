@@ -5,6 +5,7 @@ Manage Azure Devops
 
 import json
 import datetime
+import os
 from collections import defaultdict
 
 import requests
@@ -13,6 +14,7 @@ from horey.h_logger import get_logger
 from horey.azure_devops_api.azure_devops_api_configuration_policy import (
     AzureDevopsAPIConfigurationPolicy,
 )
+from horey.common_utils.common_utils import CommonUtils
 
 logger = get_logger()
 
@@ -27,6 +29,16 @@ class AzureDevopsObject:
             setattr(self, key, value)
         self._start_date = None
         self._finish_date = None
+
+    @classmethod
+    def get_cache_file_name(cls):
+        """
+        Generate cache file name.
+
+        :return:
+        """
+
+        return CommonUtils.camel_case_to_snake_case(cls.__name__) + ".json"
 
     def print(self):
         """
@@ -45,6 +57,8 @@ class WorkItem(AzureDevopsObject):
     """
     def __init__(self, dict_src):
         self.fields = {}
+        self.relations = []
+
         super().__init__(dict_src)
 
     def print(self):
@@ -171,6 +185,12 @@ class Backlog(AzureDevopsObject):
     """
 
 
+class TeamMember(AzureDevopsObject):
+    """
+    Standard.
+    """
+
+
 class AzureDevopsAPI:
     """
     Main class
@@ -183,11 +203,13 @@ class AzureDevopsAPI:
         self.project_name = configuration.project_name
         self.org_name = configuration.org_name
         self.team_name = configuration.team_name
+        self.configuration = configuration
         self.work_items = []
-        self.team_members = []
+        self.nit_ = []
         self.iterations = []
         self.backlogs = []
         self.processes = []
+        self.team_members = []
 
     def get_iteration(self, date_find=None):
         """
@@ -199,6 +221,7 @@ class AzureDevopsAPI:
 
         if not self.iterations:
             self.init_iterations()
+
         if date_find is None:
             date_find = datetime.datetime.now()
         for iteration in self.iterations:
@@ -206,18 +229,15 @@ class AzureDevopsAPI:
                 return iteration
         raise RuntimeError("Can not find current iteration.")
 
-    def init_iterations(self, cache_file_path=None):
+    def init_iterations(self, from_cache=False):
         """
         Fetch from API
 
         :return:
         """
 
-        if cache_file_path is not None:
-            with open(cache_file_path, encoding="utf-8") as file_handler:
-                lst_src = json.load(file_handler)
-            self.iterations = [Iteration(dict_src) for dict_src in lst_src]
-            return self.iterations
+        if from_cache:
+            return self.init_items_from_cache("iterations", Iteration)
 
         lst_ret = []
         response = self.session.get(f"https://dev.azure.com/{self.org_name}/{self.project_name}/{self.team_name}/_apis/work/teamsettings/iterations?api-version=7.0")
@@ -229,6 +249,7 @@ class AzureDevopsAPI:
             lst_ret.append(Iteration(dict_src))
 
         self.iterations = lst_ret
+        self.cache(self.iterations)
         logger.info(f"Inited {len(lst_ret)} iterations")
         return lst_ret
 
@@ -282,19 +303,15 @@ class AzureDevopsAPI:
         self.processes = lst_ret
         return lst_ret
 
-    def init_backlogs(self, cache_file_path=None):
+    def init_backlogs(self, from_cache=None):
         """
         Fetch from API
 
         :return:
         """
 
-        if cache_file_path is not None:
-            with open(cache_file_path, encoding="utf-8") as file_handler:
-                lst_src = json.load(file_handler)
-            lst_ret = [Backlog(dict_src) for dict_src in lst_src]
-            self.backlogs = lst_ret
-            return lst_ret
+        if from_cache:
+            return self.init_items_from_cache("backlogs", Backlog)
 
         project = self.project_name
         organization = self.org_name
@@ -312,24 +329,36 @@ class AzureDevopsAPI:
         logger.info(f"Inited {len(lst_ret)} backlogs")
 
         self.backlogs = lst_ret
+        self.cache(self.backlogs)
         return self.backlogs
 
-    def init_work_items(self, cache_file_path=None):
+    def init_items_from_cache(self, attribute_name, item_class):
+        """
+        Standard.
+
+        :param attribute_name:
+        :param item_class:
+        :return:
+        """
+        with open(os.path.join(self.configuration.cache_dir_full_path, item_class.get_cache_file_name()),
+                  encoding="utf-8") as file_handler:
+            lst_src = json.load(file_handler)
+        lst_ret = [item_class(dict_src) for dict_src in lst_src]
+
+        setattr(self, attribute_name, lst_ret)
+
+    def init_work_items(self, from_cache=False):
         """
         Fetch from API
 
         :return:
         """
         lst_all = []
-        if cache_file_path is not None:
-            with open(cache_file_path, encoding="utf-8") as file_handler:
-                lst_src = json.load(file_handler)
-            lst_ret = [WorkItem(dict_src) for dict_src in lst_src]
-            self.work_items = lst_ret
-            return lst_ret
+        if from_cache:
+            return self.init_items_from_cache("work_items", WorkItem)
 
         if not self.backlogs:
-            self.init_backlogs()
+            self.init_backlogs(from_cache=from_cache)
 
         project = self.project_name
         organization = self.org_name
@@ -350,35 +379,38 @@ class AzureDevopsAPI:
             lst_all += lst_ret
 
         self.work_items = lst_all
+        self.cache(self.work_items)
+
         return self.work_items
 
-    @staticmethod
-    def cache(objects, file_path):
+    def cache(self, objects):
         """
         Cache objects with dict_src
 
         :param objects:
-        :param file_path:
         :return:
         """
+
+        file_path = os.path.join(self.configuration.cache_dir_full_path, objects[0].get_cache_file_name())
 
         lst_ret = [obj.dict_src for obj in objects]
         with open(file_path, "w", encoding="utf-8") as file_handler:
             json.dump(lst_ret, file_handler)
 
-    def init_team_members(self):
+    def init_team_members(self, from_cache=False):
         """
         Fetch from API
         https://learn.microsoft.com/en-us/rest/api/azure/devops/core/teams/get-team-members-with-extended-properties?view=azure-devops-rest-5.0&tabs=HTTP
 
         :return:
         """
-
+        if from_cache:
+            self.init_items_from_cache("team_members", TeamMember)
         response = self.session.get(f"https://dev.azure.com/{self.org_name}/_apis/projects/{self.project_name}/teams/{self.team_name}/members?api-version=7.0")
         ret = response.json()
         logger.info("Start fetching team member")
-
-        self.team_members = ret["value"]
+        self.team_members = [TeamMember(dict_src) for dict_src in ret["value"]]
+        self.cache(self.team_members)
 
     def get(self, request_path):
         """
