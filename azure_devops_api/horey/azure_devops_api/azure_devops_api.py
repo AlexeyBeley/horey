@@ -162,18 +162,18 @@ class Iteration(AzureDevopsObject):
 
         now = datetime.datetime.now()
         hours = 0
-        start = self.start_date
+        actual_start_date = self.start_date
         if only_remaining:
             if self.finish_date < now:
                 return 0
             if self.start_date < now < self.finish_date:
                 hours = max(min(17 - datetime.datetime.now().hour, 6), 0)
-                start = datetime.datetime(year=now.year, month=now.month, day=now.day+1)
+                actual_start_date = datetime.datetime(year=now.year, month=now.month, day=now.day) + datetime.timedelta(days=1)
 
-        daygenerator = (start + datetime.timedelta(days=x) for x in range((self.finish_date - start).days))
+        daygenerator = (actual_start_date + datetime.timedelta(days=x) for x in range((self.finish_date - actual_start_date).days))
         days = sum(1 for day in daygenerator if day.weekday() in [0, 1, 2, 3, 6])
         for str_date, off_hours in self.VACATIONS.items():
-            if self.start_date < datetime.datetime.strptime(str_date, "%Y-%m-%d") < self.finish_date:
+            if actual_start_date < datetime.datetime.strptime(str_date, "%Y-%m-%d") < self.finish_date:
                 hours -= off_hours
 
         return hours + days*6
@@ -191,6 +191,7 @@ class TeamMember(AzureDevopsObject):
     """
 
 
+# pylint: disable= too-many-instance-attributes
 class AzureDevopsAPI:
     """
     Main class

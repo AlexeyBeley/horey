@@ -84,16 +84,16 @@ def test_init_and_cache_boards():
 
 
 if __name__ == "__main__":
-    test_init_backlogs()
-    test_init_processes()
-    test_init_team_members()
+    #test_init_backlogs()
+    #test_init_processes()
+    #test_init_team_members()
 
-    test_init_and_cache_iterations()
-    test_init_iterations()
+    #test_init_and_cache_iterations()
+    #test_init_iterations()
 
-    test_init_and_cache_work_items()
-    test_init_work_items()
+    #test_init_and_cache_work_items()
+    #test_init_work_items()
 
-    test_current_iteration()
-    test_init_and_cache_boards()
+    #test_current_iteration()
+    #test_init_and_cache_boards()
     test_generate_clean_report()
