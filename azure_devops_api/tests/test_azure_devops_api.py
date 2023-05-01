@@ -83,6 +83,12 @@ def test_init_and_cache_boards():
     assert len(lst_ret) > 0
 
 
+def test_recursive_init_work_items():
+    azure_devops_api.init_work_items(from_cache=True)
+    lst_ret = azure_devops_api.recursive_init_work_items(azure_devops_api.work_items)
+    breakpoint()
+
+
 if __name__ == "__main__":
     #test_init_backlogs()
     #test_init_processes()
@@ -96,4 +102,8 @@ if __name__ == "__main__":
 
     #test_current_iteration()
     #test_init_and_cache_boards()
+    #test_recursive_init_work_items()
+
     test_generate_clean_report()
+
+

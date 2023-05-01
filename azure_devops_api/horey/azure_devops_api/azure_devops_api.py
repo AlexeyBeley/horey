@@ -58,6 +58,7 @@ class WorkItem(AzureDevopsObject):
     def __init__(self, dict_src):
         self.fields = {}
         self.relations = []
+        self.id = None
 
         super().__init__(dict_src)
 
@@ -99,7 +100,10 @@ class WorkItem(AzureDevopsObject):
         :return:
         """
 
-        return self.dict_src["fields"]["System.IterationPath"]
+        try:
+            return self.dict_src["fields"]["System.IterationPath"]
+        except KeyError:
+            return None
 
     def get_remaining_work(self, default=None):
         """
@@ -117,6 +121,13 @@ class WorkItem(AzureDevopsObject):
             raise RuntimeError(f"Neither RemainingWork not default were set in {self.title} work item")
 
         return default
+
+    @property
+    def work_item_type(self):
+        try:
+            return self.dict_src["fields"]["System.WorkItemType"]
+        except KeyError:
+            return None
 
 
 class Iteration(AzureDevopsObject):
@@ -212,7 +223,7 @@ class AzureDevopsAPI:
         self.processes = []
         self.team_members = []
 
-    def get_iteration(self, date_find=None):
+    def get_iteration(self, date_find=None, from_cache=False):
         """
         Get current by default or find by date specified.
 
@@ -221,7 +232,7 @@ class AzureDevopsAPI:
         """
 
         if not self.iterations:
-            self.init_iterations()
+            self.init_iterations(from_cache=from_cache)
 
         if date_find is None:
             date_find = datetime.datetime.now()
@@ -304,7 +315,7 @@ class AzureDevopsAPI:
         self.processes = lst_ret
         return lst_ret
 
-    def init_backlogs(self, from_cache=None):
+    def init_backlogs(self, from_cache=False):
         """
         Fetch from API
 
@@ -354,12 +365,128 @@ class AzureDevopsAPI:
 
         :return:
         """
-        lst_all = []
         if from_cache:
             return self.init_items_from_cache("work_items", WorkItem)
 
+        lst_items = self.init_work_items_by_iterations()
+
+        self.work_items = lst_items + self.init_work_items_by_backlog(ignore_items=lst_items)
+
+        self.cache(self.work_items)
+
+        return self.work_items
+
+    def init_work_items_by_iterations(self, iterations_src=None):
+        """
+        Init live data.
+
+        :param iterations_src:
+        :return:
+        """
+
+        lst_all = []
+        lst_all_ids = []
+
+        iterations = iterations_src if iterations_src is not None else self.iterations
+        if not iterations:
+            self.init_iterations()
+            iterations = self.iterations
+
+        project = self.project_name
+        organization = self.org_name
+        for iteration_id in [iteration.id for iteration in iterations]:
+            response = self.session.get(f"https://dev.azure.com/{self.org_name}/{self.project_name}/{self.team_name}/_apis/work/teamsettings/iterations/{iteration_id}/workitems?api-version=7.0")
+            ret = response.json()
+            lst_src = ret["workItemRelations"]
+
+            logger.info("Starting to fetch work items")
+            for work_item_rel in lst_src:
+                try:
+                    int_id = work_item_rel["source"].get("id")
+                except AttributeError:
+                    int_id = None
+
+                if int_id and int_id not in lst_all_ids:
+                    response = self.session.get(f"https://dev.azure.com/{organization}/{project}/_apis/wit/workitems/{int_id}?$expand=all&api-version=7.0")
+                    dict_src = response.json()
+                    lst_all.append(WorkItem(dict_src))
+                    lst_all_ids.append(int_id)
+
+                try:
+                    int_id = work_item_rel["target"].get("id")
+                except AttributeError:
+                    int_id = None
+
+                if int_id and int_id not in lst_all_ids:
+                    response = self.session.get(f"https://dev.azure.com/{organization}/{project}/_apis/wit/workitems/{int_id}?$expand=all&api-version=7.0")
+                    dict_src = response.json()
+                    lst_all.append(WorkItem(dict_src))
+                    lst_all_ids.append(int_id)
+
+            logger.info(f"Already inited {len(lst_all_ids)} until iteration: {iteration_id}")
+
+        return self.recursive_init_work_items(lst_all)
+
+    def recursive_init_work_items(self, lst_all):
+        """
+        Init recursively according to relations.
+
+        :param lst_all:
+        :return:
+        """
+
+        lst_ret = lst_all[::]
+        new_items = [None]
+        while new_items:
+            lst_all_ids = [work_item.id for work_item in lst_ret]
+            new_items = []
+            for work_item in lst_ret:
+                for relation in work_item.relations:
+                    if relation["rel"] not in ["System.LinkTypes.Hierarchy-Reverse", "System.LinkTypes.Hierarchy-Forward"]:
+                        continue
+                    work_item_id = relation["url"].split("/")[-1]
+                    if int(work_item_id) in lst_all_ids:
+                        continue
+                    work_item_new = self.get_work_item(work_item_id)
+                    new_items.append(work_item_new)
+
+                    lst_all_ids.append(work_item_new.id)
+            logger.info(f"Recursively found another {len(new_items)} work items")
+            lst_ret += new_items
+
+        return lst_ret
+
+    def get_work_item(self, work_item_id):
+        """
+        Fetch single work item
+        :param work_item_id:
+        :return:
+        """
+
+        response = self.session.get(
+            f"https://dev.azure.com/{self.org_name}/{self.project_name}/_apis/wit/workitems/{work_item_id}?$expand=all&api-version=7.0")
+
+        if response.status_code == 404:
+            dict_src = {"id": int(work_item_id), "error": response.json()}
+        else:
+            dict_src = response.json()
+
+        return WorkItem(dict_src)
+
+    def init_work_items_by_backlog(self, ignore_items=None):
+        """
+        Fetch from API
+
+        :return:
+        """
+        lst_all = []
+        if ignore_items is None:
+            ignore_ids = []
+        else:
+            ignore_ids = [item.id for item in ignore_items]
+
         if not self.backlogs:
-            self.init_backlogs(from_cache=from_cache)
+            self.init_backlogs()
 
         project = self.project_name
         organization = self.org_name
@@ -372,17 +499,15 @@ class AzureDevopsAPI:
             logger.info("Starting to fetch work items")
             for work_item in lst_src:
                 str_id = work_item["target"]["id"]
+                if ignore_ids and (int(str_id) in ignore_ids):
+                    continue
                 response = self.session.get(f"https://dev.azure.com/{organization}/{project}/_apis/wit/workitems/{str_id}?$expand=all&api-version=7.0")
                 dict_src = response.json()
-                # dict_src["backlog_id"] = backlog_id
                 lst_ret.append(WorkItem(dict_src))
             logger.info(f"Inited {len(lst_ret)} work items with backlog_id: {backlog_id}")
             lst_all += lst_ret
 
-        self.work_items = lst_all
-        self.cache(self.work_items)
-
-        return self.work_items
+        return self.recursive_init_work_items(lst_all)
 
     def cache(self, objects):
         """

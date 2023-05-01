@@ -1,6 +1,7 @@
 """
 Testing chronograf api
 """
+import datetime
 import os
 import pytest
 
@@ -19,6 +20,7 @@ ignore_dir = os.path.abspath(
         "ignore"
     )
 )
+daily_hapi_file_path = os.path.join(ignore_dir, "human_api", "daily_"+str(datetime.date.today())+".hapi")
 configuration.configuration_file_full_path = os.path.abspath(
     os.path.join(
         ignore_dir,
@@ -33,9 +35,13 @@ human_api = HumanAPI(configuration=configuration)
 
 
 @pytest.mark.skip(reason="Can not test")
-def test_init_daily_meeting():
-    lst_ret = human_api.init_daily_meeting()
-    assert len(lst_ret) > 0
+def test_daily_report():
+    lst_ret = human_api.daily_report(daily_hapi_file_path)
+
+
+@pytest.mark.skip(reason="Can not test")
+def test_daily_action():
+    lst_ret = human_api.daily_action(daily_hapi_file_path)
 
 
 @pytest.mark.skip(reason="Can not test")
@@ -45,5 +51,7 @@ def test_init_tasks_map():
 
 
 if __name__ == "__main__":
-    test_init_tasks_map()
-    test_init_daily_meeting()
+    #test_init_tasks_map()
+    #test_daily_report()
+    test_daily_action()
+
