@@ -21,6 +21,7 @@ class Boto3Client:
     NEXT_PAGE_REQUEST_KEY = "NextToken"
     NEXT_PAGE_RESPONSE_KEY = "NextToken"
     NEXT_PAGE_INITIAL_KEY = None
+    DEBUG = False
 
     def __init__(self, client_name):
         """
@@ -93,8 +94,13 @@ class Boto3Client:
         while retry_counter < self.EXECUTION_RETRY_COUNT:
             try:
                 logger.info(
-                    f"Start paginating with starting_token: '{starting_token}' and args '{filters_req}'"
+                    f"Start paginating with starting_token: '{starting_token}'"
                 )
+                if self.DEBUG:
+                    logger.info(
+                        f"Start paginating with starting_token: '{starting_token}' and args '{filters_req}'"
+                    )
+
                 for result, new_starting_token in self.unpack_pagination_loop(
                     starting_token,
                     func_command.__name__,
@@ -335,8 +341,12 @@ class Boto3Client:
             Boto3Client.EXEC_COUNT += 1
             try:
                 logger.info(
-                    f"Executing: '{func_command.__name__}' and args '{filters_req}'"
+                    f"Executing: '{func_command.__name__}'"
                 )
+                if self.DEBUG:
+                    logger.info(
+                        f"Executing: '{func_command.__name__}' and args '{filters_req}'"
+                    )
                 response = func_command(**filters_req)
                 break
             except Exception as exception_instance:

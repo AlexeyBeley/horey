@@ -52,6 +52,6 @@ def test_init_tasks_map():
 
 if __name__ == "__main__":
     #test_init_tasks_map()
-    #test_daily_report()
+    test_daily_report()
     test_daily_action()
 
