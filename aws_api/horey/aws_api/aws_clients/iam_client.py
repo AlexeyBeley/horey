@@ -528,6 +528,7 @@ class IamClient(Boto3Client):
                 self.client.get_policy,
                 "Policy",
                 filters_req=request_dict,
+                exception_ignore_callback=lambda exception: "NoSuchEntity" in repr(exception)
             ):
 
                 policy.update_from_raw_response(response)
