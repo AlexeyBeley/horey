@@ -1,22 +1,23 @@
-import pdb
+"""
+Zabbix host.
 
+"""
 from horey.zabbix_api.zabbix_object import ZabbixObject
 
 
 class Host(ZabbixObject):
+    """
+    Main class.
+    """
     def __init__(self, dict_src, from_cache=False):
-        self.groups = None
+        self.groups = []
         self.name = None
         self.host = None
-        self.interfaces = None
-        self.parent_templates = None
+        self.interfaces = []
+        self.parent_templates = []
         self.status = None
 
         super().__init__(dict_src, from_cache=from_cache)
-
-        if from_cache:
-            self.init_host_from_cache(dict_src)
-            return
 
         init_options = {
             "hostid": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
@@ -48,12 +49,13 @@ class Host(ZabbixObject):
             "groups": self.init_default_attr,
             "interfaces": self.init_default_attr,
             "parentTemplates": self.init_default_attr,
+            "vendor_name": self.init_default_attr,
+            "vendor_version": self.init_default_attr,
+            "inventory_mode": self.init_default_attr,
+            "active_available": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
-
-    def init_host_from_cache(self, dict_src):
-        raise NotImplementedError()
 
     def generate_create_request(self, validate=True):
         """
@@ -96,29 +98,29 @@ class Host(ZabbixObject):
             if self.host != self.name:
                 raise ValueError(f"self.host= {self.host} != self.name = {self.name}")
 
-        request = dict()
-        request["host"] = self.host
-        request["status"] = self.status
-        request["groups"] = [{"groupid": group["groupid"]} for group in self.groups]
-        request["interfaces"] = [
-            {
-                "ip": interface["ip"],
-                "type": interface["type"],
-                "main": interface["main"],
-                "useip": interface["useip"],
-                "dns": interface["dns"],
-                "port": interface["port"],
-            }
-            for interface in self.interfaces
-        ]
-
-        request["templates"] = [
-            {"templateid": template["templateid"]} for template in self.parent_templates
-        ]
+        request = {"host": self.host, "status": self.status,
+                   "groups": [{"groupid": group["groupid"]} for group in self.groups], "interfaces": [
+                {
+                    "ip": interface["ip"],
+                    "type": interface["type"],
+                    "main": interface["main"],
+                    "useip": interface["useip"],
+                    "dns": interface["dns"],
+                    "port": interface["port"],
+                }
+                for interface in self.interfaces
+            ], "templates": [
+                {"templateid": template["templateid"]} for template in self.parent_templates
+            ]}
 
         return request
 
     def generate_update_request(self):
+        """
+        Standard.
+
+        :return:
+        """
         request = self.generate_create_request()
         request["hostid"] = self.id
         del request["interfaces"]
@@ -138,7 +140,3 @@ class Host(ZabbixObject):
         }"""
         request = [self.id]
         return request
-
-    def update_after_creation(self, disk):
-        self.id = disk.id
-        self.unique_id = disk.unique_id
