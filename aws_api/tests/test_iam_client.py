@@ -147,4 +147,4 @@ if __name__ == "__main__":
     # test_provision_role()
     #test_provision_instance_profile()
     test_provision_policy()
-    test_provision_change_policy()
+    #test_provision_change_policy()

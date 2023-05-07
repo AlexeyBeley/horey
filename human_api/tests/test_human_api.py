@@ -21,6 +21,7 @@ ignore_dir = os.path.abspath(
     )
 )
 daily_hapi_file_path = os.path.join(ignore_dir, "human_api", "daily_"+str(datetime.date.today())+".hapi")
+protected_output_file_path = daily_hapi_file_path.replace(".hapi", "_input.hapi")
 configuration.configuration_file_full_path = os.path.abspath(
     os.path.join(
         ignore_dir,
@@ -36,12 +37,13 @@ human_api = HumanAPI(configuration=configuration)
 
 @pytest.mark.skip(reason="Can not test")
 def test_daily_report():
-    lst_ret = human_api.daily_report(daily_hapi_file_path)
+    lst_ret = human_api.daily_report(daily_hapi_file_path, protected_output_file_path)
 
 
 @pytest.mark.skip(reason="Can not test")
 def test_daily_action():
-    lst_ret = human_api.daily_action(daily_hapi_file_path)
+    breakpoint()
+    lst_ret = human_api.daily_action(protected_output_file_path)
 
 
 @pytest.mark.skip(reason="Can not test")

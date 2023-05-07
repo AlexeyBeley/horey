@@ -5,6 +5,8 @@ Manage Azure Devops
 import datetime
 from collections import defaultdict
 from enum import Enum
+
+import os
 from horey.h_logger import get_logger
 from horey.human_api.human_api_configuration_policy import (
     HumanAPIConfigurationPolicy,
@@ -21,6 +23,7 @@ class WorkObject:
         self.id = None
         self.status = None
         self.created_date = None
+        self.closed_date = None
         self.created_by = None
         self.assigned_to = None
         self.title = None
@@ -49,7 +52,9 @@ class WorkObject:
                              "System.CreatedBy": self.init_created_by_azure_devops,
                              "System.AssignedTo": self.init_assigned_to_azure_devops,
                              "System.Title": self.init_title_azure_devops,
-                             "System.IterationPath": self.init_sprint_id_azure_devops
+                             "System.IterationPath": self.init_sprint_id_azure_devops,
+                             "Microsoft.VSTS.Common.ClosedDate": self.init_closed_date_azure_devops,
+                             "Microsoft.VSTS.Common.ResolvedDate": self.init_closed_date_azure_devops,
                              }
 
         for attribute_name, value in work_item.fields.items():
@@ -103,6 +108,12 @@ class WorkObject:
     def init_sprint_id_azure_devops(self, value):
         self.sprint_id = value
 
+    def init_closed_date_azure_devops(self, value):
+        if "." in value:
+            self.closed_date = datetime.datetime.strptime(value, "%Y-%m-%dT%H:%M:%S.%fZ")
+        else:
+            self.closed_date = datetime.datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ")
+
     def init_created_date_azure_devops(self, value):
         if "." in value:
             self.created_date = datetime.datetime.strptime(value, "%Y-%m-%dT%H:%M:%S.%fZ")
@@ -143,14 +154,6 @@ class Feature(WorkObject):
     Feature
     """
 
-    def print(self):
-        """
-        Print the fields.
-
-        :return:
-        """
-        breakpoint()
-
     def init_from_azure_devops_work_item(self, work_item):
         """
         Init self from azure_devops work item
@@ -164,14 +167,6 @@ class Epic(WorkObject):
     """
     Feature
     """
-
-    def print(self):
-        """
-        Print the fields.
-
-        :return:
-        """
-        breakpoint()
 
     def init_from_azure_devops_work_item(self, work_item):
         """
@@ -187,14 +182,6 @@ class UserStory(WorkObject):
     Feature
     """
 
-    def print(self):
-        """
-        Print the fields.
-
-        :return:
-        """
-        breakpoint()
-
     def init_from_azure_devops_work_item(self, work_item):
         """
         Init self from azure_devops work item
@@ -208,14 +195,6 @@ class Bug(WorkObject):
     """
     Feature
     """
-
-    def print(self):
-        """
-        Print the fields.
-
-        :return:
-        """
-        breakpoint()
 
     def init_from_azure_devops_work_item(self, work_item):
         """
@@ -251,6 +230,121 @@ class Sprint:
         self.name = iteration.name
         self.start_date = iteration.start_date
         self.finish_date = iteration.finish_date
+
+
+class DailyReportAction:
+    def __init__(self, line_src):
+        self.parent_type = None
+        self.parent_id = None
+        self.parent_title = None
+
+        self.child_type = None
+        self.child_id = None
+        self.child_title = None
+
+        self.action_comment = None
+
+        self.action_init_time = None
+        self.action_add_time = None
+        self.action_close = None
+        self.action_activate = None
+        self.action_block = None
+
+        line_src = line_src.strip()
+        parent_token = line_src[1:line_src.find("]")]
+        line = line_src[len(parent_token):]
+        line = line[line.find("->") + 2:]
+        line = line.strip()
+        child_token = line[:line.rfind(":actions:")].strip()
+        action_token = line[len(child_token) + len(":actions:")+1:]
+        self.init_parent(parent_token)
+        self.init_child(child_token)
+        self.init_actions(action_token)
+
+    def init_child(self, child_token):
+        """
+        Child init from line
+
+        :param child_token:
+        :return:
+        """
+
+        child_token_rep, child_token_title = child_token.split("#")
+        child_token_rep = child_token_rep.strip()
+        self.child_title = child_token_title.strip()
+
+        parts = child_token_rep.split(" ")
+        if len(parts) == 0:
+            parts = ["task", "0"]
+        elif len(parts) == 1:
+            if parts[0] in ["task", "bug"]:
+                parts.append("0")
+            else:
+                parts = ["task"] + parts
+
+        self.child_type, self.child_id = parts
+
+        self.child_type = self.child_type.strip()
+        if self.child_type not in ["task", "bug"]:
+            raise RuntimeError(f"Task uid can not be parsed in: '{child_token}'")
+
+        self.child_id = self.child_id.strip()
+        if not self.child_id.isdigit():
+            raise RuntimeError(f"Task uid can not be parsed in: '{child_token}'")
+
+    def init_actions(self, action_token):
+        """
+        Init all actions.
+
+        :param action_token:
+        :return:
+        """
+
+        actions = action_token.strip().split(",")
+
+        for action in actions:
+            action = action.strip()
+            if action.startswith("+"):
+                if not action[1:].isdigit():
+                    raise RuntimeError(f"Can not parse action: '{action_token}'")
+                self.action_add_time = action
+                continue
+            if action.startswith("comment"):
+                self.action_comment = action[len("comment"):].strip()
+                continue
+            if action.startswith("block"):
+                self.action_block = True
+                continue
+            if action.startswith("close"):
+                self.action_close = True
+                continue
+
+    def init_parent(self, parent_token):
+        """
+        Init parent from line.
+
+        :param parent_token:
+        :return:
+        """
+        logger.info(f"Initializing parent token: {parent_token}")
+        uid, self.parent_title = parent_token.split("#")
+        self.parent_title = self.parent_title.strip()
+        uid = uid.strip()
+        parts = uid.split(" ")
+        if len(parts) < 2:
+            if len(parts) == 0:
+                parts = ["user_story", "0"]
+            elif parts[0] == "-1" or parts[0].isdigit():
+                parts = ["user_story"] + parts
+            else:
+                parts.append("0")
+
+        self.parent_type, self.parent_id = parts
+        if self.parent_id != "-1" and not self.parent_id.isdigit():
+            raise (f"Work item id must be either digit or '-1', received: '{parent_token}'")
+
+        if self.parent_type not in ["user_story"]:
+            raise ValueError(f"Unknown worker type in '{parent_token}'")
 
 
 class HumanAPI:
@@ -399,7 +493,7 @@ class HumanAPI:
             ret[work_item.assigned_to].append(work_item)
         return ret
 
-    def daily_report(self, output_file_path):
+    def daily_report(self, output_file_path, protected_output_file_path):
         """
         Init daily meeting area.
 
@@ -425,6 +519,7 @@ class HumanAPI:
             blocked = defaultdict(list)
             active = defaultdict(list)
             new = defaultdict(list)
+            closed = defaultdict(list)
             for work_item in work_items:
                 if len(work_item.parent_ids) > 1:
                     raise ValueError(f"len(work_item.parent_ids) == {len(work_item.parent_ids)} != 1 ")
@@ -440,25 +535,41 @@ class HumanAPI:
                     blocked[parent_id].append(work_item)
                 elif work_item.status == work_item.Status.NEW:
                     new[parent_id].append(work_item)
-                elif work_item.status != work_item.Status.CLOSED:
+                elif work_item.status == work_item.Status.CLOSED:
+                    try:
+                        if work_item.closed_date >= datetime.datetime.now() - datetime.timedelta(days=3):
+                            closed[parent_id].append(work_item)
+                    except Exception:
+                        breakpoint()
+                else:
                     raise ValueError(f"Unknown status: {work_item.status}")
-            str_ret += self.generate_worker_daily(tmp_dict, worker_id, new, active, blocked) + "\n"
+            str_ret += self.generate_worker_daily(tmp_dict, worker_id, new, active, blocked, closed) + "\n"
 
         with open(output_file_path, "w") as file_handler:
             file_handler.write(str_ret)
 
-    def daily_action(self, output_file_path):
-        with open(output_file_path) as file_handler:
+        if not os.path.exists(protected_output_file_path):
+            with open(protected_output_file_path, "w") as file_handler:
+                file_handler.write(str_ret)
+
+    def daily_action(self, input_file_path):
+        #input_file_path = input_file_path.replace("daily_2023-05-07.hapi", "daily_2023-05-06.hapi")
+        with open(input_file_path) as file_handler:
             str_src = file_handler.read()
 
         while "\n\n" in str_src:
             str_src = str_src.replace("\n\n", "\n")
 
         lst_per_worker = str_src.split("worker_id:")
-        worker_report = lst_per_worker[7]
-        actions = self.perform_worker_report_actions(worker_report)
+        #worker_report = lst_per_worker[7]
+        str_ret = ""
+        for worker_report in lst_per_worker:
+            if not worker_report.strip():
+                continue
+            str_ret += self.perform_worker_report_actions(worker_report)
+            str_ret += "#"*100 + "\n"
 
-        breakpoint()
+        print(str_ret)
 
     def perform_worker_report_actions(self, worker_report):
         """
@@ -467,62 +578,50 @@ class HumanAPI:
         :param worker_report:
         :return:
         """
-
         actions = []
         lst_worker_report = worker_report.split("\n")
+        try:
+            index_end = lst_worker_report.index("#"*100)
+        except Exception as inst:
+            print(inst)
+            breakpoint()
+        lst_worker_report = lst_worker_report[:index_end]
+
         new_index = lst_worker_report.index(">NEW:")
         active_index = lst_worker_report.index(">ACTIVE:")
         blocked_index = lst_worker_report.index(">BLOCKED:")
+        closed_index = lst_worker_report.index(">CLOSED:")
         lines_new = lst_worker_report[new_index+1:active_index]
         lines_active = lst_worker_report[active_index+1:blocked_index]
-        lines_blocked = lst_worker_report[blocked_index+1:]
-        for line_src in lines_new:
-            line_src = line_src.strip()
-            parent_token = line_src[1:line_src.find("]")]
-            line = line_src[len(parent_token):]
-            line = line[line.find("->")+2:]
-            line = line.strip()
-            child_token = line[:line.rfind(":actions:")]
-            action_token = line[len(child_token)+len(":actions:"):]
-            actions = action_token.split(",")
-            breakpoint()
+        lines_blocked = lst_worker_report[blocked_index + 1:closed_index]
+        lines_closed = lst_worker_report[closed_index+1:]
 
-            child_token_rep, child_token_title = child_token.split("#")
-            child_token_rep = child_token_rep.strip()
-            child_token_title = child_token_title.strip()
-            if child_token_rep.startswith("task"):
-                child_token_id = child_token_rep[len("task")+1:]
-                if not child_token_id.isdigit():
-                    breakpoint()
-            elif child_token_rep.startswith("bug"):
-                child_token_id = child_token_rep[len("bug")+1:]
-            else:
-                raise ValueError(f"Task identifier in '{line}'")
+        actions_new = [DailyReportAction(line_src) for line_src in lines_new]
+        actions_active = [DailyReportAction(line_src) for line_src in lines_active]
+        actions_blocked = [DailyReportAction(line_src) for line_src in lines_blocked]
+        actions_closed = [DailyReportAction(line_src) for line_src in lines_closed]
 
-            for action in actions:
-                action = action.strip()
-                if action.startswith("+"):
-                    breakpoint()
-                    continue
-                if action.startswith("comment"):
-                    breakpoint()
-                    continue
-                if action.startswith("block"):
-                    breakpoint()
-                    continue
-                if action.startswith("close"):
-                    breakpoint()
-                    continue
-                if action.startswith("close"):
-                    breakpoint()
-                    continue
+        name = lst_worker_report[0].lower().replace("@controlup.com", "")
+        ytb_report = self.generate_ytb_report(actions_new, actions_active, actions_blocked, actions_closed)
+        return f"{name}\n{ytb_report}"
 
+    def action_to_ytb_report_line(self, action):
+        return f"[{action.parent_id}-{action.parent_title}] -> {action.child_id}-{action.child_title}"
 
-        breakpoint()
-        return actions
+    def generate_ytb_report(self, actions_new, actions_active, actions_blocked, actions_closed):
+        str_ret = "Y:\n"
+        y_report = [action for action in actions_new + actions_active + actions_blocked + actions_closed if action.action_add_time]
+        str_ret += "\n".join([self.action_to_ytb_report_line(action) for action in y_report])
+        str_ret += "\nT:\n"
+        str_ret += "\n".join([self.action_to_ytb_report_line(action) for action in actions_active if not action.action_close])
+        str_ret += "\nB:\n"
+        str_ret += "\n".join([self.action_to_ytb_report_line(action) for action in actions_new + actions_active + actions_blocked + actions_closed if action.action_block])
+        while "\n\n" in str_ret:
+            str_ret = str_ret.replace("\n\n", "\n")
+        return str_ret
 
     @staticmethod
-    def generate_worker_daily(tmp_dict, worker_id, new, active, blocked):
+    def generate_worker_daily(tmp_dict, worker_id, new, active, blocked, closed):
         """
         Generate daily report.
 
@@ -531,6 +630,7 @@ class HumanAPI:
         :param new:
         :param active:
         :param blocked:
+        :param closed:
         :return:
         """
 
@@ -550,6 +650,11 @@ class HumanAPI:
             for item in items:
                 str_report += f"[{tmp_dict.get(parent_id).generate_report_token()}] -> {item.generate_report_token()} :actions:\n"
 
-        str_report += "#"*len(str_report.split("\n")[-2]) + "\n"
+        str_report += "\n>CLOSED:\n"
+        for parent_id, items in closed.items():
+            for item in items:
+                str_report += f"[{tmp_dict.get(parent_id).generate_report_token()}] -> {item.generate_report_token()} :actions:\n"
+
+        str_report += "#"*100 + "\n"
 
         return str_report
