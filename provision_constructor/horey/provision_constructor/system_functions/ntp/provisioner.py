@@ -64,7 +64,8 @@ class Provisioner(SystemFunctionCommon):
         except BashExecutor.BashError as error_inst:
             dict_inst = json.loads(str(error_inst))
             if "NTP not supported" in dict_inst["stderr"]:
-                self.apt_install("systemd-timesyncd")
+                SystemFunctionFactory.REGISTERED_FUNCTIONS["apt_package_generic"](self.deployment_dir, self.force,
+                                                                   self.upgrade, package_names=["systemd-timesyncd"]).provision()
                 ret = self.run_bash("sudo timedatectl set-ntp false")
                 logger.info(ret)
 
