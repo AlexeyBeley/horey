@@ -6,6 +6,7 @@ Provision ntp service.
 import os.path
 import platform
 import json
+
 from horey.provision_constructor.system_function_factory import SystemFunctionFactory
 
 from horey.provision_constructor.system_functions.system_function_common import (
@@ -66,6 +67,7 @@ class Provisioner(SystemFunctionCommon):
             if "NTP not supported" in dict_inst["stderr"]:
                 SystemFunctionFactory.REGISTERED_FUNCTIONS["apt_package_generic"](self.deployment_dir, self.force,
                                                                    self.upgrade, package_names=["systemd-timesyncd"]).provision()
+                self.run_bash("sudo systemctl restart systemd-timedated")
                 ret = self.run_bash("sudo timedatectl set-ntp false")
                 logger.info(ret)
 
