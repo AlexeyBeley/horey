@@ -667,7 +667,8 @@ class HumanAPI:
         actions_closed = [DailyReportAction(line_src) for line_src in lines_closed]
 
         self.perform_task_management_system_changes(sprint_name, actions_new, actions_active, actions_blocked, actions_closed)
-        name = lst_worker_report[0].lower().replace("@.com", "")
+        name = lst_worker_report[0].lower()
+        name = name[:name.index("@")]
         ytb_report = self.generate_ytb_report(actions_new, actions_active, actions_blocked, actions_closed)
         return f"{name}\n{ytb_report}"
 
