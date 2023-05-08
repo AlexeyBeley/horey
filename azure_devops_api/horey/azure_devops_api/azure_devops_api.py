@@ -5,6 +5,7 @@ Manage Azure Devops
 
 import json
 import datetime
+import os
 from collections import defaultdict
 
 import requests
@@ -13,6 +14,7 @@ from horey.h_logger import get_logger
 from horey.azure_devops_api.azure_devops_api_configuration_policy import (
     AzureDevopsAPIConfigurationPolicy,
 )
+from horey.common_utils.common_utils import CommonUtils
 
 logger = get_logger()
 
@@ -21,12 +23,23 @@ class AzureDevopsObject:
     """
     Common object.
     """
+
     def __init__(self, dict_src):
         self.dict_src = dict_src
         for key, value in dict_src.items():
             setattr(self, key, value)
         self._start_date = None
         self._finish_date = None
+
+    @classmethod
+    def get_cache_file_name(cls):
+        """
+        Generate cache file name.
+
+        :return:
+        """
+
+        return CommonUtils.camel_case_to_snake_case(cls.__name__) + ".json"
 
     def print(self):
         """
@@ -43,8 +56,12 @@ class WorkItem(AzureDevopsObject):
     """
     Work item -task, user story, feature, epic etc.
     """
+
     def __init__(self, dict_src):
         self.fields = {}
+        self.relations = []
+        self.id = None
+
         super().__init__(dict_src)
 
     def print(self):
@@ -85,7 +102,23 @@ class WorkItem(AzureDevopsObject):
         :return:
         """
 
-        return self.dict_src["fields"]["System.IterationPath"]
+        try:
+            return self.dict_src["fields"]["System.IterationPath"]
+        except KeyError:
+            return None
+
+    @property
+    def completed_work_hours(self):
+        """
+        Property.
+
+        :return:
+        """
+
+        try:
+            return self.dict_src["fields"]["Microsoft.VSTS.Scheduling.CompletedWork"]
+        except KeyError:
+            return None
 
     def get_remaining_work(self, default=None):
         """
@@ -103,6 +136,18 @@ class WorkItem(AzureDevopsObject):
             raise RuntimeError(f"Neither RemainingWork not default were set in {self.title} work item")
 
         return default
+
+    @property
+    def work_item_type(self):
+        """
+        Azure wit Type.
+
+        :return:
+        """
+        try:
+            return self.dict_src["fields"]["System.WorkItemType"]
+        except KeyError:
+            return None
 
 
 class Iteration(AzureDevopsObject):
@@ -123,7 +168,8 @@ class Iteration(AzureDevopsObject):
         """
 
         if self._start_date is None:
-            self._start_date = datetime.datetime.strptime(self.dict_src["attributes"]["startDate"], "%Y-%m-%dT%H:%M:%SZ")
+            self._start_date = datetime.datetime.strptime(self.dict_src["attributes"]["startDate"],
+                                                          "%Y-%m-%dT%H:%M:%SZ")
         return self._start_date
 
     @property
@@ -135,7 +181,8 @@ class Iteration(AzureDevopsObject):
         """
 
         if self._finish_date is None:
-            self._finish_date = datetime.datetime.strptime(self.dict_src["attributes"]["finishDate"], "%Y-%m-%dT%H:%M:%SZ")
+            self._finish_date = datetime.datetime.strptime(self.dict_src["attributes"]["finishDate"],
+                                                           "%Y-%m-%dT%H:%M:%SZ")
         return self._finish_date
 
     def get_hours(self, only_remaining=True):
@@ -148,21 +195,23 @@ class Iteration(AzureDevopsObject):
 
         now = datetime.datetime.now()
         hours = 0
-        start = self.start_date
+        actual_start_date = self.start_date
         if only_remaining:
             if self.finish_date < now:
                 return 0
             if self.start_date < now < self.finish_date:
                 hours = max(min(17 - datetime.datetime.now().hour, 6), 0)
-                start = datetime.datetime(year=now.year, month=now.month, day=now.day+1)
+                actual_start_date = datetime.datetime(year=now.year, month=now.month, day=now.day) + datetime.timedelta(
+                    days=1)
 
-        daygenerator = (start + datetime.timedelta(days=x) for x in range((self.finish_date - start).days))
+        daygenerator = (actual_start_date + datetime.timedelta(days=x) for x in
+                        range((self.finish_date - actual_start_date).days))
         days = sum(1 for day in daygenerator if day.weekday() in [0, 1, 2, 3, 6])
         for str_date, off_hours in self.VACATIONS.items():
-            if self.start_date < datetime.datetime.strptime(str_date, "%Y-%m-%d") < self.finish_date:
+            if actual_start_date < datetime.datetime.strptime(str_date, "%Y-%m-%d") < self.finish_date:
                 hours -= off_hours
 
-        return hours + days*6
+        return hours + days * 6
 
 
 class Backlog(AzureDevopsObject):
@@ -171,25 +220,71 @@ class Backlog(AzureDevopsObject):
     """
 
 
+class TeamMember(AzureDevopsObject):
+    """
+    Standard.
+    """
+
+
+# pylint: disable= too-many-instance-attributes
 class AzureDevopsAPI:
     """
     Main class
     """
+
     def __init__(self, configuration: AzureDevopsAPIConfigurationPolicy = None):
         self.base_address = configuration.server_address
         self.version = "7.1"
         self.session = requests.Session()
+        self.session.headers.update(
+            {
+                "Content-Type": "application/json-patch+json",
+                "User-Agent": "python/horey",
+                "Cache-Control": "no-cache",
+            })
+
         self.session.auth = (configuration.user, configuration.password)
         self.project_name = configuration.project_name
         self.org_name = configuration.org_name
         self.team_name = configuration.team_name
+        self.configuration = configuration
         self.work_items = []
-        self.team_members = []
+        self.nit_ = []
         self.iterations = []
         self.backlogs = []
         self.processes = []
+        self.team_members = []
 
-    def get_iteration(self, date_find=None):
+    def get_iterations(self, date_find=None, from_cache=False, iteration_names=None):
+        """
+        Get current by default or find by date specified.
+
+        :param from_cache:
+        :param iteration_names:
+        :param date_find:
+        :return:
+        """
+        if not self.iterations:
+            self.init_iterations(from_cache=from_cache)
+
+        if date_find is None and iteration_names is None:
+            date_find = datetime.datetime.now()
+
+        lst_ret = []
+        for iteration in self.iterations:
+            if date_find is not None:
+                if iteration.start_date <= date_find <= iteration.finish_date:
+                    lst_ret.append(iteration)
+            else:
+                if iteration.name in iteration_names:
+                    lst_ret.append(iteration)
+
+        if lst_ret:
+            return lst_ret
+
+        raise RuntimeError(f"Can not find iterations by {date_find} and {iteration_names}")
+
+    def get_iteration(self, date_find=None, from_cache=False):
         """
         Get current by default or find by date specified.
 
@@ -198,7 +293,8 @@ class AzureDevopsAPI:
         """
 
         if not self.iterations:
-            self.init_iterations()
+            self.init_iterations(from_cache=from_cache)
+
         if date_find is None:
             date_find = datetime.datetime.now()
         for iteration in self.iterations:
@@ -206,29 +302,29 @@ class AzureDevopsAPI:
                 return iteration
         raise RuntimeError("Can not find current iteration.")
 
-    def init_iterations(self, cache_file_path=None):
+    def init_iterations(self, from_cache=False):
         """
         Fetch from API
 
         :return:
         """
 
-        if cache_file_path is not None:
-            with open(cache_file_path, encoding="utf-8") as file_handler:
-                lst_src = json.load(file_handler)
-            self.iterations = [Iteration(dict_src) for dict_src in lst_src]
-            return self.iterations
+        if from_cache:
+            return self.init_items_from_cache("iterations", Iteration)
 
         lst_ret = []
-        response = self.session.get(f"https://dev.azure.com/{self.org_name}/{self.project_name}/{self.team_name}/_apis/work/teamsettings/iterations?api-version=7.0")
+        response = self.session.get(
+            f"https://dev.azure.com/{self.org_name}/{self.project_name}/{self.team_name}/_apis/work/teamsettings/iterations?api-version=7.0")
         ret = response.json()
         logger.info("Start fetching iterations")
         for iteration in ret["value"]:
-            response = self.session.get(f"https://dev.azure.com/{self.org_name}/{self.project_name}/{self.team_name}/_apis/work/teamsettings/iterations/{iteration['id']}?api-version=7.0")
+            response = self.session.get(
+                f"https://dev.azure.com/{self.org_name}/{self.project_name}/{self.team_name}/_apis/work/teamsettings/iterations/{iteration['id']}?api-version=7.0")
             dict_src = response.json()
             lst_ret.append(Iteration(dict_src))
 
         self.iterations = lst_ret
+        self.cache(self.iterations)
         logger.info(f"Inited {len(lst_ret)} iterations")
         return lst_ret
 
@@ -240,10 +336,12 @@ class AzureDevopsAPI:
         """
 
         lst_ret = []
-        response = self.session.get(f"https://dev.azure.com/{self.org_name}/{self.project_name}/{self.team_name}/_apis/dashboard/dashboards?api-version=7.0-preview.3")
+        response = self.session.get(
+            f"https://dev.azure.com/{self.org_name}/{self.project_name}/{self.team_name}/_apis/dashboard/dashboards?api-version=7.0-preview.3")
         ret = response.json()
         for dashboard in ret["value"]:
-            response = self.session.get(f"https://dev.azure.com/{self.org_name}/{self.project_name}/{self.team_name}/_apis/dashboard/dashboards/{dashboard['id']}?api-version=7.0-preview.3")
+            response = self.session.get(
+                f"https://dev.azure.com/{self.org_name}/{self.project_name}/{self.team_name}/_apis/dashboard/dashboards/{dashboard['id']}?api-version=7.0-preview.3")
             ret = response.json()
             lst_ret.append(ret)
         return lst_ret
@@ -256,10 +354,12 @@ class AzureDevopsAPI:
         """
 
         lst_ret = []
-        response = self.session.get(f"https://dev.azure.com/{self.org_name}/{self.project_name}/{self.team_name}/_apis/work/boards?api-version=7.0")
+        response = self.session.get(
+            f"https://dev.azure.com/{self.org_name}/{self.project_name}/{self.team_name}/_apis/work/boards?api-version=7.0")
         ret = response.json()
         for board in ret["value"]:
-            response = self.session.get(f"https://dev.azure.com/{self.org_name}/{self.project_name}/{self.team_name}/_apis/work/boards/{board['id']}?api-version=7.0")
+            response = self.session.get(
+                f"https://dev.azure.com/{self.org_name}/{self.project_name}/{self.team_name}/_apis/work/boards/{board['id']}?api-version=7.0")
             ret = response.json()
             lst_ret.append(ret)
         return lst_ret
@@ -282,23 +382,20 @@ class AzureDevopsAPI:
         self.processes = lst_ret
         return lst_ret
 
-    def init_backlogs(self, cache_file_path=None):
+    def init_backlogs(self, from_cache=False):
         """
         Fetch from API
 
         :return:
         """
 
-        if cache_file_path is not None:
-            with open(cache_file_path, encoding="utf-8") as file_handler:
-                lst_src = json.load(file_handler)
-            lst_ret = [Backlog(dict_src) for dict_src in lst_src]
-            self.backlogs = lst_ret
-            return lst_ret
+        if from_cache:
+            return self.init_items_from_cache("backlogs", Backlog)
 
         project = self.project_name
         organization = self.org_name
-        response = self.session.get(f"https://dev.azure.com/{self.org_name}/{self.project_name}/{self.team_name}/_apis/work/backlogs?api-version=7.0")
+        response = self.session.get(
+            f"https://dev.azure.com/{self.org_name}/{self.project_name}/{self.team_name}/_apis/work/backlogs?api-version=7.0")
         ret = response.json()
         lst_src = ret["value"]
 
@@ -306,27 +403,160 @@ class AzureDevopsAPI:
         logger.info("Start fetching backlogs")
         for backlog in lst_src:
             str_id = backlog["id"]
-            response = self.session.get(f"https://dev.azure.com/{organization}/{project}/{self.team_name}/_apis/work/backlogs/{str_id}?api-version=7.0")
+            response = self.session.get(
+                f"https://dev.azure.com/{organization}/{project}/{self.team_name}/_apis/work/backlogs/{str_id}?api-version=7.0")
             dict_src = response.json()
             lst_ret.append(Backlog(dict_src))
         logger.info(f"Inited {len(lst_ret)} backlogs")
 
         self.backlogs = lst_ret
+        self.cache(self.backlogs)
         return self.backlogs
 
-    def init_work_items(self, cache_file_path=None):
+    def init_items_from_cache(self, attribute_name, item_class):
+        """
+        Standard.
+
+        :param attribute_name:
+        :param item_class:
+        :return:
+        """
+        with open(os.path.join(self.configuration.cache_dir_full_path, item_class.get_cache_file_name()),
+                  encoding="utf-8") as file_handler:
+            lst_src = json.load(file_handler)
+        lst_ret = [item_class(dict_src) for dict_src in lst_src]
+
+        setattr(self, attribute_name, lst_ret)
+
+    def init_work_items(self, from_cache=False):
+        """
+        Fetch from API
+
+        :return:
+        """
+        if from_cache:
+            return self.init_items_from_cache("work_items", WorkItem)
+
+        lst_items = self.init_work_items_by_iterations()
+
+        self.work_items = lst_items + self.init_work_items_by_backlog(ignore_items=lst_items)
+
+        self.cache(self.work_items)
+
+        return self.work_items
+
+    def init_work_items_by_iterations(self, iterations_src=None):
+        """
+        Init live data.
+
+        :param iterations_src:
+        :return:
+        """
+
+        lst_all = []
+        lst_all_ids = []
+
+        iterations = iterations_src if iterations_src is not None else self.iterations
+        if not iterations:
+            self.init_iterations()
+            iterations = self.iterations
+
+        project = self.project_name
+        organization = self.org_name
+        for iteration_id in [iteration.id for iteration in iterations]:
+            response = self.session.get(
+                f"https://dev.azure.com/{self.org_name}/{self.project_name}/{self.team_name}/_apis/work/teamsettings/iterations/{iteration_id}/workitems?api-version=7.0")
+            ret = response.json()
+            lst_src = ret["workItemRelations"]
+
+            logger.info("Starting to fetch work items")
+            for work_item_rel in lst_src:
+                try:
+                    int_id = work_item_rel["source"].get("id")
+                except AttributeError:
+                    int_id = None
+
+                if int_id and int_id not in lst_all_ids:
+                    response = self.session.get(
+                        f"https://dev.azure.com/{organization}/{project}/_apis/wit/workitems/{int_id}?$expand=all&api-version=7.0")
+                    dict_src = response.json()
+                    lst_all.append(WorkItem(dict_src))
+                    lst_all_ids.append(int_id)
+
+                try:
+                    int_id = work_item_rel["target"].get("id")
+                except AttributeError:
+                    int_id = None
+
+                if int_id and int_id not in lst_all_ids:
+                    response = self.session.get(
+                        f"https://dev.azure.com/{organization}/{project}/_apis/wit/workitems/{int_id}?$expand=all&api-version=7.0")
+                    dict_src = response.json()
+                    lst_all.append(WorkItem(dict_src))
+                    lst_all_ids.append(int_id)
+
+            logger.info(f"Already inited {len(lst_all_ids)} until iteration: {iteration_id}")
+
+        return self.recursive_init_work_items(lst_all)
+
+    def recursive_init_work_items(self, lst_all):
+        """
+        Init recursively according to relations.
+
+        :param lst_all:
+        :return:
+        """
+
+        lst_ret = lst_all[::]
+        new_items = [None]
+        while new_items:
+            lst_all_ids = [work_item.id for work_item in lst_ret]
+            new_items = []
+            for work_item in lst_ret:
+                for relation in work_item.relations:
+                    if relation["rel"] not in ["System.LinkTypes.Hierarchy-Reverse",
+                                               "System.LinkTypes.Hierarchy-Forward"]:
+                        continue
+                    work_item_id = relation["url"].split("/")[-1]
+                    if int(work_item_id) in lst_all_ids:
+                        continue
+                    work_item_new = self.get_work_item(work_item_id)
+                    new_items.append(work_item_new)
+
+                    lst_all_ids.append(work_item_new.id)
+            logger.info(f"Recursively found another {len(new_items)} work items")
+            lst_ret += new_items
+
+        return lst_ret
+
+    def get_work_item(self, work_item_id):
+        """
+        Fetch single work item
+        :param work_item_id:
+        :return:
+        """
+
+        response = self.session.get(
+            f"https://dev.azure.com/{self.org_name}/{self.project_name}/_apis/wit/workitems/{work_item_id}?$expand=all&api-version=7.0")
+
+        if response.status_code == 404:
+            dict_src = {"id": int(work_item_id), "error": response.json()}
+        else:
+            dict_src = response.json()
+
+        return WorkItem(dict_src)
+
+    def init_work_items_by_backlog(self, ignore_items=None):
         """
         Fetch from API
 
         :return:
         """
         lst_all = []
-        if cache_file_path is not None:
-            with open(cache_file_path, encoding="utf-8") as file_handler:
-                lst_src = json.load(file_handler)
-            lst_ret = [WorkItem(dict_src) for dict_src in lst_src]
-            self.work_items = lst_ret
-            return lst_ret
+        if ignore_items is None:
+            ignore_ids = []
+        else:
+            ignore_ids = [item.id for item in ignore_items]
 
         if not self.backlogs:
             self.init_backlogs()
@@ -334,7 +564,8 @@ class AzureDevopsAPI:
         project = self.project_name
         organization = self.org_name
         for backlog_id in [backlog.id for backlog in self.backlogs]:
-            response = self.session.get(f"https://dev.azure.com/{self.org_name}/{self.project_name}/{self.team_name}/_apis/work/backlogs/{backlog_id}/workItems?api-version=7.0")
+            response = self.session.get(
+                f"https://dev.azure.com/{self.org_name}/{self.project_name}/{self.team_name}/_apis/work/backlogs/{backlog_id}/workItems?api-version=7.0")
             ret = response.json()
             lst_src = ret["workItems"]
 
@@ -342,79 +573,46 @@ class AzureDevopsAPI:
             logger.info("Starting to fetch work items")
             for work_item in lst_src:
                 str_id = work_item["target"]["id"]
-                response = self.session.get(f"https://dev.azure.com/{organization}/{project}/_apis/wit/workitems/{str_id}?$expand=all&api-version=7.0")
+                if ignore_ids and (int(str_id) in ignore_ids):
+                    continue
+                response = self.session.get(
+                    f"https://dev.azure.com/{organization}/{project}/_apis/wit/workitems/{str_id}?$expand=all&api-version=7.0")
                 dict_src = response.json()
-                # dict_src["backlog_id"] = backlog_id
                 lst_ret.append(WorkItem(dict_src))
             logger.info(f"Inited {len(lst_ret)} work items with backlog_id: {backlog_id}")
             lst_all += lst_ret
 
-        self.work_items = lst_all
-        return self.work_items
+        return self.recursive_init_work_items(lst_all)
 
-    @staticmethod
-    def cache(objects, file_path):
+    def cache(self, objects):
         """
         Cache objects with dict_src
 
         :param objects:
-        :param file_path:
         :return:
         """
+
+        file_path = os.path.join(self.configuration.cache_dir_full_path, objects[0].get_cache_file_name())
 
         lst_ret = [obj.dict_src for obj in objects]
         with open(file_path, "w", encoding="utf-8") as file_handler:
             json.dump(lst_ret, file_handler)
 
-    def init_team_members(self):
+    def init_team_members(self, from_cache=False):
         """
         Fetch from API
         https://learn.microsoft.com/en-us/rest/api/azure/devops/core/teams/get-team-members-with-extended-properties?view=azure-devops-rest-5.0&tabs=HTTP
 
         :return:
         """
-
-        response = self.session.get(f"https://dev.azure.com/{self.org_name}/_apis/projects/{self.project_name}/teams/{self.team_name}/members?api-version=7.0")
+        if from_cache:
+            self.init_items_from_cache("team_members", TeamMember)
+        response = self.session.get(
+            f"https://dev.azure.com/{self.org_name}/_apis/projects/{self.project_name}/teams/{self.team_name}/members?api-version=7.0")
         ret = response.json()
         logger.info("Start fetching team member")
-
-        self.team_members = ret["value"]
-
-    def get(self, request_path):
-        """
-        Perform get request.
-
-        :param request_path:
-        :param is_link:
-        :return:
-        """
-
-        request = request_path
-        response = requests.get(request, headers={"Content-Type": "application/json"}, timeout=30)
-        if response.status_code != 200:
-            raise RuntimeError(
-                f"Request to chronograf api returned an error {response.status_code}, the response is:\n{response.text}"
-            )
-        return response.json()
-
-    def post(self, request_path, data):
-        """
-        Perform post request.
-
-        :param request_path:
-        :param data:
-        :param is_link:
-        :return:
-        """
-        request = request_path
-        response = requests.post(
-            request, data=json.dumps(data), headers={"Content-Type": "application/json"}, timeout=30
-        )
-        if response.status_code != 200:
-            raise RuntimeError(
-                f"Request to chronograf api returned an error {response.status_code}, the response is:\n{response.text}"
-            )
-        return response.json()
+        self.team_members = [TeamMember(dict_src) for dict_src in ret["value"]]
+        self.cache(self.team_members)
 
     def generate_clean_report(self):
         """
@@ -455,6 +653,16 @@ class AzureDevopsAPI:
 
         return h_tb
 
+    def get_iteration_work_items(self, iteration):
+        """
+        Get iteration work items.
+
+        :param iteration:
+        :return:
+        """
+
+        return [work_item for work_item in self.work_items if work_item.iteration_path == iteration.path]
+
     def generate_clean_report_two_iterations(self, current_iteration_work_items, future_iterations_work_items):
         """
         Don't put off till tomorrow what you can do today.
@@ -469,16 +677,18 @@ class AzureDevopsAPI:
 
         h_tb = TextBlock(f"Current ({current_iteration.path}) and following ({next_iteration.path}) sprints cleanup")
 
-        next_iteration_work_items = [work_item for work_item in future_iterations_work_items if work_item.iteration_path == next_iteration.path]
+        next_iteration_work_items = [work_item for work_item in future_iterations_work_items if
+                                     work_item.iteration_path == next_iteration.path]
         current_iteration_hours = current_iteration.get_hours()
         next_iteration_hours = next_iteration.get_hours()
         total_hours = current_iteration_hours + next_iteration_hours
-        work_items_by_worker = self.split_work_items_by_worker(current_iteration_work_items+next_iteration_work_items)
+        work_items_by_worker = self.split_work_items_by_worker(current_iteration_work_items + next_iteration_work_items)
 
         for worker_name, work_items in work_items_by_worker.items():
             total_remaining_hours = sum(work_item.get_remaining_work(default=3.0) for work_item in work_items)
             if total_hours < total_remaining_hours:
-                h_tb.lines.append(f"Worker {worker_name} has {total_remaining_hours} remaining tasks' hours but only {total_hours} working hours left")
+                h_tb.lines.append(
+                    f"Worker {worker_name} has {total_remaining_hours} remaining tasks' hours but only {total_hours} working hours left")
 
         return h_tb
 
@@ -517,3 +727,146 @@ class AzureDevopsAPI:
         for work_item in work_items:
             ret_dict[work_item.assigned_to["displayName"]].append(work_item)
         return ret_dict
+
+    def post(self, url, data):
+        """
+        Perform post request.
+
+        :param request_path:
+        :param data:
+        :return:
+        """
+        response = self.session.post(url, data=json.dumps(data))
+        if response.status_code != 200:
+            raise RuntimeError(
+                f"Request to azuredevops api api returned an error {response.status_code}, the response is:\n{response.text}"
+            )
+        return response.json()
+
+    def patch(self, url, data):
+        """
+        Send patch request
+
+        :param url:
+        :param data:
+        :return:
+        """
+
+        response = self.session.patch(url, data=json.dumps(data))
+
+        if response.status_code != 200:
+            logger.error(response)
+            raise RuntimeError(logger.error(response.text))
+
+        return response.json()
+
+    def add_hours_to_work_item(self, wit_id, float_hours):
+        """
+        Add int hours to the work item.
+
+        :param wit_id:
+        :param float_hours:
+        :return:
+        """
+        work_item = self.get_work_item(wit_id)
+        request_data = \
+            [{
+                "op": "add",
+                "path": "/fields/Microsoft.VSTS.Scheduling.CompletedWork",
+                "value": str(work_item.completed_work_hours + float_hours)
+            }]
+        url = f"https://dev.azure.com/{self.org_name}/_apis/wit/workitems/{wit_id}?api-version=7.0"
+        return self.patch(url, request_data)
+
+    def change_iteration(self, wit_id, iteration_name):
+        """
+        Add int hours to the work item.
+
+        :param wit_id:
+        :param iteration_name:
+        :return:
+        """
+        request_data = \
+            [{
+                "op": "add",
+                "path": "/fields/System.IterationPath",
+                "value": iteration_name
+            }]
+        url = f"https://dev.azure.com/{self.org_name}/_apis/wit/workitems/{wit_id}?api-version=7.0"
+
+        return self.patch(url, request_data)
+
+    def set_wit_parent(self, wit_id, parent_id):
+        """
+
+        :param wit_id:
+        :param parent_id:
+        :return:
+        """
+        request_data = \
+            [{
+                "op": "add",
+                "path": "/relations/0",
+                "value": [{"rel": "System.LinkTypes.Hierarchy-Reverse",
+                           "url": f"https://{parent_id}",
+                           "attributes": {"isLocked": False, "name": "Parent"},
+                           "title": "Test_title"
+                           }]
+            }]
+        url = f"https://dev.azure.com/{self.org_name}/_apis/wit/workitems/{wit_id}?api-version=7.0"
+        return self.patch(url, request_data)
+
+    def provision_work_item_by_params(self, wit_type, wit_title, iteration_partial_path=None, original_estimate_time=None):
+        """
+        Provision work item by parameters received.
+
+        :param original_estimate_time:
+        :param iteration_partial_path:
+        :param wit_type:
+        :param wit_title:
+        :return:
+        """
+
+        if wit_type == "user_story":
+            wit_url_type = "$User%20Story"
+        elif wit_type == "task":
+            wit_url_type = "$Task"
+        elif wit_type == "bug":
+            wit_url_type = "$Bug"
+        else:
+            raise RuntimeError(f"wit_type {wit_type} != user_story")
+
+        url = f"https://dev.azure.com/{self.org_name}/{self.project_name}/_apis/wit/workitems/{wit_url_type}?api-version=7.0"
+        request_data = \
+            [
+                {
+                    "op": "add",
+                    "path": "/fields/System.Title",
+                    "value": wit_title
+                },
+                {
+                    "op": "add",
+                    "path": "/fields/System.Description",
+                    "value": "test_description"
+                },
+                {
+                    "op": "add",
+                    "path": "/fields/Microsoft.VSTS.Common.Priority",
+                    "value": "2"
+                }
+            ]
+        if original_estimate_time is not None:
+            request_data.append(
+                {
+                    "op": "add",
+                    "path": "/fields/Microsoft.VSTS.Scheduling.OriginalEstimate",
+                    "value": original_estimate_time
+                })
+        logger.info(f"Creating Work Item with parameters: {request_data}")
+        ret = self.post(url, request_data)
+        wit_id = ret.get("id")
+        logger.info(f"Create Work Item '{wit_type}' with title '{wit_title}'. UID: {wit_id}")
+        if iteration_partial_path is not None:
+            self.change_iteration(wit_id, f"{self.project_name}\\\\{iteration_partial_path}")
+
+        return wit_id

@@ -35,14 +35,14 @@ def test_init_backlogs():
 
 @pytest.mark.skip(reason="Can not test")
 def test_init_work_items():
-    azure_devops_api.init_work_items(cache_file_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore", "azure_devops", "work_items.json"))
+    azure_devops_api.init_work_items()
     assert len(azure_devops_api.work_items) > 0
 
 
 @pytest.mark.skip(reason="Can not test")
 def test_init_team_members():
     azure_devops_api.init_team_members()
-    assert len(azure_devops_api.work_items) > 0
+    assert len(azure_devops_api.team_members) > 0
 
 
 @pytest.mark.skip(reason="Can not test")
@@ -53,20 +53,16 @@ def test_init_processes():
 
 @pytest.mark.skip(reason="Can not test")
 def test_init_iterations():
-    azure_devops_api.init_iterations()
+    azure_devops_api.init_iterations(from_cache=True)
     assert len(azure_devops_api.iterations) > 0
 
 
 def test_init_and_cache_iterations():
     azure_devops_api.init_iterations()
-    azure_devops_api.cache(azure_devops_api.iterations, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore",
-                                     "azure_devops", "iterations.json"))
 
 
 def test_init_and_cache_work_items():
     azure_devops_api.init_work_items()
-    azure_devops_api.cache(azure_devops_api.work_items, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore",
-                                                                     "azure_devops", "work_items.json"))
 
 
 def test_current_iteration():
@@ -74,20 +70,23 @@ def test_current_iteration():
 
 
 def test_generate_clean_report():
-    azure_devops_api.init_work_items(
-        cache_file_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore",
-                                     "azure_devops", "work_items.json"))
-    azure_devops_api.init_iterations(cache_file_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore",
-                                     "azure_devops", "iterations.json"))
+    azure_devops_api.init_work_items(from_cache=True)
+    azure_devops_api.init_iterations(from_cache=True)
     h_tb = azure_devops_api.generate_clean_report()
     print(h_tb)
     assert h_tb is not None
 
 
 @pytest.mark.skip(reason="Can not test")
-def test_init_boards():
+def test_init_and_cache_boards():
     lst_ret = azure_devops_api.init_boards()
     assert len(lst_ret) > 0
+
+
+def test_recursive_init_work_items():
+    azure_devops_api.init_work_items(from_cache=True)
+    lst_ret = azure_devops_api.recursive_init_work_items(azure_devops_api.work_items)
+    breakpoint()
 
 
 if __name__ == "__main__":
@@ -95,12 +94,16 @@ if __name__ == "__main__":
     #test_init_processes()
     #test_init_team_members()
 
-    #test_init_iterations()
     #test_init_and_cache_iterations()
+    #test_init_iterations()
 
-    #test_init_work_items()
     #test_init_and_cache_work_items()
+    #test_init_work_items()
 
     #test_current_iteration()
-    #test_init_boards()
+    #test_init_and_cache_boards()
+    #test_recursive_init_work_items()
+
     test_generate_clean_report()
+
+

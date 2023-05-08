@@ -42,4 +42,4 @@ while read LINE; do
 
 done <"${CURRENT_SCRIPT_FULL_PATH}/_build/required_horey_packages.txt"
 
-pip3 install -r "${CURRENT_SCRIPT_FULL_PATH}/_build/requirements.txt"
+python -m pip install -r "${CURRENT_SCRIPT_FULL_PATH}/_build/requirements.txt"

@@ -17,6 +17,7 @@ class AzureDevopsAPIConfigurationPolicy(ConfigurationPolicy):
         self._org_name = None
         self._project_name = None
         self._team_name = None
+        self._cache_dir_full_path = None
 
         super().__init__()
 
@@ -145,3 +146,23 @@ class AzureDevopsAPIConfigurationPolicy(ConfigurationPolicy):
             )
 
         self._project_name = value
+    
+    @property
+    def cache_dir_full_path(self):
+        if self._cache_dir_full_path is None:
+            raise ValueError("cache_dir_full_path was not set")
+        return self._cache_dir_full_path
+
+    @cache_dir_full_path.setter
+    def cache_dir_full_path(self, value):
+        """
+        @param value:
+        @return:
+        """
+
+        if not isinstance(value, str):
+            raise ValueError(
+                f"cache_dir_full_path must be string received {value} of type: {type(value)}"
+            )
+
+        self._cache_dir_full_path = value

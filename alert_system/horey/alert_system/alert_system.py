@@ -549,16 +549,19 @@ class AlertSystem:
         os.chdir(current_dir)
         return ret
 
-    def send_message_to_sns(self, message):
+    def send_message_to_sns(self, message, topic_arn=None):
         """
         Send message to self sns_topic.
 
+        :param topic_arn:
         :param message:
         :return:
         """
 
-        topic = SNSTopic({})
-        topic.name = self.configuration.sns_topic_name
-        topic.region = self.region
-        self.aws_api.sns_client.update_topic_information(topic, full_information=False)
-        self.aws_api.sns_client.raw_publish(topic.arn, message.type, json.dumps(message.convert_to_dict()))
+        if topic_arn is None:
+            topic = SNSTopic({})
+            topic.name = self.configuration.sns_topic_name
+            topic.region = self.region
+            self.aws_api.sns_client.update_topic_information(topic, full_information=False)
+            topic_arn = topic.arn
+        self.aws_api.sns_client.raw_publish(topic_arn, message.type, json.dumps(message.convert_to_dict()))
