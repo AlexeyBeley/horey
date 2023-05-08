@@ -816,10 +816,12 @@ class AzureDevopsAPI:
         url = f"https://dev.azure.com/{self.org_name}/_apis/wit/workitems/{wit_id}?api-version=7.0"
         return self.patch(url, request_data)
 
-    def provision_work_item_by_params(self, wit_type, wit_title, iteration_partial_path=None, original_estimate_time=None):
+    # pylint:disable= too-many-arguments
+    def provision_work_item_by_params(self, wit_type, wit_title, iteration_partial_path=None, original_estimate_time=None, assigned_to=None):
         """
         Provision work item by parameters received.
 
+        :param assigned_to:
         :param original_estimate_time:
         :param iteration_partial_path:
         :param wit_type:
@@ -863,6 +865,10 @@ class AzureDevopsAPI:
                     "value": original_estimate_time
                 })
         logger.info(f"Creating Work Item with parameters: {request_data}")
+
+        if assigned_to is not None:
+            request_data.append({"op": "add", "path": "/fields/System.AssignedTo", "value": assigned_to})
+
         ret = self.post(url, request_data)
         wit_id = ret.get("id")
         logger.info(f"Create Work Item '{wit_type}' with title '{wit_title}'. UID: {wit_id}")

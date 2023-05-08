@@ -8,18 +8,32 @@ from horey.azure_devops_api.azure_devops_api import AzureDevopsAPI
 from horey.azure_devops_api.azure_devops_api_configuration_policy import (
     AzureDevopsAPIConfigurationPolicy,
 )
+from horey.common_utils.common_utils import CommonUtils
 
 configuration = AzureDevopsAPIConfigurationPolicy()
-configuration.configuration_file_full_path = os.path.abspath(
+ignore_dir_full_path = os.path.abspath(
     os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
         "..",
         "..",
         "..",
-        "ignore",
+        "ignore"
+    ))
+configuration.configuration_file_full_path = os.path.abspath(
+    os.path.join(
+        ignore_dir_full_path,
         "azure_devops_api_configuration_values.py",
     )
 )
+
+mock_file_file_full_path = os.path.abspath(
+    os.path.join(
+        ignore_dir_full_path,
+        "azure_devops_api_mock_values.py",
+    )
+)
+mock_values = CommonUtils.load_object_from_module(mock_file_file_full_path, "main")
+
 configuration.init_from_file()
 
 azure_devops_api = AzureDevopsAPI(configuration=configuration)
@@ -85,8 +99,15 @@ def test_init_and_cache_boards():
 
 def test_recursive_init_work_items():
     azure_devops_api.init_work_items(from_cache=True)
-    lst_ret = azure_devops_api.recursive_init_work_items(azure_devops_api.work_items)
-    breakpoint()
+    azure_devops_api.recursive_init_work_items(azure_devops_api.work_items)
+
+
+def test_provision_work_item_by_params():
+    wit_type= "user_story"
+    wit_title = "test"
+    iteration_partial_path = mock_values["iteration_partial_path"]
+    original_estimate_time = "4.0"
+    azure_devops_api.provision_work_item_by_params(wit_type, wit_title, iteration_partial_path=iteration_partial_path, original_estimate_time=original_estimate_time)
 
 
 if __name__ == "__main__":
@@ -104,6 +125,5 @@ if __name__ == "__main__":
     #test_init_and_cache_boards()
     #test_recursive_init_work_items()
 
-    test_generate_clean_report()
-
-
+    #test_generate_clean_report()
+    test_provision_work_item_by_params()
