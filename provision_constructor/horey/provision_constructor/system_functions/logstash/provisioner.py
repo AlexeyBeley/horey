@@ -54,8 +54,8 @@ class Provisioner(SystemFunctionCommon):
         self.reinit_apt_packages()
         self.apt_install("logstash")
         self.run_bash("sudo systemctl daemon-reload")
-        self.run_bash(f"sudo systemctl restart logstash")
-        self.run_bash(f"sudo systemctl enable logstash")
+        # self.run_bash(f"sudo systemctl restart logstash")
+        self.run_bash("sudo systemctl enable logstash")
 
     def test_provisioned(self):
         """
