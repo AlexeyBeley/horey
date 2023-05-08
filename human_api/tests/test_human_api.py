@@ -9,6 +9,7 @@ from horey.human_api.human_api import HumanAPI
 from horey.human_api.human_api_configuration_policy import (
     HumanAPIConfigurationPolicy,
 )
+from horey.common_utils.common_utils import CommonUtils
 
 configuration = HumanAPIConfigurationPolicy()
 ignore_dir = os.path.abspath(
@@ -20,6 +21,9 @@ ignore_dir = os.path.abspath(
         "ignore"
     )
 )
+
+mock_values_file_path = os.path.join(ignore_dir, "human_api_mock_values.py")
+mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 daily_hapi_file_path = os.path.join(ignore_dir, "human_api", "daily_"+str(datetime.date.today())+".hapi")
 protected_output_file_path = daily_hapi_file_path.replace(".hapi", "_input.hapi")
 configuration.configuration_file_full_path = os.path.abspath(
@@ -37,23 +41,20 @@ human_api = HumanAPI(configuration=configuration)
 
 @pytest.mark.skip(reason="Can not test")
 def test_daily_report():
-    lst_ret = human_api.daily_report(daily_hapi_file_path, protected_output_file_path)
+    human_api.daily_report(daily_hapi_file_path, protected_output_file_path, sprint_name=mock_values["Sprint_name"])
 
 
 @pytest.mark.skip(reason="Can not test")
 def test_daily_action():
-    breakpoint()
-    lst_ret = human_api.daily_action(protected_output_file_path)
+    human_api.daily_action(protected_output_file_path, mock_values["Sprint_name"])
 
 
 @pytest.mark.skip(reason="Can not test")
 def test_init_tasks_map():
-    lst_ret = human_api.init_tasks_map()
-    assert len(lst_ret) > 0
+    human_api.init_tasks_map()
 
 
 if __name__ == "__main__":
-    #test_init_tasks_map()
-    test_daily_report()
+    # test_init_tasks_map()
+    # test_daily_report()
     test_daily_action()
-

@@ -17,8 +17,16 @@ from horey.common_utils.common_utils import CommonUtils
 
 logger = get_logger()
 
+# pylint: disable= too-many-arguments
+# pylint: disable= too-many-branches
+# pylint: disable= too-many-locals
+# pylint: disable= too-many-instance-attributes
+
 
 class WorkObject:
+    """
+    Common data to all Work objects.
+    """
     def __init__(self):
         self.id = None
         self.status = None
@@ -44,7 +52,7 @@ class WorkObject:
         :return:
         """
 
-        self.azure_devops_work_item = work_item
+        self.azure_devops_object = work_item
 
         common_attributes = {"System.Id": self.init_default_attribute("id"),
                              "System.State": self.init_status_azure_devops,
@@ -75,6 +83,12 @@ class WorkObject:
                 raise ValueError(f"Unknown relation name in: '{relation}': '{relation['attributes']['name']}'")
 
     def init_default_attribute(self, attribute_name):
+        """
+        Init vanilla as is.
+
+        :param attribute_name:
+        :return:
+        """
         return lambda value: setattr(self, attribute_name, value)
 
     def init_status_azure_devops(self, value):
@@ -97,30 +111,66 @@ class WorkObject:
             raise ValueError(f"Status unknown: {value}")
 
     def init_created_by_azure_devops(self, value):
+        """
+        Init from azure devops object.
+        :param value:
+        :return:
+        """
         self.created_by = value["uniqueName"]
 
     def init_assigned_to_azure_devops(self, value):
+        """
+        Init from azure devops object.
+        :param value:
+        :return:
+        """
         self.assigned_to = value["uniqueName"]
 
     def init_title_azure_devops(self, value):
+        """
+        Init from azure devops object.
+        :param value:
+        :return:
+        """
         self.title = value
 
     def init_sprint_id_azure_devops(self, value):
+        """
+        Init from azure devops object.
+        :param value:
+        :return:
+        """
         self.sprint_id = value
 
     def init_closed_date_azure_devops(self, value):
+        """
+        Init from azure devops object.
+
+        :param value:
+        :return:
+        """
         if "." in value:
             self.closed_date = datetime.datetime.strptime(value, "%Y-%m-%dT%H:%M:%S.%fZ")
         else:
             self.closed_date = datetime.datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ")
 
     def init_created_date_azure_devops(self, value):
+        """
+        Init from azure devops object.
+        :param value:
+        :return:
+        """
         if "." in value:
             self.created_date = datetime.datetime.strptime(value, "%Y-%m-%dT%H:%M:%S.%fZ")
         else:
             self.created_date = datetime.datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ")
 
     class Status(Enum):
+        """
+        Task Vanilla status.
+
+        """
+
         NEW = "NEW"
         ACTIVE = "ACTIVE"
         BLOCKED = "BLOCKED"
@@ -233,6 +283,9 @@ class Sprint:
 
 
 class DailyReportAction:
+    """
+    Single task actions.
+    """
     def __init__(self, line_src):
         self.parent_type = None
         self.parent_id = None
@@ -299,15 +352,27 @@ class DailyReportAction:
         :param action_token:
         :return:
         """
+        action_token = action_token.strip()
 
-        actions = action_token.strip().split(",")
+        if "end_comment" in action_token:
+            commend_index = action_token.find("comment")
+            end_comment_index = action_token.find("end_comment")
+            comma_after_end_comment_index = action_token.find(",", end_comment_index)
+            comma_after_end_comment_index = len(action_token) if comma_after_end_comment_index == -1 else comma_after_end_comment_index
+
+            self.action_comment = action_token[commend_index+len("comment"): end_comment_index].strip()
+            action_token = action_token[:commend_index] + action_token[comma_after_end_comment_index:]
+            action_token = action_token.strip()
+            action_token = action_token.strip(" ,")
+
+        actions = action_token.split(",")
 
         for action in actions:
             action = action.strip()
             if action.startswith("+"):
                 if not action[1:].isdigit():
                     raise RuntimeError(f"Can not parse action: '{action_token}'")
-                self.action_add_time = action
+                self.action_add_time = int(action[1:])
                 continue
             if action.startswith("comment"):
                 self.action_comment = action[len("comment"):].strip()
@@ -341,7 +406,7 @@ class DailyReportAction:
 
         self.parent_type, self.parent_id = parts
         if self.parent_id != "-1" and not self.parent_id.isdigit():
-            raise (f"Work item id must be either digit or '-1', received: '{parent_token}'")
+            raise ValueError(f"Work item id must be either digit or '-1', received: '{parent_token}'")
 
         if self.parent_type not in ["user_story"]:
             raise ValueError(f"Unknown worker type in '{parent_token}'")
@@ -453,31 +518,34 @@ class HumanAPI:
             for obj_id in parent.child_ids:
                 parent.children.append(tmp_dict[obj_id])
 
-    def get_sprint(self, date_find=None):
+    def get_sprints(self, date_find=None, sprint_names=None):
         """
         Find Sprint by date.
 
+        :param sprint_names:
         :param date_find:
         :return:
         """
+        lst_ret = []
+        for iteration in self.azure_devops_api.get_iterations(from_cache=False, date_find=date_find, iteration_names=sprint_names):
+            sprint = Sprint()
+            sprint.init_from_azure_devops_iteration(iteration)
+            lst_ret.append(sprint)
+        return lst_ret
 
-        iteration = self.azure_devops_api.get_iteration(from_cache=False, date_find=date_find)
-        sprint = Sprint()
-        sprint.init_from_azure_devops_iteration(iteration)
-        return sprint
-
-    def get_sprint_tasks_and_bugs(self, sprint: Sprint):
+    def get_sprint_tasks_and_bugs(self, sprints):
         """
         Get all work items of the sprint.
 
-        :param sprint:
+        :param sprints:
         :return:
         """
 
         tmp_dict = {}
         tmp_dict.update(self.tasks)
         tmp_dict.update(self.bugs)
-        return [value for value in tmp_dict.values() if value.sprint_id == sprint.id]
+        sprint_ids = [sprint.id for sprint in sprints]
+        return [value for value in tmp_dict.values() if value.sprint_id in sprint_ids]
 
     @staticmethod
     def split_by_worker(work_items):
@@ -493,15 +561,15 @@ class HumanAPI:
             ret[work_item.assigned_to].append(work_item)
         return ret
 
-    def daily_report(self, output_file_path, protected_output_file_path):
+    def daily_report(self, output_file_path, protected_output_file_path, sprint_name=None):
         """
         Init daily meeting area.
 
         :return:
         """
-        sprint = self.get_sprint()
+        sprints = self.get_sprints(sprint_names=[sprint_name])
 
-        self.init_tasks_map(sprints=[sprint])
+        self.init_tasks_map(sprints=sprints)
         tmp_dict = {}
         tmp_dict.update(self.features)
         tmp_dict.update(self.epics)
@@ -512,7 +580,7 @@ class HumanAPI:
         tmp_dict[-1].title = "Orphan"
         tmp_dict[-1].id = -1
 
-        sprint_work_items = self.get_sprint_tasks_and_bugs(sprint)
+        sprint_work_items = self.get_sprint_tasks_and_bugs(sprints)
         work_items_map = self.split_by_worker(sprint_work_items)
         str_ret = ""
         for worker_id, work_items in work_items_map.items():
@@ -536,55 +604,52 @@ class HumanAPI:
                 elif work_item.status == work_item.Status.NEW:
                     new[parent_id].append(work_item)
                 elif work_item.status == work_item.Status.CLOSED:
-                    try:
-                        if work_item.closed_date >= datetime.datetime.now() - datetime.timedelta(days=3):
-                            closed[parent_id].append(work_item)
-                    except Exception:
-                        breakpoint()
+                    if work_item.closed_date >= datetime.datetime.now() - datetime.timedelta(days=3):
+                        closed[parent_id].append(work_item)
                 else:
                     raise ValueError(f"Unknown status: {work_item.status}")
             str_ret += self.generate_worker_daily(tmp_dict, worker_id, new, active, blocked, closed) + "\n"
 
-        with open(output_file_path, "w") as file_handler:
+        with open(output_file_path, "w", encoding="utf-8") as file_handler:
             file_handler.write(str_ret)
 
         if not os.path.exists(protected_output_file_path):
-            with open(protected_output_file_path, "w") as file_handler:
+            with open(protected_output_file_path, "w", encoding="utf-8") as file_handler:
                 file_handler.write(str_ret)
 
-    def daily_action(self, input_file_path):
-        #input_file_path = input_file_path.replace("daily_2023-05-07.hapi", "daily_2023-05-06.hapi")
-        with open(input_file_path) as file_handler:
+    def daily_action(self, input_file_path, sprint_name):
+        """
+        Perform daily ritual - do the changes in the tasks' management system and
+        generate YTB report.
+
+        :param input_file_path:
+        :return:
+        """
+        with open(input_file_path, encoding="utf-8") as file_handler:
             str_src = file_handler.read()
 
         while "\n\n" in str_src:
             str_src = str_src.replace("\n\n", "\n")
 
         lst_per_worker = str_src.split("worker_id:")
-        #worker_report = lst_per_worker[7]
         str_ret = ""
         for worker_report in lst_per_worker:
             if not worker_report.strip():
                 continue
-            str_ret += self.perform_worker_report_actions(worker_report)
+            str_ret += self.perform_worker_report_actions(worker_report, sprint_name)
             str_ret += "#"*100 + "\n"
 
-        print(str_ret)
+        logger.info(str_ret)
 
-    def perform_worker_report_actions(self, worker_report):
+    def perform_worker_report_actions(self, worker_report, sprint_name):
         """
         Split worker report to actions.
 
         :param worker_report:
         :return:
         """
-        actions = []
         lst_worker_report = worker_report.split("\n")
-        try:
-            index_end = lst_worker_report.index("#"*100)
-        except Exception as inst:
-            print(inst)
-            breakpoint()
+        index_end = lst_worker_report.index("#"*100)
         lst_worker_report = lst_worker_report[:index_end]
 
         new_index = lst_worker_report.index(">NEW:")
@@ -601,14 +666,61 @@ class HumanAPI:
         actions_blocked = [DailyReportAction(line_src) for line_src in lines_blocked]
         actions_closed = [DailyReportAction(line_src) for line_src in lines_closed]
 
+        self.perform_task_management_system_changes(sprint_name, actions_new, actions_active, actions_blocked, actions_closed)
         name = lst_worker_report[0].lower().replace("@controlup.com", "")
         ytb_report = self.generate_ytb_report(actions_new, actions_active, actions_blocked, actions_closed)
         return f"{name}\n{ytb_report}"
 
+    def perform_task_management_system_changes(self, sprint_name, actions_new, actions_active, actions_blocked, actions_closed):
+        """
+        Perform the changes using API
+
+        :param actions_new:
+        :param actions_active:
+        :param actions_blocked:
+        :param actions_closed:
+        :return:
+        """
+
+        parents_to_actions_map = defaultdict(list)
+        for action in actions_new + actions_active + actions_blocked + actions_closed:
+            if action.parent_id == "0":
+                parents_to_actions_map[action.parent_title].append(action)
+
+        for parent_title, actions in parents_to_actions_map.items():
+            user_story_id = self.azure_devops_api.provision_work_item_by_params(actions[0].parent_type, parent_title, iteration_partial_path=sprint_name)
+            for action in actions:
+                action.parent_id = user_story_id
+
+        for action in actions_new + actions_active + actions_blocked + actions_closed:
+            if action.child_id == "0":
+                action.child_id = self.azure_devops_api.provision_work_item_by_params(action.child_type, action.child_title, iteration_partial_path=sprint_name, original_estimate_time=action.action_init_time)
+                if action.parent_id != "-1":
+                    logger.warning(f"Set manually workitem {action.child_id} parent to {action.parent_id}")
+
+        for action in actions_active:
+            if action.action_add_time is not None:
+                self.azure_devops_api.add_hours_to_work_item(action.child_id,  action.action_add_time)
+
     def action_to_ytb_report_line(self, action):
+        """
+        Single line formatter.
+
+        :param action:
+        :return:
+        """
         return f"[{action.parent_id}-{action.parent_title}] -> {action.child_id}-{action.child_title}"
 
     def generate_ytb_report(self, actions_new, actions_active, actions_blocked, actions_closed):
+        """
+        YTB report formatter for a single user.
+
+        :param actions_new:
+        :param actions_active:
+        :param actions_blocked:
+        :param actions_closed:
+        :return:
+        """
         str_ret = "Y:\n"
         y_report = [action for action in actions_new + actions_active + actions_blocked + actions_closed if action.action_add_time]
         str_ret += "\n".join([self.action_to_ytb_report_line(action) for action in y_report])
