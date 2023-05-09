@@ -1,1 +1,5 @@
-from .swap import Swap
+"""
+Swap provisioner.
+"""
+
+from .provisioner import Provisioner

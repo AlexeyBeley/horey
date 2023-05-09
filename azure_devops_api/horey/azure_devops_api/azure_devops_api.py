@@ -118,7 +118,7 @@ class WorkItem(AzureDevopsObject):
         try:
             return self.dict_src["fields"]["Microsoft.VSTS.Scheduling.CompletedWork"]
         except KeyError:
-            return None
+            return 0
 
     def get_remaining_work(self, default=None):
         """
@@ -769,6 +769,7 @@ class AzureDevopsAPI:
         :return:
         """
         work_item = self.get_work_item(wit_id)
+
         request_data = \
             [{
                 "op": "add",
@@ -817,10 +818,11 @@ class AzureDevopsAPI:
         return self.patch(url, request_data)
 
     # pylint:disable= too-many-arguments
-    def provision_work_item_by_params(self, wit_type, wit_title, iteration_partial_path=None, original_estimate_time=None, assigned_to=None):
+    def provision_work_item_by_params(self, wit_type, wit_title, wit_description, iteration_partial_path=None, original_estimate_time=None, assigned_to=None):
         """
         Provision work item by parameters received.
 
+        :param wit_description:
         :param assigned_to:
         :param original_estimate_time:
         :param iteration_partial_path:
@@ -849,7 +851,7 @@ class AzureDevopsAPI:
                 {
                     "op": "add",
                     "path": "/fields/System.Description",
-                    "value": "test_description"
+                    "value": wit_description
                 },
                 {
                     "op": "add",
