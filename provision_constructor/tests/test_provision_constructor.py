@@ -58,8 +58,14 @@ def test_provision_system_function_logstash():
     provision_constructor.provision_system_function("logstash", force=True, upgrade=True)
 
 
+def test_provision_system_function_swap():
+    provision_constructor = ProvisionConstructor()
+    provision_constructor.provision_system_function("swap", force=False, upgrade=True, swap_size_in_gb=32)
+
+
 if __name__ == "__main__":
     # test_init()
     # test_provision_system_function_horey_package_generic_venv()
     # test_provision_system_function_pip_api_package_venv()
-    test_provision_system_function_logstash()
+    # test_provision_system_function_logstash()
+    test_provision_system_function_swap()
