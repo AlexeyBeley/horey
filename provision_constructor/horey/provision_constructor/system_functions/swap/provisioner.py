@@ -14,6 +14,7 @@ class Provisioner(SystemFunctionCommon):
     """
     Main class.
     """
+    # pylint: disable= too-many-arguments
     def __init__(
         self,
         deployment_dir, force, upgrade,
@@ -31,27 +32,38 @@ class Provisioner(SystemFunctionCommon):
 
     def test_provisioned(self):
         """
-        jre:
-        openjdk-11-jre-headless/jammy-updates,jammy-security,now 11.0.18+10-0ubuntu1~22.04 amd64 [installed,automatic]
-        openjdk-11-jre/jammy-updates,jammy-security,now 11.0.18+10-0ubuntu1~22.04 amd64 [installed,automatic]
-
-        jdk:
-        openjdk-11-jdk-headless/jammy-updates,jammy-security,now 11.0.18+10-0ubuntu1~22.04 amd64 [installed,automatic]
-        openjdk-11-jdk/jammy-updates,jammy-security,now 11.0.18+10-0ubuntu1~22.04 amd64 [installed,automatic]
+                       total        used        free      shared  buff/cache   available
+        Mem:           3.8Gi       1.7Gi       685Mi       3.0Mi       1.4Gi       1.8Gi
+        Swap:          8.0Gi       4.0Mi       8.0Gi
         :return:
         """
 
-        ret = self.run_bash("free -m")
-        breakpoint()
+        ret = self.run_bash("free -h")
+        lines = ret["stdout"].split("\n")
+        if lines[0].strip().split(" ")[0] != "total":
+            raise RuntimeError(f"First's line first word is not 'total': {lines} ")
+        for line in lines:
+            if line.startswith("Swap:"):
+                break
+        else:
+            raise RuntimeError(f"No line that starts with 'Swap:': {lines} ")
+
+        while "  " in line:
+            line = line.replace("  ", " ")
+
+        output_total_size = line.split(" ")[1]
+        if not output_total_size.endswith("Gi"):
+            raise RuntimeError(f"Output not in Giga: {line}")
+
+        return int(float(output_total_size[:-2])) == self.swap_size_in_gb
 
     def _provision(self):
         """
         :return:
         """
-        breakpoint()
-        ret = self.run_bash("sudo swapoff -a")
-        ret = self.run_bash("sudo fallocate -l STRING_REPLACEMENT_SWAP_SIZE_IN_GBG /swapfile")
-        ret = self.run_bash("sudo chmod 600 /swapfile")
-        ret = self.run_bash("sudo mkswap /swapfile")
-        ret = self.run_bash("sudo swapon /swapfile")
+        self.run_bash("sudo swapoff -a")
+        self.run_bash(f"sudo fallocate -l {self.swap_size_in_gb}G /swapfile")
+        self.run_bash("sudo chmod 600 /swapfile")
+        self.run_bash("sudo mkswap /swapfile")
+        self.run_bash("sudo swapon /swapfile")
         self.add_line_to_file_sudo(line="/swapfile none swap sw 0 0", file_path="/etc/fstab")

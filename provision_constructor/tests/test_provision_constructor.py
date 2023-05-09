@@ -60,7 +60,7 @@ def test_provision_system_function_logstash():
 
 def test_provision_system_function_swap():
     provision_constructor = ProvisionConstructor()
-    provision_constructor.provision_system_function("swap", force=False, upgrade=True, swap_size_in_gb=32)
+    provision_constructor.provision_system_function("swap", force=False, upgrade=True, swap_size_in_gb=3)
 
 
 if __name__ == "__main__":
