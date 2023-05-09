@@ -53,7 +53,7 @@ class Provisioner(SystemFunctionCommon):
 
         output_total_size = line.split(" ")[1]
         if not output_total_size.endswith("Gi"):
-            raise RuntimeError(f"Output not in Giga: {line}")
+            return False
 
         return int(float(output_total_size[:-2])) == self.swap_size_in_gb
 
