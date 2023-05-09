@@ -666,13 +666,17 @@ class HumanAPI:
         actions_blocked = [DailyReportAction(line_src) for line_src in lines_blocked]
         actions_closed = [DailyReportAction(line_src) for line_src in lines_closed]
 
-        self.perform_task_management_system_changes(sprint_name, actions_new, actions_active, actions_blocked, actions_closed)
-        name = lst_worker_report[0].lower()
-        name = name[:name.index("@")]
-        ytb_report = self.generate_ytb_report(actions_new, actions_active, actions_blocked, actions_closed)
-        return f"{name}\n{ytb_report}"
+        full_name = lst_worker_report[0].lower()
+        name = full_name[:full_name.index("@")]
 
-    def perform_task_management_system_changes(self, sprint_name, actions_new, actions_active, actions_blocked, actions_closed):
+        self.perform_task_management_system_changes(full_name, sprint_name, actions_new, actions_active, actions_blocked, actions_closed)
+
+        ytb_report = self.generate_ytb_report(actions_new, actions_active, actions_blocked, actions_closed)
+        named_ytb_report = f"{name}\n{ytb_report}"
+        print(named_ytb_report)
+        return named_ytb_report
+
+    def perform_task_management_system_changes(self, user_full_name, sprint_name, actions_new, actions_active, actions_blocked, actions_closed):
         """
         Perform the changes using API
 
@@ -689,13 +693,21 @@ class HumanAPI:
                 parents_to_actions_map[action.parent_title].append(action)
 
         for parent_title, actions in parents_to_actions_map.items():
-            user_story_id = self.azure_devops_api.provision_work_item_by_params(actions[0].parent_type, parent_title, iteration_partial_path=sprint_name)
+            user_story_id = self.azure_devops_api.provision_work_item_by_params(actions[0].parent_type, parent_title,
+                                                                                "Auto generated content. Change it manually",
+                                                                                iteration_partial_path=sprint_name,
+                                                                                assigned_to=user_full_name)
             for action in actions:
                 action.parent_id = user_story_id
 
         for action in actions_new + actions_active + actions_blocked + actions_closed:
             if action.child_id == "0":
-                action.child_id = self.azure_devops_api.provision_work_item_by_params(action.child_type, action.child_title, iteration_partial_path=sprint_name, original_estimate_time=action.action_init_time)
+                action.child_id = self.azure_devops_api.provision_work_item_by_params(action.child_type,
+                                                                                      action.child_title,
+                                                                                      action.action_comment,
+                                                                                      iteration_partial_path=sprint_name,
+                                                                                      original_estimate_time=action.action_init_time,
+                                                                                      assigned_to=user_full_name)
                 if action.parent_id != "-1":
                     logger.warning(f"Set manually workitem {action.child_id} parent to {action.parent_id}")
 
