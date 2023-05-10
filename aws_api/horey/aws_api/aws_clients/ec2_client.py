@@ -2255,7 +2255,7 @@ class EC2Client(Boto3Client):
         :return:
         """
         for response in self.execute(self.client.modify_volume, "VolumeModification",
-                                     filters_req=dict_request):
+                                     filters_req=dict_request, instant_raise=True):
             return response
 
     def dispose_volume(self, volume):

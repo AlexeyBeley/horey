@@ -313,6 +313,8 @@ class DailyReportAction:
         self.init_parent(parent_token)
         self.init_child(child_token)
         self.init_actions(action_token)
+        if self.child_id == "0" and self.action_comment is None:
+            raise ValueError(f"Task/Bug creation must have comment: '{line_src}'")
 
     def init_child(self, child_token):
         """
@@ -639,7 +641,7 @@ class HumanAPI:
             str_ret += self.perform_worker_report_actions(worker_report, sprint_name)
             str_ret += "#"*100 + "\n"
 
-        logger.info(str_ret)
+        print(str_ret)
 
     def perform_worker_report_actions(self, worker_report, sprint_name):
         """

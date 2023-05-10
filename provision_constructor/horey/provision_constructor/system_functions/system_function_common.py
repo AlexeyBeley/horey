@@ -1122,7 +1122,7 @@ class SystemFunctionCommon:
                 return response
         except SystemFunctionCommon.BashError as inst:
             dict_inst = json.loads(str(inst))
-            if "No such file or directory" not in dict_inst["stderr"]:
+            if dict_inst["stderr"] and "No such file or directory" not in dict_inst["stderr"]:
                 raise
 
         return SystemFunctionCommon.run_bash(
