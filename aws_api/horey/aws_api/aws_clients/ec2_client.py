@@ -11,6 +11,7 @@ import base64
 from horey.aws_api.aws_services_entities.subnet import Subnet
 from horey.aws_api.aws_services_entities.ec2_instance import EC2Instance
 from horey.aws_api.aws_services_entities.ec2_volume import EC2Volume
+from horey.aws_api.aws_services_entities.ec2_volume_modification import EC2VolumeModification
 from horey.aws_api.aws_services_entities.vpc import VPC
 from horey.aws_api.aws_services_entities.availability_zone import AvailabilityZone
 
@@ -260,6 +261,26 @@ class EC2Client(Boto3Client):
             final_result.append(EC2Volume(dict_src))
 
         return final_result
+
+    def get_region_volume_modifications(self, region, filters_req=None):
+        """
+        Standard
+
+        @param region:
+        @param filters_req:
+        @return:
+        """
+
+        AWSAccount.set_aws_region(region)
+        final_result = []
+
+        for dict_src in self.execute(
+                self.client.describe_volumes_modifications, "VolumesModifications", filters_req=filters_req
+        ):
+            final_result.append(EC2Volume(dict_src))
+
+        return final_result
+
 
     def get_all_security_groups(self, full_information=False):
         """
@@ -2138,60 +2159,74 @@ class EC2Client(Boto3Client):
         if volume.id:
             raise RuntimeError(f"Didn't find volume by id: {filters_req}")
 
-    def provision_volume(self, volume):
+    def update_modification_information(self, modification):
+        """
+        Modification
+        :param modification:
+        :return:
+        """
+        ret = self.get_region_volume_modifications(modification.region, filters_req={"Filters": [
+        {
+            "Name": "volume-id",
+            "Values": [
+                modification.volume_id,
+            ]
+        },
+    ]})
+        breakpoint()
+
+    def provision_volume(self, desired_volume):
         """
         Standard.
 
-        :param volume:
+        :param desired_volume:
         :return:
         """
+        current_volume = EC2Volume({})
+        current_volume.id = desired_volume.id
+        current_volume.tags = desired_volume.tags
+        current_volume.region = desired_volume.region
+        self.update_volume_information(current_volume)
 
-        self.update_volume_information(volume)
-        if volume.id is not None:
-            if volume.get_state() in [volume.State.AVAILABLE, volume.State.IN_USE]:
-                return
+        if current_volume.id is None:
+            response = self.create_volume_raw(desired_volume.generate_create_request())
+            desired_volume.update_from_raw_response(response)
+            self.wait_for_status(
+                desired_volume,
+                self.update_volume_information,
+                [desired_volume.State.AVAILABLE, desired_volume.State.IN_USE],
+                [desired_volume.State.CREATING, desired_volume.State.DELETING],
+                [
+                    desired_volume.State.DELETED,
+                    desired_volume.State.ERROR,
+                ]
+            )
+            current_volume = desired_volume
 
-            if volume.get_state() == volume.State.ERROR:
-                raise RuntimeError(f"Volume '{volume.id}' is in ERROR state")
+        if current_volume.get_state() == current_volume.State.CREATING:
+            self.wait_for_status(
+                current_volume,
+                self.update_volume_information,
+                [current_volume.State.AVAILABLE, current_volume.State.IN_USE],
+                [current_volume.State.CREATING],
+                [
+                    current_volume.State.DELETED,
+                    current_volume.State.ERROR,
+                ]
+            )
+        elif current_volume.get_state() not in [current_volume.State.AVAILABLE, current_volume.State.IN_USE]:
+            raise ValueError(f"Volume '{current_volume.id}' is in {current_volume.get_state()} state" )
+        request = current_volume.generate_modify_request(desired_volume)
+        if request is not None:
+            response = self.modify_volume_raw(request)
+            modification = EC2VolumeModification(response)
+            modification.region = desired_volume.region
+            modification.volume_id = desired_volume.id
+            self.wait_for_status(modification, self.update_modification_information, [modification.State.COMPLETED],
+                                 [modification.State.OPTIMIZING, modification.State.MODIFYING],
+                                 [modification.State.FAILED])
 
-            if volume.get_state() == volume.State.CREATING:
-                self.wait_for_status(
-                    volume,
-                    self.update_volume_information,
-                    [volume.State.AVAILABLE, volume.State.IN_USE],
-                    [volume.State.CREATING],
-                    [
-                        volume.State.DELETED,
-                        volume.State.ERROR,
-                    ]
-                )
-                return
-
-            if volume.get_state() == volume.State.DELETING:
-                self.wait_for_status(
-                    volume,
-                    self.update_volume_information,
-                    [volume.State.DELETING],
-                    [volume.State.DELETED],
-                    [
-                        volume.State.ERROR,
-                    ]
-                )
-            else:
-                raise ValueError(volume.get_state())
-
-        response = self.create_volume_raw(volume.generate_create_request())
-        volume.update_from_raw_response(response)
-        self.wait_for_status(
-            volume,
-            self.update_volume_information,
-            [volume.State.AVAILABLE, volume.State.IN_USE],
-            [volume.State.CREATING, volume.State.DELETING],
-            [
-                volume.State.DELETED,
-                volume.State.ERROR,
-            ]
-        )
+        self.update_volume_information(desired_volume)
 
     def create_volume_raw(self, dict_request):
         """
@@ -2204,6 +2239,17 @@ class EC2Client(Boto3Client):
         for response in self.execute(self.client.create_volume, None, raw_data=True,
                           filters_req=dict_request):
             del response["ResponseMetadata"]
+            return response
+
+    def modify_volume_raw(self, dict_request):
+        """
+        Standard.
+
+        :param dict_request:
+        :return:
+        """
+        for response in self.execute(self.client.modify_volume, "VolumeModification",
+                          filters_req=dict_request):
             return response
 
     def dispose_volume(self, volume):

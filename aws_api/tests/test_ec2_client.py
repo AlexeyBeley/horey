@@ -351,7 +351,21 @@ def test_provision_volume():
     volume.encrypted = True
     volume.availability_zone = "us-west-2a"
     volume.iops = 1000
-    volume.size = 200
+    volume.size = 50
+    volume.region = Region.get_region("us-west-2")
+    volume.volume_type = "io2"
+    volume.tags = [{"Key": "Name", "Value": "test"}]
+    ec2_client.provision_volume(volume)
+    assert volume.id is not None
+
+
+def test_modify_volume():
+    ec2_client = EC2Client()
+    volume = EC2Volume({})
+    volume.encrypted = True
+    volume.availability_zone = "us-west-2a"
+    volume.iops = 1000
+    volume.size = 100
     volume.region = Region.get_region("us-west-2")
     volume.volume_type = "io2"
     volume.tags = [{"Key": "Name", "Value": "test"}]
@@ -399,5 +413,6 @@ if __name__ == "__main__":
     # test_raw_describe_managed_prefix_list_by_name()
     # test_find_launch_template()
     #test_provision_volume()
-    #test_dispose_volume()
-    test_get_instance_password()
+    #test_modify_volume()
+    test_dispose_volume()
+    #test_get_instance_password()

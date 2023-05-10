@@ -24,6 +24,8 @@ class EC2Volume(AwsObject):
         self.volume_type = None
         self.state = None
         self.id = None
+        self.throughput = None
+        self.multi_attach_enabled = None
 
         if from_cache:
             self._init_instance_from_cache(dict_src)
@@ -99,6 +101,36 @@ class EC2Volume(AwsObject):
                    "Size": self.size,
                    "VolumeType": self.volume_type,
                    "TagSpecifications": [{"ResourceType": "volume", "Tags": self.tags}]}
+
+        return request
+
+    def generate_modify_request(self, desired_volume):
+        """
+        Standard.
+
+        :return:
+        """
+        request = {}
+
+        if desired_volume.iops and self.iops != desired_volume.iops:
+            request["Iops"] = desired_volume.iops
+
+        if desired_volume.size and self.size != desired_volume.size:
+            request["Size"] = desired_volume.size
+
+        if desired_volume.volume_type and self.volume_type != desired_volume.volume_type:
+            request["VolumeType"] = desired_volume.volume_type
+
+        if desired_volume.throughput and self.throughput != desired_volume.throughput:
+            request["Throughput"] = desired_volume.throughput
+
+        if desired_volume.multi_attach_enabled and self.multi_attach_enabled != desired_volume.multi_attach_enabled:
+            request["MultiAttachEnabled"] = desired_volume.multi_attach_enabled
+
+        if not request:
+            return None
+
+        request["VolumeId"] = self.id
 
         return request
 
