@@ -1,6 +1,9 @@
+"""
+Provision npm
+"""
 import os.path
-import pdb
 from horey.provision_constructor.system_function_factory import SystemFunctionFactory
+from horey.common_utils.bash_executor import BashExecutor
 
 from horey.provision_constructor.system_functions.system_function_common import (
     SystemFunctionCommon,
@@ -12,6 +15,9 @@ logger = get_logger()
 
 @SystemFunctionFactory.register
 class Provisioner(SystemFunctionCommon):
+    """
+    Main class
+    """
     def __init__(self, deployment_dir, force, upgrade):
         super().__init__(os.path.dirname(os.path.abspath(__file__)), force, upgrade)
         self.deployment_dir = deployment_dir
@@ -24,7 +30,7 @@ class Provisioner(SystemFunctionCommon):
         try:
             self.run_bash("npm -v")
             return True
-        except SystemFunctionCommon.BashError as error_isntance:
+        except BashExecutor.BashError as error_isntance:
             print(error_isntance)
             return False
 

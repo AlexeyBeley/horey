@@ -1120,7 +1120,7 @@ class SystemFunctionCommon:
             )
             if response["stdout"]:
                 return response
-        except SystemFunctionCommon.BashError as inst:
+        except BashExecutor.BashError as inst:
             dict_inst = json.loads(str(inst))
             if dict_inst["stderr"] and "No such file or directory" not in dict_inst["stderr"]:
                 raise
@@ -1128,12 +1128,6 @@ class SystemFunctionCommon:
         return SystemFunctionCommon.run_bash(
             f'echo "{line}" | sudo tee -a {file_path} > /dev/null'
         )
-
-    class BashError(RuntimeError):
-        """
-        Running bash command returned != 0 code.
-
-        """
 
     def test_local_port(self):
         """
