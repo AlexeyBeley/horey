@@ -97,6 +97,7 @@ class EC2Instance(AwsObject):
             "UsageOperationUpdateTime": self.init_default_attr,
             "PrivateDnsNameOptions": self.init_default_attr,
             "MaintenanceOptions": self.init_default_attr,
+            "CurrentInstanceBootMode": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -300,6 +301,7 @@ class EC2Instance(AwsObject):
             "UsageOperationUpdateTime": self.init_default_attr,
             "PrivateDnsNameOptions": self.init_default_attr,
             "MaintenanceOptions": self.init_default_attr,
+            "CurrentInstanceBootMode": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
