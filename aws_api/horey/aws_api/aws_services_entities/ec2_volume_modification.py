@@ -32,7 +32,8 @@ class EC2VolumeModification(AwsObject):
             "OriginalMultiAttachEnabled": self.init_default_attr,
             "Progress": self.init_default_attr,
             "StartTime": self.init_default_attr,
-
+            "VolumeId": self.init_default_attr,
+            "EndTime": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -59,7 +60,8 @@ class EC2VolumeModification(AwsObject):
             "OriginalMultiAttachEnabled": self.init_default_attr,
             "Progress": self.init_default_attr,
             "StartTime": self.init_default_attr,
-
+            "VolumeId": self.init_default_attr,
+            "EndTime": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -94,6 +96,3 @@ class EC2VolumeModification(AwsObject):
         OPTIMIZING = 1
         COMPLETED = 2
         FAILED = 3
-
-
-

@@ -276,7 +276,7 @@ class EC2Client(Boto3Client):
         for dict_src in self.execute(
                 self.client.describe_volumes_modifications, "VolumesModifications", filters_req=filters_req
         ):
-            final_result.append(EC2Volume(dict_src))
+            final_result.append(EC2VolumeModification(dict_src))
 
         return final_result
 
