@@ -45,6 +45,7 @@ class EC2Volume(AwsObject):
             "Tags": self.init_default_attr,
             "VolumeType": self.init_default_attr,
             "MultiAttachEnabled": self.init_default_attr,
+            "Throughput": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -84,6 +85,7 @@ class EC2Volume(AwsObject):
             "Tags": self.init_default_attr,
             "VolumeType": self.init_default_attr,
             "MultiAttachEnabled": self.init_default_attr,
+            "Throughput": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
