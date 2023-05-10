@@ -34,6 +34,8 @@ class EC2VolumeModification(AwsObject):
             "StartTime": self.init_default_attr,
             "VolumeId": self.init_default_attr,
             "EndTime": self.init_default_attr,
+            "TargetThroughput": self.init_default_attr,
+            "OriginalThroughput": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -62,10 +64,11 @@ class EC2VolumeModification(AwsObject):
             "StartTime": self.init_default_attr,
             "VolumeId": self.init_default_attr,
             "EndTime": self.init_default_attr,
+            "TargetThroughput": self.init_default_attr,
+            "OriginalThroughput": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
-
 
     def _init_instance_from_cache(self, dict_src):
         """
