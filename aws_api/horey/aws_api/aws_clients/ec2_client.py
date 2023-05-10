@@ -2228,8 +2228,9 @@ class EC2Client(Boto3Client):
             modification = EC2VolumeModification(response)
             modification.region = current_volume.region
             modification.volume_id = current_volume.id
-            self.wait_for_status(modification, self.update_modification_information, [modification.State.COMPLETED],
-                                 [modification.State.OPTIMIZING, modification.State.MODIFYING],
+            self.wait_for_status(modification, self.update_modification_information, [modification.State.OPTIMIZING,
+                                                                                      modification.State.COMPLETED],
+                                 [modification.State.MODIFYING],
                                  [modification.State.FAILED])
 
         self.update_volume_information(desired_volume)
