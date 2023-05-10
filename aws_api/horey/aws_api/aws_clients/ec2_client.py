@@ -2230,7 +2230,7 @@ class EC2Client(Boto3Client):
             modification.volume_id = current_volume.id
             self.wait_for_status(modification, self.update_modification_information, [modification.State.COMPLETED],
                                  [modification.State.OPTIMIZING, modification.State.MODIFYING],
-                                 [modification.State.FAILED], timeout=20*60)
+                                 [modification.State.FAILED], timeout=30*60)
 
         self.update_volume_information(desired_volume)
 
