@@ -7,7 +7,6 @@ import datetime
 import time
 import base64
 
-
 from horey.aws_api.aws_services_entities.subnet import Subnet
 from horey.aws_api.aws_services_entities.ec2_instance import EC2Instance
 from horey.aws_api.aws_services_entities.ec2_volume import EC2Volume
@@ -280,7 +279,6 @@ class EC2Client(Boto3Client):
             final_result.append(EC2Volume(dict_src))
 
         return final_result
-
 
     def get_all_security_groups(self, full_information=False):
         """
@@ -2161,19 +2159,27 @@ class EC2Client(Boto3Client):
 
     def update_modification_information(self, modification):
         """
-        Modification
+        Update modification from AWS
+
         :param modification:
         :return:
         """
         ret = self.get_region_volume_modifications(modification.region, filters_req={"Filters": [
-        {
-            "Name": "volume-id",
-            "Values": [
-                modification.volume_id,
-            ]
-        },
-    ]})
-        breakpoint()
+            {
+                "Name": "volume-id",
+                "Values": [
+                    modification.volume_id,
+                ]
+            },
+        ]})
+
+        if len(ret) == 0:
+            return False
+        if len(ret) > 1:
+            raise ValueError(f"found more then a single modification for volume id: {modification.volume_id}")
+
+        modification.update_from_raw_response(ret[0].dict_src)
+        return True
 
     def provision_volume(self, desired_volume):
         """
@@ -2215,13 +2221,13 @@ class EC2Client(Boto3Client):
                 ]
             )
         elif current_volume.get_state() not in [current_volume.State.AVAILABLE, current_volume.State.IN_USE]:
-            raise ValueError(f"Volume '{current_volume.id}' is in {current_volume.get_state()} state" )
+            raise ValueError(f"Volume '{current_volume.id}' is in {current_volume.get_state()} state")
         request = current_volume.generate_modify_request(desired_volume)
         if request is not None:
             response = self.modify_volume_raw(request)
             modification = EC2VolumeModification(response)
-            modification.region = desired_volume.region
-            modification.volume_id = desired_volume.id
+            modification.region = current_volume.region
+            modification.volume_id = current_volume.id
             self.wait_for_status(modification, self.update_modification_information, [modification.State.COMPLETED],
                                  [modification.State.OPTIMIZING, modification.State.MODIFYING],
                                  [modification.State.FAILED])
@@ -2237,7 +2243,7 @@ class EC2Client(Boto3Client):
         """
 
         for response in self.execute(self.client.create_volume, None, raw_data=True,
-                          filters_req=dict_request):
+                                     filters_req=dict_request):
             del response["ResponseMetadata"]
             return response
 
@@ -2249,7 +2255,7 @@ class EC2Client(Boto3Client):
         :return:
         """
         for response in self.execute(self.client.modify_volume, "VolumeModification",
-                          filters_req=dict_request):
+                                     filters_req=dict_request):
             return response
 
     def dispose_volume(self, volume):
@@ -2264,7 +2270,8 @@ class EC2Client(Boto3Client):
         if volume.id is None:
             return None
 
-        for response in self.execute(self.client.delete_volume, None, raw_data=True, filters_req={"VolumeId": volume.id}):
+        for response in self.execute(self.client.delete_volume, None, raw_data=True,
+                                     filters_req={"VolumeId": volume.id}):
             return response
 
         return None
@@ -2290,10 +2297,10 @@ class EC2Client(Boto3Client):
                                    f" {current_attachment_instance_id}: {current_attachment_device_name}")
 
         dict_req = {
-                   "Device": device_name,
-                   "InstanceId": instance_id,
-                   "VolumeId": volume.id
-                   }
+            "Device": device_name,
+            "InstanceId": instance_id,
+            "VolumeId": volume.id
+        }
 
         return self.attach_volume_raw(dict_req)
 
