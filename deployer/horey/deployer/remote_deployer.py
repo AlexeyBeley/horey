@@ -923,6 +923,11 @@ class RemoteDeployer:
             if not check_success_callback(target):
                 failed = True
                 error_line = f"Failed: {target.deployment_target_address}"
+                try:
+                    error_line += f" Status: {target.status}"
+                except Exception as inst:
+                    logger.warning(f"Couldn't fetch failure status for {target.deployment_target_address}. "
+                                   f"Due to exception: {repr(inst)}")
                 errors.append(error_line)
 
         if failed:
