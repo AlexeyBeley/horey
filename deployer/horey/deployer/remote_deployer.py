@@ -887,7 +887,7 @@ class RemoteDeployer:
 
         start_time = datetime.datetime.now()
         end_time = start_time + datetime.timedelta(seconds=total_time)
-
+        error_type = RuntimeError
         while datetime.datetime.now() < end_time:
             if all(check_finished_callback(target) for target in targets):
                 logger.info(
@@ -914,6 +914,9 @@ class RemoteDeployer:
             )
 
             time.sleep(sleep_time)
+        else:
+            error_type = TimeoutError
+
         failed = False
         errors = [f"Result: {[check_success_callback(target) for target in targets]}"]
         for target in targets:
@@ -923,7 +926,7 @@ class RemoteDeployer:
                 errors.append(error_line)
 
         if failed:
-            raise TimeoutError("\n".join(errors))
+            raise error_type("\n".join(errors))
 
     @staticmethod
     def wait_to_finish_step(

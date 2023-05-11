@@ -41,6 +41,8 @@ human_api = HumanAPI(configuration=configuration)
 
 @pytest.mark.skip(reason="Can not test")
 def test_daily_report():
+    if os.path.exists(protected_output_file_path):
+        return
     human_api.daily_report(daily_hapi_file_path, protected_output_file_path, sprint_name=mock_values["Sprint_name"])
 
 
@@ -56,6 +58,6 @@ def test_init_tasks_map():
 
 if __name__ == "__main__":
     # test_init_tasks_map()
-    #test_daily_report()
-    #breakpoint()
+    test_daily_report()
+    breakpoint()
     test_daily_action()
