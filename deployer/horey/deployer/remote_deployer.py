@@ -145,11 +145,16 @@ class RemoteDeployer:
                     )
                     break
                 except Exception as exception_instance:
+                    traceback_str = "".join(
+                        traceback.format_tb(exception_instance.__traceback__)
+                    )
+                    repr_exception_instance = repr(exception_instance)
+
                     if i == retries - 1:
-                        logger.error(f"Reached maximum number of retries when provisioning remote deployer infrastructure: {retries}")
+                        logger.error(f"Reached maximum number of retries when provisioning remote deployer infrastructure: "
+                                     f"{retries}: {repr_exception_instance}: tb: {traceback_str}")
                         raise
 
-                    repr_exception_instance = repr(exception_instance)
                     logger.warning(
                         f"Exception received {repr_exception_instance} "
                     )
@@ -165,9 +170,7 @@ class RemoteDeployer:
                         logger.info("Valid exception going to sleep before retrying provision_target_remote_deployer_infrastructure_raw")
                         time.sleep(10)
                         continue
-                    traceback_str = "".join(
-                        traceback.format_tb(exception_instance.__traceback__)
-                    )
+
                     logger.error(
                         f"Raised unknown exception {repr_exception_instance}: tb: {traceback_str} "
                     )
@@ -226,7 +229,7 @@ class RemoteDeployer:
             local_zip_file_path, deployment_target.local_deployment_dir_path
         )
 
-        # Verify ZIP file was creted
+        # Verify ZIP file was created
         for _ in range(10):
             if os.path.exists(local_zip_file_path):
                 time.sleep(5)
