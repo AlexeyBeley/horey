@@ -146,10 +146,13 @@ class RemoteDeployer:
                     break
                 except Exception as exception_instance:
                     if i == retries - 1:
-                        logger.error(f"Reached maximum number of retries: {retries}")
+                        logger.error(f"Reached maximum number of retries when provisioning remote deployer infrastructure: {retries}")
                         raise
 
                     repr_exception_instance = repr(exception_instance)
+                    logger.warning(
+                        f"Exception received {repr_exception_instance} "
+                    )
 
                     if (
                         "Unable to connect to port 22" in repr_exception_instance
@@ -159,6 +162,7 @@ class RemoteDeployer:
                         or "Error reading SSH protocol banner"
                         in repr_exception_instance
                     ):
+                        logger.info("Valid exception going to sleep before retrying provision_target_remote_deployer_infrastructure_raw")
                         time.sleep(10)
                         continue
                     traceback_str = "".join(
