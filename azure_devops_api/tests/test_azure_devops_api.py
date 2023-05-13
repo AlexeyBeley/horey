@@ -110,6 +110,18 @@ def test_provision_work_item_by_params():
     azure_devops_api.provision_work_item_by_params(wit_type, wit_title, iteration_partial_path=iteration_partial_path, original_estimate_time=original_estimate_time)
 
 
+def test_provision_work_item_by_params_with_parent():
+    wit_type = "user_story"
+    wit_title = "test"
+    iteration_partial_path = mock_values["iteration_partial_path"]
+    original_estimate_time = "4.0"
+    azure_devops_api.provision_work_item_by_params(wit_type, wit_title, "test_comment",
+                                                   iteration_partial_path=iteration_partial_path,
+                                                   original_estimate_time=original_estimate_time,
+                                                   parent_id=151171,
+                                                   assigned_to="horey")
+
+
 if __name__ == "__main__":
     #test_init_backlogs()
     #test_init_processes()
@@ -126,4 +138,5 @@ if __name__ == "__main__":
     #test_recursive_init_work_items()
 
     #test_generate_clean_report()
-    test_provision_work_item_by_params()
+    #test_provision_work_item_by_params()
+    test_provision_work_item_by_params_with_parent()

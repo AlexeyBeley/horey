@@ -382,6 +382,9 @@ class DailyReportAction:
             if action.startswith("block"):
                 self.action_block = True
                 continue
+            if action.startswith("activ"):
+                self.action_activate = True
+                continue
             if action.startswith("close"):
                 self.action_close = True
                 continue
@@ -429,6 +432,7 @@ class HumanAPI:
         azure_devops_api_config.configuration_file_full_path = self.configuration.azure_devops_api_configuration_file_path
         azure_devops_api_config.init_from_file()
         self.azure_devops_api = AzureDevopsAPI(azure_devops_api_config)
+        os.makedirs(self.configuration.daily_dir_path, exist_ok=True)
 
     def init_tasks_map(self, sprints=None):
         """
@@ -563,13 +567,13 @@ class HumanAPI:
             ret[work_item.assigned_to].append(work_item)
         return ret
 
-    def daily_report(self, output_file_path, protected_output_file_path, sprint_name=None):
+    def daily_report(self):
         """
         Init daily meeting area.
 
         :return:
         """
-        sprints = self.get_sprints(sprint_names=[sprint_name])
+        sprints = self.get_sprints(sprint_names=[self.configuration.sprint_name])
 
         self.init_tasks_map(sprints=sprints)
         tmp_dict = {}
@@ -612,42 +616,59 @@ class HumanAPI:
                     raise ValueError(f"Unknown status: {work_item.status}")
             str_ret += self.generate_worker_daily(tmp_dict, worker_id, new, active, blocked, closed) + "\n"
 
-        with open(output_file_path, "w", encoding="utf-8") as file_handler:
+        with open(self.configuration.daily_hapi_file_path, "w", encoding="utf-8") as file_handler:
             file_handler.write(str_ret)
 
-        if not os.path.exists(protected_output_file_path):
-            with open(protected_output_file_path, "w", encoding="utf-8") as file_handler:
+        if not os.path.exists(self.configuration.protected_input_file_path):
+            with open(self.configuration.protected_input_file_path, "w", encoding="utf-8") as file_handler:
                 file_handler.write(str_ret)
 
-    def daily_action(self, input_file_path, sprint_name):
+    def daily_action(self):
         """
         Perform daily ritual - do the changes in the tasks' management system and
         generate YTB report.
 
-        :param input_file_path:
         :return:
         """
-        with open(input_file_path, encoding="utf-8") as file_handler:
+        if os.path.exists(self.configuration.output_file_path):
+            raise RuntimeError(f"Looks like you've already run the daily action. "
+                               f"Output file at: {self.configuration.output_file_path}")
+        base_actions_per_worker_map = self.init_actions_from_report_file(self.configuration.daily_hapi_file_path)
+        input_actions_per_worker_map = self.init_actions_from_report_file(self.configuration.protected_input_file_path)
+        
+        for worker_name, input_actions in input_actions_per_worker_map.items():
+            self.perform_worker_report_actions(worker_name, input_actions, base_actions_per_worker_map[worker_name])
+
+    def init_actions_from_report_file(self, file_path):
+        """
+        Load the file and init actions per worker.
+
+        :param file_path:
+        :return:
+        """
+
+        with open(file_path, encoding="utf-8") as file_handler:
             str_src = file_handler.read()
 
         while "\n\n" in str_src:
             str_src = str_src.replace("\n\n", "\n")
 
         lst_per_worker = str_src.split("worker_id:")
-        str_ret = ""
+        dict_ret = {}
         for worker_report in lst_per_worker:
             if not worker_report.strip():
                 continue
-            str_ret += self.perform_worker_report_actions(worker_report, sprint_name)
-            str_ret += "#"*100 + "\n"
+            full_name, actions_new, actions_active, actions_blocked, actions_closed = self.init_actions_per_worker(worker_report)
+            dict_ret[full_name] = {"actions_new": actions_new,
+                                   "actions_active": actions_active,
+                                   "actions_blocked": actions_blocked,
+                                   "actions_closed": actions_closed
+                                   }
+        return dict_ret
 
-        print(str_ret)
-
-    def perform_worker_report_actions(self, worker_report, sprint_name):
+    def init_actions_per_worker(self, worker_report):
         """
-        Split worker report to actions.
 
-        :param worker_report:
         :return:
         """
         lst_worker_report = worker_report.split("\n")
@@ -669,19 +690,86 @@ class HumanAPI:
         actions_closed = [DailyReportAction(line_src) for line_src in lines_closed]
 
         full_name = lst_worker_report[0].lower()
-        name = full_name[:full_name.index("@")]
 
-        self.perform_task_management_system_changes(full_name, sprint_name, actions_new, actions_active, actions_blocked, actions_closed)
+        self.perform_actions_replacements(actions_new, actions_active, actions_blocked, actions_closed)
+
+        return full_name, actions_new, actions_active, actions_blocked, actions_closed
+
+    def perform_worker_report_actions(self, worker_name, input_actions, base_actions):
+        """
+        Split worker report to actions.
+
+        :param base_actions: 
+        :param input_actions: 
+        :param worker_name: 
+        :return:
+        """
+
+        if "@" in worker_name:
+            name = worker_name[:worker_name.index("@")]
+        else:
+            name = worker_name
+        if "alex" not in name:
+            return ""
+
+        actions_new, actions_active, actions_blocked, actions_closed = input_actions["actions_new"], \
+                                                                       input_actions["actions_active"], \
+                                                                       input_actions["actions_blocked"], \
+                                                                       input_actions["actions_closed"]
+        
+        self.perform_task_management_system_status_changes(base_actions, actions_new, actions_active, actions_blocked, actions_closed)
+
+        self.perform_base_task_management_system_changes(worker_name, actions_new, actions_active, actions_blocked, actions_closed)
+
+        self.perform_task_management_system_status_changes(base_actions, actions_new, actions_active, actions_blocked, actions_closed)
 
         ytb_report = self.generate_ytb_report(actions_new, actions_active, actions_blocked, actions_closed)
         named_ytb_report = f"{name}\n{ytb_report}"
         print(named_ytb_report)
         return named_ytb_report
 
-    def perform_task_management_system_changes(self, user_full_name, sprint_name, actions_new, actions_active, actions_blocked, actions_closed):
+    @staticmethod
+    def perform_actions_replacements(actions_new, actions_active, actions_blocked, actions_closed):
         """
-        Perform the changes using API
+        Place actions according to the required action.
 
+        :param actions_new:
+        :param actions_active:
+        :param actions_blocked:
+        :param actions_closed:
+        :return:
+        """
+
+        HumanAPI.perform_actions_replacement_per_type(actions_active, "action_activate", actions_new, actions_blocked, actions_closed)
+        HumanAPI.perform_actions_replacement_per_type(actions_blocked, "action_block", actions_new, actions_active, actions_closed)
+        HumanAPI.perform_actions_replacement_per_type(actions_closed, "action_close", actions_new, actions_active, actions_blocked)
+
+    @staticmethod
+    def perform_actions_replacement_per_type(dst_action_list, action_name, *args):
+        """
+        Move action from src_lists to the dst_list according to action_name.
+
+        :param dst_action_list:
+        :param action_name:
+        :param args:
+        :return:
+        """
+
+        for src_action_list in args:
+            to_del = []
+            for action in src_action_list:
+                if getattr(action, action_name):
+                    dst_action_list.append(action)
+                    to_del.append(action)
+
+            for action in to_del:
+                src_action_list.remove(action)
+
+    def perform_base_task_management_system_changes(self, user_full_name, actions_new, actions_active, actions_blocked, actions_closed):
+        """
+        Perform the changes using API. Create tasks if needed or add working hours.
+
+        :param user_full_name: 
         :param actions_new:
         :param actions_active:
         :param actions_blocked:
@@ -697,7 +785,7 @@ class HumanAPI:
         for parent_title, actions in parents_to_actions_map.items():
             user_story_id = self.azure_devops_api.provision_work_item_by_params(actions[0].parent_type, parent_title,
                                                                                 "Auto generated content. Change it manually",
-                                                                                iteration_partial_path=sprint_name,
+                                                                                iteration_partial_path=self.configuration.sprint_name,
                                                                                 assigned_to=user_full_name)
             for action in actions:
                 action.parent_id = user_story_id
@@ -707,15 +795,51 @@ class HumanAPI:
                 action.child_id = self.azure_devops_api.provision_work_item_by_params(action.child_type,
                                                                                       action.child_title,
                                                                                       action.action_comment,
-                                                                                      iteration_partial_path=sprint_name,
+                                                                                      iteration_partial_path=self.configuration.sprint_name,
                                                                                       original_estimate_time=action.action_init_time,
-                                                                                      assigned_to=user_full_name)
+                                                                                      assigned_to=user_full_name,
+                                                                                      parent_id=action.parent_id)
                 if action.parent_id != "-1":
                     logger.warning(f"Set manually workitem {action.child_id} parent to {action.parent_id}")
 
-        for action in actions_active:
+        for action in actions_new + actions_active + actions_blocked + actions_closed:
             if action.action_add_time is not None:
                 self.azure_devops_api.add_hours_to_work_item(action.child_id,  action.action_add_time)
+
+    def perform_task_management_system_status_changes(self, base_actions, actions_new, actions_active, actions_blocked, actions_closed):
+        """
+        Perform all types of changes according to desired status.
+
+        :param base_actions:
+        :param actions_new:
+        :param actions_active:
+        :param actions_blocked:
+        :param actions_closed:
+        :return:
+        """
+        self.perform_task_management_system_status_changes_per_wit_type(WorkObject.Status.NEW, actions_new, base_actions["actions_new"])
+        self.perform_task_management_system_status_changes_per_wit_type(WorkObject.Status.ACTIVE, actions_active, base_actions["actions_active"])
+        self.perform_task_management_system_status_changes_per_wit_type(WorkObject.Status.BLOCKED, actions_blocked, base_actions["actions_blocked"])
+        self.perform_task_management_system_status_changes_per_wit_type(WorkObject.Status.CLOSED, actions_closed, base_actions["actions_closed"])
+
+    def perform_task_management_system_status_changes_per_wit_type(self, wit_type, desired_actions, base_actions):
+        """
+        Perform the change in task system according to the desired status.
+
+        :param wit_type:
+        :param desired_actions:
+        :param base_actions:
+        :return:
+        """
+        base_action_child_ids = [action.child_id for action in base_actions]
+        breakpoint()
+
+        for action in desired_actions:
+            if action.child_id not in base_action_child_ids:
+                self.azure_devops_api.change_wit_status(action.child_id, wit_type)
+
+        base_active_action_child_ids = [action.child_id for action in base_actions["actions_active"]]
+        breakpoint()
 
     def action_to_ytb_report_line(self, action):
         """
@@ -785,3 +909,17 @@ class HumanAPI:
         str_report += "#"*100 + "\n"
 
         return str_report
+
+    def daily_routine(self):
+        """
+        Make it the best way
+
+        :param daily_hapi_file_path:
+        :param protected_output_file_path:
+        :param sprint_name:
+        :return:
+        """
+        if os.path.exists(self.configuration.protected_input_file_path):
+            self.daily_action()
+            return
+        self.daily_report()

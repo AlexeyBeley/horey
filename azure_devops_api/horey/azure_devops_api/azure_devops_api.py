@@ -804,24 +804,27 @@ class AzureDevopsAPI:
         :param parent_id:
         :return:
         """
-        request_data = \
-            [{
-                "op": "add",
-                "path": "/relations/0",
-                "value": [{"rel": "System.LinkTypes.Hierarchy-Reverse",
-                           "url": f"https://{parent_id}",
-                           "attributes": {"isLocked": False, "name": "Parent"},
-                           "title": "Test_title"
-                           }]
-            }]
+        request_data = [{
+            "op": "add",
+            "path": "/relations/-",
+            "value": {
+
+                "rel": "System.LinkTypes.Hierarchy-Reverse",
+                "url": f"https://dev.azure.com/{self.org_name}/{self.project_name}/apis/wit/workItems/{parent_id}"
+            }
+        }]
+
         url = f"https://dev.azure.com/{self.org_name}/_apis/wit/workitems/{wit_id}?api-version=7.0"
         return self.patch(url, request_data)
 
     # pylint:disable= too-many-arguments
-    def provision_work_item_by_params(self, wit_type, wit_title, wit_description, iteration_partial_path=None, original_estimate_time=None, assigned_to=None):
+    def provision_work_item_by_params(self, wit_type, wit_title, wit_description, iteration_partial_path=None,
+                                      original_estimate_time=None, assigned_to=None, parent_id=None):
         """
         Provision work item by parameters received.
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/work-items/create?view=azure-devops-rest-7.0&tabs=HTTP
 
+        :param parent_id:
         :param wit_description:
         :param assigned_to:
         :param original_estimate_time:
@@ -830,7 +833,6 @@ class AzureDevopsAPI:
         :param wit_title:
         :return:
         """
-
         if wit_type == "user_story":
             wit_url_type = "$User%20Story"
         elif wit_type == "task":
@@ -840,6 +842,7 @@ class AzureDevopsAPI:
         else:
             raise RuntimeError(f"wit_type {wit_type} != user_story")
 
+        # suppressNotifications=true&
         url = f"https://dev.azure.com/{self.org_name}/{self.project_name}/_apis/wit/workitems/{wit_url_type}?api-version=7.0"
         request_data = \
             [
@@ -876,5 +879,8 @@ class AzureDevopsAPI:
         logger.info(f"Create Work Item '{wit_type}' with title '{wit_title}'. UID: {wit_id}")
         if iteration_partial_path is not None:
             self.change_iteration(wit_id, f"{self.project_name}\\\\{iteration_partial_path}")
+
+        if parent_id is not None:
+            self.set_wit_parent(wit_id, parent_id)
 
         return wit_id
