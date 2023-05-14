@@ -166,6 +166,7 @@ from horey.aws_api.aws_services_entities.sns_subscription import SNSSubscription
 from horey.aws_api.aws_services_entities.sns_topic import SNSTopic
 
 from horey.common_utils.common_utils import CommonUtils
+from horey.common_utils.ssh_api import SSHAPI
 
 from horey.h_logger import get_logger
 from horey.common_utils.text_block import TextBlock
@@ -3464,6 +3465,34 @@ class AWSAPI:
         @param secrets_manager_region:
         @return:
         """
+
+        logger.info(f"provisioning ssh key pair {key_pair.name}")
+        if key_pair.key_type is None:
+            key_pair.key_type = "ed25519"
+
+        response = self.ec2_client.provision_key_pair(key_pair)
+        if response is None:
+            return None
+
+        if save_to_secrets_manager:
+            AWSAccount.set_aws_region(secrets_manager_region)
+            self.put_secret_value(key_pair.name if key_pair.name.endswith(".key") else key_pair.name+".key",
+                                  response["KeyMaterial"])
+
+        return response
+
+    def generate_and_provision_key_pair(
+        self, key_name, output_full_path, owner_email, save_to_secrets_manager=None, secrets_manager_region=None
+    ):
+        """
+        Self explanatory
+
+        @param key_pair:
+        @param save_to_secrets_manager:
+        @param secrets_manager_region:
+        @return:
+        """
+        breakpoint()
 
         logger.info(f"provisioning ssh key pair {key_pair.name}")
         if key_pair.key_type is None:
