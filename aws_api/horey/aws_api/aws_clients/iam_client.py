@@ -528,6 +528,7 @@ class IamClient(Boto3Client):
                 self.client.get_policy,
                 "Policy",
                 filters_req=request_dict,
+                instant_raise=True
             ):
 
                 policy.update_from_raw_response(response)
