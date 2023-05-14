@@ -118,7 +118,7 @@ def test_provision_work_item_by_params_with_parent():
     azure_devops_api.provision_work_item_by_params(wit_type, wit_title, "test_comment",
                                                    iteration_partial_path=iteration_partial_path,
                                                    original_estimate_time=original_estimate_time,
-                                                   parent_id=151171,
+                                                   parent_id=0000,
                                                    assigned_to="horey")
 
 
