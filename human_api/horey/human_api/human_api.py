@@ -655,8 +655,12 @@ class HumanAPI:
         base_actions_per_worker_map = self.init_actions_from_report_file(self.configuration.daily_hapi_file_path)
         input_actions_per_worker_map = self.init_actions_from_report_file(self.configuration.protected_input_file_path)
 
+        str_ret = ""
         for worker_name, input_actions in input_actions_per_worker_map.items():
-            self.perform_worker_report_actions(worker_name, input_actions, base_actions_per_worker_map[worker_name])
+            str_ret += self.perform_worker_report_actions(worker_name, input_actions, base_actions_per_worker_map[worker_name]) + "\n"
+
+        with open(self.configuration.output_file_path, "a", encoding="utf-8") as file_handler:
+            file_handler.write(str_ret)
 
     def init_actions_from_report_file(self, file_path):
         """
@@ -742,7 +746,6 @@ class HumanAPI:
 
         ytb_report = self.generate_ytb_report(actions_new, actions_active, actions_blocked, actions_closed)
         named_ytb_report = f"{name}\n{ytb_report}"
-        print(named_ytb_report)
         return named_ytb_report
 
     @staticmethod
