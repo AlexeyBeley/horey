@@ -110,6 +110,25 @@ class WorkObject:
         else:
             raise ValueError(f"Status unknown: {value}")
 
+    @staticmethod
+    def wit_type_to_azure_devops_state(enum_value):
+        """
+        Convert Enum to a valid request string.
+
+        :return:
+        """
+
+        if enum_value == WorkObject.Status.NEW:
+            return "New"
+        if enum_value == WorkObject.Status.ACTIVE:
+            return "Active"
+        if enum_value == WorkObject.Status.CLOSED:
+            return "Closed"
+        if enum_value == WorkObject.Status.BLOCKED:
+            return "On Hold"
+
+        raise ValueError(f"Wrong input for state: {enum_value}")
+
     def init_created_by_azure_devops(self, value):
         """
         Init from azure devops object.
@@ -635,7 +654,7 @@ class HumanAPI:
                                f"Output file at: {self.configuration.output_file_path}")
         base_actions_per_worker_map = self.init_actions_from_report_file(self.configuration.daily_hapi_file_path)
         input_actions_per_worker_map = self.init_actions_from_report_file(self.configuration.protected_input_file_path)
-        
+
         for worker_name, input_actions in input_actions_per_worker_map.items():
             self.perform_worker_report_actions(worker_name, input_actions, base_actions_per_worker_map[worker_name])
 
@@ -709,14 +728,12 @@ class HumanAPI:
             name = worker_name[:worker_name.index("@")]
         else:
             name = worker_name
-        if "alex" not in name:
-            return ""
 
         actions_new, actions_active, actions_blocked, actions_closed = input_actions["actions_new"], \
                                                                        input_actions["actions_active"], \
                                                                        input_actions["actions_blocked"], \
                                                                        input_actions["actions_closed"]
-        
+
         self.perform_task_management_system_status_changes(base_actions, actions_new, actions_active, actions_blocked, actions_closed)
 
         self.perform_base_task_management_system_changes(worker_name, actions_new, actions_active, actions_blocked, actions_closed)
@@ -832,16 +849,14 @@ class HumanAPI:
         :return:
         """
         base_action_child_ids = [action.child_id for action in base_actions]
-        breakpoint()
 
         for action in desired_actions:
             if action.child_id not in base_action_child_ids:
-                self.azure_devops_api.change_wit_status(action.child_id, wit_type)
+                self.azure_devops_api.change_wit_state(action.child_id,
+                                                       WorkObject.wit_type_to_azure_devops_state(wit_type))
 
-        base_active_action_child_ids = [action.child_id for action in base_actions["actions_active"]]
-        breakpoint()
-
-    def action_to_ytb_report_line(self, action):
+    @staticmethod
+    def action_to_ytb_report_line(action):
         """
         Single line formatter.
 

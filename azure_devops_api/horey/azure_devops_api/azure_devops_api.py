@@ -817,6 +817,25 @@ class AzureDevopsAPI:
         url = f"https://dev.azure.com/{self.org_name}/_apis/wit/workitems/{wit_id}?api-version=7.0"
         return self.patch(url, request_data)
 
+    def change_wit_state(self, wit_id, state):
+        """
+        Change work item state.
+
+        :param wit_id:
+        :param state:
+        :return:
+        """
+
+        request_data = \
+            [{
+                "op": "add",
+                "path": "/fields/System.State",
+                "value": state
+            }]
+        url = f"https://dev.azure.com/{self.org_name}/_apis/wit/workitems/{wit_id}?api-version=7.0"
+
+        return self.patch(url, request_data)
+
     # pylint:disable= too-many-arguments
     def provision_work_item_by_params(self, wit_type, wit_title, wit_description, iteration_partial_path=None,
                                       original_estimate_time=None, assigned_to=None, parent_id=None):
