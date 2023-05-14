@@ -318,6 +318,7 @@ class DailyReportAction:
 
         self.action_init_time = None
         self.action_add_time = None
+        self.action_new = None
         self.action_close = None
         self.action_activate = None
         self.action_block = None
@@ -406,6 +407,9 @@ class DailyReportAction:
                 continue
             if action.startswith("close"):
                 self.action_close = True
+                continue
+            if action.startswith("new"):
+                self.action_new = True
                 continue
 
     def init_parent(self, parent_token):
@@ -760,6 +764,7 @@ class HumanAPI:
         :return:
         """
 
+        HumanAPI.perform_actions_replacement_per_type(actions_new, "action_new", actions_active, actions_blocked, actions_closed)
         HumanAPI.perform_actions_replacement_per_type(actions_active, "action_activate", actions_new, actions_blocked, actions_closed)
         HumanAPI.perform_actions_replacement_per_type(actions_blocked, "action_block", actions_new, actions_active, actions_closed)
         HumanAPI.perform_actions_replacement_per_type(actions_closed, "action_close", actions_new, actions_active, actions_blocked)

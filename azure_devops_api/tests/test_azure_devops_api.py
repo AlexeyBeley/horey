@@ -103,11 +103,11 @@ def test_recursive_init_work_items():
 
 
 def test_provision_work_item_by_params():
-    wit_type= "user_story"
+    wit_type = "user_story"
     wit_title = "test"
     iteration_partial_path = mock_values["iteration_partial_path"]
     original_estimate_time = "4.0"
-    azure_devops_api.provision_work_item_by_params(wit_type, wit_title, iteration_partial_path=iteration_partial_path, original_estimate_time=original_estimate_time)
+    azure_devops_api.provision_work_item_by_params(wit_type, wit_title, "Some description", iteration_partial_path=iteration_partial_path, original_estimate_time=original_estimate_time)
 
 
 def test_provision_work_item_by_params_with_parent():
@@ -120,6 +120,10 @@ def test_provision_work_item_by_params_with_parent():
                                                    original_estimate_time=original_estimate_time,
                                                    parent_id=151171,
                                                    assigned_to="horey")
+
+
+def test_add_wit_comment():
+    azure_devops_api.add_wit_comment("", "test comment")
 
 
 if __name__ == "__main__":
@@ -139,4 +143,5 @@ if __name__ == "__main__":
 
     #test_generate_clean_report()
     #test_provision_work_item_by_params()
-    test_provision_work_item_by_params_with_parent()
+    # test_provision_work_item_by_params_with_parent()
+    test_add_wit_comment()

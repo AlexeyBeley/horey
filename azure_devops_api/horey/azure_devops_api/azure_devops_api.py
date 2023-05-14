@@ -236,12 +236,6 @@ class AzureDevopsAPI:
         self.base_address = configuration.server_address
         self.version = "7.1"
         self.session = requests.Session()
-        self.session.headers.update(
-            {
-                "Content-Type": "application/json-patch+json",
-                "User-Agent": "python/horey",
-                "Cache-Control": "no-cache",
-            })
 
         self.session.auth = (configuration.user, configuration.password)
         self.project_name = configuration.project_name
@@ -736,6 +730,11 @@ class AzureDevopsAPI:
         :param data:
         :return:
         """
+        self.session.headers.update(
+            {
+                "Content-Type": "application/json",
+                "User-Agent": "python/horey",
+            })
         response = self.session.post(url, data=json.dumps(data))
         if response.status_code != 200:
             raise RuntimeError(
@@ -752,6 +751,12 @@ class AzureDevopsAPI:
         :return:
         """
 
+        self.session.headers.update(
+            {
+                "Content-Type": "application/json-patch+json",
+                "User-Agent": "python/horey",
+                "Cache-Control": "no-cache",
+            })
         response = self.session.patch(url, data=json.dumps(data))
 
         if response.status_code != 200:
@@ -835,6 +840,23 @@ class AzureDevopsAPI:
         url = f"https://dev.azure.com/{self.org_name}/_apis/wit/workitems/{wit_id}?api-version=7.0"
 
         return self.patch(url, request_data)
+
+    def add_wit_comment(self, wit_id, comment):
+        """
+        Add a comment.
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/comments/add?view=azure-devops-rest-7.0&tabs=HTTP
+
+        :param wit_id:
+        :param comment:
+        :return:
+        """
+        request_data = \
+            {
+                "text": comment
+            }
+
+        url = f"https://dev.azure.com/{self.org_name}/{self.project_name}/_apis/wit/workitems/{wit_id}/comments?api-version=7.0-preview.3"
+        return self.post(url, request_data)
 
     # pylint:disable= too-many-arguments
     def provision_work_item_by_params(self, wit_type, wit_title, wit_description, iteration_partial_path=None,
