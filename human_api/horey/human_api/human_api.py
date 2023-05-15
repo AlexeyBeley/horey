@@ -392,6 +392,7 @@ class DailyReportAction:
         for action in actions:
             action = action.strip()
             if action.startswith("+"):
+                logger.info(f"Initializing '+' action token: {action}")
                 if not action[1:].isdigit():
                     raise RuntimeError(f"Can not parse action: '{action_token}'")
                 self.action_add_time = int(action[1:])
@@ -741,8 +742,6 @@ class HumanAPI:
                                                                        input_actions["actions_active"], \
                                                                        input_actions["actions_blocked"], \
                                                                        input_actions["actions_closed"]
-
-        self.perform_task_management_system_status_changes(base_actions, actions_new, actions_active, actions_blocked, actions_closed)
 
         self.perform_base_task_management_system_changes(worker_name, actions_new, actions_active, actions_blocked, actions_closed)
 

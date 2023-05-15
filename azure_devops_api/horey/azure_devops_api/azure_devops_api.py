@@ -775,6 +775,7 @@ class AzureDevopsAPI:
         """
         work_item = self.get_work_item(wit_id)
 
+        logger.info(f"WIT:{wit_id} adding '{float_hours}' hours to completed")
         request_data = \
             [{
                 "op": "add",
@@ -792,6 +793,7 @@ class AzureDevopsAPI:
         :param iteration_name:
         :return:
         """
+        logger.info(f"WIT:{wit_id} changing iteration to '{iteration_name}'")
         request_data = \
             [{
                 "op": "add",
@@ -809,6 +811,7 @@ class AzureDevopsAPI:
         :param parent_id:
         :return:
         """
+        logger.info(f"WIT:{wit_id} setting new parent to '{parent_id}'")
         request_data = [{
             "op": "add",
             "path": "/relations/-",
@@ -831,6 +834,7 @@ class AzureDevopsAPI:
         :return:
         """
 
+        logger.info(f"WIT:{wit_id} setting new state to '{state}'")
         request_data = \
             [{
                 "op": "add",
@@ -850,6 +854,7 @@ class AzureDevopsAPI:
         :param comment:
         :return:
         """
+        logger.info(f"WIT:{wit_id} setting adding comment '{comment}'")
         request_data = \
             {
                 "text": comment
@@ -883,6 +888,7 @@ class AzureDevopsAPI:
         else:
             raise RuntimeError(f"wit_type {wit_type} != user_story")
 
+        logger.info(f"Creating new WIT: {wit_type}: '{wit_title}'")
         # suppressNotifications=true&
         url = f"https://dev.azure.com/{self.org_name}/{self.project_name}/_apis/wit/workitems/{wit_url_type}?api-version=7.0"
         request_data = \
