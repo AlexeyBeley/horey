@@ -17,6 +17,7 @@ from horey.common_utils.common_utils import CommonUtils
 
 logger = get_logger()
 
+
 # pylint: disable= too-many-arguments
 # pylint: disable= too-many-branches
 # pylint: disable= too-many-locals
@@ -27,6 +28,7 @@ class WorkObject:
     """
     Common data to all Work objects.
     """
+
     def __init__(self):
         self.id = None
         self.status = None
@@ -71,7 +73,8 @@ class WorkObject:
         print(set(work_item.fields) - set(common_attributes))
 
         for relation in work_item.relations:
-            if relation["rel"] in ["ArtifactLink", "AttachedFile", "Hyperlink", "Microsoft.VSTS.TestCase.SharedParameterReferencedBy-Forward"]:
+            if relation["rel"] in ["ArtifactLink", "AttachedFile", "Hyperlink",
+                                   "Microsoft.VSTS.TestCase.SharedParameterReferencedBy-Forward"]:
                 self.related.append(relation)
             elif relation["attributes"]["name"] == "Child":
                 self.child_ids.append(int(relation["url"].split("/")[-1]))
@@ -305,6 +308,7 @@ class DailyReportAction:
     """
     Single task actions.
     """
+
     def __init__(self, line_src):
         self.parent_type = None
         self.parent_id = None
@@ -329,7 +333,7 @@ class DailyReportAction:
         line = line[line.find("->") + 2:]
         line = line.strip()
         child_token = line[:line.rfind(":actions:")].strip()
-        action_token = line[len(child_token) + len(":actions:")+1:]
+        action_token = line[len(child_token) + len(":actions:") + 1:]
         self.init_parent(parent_token)
         self.init_child(child_token)
         self.init_actions(action_token)
@@ -380,9 +384,10 @@ class DailyReportAction:
             commend_index = action_token.find("comment")
             end_comment_index = action_token.find("end_comment")
             comma_after_end_comment_index = action_token.find(",", end_comment_index)
-            comma_after_end_comment_index = len(action_token) if comma_after_end_comment_index == -1 else comma_after_end_comment_index
+            comma_after_end_comment_index = len(
+                action_token) if comma_after_end_comment_index == -1 else comma_after_end_comment_index
 
-            self.action_comment = action_token[commend_index+len("comment"): end_comment_index].strip()
+            self.action_comment = action_token[commend_index + len("comment"): end_comment_index].strip()
             action_token = action_token[:commend_index] + action_token[comma_after_end_comment_index:]
             action_token = action_token.strip()
             action_token = action_token.strip(" ,")
@@ -445,6 +450,7 @@ class HumanAPI:
     """
     Main class
     """
+
     def __init__(self, configuration: HumanAPIConfigurationPolicy = None):
         self.features = {}
         self.epics = {}
@@ -465,7 +471,8 @@ class HumanAPI:
         :return:
         """
         sprints = sprints if sprints is not None else []
-        work_items = self.azure_devops_api.init_work_items_by_iterations(iterations_src=[sprint.azure_devops_object for sprint in sprints])
+        work_items = self.azure_devops_api.init_work_items_by_iterations(
+            iterations_src=[sprint.azure_devops_object for sprint in sprints])
         self.init_tasks_from_azure_devops_work_items(work_items)
         self.init_tasks_relations()
 
@@ -557,7 +564,8 @@ class HumanAPI:
         :return:
         """
         lst_ret = []
-        for iteration in self.azure_devops_api.get_iterations(from_cache=False, date_find=date_find, iteration_names=sprint_names):
+        for iteration in self.azure_devops_api.get_iterations(from_cache=False, date_find=date_find,
+                                                              iteration_names=sprint_names):
             sprint = Sprint()
             sprint.init_from_azure_devops_iteration(iteration)
             lst_ret.append(sprint)
@@ -662,7 +670,8 @@ class HumanAPI:
 
         str_ret = ""
         for worker_name, input_actions in input_actions_per_worker_map.items():
-            str_ret += self.perform_worker_report_actions(worker_name, input_actions, base_actions_per_worker_map[worker_name]) + "\n"
+            str_ret += self.perform_worker_report_actions(worker_name, input_actions,
+                                                          base_actions_per_worker_map[worker_name]) + "\n"
 
         with open(self.configuration.output_file_path, "a", encoding="utf-8") as file_handler:
             file_handler.write(str_ret)
@@ -686,7 +695,8 @@ class HumanAPI:
         for worker_report in lst_per_worker:
             if not worker_report.strip():
                 continue
-            full_name, actions_new, actions_active, actions_blocked, actions_closed = self.init_actions_per_worker(worker_report)
+            full_name, actions_new, actions_active, actions_blocked, actions_closed = self.init_actions_per_worker(
+                worker_report)
             dict_ret[full_name] = {"actions_new": actions_new,
                                    "actions_active": actions_active,
                                    "actions_blocked": actions_blocked,
@@ -700,17 +710,17 @@ class HumanAPI:
         :return:
         """
         lst_worker_report = worker_report.split("\n")
-        index_end = lst_worker_report.index("#"*100)
+        index_end = lst_worker_report.index("#" * 100)
         lst_worker_report = lst_worker_report[:index_end]
 
         new_index = lst_worker_report.index(">NEW:")
         active_index = lst_worker_report.index(">ACTIVE:")
         blocked_index = lst_worker_report.index(">BLOCKED:")
         closed_index = lst_worker_report.index(">CLOSED:")
-        lines_new = lst_worker_report[new_index+1:active_index]
-        lines_active = lst_worker_report[active_index+1:blocked_index]
+        lines_new = lst_worker_report[new_index + 1:active_index]
+        lines_active = lst_worker_report[active_index + 1:blocked_index]
         lines_blocked = lst_worker_report[blocked_index + 1:closed_index]
-        lines_closed = lst_worker_report[closed_index+1:]
+        lines_closed = lst_worker_report[closed_index + 1:]
 
         actions_new = [DailyReportAction(line_src) for line_src in lines_new]
         actions_active = [DailyReportAction(line_src) for line_src in lines_active]
@@ -743,9 +753,11 @@ class HumanAPI:
                                                                        input_actions["actions_blocked"], \
                                                                        input_actions["actions_closed"]
 
-        self.perform_base_task_management_system_changes(worker_name, actions_new, actions_active, actions_blocked, actions_closed)
+        self.perform_base_task_management_system_changes(worker_name, actions_new, actions_active, actions_blocked,
+                                                         actions_closed)
 
-        self.perform_task_management_system_status_changes(base_actions, actions_new, actions_active, actions_blocked, actions_closed)
+        self.perform_task_management_system_status_changes(base_actions, actions_new, actions_active, actions_blocked,
+                                                           actions_closed)
 
         ytb_report = self.generate_ytb_report(actions_new, actions_active, actions_blocked, actions_closed)
         named_ytb_report = f"{name}\n{ytb_report}"
@@ -763,10 +775,14 @@ class HumanAPI:
         :return:
         """
 
-        HumanAPI.perform_actions_replacement_per_type(actions_new, "action_new", actions_active, actions_blocked, actions_closed)
-        HumanAPI.perform_actions_replacement_per_type(actions_active, "action_activate", actions_new, actions_blocked, actions_closed)
-        HumanAPI.perform_actions_replacement_per_type(actions_blocked, "action_block", actions_new, actions_active, actions_closed)
-        HumanAPI.perform_actions_replacement_per_type(actions_closed, "action_close", actions_new, actions_active, actions_blocked)
+        HumanAPI.perform_actions_replacement_per_type(actions_new, "action_new", actions_active, actions_blocked,
+                                                      actions_closed)
+        HumanAPI.perform_actions_replacement_per_type(actions_active, "action_activate", actions_new, actions_blocked,
+                                                      actions_closed)
+        HumanAPI.perform_actions_replacement_per_type(actions_blocked, "action_block", actions_new, actions_active,
+                                                      actions_closed)
+        HumanAPI.perform_actions_replacement_per_type(actions_closed, "action_close", actions_new, actions_active,
+                                                      actions_blocked)
 
     @staticmethod
     def perform_actions_replacement_per_type(dst_action_list, action_name, *args):
@@ -789,7 +805,8 @@ class HumanAPI:
             for action in to_del:
                 src_action_list.remove(action)
 
-    def perform_base_task_management_system_changes(self, user_full_name, actions_new, actions_active, actions_blocked, actions_closed):
+    def perform_base_task_management_system_changes(self, user_full_name, actions_new, actions_active, actions_blocked,
+                                                    actions_closed):
         """
         Perform the changes using API. Create tasks if needed or add working hours.
 
@@ -828,9 +845,10 @@ class HumanAPI:
 
         for action in actions_new + actions_active + actions_blocked + actions_closed:
             if action.action_add_time is not None:
-                self.azure_devops_api.add_hours_to_work_item(action.child_id,  action.action_add_time)
+                self.azure_devops_api.add_hours_to_work_item(action.child_id, action.action_add_time)
 
-    def perform_task_management_system_status_changes(self, base_actions, actions_new, actions_active, actions_blocked, actions_closed):
+    def perform_task_management_system_status_changes(self, base_actions, actions_new, actions_active, actions_blocked,
+                                                      actions_closed):
         """
         Perform all types of changes according to desired status.
 
@@ -841,10 +859,14 @@ class HumanAPI:
         :param actions_closed:
         :return:
         """
-        self.perform_task_management_system_status_changes_per_wit_type(WorkObject.Status.NEW, actions_new, base_actions["actions_new"])
-        self.perform_task_management_system_status_changes_per_wit_type(WorkObject.Status.ACTIVE, actions_active, base_actions["actions_active"])
-        self.perform_task_management_system_status_changes_per_wit_type(WorkObject.Status.BLOCKED, actions_blocked, base_actions["actions_blocked"])
-        self.perform_task_management_system_status_changes_per_wit_type(WorkObject.Status.CLOSED, actions_closed, base_actions["actions_closed"])
+        self.perform_task_management_system_status_changes_per_wit_type(WorkObject.Status.NEW, actions_new,
+                                                                        base_actions["actions_new"])
+        self.perform_task_management_system_status_changes_per_wit_type(WorkObject.Status.ACTIVE, actions_active,
+                                                                        base_actions["actions_active"])
+        self.perform_task_management_system_status_changes_per_wit_type(WorkObject.Status.BLOCKED, actions_blocked,
+                                                                        base_actions["actions_blocked"])
+        self.perform_task_management_system_status_changes_per_wit_type(WorkObject.Status.CLOSED, actions_closed,
+                                                                        base_actions["actions_closed"])
 
     def perform_task_management_system_status_changes_per_wit_type(self, wit_type, desired_actions, base_actions):
         """
@@ -883,12 +905,17 @@ class HumanAPI:
         :return:
         """
         str_ret = "Y:\n"
-        y_report = [action for action in actions_new + actions_active + actions_blocked + actions_closed if action.action_add_time]
-        str_ret += "\n".join([self.action_to_ytb_report_line(action) for action in y_report])
+        str_ret += "\n".join([self.action_to_ytb_report_line(action) for action in
+                              sorted(actions_new + actions_active + actions_blocked + actions_closed,
+                                     key=lambda x: x.parent_id) if action.action_add_time])
         str_ret += "\nT:\n"
-        str_ret += "\n".join([self.action_to_ytb_report_line(action) for action in actions_active if not action.action_close])
+        str_ret += "\n".join(
+            [self.action_to_ytb_report_line(action) for action in sorted(actions_active, key=lambda x: x.parent_id) if
+             not action.action_close])
         str_ret += "\nB:\n"
-        str_ret += "\n".join([self.action_to_ytb_report_line(action) for action in actions_new + actions_active + actions_blocked + actions_closed if action.action_block])
+        str_ret += "\n".join([self.action_to_ytb_report_line(action) for action in
+                              sorted(actions_new + actions_active + actions_blocked + actions_closed,
+                                     key=lambda x: x.parent_id) if action.action_block])
         while "\n\n" in str_ret:
             str_ret = str_ret.replace("\n\n", "\n")
         return str_ret
@@ -928,7 +955,7 @@ class HumanAPI:
             for item in items:
                 str_report += f"[{tmp_dict.get(parent_id).generate_report_token()}] -> {item.generate_report_token()} :actions:\n"
 
-        str_report += "#"*100 + "\n"
+        str_report += "#" * 100 + "\n"
 
         return str_report
 

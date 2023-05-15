@@ -3503,6 +3503,7 @@ class AWSAPI:
             raise RuntimeError(f"Either {key_name} or {key_name_public} does not exist in Secrets manager")
 
         if key_value is not None:
+            logger.info(f"Found {key_name} and {key_public_value} in secrets")
             with open(output_file_path, "w", encoding="utf-8") as file_handler:
                 file_handler.write(key_value)
 
@@ -3514,6 +3515,7 @@ class AWSAPI:
         CommonUtils.generate_ed25519_key(owner_email, output_file_path)
 
         AWSAccount.set_aws_region(region)
+        logger.info(f"Generated {key_name} and {key_name_public}. Uploading to secrets")
         self.put_secret_file(key_name, output_file_path)
         self.put_secret_file(key_name_public, output_public_file_path)
 
