@@ -136,6 +136,12 @@ def test_get_secret_value():
     assert ret is None
 
 
+def test_provision_generated_ssh_key():
+    owner_email = "test_horey@gmail.com"
+    output_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test.key")
+    aws_api.provision_generated_ssh_key(output_file_path, owner_email, "us-west-2")
+
+
 if __name__ == "__main__":
     # test_provision_certificate()
     # test_provision_aws_lambda_from_filelist()
@@ -144,4 +150,5 @@ if __name__ == "__main__":
     # test_provision_sesv2_domain_email_identity()
     # test_find_cloudfront_distributions()
     # test_provision_key_pair()
-    test_get_secret_value()
+    # test_get_secret_value()
+    test_provision_generated_ssh_key()

@@ -6,7 +6,7 @@ import importlib
 import os
 import sys
 import re
-
+from horey.common_utils.bash_executor import BashExecutor
 
 class CommonUtils:
     """
@@ -70,6 +70,7 @@ class CommonUtils:
         if not isinstance(number, int):
             raise ValueError(number)
 
+        # pylint: disable= consider-using-f-string
         str_ret = "{:,}".format(number)
 
         return str_ret
@@ -169,3 +170,16 @@ class CommonUtils:
             )
 
         return module
+
+    @staticmethod
+    def generate_ed25519_key(owner_email, output_file_path):
+        """
+        Generate key using bash and ssh-keygen
+
+        :param owner_email:
+        :param output_file_path:
+        :return:
+        """
+
+        command = f'ssh-keygen -t ed25519 -C "{owner_email}" -f {output_file_path} -q -N ""'
+        BashExecutor.run_bash(command)

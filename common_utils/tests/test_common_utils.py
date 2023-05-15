@@ -1,8 +1,13 @@
-import sys
-import pdb
-import datetime
+"""
+SSH API tests
 
-from common_utils import CommonUtils
+"""
+
+import os
+import datetime
+from horey.common_utils.common_utils import CommonUtils
+
+# pylint: disable= missing-function-docstring
 
 
 def test_int_to_str():
@@ -23,3 +28,15 @@ def test_timestamp_to_datetime():
     assert CommonUtils.timestamp_to_datetime(0) == datetime.datetime(
         1970, month=1, day=1, hour=2
     )
+
+
+def test_generate_ed25519_key():
+    self_dir_path = os.path.dirname(os.path.abspath(__file__))
+    file_path = os.path.join(self_dir_path, "tmp.key")
+    if os.path.exists(file_path):
+        os.remove(file_path)
+    CommonUtils.generate_ed25519_key("horey_horey@gmail.com", file_path)
+
+
+if __name__ == "__main__":
+    test_generate_ed25519_key()

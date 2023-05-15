@@ -166,7 +166,6 @@ from horey.aws_api.aws_services_entities.sns_subscription import SNSSubscription
 from horey.aws_api.aws_services_entities.sns_topic import SNSTopic
 
 from horey.common_utils.common_utils import CommonUtils
-from horey.common_utils.ssh_api import SSHAPI
 
 from horey.h_logger import get_logger
 from horey.common_utils.text_block import TextBlock
@@ -3481,33 +3480,42 @@ class AWSAPI:
 
         return response
 
-    def generate_and_provision_key_pair(
-        self, key_name, output_full_path, owner_email, save_to_secrets_manager=None, secrets_manager_region=None
+    def provision_generated_ssh_key(
+        self, output_file_path, owner_email, region
     ):
         """
         Self explanatory
 
-        @param key_pair:
-        @param save_to_secrets_manager:
-        @param secrets_manager_region:
+        @param output_file_path:
+        @param owner_email:
+        @param region:
         @return:
         """
-        breakpoint()
 
-        logger.info(f"provisioning ssh key pair {key_pair.name}")
-        if key_pair.key_type is None:
-            key_pair.key_type = "ed25519"
+        logger.info(f"Generating ssh key pair {output_file_path}")
+        key_name = os.path.basename(output_file_path)
+        output_public_file_path = output_file_path+".pub"
+        key_name_public = key_name+".pub"
+        key_value = self.secretsmanager_client.raw_get_secret_string(key_name, region=region, ignore_missing=True)
+        key_public_value = self.secretsmanager_client.raw_get_secret_string(key_name_public, region=region, ignore_missing=True)
 
-        response = self.ec2_client.provision_key_pair(key_pair)
-        if response is None:
-            return None
+        if (key_value is None) ^ (key_public_value is None):
+            raise RuntimeError(f"Either {key_name} or {key_name_public} does not exist in Secrets manager")
 
-        if save_to_secrets_manager:
-            AWSAccount.set_aws_region(secrets_manager_region)
-            self.put_secret_value(key_pair.name if key_pair.name.endswith(".key") else key_pair.name+".key",
-                                  response["KeyMaterial"])
+        if key_value is not None:
+            with open(output_file_path, "w", encoding="utf-8") as file_handler:
+                file_handler.write(key_value)
 
-        return response
+            with open(output_public_file_path, "w", encoding="utf-8") as file_handler:
+                file_handler.write(key_public_value)
+
+            return
+
+        CommonUtils.generate_ed25519_key(owner_email, output_file_path)
+
+        AWSAccount.set_aws_region(region)
+        self.put_secret_file(key_name, output_file_path)
+        self.put_secret_file(key_name_public, output_public_file_path)
 
     def provision_load_balancer(self, load_balancer):
         """
