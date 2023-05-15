@@ -210,3 +210,23 @@ class ComputeClient(AzureClient):
         """
 
         return list(self.client.virtual_machine_sizes.list(region))
+
+    def get_available_images(self, region):
+        """
+        Get list of vm sizes available in the region
+        https://dev.to/holger/azure-sdk-for-python-retrieve-vm-image-details-30do
+        #ret = list(self.client.virtual_machine_images.list_publishers(location=region))
+        #offers = list(self.client.virtual_machine_images.list_offers(location=region, publisher_name="Canonical"))
+
+        @return:
+        """
+        skus = list(self.client.virtual_machine_images.list_skus(location=region,
+                                                                 publisher_name="Canonical",
+
+                                                                 offer="0001-com-ubuntu-pro-jammy"))
+        ret = []
+        for sku in skus:
+            ret += list(self.client.virtual_machine_images.list(location=region,
+                                                                publisher_name="Canonical",
+                                                                offer="0001-com-ubuntu-pro-jammy", skus=sku.name))
+        return ret

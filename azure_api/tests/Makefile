@@ -21,3 +21,4 @@ build:
 	source ${VENV_DIR}/bin/activate &&\
 	make raw_install_wheel-azure_api &&\
 	make raw_install_wheel-common_utils
+	#make recursive_install_from_source_local_venv-azure_api
