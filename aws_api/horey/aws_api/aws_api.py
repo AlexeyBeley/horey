@@ -4524,7 +4524,7 @@ class AWSAPI:
         """
         return self.ec2_client.create_image(instance, timeout=timeout)
 
-    def generate_security_reports(self):
+    def generate_security_reports(self, report_file_path):
         """
         Generate all erports
         @return:
@@ -4551,6 +4551,10 @@ class AWSAPI:
         h_tb_groups = self.generate_security_report_groups()
         h_tb.blocks.append(h_tb_groups)
 
+        with open(report_file_path, "w", encoding="utf-8") as file_handler:
+            file_handler.write(h_tb.format_pprint(multiline=True))
+
+        logger.info(f"Generated security report at: {report_file_path}")
         return h_tb
 
     def generate_security_report_users(self):
