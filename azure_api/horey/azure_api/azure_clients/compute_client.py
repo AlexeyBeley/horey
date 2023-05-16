@@ -220,13 +220,16 @@ class ComputeClient(AzureClient):
 
         @return:
         """
+        offer_name = "0001-com-ubuntu-pro-jammy"
+        offer_name = "0001-com-ubuntu-server-jammy"
         skus = list(self.client.virtual_machine_images.list_skus(location=region,
                                                                  publisher_name="Canonical",
-
-                                                                 offer="0001-com-ubuntu-pro-jammy"))
+                                                                 offer=offer_name))
         ret = []
         for sku in skus:
+            # 0001-com-ubuntu-server-jammy
+            #
             ret += list(self.client.virtual_machine_images.list(location=region,
                                                                 publisher_name="Canonical",
-                                                                offer="0001-com-ubuntu-pro-jammy", skus=sku.name))
+                                                                offer=offer_name, skus=sku.name))
         return ret

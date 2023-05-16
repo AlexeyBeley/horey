@@ -730,11 +730,6 @@ class AzureDevopsAPI:
         :param data:
         :return:
         """
-        self.session.headers.update(
-            {
-                "Content-Type": "application/json",
-                "User-Agent": "python/horey",
-            })
         response = self.session.post(url, data=json.dumps(data))
         if response.status_code != 200:
             raise RuntimeError(
@@ -775,7 +770,7 @@ class AzureDevopsAPI:
         """
         work_item = self.get_work_item(wit_id)
 
-        logger.info(f"WIT:{wit_id} adding '{float_hours}' hours to completed")
+        logger.info(f"WIT:{wit_id} adding '{float_hours}' hours to the effort time")
         request_data = \
             [{
                 "op": "add",
@@ -854,13 +849,18 @@ class AzureDevopsAPI:
         :param comment:
         :return:
         """
-        logger.info(f"WIT:{wit_id} setting adding comment '{comment}'")
+        logger.info(f"WIT:{wit_id} adding comment '{comment}'")
         request_data = \
             {
                 "text": comment
             }
 
         url = f"https://dev.azure.com/{self.org_name}/{self.project_name}/_apis/wit/workitems/{wit_id}/comments?api-version=7.0-preview.3"
+        self.session.headers.update(
+            {
+                "Content-Type": "application/json",
+                "User-Agent": "python/horey",
+            })
         return self.post(url, request_data)
 
     # pylint:disable= too-many-arguments
@@ -921,6 +921,11 @@ class AzureDevopsAPI:
         if assigned_to is not None:
             request_data.append({"op": "add", "path": "/fields/System.AssignedTo", "value": assigned_to})
 
+        self.session.headers.update(
+            {
+                "Content-Type": "application/json-patch+json",
+                "User-Agent": "python/horey",
+            })
         ret = self.post(url, request_data)
         wit_id = ret.get("id")
         logger.info(f"Create Work Item '{wit_type}' with title '{wit_title}'. UID: {wit_id}")

@@ -310,6 +310,7 @@ class DailyReportAction:
     """
 
     def __init__(self, line_src):
+        self.src_line = line_src
         self.parent_type = None
         self.parent_id = None
         self.parent_title = None
@@ -332,8 +333,9 @@ class DailyReportAction:
         line = line_src[len(parent_token):]
         line = line[line.find("->") + 2:]
         line = line.strip()
-        child_token = line[:line.rfind(":actions:")].strip()
+        child_token = line[:line.rfind(":actions:")]
         action_token = line[len(child_token) + len(":actions:") + 1:]
+        child_token = child_token.strip()
         self.init_parent(parent_token)
         self.init_child(child_token)
         self.init_actions(action_token)
@@ -379,6 +381,8 @@ class DailyReportAction:
         :return:
         """
         action_token = action_token.strip()
+        if action_token == "":
+            return
 
         if "end_comment" in action_token:
             commend_index = action_token.find("comment")
@@ -417,6 +421,7 @@ class DailyReportAction:
             if action.startswith("new"):
                 self.action_new = True
                 continue
+            raise ValueError(f"Unknown action '{action}' in line '{self.src_line}'")
 
     def init_parent(self, parent_token):
         """
@@ -665,8 +670,8 @@ class HumanAPI:
         if os.path.exists(self.configuration.output_file_path):
             raise RuntimeError(f"Looks like you've already run the daily action. "
                                f"Output file at: {self.configuration.output_file_path}")
-        base_actions_per_worker_map = self.init_actions_from_report_file(self.configuration.daily_hapi_file_path)
         input_actions_per_worker_map = self.init_actions_from_report_file(self.configuration.protected_input_file_path)
+        base_actions_per_worker_map = self.init_actions_from_report_file(self.configuration.daily_hapi_file_path)
 
         str_ret = ""
         for worker_name, input_actions in input_actions_per_worker_map.items():
@@ -702,7 +707,21 @@ class HumanAPI:
                                    "actions_blocked": actions_blocked,
                                    "actions_closed": actions_closed
                                    }
+            self.validate_worker_report_input(actions_new, actions_active, actions_blocked, actions_closed)
         return dict_ret
+
+    def validate_worker_report_input(self, actions_new, actions_active, actions_blocked, actions_closed):
+        """
+        Go over actions and validate the input
+
+        :param dict_actions:
+        :return:
+        """
+
+        for action in actions_new + actions_active + actions_blocked + actions_closed:
+            if str(action.child_id) == "0":
+                if not action.child_title:
+                    raise ValueError(f"Set 'child_title' for the new task: {action.src_line}")
 
     def init_actions_per_worker(self, worker_report):
         """
@@ -840,12 +859,15 @@ class HumanAPI:
                                                                                       original_estimate_time=action.action_init_time,
                                                                                       assigned_to=user_full_name,
                                                                                       parent_id=action.parent_id)
-                if action.parent_id != "-1":
-                    logger.warning(f"Set manually workitem {action.child_id} parent to {action.parent_id}")
 
         for action in actions_new + actions_active + actions_blocked + actions_closed:
             if action.action_add_time is not None:
                 self.azure_devops_api.add_hours_to_work_item(action.child_id, action.action_add_time)
+            if action.action_comment is not None:
+                try:
+                    self.azure_devops_api.add_wit_comment(action.child_id, action.action_comment)
+                except Exception as error_instance:
+                    logger.info(f"Was not able to comment {action.child_id}. Error {repr(error_instance)}")
 
     def perform_task_management_system_status_changes(self, base_actions, actions_new, actions_active, actions_blocked,
                                                       actions_closed):
