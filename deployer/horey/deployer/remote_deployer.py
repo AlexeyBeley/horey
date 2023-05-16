@@ -683,6 +683,7 @@ class RemoteDeployer:
         :return:
         """
 
+        logger.info(f"Loading target SSH Key from '{block_to_deploy.deployment_target_ssh_key_path}'")
         deployment_target_key = RemoteDeployer.load_ssh_key_from_file(block_to_deploy.deployment_target_ssh_key_path, block_to_deploy.deployment_target_ssh_key_type)
 
         if block_to_deploy.bastion_address is None:
@@ -702,7 +703,7 @@ class RemoteDeployer:
                 )
                 yield client
             return
-
+        logger.info(f"Loading bastion SSH Key from '{block_to_deploy.bastion_ssh_key_path}'")
         bastion_key = RemoteDeployer.load_ssh_key_from_file(block_to_deploy.bastion_ssh_key_path, block_to_deploy.bastion_ssh_key_type)
         with RemoteDeployer.get_client_context_with_bastion(
             block_to_deploy.bastion_address,
@@ -765,7 +766,7 @@ class RemoteDeployer:
                     ssh_pkey=bastion_key,
                 ) as tunnel:
                     logger.info(
-                        f"Opened SSH tunnel to {deployment_target_address} via {bastion_address} "
+                        f"Opened SSH tunnel to {deployment_target_user_name}@{deployment_target_address} via {bastion_user_name}@{bastion_address}"
                     )
 
                     with paramiko.SSHClient() as client:
@@ -785,16 +786,16 @@ class RemoteDeployer:
                 raise
             except Exception as error_received:
                 logger.error(
-                    f"Low level ssh connection to {deployment_target_address} via {bastion_address} error: {repr(error_received)}. Retry {i}/10"
+                    f"Low level ssh connection to {deployment_target_user_name}@{deployment_target_address} via {bastion_user_name}@{bastion_address} error: {repr(error_received)}. Retry {i}/10"
                 )
 
             logger.info(
-                f"Going to sleep before retrying connecting to {deployment_target_address} via {bastion_address}"
+                f"Going to sleep before retrying connecting to {deployment_target_user_name}@{deployment_target_address} via {bastion_user_name}@{bastion_address}"
             )
             time.sleep(1)
 
         raise RemoteDeployer.DeployerError(
-            f"Timeout: Failed to open ssh tunnel to {deployment_target_address} via {bastion_address}"
+            f"Timeout: Failed to open ssh tunnel to {deployment_target_user_name}@{deployment_target_address} via {bastion_user_name}@{bastion_address}"
         )
 
     @staticmethod

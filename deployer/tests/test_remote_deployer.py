@@ -61,7 +61,33 @@ def test_provision_target_remote_deployer_infrastructure_rsa_ed25519key():
     deployer.provision_target_remote_deployer_infrastructure_raw(target)
 
 
-def test_provision_bastion_remote_deployer_infrastructure_ubuntu22_rsa():
+def test_provision_indirect_remote_deployer_infrastructure_ubuntu22_rsa():
+    """
+    Test zipping mechanism.
+
+    :return:
+    """
+    target = DeploymentTarget()
+
+    target.deployment_target_address = mock_values["indirect_target_address_rsa_ubuntu_22"]
+    target.deployment_target_user_name = mock_values["target_username"]
+    target.deployment_target_ssh_key_path = mock_values["indirect_target_ssh_key_file_rsa_ubuntu_22"]
+    target.local_deployment_dir_path = mock_values["deployment_dir_path"]
+    target.deployment_target_ssh_key_type = "rsa"
+
+    target.bastion_address = mock_values["target_address_rsa_ubuntu_22"]
+    target.bastion_user_name = mock_values["target_username"]
+    target.bastion_ssh_key_path = mock_values["target_ssh_key_file_rsa_ubuntu_22"]
+
+    target.remote_deployment_dir_path = "/tmp/deployment_test"
+    os.makedirs(target.remote_deployment_dir_path, exist_ok=True)
+    with open(os.path.join(target.remote_deployment_dir_path, "test_file.txt"), "w", encoding="utf-8") as file_handler:
+        file_handler.write("some data")
+    target.bastion_ssh_key_type = "rsa"
+    deployer.provision_target_remote_deployer_infrastructure_raw(target)
+
+
+def test_provision_direct_remote_deployer_infrastructure_ubuntu22_rsa():
     """
     Test zipping mechanism.
 
@@ -85,4 +111,5 @@ def test_provision_bastion_remote_deployer_infrastructure_ubuntu22_rsa():
 if __name__ == "__main__":
     # test_provision_target_remote_deployer_infrastructure_raw()
     # test_provision_target_remote_deployer_infrastructure_rsa_ed25519key()
-    test_provision_bastion_remote_deployer_infrastructure_ubuntu22_rsa()
+    # test_provision_direct_remote_deployer_infrastructure_ubuntu22_rsa()
+    test_provision_indirect_remote_deployer_infrastructure_ubuntu22_rsa()
