@@ -3503,7 +3503,7 @@ class AWSAPI:
             raise RuntimeError(f"Either {key_name} or {key_name_public} does not exist in Secrets manager")
 
         if key_value is not None:
-            logger.info(f"Found {key_name} and {key_public_value} in secrets")
+            logger.info(f"Found {key_name} and {key_name_public} in secrets")
             with open(output_file_path, "w", encoding="utf-8") as file_handler:
                 file_handler.write(key_value)
 
