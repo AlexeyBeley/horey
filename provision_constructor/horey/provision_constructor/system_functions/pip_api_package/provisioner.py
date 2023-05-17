@@ -45,8 +45,25 @@ class Provisioner(SystemFunctionCommon):
         """
         Provision all packages.
 
-        @param force:
         @return:
         """
 
         self.pip_api.install_requirements(self.requirements_file_path, update=self.force)
+
+    def test_provisioned(self):
+        """
+        Test the system_function was provisioned.
+
+        :return:
+        """
+        self.pip_api.init_packages()
+        requirements = self.pip_api.init_requirements_raw(self.requirements_file_path)
+
+        str_ret = ""
+        for requirement in requirements:
+            if not self.pip_api.requirement_satisfied(requirement):
+                str_ret += requirement.str_src + "\n"
+        if str_ret:
+            raise RuntimeError(f"Following requirements were not met: {str_ret}")
+
+        return True

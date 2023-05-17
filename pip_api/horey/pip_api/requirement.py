@@ -19,6 +19,7 @@ class Requirement:
         logger.info(
             f"Initializing requirement from string '{requirement_str_src}', after cleanup '{requirement_str}'"
         )
+        self.str_src = requirement_str_src
         self.name = None
         self.min_version = None
         self.max_version = None
