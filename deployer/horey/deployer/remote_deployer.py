@@ -683,7 +683,7 @@ class RemoteDeployer:
         :return:
         """
 
-        logger.info(f"Loading target SSH Key from '{block_to_deploy.deployment_target_ssh_key_path}'")
+        logger.info(f"Loading target SSH Key of type '{block_to_deploy.deployment_target_ssh_key_type}' from '{block_to_deploy.deployment_target_ssh_key_path}'")
         deployment_target_key = RemoteDeployer.load_ssh_key_from_file(block_to_deploy.deployment_target_ssh_key_path, block_to_deploy.deployment_target_ssh_key_type)
 
         if block_to_deploy.bastion_address is None:
@@ -703,7 +703,7 @@ class RemoteDeployer:
                 )
                 yield client
             return
-        logger.info(f"Loading bastion SSH Key from '{block_to_deploy.bastion_ssh_key_path}'")
+        logger.info(f"Loading bastion SSH Key of type '{block_to_deploy.bastion_ssh_key_type}' from '{block_to_deploy.bastion_ssh_key_path}'")
         bastion_key = RemoteDeployer.load_ssh_key_from_file(block_to_deploy.bastion_ssh_key_path, block_to_deploy.bastion_ssh_key_type)
         with RemoteDeployer.get_client_context_with_bastion(
             block_to_deploy.bastion_address,
