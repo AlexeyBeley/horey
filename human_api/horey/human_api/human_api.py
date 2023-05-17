@@ -421,6 +421,9 @@ class DailyReportAction:
             if action.startswith("new"):
                 self.action_new = True
                 continue
+            if action.isdigit():
+                self.action_init_time = int(action)
+                continue
             raise ValueError(f"Unknown action '{action}' in line '{self.src_line}'")
 
     def init_parent(self, parent_token):
@@ -778,8 +781,9 @@ class HumanAPI:
         self.perform_task_management_system_status_changes(base_actions, actions_new, actions_active, actions_blocked,
                                                            actions_closed)
 
+        str_date = datetime.datetime.now().strftime("%d/%m/%Y")
         ytb_report = self.generate_ytb_report(actions_new, actions_active, actions_blocked, actions_closed)
-        named_ytb_report = f"{name}\n{ytb_report}"
+        named_ytb_report = f"[{str_date}] {name}\n{ytb_report}"
         return named_ytb_report
 
     @staticmethod
