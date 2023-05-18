@@ -242,10 +242,14 @@ def test_provision_lambda_s3():
     assert aws_lambda.state == "Active"
 
 
+def test_get_local_python_version():
+    assert Packer.PYTHON_VERSION is not None
+
+
 if __name__ == "__main__":
     # test_create_venv()
-    #test_execute()
-    #test_execute_in_venv()
+    # test_execute()
+    # test_execute_in_venv()
     # test_install_requirements()
     # test_install_horey_requirements()
     # test_create_lambda_package()
@@ -256,4 +260,5 @@ if __name__ == "__main__":
     # test_create_venv_python_39()
     # test_provision_lambda_python_39()
     # test_create_lambda_package_python_39()
-    test_provision_lambda_s3()
+    # test_provision_lambda_s3()
+    test_get_local_python_version()

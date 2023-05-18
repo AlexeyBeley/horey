@@ -14,11 +14,29 @@ from horey.common_utils.bash_executor import BashExecutor
 logger = get_logger()
 
 
+def get_local_python_major_version():
+    """
+    Get local 'python' version.
+    e.g. 3.8, 3.9, 3.10
+
+    :return:
+    """
+
+    ret = BashExecutor.run_bash("python -V")
+    stdout = ret["stdout"]
+    if not stdout.startswith("Python"):
+        raise RuntimeError(f"Was not able to get local python version: {ret}")
+    version = stdout[len("Python"):].strip()
+    return ".".join(version.split(".")[:2])
+
+
 class Packer:
     """
     Serverless packer - used to pack the lambdas.
 
     """
+
+    PYTHON_VERSION = get_local_python_major_version()
 
     def __init__(self, python_version="3.8"):
         supported_versions = ["3.8", "3.9"]
@@ -69,7 +87,7 @@ class Packer:
 
         logger.info(f"Created venv dir: {venv_path}")
 
-        bash_cmd = f"python{self.python_version} -m venv {venv_path}"
+        bash_cmd = f"python -m venv {venv_path}"
         self.execute(bash_cmd)
         self.execute_in_venv("pip3 install --upgrade pip", venv_path)
 
@@ -141,16 +159,14 @@ class Packer:
         return self.execute(bash_cmd)
 
     @staticmethod
-    def get_site_packages_directory(venv_dir_path, python_version):
+    def get_site_packages_directory(venv_dir_path):
         """
-        Find the direcotry holding the site packages in the venv.
+        Find the directory holding the site packages in the venv.
 
         @param venv_dir_path:
-        @param python_version:
         @return:
         """
-
-        return os.path.join(venv_dir_path, "lib", python_version, "site-packages")
+        return os.path.join(venv_dir_path, "lib", f"python{Packer.PYTHON_VERSION}", "site-packages")
 
     def zip_venv_site_packages(self, zip_file_name, venv_dir_path):
         """
@@ -164,7 +180,7 @@ class Packer:
         if zip_file_name.endswith(".zip"):
             zip_file_name = zip_file_name[:-4]
 
-        package_dir = self.get_site_packages_directory(venv_dir_path, f"python{self.python_version}")
+        package_dir = self.get_site_packages_directory(venv_dir_path)
         shutil.make_archive(zip_file_name, "zip", root_dir=package_dir)
 
     @staticmethod
@@ -257,7 +273,7 @@ class Packer:
         @return:
         """
 
-        packages_dir = self.get_site_packages_directory(venv_dir_path, f"python{self.python_version}")
+        packages_dir = self.get_site_packages_directory(venv_dir_path)
         for package_dir_name in os.listdir(packages_dir):
             src_package_dir_path = os.path.join(packages_dir, package_dir_name)
             dst_package_dir_path = os.path.join(dst_dir_path, package_dir_name)

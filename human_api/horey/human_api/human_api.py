@@ -933,15 +933,15 @@ class HumanAPI:
         str_ret = "Y:\n"
         str_ret += "\n".join([self.action_to_ytb_report_line(action) for action in
                               sorted(actions_new + actions_active + actions_blocked + actions_closed,
-                                     key=lambda x: x.parent_id) if action.action_add_time])
+                                     key=lambda x: str(x.parent_id)) if action.action_add_time])
         str_ret += "\nT:\n"
         str_ret += "\n".join(
-            [self.action_to_ytb_report_line(action) for action in sorted(actions_active, key=lambda x: x.parent_id) if
+            [self.action_to_ytb_report_line(action) for action in sorted(actions_active, key=lambda x: str(x.parent_id)) if
              not action.action_close])
         str_ret += "\nB:\n"
         str_ret += "\n".join([self.action_to_ytb_report_line(action) for action in
                               sorted(actions_new + actions_active + actions_blocked + actions_closed,
-                                     key=lambda x: x.parent_id) if action.action_block])
+                                     key=lambda x: str(x.parent_id)) if action.action_block])
         while "\n\n" in str_ret:
             str_ret = str_ret.replace("\n\n", "\n")
         return str_ret
