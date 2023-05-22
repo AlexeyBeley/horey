@@ -17,7 +17,7 @@ from horey.common_utils.common_utils import CommonUtils
 
 logger = get_logger()
 
-
+# pylint: disable= too-many-lines
 # pylint: disable= too-many-arguments
 # pylint: disable= too-many-branches
 # pylint: disable= too-many-locals
@@ -780,7 +780,6 @@ class HumanAPI:
 
         self.perform_task_management_system_status_changes(base_actions, actions_new, actions_active, actions_blocked,
                                                            actions_closed)
-
         str_date = datetime.datetime.now().strftime("%d/%m/%Y")
         ytb_report = self.generate_ytb_report(actions_new, actions_active, actions_blocked, actions_closed)
         named_ytb_report = f"[{str_date}] {name}\n{ytb_report}"
@@ -938,12 +937,20 @@ class HumanAPI:
         str_ret += "\n".join(
             [self.action_to_ytb_report_line(action) for action in sorted(actions_active, key=lambda x: str(x.parent_id)) if
              not action.action_close])
-        str_ret += "\nB:\n"
-        str_ret += "\n".join([self.action_to_ytb_report_line(action) for action in
+
+        blocked_actions = [self.action_to_ytb_report_line(action) for action in
                               sorted(actions_new + actions_active + actions_blocked + actions_closed,
-                                     key=lambda x: str(x.parent_id)) if action.action_block])
+                                     key=lambda x: str(x.parent_id)) if action.action_block]
+        if len(blocked_actions) == 0:
+            str_ret += "\nB: None\n"
+        else:
+            str_ret += "\nB:\n"
+            str_ret += "\n".join(blocked_actions)
+
         while "\n\n" in str_ret:
             str_ret = str_ret.replace("\n\n", "\n")
+
+        str_ret += "\n"
         return str_ret
 
     @staticmethod
