@@ -126,6 +126,14 @@ def test_add_wit_comment():
     azure_devops_api.add_wit_comment("", "test comment")
 
 
+@pytest.mark.skip(reason="Can not test")
+def test_generate_solution_retrospective():
+    azure_devops_api.init_work_items(from_cache=True)
+    search_strings = mock_values["search_strings"]
+    htb_ret = azure_devops_api.generate_solution_retrospective(search_strings)
+    assert len(azure_devops_api.work_items) > 0
+
+
 if __name__ == "__main__":
     #test_init_backlogs()
     #test_init_processes()
@@ -144,4 +152,5 @@ if __name__ == "__main__":
     #test_generate_clean_report()
     #test_provision_work_item_by_params()
     # test_provision_work_item_by_params_with_parent()
-    test_add_wit_comment()
+    # test_add_wit_comment()
+    test_generate_solution_retrospective()

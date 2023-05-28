@@ -675,9 +675,12 @@ class HumanAPI:
                                f"Output file at: {self.configuration.output_file_path}")
         input_actions_per_worker_map = self.init_actions_from_report_file(self.configuration.protected_input_file_path)
         base_actions_per_worker_map = self.init_actions_from_report_file(self.configuration.daily_hapi_file_path)
+        breakpoint()
 
         str_ret = ""
         for worker_name, input_actions in input_actions_per_worker_map.items():
+            if "horey" not in worker_name:
+                continue
             str_ret += self.perform_worker_report_actions(worker_name, input_actions,
                                                           base_actions_per_worker_map[worker_name]) + "\n"
 
@@ -769,7 +772,7 @@ class HumanAPI:
             name = worker_name[:worker_name.index("@")]
         else:
             name = worker_name
-
+        breakpoint()
         actions_new, actions_active, actions_blocked, actions_closed = input_actions["actions_new"], \
                                                                        input_actions["actions_active"], \
                                                                        input_actions["actions_blocked"], \

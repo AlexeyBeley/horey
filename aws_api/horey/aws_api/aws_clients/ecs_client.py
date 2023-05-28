@@ -28,6 +28,8 @@ logger = get_logger()
 class ECSClient(Boto3Client):
     """
     Client to handle specific aws service API calls.
+    curl 169.254.170.2$AWS_CONTAINER_CREDENTIALS_RELATIVE_URI
+
     """
 
     NEXT_PAGE_REQUEST_KEY = "nextToken"

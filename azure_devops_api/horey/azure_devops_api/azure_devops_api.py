@@ -30,6 +30,7 @@ class AzureDevopsObject:
             setattr(self, key, value)
         self._start_date = None
         self._finish_date = None
+        self._created_date = None
 
     @classmethod
     def get_cache_file_name(cls):
@@ -50,6 +51,24 @@ class AzureDevopsObject:
 
         for field_name, field_value in self.dict_src.items():
             print(f"--> {field_name}: {field_value}")
+
+    @staticmethod
+    def strptime(value):
+        """
+        Standard Azure time string to date_time
+
+        :param value:
+        :return:
+
+        """
+
+        if value is None:
+            return None
+
+        if "." in value:
+            return datetime.datetime.strptime(value, "%Y-%m-%dT%H:%M:%S.%fZ")
+
+        return datetime.datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ")
 
 
 class WorkItem(AzureDevopsObject):
@@ -82,7 +101,15 @@ class WorkItem(AzureDevopsObject):
         :return:
         """
 
-        return self.dict_src["fields"]["System.Title"]
+        if "error" in self.dict_src:
+            return ""
+
+        fields = self.dict_src.get("fields")
+
+        if fields is None:
+            raise RuntimeError(f"'fields' were not set: {self.dict_src}")
+
+        return fields["System.Title"]
 
     @property
     def assigned_to(self):
@@ -114,11 +141,7 @@ class WorkItem(AzureDevopsObject):
 
         :return:
         """
-
-        try:
-            return self.dict_src["fields"]["Microsoft.VSTS.Scheduling.CompletedWork"]
-        except KeyError:
-            return 0
+        return self.fields.get("Microsoft.VSTS.Scheduling.CompletedWork")
 
     def get_remaining_work(self, default=None):
         """
@@ -148,6 +171,58 @@ class WorkItem(AzureDevopsObject):
             return self.dict_src["fields"]["System.WorkItemType"]
         except KeyError:
             return None
+
+    @property
+    def created_date(self):
+        if self._created_date is None:
+            value = self.dict_src["fields"]["System.CreatedDate"]
+            self._created_date = self.strptime(value)
+
+        return self._created_date
+
+    @property
+    def resolved_date(self):
+        value = self.fields.get("Microsoft.VSTS.Common.ResolvedDate")
+        return self.strptime(value)
+
+    @property
+    def closed_date(self):
+        value = self.fields.get("Microsoft.VSTS.Common.ClosedDate")
+        return self.strptime(value)
+
+    @property
+    def state_change_date_date(self):
+        value = self.fields.get("Microsoft.VSTS.Common.StateChangeDate")
+        return self.strptime(value)
+
+    @property
+    def finish_date(self):
+        if self.resolved_date is not None:
+            return self.resolved_date
+
+        if self.closed_date is not None:
+            return self.closed_date
+
+        if self.state == "Removed":
+            if self.state_change_date_date is not None:
+                return self.state_change_date_date
+
+        raise ValueError(f"Unknown state: {self.state}")
+
+    @property
+    def state(self):
+        return self.fields.get("System.State")
+
+    @property
+    def activated_date(self):
+        value = self.fields.get("Microsoft.VSTS.Common.ActivatedDate")
+        if value is not None:
+            return self.strptime(value)
+
+    @property
+    def original_estimate(self):
+        value = self.fields.get("Microsoft.VSTS.Scheduling.OriginalEstimate")
+        return value
 
 
 class Iteration(AzureDevopsObject):
@@ -493,10 +568,11 @@ class AzureDevopsAPI:
 
         return self.recursive_init_work_items(lst_all)
 
-    def recursive_init_work_items(self, lst_all):
+    def recursive_init_work_items(self, lst_all, forward_only=False):
         """
         Init recursively according to relations.
 
+        :param forward_only:
         :param lst_all:
         :return:
         """
@@ -508,8 +584,13 @@ class AzureDevopsAPI:
             new_items = []
             for work_item in lst_ret:
                 for relation in work_item.relations:
-                    if relation["rel"] not in ["System.LinkTypes.Hierarchy-Reverse",
-                                               "System.LinkTypes.Hierarchy-Forward"]:
+                    if forward_only:
+                        hierarchy_types = ["System.LinkTypes.Hierarchy-Forward"]
+                    else:
+                        hierarchy_types = ["System.LinkTypes.Hierarchy-Reverse",
+                                           "System.LinkTypes.Hierarchy-Forward"]
+
+                    if relation["rel"] not in hierarchy_types:
                         continue
                     work_item_id = relation["url"].split("/")[-1]
                     if int(work_item_id) in lst_all_ids:
@@ -771,11 +852,12 @@ class AzureDevopsAPI:
         work_item = self.get_work_item(wit_id)
 
         logger.info(f"WIT:{wit_id} adding '{float_hours}' hours to the effort time")
+        completed_work_hours = 0 if work_item.completed_work_hours is None else work_item.completed_work_hours
         request_data = \
             [{
                 "op": "add",
                 "path": "/fields/Microsoft.VSTS.Scheduling.CompletedWork",
-                "value": str(work_item.completed_work_hours + float_hours)
+                "value": str(completed_work_hours + float_hours)
             }]
         url = f"https://dev.azure.com/{self.org_name}/_apis/wit/workitems/{wit_id}?api-version=7.0"
         return self.patch(url, request_data)
@@ -936,3 +1018,67 @@ class AzureDevopsAPI:
             self.set_wit_parent(wit_id, parent_id)
 
         return wit_id
+
+    def generate_solution_retrospective(self, search_strings):
+        """
+        Search for work items with these strings inside
+
+        :param search_strings:
+        :return:
+        """
+
+        wits_match = []
+        for wit in self.work_items:
+            for search_string in [search_string.lower().strip() for search_string in search_strings]:
+                if search_string in wit.title.lower():
+                    wits_match.append(wit)
+                    break
+        recursively_found = self.recursive_init_work_items(wits_match, forward_only=True)
+        base_task_bags = [wit for wit in wits_match if wit.work_item_type in ["Task", "Bug"]]
+        recursive_task_bags = [wit for wit in recursively_found if wit.work_item_type in ["Task", "Bug"]]
+        logger.info(f"Found {len(base_task_bags)} from string and {len(recursive_task_bags)} recursively")
+        for wit in recursive_task_bags:
+            print(wit.id, wit.title)
+
+        htb_ret = TextBlock("Retrospective")
+        htb_low = self.generate_retrospective_per_type([wit for wit in recursively_found if wit.work_item_type in ["Task", "Bug"]])
+        htb_low.header = "Tasks/Bugs"
+        htb_ret.blocks.append(htb_low)
+
+        high_order_wits = [wit for wit in recursively_found if wit.work_item_type not in ["Task", "Bug"]]
+        htb_high = self.generate_retrospective_per_type(high_order_wits)
+        htb_ret.blocks.append(htb_high)
+        breakpoint()
+        print(htb_ret)
+        return htb_ret
+
+    def generate_retrospective_per_type(self, wits):
+        """
+
+        :param wits:
+        :return:
+        """
+
+        htb_ret = TextBlock("")
+        types = []
+        for wit in sorted(wits, key=lambda wit: wit.created_date):
+            completed_work_hours = str(wit.completed_work_hours) if wit.completed_work_hours is not None else "?"
+            activated_date = wit.activated_date.strftime("%d.%m.%Y") if wit.activated_date is not None else "?"
+            original_estimate = str(wit.original_estimate) if wit.original_estimate is not None else "?"
+            if wit.state in ["New", "Active", "On Hold", "Pending Deployment", "PM Review"]:
+                finish_date = "WIP"
+            else:
+                finish_date = wit.finish_date.strftime("%d.%m.%Y") if wit.finish_date is not None else "?"
+
+            created_date = wit.created_date.strftime("%d.%m.%Y")
+            if "." in finish_date and created_date.split(".")[-1] == finish_date.split(".")[-1]:
+                created_date = created_date[:created_date.rfind(".")]
+                activated_date = activated_date[
+                                 :activated_date.rfind(".")] if "." in activated_date else activated_date
+                finish_date = finish_date[:finish_date.rfind(".")]
+
+            str_line = f'{created_date}->{activated_date}->{finish_date} [{wit.fields["System.CreatedBy"]["displayName"]}] <{original_estimate}/{completed_work_hours}> Title: {wit.title.strip().capitalize()}'
+            htb_ret.lines.append(str_line)
+            if wit.work_item_type not in types:
+                types.append(wit.work_item_type)
+        return htb_ret
