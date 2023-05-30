@@ -930,6 +930,14 @@ class SystemFunctionCommon:
             pass
 
         try:
+            index = duration_lst.index("week")
+            weeks = int(duration_lst[index - 1])
+            duration_lst = duration_lst[: index - 1] + duration_lst[index + 1:]
+            days += weeks * 7
+        except ValueError:
+            pass
+
+        try:
             index = duration_lst.index("day")
             days = int(duration_lst[index - 1])
             duration_lst = duration_lst[: index - 1] + duration_lst[index + 1 :]
