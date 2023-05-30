@@ -253,7 +253,7 @@ class EC2Client(Boto3Client):
 
         AWSAccount.set_aws_region(region)
         final_result = []
-
+        logger.info(f"Fetching volumes in region: {str(region)}")
         for dict_src in self.execute(
                 self.client.describe_volumes, "Volumes", filters_req=filters_req
         ):

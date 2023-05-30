@@ -1093,6 +1093,10 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
         return os.path.join(self.aws_api_cleanup_reports_dir, "ec2_instances.txt")
 
     @property
+    def aws_api_cleanups_ebs_volumes_report_file(self):
+        return os.path.join(self.aws_api_cleanup_reports_dir, "ebs_volumes.txt")
+
+    @property
     def aws_api_cleanups_iam_policies_report_file(self):
         return os.path.join(self.aws_api_cleanup_reports_dir, "iam_policies.txt")
 

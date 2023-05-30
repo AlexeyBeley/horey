@@ -52,7 +52,7 @@ clear: build_folder
 
 test_%: FORCE build
 	source ${HOREY_ROOT}/build/_build/_venv/bin/activate &&\
-	python3 ${ROOT_DIR}/${@}
+	python ${ROOT_DIR}/${@}
 
 FORCE: ;
 

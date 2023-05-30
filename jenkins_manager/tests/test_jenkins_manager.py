@@ -3,32 +3,18 @@ Running tests of several jenkins_manager possibilities.
 Not really tests but more like a usage demonstration.
 """
 import os
-import sys
 import datetime
 
+from horey.jenkins_manager.jenkins_manager import JenkinsManager
+from horey.jenkins_manager.jenkins_job import JenkinsJob
+from horey.jenkins_manager.jenkins_configuration_policy import JenkinsConfigurationPolicy
 
-sys.path.insert(0, os.path.abspath("../src"))
-
-
-from jenkins_manager import JenkinsManager
-from jenkins_job import JenkinsJob
-
-
-qa = {
-    "address": "",
-    "protocol": "http",
-    "port": "8080",
-    "username": "horey",
-    "password": "",
-}
-active = qa
+influxdb_ignore_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore")
+configuration = JenkinsConfigurationPolicy()
+configuration.configuration_file_full_path = os.path.join(influxdb_ignore_dir, "jenkins_manager_configuration.py")
+configuration.init_from_file()
 jenkins_manager = JenkinsManager(
-    active["address"],
-    active["username"],
-    active["password"],
-    protocol=active["protocol"],
-    port=active["port"],
-    timeout=60,
+    configuration
 )
 
 
@@ -144,3 +130,18 @@ def test_delete_jobs():
 
 def test_backup_jobs():
     jenkins_manager.backup_jobs("./backups")
+
+
+def test_get_all_jobs():
+    ret = jenkins_manager.get_all_jobs()
+    assert isinstance(ret, list)
+
+
+def test_create_user():
+    ret = jenkins_manager.create_user("horey", "horeyhorey")
+    breakpoint()
+
+
+if __name__ == "__main__":
+    # test_get_all_jobs()
+    test_create_user()

@@ -350,6 +350,7 @@ class DailyReportAction:
         :return:
         """
 
+        logger.info(f"Initializing child token: {child_token}")
         child_token_rep, child_token_title = child_token.split("#")
         child_token_rep = child_token_rep.strip()
         self.child_title = child_token_title.strip()
@@ -679,8 +680,6 @@ class HumanAPI:
 
         str_ret = ""
         for worker_name, input_actions in input_actions_per_worker_map.items():
-            if "horey" not in worker_name:
-                continue
             str_ret += self.perform_worker_report_actions(worker_name, input_actions,
                                                           base_actions_per_worker_map[worker_name]) + "\n"
 
@@ -772,7 +771,6 @@ class HumanAPI:
             name = worker_name[:worker_name.index("@")]
         else:
             name = worker_name
-        breakpoint()
         actions_new, actions_active, actions_blocked, actions_closed = input_actions["actions_new"], \
                                                                        input_actions["actions_active"], \
                                                                        input_actions["actions_blocked"], \

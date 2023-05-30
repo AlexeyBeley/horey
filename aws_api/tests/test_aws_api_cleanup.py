@@ -15,8 +15,15 @@ from horey.aws_api.aws_api_configuration_policy import AWSAPIConfigurationPolicy
 # pylint: disable= missing-function-docstring
 logger = get_logger()
 configuration = AWSAPIConfigurationPolicy()
-configuration.configuration_file_full_path = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "configuration_values.py"
+configuration.configuration_file_full_path = os.path.abspath(
+    os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "..",
+        "..",
+        "..",
+        "ignore",
+        "aws_api_configuration_values.py",
+    )
 )
 configuration.init_from_file()
 
@@ -53,6 +60,26 @@ def test_init_from_cache_and_cleanup_report_ec2_instances():
     )
     aws_api.cleanup_report_ec2_instances(
         configuration.aws_api_cleanups_ec2_instnaces_report_file
+    )
+
+
+@pytest.mark.skip(reason="")
+def test_init_from_cache_and_cleanup_report_ebs_volumes():
+    aws_api.init_ec2_volumes(
+        from_cache=True, cache_file=configuration.aws_api_ec2_volumes_cache_file
+    )
+    aws_api.cleanup_report_ebs_volumes(
+        configuration.aws_api_cleanups_ebs_volumes_report_file
+    )
+
+
+@pytest.mark.skip(reason="")
+def test_init_from_api_and_cleanup_report_ebs_volumes():
+    aws_api.init_ec2_volumes(
+        from_cache=False
+    )
+    aws_api.cleanup_report_ebs_volumes(
+        configuration.aws_api_cleanups_ebs_volumes_report_file
     )
 
 
@@ -141,7 +168,7 @@ def test_init_from_cache_and_cleanup_report_dns_records():
         from_cache=True, cache_file=configuration.aws_api_loadbalancers_cache_file
     )
     aws_api.init_rds_db_instances(
-        from_cache=True, cache_file=configuration.aws_api_databases_cache_file
+        from_cache=True, cache_file=configuration.aws_api_rds_db_instances_cache_file
     )
     aws_api.init_hosted_zones(
         from_cache=True, cache_file=configuration.aws_api_hosted_zones_cache_file
@@ -199,4 +226,6 @@ if __name__ == "__main__":
     # test_init_from_cache_and_cleanup_s3_buckets()
     # test_init_from_cache_and_cleanup_report_iam_policies()
     # test_init_from_cache_and_cleanup_report_iam_roles()
-    test_init_from_cache_and_cleanup_report_ec2_instances()
+    # test_init_from_cache_and_cleanup_report_ec2_instances()
+    test_init_from_cache_and_cleanup_report_ebs_volumes()
+    # test_init_from_api_and_cleanup_report_ebs_volumes()

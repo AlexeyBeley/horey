@@ -541,3 +541,13 @@ class JenkinsManager:
                     logger.info(
                         f"Found in Job: '{job_name}' Build: '{build['number']}'"
                     )
+
+    @retry_on_errors((requests.exceptions.ConnectionError,), count=5, timeout=5)
+    def create_user(self, user, password):
+        """
+        Get all jobs' overview information.
+        :return:
+        """
+        breakpoint()
+        job_dicts = self.server.get_all_jobs()
+        return job_dicts

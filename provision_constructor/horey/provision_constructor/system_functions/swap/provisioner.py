@@ -55,7 +55,8 @@ class Provisioner(SystemFunctionCommon):
         if not output_total_size.endswith("Gi"):
             return False
 
-        return int(float(output_total_size[:-2])) == self.swap_size_in_gb
+        total_gigs_configured = int(float(output_total_size[:-2]))
+        return total_gigs_configured-1 <= self.swap_size_in_gb <= total_gigs_configured+1
 
     def _provision(self):
         """
