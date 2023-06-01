@@ -3,6 +3,7 @@ Manage Azure Devops
 
 """
 
+# pylint: disable= too-many-lines
 import json
 import datetime
 import os
@@ -174,6 +175,10 @@ class WorkItem(AzureDevopsObject):
 
     @property
     def created_date(self):
+        """
+        WIT creation
+        :return:
+        """
         if self._created_date is None:
             value = self.dict_src["fields"]["System.CreatedDate"]
             self._created_date = self.strptime(value)
@@ -182,21 +187,37 @@ class WorkItem(AzureDevopsObject):
 
     @property
     def resolved_date(self):
+        """
+        None if doesn't exist
+        :return:
+        """
         value = self.fields.get("Microsoft.VSTS.Common.ResolvedDate")
         return self.strptime(value)
 
     @property
     def closed_date(self):
+        """
+        None if doesn't exist
+        :return:
+        """
         value = self.fields.get("Microsoft.VSTS.Common.ClosedDate")
         return self.strptime(value)
 
     @property
     def state_change_date_date(self):
+        """
+        Last state
+        :return:
+        """
         value = self.fields.get("Microsoft.VSTS.Common.StateChangeDate")
         return self.strptime(value)
 
     @property
     def finish_date(self):
+        """
+        Removed/Resolved/Closed
+        :return:
+        """
         if self.resolved_date is not None:
             return self.resolved_date
 
@@ -211,16 +232,28 @@ class WorkItem(AzureDevopsObject):
 
     @property
     def state(self):
+        """
+        Current
+        :return:
+        """
         return self.fields.get("System.State")
 
     @property
     def activated_date(self):
+        """
+        Automatic. None if doesn't exist
+
+        :return:
+        """
         value = self.fields.get("Microsoft.VSTS.Common.ActivatedDate")
-        if value is not None:
-            return self.strptime(value)
+        return self.strptime(value)
 
     @property
     def original_estimate(self):
+        """
+        Reported
+        :return:
+        """
         value = self.fields.get("Microsoft.VSTS.Scheduling.OriginalEstimate")
         return value
 
@@ -1033,6 +1066,7 @@ class AzureDevopsAPI:
                 if search_string in wit.title.lower():
                     wits_match.append(wit)
                     break
+
         recursively_found = self.recursive_init_work_items(wits_match, forward_only=True)
         base_task_bags = [wit for wit in wits_match if wit.work_item_type in ["Task", "Bug"]]
         recursive_task_bags = [wit for wit in recursively_found if wit.work_item_type in ["Task", "Bug"]]
@@ -1047,8 +1081,8 @@ class AzureDevopsAPI:
 
         high_order_wits = [wit for wit in recursively_found if wit.work_item_type not in ["Task", "Bug"]]
         htb_high = self.generate_retrospective_per_type(high_order_wits)
+        htb_high.header = "/".join({wit.work_item_type for wit in high_order_wits})
         htb_ret.blocks.append(htb_high)
-        breakpoint()
         print(htb_ret)
         return htb_ret
 

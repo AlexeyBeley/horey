@@ -2344,6 +2344,7 @@ class AWSAPI:
         tb_ret.blocks.append(tb_ret_tmp)
         with open(output_file, "w+", encoding="utf-8") as file_handler:
             file_handler.write(tb_ret.format_pprint())
+        logger.info(f"Output in: {output_file}")
 
     def cleanup_report_ebs_volumes_in_use(self):
         """
@@ -2371,7 +2372,7 @@ class AWSAPI:
         :return:
         """
         tb_ret = TextBlock("EBS Volumes' sizes")
-        for volume in sorted(self.ec2_volumes, key=lambda vol: vol.size):
+        for volume in sorted(self.ec2_volumes, key=lambda vol: vol.size, reverse=True):
             try:
                 name = volume.get_tagname()
             except RuntimeError as exception_instance:
@@ -2384,7 +2385,7 @@ class AWSAPI:
             except IndexError:
                 attachment_string = "Not-attached"
 
-            tb_ret.lines.append(f"{volume.availability_zone} {name}: {volume.volume_type} {volume.size} {volume.iops}: {attachment_string}")
+            tb_ret.lines.append(f"{volume.availability_zone}, {name}, {volume.volume_type}, {volume.size}GB, {volume.iops}IOPS, Attached:{attachment_string}")
         return tb_ret
 
     @staticmethod

@@ -676,7 +676,6 @@ class HumanAPI:
                                f"Output file at: {self.configuration.output_file_path}")
         input_actions_per_worker_map = self.init_actions_from_report_file(self.configuration.protected_input_file_path)
         base_actions_per_worker_map = self.init_actions_from_report_file(self.configuration.daily_hapi_file_path)
-        breakpoint()
 
         str_ret = ""
         for worker_name, input_actions in input_actions_per_worker_map.items():
@@ -939,9 +938,7 @@ class HumanAPI:
             [self.action_to_ytb_report_line(action) for action in sorted(actions_active, key=lambda x: str(x.parent_id)) if
              not action.action_close])
 
-        blocked_actions = [self.action_to_ytb_report_line(action) for action in
-                              sorted(actions_new + actions_active + actions_blocked + actions_closed,
-                                     key=lambda x: str(x.parent_id)) if action.action_block]
+        blocked_actions = [self.action_to_ytb_report_line(action) for action in sorted(actions_blocked, key=lambda x: str(x.parent_id))]
         if len(blocked_actions) == 0:
             str_ret += "\nB: None\n"
         else:
