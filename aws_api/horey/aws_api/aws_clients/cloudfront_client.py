@@ -66,7 +66,14 @@ class CloudfrontClient(Boto3Client):
         existing_distributions = self.get_all_distributions()
         for existing_distribution in existing_distributions:
             if existing_distribution.comment == desired_distribution.comment:
-                distribution.update_from_raw_create(existing_distribution.dict_src)
+                breakpoint()
+                existing_distribution_id = existing_distribution.dict_src['Id']
+                existing_distribution_config = self.get_distribution_config(existing_distribution_id)
+                existing_distribution_etag = existing_distribution_config['ETag']
+                response = self.update_distribution_raw(
+                    distribution.generate_update_request(existing_distribution_id, existing_distribution_etag)
+                )
+                distribution.update_from_raw_create(response)
                 return
         response = self.provision_distribution_raw(
             distribution.generate_create_request_with_tags()
@@ -86,6 +93,21 @@ class CloudfrontClient(Boto3Client):
             self.client.create_distribution_with_tags,
             "Distribution",
             filters_req=request_dict,
+        ):
+            return response
+
+    def update_distribution_raw(self, request_dict):
+        """
+        Standard.
+
+        :param request_dict:
+        :return:
+        """
+        logger.info(f"updating distribution {request_dict}")
+        for response in self.execute(
+                self.client.update_distribution,
+                "Distribution",
+                filters_req=request_dict,
         ):
             return response
 
@@ -173,3 +195,9 @@ class CloudfrontClient(Boto3Client):
             self.client.create_invalidation, "Invalidation", filters_req=request
         ):
             return response
+
+    def get_distribution_config(self, distribution_id):
+        response = self.client.get_distribution_config(
+            Id=distribution_id
+        )
+        return response
