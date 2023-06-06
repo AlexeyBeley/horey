@@ -14,4 +14,4 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 COPY app.py app.py
 
-CMD [ "app.handler" ]
+CMD ["python", "app.py" ]

@@ -1,3 +1,4 @@
 
+
 def handler(event, context):
-    return f"Hello from AWS Lambda using Python: {event} {context}"
+    return {"statusCode": 200, "body": str(event)}
