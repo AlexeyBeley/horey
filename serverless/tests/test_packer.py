@@ -269,21 +269,15 @@ def prepare_and_upload_image(region, aws_api, docker_api):
     tags = [f"{aws_api.ec2_client.account_id}.dkr.ecr.{region.region_mark}.amazonaws.com/{repo.name}:latest"]
     image = docker_api.build(os.path.join(os.path.dirname(os.path.abspath(__file__)), "docker_image"), tags)
 
-    ret = docker_api.upload_images(tags)
-    #breakpoint()
-    #ecr_images = aws_api.ecr_client.get_all_images(repo)
-    #for ecr_image in ecr_images:
-    #    if ecr_image.image_tags == ["latest"]:
-    #        return ecr_image
+    docker_api.upload_images(tags)
     return image
 
 
 def test_provision_lambda_docker_image():
     region = Region.get_region("us-west-2")
-    packer = Packer()
     aws_api = AWSAPI()
     docker_api = DockerAPI()
-    #todo: image = prepare_and_upload_image(region, aws_api, docker_api)
+    prepare_and_upload_image(region, aws_api, docker_api)
 
     aws_lambda = AWSLambda({})
     tag = f"{aws_api.ec2_client.account_id}.dkr.ecr.{region.region_mark}.amazonaws.com/lambda-test-repo:latest"
