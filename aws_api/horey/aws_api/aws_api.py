@@ -2963,6 +2963,7 @@ class AWSAPI:
         @param region:
         @return:
         """
+
         return self.secretsmanager_client.raw_put_secret_string(
             secret_name, value, region=region
         )
