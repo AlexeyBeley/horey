@@ -35,6 +35,7 @@ class AWSLambda(AwsObject):
         self.revision_id = None
         self.state = None
         self.reserved_concurrent_executions = None
+        self.package_type = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -250,10 +251,14 @@ class AWSLambda(AwsObject):
             "Code": self.code,
             "FunctionName": self.name,
             "Role": self.role,
-            "Handler": self.handler,
-            "Runtime": self.runtime,
             "Tags": self.tags,
         }
+
+        if self.code.get("ImageUri") is None:
+            request["Runtime"] = self.runtime
+            request["Handler"] = self.handler
+        else:
+            request["PackageType"] = "Image"
 
         if self.timeout is not None:
             request["Timeout"] = self.timeout
@@ -317,6 +322,17 @@ class AWSLambda(AwsObject):
                 )
                 request[attr_name] = desired_attr_value
 
+        if self.package_type == "Image":
+            try:
+                del request["Handler"]
+            except KeyError:
+                pass
+
+            try:
+                del request["Runtime"]
+            except KeyError:
+                pass
+
         return request
 
     def generate_update_function_concurrency_requests(self, desired_aws_lambda):
@@ -359,6 +375,10 @@ class AWSLambda(AwsObject):
         if desired_aws_lambda.code.get("S3Bucket") is not None:
             request["S3Bucket"] = desired_aws_lambda.code.get("S3Bucket")
             request["S3Key"] = desired_aws_lambda.code.get("S3Key")
+            return request
+
+        if desired_aws_lambda.code.get("ImageUri") is not None:
+            request["ImageUri"] = desired_aws_lambda.code.get("ImageUri")
             return request
 
         raise RuntimeError(self.name)
