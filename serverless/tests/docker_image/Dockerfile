@@ -1,10 +1,14 @@
 FROM ubuntu:22.04
 
 RUN apt-get -qq update\
-	&& apt-get install -yqq python3.11 \
-	&& ln -s /usr/bin/python3.11 /usr/bin/python
+	&& apt-get install -yqq python3.11 curl \
+	&& ln -s /usr/bin/python3.11 /usr/bin/python \
+	&& curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py \
+	&& python get-pip.py \
+	&& rm get-pip.py
 
-RUN pip3 install awslambdaric
+
+RUN python -m pip install awslambdaric
 
 ENV DEBIAN_FRONTEND=noninteractive
 
