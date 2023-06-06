@@ -192,7 +192,7 @@ class Packer:
         @param files_paths:
         @return:
         """
-        breakpoint()
+
         with zipfile.ZipFile(zip_file_name, "a") as myzip:
             for file_path in files_paths:
                 logger.info(f"Adding file to zip: {file_path}")

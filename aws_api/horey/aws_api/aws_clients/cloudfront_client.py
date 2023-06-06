@@ -199,8 +199,6 @@ class CloudfrontClient(Boto3Client):
     def get_distribution_config_raw(self, request):
         """
         Retrieve the full(including configurations with null values) distribution configuration for the specified distribution ID.
-        :param:
-            distribution_id: The ID of the distribution for which to retrieve the configuration.
 
         :return:
             The distribution configuration.
