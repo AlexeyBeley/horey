@@ -331,6 +331,7 @@ class LambdaClient(Boto3Client):
 
         log_dict = {key: value for key, value in request_dict.items() if key != "Code"}
         logger.info(f"Creating lambda: {log_dict}")
+        breakpoint()
         for response in self.execute(
             self.client.create_function, None, raw_data=True, filters_req=request_dict
         ):
