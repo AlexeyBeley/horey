@@ -1,6 +1,6 @@
 # Define custom function directory
 ARG FUNCTION_DIR="/var/task/"
-
+RUN DEBIAN_FRONTEND=noninteractive
 FROM python:3.11-slim-buster as build-image
 
 # Include global arg in this stage of the build
