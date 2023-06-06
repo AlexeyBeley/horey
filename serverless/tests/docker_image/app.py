@@ -1,4 +1,5 @@
 
 
 def handler(event, context):
-    return {"statusCode": 200, "body": str(event)}
+    print("Done")
+    return {"statusCode": 200, "body": str(event) + str(context)}
