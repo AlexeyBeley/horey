@@ -53,33 +53,53 @@ class CloudfrontClient(Boto3Client):
 
         return final_result
 
-    def provision_distribution(self, distribution: CloudfrontDistribution):
+    def provision_distribution(self, desired_distribution: CloudfrontDistribution):
         """
         WARNING! Comment is being used to identify distributions. If you've
         provisioned multiple cloudfront distributions with the same comment -
         it might raise an issue.
 
-        @param distribution:
+        @param desired_distribution:
         @return:
         """
-        desired_distribution = CloudfrontDistribution(distribution.distribution_config)
-        existing_distributions = self.get_all_distributions()
-        for existing_distribution in existing_distributions:
-            if existing_distribution.comment == desired_distribution.comment:
-                distribution.id = existing_distribution.dict_src["Id"]
-                existing_full_distribution_config = self.get_distribution_config_raw({"Id": distribution.id})
-                distribution.distribution_config["CallerReference"] = existing_full_distribution_config["DistributionConfig"]["CallerReference"]
-                distribution.ifmatch = existing_full_distribution_config["ETag"]
-                response = self.update_distribution_raw(
-                    distribution.generate_update_request()
-                )
-                distribution.update_from_raw_create(response)
-                return
+
+        desired_distribution = CloudfrontDistribution(desired_distribution.distribution_config)
+
+        existing_distribution = CloudfrontDistribution({})
+        existing_distribution.tags = desired_distribution.tags
+        existing_distribution.comment = desired_distribution.comment
+        self.update_distribution_information(existing_distribution)
+
+        if existing_distribution.id is not None:
+            request = existing_distribution.generate_update_request(desired_distribution)
+
+            if request is not None:
+                response = self.update_distribution_raw(request)
+                desired_distribution.update_from_raw_response(response)
+
+            return
+
         response = self.provision_distribution_raw(
-            distribution.generate_create_request_with_tags()
+            desired_distribution.generate_create_request_with_tags()
         )
 
-        distribution.update_from_raw_create(response)
+        desired_distribution.update_from_raw_response(response)
+
+    def update_distribution_information(self, distribution: CloudfrontDistribution):
+        """
+        Get full information.
+
+        :param distribution:
+        :return:
+        """
+        for existing_distribution in self.get_all_distributions():
+            if existing_distribution.comment == distribution.comment:
+                distribution.update_from_raw_response(existing_distribution.dict_src)
+                break
+        else:
+            return
+
+        distribution.distribution_config = self.get_distribution_config_raw({"Id": distribution.id})
 
     def provision_distribution_raw(self, request_dict):
         """

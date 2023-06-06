@@ -84,7 +84,7 @@ class CloudfrontDistribution(AwsObject):
         ] = str(datetime.datetime.now())
         return request
 
-    def generate_update_request(self):
+    def generate_update_request(self, desired_distribution):
         """
         Generate an update request with the desired distribution configuration, current id and current etag.
 
@@ -93,15 +93,25 @@ class CloudfrontDistribution(AwsObject):
             The update request.
 
         """
-
+        breakpoint()
         request = {
-            "DistributionConfig": self.distribution_config,
+            "DistributionConfig": desired_distribution.distribution_config,
             "Id": self.id,
-            "IfMatch": self.ifmatch
+            "IfMatch": self.distribution_config["ETag"]
         }
+        request["DistributionConfig"]["CallerReference"] = self.distribution_config["CallerReference"]
         return request
 
     def update_from_raw_create(self, dict_src):
+        """
+        Standard.
+
+        :param dict_src:
+        :return:
+        """
+        self.update_from_raw_response(dict_src)
+
+    def update_from_raw_response(self, dict_src):
         """
         Standard.
 
