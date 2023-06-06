@@ -84,30 +84,21 @@ class CloudfrontDistribution(AwsObject):
         ] = str(datetime.datetime.now())
         return request
 
-    def generate_update_request(self, id, etag):
+    def generate_update_request(self):
         """
-        Standard.
+        Generate an update request with the desired distribution configuration, current id and current etag.
+
 
         :return:
+            The update request.
+
         """
 
-        logging_config = {
-            'Enabled': False,
-            'IncludeCookies': False,
-            'Bucket': '',
-            'Prefix': ''
-        }
         request = {
             "DistributionConfig": self.distribution_config,
-            "Id": id,
-            "IfMatch": etag
-            }
-
-        request["DistributionConfig"]["CallerReference"] = str(datetime.datetime.now())
-        request["DistributionConfig"]["Logging"] = logging_config
-        request["DistributionConfig"]["DefaultRootObject"] = ""
-        request["DistributionConfig"]["WebACLId"] = ""
-        breakpoint()
+            "Id": self.id,
+            "IfMatch": self.ifmatch
+        }
         return request
 
     def update_from_raw_create(self, dict_src):

@@ -66,12 +66,12 @@ class CloudfrontClient(Boto3Client):
         existing_distributions = self.get_all_distributions()
         for existing_distribution in existing_distributions:
             if existing_distribution.comment == desired_distribution.comment:
-                breakpoint()
-                existing_distribution_id = existing_distribution.dict_src['Id']
-                existing_distribution_config = self.get_distribution_config(existing_distribution_id)
-                existing_distribution_etag = existing_distribution_config['ETag']
+                distribution.id = existing_distribution.dict_src["Id"]
+                existing_full_distribution_config = self.get_distribution_config_raw({"Id": distribution.id})
+                distribution.distribution_config["CallerReference"] = existing_full_distribution_config["DistributionConfig"]["CallerReference"]
+                distribution.ifmatch = existing_full_distribution_config["ETag"]
                 response = self.update_distribution_raw(
-                    distribution.generate_update_request(existing_distribution_id, existing_distribution_etag)
+                    distribution.generate_update_request()
                 )
                 distribution.update_from_raw_create(response)
                 return
@@ -196,8 +196,16 @@ class CloudfrontClient(Boto3Client):
         ):
             return response
 
-    def get_distribution_config(self, distribution_id):
-        response = self.client.get_distribution_config(
-            Id=distribution_id
-        )
-        return response
+    def get_distribution_config_raw(self, request):
+        """
+        Retrieve the full(including configurations with null values) distribution configuration for the specified distribution ID.
+        :param:
+            distribution_id: The ID of the distribution for which to retrieve the configuration.
+
+        :return:
+            The distribution configuration.
+        """
+        for response in self.execute(
+                self.client.get_distribution_config, None, filters_req=request, raw_data=True
+        ):
+            return response
