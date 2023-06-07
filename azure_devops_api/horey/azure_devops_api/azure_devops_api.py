@@ -1043,7 +1043,7 @@ class AzureDevopsAPI:
             })
         ret = self.post(url, request_data)
         wit_id = ret.get("id")
-        logger.info(f"Create Work Item '{wit_type}' with title '{wit_title}'. UID: {wit_id}")
+        logger.info(f"WIT:{wit_id} created. Type: '{wit_type}' Title '{wit_title}'")
         if iteration_partial_path is not None:
             self.change_iteration(wit_id, f"{self.project_name}\\\\{iteration_partial_path}")
 

@@ -28,11 +28,20 @@ class CloudfrontClient(Boto3Client):
 
     def get_all_distributions(self, full_information=True):
         """
-        Get all lambda in all regions
+        Get the full list
+
         :param full_information:
         :return:
         """
-        final_result = []
+        return list(self.yield_all_distributions(full_information=full_information))
+
+    def yield_all_distributions(self, full_information=True):
+        """
+        Yield over the cloudfront distributions
+
+        :param full_information:
+        :return:
+        """
 
         for response in self.execute(
             self.client.list_distributions,
@@ -44,14 +53,11 @@ class CloudfrontClient(Boto3Client):
 
             for item in response["Items"]:
                 obj = CloudfrontDistribution(item)
-                final_result.append(obj)
 
                 if full_information:
                     for response_tags in self.execute(self.client.list_tags_for_resource, "Tags", filters_req={"Resource": obj.arn}):
                         obj.tags = response_tags["Items"]
-                        obj.tags = response_tags["Items"]
-
-        return final_result
+                yield obj
 
     def provision_distribution(self, desired_distribution: CloudfrontDistribution):
         """
@@ -62,14 +68,19 @@ class CloudfrontClient(Boto3Client):
         @param desired_distribution:
         @return:
         """
+        if desired_distribution.comment is None:
+            raise ValueError("Comment is being used to identify cloudfront distributions. Comment was not set.")
 
-        desired_distribution = CloudfrontDistribution(desired_distribution.distribution_config)
+        if not desired_distribution.get_tagname():
+            raise ValueError("Cloudfront distribution tag name was not set.")
 
         existing_distribution = CloudfrontDistribution({})
         existing_distribution.tags = desired_distribution.tags
         existing_distribution.comment = desired_distribution.comment
+        existing_distribution.distribution_config = desired_distribution.distribution_config
         self.update_distribution_information(existing_distribution)
 
+        breakpoint()
         if existing_distribution.id is not None:
             request = existing_distribution.generate_update_request(desired_distribution)
 
@@ -92,13 +103,23 @@ class CloudfrontClient(Boto3Client):
         :param distribution:
         :return:
         """
-        for existing_distribution in self.get_all_distributions():
+        distribution_aliases = distribution.distribution_config["Aliases"]["Items"]
+        for existing_distribution in self.yield_all_distributions():
             if existing_distribution.comment == distribution.comment:
-                distribution.update_from_raw_response(existing_distribution.dict_src)
                 break
+            if existing_distribution.get_tagname(ignore_missing_tag=True) == distribution.get_tagname():
+                break
+
+            for existing_distro_alias in existing_distribution.aliases["Items"]:
+                if existing_distro_alias in distribution_aliases:
+                    break
+            else:
+                continue
+            break
         else:
             return
 
+        distribution.update_from_raw_response(existing_distribution.dict_src)
         distribution.distribution_config = self.get_distribution_config_raw({"Id": distribution.id})
 
     def provision_distribution_raw(self, request_dict):
