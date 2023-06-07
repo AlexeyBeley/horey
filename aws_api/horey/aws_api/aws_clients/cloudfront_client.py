@@ -238,11 +238,12 @@ class CloudfrontClient(Boto3Client):
 
     def get_distribution_config_raw(self, request):
         """
-        Retrieve the full(including configurations with null values) distribution configuration for the specified distribution ID.
+        Get raw_data reply. Need for ETag param used by update_distribution.
 
+        :param request:
         :return:
-            The distribution configuration.
         """
+
         for response in self.execute(
                 self.client.get_distribution_config, None, filters_req=request, raw_data=True
         ):
