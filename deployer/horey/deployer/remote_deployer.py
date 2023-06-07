@@ -285,7 +285,8 @@ class RemoteDeployer:
                 command = f"/bin/bash {remote_unzip_file_path}"
 
                 try:
-                    self.execute_remote_shell(stdin, stdout, command)
+                    _, shout, _, exit_status = self.execute_remote_shell(stdin, stdout, command)
+                    logger.info(f"{deployment_target.deployment_target_address} Unzip result: shell_output: {str(shout)}, exit_status: {exit_status}")
                 except RemoteDeployer.DeployerError as error_instance:
                     if "apt does not have a stable CLI interface" not in repr(error_instance):
                         raise
