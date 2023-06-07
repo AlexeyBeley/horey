@@ -21,6 +21,7 @@ class CloudfrontDistribution(AwsObject):
         self.tags = []
         self.domain_name = None
         self.arn = None
+        self.aliases = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
