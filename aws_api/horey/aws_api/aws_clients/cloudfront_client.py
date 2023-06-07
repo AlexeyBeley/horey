@@ -80,7 +80,6 @@ class CloudfrontClient(Boto3Client):
         existing_distribution.distribution_config = desired_distribution.distribution_config
         self.update_distribution_information(existing_distribution)
 
-        breakpoint()
         if existing_distribution.id is not None:
             request = existing_distribution.generate_update_request(desired_distribution)
 
