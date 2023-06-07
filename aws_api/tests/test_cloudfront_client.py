@@ -66,14 +66,15 @@ def test_provision_distribution():
     cloudfront_certificate.arn = mock_values["cloudfront_certificate.arn"]
 
     origin_access_identity = mock_values["origin-access-identity/cloudfront"]
-    cloudfront_distribution.tags = {
-        "Items": [
-            {"Key": "Name", "Value": "horey-test"},
-        ]
-    }
+
+    cloudfront_distribution.comment = "horey-test"
+
+    cloudfront_distribution.tags = [
+        {"Key": "Name", "Value": "horey-test"}
+    ]
 
     cloudfront_distribution.distribution_config = {
-        "Aliases": {"Quantity": 1, "Items": ["front.horey.com"]},
+        "Aliases": {"Quantity": 1, "Items": [mock_values["cloudfront_alias_value"]]},
         "Origins": {
             "Quantity": 1,
             "Items": [

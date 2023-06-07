@@ -97,7 +97,6 @@ class CloudfrontDistribution(AwsObject):
         for self_distribution_config_key, self_distribution_config_value in self.distribution_config.items():
             breakpoint()
 
-
         request = {
             "DistributionConfig": desired_distribution.distribution_config,
             "Id": self.id,
