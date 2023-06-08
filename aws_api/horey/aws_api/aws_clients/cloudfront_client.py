@@ -28,11 +28,20 @@ class CloudfrontClient(Boto3Client):
 
     def get_all_distributions(self, full_information=True):
         """
-        Get all lambda in all regions
+        Get the full list
+
         :param full_information:
         :return:
         """
-        final_result = []
+        return list(self.yield_all_distributions(full_information=full_information))
+
+    def yield_all_distributions(self, full_information=True):
+        """
+        Yield over the cloudfront distributions
+
+        :param full_information:
+        :return:
+        """
 
         for response in self.execute(
             self.client.list_distributions,
@@ -44,35 +53,73 @@ class CloudfrontClient(Boto3Client):
 
             for item in response["Items"]:
                 obj = CloudfrontDistribution(item)
-                final_result.append(obj)
 
                 if full_information:
                     for response_tags in self.execute(self.client.list_tags_for_resource, "Tags", filters_req={"Resource": obj.arn}):
                         obj.tags = response_tags["Items"]
-                        obj.tags = response_tags["Items"]
+                yield obj
 
-        return final_result
-
-    def provision_distribution(self, distribution: CloudfrontDistribution):
+    def provision_distribution(self, desired_distribution: CloudfrontDistribution):
         """
         WARNING! Comment is being used to identify distributions. If you've
         provisioned multiple cloudfront distributions with the same comment -
         it might raise an issue.
 
-        @param distribution:
+        @param desired_distribution:
         @return:
         """
-        desired_distribution = CloudfrontDistribution(distribution.distribution_config)
-        existing_distributions = self.get_all_distributions()
-        for existing_distribution in existing_distributions:
-            if existing_distribution.comment == desired_distribution.comment:
-                distribution.update_from_raw_create(existing_distribution.dict_src)
-                return
+        if desired_distribution.comment is None:
+            raise ValueError("Comment is being used to identify cloudfront distributions. Comment was not set.")
+
+        if not desired_distribution.get_tagname():
+            raise ValueError("Cloudfront distribution tag name was not set.")
+
+        existing_distribution = CloudfrontDistribution({})
+        existing_distribution.tags = desired_distribution.tags
+        existing_distribution.comment = desired_distribution.comment
+        existing_distribution.distribution_config = desired_distribution.distribution_config
+        self.update_distribution_information(existing_distribution)
+
+        if existing_distribution.id is not None:
+            request = existing_distribution.generate_update_request(desired_distribution)
+
+            if request is not None:
+                response = self.update_distribution_raw(request)
+                desired_distribution.update_from_raw_response(response)
+
+            return
+
         response = self.provision_distribution_raw(
-            distribution.generate_create_request_with_tags()
+            desired_distribution.generate_create_request_with_tags()
         )
 
-        distribution.update_from_raw_create(response)
+        desired_distribution.update_from_raw_response(response)
+
+    def update_distribution_information(self, distribution: CloudfrontDistribution):
+        """
+        Get full information.
+
+        :param distribution:
+        :return:
+        """
+        distribution_aliases = distribution.distribution_config["Aliases"]["Items"]
+        for existing_distribution in self.yield_all_distributions():
+            if existing_distribution.comment == distribution.comment:
+                break
+            if existing_distribution.get_tagname(ignore_missing_tag=True) == distribution.get_tagname():
+                break
+
+            for existing_distro_alias in existing_distribution.aliases["Items"]:
+                if existing_distro_alias in distribution_aliases:
+                    break
+            else:
+                continue
+            break
+        else:
+            return
+
+        distribution.update_from_raw_response(existing_distribution.dict_src)
+        distribution.distribution_config = self.get_distribution_config_raw({"Id": distribution.id})
 
     def provision_distribution_raw(self, request_dict):
         """
@@ -86,6 +133,21 @@ class CloudfrontClient(Boto3Client):
             self.client.create_distribution_with_tags,
             "Distribution",
             filters_req=request_dict,
+        ):
+            return response
+
+    def update_distribution_raw(self, request_dict):
+        """
+        Standard.
+
+        :param request_dict:
+        :return:
+        """
+        logger.info(f"updating distribution {request_dict}")
+        for response in self.execute(
+                self.client.update_distribution,
+                "Distribution",
+                filters_req=request_dict,
         ):
             return response
 
@@ -171,5 +233,18 @@ class CloudfrontClient(Boto3Client):
 
         for response in self.execute(
             self.client.create_invalidation, "Invalidation", filters_req=request
+        ):
+            return response
+
+    def get_distribution_config_raw(self, request):
+        """
+        Get raw_data reply. Need for ETag param used by update_distribution.
+
+        :param request:
+        :return:
+        """
+
+        for response in self.execute(
+                self.client.get_distribution_config, None, filters_req=request, raw_data=True
         ):
             return response

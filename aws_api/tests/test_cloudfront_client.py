@@ -1,5 +1,9 @@
+"""
+Testing cloud front client functionality
+
+"""
 import os
-import sys
+from unittest.mock import Mock
 
 from horey.aws_api.aws_clients.cloudfront_client import CloudfrontClient
 from horey.aws_api.aws_services_entities.cloudfront_distribution import (
@@ -9,13 +13,10 @@ from horey.aws_api.aws_services_entities.cloudfront_origin_access_identity impor
     CloudfrontOriginAccessIdentity,
 )
 
-import pdb
 from horey.h_logger import get_logger
 from horey.aws_api.base_entities.aws_account import AWSAccount
-from horey.aws_api.base_entities.region import Region
 from horey.common_utils.common_utils import CommonUtils
 
-from unittest.mock import Mock
 
 configuration_values_file_full_path = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "h_logger_configuration_values.py"
@@ -44,6 +45,8 @@ mock_values_file_path = os.path.abspath(
 )
 mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 
+# pylint: disable= missing-function-docstring
+
 
 def test_init_cloudfront_client():
     assert isinstance(CloudfrontClient(), CloudfrontClient)
@@ -66,20 +69,21 @@ def test_provision_distribution():
     cloudfront_certificate.arn = mock_values["cloudfront_certificate.arn"]
 
     origin_access_identity = mock_values["origin-access-identity/cloudfront"]
-    cloudfront_distribution.tags = {
-        "Items": [
-            {"Key": "Name", "Value": "horey-test"},
-        ]
-    }
+
+    cloudfront_distribution.comment = "horey-test"
+
+    cloudfront_distribution.tags = [
+        {"Key": "Name", "Value": "horey-test"}
+    ]
 
     cloudfront_distribution.distribution_config = {
-        "Aliases": {"Quantity": 1, "Items": ["front.horey.com"]},
+        "Aliases": {"Quantity": 1, "Items": [mock_values["cloudfront_alias_value"]]},
         "Origins": {
             "Quantity": 1,
             "Items": [
                 {
-                    "Id": "horey-test-id",
-                    "DomainName": "test.s3.amazonaws.com",
+                    "Id": "s3-bucket-" + mock_values["cloudfront_origins_items_0"],
+                    "DomainName": mock_values["cloudfront_origins_items_0_domain_name"],
                     "OriginPath": "",
                     "CustomHeaders": {
                         "Quantity": 1,
@@ -93,7 +97,7 @@ def test_provision_distribution():
             ],
         },
         "DefaultCacheBehavior": {
-            "TargetOriginId": "horey-test-id",
+            "TargetOriginId": "s3-bucket-" + mock_values["cloudfront_origins_items_0"],
             "TrustedSigners": {"Enabled": False, "Quantity": 0},
             "TrustedKeyGroups": {"Enabled": False, "Quantity": 0},
             "ViewerProtocolPolicy": "redirect-to-https",
@@ -115,6 +119,7 @@ def test_provision_distribution():
             "MinTTL": 0,
             "DefaultTTL": 86400,
             "MaxTTL": 31536000,
+            "LambdaFunctionAssociations": {'Quantity': 0}
         },
         "CustomErrorResponses": {
             "Quantity": 2,

@@ -6,6 +6,9 @@ Cloudfront distro
 import datetime
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
+from horey.h_logger import get_logger
+
+logger = get_logger()
 
 
 class CloudfrontDistribution(AwsObject):
@@ -21,6 +24,7 @@ class CloudfrontDistribution(AwsObject):
         self.tags = []
         self.domain_name = None
         self.arn = None
+        self.aliases = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -47,6 +51,7 @@ class CloudfrontDistribution(AwsObject):
             "IsIPV6Enabled": self.init_default_attr,
             "AliasICPRecordals": self.init_default_attr,
             "CallerReference": self.init_default_attr,
+            "Staging": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -84,7 +89,55 @@ class CloudfrontDistribution(AwsObject):
         ] = str(datetime.datetime.now())
         return request
 
+    def generate_update_request(self, desired_distribution):
+        """
+        Generate an update request with the desired distribution configuration, current id and current etag.
+
+
+        :return:
+            The update request.
+
+        """
+
+        for self_distribution_config_key, self_distribution_config_value in self.distribution_config[
+            "DistributionConfig"].items():
+            desired_value = desired_distribution.distribution_config.get(self_distribution_config_key)
+            if self_distribution_config_key in ["Origins", "DefaultCacheBehavior", "ViewerCertificate"]:
+                logger.warning(f"Ignoring cloud front distribution key: {self_distribution_config_key}")
+                continue
+            if desired_value is None:
+                continue
+            if self_distribution_config_value != desired_value:
+                logger.info(
+                    f"Found difference in cloud front distribution configuration in key: {self_distribution_config_key}")
+                break
+        else:
+            return None
+
+        request = {
+            "DistributionConfig": desired_distribution.distribution_config,
+            "Id": self.id,
+            "IfMatch": self.distribution_config["ETag"]
+        }
+        request["DistributionConfig"]["CallerReference"] = self.distribution_config["DistributionConfig"][
+            "CallerReference"]
+
+        for required_attr in ["Logging", "DefaultRootObject", "WebACLId", "CacheBehaviors"]:
+            if required_attr not in request["DistributionConfig"]:
+                request["DistributionConfig"][required_attr] = self.distribution_config["DistributionConfig"][required_attr]
+
+        return request
+
     def update_from_raw_create(self, dict_src):
+        """
+        Standard.
+
+        :param dict_src:
+        :return:
+        """
+        self.update_from_raw_response(dict_src)
+
+    def update_from_raw_response(self, dict_src):
         """
         Standard.
 
@@ -118,6 +171,7 @@ class CloudfrontDistribution(AwsObject):
             "ActiveTrustedKeyGroups": self.init_default_attr,
             "DistributionConfig": self.init_default_attr,
             "CallerReference": self.init_default_attr,
+            "Staging": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
