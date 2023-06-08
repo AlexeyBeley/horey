@@ -199,10 +199,12 @@ class RemoteDeployer:
         """
         command = (
             "#!/bin/bash\n"
+            "sudo sed -i 's/^DPkg/#DPkg/' /etc/apt/apt.conf.d/99needrestart\n"
             "set -xe\n"
             "export unzip_installed=0\n"
+            "DEBIAN_FRONTEND=noninteractive\n"
             "unzip -v || export unzip_installed=1\n"
-            f"if [[ $unzip_installed == '1' ]]; then sudo apt update && sudo apt install -y unzip; fi\n"
+            f"if [[ $unzip_installed == '1' ]]; then sudo apt update && sudo apt install -yqq unzip; fi\n"
             f"unzip {remote_zip_path} -d {deployment_target.remote_deployment_dir_path}\n"
             f"rm {remote_zip_path}\n"
         )
