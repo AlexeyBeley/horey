@@ -66,4 +66,4 @@ class Provisioner(SystemFunctionCommon):
         :return:
         """
 
-        return self.run_apt_bash_command("sudo apt full-upgrade -y")
+        return self.run_apt_bash_command("sudo NEEDRESTART_MODE=a apt full-upgrade -y")

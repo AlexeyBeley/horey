@@ -199,12 +199,11 @@ class RemoteDeployer:
         """
         command = (
             "#!/bin/bash\n"
-            "sudo sed -i 's/^DPkg/#DPkg/' /etc/apt/apt.conf.d/99needrestart\n"
+            "sudo sed -i 's/#$nrconf{kernelhints} = -1;/$nrconf{kernelhints} = 0;/' /etc/needrestart/needrestart.conf\n"
             "set -xe\n"
             "export unzip_installed=0\n"
-            "DEBIAN_FRONTEND=noninteractive\n"
             "unzip -v || export unzip_installed=1\n"
-            f"if [[ $unzip_installed == '1' ]]; then sudo apt update && sudo apt install -yqq unzip; fi\n"
+            f"if [[ $unzip_installed == '1' ]]; then sudo DEBIAN_FRONTEND=noninteractive apt update && sudo NEEDRESTART_MODE=a apt install -yqq unzip; fi\n"
             f"unzip {remote_zip_path} -d {deployment_target.remote_deployment_dir_path}\n"
             f"rm {remote_zip_path}\n"
         )

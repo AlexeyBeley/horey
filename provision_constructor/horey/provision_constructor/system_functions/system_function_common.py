@@ -591,9 +591,9 @@ class SystemFunctionCommon:
         logger.info(f"Installing apt packages: {package_names}")
 
         if self.upgrade:
-            command = f"sudo apt --upgrade install -y {' '.join(package_names)}"
+            command = f"sudo NEEDRESTART_MODE=a apt --upgrade install -y {' '.join(package_names)}"
         else:
-            command = f"sudo apt install -y {' '.join(package_names)}"
+            command = f"sudo NEEDRESTART_MODE=a apt install -y {' '.join(package_names)}"
 
         def raise_on_error_callback(response):
             return (
@@ -746,7 +746,7 @@ class SystemFunctionCommon:
         if SystemFunctionCommon.APT_PACKAGES_UPDATED:
             return
 
-        ret = SystemFunctionCommon.run_bash("sudo apt update")
+        ret = SystemFunctionCommon.run_bash("sudo DEBIAN_FRONTEND=noninteractive apt update")
         output = ret["stdout"]
         last_line = output.split("\n")[-1]
         if (
