@@ -70,20 +70,24 @@ class AzureAPI:
         objects = self.compute_client.get_all_disks()
         self.disks += objects
 
-    def init_nat_gateways(self):
+    def init_nat_gateways(self, resource_group=None):
         """
         Request from API and init objects.
 
         :return:
         """
+        if resource_group is not None:
+            objects = self.network_client.get_all_nat_gateways(resource_group)
+            self.nat_gateways = objects
+            return
 
         if len(self.resource_groups) == 0:
             raise RuntimeError(
                 "resource_groups must be inited before running init_nat_gateways"
             )
 
-        for resource_group in self.resource_groups:
-            objects = self.network_client.get_all_nat_gateways(resource_group)
+        for _resource_group in self.resource_groups:
+            objects = self.network_client.get_all_nat_gateways(_resource_group)
             self.nat_gateways += objects
 
     def init_load_balancers(self):
@@ -102,102 +106,124 @@ class AzureAPI:
             objects = self.network_client.get_all_load_balancers(resource_group)
             self.load_balancers += objects
 
-    def init_network_interfaces(self):
+    def init_network_interfaces(self, resource_group=None):
         """
         Request from API and init objects.
 
         :return:
         """
+
+        if resource_group is not None:
+            self.network_interfaces = self.network_client.get_all_network_interfaces(resource_group)
+            return
 
         if len(self.resource_groups) == 0:
             raise RuntimeError(
                 "resource_groups must be inited before running init_network_interfaces"
             )
 
-        for resource_group in self.resource_groups:
-            objects = self.network_client.get_all_network_interfaces(resource_group)
+        for _resource_group in self.resource_groups:
+            objects = self.network_client.get_all_network_interfaces(_resource_group)
             self.network_interfaces += objects
 
-    def init_public_ip_addresses(self):
+    def init_public_ip_addresses(self, resource_group=None):
         """
         Request from API and init objects.
 
         :return:
         """
+        if resource_group is not None:
+            objects = self.network_client.get_all_public_ip_addresses(resource_group)
+            self.public_ip_addresses += objects
+            return
 
         if len(self.resource_groups) == 0:
             raise RuntimeError(
                 "resource_groups must be inited before running init_public_ip_addresses"
             )
 
-        for resource_group in self.resource_groups:
-            objects = self.network_client.get_all_public_ip_addresses(resource_group)
+        for _resource_group in self.resource_groups:
+            objects = self.network_client.get_all_public_ip_addresses(_resource_group)
             self.public_ip_addresses += objects
 
-    def init_network_security_groups(self):
+    def init_network_security_groups(self, resource_group=None):
         """
         Request from API and init objects.
 
         :return:
         """
+        if resource_group is not None:
+            self.network_security_groups = self.network_client.get_all_network_security_groups(
+                resource_group
+            )
+            return
 
         if len(self.resource_groups) == 0:
             raise RuntimeError(
                 "resource_groups must be inited before running init_network_security_groups"
             )
 
-        for resource_group in self.resource_groups:
+        for _resource_group in self.resource_groups:
             objects = self.network_client.get_all_network_security_groups(
-                resource_group
+                _resource_group
             )
             self.network_security_groups += objects
 
-    def init_virtual_machines(self):
+    def init_virtual_machines(self, resource_group=None):
         """
         Request from API and init objects.
 
         :return:
         """
+        if resource_group is not None:
+            self.virtual_machines = self.compute_client.get_all_virtual_machines(resource_group.name)
+            return
 
         if len(self.resource_groups) == 0:
             raise RuntimeError(
                 "resource_groups must be inited before running init_virtual_machines"
             )
 
-        for resource_group in self.resource_groups:
-            objects = self.compute_client.get_all_virtual_machines(resource_group.name)
+        for _resource_group in self.resource_groups:
+            objects = self.compute_client.get_all_virtual_machines(_resource_group.name)
             self.virtual_machines += objects
 
-    def init_virtual_networks(self):
+    def init_virtual_networks(self, resource_group=None):
         """
         Request from API and init objects.
 
         :return:
         """
+        if resource_group is not None:
+            self.virtual_networks = self.network_client.get_all_virtual_networks(resource_group)
+            return
 
         if len(self.resource_groups) == 0:
             raise RuntimeError(
                 "resource_groups must be inited before running init_virtual_networks"
             )
 
-        for resource_group in self.resource_groups:
-            objects = self.network_client.get_all_virtual_networks(resource_group)
+        for _resource_group in self.resource_groups:
+            objects = self.network_client.get_all_virtual_networks(_resource_group)
             self.virtual_networks += objects
 
-    def init_ssh_keys(self):
+    def init_ssh_keys(self, resource_group=None):
         """
         Request from API and init objects.
 
         :return:
         """
+        if resource_group is not None:
+            self.ssh_keys = self.compute_client.get_all_ssh_keys(resource_group)
+            return
 
         if len(self.resource_groups) == 0:
             raise RuntimeError(
                 "resource_groups must be inited before running init_ssh_keys"
             )
 
-        for resource_group in self.resource_groups:
-            objects = self.compute_client.get_all_ssh_keys(resource_group)
+        for _resource_group in self.resource_groups:
+            objects = self.compute_client.get_all_ssh_keys(_resource_group)
             self.ssh_keys += objects
 
     def init_resource_groups(self):
