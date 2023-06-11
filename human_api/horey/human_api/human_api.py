@@ -451,7 +451,7 @@ class DailyReportAction:
         if self.parent_id != "-1" and not self.parent_id.isdigit():
             raise ValueError(f"Work item id must be either digit or '-1', received: '{parent_token}'")
 
-        if self.parent_type not in ["user_story", "bug"]:
+        if self.parent_type not in ["user_story", "bug", "task"]:
             raise ValueError(f"Unknown Parent WIT type '{self.parent_type}' in '{parent_token}'")
 
 

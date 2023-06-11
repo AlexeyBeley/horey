@@ -43,45 +43,69 @@ class IamClient(Boto3Client):
             user = IamUser(response)
             final_result.append(user)
             if full_information:
-                policies = list(
-                    self.execute(
-                        self.client.list_user_policies,
-                        "PolicyNames",
-                        filters_req={"UserName": user.name},
-                    )
-                )
-
-                user.policies = [
-                    list(
-                        self.execute(
-                            self.client.get_user_policy,
-                            "PolicyDocument",
-                            filters_req={
-                                "UserName": user.name,
-                                "PolicyName": policy_name,
-                            },
-                        )
-                    )[0]
-                    for policy_name in policies
-                ]
-
-                user.attached_policies = list(
-                    self.execute(
-                        self.client.list_attached_user_policies,
-                        "AttachedPolicies",
-                        filters_req={"UserName": user.name},
-                    )
-                )
-
-                user.groups = list(
-                    self.execute(
-                        self.client.list_groups_for_user,
-                        "Groups",
-                        filters_req={"UserName": user.name},
-                    )
-                )
+                self.update_user_information(user, full_information=True)
 
         return final_result
+
+    def update_user_information(self, user: IamUser, full_information=True):
+        """
+        Get current information from AWS.
+
+        :param user:
+        :param full_information:
+        :return:
+        """
+
+        for response in self.execute(
+                self.client.get_user,
+                "User",
+                filters_req={"UserName": user.name}, exception_ignore_callback=lambda x: "NoSuchEntity" in repr(x)
+            ):
+            user.update_from_raw_response(response)
+            break
+        else:
+            return False
+
+        if full_information:
+            policies = list(
+                self.execute(
+                    self.client.list_user_policies,
+                    "PolicyNames",
+                    filters_req={"UserName": user.name},
+                )
+            )
+
+            user.policies = [
+                list(
+                    self.execute(
+                        self.client.get_user_policy,
+                        "PolicyDocument",
+                        filters_req={
+                            "UserName": user.name,
+                            "PolicyName": policy_name,
+                        },
+                    )
+                )[0]
+                for policy_name in policies
+            ]
+
+            user.attached_policies = list(
+                self.execute(
+                    self.client.list_attached_user_policies,
+                    "AttachedPolicies",
+                    filters_req={"UserName": user.name},
+                )
+            )
+
+            user.groups = list(
+                self.execute(
+                    self.client.list_groups_for_user,
+                    "Groups",
+                    filters_req={"UserName": user.name},
+                )
+            )
+
+        return True
 
     def get_account_authorization_details(self):
         """
@@ -593,5 +617,50 @@ class IamClient(Boto3Client):
 
         for response in self.execute(
             self.client.create_policy, "Policy", filters_req=request_dict
+        ):
+            return response
+
+    def provision_user(self, user_desired: IamUser):
+        """
+        Provision user from object.
+
+        @param user_desired:
+        @return:
+        """
+        existing_user = IamUser({})
+        existing_user.name = user_desired.name
+        self.update_user_information(existing_user, full_information=True)
+        if existing_user.id is not None:
+            logger.info(f"Updating user: {user_desired.name}")
+
+        self.provision_user_raw(user_desired.generate_create_request())
+        self.update_user_information(user_desired)
+
+    def provision_user_raw(self, request_dict):
+        """
+        Provision user from raw dict.
+
+        @param request_dict:
+        @return:
+        """
+        logger.warning(f"Creating iam user: {request_dict}")
+
+        for response in self.execute(
+            self.client.create_user, "User", filters_req=request_dict
+        ):
+            return response
+
+    def dispose_user(self, user):
+        """
+        Delete user.
+
+        :param user:
+        :return:
+        """
+
+        logger.warning(f"Disposing iam user: {user.name}")
+
+        for response in self.execute(
+                self.client.delete_user, None, raw_data=True, filters_req={"UserName": user.name}
         ):
             return response

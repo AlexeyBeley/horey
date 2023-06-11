@@ -1,5 +1,9 @@
 """
 AWS lambda client to handle lambda service API requests.
+
+Runtime example:
+https://docs.aws.amazon.com/lambda/latest/dg/runtimes-walkthrough.html
+
 """
 
 from horey.aws_api.aws_clients.boto3_client import Boto3Client

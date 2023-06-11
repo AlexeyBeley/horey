@@ -7,6 +7,7 @@ from horey.aws_api.aws_clients.iam_client import IamClient
 from horey.aws_api.aws_services_entities.iam_role import IamRole
 from horey.aws_api.aws_services_entities.iam_policy import IamPolicy
 from horey.aws_api.aws_services_entities.iam_instance_profile import IamInstanceProfile
+from horey.aws_api.aws_services_entities.iam_user import IamUser
 
 
 def test_init_iam_client():
@@ -143,8 +144,24 @@ def test_provision_change_policy():
     client = IamClient()
     client.provision_policy(policy)
 
+
+def test_provision_user():
+    user = IamUser({"UserName": "test-user"})
+    user.tags = [{"Key": "Name", "Value": user.name}]
+    client = IamClient()
+    client.provision_user(user)
+
+
+def test_dispose_user():
+    user = IamUser({"UserName": "test-user"})
+    client = IamClient()
+    client.dispose_user(user)
+
+
 if __name__ == "__main__":
     # test_provision_role()
-    #test_provision_instance_profile()
-    test_provision_policy()
-    #test_provision_change_policy()
+    # test_provision_instance_profile()
+    # test_provision_policy()
+    # test_provision_change_policy()
+    test_provision_user()
+    test_dispose_user()

@@ -18,9 +18,12 @@ class IamUser(AwsObject):
         self.attached_policies = None
         self.policies = None
         self.groups = None
+        self.permissions_boundary = None
+        self.tags = None
+        self.path = None
 
         if from_cache:
-            self._init_user_from_cashe(dict_src)
+            self._init_user_from_cache(dict_src)
             return
 
         init_options = {
@@ -36,7 +39,7 @@ class IamUser(AwsObject):
 
         self.init_attrs(dict_src, init_options)
 
-    def _init_user_from_cashe(self, dict_src):
+    def _init_user_from_cache(self, dict_src):
         """
         Init the object from saved cache dict
         :param dict_src:
@@ -45,3 +48,41 @@ class IamUser(AwsObject):
         options = {}
 
         self._init_from_cache(dict_src, options)
+
+    def update_from_raw_response(self, dict_src):
+        """
+        Update from server response.
+
+        :param dict_src:
+        :return:
+        """
+
+        init_options = {
+            "UserId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "Path": self.init_default_attr,
+            "UserName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
+            "Arn": self.init_default_attr,
+            "CreateDate": self.init_default_attr,
+            "PasswordLastUsed": self.init_default_attr,
+        }
+
+        self.init_attrs(dict_src, init_options)
+
+    def generate_create_request(self):
+        """
+        Generate create request.
+
+        :return:
+        """
+
+        request = {"UserName": self.name,
+                   "Tags": self.tags}
+
+        if self.path is not None:
+            request["Path"] = self.path
+
+        if self.permissions_boundary is not None:
+            request["PermissionsBoundary"] = self.permissions_boundary
+        return request
