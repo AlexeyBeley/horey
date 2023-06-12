@@ -106,7 +106,7 @@ class AwsObject:
         :param _:
         :return:
         """
-        raise Exception("System parameter, can't set")
+        raise ValueError("System parameter, can't set")
 
     @property
     def name(self):
@@ -181,20 +181,21 @@ class AwsObject:
         @param raise_on_no_option: If key not set explicitly raise exception.
         :return:
         """
-        composed_errors = []
         for key_src, value in dict_src.items():
             try:
                 dict_options[key_src](key_src, value)
             except KeyError as caught_exception:
+                if not raise_on_no_option:
+                    line_to_add = f'"{key_src}":  self.init_default_attr,'
+                    logger.warning(f"{self.__class__.__name__}: {line_to_add}")
+                    self.init_default_attr(key_src, value)
+                    continue
+
+                composed_errors = []
                 for key_src_ in dict_src:
                     if key_src_ not in dict_options:
                         line_to_add = f'"{key_src_}":  self.init_default_attr,'
                         composed_errors.append(line_to_add)
-                        logger.warning(f"{self.__class__.__name__}: {line_to_add}")
-
-                if not raise_on_no_option:
-                    self.init_default_attr(key_src, value)
-                    continue
 
                 print("\n".join(composed_errors))
                 raise self.UnknownKeyError(
@@ -260,7 +261,7 @@ class AwsObject:
             ret = {}
             for key, value in obj_src.items():
                 if type(key) not in [int, str]:
-                    raise Exception
+                    raise ValueError(type(key))
                 ret[key] = AwsObject.convert_to_dict_static(
                     value, custom_types=custom_types
                 )

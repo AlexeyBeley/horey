@@ -51,6 +51,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
         self._aws_api_elasticache_cache_dir = None
         self._aws_api_sqs_cache_dir = None
         self._aws_api_glue_cache_dir = None
+        self._aws_api_stepfunctions_cache_dir = None
         self._aws_api_sesv2_cache_dir = None
         self._aws_api_sns_cache_dir = None
 
@@ -240,10 +241,6 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     def aws_api_spot_fleet_requests_cache_file(self):
         return os.path.join(self.aws_api_ec2_cache_dir, "spot_fleet_requests.json")
 
-    @aws_api_spot_fleet_requests_cache_file.setter
-    def aws_api_spot_fleet_requests_cache_file(self, value):
-        raise ValueError(value)
-
     @property
     def aws_api_ec2_security_groups_cache_file(self):
         return os.path.join(self.aws_api_ec2_cache_dir, "network_security_groups.json")
@@ -393,6 +390,22 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @aws_api_glue_tables_cache_file.setter
     def aws_api_glue_tables_cache_file(self, value):
         raise ValueError(value)
+
+    # endregion
+
+    # region stepfunctions
+    @property
+    def aws_api_stepfunctions_cache_dir(self):
+        if self._aws_api_stepfunctions_cache_dir is None:
+            self._aws_api_stepfunctions_cache_dir = os.path.join(
+                self.aws_api_cache_dir, self.aws_api_account, "stepfunctions"
+            )
+            os.makedirs(self._aws_api_stepfunctions_cache_dir, exist_ok=True)
+        return self._aws_api_stepfunctions_cache_dir
+
+    @property
+    def aws_api_stepfunctions_state_machines_cache_file(self):
+        return os.path.join(self.aws_api_stepfunctions_cache_dir, "stepfunctions_state_machines.json")
 
     # endregion
 

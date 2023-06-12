@@ -1,14 +1,14 @@
 """
-TemplateEntity representation
+StepfunctionsStateMachine representation
 """
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 from horey.aws_api.base_entities.region import Region
 
 
-class TemplateEntity(AwsObject):
+class StepfunctionsStateMachine(AwsObject):
     """
-    AWS TemplateEntity class
+    AWS StepfunctionsStateMachine class
     """
 
     def __init__(self, dict_src, from_cache=False):
@@ -20,10 +20,10 @@ class TemplateEntity(AwsObject):
             return
 
         init_options = {
-            "Arn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
-            "Name": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-            "Id": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
-            "status": self.init_default_attr,
+            "stateMachineArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "name": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "type": self.init_default_attr,
+            "creationDate": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -46,14 +46,17 @@ class TemplateEntity(AwsObject):
         :param dict_src:
         :return:
         """
-
         init_options = {
-            "Arn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
-            "Name": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-            "Id": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "stateMachineArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "name": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "type": self.init_default_attr,
+            "definition": self.init_default_attr,
+            "roleArn": self.init_default_attr,
             "status": self.init_default_attr,
+            "creationDate": self.init_default_attr,
+            "loggingConfiguration": self.init_default_attr,
+            "tracingConfiguration": self.init_default_attr,
         }
-
         self.init_attrs(dict_src, init_options)
 
     def generate_create_request(self):

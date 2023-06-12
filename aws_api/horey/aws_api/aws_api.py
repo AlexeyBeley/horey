@@ -89,6 +89,7 @@ from horey.aws_api.aws_clients.cloud_watch_client import CloudWatchClient
 
 from horey.aws_api.aws_clients.dynamodb_client import DynamoDBClient
 
+from horey.aws_api.aws_clients.stepfunctions_client import StepfunctionsClient
 from horey.aws_api.aws_clients.cloudfront_client import CloudfrontClient
 from horey.aws_api.aws_services_entities.cloudfront_distribution import (
     CloudfrontDistribution,
@@ -203,6 +204,7 @@ class AWSAPI:
         self.autoscaling_client = AutoScalingClient()
         self.application_autoscaling_client = ApplicationAutoScalingClient()
         self.cloudfront_client = CloudfrontClient()
+        self.stepfunctions_client = StepfunctionsClient()
         self.events_client = EventsClient()
         self.secretsmanager_client = SecretsManagerClient()
         self.servicediscovery_client = ServicediscoveryClient()

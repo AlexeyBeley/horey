@@ -68,7 +68,7 @@ class ElasticsearchAPI(object):
                     f"Deleting index '{es_index_name}' created at {created_date}"
                 )
                 to_del_indices.append(es_index_name)
-        pdb.set_trace()
+        breakpoint()
         self.client.indices.delete(to_del_indices)
         logger.info(f"Deleted {len(to_del_indices)} out of {len(self.indices)}")
 

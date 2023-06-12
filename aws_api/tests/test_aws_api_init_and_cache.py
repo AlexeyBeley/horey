@@ -700,6 +700,15 @@ def test_init_and_cache_ec2_volumes():
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_stepfunctions_state_machines():
+    ret = aws_api.stepfunctions_client.get_all_state_machines()
+    aws_api.cache_objects(
+        ret, configuration.aws_api_stepfunctions_state_machines_cache_file
+    )
+    assert isinstance(ret, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_auto_scaling_groups():
     aws_api.init_auto_scaling_groups()
     aws_api.cache_objects(
@@ -931,4 +940,5 @@ if __name__ == "__main__":
     #test_init_and_cache_application_auto_scaling_scalable_targets()
     #test_init_and_cache_spot_fleet_requests()
     # test_init_and_cache_ec2_instances()
-    test_init_and_cache_ec2_volumes()
+    # test_init_and_cache_ec2_volumes()
+    test_init_and_cache_stepfunctions_state_machines()
