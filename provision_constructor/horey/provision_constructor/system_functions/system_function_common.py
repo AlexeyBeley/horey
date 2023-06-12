@@ -573,13 +573,14 @@ class SystemFunctionCommon:
         )
 
     # endregion
-    def apt_install(self, package_name, package_names=None):
+    def apt_install(self, package_name, package_names=None, needrestart_mode="a"):
         """
         Run apt install or upgrade.
 
         @param package_name:
         @param package_names:
         @return:
+        :param needrestart_mode:
         """
 
         if package_name is not None:
@@ -591,9 +592,9 @@ class SystemFunctionCommon:
         logger.info(f"Installing apt packages: {package_names}")
 
         if self.upgrade:
-            command = f"sudo NEEDRESTART_MODE=a apt --upgrade install -y {' '.join(package_names)}"
+            command = f"sudo NEEDRESTART_MODE={needrestart_mode} apt --upgrade install -y {' '.join(package_names)}"
         else:
-            command = f"sudo NEEDRESTART_MODE=a apt install -y {' '.join(package_names)}"
+            command = f"sudo NEEDRESTART_MODE={needrestart_mode} apt install -y {' '.join(package_names)}"
 
         def raise_on_error_callback(response):
             return (

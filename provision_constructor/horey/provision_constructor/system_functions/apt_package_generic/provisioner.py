@@ -22,7 +22,7 @@ class Provisioner(SystemFunctionCommon):
     """
 
     # pylint: disable= too-many-arguments
-    def __init__(self, deployment_dir, force, upgrade, package_name=None, package_names=None):
+    def __init__(self, deployment_dir, force, upgrade, package_name=None, package_names=None, needrestart_mode="a"):
         super().__init__(os.path.dirname(os.path.abspath(__file__)), force, upgrade)
         self.deployment_dir = deployment_dir
 
@@ -32,6 +32,7 @@ class Provisioner(SystemFunctionCommon):
             self.package_names = package_names
         else:
             raise ValueError("package_name/package_names not set")
+        self.needrestart_mode = needrestart_mode
 
     def test_provisioned(self):
         """
@@ -57,7 +58,7 @@ class Provisioner(SystemFunctionCommon):
         if self.package_names == ["all"]:
             return self._provision_upgrade_full()
 
-        return self.apt_install(None, package_names=self.package_names)
+        return self.apt_install(None, package_names=self.package_names, needrestart_mode=self.needrestart_mode)
 
     def _provision_upgrade_full(self):
         """
@@ -66,4 +67,4 @@ class Provisioner(SystemFunctionCommon):
         :return:
         """
 
-        return self.run_apt_bash_command("sudo NEEDRESTART_MODE=a apt full-upgrade -y")
+        return self.run_apt_bash_command(f"sudo NEEDRESTART_MODE={self.needrestart_mode} apt full-upgrade -y")
