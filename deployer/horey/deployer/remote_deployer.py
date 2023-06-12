@@ -984,10 +984,11 @@ class RemoteDeployer:
             f"Finished deployment for target {target.deployment_target_address} step: {step.configuration.name}"
         )
 
-    def deploy_targets_steps(self, targets, step_callback, asynchronous=True):
+    def deploy_targets_steps(self, targets, step_callback, asynchronous=True, async_wait_interval=10):
         """
         Deploy multiple targets' steps returned by a callback.
 
+        :param async_wait_interval: Wait interval between the deployments. In seconds.
         :param targets:
         :param step_callback:
         :param asynchronous:
@@ -999,7 +1000,7 @@ class RemoteDeployer:
             step = step_callback(target)
             steps.append(step)
             self.deploy_target_step(target, step, asynchronous=asynchronous)
-            time.sleep(10)
+            time.sleep(async_wait_interval)
         self.wait_to_finish(
             targets,
             lambda _target: step_callback(_target).status_code is not None,
