@@ -1,6 +1,7 @@
 """
 AWS s3 client to handle s3 service API requests.
 """
+# pylint: disable= too-many-lines
 import copy
 import datetime
 import os
@@ -18,11 +19,14 @@ from horey.aws_api.base_entities.aws_account import AWSAccount
 logger = get_logger()
 
 
+# pylint: disable= too-many-instance-attributes
 class UploadTask:
     """
     File part or single file uploading task.
     Characters that might require special handling
-    The following characters in a key name might require additional code handling and likely need to be URL encoded or referenced as HEX. Some of these are non-printable characters that your browser might not handle, which also requires special handling:
+    The following characters in a key name might require additional code handling
+    and likely need to be URL encoded or referenced as HEX. Some of these are non-printable
+    characters that your browser might not handle, which also requires special handling:
     Ampersand ("&")
     Dollar ("$")
     ASCII character ranges 00–1F hex (0–31 decimal) and 7F (127 decimal)
@@ -53,8 +57,9 @@ class UploadTask:
     Vertical bar / pipe ("|")
     """
 
+    # pylint: disable= too-many-arguments
     def __init__(
-        self, task_id, task_type, file_path, bucket_name, key_name, extra_args=None
+            self, task_id, task_type, file_path, bucket_name, key_name, extra_args=None
     ):
         self.id = task_id
         self.task_type = task_type
@@ -70,6 +75,7 @@ class UploadTask:
         self.extra_args = extra_args
         self.attempts = []
         self.error = None
+        self.part_number = None
 
     class Type(Enum):
         """
@@ -93,10 +99,19 @@ class TasksQueue:
 
     @property
     def max_queue_size(self):
+        """
+        Max items.
+        :return:
+        """
         return self._max_queue_size
 
     @max_queue_size.setter
     def max_queue_size(self, value):
+        """
+        Max items.
+        :param value:
+        :return:
+        """
         self._max_queue_size = value
 
     def put(self, task):
@@ -175,6 +190,8 @@ class TasksQueue:
             if not task.started:
                 return task
 
+        return None
+
     class FullQueueError(RuntimeError):
         """
         The queue is full exception.
@@ -209,27 +226,60 @@ class S3Client(Boto3Client):
 
     @property
     def md5_validate(self):
+        """
+        Validate or not the files
+
+        :return:
+        """
         return self._md5_validate
 
     @md5_validate.setter
     def md5_validate(self, value):
+        """
+        Validate or not the files
+
+        :param value:
+        :return:
+        """
         self._md5_validate = value
 
     @property
     def multipart_chunk_size(self):
+        """
+        Break multipart up to this size
+
+        :return:
+        """
         return self._multipart_chunk_size
 
     @multipart_chunk_size.setter
     def multipart_chunk_size(self, value):
+        """
+        Break multipart up to this size
+
+        :param value:
+        :return:
+        """
         self.validate_int(value, min_value=5 * 1024 * 1024)
         self._multipart_chunk_size = value
 
     @property
     def max_queue_size(self):
+        """
+        How many items can be in queue
+
+        :return:
+        """
         return self._max_queue_size
 
     @max_queue_size.setter
     def max_queue_size(self, value):
+        """
+        How many items can be in queue
+
+        :param value:
+        :return:
+        """
         self.validate_int(value)
         self._max_queue_size = value
 
@@ -240,6 +290,10 @@ class S3Client(Boto3Client):
 
     @property
     def tasks_queue(self):
+        """
+        Single tasks' queue
+        :return:
+        """
         if S3Client.TASKS_QUEUE is None:
             S3Client.TASKS_QUEUE = TasksQueue(self.max_queue_size)
 
@@ -247,6 +301,11 @@ class S3Client(Boto3Client):
 
     @property
     def thread_pool_executor(self):
+        """
+        Must be single executor.
+
+        :return:
+        """
         if S3Client.THREAD_POOL_EXECUTOR is None:
             S3Client.THREAD_POOL_EXECUTOR = ThreadPoolExecutor(
                 max_workers=self.max_concurrent_requests
@@ -255,19 +314,40 @@ class S3Client(Boto3Client):
 
     @property
     def multipart_threshold(self):
+        """
+        Break the file larger than this threshold.
+
+        :return:
+        """
         return self._multipart_threshold
 
     @multipart_threshold.setter
     def multipart_threshold(self, value):
+        """
+        Break the file larger than this threshold.
+
+        :return:
+        """
         self.validate_int(value)
         self._multipart_threshold = value
 
     @property
     def max_concurrent_requests(self):
+        """
+        Number of threads.
+
+        :return:
+        """
         return self._max_concurrent_requests
 
     @max_concurrent_requests.setter
     def max_concurrent_requests(self, value):
+        """
+        Number of threads.
+
+        :param value:
+        :return:
+        """
         self.validate_int(value)
         self._max_concurrent_requests = value
 
@@ -278,6 +358,14 @@ class S3Client(Boto3Client):
 
     @staticmethod
     def validate_int(value, min_value=1, max_value=None):
+        """
+        Check the value is valid int.
+
+        :param value:
+        :param min_value:
+        :param max_value:
+        :return:
+        """
         if not isinstance(value, int):
             raise ValueError(f"{value} is not int")
 
@@ -312,7 +400,7 @@ class S3Client(Boto3Client):
                     filters_req.update(custom_filters)
 
                 for object_info in self.execute(
-                    self.client.list_objects_v2, "Contents", filters_req=filters_req
+                        self.client.list_objects_v2, "Contents", filters_req=filters_req
                 ):
                     counter += 1
                     bucket_object = S3Bucket.BucketObject(object_info)
@@ -338,10 +426,10 @@ class S3Client(Boto3Client):
         """
 
         for response in self.execute(
-            self.client.get_object,
-            None,
-            raw_data=True,
-            filters_req={"Bucket": bucket.name, "Key": bucket_object.key},
+                self.client.get_object,
+                None,
+                raw_data=True,
+                filters_req={"Bucket": bucket.name, "Key": bucket_object.key},
         ):
             return response["Body"].read()
 
@@ -400,14 +488,8 @@ class S3Client(Boto3Client):
             else:
                 raise
 
-        for dict_src_tmp in self.execute(
-                    self.client.get_bucket_website,
-                    "Grants",
-                    filters_req={"Bucket": bucket.name},
-                    raw_data=True,
-                    exception_ignore_callback=lambda error_inst: "NoSuchWebsiteConfiguration" in repr(error_inst)
-                ):
-            bucket.update_website(dict_src_tmp)
+        dict_src_tmp = self.get_bucket_website_raw({"Bucket": bucket.name})
+        bucket.update_website(dict_src_tmp)
 
         for update_info in self.execute(
                 self.client.get_bucket_policy,
@@ -417,6 +499,23 @@ class S3Client(Boto3Client):
                                                              "AccessDenied" in repr(error_inst)):
             bucket.update_policy(update_info)
         return True
+
+    def get_bucket_website_raw(self, filters_req):
+        """
+        Get website information
+
+        :param filters_req:
+        :return:
+        """
+        for response in self.execute(
+                self.client.get_bucket_website,
+                None,
+                filters_req=filters_req,
+                raw_data=True,
+                exception_ignore_callback=lambda error_inst: "NoSuchWebsiteConfiguration" in repr(error_inst)
+        ):
+            del response["ResponseMetadata"]
+            return response
 
     def get_all_buckets(self, full_information=True):
         """
@@ -442,14 +541,15 @@ class S3Client(Boto3Client):
 
         return final_result
 
+    # pylint: disable= too-many-arguments
     def upload(
-        self,
-        bucket_name,
-        src_object_path,
-        dst_root_key,
-        keep_src_object_name=True,
-        extra_args=None,
-        metadata_callback=None,
+            self,
+            bucket_name,
+            src_object_path,
+            dst_root_key,
+            keep_src_object_name=True,
+            extra_args=None,
+            metadata_callback=None,
     ):
         """
         Upload file or directory tree to s3 bucket.
@@ -492,9 +592,9 @@ class S3Client(Boto3Client):
                 raise RuntimeError("Tasks manager thread is dead")
 
             if (
-                self._tasks_manager_thread_keepalive
-                + self._tasks_manager_thread_progress_time_limit
-                < datetime.datetime.now()
+                    self._tasks_manager_thread_keepalive
+                    + self._tasks_manager_thread_progress_time_limit
+                    < datetime.datetime.now()
             ):
                 raise TimeoutError(
                     f"Tasks manager thread was not updated for {self._tasks_manager_thread_progress_time_limit}"
@@ -511,14 +611,15 @@ class S3Client(Boto3Client):
             f"finished in {end_time - start_time}"
         )
 
+    # pylint: disable= too-many-arguments
     def start_uploading_object(
-        self,
-        bucket_name,
-        src_object_path,
-        dst_root_key,
-        keep_src_object_name=True,
-        extra_args=None,
-        metadata_callback=None,
+            self,
+            bucket_name,
+            src_object_path,
+            dst_root_key,
+            keep_src_object_name=True,
+            extra_args=None,
+            metadata_callback=None,
     ):
         """
         Start the flow of uploading local object - file or folder.
@@ -572,7 +673,7 @@ class S3Client(Boto3Client):
         @return:
         """
         progress_time_limit = (
-            datetime.datetime.now() + self._tasks_manager_thread_progress_time_limit
+                datetime.datetime.now() + self._tasks_manager_thread_progress_time_limit
         )
 
         for _ in range(60):
@@ -604,15 +705,15 @@ class S3Client(Boto3Client):
                 if datetime.datetime.now() > progress_time_limit:
                     self._tasks_manager_thread_keepalive = None
                     raise TimeoutError(
-                        f"tasks_manager_thread can not fetch ready task for"
+                        "tasks_manager_thread can not fetch ready task for"
                         f" {self._tasks_manager_thread_progress_time_limit}"
                     )
-                logger.info(f"Tasks manager thread waiting for tasks in tasks queue")
+                logger.info("Tasks manager thread waiting for tasks in tasks queue")
                 time.sleep(0.5)
                 continue
 
             progress_time_limit = (
-                datetime.datetime.now() + self._tasks_manager_thread_progress_time_limit
+                    datetime.datetime.now() + self._tasks_manager_thread_progress_time_limit
             )
 
             if task.attempts and "Access Denied" in task.attempts[-1]:
@@ -729,7 +830,7 @@ class S3Client(Boto3Client):
 
         try:
             for response in self.execute(
-                self.client.put_object, None, filters_req=filters_req, raw_data=True
+                    self.client.put_object, None, filters_req=filters_req, raw_data=True
             ):
                 task.raw_response = response
             task.succeed = True
@@ -806,7 +907,7 @@ class S3Client(Boto3Client):
         start_time = datetime.datetime.now()
         try:
             for response in self.execute(
-                self.client.upload_part, None, raw_data=True, filters_req=filters_req
+                    self.client.upload_part, None, raw_data=True, filters_req=filters_req
             ):
                 task.raw_response = response
             task.succeed = True
@@ -822,7 +923,7 @@ class S3Client(Boto3Client):
         )
 
     def start_uploading_file_task(
-        self, bucket_name, file_path, key_name, extra_args=None, metadata_callback=None
+            self, bucket_name, file_path, key_name, extra_args=None, metadata_callback=None
     ):
         """
         Uploads a file to S3 bucket.
@@ -862,8 +963,9 @@ class S3Client(Boto3Client):
         task.start_time = datetime.datetime.now()
         return self.insert_task_into_tasks_queue(task)
 
+    # pylint: disable= too-many-locals
     def start_multipart_uploading_file_task(
-        self, bucket_name, file_path, key_name, extra_args=None, metadata_callback=None
+            self, bucket_name, file_path, key_name, extra_args=None, metadata_callback=None
     ):
         """
         S3 limitation:
@@ -903,8 +1005,8 @@ class S3Client(Boto3Client):
             )
 
         upload_id = multipart_upload_ids[0]
-        fh = open(file_path, "ab")
-        last_position = fh.tell()
+        with open(file_path, "ab") as fh:
+            last_position = fh.tell()
         full_chunks = last_position // self.multipart_chunk_size
         part_chunk = last_position % self.multipart_chunk_size
 
@@ -937,6 +1039,15 @@ class S3Client(Boto3Client):
 
     @staticmethod
     def add_callback_metadata(file_path, extra_args, metadata_callback):
+        """
+        Compose file extra args based on file path, callback function and explicit extra_args.
+
+        :param file_path:
+        :param extra_args:
+        :param metadata_callback:
+        :return:
+        """
+
         if metadata_callback is None:
             return extra_args
 
@@ -964,15 +1075,16 @@ class S3Client(Boto3Client):
                 counter -= 1
                 time.sleep(0.5)
 
-        raise TimeoutError(f"Timeout reached waiting to put a task into tasks queue")
+        raise TimeoutError("Timeout reached waiting to put a task into tasks queue")
 
+    # pylint: disable= too-many-arguments
     def upload_directory(
-        self,
-        bucket_name,
-        src_data_path,
-        dst_root_key,
-        extra_args=None,
-        metadata_callback=None,
+            self,
+            bucket_name,
+            src_data_path,
+            dst_root_key,
+            extra_args=None,
+            metadata_callback=None,
     ):
         """
         Recursively uploads directory contents.
@@ -1034,7 +1146,7 @@ class S3Client(Boto3Client):
         """
         logger.info(f"Creating S3 bucket '{request_dict}'")
         for response in self.execute(
-            self.client.create_bucket, "Location", filters_req=request_dict
+                self.client.create_bucket, "Location", filters_req=request_dict
         ):
             return response
 
@@ -1047,7 +1159,7 @@ class S3Client(Boto3Client):
         """
         logger.info(f"Putting Bucket policy {request_dict}")
         for response in self.execute(
-            self.client.put_bucket_policy, "ResponseMetadata", filters_req=request_dict
+                self.client.put_bucket_policy, "ResponseMetadata", filters_req=request_dict
         ):
             return response
 
@@ -1060,7 +1172,7 @@ class S3Client(Boto3Client):
         """
         logger.info(f"Putting Bucket acl {request_dict}")
         for response in self.execute(
-            self.client.put_bucket_acl, "ResponseMetadata", filters_req=request_dict
+                self.client.put_bucket_acl, "ResponseMetadata", filters_req=request_dict
         ):
             return response
 
@@ -1076,10 +1188,10 @@ class S3Client(Boto3Client):
             deletion_list = [{"Key": obj.key} for obj in keys_to_delete[:1000]]
             request_dict = {"Bucket": bucket.name, "Delete": {"Objects": deletion_list}}
             for response in self.execute(
-                self.client.delete_objects,
-                None,
-                raw_data=True,
-                filters_req=request_dict,
+                    self.client.delete_objects,
+                    None,
+                    raw_data=True,
+                    filters_req=request_dict,
             ):
                 logger.info(
                     f"Deleted {len(deletion_list)} keys from bucket '{bucket.name}'"
