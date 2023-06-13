@@ -82,14 +82,10 @@ class CloudfrontClient(Boto3Client):
 
         if existing_distribution.id is not None:
             request = existing_distribution.generate_update_request(desired_distribution)
-
             if request is not None:
-                update_dict = self.update_distribution_raw(request)
-            else:
-                update_dict = existing_distribution.dict_src
+                self.update_distribution_raw(request)
 
-            desired_distribution.update_from_raw_response(update_dict)
-
+            self.update_distribution_information(desired_distribution)
             return
 
         response = self.provision_distribution_raw(
