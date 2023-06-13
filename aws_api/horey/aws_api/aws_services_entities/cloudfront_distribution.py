@@ -81,7 +81,7 @@ class CloudfrontDistribution(AwsObject):
 
         request = {"DistributionConfigWithTags": {
             "DistributionConfig": self.distribution_config,
-            "Tags": self.tags,
+            "Tags": {"Items": self.tags},
         }}
 
         request["DistributionConfigWithTags"]["DistributionConfig"][
