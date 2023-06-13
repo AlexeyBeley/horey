@@ -489,7 +489,8 @@ class S3Client(Boto3Client):
                 raise
 
         dict_src_tmp = self.get_bucket_website_raw({"Bucket": bucket.name})
-        bucket.update_website(dict_src_tmp)
+        if dict_src_tmp is not None:
+            bucket.update_website(dict_src_tmp)
 
         for update_info in self.execute(
                 self.client.get_bucket_policy,
