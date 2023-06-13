@@ -101,7 +101,11 @@ class CloudfrontClient(Boto3Client):
         :param distribution:
         :return:
         """
-        distribution_aliases = distribution.distribution_config["Aliases"]["Items"]
+        try:
+            distribution_aliases = distribution.distribution_config["Aliases"]["Items"]
+        except KeyError:
+            distribution_aliases = []
+
         for existing_distribution in self.yield_all_distributions():
             if existing_distribution.comment == distribution.comment:
                 break
