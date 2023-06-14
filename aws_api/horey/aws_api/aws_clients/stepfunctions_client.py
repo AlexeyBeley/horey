@@ -84,7 +84,7 @@ class StepfunctionsClient(Boto3Client):
             del dict_src["ResponseMetadata"]
             obj.update_from_raw_response(dict_src)
 
-    def provision_state_machine(self, state_machine):
+    def provision_state_machine(self, state_machine: StepfunctionsStateMachine):
         """
         Provision from object.
 
@@ -97,14 +97,12 @@ class StepfunctionsClient(Boto3Client):
         )
         for region_state_machine in region_state_machines:
             if (
-                region_state_machine.get_tagname(ignore_missing_tag=True)
-                == state_machine.get_tagname()
+                region_state_machine.name == state_machine.name
             ):
                 state_machine.update_from_raw_response(
                     region_state_machine.dict_src
                 )
                 return
-
         AWSAccount.set_aws_region(state_machine.region)
         response = self.provision_state_machine_raw(
             state_machine.generate_create_request()
@@ -122,7 +120,9 @@ class StepfunctionsClient(Boto3Client):
         logger.info(f"Creating state_machine: {request_dict}")
         for response in self.execute(
             self.client.create_state_machine,
-            "state_machine",
+            None,
+            raw_data=True,
             filters_req=request_dict,
         ):
+            del response["ResponseMetadata"]
             return response

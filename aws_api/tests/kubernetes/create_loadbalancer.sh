@@ -12,7 +12,7 @@ cat >load-balancer-role-trust-policy.json <<EOF
         {
             "Effect": "Allow",
             "Principal": {
-                "Federated": "arn:aws:iam::211921183446:oidc-provider/oidc.eks.us-west-2.amazonaws.com/id/954DE8583F4848A01632BDC97CB93FB5"
+                "Federated": "arn:aws:iam::12345678910:oidc-provider/oidc.eks.us-west-2.amazonaws.com/id/954DE8583F4848A01632BDC97CB93FB5"
             },
             "Action": "sts:AssumeRoleWithWebIdentity",
             "Condition": {
@@ -27,7 +27,7 @@ cat >load-balancer-role-trust-policy.json <<EOF
 EOF
 
 aws iam attach-role-policy \
-  --policy-arn arn:aws:iam::211921183446:policy/AWSLoadBalancerControllerIAMPolicy \
+  --policy-arn arn:aws:iam::12345678910:policy/AWSLoadBalancerControllerIAMPolicy \
   --role-name AmazonEKSLoadBalancerControllerRole
   
 
@@ -41,7 +41,7 @@ metadata:
   name: aws-load-balancer-controller
   namespace: kube-system
   annotations:
-    eks.amazonaws.com/role-arn: arn:aws:iam::211921183446:role/AmazonEKSLoadBalancerControllerRole
+    eks.amazonaws.com/role-arn: arn:aws:iam::12345678910:role/AmazonEKSLoadBalancerControllerRole
 EOF
 
 

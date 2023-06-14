@@ -98,7 +98,7 @@ def test_provision_policy():
                     "logs:CreateLogStream",
                 ],
                 "Resource": [
-                    f"arn:aws:logs:*:211921183446:log-group:horey-test"
+                    f"arn:aws:logs:*:12345678910:log-group:horey-test"
                 ],
                 "Effect": "Allow"
             }
@@ -127,7 +127,7 @@ def test_provision_change_policy():
                     "logs:CreateLogGroup"
                 ],
                 "Resource": [
-                    f"arn:aws:logs:*:211921183446:log-group:horey-test"
+                    f"arn:aws:logs:*:12345678910:log-group:horey-test"
                 ],
                 "Effect": "Allow"
             }

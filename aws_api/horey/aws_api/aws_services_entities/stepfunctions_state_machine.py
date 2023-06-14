@@ -14,6 +14,9 @@ class StepfunctionsStateMachine(AwsObject):
     def __init__(self, dict_src, from_cache=False):
         self.arn = None
         super().__init__(dict_src)
+        self.role_arn = None
+        self.definition = None
+        self.logging_configuration = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -65,8 +68,15 @@ class StepfunctionsStateMachine(AwsObject):
 
         :return:
         """
+        # pylint: disable=not-an-iterable
+        request = {"name": self.name,
+                   "tags": [{"key": tag_dict["Key"], "value": tag_dict["Value"]} for tag_dict in self.tags],
+                   "roleArn": self.role_arn,
+                   "definition": self.definition}
 
-        request = {"Name": self.name, "tags": self.tags}
+        if self.logging_configuration is not None:
+            request["loggingConfiguration"] = self.logging_configuration
+
         return request
 
     @property
