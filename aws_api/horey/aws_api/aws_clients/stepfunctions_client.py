@@ -27,7 +27,6 @@ class StepfunctionsClient(Boto3Client):
         """
         client_name = "stepfunctions"
         super().__init__(client_name)
-        AWSAccount.set_aws_region("eu-west-2")
 
     def get_all_state_machines(self, region=None, full_information=True):
         """
