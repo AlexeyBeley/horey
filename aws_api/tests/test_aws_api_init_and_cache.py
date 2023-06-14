@@ -709,6 +709,30 @@ def test_init_and_cache_stepfunctions_state_machines():
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
+def test_init_eks_addons():
+    ret = aws_api.init_eks_addons()
+    assert isinstance(ret, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_eks_addons_from_cache():
+    ret = aws_api.init_eks_addons(from_cache=True)
+    assert isinstance(ret, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_eks_clusters():
+    ret = aws_api.init_eks_clusters()
+    assert isinstance(ret, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_eks_clusters_from_cache():
+    ret = aws_api.init_eks_clusters(from_cache=True)
+    assert isinstance(ret, list)
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_auto_scaling_groups():
     aws_api.init_auto_scaling_groups()
     aws_api.cache_objects(
@@ -941,4 +965,8 @@ if __name__ == "__main__":
     #test_init_and_cache_spot_fleet_requests()
     # test_init_and_cache_ec2_instances()
     # test_init_and_cache_ec2_volumes()
-    test_init_and_cache_stepfunctions_state_machines()
+    # test_init_and_cache_stepfunctions_state_machines()
+    test_init_eks_addons()
+    test_init_eks_addons_from_cache()
+    test_init_eks_clusters()
+    test_init_eks_clusters_from_cache()

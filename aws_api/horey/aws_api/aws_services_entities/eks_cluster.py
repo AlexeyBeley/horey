@@ -11,9 +11,11 @@ class EKSCluster(AwsObject):
     AWS EKSCluster class
     """
 
+    CLIENT_NAME = "eks"
+
     def __init__(self, dict_src, from_cache=False):
-        self.arn = None
         super().__init__(dict_src)
+        self.arn = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)

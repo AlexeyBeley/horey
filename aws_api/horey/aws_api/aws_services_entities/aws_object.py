@@ -1,6 +1,7 @@
 """
 A base class for working with aws objects - parsing, caching and initiation.
 """
+import os
 import re
 import datetime
 from enum import Enum
@@ -8,6 +9,7 @@ from enum import Enum
 from horey.aws_api.base_entities.region import Region
 from horey.h_logger import get_logger
 from horey.network.ip import IP
+from horey.common_utils.common_re_utils import CommonREUtils
 
 logger = get_logger()
 
@@ -26,6 +28,9 @@ class AwsObject:
         "([0-9]{4})-([0-9]{2})-([0-9]{2}) ([0-9]{2}):([0-9]{2}):([0-9]{2})\.([0-9]{6})\+([0-9]{4})"
     )
     SELF_CACHED_TYPE_KEY_NAME = "horey_cached_type"
+
+    CLIENT_NAME = "default"
+    common_re_utils = CommonREUtils()
 
     def __init__(self, dict_src, from_cache=False):
         if from_cache:
@@ -141,6 +146,16 @@ class AwsObject:
         :return:
         """
         self._id = value
+
+    @classmethod
+    def get_cache_file_sub_path(cls):
+        """
+        Generate cache file sub path
+
+        :return:
+        """
+
+        return os.path.join(cls.CLIENT_NAME, f"{AwsObject.common_re_utils.pascal_case_case_to_snake_case(cls.__name__)}.json")
 
     def init_default_attr(self, attr_name, value, formatted_name=None):
         """

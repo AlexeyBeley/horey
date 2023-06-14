@@ -166,6 +166,11 @@ from horey.aws_api.aws_clients.sns_client import SNSClient
 from horey.aws_api.aws_services_entities.sns_subscription import SNSSubscription
 from horey.aws_api.aws_services_entities.sns_topic import SNSTopic
 
+from horey.aws_api.aws_clients.eks_client import EKSClient
+from horey.aws_api.aws_services_entities.eks_addon import EKSAddon
+from horey.aws_api.aws_services_entities.eks_cluster import EKSCluster
+
+
 from horey.common_utils.common_utils import CommonUtils
 
 from horey.h_logger import get_logger
@@ -212,6 +217,7 @@ class AWSAPI:
         self.ecr_client = ECRClient()
         self.acm_client = ACMClient()
         self.kms_client = KMSClient()
+        self.eks_client = EKSClient()
         self.elasticache_client = ElasticacheClient()
         self.sqs_client = SQSClient()
 
@@ -289,6 +295,8 @@ class AWSAPI:
         self.glue_tables = []
         self.sns_topics = []
         self.sns_subscriptions = []
+        self.eks_addons = []
+        self.eks_clusters = []
 
         self.configuration = configuration
         self.aws_accounts = None
@@ -607,6 +615,42 @@ class AWSAPI:
             objects = self.sns_client.get_all_subscriptions(region=region)
 
         self.sns_subscriptions = objects
+
+    def init_eks_clusters(self, from_cache=False, region=None):
+        """
+        Self explanatory.
+
+        @param from_cache:
+        @param region:
+        @return:
+        """
+
+        if from_cache:
+            objects = self.load_from_cache(EKSCluster)
+        else:
+            objects = self.eks_client.get_all_clusters(region=region)
+            self.write_to_cache(objects)
+
+        self.eks_clusters = objects
+        return objects
+
+    def init_eks_addons(self, from_cache=False, region=None):
+        """
+        Self explanatory.
+
+        @param from_cache:
+        @param region:
+        @return:
+        """
+
+        if from_cache:
+            objects = self.load_from_cache(EKSAddon)
+        else:
+            objects = self.eks_client.get_all_addons(region=region)
+            self.write_to_cache(objects)
+
+        self.eks_addons = objects
+        return objects
 
     def init_ecr_images(
         self, from_cache=False, cache_file=None, region=None, ecr_repositories=None
@@ -1842,6 +1886,46 @@ class AWSAPI:
             return [
                 class_type(dict_src, from_cache=True) for dict_src in json.load(fil)
             ]
+
+    def generate_cache_file_path(self, class_type):
+        """
+        Generate cache file path for this class
+
+        :param class_type:
+        :return:
+        """
+
+        return os.path.join(self.configuration.aws_api_cache_dir,
+                            self.configuration.aws_api_account,
+                            class_type.get_cache_file_sub_path())
+
+    def load_from_cache(self, class_type):
+        """
+        Generate the file path automatically.
+
+        :param class_type:
+        :return:
+        """
+        with open(self.generate_cache_file_path(class_type), encoding="utf-8") as fil:
+            return [
+                class_type(dict_src, from_cache=True) for dict_src in json.load(fil)
+            ]
+
+    def write_to_cache(self, objects, indent=None):
+        """
+        Prepare a cache file from objects.
+
+        @param objects:
+        @return:
+        """
+        file_path = self.generate_cache_file_path(objects[0])
+        objects_dicts = [obj.convert_to_dict() for obj in objects]
+
+        if not os.path.exists(os.path.dirname(file_path)):
+            os.makedirs(os.path.dirname(file_path))
+
+        with open(file_path, "w", encoding="utf-8") as fil:
+            json.dump(objects_dicts, fil, indent=indent)
 
     def cache_objects(self, objects, file_name, indent=None):
         """
