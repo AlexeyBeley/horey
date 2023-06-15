@@ -465,7 +465,7 @@ class RemoteDeployer:
 
         with self.get_deployment_target_client_context(deployment_target) as client:
             try:
-                self.execute_step(client, step)
+                self.execute_step(client, step, deployment_target.deployment_target_address)
                 transport = client.get_transport()
                 sftp_client = HoreySFTPClient.from_transport(transport)
 
@@ -494,17 +494,20 @@ class RemoteDeployer:
                         if "No such file" not in repr_error_received:
                             raise
                         logger.info(
-                            f"Retrying to fetch remote script's status in {sleep_time} seconds ({retry_counter}/{retry_attempts})"
+                            f"[LOCAL->{deployment_target.deployment_target_address}] Retrying to fetch remote script's status in {sleep_time} seconds ({retry_counter}/{retry_attempts})"
                         )
                     except Exception as error_received:
                         logger.error(
-                            f"Unhandled exception in helper thread {repr(error_received)})"
+                            f"[LOCAL->{deployment_target.deployment_target_address}] Unhandled exception in helper thread {repr(error_received)})"
                         )
 
                     time.sleep(sleep_time)
                 else:
+                    step.status_code = step.StatusCode.ERROR
+                    deployment_target.status_code = deployment_target.StatusCode.FAILURE
+                    deployment_target.status = f"Failed to fetch step's status and output files: {step.configuration.name}"
                     raise TimeoutError(
-                        f"Failed to fetch remote script's status target: {deployment_target.deployment_target_address}"
+                        f"[LOCAL->{deployment_target.deployment_target_address}] Failed to fetch remote script's status target: {deployment_target.deployment_target_address}"
                     )
 
                 step.update_finish_status(
@@ -514,14 +517,20 @@ class RemoteDeployer:
 
                 if step.status_code != step.StatusCode.SUCCESS:
                     last_lines = "\n".join(step.output.split("\n")[-50:])
+                    deployment_target.status_code = deployment_target.StatusCode.FAILURE
+                    deployment_target.status = f"Step returned status different from success: {step.configuration.name}"
                     raise RuntimeError(
-                        f"Step finished with status: {step.status}, error: \n{last_lines}"
+                        f"[REMOTE<-{deployment_target.deployment_target_address}] Step finished with status: {step.status}, error: \n{last_lines}"
                     )
 
                 logger.info(
-                    f"Step finished successfully output in: '{step.configuration.output_file_name}'"
+                    f"[REMOTE<-{deployment_target.deployment_target_address}] Step finished successfully output in: '{step.configuration.output_file_name}'"
                 )
             except Exception as error_instance:
+                step.status_code = step.StatusCode.ERROR
+                deployment_target.status_code = deployment_target.StatusCode.FAILURE
+                deployment_target.status = f"Unknown exception happened when deploying the step {step.configuration.name}. " \
+                                           f"Error: {repr(error_instance)}"
                 raise RemoteDeployer.DeployerError(
                     repr(error_instance)
                 ) from error_instance
@@ -579,7 +588,7 @@ class RemoteDeployer:
         raise DeprecationWarning("old code")
 
     def wait_for_step_to_finish(
-        self, step, local_deployment_data_dir_path, sftp_client
+        self, step, local_deployment_data_dir_path, sftp_client, deployment_target_address
     ):
         """
         Wait for status file creation.
@@ -614,11 +623,11 @@ class RemoteDeployer:
                 if "No such file" not in repr(error_received):
                     raise
                 logger.info(
-                    f"Retrying to fetch remote script's status in {sleep_time} seconds ({retry_counter}/{retry_attempts})"
+                    f"[LOCAL->{deployment_target_address}] Retrying to fetch remote script's status in {sleep_time} seconds ({retry_counter}/{retry_attempts})"
                 )
             time.sleep(sleep_time)
         else:
-            raise TimeoutError("Failed to fetch remote script's status")
+            raise TimeoutError(f"[LOCAL->{deployment_target_address}] Failed to fetch remote script's status")
 
         step.update_finish_status(local_deployment_data_dir_path)
         step.update_output(local_deployment_data_dir_path)
@@ -626,11 +635,11 @@ class RemoteDeployer:
         if step.status_code != step.StatusCode.SUCCESS:
             last_lines = "\n".join(step.output.split("\n")[-50:])
             raise RuntimeError(
-                f"Step finished with status: {step.status}, error: \n{last_lines}"
+                f"[REMOTE<-{deployment_target_address}] Step finished with status: {step.status}, error: \n{last_lines}"
             )
 
         logger.info(
-            f"Step finished successfully output in: '{step.configuration.output_file_name}'"
+            f"[REMOTE<-{deployment_target_address}] Step finished successfully output in: '{step.configuration.output_file_name}'"
         )
 
     @staticmethod
@@ -835,10 +844,11 @@ class RemoteDeployer:
 
         raise DeprecationWarning()
 
-    def execute_step(self, client: paramiko.SSHClient, step):
+    def execute_step(self, client: paramiko.SSHClient, step, deployment_target_address):
         """
         Trigger one step execution.
 
+        :param deployment_target_address:
         :param client:
         :param step:
         :return:
@@ -850,14 +860,14 @@ class RemoteDeployer:
             f"{step.configuration.finish_status_file_path} {step.configuration.output_file_path}"
         )
 
-        logger.info(f"[REMOTE] {command}")
+        logger.info(f"[REMOTE->{deployment_target_address}] {command}")
 
         _, stdout_transport, stderr_transport = client.exec_command(command)
         stderr = stderr_transport.read()
         if stderr:
-            raise RemoteDeployer.DeployerError(stderr)
+            raise RemoteDeployer.DeployerError(f"[REMOTE<-{deployment_target_address}]  {stderr}")
         stdout = stdout_transport.read()
-        logger.info(stdout)
+        logger.info(f"[REMOTE<-{deployment_target_address}] {stdout}")
 
     def wait_for_deployment_to_end(self, blocks_to_deploy):
         """
@@ -920,7 +930,7 @@ class RemoteDeployer:
                 f", not finished {len(unfinished_targets)}: {unfinished_targets}"
             )
             logger.info(
-                f"remote_deployer wait_to_finish going to sleep for {sleep_time} seconds"
+                f"Deployer is going to sleep for {sleep_time} seconds"
             )
 
             time.sleep(sleep_time)
@@ -932,11 +942,11 @@ class RemoteDeployer:
         for target in targets:
             if not check_success_callback(target):
                 failed = True
-                error_line = f"Failed: {target.deployment_target_address}"
+                error_line = f"[REMOTE<-{target.deployment_target_address}] Deployment failed"
                 try:
                     error_line += f" Status: {target.status}"
                 except Exception as inst:
-                    logger.warning(f"Couldn't fetch failure status for {target.deployment_target_address}. "
+                    logger.warning(f"[LOCAL->{target.deployment_target_address}] Couldn't fetch failure status."
                                    f"Due to exception: {repr(inst)}")
                 errors.append(error_line)
 
@@ -945,7 +955,7 @@ class RemoteDeployer:
 
     @staticmethod
     def wait_to_finish_step(
-        target, step: DeploymentStep, sleep_time=10, total_time=2400
+        target: DeploymentTarget, step: DeploymentStep, sleep_time=10, total_time=2400
     ):
         """
         Wait for a single step to finish
@@ -962,26 +972,30 @@ class RemoteDeployer:
 
         while datetime.datetime.now() < end_time:
             if step.status_code is not None:
-                logger.info(f"Finished: {target.deployment_target_address}")
+                logger.info(f"[REMOTE<-{target.deployment_target_address}] Finished step {step.configuration.name}")
                 break
 
             logger.info(
-                f"remote_deployer wait_to_finish {target.deployment_target_address} step: {step.configuration.name} going to sleep for {sleep_time} seconds"
+                f"[LOCAL->{target.deployment_target_address}] Waiting for step: {step.configuration.name} going to sleep for {sleep_time} seconds"
             )
 
             time.sleep(sleep_time)
         else:
+            step.status_code = step.StatusCode.ERROR
+            if target.status_code is None:
+                target.status_code = target.StatusCode.ERROR
+                target.status = f"Step failed. Name: {step.configuration.name}"
             raise TimeoutError(
-                f"{target.deployment_target_address}: step {step.configuration.name}"
+                f"[REMOTE<-{target.deployment_target_address}] Step: {step.configuration.name}"
             )
 
         if step.status_code != step.StatusCode.SUCCESS:
             raise RuntimeError(
-                f"{target.deployment_target_address}: step {step.configuration.name}: {step.status_code}: {step.status}: {step.output}"
+                f"[REMOTE<-{target.deployment_target_address}] Step failed. Name: {step.configuration.name}, Status code:{step.status_code}, Status: {step.status}, Output: {step.output}"
             )
 
         logger.info(
-            f"Finished deployment for target {target.deployment_target_address} step: {step.configuration.name}"
+            f"[REMOTE<-{target.deployment_target_address}] Finished step: {step.configuration.name}"
         )
 
     def deploy_targets_steps(self, targets, step_callback, asynchronous=True, async_wait_interval=10):
@@ -1044,8 +1058,10 @@ class RemoteDeployer:
             target.status_code = target.StatusCode.SUCCESS
 
         except Exception as inst_error:
-            target.status_code = target.StatusCode.FAILURE
-            target.status = repr(inst_error)
+            if target.status_code is None:
+                target.status_code = target.StatusCode.ERROR
+            if target.status is None:
+                target.status = repr(inst_error)
 
         logger.info(f"Finished target deployment: {target.deployment_target_address}")
 
