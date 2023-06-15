@@ -4,6 +4,7 @@ API to the kubernetes.
 """
 
 from horey.kubernetes_api.kubernetes_clients.kubernetes_client import KubernetesClient
+from horey.kubernetes_api.base_entities.kubernetes_account import KubernetesAccount
 
 
 class KubernetesAPI:
@@ -12,10 +13,11 @@ class KubernetesAPI:
 
     """
 
-    def __init__(self, configuration=None):
+    def __init__(self, configuration):
         self.client = KubernetesClient()
         self.configuration = configuration
         self.pods = []
+        KubernetesAccount.set_kubernetes_account(KubernetesAccount(configuration.endpoint, configuration.token))
 
     def init_pods(self):
         """

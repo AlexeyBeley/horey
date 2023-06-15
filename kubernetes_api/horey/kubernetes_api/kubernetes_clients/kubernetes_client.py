@@ -4,9 +4,9 @@ Client to work with kube claster
 """
 
 from kubernetes import client, config
+from horey.kubernetes_api.base_entities.kubernetes_account import KubernetesAccount
 
 # Configs can be set in Configuration class directly or using helper utility
-config.load_kube_config()
 
 
 class KubernetesClient:
@@ -36,6 +36,15 @@ class KubernetesClient:
         Config
         :return:
         """
+        account = KubernetesAccount.get_kubernetes_account()
+        config.load_kube_config(
+            client_configuration=client.Configuration(
+                api_key={
+                    "bearer_token": account.token
+                },
+                host=account.endpoint
+            )
+        )
         config.load_kube_config()
 
     def get_pods(self):
