@@ -2,10 +2,13 @@
 Client to work with kube claster
 
 """
+import base64
+import tempfile
 
 from kubernetes import client, config
 from horey.kubernetes_api.base_entities.kubernetes_account import KubernetesAccount
 from horey.h_logger import get_logger
+import kubernetes
 
 logger = get_logger()
 
@@ -34,48 +37,40 @@ class KubernetesClient:
         return self._client
 
     @staticmethod
-    def connect():
+    def _write_cafile(data: str) -> tempfile.NamedTemporaryFile:
+        # protect yourself from automatic deletion
+        cafile = tempfile.NamedTemporaryFile(delete=False)
+        cadata_b64 = data
+        cadata = base64.b64decode(cadata_b64)
+        cafile.write(cadata)
+        cafile.flush()
+        return cafile
+
+    @staticmethod
+    def k8s_api_client(endpoint: str, token: str, cafile: str) -> kubernetes.client.CoreV1Api:
+        kconfig = kubernetes.config.kube_config.Configuration(
+            host=endpoint,
+            api_key={"authorization": "Bearer " + token}
+        )
+        kconfig.ssl_ca_cert = cafile
+        kclient = kubernetes.client.ApiClient(configuration=kconfig)
+        return kubernetes.client.CoreV1Api(api_client=kclient)
+
+    def connect(self):
         """
         Config
         :return:
         """
-
         account = KubernetesAccount.get_kubernetes_account()
-        if account.token and account.endpoint:
-            # Create a Kubernetes configuration object
-            _config = {
-                'apiVersion': 'v1',
-                'clusters': [
-                    {
-                        'name': 'eks-cluster',
-                        'cluster': {
-                            'server': account.endpoint,
-                            'certificate-authority-data': account.token
-                        }
-                    }
-                ],
-                'contexts': [
-                    {
-                        'name': 'eks-context',
-                        'context': {
-                            'cluster': 'eks-cluster',
-                            'user': 'eks-user'
-                        }
-                    }
-                ],
-                'current-context': 'eks-context'
-            }
-            #breakpoint()
-            #client.Configuration.set_default(_config)
-            configuration = client.Configuration()
-            configuration.host = account.endpoint
-            # configuration.ssl_ca_cert = self.ssl_ca_cert
-            # configuration.verify_ssl = self._verify_ssl
-            configuration.api_key['authorization'] = "bearer " + account.token
-            logger.info(f"Setting kubernetes cluster default endpoint to: {account.endpoint}")
-            client.Configuration.set_default(configuration)
-        else:
-            config.load_kube_config()
+        my_cafile = KubernetesClient._write_cafile(account.cadata)
+
+        my_token = account.token
+
+        self._client = KubernetesClient.k8s_api_client(
+            endpoint=account.endpoint,
+            token=my_token["status"]["token"],
+            cafile=my_cafile.name
+        )
 
     def get_pods(self):
         """
@@ -83,4 +78,5 @@ class KubernetesClient:
 
         :return:
         """
-        return self.client.list_pod_for_all_namespaces(watch=False)
+        ret = self.client.list_pod_for_all_namespaces(watch=False)
+        return ret

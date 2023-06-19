@@ -101,6 +101,8 @@ from horey.aws_api.aws_services_entities.cloudfront_origin_access_identity impor
 from horey.aws_api.aws_clients.events_client import EventsClient
 from horey.aws_api.aws_services_entities.event_bridge_rule import EventBridgeRule
 
+from horey.aws_api.aws_clients.sts_client import STSClient
+
 from horey.aws_api.aws_clients.secrets_manager_client import SecretsManagerClient
 from horey.aws_api.aws_services_entities.secrets_manager_secret import (
     SecretsManagerSecret,
@@ -220,6 +222,7 @@ class AWSAPI:
         self.eks_client = EKSClient()
         self.elasticache_client = ElasticacheClient()
         self.sqs_client = SQSClient()
+        self.sts_client = STSClient()
 
         self.network_interfaces = []
         self.iam_policies = []

@@ -34,7 +34,7 @@ client = KubernetesClient()
 def test_get_pods():
     ret = client.get_pods()
     print(ret)
-    breakpoint()
+    assert isinstance(ret, list)
 
 
 @pytest.mark.skip(reason="")
@@ -42,8 +42,8 @@ def test_connect_aws_api():
     k8s = K8S()
     cluster_name = "test-aws-example"
     region = horey.aws_api.base_entities.region.Region.get_region("us-west-2")
-    endpoint, token = k8s.get_cluster_login_credentials(cluster_name, region)
-    account = KubernetesAccount(endpoint=endpoint, token=token)
+    endpoint, cadata, token = k8s.get_cluster_login_credentials(cluster_name, region)
+    account = KubernetesAccount(endpoint=endpoint, token=token, cadata=cadata)
     KubernetesAccount.set_kubernetes_account(account)
 
     client.connect()
