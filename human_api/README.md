@@ -14,11 +14,12 @@ Examples:
 [user_story 1000 #Frontend CI/CD] -> bug 1002 #Python version deprecated :actions:
 ```
 
-daily.hapi - Current status retrieved from Task management API.
-daily_input.hapi - Reported status. The changes you want to report since the last Daily.
-daily_output.hapi - Generated YTB report. A small bonus, chows you the summary of the above input.
+Daily actions' report file types:
+* daily.hapi - Current status retrieved from Task management API.
+* daily_input.hapi - Reported status. The changes you want to report since the last Daily.
+* daily_output.hapi - Generated YTB report. A small bonus, chows you the summary of the above input.
 
-daily.hapi example.
+#daily.hapi
 
 ```
 worker_id:horey@sample.com
@@ -36,7 +37,7 @@ worker_id:horey@sample.com
 [user_story 1002 #Backend] -> bug 1009 # Kubernetes Infrastructure :actions:
 ```
 
-daily_input.hapi example 1. Reporting task changes.
+# daily_input.hapi example 1. Reporting task changes.
 
 Updating ACTIVE task 1003 from the example below with following actions:
 * Add time spent on the task.
@@ -48,8 +49,7 @@ Updating ACTIVE task 1003 from the example below with following actions:
 ```
 
 
-daily_input.hapi example 2. Creating child (Task/Bug) under existing Parent (UserStory/Feature/Task/Bug/):
-
+# daily_input.hapi example 2. Creating child (Task/Bug) under existing Parent (UserStory/Feature/Task/Bug/):
 * Remove ChildID
 * Add assumed time action
 ```
@@ -57,15 +57,13 @@ daily_input.hapi example 2. Creating child (Task/Bug) under existing Parent (Use
 [user_story 1000 #Frontend CI/CD] -> bug #Nginx config generator breaks QA :actions: 4, comment After adding new options build fail in QA.
 ```
 
-
-daily_input.hapi example 3. Reporting daily changes.
+# daily_input.hapi example 3. Reporting daily changes.
 * task 1007: Blocked Moved to closed with a comment.
 * task 1001: Moved from new to closed + comment + 6 work hours update.
 * user_story 1000: Added new bug- as a result of our 1001 task we broke QA. Making it Active + Added 8 hours estimate + added 1 hour already spent.
 * bug 1005: Moved from Active to closed + comment + 2 work hours update
 * Creating new task to add test for user signeout failure, Adding 2 hours work estimation and a comment.
 * Moving task 1003 back to new since we will work on the bug in Frontend QA today
-
 ```
 worker_id:horey@sample.com
 >NEW:
@@ -82,4 +80,19 @@ worker_id:horey@sample.com
 [user_story 1000 #Frontend CI/CD] -> task 1001 #Nginx Configuration CI/CD :actions: +6, comment Changed worker type.
 [user_story 1000 #Frontend CI/CD] -> task 1007 #Nginx Configuration CORS :actions: +2, comment Added proper CORS configuration into CI/CD.
 [user_story 1002 #Backend] -> bug 1009 # Kubernetes Infrastructure :actions:
+```
+
+# daily_output.hapi
+* All report lines with action "+hours" - go to "Y"
+* All report lines in "active" - go to "T"
+```
+[30/02/2023] horey
+Y:
+[user_story 1000 #Frontend CI/CD] -> 1011-Nginx config generator breaks QA
+[user_story 1004 #Sprint 888 CI/CD Bugs] -> 1005 -Prod Frontend deployment failed
+[user_story 1000 #Frontend CI/CD] -> 1001 #Nginx Configuration CI/CD
+[user_story 1000 #Frontend CI/CD] -> 1007 #Nginx Configuration CORS
+T:
+[user_story 1000 #Frontend CI/CD] -> 1011-Nginx config generator breaks QA
+B:
 ```
