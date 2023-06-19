@@ -25,7 +25,7 @@ configuration.configuration_file_full_path = os.path.abspath(
         "..",
         "..",
         "ignore",
-        "azure_api_configuration_values.py",
+        "kubernetes_configuration_values.py",
     )
 )
 #configuration.init_from_file()
@@ -33,12 +33,16 @@ configuration.configuration_file_full_path = os.path.abspath(
 kube_api = KubernetesAPI(configuration=configuration)
 
 
-# region done
 @pytest.mark.skip(reason="")
 def test_init_pods():
     kube_api.init_pods()
     logger.info(f"len(pods) = {len(kube_api.pods)}")
     assert isinstance(kube_api.pods, list)
+
+
+@pytest.mark.skip(reason="")
+def test_connect():
+    pass
 
 
 if __name__ == "__main__":

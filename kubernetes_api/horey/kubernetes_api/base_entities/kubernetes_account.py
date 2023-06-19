@@ -27,6 +27,6 @@ class KubernetesAccount:
         """
         KubernetesAccount._CURRENT_ACCOUNT = value
 
-    def __init__(self, endpoint, token):
+    def __init__(self, endpoint=None, token=None):
         self.endpoint = endpoint
         self.token = token

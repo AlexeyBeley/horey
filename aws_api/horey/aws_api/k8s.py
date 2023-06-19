@@ -6,9 +6,10 @@ Working with eks env.
 from horey.aws_api.aws_api import AWSAPI
 from horey.aws_api.aws_services_entities.iam_role import IamRole
 from horey.aws_api.aws_services_entities.iam_policy import IamPolicy
+from horey.aws_api.aws_services_entities.eks_cluster import EKSCluster
 
 
-class Kubernetes:
+class K8S:
     """
     aws eks update-kubeconfig --region us-west-2 --name test-aws-example
     """
@@ -45,3 +46,16 @@ class Kubernetes:
         iam_role.policies.append(policy)
         self.aws_api.provision_iam_role(iam_role)
         return iam_role
+
+    def get_cluster_login_credentials(self, cluster_name, region):
+        """
+        Find the cluster and retrieve the login credentials.
+
+        :param cluster_name:
+        :return:
+        """
+
+        cluster = EKSCluster({"name": cluster_name})
+        cluster.region = region
+        self.aws_api.eks_client.update_cluster_info(cluster)
+        return cluster.endpoint, cluster.certificate_authority["data"]

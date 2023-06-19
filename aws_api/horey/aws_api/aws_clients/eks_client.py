@@ -77,6 +77,7 @@ class EKSClient(Boto3Client):
         :return:
         """
 
+        AWSAccount.set_aws_region(obj.region)
         for dict_src in self.execute(
                 self.client.describe_cluster, "cluster", filters_req={"name": obj.name}
         ):

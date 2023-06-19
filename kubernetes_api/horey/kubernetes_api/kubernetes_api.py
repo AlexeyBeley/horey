@@ -13,11 +13,12 @@ class KubernetesAPI:
 
     """
 
-    def __init__(self, configuration):
+    def __init__(self, configuration=None):
         self.client = KubernetesClient()
         self.configuration = configuration
         self.pods = []
-        KubernetesAccount.set_kubernetes_account(KubernetesAccount(configuration.endpoint, configuration.token))
+        if configuration is not None:
+            KubernetesAccount.set_kubernetes_account(KubernetesAccount(configuration.endpoint, configuration.token))
 
     def init_pods(self):
         """
