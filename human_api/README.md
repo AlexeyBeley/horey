@@ -1,7 +1,13 @@
 
+# Daily Reporting Automation
 
+"Daly", "Stand up meeting", "STUM", "YTB"...
+Jira, Azure Devops, Monday...
 
-# Daily actions' Report
+## Assumptions
+* Automate everything you do recurrently. 
+* Typing is quicker then clicking.
+
 
 ## Line format:
 * ParentType - Task/Bug/UserStory/Feature etc.
@@ -16,7 +22,7 @@
 [<ParentType> <ParentID> #<ParentTitle>] -> <ChildType> <ChildID> #<ChildTitle> :actions: <CommaSeparatedActions>
 ```
 
-## Data Examples:
+## Possible content demonstration:
 ```
 [user_story 1000 #Frontend CI/CD] -> task 1001 #Nginx Configuration CI/CD :actions:
 [task 1001 #Frontend CI/CD] -> task 1003 #CORS configuration :actions:
