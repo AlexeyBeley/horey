@@ -3,7 +3,7 @@ API to the kubernetes.
 
 """
 
-from horey.kubernetes_api.kubernetes_clients.kubernetes_client import KubernetesClient
+from horey.kubernetes_api.clients.kubernetes_client import KubernetesClient
 from horey.kubernetes_api.base_entities.kubernetes_account import KubernetesAccount
 
 
@@ -17,8 +17,9 @@ class KubernetesAPI:
         self.client = KubernetesClient()
         self.configuration = configuration
         self.pods = []
+        self.namespaces = []
         if configuration is not None:
-            KubernetesAccount.set_kubernetes_account(KubernetesAccount(configuration.endpoint, configuration.token))
+            KubernetesAccount.set_kubernetes_account(KubernetesAccount(endpoint=configuration.endpoint, token=configuration.token, cadata=configuration.cadata))
 
     def init_pods(self):
         """
@@ -26,5 +27,15 @@ class KubernetesAPI:
 
         :return:
         """
-
         self.pods = self.client.get_pods()
+
+    def init_namespaces(self):
+        """
+        Init namespaces.
+
+        :return:
+        """
+        self.namespaces = self.client.get_namespaces()
+
+    def provision_(self):
+        breakpoint()

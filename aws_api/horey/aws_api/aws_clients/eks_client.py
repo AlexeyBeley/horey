@@ -6,6 +6,7 @@ from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.aws_services_entities.eks_cluster import EKSCluster
 from horey.aws_api.aws_services_entities.eks_addon import EKSAddon
+from horey.aws_api.aws_services_entities.eks_fargate_profile import EKSFargateProfile
 
 from horey.h_logger import get_logger
 
@@ -63,6 +64,7 @@ class EKSClient(Boto3Client):
             self.client.list_clusters, "clusters"
         ):
             obj = EKSCluster({"name": name})
+            obj.region = region
             final_result.append(obj)
             if full_information:
                 self.update_cluster_info(obj)
@@ -235,6 +237,122 @@ class EKSClient(Boto3Client):
         logger.info(f"Creating addon: {request_dict}")
         for response in self.execute(
                 self.client.create_addon,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
+        ):
+            del response["ResponseMetadata"]
+            return response
+
+    # endregion
+
+    # region fargate_profile
+    def get_all_fargate_profiles(self, region=None, full_information=True):
+        """
+        Get all fargate_profiles in all regions.
+        :return:
+        """
+
+        if region is not None:
+            return self.get_region_fargate_profiles(
+                region, full_information=full_information
+            )
+
+        final_result = []
+        for _region in AWSAccount.get_aws_account().regions.values():
+            final_result += self.get_region_fargate_profiles(
+                _region, full_information=full_information
+            )
+
+        return final_result
+
+    def get_region_fargate_profiles(self, region, full_information=True):
+        """
+        Region specific fargate_profiles.
+
+        :param region:
+        :param full_information:
+        :return:
+        """
+
+        final_result = []
+        clusters = self.get_region_clusters(region)
+
+        for cluster in clusters:
+            final_result += self.get_cluster_fargate_profiles(cluster, full_information=full_information)
+
+        return final_result
+
+    def get_cluster_fargate_profiles(self, cluster, full_information=True):
+        """
+        Region specific fargate_profiles.
+
+        :param cluster:
+        :param full_information:
+        :return:
+        """
+
+        final_result = []
+        AWSAccount.set_aws_region(cluster.region)
+        for name in self.execute(
+                self.client.list_fargate_profiles, "fargateProfileNames", filters_req={"clusterName": cluster.name}
+        ):
+            obj = EKSFargateProfile({"fargateProfileName": name, "clusterName": cluster.name})
+            final_result.append(obj)
+            if full_information:
+                self.update_fargate_profile_info(obj)
+
+        return final_result
+
+    def update_fargate_profile_info(self, obj):
+        """
+        Update current status.
+
+        :param obj:
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.client.describe_fargate_profile, "fargateProfile", filters_req={"clusterName": obj.cluster_name, "fargateProfileName": obj.name}
+        ):
+            obj.update_from_raw_response(dict_src)
+
+    def provision_fargate_profile(self, fargate_profile: EKSFargateProfile):
+        """
+        Provision from object.
+
+        :param fargate_profile:
+        :return:
+        """
+
+        region_fargate_profiles = self.get_region_fargate_profiles(
+            fargate_profile.region
+        )
+        for region_fargate_profile in region_fargate_profiles:
+            if (
+                    region_fargate_profile.name == fargate_profile.name
+            ):
+                fargate_profile.update_from_raw_response(
+                    region_fargate_profile.dict_src
+                )
+                return
+        AWSAccount.set_aws_region(fargate_profile.region)
+        response = self.provision_fargate_profile_raw(
+            fargate_profile.generate_create_request()
+        )
+        fargate_profile.update_from_raw_response(response)
+
+    def provision_fargate_profile_raw(self, request_dict):
+        """
+        Provision from raw request.
+
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Creating fargate_profile: {request_dict}")
+        for response in self.execute(
+                self.client.create_fargate_profile,
                 None,
                 raw_data=True,
                 filters_req=request_dict,

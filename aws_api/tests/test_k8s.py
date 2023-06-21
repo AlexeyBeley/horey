@@ -53,5 +53,18 @@ def test_get_cluster_login_credentials():
     k8s.get_cluster_login_credentials(cluster_name, region)
 
 
+def test_create_fargate_profile():
+    """
+    https://docs.aws.amazon.com/eks/latest/userguide/alb-ingress.html
+    --cluster test-aws-example \
+    --region us-west-2 \
+    --name alb-sample-app \
+    --namespace game-2048
+    :return:
+    """
+
+
+
 if __name__ == "__main__":
     test_get_cluster_login_credentials()
+    test_create_fargate_profile()

@@ -5,8 +5,9 @@ Client to work with kube claster
 import base64
 import tempfile
 
-from kubernetes import client, config
 from horey.kubernetes_api.base_entities.kubernetes_account import KubernetesAccount
+from horey.kubernetes_api.service_entities.namespace import Namespace
+from horey.kubernetes_api.service_entities.pod import Pod
 from horey.h_logger import get_logger
 import kubernetes
 
@@ -22,7 +23,7 @@ class KubernetesClient:
     """
 
     def __init__(self):
-        self._client = client.CoreV1Api()
+        self._client = None
 
     @property
     def client(self):
@@ -78,5 +79,14 @@ class KubernetesClient:
 
         :return:
         """
-        ret = self.client.list_pod_for_all_namespaces(watch=False)
+        ret = [Pod(pod) for pod in self.client.list_pod_for_all_namespaces(watch=False).items]
+        return ret
+
+    def get_namespaces(self):
+        """
+        Get pods
+
+        :return:
+        """
+        ret = [Namespace(namespace) for namespace in self.client.list_namespace(watch=False).items]
         return ret
