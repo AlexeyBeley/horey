@@ -97,7 +97,6 @@ def test_save_stream_events():
 
     stream = Mock()
     stream.region = Region.get_region("us-east-1")
-    stream.name = mock_values["lgs_name"]
     file_path = ""
 
     for event in client.yield_log_events(group, stream):
