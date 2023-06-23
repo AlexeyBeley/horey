@@ -54,30 +54,21 @@ class CommonUtils:
                 "value": obj_src.strftime("%Y-%m-%d %H:%M:%S.%f%z"),
             }
 
-        breakpoint()
-        if isinstance(obj_src, CommonUtils):
-            return obj_src.convert_to_dict()
-
         if isinstance(obj_src, Enum):
             return obj_src.value
 
-        # In most cases it will become str
-        # Ugly but efficient
-        try:
-            assert obj_src.convert_to_dict
-            raise DeprecationWarning(
-                f"'return obj_src.convert_to_dict()' Use the new SELF_CACHED_TYPE_KEY_NAME format: {obj_src}"
-            )
-        except AttributeError:
-            pass
+        if hasattr(obj_src, "convert_to_dict"):
+            return obj_src.convert_to_dict()
 
         if not custom_types:
-            return str(obj_src)
+            # return str(obj_src)
+            raise ValueError(f"Unknown type: obj_src {type(obj_src)}")
 
         if type(obj_src) not in custom_types:
             return str(obj_src)
 
         return custom_types[type(obj_src)](obj_src)
+
     @staticmethod
     def camel_case_to_snake_case(name):
         """

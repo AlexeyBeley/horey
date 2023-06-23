@@ -27,7 +27,7 @@ namespace = "game-2048"
 region = horey.aws_api.base_entities.region.Region.get_region("us-west-2")
 configuration.endpoint, configuration.cadata, configuration.token = k8s.get_cluster_login_credentials(configuration.cluster_name,
                                                                                                       region)
-configuration.kubernetes_api_cache_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "ignore", "kubernetes"))
+configuration.kubernetes_api_cache_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore", "kubernetes"))
 kube_api = KubernetesAPI(configuration=configuration)
 
 

@@ -53,7 +53,7 @@ class KubernetesAPI:
         :return:
         """
         self.namespaces = self.client.get_namespaces()
-        self.cache(self.pods)
+        self.cache(self.namespaces)
 
     def init_deployments(self):
         """
@@ -62,4 +62,4 @@ class KubernetesAPI:
         :return:
         """
         self.deployments = self.client.get_deployments()
-        self.cache(self.pods)
+        self.cache(self.deployments)

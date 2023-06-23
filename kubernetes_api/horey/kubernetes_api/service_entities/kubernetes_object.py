@@ -122,7 +122,7 @@ class KubernetesObject:
 
         if self.dict_src is None:
             raise NotImplementedError("Dict src was not initiazlized")
-        self.dict_src["1"] = KubernetesObject()
+
         return CommonUtils.convert_to_dict(self.dict_src)
 
     class UnknownKeyError(Exception):
