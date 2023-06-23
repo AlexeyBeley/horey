@@ -96,12 +96,12 @@ def test_save_stream_events():
     group.name = mock_values["lg_name"]
 
     stream = Mock()
-    stream.region = Region.get_region("us-east-1")
+    group.name = mock_values["lgs_name"]
     file_path = ""
 
     for event in client.yield_log_events(group, stream):
         with open(file_path, "a") as fh:
-            fh.write(json.dumps(event))
+            fh.write(json.dumps(event)+"\n")
 
 
 def test_get_region_cloud_watch_log_groups():

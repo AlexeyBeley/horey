@@ -1,5 +1,7 @@
 from horey.h_logger import get_logger
+from horey.common_utils.common_re_utils import CommonREUtils
 from pprint import pprint
+from horey.common_utils.common_utils import CommonUtils
 
 logger = get_logger()
 
@@ -7,11 +9,35 @@ logger = get_logger()
 class KubernetesObject:
     SELF_CACHED_TYPE_KEY_NAME = "horey_cached_type"
 
-    def __init__(self, obj_src):
+    def __init__(self, obj_src=None, dict_src=None):
         self.obj_src = obj_src
         self._name = None
         self.metadata = None
         self.spec = None
+        self.dict_src = dict_src
+
+        if obj_src:
+            self.dict_src = obj_src.to_dict()
+
+        if not self.dict_src:
+            return
+
+        init_options = {
+            "api_version": self.init_default_attr,
+            "kind": self.init_default_attr,
+            "metadata": self.init_default_attr,
+            "spec": self.init_default_attr,
+            "status": self.init_default_attr,
+        }
+        self.init_attrs(self.dict_src, init_options)
+
+    @property
+    def namespace_name(self):
+        return self.metadata["namespace"]
+
+    @property
+    def cache_file_name(self):
+        return CommonREUtils().pascal_case_case_to_snake_case(self.__class__.__name__) + ".json"
 
     @staticmethod
     def pprint(dict_src):
@@ -86,6 +112,18 @@ class KubernetesObject:
                 dict_options[key_src](key_src, value)
             else:
                 self.init_default_attr(key_src, value)
+
+    def convert_to_dict(self):
+        """
+        Convert self to dict.
+
+        :return:
+        """
+
+        if self.dict_src is None:
+            raise NotImplementedError("Dict src was not initiazlized")
+        self.dict_src["1"] = KubernetesObject()
+        return CommonUtils.convert_to_dict(self.dict_src)
 
     class UnknownKeyError(Exception):
         """

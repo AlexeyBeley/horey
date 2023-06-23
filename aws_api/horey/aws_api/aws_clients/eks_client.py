@@ -324,18 +324,17 @@ class EKSClient(Boto3Client):
         :param fargate_profile:
         :return:
         """
-
-        region_fargate_profiles = self.get_region_fargate_profiles(
-            fargate_profile.region
+        fargate_profile_current = EKSFargateProfile({"fargateProfileName": fargate_profile.name,
+                                                     "clusterName": fargate_profile.cluster_name})
+        fargate_profile_current.region = fargate_profile.region
+        self.update_fargate_profile_info(
+            fargate_profile_current
         )
-        for region_fargate_profile in region_fargate_profiles:
-            if (
-                    region_fargate_profile.name == fargate_profile.name
-            ):
-                fargate_profile.update_from_raw_response(
-                    region_fargate_profile.dict_src
-                )
-                return
+        if fargate_profile_current.arn:
+            self.update_fargate_profile_info(
+                fargate_profile
+            )
+            return
         AWSAccount.set_aws_region(fargate_profile.region)
         response = self.provision_fargate_profile_raw(
             fargate_profile.generate_create_request()
@@ -358,6 +357,22 @@ class EKSClient(Boto3Client):
                 filters_req=request_dict,
         ):
             del response["ResponseMetadata"]
+            return response
+
+    def dispose_fargate_profile(self, fargate_profile: EKSFargateProfile):
+        """
+        Dispose.
+
+        :return:
+        """
+        request_dict = {"clusterName": fargate_profile.cluster_name,
+                        "fargateProfileName": fargate_profile.name}
+        logger.info(f"Disposing fargate_profile: {request_dict}")
+        for response in self.execute(
+                self.client.delete_fargate_profile,
+                "fargateProfile",
+                filters_req=request_dict,
+        ):
             return response
 
     # endregion

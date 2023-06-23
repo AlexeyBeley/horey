@@ -6,16 +6,78 @@ import importlib
 import os
 import sys
 import re
+from enum import Enum
 from horey.common_utils.bash_executor import BashExecutor
+
 
 class CommonUtils:
     """
     Some stuff to be reused
     """
-
+    SELF_CACHED_TYPE_KEY_NAME = "horey_cached_type"
     _FIRST_CAP_RE = None
     _ALL_CAP_RE = None
 
+    @staticmethod
+    def convert_to_dict(obj_src, custom_types=None):
+        """
+        Converts all known attribute types to a specific form available to be init from cache.
+
+        :param obj_src:
+        :param custom_types: list of dicts: {type:converter_function}
+        :return:
+        """
+
+        # pylint: disable=too-many-branches,too-many-return-statements
+        if type(obj_src) in [str, int, bool, type(None)]:
+            return obj_src
+
+        if isinstance(obj_src, dict):
+            ret = {}
+            for key, value in obj_src.items():
+                if type(key) not in [int, str]:
+                    raise ValueError(type(key))
+                ret[key] = CommonUtils.convert_to_dict(
+                    value, custom_types=custom_types
+                )
+            return ret
+
+        if isinstance(obj_src, list):
+            return [
+                CommonUtils.convert_to_dict(value, custom_types=custom_types)
+                for value in obj_src
+            ]
+
+        if isinstance(obj_src, datetime.datetime):
+            return {
+                CommonUtils.SELF_CACHED_TYPE_KEY_NAME: "datetime",
+                "value": obj_src.strftime("%Y-%m-%d %H:%M:%S.%f%z"),
+            }
+
+        breakpoint()
+        if isinstance(obj_src, CommonUtils):
+            return obj_src.convert_to_dict()
+
+        if isinstance(obj_src, Enum):
+            return obj_src.value
+
+        # In most cases it will become str
+        # Ugly but efficient
+        try:
+            assert obj_src.convert_to_dict
+            raise DeprecationWarning(
+                f"'return obj_src.convert_to_dict()' Use the new SELF_CACHED_TYPE_KEY_NAME format: {obj_src}"
+            )
+        except AttributeError:
+            pass
+
+        if not custom_types:
+            return str(obj_src)
+
+        if type(obj_src) not in custom_types:
+            return str(obj_src)
+
+        return custom_types[type(obj_src)](obj_src)
     @staticmethod
     def camel_case_to_snake_case(name):
         """

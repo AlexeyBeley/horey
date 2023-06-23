@@ -18,6 +18,7 @@ class EKSFargateProfile(AwsObject):
         self.cluster_name = None
         self.arn = None
         self.pod_execution_role_arn = None
+        self.selectors = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -70,11 +71,14 @@ class EKSFargateProfile(AwsObject):
 
         :return:
         """
-        # pylint: disable=not-an-iterable
+
         request = {"fargateProfileName": self.name,
                    "clusterName": self.cluster_name,
-                   "podExecutionRoleArn": self.pod_execution_role_arn
+                   "podExecutionRoleArn": self.pod_execution_role_arn,
+                   "selectors": self.selectors
                    }
+        if self.tags:
+            request["tags"] = {tag["Key"]: tag["Value"] for tag in self.tags}
 
         return request
 

@@ -10,8 +10,9 @@ from horey.h_logger import get_logger
 from horey.kubernetes_api.kubernetes_api_configuration_policy import KubernetesAPIConfigurationPolicy
 from horey.aws_api.k8s import K8S
 import horey.aws_api.base_entities.region
+from horey.kubernetes_api.service_entities.deployment import Deployment
 
-#pylint: disable= missing-function-docstring
+# pylint: disable= missing-function-docstring
 
 
 configuration_values_file_full_path = None
@@ -21,9 +22,12 @@ logger = get_logger(
 
 configuration = KubernetesAPIConfigurationPolicy()
 k8s = K8S()
-cluster_name = "test-aws-example"
+configuration.cluster_name = "test-aws-example"
+namespace = "game-2048"
 region = horey.aws_api.base_entities.region.Region.get_region("us-west-2")
-configuration.endpoint, configuration.cadata, configuration.token = k8s.get_cluster_login_credentials(cluster_name, region)
+configuration.endpoint, configuration.cadata, configuration.token = k8s.get_cluster_login_credentials(configuration.cluster_name,
+                                                                                                      region)
+configuration.kubernetes_api_cache_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "ignore", "kubernetes"))
 kube_api = KubernetesAPI(configuration=configuration)
 
 
@@ -39,6 +43,13 @@ def test_init_namespaces():
     kube_api.init_namespaces()
     logger.info(f"len(namespaces) = {len(kube_api.namespaces)}")
     assert isinstance(kube_api.namespaces, list)
+
+
+@pytest.mark.skip(reason="")
+def test_init_deployments():
+    kube_api.init_deployments()
+    logger.info(f"len(deployments) = {len(kube_api.deployments)}")
+    assert isinstance(kube_api.deployments, list)
 
 
 @pytest.mark.skip(reason="")
@@ -61,9 +72,109 @@ def test_init_namespaces_and_print_names():
     assert isinstance(names, list)
 
 
+@pytest.mark.skip(reason="")
+def test_provision_deployment_raw():
+    dict_req = {
+        "metadata": {
+            "name": "nginx-deployment",
+            "labels": {
+                "app": "nginx"
+            }
+        },
+        "spec": {
+            "replicas": 3,
+            "selector": {
+                "match_labels": {
+                    "app": "nginx"
+                }
+            },
+            "template": {
+                "metadata": {
+                    "labels": {
+                        "app": "nginx"
+                    }
+                },
+                "spec": {
+                    "containers": [
+                        {
+                            "name": "nginx",
+                            "image": "nginx:latest",
+                            "ports": [
+                                {
+                                    "container_port": 80
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
+        }
+    }
+    kube_api.client.provision_deployment_raw(namespace, dict_req)
+
+
+@pytest.mark.skip(reason="")
+def test_provision_deployment():
+    """
+    Deployment.
+
+    :return:
+    """
+
+    dict_src = {
+        "metadata": {
+            "name": "nginx-deployment",
+            "labels": {
+                "app": "nginx"
+            }
+        },
+        "spec": {
+            "replicas": 3,
+            "selector": {
+                "match_labels": {
+                    "app": "nginx"
+                }
+            },
+            "template": {
+                "metadata": {
+                    "labels": {
+                        "app": "nginx"
+                    }
+                },
+                "spec": {
+                    "containers": [
+                        {
+                            "name": "nginx",
+                            "image": "nginx:latest",
+                            "ports": [
+                                {
+                                    "container_port": 80
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
+        }
+    }
+    deployment = Deployment(dict_src=dict_src)
+    kube_api.client.provision_deployment(namespace, deployment)
+
+
+@pytest.mark.skip(reason="")
+def test_get_ingresses():
+    """
+    kubectl get ingress/ingress-2048 -n game-2048
+    :return:
+    """
+    breakpoint()
+
+
 if __name__ == "__main__":
-    # test_init_pods()
-    # test_init_namespaces()
+    test_init_pods()
+    test_init_namespaces()
     test_init_pods_and_print_names()
     test_init_namespaces_and_print_names()
-
+    # test_provision_deployment_raw()
+    test_provision_deployment()
+    test_get_ingresses()
