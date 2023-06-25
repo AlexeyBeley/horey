@@ -9,6 +9,7 @@ from horey.kubernetes_api.base_entities.kubernetes_account import KubernetesAcco
 from horey.kubernetes_api.service_entities.namespace import Namespace
 from horey.kubernetes_api.service_entities.deployment import Deployment
 from horey.kubernetes_api.service_entities.pod import Pod
+from horey.kubernetes_api.service_entities.ingress import Ingress
 from horey.h_logger import get_logger
 import kubernetes
 
@@ -26,6 +27,7 @@ class KubernetesClient:
     def __init__(self):
         self._client = None
         self._apps_v1_api_client = None
+        self._networking_v1_api_client = None
 
     @property
     def client(self):
@@ -51,6 +53,18 @@ class KubernetesClient:
             self.connect()
         return self._apps_v1_api_client
 
+    @property
+    def networking_v1_api_client(self):
+        """
+        Connect to client.
+
+        :return:
+        """
+
+        if self._networking_v1_api_client is None:
+            self.connect()
+        return self._networking_v1_api_client
+
     @staticmethod
     def _write_cafile(data: str) -> tempfile.NamedTemporaryFile:
         # protect yourself from automatic deletion
@@ -61,15 +75,16 @@ class KubernetesClient:
         cafile.flush()
         return cafile
 
-    @staticmethod
-    def k8s_api_clients(endpoint: str, token: str, cafile: str) -> (kubernetes.client.CoreV1Api, kubernetes.client.AppsV1Api):
+    def init_k8s_api_clients(self, endpoint: str, token: str, cafile: str) -> (kubernetes.client.CoreV1Api, kubernetes.client.AppsV1Api):
         kconfig = kubernetes.config.kube_config.Configuration(
             host=endpoint,
             api_key={"authorization": "Bearer " + token}
         )
         kconfig.ssl_ca_cert = cafile
         kclient = kubernetes.client.ApiClient(configuration=kconfig)
-        return kubernetes.client.CoreV1Api(api_client=kclient), kubernetes.client.AppsV1Api(api_client=kclient)
+        self._client = kubernetes.client.CoreV1Api(api_client=kclient)
+        self._apps_v1_api_client = kubernetes.client.AppsV1Api(api_client=kclient)
+        self._networking_v1_api_client = kubernetes.client.NetworkingV1Api(api_client=kclient)
 
     def connect(self):
         """
@@ -81,7 +96,7 @@ class KubernetesClient:
 
         my_token = account.token
 
-        self._client, self._apps_v1_api_client = KubernetesClient.k8s_api_clients(
+        self.init_k8s_api_clients(
             endpoint=account.endpoint,
             token=my_token["status"]["token"],
             cafile=my_cafile.name
@@ -107,7 +122,8 @@ class KubernetesClient:
 
     def get_deployments(self, namespace=None):
         """
-        Get pods
+        Get deployments
+        NetworkingV1Api
 
         :return:
         """
@@ -115,6 +131,19 @@ class KubernetesClient:
             ret = [Deployment(obj) for obj in self.apps_v1_api_client.list_namespaced_deployment(namespace, watch=False).items]
         else:
             ret = [Deployment(obj) for obj in self.apps_v1_api_client.list_deployment_for_all_namespaces(watch=False).items]
+        return ret
+
+    def get_ingresses(self, namespace=None):
+        """
+        Get ingresses
+
+        :return:
+        """
+
+        if namespace:
+            ret = [Ingress(obj) for obj in self.networking_v1_api_client.list_namespaced_ingress(namespace, watch=False).items]
+        else:
+            ret = [Ingress(obj) for obj in self.networking_v1_api_client.list_ingress_for_all_namespaces(watch=False).items]
         return ret
 
     def provision_deployment(self, namespace, deployment):
@@ -130,7 +159,7 @@ class KubernetesClient:
             if current_deployment.name == deployment.name:
                 return True
 
-        self.provision_deployment_raw(namespace, deployment.to_dict())
+        self.provision_deployment_raw(namespace, deployment.convert_to_dict())
 
     def provision_deployment_raw(self, namespace, dict_req):
         """
@@ -173,3 +202,53 @@ class KubernetesClient:
         )
 
         self.apps_v1_api_client.create_namespaced_deployment(namespace=namespace, body=deployment)
+
+    def provision_ingress(self, namespace, ingress):
+        """
+        Create or update.
+
+        :param namespace:
+        :param ingress:
+        :return:
+        """
+
+        for current_ingress in self.get_ingresses(namespace=namespace):
+            if current_ingress.name == ingress.name:
+                return True
+
+        self.provision_ingress_raw(namespace, ingress.convert_to_dict())
+
+    def provision_ingress_raw(self, namespace, dict_req):
+        """
+        Provision ingress from raw dict request.
+
+        :param namespace:
+        :param dict_req:
+        :return:
+        """
+        body = kubernetes.client.V1Ingress(
+            api_version="networking.k8s.io/v1",
+            kind="Ingress",
+            metadata=kubernetes.client.V1ObjectMeta(name=dict_req["metadata"]["name"], annotations=dict_req["metadata"]["annotations"]),
+            spec=kubernetes.client.V1IngressSpec(
+                rules=[kubernetes.client.V1IngressRule(
+                    host=rule.get("host"),
+                    http=kubernetes.client.V1HTTPIngressRuleValue(
+                        paths=[kubernetes.client.V1HTTPIngressPath(
+                            path=path["path"],
+                            path_type=path.get("path_type"),
+                            backend=kubernetes.client.V1IngressBackend(
+                                service=kubernetes.client.V1IngressServiceBackend(
+                                    port=kubernetes.client.V1ServiceBackendPort(
+                                        number=path["backend"]["service_port"],
+                                    ),
+                                    name=path["backend"]["service_name"])
+                            )
+                        ) for path in rule["http"]["paths"]]
+                    )
+                )
+                for rule in dict_req["spec"]["rules"]]
+            )
+        )
+
+        self.networking_v1_api_client.create_namespaced_ingress(namespace=namespace, body=body)

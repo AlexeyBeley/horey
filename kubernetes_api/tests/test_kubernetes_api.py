@@ -11,6 +11,7 @@ from horey.kubernetes_api.kubernetes_api_configuration_policy import KubernetesA
 from horey.aws_api.k8s import K8S
 import horey.aws_api.base_entities.region
 from horey.kubernetes_api.service_entities.deployment import Deployment
+from horey.kubernetes_api.service_entities.ingress import Ingress
 
 # pylint: disable= missing-function-docstring
 
@@ -36,6 +37,13 @@ def test_init_pods():
     kube_api.init_pods()
     logger.info(f"len(pods) = {len(kube_api.pods)}")
     assert isinstance(kube_api.pods, list)
+
+
+@pytest.mark.skip(reason="")
+def test_init_ingresses():
+    kube_api.init_ingresses()
+    logger.info(f"len(ingresses) = {len(kube_api.ingresses)}")
+    assert isinstance(kube_api.ingresses, list)
 
 
 @pytest.mark.skip(reason="")
@@ -161,6 +169,38 @@ def test_provision_deployment():
     kube_api.client.provision_deployment(namespace, deployment)
 
 
+def test_provision_ingress():
+    dict_src = {
+        "metadata": {
+            "name": "nginx-ingress",
+            "annotations": {
+                "kubernetes.io/ingress.class": "alb",
+                "alb.ingress.kubernetes.io/scheme": "internet-facing"
+            }
+        },
+        "spec": {
+            "rules": [
+                {
+                    "http": {
+                        "paths": [
+                            {
+                                "path": "/",
+                                "path_type": "Exact",
+                                "backend": {
+                                    "service_name": "nginx-service",
+                                    "service_port": 80
+                                }
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    }
+    ingress = Ingress(dict_src=dict_src)
+    kube_api.client.provision_ingress(namespace, ingress)
+
+
 @pytest.mark.skip(reason="")
 def test_get_ingresses():
     """
@@ -171,10 +211,11 @@ def test_get_ingresses():
 
 
 if __name__ == "__main__":
-    test_init_pods()
-    test_init_namespaces()
-    test_init_pods_and_print_names()
-    test_init_namespaces_and_print_names()
+    # test_init_pods()
+    # test_init_ingresses()
+    # test_init_namespaces()
+    # test_init_pods_and_print_names()
+    # test_init_namespaces_and_print_names()
     # test_provision_deployment_raw()
-    test_provision_deployment()
-    test_get_ingresses()
+    # test_provision_deployment()
+    test_provision_ingress()
