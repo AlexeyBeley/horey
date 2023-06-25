@@ -23,6 +23,8 @@ class KubernetesAPI:
         self.namespaces = []
         self.ingresses = []
         self.deployments = []
+        self.services = []
+
         if configuration is not None:
             KubernetesAccount.set_kubernetes_account(KubernetesAccount(endpoint=configuration.endpoint, token=configuration.token, cadata=configuration.cadata))
 
@@ -47,6 +49,15 @@ class KubernetesAPI:
         self.pods = self.client.get_pods()
         self.cache(self.pods)
     
+    def init_services(self):
+        """
+        Init services.
+
+        :return:
+        """
+        self.services = self.client.get_services()
+        self.cache(self.services)
+ 
     def init_ingresses(self):
         """
         Init ingresses.

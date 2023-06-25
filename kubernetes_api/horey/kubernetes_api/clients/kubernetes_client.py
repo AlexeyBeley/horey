@@ -9,6 +9,7 @@ from horey.kubernetes_api.base_entities.kubernetes_account import KubernetesAcco
 from horey.kubernetes_api.service_entities.namespace import Namespace
 from horey.kubernetes_api.service_entities.deployment import Deployment
 from horey.kubernetes_api.service_entities.pod import Pod
+from horey.kubernetes_api.service_entities.service import Service
 from horey.kubernetes_api.service_entities.ingress import Ingress
 from horey.h_logger import get_logger
 import kubernetes
@@ -109,6 +110,19 @@ class KubernetesClient:
         :return:
         """
         ret = [Pod(pod) for pod in self.client.list_pod_for_all_namespaces(watch=False).items]
+        return ret
+
+    def get_services(self, namespace=None):
+        """
+        Get services
+
+        :return:
+        """
+
+        if namespace:
+            ret = [Service(service) for service in self.client.list_namespaced_service(namespace, watch=False).items]
+        else:
+            ret = [Service(service) for service in self.client.list_service_for_all_namespaces(watch=False).items]
         return ret
 
     def get_namespaces(self):
@@ -252,3 +266,57 @@ class KubernetesClient:
         )
 
         self.networking_v1_api_client.create_namespaced_ingress(namespace=namespace, body=body)
+    
+    def provision_service(self, namespace, service):
+        """
+        Create or update.
+
+        :param namespace:
+        :param service:
+        :return:
+        """
+
+        for current_service in self.get_services(namespace=namespace):
+            if current_service.name == service.name:
+                return True
+
+        self.provision_service_raw(namespace, service.convert_to_dict())
+
+    def provision_service_raw(self, namespace, dict_req):
+        """
+        Provision service from raw dict request.
+
+        :param namespace:
+        :param dict_req:
+        :return:
+        """
+        breakpoint()
+        body = kubernetes.client.V1Service(
+            api_version="v1",
+            kind="Service",
+            metadata=kubernetes.client.V1ObjectMeta(name=dict_req["metadata"]["name"]),
+            spec=kubernetes.client.V1ServiceSpec(
+                selector=dict_req["spec"]["selector"],
+                type=dict_req["spec"]["type"],
+                ports=[kubernetes.client.V1ServicePort(
+                    **port
+                ) for port in dict_req["spec"]["ports"]]
+            )
+        )
+
+        self.client.create_namespaced_service(namespace=namespace, body=body)
+
+    def dispose_service(self, namespace, service):
+        """
+        Delete if exists.
+
+        :param namespace:
+        :param service:
+        :return:
+        """
+        breakpoint()
+        for current_service in self.get_services(namespace=namespace):
+            if current_service.name == service.name:
+                return True
+
+        self.client.delete_namespaced_service(namespace=namespace, body=body)

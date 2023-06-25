@@ -12,6 +12,7 @@ from horey.aws_api.k8s import K8S
 import horey.aws_api.base_entities.region
 from horey.kubernetes_api.service_entities.deployment import Deployment
 from horey.kubernetes_api.service_entities.ingress import Ingress
+from horey.kubernetes_api.service_entities.service import Service
 
 # pylint: disable= missing-function-docstring
 
@@ -37,6 +38,13 @@ def test_init_pods():
     kube_api.init_pods()
     logger.info(f"len(pods) = {len(kube_api.pods)}")
     assert isinstance(kube_api.pods, list)
+
+
+@pytest.mark.skip(reason="")
+def test_init_services():
+    kube_api.init_services()
+    logger.info(f"len(services) = {len(kube_api.services)}")
+    assert isinstance(kube_api.services, list)
 
 
 @pytest.mark.skip(reason="")
@@ -201,6 +209,52 @@ def test_provision_ingress():
     kube_api.client.provision_ingress(namespace, ingress)
 
 
+def test_provision_service():
+    dict_src = {
+        "metadata": {
+            "name": "nginx-service"
+        },
+        "spec": {
+            "type": "NodePort",
+            "ports": [
+                {
+                    "port": 80,
+                    "target_port": 80,
+                    "protocol": "TCP"
+                }
+            ],
+            "selector": {
+                "app": "nginx"
+            }
+        }
+    }
+    service = Service(dict_src=dict_src)
+    kube_api.client.provision_service(namespace, service)
+
+
+def test_dispose_service():
+    dict_src = {
+        "metadata": {
+            "name": "nginx-service"
+        },
+        "spec": {
+            "type": "NodePort",
+            "ports": [
+                {
+                    "port": 80,
+                    "target_port": 80,
+                    "protocol": "TCP"
+                }
+            ],
+            "selector": {
+                "app": "nginx"
+            }
+        }
+    }
+    service = Service(dict_src=dict_src)
+    kube_api.client.dispose_service(namespace, service)
+
+
 @pytest.mark.skip(reason="")
 def test_get_ingresses():
     """
@@ -211,6 +265,7 @@ def test_get_ingresses():
 
 
 if __name__ == "__main__":
+    # test_init_services()
     # test_init_pods()
     # test_init_ingresses()
     # test_init_namespaces()
@@ -218,4 +273,6 @@ if __name__ == "__main__":
     # test_init_namespaces_and_print_names()
     # test_provision_deployment_raw()
     # test_provision_deployment()
-    test_provision_ingress()
+    # test_provision_ingress()
+    # test_provision_service()
+    test_dispose_service()
