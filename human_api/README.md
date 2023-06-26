@@ -1,12 +1,57 @@
 
-# Daily Reporting Automation
+# Daily Actions Reporting Automation
 
 "Daly", "Stand up meeting", "STUM", "YTB"...
-Jira, Azure Devops, Monday...
+
+#Work management systems
+There are many out there:
+Jira, Azure Devops, Monday etc.
+
+Benefits they bring:
+
+* Transparency - You know the shared work's status.
+* Unification- Common language. Task, Bug, Sprint, YTB etc.
+* Flow management- Rules to move from stage to stage.
+* Predictability- Ability to plan the future work.
+
+##Human factor
+"Was lazy to open a task/bug".
+"Forgot to add working hours in the task status."
+"Had lots of context switches. No idea how much total time did it take"
+"I'll fill it tomorrow before the daily meeting..."
+
+##In more formal words
+We spend 15-40 minutes a day for sharing our YTB (Yesterday, Today, Blockers) status.
+However, most of the time we forget to record the status or do it inaccurate.
+This happens because working with graphical task management systems annoys many people (or developers).
+Below I'm presenting my experience in automating this daily routine using textual UI.
+
+##Benefits:
+* Simplifying the world to the minimal needed set of statuses and actions.
+* Simple calculations refreshes memory:
+  - Reporting +2 hours on a planend task
+  - Reporting +4 hours on a planned bug
+  - Oh! Forgot to open new bug on yesterdays prod issue: Reporting 2 planned, +4 hours spent, title and comment.
+  total: +2 +4 +4 = 10 hours of work, sound correct for yesterday.
+* Pre submission validations:
+  - Do you have title, comment, planned time in a new task/bug?
+
 
 ## Assumptions
-* Automate everything you do recurrently. 
-* Typing is quicker then clicking.
+* Automate everything you do recurrently.
+* Typing is quicker than clicking.
+* Use API as much as you can.
+* DIY program = fun. Customizable solution configuration, reconfiguration, rereconfiguration ... = not fun.
+
+
+#Task lifetime <Status> and your `action`:
+* `Creating` task- <New> task. No work performed on the task yet.
+* `Working` on a task- <Active> task. You are investing yours and only yours time in the task.
+* `Informing` other worker you are waiting for him- <Blocked> task. Active waiting: sending reminders, escalating.
+* `Reaching` the desired state- <Closed> task. From now on - only new tasks and bugs.
+
+Status neutral actions:
+
 
 
 ## Line format:
