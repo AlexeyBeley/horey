@@ -3,7 +3,7 @@
 
 "Daly", "Stand up meeting", "STUM", "YTB"...
 
-#Work management systems
+# Work management systems
 There are many out there:
 Jira, Azure Devops, Monday etc.
 
@@ -14,19 +14,19 @@ Benefits they bring:
 * Flow management- Rules to move from stage to stage.
 * Predictability- Ability to plan the future work.
 
-##Human factor
+## Human factor
 "Was lazy to open a task/bug".
 "Forgot to add working hours in the task status."
 "Had lots of context switches. No idea how much total time did it take"
 "I'll fill it tomorrow before the daily meeting..."
 
-##In more formal words
+## In more formal words
 We spend 15-40 minutes a day for sharing our YTB (Yesterday, Today, Blockers) status.
 However, most of the time we forget to record the status or do it inaccurate.
 This happens because working with graphical task management systems annoys many people (or developers).
 Below I'm presenting my experience in automating this daily routine using textual UI.
 
-##Benefits:
+## Benefits:
 * Simplifying the world to the minimal needed set of statuses and actions.
 * Simple calculations refreshes memory:
   - Reporting +2 hours on a planend task
@@ -35,6 +35,23 @@ Below I'm presenting my experience in automating this daily routine using textua
   total: +2 +4 +4 = 10 hours of work, sound correct for yesterday.
 * Pre submission validations:
   - Do you have title, comment, planned time in a new task/bug?
+
+## TL/DR
+This is a sample textual format for reporting workers' daily actions:
+```
+>ClLOSED:
+[user_story 1002 #Backend] -> task 1003 # Kubernetes Service :actions: +2, comment Created YAML file generator.
+[user_story 1002 #Backend] -> bug # QA Nginx cache configuration :actions: 2, +1, comment Time units misconfiguration- hours instead of seconds.
+```
+* Task 1003- Add 2 hours to the effort
+* Task 1003- Add a comment "Created YAML file generator".
+* Task 1003- Move to closed.
+* Bug QA Nginx- Created, with estimation 2 hours
+* Bug QA Nginx- Add 1 hour to the effort
+* Bug QA Nginx- Add a comment "Time units misconfiguration....".
+* Bug QA Nginx- Move to closed.
+
+Filled by each team member. Checked for input/format errors and pushed to the Task Management System via API.
 
 
 ## Assumptions
