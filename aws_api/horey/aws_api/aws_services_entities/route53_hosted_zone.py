@@ -81,6 +81,10 @@ class HostedZone(AwsObject):
 
         def __init__(self, dict_src, from_cache=False):
             super().__init__(dict_src)
+            self.ttl = None
+            self.resource_records = None
+            self.alias_target = None
+
             if from_cache:
                 self._init_object_from_cache(dict_src)
                 return

@@ -466,6 +466,7 @@ class HumanAPI:
         self.user_stories = {}
         self.bugs = {}
         self.tasks = {}
+        self.provisioned_new_parents_map = {}
         self.configuration = configuration
         azure_devops_api_config = AzureDevopsAPIConfigurationPolicy()
         azure_devops_api_config.configuration_file_full_path = self.configuration.azure_devops_api_configuration_file_path
@@ -843,13 +844,18 @@ class HumanAPI:
         parents_to_actions_map = defaultdict(list)
         for action in actions_new + actions_active + actions_blocked + actions_closed:
             if action.parent_id == "0":
-                parents_to_actions_map[action.parent_title].append(action)
+                if action.parent_title in self.provisioned_new_parents_map:
+                    action.parent_id = self.provisioned_new_parents_map[action.parent_title]
+                else:
+                    parents_to_actions_map[action.parent_title].append(action)
 
         for parent_title, actions in parents_to_actions_map.items():
             user_story_id = self.azure_devops_api.provision_work_item_by_params(actions[0].parent_type, parent_title,
                                                                                 "Auto generated content. Change it manually",
                                                                                 iteration_partial_path=self.configuration.sprint_name,
                                                                                 assigned_to=user_full_name)
+            self.provisioned_new_parents_map[parent_title] = user_story_id
+
             for action in actions:
                 action.parent_id = user_story_id
 

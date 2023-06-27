@@ -121,7 +121,6 @@ class CloudfrontDistribution(AwsObject):
         }
         request["DistributionConfig"]["CallerReference"] = self.distribution_config["DistributionConfig"][
             "CallerReference"]
-
         for required_attr in ["Logging", "DefaultRootObject", "WebACLId", "CacheBehaviors"]:
             if required_attr not in request["DistributionConfig"]:
                 request["DistributionConfig"][required_attr] = self.distribution_config["DistributionConfig"][required_attr]
