@@ -154,7 +154,13 @@ def test_provision_listener_multiple_certs():
 
 
 def test_set_rule_priorities_raw():
+    """
+
     {"RuleArn": "", "Priority": 1},
+
+    :return:
+    """
+
     request = {"RulePriorities": [
     ]}
 
