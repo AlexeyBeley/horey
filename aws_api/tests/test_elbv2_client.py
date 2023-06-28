@@ -153,8 +153,19 @@ def test_provision_listener_multiple_certs():
     client.dispose_listener_raw(listener.generate_dispose_request())
 
 
+def test_set_rule_priorities_raw():
+    {"RuleArn": "", "Priority": 1},
+    request = {"RulePriorities": [
+    ]}
+
+    AWSAccount.set_aws_region(Region.get_region("us-east-1"))
+    ret = client.set_rule_priorities_raw(request)
+    print(ret)
+
+
 if __name__ == "__main__":
-    test_provision_load_balancer()
-    test_provision_listener()
-    test_provision_listener_multiple_certs()
-    test_dispose_load_balancer()
+    # test_provision_load_balancer()
+    # test_provision_listener()
+    # test_provision_listener_multiple_certs()
+    # test_dispose_load_balancer()
+    test_set_rule_priorities_raw()
