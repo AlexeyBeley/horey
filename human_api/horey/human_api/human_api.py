@@ -33,7 +33,8 @@ class WorkObject:
         self.id = None
         self.status = None
         self.created_date = None
-        self.closed_date = None
+        self._closed_date = None
+        self.state_change_date = None
         self.created_by = None
         self.assigned_to = None
         self.title = None
@@ -45,6 +46,20 @@ class WorkObject:
         self.azure_devops_object = None
 
         self.children = []
+
+    @property
+    def closed_date(self):
+        """
+        Close/Resolve/status change
+        :return:
+        """
+        if self._closed_date is None:
+            self._closed_date = self.state_change_date
+        return self._closed_date
+
+    @closed_date.setter
+    def closed_date(self, value):
+        self._closed_date = value
 
     def init_from_azure_devops_work_item_base(self, work_item):
         """
@@ -65,6 +80,7 @@ class WorkObject:
                              "System.IterationPath": self.init_sprint_id_azure_devops,
                              "Microsoft.VSTS.Common.ClosedDate": self.init_closed_date_azure_devops,
                              "Microsoft.VSTS.Common.ResolvedDate": self.init_closed_date_azure_devops,
+                             "Microsoft.VSTS.Common.StateChangeDate": self.init_state_change_date_azure_devops,
                              }
 
         for attribute_name, value in work_item.fields.items():
@@ -175,6 +191,18 @@ class WorkObject:
             self.closed_date = datetime.datetime.strptime(value, "%Y-%m-%dT%H:%M:%S.%fZ")
         else:
             self.closed_date = datetime.datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ")
+
+    def init_state_change_date_azure_devops(self, value):
+        """
+        Init from azure devops object.
+
+        :param value:
+        :return:
+        """
+        if "." in value:
+            self.state_change_date = datetime.datetime.strptime(value, "%Y-%m-%dT%H:%M:%S.%fZ")
+        else:
+            self.state_change_date = datetime.datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ")
 
     def init_created_date_azure_devops(self, value):
         """

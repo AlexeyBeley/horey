@@ -1,43 +1,35 @@
 
-# Daily Actions Reporting Automation
+# Daily Tasks Reporting Automation
+We spend 15-40 minutes a day for sharing our YTB (Yesterday, Today, Blockers) status.
+However, most of the time we forget to "document" the status or do it inaccurate.
+This happens because it's annoying to work with graphical task management systems.
+Below I'm presenting my experience in automating this daily routine using textual UI.
 
-"Daly", "Stand up meeting", "STUM", "YTB"...
 
-# Work management systems
+## Work management systems
 There are many out there:
 Jira, Azure Devops, Monday etc.
 
-Benefits they bring:
-
+### Benefits:
 * Transparency - You know the shared work's status.
 * Unification- Common language. Task, Bug, Sprint, YTB etc.
 * Flow management- Rules to move from stage to stage.
 * Predictability- Ability to plan the future work.
 
-## Human factor
-"Was lazy to open a task/bug".
-"Forgot to add working hours in the task status."
+### Drawback: Human factor
+All the benefits are achievable only if the system's data is accurate.
+So...
+How many times did you hear/tell/think during your Dalies/Stand up meetings/STUMs/YTBs:
+"It was couple of hours, was lazy to open a task/bug".
+"Forgot to add working hours to this task"
 "Had lots of context switches. No idea how much total time did it take"
 "I'll fill it tomorrow before the daily meeting..."
+"Any way nobody will read this..."
 
-## In more formal words
-We spend 15-40 minutes a day for sharing our YTB (Yesterday, Today, Blockers) status.
-However, most of the time we forget to record the status or do it inaccurate.
-This happens because working with graphical task management systems annoys many people (or developers).
-Below I'm presenting my experience in automating this daily routine using textual UI.
-
-## Benefits:
-* Simplifying the world to the minimal needed set of statuses and actions.
-* Simple calculations refreshes memory:
-  - Reporting +2 hours on a planend task
-  - Reporting +4 hours on a planned bug
-  - Oh! Forgot to open new bug on yesterdays prod issue: Reporting 2 planned, +4 hours spent, title and comment.
-  total: +2 +4 +4 = 10 hours of work, sound correct for yesterday.
-* Pre submission validations:
-  - Do you have title, comment, planned time in a new task/bug?
 
 ## TL/DR
-This is a sample textual format for reporting workers' daily actions:
+Daily actions - actions you do on your tasks: Status changes, work planning, work hours updates, commenting.
+Below is an example of a textual format for reporting workers' daily actions:
 ```
 >ClLOSED:
 [user_story 1002 #Backend] -> task 1003 # Kubernetes Service :actions: +2, comment Created YAML file generator.
@@ -54,6 +46,17 @@ This is a sample textual format for reporting workers' daily actions:
 Filled by each team member. Checked for input/format errors and pushed to the Task Management System via API.
 
 
+## My solutions' Benefits:
+* Simplifying the world to the minimal needed set of statuses and actions.
+* Easy arithmetic calculations help understand time proportions:
+  - Reporting +2 hours on a planned task
+  - Reporting +4 hours on a planned bug
+  - Oh! Forgot to open new bug on yesterdays prod issue: Reporting 2 planned, +4 hours spent, title and comment.
+  total: +2 +4 +4 = 10 hours of work, sound correct for yesterday.
+* Pre submission validations:
+  - Do you have a parent, title, comment, planned time in a new task/bug?
+
+
 ## Assumptions
 * Automate everything you do recurrently.
 * Typing is quicker than clicking.
@@ -68,7 +71,6 @@ Filled by each team member. Checked for input/format errors and pushed to the Ta
 * `Reaching` the desired state- <Closed> task. From now on - only new tasks and bugs.
 
 Status neutral actions:
-
 
 
 ## Line format:
