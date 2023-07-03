@@ -195,8 +195,12 @@ def test_provision_ingress():
                                 "path": "/",
                                 "path_type": "Exact",
                                 "backend": {
-                                    "service_name": "nginx-service",
-                                    "service_port": 80
+                                    "service":
+                                        {"name": "nginx-service",
+                                            "port": {
+                                            "name": None,
+                                            "number": 80
+                                        }}
                                 }
                             }
                         ]
@@ -205,6 +209,113 @@ def test_provision_ingress():
             ]
         }
     }
+    ingress = Ingress(dict_src=dict_src)
+    kube_api.client.provision_ingress(namespace, ingress)
+
+
+def test_provision_ingress_game_2048():
+    dict_src = {"metadata": {
+            "annotations": {
+                "alb.ingress.kubernetes.io/ip-address-type": "dualstack",
+                "alb.ingress.kubernetes.io/scheme": "internet-facing",
+                "alb.ingress.kubernetes.io/target-type": "ip",
+                "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"networking.k8s.io/v1\",\"kind\":\"Ingress\",\"metadata\":{\"annotations\":{\"alb.ingress.kubernetes.io/ip-address-type\":\"dualstack\",\"alb.ingress.kubernetes.io/scheme\":\"internet-facing\",\"alb.ingress.kubernetes.io/target-type\":\"ip\"},\"name\":\"ingress-2048\",\"namespace\":\"game-2048\"},\"spec\":{\"ingressClassName\":\"alb\",\"rules\":[{\"http\":{\"paths\":[{\"backend\":{\"service\":{\"name\":\"service-2048\",\"port\":{\"number\":80}}},\"path\":\"/\",\"pathType\":\"Prefix\"}]}}]}}\n"
+            },
+            "labels": {
+            "app": "game-2048"
+            },
+            "creation_timestamp": {
+                "horey_cached_type": "datetime",
+                "value": "2023-06-09 12:13:43.000000+0000"
+            },
+            "deletion_grace_period_seconds": None,
+            "deletion_timestamp": None,
+            "finalizers": [
+                "ingress.k8s.aws/resources"
+            ],
+            "generate_name": None,
+            "generation": 1,
+            "managed_fields": [
+                {
+                    "api_version": "networking.k8s.io/v1",
+                    "fields_type": "FieldsV1",
+                    "fields_v1": {
+                        "f:metadata": {
+                            "f:finalizers": {
+                                ".": {},
+                                "v:\"ingress.k8s.aws/resources\"": {}
+                            }
+                        }
+                    },
+                    "manager": "controller",
+                    "operation": "Update",
+                    "subresource": None,
+                    "time": {
+                        "horey_cached_type": "datetime",
+                        "value": "2023-06-09 12:13:43.000000+0000"
+                    }
+                },
+                {
+                    "api_version": "networking.k8s.io/v1",
+                    "fields_type": "FieldsV1",
+                    "fields_v1": {
+                        "f:metadata": {
+                            "f:annotations": {
+                                ".": {},
+                                "f:alb.ingress.kubernetes.io/ip-address-type": {},
+                                "f:alb.ingress.kubernetes.io/scheme": {},
+                                "f:alb.ingress.kubernetes.io/target-type": {},
+                                "f:kubectl.kubernetes.io/last-applied-configuration": {}
+                            }
+                        },
+                        "f:spec": {
+                            "f:ingressClassName": {},
+                            "f:rules": {}
+                        }
+                    },
+                    "manager": "kubectl-client-side-apply",
+                    "operation": "Update",
+                    "subresource": None,
+                    "time": {
+                        "horey_cached_type": "datetime",
+                        "value": "2023-06-09 12:59:02.000000+0000"
+                    }
+                }
+            ],
+            "name": "ingress-2048",
+            "namespace": "game-2048",
+            "owner_references": None,
+            "resource_version": "5633238",
+            "self_link": None,
+            "uid": "1fcd8969-2896-4062-b8bf-b816fcc320d0"
+        },
+        "spec": {
+            "default_backend": None,
+            "ingress_class_name": "alb",
+            "rules": [
+                {
+                    "http": {
+                        "paths": [
+                            {
+                                "backend": {
+                                    "resource": None,
+                                    "service": {
+                                        "name": "service-2048",
+                                        "port": {
+                                            "name": None,
+                                            "number": 80
+                                        }
+                                    }
+                                },
+                                "path": "/",
+                                "path_type": "Prefix"
+                            }
+                        ]
+                    }
+                }
+            ],
+            "tls": None
+        }}
     ingress = Ingress(dict_src=dict_src)
     kube_api.client.provision_ingress(namespace, ingress)
 
@@ -275,4 +386,5 @@ if __name__ == "__main__":
     # test_provision_deployment()
     # test_provision_ingress()
     # test_provision_service()
-    test_dispose_service()
+    # test_dispose_service()
+    test_provision_ingress_game_2048()

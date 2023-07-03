@@ -217,7 +217,7 @@ class KubernetesClient:
 
         self.apps_v1_api_client.create_namespaced_deployment(namespace=namespace, body=deployment)
 
-    def provision_ingress(self, namespace, ingress):
+    def provision_ingress(self, namespace, ingress: Ingress):
         """
         Create or update.
 
@@ -228,9 +228,10 @@ class KubernetesClient:
 
         for current_ingress in self.get_ingresses(namespace=namespace):
             if current_ingress.name == ingress.name:
-                return True
+                #return True
+                pass
 
-        self.provision_ingress_raw(namespace, ingress.convert_to_dict())
+        self.provision_ingress_raw(namespace, ingress.generate_provision_request())
 
     def provision_ingress_raw(self, namespace, dict_req):
         """
@@ -240,10 +241,11 @@ class KubernetesClient:
         :param dict_req:
         :return:
         """
+        logger.info(f"Provisioning Kubernentes ingress: {dict_req['metadata']['name']}")
         body = kubernetes.client.V1Ingress(
             api_version="networking.k8s.io/v1",
             kind="Ingress",
-            metadata=kubernetes.client.V1ObjectMeta(name=dict_req["metadata"]["name"], annotations=dict_req["metadata"]["annotations"]),
+            metadata=kubernetes.client.V1ObjectMeta(**dict_req["metadata"]),
             spec=kubernetes.client.V1IngressSpec(
                 rules=[kubernetes.client.V1IngressRule(
                     host=rule.get("host"),
@@ -254,9 +256,9 @@ class KubernetesClient:
                             backend=kubernetes.client.V1IngressBackend(
                                 service=kubernetes.client.V1IngressServiceBackend(
                                     port=kubernetes.client.V1ServiceBackendPort(
-                                        number=path["backend"]["service_port"],
+                                        number=path["backend"]["service"]["port"]["number"],
                                     ),
-                                    name=path["backend"]["service_name"])
+                                    name=path["backend"]["service"]["name"])
                             )
                         ) for path in rule["http"]["paths"]]
                     )
@@ -265,6 +267,7 @@ class KubernetesClient:
             )
         )
 
+        # self.networking_v1_api_client.patch_namespaced_ingress(name=dict_req["metadata"]["name"], namespace=namespace, body=body)
         self.networking_v1_api_client.create_namespaced_ingress(namespace=namespace, body=body)
     
     def provision_service(self, namespace, service):
