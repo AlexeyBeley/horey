@@ -93,6 +93,7 @@ class CloudfrontDistribution(AwsObject):
         """
         Generate an update request with the desired distribution configuration, current id and current etag.
 
+        WARNING: "Origins", "ViewerCertificate" are ignored!
 
         :return:
             The update request.
@@ -102,7 +103,7 @@ class CloudfrontDistribution(AwsObject):
         for self_distribution_config_key, self_distribution_config_value in self.distribution_config[
             "DistributionConfig"].items():
             desired_value = desired_distribution.distribution_config.get(self_distribution_config_key)
-            if self_distribution_config_key in ["Origins", "DefaultCacheBehavior", "ViewerCertificate"]:
+            if self_distribution_config_key in ["Origins", "ViewerCertificate"]:
                 logger.warning(f"Ignoring cloud front distribution key: {self_distribution_config_key}")
                 continue
             if desired_value is None:
