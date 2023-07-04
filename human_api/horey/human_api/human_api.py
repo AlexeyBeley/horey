@@ -339,6 +339,7 @@ class DailyReportAction:
 
     def __init__(self, line_src):
         self.src_line = line_src
+        self.init_errors = []
         self.parent_type = None
         self.parent_id = None
         self.parent_title = None
@@ -367,8 +368,6 @@ class DailyReportAction:
         self.init_parent(parent_token)
         self.init_child(child_token)
         self.init_actions(action_token)
-        if self.child_id == "0" and self.action_comment is None:
-            raise ValueError(f"Task/Bug creation must have comment: '{line_src}'")
 
     def init_child(self, child_token):
         """
@@ -396,11 +395,11 @@ class DailyReportAction:
 
         self.child_type = self.child_type.strip()
         if self.child_type not in ["task", "bug"]:
-            raise RuntimeError(f"Task uid can not be parsed in: '{child_token}'")
+            self.init_errors.append(f"Task uid can not be parsed in: '{child_token}'")
 
         self.child_id = self.child_id.strip()
         if not self.child_id.isdigit():
-            raise RuntimeError(f"Task uid can not be parsed in: '{child_token}'")
+            self.init_errors.append(f"Task uid can not be parsed in: '{child_token}'")
 
     def init_actions(self, action_token):
         """
@@ -432,8 +431,11 @@ class DailyReportAction:
             if action.startswith("+"):
                 logger.info(f"Initializing '+' action token: {action}")
                 if not action[1:].isdigit():
-                    raise RuntimeError(f"Can not parse action: '{action_token}'")
-                self.action_add_time = int(action[1:])
+                    self.init_errors.append(f"Can not parse action: '{action_token}'")
+                try:
+                    self.action_add_time = int(action[1:])
+                except ValueError as error_inst:
+                    self.init_errors.append(repr(error_inst))
                 continue
             if action.startswith("comment"):
                 self.action_comment = action[len("comment"):].strip()
@@ -453,7 +455,7 @@ class DailyReportAction:
             if action.isdigit():
                 self.action_init_time = int(action)
                 continue
-            raise ValueError(f"Unknown action '{action}' in line '{self.src_line}'")
+            self.init_errors.append(f"Unknown action '{action}' in line '{self.src_line}'")
 
     def init_parent(self, parent_token):
         """
@@ -496,11 +498,12 @@ class HumanAPI:
         self.tasks = {}
         self.provisioned_new_parents_map = {}
         self.configuration = configuration
-        azure_devops_api_config = AzureDevopsAPIConfigurationPolicy()
-        azure_devops_api_config.configuration_file_full_path = self.configuration.azure_devops_api_configuration_file_path
-        azure_devops_api_config.init_from_file()
-        self.azure_devops_api = AzureDevopsAPI(azure_devops_api_config)
-        os.makedirs(self.configuration.daily_dir_path, exist_ok=True)
+        if configuration is not None:
+            azure_devops_api_config = AzureDevopsAPIConfigurationPolicy()
+            azure_devops_api_config.configuration_file_full_path = self.configuration.azure_devops_api_configuration_file_path
+            azure_devops_api_config.init_from_file()
+            self.azure_devops_api = AzureDevopsAPI(azure_devops_api_config)
+            os.makedirs(self.configuration.daily_dir_path, exist_ok=True)
 
     def init_tasks_map(self, sprints=None):
         """
@@ -740,21 +743,42 @@ class HumanAPI:
                                    "actions_blocked": actions_blocked,
                                    "actions_closed": actions_closed
                                    }
-            self.validate_worker_report_input(actions_new, actions_active, actions_blocked, actions_closed)
         return dict_ret
 
     def validate_worker_report_input(self, actions_new, actions_active, actions_blocked, actions_closed):
         """
         Go over actions and validate the input
 
-        :param dict_actions:
+        :param actions_new:
+        :param actions_active:
+        :param actions_blocked:
+        :param actions_closed:
         :return:
         """
 
+        errors = []
         for action in actions_new + actions_active + actions_blocked + actions_closed:
+            if action.init_errors:
+                errors.append(f"Initialization Error:\n{action.src_line}:\n" + "\n".join(action.init_errors))
             if str(action.child_id) == "0":
                 if not action.child_title:
-                    raise ValueError(f"Set 'child_title' for the new task: {action.src_line}")
+                    errors.append(f"New item Title:\n {action.src_line}")
+                if action.action_comment is None:
+                    errors.append(f"New item Comment:\n{action.src_line}")
+                if not action.action_init_time:
+                    errors.append(f"New item time Estimation:\n{action.src_line}")
+            if action.action_add_time is not None and action.action_comment is None:
+                errors.append(f"Updating time Comment:\n{action.src_line}")
+
+        if errors:
+            print("##########VALIDATION_START################")
+            for error in errors:
+                print("~~~~~~~~ERROR_START~~~~~~~~~~~~~~~")
+                print(error)
+                print("~~~~~~~~ERROR_END~~~~~~~~~~~~~~~")
+                print()
+            print("##########VALIDATION_END################")
+            raise ValueError(f"Errors occurred, see list below")
 
     def init_actions_per_worker(self, worker_report):
         """
@@ -762,6 +786,9 @@ class HumanAPI:
         :return:
         """
         lst_worker_report = worker_report.split("\n")
+
+        worker_full_name = lst_worker_report[0].lower()
+
         index_end = lst_worker_report.index("#" * 100)
         lst_worker_report = lst_worker_report[:index_end]
 
@@ -779,11 +806,11 @@ class HumanAPI:
         actions_blocked = [DailyReportAction(line_src) for line_src in lines_blocked]
         actions_closed = [DailyReportAction(line_src) for line_src in lines_closed]
 
-        full_name = lst_worker_report[0].lower()
+        self.validate_worker_report_input(actions_new, actions_active, actions_blocked, actions_closed)
 
         self.perform_actions_replacements(actions_new, actions_active, actions_blocked, actions_closed)
 
-        return full_name, actions_new, actions_active, actions_blocked, actions_closed
+        return worker_full_name, actions_new, actions_active, actions_blocked, actions_closed
 
     def perform_worker_report_actions(self, worker_name, input_actions, base_actions):
         """
@@ -1037,3 +1064,17 @@ class HumanAPI:
             self.daily_action()
             return
         self.daily_report()
+
+    def validate_daily_input(self, file_path):
+        """
+        Validate the input syntax is correct.
+
+        :param file_path:
+        :return:
+        """
+        try:
+            self.init_actions_from_report_file(file_path)
+            print("Validation success!!!")
+        except ValueError as inst:
+            if "Errors occurred, see list below" not in repr(inst):
+                raise
