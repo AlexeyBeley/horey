@@ -23,8 +23,6 @@ class SlackAPIConfigurationPolicy(ConfigurationPolicy):
 
     @property
     def webhook_url(self):
-        if self._webhook_url is None:
-            raise ValueError("webhook_url was not set")
         return self._webhook_url
 
     @webhook_url.setter

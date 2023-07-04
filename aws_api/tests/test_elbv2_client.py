@@ -162,9 +162,10 @@ def test_set_rule_priorities_raw():
     """
 
     request = {"RulePriorities": [
+        {"RuleArn": "arn", "Priority": 2},
     ]}
 
-    AWSAccount.set_aws_region(Region.get_region("us-east-1"))
+    AWSAccount.set_aws_region(Region.get_region("us-west-2"))
     ret = client.set_rule_priorities_raw(request)
     print(ret)
 
