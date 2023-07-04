@@ -778,7 +778,7 @@ class HumanAPI:
                 print("~~~~~~~~ERROR_END~~~~~~~~~~~~~~~")
                 print()
             print("##########VALIDATION_END################")
-            raise ValueError(f"Errors occurred, see list below")
+            raise ValueError("Errors occurred, see list below")
 
     def init_actions_per_worker(self, worker_report):
         """
