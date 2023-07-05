@@ -58,8 +58,8 @@ class Provisioner(SystemFunctionCommon):
 
         #self.run_bash('export NVM_DIR="$HOME/.nvm"')
         #command = '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm'
-        #command = "source ~/.bashrc"
-        #self.run_bash(command)
+        command = "source ~/.bashrc"
+        self.run_bash(command)
         command = f"nvm install v{self.nodejs_version}"
         self.run_bash(command)
 
