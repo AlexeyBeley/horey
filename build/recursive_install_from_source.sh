@@ -17,7 +17,8 @@ fi
 
 echo "Created recursive_compose_requirements"
 
-pip3_path=$(which pip3)
+pip3_path=$(which pip)
+echo "pip3_path: ${pip3_path}"
 
 ret=0
 which python || export ret=1
