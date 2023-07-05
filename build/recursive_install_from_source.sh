@@ -17,6 +17,7 @@ fi
 
 echo "Created recursive_compose_requirements"
 
+echo $(whoami)
 pip3_path=$(which pip)
 echo "pip3_path: ${pip3_path}"
 
