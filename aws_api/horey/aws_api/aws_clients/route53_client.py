@@ -66,10 +66,18 @@ class Route53Client(Boto3Client):
                 "ResourceRecordSet": {
                     "Name": record.name,
                     "Type": record.type,
-                    "TTL": record.ttl,
-                    "ResourceRecords": record.resource_records,
-                },
+                }
             }
+
+            if record.ttl is not None:
+                change["ResourceRecordSet"]["TTL"] = record.ttl
+
+            if record.resource_records is not None:
+                change["ResourceRecordSet"]["ResourceRecords"] = record.resource_records
+
+            if record.alias_target is not None:
+                change["ResourceRecordSet"]["AliasTarget"] = record.alias_target
+
             changes.append(change)
 
         hosted_zones = self.get_all_hosted_zones(name=hosted_zone.name)

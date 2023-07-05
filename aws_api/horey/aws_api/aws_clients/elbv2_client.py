@@ -521,3 +521,18 @@ class ELBV2Client(Boto3Client):
             self.client.delete_listener, None, raw_data=True, filters_req=request
         ):
             return response
+
+    def set_rule_priorities_raw(self, request):
+        """
+        Standard
+        {"RulePriorities": [{"RuleArn": "string", "Priority": 123}]}
+        {"RulePriorities": [{"RuleArn": "string", "Priority": 1}, {"RuleArn": "string", "Priority": 2}, {"RuleArn": "string", "Priority": 3}]}
+        @param request:
+        @return:
+        """
+        logger.info(f"Change load balancer rule priority: {request}")
+
+        for response in self.execute(
+            self.client.set_rule_priorities, "Rules", filters_req=request
+        ):
+            return response
