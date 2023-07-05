@@ -40,19 +40,9 @@ class Provisioner(SystemFunctionCommon):
 
     def _provision(self):
         """
-        curl -fsSL https://deb.nodesource.com/setup_14.x | sudo -E bash -
-        sudo apt-get install -y nodejs
-        curl -L https://www.npmjs.com/install.sh >> install.sh
-        sudo chmod +x ./install.sh
-        sudo npm_install="6.14.5" ./install.sh
-
+        Provision npm and nodejs
         @return:
         """
-
-        #self.run_bash(
-        #    "curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -"
-        #)
-        #self.apt_install("nodejs")
 
         self.run_bash("curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash")
 
