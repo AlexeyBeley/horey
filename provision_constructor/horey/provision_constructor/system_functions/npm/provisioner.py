@@ -46,5 +46,5 @@ class Provisioner(SystemFunctionCommon):
 
         self.run_bash("curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash")
 
-        command = f'NVM_DIR="$HOME/.nvm" source "$NVM_DIR/nvm.sh" && nvm install v{self.nodejs_version}'
+        command = f'export NVM_DIR="$HOME/.nvm" && source "$NVM_DIR/nvm.sh" && nvm install v{self.nodejs_version}'
         self.run_bash(command)
