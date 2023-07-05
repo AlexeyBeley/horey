@@ -22,13 +22,12 @@ pip3_path=$(which pip) || true
 
 # This is because in ubuntu22 after you install pip you need to restart the bash shell to catch the new path
 if [[ $pip3_path == "" ]]; then
-  source ~/.bashrc
-  #user=$(whoami)
-  #if [[ $user == "ubuntu" ]]; then
-  #  export PATH="/home/ubuntu/.local/bin:${PATH}"
-  #else
-  #  exit 1;
-  #fi
+  user=$(whoami)
+  if [[ $user == "ubuntu" ]]; then
+    export PATH="/home/ubuntu/.local/bin:${PATH}"
+  else
+    exit 1;
+  fi
   pip3_path=$(which pip)
 fi
 
