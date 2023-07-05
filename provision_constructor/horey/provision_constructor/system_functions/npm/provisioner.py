@@ -53,6 +53,16 @@ class Provisioner(SystemFunctionCommon):
             "curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -"
         )
         self.apt_install("nodejs")
-        self.run_bash("curl -L https://www.npmjs.com/install.sh >> install.sh")
-        self.run_bash("sudo chmod +x ./install.sh")
-        self.run_bash(f'sudo npm_install="{self.npm_version}" ./install.sh')
+
+        self.run_bash("curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash")
+
+        #self.run_bash('export NVM_DIR="$HOME/.nvm"')
+        #command = '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm'
+        command = "source ~/.bashrc"
+        self.run_bash(command)
+        command = f"nvm install v{self.npm_version}"
+        self.run_bash(command)
+
+        #self.run_bash("curl -L https://www.npmjs.com/install.sh >> install.sh")
+        #self.run_bash("sudo chmod +x ./install.sh")
+        #self.run_bash(f'sudo npm_install="{self.npm_version}" ./install.sh')
