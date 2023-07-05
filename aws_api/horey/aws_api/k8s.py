@@ -13,7 +13,9 @@ from horey.aws_api.aws_services_entities.eks_cluster import EKSCluster
 class K8S:
     """
     aws eks update-kubeconfig --region us-west-2 --name test-aws-example
+
     """
+
     TOKEN_EXPIRATION_MINS = 14
     TOKEN_PREFIX = "k8s-aws-v1."
     K8S_AWS_ID_HEADER = "x-k8s-aws-id"
@@ -69,16 +71,27 @@ class K8S:
 
     @staticmethod
     def get_expiration_time():
+        """
+        Calculate token time.
+        :return:
+        """
         token_expiration = datetime.datetime.utcnow() + datetime.timedelta(minutes=K8S.TOKEN_EXPIRATION_MINS)
-        return token_expiration.strftime('%Y-%m-%dT%H:%M:%SZ')
+        return token_expiration.strftime("%Y-%m-%dT%H:%M:%SZ")
 
     def _get_presigned_url(self, k8s_aws_id):
+        """
+        Generate caller identity.
+
+        :param k8s_aws_id:
+        :return:
+        """
+
         self._register_k8s_aws_id_handlers()
         return self.aws_api.sts_client.client.generate_presigned_url(
-            'get_caller_identity',
+            "get_caller_identity",
             Params={self.K8S_AWS_ID_HEADER: k8s_aws_id},
             ExpiresIn=self.URL_TIMEOUT,
-            HttpMethod='GET',
+            HttpMethod="GET",
         )
 
     def get_token(self, cluster_name) -> dict:
@@ -105,19 +118,42 @@ class K8S:
         }
 
     def _register_k8s_aws_id_handlers(self):
+        """
+        Register callback functions
+
+        :return:
+        """
+
         self.aws_api.sts_client.client.meta.events.register(
-            'provide-client-params.sts.GetCallerIdentity',
+            "provide-client-params.sts.GetCallerIdentity",
             self._retrieve_k8s_aws_id,
         )
         self.aws_api.sts_client.client.meta.events.register(
-            'before-sign.sts.GetCallerIdentity',
+            "before-sign.sts.GetCallerIdentity",
             self._inject_k8s_aws_id_header,
         )
 
-    def _retrieve_k8s_aws_id(self, params, context, **kwargs):
+    def _retrieve_k8s_aws_id(self, params, context, **_):
+        """
+        Callback function.
+
+        :param params:
+        :param context:
+        :param _:
+        :return:
+        """
+
         if self.K8S_AWS_ID_HEADER in params:
             context[self.K8S_AWS_ID_HEADER] = params.pop(self.K8S_AWS_ID_HEADER)
 
-    def _inject_k8s_aws_id_header(self, request, **kwargs):
+    def _inject_k8s_aws_id_header(self, request, **_):
+        """
+        Callback function.
+
+        :param request:
+        :param _:
+        :return:
+        """
+
         if self.K8S_AWS_ID_HEADER in request.context:
             request.headers[self.K8S_AWS_ID_HEADER] = request.context[self.K8S_AWS_ID_HEADER]

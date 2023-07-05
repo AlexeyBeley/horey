@@ -1,7 +1,8 @@
 """
-Test aws stepfunctions client.
+Test aws k8s client.
 
 """
+
 import json
 import os
 
@@ -144,7 +145,7 @@ def test_provision_fargate_profile():
     :return:
     """
 
-    k8s = K8S()
+    _k8s = K8S()
     eks_fargate_profile = EKSFargateProfile({})
     eks_fargate_profile.region = Region.get_region("us-west-2")
     eks_fargate_profile.name = "alb-sample-app"
@@ -158,7 +159,7 @@ def test_provision_fargate_profile():
         "service_name": "test_label"
     }}
     ]
-    k8s.aws_api.eks_client.provision_fargate_profile(eks_fargate_profile)
+    _k8s.aws_api.eks_client.provision_fargate_profile(eks_fargate_profile)
     assert eks_fargate_profile.arn is not None
 
 
@@ -169,12 +170,12 @@ def test_dispose_fargate_profile():
     :return:
     """
 
-    k8s = K8S()
+    _k8s = K8S()
     eks_fargate_profile = EKSFargateProfile({})
     eks_fargate_profile.region = Region.get_region("us-west-2")
     eks_fargate_profile.name = "alb-sample-app"
     eks_fargate_profile.cluster_name = "test-aws-example"
-    k8s.aws_api.eks_client.dispose_fargate_profile(eks_fargate_profile)
+    _k8s.aws_api.eks_client.dispose_fargate_profile(eks_fargate_profile)
 
 
 if __name__ == "__main__":

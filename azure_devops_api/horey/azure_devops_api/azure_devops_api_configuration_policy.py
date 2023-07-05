@@ -1,6 +1,7 @@
 """
 Configs
 """
+
 from horey.configuration_policy.configuration_policy import ConfigurationPolicy
 
 # pylint: disable= missing-function-docstring
@@ -158,7 +159,7 @@ class AzureDevopsAPIConfigurationPolicy(ConfigurationPolicy):
             )
 
         self._project_name = value
-    
+
     @property
     def cache_dir_full_path(self):
         if self._cache_dir_full_path is None:

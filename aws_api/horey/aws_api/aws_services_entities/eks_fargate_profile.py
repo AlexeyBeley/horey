@@ -1,5 +1,6 @@
 """
 EKSFargateProfile representation
+
 """
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
@@ -77,7 +78,9 @@ class EKSFargateProfile(AwsObject):
                    "podExecutionRoleArn": self.pod_execution_role_arn,
                    "selectors": self.selectors
                    }
+
         if self.tags:
+            # pylint: disable= not-an-iterable
             request["tags"] = {tag["Key"]: tag["Value"] for tag in self.tags}
 
         return request

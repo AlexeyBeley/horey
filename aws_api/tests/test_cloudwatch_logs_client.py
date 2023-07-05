@@ -2,6 +2,7 @@
 Test client.
 
 """
+
 import datetime
 import json
 import os
@@ -100,7 +101,7 @@ def test_save_stream_events():
     file_path = ""
 
     for event in client.yield_log_events(group, stream):
-        with open(file_path, "a") as fh:
+        with open(file_path, "a", encoding="utf-8") as fh:
             fh.write(json.dumps(event)+"\n")
 
 

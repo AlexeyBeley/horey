@@ -2,8 +2,10 @@
 Client to work with kube claster
 
 """
+
 import base64
 import tempfile
+import kubernetes
 
 from horey.kubernetes_api.base_entities.kubernetes_account import KubernetesAccount
 from horey.kubernetes_api.service_entities.namespace import Namespace
@@ -12,7 +14,6 @@ from horey.kubernetes_api.service_entities.pod import Pod
 from horey.kubernetes_api.service_entities.service import Service
 from horey.kubernetes_api.service_entities.ingress import Ingress
 from horey.h_logger import get_logger
-import kubernetes
 
 logger = get_logger()
 
@@ -68,7 +69,15 @@ class KubernetesClient:
 
     @staticmethod
     def _write_cafile(data: str) -> tempfile.NamedTemporaryFile:
+        """
+        Write cert auth file.
+
+        :param data:
+        :return:
+        """
+
         # protect yourself from automatic deletion
+        # pylint: disable= consider-using-with
         cafile = tempfile.NamedTemporaryFile(delete=False)
         cadata_b64 = data
         cadata = base64.b64decode(cadata_b64)
@@ -77,6 +86,14 @@ class KubernetesClient:
         return cafile
 
     def init_k8s_api_clients(self, endpoint: str, token: str, cafile: str) -> (kubernetes.client.CoreV1Api, kubernetes.client.AppsV1Api):
+        """
+        Init all clients to be used.
+
+        :param endpoint:
+        :param token:
+        :param cafile:
+        :return:
+        """
         kconfig = kubernetes.config.kube_config.Configuration(
             host=endpoint,
             api_key={"authorization": "Bearer " + token}
@@ -174,6 +191,7 @@ class KubernetesClient:
                 return True
 
         self.provision_deployment_raw(namespace, deployment.convert_to_dict())
+        return True
 
     def provision_deployment_raw(self, namespace, dict_req):
         """
@@ -241,6 +259,7 @@ class KubernetesClient:
         :param dict_req:
         :return:
         """
+
         logger.info(f"Provisioning Kubernentes ingress: {dict_req['metadata']['name']}")
         body = kubernetes.client.V1Ingress(
             api_version="networking.k8s.io/v1",
@@ -269,7 +288,7 @@ class KubernetesClient:
 
         # self.networking_v1_api_client.patch_namespaced_ingress(name=dict_req["metadata"]["name"], namespace=namespace, body=body)
         self.networking_v1_api_client.create_namespaced_ingress(namespace=namespace, body=body)
-    
+
     def provision_service(self, namespace, service):
         """
         Create or update.
@@ -284,6 +303,7 @@ class KubernetesClient:
                 return True
 
         self.provision_service_raw(namespace, service.convert_to_dict())
+        return True
 
     def provision_service_raw(self, namespace, dict_req):
         """
@@ -293,7 +313,7 @@ class KubernetesClient:
         :param dict_req:
         :return:
         """
-        breakpoint()
+
         body = kubernetes.client.V1Service(
             api_version="v1",
             kind="Service",
@@ -317,9 +337,10 @@ class KubernetesClient:
         :param service:
         :return:
         """
-        breakpoint()
         for current_service in self.get_services(namespace=namespace):
             if current_service.name == service.name:
                 return True
+        body = None
 
-        self.client.delete_namespaced_service(namespace=namespace, body=body)
+        self.client.delete_namespaced_service(name=service.name, namespace=namespace, body=body)
+        return True

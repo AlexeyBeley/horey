@@ -1,5 +1,6 @@
 """
 EKSCluster representation
+
 """
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
@@ -17,7 +18,7 @@ class EKSCluster(AwsObject):
         super().__init__(dict_src)
         self.arn = None
         self.endpoint = None
-        self.certificate_authority = None
+        self.certificate_authority = {}
 
         if from_cache:
             self._init_object_from_cache(dict_src)

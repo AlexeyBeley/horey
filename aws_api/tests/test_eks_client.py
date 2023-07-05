@@ -1,7 +1,8 @@
 """
-Test aws stepfunctions client.
+Test aws eks client
 
 """
+
 import os
 
 from horey.aws_api.aws_clients.eks_client import EKSClient
@@ -108,4 +109,4 @@ if __name__ == "__main__":
     # test_get_all_addons()
     # test_get_all_fargate_profiles()
     # test_get_region_fargate_profiles()
-      test_provision_fargate_profiles()
+    test_provision_fargate_profiles()

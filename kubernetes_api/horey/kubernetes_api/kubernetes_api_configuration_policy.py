@@ -1,8 +1,20 @@
+"""
+Config policy
+
+"""
+
 import os
 from horey.configuration_policy.configuration_policy import ConfigurationPolicy
 
+# pylint: disable= missing-function-docstring
+
 
 class KubernetesAPIConfigurationPolicy(ConfigurationPolicy):
+    """
+    Main Class.
+
+    """
+
     def __init__(self):
         super().__init__()
         self.token = None

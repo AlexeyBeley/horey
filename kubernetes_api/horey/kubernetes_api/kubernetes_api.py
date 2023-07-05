@@ -2,6 +2,7 @@
 API to the kubernetes.
 
 """
+
 import json
 import os
 
@@ -37,7 +38,7 @@ class KubernetesAPI:
         """
 
         lst_ret = [obj.convert_to_dict() for obj in objects]
-        with open(os.path.join(self.configuration.namespace_cache_dir_path, objects[0].cache_file_name), "w") as file_handler:
+        with open(os.path.join(self.configuration.namespace_cache_dir_path, objects[0].cache_file_name), "w", encoding="utf-8") as file_handler:
             json.dump(lst_ret, file_handler, indent=4)
 
     def init_pods(self):
@@ -48,7 +49,7 @@ class KubernetesAPI:
         """
         self.pods = self.client.get_pods()
         self.cache(self.pods)
-    
+
     def init_services(self):
         """
         Init services.
@@ -57,7 +58,7 @@ class KubernetesAPI:
         """
         self.services = self.client.get_services()
         self.cache(self.services)
- 
+
     def init_ingresses(self):
         """
         Init ingresses.
