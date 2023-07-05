@@ -18,9 +18,13 @@ class Provisioner(SystemFunctionCommon):
     """
     Main class
     """
-    def __init__(self, deployment_dir, force, upgrade):
+
+    # pylint: disable=too-many-arguments
+    def __init__(self, deployment_dir, force, upgrade, npm_version="8.19.4", nodejs_version="16.20.1"):
         super().__init__(os.path.dirname(os.path.abspath(__file__)), force, upgrade)
         self.deployment_dir = deployment_dir
+        self.npm_version = npm_version
+        self.nodejs_version = nodejs_version
 
     def test_provisioned(self):
         self.init_apt_packages()
@@ -46,9 +50,9 @@ class Provisioner(SystemFunctionCommon):
         """
 
         self.run_bash(
-            "curl -fsSL https://deb.nodesource.com/setup_14.x | sudo -E bash -"
+            "curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -"
         )
         self.apt_install("nodejs")
         self.run_bash("curl -L https://www.npmjs.com/install.sh >> install.sh")
         self.run_bash("sudo chmod +x ./install.sh")
-        self.run_bash('sudo npm_install="6.14.5" ./install.sh')
+        self.run_bash(f'sudo npm_install="{self.npm_version}" ./install.sh')
