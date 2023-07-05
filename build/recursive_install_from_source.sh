@@ -17,9 +17,23 @@ fi
 
 echo "Created recursive_compose_requirements"
 
-user=$(whoami)
-echo ${PATH}
-pip3_path=$(which pip)
+
+pip3_path=$(which pip) || true
+
+# This is because in ubuntu22 after you install pip you need to restart the bash shell to catch the new path
+if [[ $pip3_path == "" ]]; then
+
+  user=$(whoami)
+  if [[ $user == "ubuntu" ]]; then
+    export PATH="/home/ubuntu/.local/bin:${PATH}"
+    pip3_path=$(which pip)
+  else
+    exit 1;
+  fi
+
+fi
+
+
 
 echo "pip3_path: ${pip3_path}"
 
