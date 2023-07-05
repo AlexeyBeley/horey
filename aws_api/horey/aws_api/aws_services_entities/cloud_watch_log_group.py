@@ -21,6 +21,7 @@ class CloudWatchLogGroup(AwsObject):
 
         self.log_streams = []
         self.arn = None
+        self.retention_in_days = None
 
         super().__init__(dict_src, from_cache=from_cache)
 
