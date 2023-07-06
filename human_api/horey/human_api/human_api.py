@@ -2,12 +2,14 @@
 Manage Azure Devops
 
 """
+import logging
 import datetime
 from collections import defaultdict
 from enum import Enum
 
 import os
 from horey.h_logger import get_logger
+from horey.h_logger.h_logger import formatter
 from horey.human_api.human_api_configuration_policy import (
     HumanAPIConfigurationPolicy,
 )
@@ -519,6 +521,11 @@ class HumanAPI:
             azure_devops_api_config.init_from_file()
             self.azure_devops_api = AzureDevopsAPI(azure_devops_api_config)
             os.makedirs(self.configuration.daily_dir_path, exist_ok=True)
+
+            file_handler = logging.FileHandler(os.path.join(self.configuration.daily_dir_path, "human_api.log"))
+            file_handler.setFormatter(formatter)
+            file_handler.setLevel(logging.INFO)
+            logger.addHandler(file_handler)
 
     def init_tasks_map(self, sprints=None):
         """
