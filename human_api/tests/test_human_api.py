@@ -1,7 +1,6 @@
 """
 Testing chronograf api
 """
-import datetime
 import os
 import pytest
 
@@ -9,6 +8,8 @@ from horey.human_api.human_api import HumanAPI
 from horey.human_api.human_api_configuration_policy import (
     HumanAPIConfigurationPolicy,
 )
+
+from horey.human_api.sprint import Sprint
 from horey.common_utils.common_utils import CommonUtils
 
 configuration = HumanAPIConfigurationPolicy()
@@ -59,8 +60,15 @@ def test_daily_routine():
     human_api.daily_routine()
 
 
+def test_sprint_planning():
+    sprint = Sprint()
+    sprint.name = "Test sprint"
+
+
 if __name__ == "__main__":
     # test_init_tasks_map()
     # test_daily_report()
     # test_daily_action()
-    test_daily_routine()
+    test_sprint_planning()
+
+    #test_daily_routine()
