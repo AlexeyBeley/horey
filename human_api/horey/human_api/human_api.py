@@ -348,7 +348,7 @@ class DailyReportAction:
         self.child_id = None
         self.child_title = None
 
-        self.action_comment = None
+        self._action_comment = None
 
         self.action_init_time = None
         self.action_add_time = None
@@ -368,6 +368,21 @@ class DailyReportAction:
         self.init_parent(parent_token)
         self.init_child(child_token)
         self.init_actions(action_token)
+
+    @property
+    def action_comment(self):
+        """
+        action_comment getter.
+
+        :return:
+        """
+
+        return self._action_comment
+
+    @action_comment.setter
+    def action_comment(self, value):
+        value = value[0].upper() + value[1:]
+        self._action_comment = value
 
     def init_child(self, child_token):
         """
