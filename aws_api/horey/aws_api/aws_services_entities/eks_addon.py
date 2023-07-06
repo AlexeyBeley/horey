@@ -1,5 +1,6 @@
 """
 EKSAddon representation
+
 """
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
@@ -54,14 +55,14 @@ class EKSAddon(AwsObject):
             "status": self.init_default_attr,
             "addonVersion": self.init_default_attr,
             "health": self.init_default_attr,
-            'createdAt': self.init_default_attr,
-            'modifiedAt': self.init_default_attr,
-            'serviceAccountRoleArn': self.init_default_attr,
-            'tags': self.init_default_attr,
-            'publisher': self.init_default_attr,
-            'owner': self.init_default_attr,
-            'marketplaceInformation': self.init_default_attr,
-            'configurationValues': self.init_default_attr,
+            "createdAt": self.init_default_attr,
+            "modifiedAt": self.init_default_attr,
+            "serviceAccountRoleArn": self.init_default_attr,
+            "tags": self.init_default_attr,
+            "publisher": self.init_default_attr,
+            "owner": self.init_default_attr,
+            "marketplaceInformation": self.init_default_attr,
+            "configurationValues": self.init_default_attr,
         }
         self.init_attrs(dict_src, init_options)
 

@@ -1,52 +1,27 @@
+"""
+Config policy
+
+"""
+
 import os
 from horey.configuration_policy.configuration_policy import ConfigurationPolicy
 
+# pylint: disable= missing-function-docstring
+
 
 class KubernetesAPIConfigurationPolicy(ConfigurationPolicy):
+    """
+    Main Class.
+
+    """
+
     def __init__(self):
         super().__init__()
-        self._kubernetes_api_regions = None
-        self._accounts_file = None
-        self._kubernetes_account = None
+        self.token = None
+        self.cadata = None
+        self.endpoint = None
         self._kubernetes_api_cache_dir = None
-
-    @property
-    def kubernetes_api_regions(self):
-        if self._kubernetes_api_regions is None:
-            raise ValueError("kubernetes_api_regions were not set")
-        return self._kubernetes_api_regions
-
-    @kubernetes_api_regions.setter
-    def kubernetes_api_regions(self, value):
-        if not isinstance(value, list):
-            raise ValueError(
-                f"kubernetes_api_regions must be a list received {value} of type: {type(value)}"
-            )
-
-        self._kubernetes_api_regions = value
-
-    @property
-    def accounts_file(self):
-        return self._accounts_file
-
-    @accounts_file.setter
-    def accounts_file(self, value):
-        self._accounts_file = value
-
-    @property
-    def kubernetes_account(self):
-        if self._kubernetes_account is None:
-            raise ValueError("kubernetes_account was not set")
-        return self._kubernetes_account
-
-    @kubernetes_account.setter
-    def kubernetes_account(self, value):
-        if not isinstance(value, str):
-            raise ValueError(
-                f"kubernetes_account must be a string received {value} of type: {type(value)}"
-            )
-
-        self._kubernetes_account = value
+        self._cluster_name = None
 
     @property
     def kubernetes_api_cache_dir(self):
@@ -58,3 +33,19 @@ class KubernetesAPIConfigurationPolicy(ConfigurationPolicy):
     def kubernetes_api_cache_dir(self, value):
         self._kubernetes_api_cache_dir = value
         os.makedirs(self._kubernetes_api_cache_dir, exist_ok=True)
+
+    @property
+    def cluster_name(self):
+        if self._cluster_name is None:
+            raise ValueError("cluster_name was not set")
+        return self._cluster_name
+
+    @cluster_name.setter
+    def cluster_name(self, value):
+        self._cluster_name = value
+
+    @property
+    def namespace_cache_dir_path(self):
+        ret = os.path.join(self.kubernetes_api_cache_dir, self.cluster_name)
+        os.makedirs(ret, exist_ok=True)
+        return ret

@@ -1,6 +1,7 @@
 """
 Configs
 """
+
 from horey.configuration_policy.configuration_policy import ConfigurationPolicy
 
 # pylint: disable= missing-function-docstring
@@ -9,6 +10,18 @@ from horey.configuration_policy.configuration_policy import ConfigurationPolicy
 class AzureDevopsAPIConfigurationPolicy(ConfigurationPolicy):
     """
     Main class
+    password is actually PAT: personal access token.
+
+    Sign in to your organization (https://dev.azure.com/{yourorganization}).
+    From your home page, open "user settings" and select Personal access tokens.
+    Select + New Token.
+    Name your token, select the organization where you want to use the token, and then set your token to automatically
+     expire after a set number of days.
+    Select the scopes for this token to authorize for your specific tasks.
+    Presse "Create"
+    When you're done, copy the token and store it in a secure location. For your security, it won't be shown again.
+
+    https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate?view=azure-devops&tabs=Windows
     """
     def __init__(self):
         self._server_address = None
@@ -146,7 +159,7 @@ class AzureDevopsAPIConfigurationPolicy(ConfigurationPolicy):
             )
 
         self._project_name = value
-    
+
     @property
     def cache_dir_full_path(self):
         if self._cache_dir_full_path is None:

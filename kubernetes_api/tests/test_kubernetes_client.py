@@ -1,42 +1,54 @@
-"""
-sudo mount -t nfs4 -o  nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport  172.31.14.49:/ /home/ubuntu/efs
-"""
-import pdb
-
 import pytest
 import os
-from horey.kubernetes_api.kubernetes_service_entities.bucket import Bucket
-from horey.kubernetes_api.kubernetes_clients.storage_client import StorageClient
 from horey.h_logger import get_logger
 from horey.kubernetes_api.kubernetes_api_configuration_policy import (
     KubernetesAPIConfigurationPolicy,
 )
+from horey.kubernetes_api.base_entities.kubernetes_account import KubernetesAccount
+
+from horey.kubernetes_api.kubernetes_clients.kubernetes_client import KubernetesClient
+from horey.kubernetes_api.kubernetes_api import KubernetesAPI
+from horey.aws_api.k8s import K8S
+import horey.aws_api.base_entities.region
 
 logger = get_logger()
 
-configuration = KubernetesAPIConfigurationPolicy()
-configuration.configuration_file_full_path = os.path.abspath(
-    os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "..",
-        "..",
-        "..",
-        "ignore",
-        "kubernetes_api_configuration_values.py",
-    )
-)
-configuration.init_from_file()
+#configuration = KubernetesAPIConfigurationPolicy()
+#configuration.configuration_file_full_path = os.path.abspath(
+#    os.path.join(
+#        os.path.dirname(os.path.abspath(__file__)),
+#        "..",
+#        "..",
+#        "..",
+#        "ignore",
+#        "kubernetes_api_configuration_values.py",
+#    )
+#)
+#configuration.init_from_file()
+#KubernetesAPI(configuration=configuration)
+
+client = KubernetesClient()
 
 
-# region done
-@pytest.mark.skip(reason="IAM policies will be inited explicitly")
-def test_provision_bucket():
-    pdb.set_trace()
-    bucket = Bucket({})
-    bucket.name = "horey-test"
-    client = StorageClient()
-    client.provision_bucket(Bucket)
+@pytest.mark.skip(reason="")
+def test_get_pods():
+    ret = client.get_pods()
+    print(ret)
+    assert isinstance(ret, list)
+
+
+@pytest.mark.skip(reason="")
+def test_connect_aws_api():
+    k8s = K8S()
+    cluster_name = "test-aws-example"
+    region = horey.aws_api.base_entities.region.Region.get_region("us-west-2")
+    endpoint, cadata, token = k8s.get_cluster_login_credentials(cluster_name, region)
+    account = KubernetesAccount(endpoint=endpoint, token=token, cadata=cadata)
+    KubernetesAccount.set_kubernetes_account(account)
+
+    client.connect()
 
 
 if __name__ == "__main__":
-    test_provision_bucket()
+    test_connect_aws_api()
+    test_get_pods()

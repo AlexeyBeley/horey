@@ -2,7 +2,9 @@
 Test client.
 
 """
+
 import datetime
+import json
 import os
 from unittest.mock import Mock
 from horey.aws_api.aws_clients.cloud_watch_logs_client import CloudWatchLogsClient
@@ -88,6 +90,21 @@ def test_yield_log_events():
     assert isinstance(ret, list)
 
 
+def test_save_stream_events():
+    client = CloudWatchLogsClient()
+    group = Mock()
+    group.region = Region.get_region("us-east-1")
+    group.name = mock_values["lg_name"]
+
+    stream = Mock()
+    group.name = mock_values["lgs_name"]
+    file_path = ""
+
+    for event in client.yield_log_events(group, stream):
+        with open(file_path, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(event)+"\n")
+
+
 def test_get_region_cloud_watch_log_groups():
     client = CloudWatchLogsClient()
     ret = client.get_region_cloud_watch_log_groups("us-west-2")
@@ -118,4 +135,5 @@ if __name__ == "__main__":
     # test_yield_log_group_streams()
     # test_yield_log_events()
     # test_get_region_cloud_watch_log_groups()
-    test_put_log_events_raw()
+    # test_put_log_events_raw()
+    test_save_stream_events()

@@ -17,4 +17,6 @@ FORCE: ;
 
 build:
 	cd ${HOREY_DIR_PATH} &&\
+	make raw_install_from_source-common_utils &&\
 	make raw_install_from_source-kubernetes_api
+	#make raw_install_from_source-aws_api &&\
