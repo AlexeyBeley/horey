@@ -24,11 +24,28 @@ class WorkObject:
         self.sprint_id = None
         self.child_ids = []
         self.parent_ids = []
+        self.children = []
         self.related = []
         self.human_api_comment = None
         self.azure_devops_object = None
 
         self.children = []
+        self._dod = None
+
+    @property
+    def dod(self):
+        """
+        Definition Of Done.
+
+        :return:
+        """
+        if self._dod is None:
+            self._dod = self.state_change_date
+        return self._dod
+
+    @dod.setter
+    def dod(self, value):
+        self._dod = value
 
     @property
     def closed_date(self):
@@ -216,3 +233,13 @@ class WorkObject:
         :return:
         """
         return f"{CommonUtils.camel_case_to_snake_case(self.__class__.__name__)} {self.id} #{self.title}"
+
+    def add(self, child):
+        """
+        Add a child.
+
+        :param child:
+        :return:
+        """
+
+        self.children.append(child)
