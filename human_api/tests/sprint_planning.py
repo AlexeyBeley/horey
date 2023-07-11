@@ -43,6 +43,7 @@ human_api = HumanAPI(configuration=configuration)
 
 # pylint: disable= missing-function-docstring
 
+# pylint: disable= too-many-statements
 def test_sprint_planning():
     sprint = Sprint()
     sprint.name = "Test sprint"
@@ -52,7 +53,7 @@ def test_sprint_planning():
     feature_sms.priority = 1
     feature_sms.dod = {1: "Sprint retrospective logs current time spent",
                         2: "Sprint retrospective resets tasks' times.",
-                        3: "Creates sprint plan - user stories tasks and bugs"}
+                        3: "Creates work plan - user stories tasks and bugs"}
 
     sprint_retrospective = UserStory()
     sprint_retrospective.title = "Sprint retrospective"
@@ -119,18 +120,56 @@ def test_sprint_planning():
     }
     sprint_retrospective_collect_data.add(fetch_sprint_relations)
 
-    # region sprint_planning
-    sprint_planning = UserStory()
-    sprint_planning.title = "Sprint planning from code"
-    sprint_planning.priority = 2
-    sprint_planning.dod = {
-        1: "Looks like in the picture attached.",
-        3: "Building garbage is collected",
-        4: "Yard Waste is collected",
-        5: "All tools are on their places"
+    # region work_plan
+    work_plan_generation = UserStory()
+    work_plan_generation.title = "Work plan from code"
+    work_plan_generation.priority = 2
+    work_plan_generation.dod = {
+        1: "Python file work items input. Output - list of dicts",
+        2: "Validation title length < 10",
+        3: "Validation priority set",
+        4: "Validation dod set",
+        5: "Validation time_estimation set",
+        6: "Validation description set",
+        7: "Hapi_uid generated per item",
+        8: "Child relations set by Hapi_uid",
     }
-    feature_sms.add(sprint_planning)
+    feature_sms.add(work_plan_generation)
     # end_region
+
+    convert_objects_to_list = Task()
+    convert_objects_to_list.title = "Work plan from code"
+    convert_objects_to_list.priority = 2
+    convert_objects_to_list.dod = {
+        1: "Python file work items input. Output - list of dicts"
+                                  }
+
+    work_plan_generation.add(convert_objects_to_list)
+
+    input_validation = Task()
+    input_validation.title = "Validation user input"
+    input_validation.priority = 2
+    input_validation.dod = {
+        2: "Validation title length < 10",
+        3: "Validation priority set",
+        4: "Validation dod set",
+        5: "Validation time_estimation set",
+        6: "Validation description set",
+    }
+
+    work_plan_generation.add(input_validation)
+
+    item_relations = Task()
+    item_relations.title = "Validation user input"
+    item_relations.priority = 2
+    item_relations.dod = {
+        7: "Hapi_uid generated per item",
+        8: "Child relations set by Hapi_uid",
+    }
+
+    work_plan_generation.add(item_relations)
+
+    human_api.generate_work_plan([feature_sms])
 
 
 if __name__ == "__main__":

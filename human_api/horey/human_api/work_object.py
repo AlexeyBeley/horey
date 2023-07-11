@@ -30,23 +30,9 @@ class WorkObject:
         self.azure_devops_object = None
         self.time_estimation = None
 
-        self.children = []
-        self._dod = None
-
-    @property
-    def dod(self):
-        """
-        Definition Of Done.
-
-        :return:
-        """
-        if self._dod is None:
-            self._dod = self.state_change_date
-        return self._dod
-
-    @dod.setter
-    def dod(self, value):
-        self._dod = value
+        self.dod = None
+        self.priority = None
+        self.hapi_uid = None
 
     @property
     def closed_date(self):
@@ -244,3 +230,26 @@ class WorkObject:
         """
 
         self.children.append(child)
+
+    def convert_to_dict(self):
+        """
+        Convert the object to dict.
+
+        :return:
+        """
+        breakpoint()
+
+        ret = {"id": self.id,
+         "hapi_uid": self.hapi_uid,
+         "status": self.status,
+         "created_date": self.created_date,
+         "closed_date": self.closed_date,
+         "assigned_to": self.assigned_to,
+         "title": self.title,
+         "sprint_id": self.sprint_id,
+         "children": self.children,
+         "time_estimation": self.time_estimation,
+         "dod": self.dod,
+         "priority": self.priority}
+
+        return CommonUtils.convert_to_dict(ret)

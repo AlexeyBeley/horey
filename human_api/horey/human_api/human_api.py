@@ -22,6 +22,7 @@ from horey.human_api.sprint import Sprint
 
 from horey.azure_devops_api.azure_devops_api import AzureDevopsAPI
 from horey.azure_devops_api.azure_devops_api_configuration_policy import AzureDevopsAPIConfigurationPolicy
+from horey.common_utils.common_utils import CommonUtils
 
 logger = get_logger()
 
@@ -296,7 +297,6 @@ class HumanAPI:
             elif work_item.work_item_type is None:
                 task = Task()
                 task.id = work_item.id
-                task.human_api_comment = str(work_item.dict_src)
                 self.tasks[task.id] = task
             else:
                 raise ValueError(f"Unknown work item type: {work_item.work_item_type}")
@@ -818,3 +818,15 @@ class HumanAPI:
         except ValueError as inst:
             if "Errors occurred, see list below" not in repr(inst):
                 raise
+
+    def generate_work_plan(self, items):
+        """
+        Generate list of dicts from objects.
+
+        :param items:
+        :return:
+        """
+
+        lst_ret = CommonUtils.convert_to_dict(items)
+        breakpoint()
+        return lst_ret

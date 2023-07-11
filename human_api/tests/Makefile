@@ -6,8 +6,9 @@ BUILD_DIR := ${HOREY_DIR_PATH}/build
 BUILD_TMP_DIR := ${BUILD_DIR}/_build
 VENV_DIR := $(realpath ${BUILD_TMP_DIR}/_venv)
 
-bla:
-	echo ${VENV_DIR}
+plan: build
+	source ${VENV_DIR}/bin/activate &&\
+	python3 sprint_planning.py
 
 test_%: FORCE build
 	source ${VENV_DIR}/bin/activate &&\
@@ -18,8 +19,5 @@ FORCE: ;
 build:
 	cd ${HOREY_DIR_PATH} &&\
 	make raw_install_from_source-azure_devops_api &&\
-	make raw_intall_from_source-human_apis
+	make raw_install_from_source-human_api
 
-plan: build
-	source ${VENV_DIR}/bin/activate &&\
-	python3 sprint_planning.py
