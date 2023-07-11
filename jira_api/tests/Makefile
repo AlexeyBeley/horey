@@ -11,15 +11,10 @@ bla:
 
 test_%: FORCE build
 	source ${VENV_DIR}/bin/activate &&\
-	python3 ${TESTS_DIR}/${@}
+	python ${TESTS_DIR}/${@}
 
 FORCE: ;
 
 build:
 	cd ${HOREY_DIR_PATH} &&\
-	make raw_install_from_source-azure_devops_api &&\
-	make raw_intall_from_source-human_apis
-
-plan: build
-	source ${VENV_DIR}/bin/activate &&\
-	python3 sprint_planning.py
+	make raw_install_from_source-jira_api

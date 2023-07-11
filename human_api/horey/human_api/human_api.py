@@ -51,7 +51,7 @@ class DailyReportAction:
         self._action_comment = None
 
         self.action_init_time = None
-        self.action_add_time = None
+        self._action_add_time = None
         self.action_new = None
         self.action_close = None
         self.action_activate = None
@@ -82,7 +82,25 @@ class DailyReportAction:
     @action_comment.setter
     def action_comment(self, value):
         value = value[0].upper() + value[1:]
+        if self.action_add_time is not None:
+            value = f"Worked for {self.action_add_time} hours:\n" + value
         self._action_comment = value
+
+    @property
+    def action_add_time(self):
+        """
+        action_add_time getter.
+
+        :return:
+        """
+
+        return self._action_add_time
+
+    @action_add_time.setter
+    def action_add_time(self, value):
+        self._action_add_time = value
+        if self.action_comment is not None:
+            self.action_comment = f"Worked for {value} hours:\n" + self.action_comment
 
     def init_child(self, child_token):
         """

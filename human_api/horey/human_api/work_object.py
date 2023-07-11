@@ -28,6 +28,7 @@ class WorkObject:
         self.related = []
         self.human_api_comment = None
         self.azure_devops_object = None
+        self.time_estimation = None
 
         self.children = []
         self._dod = None

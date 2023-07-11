@@ -1,0 +1,115 @@
+{
+  "id": 6,
+  "gridPos": {
+    "h": 9,
+    "w": 12,
+    "x": 0,
+    "y": 19
+  },
+  "type": "timeseries",
+  "title": "pingReq",
+  "datasource": {
+    "uid": "8tQuMEa4k",
+    "type": "influxdb"
+  },
+  "fieldConfig": {
+    "defaults": {
+      "custom": {
+        "drawStyle": "line",
+        "lineInterpolation": "linear",
+        "barAlignment": 0,
+        "lineWidth": 1,
+        "fillOpacity": 0,
+        "gradientMode": "none",
+        "spanNulls": false,
+        "showPoints": "auto",
+        "pointSize": 5,
+        "stacking": {
+          "mode": "none",
+          "group": "A"
+        },
+        "axisPlacement": "auto",
+        "axisLabel": "",
+        "axisColorMode": "text",
+        "scaleDistribution": {
+          "type": "linear"
+        },
+        "axisCenteredZero": false,
+        "hideFrom": {
+          "tooltip": false,
+          "viz": false,
+          "legend": false
+        },
+        "thresholdsStyle": {
+          "mode": "off"
+        }
+      },
+      "color": {
+        "mode": "palette-classic"
+      },
+      "mappings": [],
+      "thresholds": {
+        "mode": "absolute",
+        "steps": [
+          {
+            "color": "green",
+            "value": null
+          },
+          {
+            "color": "red",
+            "value": 80
+          }
+        ]
+      }
+    },
+    "overrides": []
+  },
+  "options": {
+    "tooltip": {
+      "mode": "single",
+      "sort": "none"
+    },
+    "legend": {
+      "showLegend": true,
+      "displayMode": "list",
+      "placement": "bottom",
+      "calcs": []
+    }
+  },
+  "targets": [
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "8tQuMEa4k"
+      },
+      "groupBy": [
+        {
+          "type": "time",
+          "params": [
+            "10s"
+          ]
+        }
+      ],
+      "measurement": "influxdb_httpd",
+      "orderByTime": "ASC",
+      "policy": "autogen",
+      "refId": "A",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "pingReq"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "count"
+          }
+        ]
+      ],
+      "tags": []
+    }
+  ]
+}

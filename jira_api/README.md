@@ -1,0 +1,1 @@
+https://editor.swagger.io/?url=https://raw.githubusercontent.com/jira/jira/main/pkg/services/ngalert/api/tooling/post.json
