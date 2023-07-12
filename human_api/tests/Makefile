@@ -8,7 +8,7 @@ VENV_DIR := $(realpath ${BUILD_TMP_DIR}/_venv)
 
 plan: build
 	source ${VENV_DIR}/bin/activate &&\
-	python3 sprint_planning.py
+	python3 work_plan.py
 
 test_%: FORCE build
 	source ${VENV_DIR}/bin/activate &&\

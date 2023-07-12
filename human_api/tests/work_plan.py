@@ -61,9 +61,9 @@ def test_sprint_planning():
     sprint_retrospective.description = "Create retrospective and save it to reliable place- Task Management System."
     sprint_retrospective.priority = 1
     sprint_retrospective.dod = {
-        1: "Current status is saved in json format in a local file",
+        1: "Work status is saved in json format in a local file",
         2: "Current status is saved in json format as a comment in TMS's comment",
-        4: "All spent time is reset to 0"
+        3: "Work status is saved in python format without CLOSED. Will be used as a basic for work_plan.py for the next sprint"
     }
     feature_wms.add(sprint_retrospective)
 
@@ -146,6 +146,8 @@ def test_sprint_planning():
         8: "Child relations set by Hapi_uid",
         9: "User friendly sprint planning summary for review.",
         10: "Validation copy/past - title, description, dod",
+        11: "Work plan is written to file in the format of work status.",
+        12: "All spent time is reset to 0"
     }
     feature_wms.add(work_plan_generation)
     # end_region
