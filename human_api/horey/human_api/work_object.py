@@ -28,11 +28,12 @@ class WorkObject:
         self.related = []
         self.human_api_comment = None
         self.azure_devops_object = None
-        self.time_estimation = None
+        self.estimated_time = None
 
         self.dod = None
         self.priority = None
         self.hapi_uid = None
+        self.description = None
 
     @property
     def closed_date(self):
@@ -237,9 +238,9 @@ class WorkObject:
 
         :return:
         """
-        breakpoint()
 
-        ret = {"id": self.id,
+        ret = {
+         "id": self.id,
          "hapi_uid": self.hapi_uid,
          "status": self.status,
          "created_date": self.created_date,
@@ -248,8 +249,10 @@ class WorkObject:
          "title": self.title,
          "sprint_id": self.sprint_id,
          "children": self.children,
-         "time_estimation": self.time_estimation,
+         "estimated_time": self.estimated_time,
          "dod": self.dod,
-         "priority": self.priority}
+         "priority": self.priority,
+         "type": self.__class__.__name__
+        }
 
         return CommonUtils.convert_to_dict(ret)

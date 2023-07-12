@@ -131,6 +131,7 @@ def test_generate_solution_retrospective():
     azure_devops_api.init_work_items(from_cache=True)
     search_strings = mock_values["search_strings"]
     htb_ret = azure_devops_api.generate_solution_retrospective(search_strings)
+    assert htb_ret is not None
     assert len(azure_devops_api.work_items) > 0
 
 
@@ -143,7 +144,6 @@ if __name__ == "__main__":
     #test_init_iterations()
 
     #test_init_and_cache_work_items()
-    #test_init_work_items()
 
     #test_current_iteration()
     #test_init_and_cache_boards()
@@ -153,4 +153,5 @@ if __name__ == "__main__":
     #test_provision_work_item_by_params()
     # test_provision_work_item_by_params_with_parent()
     # test_add_wit_comment()
+    # test_init_work_items()
     test_generate_solution_retrospective()

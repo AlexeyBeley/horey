@@ -826,7 +826,65 @@ class HumanAPI:
         :param items:
         :return:
         """
-
+        self.generate_hapi_uids(items)
+        self.validate_work_plan(items, defaultdict(list))
         lst_ret = CommonUtils.convert_to_dict(items)
-        breakpoint()
         return lst_ret
+
+    def generate_hapi_uids(self, items, prefix=""):
+        """
+        Generate guids common to work planning and work executing.
+
+        :param items:
+        :param prefix:
+        :return:
+        """
+        for item in items:
+            item.hapi_uid = prefix + "/" + item.title
+            self.generate_hapi_uids(item.children, prefix=item.hapi_uid)
+
+    def validate_work_plan(self, items, seen_values):
+        """
+        Validate user input.
+
+        :param seen_values:
+        :param items:
+        :return:
+        """
+
+        errors = []
+        for item in items:
+            if item.children:
+                try:
+                    if item.estimated_time is not None:
+                        errors.append(f"Remove estimated_time for parent with children: '{item.title}'")
+
+                    self.validate_work_plan(item.children, seen_values)
+                    item.estimated_time = sum(child.estimated_time for child in item.children)
+                except HumanAPI.ValidationError as error_inst:
+                    errors += str(error_inst).split("\n")
+
+            if len(item.title.split(" ")) > 7:
+                errors.append(f"Item title number of words > 7: '{item.title}'")
+
+            if item.id is None and item.hapi_uid is None:
+                errors.append(f"Neither item id or hapi_uid were set: '{item.title}'")
+
+            for param in ["description", "estimated_time", "dod", "priority"]:
+                if getattr(item, param) is None:
+                    errors.append(f"Item {param} was not set: '{item.title}'")
+
+            for param in ["description", "title", "dod", "hapi_uid"]:
+                item_param = getattr(item, param)
+                if item_param in seen_values[param]:
+                    errors.append(f"Parameter '{param}' exists in multiple items with value: '{item_param}'")
+                else:
+                    seen_values[param].append(item_param)
+
+        if errors:
+            raise HumanAPI.ValidationError("\n".join(errors))
+
+    class ValidationError(ValueError):
+        """
+        Input validation Error
+        """
