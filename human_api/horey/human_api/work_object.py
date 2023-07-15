@@ -4,6 +4,7 @@ Common parent to all work.
 import datetime
 from enum import Enum
 from horey.common_utils.common_utils import CommonUtils
+from horey.common_utils.text_block import TextBlock
 
 
 # pylint: disable= too-many-instance-attributes
@@ -14,6 +15,7 @@ class WorkObject:
 
     def __init__(self):
         self.id = None
+        self.hapi_uid = None
         self.status = None
         self.created_date = None
         self._closed_date = None
@@ -21,19 +23,21 @@ class WorkObject:
         self.created_by = None
         self.assigned_to = None
         self.title = None
-        self.sprint_id = None
+        self.sprint_name = None
         self.child_ids = []
+        self.child_hapi_uids = []
         self.parent_ids = []
         self.children = []
         self.related = []
         self.human_api_comment = None
         self.azure_devops_object = None
         self.estimated_time = None
+        self.comment = None
 
         self.dod = None
         self.priority = None
-        self.hapi_uid = None
         self.description = None
+        self.type = self.__class__.__name__
 
     @property
     def closed_date(self):
@@ -65,7 +69,6 @@ class WorkObject:
                              "System.CreatedBy": self.init_created_by_azure_devops,
                              "System.AssignedTo": self.init_assigned_to_azure_devops,
                              "System.Title": self.init_title_azure_devops,
-                             "System.IterationPath": self.init_sprint_id_azure_devops,
                              "Microsoft.VSTS.Common.ClosedDate": self.init_closed_date_azure_devops,
                              "Microsoft.VSTS.Common.ResolvedDate": self.init_closed_date_azure_devops,
                              "Microsoft.VSTS.Common.StateChangeDate": self.init_state_change_date_azure_devops,
@@ -160,14 +163,6 @@ class WorkObject:
         """
         self.title = value
 
-    def init_sprint_id_azure_devops(self, value):
-        """
-        Init from azure devops object.
-        :param value:
-        :return:
-        """
-        self.sprint_id = value
-
     def init_closed_date_azure_devops(self, value):
         """
         Init from azure devops object.
@@ -247,12 +242,39 @@ class WorkObject:
          "closed_date": self.closed_date,
          "assigned_to": self.assigned_to,
          "title": self.title,
-         "sprint_id": self.sprint_id,
+         "sprint_name": self.sprint_name,
          "children": self.children,
          "estimated_time": self.estimated_time,
          "dod": self.dod,
          "priority": self.priority,
-         "type": self.__class__.__name__
         }
 
+        ret = {key: getattr(self, key) for key in self.__dict__ if key not in ["azure_devops_object"]}
+        ret["type"] = self.__class__.__name__
+
         return CommonUtils.convert_to_dict(ret)
+
+    def generate_summary(self):
+        """
+        Generate summary for the item
+
+        :return:
+        """
+
+        htb_ret = TextBlock(f"{self.type}:")
+        htb_ret.lines = [f"-- {self.title} --"]
+        if self.description:
+            htb_ret.lines.append("Description> " + self.description)
+
+        if self.estimated_time:
+            htb_ret.lines.append(f"Estimated> {self.estimated_time} hours")
+
+        if self.dod:
+            dod = ["DOD> "] + [f"{number}) " + value for number, value in enumerate(self.dod.values())]
+            htb_ret.lines += dod
+
+        if self.comment:
+            comment = "Comment> " + self.comment
+            htb_ret.lines.append(comment)
+
+        return htb_ret

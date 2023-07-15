@@ -2,6 +2,7 @@
 Manage Azure Devops
 
 """
+import json
 import logging
 import datetime
 from collections import defaultdict
@@ -250,9 +251,10 @@ class HumanAPI:
 
         :return:
         """
+
         sprints = sprints if sprints is not None else []
         work_items = self.azure_devops_api.init_work_items_by_iterations(
-            iterations_src=[sprint.azure_devops_object for sprint in sprints])
+            iteration_names=[sprint.name for sprint in sprints])
         self.init_tasks_from_azure_devops_work_items(work_items)
         self.init_tasks_relations()
 
@@ -344,7 +346,7 @@ class HumanAPI:
         """
         lst_ret = []
         for iteration in self.azure_devops_api.get_iterations(from_cache=False, date_find=date_find,
-                                                              iteration_names=sprint_names):
+                                                              iteration_pathes=sprint_names):
             sprint = Sprint()
             sprint.init_from_azure_devops_iteration(iteration)
             lst_ret.append(sprint)
@@ -361,8 +363,8 @@ class HumanAPI:
         tmp_dict = {}
         tmp_dict.update(self.tasks)
         tmp_dict.update(self.bugs)
-        sprint_ids = [sprint.id for sprint in sprints]
-        return [value for value in tmp_dict.values() if value.sprint_id in sprint_ids]
+        sprint_names = [sprint.name for sprint in sprints]
+        return [value for value in tmp_dict.values() if value.sprint_name in sprint_names]
 
     @staticmethod
     def split_by_worker(work_items):
@@ -385,6 +387,7 @@ class HumanAPI:
         :return:
         """
         sprints = self.get_sprints(sprint_names=[self.configuration.sprint_name])
+        breakpoint()
 
         self.init_tasks_map(sprints=sprints)
         tmp_dict = {}
@@ -827,9 +830,23 @@ class HumanAPI:
         :return:
         """
         self.generate_hapi_uids(items)
-        self.validate_work_plan(items, defaultdict(list))
-        lst_ret = CommonUtils.convert_to_dict(items)
-        return lst_ret
+        items_map = self.flattern_work_plan_tree(items)
+
+        self.validate_work_plan(items_map)
+        sprints_map = self.split_to_sprints(items_map)
+        for sprint_name, sprint_items in sprints_map.items():
+            summaries_map = self.generate_work_plan_summaries(sprint_items)
+            file_path = self.configuration.work_plan_output_file_path_template.format(sprint_name=sprint_name)
+            dir_path = os.path.dirname(file_path)
+            os.makedirs(dir_path, exist_ok=True)
+            with open(file_path, "w", encoding="utf-8") as file_handler:
+                json.dump(CommonUtils.convert_to_dict(sprint_items), file_handler, indent=4)
+
+            with open(self.configuration.work_plan_summary_output_file_path_template.format(sprint_name=sprint_name), "w", encoding="utf-8") as file_handler:
+                summary = ("-"*40).join(summaries_map[item.hapi_uid].format_pprint(shift=4) for item in sprint_items if item.hapi_uid in summaries_map)
+                file_handler.write(summary)
+
+        return items_map
 
     def generate_hapi_uids(self, items, prefix=""):
         """
@@ -843,26 +860,49 @@ class HumanAPI:
             item.hapi_uid = prefix + "/" + item.title
             self.generate_hapi_uids(item.children, prefix=item.hapi_uid)
 
-    def validate_work_plan(self, items, seen_values):
+    def flattern_work_plan_tree(self, items):
         """
-        Validate user input.
+        Create dictionary from work items. By hapi_uid.
 
-        :param seen_values:
         :param items:
         :return:
         """
 
-        errors = []
-        for item in items:
-            if item.children:
-                try:
-                    if item.estimated_time is not None:
-                        errors.append(f"Remove estimated_time for parent with children: '{item.title}'")
+        ret = {item.hapi_uid: item for item in items}
 
-                    self.validate_work_plan(item.children, seen_values)
-                    item.estimated_time = sum(child.estimated_time for child in item.children)
-                except HumanAPI.ValidationError as error_inst:
-                    errors += str(error_inst).split("\n")
+        for item in items:
+            item.child_ids = [child.id for child in item.children if child.id is not None]
+            item.child_hapi_uids = [child.hapi_uid for child in item.children if child.hapi_uid is not None]
+            ret.update(self.flattern_work_plan_tree(item.children))
+            item.children = []
+
+        return ret
+
+    @staticmethod
+    def validate_work_plan(items_map: dict):
+        """
+        Validate user input.
+
+        :param items_map:
+        :return:
+        """
+        seen_values = defaultdict(list)
+        errors = []
+        for item in items_map.values():
+            if item.child_hapi_uids:
+                if item.estimated_time is not None:
+                    errors.append(f"Remove estimated_time for parent with children: '{item.title}'")
+
+                if item.type != "Feature":
+                    # Parent/children sprint validation
+                    child_sprint_names = {items_map[child_hapi_uid].sprint_name for child_hapi_uid in item.child_hapi_uids}
+                    if len(child_sprint_names) != 1:
+                        errors.append(f"Parent '{item.title}' Sprint: '{item.sprint_name}', children Sprints: '{child_sprint_names}'")
+                    elif item.sprint_name != list(child_sprint_names)[0]:
+                        errors.append(f"Parent '{item.title}' Sprint: '{item.sprint_name}', children's Sprint: '{list(child_sprint_names)[0]}'")
+
+            elif item.estimated_time is None:
+                errors.append(f"Item 'estimated_time' was not set: '{item.title}'")
 
             if len(item.title.split(" ")) > 7:
                 errors.append(f"Item title number of words > 7: '{item.title}'")
@@ -870,9 +910,9 @@ class HumanAPI:
             if item.id is None and item.hapi_uid is None:
                 errors.append(f"Neither item id or hapi_uid were set: '{item.title}'")
 
-            for param in ["description", "estimated_time", "dod", "priority"]:
+            for param in ["description", "dod", "priority", "sprint_name"]:
                 if getattr(item, param) is None:
-                    errors.append(f"Item {param} was not set: '{item.title}'")
+                    errors.append(f"Item '{param}' was not set: '{item.title}'")
 
             for param in ["description", "title", "dod", "hapi_uid"]:
                 item_param = getattr(item, param)
@@ -883,6 +923,45 @@ class HumanAPI:
 
         if errors:
             raise HumanAPI.ValidationError("\n".join(errors))
+
+        for item in reversed(items_map.values()):
+            if item.child_hapi_uids:
+                item.estimated_time = sum(items_map[child_hapi_uid].estimated_time for child_hapi_uid in item.child_hapi_uids)
+
+    def split_to_sprints(self, items_map):
+        """
+        Split items by sprint
+
+        :param items_map:
+        :return:
+        """
+
+        ret = defaultdict(list)
+        for item in items_map.values():
+            ret[item.sprint_name].append(item)
+        return ret
+
+    def generate_work_plan_summaries(self, items):
+        """
+        Generate work plan summary.
+
+        :param items_map:
+        :return:
+        """
+
+        summaries = {item.hapi_uid: item.generate_summary() for item in items}
+        child_hapi_uids = []
+        for item in reversed(items):
+            if item.type == "Feature":
+                continue
+
+            if item.child_hapi_uids:
+                child_hapi_uids += item.child_hapi_uids
+                summaries[item.hapi_uid].lines += ["", "Children:"]
+            summaries[item.hapi_uid].blocks = [summaries[hapi_uid] for hapi_uid in item.child_hapi_uids]
+
+        # Return only top level summaries (Children are inside)
+        return {uid: summary for uid, summary in summaries.items() if uid not in child_hapi_uids}
 
     class ValidationError(ValueError):
         """

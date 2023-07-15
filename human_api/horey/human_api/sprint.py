@@ -25,7 +25,6 @@ class Sprint:
         :return:
         """
         self.azure_devops_object = iteration
-        self.id = iteration.path
         self.name = iteration.name
         self.start_date = iteration.start_date
         self.finish_date = iteration.finish_date

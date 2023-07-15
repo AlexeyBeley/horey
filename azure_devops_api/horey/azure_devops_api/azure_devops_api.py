@@ -357,19 +357,19 @@ class AzureDevopsAPI:
         self.processes = []
         self.team_members = []
 
-    def get_iterations(self, date_find=None, from_cache=False, iteration_names=None):
+    def get_iterations(self, date_find=None, from_cache=False, iteration_pathes=None):
         """
         Get current by default or find by date specified.
 
         :param from_cache:
-        :param iteration_names:
+        :param iteration_pathes:
         :param date_find:
         :return:
         """
         if not self.iterations:
             self.init_iterations(from_cache=from_cache)
 
-        if date_find is None and iteration_names is None:
+        if date_find is None and iteration_pathes is None:
             date_find = datetime.datetime.now()
 
         lst_ret = []
@@ -378,13 +378,13 @@ class AzureDevopsAPI:
                 if iteration.start_date <= date_find <= iteration.finish_date:
                     lst_ret.append(iteration)
             else:
-                if iteration.name in iteration_names:
+                if iteration.name in iteration_pathes:
                     lst_ret.append(iteration)
 
         if lst_ret:
             return lst_ret
 
-        raise RuntimeError(f"Can not find iterations by {date_find} and {iteration_names}")
+        raise RuntimeError(f"Can not find iterations by {date_find} and {iteration_pathes}")
 
     def get_iteration(self, date_find=None, from_cache=False):
         """
@@ -547,19 +547,22 @@ class AzureDevopsAPI:
 
         return self.work_items
 
-    def init_work_items_by_iterations(self, iterations_src=None):
+    def init_work_items_by_iterations(self, iteration_names=None):
         """
         Init live data.
 
-        :param iterations_src:
+        :param iteration_names:
         :return:
         """
 
         lst_all = []
         lst_all_ids = []
+        if not self.iterations:
+            self.init_iterations()
 
-        iterations = iterations_src if iterations_src is not None else self.iterations
-        if not iterations:
+        if iteration_names:
+            iterations = [iteration for iteration in self.iterations if iteration.name in iteration_names]
+        else:
             self.init_iterations()
             iterations = self.iterations
 

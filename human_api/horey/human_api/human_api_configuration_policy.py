@@ -57,6 +57,14 @@ class HumanAPIConfigurationPolicy(ConfigurationPolicy):
         return os.path.join(self.reports_dir_path, str(datetime.date.today()))
 
     @property
+    def work_plan_output_file_path_template(self):
+        return os.path.join(self.reports_dir_path, "{sprint_name}", "work_plan.json")
+
+    @property
+    def work_plan_summary_output_file_path_template(self):
+        return os.path.join(self.reports_dir_path, "{sprint_name}", "hr_summary.txt")
+
+    @property
     def reports_dir_path(self):
         if self._reports_dir_path is None:
             raise self.UndefinedValueError("reports_dir_path")
@@ -65,7 +73,7 @@ class HumanAPIConfigurationPolicy(ConfigurationPolicy):
     @reports_dir_path.setter
     def reports_dir_path(self, value):
         self._reports_dir_path = value
-    
+
     @property
     def sprint_name(self):
         if self._sprint_name is None:
