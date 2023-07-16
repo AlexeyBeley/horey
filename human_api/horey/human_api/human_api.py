@@ -119,17 +119,17 @@ class DailyReportAction:
 
         parts = child_token_rep.split(" ")
         if len(parts) == 0:
-            parts = ["task", "0"]
+            parts = ["Task", "0"]
         elif len(parts) == 1:
-            if parts[0] in ["task", "bug"]:
+            if parts[0] in ["Task", "Bug"]:
                 parts.append("0")
             else:
-                parts = ["task"] + parts
+                parts = ["Task"] + parts
 
         self.child_type, self.child_id = parts
 
         self.child_type = self.child_type.strip()
-        if self.child_type not in ["task", "bug"]:
+        if self.child_type not in ["Task", "Bug"]:
             self.init_errors.append(f"Task uid can not be parsed in: '{child_token}'")
 
         self.child_id = self.child_id.strip()
@@ -206,9 +206,9 @@ class DailyReportAction:
         parts = uid.split(" ")
         if len(parts) < 2:
             if len(parts) == 0:
-                parts = ["user_story", "0"]
+                parts = ["UserStory", "0"]
             elif parts[0] == "-1" or parts[0].isdigit():
-                parts = ["user_story"] + parts
+                parts = ["UserStory"] + parts
             else:
                 parts.append("0")
 
@@ -216,7 +216,7 @@ class DailyReportAction:
         if self.parent_id != "-1" and not self.parent_id.isdigit():
             raise ValueError(f"Work item id must be either digit or '-1', received: '{parent_token}'")
 
-        if self.parent_type not in ["user_story", "bug", "task"]:
+        if self.parent_type not in ["UserStory", "Bug", "Task"]:
             raise ValueError(f"Unknown Parent WIT type '{self.parent_type}' in '{parent_token}'")
 
 
@@ -252,54 +252,58 @@ class HumanAPI:
         :return:
         """
 
+        with open("./tmp_cache.json") as fh:
+            work_objects = json.load(fh)
+
+        # todo: remove
         sprints = sprints if sprints is not None else []
-        work_items = self.azure_devops_api.init_work_items_by_iterations(
+        work_objects = self.azure_devops_api.init_work_items_by_iterations(
             iteration_names=[sprint.name for sprint in sprints])
-        self.init_tasks_from_azure_devops_work_items(work_items)
+
+        with open("./tmp_cache.json", "w") as fh: json.dump(work_objects, fh)
+
+        self.init_work_objects_from_dicts(work_objects)
         self.init_tasks_relations()
 
-    def init_tasks_from_azure_devops_work_items(self, work_items):
+    def init_work_objects_from_dicts(self, work_objects):
         """
         Init tasks map.
 
         :return:
         """
 
-        for work_item in work_items:
-            if work_item.work_item_type == "Feature":
+        for work_item in work_objects:
+            if work_item["type"] == "Feature":
                 feature = Feature()
-                feature.init_from_azure_devops_work_item(work_item)
-                if feature.id in self.user_stories:
+                feature.init_from_dict(work_item)
+                if feature.id in self.features:
                     raise ValueError(f"feature id {feature.id} is already in use")
                 self.features[feature.id] = feature
-            elif work_item.work_item_type == "Epic":
+            elif work_item["type"] == "Epic":
                 epic = Epic()
-                epic.init_from_azure_devops_work_item(work_item)
+                epic.init_from_dict(work_item)
                 if epic.id in self.epics:
                     raise ValueError(f"epic id {epic.id} is already in use")
                 self.epics[epic.id] = epic
-            elif work_item.work_item_type == "User Story":
+            elif work_item["type"] == "UserStory":
                 user_story = UserStory()
-                user_story.init_from_azure_devops_work_item(work_item)
+                user_story.init_from_dict(work_item)
                 if user_story.id in self.user_stories:
                     raise ValueError(f"user_story id {user_story.id} is already in use")
                 self.user_stories[user_story.id] = user_story
-            elif work_item.work_item_type == "Bug":
+            elif work_item["type"] == "Bug":
                 bug = Bug()
-                bug.init_from_azure_devops_work_item(work_item)
+                bug.init_from_dict(work_item)
                 if bug.id in self.bugs:
-                    raise ValueError(f"bug id {bug.id} is already in use")
+                    raise ValueError(f"Bug id {bug.id} is already in use")
                 self.bugs[bug.id] = bug
-            elif work_item.work_item_type == "Task":
+            elif work_item["type"] == "Task":
                 task = Task()
-                task.init_from_azure_devops_work_item(work_item)
+                task.init_from_dict(work_item)
                 if task.id in self.tasks:
-                    raise ValueError(f"task id {task.id} is already in use")
+                    raise ValueError(f"Task id {task.id} is already in use")
                 self.tasks[task.id] = task
-            elif work_item.work_item_type is None:
-                task = Task()
-                task.id = work_item.id
-                self.tasks[task.id] = task
+
             else:
                 raise ValueError(f"Unknown work item type: {work_item.work_item_type}")
 
@@ -387,7 +391,6 @@ class HumanAPI:
         :return:
         """
         sprints = self.get_sprints(sprint_names=[self.configuration.sprint_name])
-        breakpoint()
 
         self.init_tasks_map(sprints=sprints)
         tmp_dict = {}
@@ -563,10 +566,6 @@ class HumanAPI:
         :return:
         """
 
-        if "@" in worker_name:
-            name = worker_name[:worker_name.index("@")]
-        else:
-            name = worker_name
         actions_new, actions_active, actions_blocked, actions_closed = input_actions["actions_new"], \
                                                                        input_actions["actions_active"], \
                                                                        input_actions["actions_blocked"], \
@@ -579,7 +578,7 @@ class HumanAPI:
                                                            actions_closed)
         str_date = datetime.datetime.now().strftime("%d/%m/%Y")
         ytb_report = self.generate_ytb_report(actions_new, actions_active, actions_blocked, actions_closed)
-        named_ytb_report = f"[{str_date}] {name}\n{ytb_report}"
+        named_ytb_report = f"[{str_date}] {worker_name}\n{ytb_report}"
         return named_ytb_report
 
     @staticmethod
@@ -646,10 +645,13 @@ class HumanAPI:
                     parents_to_actions_map[action.parent_title].append(action)
 
         for parent_title, actions in parents_to_actions_map.items():
-            user_story_id = self.azure_devops_api.provision_work_item_by_params(actions[0].parent_type, parent_title,
-                                                                                "Auto generated content. Change it manually",
-                                                                                iteration_partial_path=self.configuration.sprint_name,
-                                                                                assigned_to=user_full_name)
+            work_object_dict = {"type": actions[0].parent_type,
+                                "title": parent_title,
+                                "description": "Auto generated content. Change it manually",
+                                "sprint_name": self.configuration.sprint_name,
+                                "assigned_to": user_full_name
+                                }
+            user_story_id = self.azure_devops_api.provision_work_item_from_dict(work_object_dict)
             self.provisioned_new_parents_map[parent_title] = user_story_id
 
             for action in actions:
@@ -657,13 +659,15 @@ class HumanAPI:
 
         for action in actions_new + actions_active + actions_blocked + actions_closed:
             if action.child_id == "0":
-                action.child_id = self.azure_devops_api.provision_work_item_by_params(action.child_type,
-                                                                                      action.child_title,
-                                                                                      action.action_comment,
-                                                                                      iteration_partial_path=self.configuration.sprint_name,
-                                                                                      original_estimate_time=action.action_init_time,
-                                                                                      assigned_to=user_full_name,
-                                                                                      parent_id=action.parent_id)
+                work_object_dict = {"type": action.child_type,
+                                    "title": action.child_title,
+                                    "description": action.action_comment,
+                                    "sprint_name": self.configuration.sprint_name,
+                                    "assigned_to": user_full_name,
+                                    "estimated_time": action.action_init_time,
+                                    "parent_ids": [action.parent_id]
+                                    }
+                action.child_id = self.azure_devops_api.provision_work_item_from_dict(work_object_dict)
 
         for action in actions_new + actions_active + actions_blocked + actions_closed:
             if action.action_add_time is not None:
