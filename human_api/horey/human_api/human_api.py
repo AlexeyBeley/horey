@@ -2,6 +2,7 @@
 Manage Azure Devops
 
 """
+import copy
 import json
 import logging
 import datetime
@@ -252,15 +253,15 @@ class HumanAPI:
         :return:
         """
 
-        with open("./tmp_cache.json") as fh:
-            work_objects = json.load(fh)
+        #with open("./tmp_cache.json") as fh:
+        #    work_objects = json.load(fh)
 
-        # todo: remove
         sprints = sprints if sprints is not None else []
         work_objects = self.azure_devops_api.init_work_items_by_iterations(
             iteration_names=[sprint.name for sprint in sprints])
 
-        with open("./tmp_cache.json", "w") as fh: json.dump(work_objects, fh)
+        with open("./tmp_cache.json", "w", encoding="utf-8") as fh:
+            json.dump(work_objects, fh)
 
         self.init_work_objects_from_dicts(work_objects)
         self.init_tasks_relations()
@@ -833,7 +834,7 @@ class HumanAPI:
         :param items:
         :return:
         """
-        self.generate_hapi_uids(items)
+        self.generate_auto_data(items)
         items_map = self.flattern_work_plan_tree(items)
 
         self.validate_work_plan(items_map)
@@ -847,22 +848,36 @@ class HumanAPI:
                 json.dump(CommonUtils.convert_to_dict(sprint_items), file_handler, indent=4)
 
             with open(self.configuration.work_plan_summary_output_file_path_template.format(sprint_name=sprint_name), "w", encoding="utf-8") as file_handler:
-                summary = ("-"*40).join(summaries_map[item.hapi_uid].format_pprint(shift=4) for item in sprint_items if item.hapi_uid in summaries_map)
+                summary = ("-"*40+"\n").join(summaries_map[item.hapi_uid].format_pprint(shift=4) for item in sprint_items if item.hapi_uid in summaries_map)
                 file_handler.write(summary)
 
         return items_map
 
-    def generate_hapi_uids(self, items, prefix=""):
+    def generate_auto_data(self, items, prefix="", sprint_name="", assigned_to=""):
         """
         Generate guids common to work planning and work executing.
 
+        :param assigned_to:
+        :param sprint_name:
         :param items:
         :param prefix:
         :return:
         """
         for item in items:
             item.hapi_uid = prefix + "/" + item.title
-            self.generate_hapi_uids(item.children, prefix=item.hapi_uid)
+            if sprint_name:
+                if item.sprint_name != sprint_name:
+                    if item.sprint_name:
+                        raise RuntimeError(f"Item '{item.title}' sprint_name was set to '{item.sprint_name}' but received explicit sprint_name: '{sprint_name}'")
+                    item.sprint_name = sprint_name
+
+            if assigned_to:
+                if item.assigned_to != assigned_to:
+                    if item.assigned_to:
+                        raise RuntimeError(f"Item '{item.title}' assigned_to was set to '{item.assigned_to}' but received explicit assigned_to: '{assigned_to}'")
+                    item.assigned_to = assigned_to
+
+            self.generate_auto_data(item.children, prefix=item.hapi_uid, sprint_name=item.sprint_name, assigned_to=item.assigned_to)
 
     def flattern_work_plan_tree(self, items):
         """
@@ -914,7 +929,7 @@ class HumanAPI:
             if item.id is None and item.hapi_uid is None:
                 errors.append(f"Neither item id or hapi_uid were set: '{item.title}'")
 
-            for param in ["description", "dod", "priority", "sprint_name"]:
+            for param in ["description", "dod", "priority", "sprint_name", "assigned_to"]:
                 if getattr(item, param) is None:
                     errors.append(f"Item '{param}' was not set: '{item.title}'")
 
@@ -971,3 +986,47 @@ class HumanAPI:
         """
         Input validation Error
         """
+
+    def provision_work_plan(self, workplan_file_path):
+        """
+        Provision work_plan into the TMS
+        work_object_dict = {"type": action.child_type,
+                            "title": action.child_title,
+                            "description": action.action_comment,
+                            "sprint_name": self.configuration.sprint_name,
+                            "assigned_to": user_full_name,
+                            "estimated_time": action.action_init_time,
+                            "parent_ids": [action.parent_id]
+                            }
+
+        :param workplan_file_path:
+        :return:
+        """
+
+        with open(workplan_file_path, encoding="utf-8") as file_handler:
+            ret = json.load(file_handler)
+
+        hapi_uids_map = {}
+        for work_object_dict in ret:
+            tmp_dict = copy.deepcopy(work_object_dict)
+            for local_var in ['hapi_uid', 'child_hapi_uids', 'dod']:
+                try:
+                    del tmp_dict[local_var]
+                except KeyError:
+                    pass
+
+            work_object_dict["id"] = str(self.azure_devops_api.provision_work_item_from_dict(tmp_dict))
+            hapi_uids_map[work_object_dict["hapi_uid"]] = work_object_dict
+
+        with open(workplan_file_path, "w", encoding="utf-8") as file_handler:
+            json.dump(ret, file_handler, indent=4)
+
+        for work_object_dict in hapi_uids_map.values():
+            status_comment = "human_api_json_encoded_current_status:"+json.dumps(work_object_dict)
+            self.azure_devops_api.add_wit_comment(work_object_dict["id"], status_comment)
+            children_hapi_uids = work_object_dict.get("child_hapi_uids")
+            if children_hapi_uids:
+                parent_id = work_object_dict["id"]
+                for child_hapi_uid in children_hapi_uids:
+                    child_id = hapi_uids_map[child_hapi_uid]["id"]
+                    self.azure_devops_api.set_wit_parent(child_id, parent_id)

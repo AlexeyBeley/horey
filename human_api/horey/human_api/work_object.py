@@ -133,22 +133,8 @@ class WorkObject:
         :return:
         """
 
-        ret = {
-            "id": self.id,
-            "hapi_uid": self.hapi_uid,
-            "status": self.status,
-            "created_date": self.created_date,
-            "closed_date": self.closed_date,
-            "assigned_to": self.assigned_to,
-            "title": self.title,
-            "sprint_name": self.sprint_name,
-            "children": self.children,
-            "estimated_time": self.estimated_time,
-            "dod": self.dod,
-            "priority": self.priority,
-        }
-
-        ret = {key: getattr(self, key) for key in self.__dict__ if key not in ["azure_devops_object"]}
+        default = WorkObject()
+        ret = {key: getattr(self, key) for key in self.__dict__ if getattr(self, key) != getattr(default, key)}
         ret["type"] = self.__class__.__name__
 
         return CommonUtils.convert_to_dict(ret)

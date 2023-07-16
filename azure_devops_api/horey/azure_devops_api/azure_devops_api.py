@@ -1013,6 +1013,27 @@ class AzureDevopsAPI:
         url = f"https://dev.azure.com/{self.org_name}/_apis/wit/workitems/{wit_id}?api-version=7.0"
         return self.patch(url, request_data)
 
+    def set_work_object_child(self, wit_id, child_id):
+        """
+
+        :param wit_id:
+        :param child_id:
+        :return:
+        """
+        logger.info(f"WIT:{wit_id} setting new parent to '{child_id}'")
+        request_data = [{
+            "op": "add",
+            "path": "/relations/-",
+            "value": {
+
+                "rel": "System.LinkTypes.Hierarchy-Forward",
+                "url": f"https://dev.azure.com/{self.org_name}/{self.project_name}/apis/wit/workItems/{child_id}"
+            }
+        }]
+
+        url = f"https://dev.azure.com/{self.org_name}/_apis/wit/workitems/{wit_id}?api-version=7.0"
+        return self.patch(url, request_data)
+
     def change_wit_state(self, wit_id, state):
         """
         Change work item state.
@@ -1139,7 +1160,9 @@ class AzureDevopsAPI:
 
         :return:
         """
+        left_attributes = list(dict_src.keys())
         wit_type = dict_src["type"]
+        left_attributes.remove("type")
         if wit_type == "UserStory":
             wit_url_type = "$User%20Story"
         elif wit_type == "Task":
@@ -1150,10 +1173,12 @@ class AzureDevopsAPI:
             raise RuntimeError(f"wit_type {wit_type} != user_story")
 
         wit_title = dict_src["title"]
+        left_attributes.remove("title")
         logger.info(f"Creating new WIT: {wit_type}: '{wit_title}'")
         # suppressNotifications=true&
         url = f"https://dev.azure.com/{self.org_name}/{self.project_name}/_apis/wit/workitems/{wit_url_type}?api-version=7.0"
         wit_description = dict_src["description"]
+        left_attributes.remove("description")
         request_data = \
             [
                 {
@@ -1165,14 +1190,31 @@ class AzureDevopsAPI:
                     "op": "add",
                     "path": "/fields/System.Description",
                     "value": wit_description
-                },
-                {
-                    "op": "add",
-                    "path": "/fields/Microsoft.VSTS.Common.Priority",
-                    "value": "2"
                 }
             ]
+
+        if "priority" in left_attributes:
+            priority = dict_src["priority"]
+            left_attributes.remove("priority")
+        else:
+            priority = "2"
+
+        request_data.append({
+            "op": "add",
+            "path": "/fields/Microsoft.VSTS.Common.Priority",
+            "value": priority
+        })
+
+        if "sprint_name" in left_attributes:
+            request_data.append({
+                    "op": "add",
+                    "path": "/fields/System.IterationPath",
+                    "value": f"{self.project_name}\\\\{dict_src['sprint_name']}"
+                })
+            left_attributes.remove("sprint_name")
+
         original_estimate_time = dict_src["estimated_time"]
+        left_attributes.remove("estimated_time")
         if original_estimate_time is not None:
             request_data.append(
                 {
@@ -1183,6 +1225,7 @@ class AzureDevopsAPI:
         logger.info(f"Creating Work Item with parameters: {request_data}")
 
         assigned_to = dict_src["assigned_to"]
+        left_attributes.remove("assigned_to")
         if assigned_to is not None:
             request_data.append({"op": "add", "path": "/fields/System.AssignedTo", "value": assigned_to})
 
@@ -1195,13 +1238,14 @@ class AzureDevopsAPI:
         wit_id = ret.get("id")
         logger.info(f"WIT:{wit_id} created. Type: '{wit_type}' Title '{wit_title}'")
 
-        iteration_partial_path = dict_src["sprint_name"]
-        if iteration_partial_path is not None:
-            self.change_iteration(wit_id, f"{self.project_name}\\\\{iteration_partial_path}")
+        if "parent_ids" in left_attributes:
+            parent_id = dict_src["parent_ids"][0]
+            if parent_id is not None:
+                self.set_wit_parent(wit_id, parent_id)
+            left_attributes.remove("parent_ids")
 
-        parent_id = dict_src["parent_ids"][0]
-        if parent_id is not None:
-            self.set_wit_parent(wit_id, parent_id)
+        if left_attributes:
+            raise ValueError(left_attributes)
 
         return wit_id
 
