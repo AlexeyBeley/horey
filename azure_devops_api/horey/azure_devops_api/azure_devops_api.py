@@ -257,6 +257,81 @@ class WorkItem(AzureDevopsObject):
         value = self.fields.get("Microsoft.VSTS.Scheduling.OriginalEstimate")
         return value
 
+    def convert_to_dict(self):
+        """
+        Init base attributes.
+
+        :return:
+        """
+        ret = {"type": self.fields["System.WorkItemType"].replace(" ", ""),
+               "id": str(self.fields["System.Id"]),
+               "title": self.fields["System.Title"],
+               "created_by": self.fields["System.CreatedBy"]["displayName"],
+               "status": self.convert_to_dict_status(),
+               "created_date": CommonUtils.convert_to_dict(self.strptime(self.fields["System.CreatedDate"])),
+               "child_ids": [],
+               "parent_ids": [],
+               "sprint_name": self.fields.get("System.IterationLevel2") or self.fields["System.IterationLevel1"],
+               }
+
+        if self.fields.get("System.AssignedTo") is not None:
+            ret["assigned_to"] = self.fields["System.AssignedTo"]["displayName"]
+
+        if ret["status"] == "CLOSED":
+            ret["closed_date"] = self.convert_to_dict_closed_date()
+
+        related = []
+        for relation in self.relations:
+            if relation["rel"] in ["ArtifactLink", "AttachedFile", "Hyperlink",
+                                   "Microsoft.VSTS.TestCase.SharedParameterReferencedBy-Forward"]:
+                related.append(relation)
+            elif relation["attributes"]["name"] == "Child":
+                ret["child_ids"].append(str(int(relation["url"].split("/")[-1])))
+            elif relation["attributes"]["name"] == "Parent":
+                ret["parent_ids"].append(str(int(relation["url"].split("/")[-1])))
+            elif relation["attributes"]["name"] in ["Related", "Duplicate Of", "Duplicate", "Successor", "Predecessor"]:
+                related.append(relation)
+            else:
+                raise ValueError(f"Unknown relation name in: '{relation}': '{relation['attributes']['name']}'")
+        if related:
+            logger.info(f"Unhandled related: {related}")
+
+        if ret["type"] not in ["Task", "Bug", "UserStory", "Feature", "Epic"]:
+            raise ValueError(ret["type"])
+
+        return ret
+
+    def convert_to_dict_status(self):
+        """
+        Convert to standard status
+
+        :return:
+        """
+
+        value = self.fields["System.State"]
+        if value in ["New", "Active"]:
+            return value.upper()
+
+        if value in ["On Hold", "Pending Deployment", "PM Review"]:
+            return "BLOCKED"
+
+        if value in ["Resolved", "Closed", "Removed"]:
+            return "CLOSED"
+
+        raise ValueError(f"Status unknown: {value}")
+
+    def convert_to_dict_closed_date(self):
+        """
+        Find the closing date.
+
+        :return:
+        """
+
+        value = self.fields.get("Microsoft.VSTS.Common.ClosedDate") or \
+                self.fields.get("Microsoft.VSTS.Common.ResolvedDate") or \
+                self.fields.get("Microsoft.VSTS.Common.StateChangeDate")
+        return CommonUtils.convert_to_dict(self.strptime(value))
+
 
 class Iteration(AzureDevopsObject):
     """
@@ -357,19 +432,19 @@ class AzureDevopsAPI:
         self.processes = []
         self.team_members = []
 
-    def get_iterations(self, date_find=None, from_cache=False, iteration_names=None):
+    def get_iterations(self, date_find=None, from_cache=False, iteration_pathes=None):
         """
         Get current by default or find by date specified.
 
         :param from_cache:
-        :param iteration_names:
+        :param iteration_pathes:
         :param date_find:
         :return:
         """
         if not self.iterations:
             self.init_iterations(from_cache=from_cache)
 
-        if date_find is None and iteration_names is None:
+        if date_find is None and iteration_pathes is None:
             date_find = datetime.datetime.now()
 
         lst_ret = []
@@ -378,13 +453,13 @@ class AzureDevopsAPI:
                 if iteration.start_date <= date_find <= iteration.finish_date:
                     lst_ret.append(iteration)
             else:
-                if iteration.name in iteration_names:
+                if iteration.name in iteration_pathes:
                     lst_ret.append(iteration)
 
         if lst_ret:
             return lst_ret
 
-        raise RuntimeError(f"Can not find iterations by {date_find} and {iteration_names}")
+        raise RuntimeError(f"Can not find iterations by {date_find} and {iteration_pathes}")
 
     def get_iteration(self, date_find=None, from_cache=False):
         """
@@ -547,19 +622,22 @@ class AzureDevopsAPI:
 
         return self.work_items
 
-    def init_work_items_by_iterations(self, iterations_src=None):
+    def init_work_items_by_iterations(self, iteration_names=None):
         """
         Init live data.
 
-        :param iterations_src:
+        :param iteration_names:
         :return:
         """
 
         lst_all = []
         lst_all_ids = []
+        if not self.iterations:
+            self.init_iterations()
 
-        iterations = iterations_src if iterations_src is not None else self.iterations
-        if not iterations:
+        if iteration_names:
+            iterations = [iteration for iteration in self.iterations if iteration.name in iteration_names]
+        else:
             self.init_iterations()
             iterations = self.iterations
 
@@ -599,7 +677,7 @@ class AzureDevopsAPI:
 
             logger.info(f"Already inited {len(lst_all_ids)} until iteration: {iteration_id}")
 
-        return self.recursive_init_work_items(lst_all)
+        return CommonUtils.convert_to_dict(self.recursive_init_work_items(lst_all))
 
     def recursive_init_work_items(self, lst_all, forward_only=False):
         """
@@ -935,6 +1013,27 @@ class AzureDevopsAPI:
         url = f"https://dev.azure.com/{self.org_name}/_apis/wit/workitems/{wit_id}?api-version=7.0"
         return self.patch(url, request_data)
 
+    def set_work_object_child(self, wit_id, child_id):
+        """
+
+        :param wit_id:
+        :param child_id:
+        :return:
+        """
+        logger.info(f"WIT:{wit_id} setting new parent to '{child_id}'")
+        request_data = [{
+            "op": "add",
+            "path": "/relations/-",
+            "value": {
+
+                "rel": "System.LinkTypes.Hierarchy-Forward",
+                "url": f"https://dev.azure.com/{self.org_name}/{self.project_name}/apis/wit/workItems/{child_id}"
+            }
+        }]
+
+        url = f"https://dev.azure.com/{self.org_name}/_apis/wit/workitems/{wit_id}?api-version=7.0"
+        return self.patch(url, request_data)
+
     def change_wit_state(self, wit_id, state):
         """
         Change work item state.
@@ -1052,6 +1151,106 @@ class AzureDevopsAPI:
 
         return wit_id
 
+    # pylint: disable= too-many-branches
+    def provision_work_item_from_dict(self, dict_src):
+        """
+        Provision work item by parameters received.
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/work-items/create?view=azure-devops-rest-7.0&tabs=HTTP
+
+        :param dict_src:
+
+        :return:
+        """
+        left_attributes = list(dict_src.keys())
+        wit_type = dict_src["type"]
+        left_attributes.remove("type")
+        if wit_type == "UserStory":
+            wit_url_type = "$User%20Story"
+        elif wit_type == "Task":
+            wit_url_type = "$Task"
+        elif wit_type == "Bug":
+            wit_url_type = "$Bug"
+        else:
+            raise RuntimeError(f"wit_type {wit_type} != user_story")
+
+        wit_title = dict_src["title"]
+        left_attributes.remove("title")
+        logger.info(f"Creating new WIT: {wit_type}: '{wit_title}'")
+        # suppressNotifications=true&
+        url = f"https://dev.azure.com/{self.org_name}/{self.project_name}/_apis/wit/workitems/{wit_url_type}?api-version=7.0"
+        wit_description = dict_src["description"]
+        left_attributes.remove("description")
+        request_data = \
+            [
+                {
+                    "op": "add",
+                    "path": "/fields/System.Title",
+                    "value": wit_title
+                },
+                {
+                    "op": "add",
+                    "path": "/fields/System.Description",
+                    "value": wit_description
+                }
+            ]
+
+        if "priority" in left_attributes:
+            priority = dict_src["priority"]
+            left_attributes.remove("priority")
+        else:
+            priority = "2"
+
+        request_data.append({
+            "op": "add",
+            "path": "/fields/Microsoft.VSTS.Common.Priority",
+            "value": priority
+        })
+
+        if "sprint_name" in left_attributes:
+            request_data.append({
+                    "op": "add",
+                    "path": "/fields/System.IterationPath",
+                    "value": f"{self.project_name}\\\\{dict_src['sprint_name']}"
+                })
+            left_attributes.remove("sprint_name")
+
+        if "estimated_time" in dict_src:
+            original_estimate_time = dict_src["estimated_time"]
+            left_attributes.remove("estimated_time")
+            if original_estimate_time is not None:
+                request_data.append(
+                    {
+                        "op": "add",
+                        "path": "/fields/Microsoft.VSTS.Scheduling.OriginalEstimate",
+                        "value": original_estimate_time
+                    })
+        logger.info(f"Creating Work Item with parameters: {request_data}")
+
+        assigned_to = dict_src["assigned_to"]
+        left_attributes.remove("assigned_to")
+        if assigned_to is not None:
+            request_data.append({"op": "add", "path": "/fields/System.AssignedTo", "value": assigned_to})
+
+        self.session.headers.update(
+            {
+                "Content-Type": "application/json-patch+json",
+                "User-Agent": "python/horey",
+            })
+        ret = self.post(url, request_data)
+        wit_id = ret.get("id")
+        logger.info(f"WIT:{wit_id} created. Type: '{wit_type}' Title '{wit_title}'")
+
+        if "parent_ids" in left_attributes:
+            parent_id = dict_src["parent_ids"][0]
+            if parent_id is not None:
+                self.set_wit_parent(wit_id, parent_id)
+            left_attributes.remove("parent_ids")
+
+        if left_attributes:
+            raise ValueError(left_attributes)
+
+        return wit_id
+
     def generate_solution_retrospective(self, search_strings):
         """
         Search for work items with these strings inside
@@ -1075,7 +1274,8 @@ class AzureDevopsAPI:
             print(wit.id, wit.title)
 
         htb_ret = TextBlock("Retrospective")
-        htb_low = self.generate_retrospective_per_type([wit for wit in recursively_found if wit.work_item_type in ["Task", "Bug"]])
+        htb_low = self.generate_retrospective_per_type(
+            [wit for wit in recursively_found if wit.work_item_type in ["Task", "Bug"]])
         htb_low.header = "Tasks/Bugs"
         htb_ret.blocks.append(htb_low)
 

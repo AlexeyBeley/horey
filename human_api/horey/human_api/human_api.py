@@ -2,6 +2,8 @@
 Manage Azure Devops
 
 """
+import copy
+import json
 import logging
 import datetime
 from collections import defaultdict
@@ -118,17 +120,17 @@ class DailyReportAction:
 
         parts = child_token_rep.split(" ")
         if len(parts) == 0:
-            parts = ["task", "0"]
+            parts = ["Task", "0"]
         elif len(parts) == 1:
-            if parts[0] in ["task", "bug"]:
+            if parts[0] in ["Task", "Bug"]:
                 parts.append("0")
             else:
-                parts = ["task"] + parts
+                parts = ["Task"] + parts
 
         self.child_type, self.child_id = parts
 
         self.child_type = self.child_type.strip()
-        if self.child_type not in ["task", "bug"]:
+        if self.child_type not in ["Task", "Bug"]:
             self.init_errors.append(f"Task uid can not be parsed in: '{child_token}'")
 
         self.child_id = self.child_id.strip()
@@ -205,9 +207,9 @@ class DailyReportAction:
         parts = uid.split(" ")
         if len(parts) < 2:
             if len(parts) == 0:
-                parts = ["user_story", "0"]
+                parts = ["UserStory", "0"]
             elif parts[0] == "-1" or parts[0].isdigit():
-                parts = ["user_story"] + parts
+                parts = ["UserStory"] + parts
             else:
                 parts.append("0")
 
@@ -215,7 +217,7 @@ class DailyReportAction:
         if self.parent_id != "-1" and not self.parent_id.isdigit():
             raise ValueError(f"Work item id must be either digit or '-1', received: '{parent_token}'")
 
-        if self.parent_type not in ["user_story", "bug", "task"]:
+        if self.parent_type not in ["UserStory", "Bug", "Task"]:
             raise ValueError(f"Unknown Parent WIT type '{self.parent_type}' in '{parent_token}'")
 
 
@@ -250,54 +252,59 @@ class HumanAPI:
 
         :return:
         """
+
+        #with open("./tmp_cache.json") as fh:
+        #    work_objects = json.load(fh)
+
         sprints = sprints if sprints is not None else []
-        work_items = self.azure_devops_api.init_work_items_by_iterations(
-            iterations_src=[sprint.azure_devops_object for sprint in sprints])
-        self.init_tasks_from_azure_devops_work_items(work_items)
+        work_objects = self.azure_devops_api.init_work_items_by_iterations(
+            iteration_names=[sprint.name for sprint in sprints])
+
+        with open("./tmp_cache.json", "w", encoding="utf-8") as fh:
+            json.dump(work_objects, fh)
+
+        self.init_work_objects_from_dicts(work_objects)
         self.init_tasks_relations()
 
-    def init_tasks_from_azure_devops_work_items(self, work_items):
+    def init_work_objects_from_dicts(self, work_objects):
         """
         Init tasks map.
 
         :return:
         """
 
-        for work_item in work_items:
-            if work_item.work_item_type == "Feature":
+        for work_item in work_objects:
+            if work_item["type"] == "Feature":
                 feature = Feature()
-                feature.init_from_azure_devops_work_item(work_item)
-                if feature.id in self.user_stories:
+                feature.init_from_dict(work_item)
+                if feature.id in self.features:
                     raise ValueError(f"feature id {feature.id} is already in use")
                 self.features[feature.id] = feature
-            elif work_item.work_item_type == "Epic":
+            elif work_item["type"] == "Epic":
                 epic = Epic()
-                epic.init_from_azure_devops_work_item(work_item)
+                epic.init_from_dict(work_item)
                 if epic.id in self.epics:
                     raise ValueError(f"epic id {epic.id} is already in use")
                 self.epics[epic.id] = epic
-            elif work_item.work_item_type == "User Story":
+            elif work_item["type"] == "UserStory":
                 user_story = UserStory()
-                user_story.init_from_azure_devops_work_item(work_item)
+                user_story.init_from_dict(work_item)
                 if user_story.id in self.user_stories:
                     raise ValueError(f"user_story id {user_story.id} is already in use")
                 self.user_stories[user_story.id] = user_story
-            elif work_item.work_item_type == "Bug":
+            elif work_item["type"] == "Bug":
                 bug = Bug()
-                bug.init_from_azure_devops_work_item(work_item)
+                bug.init_from_dict(work_item)
                 if bug.id in self.bugs:
-                    raise ValueError(f"bug id {bug.id} is already in use")
+                    raise ValueError(f"Bug id {bug.id} is already in use")
                 self.bugs[bug.id] = bug
-            elif work_item.work_item_type == "Task":
+            elif work_item["type"] == "Task":
                 task = Task()
-                task.init_from_azure_devops_work_item(work_item)
+                task.init_from_dict(work_item)
                 if task.id in self.tasks:
-                    raise ValueError(f"task id {task.id} is already in use")
+                    raise ValueError(f"Task id {task.id} is already in use")
                 self.tasks[task.id] = task
-            elif work_item.work_item_type is None:
-                task = Task()
-                task.id = work_item.id
-                self.tasks[task.id] = task
+
             else:
                 raise ValueError(f"Unknown work item type: {work_item.work_item_type}")
 
@@ -344,7 +351,7 @@ class HumanAPI:
         """
         lst_ret = []
         for iteration in self.azure_devops_api.get_iterations(from_cache=False, date_find=date_find,
-                                                              iteration_names=sprint_names):
+                                                              iteration_pathes=sprint_names):
             sprint = Sprint()
             sprint.init_from_azure_devops_iteration(iteration)
             lst_ret.append(sprint)
@@ -361,8 +368,8 @@ class HumanAPI:
         tmp_dict = {}
         tmp_dict.update(self.tasks)
         tmp_dict.update(self.bugs)
-        sprint_ids = [sprint.id for sprint in sprints]
-        return [value for value in tmp_dict.values() if value.sprint_id in sprint_ids]
+        sprint_names = [sprint.name for sprint in sprints]
+        return [value for value in tmp_dict.values() if value.sprint_name in sprint_names]
 
     @staticmethod
     def split_by_worker(work_items):
@@ -560,10 +567,6 @@ class HumanAPI:
         :return:
         """
 
-        if "@" in worker_name:
-            name = worker_name[:worker_name.index("@")]
-        else:
-            name = worker_name
         actions_new, actions_active, actions_blocked, actions_closed = input_actions["actions_new"], \
                                                                        input_actions["actions_active"], \
                                                                        input_actions["actions_blocked"], \
@@ -576,7 +579,7 @@ class HumanAPI:
                                                            actions_closed)
         str_date = datetime.datetime.now().strftime("%d/%m/%Y")
         ytb_report = self.generate_ytb_report(actions_new, actions_active, actions_blocked, actions_closed)
-        named_ytb_report = f"[{str_date}] {name}\n{ytb_report}"
+        named_ytb_report = f"[{str_date}] {worker_name}\n{ytb_report}"
         return named_ytb_report
 
     @staticmethod
@@ -643,10 +646,13 @@ class HumanAPI:
                     parents_to_actions_map[action.parent_title].append(action)
 
         for parent_title, actions in parents_to_actions_map.items():
-            user_story_id = self.azure_devops_api.provision_work_item_by_params(actions[0].parent_type, parent_title,
-                                                                                "Auto generated content. Change it manually",
-                                                                                iteration_partial_path=self.configuration.sprint_name,
-                                                                                assigned_to=user_full_name)
+            work_object_dict = {"type": actions[0].parent_type,
+                                "title": parent_title,
+                                "description": "Auto generated content. Change it manually",
+                                "sprint_name": self.configuration.sprint_name,
+                                "assigned_to": user_full_name
+                                }
+            user_story_id = self.azure_devops_api.provision_work_item_from_dict(work_object_dict)
             self.provisioned_new_parents_map[parent_title] = user_story_id
 
             for action in actions:
@@ -654,13 +660,15 @@ class HumanAPI:
 
         for action in actions_new + actions_active + actions_blocked + actions_closed:
             if action.child_id == "0":
-                action.child_id = self.azure_devops_api.provision_work_item_by_params(action.child_type,
-                                                                                      action.child_title,
-                                                                                      action.action_comment,
-                                                                                      iteration_partial_path=self.configuration.sprint_name,
-                                                                                      original_estimate_time=action.action_init_time,
-                                                                                      assigned_to=user_full_name,
-                                                                                      parent_id=action.parent_id)
+                work_object_dict = {"type": action.child_type,
+                                    "title": action.child_title,
+                                    "description": action.action_comment,
+                                    "sprint_name": self.configuration.sprint_name,
+                                    "assigned_to": user_full_name,
+                                    "estimated_time": action.action_init_time,
+                                    "parent_ids": [action.parent_id]
+                                    }
+                action.child_id = self.azure_devops_api.provision_work_item_from_dict(work_object_dict)
 
         for action in actions_new + actions_active + actions_blocked + actions_closed:
             if action.action_add_time is not None:
@@ -826,43 +834,94 @@ class HumanAPI:
         :param items:
         :return:
         """
-        self.generate_hapi_uids(items)
-        self.validate_work_plan(items, defaultdict(list))
-        lst_ret = CommonUtils.convert_to_dict(items)
-        return lst_ret
+        self.generate_auto_data(items)
+        items_map = self.flattern_work_plan_tree(items)
 
-    def generate_hapi_uids(self, items, prefix=""):
+        self.validate_work_plan(items_map)
+        sprints_map = self.split_to_sprints(items_map)
+        for sprint_name, sprint_items in sprints_map.items():
+            summaries_map = self.generate_work_plan_summaries(sprint_items)
+            file_path = self.configuration.work_plan_output_file_path_template.format(sprint_name=sprint_name)
+            dir_path = os.path.dirname(file_path)
+            os.makedirs(dir_path, exist_ok=True)
+            with open(file_path, "w", encoding="utf-8") as file_handler:
+                json.dump(CommonUtils.convert_to_dict(sprint_items), file_handler, indent=4)
+
+            with open(self.configuration.work_plan_summary_output_file_path_template.format(sprint_name=sprint_name), "w", encoding="utf-8") as file_handler:
+                summary = ("-"*40+"\n").join(summaries_map[item.hapi_uid].format_pprint(shift=4) for item in sprint_items if item.hapi_uid in summaries_map)
+                file_handler.write(summary)
+
+        return items_map
+
+    def generate_auto_data(self, items, prefix="", sprint_name="", assigned_to=""):
         """
         Generate guids common to work planning and work executing.
 
+        :param assigned_to:
+        :param sprint_name:
         :param items:
         :param prefix:
         :return:
         """
         for item in items:
             item.hapi_uid = prefix + "/" + item.title
-            self.generate_hapi_uids(item.children, prefix=item.hapi_uid)
+            if sprint_name:
+                if item.sprint_name != sprint_name:
+                    if item.sprint_name:
+                        raise RuntimeError(f"Item '{item.title}' sprint_name was set to '{item.sprint_name}' but received explicit sprint_name: '{sprint_name}'")
+                    item.sprint_name = sprint_name
 
-    def validate_work_plan(self, items, seen_values):
+            if assigned_to:
+                if item.assigned_to != assigned_to:
+                    if item.assigned_to:
+                        raise RuntimeError(f"Item '{item.title}' assigned_to was set to '{item.assigned_to}' but received explicit assigned_to: '{assigned_to}'")
+                    item.assigned_to = assigned_to
+
+            self.generate_auto_data(item.children, prefix=item.hapi_uid, sprint_name=item.sprint_name, assigned_to=item.assigned_to)
+
+    def flattern_work_plan_tree(self, items):
         """
-        Validate user input.
+        Create dictionary from work items. By hapi_uid.
 
-        :param seen_values:
         :param items:
         :return:
         """
 
-        errors = []
-        for item in items:
-            if item.children:
-                try:
-                    if item.estimated_time is not None:
-                        errors.append(f"Remove estimated_time for parent with children: '{item.title}'")
+        ret = {item.hapi_uid: item for item in items}
 
-                    self.validate_work_plan(item.children, seen_values)
-                    item.estimated_time = sum(child.estimated_time for child in item.children)
-                except HumanAPI.ValidationError as error_inst:
-                    errors += str(error_inst).split("\n")
+        for item in items:
+            item.child_ids = [child.id for child in item.children if child.id is not None]
+            item.child_hapi_uids = [child.hapi_uid for child in item.children if child.hapi_uid is not None]
+            ret.update(self.flattern_work_plan_tree(item.children))
+            item.children = []
+
+        return ret
+
+    @staticmethod
+    def validate_work_plan(items_map: dict):
+        """
+        Validate user input.
+
+        :param items_map:
+        :return:
+        """
+        seen_values = defaultdict(list)
+        errors = []
+        for item in items_map.values():
+            if item.child_hapi_uids:
+                if item.estimated_time is not None:
+                    errors.append(f"Remove estimated_time for parent with children: '{item.title}'")
+
+                if item.type != "Feature":
+                    # Parent/children sprint validation
+                    child_sprint_names = {items_map[child_hapi_uid].sprint_name for child_hapi_uid in item.child_hapi_uids}
+                    if len(child_sprint_names) != 1:
+                        errors.append(f"Parent '{item.title}' Sprint: '{item.sprint_name}', children Sprints: '{child_sprint_names}'")
+                    elif item.sprint_name != list(child_sprint_names)[0]:
+                        errors.append(f"Parent '{item.title}' Sprint: '{item.sprint_name}', children's Sprint: '{list(child_sprint_names)[0]}'")
+
+            elif item.estimated_time is None:
+                errors.append(f"Item 'estimated_time' was not set: '{item.title}'")
 
             if len(item.title.split(" ")) > 7:
                 errors.append(f"Item title number of words > 7: '{item.title}'")
@@ -870,9 +929,9 @@ class HumanAPI:
             if item.id is None and item.hapi_uid is None:
                 errors.append(f"Neither item id or hapi_uid were set: '{item.title}'")
 
-            for param in ["description", "estimated_time", "dod", "priority"]:
+            for param in ["description", "dod", "priority", "sprint_name", "assigned_to"]:
                 if getattr(item, param) is None:
-                    errors.append(f"Item {param} was not set: '{item.title}'")
+                    errors.append(f"Item '{param}' was not set: '{item.title}'")
 
             for param in ["description", "title", "dod", "hapi_uid"]:
                 item_param = getattr(item, param)
@@ -884,7 +943,90 @@ class HumanAPI:
         if errors:
             raise HumanAPI.ValidationError("\n".join(errors))
 
+        for item in reversed(items_map.values()):
+            if item.child_hapi_uids:
+                item.estimated_time = sum(items_map[child_hapi_uid].estimated_time for child_hapi_uid in item.child_hapi_uids)
+
+    def split_to_sprints(self, items_map):
+        """
+        Split items by sprint
+
+        :param items_map:
+        :return:
+        """
+
+        ret = defaultdict(list)
+        for item in items_map.values():
+            ret[item.sprint_name].append(item)
+        return ret
+
+    def generate_work_plan_summaries(self, items):
+        """
+        Generate work plan summary.
+
+        :param items_map:
+        :return:
+        """
+
+        summaries = {item.hapi_uid: item.generate_summary() for item in items}
+        child_hapi_uids = []
+        for item in reversed(items):
+            if item.type == "Feature":
+                continue
+
+            if item.child_hapi_uids:
+                child_hapi_uids += item.child_hapi_uids
+                summaries[item.hapi_uid].lines += ["", "Children:"]
+            summaries[item.hapi_uid].blocks = [summaries[hapi_uid] for hapi_uid in item.child_hapi_uids]
+
+        # Return only top level summaries (Children are inside)
+        return {uid: summary for uid, summary in summaries.items() if uid not in child_hapi_uids}
+
     class ValidationError(ValueError):
         """
         Input validation Error
         """
+
+    def provision_work_plan(self, workplan_file_path):
+        """
+        Provision work_plan into the TMS
+        work_object_dict = {"type": action.child_type,
+                            "title": action.child_title,
+                            "description": action.action_comment,
+                            "sprint_name": self.configuration.sprint_name,
+                            "assigned_to": user_full_name,
+                            "estimated_time": action.action_init_time,
+                            "parent_ids": [action.parent_id]
+                            }
+
+        :param workplan_file_path:
+        :return:
+        """
+
+        with open(workplan_file_path, encoding="utf-8") as file_handler:
+            ret = json.load(file_handler)
+
+        hapi_uids_map = {}
+        for work_object_dict in ret:
+            tmp_dict = copy.deepcopy(work_object_dict)
+            for local_var in ['hapi_uid', 'child_hapi_uids', 'dod']:
+                try:
+                    del tmp_dict[local_var]
+                except KeyError:
+                    pass
+
+            work_object_dict["id"] = str(self.azure_devops_api.provision_work_item_from_dict(tmp_dict))
+            hapi_uids_map[work_object_dict["hapi_uid"]] = work_object_dict
+
+        with open(workplan_file_path, "w", encoding="utf-8") as file_handler:
+            json.dump(ret, file_handler, indent=4)
+
+        for work_object_dict in hapi_uids_map.values():
+            status_comment = "human_api_json_encoded_current_status:"+json.dumps(work_object_dict)
+            self.azure_devops_api.add_wit_comment(work_object_dict["id"], status_comment)
+            children_hapi_uids = work_object_dict.get("child_hapi_uids")
+            if children_hapi_uids:
+                parent_id = work_object_dict["id"]
+                for child_hapi_uid in children_hapi_uids:
+                    child_id = hapi_uids_map[child_hapi_uid]["id"]
+                    self.azure_devops_api.set_wit_parent(child_id, parent_id)

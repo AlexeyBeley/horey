@@ -72,6 +72,45 @@ class CommonUtils:
         return custom_types[type(obj_src)](obj_src)
 
     @staticmethod
+    def init_from_dict(obj_dst, dict_src, custom_types=None):
+        """
+        Init object from dict
+
+        :param custom_types:
+        :param obj_dst:
+        :param dict_src:
+        :return:
+        """
+
+        for key_src, value in dict_src.items():
+            if custom_types and key_src in custom_types:
+                setattr(obj_dst, key_src, custom_types[key_src](value))
+            elif (
+                isinstance(value, dict)
+                and value.get(CommonUtils.SELF_CACHED_TYPE_KEY_NAME) is not None
+            ):
+                setattr(obj_dst, key_src, CommonUtils.init_horey_cached_type(value))
+            else:
+                setattr(obj_dst, key_src, value)
+
+    @staticmethod
+    def init_horey_cached_type(value):
+        """
+        Init automatically cached values
+
+        @param value: {self.SELF_CACHED_TYPE_KEY_NAME: datetime/region/ip..., "value": value_to_init}
+        @return:
+        """
+
+        if value.get(CommonUtils.SELF_CACHED_TYPE_KEY_NAME) == "datetime":
+            # Example: datetime.datetime.strptime('2017-07-26 15:54:10.000000+0000', '%Y-%m-%d %H:%M:%S.%f%z')
+            value_formatted = value["value"] if "+" in value["value"] else value["value"] + "+0000"
+            return datetime.datetime.strptime(
+                value_formatted, "%Y-%m-%d %H:%M:%S.%f%z"
+            )
+        raise ValueError(f"Unknown horey type: {value}")
+
+    @staticmethod
     def camel_case_to_snake_case(name):
         """
         Camel case to snake case
