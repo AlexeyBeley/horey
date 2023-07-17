@@ -1151,6 +1151,7 @@ class AzureDevopsAPI:
 
         return wit_id
 
+    # pylint: disable= too-many-branches
     def provision_work_item_from_dict(self, dict_src):
         """
         Provision work item by parameters received.
@@ -1213,15 +1214,16 @@ class AzureDevopsAPI:
                 })
             left_attributes.remove("sprint_name")
 
-        original_estimate_time = dict_src["estimated_time"]
-        left_attributes.remove("estimated_time")
-        if original_estimate_time is not None:
-            request_data.append(
-                {
-                    "op": "add",
-                    "path": "/fields/Microsoft.VSTS.Scheduling.OriginalEstimate",
-                    "value": original_estimate_time
-                })
+        if "estimated_time" in dict_src:
+            original_estimate_time = dict_src["estimated_time"]
+            left_attributes.remove("estimated_time")
+            if original_estimate_time is not None:
+                request_data.append(
+                    {
+                        "op": "add",
+                        "path": "/fields/Microsoft.VSTS.Scheduling.OriginalEstimate",
+                        "value": original_estimate_time
+                    })
         logger.info(f"Creating Work Item with parameters: {request_data}")
 
         assigned_to = dict_src["assigned_to"]
