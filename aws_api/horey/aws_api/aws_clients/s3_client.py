@@ -838,7 +838,7 @@ class S3Client(Boto3Client):
         except Exception as exception_inst:
             exception_repr = repr(exception_inst)
             logger.warning(
-                f"Failed to upload to s3 {filters_req} with exception {exception_repr}"
+                f"Failed to upload to s3 {filters_req} with exception {exception_repr if 'Body' not in exception_repr else 'To large exception'}"
             )
             task.attempts.append(exception_repr)
             task.succeed = False
