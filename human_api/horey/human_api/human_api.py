@@ -61,7 +61,7 @@ class DailyReportAction:
         self.action_block = None
 
         line_src = line_src.strip()
-        parent_token = line_src[1:line_src.find("]")]
+        parent_token = line_src[1:line_src.find("]")].strip(" ")
         line = line_src[len(parent_token):]
         line = line[line.find("->") + 2:]
         line = line.strip()
