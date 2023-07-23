@@ -155,7 +155,7 @@ class WorkObject:
             htb_ret.lines.append(f"Estimated> {self.estimated_time} hours")
 
         if self.dod:
-            dod = ["DOD> "] + [f"{number}) " + value for number, value in enumerate(self.dod.values())]
+            dod = ["DOD>"] + [f"{number}) " + value for number, value in enumerate(self.dod.values())]
             htb_ret.lines += dod
 
         if self.comment:

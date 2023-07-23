@@ -8,11 +8,11 @@ VENV_DIR := $(realpath ${BUILD_TMP_DIR}/_venv)
 
 plan: build
 	source ${VENV_DIR}/bin/activate &&\
-	python3 work_plan.py
+	python work_plan.py
 
 test_%: FORCE build
 	source ${VENV_DIR}/bin/activate &&\
-	python3 ${TESTS_DIR}/${@}
+	python ${TESTS_DIR}/${@}
 
 FORCE: ;
 

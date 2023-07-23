@@ -16,6 +16,7 @@ class HumanAPIConfigurationPolicy(ConfigurationPolicy):
     def __init__(self):
         self._azure_devops_api_configuration_file_path = None
         self._reports_dir_path = None
+        self._work_plan_file_path = None
         self._sprint_name = None
         super().__init__()
 
@@ -46,15 +47,33 @@ class HumanAPIConfigurationPolicy(ConfigurationPolicy):
 
     @property
     def protected_input_file_path(self):
-        return os.path.join(self.daily_dir_path, "daily_input.hapi")
+        return os.path.join(self.daily_dir_path, "input.hapi")
+
+    @property
+    def daily_hr_output_file_path(self):
+        return os.path.join(self.daily_dir_path, "hr_output.hapi")
 
     @property
     def output_file_path(self):
-        return os.path.join(self.daily_dir_path, "daily_output.hapi")
+        return os.path.join(self.daily_dir_path, "ytb.hapi")
+
+    @property
+    def sprint_dir_path(self):
+        ret = os.path.join(self.reports_dir_path, self.sprint_name.replace(" ", "_"))
+        os.makedirs(ret, exist_ok=True)
+        return ret
 
     @property
     def daily_dir_path(self):
-        return os.path.join(self.reports_dir_path, str(datetime.date.today()))
+        ret = os.path.join(self.sprint_dir_path, str(datetime.date.today()))
+        os.makedirs(ret, exist_ok=True)
+        return ret
+
+    @property
+    def sprint_retrospective_dir_path(self):
+        ret = os.path.join(self.sprint_dir_path, "retrospective")
+        os.makedirs(ret, exist_ok=True)
+        return ret
 
     @property
     def work_plan_output_file_path_template(self):

@@ -1,7 +1,11 @@
+"""
+Testing S3 options.
+
+"""
+
 import datetime
 import json
 import os
-import pdb
 
 from unittest.mock import Mock
 from horey.aws_api.aws_clients.s3_client import S3Client
@@ -13,6 +17,7 @@ AWSAccount.set_aws_region(Region.get_region("us-west-2"))
 
 TEST_BUCKET_NAME = "horey-test-bucket"
 
+# pylint: disable= missing-function-docstring
 
 def test_init_s3_client():
     assert isinstance(S3Client(), S3Client)
@@ -44,7 +49,7 @@ def test_provision_s3_bucket():
 
 def create_test_file(path, size):
     print(f"Creating test file {path}")
-    with open(path, "w+") as file_handler:
+    with open(path, "w+", encoding="utf-8") as file_handler:
         file_handler.write("a" * size)
 
 
@@ -53,7 +58,7 @@ def create_test_html_file(path, size):
     prefix_data = "<head>Hello world!</head><body>Body content:\n"
     postfix_data = "</body>"
     size = size - (len(prefix_data) + len(postfix_data))
-    with open(path, "w+") as file_handler:
+    with open(path, "w+", encoding="utf-8") as file_handler:
         file_handler.write(prefix_data + "a" * size + postfix_data)
 
 
@@ -211,7 +216,7 @@ def test_upload_file_thread_without_validation():
     task.extra_args = {}
     task.raw_response = None
     task.succeed = None
-    task.attempts = list()
+    task.attempts = []
     task.finished = None
     start_time = datetime.datetime.now()
     s3_client.upload_file_thread(task)
@@ -235,7 +240,7 @@ def test_upload_file_thread_with_validation():
     task.extra_args = {}
     task.raw_response = None
     task.succeed = None
-    task.attempts = list()
+    task.attempts = []
     task.finished = None
     start_time = datetime.datetime.now()
     s3_client.upload_file_thread(task)
@@ -322,11 +327,11 @@ def test_get_bucket_keys_extensions():
             continue
         full_path = os.path.join(dst_dir, bucket.name, obj_.key)
         os.makedirs(os.path.dirname(full_path), exist_ok=True)
-        with open(full_path, "w+") as fh:
+        with open(full_path, "w+", encoding="utf-8") as fh:
             json.dump(str(obj_.dict_src), fh)
 
     extensions = []
-    for root, dir_, files in os.walk(dst_dir):
+    for _, _, files in os.walk(dst_dir):
         for file in files:
             _, file_ex = os.path.splitext(file)
             if file_ex not in extensions:
@@ -371,7 +376,7 @@ def test_upload_with_metadata_callback():
     # size = 10  # 20 MB
 
     for ext_key in list(extensions_mapping.keys())[:1]:
-        with open(os.path.join(metadata_dir, "test." + ext_key), "w+") as file_handler:
+        with open(os.path.join(metadata_dir, "test." + ext_key), "w+", encoding="utf-8") as file_handler:
             file_handler.write("a" * size)
 
     s3_client = S3Client()
@@ -384,6 +389,12 @@ def test_upload_with_metadata_callback():
         keep_src_object_name=True,
         metadata_callback=metadata_callback_func,
     )
+
+
+def test_download_file():
+    s3_client = S3Client()
+    s3_client.download_file(None, None, None)
+
 
 
 if __name__ == "__main__":
@@ -404,4 +415,5 @@ if __name__ == "__main__":
     # test_upload_small_files_directory_to_s3_with_md5_validation()
     # test_delete_bucket_objects()
     # test_get_bucket_keys_extensions()
-    test_upload_with_metadata_callback()
+    # test_upload_with_metadata_callback()
+    test_download_file()

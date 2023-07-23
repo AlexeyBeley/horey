@@ -441,6 +441,62 @@ class HumanAPI:
             with open(self.configuration.protected_input_file_path, "w", encoding="utf-8") as file_handler:
                 file_handler.write(str_ret)
 
+    def generate_daily_hr(self):
+        """
+        Generate a human-readable daily report.
+
+        :return:
+        """
+
+        input_actions_per_worker_map = self.init_actions_from_report_file(self.configuration.protected_input_file_path)
+        base_actions_per_worker_map = self.init_actions_from_report_file(self.configuration.daily_hapi_file_path)
+
+        str_ret = ""
+        for worker_name, input_actions in input_actions_per_worker_map.items():
+            str_ret_tmp = self.generate_daily_hr_per_worker(input_actions,
+                                                          base_actions_per_worker_map[worker_name])
+
+            if str_ret_tmp == ">NEW:\n>ACTIVE:\n>BLOCKED:\n>CLOSED:":
+                continue
+            str_ret += worker_name + "\n" + str_ret_tmp + "\n"
+        with open(self.configuration.daily_hr_output_file_path, "a", encoding="utf-8") as file_handler:
+            file_handler.write(str_ret)
+
+    def generate_daily_hr_per_worker(self, input_actions, base_actions):
+        """
+
+        :param input_actions:
+        :param base_actions:
+        :return:
+        """
+        ret = ">NEW:\n" + self.generate_daily_hr_per_action_block(input_actions["actions_new"], base_actions["actions_new"])
+        ret += "\n>ACTIVE:\n" + self.generate_daily_hr_per_action_block(input_actions["actions_active"], base_actions["actions_active"])
+        ret += "\n>BLOCKED:\n" + self.generate_daily_hr_per_action_block(input_actions["actions_blocked"], base_actions["actions_blocked"])
+        ret += "\n>CLOSED:\n" + self.generate_daily_hr_per_action_block(input_actions["actions_closed"], base_actions["actions_closed"])
+
+        return ret.replace("\n\n", "\n").strip("\n")
+
+    def generate_daily_hr_per_action_block(self, input_actions, base_actions):
+        """
+        Find differences per action's block
+
+        :param input_actions:
+        :param base_actions:
+        :return:
+        """
+
+        str_ret = ""
+        input_map = {(action.parent_title, action.child_title): action.src_line for action in input_actions}
+        base_map = {(action.parent_title, action.child_title): action.src_line for action in base_actions}
+        for input_pair, input_line in input_map.items():
+            if input_pair not in base_map:
+                str_ret += input_line + "\n"
+                continue
+            if input_line != base_map[input_pair]:
+                str_ret += input_line + "\n"
+                continue
+        return str_ret
+
     def daily_action(self):
         """
         Perform daily ritual - do the changes in the tasks' management system and
@@ -808,10 +864,16 @@ class HumanAPI:
         :param sprint_name:
         :return:
         """
-        if os.path.exists(self.configuration.protected_input_file_path):
-            self.daily_action()
+        if not os.path.exists(self.configuration.protected_input_file_path):
+            self.daily_report()
             return
-        self.daily_report()
+
+        if not os.path.exists(self.configuration.daily_hr_output_file_path):
+            self.generate_daily_hr()
+            return
+
+        self.daily_action()
+
 
     def validate_daily_input(self, file_path):
         """
@@ -827,13 +889,15 @@ class HumanAPI:
             if "Errors occurred, see list below" not in repr(inst):
                 raise
 
-    def generate_work_plan(self, items):
+    def generate_work_plan(self, work_plan_file_path):
         """
         Generate list of dicts from objects.
 
-        :param items:
+        :param work_plan_file_path:
         :return:
         """
+        items = CommonUtils.load_object_from_module(work_plan_file_path, "main")
+
         self.generate_auto_data(items)
         items_map = self.flattern_work_plan_tree(items)
 
@@ -841,13 +905,13 @@ class HumanAPI:
         sprints_map = self.split_to_sprints(items_map)
         for sprint_name, sprint_items in sprints_map.items():
             summaries_map = self.generate_work_plan_summaries(sprint_items)
-            file_path = self.configuration.work_plan_output_file_path_template.format(sprint_name=sprint_name)
+            file_path = self.configuration.work_plan_output_file_path_template.format(sprint_name=sprint_name.replace(" ", "_"))
             dir_path = os.path.dirname(file_path)
             os.makedirs(dir_path, exist_ok=True)
             with open(file_path, "w", encoding="utf-8") as file_handler:
                 json.dump(CommonUtils.convert_to_dict(sprint_items), file_handler, indent=4)
 
-            with open(self.configuration.work_plan_summary_output_file_path_template.format(sprint_name=sprint_name), "w", encoding="utf-8") as file_handler:
+            with open(self.configuration.work_plan_summary_output_file_path_template.format(sprint_name=sprint_name.replace(" ", "_")), "w", encoding="utf-8") as file_handler:
                 summary = ("-"*40+"\n").join(summaries_map[item.hapi_uid].format_pprint(shift=4) for item in sprint_items if item.hapi_uid in summaries_map)
                 file_handler.write(summary)
 
@@ -1030,3 +1094,20 @@ class HumanAPI:
                 for child_hapi_uid in children_hapi_uids:
                     child_id = hapi_uids_map[child_hapi_uid]["id"]
                     self.azure_devops_api.set_wit_parent(child_id, parent_id)
+
+    def retrospective(self):
+        """
+        Retrospective
+
+        sprints = self.get_sprints(sprint_names=[self.configuration.sprint_name])
+
+        self.init_tasks_map(sprints=sprints)
+
+        sprint_work_items = self.get_sprint_tasks_and_bugs(sprints)
+        work_items_map = self.split_by_worker(sprint_work_items)
+        with open(self.configuration.work_plan_output_file_path_template.format(sprint_name=self.configuration.sprint_name.replace(" ", "_"))) as file_handler:
+            sprint_planned_items_dicts = json.load(file_handler)
+        sprint_planned_items = self.init_work_objects_from_dicts(sprint_planned_items_dicts)
+        self.configuration.sprint_retrospective_dir_path
+        :return:
+        """

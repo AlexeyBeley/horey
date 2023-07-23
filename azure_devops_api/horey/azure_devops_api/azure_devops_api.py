@@ -640,7 +640,6 @@ class AzureDevopsAPI:
         else:
             self.init_iterations()
             iterations = self.iterations
-
         project = self.project_name
         organization = self.org_name
         for iteration_id in [iteration.id for iteration in iterations]:

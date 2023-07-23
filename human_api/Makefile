@@ -18,4 +18,4 @@ validate: build validate_raw
 validate_raw:
 	source ${VENV_DIR}/bin/activate &&\
 	cd ${HOREY_DIR_PATH}/human_api/horey/human_api &&\
-	python3 human_api_actor.py --action=validate --file_path=${file_path}
+	python human_api_actor.py --action=validate --file_path=${file_path}

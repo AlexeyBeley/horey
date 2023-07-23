@@ -1201,3 +1201,16 @@ class S3Client(Boto3Client):
                     raise RuntimeError(response)
 
             keys_to_delete = keys_to_delete[1000:]
+
+    def download_file(self, bucket_name, key_path, file_path):
+        """
+        Download single file
+
+        :param bucket_name:
+        :param key_path:
+        :param file_path:
+        :return:
+        """
+
+        logger.info(f"Downloading from {bucket_name}/{key_path}")
+        self.client.download_file(bucket_name, key_path, file_path)
