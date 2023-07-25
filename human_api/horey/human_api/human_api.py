@@ -25,6 +25,7 @@ from horey.human_api.sprint import Sprint
 from horey.azure_devops_api.azure_devops_api import AzureDevopsAPI
 from horey.azure_devops_api.azure_devops_api_configuration_policy import AzureDevopsAPIConfigurationPolicy
 from horey.common_utils.common_utils import CommonUtils
+from horey.common_utils.text_block import TextBlock
 
 logger = get_logger()
 
@@ -264,56 +265,82 @@ class HumanAPI:
             json.dump(work_objects, fh)
 
         self.init_work_objects_from_dicts(work_objects)
-        self.init_tasks_relations()
 
-    def init_work_objects_from_dicts(self, work_objects):
+    def init_work_objects_from_dicts(self, work_objects_dicts):
         """
-        Init tasks map.
+        Init self work objects
+
+        :param work_objects_dicts:
+        :return:
+        """
+
+        for obj in self.generate_work_objects_from_dicts(work_objects_dicts):
+            if obj.type == "Feature":
+                if obj.id in self.features:
+                    raise ValueError(f"Feature id {obj.id} is already in use")
+                self.features[obj.id] = obj
+            elif obj.type == "Epic":
+                if obj.id in self.epics:
+                    raise ValueError(f"Epic id {obj.id} is already in use")
+                self.epics[obj.id] = obj
+            elif obj.type == "UserStory":
+                if obj.id in self.user_stories:
+                    raise ValueError(f"UserStory id {obj.id} is already in use")
+                self.user_stories[obj.id] = obj
+            elif obj.type == "Bug":
+                if obj.id in self.bugs:
+                    raise ValueError(f"Bug id {obj.id} is already in use")
+                self.bugs[obj.id] = obj
+            elif obj.type == "Task":
+                if obj.id in self.tasks:
+                    raise ValueError(f"Task id {obj.id} is already in use")
+                self.tasks[obj.id] = obj
+            else:
+                raise ValueError(f"Unknown work object type: {obj.type}")
+    @staticmethod
+    def generate_work_objects_from_dicts(work_objects_dicts):
+        """
+        Generate work objects from dicts
 
         :return:
         """
 
-        for work_item in work_objects:
+        lst_ret = []
+
+        for work_item in work_objects_dicts:
             if work_item["type"] == "Feature":
                 feature = Feature()
                 feature.init_from_dict(work_item)
-                if feature.id in self.features:
-                    raise ValueError(f"feature id {feature.id} is already in use")
-                self.features[feature.id] = feature
+                lst_ret.append(feature)
             elif work_item["type"] == "Epic":
                 epic = Epic()
                 epic.init_from_dict(work_item)
-                if epic.id in self.epics:
-                    raise ValueError(f"epic id {epic.id} is already in use")
-                self.epics[epic.id] = epic
+                lst_ret.append(epic)
             elif work_item["type"] == "UserStory":
                 user_story = UserStory()
                 user_story.init_from_dict(work_item)
-                if user_story.id in self.user_stories:
-                    raise ValueError(f"user_story id {user_story.id} is already in use")
-                self.user_stories[user_story.id] = user_story
+                lst_ret.append(user_story)
             elif work_item["type"] == "Bug":
                 bug = Bug()
                 bug.init_from_dict(work_item)
-                if bug.id in self.bugs:
-                    raise ValueError(f"Bug id {bug.id} is already in use")
-                self.bugs[bug.id] = bug
+                lst_ret.append(bug)
             elif work_item["type"] == "Task":
                 task = Task()
                 task.init_from_dict(work_item)
-                if task.id in self.tasks:
-                    raise ValueError(f"Task id {task.id} is already in use")
-                self.tasks[task.id] = task
-
+                lst_ret.append(task)
             else:
                 raise ValueError(f"Unknown work item type: {work_item.work_item_type}")
+
+        return lst_ret
 
     def init_tasks_relations(self):
         """
         Init the objects' relations.
 
         :return:
+        # todo: remove
         """
+
         tmp_dict = {}
         tmp_dict.update(self.features)
         tmp_dict.update(self.epics)
@@ -365,11 +392,8 @@ class HumanAPI:
         :return:
         """
 
-        tmp_dict = {}
-        tmp_dict.update(self.tasks)
-        tmp_dict.update(self.bugs)
         sprint_names = [sprint.name for sprint in sprints]
-        return [value for value in tmp_dict.values() if value.sprint_name in sprint_names]
+        return [value for value in {**self.tasks, **self.bugs}.values() if value.sprint_name in sprint_names]
 
     @staticmethod
     def split_by_worker(work_items):
@@ -434,6 +458,7 @@ class HumanAPI:
                     raise ValueError(f"Unknown status: {work_item.status}")
             str_ret += self.generate_worker_daily(tmp_dict, worker_id, new, active, blocked, closed) + "\n"
 
+        str_ret = str_ret.strip("\n\n") + "\n"
         with open(self.configuration.daily_hapi_file_path, "w", encoding="utf-8") as file_handler:
             file_handler.write(str_ret)
 
@@ -458,7 +483,9 @@ class HumanAPI:
 
             if str_ret_tmp == ">NEW:\n>ACTIVE:\n>BLOCKED:\n>CLOSED:":
                 continue
-            str_ret += worker_name + "\n" + str_ret_tmp + "\n"
+
+            str_ret += "\n" + worker_name + "\n" + str_ret_tmp + "\n"
+
         with open(self.configuration.daily_hr_output_file_path, "a", encoding="utf-8") as file_handler:
             file_handler.write(str_ret)
 
@@ -471,7 +498,7 @@ class HumanAPI:
         """
         ret = ">NEW:\n" + self.generate_daily_hr_per_action_block(input_actions["actions_new"], base_actions["actions_new"])
         ret += "\n>ACTIVE:\n" + self.generate_daily_hr_per_action_block(input_actions["actions_active"], base_actions["actions_active"])
-        ret += "\n>BLOCKED:\n" + self.generate_daily_hr_per_action_block(input_actions["actions_blocked"], base_actions["actions_blocked"])
+        ret += "\n>BLOCKED:\n" + "\n".join(action.src_line for action in input_actions["actions_blocked"])
         ret += "\n>CLOSED:\n" + self.generate_daily_hr_per_action_block(input_actions["actions_closed"], base_actions["actions_closed"])
 
         return ret.replace("\n\n", "\n").strip("\n")
@@ -515,6 +542,7 @@ class HumanAPI:
             str_ret += self.perform_worker_report_actions(worker_name, input_actions,
                                                           base_actions_per_worker_map[worker_name]) + "\n"
 
+        str_ret.strip("\n\n")
         with open(self.configuration.output_file_path, "a", encoding="utf-8") as file_handler:
             file_handler.write(str_ret)
 
@@ -617,9 +645,9 @@ class HumanAPI:
         """
         Split worker report to actions.
 
-        :param base_actions: 
-        :param input_actions: 
-        :param worker_name: 
+        :param base_actions:
+        :param input_actions:
+        :param worker_name:
         :return:
         """
 
@@ -685,7 +713,7 @@ class HumanAPI:
         """
         Perform the changes using API. Create tasks if needed or add working hours.
 
-        :param user_full_name: 
+        :param user_full_name:
         :param actions_new:
         :param actions_active:
         :param actions_blocked:
@@ -1067,6 +1095,8 @@ class HumanAPI:
         :return:
         """
 
+        self.save_sprint_work_status(self.configuration.sprint_start_status_file_path)
+
         with open(workplan_file_path, encoding="utf-8") as file_handler:
             ret = json.load(file_handler)
 
@@ -1095,19 +1125,116 @@ class HumanAPI:
                     child_id = hapi_uids_map[child_hapi_uid]["id"]
                     self.azure_devops_api.set_wit_parent(child_id, parent_id)
 
+    def save_sprint_work_status(self, file_path):
+        """
+        Save current status to a file.
+
+        :param file_path:
+        :return:
+        """
+
+        sprints = self.get_sprints(sprint_names=[self.configuration.sprint_name])
+        self.init_tasks_map(sprints=sprints)
+
+        lst_ret = [*[obj for obj in self.tasks.values() if obj.sprint_name == self.configuration.sprint_name],
+                   *[obj for obj in self.bugs.values() if obj.sprint_name == self.configuration.sprint_name]]
+
+        seen = list(set(parent_id for obj in lst_ret for parent_id in obj.parent_ids))
+        lst_ret += [obj for obj in [*self.tasks.values(), *self.tasks.values(), *self.user_stories.values()]
+                    if obj.id in seen]
+
+        seen = list(set(parent_id for obj in lst_ret for parent_id in obj.parent_ids))
+        lst_ret += [obj for obj in [*self.tasks.values(), *self.tasks.values(), *self.user_stories.values(), *self.features.values()]
+                    if obj.id in seen]
+
+        seen = list(set(parent_id for obj in lst_ret for parent_id in obj.parent_ids))
+        lst_ret += [obj for obj in
+                    [*self.tasks.values(), *self.tasks.values(), *self.user_stories.values(), *self.features.values(), *self.epics.values()]
+                    if obj.id in seen]
+
+        lst_ret_ids = list(set(obj.id for obj in lst_ret))
+
+        lst_ret_final = []
+        for obj in lst_ret:
+            if obj.id in lst_ret_ids:
+                lst_ret_ids.remove(obj.id)
+                lst_ret_final.append(obj.convert_to_dict())
+
+        with open(file_path, "w", encoding="utf-8") as file_handler:
+            json.dump(lst_ret_final, file_handler)
+
     def retrospective(self):
         """
         Retrospective
 
-        sprints = self.get_sprints(sprint_names=[self.configuration.sprint_name])
-
-        self.init_tasks_map(sprints=sprints)
-
-        sprint_work_items = self.get_sprint_tasks_and_bugs(sprints)
-        work_items_map = self.split_by_worker(sprint_work_items)
-        with open(self.configuration.work_plan_output_file_path_template.format(sprint_name=self.configuration.sprint_name.replace(" ", "_"))) as file_handler:
-            sprint_planned_items_dicts = json.load(file_handler)
-        sprint_planned_items = self.init_work_objects_from_dicts(sprint_planned_items_dicts)
-        self.configuration.sprint_retrospective_dir_path
         :return:
         """
+
+        if not os.path.exists(self.configuration.sprint_finish_status_file_path):
+            self.save_sprint_work_status(self.configuration.sprint_finish_status_file_path)
+
+        ret = self.generate_retrospective_planned_vs_current()
+        return ret
+
+    def generate_retrospective_planned_vs_current(self):
+        """
+        Generate retro based on planned.
+
+        :return:
+        """
+        tb_ret = TextBlock("Retro")
+
+        with open(self.configuration.work_plan_output_file_path, encoding="utf-8") as file_handler:
+            sprint_planned_items_dicts = json.load(file_handler)
+
+        sprint_planned_items = self.generate_work_objects_from_dicts(sprint_planned_items_dicts)
+        sprint_plan_work_objects_map = self.split_by_worker(sprint_planned_items)
+
+        with open(self.configuration.sprint_finish_status_file_path, encoding="utf-8") as file_handler:
+            sprint_finished_items_dicts = json.load(file_handler)
+
+        sprint_finished_items = self.generate_work_objects_from_dicts(sprint_finished_items_dicts)
+        sprint_finish_work_objects_map = self.split_by_worker(sprint_finished_items)
+
+        for worker in sprint_plan_work_objects_map:
+            tb_ret_block = self.generate_retrospective_planned_vs_current_per_worker(worker, sprint_plan_work_objects_map[worker], sprint_finish_work_objects_map[worker])
+            tb_ret.blocks.append(tb_ret_block)
+
+        print(tb_ret.format_pprint(shift=2))
+        return tb_ret
+
+    @staticmethod
+    def generate_retrospective_planned_vs_current_per_worker(worker, work_objects_planned, work_objects_current):
+        """
+        Generate retrospective.
+
+        :param worker:
+        :param work_objects_planned:
+        :param work_objects_current:
+        :return:
+        """
+        htb_ret = TextBlock(worker)
+        work_objects_current_map = {obj.id: obj for obj in work_objects_current}
+        work_objects_planned_map = {obj.id: obj for obj in work_objects_planned}
+        for work_object_planned in work_objects_planned:
+            if work_object_planned.type not in ["Task", "Bug"]:
+                continue
+            if work_object_planned.id in work_objects_current_map:
+                current_work_object = work_objects_current_map[work_object_planned.id]
+                if current_work_object.status != "CLOSED":
+                    htb_ret.lines.append(f"Not closed {current_work_object.title}")
+            else:
+                htb_ret.lines.append(f"Removed from sprint {work_object_planned.title}")
+
+        ad_hoc_planned = 0
+        ad_hoc_reported = 0
+        for work_object_current in work_objects_current:
+            if work_object_current.type not in ["Task", "Bug"]:
+                continue
+            if work_object_current.id not in work_objects_planned_map:
+                htb_ret.lines.append(f"Unplanned ad-hoc work {work_object_current.title}, {work_object_current.sprint_name}, {work_object_current.id} ")
+                ad_hoc_planned += work_object_current.estimated_time
+                ad_hoc_reported += work_object_current.completed_time
+
+
+        return htb_ret

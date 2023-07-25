@@ -272,6 +272,8 @@ class WorkItem(AzureDevopsObject):
                "child_ids": [],
                "parent_ids": [],
                "sprint_name": self.fields.get("System.IterationLevel2") or self.fields["System.IterationLevel1"],
+               "estimated_time": self.original_estimate,
+               "completed_time": self.completed_work_hours
                }
 
         if self.fields.get("System.AssignedTo") is not None:
@@ -1223,6 +1225,13 @@ class AzureDevopsAPI:
                         "path": "/fields/Microsoft.VSTS.Scheduling.OriginalEstimate",
                         "value": original_estimate_time
                     })
+                request_data.append(
+                    {
+                        "op": "add",
+                        "path": "/fields/Microsoft.VSTS.Scheduling.RemainingWork",
+                        "value": original_estimate_time
+                    })
+
         logger.info(f"Creating Work Item with parameters: {request_data}")
 
         assigned_to = dict_src["assigned_to"]

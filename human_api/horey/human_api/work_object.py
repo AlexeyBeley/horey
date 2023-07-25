@@ -30,6 +30,7 @@ class WorkObject:
         self.children = []
         self.azure_devops_object = None
         self.estimated_time = None
+        self.completed_time = None
         self.comment = None
 
         self.dod = None
@@ -60,11 +61,13 @@ class WorkObject:
         """
         properties = ["id", "hapi_uid", "status", "created_date", "closed_date", "created_by", "assigned_to",
                       "title", "sprint_name", "child_ids", "child_hapi_uids", "parent_ids",
-                      "estimated_time", "comment", "dod", "priority", "description", "type"]
+                      "estimated_time", "comment", "dod", "priority", "description", "type", "completed_time"]
 
         for key in dict_src:
+            if key.startswith("_"):
+                key = key[1:]
             if key not in properties:
-                raise ValueError(key)
+                raise ValueError(f"Unknown property: {key}")
         custom_types = {"status": lambda x:  WorkObject.Status.__members__[x]}
         CommonUtils.init_from_dict(self, dict_src, custom_types=custom_types)
 

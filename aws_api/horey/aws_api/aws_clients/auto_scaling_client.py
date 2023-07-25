@@ -9,6 +9,7 @@ from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.aws_services_entities.auto_scaling_group import AutoScalingGroup
 from horey.aws_api.aws_services_entities.auto_scaling_policy import AutoScalingPolicy
+from horey.aws_api.aws_services_entities.auto_scaling_activity import AutoScalingActivity
 
 from horey.h_logger import get_logger
 
@@ -348,3 +349,63 @@ class AutoScalingClient(Boto3Client):
             return False
         policy.update_from_raw_response(dict_src)
         return True
+
+    def update_activity_information(self, activity: AutoScalingActivity):
+        """
+        Standard
+
+        @param activity:
+        @return:
+        """
+        filter_request = {"ImageIds": [activity.id]}
+
+        for response in self.execute(
+                self.client.describe_scaling_activities,
+                "Activities",
+                filters_req=filter_request,
+        ):
+            activity.update_from_raw_response(response)
+            return
+
+    def detach_instances(self, region, instance_ids, asg_name, decrement=False):
+        """
+        Detach instances from asg.
+
+        :param region:
+        :param instance_ids:
+        :param asg_name:
+        :param decrement:
+        :return:
+        """
+
+        AWSAccount.set_aws_region(region)
+        request_dict = {"InstanceIds": instance_ids,
+                        "AutoScalingGroupName": asg_name,
+                        "ShouldDecrementDesiredCapacity": decrement}
+
+        ret = self.detach_instances_raw(request_dict)
+        breakpoint()
+        activity = AutoScalingActivity(ret)
+        self.wait_for_status(activity,
+        self.update_activity_information,
+        [AutoScalingActivity.Status.SUCCESSFUL],
+        [AutoScalingActivity.Status.IN_PROGRESS],
+        [AutoScalingActivity.Status.FAILED],
+        )
+
+    def detach_instances_raw(self, request_dict):
+        """
+        Standard.
+
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Detaching instances from Auto Scaling group: {request_dict}")
+        for response in self.execute(
+            self.client.put_scaling_policy,
+            "Activities",
+            filters_req=request_dict,
+        ):
+            del response["ResponseMetadata"]
+            return response

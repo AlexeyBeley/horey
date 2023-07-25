@@ -76,8 +76,23 @@ class HumanAPIConfigurationPolicy(ConfigurationPolicy):
         return ret
 
     @property
+    def sprint_start_status_file_path(self):
+        ret = os.path.join(self.sprint_dir_path, "sprint_start_status.json")
+        return ret
+
+    @property
+    def sprint_finish_status_file_path(self):
+        ret = os.path.join(self.sprint_retrospective_dir_path, "sprint_finish_status.json")
+        return ret
+
+    @property
     def work_plan_output_file_path_template(self):
         return os.path.join(self.reports_dir_path, "{sprint_name}", "work_plan.json")
+
+    @property
+    def work_plan_output_file_path(self):
+        return os.path.join(self.sprint_dir_path, "work_plan.json")
+
 
     @property
     def work_plan_summary_output_file_path_template(self):
