@@ -4816,3 +4816,15 @@ class AWSAPI:
         h_tb.blocks.append(h_tb_policies)
 
         return h_tb
+
+    def renew_ecs_cluster_container_instances(self, ecs_cluster):
+        """
+        Replace old instances with new.
+
+        :param ecs_cluster:
+        :return:
+        """
+
+        self.ecs_client.update_cluster_information(ecs_cluster)
+        breakpoint()
+        self.autoscaling_client.detach_instances(ecs_cluster.region, inst_ids, ecs_cluster.name, decrement=True)

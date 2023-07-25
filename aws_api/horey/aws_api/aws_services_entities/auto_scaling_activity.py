@@ -16,18 +16,11 @@ class AutoScalingActivity(AwsObject):
         super().__init__(dict_src)
         self.status_code = None
 
-
         if from_cache:
             self._init_object_from_cache(dict_src)
             return
 
-        init_options = {
-            "ActivityId": lambda x, y: self.init_default_attr(
-                x, y, formatted_name="id"
-            )
-        }
-
-        self.init_attrs(dict_src, init_options)
+        self.update_from_raw_response(dict_src)
 
     def _init_object_from_cache(self, dict_src):
         """
@@ -45,11 +38,22 @@ class AutoScalingActivity(AwsObject):
         @param dict_src:
         @return:
         """
+
         init_options = {
             "ActivityId": lambda x, y: self.init_default_attr(
                 x, y, formatted_name="id"
             ),
+            "AutoScalingGroupName": self.init_default_attr,
+            "Description": self.init_default_attr,
+            "Cause": self.init_default_attr,
+            "StartTime": self.init_default_attr,
+            "StatusCode": self.init_default_attr,
+            "Progress": self.init_default_attr,
+            "Details": self.init_default_attr,
+            "EndTime": self.init_default_attr,
+            "AutoScalingGroupARN": self.init_default_attr,
         }
+
         self.init_attrs(dict_src, init_options)
 
     def get_status(self):
@@ -59,17 +63,13 @@ class AutoScalingActivity(AwsObject):
         :return:
         """
 
-        breakpoint()
         if self.status_code is None:
             raise self.UndefinedStatusError()
-        return {
-            enum_value.value: enum_value
-            for _, enum_value in self.Status.__members__.items()
-        }[CommonUtils.camel_case_to_snake_case(self.status_code).upper()]
+
+        return self.Status.__members__[CommonUtils.camel_case_to_snake_case(self.status_code).upper()]
 
     class Status(Enum):
         """
-            from horey.common_utils.common_utils import CommonUtils
             ret = ['PendingSpotBidPlacement' , 'WaitingForSpotInstanceRequestId' , 'WaitingForSpotInstanceId' ,
             'WaitingForInstanceId' , 'PreInService' , 'InProgress' , 'WaitingForELBConnectionDraining' ,
             'MidLifecycleAction' , 'WaitingForInstanceWarmup' , 'Successful' , 'Failed' ,

@@ -53,7 +53,8 @@ def test_init_client():
 
 
 def test_detach_instances():
-    client.detach_instances(Region.get_region("us-east-1"), None, None)
+    inst_ids = []
+    client.detach_instances(Region.get_region("us-west-2"), inst_ids, "", decrement=True)
 
 if __name__ == "__main__":
     test_init_client()

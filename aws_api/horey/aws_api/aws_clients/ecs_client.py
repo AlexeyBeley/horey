@@ -738,3 +738,17 @@ class ECSClient(Boto3Client):
             filters_req=request_dict,
         ):
             return response
+
+    def update_cluster_information(self, cluster):
+        """
+        Standard.
+
+        :param cluster:
+        :return:
+        """
+
+        ret = self.get_region_clusters(cluster.region, cluster_identifiers=[cluster.name])
+        if len(ret) != 1:
+            return False
+        breakpoint()
+        return True

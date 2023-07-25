@@ -357,15 +357,17 @@ class AutoScalingClient(Boto3Client):
         @param activity:
         @return:
         """
-        filter_request = {"ImageIds": [activity.id]}
+        filter_request = {"ActivityIds": [activity.id]}
 
-        for response in self.execute(
+        ret= list(response for response in self.execute(
                 self.client.describe_scaling_activities,
                 "Activities",
-                filters_req=filter_request,
-        ):
-            activity.update_from_raw_response(response)
-            return
+                filters_req=filter_request))
+
+        if len(ret) != 1:
+            raise RuntimeError(f"Found {len(ret)=} != 1 items with params: {filter_request=}")
+
+        activity.update_from_raw_response(ret[0])
 
     def detach_instances(self, region, instance_ids, asg_name, decrement=False):
         """
@@ -384,7 +386,7 @@ class AutoScalingClient(Boto3Client):
                         "ShouldDecrementDesiredCapacity": decrement}
 
         ret = self.detach_instances_raw(request_dict)
-        breakpoint()
+
         activity = AutoScalingActivity(ret)
         self.wait_for_status(activity,
         self.update_activity_information,
@@ -403,9 +405,8 @@ class AutoScalingClient(Boto3Client):
 
         logger.info(f"Detaching instances from Auto Scaling group: {request_dict}")
         for response in self.execute(
-            self.client.put_scaling_policy,
+            self.client.detach_instances,
             "Activities",
             filters_req=request_dict,
         ):
-            del response["ResponseMetadata"]
             return response

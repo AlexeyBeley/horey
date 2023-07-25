@@ -15,6 +15,7 @@ from horey.aws_api.aws_services_entities.lambda_event_source_mapping import (
     LambdaEventSourceMapping,
 )
 from horey.common_utils.common_utils import CommonUtils
+from horey.aws_api.aws_services_entities.ecs_cluster import ECSCluster
 
 configuration_values_file_full_path = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "h_logger_configuration_values.py"
@@ -141,6 +142,11 @@ def test_provision_generated_ssh_key():
     output_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test.key")
     aws_api.provision_generated_ssh_key(output_file_path, owner_email, "us-west-2")
 
+def test_renew_ecs_cluster_container_instances():
+    ecs_cluster = ECSCluster({})
+    ecs_cluster.region = Region.get_region("us-west-2")
+    ecs_cluster.name = mock_values["renew_ecs_cluster.name"]
+    aws_api.renew_ecs_cluster_container_instances(ecs_cluster)
 
 if __name__ == "__main__":
     # test_provision_certificate()
@@ -151,4 +157,5 @@ if __name__ == "__main__":
     # test_find_cloudfront_distributions()
     # test_provision_key_pair()
     # test_get_secret_value()
-    test_provision_generated_ssh_key()
+    # test_provision_generated_ssh_key()
+    test_renew_ecs_cluster_container_instances()
