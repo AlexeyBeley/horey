@@ -13,23 +13,6 @@ action_manager = ActionsManager()
 
 # pylint: disable= missing-function-docstring
 
-
-# region validate
-def validate_parser():
-    description = "Validate user input"
-    parser = argparse.ArgumentParser(description=description)
-    parser.add_argument("--file_path", required=True, type=str, help="Hostname to validate to")
-    return parser
-
-
-def validate(arguments) -> None:
-    HumanAPI().validate_daily_input(arguments.file_path)
-
-
-action_manager.register_action("validate", validate_parser, validate)
-# endregion
-
-
 # region generate_work_plan
 def generate_work_plan_parser():
     description = "generate_work_plan"

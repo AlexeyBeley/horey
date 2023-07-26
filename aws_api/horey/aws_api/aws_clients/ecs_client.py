@@ -161,6 +161,21 @@ class ECSClient(Boto3Client):
         )
         capacity_provider.update_from_raw_response(response)
 
+    def update_capacity_provider_information(self, capacity_provider):
+        """
+        Standard.
+
+        :param capacity_provider:
+        :return:
+        """
+
+        region_objects = self.get_region_capacity_providers(capacity_provider.region)
+        for region_object in region_objects:
+            if region_object.name == capacity_provider.name:
+                capacity_provider.update_from_raw_response(region_object.dict_src)
+                return True
+        return False
+
     def provision_capacity_provider_raw(self, request_dict):
         """
         Standard
@@ -739,7 +754,7 @@ class ECSClient(Boto3Client):
         ):
             return response
 
-    def update_cluster_information(self, cluster):
+    def update_cluster_information(self, cluster: ECSCluster):
         """
         Standard.
 
@@ -750,5 +765,62 @@ class ECSClient(Boto3Client):
         ret = self.get_region_clusters(cluster.region, cluster_identifiers=[cluster.name])
         if len(ret) != 1:
             return False
-        breakpoint()
+
+        cluster.update_from_raw_response(ret[0].dict_src)
         return True
+
+    def update_container_instances_information(self, container_instance:ECSContainerInstance):
+        """
+        Standard.
+
+        :param container_instance:
+        :return:
+        """
+
+        for region_container_instance in self.get_region_container_instances(container_instance.region,
+                                                                  cluster_identifier=container_instance.get_cluster_name()):
+            if region_container_instance.arn == container_instance.arn:
+                container_instance.update_from_raw_response(region_container_instance.dict_src)
+                return True
+        return False
+
+    def update_container_instances_state(self, container_instances):
+        """
+        Update states.
+
+        :param container_instances:
+        :return:
+        """
+
+        region = container_instances[0].region
+        status = container_instances[0].status
+        AWSAccount.set_aws_region(region)
+
+        for container_instance in container_instances:
+            if container_instance.region != region:
+                raise ValueError(container_instance.region)
+            if container_instance.status != status:
+                raise ValueError(container_instance.status)
+
+        filters_req = {"cluster": container_instances[0].get_cluster_name(),
+                       "containerInstances": [container_instance.arn for container_instance in container_instances],
+                       "status": status
+                       }
+        ret = list(self.execute(self.client.update_container_instances_state, "containerInstances", filters_req=filters_req))
+
+        if status != "DRAINING":
+            return ret
+
+        timeout_time = datetime.datetime.now() + datetime.timedelta(minutes=40)
+        while datetime.datetime.now() < timeout_time:
+            for container_instance in container_instances:
+                self.update_container_instances_information(container_instance)
+                if container_instance.running_tasks_count > 0:
+                    logger.info(f"Container instance {container_instance.ec2_instance_id} tasks: {container_instance.running_tasks_count}")
+                    break
+            else:
+                return ret
+            logger.info("Waiting for all container instances to drain going to sleep for 5 sec")
+            time.sleep(5)
+
+        raise TimeoutError("Waiting for all container instances to drain")

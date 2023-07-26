@@ -41,7 +41,7 @@ def test_init_client():
     assert isinstance(SSMClient(), SSMClient)
 
 
-def test_get_region_parameter():
+def test_get_region_recommended_ecs_linux_2():
     """
     Get single parameter from region.
 
@@ -50,8 +50,9 @@ def test_get_region_parameter():
 
     client = SSMClient()
     param = client.get_region_parameter("us-west-2", "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended")
+    param.print()
     assert param is not None
 
 
 if __name__ == "__main__":
-    test_get_region_parameter()
+    test_get_region_recommended_ecs_linux_2()

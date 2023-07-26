@@ -410,3 +410,27 @@ class AutoScalingClient(Boto3Client):
             filters_req=request_dict,
         ):
             return response
+
+    def update_auto_scaling_group_information(self, auto_scaling_group:AutoScalingGroup):
+        """
+        Standard.
+
+        :param auto_scaling_group:
+        :return:
+        """
+
+        if auto_scaling_group.name is None:
+            auto_scaling_group.name = auto_scaling_group.arn.split("/")[-1]
+        filters_req = {"AutoScalingGroupNames" : [auto_scaling_group.name]}
+        AWSAccount.set_aws_region(auto_scaling_group.region)
+
+        ret = list(self.execute(
+            self.client.describe_auto_scaling_groups,
+            "AutoScalingGroups",
+            filters_req=filters_req,
+        ))
+        if len(ret) != 1:
+            return False
+
+        auto_scaling_group.update_from_raw_response(ret[0])
+        return True

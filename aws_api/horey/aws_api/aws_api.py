@@ -34,6 +34,7 @@ from horey.aws_api.aws_clients.auto_scaling_client import AutoScalingClient
 from horey.aws_api.aws_clients.application_auto_scaling_client import (
     ApplicationAutoScalingClient,
 )
+from horey.aws_api.aws_services_entities.auto_scaling_group import AutoScalingGroup
 from horey.aws_api.aws_clients.s3_client import S3Client
 from horey.aws_api.aws_services_entities.s3_bucket import S3Bucket
 
@@ -4826,5 +4827,42 @@ class AWSAPI:
         """
 
         self.ecs_client.update_cluster_information(ecs_cluster)
-        breakpoint()
-        self.autoscaling_client.detach_instances(ecs_cluster.region, inst_ids, ecs_cluster.name, decrement=True)
+        cap_prov = ECSCapacityProvider({})
+        cap_prov.region = ecs_cluster.region
+        cap_prov.name = ecs_cluster.capacity_providers[0]
+        self.ecs_client.update_capacity_provider_information(cap_prov)
+
+        auto_scaling_group = AutoScalingGroup({})
+        auto_scaling_group.region = ecs_cluster.region
+        auto_scaling_group.arn = cap_prov.auto_scaling_group_provider["autoScalingGroupArn"]
+        self.autoscaling_client.update_auto_scaling_group_information(auto_scaling_group)
+
+        current_container_instances = self.ecs_client.get_region_container_instances(ecs_cluster.region, cluster_identifier=ecs_cluster.arn)
+
+        # increase ASG capacity
+        auto_scaling_group.desired_capacity *= 2
+        initial_max_size = auto_scaling_group.max_size
+        auto_scaling_group.max_size = auto_scaling_group.desired_capacity
+
+        self.autoscaling_client.provision_auto_scaling_group(auto_scaling_group)
+
+        # drain current_instances
+        for current_container_instance in current_container_instances:
+            current_container_instance.status = "DRAINING"
+        self.ecs_client.update_container_instances_state(current_container_instances)
+
+        # detach ec2 instance from ASG
+        current_ec2_instance_ids = [container_instance.ec2_instance_id for container_instance in current_container_instances]
+        self.autoscaling_client.detach_instances(auto_scaling_group.region, current_ec2_instance_ids, auto_scaling_group.name, decrement=True)
+
+        # revert ASG capacity change
+        auto_scaling_group.desired_capacity //= 2
+        auto_scaling_group.max_size = initial_max_size
+        self.autoscaling_client.provision_auto_scaling_group(auto_scaling_group)
+
+        # terminate old instances
+        for container_instance in current_container_instances:
+            ec2_instance = EC2Instance({})
+            ec2_instance.region = ecs_cluster.region
+            ec2_instance.id = container_instance.ec2_instance_id
+            self.ec2_client.dispose_instance(ec2_instance)

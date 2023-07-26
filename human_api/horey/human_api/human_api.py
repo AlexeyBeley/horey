@@ -56,10 +56,6 @@ class DailyReportAction:
 
         self.action_init_time = None
         self._action_add_time = None
-        self.action_new = None
-        self.action_close = None
-        self.action_activate = None
-        self.action_block = None
 
         line_src = line_src.strip()
         parent_token = line_src[1:line_src.find("]")].strip(" ")
@@ -174,25 +170,16 @@ class DailyReportAction:
                 except ValueError as error_inst:
                     self.init_errors.append(repr(error_inst))
                 continue
+
             if action.startswith("comment"):
                 self.action_comment = action[len("comment"):].strip()
                 continue
-            if action.startswith("block"):
-                self.action_block = True
-                continue
-            if action.startswith("activ"):
-                self.action_activate = True
-                continue
-            if action.startswith("close"):
-                self.action_close = True
-                continue
-            if action.startswith("new"):
-                self.action_new = True
-                continue
+
             if action.isdigit():
                 self.action_init_time = int(action)
                 continue
-            self.init_errors.append(f"Unknown action '{action}' in line '{self.src_line}'")
+
+            self.init_errors.append(f"Unknown action '{action}'")
 
     def init_parent(self, parent_token):
         """
@@ -476,10 +463,11 @@ class HumanAPI:
         input_actions_per_worker_map = self.init_actions_from_report_file(self.configuration.protected_input_file_path)
         base_actions_per_worker_map = self.init_actions_from_report_file(self.configuration.daily_hapi_file_path)
 
+        self.validate_daily_routine(base_actions_per_worker_map, input_actions_per_worker_map)
+
         str_ret = ""
         for worker_name, input_actions in input_actions_per_worker_map.items():
-            str_ret_tmp = self.generate_daily_hr_per_worker(input_actions,
-                                                          base_actions_per_worker_map[worker_name])
+            str_ret_tmp = self.generate_daily_hr_per_worker(base_actions_per_worker_map[worker_name], input_actions)
 
             if str_ret_tmp == ">NEW:\n>ACTIVE:\n>BLOCKED:\n>CLOSED:":
                 continue
@@ -489,7 +477,7 @@ class HumanAPI:
         with open(self.configuration.daily_hr_output_file_path, "a", encoding="utf-8") as file_handler:
             file_handler.write(str_ret)
 
-    def generate_daily_hr_per_worker(self, input_actions, base_actions):
+    def generate_daily_hr_per_worker(self, base_actions, input_actions):
         """
 
         :param input_actions:
@@ -542,7 +530,7 @@ class HumanAPI:
             str_ret += self.perform_worker_report_actions(worker_name, input_actions,
                                                           base_actions_per_worker_map[worker_name]) + "\n"
 
-        str_ret.strip("\n\n")
+        str_ret = str_ret.strip("\n")
         with open(self.configuration.output_file_path, "a", encoding="utf-8") as file_handler:
             file_handler.write(str_ret)
 
@@ -574,41 +562,6 @@ class HumanAPI:
                                    }
         return dict_ret
 
-    def validate_worker_report_input(self, actions_new, actions_active, actions_blocked, actions_closed):
-        """
-        Go over actions and validate the input
-
-        :param actions_new:
-        :param actions_active:
-        :param actions_blocked:
-        :param actions_closed:
-        :return:
-        """
-
-        errors = []
-        for action in actions_new + actions_active + actions_blocked + actions_closed:
-            if action.init_errors:
-                errors.append(f"Initialization Error:\n{action.src_line}:\n" + "\n".join(action.init_errors))
-            if str(action.child_id) == "0":
-                if not action.child_title:
-                    errors.append(f"New item Title:\n {action.src_line}")
-                if action.action_comment is None:
-                    errors.append(f"New item Comment:\n{action.src_line}")
-                if not action.action_init_time:
-                    errors.append(f"New item time Estimation:\n{action.src_line}")
-            if action.action_add_time is not None and action.action_comment is None:
-                errors.append(f"Updating time Comment:\n{action.src_line}")
-
-        if errors:
-            print("##########VALIDATION_START################")
-            for error in errors:
-                print("~~~~~~~~ERROR_START~~~~~~~~~~~~~~~")
-                print(error)
-                print("~~~~~~~~ERROR_END~~~~~~~~~~~~~~~")
-                print()
-            print("##########VALIDATION_END################")
-            raise ValueError("Errors occurred, see list below")
-
     def init_actions_per_worker(self, worker_report):
         """
 
@@ -634,10 +587,6 @@ class HumanAPI:
         actions_active = [DailyReportAction(line_src) for line_src in lines_active]
         actions_blocked = [DailyReportAction(line_src) for line_src in lines_blocked]
         actions_closed = [DailyReportAction(line_src) for line_src in lines_closed]
-
-        self.validate_worker_report_input(actions_new, actions_active, actions_blocked, actions_closed)
-
-        self.perform_actions_replacements(actions_new, actions_active, actions_blocked, actions_closed)
 
         return worker_full_name, actions_new, actions_active, actions_blocked, actions_closed
 
@@ -665,48 +614,6 @@ class HumanAPI:
         ytb_report = self.generate_ytb_report(actions_new, actions_active, actions_blocked, actions_closed)
         named_ytb_report = f"[{str_date}] {worker_name}\n{ytb_report}"
         return named_ytb_report
-
-    @staticmethod
-    def perform_actions_replacements(actions_new, actions_active, actions_blocked, actions_closed):
-        """
-        Place actions according to the required action.
-
-        :param actions_new:
-        :param actions_active:
-        :param actions_blocked:
-        :param actions_closed:
-        :return:
-        """
-
-        HumanAPI.perform_actions_replacement_per_type(actions_new, "action_new", actions_active, actions_blocked,
-                                                      actions_closed)
-        HumanAPI.perform_actions_replacement_per_type(actions_active, "action_activate", actions_new, actions_blocked,
-                                                      actions_closed)
-        HumanAPI.perform_actions_replacement_per_type(actions_blocked, "action_block", actions_new, actions_active,
-                                                      actions_closed)
-        HumanAPI.perform_actions_replacement_per_type(actions_closed, "action_close", actions_new, actions_active,
-                                                      actions_blocked)
-
-    @staticmethod
-    def perform_actions_replacement_per_type(dst_action_list, action_name, *args):
-        """
-        Move action from src_lists to the dst_list according to action_name.
-
-        :param dst_action_list:
-        :param action_name:
-        :param args:
-        :return:
-        """
-
-        for src_action_list in args:
-            to_del = []
-            for action in src_action_list:
-                if getattr(action, action_name):
-                    dst_action_list.append(action)
-                    to_del.append(action)
-
-            for action in to_del:
-                src_action_list.remove(action)
 
     def perform_base_task_management_system_changes(self, user_full_name, actions_new, actions_active, actions_blocked,
                                                     actions_closed):
@@ -887,11 +794,9 @@ class HumanAPI:
         """
         Make it the best way
 
-        :param daily_hapi_file_path:
-        :param protected_output_file_path:
-        :param sprint_name:
         :return:
         """
+
         if not os.path.exists(self.configuration.protected_input_file_path):
             self.daily_report()
             return
@@ -902,20 +807,148 @@ class HumanAPI:
 
         self.daily_action()
 
-
-    def validate_daily_input(self, file_path):
+    def validate_daily_routine(self, base_actions_per_worker_map, input_actions_per_worker_map):
         """
         Validate the input syntax is correct.
 
-        :param file_path:
+        :param base_actions_per_worker_map:
+        :param input_actions_per_worker_map:
         :return:
         """
-        try:
-            self.init_actions_from_report_file(file_path)
-            print("Validation success!!!")
-        except ValueError as inst:
-            if "Errors occurred, see list below" not in repr(inst):
-                raise
+
+        errors, base_actions_ids, base_actions_by_parent_ids = self.validate_daily_base_actions(base_actions_per_worker_map)
+        errors_tmp, input_actions_by_ids, input_actions_by_parent_ids = self.validate_daily_input_actions(input_actions_per_worker_map)
+        errors += errors_tmp
+
+        errors += self.validate_daily_base_vs_input(base_actions_ids, base_actions_by_parent_ids, input_actions_by_ids, input_actions_by_parent_ids)
+
+        if errors:
+            print("##########VALIDATION_START################\n")
+            for error in errors:
+                print("~~~~~~~~ERROR~~~~~~~~~~~~~~~")
+                print(error)
+            print()
+            print("##########VALIDATION_END################")
+            raise ValueError("Errors occurred, see list below")
+
+    @staticmethod
+    def validate_daily_base_actions(base_actions_per_worker_map):
+        """
+        daily.hapi validation.
+
+        :param base_actions_per_worker_map:
+        :return:
+        """
+
+        errors = []
+        base_actions_ids = {}
+        base_actions_by_parent_ids = defaultdict(list)
+
+        for user, map_dict in base_actions_per_worker_map.items():
+            errors_tmp = []
+            for block_name in ["actions_new", "actions_active", "actions_blocked", "actions_closed"]:
+                for action in map_dict[block_name]:
+                    if str(action.child_id) == "0":
+                        errors_tmp.append(f"(!!!) daily.hapi (!!!): Unexpected to receive '0' child_id from TMS:\n{action.src_line}")
+
+                    if action.child_id in base_actions_ids:
+                        errors_tmp.append(f"(!!!) daily.hapi (!!!): Unexpected to receive 2 similar child_ids from TMS:\n{action.src_line}")
+
+                    if action.child_title in [_action.child_title for _action in base_actions_ids.values()]:
+                        errors_tmp.append(
+                            f"(!!!) daily.hapi (!!!): Unexpected to receive 2 similar titles from TMS:\n{action.src_line}")
+
+                    base_actions_ids[action.child_id] = action
+
+                    if action.parent_id == "0":
+                        errors_tmp.append(f"(!!!) daily.hapi (!!!): Unexpected to receive '0' parent_id from TMS:\n{action.src_line}")
+
+                    base_actions_by_parent_ids[action.parent_id].append(action)
+
+                    for attr in action.__dict__.keys():
+                        if not attr.startswith("action") and not attr.startswith("_action"):
+                            continue
+                        action_change = getattr(action, attr)
+                        if action_change is not None:
+                            errors_tmp.append(f"(!!!) daily.hapi is not input.hapi (!!!):\n{action.src_line}")
+                            break
+            if errors_tmp:
+                errors += [user+":"] + errors_tmp
+
+        return errors_tmp, base_actions_ids, base_actions_by_parent_ids
+
+    @staticmethod
+    def validate_daily_input_actions(input_actions_per_worker_map):
+        """
+        input.hapi validation.
+
+        :param input_actions_per_worker_map:
+        :return:
+        """
+
+        errors = []
+        input_actions_by_ids = defaultdict(list)
+        input_actions_by_parent_ids = defaultdict(list)
+        for user, map_dict in input_actions_per_worker_map.items():
+            errors_tmp = []
+            for block_name in ["actions_new", "actions_active", "actions_blocked", "actions_closed"]:
+                for action in map_dict[block_name]:
+                    if str(action.child_id) != "0" and action.child_id in input_actions_by_ids:
+                        errors_tmp.append(f"Child ID {action.child_id} appears twice in the report:\n{action.src_line}")
+
+                    if action.child_title in [_action.child_title for _actions in input_actions_by_ids.values() for _action in _actions]:
+                        errors_tmp.append(
+                            f"Child title {action.child_title} appears twice in the report:\n{action.src_line}")
+                    input_actions_by_ids[action.child_id].append(action)
+                    input_actions_by_parent_ids[action.parent_id].append(action)
+
+                    if action.parent_title in [_action.parent_title for _actions in input_actions_by_ids.values()
+                                               for _action in _actions if _action.parent_id != action.parent_id]:
+                        errors_tmp.append(
+                            f"Parent title {action.parent_title} appears twice in the report:\n{action.src_line}")
+
+                    if action.init_errors:
+                        errors_tmp.append("\n".join(action.init_errors) + f":\n{action.src_line}")
+
+                    if str(action.child_id) == "0":
+                        if not action.child_title:
+                            errors_tmp.append(f"New item Title:\n {action.src_line}")
+                        if action.action_comment is None:
+                            errors_tmp.append(f"New item Comment:\n{action.src_line}")
+                        if not action.action_init_time:
+                            errors_tmp.append(f"New item time Estimation:\n{action.src_line}")
+                    if action.action_add_time is not None and action.action_comment is None:
+                        errors_tmp.append(f"Updating time Comment:\n{action.src_line}")
+            if errors_tmp:
+                errors += [user+":"] + errors_tmp
+        return errors, input_actions_by_ids, input_actions_by_parent_ids
+
+    @staticmethod
+    def validate_daily_base_vs_input(base_actions_by_child_id, base_actions_by_parent_id, input_actions_by_child_id, input_actions_by_parent_id):
+        """
+        V Check child ids in input all in base
+        V Check parent ids in input all in base
+        V Check children titles were not changed from base to input
+        V Check parent titles were not changed from base to input
+
+        :return:
+        """
+
+        errors = []
+        for child_id, actions in input_actions_by_child_id.items():
+            if str(child_id) != "0":
+                if child_id not in base_actions_by_child_id.keys():
+                    errors.append(f"No child_id '{child_id}' in daily.hapi:\n{actions[0].src_line}")
+                elif actions[0].child_title != base_actions_by_child_id[child_id].child_title:
+                    errors.append(f"Child title is not the same in daily.hapi and input.hapi for child_id '{child_id}':\n{actions[0].src_line}")
+
+        for parent_id, actions in input_actions_by_parent_id.items():
+            for action in actions:
+                if action.parent_title in [_action.parent_title for actions in base_actions_by_parent_id.values()
+                                           for _action in actions if _action.parent_id != parent_id]:
+                    errors.append(
+                        f"Parent titles differ in daily.hapi and input.hapi for parent_id '{parent_id}':\n{actions[0].src_line}")
+        return errors
 
     def generate_work_plan(self, work_plan_file_path):
         """

@@ -30,42 +30,13 @@ class AutoScalingGroup(AwsObject):
         self.vpc_zone_identifier = None
         self.termination_policies = None
         self.new_instances_protected_from_scale_in = None
+        self.arn = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
             return
 
-        init_options = {
-            "AutoScalingGroupName": lambda x, y: self.init_default_attr(
-                x, y, formatted_name="name"
-            ),
-            "AutoScalingGroupARN": lambda x, y: self.init_default_attr(
-                x, y, formatted_name="arn"
-            ),
-            "LaunchTemplate": self.init_default_attr,
-            "MinSize": self.init_default_attr,
-            "MaxSize": self.init_default_attr,
-            "DesiredCapacity": self.init_default_attr,
-            "DefaultCooldown": self.init_default_attr,
-            "AvailabilityZones": self.init_default_attr,
-            "LoadBalancerNames": self.init_default_attr,
-            "TargetGroupARNs": self.init_default_attr,
-            "HealthCheckType": self.init_default_attr,
-            "HealthCheckGracePeriod": self.init_default_attr,
-            "Instances": self.init_default_attr,
-            "CreatedTime": self.init_default_attr,
-            "SuspendedProcesses": self.init_default_attr,
-            "VPCZoneIdentifier": self.init_default_attr,
-            "EnabledMetrics": self.init_default_attr,
-            "Tags": self.init_default_attr,
-            "TerminationPolicies": self.init_default_attr,
-            "NewInstancesProtectedFromScaleIn": self.init_default_attr,
-            "ServiceLinkedRoleARN": self.init_default_attr,
-            "LaunchConfigurationName": self.init_default_attr,
-            "Status": self.init_default_attr,
-        }
-
-        self.init_attrs(dict_src, init_options)
+        self.update_from_raw_response(dict_src)
 
     def _init_object_from_cache(self, dict_src):
         """
@@ -114,6 +85,8 @@ class AutoScalingGroup(AwsObject):
             "ServiceLinkedRoleARN": self.init_default_attr,
             "LaunchConfigurationName": self.init_default_attr,
             "Status": self.init_default_attr,
+            "CapacityRebalance": self.init_default_attr,
+            "TrafficSources": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)

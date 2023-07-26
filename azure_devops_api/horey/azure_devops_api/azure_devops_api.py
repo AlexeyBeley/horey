@@ -314,7 +314,7 @@ class WorkItem(AzureDevopsObject):
         if value in ["New", "Active"]:
             return value.upper()
 
-        if value in ["On Hold", "Pending Deployment", "PM Review"]:
+        if value in ["On Hold", "Pending Deployment", "PM Review", "Merge Request"]:
             return "BLOCKED"
 
         if value in ["Resolved", "Closed", "Removed"]:
