@@ -31,7 +31,7 @@ class CommonUtils:
         """
 
         # pylint: disable=too-many-branches,too-many-return-statements
-        if type(obj_src) in [str, int, bool, type(None)]:
+        if type(obj_src) in [str, int, bool, type(None), float]:
             return obj_src
 
         if isinstance(obj_src, dict):

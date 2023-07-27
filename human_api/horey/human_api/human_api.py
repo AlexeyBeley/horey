@@ -247,9 +247,8 @@ class HumanAPI:
         sprints = sprints if sprints is not None else []
         work_objects = self.azure_devops_api.init_work_items_by_iterations(
             iteration_names=[sprint.name for sprint in sprints])
-
-        with open("./tmp_cache.json", "w", encoding="utf-8") as fh:
-            json.dump(work_objects, fh)
+        #with open("./tmp_cache.json", "w", encoding="utf-8") as fh:
+        #    json.dump(work_objects, fh)
 
         self.init_work_objects_from_dicts(work_objects)
 
@@ -1232,6 +1231,8 @@ class HumanAPI:
         for worker in sprint_plan_work_objects_map:
             tb_ret_block = self.generate_retrospective_planned_vs_current_per_worker(worker, sprint_plan_work_objects_map[worker], sprint_finish_work_objects_map[worker])
             tb_ret.blocks.append(tb_ret_block)
+            tb_ret_block = self.generate_retrospective_sprint_start_vs_current_per_worker(worker, sprint_plan_work_objects_map[worker], sprint_finish_work_objects_map[worker])
+            tb_ret.blocks.append(tb_ret_block)
 
         print(tb_ret.format_pprint(shift=2))
         return tb_ret
@@ -1259,6 +1260,8 @@ class HumanAPI:
             else:
                 htb_ret.lines.append(f"Removed from sprint {work_object_planned.title}")
 
+        sprint_planned = 0
+        sprint_reported = 0
         ad_hoc_planned = 0
         ad_hoc_reported = 0
         for work_object_current in work_objects_current:
@@ -1266,8 +1269,84 @@ class HumanAPI:
                 continue
             if work_object_current.id not in work_objects_planned_map:
                 htb_ret.lines.append(f"Unplanned ad-hoc work {work_object_current.title}, {work_object_current.sprint_name}, {work_object_current.id} ")
-                ad_hoc_planned += work_object_current.estimated_time
-                ad_hoc_reported += work_object_current.completed_time
+                try:
+                    ad_hoc_planned += work_object_current.estimated_time
+                except TypeError:
+                    pass
 
+                try:
+                    ad_hoc_reported += work_object_current.completed_time
+                except TypeError:
+                    pass
+            else:
+                try:
+                    sprint_planned += work_object_current.estimated_time
+                except TypeError:
+                    pass
+
+                try:
+                    sprint_reported += work_object_current.completed_time
+                except TypeError:
+                    pass
+
+        htb_ret.lines.append(f"Ad-hoc time: {ad_hoc_planned=}, {ad_hoc_reported=}")
+        htb_ret.lines.append(f"Sprint planned time: {sprint_planned=}, {sprint_reported=}")
+
+        return htb_ret
+
+    @staticmethod
+    def generate_retrospective_sprint_start_vs_current_per_worker(worker, work_objects_planned, work_objects_current):
+        """
+        Generate retrospective.
+
+        :param worker:
+        :param work_objects_planned:
+        :param work_objects_current:
+        :return:
+        """
+        htb_ret = TextBlock(worker)
+        work_objects_current_map = {obj.id: obj for obj in work_objects_current}
+        work_objects_planned_map = {obj.id: obj for obj in work_objects_planned}
+        for work_object_planned in work_objects_planned:
+            if work_object_planned.type not in ["Task", "Bug"]:
+                continue
+            if work_object_planned.id in work_objects_current_map:
+                current_work_object = work_objects_current_map[work_object_planned.id]
+                if current_work_object.status != "CLOSED":
+                    htb_ret.lines.append(f"Not closed {current_work_object.title}")
+            else:
+                htb_ret.lines.append(f"Removed from sprint {work_object_planned.title}")
+
+        sprint_planned = 0
+        sprint_reported = 0
+        ad_hoc_planned = 0
+        ad_hoc_reported = 0
+        for work_object_current in work_objects_current:
+            if work_object_current.type not in ["Task", "Bug"]:
+                continue
+            if work_object_current.id not in work_objects_planned_map:
+                htb_ret.lines.append(f"Unplanned ad-hoc work {work_object_current.title}, {work_object_current.sprint_name}, {work_object_current.id} ")
+                try:
+                    ad_hoc_planned += work_object_current.estimated_time
+                except TypeError:
+                    pass
+
+                try:
+                    ad_hoc_reported += work_object_current.completed_time
+                except TypeError:
+                    pass
+            else:
+                try:
+                    sprint_planned += work_object_current.estimated_time
+                except TypeError:
+                    pass
+
+                try:
+                    sprint_reported += work_object_current.completed_time
+                except TypeError:
+                    pass
+
+        htb_ret.lines.append(f"Ad-hoc time: {ad_hoc_planned=}, {ad_hoc_reported=}")
+        htb_ret.lines.append(f"Sprint planned time: {sprint_planned=}, {sprint_reported=}")
 
         return htb_ret
