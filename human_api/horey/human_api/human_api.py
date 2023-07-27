@@ -874,7 +874,7 @@ class HumanAPI:
             if errors_tmp:
                 errors += [user+":"] + errors_tmp
 
-        return errors_tmp, base_actions_ids, base_actions_by_parent_ids
+        return errors, base_actions_ids, base_actions_by_parent_ids
 
     @staticmethod
     def validate_daily_input_actions(input_actions_per_worker_map):
