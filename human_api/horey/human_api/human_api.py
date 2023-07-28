@@ -732,9 +732,7 @@ class HumanAPI:
                                      key=lambda x: str(x.parent_id)) if action.action_add_time])
         str_ret += "\nT:\n"
         str_ret += "\n".join(
-            [self.action_to_ytb_report_line(action) for action in sorted(actions_active, key=lambda x: str(x.parent_id))
-             if
-             not action.action_close])
+            [self.action_to_ytb_report_line(action) for action in sorted(actions_active, key=lambda x: str(x.parent_id))])
 
         blocked_actions = [self.action_to_ytb_report_line(action) for action in
                            sorted(actions_blocked, key=lambda x: str(x.parent_id))]
@@ -949,6 +947,20 @@ class HumanAPI:
                         f"Parent titles differ in daily.hapi and input.hapi for parent_id '{parent_id}':\n{actions[0].src_line}")
         return errors
 
+    def generate_sprint_work_plan(self):
+        """
+        Generate list of dicts from objects.
+
+        :param:
+        :return:
+        """
+        items = CommonUtils.load_object_from_module(self.configuration.sprint_plan_file_path, "main")
+        for item in items:
+            if item.sprint_name != self.configuration.sprint_name:
+                raise RuntimeError(f"Sprint name in the work plan is not the same as in the configuration: "
+                                   f"{item.sprint_name=} / {self.configuration.sprint_name=}")
+        self.generate_work_plan(self.configuration.sprint_plan_file_path)
+
     def generate_work_plan(self, work_plan_file_path):
         """
         Generate list of dicts from objects.
@@ -1111,6 +1123,16 @@ class HumanAPI:
         Input validation Error
         """
 
+    def provision_sprint_work_plan(self):
+        """
+        Provision current sprint plan.
+
+        :return:
+        """
+
+        breakpoint()
+        self.provision_work_plan(self.configuration.work_plan_output_file_path)
+
     def provision_work_plan(self, workplan_file_path):
         """
         Provision work_plan into the TMS
@@ -1127,6 +1149,9 @@ class HumanAPI:
         :return:
         """
 
+        if os.path.exists(self.configuration.sprint_start_status_file_path):
+            raise RuntimeError("Make sure you know what you are doing.")
+
         self.save_sprint_work_status(self.configuration.sprint_start_status_file_path)
 
         with open(workplan_file_path, encoding="utf-8") as file_handler:
@@ -1135,7 +1160,7 @@ class HumanAPI:
         hapi_uids_map = {}
         for work_object_dict in ret:
             tmp_dict = copy.deepcopy(work_object_dict)
-            for local_var in ['hapi_uid', 'child_hapi_uids', 'dod']:
+            for local_var in ["hapi_uid", "child_hapi_uids", "dod"]:
                 try:
                     del tmp_dict[local_var]
                 except KeyError:
@@ -1156,6 +1181,50 @@ class HumanAPI:
                 for child_hapi_uid in children_hapi_uids:
                     child_id = hapi_uids_map[child_hapi_uid]["id"]
                     self.azure_devops_api.set_wit_parent(child_id, parent_id)
+
+    def generate_sprint_work_plan_base_python(self):
+        """
+        Generate sprint base_plan.
+
+        :return:
+        """
+
+        with open(self.configuration.sprint_finish_status_file_path) as file_handler:
+            sprint_finished_items_dicts = json.load(file_handler)
+
+
+        work_objects = [wobj for wobj in self.generate_work_objects_from_dicts(sprint_finished_items_dicts) if wobj.status != wobj.Status.CLOSED]
+        work_objects_map = self.split_by_worker(work_objects)
+
+        str_ret = "from horey.human_api.task import Task\n" \
+                 "from horey.human_api.user_story import UserStory\n"\
+                 f'SPRINT_NAME = "{self.configuration.sprint_name}"\n'
+
+        for worker, work_objects in work_objects_map.items():
+            str_ret_tmp, function_name = self.generate_sprint_plan_worker_function(worker, work_objects)
+            str_ret_tmp = "\n\n    ".join(block.replace("\n", "\n    ") for block in str_ret_tmp.split("\n\n"))
+            str_ret += "\n" + str_ret_tmp
+            print(str_ret)
+            breakpoint()
+        breakpoint()
+
+    def generate_sprint_plan_worker_function(self, worker, wobjects):
+        """
+        Generate single worker function.
+
+        :param worker:
+        :param worker_objects:
+        :return:
+        """
+        function_name = CommonUtils.camel_case_to_snake_case(worker.replace(" ", "_"))
+        str_ret = f"def {function_name}():"
+        str_ret += f'\n"""\nAuto generated report\n"""'
+
+        for wobj in wobjects:
+            str_ret_tmp = wobj.convert_to_python()
+            str_ret += "\n\n" + str_ret_tmp
+
+        return str_ret.strip("\n\n"), function_name
 
     def save_sprint_work_status(self, file_path):
         """
@@ -1205,6 +1274,7 @@ class HumanAPI:
         if not os.path.exists(self.configuration.sprint_finish_status_file_path):
             self.save_sprint_work_status(self.configuration.sprint_finish_status_file_path)
 
+        self.generate_sprint_work_plan_base_python()
         ret = self.generate_retrospective_planned_vs_current()
         return ret
 

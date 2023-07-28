@@ -4841,8 +4841,11 @@ class AWSAPI:
 
         # increase ASG capacity
         auto_scaling_group.desired_capacity *= 2
-        initial_max_size = auto_scaling_group.max_size
-        auto_scaling_group.max_size = auto_scaling_group.desired_capacity
+        if auto_scaling_group.max_size < auto_scaling_group.desired_capacity:
+            initial_max_size = auto_scaling_group.max_size
+            auto_scaling_group.max_size = auto_scaling_group.desired_capacity
+        else:
+            initial_max_size = None
 
         self.autoscaling_client.provision_auto_scaling_group(auto_scaling_group)
 
@@ -4856,9 +4859,9 @@ class AWSAPI:
         self.autoscaling_client.detach_instances(auto_scaling_group.region, current_ec2_instance_ids, auto_scaling_group.name, decrement=True)
 
         # revert ASG capacity change
-        auto_scaling_group.desired_capacity //= 2
-        auto_scaling_group.max_size = initial_max_size
-        self.autoscaling_client.provision_auto_scaling_group(auto_scaling_group)
+        if initial_max_size is not None:
+            auto_scaling_group.max_size = initial_max_size
+            self.autoscaling_client.provision_auto_scaling_group(auto_scaling_group)
 
         # terminate old instances
         for container_instance in current_container_instances:

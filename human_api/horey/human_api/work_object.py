@@ -142,6 +142,27 @@ class WorkObject:
 
         return CommonUtils.convert_to_dict(ret)
 
+    def convert_to_python(self):
+        """
+        Convert to python
+
+        :return:
+        """
+        if self.id is None:
+            raise ValueError("Not implemented for work objects without ID")
+
+        param_name =  f"{self.type.lower()}_{self.id}"
+        str_ret = f"{param_name} = {self.type}()"
+        for var_name in ["id", "sprint_name"]:
+            str_ret += f"\n{param_name}.{var_name} = '{getattr(self, var_name)}'"
+
+        if self.type in ["Task", "Bug"]:
+            for var_name in ["estimated_time", "completed_time"]:
+                self_value = getattr(self, var_name)
+                str_ret += f"\n{param_name}.{var_name} = {self_value if self_value is None else(int(self_value))}"
+
+        return str_ret
+
     def generate_summary(self):
         """
         Generate summary for the item
