@@ -148,7 +148,7 @@ def test_remove_image():
     """
 
     docker_api = DockerAPI()
-    docker_api.remove_image("755fa0e2e444", force=True)
+    docker_api.remove_image(mock_values["image_with_children_id"], force=True)
 
 
 def test_get_all_images():
@@ -179,6 +179,6 @@ if __name__ == "__main__":
     # test_upload_image()
     # test_pull_image()
     # test_copy_image()
-    # test_remove_image()
-    #test_get_all_images()
-    test_get_child_image_ids()
+    test_remove_image()
+    # test_get_all_images()
+    #test_get_child_image_ids()

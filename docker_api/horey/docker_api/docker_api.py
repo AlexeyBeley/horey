@@ -303,5 +303,4 @@ class DockerAPI:
                 if image_id in history_element["Id"]:
                     child_ids.append(image.id)
                     break
-        breakpoint()
         return child_ids
