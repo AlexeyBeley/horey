@@ -18,6 +18,7 @@ mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 src_aws_region = "us-west-2"
 dst_aws_region = "us-west-2"
 
+# pylint: disable= missing-function-docstring
 
 def test_init_docker_api():
     """
@@ -162,13 +163,21 @@ def test_get_all_images():
     assert images is not None
 
 
+def test_get_child_image_ids():
+    docker_api = DockerAPI()
+    image_id = ""
+    image_ids = docker_api.get_child_image_ids(image_id)
+    assert isinstance(image_ids, list)
+
+
 if __name__ == "__main__":
     # test_init_docker_api()
-    test_build()
-    test_get_image()
+    # test_build()
+    # test_get_image()
     # test_login()
     # test_upload_image()
     # test_pull_image()
     # test_copy_image()
     # test_remove_image()
-    test_get_all_images()
+    #test_get_all_images()
+    test_get_child_image_ids()
