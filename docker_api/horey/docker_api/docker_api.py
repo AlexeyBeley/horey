@@ -265,6 +265,9 @@ class DockerAPI:
 
         logger.info(f"Removing image: {image_id}.")
         if force:
+            for child_image_id in self.get_child_image_ids(image_id):
+                self.remove_image(child_image_id, force=True)
+
             for container in self.get_containers_by_image(image_id):
                 self.kill_container(container, remove=True)
 
@@ -280,3 +283,11 @@ class DockerAPI:
         """
 
         return self.client.images.list(name=repo_name, all=True)
+
+    def get_child_image_ids(self, image_id):
+        """
+        Return the children of the image.
+
+        :return:
+        """
+        breakpoint()
