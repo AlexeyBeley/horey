@@ -6,18 +6,20 @@ Testing docker_api module.
 import os
 from horey.docker_api.docker_api import DockerAPI
 from horey.common_utils.common_utils import CommonUtils
-from horey.aws_api.aws_api import AWSAPI
+# from horey.aws_api.aws_api import AWSAPI
 
 mock_values_file_path = os.path.abspath(
     os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "..", "ignore", "mock_values.py"
     )
 )
+print(mock_values_file_path)
 mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 
 src_aws_region = "us-west-2"
 dst_aws_region = "us-west-2"
 
+# pylint: disable= missing-function-docstring
 
 def test_init_docker_api():
     """
@@ -146,7 +148,7 @@ def test_remove_image():
     """
 
     docker_api = DockerAPI()
-    docker_api.remove_image("755fa0e2e444", force=True)
+    docker_api.remove_image(mock_values["image_with_children_id"], force=True)
 
 
 def test_get_all_images():
@@ -162,13 +164,21 @@ def test_get_all_images():
     assert images is not None
 
 
+def test_get_child_image_ids():
+    docker_api = DockerAPI()
+    image_id = mock_values["image_with_children_id"]
+    image_ids = docker_api.get_child_image_ids(image_id)
+    assert isinstance(image_ids, list)
+
+
 if __name__ == "__main__":
     # test_init_docker_api()
-    test_build()
-    test_get_image()
+    # test_build()
+    # test_get_image()
     # test_login()
     # test_upload_image()
     # test_pull_image()
     # test_copy_image()
-    # test_remove_image()
-    test_get_all_images()
+    test_remove_image()
+    # test_get_all_images()
+    #test_get_child_image_ids()

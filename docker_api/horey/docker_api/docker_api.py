@@ -263,11 +263,14 @@ class DockerAPI:
         @return:
         """
 
-        logger.info(f"Removing image: {image_id}.")
         if force:
+            for child_image_id in self.get_child_image_ids(image_id):
+                self.remove_image(child_image_id, force=True)
+
             for container in self.get_containers_by_image(image_id):
                 self.kill_container(container, remove=True)
 
+        logger.info(f"Removing image: {image_id}.")
         self.client.images.remove(image_id, force=force)
 
     def get_all_images(self, repo_name=None):
@@ -280,3 +283,24 @@ class DockerAPI:
         """
 
         return self.client.images.list(name=repo_name, all=True)
+
+    def get_child_image_ids(self, image_id):
+        """
+        Return the children of the image.
+
+        :return:
+        """
+
+        child_ids = []
+        all_images = self.get_all_images()
+        candidates = [image for image in all_images if image_id in image.id]
+        if len(candidates) != 1:
+            raise RuntimeError(f"Found {len(image_id)=} with {image_id=}")
+        for image in all_images:
+            if image == candidates[0]:
+                continue
+            for history_element in image.history():
+                if image_id in history_element["Id"]:
+                    child_ids.append(image.id)
+                    break
+        return child_ids
