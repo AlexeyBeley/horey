@@ -290,4 +290,18 @@ class DockerAPI:
 
         :return:
         """
+
+        child_ids = []
+        all_images = self.get_all_images()
+        candidates = [image for image in all_images if image_id in image.id]
+        if len(candidates) != 1:
+            raise RuntimeError(f"Found {len(image_id)=} with {image_id=}")
+        for image in all_images:
+            if image == candidates[0]:
+                continue
+            for history_element in image.history():
+                if image_id in history_element["Id"]:
+                    child_ids.append(image.id)
+                    break
         breakpoint()
+        return child_ids
