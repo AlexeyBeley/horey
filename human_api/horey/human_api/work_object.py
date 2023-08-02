@@ -142,6 +142,43 @@ class WorkObject:
 
         return CommonUtils.convert_to_dict(ret)
 
+    def generate_python_self_param_name(self):
+        """
+        Generate the argument name for self representation in python.
+
+        :return:
+        """
+        return f"{self.type.lower()}_{self.id}"
+
+    def convert_to_python(self, indent=0, suppress=None):
+        """
+        Convert to python
+
+        :return:
+        """
+        str_indent = " " * indent
+        if self.id is None:
+            raise ValueError("Not implemented for work objects without ID")
+
+        param_name =  self.generate_python_self_param_name()
+        lst_ret = [str_indent + f"{param_name} = {self.type}()"]
+        for var_name in ["id", "sprint_name", "title"]:
+            if suppress and var_name in suppress:
+                val = suppress[var_name]
+            else:
+                val = getattr(self, var_name).replace('"', r'\"')
+            lst_ret += [str_indent + f'{param_name}.{var_name} = "{val}"']
+
+        if self.type in ["Task", "Bug"]:
+            for var_name in ["estimated_time", "completed_time"]:
+                if suppress and var_name in suppress:
+                    val = suppress[var_name]
+                else:
+                    val = getattr(self, var_name)
+                lst_ret += [str_indent + f"{param_name}.{var_name} = {val if val is None else(int(val))}"]
+
+        return param_name, lst_ret
+
     def generate_summary(self):
         """
         Generate summary for the item

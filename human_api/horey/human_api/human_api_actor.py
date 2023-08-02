@@ -33,6 +33,63 @@ action_manager.register_action("generate_work_plan", generate_work_plan_parser, 
 # endregion
 
 
+# region generate_sprint_work_plan
+def generate_sprint_work_plan_parser():
+    description = "generate_sprint_work_plan"
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument("--human_api_configuration_file_path", required=True, type=str, help="Human API Configuration")
+    return parser
+
+
+def generate_sprint_work_plan(arguments) -> None:
+    configuration = HumanAPIConfigurationPolicy()
+    configuration.configuration_file_full_path = arguments.human_api_configuration_file_path
+    configuration.init_from_file()
+    HumanAPI(configuration=configuration).generate_sprint_work_plan()
+
+
+action_manager.register_action("generate_sprint_work_plan", generate_sprint_work_plan_parser, generate_sprint_work_plan)
+# endregion
+
+# region provision_sprint_work_plan
+def provision_sprint_work_plan_parser():
+    description = "provision_sprint_work_plan"
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument("--human_api_configuration_file_path", required=True, type=str, help="Human API Configuration")
+    return parser
+
+
+def provision_sprint_work_plan(arguments) -> None:
+    configuration = HumanAPIConfigurationPolicy()
+    configuration.configuration_file_full_path = arguments.human_api_configuration_file_path
+    configuration.init_from_file()
+    HumanAPI(configuration=configuration).provision_sprint_work_plan()
+
+
+action_manager.register_action("provision_sprint_work_plan", provision_sprint_work_plan_parser, provision_sprint_work_plan)
+# endregion
+
+
+# region provision_work_plan
+def provision_work_plan_parser():
+    description = "provision_work_plan"
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument("--human_api_configuration_file_path", required=True, type=str, help="Human API Configuration")
+    parser.add_argument("--work_plan_file_path", required=True, type=str, help="Work plan with items to generate")
+    return parser
+
+
+def provision_work_plan(arguments) -> None:
+    configuration = HumanAPIConfigurationPolicy()
+    configuration.configuration_file_full_path = arguments.human_api_configuration_file_path
+    configuration.init_from_file()
+    HumanAPI(configuration=configuration).provision_work_plan(arguments.work_plan_file_path)
+
+
+action_manager.register_action("provision_work_plan", provision_work_plan_parser, provision_work_plan)
+# endregion
+
+
 # region daily_routine
 def daily_routine_parser():
     description = "daily_routine"

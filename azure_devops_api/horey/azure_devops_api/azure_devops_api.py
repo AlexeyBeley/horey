@@ -688,7 +688,6 @@ class AzureDevopsAPI:
         :param lst_all:
         :return:
         """
-
         lst_ret = lst_all[::]
         new_items = [None]
         while new_items:
@@ -949,7 +948,7 @@ class AzureDevopsAPI:
 
         if response.status_code != 200:
             logger.error(response)
-            raise RuntimeError(logger.error(response.text))
+            raise RuntimeError(response.text)
 
         return response.json()
 
@@ -1152,7 +1151,7 @@ class AzureDevopsAPI:
 
         return wit_id
 
-    # pylint: disable= too-many-branches
+    # pylint: disable= too-many-branches, too-many-statements
     def provision_work_item_from_dict(self, dict_src):
         """
         Provision work item by parameters received.
@@ -1162,6 +1161,9 @@ class AzureDevopsAPI:
 
         :return:
         """
+        if "id" in dict_src:
+            return self.update_work_item_from_dict(dict_src)
+
         left_attributes = list(dict_src.keys())
         wit_type = dict_src["type"]
         left_attributes.remove("type")
@@ -1257,6 +1259,45 @@ class AzureDevopsAPI:
         if left_attributes:
             raise ValueError(left_attributes)
 
+        return wit_id
+
+    def update_work_item_from_dict(self, dict_src):
+        """
+        Update existing item.
+
+        :return:
+        """
+        request_data = []
+        wit_id = dict_src.pop("id")
+        logger.info(f"WIT:{wit_id} changing params '{dict_src}'")
+
+        if "sprint_name" in dict_src:
+            request_data.append({
+                "op": "add",
+                "path": "/fields/System.IterationPath",
+                "value": f"{self.project_name}\\\\{dict_src.pop('sprint_name')}"
+            })
+
+        if "completed_time" in dict_src:
+            request_data.append({
+                "op": "add",
+                "path": "/fields/Microsoft.VSTS.Scheduling.CompletedWork",
+                "value": str(dict_src.pop("completed_time"))
+            })
+
+        if "estimated_time" in dict_src:
+            request_data.append({
+                "op": "add",
+                "path": "/fields/Microsoft.VSTS.Scheduling.OriginalEstimate",
+                "value": str(dict_src.pop("estimated_time"))
+            })
+
+        if dict_src:
+            raise ValueError(dict_src)
+
+        url = f"https://dev.azure.com/{self.org_name}/_apis/wit/workitems/{wit_id}?api-version=7.0"
+
+        self.patch(url, request_data)
         return wit_id
 
     def generate_solution_retrospective(self, search_strings):

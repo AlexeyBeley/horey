@@ -241,13 +241,13 @@ class HumanAPI:
         :return:
         """
 
-        #with open("./tmp_cache.json") as fh:
+        # with open("./tmp_cache.json") as fh:
         #    work_objects = json.load(fh)
 
         sprints = sprints if sprints is not None else []
         work_objects = self.azure_devops_api.init_work_items_by_iterations(
             iteration_names=[sprint.name for sprint in sprints])
-        #with open("./tmp_cache.json", "w", encoding="utf-8") as fh:
+        # with open("./tmp_cache.json", "w", encoding="utf-8") as fh:
         #    json.dump(work_objects, fh)
 
         self.init_work_objects_from_dicts(work_objects)
@@ -283,6 +283,7 @@ class HumanAPI:
                 self.tasks[obj.id] = obj
             else:
                 raise ValueError(f"Unknown work object type: {obj.type}")
+
     @staticmethod
     def generate_work_objects_from_dicts(work_objects_dicts):
         """
@@ -392,7 +393,7 @@ class HumanAPI:
 
         ret = defaultdict(list)
         for work_item in work_items:
-            ret[work_item.assigned_to].append(work_item)
+            ret[str(work_item.assigned_to)].append(work_item)
         return ret
 
     def daily_report(self):
@@ -483,10 +484,13 @@ class HumanAPI:
         :param base_actions:
         :return:
         """
-        ret = ">NEW:\n" + self.generate_daily_hr_per_action_block(input_actions["actions_new"], base_actions["actions_new"])
-        ret += "\n>ACTIVE:\n" + self.generate_daily_hr_per_action_block(input_actions["actions_active"], base_actions["actions_active"])
+        ret = ">NEW:\n" + self.generate_daily_hr_per_action_block(input_actions["actions_new"],
+                                                                  base_actions["actions_new"])
+        ret += "\n>ACTIVE:\n" + self.generate_daily_hr_per_action_block(input_actions["actions_active"],
+                                                                        base_actions["actions_active"])
         ret += "\n>BLOCKED:\n" + "\n".join(action.src_line for action in input_actions["actions_blocked"])
-        ret += "\n>CLOSED:\n" + self.generate_daily_hr_per_action_block(input_actions["actions_closed"], base_actions["actions_closed"])
+        ret += "\n>CLOSED:\n" + self.generate_daily_hr_per_action_block(input_actions["actions_closed"],
+                                                                        base_actions["actions_closed"])
 
         return ret.replace("\n\n", "\n").strip("\n")
 
@@ -600,9 +604,9 @@ class HumanAPI:
         """
 
         actions_new, actions_active, actions_blocked, actions_closed = input_actions["actions_new"], \
-                                                                       input_actions["actions_active"], \
-                                                                       input_actions["actions_blocked"], \
-                                                                       input_actions["actions_closed"]
+            input_actions["actions_active"], \
+            input_actions["actions_blocked"], \
+            input_actions["actions_closed"]
 
         self.perform_base_task_management_system_changes(worker_name, actions_new, actions_active, actions_blocked,
                                                          actions_closed)
@@ -732,9 +736,8 @@ class HumanAPI:
                                      key=lambda x: str(x.parent_id)) if action.action_add_time])
         str_ret += "\nT:\n"
         str_ret += "\n".join(
-            [self.action_to_ytb_report_line(action) for action in sorted(actions_active, key=lambda x: str(x.parent_id))
-             if
-             not action.action_close])
+            [self.action_to_ytb_report_line(action) for action in
+             sorted(actions_active, key=lambda x: str(x.parent_id))])
 
         blocked_actions = [self.action_to_ytb_report_line(action) for action in
                            sorted(actions_blocked, key=lambda x: str(x.parent_id))]
@@ -815,11 +818,14 @@ class HumanAPI:
         :return:
         """
 
-        errors, base_actions_ids, base_actions_by_parent_ids = self.validate_daily_base_actions(base_actions_per_worker_map)
-        errors_tmp, input_actions_by_ids, input_actions_by_parent_ids = self.validate_daily_input_actions(input_actions_per_worker_map)
+        errors, base_actions_ids, base_actions_by_parent_ids = self.validate_daily_base_actions(
+            base_actions_per_worker_map)
+        errors_tmp, input_actions_by_ids, input_actions_by_parent_ids = self.validate_daily_input_actions(
+            input_actions_per_worker_map)
         errors += errors_tmp
 
-        errors += self.validate_daily_base_vs_input(base_actions_ids, base_actions_by_parent_ids, input_actions_by_ids, input_actions_by_parent_ids)
+        errors += self.validate_daily_base_vs_input(base_actions_ids, base_actions_by_parent_ids, input_actions_by_ids,
+                                                    input_actions_by_parent_ids)
 
         if errors:
             print("##########VALIDATION_START################\n")
@@ -848,10 +854,12 @@ class HumanAPI:
             for block_name in ["actions_new", "actions_active", "actions_blocked", "actions_closed"]:
                 for action in map_dict[block_name]:
                     if str(action.child_id) == "0":
-                        errors_tmp.append(f"(!!!) daily.hapi (!!!): Unexpected to receive '0' child_id from TMS:\n{action.src_line}")
+                        errors_tmp.append(
+                            f"(!!!) daily.hapi (!!!): Unexpected to receive '0' child_id from TMS:\n{action.src_line}")
 
                     if action.child_id in base_actions_ids:
-                        errors_tmp.append(f"(!!!) daily.hapi (!!!): Unexpected to receive 2 similar child_ids from TMS:\n{action.src_line}")
+                        errors_tmp.append(
+                            f"(!!!) daily.hapi (!!!): Unexpected to receive 2 similar child_ids from TMS:\n{action.src_line}")
 
                     if action.child_title in [_action.child_title for _action in base_actions_ids.values()]:
                         errors_tmp.append(
@@ -860,7 +868,8 @@ class HumanAPI:
                     base_actions_ids[action.child_id] = action
 
                     if action.parent_id == "0":
-                        errors_tmp.append(f"(!!!) daily.hapi (!!!): Unexpected to receive '0' parent_id from TMS:\n{action.src_line}")
+                        errors_tmp.append(
+                            f"(!!!) daily.hapi (!!!): Unexpected to receive '0' parent_id from TMS:\n{action.src_line}")
 
                     base_actions_by_parent_ids[action.parent_id].append(action)
 
@@ -872,7 +881,7 @@ class HumanAPI:
                             errors_tmp.append(f"(!!!) daily.hapi is not input.hapi (!!!):\n{action.src_line}")
                             break
             if errors_tmp:
-                errors += [user+":"] + errors_tmp
+                errors += [user + ":"] + errors_tmp
 
         return errors, base_actions_ids, base_actions_by_parent_ids
 
@@ -895,7 +904,8 @@ class HumanAPI:
                     if str(action.child_id) != "0" and action.child_id in input_actions_by_ids:
                         errors_tmp.append(f"Child ID {action.child_id} appears twice in the report:\n{action.src_line}")
 
-                    if action.child_title in [_action.child_title for _actions in input_actions_by_ids.values() for _action in _actions]:
+                    if action.child_title in [_action.child_title for _actions in input_actions_by_ids.values() for
+                                              _action in _actions]:
                         errors_tmp.append(
                             f"Child title {action.child_title} appears twice in the report:\n{action.src_line}")
                     input_actions_by_ids[action.child_id].append(action)
@@ -919,11 +929,12 @@ class HumanAPI:
                     if action.action_add_time is not None and action.action_comment is None:
                         errors_tmp.append(f"Updating time Comment:\n{action.src_line}")
             if errors_tmp:
-                errors += [user+":"] + errors_tmp
+                errors += [user + ":"] + errors_tmp
         return errors, input_actions_by_ids, input_actions_by_parent_ids
 
     @staticmethod
-    def validate_daily_base_vs_input(base_actions_by_child_id, base_actions_by_parent_id, input_actions_by_child_id, input_actions_by_parent_id):
+    def validate_daily_base_vs_input(base_actions_by_child_id, base_actions_by_parent_id, input_actions_by_child_id,
+                                     input_actions_by_parent_id):
         """
         V Check child ids in input all in base
         V Check parent ids in input all in base
@@ -939,7 +950,8 @@ class HumanAPI:
                 if child_id not in base_actions_by_child_id.keys():
                     errors.append(f"No child_id '{child_id}' in daily.hapi:\n{actions[0].src_line}")
                 elif actions[0].child_title != base_actions_by_child_id[child_id].child_title:
-                    errors.append(f"Child title is not the same in daily.hapi and input.hapi for child_id '{child_id}':\n{actions[0].src_line}")
+                    errors.append(
+                        f"Child title is not the same in daily.hapi and input.hapi for child_id '{child_id}':\n{actions[0].src_line}")
 
         for parent_id, actions in input_actions_by_parent_id.items():
             for action in actions:
@@ -948,6 +960,21 @@ class HumanAPI:
                     errors.append(
                         f"Parent titles differ in daily.hapi and input.hapi for parent_id '{parent_id}':\n{actions[0].src_line}")
         return errors
+
+    def generate_sprint_work_plan(self):
+        """
+        Generate list of dicts from objects.
+
+        :param:
+        :return:
+        """
+
+        items = CommonUtils.load_object_from_module(self.configuration.sprint_plan_file_path, "main")
+        for item in items:
+            if item.sprint_name != self.configuration.sprint_name:
+                raise RuntimeError(f"Sprint name in the work plan is not the same as in the configuration: "
+                                   f"{item.sprint_name=} / {self.configuration.sprint_name=}")
+        self.generate_work_plan(self.configuration.sprint_plan_file_path)
 
     def generate_work_plan(self, work_plan_file_path):
         """
@@ -960,19 +987,22 @@ class HumanAPI:
 
         self.generate_auto_data(items)
         items_map = self.flattern_work_plan_tree(items)
-
         self.validate_work_plan(items_map)
         sprints_map = self.split_to_sprints(items_map)
         for sprint_name, sprint_items in sprints_map.items():
             summaries_map = self.generate_work_plan_summaries(sprint_items)
-            file_path = self.configuration.work_plan_output_file_path_template.format(sprint_name=sprint_name.replace(" ", "_"))
+            file_path = self.configuration.work_plan_output_file_path_template.format(
+                sprint_name=sprint_name.replace(" ", "_"))
             dir_path = os.path.dirname(file_path)
             os.makedirs(dir_path, exist_ok=True)
             with open(file_path, "w", encoding="utf-8") as file_handler:
                 json.dump(CommonUtils.convert_to_dict(sprint_items), file_handler, indent=4)
 
-            with open(self.configuration.work_plan_summary_output_file_path_template.format(sprint_name=sprint_name.replace(" ", "_")), "w", encoding="utf-8") as file_handler:
-                summary = ("-"*40+"\n").join(summaries_map[item.hapi_uid].format_pprint(shift=4) for item in sprint_items if item.hapi_uid in summaries_map)
+            with open(self.configuration.work_plan_summary_output_file_path_template.format(
+                    sprint_name=sprint_name.replace(" ", "_")), "w", encoding="utf-8") as file_handler:
+                summary = ("-" * 40 + "\n").join(
+                    summaries_map[item.hapi_uid].format_pprint(shift=4) for item in sprint_items if
+                    item.hapi_uid in summaries_map)
                 file_handler.write(summary)
 
         return items_map
@@ -992,16 +1022,19 @@ class HumanAPI:
             if sprint_name:
                 if item.sprint_name != sprint_name:
                     if item.sprint_name:
-                        raise RuntimeError(f"Item '{item.title}' sprint_name was set to '{item.sprint_name}' but received explicit sprint_name: '{sprint_name}'")
+                        raise RuntimeError(
+                            f"Item '{item.title}' sprint_name was set to '{item.sprint_name}' but received explicit sprint_name: '{sprint_name}'")
                     item.sprint_name = sprint_name
 
             if assigned_to:
                 if item.assigned_to != assigned_to:
                     if item.assigned_to:
-                        raise RuntimeError(f"Item '{item.title}' assigned_to was set to '{item.assigned_to}' but received explicit assigned_to: '{assigned_to}'")
+                        raise RuntimeError(
+                            f"Item '{item.title}' assigned_to was set to '{item.assigned_to}' but received explicit assigned_to: '{assigned_to}'")
                     item.assigned_to = assigned_to
 
-            self.generate_auto_data(item.children, prefix=item.hapi_uid, sprint_name=item.sprint_name, assigned_to=item.assigned_to)
+            self.generate_auto_data(item.children, prefix=item.hapi_uid, sprint_name=item.sprint_name,
+                                    assigned_to=item.assigned_to)
 
     def flattern_work_plan_tree(self, items):
         """
@@ -1032,17 +1065,22 @@ class HumanAPI:
         seen_values = defaultdict(list)
         errors = []
         for item in items_map.values():
+            if item.id is not None:
+                continue
             if item.child_hapi_uids:
                 if item.estimated_time is not None:
                     errors.append(f"Remove estimated_time for parent with children: '{item.title}'")
 
                 if item.type != "Feature":
                     # Parent/children sprint validation
-                    child_sprint_names = {items_map[child_hapi_uid].sprint_name for child_hapi_uid in item.child_hapi_uids}
+                    child_sprint_names = {items_map[child_hapi_uid].sprint_name for child_hapi_uid in
+                                          item.child_hapi_uids}
                     if len(child_sprint_names) != 1:
-                        errors.append(f"Parent '{item.title}' Sprint: '{item.sprint_name}', children Sprints: '{child_sprint_names}'")
+                        errors.append(
+                            f"Parent '{item.title}' Sprint: '{item.sprint_name}', children Sprints: '{child_sprint_names}'")
                     elif item.sprint_name != list(child_sprint_names)[0]:
-                        errors.append(f"Parent '{item.title}' Sprint: '{item.sprint_name}', children's Sprint: '{list(child_sprint_names)[0]}'")
+                        errors.append(
+                            f"Parent '{item.title}' Sprint: '{item.sprint_name}', children's Sprint: '{list(child_sprint_names)[0]}'")
 
             elif item.estimated_time is None:
                 errors.append(f"Item 'estimated_time' was not set: '{item.title}'")
@@ -1069,7 +1107,8 @@ class HumanAPI:
 
         for item in reversed(items_map.values()):
             if item.child_hapi_uids:
-                item.estimated_time = sum(items_map[child_hapi_uid].estimated_time for child_hapi_uid in item.child_hapi_uids)
+                item.estimated_time = sum(
+                    items_map[child_hapi_uid].estimated_time for child_hapi_uid in item.child_hapi_uids)
 
     def split_to_sprints(self, items_map):
         """
@@ -1111,6 +1150,15 @@ class HumanAPI:
         Input validation Error
         """
 
+    def provision_sprint_work_plan(self):
+        """
+        Provision current sprint plan.
+
+        :return:
+        """
+
+        self.provision_work_plan(self.configuration.work_plan_output_file_path)
+
     def provision_work_plan(self, workplan_file_path):
         """
         Provision work_plan into the TMS
@@ -1127,7 +1175,8 @@ class HumanAPI:
         :return:
         """
 
-        self.save_sprint_work_status(self.configuration.sprint_start_status_file_path)
+        if os.path.exists(self.configuration.sprint_start_status_file_path):
+            raise RuntimeError("Make sure you know what you are doing.")
 
         with open(workplan_file_path, encoding="utf-8") as file_handler:
             ret = json.load(file_handler)
@@ -1135,7 +1184,10 @@ class HumanAPI:
         hapi_uids_map = {}
         for work_object_dict in ret:
             tmp_dict = copy.deepcopy(work_object_dict)
-            for local_var in ['hapi_uid', 'child_hapi_uids', 'dod']:
+            if "id" in tmp_dict:
+                tmp_dict = {key: value for key, value in tmp_dict.items() if key in ["id", "estimated_time", "completed_time", "sprint_name"]}
+
+            for local_var in ["hapi_uid", "child_hapi_uids", "dod"]:
                 try:
                     del tmp_dict[local_var]
                 except KeyError:
@@ -1148,7 +1200,7 @@ class HumanAPI:
             json.dump(ret, file_handler, indent=4)
 
         for work_object_dict in hapi_uids_map.values():
-            status_comment = "human_api_json_encoded_current_status:"+json.dumps(work_object_dict)
+            status_comment = "human_api_json_encoded_current_status:" + json.dumps(work_object_dict)
             self.azure_devops_api.add_wit_comment(work_object_dict["id"], status_comment)
             children_hapi_uids = work_object_dict.get("child_hapi_uids")
             if children_hapi_uids:
@@ -1157,7 +1209,235 @@ class HumanAPI:
                     child_id = hapi_uids_map[child_hapi_uid]["id"]
                     self.azure_devops_api.set_wit_parent(child_id, parent_id)
 
+        self.save_sprint_work_status(self.configuration.sprint_start_status_file_path)
+
+    def generate_sprint_retro_work_plan_base_python(self):
+        # pylint: disable = anomalous-backslash-in-string
+        """
+        Generate sprint base_plan.
+        ^(.+\.completed_time )(\= \d+)
+        $1= 0
+
+        :return:
+        """
+
+        with open(self.configuration.sprint_finish_status_file_path, encoding="utf-8") as file_handler:
+            sprint_finished_items_dicts = json.load(file_handler)
+
+        all_wobjects = self.generate_work_objects_from_dicts(sprint_finished_items_dicts)
+        leaf_work_objects = self.extract_leaf_tasks_and_bugs(all_wobjects)
+
+        seeds = self.find_seed_wobjects(all_wobjects)
+
+        work_objects_map = self.split_by_worker(leaf_work_objects)
+
+        lst_ret = ["from horey.human_api.task import Task",
+                   "from horey.human_api.bug import Bug",
+                   "from horey.human_api.user_story import UserStory",
+                   "from horey.human_api.feature import Feature",
+                   "from horey.human_api.epic import Epic",
+                   "",
+                  f'SPRINT_NAME = "{self.configuration.sprint_name}"']
+
+        function_names = []
+
+        for worker, worker_work_objects in work_objects_map.items():
+            lst_ret_tmp, function_name = self.generate_sprint_retro_worker_function(worker, worker_work_objects, seeds)
+            lst_ret += [""]+ lst_ret_tmp
+            function_names.append(function_name)
+
+        lst_ret += ["", "def main():"]
+        lst_ret += ["    " + line + " +\\" for line in ("return " + "+    ".join(f"{function_name}()" for function_name in function_names)).split("+")]
+        lst_ret[-1] = lst_ret[-1][:-3]
+
+        with open(self.configuration.sprint_plan_retro, "w", encoding="utf-8") as file_handler:
+            file_handler.write("\n".join(lst_ret))
+
+        CommonUtils.load_object_from_module(self.configuration.sprint_plan_retro, "main")
+
+    def extract_leaf_tasks_and_bugs(self, wobjects):
+        """
+        Find only lowest level wobjects.
+
+        :param wobjects:
+        :return:
+        """
+
+        return [wobj for wobj in wobjects if wobj.type in ["Task", "Bug"] and
+                wobj.status != wobj.Status.CLOSED and
+                not wobj.child_ids]
+
+    def clean_and_reorder(self, wobjects):
+        """
+        Exclude CLOSED tasks and bugs.
+
+        In order to generate proper python script we need the children to be created first and parents after.
+
+        Clean parents without open children in this sprint.
+
+        :param wobjects:
+        :return:
+        """
+
+        alive_wobjects = []
+        wobjects_by_id = {wobj.id: wobj for wobj in wobjects}
+        for wobj in wobjects:
+            if wobj.type in ["Task", "Bug"] and wobj.status != wobj.Status.CLOSED:
+                for parent_id in wobj.parent_ids:
+                    if parent_id in [candidate.id for candidate in alive_wobjects]:
+                        raise RuntimeError("Implement child/parent reorder")
+                alive_wobjects.append(wobj)
+
+        updated = True
+        while updated:
+            updated = False
+            new_wobjects = []
+            for wobj in alive_wobjects:
+                for parent_id in wobj.parent_ids:
+                    if parent_id not in [candidate.id for candidate in new_wobjects+alive_wobjects]:
+                        new_wobjects.append(wobjects_by_id[parent_id])
+                        updated = True
+            alive_wobjects += new_wobjects
+        logger.info(f"Found {len(alive_wobjects)=} out of {len(wobjects)=}")
+        return alive_wobjects
+
+    def find_seed_wobjects(self, wobjects):
+        """
+        Find the highest level parents
+
+        :param wobjects:
+        :return:
+        """
+
+        dict_wobjects = {wobject.id: wobject for wobject in wobjects}
+
+        seeds = defaultdict(list)
+        for wobject in wobjects:
+            if wobject.child_ids:
+                continue
+            seeds[wobject.id].append(wobject)
+
+            current_parent = wobject
+            while current_parent.parent_ids:
+                if len(current_parent.parent_ids) !=1:
+                    raise ValueError(f"{len(current_parent.parent_ids)=}")
+                current_parent = dict_wobjects[current_parent.parent_ids[0]]
+                if current_parent.assigned_to != wobject.assigned_to:
+                    break
+                seeds[wobject.id].append(current_parent)
+        return seeds
+
+    @staticmethod
+    def generate_sprint_retro_worker_function(worker, worker_wobjects, seeds, indent=0):
+        """
+        Generate single worker function.
+
+        :param seeds:
+        :param indent:
+        :param worker:
+        :param worker_wobjects:
+        :return:
+        """
+
+        str_indent = " " * indent
+        function_name = CommonUtils.camel_case_to_snake_case(worker.replace(" ", "_"))
+        lst_ret = [str_indent + line for line in [f"def {function_name}():",
+                                                 '    """',
+                                                 "    Auto generated report",
+                                                 '    """',
+                                                  "",
+                                                  "    lst_ret = []"
+                                                  ]]
+
+        wobjects_map = {seed.id:seed for wobj in worker_wobjects for seed in seeds[wobj.id]}
+
+
+        for wobj in worker_wobjects:
+            wobjects_map[wobj.id] = wobj
+
+        provisioned_wobject_ids = []
+
+        waiting_wobject_ids = list(wobjects_map.keys())
+
+        for wobj in worker_wobjects:
+            param_name, lst_ret_tmp = wobj.convert_to_python(indent=indent + 4, suppress={"completed_time":0})
+            lst_ret += [""] + lst_ret_tmp
+            provisioned_wobject_ids.append(wobj.id)
+            waiting_wobject_ids.remove(wobj.id)
+
+        changed = True
+        while waiting_wobject_ids:
+            logger.info(f"{len(provisioned_wobject_ids)=}, {len(waiting_wobject_ids)=}")
+            if not changed:
+                raise RuntimeError(f"Not changed, more waiting objects in the list: {waiting_wobject_ids=}")
+            changed = False
+            for waiting_wobject_id in waiting_wobject_ids:
+                all_provisioned_children = []
+
+                for hapi_uid in wobjects_map[waiting_wobject_id].child_hapi_uids:
+                    raise NotImplementedError(
+                        f"Not yet have support for mix format - add new wobj to existing one {hapi_uid}")
+
+                for child_id in wobjects_map[waiting_wobject_id].child_ids:
+                    if child_id not in wobjects_map:
+                        continue
+                    if child_id not in provisioned_wobject_ids:
+                        all_provisioned_children = None
+                        break
+                    all_provisioned_children.append(wobjects_map[child_id])
+
+                if all_provisioned_children is None:
+                    continue
+
+                param_name, lst_ret_tmp = wobjects_map[waiting_wobject_id].convert_to_python(indent=indent + 4, suppress={"completed_time": 0})
+                lst_ret += [""] + lst_ret_tmp
+                for owner_assigned_child in all_provisioned_children:
+                    lst_ret += [" "*(indent + 4) + f"{param_name}.children.append({owner_assigned_child.generate_python_self_param_name()})"]
+                waiting_wobject_ids.remove(waiting_wobject_id)
+                provisioned_wobject_ids.append(waiting_wobject_id)
+                changed = True
+                break
+
+        added_params = []
+        for wobj in worker_wobjects:
+            values = seeds[wobj.id]
+
+            if not values:
+                param_name = wobj.generate_python_self_param_name()
+            else:
+                param_name = values[-1].generate_python_self_param_name()
+
+            if param_name in added_params:
+                continue
+
+            added_params.append(param_name)
+
+            lst_ret += [str_indent + f"    lst_ret.append({param_name})"]
+
+        lst_ret += ["", str_indent + "    return lst_ret"]
+
+        return lst_ret, function_name
+
     def save_sprint_work_status(self, file_path):
+        """
+        Save current status to a file.
+
+        :param file_path:
+        :return:
+        """
+
+        sprints = self.get_sprints(sprint_names=[self.configuration.sprint_name])
+        self.init_tasks_map(sprints=sprints)
+        lst_all = [wobj.convert_to_dict() for wobj in [*self.tasks.values(),
+                   *self.bugs.values(),
+                   *self.user_stories.values(),
+                   *self.features.values(),
+                   *self.epics.values()]]
+
+        with open(file_path, "w", encoding="utf-8") as file_handler:
+            json.dump(lst_all, file_handler)
+
+    def save_sprint_work_status_old(self, file_path):
         """
         Save current status to a file.
 
@@ -1176,12 +1456,14 @@ class HumanAPI:
                     if obj.id in seen]
 
         seen = list(set(parent_id for obj in lst_ret for parent_id in obj.parent_ids))
-        lst_ret += [obj for obj in [*self.tasks.values(), *self.tasks.values(), *self.user_stories.values(), *self.features.values()]
+        lst_ret += [obj for obj in
+                    [*self.tasks.values(), *self.tasks.values(), *self.user_stories.values(), *self.features.values()]
                     if obj.id in seen]
 
         seen = list(set(parent_id for obj in lst_ret for parent_id in obj.parent_ids))
         lst_ret += [obj for obj in
-                    [*self.tasks.values(), *self.tasks.values(), *self.user_stories.values(), *self.features.values(), *self.epics.values()]
+                    [*self.tasks.values(), *self.tasks.values(), *self.user_stories.values(), *self.features.values(),
+                     *self.epics.values()]
                     if obj.id in seen]
 
         lst_ret_ids = list(set(obj.id for obj in lst_ret))
@@ -1205,6 +1487,7 @@ class HumanAPI:
         if not os.path.exists(self.configuration.sprint_finish_status_file_path):
             self.save_sprint_work_status(self.configuration.sprint_finish_status_file_path)
 
+        self.generate_sprint_retro_work_plan_base_python()
         ret = self.generate_retrospective_planned_vs_current()
         return ret
 
@@ -1229,9 +1512,17 @@ class HumanAPI:
         sprint_finish_work_objects_map = self.split_by_worker(sprint_finished_items)
 
         for worker in sprint_plan_work_objects_map:
-            tb_ret_block = self.generate_retrospective_planned_vs_current_per_worker(worker, sprint_plan_work_objects_map[worker], sprint_finish_work_objects_map[worker])
+            tb_ret_block = self.generate_retrospective_planned_vs_current_per_worker(worker,
+                                                                                     sprint_plan_work_objects_map[
+                                                                                         worker],
+                                                                                     sprint_finish_work_objects_map[
+                                                                                         worker])
             tb_ret.blocks.append(tb_ret_block)
-            tb_ret_block = self.generate_retrospective_sprint_start_vs_current_per_worker(worker, sprint_plan_work_objects_map[worker], sprint_finish_work_objects_map[worker])
+            tb_ret_block = self.generate_retrospective_sprint_start_vs_current_per_worker(worker,
+                                                                                          sprint_plan_work_objects_map[
+                                                                                              worker],
+                                                                                          sprint_finish_work_objects_map[
+                                                                                              worker])
             tb_ret.blocks.append(tb_ret_block)
 
         print(tb_ret.format_pprint(shift=2))
@@ -1268,7 +1559,8 @@ class HumanAPI:
             if work_object_current.type not in ["Task", "Bug"]:
                 continue
             if work_object_current.id not in work_objects_planned_map:
-                htb_ret.lines.append(f"Unplanned ad-hoc work {work_object_current.title}, {work_object_current.sprint_name}, {work_object_current.id} ")
+                htb_ret.lines.append(
+                    f"Unplanned ad-hoc work {work_object_current.title}, {work_object_current.sprint_name}, {work_object_current.id} ")
                 try:
                     ad_hoc_planned += work_object_current.estimated_time
                 except TypeError:
@@ -1325,7 +1617,8 @@ class HumanAPI:
             if work_object_current.type not in ["Task", "Bug"]:
                 continue
             if work_object_current.id not in work_objects_planned_map:
-                htb_ret.lines.append(f"Unplanned ad-hoc work {work_object_current.title}, {work_object_current.sprint_name}, {work_object_current.id} ")
+                htb_ret.lines.append(
+                    f"Unplanned ad-hoc work {work_object_current.title}, {work_object_current.sprint_name}, {work_object_current.id} ")
                 try:
                     ad_hoc_planned += work_object_current.estimated_time
                 except TypeError:
