@@ -13,6 +13,7 @@ mock_values_file_path = os.path.abspath(
         os.path.dirname(os.path.abspath(__file__)), "..", "ignore", "mock_values.py"
     )
 )
+print(mock_values_file_path)
 mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 
 src_aws_region = "us-west-2"
