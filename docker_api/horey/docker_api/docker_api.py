@@ -263,7 +263,6 @@ class DockerAPI:
         @return:
         """
 
-        logger.info(f"Removing image: {image_id}.")
         if force:
             for child_image_id in self.get_child_image_ids(image_id):
                 self.remove_image(child_image_id, force=True)
@@ -271,6 +270,7 @@ class DockerAPI:
             for container in self.get_containers_by_image(image_id):
                 self.kill_container(container, remove=True)
 
+        logger.info(f"Removing image: {image_id}.")
         self.client.images.remove(image_id, force=force)
 
     def get_all_images(self, repo_name=None):
