@@ -8,6 +8,10 @@ from horey.aws_api.aws_services_entities.cloudfront_origin_access_identity impor
 from horey.aws_api.aws_services_entities.cloudfront_distribution import (
     CloudfrontDistribution,
 )
+from horey.aws_api.aws_services_entities.cloudfront_function import (
+    CloudfrontFunction,
+)
+from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.h_logger import get_logger
 
 logger = get_logger()
@@ -249,5 +253,211 @@ class CloudfrontClient(Boto3Client):
 
         for response in self.execute(
                 self.client.get_distribution_config, None, filters_req=request, raw_data=True
+        ):
+            return response
+
+    def get_all_functions(self, full_information=False):
+        """
+        Get the full list
+
+        :param full_information:
+        :return:
+        """
+
+        lst_ret = []
+        for ret in self.execute(self.client.list_functions, "FunctionList"):
+            for dict_item in ret["Items"]:
+                function = CloudfrontFunction(dict_item)
+                lst_ret.append(function)
+                if full_information:
+                    self.update_function_full_information(function)
+        return lst_ret
+
+    def update_function_full_information(self, function):
+        """
+        Get the code.
+
+        :param function:
+        :return:
+        """
+        if function.region:
+            AWSAccount.set_aws_region(function.region)
+
+        for response in self.execute(self.client.get_function, None, raw_data=True, filters_req={"Name": function.name}):
+            del response["ResponseMetadata"]
+            response["FunctionCode"] = response["FunctionCode"].read().decode("utf-8")
+            function.update_from_raw_response(response)
+
+    def update_function_info(self, function: CloudfrontFunction, full_information=False):
+        """
+        Standard.
+
+        :param function:
+        :return:
+        """
+
+        if function.region:
+            AWSAccount.set_aws_region(function.region)
+
+        filters_req = {"Name": function.name}
+
+        if function.stage:
+            filters_req["Stage"] = function.stage
+        else:
+            filters_req["Stage"] = "LIVE"
+
+        for response in self.execute(self.client.describe_function, None, raw_data=True,
+                                     filters_req=filters_req, exception_ignore_callback=lambda exception_inst: "NoSuchFunctionExists" in repr(exception_inst)):
+            function.update_from_raw_response(response)
+            break
+        else:
+            return False
+
+        if full_information:
+            self.update_function_full_information(function)
+
+        return  True
+
+    def provision_function(self, function: CloudfrontFunction):
+        """
+        Standard.
+
+        :param function:
+        :return:
+        """
+
+        function_current = CloudfrontFunction({})
+        function_current.region = function.region
+        function_current.name = function.name
+        function_current.stage = function.stage if function.stage else "LIVE"
+
+        AWSAccount.set_aws_region(function.region)
+        if not self.update_function_info(function_current, full_information=True):
+            response = self.provision_function_raw(function.generate_create_request())
+            if function.stage == "LIVE":
+                function.update_from_raw_response(response)
+                response = self.publish_function_raw(function.generate_publish_request())
+            function.update_from_raw_response(response)
+            return None
+
+        request = function_current.generate_update_request(function)
+        if request:
+            response = self.update_function_raw(request)
+            function.update_from_raw_response(response)
+            if function.stage == "LIVE":
+                response = self.publish_function_raw(function.generate_publish_request())
+                function.update_from_raw_response(response)
+
+        return self.update_function_info(function)
+
+    def provision_function_raw(self, request_dict):
+        """
+        Standard.
+
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Creating cloudfornt function {request_dict}")
+
+        for response in self.execute(
+            self.client.create_function,
+            None,
+            raw_data=True,
+            filters_req=request_dict,
+        ):
+            return response
+
+    def publish_function_raw(self, request_dict):
+        """
+        Standard.
+
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Publishing cloudfornt function {request_dict}")
+
+        for response in self.execute(
+            self.client.publish_function,
+            None,
+            raw_data=True,
+            filters_req=request_dict,
+        ):
+            return response
+
+    def update_function_raw(self, request_dict):
+        """
+        Standard.
+
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Updating cloudfornt function {request_dict}")
+
+        for response in self.execute(
+            self.client.update_function,
+            None,
+            raw_data=True,
+            filters_req=request_dict,
+        ):
+            return response
+
+    def dispose_function(self, function):
+        """
+        Standard.
+
+        :param function:
+        :return:
+        """
+
+        AWSAccount.set_aws_region(function.region)
+        if self.update_function_info(function, full_information=False):
+            self.dispose_function_raw(function.generate_dispose_request())
+
+    def dispose_function_raw(self, request_dict):
+        """
+        Standard.
+
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Deleting cloudfornt function{request_dict}")
+        for response in self.execute(
+                self.client.delete_function,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
+        ):
+            return response
+
+    def test_function(self, function: CloudfrontFunction, event_object):
+        """
+        Test the function
+
+        :param function:
+        :param event_object:
+        :return:
+        """
+
+        request = function.generate_test_request(event_object)
+        response = self.test_function_raw(request)
+        return response
+
+    def test_function_raw(self, request_dict):
+        """
+        Standard.
+
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Testing cloudfornt function{request_dict}")
+        for response in self.execute(
+                self.client.test_function,
+                "TestResult",
+                filters_req=request_dict, instant_raise=True
         ):
             return response
