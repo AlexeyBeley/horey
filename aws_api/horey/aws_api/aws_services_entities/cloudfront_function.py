@@ -109,6 +109,29 @@ class CloudfrontFunction(AwsObject):
 
         return request if changed else None
 
+    def generate_test_request(self, event_object):
+        """
+
+        :param event_object:
+        :return:
+        """
+        required_attrs = ["Name", "ETag"]
+
+        request = {}
+        for attr_name in required_attrs:
+            attr_value = getattr(self, CommonUtils.camel_case_to_snake_case(attr_name))
+            if not attr_value:
+                raise RuntimeError(f"Attribute value was not set: {attr_name}")
+            request[attr_name] = attr_value
+        request["IfMatch"] = request.pop("ETag")
+
+        if self.stage:
+            request["Stage"] = self.stage
+
+        request["EventObject"] = event_object
+
+        return request
+
     def generate_dispose_request(self):
         """
         Standard.

@@ -329,13 +329,14 @@ class CloudfrontClient(Boto3Client):
         function_current = CloudfrontFunction({})
         function_current.region = function.region
         function_current.name = function.name
-        function_current.stage = "LIVE"
+        function_current.stage = function.stage if function.stage else "LIVE"
 
         AWSAccount.set_aws_region(function.region)
         if not self.update_function_info(function_current, full_information=True):
             response = self.provision_function_raw(function.generate_create_request())
-            function.update_from_raw_response(response)
-            response = self.publish_function_raw(function.generate_publish_request())
+            if function.stage == "LIVE":
+                function.update_from_raw_response(response)
+                response = self.publish_function_raw(function.generate_publish_request())
             function.update_from_raw_response(response)
             return None
 
@@ -343,8 +344,11 @@ class CloudfrontClient(Boto3Client):
         if request:
             response = self.update_function_raw(request)
             function.update_from_raw_response(response)
+            if function.stage == "LIVE":
+                response = self.publish_function_raw(function.generate_publish_request())
+                function.update_from_raw_response(response)
 
-        return None
+        return self.update_function_info(function)
 
     def provision_function_raw(self, request_dict):
         """
@@ -426,5 +430,34 @@ class CloudfrontClient(Boto3Client):
                 None,
                 raw_data=True,
                 filters_req=request_dict,
+        ):
+            return response
+
+    def test_function(self, function: CloudfrontFunction, event_object):
+        """
+        Test the function
+
+        :param function:
+        :param event_object:
+        :return:
+        """
+
+        request = function.generate_test_request(event_object)
+        response = self.test_function_raw(request)
+        return response
+
+    def test_function_raw(self, request_dict):
+        """
+        Standard.
+
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Testing cloudfornt function{request_dict}")
+        for response in self.execute(
+                self.client.test_function,
+                "TestResult",
+                filters_req=request_dict, instant_raise=True
         ):
             return response
