@@ -55,8 +55,10 @@ def test_init_client():
 
 
 def test_detach_instances():
-    region = Region.get_region("us-west-2")
-    inst_ids = [""]
+    region = Region.get_region("us-east-1")
+    inst_ids = [
+                "",
+                ]
     asg_name = mock_values["autoscaling_group_name_detach_instances"]
     client.detach_instances(region, inst_ids, asg_name, decrement=True)
 

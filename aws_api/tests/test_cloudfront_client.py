@@ -9,6 +9,9 @@ from horey.aws_api.aws_clients.cloudfront_client import CloudfrontClient
 from horey.aws_api.aws_services_entities.cloudfront_distribution import (
     CloudfrontDistribution,
 )
+from horey.aws_api.aws_services_entities.cloudfront_function import (
+    CloudfrontFunction,
+)
 from horey.aws_api.aws_services_entities.cloudfront_origin_access_identity import (
     CloudfrontOriginAccessIdentity,
 )
@@ -156,6 +159,75 @@ def test_provision_distribution():
     cloudfront_client.provision_distribution(cloudfront_distribution)
 
 
+def test_get_all_functions():
+    cloudfront_client = CloudfrontClient()
+    functions = cloudfront_client.get_all_functions()
+    assert isinstance(functions, list)
+
+
+def test_get_all_functions_full_info():
+    cloudfront_client = CloudfrontClient()
+    functions = cloudfront_client.get_all_functions(full_information=True)
+    assert isinstance(functions, list)
+
+
+def test_update_function_info():
+    cloudfront_client = CloudfrontClient()
+    function = Mock()
+    function.name = "some-function"
+    function.region = "us-east-1"
+    function.stage = None
+    assert cloudfront_client.update_function_info(function, full_information=True)
+
+
+def test_update_function_info_non_existing_function():
+    cloudfront_client = CloudfrontClient()
+    function = Mock()
+    function.name = "some-function-non-existing"
+    function.stage = None
+    function.region = "us-east-1"
+    assert not cloudfront_client.update_function_info(function, full_information=True)
+
+function_to_provision = CloudfrontFunction({})
+function_to_provision.name = "some-function"
+function_to_provision.region = "us-west-2"
+function_to_provision.stage = None
+function_to_provision.function_config = {"Comment": function_to_provision.name,
+                                         "Runtime": "cloudfront-js-2.0"
+                                         }
+function_to_provision.function_code = "function handler(event) {\n    // NOTE: This example function is for a viewer request event trigger. \n" \
+                                      "    // Choose viewer request for event trigger when you associate this function with a distribution. \n " \
+                                      "   var response = {\n        statusCode: 200,\n        statusDescription: 'OK',\n        headers: {\n  " \
+                                      "          'cloudfront-functions': { value: 'generated-by-CloudFront-Functions-' }\n        }\n    };\n   " \
+                                      " return response;\n}"
+
+def test_provision_function():
+    cloudfront_client = CloudfrontClient()
+    cloudfront_client.provision_function(function_to_provision)
+
+
+def test_provision_function_update():
+    cloudfront_client = CloudfrontClient()
+    function_to_provision.function_code = "function handler(event) {\n    // NOTE: This example_2 function is for a viewer request event trigger. \n" \
+                                          "    // Choose viewer request for event trigger when you associate this function with a distribution. \n" \
+                                          "    var response = {\n        statusCode: 200,\n        statusDescription: 'OK',\n        headers: {\n" \
+                                          "            'cloudfront-functions': { value: 'generated-by-CloudFront-Functions-' }\n        }\n    };\n" \
+                                          "    return response;\n}"
+    cloudfront_client.provision_function(function_to_provision)
+
+
+def test_dispose_function():
+    cloudfront_client = CloudfrontClient()
+    cloudfront_client.dispose_function(function_to_provision)
+
+
 if __name__ == "__main__":
     # test_provision_origin_access_identity()
-    test_provision_distribution()
+    # test_provision_distribution()
+    test_get_all_functions()
+    test_get_all_functions_full_info()
+    test_update_function_info_non_existing_function()
+    test_provision_function()
+    test_update_function_info()
+    test_provision_function_update()
+    test_dispose_function()
