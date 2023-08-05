@@ -58,6 +58,14 @@ class HumanAPIConfigurationPolicy(ConfigurationPolicy):
         return os.path.join(self.daily_dir_path, "ytb.hapi")
 
     @property
+    def work_status_file_name(self):
+        return "work_status.json"
+
+    @property
+    def work_status_file_path(self):
+        return os.path.join(self.daily_dir_path, self.work_status_file_name)
+
+    @property
     def sprint_dir_path(self):
         ret = os.path.join(self.reports_dir_path, self.sprint_name.replace(" ", "_"))
         os.makedirs(ret, exist_ok=True)

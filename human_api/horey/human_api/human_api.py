@@ -809,6 +809,93 @@ class HumanAPI:
 
         self.daily_action()
 
+    def big_brother(self):
+        """
+        Watch user activity.
+
+        :return:
+        """
+
+        if not os.path.exists(self.configuration.work_status_file_path):
+            self.save_sprint_work_status(self.configuration.work_status_file_path)
+
+        with open(self.configuration.work_status_file_path, encoding="utf-8") as file_handler:
+            dict_wobjects = json.load(file_handler)
+            current_wobjects = self.generate_work_objects_from_dicts(dict_wobjects)
+        current_tasks_and_bugs = [wobj for wobj in current_wobjects if wobj.type in ["Task", "Bug"] and wobj.sprint_name == self.configuration.sprint_name]
+        current_tasks_bugs_map = self.split_by_worker(current_tasks_and_bugs)
+
+        this_day_dir_name = os.path.basename(os.path.dirname(self.configuration.work_status_file_path))
+        str_year = this_day_dir_name[:4]
+        digit_names = [name for name in os.listdir(os.path.dirname(os.path.dirname(self.configuration.work_status_file_path)))
+                       if name.startswith(str_year) and name != this_day_dir_name]
+        previous_report_file_path = os.path.join(self.configuration.sprint_dir_path, sorted(digit_names)[-1], self.configuration.work_status_file_name)
+        with open(previous_report_file_path, encoding="utf-8") as file_handler:
+            dict_wobjects = json.load(file_handler)
+            previous_wobjects = self.generate_work_objects_from_dicts(dict_wobjects)
+        previous_wobjects = [wobj for wobj in previous_wobjects if wobj.type in ["Task", "Bug"] and wobj.sprint_name == self.configuration.sprint_name]
+        previous_wobjects_map = self.split_by_worker(previous_wobjects)
+        for worker in current_tasks_bugs_map:
+            htb_ret = self.genereate_worker_big_brother_report(worker, current_tasks_bugs_map, previous_wobjects_map, {wobj.id: wobj for wobj in current_wobjects})
+            print(htb_ret.format_pprint(shift=4))
+
+    def genereate_worker_big_brother_report(self, worker, current_tasks_bugs_map, previous_wobjects_map, current_wobjects):
+        """
+        Generate status per worker based on current vs previous comparison.
+
+        :param current_wobjects:
+        :param worker:
+        :param current_tasks_bugs_map:
+        :param previous_wobjects_map:
+        :return:
+        """
+
+        htb_ret = TextBlock(worker)
+        lst_tmp = []
+        previous_workers_wobjects_by_id = {wobj.id: wobj for wobj in previous_wobjects_map["worker"]}
+
+        # wrong parent sprint association
+        for current_wobj in current_tasks_bugs_map[worker]:
+            for parent_id in current_wobj.parent_ids:
+                if current_wobjects[parent_id].sprint_name != current_wobj.sprint_name:
+                    lst_tmp.append(f"{parent_id}->{current_wobjects[parent_id].type}-{current_wobj.id}-[{current_wobjects[parent_id].sprint_name}]")
+        if lst_tmp:
+            htb_ret_tmp = TextBlock("Wrong parent sprint association")
+            htb_ret_tmp.lines = lst_tmp
+            htb_ret.blocks.append(htb_ret_tmp)
+
+        # Wobjects without estimated time
+        lst_tmp = []
+        for current_wobj in current_tasks_bugs_map[worker]:
+            if not current_wobj.estimated_time:
+                lst_tmp.append(f"{current_wobj.id}-[{current_wobj.title}]")
+
+        if lst_tmp:
+            htb_ret_tmp = TextBlock("Time estimation missing")
+            htb_ret_tmp.lines = lst_tmp
+            htb_ret.blocks.append(htb_ret_tmp)
+
+        # Total reported time
+        lst_tmp = []
+        total_time = 0
+        for current_wobj in current_tasks_bugs_map[worker]:
+            if current_wobj.id not in previous_workers_wobjects_by_id:
+                if current_wobj.completed_time:
+                    lst_tmp.append(f"{current_wobj.id}-[{current_wobj.title}] Completed time: +{current_wobj.completed_time}")
+                    total_time += current_wobj.completed_time
+                continue
+            if current_wobj.estimated_time != previous_workers_wobjects_by_id[current_wobj.id].estimated_time:
+                reported_time = current_wobj.estimated_time - previous_workers_wobjects_by_id[current_wobj.id].estimated_time
+                total_time += reported_time
+                lst_tmp.append(
+                    f"{current_wobj.id}-[{current_wobj.title}] Completed time: +{reported_time}")
+
+        htb_ret_tmp = TextBlock(f"Reported work time: {total_time}")
+        htb_ret_tmp.lines = lst_tmp
+        htb_ret.blocks.append(htb_ret_tmp)
+
+        return htb_ret
+
     def validate_daily_routine(self, base_actions_per_worker_map, input_actions_per_worker_map):
         """
         Validate the input syntax is correct.

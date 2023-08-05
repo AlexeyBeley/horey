@@ -108,6 +108,25 @@ def daily_routine(arguments) -> None:
 action_manager.register_action("daily_routine", daily_routine_parser, daily_routine)
 # endregion
 
+# region big_brother
+def big_brother_parser():
+    description = "big_brother"
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument("--human_api_configuration_file_path", required=True, type=str, help="Human API Configuration")
+    return parser
+
+
+def big_brother(arguments) -> None:
+    configuration = HumanAPIConfigurationPolicy()
+    configuration.configuration_file_full_path = arguments.human_api_configuration_file_path
+    configuration.init_from_file()
+    HumanAPI(configuration=configuration).big_brother()
+
+
+action_manager.register_action("big_brother", big_brother_parser, big_brother)
+# endregion
+
+
 
 # region retrospective
 def retrospective_parser():
