@@ -396,9 +396,10 @@ def test_get_instance_password():
     ec2_client = EC2Client()
     instance = Mock()
     instance.id = mock_values["test_get_instance_data_instance_id"]
-    instance.region = Region.get_region("us-west-2")
+    instance.region = Region.get_region("us-east-1")
     private_key_file_path = mock_values["test_get_instance_data_private_key_file_path"]
     ret = ec2_client.get_instance_password(instance, private_key_file_path)
+    print(ret)
     assert ret is not None
 
 
@@ -412,7 +413,7 @@ if __name__ == "__main__":
     # test_raw_describe_managed_prefix_list_by_id()
     # test_raw_describe_managed_prefix_list_by_name()
     # test_find_launch_template()
-    test_provision_volume()
-    test_modify_volume()
-    test_dispose_volume()
-    #test_get_instance_password()
+    #test_provision_volume()
+    #test_modify_volume()
+    #test_dispose_volume()
+    test_get_instance_password()

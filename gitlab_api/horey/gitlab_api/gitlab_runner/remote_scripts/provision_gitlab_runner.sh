@@ -14,11 +14,14 @@ chmod -R 755 /opt/jenkins_jobs_starter/
 
 mkdir -p /opt/jenkins_jobs_starter/venv
 
-python3.8 -m venv /opt/jenkins_jobs_starter/venv
+python -m venv /opt/jenkins_jobs_starter/venv
 
-python3.8 ./provision_gitlab_runner.py
+python ./provision_gitlab_runner.py
 
 sudo chmod +x ./register_gitlab_runner.sh
 ./register_gitlab_runner.sh
 
 sudo cp ./jenkins_job_starter.py /opt/jenkins_jobs_starter/
+
+sudo mkdir /var/log/jenkins_job_starter/
+sudo chown gitlab-runner /var/log/jenkins_job_starter/

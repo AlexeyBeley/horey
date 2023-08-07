@@ -833,6 +833,7 @@ class HumanAPI:
         with open(previous_report_file_path, encoding="utf-8") as file_handler:
             dict_wobjects = json.load(file_handler)
             previous_wobjects = self.generate_work_objects_from_dicts(dict_wobjects)
+
         previous_wobjects = [wobj for wobj in previous_wobjects if wobj.type in ["Task", "Bug"] and wobj.sprint_name == self.configuration.sprint_name]
         previous_wobjects_map = self.split_by_worker(previous_wobjects)
         for worker in current_tasks_bugs_map:
@@ -852,7 +853,7 @@ class HumanAPI:
 
         htb_ret = TextBlock(worker)
         lst_tmp = []
-        previous_workers_wobjects_by_id = {wobj.id: wobj for wobj in previous_wobjects_map["worker"]}
+        previous_workers_wobjects_by_id = {wobj.id: wobj for wobj in previous_wobjects_map[worker]}
 
         # wrong parent sprint association
         for current_wobj in current_tasks_bugs_map[worker]:
@@ -877,20 +878,35 @@ class HumanAPI:
 
         # Total reported time
         lst_tmp = []
-        total_time = 0
+        last_day_reported = 0
+        total_time_reported = 0
+
         for current_wobj in current_tasks_bugs_map[worker]:
+
+            total_time_reported += current_wobj.completed_time or 0
+
             if current_wobj.id not in previous_workers_wobjects_by_id:
                 if current_wobj.completed_time:
                     lst_tmp.append(f"{current_wobj.id}-[{current_wobj.title}] Completed time: +{current_wobj.completed_time}")
-                    total_time += current_wobj.completed_time
+                    last_day_reported += current_wobj.completed_time
                 continue
-            if current_wobj.estimated_time != previous_workers_wobjects_by_id[current_wobj.id].estimated_time:
-                reported_time = current_wobj.estimated_time - previous_workers_wobjects_by_id[current_wobj.id].estimated_time
-                total_time += reported_time
+
+            if current_wobj.completed_time != previous_workers_wobjects_by_id[current_wobj.id].completed_time:
+                reported_time = current_wobj.completed_time - (previous_workers_wobjects_by_id[current_wobj.id].completed_time or 0)
+                last_day_reported += reported_time
                 lst_tmp.append(
                     f"{current_wobj.id}-[{current_wobj.title}] Completed time: +{reported_time}")
 
-        htb_ret_tmp = TextBlock(f"Reported work time: {total_time}")
+        # Total left time
+        total_time_left = 0
+        for current_wobj in current_tasks_bugs_map[worker]:
+            if current_wobj.status == current_wobj.Status.CLOSED or current_wobj.estimated_time is None:
+                continue
+            left_time = current_wobj.estimated_time - (current_wobj.completed_time or 0)
+            total_time_left += max(0, left_time)
+
+        htb_ret_tmp = TextBlock(f"Work time. Last day: reported +{last_day_reported}. "
+                                f"Sprint reported +{total_time_reported}. Sprint remaining +{total_time_left} / {6*5*2}")
         htb_ret_tmp.lines = lst_tmp
         htb_ret.blocks.append(htb_ret_tmp)
 
