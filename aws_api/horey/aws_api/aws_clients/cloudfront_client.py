@@ -11,6 +11,9 @@ from horey.aws_api.aws_services_entities.cloudfront_distribution import (
 from horey.aws_api.aws_services_entities.cloudfront_function import (
     CloudfrontFunction,
 )
+from horey.aws_api.aws_services_entities.cloudfront_response_headers_policy import (
+    CloudfrontResponseHeadersPolicy,
+)
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.h_logger import get_logger
 
@@ -459,5 +462,139 @@ class CloudfrontClient(Boto3Client):
                 self.client.test_function,
                 "TestResult",
                 filters_req=request_dict, instant_raise=True
+        ):
+            return response
+
+    def get_all_response_headers_policies(self, full_information=True):
+        """
+        Docstring standard.
+
+        :return:
+        """
+
+        final_result = []
+
+        for response in self.execute(
+            self.client.list_response_headers_policies,
+            "ResponseHeadersPolicyList",
+            internal_starting_token=True,
+        ):
+            for dict_src in response["Items"]:
+                pol = CloudfrontResponseHeadersPolicy(dict_src)
+                final_result.append(pol)
+                if full_information:
+                    self.update_response_headers_policy_full_information(pol)
+
+        return final_result
+
+    def update_response_headers_policy_full_information(self, policy):
+        """
+        Standard.
+
+        :param policy:
+        :return:
+        """
+
+        for response in self.execute(
+            self.client.get_response_headers_policy,
+            "ResponseHeadersPolicy", filters_req={"Id": policy.id}
+        ):
+
+            policy.update_from_raw_response(response)
+
+    def update_response_headers_policy_info(self, policy: CloudfrontResponseHeadersPolicy, full_information=False):
+        """
+        Standard
+
+        :param policy:
+        :param full_information:
+        :return:
+        """
+
+        for current_policy in self.get_all_response_headers_policies(full_information=False):
+            if current_policy.name == policy.name:
+                policy.update_from_raw_response(current_policy.dict_src)
+                if full_information:
+                    self.update_response_headers_policy_full_information(policy)
+                return True
+
+        return False
+
+    def provision_response_headers_policy(self, desired_policy: CloudfrontResponseHeadersPolicy):
+        """
+        Standard.
+
+        :param desired_policy:
+        :return:
+        """
+
+        current_policy = CloudfrontResponseHeadersPolicy({})
+        current_policy.name = desired_policy.name
+        if not self.update_response_headers_policy_info(desired_policy):
+            response = self.provision_response_headers_policy_raw(desired_policy.generate_create_request())
+            desired_policy.update_from_raw_response(response)
+            return
+        update_request = current_policy.generate_update_request(desired_policy)
+        if update_request:
+            response = self.update_response_headers_policy_raw(update_request)
+            desired_policy.update_from_raw_response(response)
+
+    def provision_response_headers_policy_raw(self, request_dict):
+        """
+        Standard.
+
+        :param request_dict:
+        :return:
+        """
+        logger.info(f"Creating response_headers_policy {request_dict}")
+        for response in self.execute(
+                self.client.create_response_headers_policy,
+                "ResponseHeadersPolicy",
+                filters_req=request_dict, instant_raise=True
+        ):
+            return response
+
+    def update_response_headers_policy_raw(self, request_dict):
+        """
+        Standard.
+
+        :param request_dict:
+        :return:
+        """
+
+        breakpoint()
+        logger.info(f"Updating response_headers_policy {request_dict}")
+        for response in self.execute(
+                self.client.update_response_headers_policy,
+                "ResponseHeadersPolicy",
+                filters_req=request_dict
+        ):
+            return response
+
+    def dispose_response_headers_policy(self, policy: CloudfrontResponseHeadersPolicy):
+        """
+        Standard.
+
+        :param policy:
+        :return:
+        """
+        if self.update_response_headers_policy_info(policy):
+            self.dispose_response_headers_policy_raw(policy.generate_dispose_request())
+
+    def dispose_response_headers_policy_raw(self, request_dict):
+        """
+        Standard.
+
+        :param request_dict:
+        :return:
+        """
+
+        breakpoint()
+        logger.info(f"Deleting response_headers_policy {request_dict}")
+        for response in self.execute(
+                self.client.delete_response_headers_policy,
+                None,
+                raw_data=True,
+                filters_req=request_dict
         ):
             return response

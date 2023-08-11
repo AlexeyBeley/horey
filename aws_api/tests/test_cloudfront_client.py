@@ -18,6 +18,10 @@ from horey.aws_api.aws_services_entities.cloudfront_origin_access_identity impor
     CloudfrontOriginAccessIdentity,
 )
 
+from horey.aws_api.aws_services_entities.cloudfront_response_headers_policy import (
+    CloudfrontResponseHeadersPolicy,
+)
+
 from horey.h_logger import get_logger
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.common_utils.common_utils import CommonUtils
@@ -222,6 +226,7 @@ def test_provision_function_update_development():
     cloudfront_client.provision_function(function_to_provision)
     assert function_to_provision.e_tag is not None and function_to_provision.stage == "DEVELOPMENT"
 
+
 def test_provision_function_live():
     cloudfront_client = CloudfrontClient()
     function_to_provision.stage = "LIVE"
@@ -240,6 +245,7 @@ def test_provision_function_update_live():
     function_to_provision.stage = "LIVE"
     cloudfront_client.provision_function(function_to_provision)
     assert function_to_provision.e_tag is not None and function_to_provision.stage == "LIVE"
+
 
 def test_dispose_function():
     cloudfront_client = CloudfrontClient()
@@ -267,7 +273,8 @@ def test_test_function_live():
     cloudfront_client.update_function_info(function_to_provision)
     function_to_provision.stage = "LIVE"
     ret = cloudfront_client.test_function(function_to_provision, json.dumps(event_object))
-    assert json.loads(ret["FunctionOutput"])["response"]["headers"]["cloudfront-functions"]["value"] == "generated-by-CloudFront-Functions-"
+    assert json.loads(ret["FunctionOutput"])["response"]["headers"]["cloudfront-functions"][
+               "value"] == "generated-by-CloudFront-Functions-"
 
 
 def test_test_function_live_must_fail():
@@ -306,6 +313,7 @@ def test_provision_function_development_deploy_bug():
     cloudfront_client.provision_function(function_to_provision)
     assert function_to_provision.e_tag is not None and function_to_provision.stage == "DEVELOPMENT"
 
+
 def test_test_function_development_fail_on_bug():
     event_object = {
         "version": "1.0",
@@ -331,24 +339,85 @@ def test_test_function_development_fail_on_bug():
     assert ret.get("FunctionErrorMessage")
 
 
+def test_get_all_response_headers_policies():
+    cloudfront_client = CloudfrontClient()
+    cloudfront_client.get_all_response_headers_policies()
+
+
+POLICY_NAME = "test-policy"
+
+
+def test_update_response_headers_policy_info():
+    cloudfront_client = CloudfrontClient()
+    policy = CloudfrontResponseHeadersPolicy({})
+    policy.name = POLICY_NAME
+    cloudfront_client.update_response_headers_policy_info(policy, full_information=True)
+
+
+def test_provision_response_headers_policy_new():
+    cloudfront_client = CloudfrontClient()
+    policy = CloudfrontResponseHeadersPolicy({})
+    policy.name = POLICY_NAME
+    policy.response_headers_policy_config = {"Comment": "Allows all origins for simple CORS requests",
+                                             "Name": POLICY_NAME, "CorsConfig": {
+            "AccessControlAllowCredentials": False,
+            "OriginOverride": False}}
+    cloudfront_client.provision_response_headers_policy(policy)
+
+
+def test_provision_response_headers_policy_existing():
+    cloudfront_client = CloudfrontClient()
+    policy = CloudfrontResponseHeadersPolicy({})
+    policy.response_headers_policy_config = {"Comment": "Allows all origins for simple CORS requests",
+                                             "Name": POLICY_NAME, "CorsConfig": {
+            "AccessControlAllowCredentials": False,
+            "OriginOverride": False}}
+    policy.name = POLICY_NAME
+    cloudfront_client.provision_response_headers_policy(policy)
+
+
+def test_provision_response_headers_policy_update():
+    cloudfront_client = CloudfrontClient()
+    policy = CloudfrontResponseHeadersPolicy({})
+    policy.response_headers_policy_config = {"Comment": "Change the comment",
+                                             "Name": POLICY_NAME, "CorsConfig": {
+            "AccessControlAllowOrigins": {"Quantity": 1, "Items": ["*"]},
+            "AccessControlAllowHeaders": {"Quantity": 0, "Items": []},
+            "AccessControlAllowMethods": {"Quantity": 0, "Items": []}, "AccessControlAllowCredentials": False,
+            "AccessControlExposeHeaders": {"Quantity": 0, "Items": []}, "OriginOverride": False}}
+    policy.name = POLICY_NAME
+    cloudfront_client.provision_response_headers_policy(policy)
+
+
+def test_dispose_response_headers_policy():
+    cloudfront_client = CloudfrontClient()
+    policy = CloudfrontResponseHeadersPolicy({})
+    policy.name = POLICY_NAME
+    cloudfront_client.dispose_response_headers_policy(policy)
 
 
 if __name__ == "__main__":
     # test_provision_origin_access_identity()
     # test_provision_distribution()
-    test_get_all_functions()
-    test_get_all_functions_full_info()
-    test_update_function_info_non_existing_function()
+    # test_get_all_functions()
+    # test_get_all_functions_full_info()
+    # test_update_function_info_non_existing_function()
 
-    test_provision_function_development()
-    test_test_function_live_must_fail()
-    test_update_function_info()
-    test_provision_function_update_development()
-    test_dispose_function()
+    # test_provision_function_development()
+    # test_test_function_live_must_fail()
+    # test_update_function_info()
+    # test_provision_function_update_development()
+    # test_dispose_function()
 
-    test_provision_function_live()
-    test_test_function_live()
-    test_provision_function_update_live()
-    test_provision_function_development_deploy_bug()
-    test_test_function_development_fail_on_bug()
-    test_dispose_function()
+    # test_provision_function_live()
+    # test_test_function_live()
+    # test_provision_function_update_live()
+    # test_provision_function_development_deploy_bug()
+    # test_test_function_development_fail_on_bug()
+    # test_dispose_function()
+    # test_get_all_response_headers_policies()
+    # test_update_response_headers_policy_info()
+    test_provision_response_headers_policy_new()
+    test_provision_response_headers_policy_existing()
+    test_provision_response_headers_policy_update()
+    test_dispose_response_headers_policy()

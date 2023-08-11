@@ -57,9 +57,9 @@ def test_init_client():
 def test_detach_instances():
     region = Region.get_region("us-east-1")
     inst_ids = [
-                "",
+
                 ]
-    asg_name = mock_values["autoscaling_group_name_detach_instances"]
+    asg_name = mock_values["autoscaling_group_name_detach_instances_prod"]
     client.detach_instances(region, inst_ids, asg_name, decrement=True)
 
     ec2_client = EC2Client()
