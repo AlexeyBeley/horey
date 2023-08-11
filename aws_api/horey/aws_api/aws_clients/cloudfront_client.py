@@ -487,7 +487,7 @@ class CloudfrontClient(Boto3Client):
 
         return final_result
 
-    def update_response_headers_policy_full_information(self, policy):
+    def update_response_headers_policy_full_information(self, policy: CloudfrontResponseHeadersPolicy):
         """
         Standard.
 
@@ -497,7 +497,7 @@ class CloudfrontClient(Boto3Client):
 
         for response in self.execute(
             self.client.get_response_headers_policy,
-            "ResponseHeadersPolicy", filters_req={"Id": policy.id}
+            None, raw_data=True, filters_req={"Id": policy.id}
         ):
 
             policy.update_from_raw_response(response)
@@ -511,14 +511,18 @@ class CloudfrontClient(Boto3Client):
         :return:
         """
 
-        for current_policy in self.get_all_response_headers_policies(full_information=False):
-            if current_policy.name == policy.name:
-                policy.update_from_raw_response(current_policy.dict_src)
-                if full_information:
-                    self.update_response_headers_policy_full_information(policy)
-                return True
+        if policy.id is None:
+            for current_policy in self.get_all_response_headers_policies(full_information=False):
+                if current_policy.name == policy.name:
+                    policy.update_from_raw_response(current_policy.dict_src)
+                    break
+            else:
+                return False
 
-        return False
+        if full_information:
+            self.update_response_headers_policy_full_information(policy)
+
+        return True
 
     def provision_response_headers_policy(self, desired_policy: CloudfrontResponseHeadersPolicy):
         """
@@ -530,10 +534,11 @@ class CloudfrontClient(Boto3Client):
 
         current_policy = CloudfrontResponseHeadersPolicy({})
         current_policy.name = desired_policy.name
-        if not self.update_response_headers_policy_info(desired_policy):
+        if not self.update_response_headers_policy_info(current_policy, full_information=True):
             response = self.provision_response_headers_policy_raw(desired_policy.generate_create_request())
             desired_policy.update_from_raw_response(response)
             return
+
         update_request = current_policy.generate_update_request(desired_policy)
         if update_request:
             response = self.update_response_headers_policy_raw(update_request)
@@ -562,7 +567,6 @@ class CloudfrontClient(Boto3Client):
         :return:
         """
 
-        breakpoint()
         logger.info(f"Updating response_headers_policy {request_dict}")
         for response in self.execute(
                 self.client.update_response_headers_policy,
@@ -578,7 +582,7 @@ class CloudfrontClient(Boto3Client):
         :param policy:
         :return:
         """
-        if self.update_response_headers_policy_info(policy):
+        if self.update_response_headers_policy_info(policy, full_information=True):
             self.dispose_response_headers_policy_raw(policy.generate_dispose_request())
 
     def dispose_response_headers_policy_raw(self, request_dict):
@@ -589,7 +593,6 @@ class CloudfrontClient(Boto3Client):
         :return:
         """
 
-        breakpoint()
         logger.info(f"Deleting response_headers_policy {request_dict}")
         for response in self.execute(
                 self.client.delete_response_headers_policy,

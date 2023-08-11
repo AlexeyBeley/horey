@@ -13,8 +13,8 @@ class CloudfrontResponseHeadersPolicy(AwsObject):
     """
 
     def __init__(self, dict_src, from_cache=False):
-        dict_src = self.normalize_raw_data(dict_src)
 
+        dict_src = self.normalize_raw_data(dict_src)
         super().__init__(dict_src)
         self.e_tag = None
         self._name = None
@@ -61,23 +61,22 @@ class CloudfrontResponseHeadersPolicy(AwsObject):
 
         return request
 
-    def generate_update_request(self, desired_function):
+    def generate_update_request(self, desired):
         """
         Standard.
 
         :return:
         """
-        breakpoint()
-        if self.name != desired_function.name:
-            raise ValueError(f"Cloudfront functions' names do not match: {desired_function.name=}, {self.name=}")
+        if self.name != desired.name:
+            raise ValueError(f"Cloudfront cloudfront_response_headers_policy' names do not match: {desired.name=}, {self.name=}")
 
-        required_attrs = ["Name", "ETag", "FunctionCode", "FunctionConfig"]
+        required_attrs = ["Id", "ResponseHeadersPolicyConfig", "ETag"]
 
         request = {}
         changed = False
         for attr_name in required_attrs:
             self_value = getattr(self, CommonUtils.camel_case_to_snake_case(attr_name))
-            desired_value = getattr(desired_function, CommonUtils.camel_case_to_snake_case(attr_name))
+            desired_value = getattr(desired, CommonUtils.camel_case_to_snake_case(attr_name))
             if not self_value:
                 raise RuntimeError(f"Attribute value was not set in self, this means the self is not initialized correctly: {attr_name}")
 
@@ -100,8 +99,8 @@ class CloudfrontResponseHeadersPolicy(AwsObject):
 
         :return:
         """
-        breakpoint()
-        required_attrs = ["Name", "ETag"]
+
+        required_attrs = ["ETag", "Id"]
 
         request = {}
         for attr_name in required_attrs:

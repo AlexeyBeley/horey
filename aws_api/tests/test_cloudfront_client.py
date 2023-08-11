@@ -360,7 +360,11 @@ def test_provision_response_headers_policy_new():
     policy.name = POLICY_NAME
     policy.response_headers_policy_config = {"Comment": "Allows all origins for simple CORS requests",
                                              "Name": POLICY_NAME, "CorsConfig": {
+            "AccessControlAllowOrigins": {"Quantity": 1, "Items": ["*"]},
+            "AccessControlAllowHeaders": {"Quantity": 1, "Items": ["*"]},
+            "AccessControlAllowMethods": {"Quantity": 1, "Items": ["GET"]},
             "AccessControlAllowCredentials": False,
+            "AccessControlExposeHeaders": {"Quantity": 0, "Items": []},
             "OriginOverride": False}}
     cloudfront_client.provision_response_headers_policy(policy)
 
@@ -370,7 +374,11 @@ def test_provision_response_headers_policy_existing():
     policy = CloudfrontResponseHeadersPolicy({})
     policy.response_headers_policy_config = {"Comment": "Allows all origins for simple CORS requests",
                                              "Name": POLICY_NAME, "CorsConfig": {
+            "AccessControlAllowOrigins": {"Quantity": 1, "Items": ["*"]},
+            "AccessControlAllowHeaders": {"Quantity": 1, "Items": ["*"]},
+            "AccessControlAllowMethods": {"Quantity": 1, "Items": ["GET"]},
             "AccessControlAllowCredentials": False,
+            "AccessControlExposeHeaders": {"Quantity": 0, "Items": []},
             "OriginOverride": False}}
     policy.name = POLICY_NAME
     cloudfront_client.provision_response_headers_policy(policy)
@@ -379,12 +387,14 @@ def test_provision_response_headers_policy_existing():
 def test_provision_response_headers_policy_update():
     cloudfront_client = CloudfrontClient()
     policy = CloudfrontResponseHeadersPolicy({})
-    policy.response_headers_policy_config = {"Comment": "Change the comment",
+    policy.response_headers_policy_config = {"Comment": "Changed GET to HEAD",
                                              "Name": POLICY_NAME, "CorsConfig": {
             "AccessControlAllowOrigins": {"Quantity": 1, "Items": ["*"]},
-            "AccessControlAllowHeaders": {"Quantity": 0, "Items": []},
-            "AccessControlAllowMethods": {"Quantity": 0, "Items": []}, "AccessControlAllowCredentials": False,
-            "AccessControlExposeHeaders": {"Quantity": 0, "Items": []}, "OriginOverride": False}}
+            "AccessControlAllowHeaders": {"Quantity": 1, "Items": ["*"]},
+            "AccessControlAllowMethods": {"Quantity": 1, "Items": ["HEAD"]},
+            "AccessControlAllowCredentials": False,
+            "AccessControlExposeHeaders": {"Quantity": 0, "Items": []},
+            "OriginOverride": False}}
     policy.name = POLICY_NAME
     cloudfront_client.provision_response_headers_policy(policy)
 
@@ -415,8 +425,9 @@ if __name__ == "__main__":
     # test_provision_function_development_deploy_bug()
     # test_test_function_development_fail_on_bug()
     # test_dispose_function()
-    # test_get_all_response_headers_policies()
-    # test_update_response_headers_policy_info()
+
+    test_get_all_response_headers_policies()
+    test_update_response_headers_policy_info()
     test_provision_response_headers_policy_new()
     test_provision_response_headers_policy_existing()
     test_provision_response_headers_policy_update()
