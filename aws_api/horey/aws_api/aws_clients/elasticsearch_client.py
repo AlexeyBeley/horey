@@ -1,8 +1,6 @@
 """
-AWS clietn to handle service API requests.
+AWS client to handle service API requests.
 """
-import pdb
-
 
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.base_entities.aws_account import AWSAccount
@@ -22,29 +20,55 @@ class ElasticsearchClient(Boto3Client):
         client_name = "es"
         super().__init__(client_name)
 
-    def get_all_domains(self, full_information=True):
+    def get_all_domains(self):
+        """
+        Standard.
+
+        :return:
+        """
+
         final_result = []
         for region in AWSAccount.get_aws_account().regions.values():
-            AWSAccount.set_aws_region(region)
-            domain_names = []
-            for response in self.execute(self.client.list_domain_names, "DomainNames"):
-                domain_names.append(response["DomainName"])
+            final_result += self.get_region_domains(region)
+        return final_result
 
-            if len(domain_names) == 0:
-                continue
+    def get_region_domains(self, region):
+        """
+        Standard.
 
-            filters_req = {"DomainNames": domain_names}
-            for response in self.execute(
-                self.client.describe_elasticsearch_domains,
-                "DomainStatusList",
-                filters_req=filters_req,
-            ):
-                obj = ElasticsearchDomain(response)
-                final_result.append(obj)
+        :param region:
+        :return:
+        """
+
+        final_result = []
+        AWSAccount.set_aws_region(region)
+        domain_names = []
+        for response in self.execute(self.client.list_domain_names, "DomainNames"):
+            domain_names.append(response["DomainName"])
+
+        if not domain_names:
+            return final_result
+
+        filters_req = {"DomainNames": domain_names}
+        for response in self.execute(
+            self.client.describe_elasticsearch_domains,
+            "DomainStatusList",
+            filters_req=filters_req,
+        ):
+            obj = ElasticsearchDomain(response)
+            final_result.append(obj)
 
         return final_result
 
     def raw_update_elasticsearch_domain_config(self, request, region=None):
+        """
+        Update from server response.
+
+        :param request:
+        :param region:
+        :return:
+        """
+
         if region is not None:
             AWSAccount.set_aws_region(region)
 
