@@ -1470,7 +1470,8 @@ class AWSAPI:
             self, from_cache=False, cache_file=None,
     ):
         """
-        Init elasticsearch serivces
+        Init elasticsearch services
+
         @param from_cache:
         @param cache_file:
         @return:

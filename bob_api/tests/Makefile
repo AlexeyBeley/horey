@@ -17,5 +17,5 @@ FORCE: ;
 
 build:
 	cd ${HOREY_DIR_PATH} &&\
-	make raw_install_from_source-bob_api
-	#make recursive_install_from_source_local_venv-bob_api
+	make recursive_install_from_source_local_venv-bob_api
+	#make raw_install_from_source-bob_api

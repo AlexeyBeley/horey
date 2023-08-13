@@ -223,16 +223,23 @@ class DockerAPI:
         return repo, tag
 
     @staticmethod
-    def kill_container(container, remove=False):
+    def kill_container(container, remove=False, wait_to_finish=None):
         """
         Kill the running container.
 
         @param container:
         @param remove:
+        @param wait_to_finish:
         @return:
         """
 
         logger.info(f"Killing container: {container.id}.")
+        try:
+            container.wait(timeout=wait_to_finish)
+        except Exception as inst_error:
+            if "Read timed out" not in repr(inst_error):
+                raise
+
         container.kill()
         if remove:
             logger.info(f"Removing container: {container.id}.")
@@ -254,12 +261,13 @@ class DockerAPI:
         ]
         return ret
 
-    def remove_image(self, image_id, force=True):
+    def remove_image(self, image_id, force=True, wait_to_finish=20*60):
         """
         Remove image.
 
         @param image_id:
         @param force:
+        @param wait_to_finish:
         @return:
         """
 
@@ -268,7 +276,7 @@ class DockerAPI:
                 self.remove_image(child_image_id, force=True)
 
             for container in self.get_containers_by_image(image_id):
-                self.kill_container(container, remove=True)
+                self.kill_container(container, remove=True, wait_to_finish=wait_to_finish)
 
         logger.info(f"Removing image: {image_id}.")
         self.client.images.remove(image_id, force=force)
