@@ -173,7 +173,6 @@ from horey.aws_api.aws_clients.eks_client import EKSClient
 from horey.aws_api.aws_services_entities.eks_addon import EKSAddon
 from horey.aws_api.aws_services_entities.eks_cluster import EKSCluster
 
-
 from horey.common_utils.common_utils import CommonUtils
 
 from horey.h_logger import get_logger
@@ -352,7 +351,7 @@ class AWSAPI:
         return account.get_regions()
 
     def init_managed_prefix_lists(
-        self, from_cache=False, cache_file=None, region=None, full_information=True
+            self, from_cache=False, cache_file=None, region=None, full_information=True
     ):
         """
         Self explanatory.
@@ -529,7 +528,7 @@ class AWSAPI:
         self.dynamodb_endpoints = objects
 
     def init_sesv2_email_identities(
-        self, from_cache=False, cache_file=None, region=None
+            self, from_cache=False, cache_file=None, region=None
     ):
         """
         Self explanatory.
@@ -548,7 +547,7 @@ class AWSAPI:
         self.sesv2_email_identities = objects
 
     def init_sesv2_email_templates(
-        self, from_cache=False, cache_file=None, region=None
+            self, from_cache=False, cache_file=None, region=None
     ):
         """
         Self explanatory.
@@ -567,7 +566,7 @@ class AWSAPI:
         self.sesv2_email_templates = objects
 
     def init_sesv2_configuration_sets(
-        self, from_cache=False, cache_file=None, region=None, full_information=False
+            self, from_cache=False, cache_file=None, region=None, full_information=False
     ):
         """
         Self explanatory.
@@ -657,7 +656,7 @@ class AWSAPI:
         return objects
 
     def init_ecr_images(
-        self, from_cache=False, cache_file=None, region=None, ecr_repositories=None
+            self, from_cache=False, cache_file=None, region=None, ecr_repositories=None
     ):
         """
         Self explanatory.
@@ -717,7 +716,7 @@ class AWSAPI:
         self.ecs_clusters = objects
 
     def init_ecs_capacity_providers(
-        self, from_cache=False, cache_file=None, region=None
+            self, from_cache=False, cache_file=None, region=None
     ):
         """
         Self explanatory.
@@ -808,7 +807,7 @@ class AWSAPI:
         self.auto_scaling_groups = objects
 
     def init_auto_scaling_policies(
-        self, from_cache=False, cache_file=None, region=None
+            self, from_cache=False, cache_file=None, region=None
     ):
         """
         Self explanatory.
@@ -827,7 +826,7 @@ class AWSAPI:
         self.auto_scaling_policies = objects
 
     def init_application_auto_scaling_policies(
-        self, from_cache=False, cache_file=None, region=None
+            self, from_cache=False, cache_file=None, region=None
     ):
         """
         Self explanatory.
@@ -848,7 +847,7 @@ class AWSAPI:
         self.application_auto_scaling_policies = objects
 
     def init_application_auto_scaling_scalable_targets(
-        self, from_cache=False, cache_file=None, region=None
+            self, from_cache=False, cache_file=None, region=None
     ):
         """
         Self explanatory.
@@ -1165,7 +1164,7 @@ class AWSAPI:
         self.cloud_watch_log_groups = objects
 
     def init_cloud_watch_log_groups_metric_filters(
-        self, from_cache=False, cache_file=None
+            self, from_cache=False, cache_file=None
     ):
         """
         Init the cloudwatch log groups.
@@ -1184,7 +1183,7 @@ class AWSAPI:
         self.cloud_watch_log_groups_metric_filters = objects
 
     def init_and_cache_raw_large_cloud_watch_log_groups(
-        self, cloudwatch_log_groups_streams_cache_dir, log_group_names=None
+            self, cloudwatch_log_groups_streams_cache_dir, log_group_names=None
     ):
         """
         Because cloudwatch groups can grow very large I use the same mechanism like in S3.
@@ -1278,7 +1277,7 @@ class AWSAPI:
             print(f"{bucket.name}: {len(bucket_objects)}")
 
     def init_and_cache_all_s3_bucket_objects(
-        self, buckets_objects_cache_dir, bucket_name=None
+            self, buckets_objects_cache_dir, bucket_name=None
     ):
         """
         each bucket object represented as ~388.586973867 B string in file
@@ -1350,7 +1349,7 @@ class AWSAPI:
         self.classic_load_balancers = objects
 
     def init_hosted_zones(
-        self, from_cache=False, cache_file=None, full_information=True
+            self, from_cache=False, cache_file=None, full_information=True
     ):
         """
         Init hosted zones
@@ -1369,7 +1368,7 @@ class AWSAPI:
         self.hosted_zones = objects
 
     def init_cloudfront_distributions(
-        self, from_cache=False, cache_file=None, full_information=True
+            self, from_cache=False, cache_file=None, full_information=True
     ):
         """
         Init cloudfront distributions
@@ -1388,7 +1387,7 @@ class AWSAPI:
         self.cloudfront_distributions = objects
 
     def init_cloudfront_origin_access_identities(
-        self, from_cache=False, cache_file=None, full_information=True
+            self, from_cache=False, cache_file=None, full_information=True
     ):
         """
         Init cloudfront distributions
@@ -1409,7 +1408,7 @@ class AWSAPI:
         self.cloudfront_origin_access_identities = objects
 
     def init_event_bridge_rules(
-        self, from_cache=False, cache_file=None, full_information=True
+            self, from_cache=False, cache_file=None, full_information=True
     ):
         """
         Init event_bridge distributions
@@ -1428,7 +1427,7 @@ class AWSAPI:
         self.event_bridge_rules = objects
 
     def init_servicediscovery_services(
-        self, from_cache=False, cache_file=None, full_information=True
+            self, from_cache=False, cache_file=None, full_information=True
     ):
         """
         Init servicediscovery serivces
@@ -1447,7 +1446,7 @@ class AWSAPI:
         self.servicediscovery_services = objects
 
     def init_servicediscovery_namespaces(
-        self, from_cache=False, cache_file=None, full_information=True
+            self, from_cache=False, cache_file=None, full_information=True
     ):
         """
         Init servicediscovery serivces
@@ -1468,26 +1467,23 @@ class AWSAPI:
         self.servicediscovery_namespaces = objects
 
     def init_elasticsearch_domains(
-        self, from_cache=False, cache_file=None, full_information=True
+            self, from_cache=False, cache_file=None,
     ):
         """
         Init elasticsearch serivces
         @param from_cache:
         @param cache_file:
-        @param full_information:
         @return:
         """
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, ElasticsearchDomain)
         else:
-            objects = self.elasticsearch_client.get_all_domains(
-                full_information=full_information
-            )
+            objects = self.elasticsearch_client.get_all_domains()
 
         self.elasticsearch_domains = objects
 
     def init_secrets_manager_secrets(
-        self, from_cache=False, cache_file=None, full_information=True
+            self, from_cache=False, cache_file=None, full_information=True
     ):
         """
         Init secrets_manager_secrets
@@ -1521,7 +1517,7 @@ class AWSAPI:
         self.rds_db_subnet_groups = objects
 
     def init_rds_db_cluster_parameter_groups(
-        self, from_cache=False, cache_file=None, region=None
+            self, from_cache=False, cache_file=None, region=None
     ):
         """
         Init RDSs
@@ -1540,7 +1536,7 @@ class AWSAPI:
         self.rds_db_cluster_parameter_groups = objects
 
     def init_rds_db_cluster_snapshots(
-        self, from_cache=False, cache_file=None, region=None
+            self, from_cache=False, cache_file=None, region=None
     ):
         """
         Init RDSs
@@ -1557,7 +1553,7 @@ class AWSAPI:
         self.rds_db_cluster_snapshots = objects
 
     def init_rds_db_parameter_groups(
-        self, from_cache=False, cache_file=None, region=None
+            self, from_cache=False, cache_file=None, region=None
     ):
         """
         Init RDSs
@@ -1618,7 +1614,7 @@ class AWSAPI:
         self.elasticache_clusters = objects
 
     def init_elasticache_cache_parameter_groups(
-        self, from_cache=False, cache_file=None, region=None
+            self, from_cache=False, cache_file=None, region=None
     ):
         """
 
@@ -1638,7 +1634,7 @@ class AWSAPI:
         self.elasticache_cache_parameter_groups = objects
 
     def init_elasticache_cache_subnet_groups(
-        self, from_cache=False, cache_file=None, region=None
+            self, from_cache=False, cache_file=None, region=None
     ):
         """
 
@@ -1656,7 +1652,7 @@ class AWSAPI:
         self.elasticache_cache_subnet_groups = objects
 
     def init_elasticache_cache_security_groups(
-        self, from_cache=False, cache_file=None, region=None
+            self, from_cache=False, cache_file=None, region=None
     ):
         """
         Self explanatory.
@@ -1678,7 +1674,7 @@ class AWSAPI:
         self.elasticache_cache_security_groups = objects
 
     def init_elasticache_replication_groups(
-        self, from_cache=False, cache_file=None, region=None
+            self, from_cache=False, cache_file=None, region=None
     ):
         """
 
@@ -1710,7 +1706,7 @@ class AWSAPI:
         self.sqs_queues = objects
 
     def init_lambda_event_source_mappings(
-        self, from_cache=False, cache_file=None, region=None
+            self, from_cache=False, cache_file=None, region=None
     ):
         """
 
@@ -1768,7 +1764,7 @@ class AWSAPI:
         self.kms_keys = objects
 
     def init_security_groups(
-        self, from_cache=False, cache_file=None, full_information=False
+            self, from_cache=False, cache_file=None, full_information=False
     ):
         """
         Init security groups
@@ -2018,7 +2014,7 @@ class AWSAPI:
         return tb_ret
 
     def cleanup_report_lambdas(
-        self, report_file_path, aws_api_cloudwatch_log_groups_streams_cache_dir
+            self, report_file_path, aws_api_cloudwatch_log_groups_streams_cache_dir
     ):
         """
         Generated various lambdas' cleanup reports.
@@ -2105,7 +2101,7 @@ class AWSAPI:
         return tb_ret
 
     def cleanup_report_lambdas_not_running(
-        self, aws_api_cloudwatch_log_groups_streams_cache_dir
+            self, aws_api_cloudwatch_log_groups_streams_cache_dir
     ):
         """
         Lambda report checking if lambdas write logs:
@@ -2139,7 +2135,7 @@ class AWSAPI:
                 continue
 
             if CommonUtils.timestamp_to_datetime(
-                log_group.creation_time / 1000
+                    log_group.creation_time / 1000
             ) > datetime.datetime.now() - datetime.timedelta(days=31):
                 continue
 
@@ -2152,7 +2148,7 @@ class AWSAPI:
 
     @staticmethod
     def cleanup_report_lambdas_not_running_stream_analysis(
-        log_group, aws_api_cloudwatch_log_groups_streams_cache_dir
+            log_group, aws_api_cloudwatch_log_groups_streams_cache_dir
     ):
         """
         Lambda report checking if the last log stream is to old
@@ -2172,22 +2168,22 @@ class AWSAPI:
 
         last_file = str(max(int(file_name) for file_name in file_names))
         with open(
-            os.path.join(
-                aws_api_cloudwatch_log_groups_streams_cache_dir,
-                log_group.generate_dir_name(),
-                last_file,
-            ),
-            encoding="utf-8",
+                os.path.join(
+                    aws_api_cloudwatch_log_groups_streams_cache_dir,
+                    log_group.generate_dir_name(),
+                    last_file,
+                ),
+                encoding="utf-8",
         ) as file_handler:
             last_stream = json.load(file_handler)[-1]
         if CommonUtils.timestamp_to_datetime(
-            last_stream["lastIngestionTime"] / 1000
+                last_stream["lastIngestionTime"] / 1000
         ) < datetime.datetime.now() - datetime.timedelta(days=365):
             lines.append(
                 f"Cloudwatch log group '{log_group.name}' last event was more then year ago: {CommonUtils.timestamp_to_datetime(last_stream['lastIngestionTime'] / 1000)}"
             )
         elif CommonUtils.timestamp_to_datetime(
-            last_stream["lastIngestionTime"] / 1000
+                last_stream["lastIngestionTime"] / 1000
         ) < datetime.datetime.now() - datetime.timedelta(days=62):
             lines.append(
                 f"Cloudwatch log group '{log_group.name}' last event was more then 2 months ago: {CommonUtils.timestamp_to_datetime(last_stream['lastIngestionTime'] / 1000)}"
@@ -2245,7 +2241,7 @@ class AWSAPI:
                 by_bucket_sorted_data[bucket_name]["years"][year] = year_dict
 
                 for month, month_data in sorted(
-                    year_data.items(), key=lambda x: int(x[0])
+                        year_data.items(), key=lambda x: int(x[0])
                 ):
                     year_dict["months"][month] = {"total_size": 0, "total_keys": 0}
                     for day_data in month_data.values():
@@ -2263,9 +2259,9 @@ class AWSAPI:
 
         tb_ret = TextBlock("Buckets sizes report per years")
         for bucket_name, bucket_data in sorted(
-            by_bucket_sorted_data.items(),
-            reverse=True,
-            key=lambda x: x[1]["total_size"],
+                by_bucket_sorted_data.items(),
+                reverse=True,
+                key=lambda x: x[1]["total_size"],
         ):
             tb_bucket = TextBlock(
                 f"Bucket_Name: '{bucket_name}' size: {CommonUtils.bytes_to_str(bucket_data['total_size'])}, keys: {CommonUtils.int_to_str(bucket_data['total_keys'])}"
@@ -2367,7 +2363,7 @@ class AWSAPI:
         if not arn.startswith("arn:aws:iam::"):
             raise ValueError(arn)
 
-        account_id = arn[len("arn:aws:iam::") :]
+        account_id = arn[len("arn:aws:iam::"):]
         account_id = account_id[: account_id.find(":")]
         if not account_id.isdigit():
             raise ValueError(arn)
@@ -2475,7 +2471,8 @@ class AWSAPI:
             except IndexError:
                 attachment_string = "Not-attached"
 
-            tb_ret.lines.append(f"{volume.availability_zone}, {name}, {volume.volume_type}, {volume.size}GB, {volume.iops}IOPS, Attached:{attachment_string}")
+            tb_ret.lines.append(
+                f"{volume.availability_zone}, {name}, {volume.volume_type}, {volume.size}GB, {volume.iops}IOPS, Attached:{attachment_string}")
         return tb_ret
 
     @staticmethod
@@ -2503,9 +2500,9 @@ class AWSAPI:
             namespaces[metric.namespace].append(metric)
 
         for namespace, metrics in sorted(
-            namespaces.items(),
-            reverse=True,
-            key=lambda namespace_metrics: len(namespace_metrics[1]),
+                namespaces.items(),
+                reverse=True,
+                key=lambda namespace_metrics: len(namespace_metrics[1]),
         ):
             tb_namespace = TextBlock(
                 f"Namespace: '{namespace}', metrics count: '{len(metrics)}'"
@@ -2524,7 +2521,7 @@ class AWSAPI:
         return tb_ret
 
     def cleanup_report_cloud_watch_log_groups(
-        self, streams_dir, output_file, top_streams_count=100
+            self, streams_dir, output_file, top_streams_count=100
     ):
         """
         Generate cleanup report for cloudwatch log groups - too big, too old etc.
@@ -2555,7 +2552,7 @@ class AWSAPI:
                 )
 
                 with open(
-                    os.path.join(log_group_full_path, chunk_file), encoding="utf-8"
+                        os.path.join(log_group_full_path, chunk_file), encoding="utf-8"
                 ) as fh:
                     streams = json.load(fh)
                 log_group_name = streams[0]["arn"].split(":")[6]
@@ -2611,7 +2608,7 @@ class AWSAPI:
             i -= 1
 
     def cleanup_report_cloud_watch_log_groups_handle_sorted_streams(
-        self, top_streams_count, dict_log_group, stream
+            self, top_streams_count, dict_log_group, stream
     ):
         """
         Insert cloudwatch log_grup_stream into dict_log_group if it meets the requirements of top_streams_count.
@@ -3130,7 +3127,7 @@ class AWSAPI:
             contents = file_handler.read()
         self.put_secret_value(secret_name, contents, region=region)
 
-    #pylint: disable= too-many-arguments
+    # pylint: disable= too-many-arguments
     def get_secret_file(self, secret_name, dir_path: str, region=None, file_name=None, ignore_missing=False):
         """
         Get secrets manager value and save it to file.
@@ -3154,12 +3151,12 @@ class AWSAPI:
             file_name = secret_name
 
         with open(
-            os.path.join(dir_path, file_name), "w+", encoding="utf-8"
+                os.path.join(dir_path, file_name), "w+", encoding="utf-8"
         ) as file_handler:
             file_handler.write(contents)
 
     def copy_secrets_manager_secret_to_region(
-        self, secret_name, region_src, region_dst
+            self, secret_name, region_src, region_dst
     ):
         """
         Copy secrets manager secret from one region to another region.
@@ -3297,7 +3294,7 @@ class AWSAPI:
         self.elbv2_client.dispose_load_balancer(load_balancer)
 
     def add_elasticsearch_access_policy_raw_statements(
-        self, elasticsearch_domain, raw_statements
+            self, elasticsearch_domain, raw_statements
     ):
         """
         Add raw statements to Opensesarch service.
@@ -3320,8 +3317,8 @@ class AWSAPI:
                 if access_policies_statement["Resource"] != raw_statement["Resource"]:
                     continue
                 if (
-                    access_policies_statement["Condition"]["IpAddress"]["aws:SourceIp"]
-                    != raw_statement["Condition"]["IpAddress"]["aws:SourceIp"]
+                        access_policies_statement["Condition"]["IpAddress"]["aws:SourceIp"]
+                        != raw_statement["Condition"]["IpAddress"]["aws:SourceIp"]
                 ):
                     continue
                 break
@@ -3331,6 +3328,60 @@ class AWSAPI:
         if len(new_statements) == 0:
             return
         access_policies["Statement"] += new_statements
+        access_policies_str = json.dumps(access_policies)
+
+        request = {
+            "DomainName": elasticsearch_domain.name,
+            "AccessPolicies": access_policies_str,
+        }
+        self.elasticsearch_client.raw_update_elasticsearch_domain_config(
+            request, region=elasticsearch_domain.region
+        )
+
+    def modify_elasticsearch_access_policy_raw_statements(
+            self, elasticsearch_domain, statements_to_add, statements_to_remove
+    ):
+        """
+        Remove raw statements from Opensesarch service.
+
+        @param elasticsearch_domain:
+        @param statements_to_add:
+        @return:
+        """
+
+        access_policies = json.loads(elasticsearch_domain.access_policies)
+        new_statements = []
+        # remove
+        for access_policies_statement in access_policies["Statement"]:
+            found = False
+            for raw_statement in statements_to_remove:
+                if access_policies_statement["Effect"] == raw_statement["Effect"] and \
+                        access_policies_statement["Principal"] == raw_statement["Principal"] and \
+                        access_policies_statement["Action"] == raw_statement["Action"] and \
+                        access_policies_statement["Resource"] == raw_statement["Resource"] and \
+                        access_policies_statement["Condition"]["IpAddress"]["aws:SourceIp"] == \
+                        raw_statement["Condition"]["IpAddress"]["aws:SourceIp"]:
+                    logger.info(f"Removing statement: {raw_statement}")
+                    found = True
+                    break
+            if not found:
+                new_statements.append(access_policies_statement)
+
+        # add
+        for raw_statement in statements_to_add:
+            for access_policies_statement in new_statements:
+                if access_policies_statement["Effect"] == raw_statement["Effect"] and \
+                        access_policies_statement["Principal"] == raw_statement["Principal"] and \
+                        access_policies_statement["Action"] == raw_statement["Action"] and \
+                        access_policies_statement["Resource"] == raw_statement["Resource"] and \
+                        access_policies_statement["Condition"]["IpAddress"]["aws:SourceIp"] == \
+                        raw_statement["Condition"]["IpAddress"]["aws:SourceIp"]:
+                    break
+            else:
+                logger.info(f"Adding statement: {raw_statement}")
+                new_statements.append(raw_statement)
+
+        access_policies["Statement"] = new_statements
         access_policies_str = json.dumps(access_policies)
 
         request = {
@@ -3499,7 +3550,7 @@ class AWSAPI:
             to_del = []
             for nat_gateway_tmp in nat_gateways_tmp:
                 for region_gateway in self.ec2_client.get_region_nat_gateways(
-                    nat_gateways_tmp[0].region
+                        nat_gateways_tmp[0].region
                 ):
                     if region_gateway.get_state() not in [
                         region_gateway.State.PENDING,
@@ -3602,7 +3653,7 @@ class AWSAPI:
         self.ecs_client.provision_service(ecs_service)
 
     def provision_key_pair(
-        self, key_pair: KeyPair, save_to_secrets_manager=None, secrets_manager_region=None
+            self, key_pair: KeyPair, save_to_secrets_manager=None, secrets_manager_region=None
     ):
         """
         Self explanatory
@@ -3623,13 +3674,13 @@ class AWSAPI:
 
         if save_to_secrets_manager:
             AWSAccount.set_aws_region(secrets_manager_region)
-            self.put_secret_value(key_pair.name if key_pair.name.endswith(".key") else key_pair.name+".key",
+            self.put_secret_value(key_pair.name if key_pair.name.endswith(".key") else key_pair.name + ".key",
                                   response["KeyMaterial"])
 
         return response
 
     def provision_generated_ssh_key(
-        self, output_file_path, owner_email, region
+            self, output_file_path, owner_email, region
     ):
         """
         Self explanatory
@@ -3642,10 +3693,11 @@ class AWSAPI:
 
         logger.info(f"Generating ssh key pair {output_file_path}")
         key_name = os.path.basename(output_file_path)
-        output_public_file_path = output_file_path+".pub"
-        key_name_public = key_name+".pub"
+        output_public_file_path = output_file_path + ".pub"
+        key_name_public = key_name + ".pub"
         key_value = self.secretsmanager_client.raw_get_secret_string(key_name, region=region, ignore_missing=True)
-        key_public_value = self.secretsmanager_client.raw_get_secret_string(key_name_public, region=region, ignore_missing=True)
+        key_public_value = self.secretsmanager_client.raw_get_secret_string(key_name_public, region=region,
+                                                                            ignore_missing=True)
 
         if (key_value is None) ^ (key_public_value is None):
             raise RuntimeError(f"Either {key_name} or {key_name_public} does not exist in Secrets manager")
@@ -3858,8 +3910,8 @@ class AWSAPI:
             return
 
         if (
-            certificate.status is not None
-            and certificate.status != "PENDING_VALIDATION"
+                certificate.status is not None
+                and certificate.status != "PENDING_VALIDATION"
         ):
             raise ValueError(certificate.status)
 
@@ -3904,8 +3956,8 @@ class AWSAPI:
             certificate = self.acm_client.get_certificate(certificate.arn)
             # pylint: disable= unsubscriptable-object
             if (
-                certificate.domain_validation_options[0].get("ResourceRecord")
-                is not None
+                    certificate.domain_validation_options[0].get("ResourceRecord")
+                    is not None
             ):
                 break
 
@@ -3982,7 +4034,7 @@ class AWSAPI:
 
     # region sesv2_domain_email_identity
     def provision_sesv2_domain_email_identity(
-        self, email_identity, wait_for_validation=True
+            self, email_identity, wait_for_validation=True
     ):
         """
         Self explanatory
@@ -4256,7 +4308,7 @@ class AWSAPI:
         self.cloudfront_client.provision_distribution(cloudfront_distribution)
 
     def provision_cloudfront_origin_access_identity(
-        self, cloudfront_origin_access_identity
+            self, cloudfront_origin_access_identity
     ):
         """
         Self explanatory.
@@ -4418,7 +4470,7 @@ class AWSAPI:
         self.ec2_client.dispose_launch_template(launch_template)
 
     def attach_capacity_providers_to_ecs_cluster(
-        self, ecs_cluster, capacity_provider_names, default_capacity_provider_strategy
+            self, ecs_cluster, capacity_provider_names, default_capacity_provider_strategy
     ):
         """
         Attach Capacity provider to ECS cluster.
@@ -4540,7 +4592,7 @@ class AWSAPI:
         return src_region_cluster_snapshots[-1]
 
     def copy_latest_db_cluster_snapshot(
-        self, db_cluster, desired_snapshot: RDSDBClusterSnapshot
+            self, db_cluster, desired_snapshot: RDSDBClusterSnapshot
     ):
         """
         Copy latest cluster snapshot according to the desired_snapshot params.
@@ -4837,7 +4889,8 @@ class AWSAPI:
         auto_scaling_group.arn = cap_prov.auto_scaling_group_provider["autoScalingGroupArn"]
         self.autoscaling_client.update_auto_scaling_group_information(auto_scaling_group)
 
-        current_container_instances = self.ecs_client.get_region_container_instances(ecs_cluster.region, cluster_identifier=ecs_cluster.arn)
+        current_container_instances = self.ecs_client.get_region_container_instances(ecs_cluster.region,
+                                                                                     cluster_identifier=ecs_cluster.arn)
 
         # increase ASG capacity
         auto_scaling_group.desired_capacity *= 2
@@ -4855,8 +4908,10 @@ class AWSAPI:
         self.ecs_client.update_container_instances_state(current_container_instances)
 
         # detach ec2 instance from ASG
-        current_ec2_instance_ids = [container_instance.ec2_instance_id for container_instance in current_container_instances]
-        self.autoscaling_client.detach_instances(auto_scaling_group.region, current_ec2_instance_ids, auto_scaling_group.name, decrement=True)
+        current_ec2_instance_ids = [container_instance.ec2_instance_id for container_instance in
+                                    current_container_instances]
+        self.autoscaling_client.detach_instances(auto_scaling_group.region, current_ec2_instance_ids,
+                                                 auto_scaling_group.name, decrement=True)
 
         # revert ASG capacity change
         if initial_max_size is not None:
