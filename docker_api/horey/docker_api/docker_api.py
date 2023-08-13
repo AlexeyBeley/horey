@@ -243,6 +243,7 @@ class DockerAPI:
         try:
             container.kill()
         except Exception as inst_error:
+            logger.exception(inst_error)
             if "is not running" not in repr(inst_error):
                 raise
 
