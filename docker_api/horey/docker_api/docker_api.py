@@ -240,7 +240,12 @@ class DockerAPI:
             if "Read timed out" not in repr(inst_error):
                 raise
 
-        container.kill()
+        try:
+            container.kill()
+        except Exception as inst_error:
+            if "is not running" not in repr(inst_error):
+                raise
+
         if remove:
             logger.info(f"Removing container: {container.id}.")
             container.remove()
