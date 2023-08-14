@@ -4660,7 +4660,24 @@ class AWSAPI:
 
     def get_alive_ec2_instance_by_name(self, region, name):
         """
-        Find running ec2 instance by name tag
+        Get instance by tag "name". Raise Exception if more then one
+
+        :param region:
+        :param name:
+        :return:
+        """
+        instances = self.get_alive_ec2_instances_by_name(region, name)
+
+        if len(instances) != 1:
+            raise RuntimeError(
+                f"Found {len(instances)} RUNNING/PENDING instances in region {region.region_mark} with tag_name '{name}' while expected 1"
+            )
+
+        return instances[0]
+
+    def get_alive_ec2_instances_by_name(self, region, name):
+        """
+        Find running ec2 instances by "name" tag
 
         @param region:
         @param name:
@@ -4680,12 +4697,7 @@ class AWSAPI:
 
             ret_instances.append(ec2_instance)
 
-        if len(ret_instances) != 1:
-            raise RuntimeError(
-                f"Found {len(ret_instances)} RUNNING/PENDING instances in region {region.region_mark} with tag_name '{name}' while expected 1"
-            )
-
-        return ret_instances[0]
+        return ret_instances
 
     def provision_servicediscovery_namespace(self, namespace):
         """
