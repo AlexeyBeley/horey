@@ -19,7 +19,6 @@ class KMSKey(AwsObject):
         self.key_usage = None
         self.description = None
         self.enabled = None
-        self.tags = []
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -191,6 +190,7 @@ class KMSKey(AwsObject):
         :return:
         """
 
+        # pylint: disable= not-an-iterable
         return {tag["TagKey"]: tag["TagValue"] for tag in self.tags}
 
     @property
