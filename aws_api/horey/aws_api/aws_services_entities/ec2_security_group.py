@@ -109,6 +109,10 @@ class EC2SecurityGroup(AwsObject):
                 )
             ):
                 revoke_request.append(self_permission)
+        if len(revoke_request) == len(self.ip_permissions):
+            raise ValueError(f"Can not automatically delete all rules in security group {target_security_group.id=}. "
+                             f"You can do it only manually!")
+
 
         for target_permission in self.split_permissions(
             target_security_group.ip_permissions

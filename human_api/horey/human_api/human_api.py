@@ -1075,7 +1075,7 @@ class HumanAPI:
         items = CommonUtils.load_object_from_module(self.configuration.sprint_plan_file_path, "main")
         for item in items:
             if item.sprint_name != self.configuration.sprint_name:
-                raise RuntimeError(f"Sprint name in the work plan is not the same as in the configuration: "
+                raise RuntimeError(f"'{item.title}': Sprint name in the work plan is not the same as in the configuration: "
                                    f"{item.sprint_name=} / {self.configuration.sprint_name=}")
         self.generate_work_plan(self.configuration.sprint_plan_file_path)
 
@@ -1191,11 +1191,14 @@ class HumanAPI:
             if len(item.title.split(" ")) > 7:
                 errors.append(f"Item title number of words > 7: '{item.title}'")
 
+            if item.priority > 4:
+                errors.append(f"Item priority must be <= 4: '{item.title}'")
+
             if item.id is None and item.hapi_uid is None:
                 errors.append(f"Neither item id or hapi_uid were set: '{item.title}'")
 
             for param in ["description", "dod", "priority", "sprint_name", "assigned_to"]:
-                if getattr(item, param) is None:
+                if not getattr(item, param):
                     errors.append(f"Item '{param}' was not set: '{item.title}'")
 
             for param in ["description", "title", "dod", "hapi_uid"]:
@@ -1229,6 +1232,8 @@ class HumanAPI:
     def generate_work_plan_summaries(self, items):
         """
         Generate work plan summary.
+        # todo: priority < 7
+        # todo: UserStory has Description:
 
         :param items_map:
         :return:
@@ -1287,8 +1292,13 @@ class HumanAPI:
         hapi_uids_map = {}
         for work_object_dict in ret:
             tmp_dict = copy.deepcopy(work_object_dict)
-            if "id" in tmp_dict:
+            if tmp_dict.get("id"):
                 tmp_dict = {key: value for key, value in tmp_dict.items() if key in ["id", "estimated_time", "completed_time", "sprint_name"]}
+            else:
+                try:
+                    del tmp_dict["id"]
+                except KeyError:
+                    pass
 
             for local_var in ["hapi_uid", "child_hapi_uids", "dod"]:
                 try:
@@ -1296,6 +1306,7 @@ class HumanAPI:
                 except KeyError:
                     pass
 
+            logger.info(f"Provisioning WIT: {work_object_dict}")
             work_object_dict["id"] = str(self.azure_devops_api.provision_work_item_from_dict(tmp_dict))
             hapi_uids_map[work_object_dict["hapi_uid"]] = work_object_dict
 

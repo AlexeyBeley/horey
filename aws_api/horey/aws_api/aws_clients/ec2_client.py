@@ -362,7 +362,7 @@ class EC2Client(Boto3Client):
         security_group.update_from_raw_response(security_groups[0].dict_src)
         return True
 
-    def provision_security_group(self, desired_security_group):
+    def provision_security_group(self, desired_security_group, provision_rules=True):
         """
         Create/modify security group.
         todo:
@@ -370,6 +370,7 @@ class EC2Client(Boto3Client):
         add_request, revoke_request = security_group_region.generate_modify_ip_permissions_egress_requests(
 
         @param desired_security_group:
+        @param provision_rules:
         @return:
         """
 
@@ -384,8 +385,9 @@ class EC2Client(Boto3Client):
             )
             desired_security_group.id = group_id
             existing_security_group.id = group_id
-            existing_security_group.ip_permissions = []
-            existing_security_group.ip_permissions_egress = []
+
+        if not provision_rules:
+            return
 
         (
             add_request,
@@ -394,6 +396,7 @@ class EC2Client(Boto3Client):
         ) = existing_security_group.generate_modify_ip_permissions_requests(
             desired_security_group
         )
+
         if add_request:
             self.authorize_security_group_ingress_raw(add_request)
 

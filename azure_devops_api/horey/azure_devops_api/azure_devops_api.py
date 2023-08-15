@@ -314,7 +314,7 @@ class WorkItem(AzureDevopsObject):
         if value in ["New", "Active"]:
             return value.upper()
 
-        if value in ["On Hold", "Pending Deployment", "PM Review", "Merge Request"]:
+        if value in ["On Hold", "Pending Deployment", "PM Review", "Merge Request", "In Testing"]:
             return "BLOCKED"
 
         if value in ["Resolved", "Closed", "Removed"]:
@@ -1004,14 +1004,24 @@ class AzureDevopsAPI:
             "op": "add",
             "path": "/relations/-",
             "value": {
-
                 "rel": "System.LinkTypes.Hierarchy-Reverse",
                 "url": f"https://dev.azure.com/{self.org_name}/{self.project_name}/apis/wit/workItems/{parent_id}"
             }
         }]
 
         url = f"https://dev.azure.com/{self.org_name}/_apis/wit/workitems/{wit_id}?api-version=7.0"
-        return self.patch(url, request_data)
+        try:
+            return self.patch(url, request_data)
+        except Exception as error_inst:
+            if "only one Parent link" not in repr(error_inst):
+                raise
+            logger.info(f"Removing parent: {wit_id}")
+            request_remove_parent = [{"op": "remove", "path": "/relations/0"}]
+            self.patch(url, request_remove_parent)
+
+            logger.info(f"Adding parent: {wit_id}")
+            return self.patch(url, request_data)
+
 
     def set_work_object_child(self, wit_id, child_id):
         """
@@ -1151,7 +1161,7 @@ class AzureDevopsAPI:
 
         return wit_id
 
-    # pylint: disable= too-many-branches, too-many-statements
+    # pylint: disable= too-many-branches, too-many-statements, too-many-locals
     def provision_work_item_from_dict(self, dict_src):
         """
         Provision work item by parameters received.
@@ -1255,6 +1265,11 @@ class AzureDevopsAPI:
             if parent_id is not None:
                 self.set_wit_parent(wit_id, parent_id)
             left_attributes.remove("parent_ids")
+
+        if "child_ids" in left_attributes:
+            for child_id in dict_src["child_ids"]:
+                self.set_wit_parent(child_id, wit_id)
+            left_attributes.remove("child_ids")
 
         if left_attributes:
             raise ValueError(left_attributes)
