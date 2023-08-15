@@ -19,6 +19,7 @@ class KMSKey(AwsObject):
         self.key_usage = None
         self.description = None
         self.enabled = None
+        self.tags = []
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -161,6 +162,36 @@ class KMSKey(AwsObject):
                 del_requests.append({"AliasName": self_alias["AliasName"]})
 
         return del_requests, create_requests
+
+    def generate_tag_resource_request(self, desired_key):
+        """
+        Standard.
+        response = client.tag_resource(
+        KeyId='string',
+        Tags=[
+            {
+            'TagKey': 'string',
+            'TagValue': 'string'
+                },
+            ]
+            )
+
+        :param desired_key:
+        :return:
+        """
+
+        if self.generate_tags_dict() == desired_key.generate_tags_dict():
+            return None
+        return {"KeyId": self.id, "Tags": desired_key.tags}
+
+    def generate_tags_dict(self):
+        """
+        Generate key:value dict for tags.
+
+        :return:
+        """
+
+        return {tag["TagKey"]: tag["TagValue"] for tag in self.tags}
 
     @property
     def region(self):

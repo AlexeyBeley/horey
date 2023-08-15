@@ -148,6 +148,10 @@ class KMSClient(Boto3Client):
             response = self.provision_key_raw(key.generate_create_request())
             region_key = KMSKey({})
             region_key.update_from_raw_response(response)
+        else:
+            request = region_key.generate_tag_resource_request(key)
+            if request:
+                self.tag_resource_raw(request)
 
         del_requests, create_requests = region_key.generate_alias_provision_requests(key)
 
@@ -158,6 +162,19 @@ class KMSClient(Boto3Client):
             self.create_alias_raw(create_request)
 
         key.id = region_key.id
+
+    def tag_resource_raw(self, request_dict):
+        """
+        Standard.
+
+        :param request_dict:
+        :return:
+        """
+        logger.info(f"Tagging KMS key: {request_dict}")
+        for response in self.execute(
+            self.client.tag_resource, None, raw_data=True, filters_req=request_dict
+        ):
+            return response
 
     def deprecate_key(self, key: KMSKey, days=7):
         """
