@@ -3423,15 +3423,16 @@ class AWSAPI:
 
         self.ec2_client.provision_subnets(subnets)
 
-    def provision_security_group(self, security_group):
+    def provision_security_group(self, security_group, provision_rules=True):
         """
         Self explanatory
 
         @param security_group:
+        @param provision_rules:
         @return:
         """
 
-        self.ec2_client.provision_security_group(security_group)
+        self.ec2_client.provision_security_group(security_group, provision_rules=provision_rules)
 
     def provision_internet_gateway(self, internet_gateway):
         """
