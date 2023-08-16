@@ -18,6 +18,7 @@ class HumanAPIConfigurationPolicy(ConfigurationPolicy):
         self._reports_dir_path = None
         self._work_plan_file_path = None
         self._sprint_name = None
+        self._ignore_workers = None
         super().__init__()
 
     @property
@@ -133,3 +134,11 @@ class HumanAPIConfigurationPolicy(ConfigurationPolicy):
     @sprint_name.setter
     def sprint_name(self, value):
         self._sprint_name = value
+
+    @property
+    def ignore_workers(self):
+        return self._ignore_workers
+
+    @ignore_workers.setter
+    def ignore_workers(self, value):
+        self._ignore_workers = value

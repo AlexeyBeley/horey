@@ -544,6 +544,8 @@ class CloudfrontClient(Boto3Client):
             response = self.update_response_headers_policy_raw(update_request)
             desired_policy.update_from_raw_response(response)
 
+        self.update_response_headers_policy_info(desired_policy, full_information=True)
+
     def provision_response_headers_policy_raw(self, request_dict):
         """
         Standard.

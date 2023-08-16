@@ -205,7 +205,7 @@ class DailyReportAction:
         if self.parent_id != "-1" and not self.parent_id.isdigit():
             raise ValueError(f"Work item id must be either digit or '-1', received: '{parent_token}'")
 
-        if self.parent_type not in ["UserStory", "Bug", "Task"]:
+        if self.parent_type not in ["UserStory", "Bug", "Task", "Feature"]:
             raise ValueError(f"Unknown Parent WIT type '{self.parent_type}' in '{parent_token}'")
 
 
@@ -530,6 +530,8 @@ class HumanAPI:
 
         str_ret = ""
         for worker_name, input_actions in input_actions_per_worker_map.items():
+            if worker_name in self.configuration.ignore_workers:
+                continue
             str_ret += self.perform_worker_report_actions(worker_name, input_actions,
                                                           base_actions_per_worker_map[worker_name]) + "\n"
 
@@ -939,8 +941,7 @@ class HumanAPI:
             print("##########VALIDATION_END################")
             raise ValueError("Errors occurred, see list below")
 
-    @staticmethod
-    def validate_daily_base_actions(base_actions_per_worker_map):
+    def validate_daily_base_actions(self, base_actions_per_worker_map):
         """
         daily.hapi validation.
 
@@ -952,7 +953,10 @@ class HumanAPI:
         base_actions_ids = {}
         base_actions_by_parent_ids = defaultdict(list)
 
-        for user, map_dict in base_actions_per_worker_map.items():
+        for worker_name, map_dict in base_actions_per_worker_map.items():
+            if worker_name in self.configuration.ignore_workers:
+                logger.info(f"Ignoring base actions validations for worker: {worker_name}")
+                continue
             errors_tmp = []
             for block_name in ["actions_new", "actions_active", "actions_blocked", "actions_closed"]:
                 for action in map_dict[block_name]:
@@ -984,12 +988,11 @@ class HumanAPI:
                             errors_tmp.append(f"(!!!) daily.hapi is not input.hapi (!!!):\n{action.src_line}")
                             break
             if errors_tmp:
-                errors += [user + ":"] + errors_tmp
+                errors += [worker_name + ":"] + errors_tmp
 
         return errors, base_actions_ids, base_actions_by_parent_ids
 
-    @staticmethod
-    def validate_daily_input_actions(input_actions_per_worker_map):
+    def validate_daily_input_actions(self, input_actions_per_worker_map):
         """
         input.hapi validation.
 
@@ -1000,7 +1003,10 @@ class HumanAPI:
         errors = []
         input_actions_by_ids = defaultdict(list)
         input_actions_by_parent_ids = defaultdict(list)
-        for user, map_dict in input_actions_per_worker_map.items():
+        for worker_name, map_dict in input_actions_per_worker_map.items():
+            if worker_name in self.configuration.ignore_workers:
+                logger.info(f"Ignoring input actions validations for worker: {worker_name}")
+                continue
             errors_tmp = []
             for block_name in ["actions_new", "actions_active", "actions_blocked", "actions_closed"]:
                 for action in map_dict[block_name]:
@@ -1032,7 +1038,7 @@ class HumanAPI:
                     if action.action_add_time is not None and action.action_comment is None:
                         errors_tmp.append(f"Updating time Comment:\n{action.src_line}")
             if errors_tmp:
-                errors += [user + ":"] + errors_tmp
+                errors += [worker_name + ":"] + errors_tmp
         return errors, input_actions_by_ids, input_actions_by_parent_ids
 
     @staticmethod
@@ -1058,8 +1064,8 @@ class HumanAPI:
 
         for parent_id, actions in input_actions_by_parent_id.items():
             for action in actions:
-                if action.parent_title in [_action.parent_title for actions in base_actions_by_parent_id.values()
-                                           for _action in actions if _action.parent_id != parent_id]:
+                if action.parent_title in [_action.parent_title for _actions in base_actions_by_parent_id.values()
+                                           for _action in _actions if _action.parent_id != parent_id]:
                     errors.append(
                         f"Parent titles differ in daily.hapi and input.hapi for parent_id '{parent_id}':\n{actions[0].src_line}")
         return errors
