@@ -383,8 +383,9 @@ class EC2Client(Boto3Client):
             group_id = self.provision_security_group_raw(
                 desired_security_group.generate_create_request()
             )
-            desired_security_group.id = group_id
             existing_security_group.id = group_id
+
+        desired_security_group.id = existing_security_group.id
 
         if not provision_rules:
             return
