@@ -59,11 +59,25 @@ class CloudfrontResponseHeadersPolicy(AwsObject):
                 raise RuntimeError(f"Attribute value was not set: {attr_name}")
             request[attr_name] = attr_value
 
+        try:
+            if not request["ResponseHeadersPolicyConfig"]["SecurityHeadersConfig"]["FrameOptions"]:
+                del request["ResponseHeadersPolicyConfig"]["SecurityHeadersConfig"]["FrameOptions"]
+        except KeyError:
+            pass
+
         return request
 
     def generate_update_request(self, desired):
         """
         Standard.
+        {'ResponseHeadersPolicyConfig':
+        {'Comment': 'Response headers policy',
+        'Name': 'response_headers_policy_controlup_demo-us',
+        'SecurityHeadersConfig':
+        {'XSSProtection':
+        {'Override': True, 'Protection': True, 'ModeBlock': True},
+        'FrameOptions': {}
+
 
         :return:
         """
@@ -88,6 +102,12 @@ class CloudfrontResponseHeadersPolicy(AwsObject):
                 changed = True
 
             request[attr_name] = desired_value
+
+        try:
+            if not request["ResponseHeadersPolicyConfig"]["SecurityHeadersConfig"]["FrameOptions"]:
+                del request["ResponseHeadersPolicyConfig"]["SecurityHeadersConfig"]["FrameOptions"]
+        except KeyError:
+            pass
 
         request["IfMatch"] = request.pop("ETag")
 
