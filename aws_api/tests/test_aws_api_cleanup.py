@@ -235,6 +235,13 @@ def test_cleanup_report_ec2_pricing():
     regions = [Region.get_region(region_mark) for region_mark in regions]
     aws_api.cleanup_report_ec2_pricing(regions)
 
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_cleanup_report_lambda_pricing():
+    regions = ["us-east-1"]
+    regions = [Region.get_region(region_mark) for region_mark in regions]
+    aws_api.cleanup_report_lambda_pricing(regions)
+
+
 
 if __name__ == "__main__":
     # test_init_from_cache_and_cleanup_s3_buckets()
@@ -243,5 +250,6 @@ if __name__ == "__main__":
     # test_init_from_cache_and_cleanup_report_ec2_instances()
     # test_init_from_cache_and_cleanup_report_ebs_volumes()
     # test_init_from_api_and_cleanup_report_ebs_volumes()
-    test_cleanup_report_ecs_usage()
-    test_cleanup_report_ec2_pricing()
+    # test_cleanup_report_ecs_usage()
+    # test_cleanup_report_ec2_pricing()
+    test_cleanup_report_lambda_pricing()

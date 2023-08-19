@@ -5,6 +5,7 @@ Testing pricing client functionality
 import os
 
 from horey.aws_api.aws_clients.pricing_client import PricingClient
+from horey.aws_api.base_entities.region import Region
 
 from horey.h_logger import get_logger
 
@@ -30,6 +31,25 @@ accounts_file_full_path = os.path.abspath(
 def test_init_cloudfront_client():
     assert isinstance(PricingClient(), PricingClient)
 
+def test_get_price_list_urls():
+    """
+    "AmazonCloudWatch"
+    "AmazonECR"
+    "AmazonRDS"
+    "AmazonS3"
+
+    :return:
+    """
+    client = PricingClient()
+    ret = client.get_price_list_urls("AWSLambda", Region.get_region("us-east-1"))
+    assert len(ret) == 1
+
+def test_get_services():
+    client = PricingClient()
+    ret = client.get_services()
+    assert len(ret) > 0
 
 if __name__ == "__main__":
-    test_init_cloudfront_client()
+    # test_init_cloudfront_client()
+    # test_get_services()
+    test_get_price_list_urls()

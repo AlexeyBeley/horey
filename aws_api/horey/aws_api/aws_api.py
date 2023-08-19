@@ -3208,7 +3208,7 @@ class AWSAPI:
 
     def cleanup_report_ec2_pricing(self, regions):
         """
-       Generate EC2 instance types pricing reports
+        Generate EC2 instance types pricing reports
 
         :param regions:
         :return:
@@ -5156,3 +5156,26 @@ class AWSAPI:
             ec2_instance.region = ecs_cluster.region
             ec2_instance.id = container_instance.ec2_instance_id
             self.ec2_client.dispose_instance(ec2_instance)
+
+    # pylint: disable=
+    def cleanup_report_lambda_pricing(self, regions):
+        """
+        Generate Lambda pricing report
+
+        :return:
+        """
+
+        for region in regions:
+            self.cleanup_report_lambda_pricing_per_region(region)
+
+    def cleanup_report_lambda_pricing_per_region(self, region):
+        """
+        Generate Lambda pricing report per region
+
+        :param region:
+        :return:
+        """
+
+        service_code = "AWSLambda"
+        price_lists = self.get_pricing(region, service_code)
+        assert price_lists
