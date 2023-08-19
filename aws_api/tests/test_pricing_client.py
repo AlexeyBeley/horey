@@ -33,10 +33,6 @@ def test_init_cloudfront_client():
 
 def test_get_price_list_urls():
     """
-    "AmazonCloudWatch"
-    "AmazonECR"
-    "AmazonRDS"
-    "AmazonS3"
 
     :return:
     """

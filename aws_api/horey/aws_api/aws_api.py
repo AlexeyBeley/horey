@@ -5178,4 +5178,50 @@ class AWSAPI:
 
         service_code = "AWSLambda"
         price_lists = self.get_pricing(region, service_code)
-        assert price_lists
+        prices_with_products = []
+        for product in price_lists["products"].values():
+            try:
+                range_point = None
+                if product["attributes"]["usagetype"] in ["Lambda-GB-Second", "Lambda-GB-Second-ARM"]:
+                    range_point = 0
+                price = self.get_price_by_sku(price_lists, product["sku"], range_point=range_point)
+            except self.RangePointMissingError as error_inst:
+                raise RuntimeError(product) from error_inst
+            if product["attributes"]["groupDescription"]  == "Invocation call for a Lambda function":
+                print(product["attributes"])
+            prices_with_products.append((price, product["attributes"]["groupDescription"], product["attributes"]["usagetype"]))
+
+        for line in sorted(prices_with_products, key=lambda x: x[0]):
+            print(line)
+
+    def get_price_by_sku(self, price_lists, sku, range_point=None):
+        """
+        Get the actual price by SKU.
+
+        :param range_point:
+        :param price_lists:
+        :param sku:
+        :return:
+        """
+
+        if len(price_lists["terms"]["OnDemand"][sku]) != 1:
+            raise NotImplementedError(f"{price_lists['terms']['OnDemand'][sku]=}")
+
+        for sku_value in price_lists["terms"]["OnDemand"][sku].values():
+            if len(sku_value["priceDimensions"]) == 1:
+                for price_dimension in sku_value["priceDimensions"].values():
+                    return float(price_dimension["pricePerUnit"]["USD"])
+
+            if range_point is None:
+                raise self.RangePointMissingError(f"Range point should be set if there are multiple ranges: {sku_value['priceDimensions']}")
+
+            for price_dimension in sku_value["priceDimensions"].values():
+                if float(price_dimension["beginRange"]) <= range_point <= float(price_dimension["endRange"]):
+                    return float(price_dimension["pricePerUnit"]["USD"])
+
+        raise RuntimeError(f"Could not find price for SKU: {sku}")
+
+    class RangePointMissingError(RuntimeError):
+        """
+        No value set for range decision
+        """
