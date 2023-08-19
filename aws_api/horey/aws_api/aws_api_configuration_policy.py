@@ -25,6 +25,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
         self._aws_api_dynamodb_cache_dir = None
 
         self._aws_api_s3_cache_dir = None
+        self._aws_api_pricing_cache_dir = None
         self._aws_api_s3_bucket_objects_cache_dir = None
         self._aws_api_ec2_cache_dir = None
         self._aws_api_lambda_cache_dir = None
@@ -1092,6 +1093,10 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
         return os.path.join(self.aws_api_cleanup_reports_dir, "network_interfaces.txt")
 
     @property
+    def aws_api_cleanups_ecs_report_file_template(self):
+        return os.path.join(self.aws_api_cleanup_reports_dir, "{region_mark}_ecs_resources_utilization.txt")
+
+    @property
     def aws_api_cleanups_security_groups_report_file(self):
         return os.path.join(
             self.aws_api_cleanup_reports_dir, "network_security_groups.txt"
@@ -1166,6 +1171,10 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def aws_api_cleanups_dns_report_file(self):
         return os.path.join(self.aws_api_cleanup_reports_dir, "dns_report.txt")
+
+    @property
+    def aws_api_cleanups_ec2_pricing_file_template(self):
+        return os.path.join(self.aws_api_cleanup_reports_dir, "{region_mark}_ec2_pricing.txt")
 
     @aws_api_cleanups_dns_report_file.setter
     def aws_api_cleanups_dns_report_file(self, value):
@@ -1264,5 +1273,22 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def aws_api_sns_topics_cache_file(self):
         return os.path.join(self.aws_api_sns_cache_dir, "sns_topics.json")
+
+    # endregion
+
+    # region pricing
+    @property
+    def pricing_cache_dir(self):
+        if self._aws_api_pricing_cache_dir is None:
+            self._aws_api_pricing_cache_dir = os.path.join(
+                self.aws_api_cache_dir, self.aws_api_account, "pricing"
+            )
+            os.makedirs(self._aws_api_pricing_cache_dir, exist_ok=True)
+        return self._aws_api_pricing_cache_dir
+
+    @property
+    def pricing_file_path_template(self):
+        region_dir = os.path.join(self.pricing_cache_dir, "{region_mark}")
+        return os.path.join(region_dir, "{service_code}.json")
 
     # endregion

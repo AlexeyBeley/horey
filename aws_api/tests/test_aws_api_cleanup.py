@@ -11,6 +11,7 @@ from horey.aws_api.aws_api import AWSAPI
 
 from horey.h_logger import get_logger
 from horey.aws_api.aws_api_configuration_policy import AWSAPIConfigurationPolicy
+from horey.aws_api.base_entities.region import Region
 
 # pylint: disable= missing-function-docstring
 logger = get_logger()
@@ -22,7 +23,7 @@ configuration.configuration_file_full_path = os.path.abspath(
         "..",
         "..",
         "ignore",
-        "aws_api_configuration_values.py",
+        "aws_api_configuration_values_all_access.py",
     )
 )
 configuration.init_from_file()
@@ -222,10 +223,25 @@ def test_init_from_cache_and_cleanup_report_network_interfaces():
     )
 
 
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_cleanup_report_ecs_usage():
+    regions = ["us-east-1", "eu-central-1", "us-west-2", "us-east-2"]
+    regions = [Region.get_region(region_mark) for region_mark in regions]
+    aws_api.cleanup_report_ecs_usage(regions)
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_cleanup_report_ec2_pricing():
+    regions = ["us-east-1", "eu-central-1", "us-west-2", "us-east-2"]
+    regions = [Region.get_region(region_mark) for region_mark in regions]
+    aws_api.cleanup_report_ec2_pricing(regions)
+
+
 if __name__ == "__main__":
     # test_init_from_cache_and_cleanup_s3_buckets()
     # test_init_from_cache_and_cleanup_report_iam_policies()
     # test_init_from_cache_and_cleanup_report_iam_roles()
     # test_init_from_cache_and_cleanup_report_ec2_instances()
-    test_init_from_cache_and_cleanup_report_ebs_volumes()
+    # test_init_from_cache_and_cleanup_report_ebs_volumes()
     # test_init_from_api_and_cleanup_report_ebs_volumes()
+    test_cleanup_report_ecs_usage()
+    #test_cleanup_report_ec2_pricing()

@@ -952,7 +952,6 @@ class HumanAPI:
         errors = []
         base_actions_ids = {}
         base_actions_by_parent_ids = defaultdict(list)
-
         for worker_name, map_dict in base_actions_per_worker_map.items():
             if worker_name in self.configuration.ignore_workers:
                 logger.info(f"Ignoring base actions validations for worker: {worker_name}")

@@ -9,6 +9,7 @@ import base64
 
 from horey.aws_api.aws_services_entities.subnet import Subnet
 from horey.aws_api.aws_services_entities.ec2_instance import EC2Instance
+from horey.aws_api.aws_services_entities.ec2_instance_type import EC2InstanceType
 from horey.aws_api.aws_services_entities.ec2_volume import EC2Volume
 from horey.aws_api.aws_services_entities.ec2_volume_modification import EC2VolumeModification
 from horey.aws_api.aws_services_entities.vpc import VPC
@@ -2344,3 +2345,17 @@ class EC2Client(Boto3Client):
         dict_req = {"InstanceId": instance.id}
         for response in self.execute(self.client.get_password_data, "PasswordData", filters_req=dict_req):
             return cipher.decrypt(base64.b64decode(response), None).decode('utf8')
+
+    def get_region_instance_types(self, region):
+        """
+        Standard.
+
+        :param region:
+        :return:
+        """
+
+        ret = []
+        AWSAccount.set_aws_region(region)
+        for response in self.execute(self.client.describe_instance_types, "InstanceTypes"):
+            ret.append(EC2InstanceType(response))
+        return ret

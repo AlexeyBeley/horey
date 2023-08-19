@@ -37,7 +37,7 @@ class TextBlock:
                 lines = [line.replace("\n", f"\n{line_shift}") for line in self.lines]
             else:
                 lines = self.lines
-            ret += f"\n {line_shift}" + f"\n{line_shift}".join(lines)
+            ret += f"\n{line_shift}" + f"\n{line_shift}".join(lines)
 
         if len(self.blocks) > 0:
             ret += "\n" + "\n".join(
@@ -53,6 +53,15 @@ class TextBlock:
         ret += "\n"
         return ret
 
-    def write_to_file(self, output_file, multiline=False):
-        with open(output_file, "w+") as file_handler:
-            file_handler.write(self.format_pprint(multiline=multiline))
+    def write_to_file(self, output_file, multiline=False, shift=4):
+        """
+        Write formatted to a file.
+
+        :param shift:
+        :param output_file:
+        :param multiline:
+        :return:
+        """
+
+        with open(output_file, "w+", encoding="utf-8") as file_handler:
+            file_handler.write(self.format_pprint(shift=shift, multiline=multiline))

@@ -10,6 +10,7 @@ from horey.aws_api.base_entities.region import Region
 from horey.h_logger import get_logger
 from horey.network.ip import IP
 from horey.common_utils.common_re_utils import CommonREUtils
+from horey.common_utils.common_utils import CommonUtils
 
 logger = get_logger()
 
@@ -207,15 +208,31 @@ class AwsObject:
                     continue
 
                 composed_errors = []
+                keys = []
                 for key_src_ in dict_src:
                     if key_src_ not in dict_options:
                         line_to_add = f'"{key_src_}":  self.init_default_attr,'
                         composed_errors.append(line_to_add)
+                        keys.append(key_src_)
 
+                self.print_init_nones_from_dict(keys)
                 print("\n".join(composed_errors))
+
                 raise self.UnknownKeyError(
                     "\n".join(composed_errors)
                 ) from caught_exception
+
+    @staticmethod
+    def print_init_nones_from_dict(keys):
+        """
+        Concert to snake case and print.
+
+        :param keys:
+        :return:
+        """
+
+        for key in keys:
+            print(f"self.{CommonUtils.camel_case_to_snake_case(key)} = None")
 
     def update_attributes(self, dict_src):
         """
