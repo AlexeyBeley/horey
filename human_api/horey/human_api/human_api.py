@@ -20,6 +20,7 @@ from horey.human_api.bug import Bug
 from horey.human_api.epic import Epic
 from horey.human_api.feature import Feature
 from horey.human_api.user_story import UserStory
+from horey.human_api.issue import Issue
 from horey.human_api.sprint import Sprint
 
 from horey.azure_devops_api.azure_devops_api import AzureDevopsAPI
@@ -205,7 +206,7 @@ class DailyReportAction:
         if self.parent_id != "-1" and not self.parent_id.isdigit():
             raise ValueError(f"Work item id must be either digit or '-1', received: '{parent_token}'")
 
-        if self.parent_type not in ["UserStory", "Bug", "Task", "Feature"]:
+        if self.parent_type not in ["UserStory", "Bug", "Task", "Feature", "Issue"]:
             raise ValueError(f"Unknown Parent WIT type '{self.parent_type}' in '{parent_token}'")
 
 
@@ -220,6 +221,7 @@ class HumanAPI:
         self.user_stories = {}
         self.bugs = {}
         self.tasks = {}
+        self.issues = {}
         self.provisioned_new_parents_map = {}
         self.configuration = configuration
         if configuration is not None:
@@ -265,6 +267,10 @@ class HumanAPI:
                 if obj.id in self.features:
                     raise ValueError(f"Feature id {obj.id} is already in use")
                 self.features[obj.id] = obj
+            elif obj.type == "Issue":
+                if obj.id in self.issues:
+                    raise ValueError(f"Issue id {obj.id} is already in use")
+                self.issues[obj.id] = obj
             elif obj.type == "Epic":
                 if obj.id in self.epics:
                     raise ValueError(f"Epic id {obj.id} is already in use")
@@ -297,6 +303,10 @@ class HumanAPI:
         for work_item in work_objects_dicts:
             if work_item["type"] == "Feature":
                 feature = Feature()
+                feature.init_from_dict(work_item)
+                lst_ret.append(feature)
+            elif work_item["type"] == "Issue":
+                feature = Issue()
                 feature.init_from_dict(work_item)
                 lst_ret.append(feature)
             elif work_item["type"] == "Epic":
@@ -1354,6 +1364,7 @@ class HumanAPI:
                    "from horey.human_api.bug import Bug",
                    "from horey.human_api.user_story import UserStory",
                    "from horey.human_api.feature import Feature",
+                   "from horey.human_api.issue import Issue",
                    "from horey.human_api.epic import Epic",
                    "",
                   f'SPRINT_NAME = "{self.configuration.sprint_name}"']

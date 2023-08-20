@@ -298,7 +298,7 @@ class WorkItem(AzureDevopsObject):
         if related:
             logger.info(f"Unhandled related: {related}")
 
-        if ret["type"] not in ["Task", "Bug", "UserStory", "Feature", "Epic"]:
+        if ret["type"] not in ["Task", "Bug", "UserStory", "Feature", "Epic", "Issue"]:
             raise ValueError(ret["type"])
 
         return ret
