@@ -62,7 +62,7 @@ def test_detach_instances():
     asg = AutoScalingGroup({})
     asg.name = mock_values["autoscaling_group_name_detach_instances_prod"]
     asg.region = region
-    asg.desired_count = 50
+    asg.desired_count = 100
     client.detach_instances(asg, inst_ids, decrement=True)
 
     ec2_client = EC2Client()
