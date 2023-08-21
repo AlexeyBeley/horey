@@ -369,20 +369,19 @@ class AutoScalingClient(Boto3Client):
 
         activity.update_from_raw_response(ret[0])
 
-    def detach_instances(self, region, instance_ids, asg_name, decrement=False):
+    def detach_instances(self, auto_scaling_group, instance_ids, decrement=False):
         """
         Detach instances from asg.
 
-        :param region:
+        :param auto_scaling_group:
         :param instance_ids:
-        :param asg_name:
         :param decrement:
         :return:
         """
 
-        AWSAccount.set_aws_region(region)
+        AWSAccount.set_aws_region(auto_scaling_group.region)
         request_dict = {"InstanceIds": instance_ids,
-                        "AutoScalingGroupName": asg_name,
+                        "AutoScalingGroupName": auto_scaling_group.name,
                         "ShouldDecrementDesiredCapacity": decrement}
 
         ret = self.detach_instances_raw(request_dict)
@@ -394,6 +393,8 @@ class AutoScalingClient(Boto3Client):
         [AutoScalingActivity.Status.IN_PROGRESS],
         [AutoScalingActivity.Status.FAILED],
         )
+
+        auto_scaling_group.desired_capacity -= len(instance_ids)
 
     def detach_instances_raw(self, request_dict):
         """

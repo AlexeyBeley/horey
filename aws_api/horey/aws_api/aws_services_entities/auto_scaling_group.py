@@ -131,13 +131,14 @@ class AutoScalingGroup(AwsObject):
         :return:
         """
 
-        request = {}
+        for attr_name in ["max_size", "min_size"]:
+            if getattr(self, attr_name) != getattr(desired_state, attr_name):
+                request = {"AutoScalingGroupName": desired_state.name,
+                           "MaxSize": desired_state.max_size,
+                           "MinSize": desired_state.min_size}
+                return request
 
-        if self.max_size != desired_state.max_size:
-            request["AutoScalingGroupName"] = desired_state.name
-            request["MaxSize"] = desired_state.max_size
-
-        return request if request else None
+        return None
 
     def generate_dispose_request(self):
         """

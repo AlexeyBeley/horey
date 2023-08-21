@@ -111,8 +111,8 @@ class EC2SecurityGroup(AwsObject):
             ):
                 revoke_request.append(self_permission)
 
-        if len(revoke_request) == self_permissions_counter:
-            raise ValueError(f"Can not automatically delete all rules in security group {target_security_group.id=}. "
+        if self_permissions_counter and len(revoke_request) == self_permissions_counter:
+            raise ValueError(f"Can not automatically delete all rules in security group '{self.get_tagname(ignore_missing_tag=True)}' {target_security_group.id=}. "
                              f"You can do it only manually!")
 
 

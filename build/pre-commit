@@ -10,7 +10,7 @@
 # Run pylint on the changed files
 function run_pylint () {
 return_code=0
-  if [ ! -d "./build/_build/_venv/lib/python/site-packages/pylint" ]
+  if [ $(source ./build/_build/_venv/bin/activate && python -m pip freeze | grep pylint | wc -l) = 0 ]
   then
       make -e install_pylint
   fi

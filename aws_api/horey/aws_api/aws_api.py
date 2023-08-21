@@ -3132,10 +3132,10 @@ class AWSAPI:
                     elif resource["name"] == "MEMORY":
                         memory_reserved += resource["integerValue"]/1024
 
-            memory_reserved = round(memory_reserved, 2)
-            memory_free= round(memory_free, 2)
+            memory_gb_used = round(memory_reserved-memory_free, 2)
             cpu_count_used = cpu_reserved-cpu_free
-            memory_gb_used = memory_reserved-memory_free
+            memory_reserved = round(memory_reserved, 2)
+            memory_free = round(memory_free, 2)
 
             tb_ret_tmp = TextBlock(f"Cluster: '{cluster.name}'. Size: CPUs {cpu_reserved}, Memory {memory_reserved}GB")
 
@@ -3155,7 +3155,7 @@ class AWSAPI:
                 tb_ret_tmp.lines.append(f"Usage: {cpu_usage}, {memory_usage}, ratio: {str_ratio}")
             else:
                 tb_ret_tmp.lines.append("No Memory Registered")
-            blocks_by_cluster_size[cpu_count_used+memory_gb_used].append(tb_ret_tmp)
+            blocks_by_cluster_size[cpu_reserved+memory_reserved].append(tb_ret_tmp)
 
         tb_ret.blocks = [block for key in sorted(blocks_by_cluster_size, reverse=True) for block in blocks_by_cluster_size[key]]
 
@@ -5142,8 +5142,7 @@ class AWSAPI:
         # detach ec2 instance from ASG
         current_ec2_instance_ids = [container_instance.ec2_instance_id for container_instance in
                                     current_container_instances]
-        self.autoscaling_client.detach_instances(auto_scaling_group.region, current_ec2_instance_ids,
-                                                 auto_scaling_group.name, decrement=True)
+        self.autoscaling_client.detach_instances(auto_scaling_group, current_ec2_instance_ids, decrement=True)
 
         # revert ASG capacity change
         if initial_max_size is not None:
