@@ -786,7 +786,7 @@ class ECSClient(Boto3Client):
 
     def update_container_instances_state(self, container_instances):
         """
-        Update states.
+        Desired `status` must be set to the same value for all container_instances.
 
         :param container_instances:
         :return:
@@ -803,10 +803,13 @@ class ECSClient(Boto3Client):
                 raise ValueError(container_instance.status)
 
         filters_req = {"cluster": container_instances[0].get_cluster_name(),
-                       "containerInstances": [container_instance.arn for container_instance in container_instances],
                        "status": status
                        }
-        ret = list(self.execute(self.client.update_container_instances_state, "containerInstances", filters_req=filters_req))
+
+        ret = []
+        for instances_chunk in [container_instances[i:i + 10] for i in range(0, len(container_instances), 10)]:
+            filters_req["containerInstances"]= [container_instance.arn for container_instance in instances_chunk]
+            ret += self.update_container_instances_state_raw(filters_req)
 
         if status != "DRAINING":
             return ret
@@ -824,3 +827,14 @@ class ECSClient(Boto3Client):
             time.sleep(5)
 
         raise TimeoutError("Waiting for all container instances to drain")
+
+    def update_container_instances_state_raw(self, dict_request):
+        """
+        Standard.
+
+        :param dict_request:
+        :return:
+        """
+
+        logger.info(f"Updating container instances states: {dict_request}")
+        return list(self.execute(self.client.update_container_instances_state, "containerInstances", filters_req=dict_request))
