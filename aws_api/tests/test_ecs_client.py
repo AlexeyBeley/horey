@@ -26,18 +26,21 @@ logger = get_logger(
     configuration_values_file_full_path=configuration_values_file_full_path
 )
 
+
 accounts_file_full_path = os.path.abspath(
     os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
         "..",
+        "..",
+        "..",
         "ignore",
-        "aws_api_managed_accounts.py",
+        "accounts",
+        "managed_accounts.py",
     )
 )
 
 accounts = CommonUtils.load_object_from_module(accounts_file_full_path, "main")
-AWSAccount.set_aws_account(accounts["1111"])
-AWSAccount.set_aws_region(accounts["1111"].regions["us-west-2"])
+AWSAccount.set_aws_account(accounts["dev"])
 
 mock_values_file_path = os.path.abspath(
     os.path.join(
@@ -409,9 +412,13 @@ def test_get_all_task_definitions():
     ret = client.get_all_task_definitions(region=Region.get_region("us-east-1"))
     assert isinstance(ret, list)
 
+def test_dispose_cluster():
+    assert True
 
 if __name__ == "__main__":
     # test_register_task_definition()
     # test_provision_cluster()
-    test_provision_service_without_tg()
+    # test_provision_service_without_tg()
     # test_get_all_task_definitions()
+    # test_dispose_cluster()
+    test_dispose_cluster()
