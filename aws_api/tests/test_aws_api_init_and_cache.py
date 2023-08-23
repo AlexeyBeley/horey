@@ -30,7 +30,7 @@ configuration.configuration_file_full_path = os.path.abspath(
         "..",
         "..",
         "ignore",
-        "aws_api_configuration_values.py",
+        "aws_api_configuration_values_all_access.py",
     )
 )
 configuration.init_from_file()
@@ -108,13 +108,25 @@ def test_init_and_cache_network_interfaces():
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
-def test_init_and_cache_security_groups():
+def test_init_and_cache_security_all_groups():
     aws_api.init_security_groups()
     aws_api.cache_objects(
         aws_api.security_groups, configuration.aws_api_ec2_security_groups_cache_file
     )
     logger.info(f"len(security_groups) = {len(aws_api.security_groups)}")
     assert len(aws_api.security_groups) > 0
+
+
+@pytest.mark.skip(reason="No way of currently testing this")
+def test_init_and_cache_security_regions_groups():
+    ret = []
+    for region_mark in ["us-east-1", "eu-central-1"]:
+        ret += aws_api.ec2_client.get_region_security_groups(Region.get_region(region_mark))
+    aws_api.cache_objects(
+        ret, configuration.aws_api_ec2_security_groups_cache_file
+    )
+    logger.info(f"len(security_groups) = {len(aws_api.security_groups)}")
+    assert len(ret) > 0
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
@@ -942,7 +954,7 @@ if __name__ == "__main__":
     #test_init_and_cache_lambda_event_source_mappings()
     #test_init_and_cache_servicediscovery_namespaces()
     # todo: fix test_init_and_cache_vpcs()
-    #test_init_and_cache_security_groups()
+    test_init_and_cache_security_regions_groups()
     #test_init_and_cache_subnets()
     # todo: fix test_init_and_cache_glue_tables()
     # todo: fix test_init_and_cache_glue_databases()
@@ -970,4 +982,4 @@ if __name__ == "__main__":
     # test_init_eks_addons_from_cache()
     # test_init_eks_clusters()
     # test_init_eks_clusters_from_cache()
-    test_init_and_cache_hosted_zones()
+    # test_init_and_cache_hosted_zones()

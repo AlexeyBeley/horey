@@ -5111,6 +5111,9 @@ class AWSAPI:
         """
 
         self.ecs_client.update_cluster_information(ecs_cluster)
+        if not ecs_cluster.capacity_providers:
+            return
+
         cap_prov = ECSCapacityProvider({})
         cap_prov.region = ecs_cluster.region
         cap_prov.name = ecs_cluster.capacity_providers[0]
@@ -5184,7 +5187,7 @@ class AWSAPI:
                 if product["attributes"]["usagetype"] in ["Lambda-GB-Second", "Lambda-GB-Second-ARM"]:
                     range_point = 0
                 price = self.get_price_by_sku(price_lists, product["sku"], range_point=range_point)
-            except self.RangePointMissingError as error_inst:
+            except self.ServiceUsageRangePointMissingError as error_inst:
                 raise RuntimeError(product) from error_inst
             if product["attributes"]["groupDescription"]  == "Invocation call for a Lambda function":
                 print(product["attributes"])
@@ -5212,7 +5215,7 @@ class AWSAPI:
                     return float(price_dimension["pricePerUnit"]["USD"])
 
             if range_point is None:
-                raise self.RangePointMissingError(f"Range point should be set if there are multiple ranges: {sku_value['priceDimensions']}")
+                raise self.ServiceUsageRangePointMissingError(f"Range point should be set if there are multiple ranges: {sku_value['priceDimensions']}")
 
             for price_dimension in sku_value["priceDimensions"].values():
                 if float(price_dimension["beginRange"]) <= range_point <= float(price_dimension["endRange"]):
@@ -5220,7 +5223,16 @@ class AWSAPI:
 
         raise RuntimeError(f"Could not find price for SKU: {sku}")
 
-    class RangePointMissingError(RuntimeError):
+    class ServiceUsageRangePointMissingError(RuntimeError):
         """
         No value set for range decision
+        """
+
+    def todo_cleanup(self):
+        """
+
+        #todo: Route53 old ACM certificates
+        #todo: Route53 old load balancers.
+
+        :return:
         """

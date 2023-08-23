@@ -121,7 +121,7 @@ class Boto3Client:
                 )
                 if "The security token included in the request is invalid" in repr(
                     exception_instance
-                ):
+                ) or "AccessDeniedException" in repr(exception_instance):
                     raise
                 exception_weight = 10
                 time_to_sleep = 1
@@ -355,7 +355,7 @@ class Boto3Client:
                 )
                 if "The security token included in the request is invalid" in repr(
                     exception_instance
-                ):
+                ) or "AccessDeniedException" in repr(exception_instance):
                     raise
                 exception_weight = 10
                 time_to_sleep = 1

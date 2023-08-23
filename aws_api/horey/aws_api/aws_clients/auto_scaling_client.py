@@ -330,20 +330,23 @@ class AutoScalingClient(Boto3Client):
             del response["ResponseMetadata"]
             return response
 
-    def update_policy_information(self, policy):
+    def update_policy_information(self, policy: AutoScalingPolicy):
         """
         Fetch policy information from AWS api.
 
         :param policy:
         :return:
         """
+        filters_req = {"PolicyNames": [policy.name]}
+        if policy.auto_scaling_group_name:
+            filters_req["AutoScalingGroupName"] = policy.auto_scaling_group_name
 
         AWSAccount.set_aws_region(policy.region)
         try:
             dict_src = self.execute_with_single_reply(
                 self.client.describe_policies,
                 "ScalingPolicies",
-                filters_req={"PolicyNames": [policy.name]},
+                filters_req=filters_req
             )
         except self.ZeroValuesException:
             return False

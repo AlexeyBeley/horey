@@ -13,6 +13,12 @@ test_%: FORCE build
 	source ${VENV_DIR}/bin/activate &&\
 	python3 ${TESTS_DIR}/${@}
 
+
+pytest_%: FORCE build
+	source ${VENV_DIR}/bin/activate &&\
+	pytest ${TESTS_DIR}/$(subst pytest_,,$@)
+
+
 FORCE: ;
 
 .PHONY: build
