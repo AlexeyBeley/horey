@@ -324,6 +324,7 @@ class Boto3Client:
         for ret_obj in response:
             yield ret_obj
 
+    # pylint: disable= too-many-branches
     def execute_without_pagination(self, func_command, return_string, filters_req=None, raw_data=False, exception_ignore_callback=None, instant_raise=False):
         """
         Protected execution of an API call.
@@ -355,7 +356,7 @@ class Boto3Client:
                 )
                 if "The security token included in the request is invalid" in repr(
                     exception_instance
-                ) or "AccessDeniedException" in repr(exception_instance):
+                ):
                     raise
                 exception_weight = 10
                 time_to_sleep = 1
@@ -371,6 +372,9 @@ class Boto3Client:
                     exception_instance
                 ):
                     return []
+
+                if "AccessDeniedException" in repr(exception_instance):
+                    raise
 
                 if instant_raise:
                     raise
