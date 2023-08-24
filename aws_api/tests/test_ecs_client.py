@@ -57,153 +57,15 @@ def test_init_ecs_client():
 
 
 CONTAINER_NAME = "test-container-name"
-IMAGE_URL = ".dkr.ecr.us-east-1.amazonaws.com/my-web-app:latest"
+IMAGE_URL = mock_values["image_ecr_url"]
 CPU_SIZE = 512
 MEMORY_SIZE = 1024
 CONTAINER_PORT = 8080
 HOST_PORT = 8080
 TASK_DEFINITION_FAMILY = "task-definition-family"
 
-dict_request_base = {
-    "family": None,
-    "taskRoleArn": "",
-    "executionRoleArn": "",
-    "networkMode": "none",
-    "containerDefinitions": [
-        {
-            "name": CONTAINER_NAME,
-            "image": IMAGE_URL,
-            "repositoryCredentials": {"credentialsParameter": "string"},
-            "cpu": CPU_SIZE,
-            "memory": MEMORY_SIZE,
-            "memoryReservation": MEMORY_SIZE,
-            "links": [
-                "string",
-            ],
-            "portMappings": [
-                {
-                    "containerPort": CONTAINER_PORT,
-                    "hostPort": HOST_PORT,
-                    "protocol": "tcp",
-                },
-            ],
-            "essential": False,
-            "entryPoint": [
-                "string",
-            ],
-            "command": [
-                "string",
-            ],
-            "environment": [
-                {"name": "string", "value": "string"},
-            ],
-            "environmentFiles": [
-                {"value": "string", "type": "s3"},
-            ],
-            "mountPoints": [
-                {
-                    "sourceVolume": "string",
-                    "containerPath": "string",
-                    "readOnly": False,
-                },
-            ],
-            "volumesFrom": [
-                {"sourceContainer": "string", "readOnly": False},
-            ],
-            "linuxParameters": {
-                "capabilities": {
-                    "add": [
-                        "string",
-                    ],
-                    "drop": [
-                        "string",
-                    ],
-                },
-                "devices": [
-                    {
-                        "hostPath": "string",
-                        "containerPath": "string",
-                        "permissions": [
-                            "write",
-                        ],
-                    },
-                ],
-                "initProcessEnabled": False,
-                "sharedMemorySize": 123,
-                "tmpfs": [
-                    {
-                        "containerPath": "string",
-                        "size": 123,
-                        "mountOptions": [
-                            "string",
-                        ],
-                    },
-                ],
-                "maxSwap": 123,
-                "swappiness": 123,
-            },
-            "secrets": [
-                {"name": "string", "valueFrom": "string"},
-            ],
-            "dependsOn": [
-                {"containerName": "string", "condition": "START"},
-            ],
-            "startTimeout": 123,
-            "stopTimeout": 123,
-            "hostname": "string",
-            "user": "string",
-            "workingDirectory": "string",
-            "disableNetworking": False,
-            "privileged": False,
-            "readonlyRootFilesystem": True,
-            "dnsServers": [
-                "string",
-            ],
-            "dnsSearchDomains": [
-                "string",
-            ],
-            "extraHosts": [
-                {"hostname": "string", "ipAddress": "string"},
-            ],
-            "dockerSecurityOptions": [
-                "string",
-            ],
-            "interactive": False,
-            "pseudoTerminal": False,
-            "dockerLabels": {"string": "string"},
-            "ulimits": [
-                {"name": "core", "softLimit": 123, "hardLimit": 123},
-            ],
-            "logConfiguration": {
-                "logDriver": "json-file",
-                "options": {"string": "string"},
-                "secretOptions": [
-                    {"name": "string", "valueFrom": "string"},
-                ],
-            },
-            "healthCheck": {
-                "command": [
-                    "string",
-                ],
-                "interval": 123,
-                "timeout": 123,
-                "retries": 123,
-                "startPeriod": 123,
-            },
-            "systemControls": [
-                {"namespace": "string", "value": "string"},
-            ],
-            "resourceRequirements": [
-                {"value": "string", "type": "InferenceAccelerator"},
-            ],
-            "firelensConfiguration": {
-                "type": "fluentd",
-                "options": {"string": "string"},
-            },
-        },
-    ],
-}
-EXECUTION_ROLE_ARN = "arn:aws:iam:::role/HoreyEcsExecutionRole1"
+
+EXECUTION_ROLE_ARN = mock_values["ecs_task_execution_role_arn"]
 dict_register_td_request = {
     "family": TASK_DEFINITION_FAMILY,
     "executionRoleArn": EXECUTION_ROLE_ARN,
