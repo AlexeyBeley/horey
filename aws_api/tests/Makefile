@@ -16,8 +16,11 @@ test_%: FORCE build
 
 pytest_%: FORCE build
 	source ${VENV_DIR}/bin/activate &&\
-	pytest ${TESTS_DIR}/$(subst pytest_,,$@)
+	pytest --full-trace ${TESTS_DIR}/$(subst pytest_,,$@) -v -s
 
+test: FORCE build
+	source ${VENV_DIR}/bin/activate &&\
+	pytest --full-trace ./ -v
 
 FORCE: ;
 

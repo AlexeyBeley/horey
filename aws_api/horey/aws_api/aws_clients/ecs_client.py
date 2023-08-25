@@ -454,6 +454,9 @@ class ECSClient(Boto3Client):
         @return:
         """
 
+        if not service.cluster_arn:
+            raise ValueError("cluster_arn was not set")
+
         AWSAccount.set_aws_region(service.region)
         filters_req = {"cluster": service.cluster_arn, "services": [service.arn]}
 
@@ -467,7 +470,7 @@ class ECSClient(Boto3Client):
 
         return False
 
-    def provision_service(self, service: ECSService):
+    def provision_service(self, service: ECSService, asyncronous=False):
         """
         Standard
 
@@ -488,7 +491,8 @@ class ECSClient(Boto3Client):
             response = self.create_service_raw(service.generate_create_request())
             service.update_from_raw_response(response)
 
-        self.wait_for_deployment_end(service)
+        if not asyncronous:
+            self.wait_for_deployment_end(service)
 
     def wait_for_deployment_end(self, service, timeout=10*60):
         """
@@ -572,7 +576,7 @@ class ECSClient(Boto3Client):
         :param service:
         :return:
         """
-
+        service.cluster_arn = cluster.arn
         AWSAccount.set_aws_region(service.region)
         self.dispose_service_raw(service.generate_dispose_request(cluster))
 
