@@ -1,14 +1,12 @@
 """
-Module handling IAM role object
+Module handling AWS object
 """
-import pdb
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
-from horey.aws_api.base_entities.region import Region
 
 
 class IamInstanceProfile(AwsObject):
-    """Class representing AWS IAM Role"""
+    """Class representing AWS IAM Instance profile"""
 
     def __init__(self, dict_src, from_cache=False):
         """
@@ -18,25 +16,15 @@ class IamInstanceProfile(AwsObject):
         """
         super().__init__(dict_src)
         self.arn = None
+        self.path = None
+        self.roles = []
 
         if from_cache:
             self._init_instance_profile_from_cache(dict_src)
             return
 
-        init_options = {
-            "Path": self.init_default_attr,
-            "InstanceProfileName": lambda x, y: self.init_default_attr(
-                x, y, formatted_name="name"
-            ),
-            "InstanceProfileId": lambda x, y: self.init_default_attr(
-                x, y, formatted_name="id"
-            ),
-            "Arn": self.init_default_attr,
-            "CreateDate": self.init_default_attr,
-            "Roles": self.init_default_attr,
-            "Tags": self.init_default_attr,
-        }
-        self.init_attrs(dict_src, init_options)
+        self.update_from_raw_response(dict_src)
+
 
     def _init_instance_profile_from_cache(self, dict_src):
         """
@@ -60,6 +48,13 @@ class IamInstanceProfile(AwsObject):
         self.init_attrs(dict_src, init_options)
 
     def update_from_raw_response(self, dict_src):
+        """
+        From API response dict.
+
+        :param dict_src:
+        :return:
+        """
+
         init_options = {
             "Path": self.init_default_attr,
             "InstanceProfileName": lambda x, y: self.init_default_attr(
@@ -77,13 +72,22 @@ class IamInstanceProfile(AwsObject):
         self.init_attrs(dict_src, init_options)
 
     def generate_create_request(self):
-        request = dict()
-        request["InstanceProfileName"] = self.name
-        request["Tags"] = self.tags
+        """
+        Standard.
+
+        :return:
+        """
+        request = {"InstanceProfileName": self.name}
+        self.extend_request_with_optional_parameters(request, ["Tags", "Path"])
 
         return request
 
     def generate_add_role_requests(self):
+        """
+        Standard.
+
+        :return:
+        """
         return [
             {"InstanceProfileName": self.name, "RoleName": role["RoleName"]}
             for role in self.roles

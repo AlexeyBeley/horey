@@ -250,17 +250,20 @@ class IamClient(Boto3Client):
         self.update_iam_role_managed_policies(iam_role, policies=policies)
         self.update_iam_role_inline_policies(iam_role)
 
-    def update_role_information(self, iam_role):
+    def update_role_information(self, iam_role: IamRole):
         """
         Full information part update.
         :param iam_role:
         :return:
         """
-        ret = self.execute(
-            self.client.get_role, "Role", filters_req={"RoleName": iam_role.name}
-        )
-        update_info = next(ret)
-        iam_role.update_extended(update_info)
+
+        for response in self.execute(
+            self.client.get_role, "Role", filters_req={"RoleName": iam_role.name},
+                exception_ignore_callback=lambda x: "NoSuchEntityException" in repr(x)
+        ):
+            iam_role.update_from_raw_response(response)
+            return True
+        return False
 
     def update_iam_role_managed_policies(self, iam_role, policies=None):
         """
@@ -419,26 +422,23 @@ class IamClient(Boto3Client):
 
     def provision_iam_role(self, iam_role: IamRole):
         """
+        ATTENTION!!! Role is not updated - only created if it does not exist.
         Provision role object
 
         @param iam_role:
         @return:
         """
 
-        all_roles = self.get_all_roles(full_information=False)
-        found_role = CommonUtils.find_objects_by_values(
-            all_roles, {"name": iam_role.name}
-        )
-
-        if found_role:
-            found_role = found_role[0]
-            role_dict_src = found_role.dict_src
-        else:
+        region_role = IamRole({})
+        region_role.name = iam_role.name
+        region_role.path = iam_role.path
+        if not self.update_role_information(region_role):
             role_dict_src = self.provision_iam_role_raw(
                 iam_role.generate_create_request()
             )
-
-        iam_role.update_from_raw_response(role_dict_src)
+            iam_role.update_from_raw_response(role_dict_src)
+        else:
+            self.update_role_information(iam_role)
 
         for request in iam_role.generate_attach_policies_requests():
             self.attach_role_policy_raw(request)
@@ -475,6 +475,8 @@ class IamClient(Boto3Client):
             exception_ignore_callback=lambda x: "NoSuchEntity" in repr(x),
         ):
             iam_instance_profile.update_from_raw_response(response)
+            return True
+        return False
 
     def provision_instance_profile(self, iam_instance_profile: IamInstanceProfile):
         """
@@ -484,17 +486,9 @@ class IamClient(Boto3Client):
         @return:
         """
 
-        all_instance_profiles = self.get_all_instance_profiles()
-        found_profiles = CommonUtils.find_objects_by_values(
-            all_instance_profiles, {"name": iam_instance_profile.name}
-        )
-
-        if len(found_profiles) > 2:
-            raise RuntimeError(
-                f"More then 1 profiles found by name: {iam_instance_profile.name}"
-            )
-
-        if len(found_profiles) == 0:
+        current_iam_instance_profile = IamInstanceProfile({})
+        current_iam_instance_profile.name = iam_instance_profile.name
+        if not self.update_instance_profile_information(current_iam_instance_profile):
             self.provision_iam_instance_profile_raw(
                 iam_instance_profile.generate_create_request()
             )

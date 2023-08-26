@@ -4,6 +4,7 @@ Testing ecs client.
 """
 
 import os
+import json
 
 from unittest.mock import Mock
 import pytest
@@ -19,6 +20,15 @@ from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.base_entities.region import Region
 from horey.common_utils.common_utils import CommonUtils
 from horey.aws_api.aws_services_entities.ecs_task_definition import ECSTaskDefinition
+from horey.aws_api.aws_services_entities.auto_scaling_group import AutoScalingGroup
+from horey.aws_api.aws_services_entities.iam_role import IamRole
+from horey.aws_api.aws_services_entities.iam_instance_profile import IamInstanceProfile
+from horey.aws_api.aws_services_entities.ec2_launch_template import EC2LaunchTemplate
+
+from horey.aws_api.aws_clients.auto_scaling_client import AutoScalingClient
+from horey.aws_api.aws_clients.ssm_client import SSMClient
+from horey.aws_api.aws_clients.ec2_client import EC2Client
+from horey.aws_api.aws_clients.iam_client import IamClient
 
 
 configuration_values_file_full_path = os.path.join(
@@ -59,9 +69,14 @@ tags = [{"key": "lvl", "value": "tst"}]
 
 client = ECSClient()
 
-SERVICE_NAME = "tes-service-name"
+SERVICE_NAME = "test-service-name"
 TEST_CLUSTER_NAME = "test-cluster"
-CAPACITY_PROVIDER_NAME ="test-capacity-provider"
+CAPACITY_PROVIDER_NAME = "test-capacity-provider"
+AUTOSCALING_GROUP_NAME = "asg_test_ecs_cluster"
+TEST_CONTAINER_INSTANCE_IAM_ROLE = "test_role_container_instance"
+TEST_CONTAINER_INSTANCE_IAM_PROFILE_NAME = "test_iam_profile_container_instance"
+TEST_LAUNCH_TEMPLATE_NAME = "test_launch_template"
+
 
 class Dependencies:
     """
@@ -71,6 +86,7 @@ class Dependencies:
 
     fargate_task_definition_arn = None
     cluster_arn = None
+    autoscaling_group_arn = None
 
 
 def create_task_definition():
@@ -145,11 +161,124 @@ def test_run_task():
     }
     client.run_task(dict_run_task_request)
 
+def provision_container_instance_iam_profile():
+    assume_role_policy = """{
+            "Version": "2012-10-17",
+            "Statement": [
+            {
+            "Effect": "Allow",
+            "Principal": {
+            "Service": "ec2.amazonaws.com"
+            },
+            "Action": "sts:AssumeRole"
+            }
+            ]
+            }"""
+
+    iam_role = IamRole({})
+    iam_role.name = TEST_CONTAINER_INSTANCE_IAM_ROLE
+    iam_role.assume_role_policy_document = assume_role_policy
+    iam_role.description = TEST_CONTAINER_INSTANCE_IAM_ROLE
+    iam_role.max_session_duration = 3600
+    iam_role.tags = [{
+        "Key": "Name",
+        "Value": iam_role.name
+    }]
+
+    iam_client = IamClient()
+    iam_role.path = "/test/"
+    iam_client.provision_iam_role(iam_role)
+
+    iam_instance_profile = IamInstanceProfile({})
+    iam_instance_profile.name = TEST_CONTAINER_INSTANCE_IAM_PROFILE_NAME
+    iam_instance_profile.tags= [{
+        "Key": "Name",
+        "Value": iam_instance_profile.name
+    }]
+    iam_instance_profile.roles = [{"RoleName": iam_role.name}]
+    iam_client.provision_instance_profile(iam_instance_profile)
+    return iam_instance_profile
+
+def provision_launch_template():
+    ssm_client = SSMClient()
+    param = ssm_client.get_region_parameter(region,
+                                        "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended")
+
+    filter_request = {"ImageIds": [json.loads(param.value)["image_id"]]}
+    ec2_client = EC2Client()
+    amis = ec2_client.get_region_amis(region, custom_filters=filter_request)
+    if len(amis) > 1:
+        raise RuntimeError(f"Can not find single AMI using filter: {filter_request['Filters']}")
+    ami = amis[0]
+
+    with open("./user_data_tmp.sh", "w", encoding="utf-8") as file_handler:
+        file_handler.write(f'#!/bin/bash\n\
+                             echo "ECS_CLUSTER={TEST_CLUSTER_NAME}" >> /etc/ecs/ecs.config')
+
+    user_data = ec2_client.generate_user_data_from_file("./user_data_tmp.sh")
+    profile = provision_container_instance_iam_profile()
+
+    launch_template = EC2LaunchTemplate({})
+    launch_template.name = TEST_LAUNCH_TEMPLATE_NAME
+    launch_template.tags = [{
+            "Key": "Name",
+            "Value": launch_template.name
+        }]
+    launch_template.region = region
+
+    launch_template.launch_template_data = {"EbsOptimized": False,
+                            "IamInstanceProfile": {
+                                "Arn": profile.arn
+                            },
+                            "BlockDeviceMappings": [
+                                {
+                                    "DeviceName": "/dev/xvda",
+                                    "Ebs": {
+                                        "VolumeSize": 30,
+                                        "VolumeType": "gp3"
+                                    }
+                                }
+                            ],
+                            "ImageId": ami.id,
+                            "InstanceType": "t3a.small",
+                            "KeyName": mock_values["container_instance_ssh_key_name"],
+                            "Monitoring": {
+                                "Enabled": True
+                            },
+                            "NetworkInterfaces": [
+                                {
+                                    "AssociatePublicIpAddress": True,
+                                    "DeleteOnTermination": True,
+                                    "DeviceIndex": 0,
+                                    "Groups": mock_values["ecs_fargate_service_security_groups"]
+                                },
+                            ],
+                            "UserData": user_data
+                            }
+    EC2Client().provision_launch_template(launch_template)
+    return launch_template
+
+def test_provision_autoscaling_group():
+    launch_template = provision_launch_template()
+    group = AutoScalingGroup({})
+    group.region = region
+    group.name = AUTOSCALING_GROUP_NAME
+    group.tags = [{"Key": "lvl", "Value": "tst"}]
+    group.launch_template = {
+            "LaunchTemplateId": launch_template.id,
+            "Version": "$Default"
+        }
+    group.min_size = 0
+    group.max_size = 0
+    group.desired_capacity = 0
+    group.vpc_zone_identifier = ",".join(mock_values["ecs_fargate_service_subnets"])
+    AutoScalingClient().provision_auto_scaling_group(group)
+    Dependencies.autoscaling_group_arn = group.arn
 
 #@pytest.mark.skip()
 def test_provision_capacity_provider():
     auto_scaling_group = Mock()
-    auto_scaling_group.arn = mock_values["auto_scaling_group.arn"]
+    auto_scaling_group.arn = Dependencies.autoscaling_group_arn
     capacity_provider = ECSCapacityProvider({})
     capacity_provider.name = CAPACITY_PROVIDER_NAME
     capacity_provider.tags = tags
@@ -304,7 +433,9 @@ def test_dispose_cluster():
     assert True
 
 if __name__ == "__main__":
-    test_provision_cluster()
+    pass
+    # test_provision_autoscaling_group()
+    # test_provision_cluster()
     # test_provision_service_with_tg()
     # test_register_task_definition()
     # test_provision_cluster()

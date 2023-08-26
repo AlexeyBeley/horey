@@ -22,6 +22,7 @@ class IamRole(AwsObject):
         self.assume_role_policy_document = None
         self.max_session_duration = None
         self.description = None
+        self.path = ""
 
         super().__init__(dict_src)
 
@@ -29,19 +30,7 @@ class IamRole(AwsObject):
             self._init_iam_role_from_cache(dict_src)
             return
 
-        init_options = {
-            "RoleId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
-            "Path": self.init_default_attr,
-            "RoleName": lambda x, y: self.init_default_attr(
-                x, y, formatted_name="name"
-            ),
-            "Arn": self.init_default_attr,
-            "CreateDate": self.init_default_attr,
-            "AssumeRolePolicyDocument": self.init_default_attr,
-            "Description": self.init_default_attr,
-            "MaxSessionDuration": self.init_default_attr,
-        }
-        self.init_attrs(dict_src, init_options)
+        self.update_from_raw_response(dict_src)
 
     def _init_iam_role_from_cache(self, dict_src):
         """
@@ -52,30 +41,6 @@ class IamRole(AwsObject):
         options = {}
 
         self._init_from_cache(dict_src, options)
-
-    def update_extended(self, dict_src):
-        """
-        Update self attributes from extended API Reply.
-        :param dict_src:
-        :return:
-        """
-
-        init_options = {
-            "RoleId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
-            "Path": self.init_default_attr,
-            "RoleName": lambda x, y: self.init_default_attr(
-                x, y, formatted_name="name"
-            ),
-            "Arn": self.init_default_attr,
-            "CreateDate": self.init_default_attr,
-            "AssumeRolePolicyDocument": self.init_default_attr,
-            "Description": self.init_default_attr,
-            "RoleLastUsed": self.init_role_last_used_attr,
-            "Tags": self.init_default_attr,
-            "MaxSessionDuration": self.init_default_attr,
-        }
-
-        self.init_attrs(dict_src, init_options)
 
     def init_role_last_used_attr(self, _, dict_src):
         """
@@ -137,6 +102,8 @@ class IamRole(AwsObject):
             "AssumeRolePolicyDocument": self.init_default_attr,
             "Description": self.init_default_attr,
             "MaxSessionDuration": self.init_default_attr,
+            "RoleLastUsed": self.init_role_last_used_attr,
+            "Tags": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -150,12 +117,11 @@ class IamRole(AwsObject):
 
         request = {
             "RoleName": self.name,
-            "Description": self.description,
             "AssumeRolePolicyDocument": self.assume_role_policy_document,
             "MaxSessionDuration": self.max_session_duration,
-            "Tags": self.tags,
         }
 
+        self.extend_request_with_optional_parameters(request, ["Tags", "Description", "Path"])
         return request
 
     def generate_attach_policies_requests(self):
