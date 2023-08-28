@@ -16,3 +16,13 @@ class STSClient(Boto3Client):
     def __init__(self):
         client_name = "sts"
         super().__init__(client_name)
+
+    def get_account(self):
+        """
+        Standard.
+
+        :return:
+        """
+
+        for response in self.execute(self.client.get_caller_identity, "Account"):
+            return response
