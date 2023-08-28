@@ -19,6 +19,7 @@ class HumanAPIConfigurationPolicy(ConfigurationPolicy):
         self._work_plan_file_path = None
         self._sprint_name = None
         self._ignore_workers = None
+        self._backlog_sprint_name = None
         super().__init__()
 
     @property
@@ -142,3 +143,11 @@ class HumanAPIConfigurationPolicy(ConfigurationPolicy):
     @ignore_workers.setter
     def ignore_workers(self, value):
         self._ignore_workers = value
+
+    @property
+    def backlog_sprint_name(self):
+        return self._backlog_sprint_name
+
+    @backlog_sprint_name.setter
+    def backlog_sprint_name(self, value):
+        self._backlog_sprint_name = value

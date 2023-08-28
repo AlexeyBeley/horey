@@ -14,6 +14,9 @@ class ECSCapacityProvider(AwsObject):
         super().__init__(dict_src)
         self._region = None
         self.auto_scaling_group_provider = {}
+        self.arn = None
+        self.update_status = None
+        self.update_status_reason = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -71,3 +74,12 @@ class ECSCapacityProvider(AwsObject):
 
         request = {"name": self.name, "autoScalingGroupProvider": self.auto_scaling_group_provider, "tags": self.tags}
         return request
+
+    def generate_dispose_request(self):
+        """
+        Standard.
+
+        :return:
+        """
+
+        return {"capacityProvider": self.name}

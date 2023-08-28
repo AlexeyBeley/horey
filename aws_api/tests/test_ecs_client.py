@@ -258,7 +258,7 @@ def provision_launch_template():
     EC2Client().provision_launch_template(launch_template)
     return launch_template
 
-def test_provision_autoscaling_group():
+def provision_autoscaling_group():
     launch_template = provision_launch_template()
     group = AutoScalingGroup({})
     group.region = region
@@ -277,8 +277,9 @@ def test_provision_autoscaling_group():
 
 #@pytest.mark.skip()
 def test_provision_capacity_provider():
-    auto_scaling_group = Mock()
-    auto_scaling_group.arn = Dependencies.autoscaling_group_arn
+    if Dependencies.autoscaling_group_arn is None:
+        provision_autoscaling_group()
+
     capacity_provider = ECSCapacityProvider({})
     capacity_provider.name = CAPACITY_PROVIDER_NAME
     capacity_provider.tags = tags
@@ -286,7 +287,7 @@ def test_provision_capacity_provider():
     capacity_provider.tags.append({"key": "Name", "value": capacity_provider.name})
 
     capacity_provider.auto_scaling_group_provider = {
-        "autoScalingGroupArn": auto_scaling_group.arn,
+        "autoScalingGroupArn": Dependencies.autoscaling_group_arn,
         "managedScaling": {
             "status": "ENABLED",
             "targetCapacity": 70,
@@ -297,8 +298,7 @@ def test_provision_capacity_provider():
         "managedTerminationProtection": "DISABLED",
     }
     client.provision_capacity_provider(capacity_provider)
-    assert capacity_provider._arn is not None
-
+    assert capacity_provider.arn is not None
 
 #@pytest.mark.skip()
 def test_provision_cluster():
@@ -307,8 +307,7 @@ def test_provision_cluster():
     cluster.settings = [{"name": "containerInsights", "value": "enabled"}]
 
     cluster.name = TEST_CLUSTER_NAME
-    cluster.tags = tags
-    cluster.tags.append({"key": "Name", "value": cluster.name})
+    cluster.tags = [{"key": "Name", "value": cluster.name}]
     cluster.configuration = {}
     cluster.capacity_providers = [CAPACITY_PROVIDER_NAME]
     cluster.default_capacity_provider_strategy = [
@@ -384,46 +383,15 @@ def test_dispose_service_with_tg():
     ecs_cluster.arn = mock_values["ecs_cluster.arn"]
     client.dispose_service(ecs_cluster, ecs_service)
 
+def test_dispose_capacity_provider():
+    capacity_provider = ECSCapacityProvider({})
+    capacity_provider.name = CAPACITY_PROVIDER_NAME
+    capacity_provider.region = region
 
-@pytest.mark.skip()
-def test_provision_service_without_tg():
-    ecs_client = ECSClient()
-    ecs_task_definition = Mock()
-    ecs_task_definition.arn = mock_values["ecs_task_definition.arn"]
-    ecs_cluster = Mock()
-    ecs_cluster.arn = mock_values["ecs_cluster.arn"]
-    role_arn = mock_values["ecs_service.role_arn"]
-    ecs_service = ECSService({})
-    ecs_service.region = region
+    response = client.dispose_capacity_provider(capacity_provider)
+    assert response
 
-    ecs_service.tags = tags
-
-    ecs_service.name = SERVICE_NAME
-    ecs_service.cluster_arn = ecs_cluster.arn
-    ecs_service.task_definition = ecs_task_definition.arn
-
-    ecs_service.desired_count = 30
-
-    ecs_service.launch_type = "EC2"
-
-    ecs_service.role_arn = role_arn
-    ecs_service.deployment_configuration = {
-        "deploymentCircuitBreaker": {"enable": False, "rollback": False},
-        "maximumPercent": 200,
-        "minimumHealthyPercent": 100,
-    }
-    ecs_service.placement_strategy = [
-        {"type": "spread", "field": "attribute:ecs.availability-zone"},
-        {"type": "spread", "field": "instanceId"},
-    ]
-    ecs_service.health_check_grace_period_seconds = 10
-    ecs_service.scheduling_strategy = "REPLICA"
-    ecs_service.enable_ecs_managed_tags = False
-    ecs_service.enable_execute_command = False
-
-    ecs_client.provision_service(ecs_service)
-
-@pytest.mark.skip()
+# @pytest.mark.skip()
 def test_get_all_task_definitions():
     ret = client.get_all_task_definitions(region=Region.get_region("us-east-1"))
     assert isinstance(ret, list)
@@ -435,10 +403,11 @@ def test_dispose_cluster():
 if __name__ == "__main__":
     pass
     # test_provision_autoscaling_group()
-    # test_provision_cluster()
+    #test_dispose_capacity_provider()
+    #test_provision_capacity_provider()
+    #test_provision_cluster()
     # test_provision_service_with_tg()
     # test_register_task_definition()
-    # test_provision_cluster()
     # test_provision_service_without_tg()
     # test_get_all_task_definitions()
     # test_dispose_service_without_tg()
