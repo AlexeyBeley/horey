@@ -34,46 +34,13 @@ class ECSService(AwsObject):
         self.enable_ecs_managed_tags = None
         self.arn = None
         self.deployments = []
+        self.network_configuration = []
 
         if from_cache:
             self._init_object_from_cache(dict_src)
             return
 
-        init_options = {
-            "serviceArn": lambda x, y: self.init_default_attr(
-                x, y, formatted_name="arn"
-            ),
-            "serviceName": lambda x, y: self.init_default_attr(
-                x, y, formatted_name="name"
-            ),
-            "clusterArn": self.init_default_attr,
-            "loadBalancers": self.init_default_attr,
-            "serviceRegistries": self.init_default_attr,
-            "desiredCount": self.init_default_attr,
-            "runningCount": self.init_default_attr,
-            "pendingCount": self.init_default_attr,
-            "capacityProviderStrategy": self.init_default_attr,
-            "taskDefinition": self.init_default_attr,
-            "deploymentConfiguration": self.init_default_attr,
-            "deployments": self.init_default_attr,
-            "roleArn": self.init_default_attr,
-            "events": self.init_default_attr,
-            "createdAt": self.init_default_attr,
-            "placementConstraints": self.init_default_attr,
-            "placementStrategy": self.init_default_attr,
-            "healthCheckGracePeriodSeconds": self.init_default_attr,
-            "schedulingStrategy": self.init_default_attr,
-            "createdBy": self.init_default_attr,
-            "enableECSManagedTags": self.init_default_attr,
-            "propagateTags": self.init_default_attr,
-            "enableExecuteCommand": self.init_default_attr,
-            "status": self.init_default_attr,
-            "launchType": self.init_default_attr,
-            "tags": self.init_default_attr,
-            "deploymentController": self.init_default_attr,
-        }
-
-        self.init_attrs(dict_src, init_options)
+        self.update_from_raw_response(dict_src)
 
     def _init_object_from_cache(self, dict_src):
         """
@@ -126,6 +93,7 @@ class ECSService(AwsObject):
             "launchType": self.init_default_attr,
             "tags": self.init_default_attr,
             "deploymentController": self.init_default_attr,
+            "networkConfiguration": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -163,6 +131,10 @@ class ECSService(AwsObject):
         request["enableExecuteCommand"] = self.enable_execute_command
 
         request["tags"] = self.tags
+
+        if self.network_configuration:
+            request["networkConfiguration"] = self.network_configuration
+
         return request
 
     def generate_dispose_request(self, cluster):
@@ -172,6 +144,9 @@ class ECSService(AwsObject):
         :param cluster:
         :return:
         """
+
+        if not cluster.name:
+            raise ValueError("Cluster name was not set")
 
         request = {"service": self.name, "cluster": cluster.name, "force": True}
         return request
@@ -242,6 +217,7 @@ class ECSService(AwsObject):
                 "launchType": self.init_default_attr,
                 "rolloutState": self.init_default_attr,
                 "rolloutStateReason": self.init_default_attr,
+                "networkConfiguration": self.init_default_attr,
             }
 
             self.init_attrs(dict_src, init_options, raise_on_no_option=True)

@@ -23,6 +23,7 @@ class ECSTaskDefinition(AwsObject):
         self.container_definitions = None
         self.task_role_arn = None
         self.execution_role_arn = None
+        self.arn = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)

@@ -104,7 +104,7 @@ class ECSClient(Boto3Client):
         Standard
 
         :param region:
-        :param cluster_identifiers:
+        :param cluster_identifiers: Cluster name or ARN
         :return:
         """
 
@@ -141,7 +141,49 @@ class ECSClient(Boto3Client):
 
         return final_result
 
-    def provision_capacity_provider(self, capacity_provider):
+    def dispose_capacity_provider(self, capacity_provider: ECSCapacityProvider):
+        """
+        Standard.
+
+        @param capacity_provider:
+        :return:
+        """
+
+        if not self.update_capacity_provider_information(capacity_provider):
+            return True
+
+        AWSAccount.set_aws_region(capacity_provider.region)
+        for cluster in self.get_region_clusters(capacity_provider.region):
+            if capacity_provider.name in cluster.capacity_providers:
+                self.attach_capacity_providers_to_ecs_cluster(cluster,
+                                                              [provider_name for provider_name in cluster.capacity_providers
+                                                               if provider_name != capacity_provider.name],
+                                                              [dict_cap for dict_cap in cluster.default_capacity_provider_strategy
+                                                               if dict_cap["capacityProvider"] != capacity_provider.name])
+        ret = self.dispose_capacity_provider_raw(
+            capacity_provider.generate_dispose_request()
+        )
+        status = ret["updateStatus"]
+
+        timeout = 300
+        sleep_time = 5
+        for _ in range(timeout // sleep_time):
+            if status == "DELETE_FAILED":
+                raise ValueError(capacity_provider.update_status_reason)
+            if status == "DELETE_COMPLETE":
+                return True
+            if status != "DELETE_IN_PROGRESS":
+                raise ValueError(f"{status}: {capacity_provider.update_status_reason}")
+            logger.info(f"Waiting for capacity provider deletion. Going to sleep for {sleep_time} sec")
+            time.sleep(sleep_time)
+            if not self.update_capacity_provider_information(capacity_provider):
+                return True
+            status = capacity_provider.update_status
+
+        raise TimeoutError(f"Waiting for capacity provider disposal: {timeout} seconds")
+
+
+    def provision_capacity_provider(self, capacity_provider: ECSCapacityProvider):
         """
         Provision capacity provider
 
@@ -169,6 +211,7 @@ class ECSClient(Boto3Client):
         :return:
         """
 
+        AWSAccount.set_aws_region(capacity_provider.region)
         region_objects = self.get_region_capacity_providers(capacity_provider.region)
         for region_object in region_objects:
             if region_object.name == capacity_provider.name:
@@ -192,47 +235,54 @@ class ECSClient(Boto3Client):
         ):
             return response
 
+    def dispose_capacity_provider_raw(self, request_dict):
+        """
+        Standard.
+
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Disposing ECS Capacity Provider: {request_dict}")
+        for response in self.execute(
+                self.client.delete_capacity_provider,
+                "capacityProvider",
+                filters_req=request_dict,
+        ):
+            return response
+
     def provision_cluster(self, cluster: ECSCluster):
         """
         self.client.delete_cluster(capacityProvider='test-capacity-provider')
         """
+        existing_cluster = ECSCluster({})
+        existing_cluster.name = cluster.name
+        existing_cluster.region = cluster.region
 
-        region_objects = self.get_region_clusters(
-            cluster.region, cluster_identifiers=[cluster.name]
-        )
-        if len(region_objects) == 1:
-            region_cluster = region_objects[0]
-            if region_cluster.get_status() == region_cluster.Status.ACTIVE:
-                cluster.update_from_raw_response(region_cluster.dict_src)
-                return
-
-        if (
-            len(region_objects) == 0
-            or region_cluster.get_status() == region_cluster.Status.INACTIVE
-        ):
+        if not self.update_cluster_information(existing_cluster) or existing_cluster.get_status() == existing_cluster.Status.INACTIVE:
             AWSAccount.set_aws_region(cluster.region)
             response = self.provision_cluster_raw(cluster.generate_create_request())
             cluster.update_from_raw_response(response)
+        elif existing_cluster.get_status() == existing_cluster.Status.ACTIVE:
+            request = existing_cluster.generate_capacity_providers_request(cluster)
+            if request:
+                self.attach_capacity_providers_to_ecs_cluster_raw(request)
+            return self.update_cluster_information(cluster)
 
         timeout = 300
         sleep_time = 5
         for _ in range(timeout // sleep_time):
-            region_objects = self.get_region_clusters(
-                cluster.region, cluster_identifiers=[cluster.name]
-            )
-            region_cluster = region_objects[0]
-
-            if region_cluster.get_status() == region_cluster.Status.FAILED:
+            self.update_cluster_information(cluster)
+            if cluster.get_status() == cluster.Status.FAILED:
+                cluster.print()
                 raise RuntimeError(
-                    f"cluster {region_cluster.name} provisioning failed. Cluster in FAILED status"
+                    f"cluster {cluster.name} provisioning failed. Cluster in FAILED status"
                 )
 
-            if region_cluster.get_status() != region_cluster.Status.ACTIVE:
+            if cluster.get_status() != cluster.Status.ACTIVE:
                 time.sleep(sleep_time)
                 continue
-
-            cluster.update_from_raw_response(region_cluster.dict_src)
-            return
+            return None
         raise TimeoutError(f"Cluster did not become available for {timeout} seconds")
 
     def provision_cluster_raw(self, request_dict):
@@ -454,6 +504,9 @@ class ECSClient(Boto3Client):
         @return:
         """
 
+        if not service.cluster_arn:
+            raise ValueError("cluster_arn was not set")
+
         AWSAccount.set_aws_region(service.region)
         filters_req = {"cluster": service.cluster_arn, "services": [service.arn]}
 
@@ -467,7 +520,7 @@ class ECSClient(Boto3Client):
 
         return False
 
-    def provision_service(self, service: ECSService):
+    def provision_service(self, service: ECSService, asyncronous=False):
         """
         Standard
 
@@ -488,7 +541,8 @@ class ECSClient(Boto3Client):
             response = self.create_service_raw(service.generate_create_request())
             service.update_from_raw_response(response)
 
-        self.wait_for_deployment_end(service)
+        if not asyncronous:
+            self.wait_for_deployment_end(service)
 
     def wait_for_deployment_end(self, service, timeout=10*60):
         """
@@ -572,7 +626,7 @@ class ECSClient(Boto3Client):
         :param service:
         :return:
         """
-
+        service.cluster_arn = cluster.arn
         AWSAccount.set_aws_region(service.region)
         self.dispose_service_raw(service.generate_dispose_request(cluster))
 
@@ -656,7 +710,7 @@ class ECSClient(Boto3Client):
         )
         self.dispose_container_instances(cluster_container_instances, cluster)
         AWSAccount.set_aws_region(cluster.region)
-        self.dispose_cluster_raw(cluster.generate_dispose_request(cluster))
+        self.dispose_cluster_raw(cluster.generate_dispose_request())
 
     def dispose_cluster_raw(self, request_dict):
         """

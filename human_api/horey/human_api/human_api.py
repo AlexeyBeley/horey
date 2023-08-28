@@ -1088,10 +1088,14 @@ class HumanAPI:
         """
 
         items = CommonUtils.load_object_from_module(self.configuration.sprint_plan_file_path, "main")
+        errors = []
         for item in items:
-            if item.sprint_name != self.configuration.sprint_name:
-                raise RuntimeError(f"'{item.title}': Sprint name in the work plan is not the same as in the configuration: "
+            if item.sprint_name not in [self.configuration.backlog_sprint_name, self.configuration.sprint_name]:
+                errors.append(f"'{item.title}': Sprint name in the work plan is not the same as in the configuration: "
                                    f"{item.sprint_name=} / {self.configuration.sprint_name=}")
+        if errors:
+            raise ValueError("\n##############################\n".join(errors))
+
         self.generate_work_plan(self.configuration.sprint_plan_file_path)
 
     def generate_work_plan(self, work_plan_file_path):
@@ -1206,13 +1210,24 @@ class HumanAPI:
             if len(item.title.split(" ")) > 7:
                 errors.append(f"Item title number of words > 7: '{item.title}'")
 
-            if item.priority > 4:
+            if not item.priority:
+                errors.append(f"Item 'priority' was not set: '{item.title}'")
+            elif not isinstance(item.priority, int):
+                errors.append(f"Item 'priority' must be int: '{item.title}'")
+            elif item.priority > 4:
                 errors.append(f"Item priority must be <= 4: '{item.title}'")
+
+            if not item.description:
+                errors.append(f"Item 'description' was not set: '{item.title}'")
+            elif not isinstance(item.description, str):
+                errors.append(f"Item 'description' must be str: '{item.title}'")
+            elif len(item.description.split(" ")) < 5:
+                errors.append(f"Item description must have >= 5 words: '{item.title}'")
 
             if item.id is None and item.hapi_uid is None:
                 errors.append(f"Neither item id or hapi_uid were set: '{item.title}'")
 
-            for param in ["description", "dod", "priority", "sprint_name", "assigned_to"]:
+            for param in ["dod", "sprint_name", "assigned_to"]:
                 if not getattr(item, param):
                     errors.append(f"Item '{param}' was not set: '{item.title}'")
 

@@ -72,6 +72,9 @@ class AutoScalingClient(Boto3Client):
         :param autoscaling_group:
         :return:
         """
+        for attr in ["region", "name"]:
+            if not getattr(autoscaling_group, attr):
+                raise ValueError(f"'{attr}' must be set")
 
         region_objects = self.get_region_auto_scaling_groups(
             autoscaling_group.region, names=[autoscaling_group.name]

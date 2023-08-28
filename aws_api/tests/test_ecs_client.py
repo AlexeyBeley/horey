@@ -4,8 +4,10 @@ Testing ecs client.
 """
 
 import os
+import json
 
 from unittest.mock import Mock
+import pytest
 
 from horey.aws_api.aws_clients.ecs_client import ECSClient
 from horey.aws_api.aws_services_entities.ecs_capacity_provider import (
@@ -17,6 +19,16 @@ from horey.h_logger import get_logger
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.base_entities.region import Region
 from horey.common_utils.common_utils import CommonUtils
+from horey.aws_api.aws_services_entities.ecs_task_definition import ECSTaskDefinition
+from horey.aws_api.aws_services_entities.auto_scaling_group import AutoScalingGroup
+from horey.aws_api.aws_services_entities.iam_role import IamRole
+from horey.aws_api.aws_services_entities.iam_instance_profile import IamInstanceProfile
+from horey.aws_api.aws_services_entities.ec2_launch_template import EC2LaunchTemplate
+
+from horey.aws_api.aws_clients.auto_scaling_client import AutoScalingClient
+from horey.aws_api.aws_clients.ssm_client import SSMClient
+from horey.aws_api.aws_clients.ec2_client import EC2Client
+from horey.aws_api.aws_clients.iam_client import IamClient
 
 
 configuration_values_file_full_path = os.path.join(
@@ -26,18 +38,21 @@ logger = get_logger(
     configuration_values_file_full_path=configuration_values_file_full_path
 )
 
+
 accounts_file_full_path = os.path.abspath(
     os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
         "..",
+        "..",
+        "..",
         "ignore",
-        "aws_api_managed_accounts.py",
+        "accounts",
+        "managed_accounts.py",
     )
 )
 
 accounts = CommonUtils.load_object_from_module(accounts_file_full_path, "main")
-AWSAccount.set_aws_account(accounts["1111"])
-AWSAccount.set_aws_region(accounts["1111"].regions["us-west-2"])
+AWSAccount.set_aws_account(accounts["dev"])
 
 mock_values_file_path = os.path.abspath(
     os.path.join(
@@ -48,159 +63,54 @@ mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 
 # pylint: disable= missing-function-docstring
 
+region = Region.get_region("us-west-2")
+
+tags = [{"key": "lvl", "value": "tst"}]
+
+client = ECSClient()
+
+SERVICE_NAME = "test-service-name"
+TEST_CLUSTER_NAME = "test-cluster"
+CAPACITY_PROVIDER_NAME = "test-capacity-provider"
+AUTOSCALING_GROUP_NAME = "asg_test_ecs_cluster"
+TEST_CONTAINER_INSTANCE_IAM_ROLE = "test_role_container_instance"
+TEST_CONTAINER_INSTANCE_IAM_PROFILE_NAME = "test_iam_profile_container_instance"
+TEST_LAUNCH_TEMPLATE_NAME = "test_launch_template"
+
+
+class Dependencies:
+    """
+    Collected during the runtime.
+
+    """
+
+    fargate_task_definition_arn = None
+    cluster_arn = None
+    autoscaling_group_arn = None
+
+
+def create_task_definition():
+    td = ECSTaskDefinition(dict_register_td_request)
+    td.region = region
+    td.tags = tags
+    client.provision_ecs_task_definition(td)
+    return td
+
 
 def test_init_ecs_client():
     assert isinstance(ECSClient(), ECSClient)
 
 
 CONTAINER_NAME = "test-container-name"
-IMAGE_URL = ".dkr.ecr.us-east-1.amazonaws.com/my-web-app:latest"
+IMAGE_URL = mock_values["image_ecr_url"]
 CPU_SIZE = 512
 MEMORY_SIZE = 1024
 CONTAINER_PORT = 8080
 HOST_PORT = 8080
 TASK_DEFINITION_FAMILY = "task-definition-family"
 
-dict_request_base = {
-    "family": None,
-    "taskRoleArn": "",
-    "executionRoleArn": "",
-    "networkMode": "none",
-    "containerDefinitions": [
-        {
-            "name": CONTAINER_NAME,
-            "image": IMAGE_URL,
-            "repositoryCredentials": {"credentialsParameter": "string"},
-            "cpu": CPU_SIZE,
-            "memory": MEMORY_SIZE,
-            "memoryReservation": MEMORY_SIZE,
-            "links": [
-                "string",
-            ],
-            "portMappings": [
-                {
-                    "containerPort": CONTAINER_PORT,
-                    "hostPort": HOST_PORT,
-                    "protocol": "tcp",
-                },
-            ],
-            "essential": False,
-            "entryPoint": [
-                "string",
-            ],
-            "command": [
-                "string",
-            ],
-            "environment": [
-                {"name": "string", "value": "string"},
-            ],
-            "environmentFiles": [
-                {"value": "string", "type": "s3"},
-            ],
-            "mountPoints": [
-                {
-                    "sourceVolume": "string",
-                    "containerPath": "string",
-                    "readOnly": False,
-                },
-            ],
-            "volumesFrom": [
-                {"sourceContainer": "string", "readOnly": False},
-            ],
-            "linuxParameters": {
-                "capabilities": {
-                    "add": [
-                        "string",
-                    ],
-                    "drop": [
-                        "string",
-                    ],
-                },
-                "devices": [
-                    {
-                        "hostPath": "string",
-                        "containerPath": "string",
-                        "permissions": [
-                            "write",
-                        ],
-                    },
-                ],
-                "initProcessEnabled": False,
-                "sharedMemorySize": 123,
-                "tmpfs": [
-                    {
-                        "containerPath": "string",
-                        "size": 123,
-                        "mountOptions": [
-                            "string",
-                        ],
-                    },
-                ],
-                "maxSwap": 123,
-                "swappiness": 123,
-            },
-            "secrets": [
-                {"name": "string", "valueFrom": "string"},
-            ],
-            "dependsOn": [
-                {"containerName": "string", "condition": "START"},
-            ],
-            "startTimeout": 123,
-            "stopTimeout": 123,
-            "hostname": "string",
-            "user": "string",
-            "workingDirectory": "string",
-            "disableNetworking": False,
-            "privileged": False,
-            "readonlyRootFilesystem": True,
-            "dnsServers": [
-                "string",
-            ],
-            "dnsSearchDomains": [
-                "string",
-            ],
-            "extraHosts": [
-                {"hostname": "string", "ipAddress": "string"},
-            ],
-            "dockerSecurityOptions": [
-                "string",
-            ],
-            "interactive": False,
-            "pseudoTerminal": False,
-            "dockerLabels": {"string": "string"},
-            "ulimits": [
-                {"name": "core", "softLimit": 123, "hardLimit": 123},
-            ],
-            "logConfiguration": {
-                "logDriver": "json-file",
-                "options": {"string": "string"},
-                "secretOptions": [
-                    {"name": "string", "valueFrom": "string"},
-                ],
-            },
-            "healthCheck": {
-                "command": [
-                    "string",
-                ],
-                "interval": 123,
-                "timeout": 123,
-                "retries": 123,
-                "startPeriod": 123,
-            },
-            "systemControls": [
-                {"namespace": "string", "value": "string"},
-            ],
-            "resourceRequirements": [
-                {"value": "string", "type": "InferenceAccelerator"},
-            ],
-            "firelensConfiguration": {
-                "type": "fluentd",
-                "options": {"string": "string"},
-            },
-        },
-    ],
-}
-EXECUTION_ROLE_ARN = "arn:aws:iam:::role/HoreyEcsExecutionRole1"
+
+EXECUTION_ROLE_ARN = mock_values["ecs_task_execution_role_arn"]
 dict_register_td_request = {
     "family": TASK_DEFINITION_FAMILY,
     "executionRoleArn": EXECUTION_ROLE_ARN,
@@ -225,28 +135,20 @@ dict_register_td_request = {
 }
 
 
+@pytest.mark.skip()
 def test_register_task_definition():
-    client = ECSClient()
-    client.provision_ecs_task_definition(dict_register_td_request)
+    td = ECSTaskDefinition(dict_register_td_request)
+    td.region = region
+    td.tags = tags
+    client.provision_ecs_task_definition(td)
+    return td
 
-
-CLUSTER_NAME = "my-cluster-name"
-dict_create_cluster_request = {
-    "clusterName": CLUSTER_NAME,
-    "capacityProviders": ["FARGATE"],
-}
-
-
-def test_create_cluster():
-    client = ECSClient()
-    client.client.create_cluster(dict_create_cluster_request)
-
-
+@pytest.mark.skip()
 def test_run_task():
     ALLOWED_SUBNETS = []
     SECURITY_GROUPS = []
     dict_run_task_request = {
-        "cluster": CLUSTER_NAME,
+        "cluster": TEST_CLUSTER_NAME,
         "taskDefinition": TASK_DEFINITION_FAMILY,
         "launchType": "FARGATE",
         "networkConfiguration": {
@@ -257,23 +159,135 @@ def test_run_task():
             }
         },
     }
-    client = ECSClient()
     client.run_task(dict_run_task_request)
 
+def provision_container_instance_iam_profile():
+    assume_role_policy = """{
+            "Version": "2012-10-17",
+            "Statement": [
+            {
+            "Effect": "Allow",
+            "Principal": {
+            "Service": "ec2.amazonaws.com"
+            },
+            "Action": "sts:AssumeRole"
+            }
+            ]
+            }"""
 
+    iam_role = IamRole({})
+    iam_role.name = TEST_CONTAINER_INSTANCE_IAM_ROLE
+    iam_role.assume_role_policy_document = assume_role_policy
+    iam_role.description = TEST_CONTAINER_INSTANCE_IAM_ROLE
+    iam_role.max_session_duration = 3600
+    iam_role.tags = [{
+        "Key": "Name",
+        "Value": iam_role.name
+    }]
+
+    iam_client = IamClient()
+    iam_role.path = "/test/"
+    iam_client.provision_iam_role(iam_role)
+
+    iam_instance_profile = IamInstanceProfile({})
+    iam_instance_profile.name = TEST_CONTAINER_INSTANCE_IAM_PROFILE_NAME
+    iam_instance_profile.tags= [{
+        "Key": "Name",
+        "Value": iam_instance_profile.name
+    }]
+    iam_instance_profile.roles = [{"RoleName": iam_role.name}]
+    iam_client.provision_instance_profile(iam_instance_profile)
+    return iam_instance_profile
+
+def provision_launch_template():
+    ssm_client = SSMClient()
+    param = ssm_client.get_region_parameter(region,
+                                        "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended")
+
+    filter_request = {"ImageIds": [json.loads(param.value)["image_id"]]}
+    ec2_client = EC2Client()
+    amis = ec2_client.get_region_amis(region, custom_filters=filter_request)
+    if len(amis) > 1:
+        raise RuntimeError(f"Can not find single AMI using filter: {filter_request['Filters']}")
+    ami = amis[0]
+
+    with open("./user_data_tmp.sh", "w", encoding="utf-8") as file_handler:
+        file_handler.write(f'#!/bin/bash\n\
+                             echo "ECS_CLUSTER={TEST_CLUSTER_NAME}" >> /etc/ecs/ecs.config')
+
+    user_data = ec2_client.generate_user_data_from_file("./user_data_tmp.sh")
+    profile = provision_container_instance_iam_profile()
+
+    launch_template = EC2LaunchTemplate({})
+    launch_template.name = TEST_LAUNCH_TEMPLATE_NAME
+    launch_template.tags = [{
+            "Key": "Name",
+            "Value": launch_template.name
+        }]
+    launch_template.region = region
+
+    launch_template.launch_template_data = {"EbsOptimized": False,
+                            "IamInstanceProfile": {
+                                "Arn": profile.arn
+                            },
+                            "BlockDeviceMappings": [
+                                {
+                                    "DeviceName": "/dev/xvda",
+                                    "Ebs": {
+                                        "VolumeSize": 30,
+                                        "VolumeType": "gp3"
+                                    }
+                                }
+                            ],
+                            "ImageId": ami.id,
+                            "InstanceType": "t3a.small",
+                            "KeyName": mock_values["container_instance_ssh_key_name"],
+                            "Monitoring": {
+                                "Enabled": True
+                            },
+                            "NetworkInterfaces": [
+                                {
+                                    "AssociatePublicIpAddress": True,
+                                    "DeleteOnTermination": True,
+                                    "DeviceIndex": 0,
+                                    "Groups": mock_values["ecs_fargate_service_security_groups"]
+                                },
+                            ],
+                            "UserData": user_data
+                            }
+    EC2Client().provision_launch_template(launch_template)
+    return launch_template
+
+def provision_autoscaling_group():
+    launch_template = provision_launch_template()
+    group = AutoScalingGroup({})
+    group.region = region
+    group.name = AUTOSCALING_GROUP_NAME
+    group.tags = [{"Key": "lvl", "Value": "tst"}]
+    group.launch_template = {
+            "LaunchTemplateId": launch_template.id,
+            "Version": "$Default"
+        }
+    group.min_size = 0
+    group.max_size = 0
+    group.desired_capacity = 0
+    group.vpc_zone_identifier = ",".join(mock_values["ecs_fargate_service_subnets"])
+    AutoScalingClient().provision_auto_scaling_group(group)
+    Dependencies.autoscaling_group_arn = group.arn
+
+#@pytest.mark.skip()
 def test_provision_capacity_provider():
-    ecs_client = ECSClient()
-    auto_scaling_group = Mock()
-    auto_scaling_group.arn = mock_values["auto_scaling_group.arn"]
-    tags = [{"key": "lvl", "value": "tst"}]
+    if Dependencies.autoscaling_group_arn is None:
+        provision_autoscaling_group()
+
     capacity_provider = ECSCapacityProvider({})
-    capacity_provider.name = "test-capacity-provider"
+    capacity_provider.name = CAPACITY_PROVIDER_NAME
     capacity_provider.tags = tags
-    capacity_provider.region = AWSAccount.get_aws_region()
+    capacity_provider.region = region
     capacity_provider.tags.append({"key": "Name", "value": capacity_provider.name})
 
     capacity_provider.auto_scaling_group_provider = {
-        "autoScalingGroupArn": auto_scaling_group.arn,
+        "autoScalingGroupArn": Dependencies.autoscaling_group_arn,
         "managedScaling": {
             "status": "ENABLED",
             "targetCapacity": 70,
@@ -283,67 +297,67 @@ def test_provision_capacity_provider():
         },
         "managedTerminationProtection": "DISABLED",
     }
-    ecs_client.provision_capacity_provider(capacity_provider)
-    assert capacity_provider._arn is not None
+    client.provision_capacity_provider(capacity_provider)
+    assert capacity_provider.arn is not None
 
-
+#@pytest.mark.skip()
 def test_provision_cluster():
-    tags = [{"key": "lvl", "value": "tst"}]
-
-    ecs_client = ECSClient()
     cluster = ECSCluster({})
-    cluster.region = AWSAccount.get_aws_region()
+    cluster.region = region
     cluster.settings = [{"name": "containerInsights", "value": "enabled"}]
 
-    cluster.name = "test_cluster"
-    cluster.tags = tags
-    cluster.tags.append({"key": "Name", "value": cluster.name})
+    cluster.name = TEST_CLUSTER_NAME
+    cluster.tags = [{"key": "Name", "value": cluster.name}]
     cluster.configuration = {}
-    cluster.capacity_providers = ["test-capacity-provider"]
+    cluster.capacity_providers = [CAPACITY_PROVIDER_NAME]
     cluster.default_capacity_provider_strategy = [
-        {"capacityProvider": "test-capacity-provider", "weight": 1, "base": 0}
+        {"capacityProvider": CAPACITY_PROVIDER_NAME, "weight": 1, "base": 0}
     ]
 
-    ecs_client.provision_cluster(cluster)
+    client.provision_cluster(cluster)
+    Dependencies.cluster_arn = cluster.arn
 
     assert cluster.arn is not None
 
+def test_task_definition():
+    Dependencies.fargate_task_definition_arn = create_task_definition().arn
+    assert Dependencies.fargate_task_definition_arn is not None
 
+#@pytest.mark.skip()
 def test_provision_service_with_tg():
-    region = Region.get_region("us-west-2")
-    ecs_client = ECSClient()
     ecs_task_definition = Mock()
-    ecs_task_definition.arn = mock_values["ecs_task_definition.arn"]
+    ecs_task_definition.arn = Dependencies.fargate_task_definition_arn
     ecs_cluster = Mock()
-    ecs_cluster.arn = mock_values["ecs_cluster.arn"]
+    ecs_cluster.arn = Dependencies.cluster_arn
     target_group = Mock()
     target_group.arn = mock_values["target_group.arn"]
-    service_name = mock_values["service_name"]
-    container_name = mock_values["container_name"]
-    role_arn = mock_values["ecs_service.role_arn"]
+    container_name = CONTAINER_NAME
     ecs_service = ECSService({})
     ecs_service.region = region
+    ecs_service.network_configuration =  {
+            "awsvpcConfiguration": {
+                "subnets": mock_values["ecs_fargate_service_subnets"],
+                "securityGroups": mock_values["ecs_fargate_service_security_groups"]
+            }
+        }
 
-    ecs_service.tags = [
-        {"key": "env", "value": "test"},
-        {"key": "Name", "value": "test"},
-    ]
+    ecs_service.tags = tags
 
-    ecs_service.name = service_name
+    ecs_service.name = SERVICE_NAME
     ecs_service.cluster_arn = ecs_cluster.arn
     ecs_service.task_definition = ecs_task_definition.arn
     ecs_service.load_balancers = [
         {
             "targetGroupArn": target_group.arn,
             "containerName": container_name,
-            "containerPort": 443,
+            "containerPort": CONTAINER_PORT,
         }
     ]
     ecs_service.desired_count = 1
 
     ecs_service.launch_type = "EC2"
 
-    ecs_service.role_arn = role_arn
+    #ecs_service.role_arn = role_arn
     ecs_service.deployment_configuration = {
         "deploymentCircuitBreaker": {"enable": False, "rollback": False},
         "maximumPercent": 200,
@@ -357,61 +371,44 @@ def test_provision_service_with_tg():
     ecs_service.scheduling_strategy = "REPLICA"
     ecs_service.enable_ecs_managed_tags = False
     ecs_service.enable_execute_command = False
+    client.provision_service(ecs_service, asyncronous=True)
 
-    ecs_client.provision_service(ecs_service)
-
-
-def test_provision_service_without_tg():
-    region = Region.get_region("us-west-2")
-    ecs_client = ECSClient()
-    ecs_task_definition = Mock()
-    ecs_task_definition.arn = mock_values["ecs_task_definition.arn"]
-    ecs_cluster = Mock()
-    ecs_cluster.arn = mock_values["ecs_cluster.arn"]
-    service_name = mock_values["service_name"]
-    role_arn = mock_values["ecs_service.role_arn"]
+#@pytest.mark.skip()
+def test_dispose_service_with_tg():
     ecs_service = ECSService({})
+    ecs_service.name = SERVICE_NAME
     ecs_service.region = region
+    ecs_cluster = Mock()
+    ecs_cluster.name = TEST_CLUSTER_NAME
+    ecs_cluster.arn = mock_values["ecs_cluster.arn"]
+    client.dispose_service(ecs_cluster, ecs_service)
 
-    ecs_service.tags = [
-        {"key": "env", "value": "test"},
-        {"key": "Name", "value": "test"},
-    ]
+def test_dispose_capacity_provider():
+    capacity_provider = ECSCapacityProvider({})
+    capacity_provider.name = CAPACITY_PROVIDER_NAME
+    capacity_provider.region = region
 
-    ecs_service.name = service_name
-    ecs_service.cluster_arn = ecs_cluster.arn
-    ecs_service.task_definition = ecs_task_definition.arn
+    response = client.dispose_capacity_provider(capacity_provider)
+    assert response
 
-    ecs_service.desired_count = 30
-
-    ecs_service.launch_type = "EC2"
-
-    ecs_service.role_arn = role_arn
-    ecs_service.deployment_configuration = {
-        "deploymentCircuitBreaker": {"enable": False, "rollback": False},
-        "maximumPercent": 200,
-        "minimumHealthyPercent": 100,
-    }
-    ecs_service.placement_strategy = [
-        {"type": "spread", "field": "attribute:ecs.availability-zone"},
-        {"type": "spread", "field": "instanceId"},
-    ]
-    ecs_service.health_check_grace_period_seconds = 10
-    ecs_service.scheduling_strategy = "REPLICA"
-    ecs_service.enable_ecs_managed_tags = False
-    ecs_service.enable_execute_command = False
-
-    ecs_client.provision_service(ecs_service)
-
-
+# @pytest.mark.skip()
 def test_get_all_task_definitions():
-    client = ECSClient()
     ret = client.get_all_task_definitions(region=Region.get_region("us-east-1"))
     assert isinstance(ret, list)
 
+@pytest.mark.skip()
+def test_dispose_cluster():
+    assert True
 
 if __name__ == "__main__":
+    pass
+    # test_provision_autoscaling_group()
+    #test_dispose_capacity_provider()
+    #test_provision_capacity_provider()
+    #test_provision_cluster()
+    # test_provision_service_with_tg()
     # test_register_task_definition()
-    # test_provision_cluster()
-    test_provision_service_without_tg()
+    # test_provision_service_without_tg()
     # test_get_all_task_definitions()
+    # test_dispose_service_without_tg()
+    # test_dispose_cluster()

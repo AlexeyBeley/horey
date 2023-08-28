@@ -676,7 +676,7 @@ class AzureDevopsAPI:
                     lst_all.append(WorkItem(dict_src))
                     lst_all_ids.append(int_id)
 
-            logger.info(f"Already inited {len(lst_all_ids)} until iteration: {iteration_id}")
+            logger.info(f"Totally initialized {len(lst_all_ids)} until iteration: {iteration_id}")
 
         return CommonUtils.convert_to_dict(self.recursive_init_work_items(lst_all))
 
