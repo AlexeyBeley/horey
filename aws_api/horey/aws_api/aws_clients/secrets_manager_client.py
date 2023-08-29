@@ -168,3 +168,35 @@ class SecretsManagerClient(Boto3Client):
             return response
 
         return self.raw_create_secret_string(secret_id, value)
+
+    def dispose_secret(self, name, region):
+        """
+        Delete the secret from region.
+
+        :param name:
+        :param region:
+        :return:
+        """
+
+        request = {"SecretId": name}
+        AWSAccount.set_aws_region(region)
+        self.dispose_secret_raw(request)
+
+    def dispose_secret_raw(self, request):
+        """
+        Standard.
+
+        :param request:
+        :return:
+        """
+
+        for response in self.execute(
+            self.client.delete_secret,
+            None,
+            raw_data=True,
+            filters_req=request,
+            exception_ignore_callback=lambda exception_received: "ResourceNotFoundException" in repr(exception_received)
+            ):
+            return response
+
+        return None
