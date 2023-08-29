@@ -3366,13 +3366,18 @@ class AWSAPI:
         os.makedirs(dir_path, exist_ok=True)
         contents = self.get_secret_value(secret_name, region=region, ignore_missing=ignore_missing)
 
+        if contents is None:
+            return None
+
         if file_name is None:
             file_name = secret_name
 
+        dst_file_path = os.path.join(dir_path, file_name)
         with open(
-                os.path.join(dir_path, file_name), "w+", encoding="utf-8"
+                dst_file_path, "w+", encoding="utf-8"
         ) as file_handler:
             file_handler.write(contents)
+        return dst_file_path
 
     def copy_secrets_manager_secret_to_region(
             self, secret_name, region_src, region_dst
