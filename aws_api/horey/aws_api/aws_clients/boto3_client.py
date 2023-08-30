@@ -141,6 +141,9 @@ class Boto3Client:
                 if  "AccessDeniedException" in repr(exception_instance):
                     raise
 
+                if "UnauthorizedOperation" in repr(exception_instance):
+                    raise
+
                 retry_counter += exception_weight
                 time.sleep(time_to_sleep)
                 logger.warning(
@@ -377,6 +380,9 @@ class Boto3Client:
                     return []
 
                 if "AccessDeniedException" in repr(exception_instance):
+                    raise
+
+                if "UnauthorizedOperation" in repr(exception_instance):
                     raise
 
                 if instant_raise:
