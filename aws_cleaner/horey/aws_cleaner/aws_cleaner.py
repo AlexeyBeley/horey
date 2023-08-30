@@ -4,6 +4,7 @@ AWS Cleaner. Money, money, money...
 """
 
 # pylint: disable=no-name-in-module
+from collections import defaultdict
 from horey.h_logger import get_logger
 from horey.aws_api.aws_api import AWSAPI
 from horey.aws_api.aws_api_configuration_policy import AWSAPIConfigurationPolicy
@@ -36,24 +37,26 @@ class AWSCleaner:
         if not self.aws_api.ec2_volumes:
             self.aws_api.init_ec2_volumes()
 
-    def cleanup_report_ebs_volumes(self, output_file):
+    def cleanup_report_ebs_volumes(self):
         """
         Generate cleanup report for Volumes
 
-        :param output_file:
         :return:
         """
 
-        self.init_ec2_volumes()
-
         tb_ret = TextBlock("EBS Volumes not in use")
         tb_ret_tmp = self.cleanup_report_ebs_volumes_in_use()
+        if tb_ret_tmp.blocks or tb_ret_tmp.lines:
+            tb_ret.blocks.append(tb_ret_tmp)
+        tb_ret_tmp = self.cleanup_report_ebs_volumes_types()
         tb_ret.blocks.append(tb_ret_tmp)
         tb_ret_tmp = self.cleanup_report_ebs_volumes_sizes()
         tb_ret.blocks.append(tb_ret_tmp)
-        with open(output_file, "w+", encoding="utf-8") as file_handler:
+        with open(self.configuration.ec2_ebs_report_file_path, "w+", encoding="utf-8") as file_handler:
             file_handler.write(tb_ret.format_pprint())
-        logger.info(f"Output in: {output_file}")
+
+        logger.info(f"Output in: {self.configuration.ec2_ebs_report_file_path}")
+        return tb_ret
 
     def cleanup_report_ebs_volumes_in_use(self):
         """
@@ -61,6 +64,8 @@ class AWSCleaner:
 
         :return:
         """
+
+        self.init_ec2_volumes()
 
         tb_ret = TextBlock("EBS Volumes not in use")
         for volume in self.aws_api.ec2_volumes:
@@ -82,6 +87,8 @@ class AWSCleaner:
         :return:
         """
 
+        self.init_ec2_volumes()
+
         tb_ret = TextBlock("EBS Volumes' sizes")
         for volume in sorted(self.aws_api.ec2_volumes, key=lambda vol: vol.size, reverse=True):
             try:
@@ -98,4 +105,23 @@ class AWSCleaner:
 
             tb_ret.lines.append(
                 f"{volume.availability_zone}, {name}, {volume.volume_type}, {volume.size}GB, {volume.iops}IOPS, Attached:{attachment_string}")
+        return tb_ret
+
+    def cleanup_report_ebs_volumes_types(self):
+        """
+        Generate EBS Volume sizes by type.
+
+        :return:
+        """
+
+        self.init_ec2_volumes()
+
+        tb_ret = TextBlock("Storage used by type")
+        dict_ret = defaultdict(int)
+        for volume in self.aws_api.ec2_volumes:
+            dict_ret[volume.volume_type] += volume.size
+        for volume_type, size in sorted(dict_ret.items(), key=lambda x: x[1]):
+            tb_ret.lines.append(
+                f"{volume_type}, {size} GB")
+
         return tb_ret
