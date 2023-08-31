@@ -1,12 +1,9 @@
 """
 AWS route-53 client to handle route-53 service API requests.
 """
-import sys
-import os
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.route53_hosted_zone import HostedZone
 from horey.h_logger import get_logger
-import pdb
 
 logger = get_logger()
 
@@ -26,7 +23,8 @@ class Route53Client(Boto3Client):
         :param full_information:
         :return:
         """
-        final_result = list()
+
+        final_result = []
         if name is not None and not name.endswith("."):
             name += "."
         for response in self.execute(self.client.list_hosted_zones, "HostedZones"):
@@ -40,25 +38,31 @@ class Route53Client(Boto3Client):
 
         return final_result
 
-    def get_hosted_zone_full_information(self, hsoted_zone):
-        hsoted_zone.records = []
+    def get_hosted_zone_full_information(self, hosted_zone):
+        """
+        Standard.
+
+        :param hosted_zone:
+        :return:
+        """
+
+        hosted_zone.records = []
         for update_info in self.execute(
             self.client.list_resource_record_sets,
             "ResourceRecordSets",
-            filters_req={"HostedZoneId": hsoted_zone.id},
+            filters_req={"HostedZoneId": hosted_zone.id},
         ):
-            hsoted_zone.update_record_set(update_info)
+            hosted_zone.update_record_set(update_info)
 
-    def change_resource_record_sets(self, name):
-        pdb.set_trace()
-        ret = self.get_all_hosted_zones()
-
-        for response in self.execute(
-            self.client.list_traffic_policy_instances, "HostedZones", raw_data=True
-        ):
-            pdb.set_trace()
 
     def provision_hosted_zone(self, hosted_zone):
+        """
+        Standard.
+
+        :param hosted_zone:
+        :return:
+        """
+
         changes = []
         for record in hosted_zone.records:
             change = {
@@ -107,6 +111,13 @@ class Route53Client(Boto3Client):
         hosted_zone.records = hosted_zones[0].records
 
     def update(self, hosted_zone):
+        """
+        Update info.
+
+        :param hosted_zone:
+        :return:
+        """
+
         hosted_zones = self.get_all_hosted_zones(name=hosted_zone.name)
         if len(hosted_zones) > 1:
             raise ValueError(f"More then 1 hosted_zone found: {len(hosted_zones)}")
@@ -114,11 +125,25 @@ class Route53Client(Boto3Client):
         hosted_zone.updated(hosted_zones[0].dict_src)
 
     def associate_hosted_zone(self, hosted_zone):
+        """
+        To VPC.
+
+        :param hosted_zone:
+        :return:
+        """
+
         for vpc_association in hosted_zone.vpc_associations:
             associate_request = {"HostedZoneId": hosted_zone.id, "VPC": vpc_association}
             self.raw_associate_vpc_with_hosted_zone(associate_request)
 
     def raw_create_hosted_zone(self, request_dict):
+        """
+        Standard.
+
+        :param request_dict:
+        :return:
+        """
+
         logger.info(f"Creating hosted zone: {request_dict}")
         for response in self.execute(
             self.client.create_hosted_zone, "HostedZone", filters_req=request_dict
@@ -143,6 +168,13 @@ class Route53Client(Boto3Client):
             return response
 
     def raw_change_resource_record_sets(self, request_dict):
+        """
+        Standard.
+
+        :param request_dict:
+        :return:
+        """
+
         logger.info(f"Updating hosted zone record set: {request_dict}")
         try:
             for response in self.execute(
@@ -157,7 +189,17 @@ class Route53Client(Boto3Client):
                 raise
             logger.warning(repr_exception)
 
+        return None
+
     def update_hosted_zone_information(self, hosted_zone, full_information=False):
+        """
+        Standard.
+
+        :param hosted_zone:
+        :param full_information:
+        :return:
+        """
+
         hosted_zone_name = hosted_zone.name.strip(".")
         filters_req = {"DNSName": hosted_zone_name}
         for response in self.execute(

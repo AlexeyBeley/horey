@@ -9,13 +9,14 @@ VENV_BIN_DIR := $(realpath ${BUILD_TMP_DIR}/_venv/bin)
 
 
 build:
+	source ${VENV_BIN_DIR}/activate &&\
 	cd ${HOREY_DIR_PATH} &&\
 	make raw_install_from_source-aws_cleaner
 
-build_:
-	source ${VENV_DIR}/bin/activate &&\
+build_aws_api:
+	source ${VENV_BIN_DIR}/activate &&\
 	cd ${HOREY_DIR_PATH} &&\
-	make recursive_install_from_source-aws_cleaner
+	make raw_install_from_source-aws_api
 
 
 test:

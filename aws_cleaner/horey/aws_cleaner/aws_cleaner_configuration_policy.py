@@ -16,10 +16,23 @@ class AWSCleanerConfigurationPolicy(ConfigurationPolicy):
 
     def __init__(self):
         super().__init__()
-        self._clean_route_53 = None
         self._reports_dir = None
         self._aws_api_account_name = None
         self._managed_accounts_file_path = None
+        self._cleanup_report_ebs_volumes = None
+        self._cleanup_report_route53_loadbalancers = None
+        self._cleanup_report_route53_certificates = None
+
+    @property
+    def cleanup_report_ebs_volumes(self):
+        if self._cleanup_report_ebs_volumes is None:
+            self._cleanup_report_ebs_volumes = True
+        return self._cleanup_report_ebs_volumes
+
+    @cleanup_report_ebs_volumes.setter
+    @ConfigurationPolicy.validate_type_decorator(bool)
+    def cleanup_report_ebs_volumes(self, value):
+        self._cleanup_report_ebs_volumes = value
 
     @property
     def managed_accounts_file_path(self):
@@ -38,16 +51,26 @@ class AWSCleanerConfigurationPolicy(ConfigurationPolicy):
         self._aws_api_account_name = value
 
     @property
-    def clean_route_53(self):
-        if self._clean_route_53 is None:
-            self._clean_route_53 = True
-        return self._clean_route_53
+    def cleanup_report_route53_certificates(self):
+        if self._cleanup_report_route53_certificates is None:
+            self._cleanup_report_route53_certificates = True
+        return self._cleanup_report_route53_certificates
 
-    @clean_route_53.setter
-    def clean_route_53(self, value):
-        if not isinstance(value, bool):
-            raise ValueError()
-        self._clean_route_53 = value
+    @cleanup_report_route53_certificates.setter
+    @ConfigurationPolicy.validate_type_decorator(bool)
+    def cleanup_report_route53_certificates(self, value):
+        self._cleanup_report_route53_certificates = value
+
+    @property
+    def cleanup_report_route53_loadbalancers(self):
+        if self._cleanup_report_route53_loadbalancers is None:
+            self._cleanup_report_route53_loadbalancers = True
+        return self._cleanup_report_route53_loadbalancers
+
+    @cleanup_report_route53_loadbalancers.setter
+    @ConfigurationPolicy.validate_type_decorator(bool)
+    def cleanup_report_route53_loadbalancers(self, value):
+        self._cleanup_report_route53_loadbalancers = value
 
     @property
     def reports_dir(self):
@@ -71,3 +94,14 @@ class AWSCleanerConfigurationPolicy(ConfigurationPolicy):
     @property
     def ec2_ebs_report_file_path(self):
         return os.path.join(self.ec2_reports_dir, "ebs.txt")
+
+    @property
+    def route53_reports_dir(self):
+        ret = os.path.join(self.reports_dir, "route53")
+        if not os.path.exists(ret):
+            os.makedirs(ret, exist_ok=True)
+        return ret
+
+    @property
+    def route53_report_file_path(self):
+        return os.path.join(self.route53_reports_dir, "route53.txt")

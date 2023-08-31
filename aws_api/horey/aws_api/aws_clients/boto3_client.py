@@ -138,7 +138,7 @@ class Boto3Client:
                 ):
                     return
 
-                if  "AccessDeniedException" in repr(exception_instance):
+                if  "AccessDenied" in repr(exception_instance):
                     raise
 
                 if "UnauthorizedOperation" in repr(exception_instance):
@@ -379,7 +379,10 @@ class Boto3Client:
                 ):
                     return []
 
-                if "AccessDeniedException" in repr(exception_instance):
+                if "AccessDenied" in repr(exception_instance):
+                    raise
+
+                if "UnauthorizedOperation" in repr(exception_instance):
                     raise
 
                 if "UnauthorizedOperation" in repr(exception_instance):
