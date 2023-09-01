@@ -72,25 +72,25 @@ def test_init_ec2_volumes(configuration):
 
 
 @pytest.mark.done
-def test_cleanup_report_ebs_volumes_in_use(configuration):
+def test_sub_cleanup_report_ebs_volumes_in_use(configuration):
     cleaner = AWSCleaner(configuration)
-    ret = cleaner.cleanup_report_ebs_volumes_in_use()
+    ret = cleaner.sub_cleanup_report_ebs_volumes_in_use()
     assert len(cleaner.aws_api.ec2_volumes) > 0
     assert ret is not None
 
 
 @pytest.mark.done
-def test_cleanup_report_ebs_volumes_sizes(configuration):
+def test_sub_cleanup_report_ebs_volumes_sizes(configuration):
     cleaner = AWSCleaner(configuration)
-    ret = cleaner.cleanup_report_ebs_volumes_sizes()
+    ret = cleaner.sub_cleanup_report_ebs_volumes_sizes()
     assert len(cleaner.aws_api.ec2_volumes) > 0
     assert ret is not None
 
 
 @pytest.mark.done
-def test_cleanup_report_ebs_volumes_types(configuration):
+def test_sub_cleanup_report_ebs_volumes_types(configuration):
     cleaner = AWSCleaner(configuration)
-    ret = cleaner.cleanup_report_ebs_volumes_types()
+    ret = cleaner.sub_cleanup_report_ebs_volumes_types()
     assert len(cleaner.aws_api.ec2_volumes) > 0
     assert ret is not None
 
@@ -103,8 +103,15 @@ def test_cleanup_report_ebs_volumes(configuration):
     assert ret is not None
     assert os.path.exists(configuration.ec2_ebs_report_file_path)
 
+@pytest.mark.done
+def test_cleanup_report_acm_certificate(configuration):
+    cleaner = AWSCleaner(configuration)
+    ret = cleaner.cleanup_report_acm_certificate()
+    assert len(cleaner.aws_api.acm_certificates) > 0
+    assert ret is not None
+    assert os.path.exists(configuration.acm_certificate_report_file_path)
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_generate_permissions_cleanup_report_ebs_volumes(
         configuration_generate_permissions: AWSCleanerConfigurationPolicy):
     configuration_generate_permissions.cleanup_report_ebs_volumes = True
@@ -129,7 +136,14 @@ def test_init_hosted_zones(configuration: AWSCleanerConfigurationPolicy):
     assert len(cleaner.aws_api.hosted_zones) > 0
 
 
-@pytest.mark.wip
+@pytest.mark.done
+def test_init_load_balancers(configuration: AWSCleanerConfigurationPolicy):
+    cleaner = AWSCleaner(configuration)
+    cleaner.init_load_balancers()
+    assert len(cleaner.aws_api.load_balancers) > 1
+
+
+@pytest.mark.done
 def test_generate_permissions_cleanup_report_route53_certificates(
         configuration_generate_permissions: AWSCleanerConfigurationPolicy):
     configuration_generate_permissions.cleanup_report_route53_certificates = True
@@ -141,4 +155,46 @@ def test_generate_permissions_cleanup_report_route53_certificates(
          "Resource": "*"},
         {"Sid": "ListCertificates", "Effect": "Allow", "Action": "acm:ListCertificates", "Resource": "*"}]
     del ret["Statement"][2]["Resource"]
-    assert ret["Statement"][2] == {'Sid': 'DescribeCertificate', 'Effect': 'Allow', 'Action': 'acm:DescribeCertificate'}
+    assert ret["Statement"][2] == {"Sid": "DescribeCertificate", "Effect": "Allow", "Action": "acm:DescribeCertificate"}
+
+
+@pytest.mark.done
+def test_generate_permissions_cleanup_report_route53_loadbalancers(
+        configuration_generate_permissions: AWSCleanerConfigurationPolicy):
+    configuration_generate_permissions.cleanup_report_route53_loadbalancers = True
+
+    cleaner = AWSCleaner(configuration_generate_permissions)
+    ret = cleaner.generate_permissions()
+    assert ret["Statement"] == [
+        {"Sid": "Route53", "Effect": "Allow", "Action": ["route53:ListHostedZones", "route53:ListResourceRecordSets"],
+         "Resource": "*"},
+        {"Sid": "LoadBalancers", "Effect": "Allow",
+                            "Action": ["elasticloadbalancing:DescribeLoadBalancers",
+                                       "elasticloadbalancing:DescribeListeners", "elasticloadbalancing:DescribeRules",
+                                       "elasticloadbalancing:DescribeTags"], "Resource": "*"}]
+
+
+@pytest.mark.wip
+def test_cleanup_reports_in_aws_cleaner_match_configuration_policy_cleanup_reports():
+    """
+
+    :return:
+    """
+    config_cleanup_report_attrs = [attr_name for attr_name in AWSCleanerConfigurationPolicy.__dict__ if attr_name.startswith("cleanup_report_")]
+    cleaner_cleanup_report_attrs = [attr_name for attr_name in AWSCleaner.__dict__ if attr_name.startswith("cleanup_report_")]
+
+    assert set(config_cleanup_report_attrs) == set(cleaner_cleanup_report_attrs)
+    for x in cleaner_cleanup_report_attrs:
+        if x not in config_cleanup_report_attrs:
+            print(f"""\n        self._{x} = None
+    @property
+    def {x}(self):
+    if self._{x} is None:
+        self._{x} = True
+    return self._{x}
+
+    @{x}.setter
+    @ConfigurationPolicy.validate_type_decorator(bool)
+    def {x}(self, value):
+    self._{x} = value
+    """)

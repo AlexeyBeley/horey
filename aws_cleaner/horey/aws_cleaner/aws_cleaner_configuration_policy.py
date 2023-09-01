@@ -19,9 +19,34 @@ class AWSCleanerConfigurationPolicy(ConfigurationPolicy):
         self._reports_dir = None
         self._aws_api_account_name = None
         self._managed_accounts_file_path = None
-        self._cleanup_report_ebs_volumes = None
         self._cleanup_report_route53_loadbalancers = None
         self._cleanup_report_route53_certificates = None
+        self._cleanup_report_ebs_volumes = None
+        self._cleanup_report_ec2_ami_version = None
+        self._cleanup_report_acm_certificate = None
+
+    @property
+    def cleanup_report_acm_certificate(self):
+        if self._cleanup_report_acm_certificate is None:
+            self._cleanup_report_acm_certificate = True
+
+        return self._cleanup_report_acm_certificate
+
+    @cleanup_report_acm_certificate.setter
+    @ConfigurationPolicy.validate_type_decorator(bool)
+    def cleanup_report_acm_certificate(self, value):
+        self._cleanup_report_acm_certificate = value
+
+    @property
+    def cleanup_report_ec2_ami_version(self):
+        if self._cleanup_report_ec2_ami_version is None:
+            self._cleanup_report_ec2_ami_version = True
+        return self._cleanup_report_ec2_ami_version
+
+    @cleanup_report_ec2_ami_version.setter
+    @ConfigurationPolicy.validate_type_decorator(bool)
+    def cleanup_report_ec2_ami_version(self, value):
+        self._cleanup_report_ec2_ami_version = value
 
     @property
     def cleanup_report_ebs_volumes(self):
@@ -105,3 +130,14 @@ class AWSCleanerConfigurationPolicy(ConfigurationPolicy):
     @property
     def route53_report_file_path(self):
         return os.path.join(self.route53_reports_dir, "route53.txt")
+
+    @property
+    def acm_reports_dir(self):
+        ret = os.path.join(self.reports_dir, "acm")
+        if not os.path.exists(ret):
+            os.makedirs(ret, exist_ok=True)
+        return ret
+
+    @property
+    def acm_certificate_report_file_path(self):
+        return os.path.join(self.acm_reports_dir, "acm_certificate.txt")
