@@ -17,6 +17,7 @@ class AWSCleanerConfigurationPolicy(ConfigurationPolicy):
     def __init__(self):
         super().__init__()
         self._reports_dir = None
+        self._cache_dir = None
         self._aws_api_account_name = None
         self._managed_accounts_file_path = None
         self._cleanup_report_route53_loadbalancers = None
@@ -24,6 +25,19 @@ class AWSCleanerConfigurationPolicy(ConfigurationPolicy):
         self._cleanup_report_ebs_volumes = None
         self._cleanup_report_ec2_ami_version = None
         self._cleanup_report_acm_certificate = None
+        self._cleanup_report_lambdas = None
+
+    @property
+    def cleanup_report_lambdas(self):
+        if self._cleanup_report_lambdas is None:
+            self._cleanup_report_lambdas = True
+
+        return self._cleanup_report_lambdas
+
+    @cleanup_report_lambdas.setter
+    @ConfigurationPolicy.validate_type_decorator(bool)
+    def cleanup_report_lambdas(self, value):
+        self._cleanup_report_lambdas = value
 
     @property
     def cleanup_report_acm_certificate(self):
@@ -121,6 +135,10 @@ class AWSCleanerConfigurationPolicy(ConfigurationPolicy):
         return os.path.join(self.ec2_reports_dir, "ebs.txt")
 
     @property
+    def ec2_interfaces_report_file_path(self):
+        return os.path.join(self.ec2_reports_dir, "enis.txt")
+
+    @property
     def route53_reports_dir(self):
         ret = os.path.join(self.reports_dir, "route53")
         if not os.path.exists(ret):
@@ -141,3 +159,30 @@ class AWSCleanerConfigurationPolicy(ConfigurationPolicy):
     @property
     def acm_certificate_report_file_path(self):
         return os.path.join(self.acm_reports_dir, "acm_certificate.txt")
+
+    @property
+    def lambda_reports_dir(self):
+        ret = os.path.join(self.reports_dir, "lambda")
+        if not os.path.exists(ret):
+            os.makedirs(ret, exist_ok=True)
+        return ret
+
+    @property
+    def lambda_report_file_path(self):
+        return os.path.join(self.lambda_reports_dir, "lambdas.txt")
+
+    @property
+    def cache_dir(self):
+        return self._cache_dir
+
+    @cache_dir.setter
+    def cache_dir(self, value):
+        if not isinstance(value, str):
+            raise ValueError()
+        self._cache_dir = value
+        if not os.path.exists(value):
+            os.makedirs(value, exist_ok=True)
+
+    @property
+    def cloudwatch_log_groups_streams_cache_dir(self):
+        return os.path.join(self.cache_dir, "cloudwatch", "streams")
