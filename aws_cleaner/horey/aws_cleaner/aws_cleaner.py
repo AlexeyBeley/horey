@@ -51,13 +51,13 @@ class AWSCleaner:
                 "logs:DescribeLogGroups"
             ],
             "Resource": "*"
-        },
-            *[{
+            },
+            {
                 "Sid": "CloudwatchLogTags",
                 "Effect": "Allow",
                 "Action": "logs:ListTagsForResource",
-                "Resource": f"arn:aws:acm:{region.region_mark}:{self.aws_api.acm_client.account_id}:log-group/*"
-            } for region in AWSAccount.get_aws_account().regions.values()]
+                "Resource": "*"
+            }
         ]
 
     def init_lambdas(self, permissions_only=False):
@@ -68,9 +68,9 @@ class AWSCleaner:
         """
 
         if not permissions_only and not self.aws_api.lambdas:
-            #cache_file = os.path.join(self.configuration.cache_dir, "lambdas.json")
-            #self.aws_api.cache_objects(self.aws_api.lambdas, cache_file, indent=4)
-            #self.aws_api.init_lambdas(from_cache=True, cache_file=cache_file)
+            # cache_file = os.path.join(self.configuration.cache_dir, "lambdas.json")
+            # self.aws_api.cache_objects(self.aws_api.lambdas, cache_file, indent=4)
+            # self.aws_api.init_lambdas(from_cache=True, cache_file=cache_file)
             self.aws_api.init_lambdas()
 
         return [{
@@ -99,7 +99,7 @@ class AWSCleaner:
         return [{
             "Sid": "DescribeSecurityGroups",
             "Effect": "Allow",
-            "Action": "ec2:DescribeSecurityGroup",
+            "Action": "ec2:DescribeSecurityGroups",
             "Resource": "*"
         }]
 
@@ -278,12 +278,19 @@ class AWSCleaner:
         statements = []
         for report_generator in self.get_active_cleanups():
             statements += report_generator(permissions_only=True)
+
         unique_statements = []
         for statement in statements:
             if statement not in unique_statements:
                 unique_statements.append(statement)
-        return {"Version": "2012-10-17",
-                "Statement": unique_statements}
+
+        ret_policy = {"Version": "2012-10-17",
+                      "Statement": unique_statements}
+
+        with open(self.configuration.permissions_file_path, "w", encoding="utf-8") as file_handler:
+            json.dump(ret_policy, file_handler, indent=4)
+
+        return ret_policy
 
     def cleanup_report_ebs_volumes(self, permissions_only=False):
         """
@@ -557,7 +564,7 @@ class AWSCleaner:
         :return:
         """
 
-        permissions = self.init_ec2_network_interfaces()
+        permissions = self.init_ec2_network_interfaces(permissions_only=permissions_only)
         if permissions_only:
             return permissions
 
@@ -722,10 +729,14 @@ class AWSCleaner:
                                            "provided": datetime.datetime(2023, 12, 31, 0, 0)}
 
         tb_ret = TextBlock("Lambda runtime versions report")
-        python_versions = sorted([int(runtime.replace("python3.", "")) for runtime in runtime_to_deprecation_date if runtime.startswith("python3.")])
+        python_versions = sorted([int(runtime.replace("python3.", "")) for runtime in runtime_to_deprecation_date if
+                                  runtime.startswith("python3.")])
         python_last_version = f"python3.{max(python_versions)}"
-        provided_last_version = max(runtime for runtime in runtime_to_deprecation_date if runtime.startswith("provided"))
-        nodejs_last_version = max(int(runtime.replace("nodejs","").replace(".x", "")) for runtime in runtime_to_deprecation_date if runtime.startswith("nodejs"))
+        provided_last_version = max(
+            runtime for runtime in runtime_to_deprecation_date if runtime.startswith("provided"))
+        nodejs_last_version = max(
+            int(runtime.replace("nodejs", "").replace(".x", "")) for runtime in runtime_to_deprecation_date if
+            runtime.startswith("nodejs"))
         nodejs_last_version = f"nodejs{nodejs_last_version}.x"
         for function in self.aws_api.lambdas:
             if not function.runtime:
@@ -848,8 +859,8 @@ class AWSCleaner:
         return tb_ret
 
     def sub_cleanup_report_lambdas_not_running_stream_analysis(self,
-            log_group
-    ):
+                                                               log_group
+                                                               ):
         """
         Lambda report checking if the last log stream is to old
 
@@ -941,7 +952,7 @@ class AWSCleaner:
             return permissions
 
         tb_ret = TextBlock("EC2 half a year and older AMIs.")
-        half_year_date = datetime.datetime.now() - datetime.timedelta(days=6*30)
+        half_year_date = datetime.datetime.now() - datetime.timedelta(days=6 * 30)
         for inst in self.aws_api.ec2_instances:
             amis = CommonUtils.find_objects_by_values(self.aws_api.amis, {"id": inst.image_id}, max_count=1)
             if not amis:

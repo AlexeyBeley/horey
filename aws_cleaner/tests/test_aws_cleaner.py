@@ -71,6 +71,7 @@ def test_init_ec2_volumes(configuration):
     cleaner.init_ec2_volumes()
     assert len(cleaner.aws_api.ec2_volumes) > 0
 
+
 @pytest.mark.done
 def test_init_ec2_network_interfaces(configuration):
     """
@@ -125,6 +126,7 @@ def test_cleanup_report_acm_certificate(configuration):
     assert ret is not None
     assert os.path.exists(configuration.acm_certificate_report_file_path)
 
+
 @pytest.mark.done
 def test_cleanup_report_lambdas(configuration):
     cleaner = AWSCleaner(configuration)
@@ -133,6 +135,7 @@ def test_cleanup_report_lambdas(configuration):
     assert ret is not None
     assert os.path.exists(configuration.lambda_report_file_path)
 
+
 @pytest.mark.done
 def test_cleanup_report_network_interfaces(configuration):
     cleaner = AWSCleaner(configuration)
@@ -140,16 +143,6 @@ def test_cleanup_report_network_interfaces(configuration):
     assert len(cleaner.aws_api.network_interfaces) > 0
     assert ret is not None
     assert os.path.exists(configuration.ec2_interfaces_report_file_path)
-
-@pytest.mark.wip
-def test_generate_permissions_cleanup_report_ebs_volumes(
-        configuration_generate_permissions: AWSCleanerConfigurationPolicy):
-    configuration_generate_permissions.cleanup_report_ebs_volumes = True
-
-    cleaner = AWSCleaner(configuration_generate_permissions)
-    ret = cleaner.generate_permissions()
-    assert ret == {"Version": "2012-10-17", "Statement": [
-        {"Sid": "DescribeVolumes", "Effect": "Allow", "Action": "ec2:DescribeVolumes", "Resource": "*"}]}
 
 
 @pytest.mark.done
@@ -187,14 +180,48 @@ def test_init_lambdas(configuration: AWSCleanerConfigurationPolicy):
     assert len(cleaner.aws_api.lambdas) > 1
 
 
-@pytest.mark.done
+@pytest.mark.wip
 def test_init_cloud_watch_log_groups(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     cleaner.init_cloud_watch_log_groups()
     assert len(cleaner.aws_api.cloud_watch_log_groups) > 1
 
 
-@pytest.mark.wip
+@pytest.mark.done
+def test_generate_permissions_all(
+        configuration: AWSCleanerConfigurationPolicy):
+    cleaner = AWSCleaner(configuration)
+    expected_sids = {"ListCertificates", "DescribeCertificate", "DescribeVolumes", "DescribeImages",
+                     "DescribeInstances", "GetFunctions", "LambdaGetPolicy", "CloudwatchLogs", "CloudwatchLogTags",
+                     "DescribeSecurityGroups", "DescribeNetworkInterfaces", "Route53", "LoadBalancers"}
+    ret = cleaner.generate_permissions()
+    sids = {statement["Sid"] for statement in ret["Statement"]}
+    assert sids == expected_sids
+    assert len(ret["Statement"]) == len(expected_sids)
+    assert os.path.exists(cleaner.configuration.permissions_file_path)
+
+
+@pytest.mark.done
+def test_generate_permissions_cloud_watch_log_groups(configuration: AWSCleanerConfigurationPolicy):
+    cleaner = AWSCleaner(configuration)
+    ret = cleaner.init_cloud_watch_log_groups(permissions_only=True)
+    assert ret == [{"Sid": "CloudwatchLogs", "Effect": "Allow", "Action": ["logs:DescribeLogGroups"], "Resource": "*"},
+                   {"Sid": "CloudwatchLogTags", "Effect": "Allow", "Action": "logs:ListTagsForResource",
+                    "Resource": "*"}]
+
+
+@pytest.mark.done
+def test_generate_permissions_cleanup_report_ebs_volumes(
+        configuration_generate_permissions: AWSCleanerConfigurationPolicy):
+    configuration_generate_permissions.cleanup_report_ebs_volumes = True
+
+    cleaner = AWSCleaner(configuration_generate_permissions)
+    ret = cleaner.generate_permissions()
+    assert ret == {"Version": "2012-10-17", "Statement": [
+        {"Sid": "DescribeVolumes", "Effect": "Allow", "Action": "ec2:DescribeVolumes", "Resource": "*"}]}
+
+
+@pytest.mark.done
 def test_generate_permissions_cleanup_report_route53_certificates(
         configuration_generate_permissions: AWSCleanerConfigurationPolicy):
     configuration_generate_permissions.cleanup_report_route53_certificates = True
@@ -225,18 +252,19 @@ def test_generate_permissions_cleanup_report_route53_loadbalancers(
                     "elasticloadbalancing:DescribeTags"], "Resource": "*"}]
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_generate_permissions_cleanup_report_lambdas(
         configuration_generate_permissions: AWSCleanerConfigurationPolicy):
     configuration_generate_permissions.cleanup_report_lambdas = True
 
     cleaner = AWSCleaner(configuration_generate_permissions)
     expected = [{"Sid": "GetFunctions", "Effect": "Allow",
-                                 "Action": ["lambda:ListFunctions", "lambda:GetFunctionConcurrency"], "Resource": "*"},
-                                {"Sid": "LambdaGetPolicy", "Effect": "Allow", "Action": "lambda:GetPolicy"},
-                                {"Sid": "DescribeSecurityGroups", "Effect": "Allow", "Action": "ec2:DescribeSecurityGroup", "Resource": "*"},
-                                {"Sid": "CloudwatchLogs", "Effect": "Allow", "Action": ["logs:DescribeLogGroups"], "Resource": "*"},
-                                {"Sid": "CloudwatchLogTags", "Effect": "Allow", "Action": "logs:ListTagsForResource"}]
+                 "Action": ["lambda:ListFunctions", "lambda:GetFunctionConcurrency"], "Resource": "*"},
+                {"Sid": "LambdaGetPolicy", "Effect": "Allow", "Action": "lambda:GetPolicy"},
+                {"Sid": "DescribeSecurityGroups", "Effect": "Allow", "Action": "ec2:DescribeSecurityGroups",
+                 "Resource": "*"},
+                {"Sid": "CloudwatchLogs", "Effect": "Allow", "Action": ["logs:DescribeLogGroups"], "Resource": "*"},
+                {"Sid": "CloudwatchLogTags", "Effect": "Allow", "Action": "logs:ListTagsForResource"}]
     ret = cleaner.generate_permissions()
 
     for statement in ret["Statement"]:
@@ -245,15 +273,18 @@ def test_generate_permissions_cleanup_report_lambdas(
         assert statement in expected
     assert len(expected) == len(ret["Statement"])
 
-@pytest.mark.wip
+
+@pytest.mark.done
 def test_generate_permissions_cleanup_report_ec2_instances(
         configuration_generate_permissions: AWSCleanerConfigurationPolicy):
     configuration_generate_permissions.cleanup_report_ec2_instances = True
 
     cleaner = AWSCleaner(configuration_generate_permissions)
     ret = cleaner.generate_permissions()
-    assert ret["Statement"] == [{"Sid": "DescribeImages", "Effect": "Allow", "Action": "ec2:DescribeImages", "Resource": "*"},
-                                {"Sid": "DescribeInstances", "Effect": "Allow", "Action": "ec2:DescribeInstances", "Resource": "*"}]
+    assert ret["Statement"] == [
+        {"Sid": "DescribeImages", "Effect": "Allow", "Action": "ec2:DescribeImages", "Resource": "*"},
+        {"Sid": "DescribeInstances", "Effect": "Allow", "Action": "ec2:DescribeInstances", "Resource": "*"}]
+
 
 @pytest.mark.done
 def test_sub_cleanup_report_lambdas_large_size(configuration):
@@ -262,12 +293,14 @@ def test_sub_cleanup_report_lambdas_large_size(configuration):
     assert len(cleaner.aws_api.lambdas) > 0
     assert ret is not None
 
+
 @pytest.mark.done
 def test_sub_cleanup_report_lambdas_deprecate(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.sub_cleanup_report_lambdas_deprecate()
     assert len(cleaner.aws_api.lambdas) > 0
     assert ret is not None
+
 
 @pytest.mark.done
 def test_sub_cleanup_report_lambdas_security_group(configuration):

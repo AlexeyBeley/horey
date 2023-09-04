@@ -148,6 +148,10 @@ class AWSCleanerConfigurationPolicy(ConfigurationPolicy):
             os.makedirs(value, exist_ok=True)
 
     @property
+    def permissions_file_path(self):
+        return os.path.join(self.reports_dir, "permissions_policy.json")
+
+    @property
     def ec2_reports_dir(self):
         ret = os.path.join(self.reports_dir, "ec2")
         if not os.path.exists(ret):
