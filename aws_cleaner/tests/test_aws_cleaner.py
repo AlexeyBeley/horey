@@ -125,7 +125,7 @@ def test_cleanup_report_acm_certificate(configuration):
     assert ret is not None
     assert os.path.exists(configuration.acm_certificate_report_file_path)
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_cleanup_report_lambdas(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.cleanup_report_lambdas()
@@ -141,7 +141,7 @@ def test_cleanup_report_network_interfaces(configuration):
     assert ret is not None
     assert os.path.exists(configuration.ec2_interfaces_report_file_path)
 
-@pytest.mark.done
+@pytest.mark.wip
 def test_generate_permissions_cleanup_report_ebs_volumes(
         configuration_generate_permissions: AWSCleanerConfigurationPolicy):
     configuration_generate_permissions.cleanup_report_ebs_volumes = True
@@ -194,7 +194,7 @@ def test_init_cloud_watch_log_groups(configuration: AWSCleanerConfigurationPolic
     assert len(cleaner.aws_api.cloud_watch_log_groups) > 1
 
 
-@pytest.mark.done
+@pytest.mark.wip
 def test_generate_permissions_cleanup_report_route53_certificates(
         configuration_generate_permissions: AWSCleanerConfigurationPolicy):
     configuration_generate_permissions.cleanup_report_route53_certificates = True
@@ -225,21 +225,35 @@ def test_generate_permissions_cleanup_report_route53_loadbalancers(
                     "elasticloadbalancing:DescribeTags"], "Resource": "*"}]
 
 
-@pytest.mark.done
+@pytest.mark.wip
 def test_generate_permissions_cleanup_report_lambdas(
         configuration_generate_permissions: AWSCleanerConfigurationPolicy):
     configuration_generate_permissions.cleanup_report_lambdas = True
 
     cleaner = AWSCleaner(configuration_generate_permissions)
-    ret = cleaner.generate_permissions()
-    del ret["Statement"][1]["Resource"]
-    del ret["Statement"][4]["Resource"]
-    assert ret["Statement"] == [{"Sid": "GetFunctions", "Effect": "Allow",
+    expected = [{"Sid": "GetFunctions", "Effect": "Allow",
                                  "Action": ["lambda:ListFunctions", "lambda:GetFunctionConcurrency"], "Resource": "*"},
                                 {"Sid": "LambdaGetPolicy", "Effect": "Allow", "Action": "lambda:GetPolicy"},
                                 {"Sid": "DescribeSecurityGroups", "Effect": "Allow", "Action": "ec2:DescribeSecurityGroup", "Resource": "*"},
                                 {"Sid": "CloudwatchLogs", "Effect": "Allow", "Action": ["logs:DescribeLogGroups"], "Resource": "*"},
                                 {"Sid": "CloudwatchLogTags", "Effect": "Allow", "Action": "logs:ListTagsForResource"}]
+    ret = cleaner.generate_permissions()
+
+    for statement in ret["Statement"]:
+        if "arn" in statement["Resource"]:
+            del statement["Resource"]
+        assert statement in expected
+    assert len(expected) == len(ret["Statement"])
+
+@pytest.mark.wip
+def test_generate_permissions_cleanup_report_ec2_instances(
+        configuration_generate_permissions: AWSCleanerConfigurationPolicy):
+    configuration_generate_permissions.cleanup_report_ec2_instances = True
+
+    cleaner = AWSCleaner(configuration_generate_permissions)
+    ret = cleaner.generate_permissions()
+    assert ret["Statement"] == [{"Sid": "DescribeImages", "Effect": "Allow", "Action": "ec2:DescribeImages", "Resource": "*"},
+                                {"Sid": "DescribeInstances", "Effect": "Allow", "Action": "ec2:DescribeInstances", "Resource": "*"}]
 
 @pytest.mark.done
 def test_sub_cleanup_report_lambdas_large_size(configuration):
@@ -271,6 +285,22 @@ def test_sub_cleanup_report_lambdas_old_code(configuration):
     assert ret is not None
 
 
+@pytest.mark.done
+def test_cleanup_report_ec2_instances(configuration):
+    cleaner = AWSCleaner(configuration)
+    ret = cleaner.cleanup_report_ec2_instances()
+    assert len(cleaner.aws_api.ec2_instances) > 0
+    assert ret is not None
+
+
+@pytest.mark.done
+def test_clean(configuration):
+    cleaner = AWSCleaner(configuration)
+    ret = cleaner.clean()
+    assert len(cleaner.aws_api.ec2_instances) > 0
+    assert ret is not None
+
+
 @pytest.mark.wip
 def test_cleanup_reports_in_aws_cleaner_match_configuration_policy_cleanup_reports():
     """
@@ -286,14 +316,15 @@ def test_cleanup_reports_in_aws_cleaner_match_configuration_policy_cleanup_repor
     for x in cleaner_cleanup_report_attrs:
         if x not in config_cleanup_report_attrs:
             print(f"""\n        self._{x} = None
+
     @property
     def {x}(self):
-    if self._{x} is None:
-        self._{x} = True
-    return self._{x}
+        if self._{x} is None:
+            self._{x} = True
+        return self._{x}
 
     @{x}.setter
     @ConfigurationPolicy.validate_type_decorator(bool)
     def {x}(self, value):
-    self._{x} = value
+        self._{x} = value
     """)

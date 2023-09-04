@@ -68,6 +68,10 @@ class HumanAPIConfigurationPolicy(ConfigurationPolicy):
         return os.path.join(self.daily_dir_path, self.work_status_file_name)
 
     @property
+    def big_brother_file_path(self):
+        return os.path.join(self.daily_dir_path, "big_brother.hapi")
+
+    @property
     def sprint_dir_path(self):
         ret = os.path.join(self.reports_dir_path, self.sprint_name.replace(" ", "_"))
         os.makedirs(ret, exist_ok=True)

@@ -813,6 +813,7 @@ class HumanAPI:
 
         if not os.path.exists(self.configuration.protected_input_file_path):
             self.daily_report()
+            print(f"gm. Please fill daily report at `{self.configuration.protected_input_file_path}`")
             return
 
         if not os.path.exists(self.configuration.daily_hr_output_file_path):
@@ -820,6 +821,8 @@ class HumanAPI:
             return
 
         self.daily_action()
+
+        self.big_brother()
 
     def big_brother(self):
         """
@@ -848,9 +851,12 @@ class HumanAPI:
 
         previous_wobjects = [wobj for wobj in previous_wobjects if wobj.type in ["Task", "Bug"] and wobj.sprint_name == self.configuration.sprint_name]
         previous_wobjects_map = self.split_by_worker(previous_wobjects)
+        htb_ret = TextBlock("The Big Brother has you")
         for worker in current_tasks_bugs_map:
-            htb_ret = self.genereate_worker_big_brother_report(worker, current_tasks_bugs_map, previous_wobjects_map, {wobj.id: wobj for wobj in current_wobjects})
-            print(htb_ret.format_pprint(shift=4))
+            htb_ret_tmp = self.genereate_worker_big_brother_report(worker, current_tasks_bugs_map, previous_wobjects_map, {wobj.id: wobj for wobj in current_wobjects})
+            if htb_ret_tmp:
+                htb_ret.blocks.append(htb_ret_tmp)
+        htb_ret.write_to_file(self.configuration.big_brother_file_path)
 
     def genereate_worker_big_brother_report(self, worker, current_tasks_bugs_map, previous_wobjects_map, current_wobjects):
         """

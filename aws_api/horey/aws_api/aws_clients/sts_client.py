@@ -26,3 +26,15 @@ class STSClient(Boto3Client):
 
         for response in self.execute(self.client.get_caller_identity, "Account"):
             return response
+
+    def decode_authorization_message(self, txt_message):
+        """
+        Decode encoded message.
+
+        :param txt_message:
+        :return:
+        """
+
+        filters_req = {"EncodedMessage": txt_message}
+        for response in self.execute(self.client.decode_authorization_message, "DecodedMessage", filters_req=filters_req):
+            return response

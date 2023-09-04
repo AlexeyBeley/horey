@@ -19,39 +19,7 @@ class AMI(AwsObject):
             self._init_object_from_cache(dict_src)
             return
 
-        init_options = {
-            "ImageId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
-            "Architecture": self.init_default_attr,
-            "CreationDate": lambda x, y: self.init_date_attr_from_formatted_string(
-                x, y, custom_format="%Y-%m-%dT%H:%M:%S.%fZ"
-            ),
-            "ImageLocation": self.init_default_attr,
-            "ImageType": self.init_default_attr,
-            "Public": self.init_default_attr,
-            "OwnerId": self.init_default_attr,
-            "PlatformDetails": self.init_default_attr,
-            "UsageOperation": self.init_default_attr,
-            "State": self.init_default_attr,
-            "BlockDeviceMappings": self.init_default_attr,
-            "Hypervisor": self.init_default_attr,
-            "RootDeviceType": self.init_default_attr,
-            "VirtualizationType": self.init_default_attr,
-            "Description": self.init_default_attr,
-            "ImageOwnerAlias": self.init_default_attr,
-            "Name": self.init_default_attr,
-            "EnaSupport": self.init_default_attr,
-            "RootDeviceName": self.init_default_attr,
-            "SriovNetSupport": self.init_default_attr,
-            "ProductCodes": self.init_default_attr,
-            "Platform": self.init_default_attr,
-            "BootMode": self.init_default_attr,
-            "KernelId": self.init_default_attr,
-            "RamdiskId": self.init_default_attr,
-            "Tags": self.init_default_attr,
-            "DeprecationTime": self.init_default_attr
-        }
-
-        self.init_attrs(dict_src, init_options)
+        self.update_from_raw_response(dict_src)
 
     def _init_object_from_cache(self, dict_src):
         """
@@ -99,7 +67,9 @@ class AMI(AwsObject):
             "KernelId": self.init_default_attr,
             "RamdiskId": self.init_default_attr,
             "Tags": self.init_default_attr,
-            "DeprecationTime": self.init_default_attr
+            "DeprecationTime": self.init_default_attr,
+            "TpmSupport": self.init_default_attr,
+            "ImdsSupport": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)

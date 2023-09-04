@@ -34,159 +34,15 @@ class AWSCleaner:
         aws_api_configuration.aws_api_account = self.configuration.aws_api_account_name
         self.aws_api = AWSAPI(aws_api_configuration)
 
-    def init_cloud_watch_log_groups(self):
+    def init_cloud_watch_log_groups(self, permissions_only=False):
         """
         Init Cloudwatch logs groups
 
         :return:
         """
 
-        if not self.aws_api.cloud_watch_log_groups:
+        if not permissions_only and not self.aws_api.cloud_watch_log_groups:
             self.aws_api.init_cloud_watch_log_groups()
-
-    def init_lambdas(self):
-        """
-        Init AWS Lambdas
-
-        :return:
-        """
-
-        if not self.aws_api.lambdas:
-            #cache_file = os.path.join(self.configuration.cache_dir, "lambdas.json")
-            #self.aws_api.cache_objects(self.aws_api.lambdas, cache_file, indent=4)
-            #self.aws_api.init_lambdas(from_cache=True, cache_file=cache_file)
-            self.aws_api.init_lambdas()
-
-    def init_security_groups(self):
-        """
-        Init AWS security groups
-
-        :return:
-        """
-
-        if not self.aws_api.security_groups:
-            self.aws_api.init_security_groups()
-
-    def init_ec2_volumes(self):
-        """
-        Init EC2 EBS volumes.
-
-        :return:
-        """
-
-        if not self.aws_api.ec2_volumes:
-            self.aws_api.init_ec2_volumes()
-
-    def init_ec2_instances(self):
-        """
-        Init EC2 instances.
-
-        :return:
-        """
-
-        if not self.aws_api.ec2_instances:
-            self.aws_api.init_ec2_instances()
-
-    def init_hosted_zones(self):
-        """
-        Init Route 53 hosted zones.
-
-        :return:
-        """
-
-        if not self.aws_api.hosted_zones:
-            self.aws_api.init_hosted_zones()
-
-    def init_ec2_network_interfaces(self):
-        """
-        Init AWS ENIs
-
-        :return:
-        """
-
-        if not self.aws_api.network_interfaces:
-            self.aws_api.init_network_interfaces()
-
-    def init_acm_certificates(self):
-        """
-        Init ACM certificates.
-
-        :return:
-        """
-
-        if not self.aws_api.acm_certificates:
-            self.aws_api.init_acm_certificates()
-
-    def init_load_balancers(self):
-        """
-        Init ACM certificates.
-
-        :return:
-        """
-
-        if not self.aws_api.load_balancers and not self.aws_api.classic_load_balancers:
-            self.aws_api.init_load_balancers()
-            self.aws_api.init_classic_load_balancers()
-
-    # pylint: disable= too-many-branches
-    def generate_permissions(self):
-        """
-        Generate iam permissions.
-        https://iam.cloudonaut.io/
-
-        :return:
-        """
-
-        statements = []
-        if self.configuration.cleanup_report_ebs_volumes:
-            statement_generator = self.statement_describe_volumes
-            if statement_generator not in statements:
-                statements.append(statement_generator)
-        if self.configuration.cleanup_report_route53_certificates:
-            for statement_generator in [self.statement_route53_list, self.statement_acm_describe]:
-                if statement_generator not in statements:
-                    statements.append(statement_generator)
-        if self.configuration.cleanup_report_route53_loadbalancers:
-            for statement_generator in [self.statement_route53_list, self.statement_loadbalancers]:
-                if statement_generator not in statements:
-                    statements.append(statement_generator)
-        if self.configuration.cleanup_report_lambdas:
-            for statement_generator in [self.statement_lambdas, self.statement_security_groups,
-                                        self.statement_cloudwatch_log_groups]:
-                if statement_generator not in statements:
-                    statements.append(statement_generator)
-        if self.configuration.cleanup_report_network_interfaces:
-            statement_generator = self.statement_describe_enis
-            if statement_generator not in statements:
-                statements.append(statement_generator)
-
-        return {"Version": "2012-10-17",
-                "Statement": [statement for statement_generator in statements for statement in statement_generator()]}
-
-    @staticmethod
-    def statement_route53_list():
-        """
-        Route 53 permissions.
-
-        :return:
-        """
-
-        return [{
-            "Sid": "Route53",
-            "Effect": "Allow",
-            "Action": [
-                "route53:ListHostedZones",
-                "route53:ListResourceRecordSets"
-            ],
-            "Resource": "*"
-        }]
-
-    def statement_cloudwatch_log_groups(self):
-        """
-        Cloudwatch logs.
-
-        :return:
-        """
 
         return [{
             "Sid": "CloudwatchLogs",
@@ -204,47 +60,18 @@ class AWSCleaner:
             } for region in AWSAccount.get_aws_account().regions.values()]
         ]
 
-    @staticmethod
-    def statement_security_groups():
+    def init_lambdas(self, permissions_only=False):
         """
-        Security group permissions.
+        Init AWS Lambdas
 
         :return:
         """
 
-        return [{
-            "Sid": "DescribeSecurityGroups",
-            "Effect": "Allow",
-            "Action": "ec2:DescribeSecurityGroup",
-            "Resource": "*"
-        }]
-
-    def statement_acm_describe(self):
-        """
-        ACM Permissions.
-
-        :return:
-        """
-
-        return [{
-            "Sid": "ListCertificates",
-            "Effect": "Allow",
-            "Action": "acm:ListCertificates",
-            "Resource": "*"
-        },
-            *[{
-                "Sid": "DescribeCertificate",
-                "Effect": "Allow",
-                "Action": "acm:DescribeCertificate",
-                "Resource": f"arn:aws:acm:{region.region_mark}:{self.aws_api.acm_client.account_id}:certificate/*"
-            } for region in AWSAccount.get_aws_account().regions.values()]]
-
-    def statement_lambdas(self):
-        """
-        Lambdas Permissions.
-
-        :return:
-        """
+        if not permissions_only and not self.aws_api.lambdas:
+            #cache_file = os.path.join(self.configuration.cache_dir, "lambdas.json")
+            #self.aws_api.cache_objects(self.aws_api.lambdas, cache_file, indent=4)
+            #self.aws_api.init_lambdas(from_cache=True, cache_file=cache_file)
+            self.aws_api.init_lambdas()
 
         return [{
             "Sid": "GetFunctions",
@@ -259,13 +86,145 @@ class AWSCleaner:
                 "Resource": f"arn:aws:lambda:{region.region_mark}:{self.aws_api.acm_client.account_id}:function:*"
             } for region in AWSAccount.get_aws_account().regions.values()]]
 
-    @staticmethod
-    def statement_loadbalancers():
+    def init_security_groups(self, permissions_only=False):
         """
-        Load balancers Permissions.
+        Init AWS security groups
 
         :return:
         """
+
+        if not permissions_only and not self.aws_api.security_groups:
+            self.aws_api.init_security_groups()
+
+        return [{
+            "Sid": "DescribeSecurityGroups",
+            "Effect": "Allow",
+            "Action": "ec2:DescribeSecurityGroup",
+            "Resource": "*"
+        }]
+
+    def init_ec2_volumes(self, permissions_only=False):
+        """
+        Init EC2 EBS volumes.
+
+        :return:
+        """
+
+        if not permissions_only and not self.aws_api.ec2_volumes:
+            self.aws_api.init_ec2_volumes()
+
+        return [{
+            "Sid": "DescribeVolumes",
+            "Effect": "Allow",
+            "Action": "ec2:DescribeVolumes",
+            "Resource": "*"
+        }]
+
+    def init_ec2_instances(self, permissions_only=False):
+        """
+        Init EC2 instances.
+
+        :return:
+        """
+
+        if not permissions_only and not self.aws_api.ec2_instances:
+            self.aws_api.init_ec2_instances()
+
+        return [{
+            "Sid": "DescribeInstances",
+            "Effect": "Allow",
+            "Action": "ec2:DescribeInstances",
+            "Resource": "*"
+        }]
+
+    def init_ec2_amis(self, permissions_only=False):
+        """
+        Init EC2 amis.
+
+        :return:
+        """
+
+        if not permissions_only and not self.aws_api.amis:
+            self.aws_api.init_amis()
+
+        return [{
+            "Sid": "DescribeImages",
+            "Effect": "Allow",
+            "Action": "ec2:DescribeImages",
+            "Resource": "*"
+        }]
+
+    def init_hosted_zones(self, permissions_only=False):
+        """
+        Init Route 53 hosted zones.
+
+        :return:
+        """
+
+        if not permissions_only and not self.aws_api.hosted_zones:
+            self.aws_api.init_hosted_zones()
+
+        return [{
+            "Sid": "Route53",
+            "Effect": "Allow",
+            "Action": [
+                "route53:ListHostedZones",
+                "route53:ListResourceRecordSets"
+            ],
+            "Resource": "*"
+        }]
+
+    def init_ec2_network_interfaces(self, permissions_only=False):
+        """
+        Init AWS ENIs
+
+        :return:
+        """
+
+        if not permissions_only and not self.aws_api.network_interfaces:
+            self.aws_api.init_network_interfaces()
+
+        return [{
+            "Sid": "DescribeNetworkInterfaces",
+            "Effect": "Allow",
+            "Action": "ec2:DescribeNetworkInterfaces",
+            "Resource": "*"
+        }]
+
+    def init_acm_certificates(self, permissions_only=False):
+        """
+        Init ACM certificates.
+
+        :return:
+        """
+
+        if not permissions_only and not self.aws_api.acm_certificates:
+            self.aws_api.init_acm_certificates()
+
+        return [{
+            "Sid": "ListCertificates",
+            "Effect": "Allow",
+            "Action": "acm:ListCertificates",
+            "Resource": "*"
+        },
+            *[{
+                "Sid": "DescribeCertificate",
+                "Effect": "Allow",
+                "Action": "acm:DescribeCertificate",
+                "Resource": f"arn:aws:acm:{region.region_mark}:{self.aws_api.acm_client.account_id}:certificate/*"
+            } for region in AWSAccount.get_aws_account().regions.values()]]
+
+    def init_load_balancers(self, permissions_only=False):
+        """
+        Init ACM certificates.
+
+        :return:
+        """
+
+        if not permissions_only and not self.aws_api.load_balancers and not self.aws_api.classic_load_balancers:
+            self.aws_api.init_load_balancers()
+            self.aws_api.init_classic_load_balancers()
+
         return [{
             "Sid": "LoadBalancers",
             "Effect": "Allow",
@@ -278,47 +237,69 @@ class AWSCleaner:
             "Resource": "*"
         }]
 
-    @staticmethod
-    def statement_describe_volumes():
+    def get_active_cleanups(self):
         """
-        Volumes.
+        Return All active clean up functions.
 
         :return:
         """
 
-        return [{
-            "Sid": "DescribeVolumes",
-            "Effect": "Allow",
-            "Action": "ec2:DescribeVolumes",
-            "Resource": "*"
-        }]
+        lst_ret = []
+        for cleanup_report_name in dir(self.configuration):
+            if not cleanup_report_name.startswith("cleanup_report"):
+                continue
 
-    @staticmethod
-    def statement_describe_enis():
+            if getattr(self.configuration, cleanup_report_name):
+                lst_ret.append(getattr(self, cleanup_report_name))
+        return lst_ret
+
+    def clean(self):
         """
-        ENIs.
+        Run all active cleanup reports.
 
         :return:
         """
 
-        return [{
-            "Sid": "DescribeNetworkInterfaces",
-            "Effect": "Allow",
-            "Action": "ec2:DescribeNetworkInterfaces",
-            "Resource": "*"
-        }]
+        tb_ret = TextBlock("AWS Cleanup report")
+        for report_generator in self.get_active_cleanups():
+            report = report_generator()
+            if report:
+                tb_ret.blocks.append(report)
+        return tb_ret
 
+    # pylint: disable= too-many-branches
+    def generate_permissions(self):
+        """
+        Generate iam permissions.
+        https://iam.cloudonaut.io/
 
-    def cleanup_report_ebs_volumes(self):
+        :return:
+        """
+        statements = []
+        for report_generator in self.get_active_cleanups():
+            statements += report_generator(permissions_only=True)
+        unique_statements = []
+        for statement in statements:
+            if statement not in unique_statements:
+                unique_statements.append(statement)
+        return {"Version": "2012-10-17",
+                "Statement": unique_statements}
+
+    def cleanup_report_ebs_volumes(self, permissions_only=False):
         """
         Generate cleanup report for Volumes
 
         :return:
         """
+        if permissions_only:
+            permissions = self.sub_cleanup_report_ebs_volumes_in_use(permissions_only=permissions_only)
+            permissions += self.sub_cleanup_report_ebs_volumes_types(permissions_only=permissions_only)
+            permissions += self.sub_cleanup_report_ebs_volumes_sizes(permissions_only=permissions_only)
+            return permissions
 
         tb_ret = TextBlock("EBS Volumes Report")
         tb_ret_tmp = self.sub_cleanup_report_ebs_volumes_in_use()
-        if tb_ret_tmp.blocks or tb_ret_tmp.lines:
+        if tb_ret_tmp:
             tb_ret.blocks.append(tb_ret_tmp)
         tb_ret_tmp = self.sub_cleanup_report_ebs_volumes_types()
         tb_ret.blocks.append(tb_ret_tmp)
@@ -330,14 +311,16 @@ class AWSCleaner:
         logger.info(f"Output in: {self.configuration.ec2_ebs_report_file_path}")
         return tb_ret
 
-    def sub_cleanup_report_ebs_volumes_in_use(self):
+    def sub_cleanup_report_ebs_volumes_in_use(self, permissions_only=False):
         """
         Check volumes not in use
 
         :return:
         """
 
-        self.init_ec2_volumes()
+        permissions = self.init_ec2_volumes(permissions_only=permissions_only)
+        if permissions_only:
+            return permissions
 
         tb_ret = TextBlock("EBS Volumes not in use")
         for volume in self.aws_api.ec2_volumes:
@@ -352,14 +335,16 @@ class AWSCleaner:
             tb_ret.lines.append(f"{name}: {volume}")
         return tb_ret
 
-    def sub_cleanup_report_ebs_volumes_sizes(self):
+    def sub_cleanup_report_ebs_volumes_sizes(self, permissions_only=False):
         """
         Generate EBS Volume sizes
 
         :return:
         """
 
-        self.init_ec2_volumes()
+        response = self.init_ec2_volumes(permissions_only=permissions_only)
+        if permissions_only:
+            return response
 
         tb_ret = TextBlock("EBS Volumes' sizes")
         for volume in sorted(self.aws_api.ec2_volumes, key=lambda vol: vol.size, reverse=True):
@@ -379,14 +364,16 @@ class AWSCleaner:
                 f"{volume.availability_zone}, {name}, {volume.volume_type}, {volume.size}GB, {volume.iops}IOPS, Attached:{attachment_string}")
         return tb_ret
 
-    def sub_cleanup_report_ebs_volumes_types(self):
+    def sub_cleanup_report_ebs_volumes_types(self, permissions_only=False):
         """
         Generate EBS Volume sizes by type.
 
         :return:
         """
 
-        self.init_ec2_volumes()
+        response = self.init_ec2_volumes(permissions_only=permissions_only)
+        if permissions_only:
+            return response
 
         tb_ret = TextBlock("Storage used by type")
         dict_total_size_to_volume_type = defaultdict(int)
@@ -414,12 +401,16 @@ class AWSCleaner:
 
         return tb_ret
 
-    def cleanup_route_53(self):
+    def cleanup_route_53(self, permissions_only=False):
         """
         Clean the Route 53 service.
 
         :return:
         """
+        if permissions_only:
+            permissions = self.cleanup_report_route53_certificates(permissions_only=permissions_only)
+            permissions += self.cleanup_report_route53_loadbalancers(permissions_only=permissions_only)
+            return permissions
 
         tb_ret = TextBlock("Route53 Report")
         tb_ret_tmp = self.cleanup_report_route53_certificates()
@@ -436,7 +427,7 @@ class AWSCleaner:
         logger.info(f"Output in: {self.configuration.route53_report_file_path}")
         return tb_ret
 
-    def cleanup_report_route53_certificates(self):
+    def cleanup_report_route53_certificates(self, permissions_only=False):
         """
         * Expired certificate validation
         * Certificate renew failed.
@@ -445,37 +436,43 @@ class AWSCleaner:
 
         :return:
         """
-        self.init_hosted_zones()
-        self.init_acm_certificates()
+
+        permissions = self.init_hosted_zones(permissions_only=permissions_only)
+        permissions += self.init_acm_certificates(permissions_only=permissions_only)
+        if permissions_only:
+            return permissions
+
         tb_ret = TextBlock("Route53 Certificate")
         return tb_ret
 
-    def cleanup_report_route53_loadbalancers(self):
+    def cleanup_report_route53_loadbalancers(self, permissions_only=False):
         """
         DNS records pointing to missing load balancers.
 
         :return:
         """
-        self.init_load_balancers()
+
+        permissions = self.init_hosted_zones(permissions_only=permissions_only)
+        permissions += self.init_load_balancers(permissions_only=permissions_only)
+        if permissions_only:
+            return permissions
+
         tb_ret = TextBlock("Route53 Load Balancers")
         return tb_ret
 
-    def cleanup_report_ec2_ami_version(self):
-        """
-        Check AMI last version of the server.
-
-        :return:
-        """
-        self.init_ec2_instances()
-        tb_ret = TextBlock("AMI")
-        return tb_ret
-
-    def cleanup_report_acm_certificate(self):
+    def cleanup_report_acm_certificate(self, permissions_only=False):
         """
         ACM Certificates
 
         :return:
         """
+
+        if permissions_only:
+            permissions = self.sub_cleanup_report_acm_unused(permissions_only=permissions_only)
+            permissions += self.sub_cleanup_report_acm_ineligible(permissions_only=permissions_only)
+            permissions += self.sub_cleanup_report_acm_expiration(permissions_only=permissions_only)
+            return permissions
+
         tb_ret = TextBlock("ACM Report")
 
         tb_ret_tmp = self.sub_cleanup_report_acm_unused()
@@ -492,13 +489,17 @@ class AWSCleaner:
         logger.info(f"Output in: {self.configuration.acm_certificate_report_file_path}")
         return tb_ret
 
-    def sub_cleanup_report_acm_unused(self):
+    def sub_cleanup_report_acm_unused(self, permissions_only=False):
         """
         ACM Certificates
 
         :return:
         """
-        self.init_acm_certificates()
+
+        permissions = self.init_acm_certificates(permissions_only=permissions_only)
+        if permissions_only:
+            return permissions
+
         tb_ret = TextBlock("Unused certificates")
 
         unused = [certificate for certificate in self.aws_api.acm_certificates if not certificate.in_use_by]
@@ -506,13 +507,17 @@ class AWSCleaner:
             tb_ret.lines.append(f"[{certificate.domain_name}] {certificate.arn}")
         return tb_ret
 
-    def sub_cleanup_report_acm_ineligible(self):
+    def sub_cleanup_report_acm_ineligible(self, permissions_only=False):
         """
         ACM ineligible renewal Certificates
 
         :return:
         """
-        self.init_acm_certificates()
+
+        permissions = self.init_acm_certificates(permissions_only=permissions_only)
+        if permissions_only:
+            return permissions
+
         tb_ret = TextBlock("Renewal ineligible certificates")
 
         for certificate in self.aws_api.acm_certificates:
@@ -523,13 +528,17 @@ class AWSCleaner:
                     f"Unknown status: '{certificate.renewal_eligibility}' [{certificate.domain_name}] {certificate.arn}")
         return tb_ret
 
-    def sub_cleanup_report_acm_expiration(self):
+    def sub_cleanup_report_acm_expiration(self, permissions_only=False):
         """
         ACM expired/expiring Certificates
 
         :return:
         """
-        self.init_acm_certificates()
+
+        permissions = self.init_acm_certificates(permissions_only=permissions_only)
+        if permissions_only:
+            return permissions
+
         tb_ret = TextBlock("Expired/Expiring Certificates")
         for certificate in self.aws_api.acm_certificates:
             now = datetime.datetime.now(tz=certificate.not_after.tzinfo)
@@ -541,14 +550,17 @@ class AWSCleaner:
                     f"Days left {days_left}: '{certificate.renewal_eligibility}' [{certificate.domain_name}] {certificate.arn}")
         return tb_ret
 
-    def cleanup_report_network_interfaces(self):
+    def cleanup_report_network_interfaces(self, permissions_only=False):
         """
         Cleanup report for ec2 interfaces
 
         :return:
         """
 
-        self.init_ec2_network_interfaces()
+        permissions = self.init_ec2_network_interfaces()
+        if permissions_only:
+            return permissions
+
         tb_ret = TextBlock("Unused network interfaces")
         for interface in self.aws_api.network_interfaces:
             if interface.attachment is None:
@@ -566,12 +578,19 @@ class AWSCleaner:
         logger.info(f"Output in: {self.configuration.ec2_interfaces_report_file_path}")
         return tb_ret
 
-    def cleanup_report_lambdas(self):
+    def cleanup_report_lambdas(self, permissions_only=False):
         """
         Generated various lambdas' cleanup reports.
 
         @return:
         """
+        if permissions_only:
+            permissions = self.sub_cleanup_report_lambdas_not_running(permissions_only=permissions_only)
+            permissions += self.sub_cleanup_report_lambdas_deprecate(permissions_only=permissions_only)
+            permissions += self.sub_cleanup_report_lambdas_large_size(permissions_only=permissions_only)
+            permissions += self.sub_cleanup_report_lambdas_security_group(permissions_only=permissions_only)
+            permissions += self.sub_cleanup_report_lambdas_old_code(permissions_only=permissions_only)
+            return permissions
 
         tb_ret = TextBlock("AWS Lambdas cleanup")
         tb_ret_tmp = self.sub_cleanup_report_lambdas_not_running()
@@ -593,15 +612,19 @@ class AWSCleaner:
 
         return tb_ret
 
-    def sub_cleanup_report_lambdas_security_group(self):
+    def sub_cleanup_report_lambdas_security_group(self, permissions_only=False):
         """
         Lambda uses external resources, while can not be accessed from the outside itself.
         No need to keep an open port for that. If there is - misconfiguration might have occurred.
 
         :return:
         """
-        self.init_lambdas()
-        self.init_security_groups()
+
+        permissions = self.init_lambdas(permissions_only=permissions_only)
+        permissions += self.init_security_groups(permissions_only=permissions_only)
+        if permissions_only:
+            return permissions
+
         tb_ret = TextBlock("Lambdas' security groups report")
         tb_ret_open_ingress = TextBlock(
             "Lambdas with open ingress security groups - no need to open a port into lambda"
@@ -632,12 +655,16 @@ class AWSCleaner:
             tb_ret.blocks.append(tb_ret_nonexistent_security_groups)
         return tb_ret
 
-    def sub_cleanup_report_lambdas_large_size(self):
+    def sub_cleanup_report_lambdas_large_size(self, permissions_only=False):
         """
         Large lambdas - over 100MiB size code.
         :return:
         """
-        self.init_lambdas()
+
+        permissions = self.init_lambdas(permissions_only=permissions_only)
+        if permissions_only:
+            return permissions
+
         tb_ret = TextBlock("Large lambdas: Maximum size is 250 MiB")
         limit = 100 * 1024 * 1024
         lst_names_sizes = []
@@ -657,14 +684,17 @@ class AWSCleaner:
             ]
         return tb_ret
 
-    def sub_cleanup_report_lambdas_deprecate(self):
+    def sub_cleanup_report_lambdas_deprecate(self, permissions_only=False):
         """
         Lambdas with deprecating runtimes.
 
         :return:
         """
 
-        self.init_lambdas()
+        permissions = self.init_lambdas(permissions_only=permissions_only)
+        if permissions_only:
+            return permissions
+
         try:
             response = requests.get("https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html", timeout=32)
             response_text = response.text
@@ -765,7 +795,7 @@ class AWSCleaner:
             search_start_index = chunk_end_index
         return lst_ret
 
-    def sub_cleanup_report_lambdas_not_running(self):
+    def sub_cleanup_report_lambdas_not_running(self, permissions_only=False):
         """
         Lambda report checking if lambdas write logs:
         * No log group
@@ -774,10 +804,15 @@ class AWSCleaner:
 
         @return:
         """
+        permissions = self.init_lambdas(permissions_only=permissions_only)
+        permissions += self.init_cloud_watch_log_groups(permissions_only=permissions_only)
+
+        if permissions_only:
+            return permissions
+
         if not os.path.exists(self.configuration.cloudwatch_log_groups_streams_cache_dir):
             return None
-        self.init_lambdas()
-        self.init_cloud_watch_log_groups()
+
         tb_ret = TextBlock(
             "Not functioning lambdas- either the last run was to much time ago or it never run"
         )
@@ -854,13 +889,16 @@ class AWSCleaner:
             )
         return lines
 
-    def sub_cleanup_report_lambdas_old_code(self):
+    def sub_cleanup_report_lambdas_old_code(self, permissions_only=False):
         """
         Find all lambdas, which code wasn't updated for a year or more.
         :return:
         """
 
-        self.init_lambdas()
+        permissions = self.init_lambdas(permissions_only=permissions_only)
+
+        if permissions_only:
+            return permissions
 
         days_limit = 365
         tb_ret = TextBlock(f"Lambdas with code older than {days_limit} days")
@@ -878,4 +916,42 @@ class AWSCleaner:
             for name, update_date in lst_names_dates
         ]
 
+        return tb_ret
+
+    def cleanup_report_old_ecr_images(self, permissions_only=False):
+        """
+        # todo: images compiled 6 months ago
+        :return:
+        """
+
+        if permissions_only:
+            return []
+        return None
+
+    def cleanup_report_ec2_instances(self, permissions_only=False):
+        """
+        Old AMI. It's important to renew AMIs on a regular basics.
+
+        :return:
+        """
+
+        permissions = self.init_ec2_amis(permissions_only=permissions_only)
+        permissions += self.init_ec2_instances(permissions_only=permissions_only)
+        if permissions_only:
+            return permissions
+
+        tb_ret = TextBlock("EC2 half a year and older AMIs.")
+        half_year_date = datetime.datetime.now() - datetime.timedelta(days=6*30)
+        for inst in self.aws_api.ec2_instances:
+            amis = CommonUtils.find_objects_by_values(self.aws_api.amis, {"id": inst.image_id}, max_count=1)
+            if not amis:
+                tb_ret.lines.append(f"{inst.name} Can not find AMI, looks like it was either deleted or made private.")
+                continue
+            ami = amis[0]
+            if ami.creation_date < half_year_date:
+                tb_ret.lines.append(f"{inst.name} AMI created at: {ami.creation_date}")
+        with open(self.configuration.ec2_instances_report_file_path, "w+", encoding="utf-8") as file_handler:
+            file_handler.write(tb_ret.format_pprint())
+
+        logger.info(f"Output in: {self.configuration.ec2_instances_report_file_path}")
         return tb_ret

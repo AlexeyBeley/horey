@@ -873,7 +873,7 @@ class AWSAPI:
 
     def init_amis(self, from_cache=False, cache_file=None):
         """
-        Self explanatory.
+        Standard.
 
         @param from_cache:
         @param cache_file:

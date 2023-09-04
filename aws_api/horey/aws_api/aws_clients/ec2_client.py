@@ -1048,7 +1048,7 @@ class EC2Client(Boto3Client):
 
     def get_region_amis(self, region, full_information=True, custom_filters=None):
         """
-        Self explanatory.
+        Standard.
 
         @param region:
         @param full_information:
@@ -1058,6 +1058,8 @@ class EC2Client(Boto3Client):
 
         AWSAccount.set_aws_region(region)
         final_result = []
+
+        logger.info(f"Fetching amis for in region {region.region_mark}")
 
         for response in self.execute(
                 self.client.describe_images, "Images", filters_req=custom_filters

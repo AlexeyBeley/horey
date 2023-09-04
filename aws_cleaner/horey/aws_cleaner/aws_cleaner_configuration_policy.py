@@ -23,9 +23,33 @@ class AWSCleanerConfigurationPolicy(ConfigurationPolicy):
         self._cleanup_report_route53_loadbalancers = None
         self._cleanup_report_route53_certificates = None
         self._cleanup_report_ebs_volumes = None
-        self._cleanup_report_ec2_ami_version = None
+        self._cleanup_report_ec2_instances = None
         self._cleanup_report_acm_certificate = None
         self._cleanup_report_lambdas = None
+        self._cleanup_report_network_interfaces = None
+        self._cleanup_report_old_ecr_images = None
+
+    @property
+    def cleanup_report_old_ecr_images(self):
+        if self._cleanup_report_old_ecr_images is None:
+            self._cleanup_report_old_ecr_images = True
+        return self._cleanup_report_old_ecr_images
+
+    @cleanup_report_old_ecr_images.setter
+    @ConfigurationPolicy.validate_type_decorator(bool)
+    def cleanup_report_old_ecr_images(self, value):
+        self._cleanup_report_old_ecr_images = value
+
+    @property
+    def cleanup_report_network_interfaces(self):
+        if self._cleanup_report_network_interfaces is None:
+            self._cleanup_report_network_interfaces = True
+        return self._cleanup_report_network_interfaces
+
+    @cleanup_report_network_interfaces.setter
+    @ConfigurationPolicy.validate_type_decorator(bool)
+    def cleanup_report_network_interfaces(self, value):
+        self._cleanup_report_network_interfaces = value
 
     @property
     def cleanup_report_lambdas(self):
@@ -52,15 +76,15 @@ class AWSCleanerConfigurationPolicy(ConfigurationPolicy):
         self._cleanup_report_acm_certificate = value
 
     @property
-    def cleanup_report_ec2_ami_version(self):
-        if self._cleanup_report_ec2_ami_version is None:
-            self._cleanup_report_ec2_ami_version = True
-        return self._cleanup_report_ec2_ami_version
+    def cleanup_report_ec2_instances(self):
+        if self._cleanup_report_ec2_instances is None:
+            self._cleanup_report_ec2_instances = True
+        return self._cleanup_report_ec2_instances
 
-    @cleanup_report_ec2_ami_version.setter
+    @cleanup_report_ec2_instances.setter
     @ConfigurationPolicy.validate_type_decorator(bool)
-    def cleanup_report_ec2_ami_version(self, value):
-        self._cleanup_report_ec2_ami_version = value
+    def cleanup_report_ec2_instances(self, value):
+        self._cleanup_report_ec2_instances = value
 
     @property
     def cleanup_report_ebs_volumes(self):
@@ -133,6 +157,10 @@ class AWSCleanerConfigurationPolicy(ConfigurationPolicy):
     @property
     def ec2_ebs_report_file_path(self):
         return os.path.join(self.ec2_reports_dir, "ebs.txt")
+
+    @property
+    def ec2_instances_report_file_path(self):
+        return os.path.join(self.ec2_reports_dir, "instances.txt")
 
     @property
     def ec2_interfaces_report_file_path(self):
