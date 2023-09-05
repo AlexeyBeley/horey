@@ -73,6 +73,19 @@ def test_init_ec2_volumes(configuration):
 
 
 @pytest.mark.done
+def test_init_target_groups(configuration):
+    """
+    Test initiation.
+
+    @return:
+    """
+
+    cleaner = AWSCleaner(configuration)
+    cleaner.init_target_groups()
+    assert len(cleaner.aws_api.target_groups) > 0
+
+
+@pytest.mark.done
 def test_init_ec2_network_interfaces(configuration):
     """
     Test initiation.
@@ -107,6 +120,16 @@ def test_sub_cleanup_report_ebs_volumes_types(configuration):
     ret = cleaner.sub_cleanup_report_ebs_volumes_types()
     assert len(cleaner.aws_api.ec2_volumes) > 0
     assert ret is not None
+
+
+@pytest.mark.done
+def test_cleanup_report_load_balancers(configuration):
+    cleaner = AWSCleaner(configuration)
+    ret = cleaner.cleanup_report_load_balancers()
+    assert len(cleaner.aws_api.load_balancers) > 0
+    assert len(cleaner.aws_api.target_groups) > 0
+    assert ret is not None
+    assert os.path.exists(configuration.load_balancer_report_file_path)
 
 
 @pytest.mark.done
@@ -146,6 +169,24 @@ def test_cleanup_report_network_interfaces(configuration):
 
 
 @pytest.mark.done
+def test_cleanup_report_security_groups(configuration):
+    cleaner = AWSCleaner(configuration)
+    ret = cleaner.cleanup_report_security_groups()
+    assert len(cleaner.aws_api.security_groups) > 0
+    assert ret is not None
+    assert os.path.exists(configuration.ec2_security_groups_report_file_path)
+
+
+@pytest.mark.done
+def test_cleanup_report_ecr_images(configuration):
+    cleaner = AWSCleaner(configuration)
+    ret = cleaner.cleanup_report_ecr_images()
+    assert len(cleaner.aws_api.ecr_images) > 0
+    assert ret is not None
+    assert os.path.exists(configuration.ec2_security_groups_report_file_path)
+
+
+@pytest.mark.done
 def test_init_acm_certificates(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     cleaner.init_acm_certificates()
@@ -180,11 +221,18 @@ def test_init_lambdas(configuration: AWSCleanerConfigurationPolicy):
     assert len(cleaner.aws_api.lambdas) > 1
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_init_cloud_watch_log_groups(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     cleaner.init_cloud_watch_log_groups()
     assert len(cleaner.aws_api.cloud_watch_log_groups) > 1
+
+
+@pytest.mark.done
+def test_init_ecr_images(configuration: AWSCleanerConfigurationPolicy):
+    cleaner = AWSCleaner(configuration)
+    cleaner.init_ecr_images()
+    assert len(cleaner.aws_api.ecr_images) > 1
 
 
 @pytest.mark.done
@@ -208,6 +256,47 @@ def test_generate_permissions_cloud_watch_log_groups(configuration: AWSCleanerCo
     assert ret == [{"Sid": "CloudwatchLogs", "Effect": "Allow", "Action": ["logs:DescribeLogGroups"], "Resource": "*"},
                    {"Sid": "CloudwatchLogTags", "Effect": "Allow", "Action": "logs:ListTagsForResource",
                     "Resource": "*"}]
+
+
+@pytest.mark.done
+def test_generate_permissions_ecr_images(configuration: AWSCleanerConfigurationPolicy):
+    cleaner = AWSCleaner(configuration)
+    ret = cleaner.init_ecr_images(permissions_only=True)
+    del ret[1]["Resource"]
+    assert ret == [{"Sid": "ECRTags", "Effect": "Allow", "Action": "ecr:ListTagsForResource", "Resource": "*"},
+                   {"Sid": "GetECR", "Effect": "Allow", "Action": ["ecr:DescribeRepositories", "ecr:DescribeImages"]}]
+
+@pytest.mark.done
+def test_generate_permissions_target_groups(configuration: AWSCleanerConfigurationPolicy):
+    cleaner = AWSCleaner(configuration)
+    ret = cleaner.init_target_groups(permissions_only=True)
+    assert ret == [{
+        "Sid": "GetTargetGroups",
+        "Effect": "Allow",
+        "Action": [
+            "elasticloadbalancing:DescribeTargetGroups",
+            "elasticloadbalancing:DescribeTargetHealth"
+        ],
+        "Resource": "*"
+    }]
+
+
+@pytest.mark.done
+def test_generate_permissions_cleanup_report_load_balancers(
+        configuration_generate_permissions: AWSCleanerConfigurationPolicy):
+    configuration_generate_permissions.cleanup_report_load_balancers = True
+    cleaner = AWSCleaner(configuration_generate_permissions)
+    ret = cleaner.generate_permissions()
+    assert ret == {"Version": "2012-10-17", "Statement": [{"Sid": "LoadBalancers", "Effect": "Allow",
+                                                           "Action": ["elasticloadbalancing:DescribeLoadBalancers",
+                                                                      "elasticloadbalancing:DescribeListeners",
+                                                                      "elasticloadbalancing:DescribeRules",
+                                                                      "elasticloadbalancing:DescribeTags"],
+                                                           "Resource": "*"},
+                                                          {"Sid": "GetTargetGroups", "Effect": "Allow",
+                                                           "Action": ["elasticloadbalancing:DescribeTargetGroups",
+                                                                      "elasticloadbalancing:DescribeTargetHealth"],
+                                                           "Resource": "*"}]}
 
 
 @pytest.mark.done
@@ -345,7 +434,7 @@ def test_cleanup_reports_in_aws_cleaner_match_configuration_policy_cleanup_repor
     cleaner_cleanup_report_attrs = [attr_name for attr_name in AWSCleaner.__dict__ if
                                     attr_name.startswith("cleanup_report_")]
 
-    # assert set(config_cleanup_report_attrs) == set(cleaner_cleanup_report_attrs)
+    assert set(config_cleanup_report_attrs) == set(cleaner_cleanup_report_attrs)
     for x in cleaner_cleanup_report_attrs:
         if x not in config_cleanup_report_attrs:
             print(f"""\n        self._{x} = None

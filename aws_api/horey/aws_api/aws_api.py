@@ -13,8 +13,6 @@ import zipfile
 from collections import defaultdict
 import requests
 
-from horey.network.ip import IP
-
 from horey.aws_api.aws_clients.ecr_client import ECRClient
 
 from horey.aws_api.aws_clients.ec2_client import EC2Client
@@ -182,7 +180,6 @@ from horey.h_logger import get_logger
 from horey.common_utils.text_block import TextBlock
 
 from horey.network.dns_map import DNSMap
-from horey.network.service import ServiceTCP, Service
 from horey.aws_api.base_entities.aws_account import AWSAccount
 
 logger = get_logger()
@@ -2408,228 +2405,6 @@ class AWSAPI:
 
             tb_ret.blocks.append(tb_log_group)
         return tb_ret
-
-    def cleanup_load_balancers(self, output_file):
-        """
-        Generate load balancers' cleanup report.
-        @param output_file:
-        @return:
-        """
-        tb_ret = TextBlock("Load Balancers Cleanup")
-        tb_ret_tmp = self.cleanup_classic_load_balancers()
-        if tb_ret_tmp is not None:
-            tb_ret.blocks.append(tb_ret_tmp)
-
-        tb_ret_tmp = self.cleanup_alb_load_balancers()
-        if tb_ret_tmp is not None:
-            tb_ret.blocks.append(tb_ret_tmp)
-
-        tb_ret_tmp = self.cleanup_target_groups()
-        if tb_ret_tmp.lines or tb_ret_tmp.blocks:
-            tb_ret.blocks.append(tb_ret_tmp)
-
-        with open(output_file, "w+", encoding="utf-8") as file_handler:
-            file_handler.write(tb_ret.format_pprint())
-
-        return tb_ret
-
-    def cleanup_classic_load_balancers(self):
-        """
-        Generate cleanup report for classic load balancers.
-
-        @return:
-        """
-        tb_ret = TextBlock("Cleanup report classic load balancers")
-        tb_ret_no_instances = TextBlock(
-            "No instances associated with these load balancers"
-        )
-        tb_ret_no_listeners = TextBlock(
-            "No listeners associated with these load balancers"
-        )
-        for load_balancer in self.classic_load_balancers:
-            if not load_balancer.listeners:
-                tb_ret_no_listeners.lines.append(load_balancer.name)
-
-            if not load_balancer.instances:
-                tb_ret_no_instances.lines.append(load_balancer.name)
-
-        if len(tb_ret_no_instances.lines) > 0:
-            tb_ret.blocks.append(tb_ret_no_instances)
-
-        if len(tb_ret_no_listeners.lines) > 0:
-            tb_ret.blocks.append(tb_ret_no_listeners)
-
-        return tb_ret if len(tb_ret.blocks) > 0 else None
-
-    def cleanup_alb_load_balancers(self):
-        """
-        Generate cleanup report for alb load balancers.
-
-        @return:
-        """
-        tb_ret = TextBlock("Cleanup report ALBs")
-        tb_ret_no_tgs = TextBlock(
-            "No target groups associated with these load balancers"
-        )
-        tb_ret_no_listeners = TextBlock(
-            "No listeners associated with these load balancers"
-        )
-
-        lbs_using_tg = set()
-        for target_group in self.target_groups:
-            lbs_using_tg.update(target_group.load_balancer_arns)
-
-        for load_balancer in self.load_balancers:
-            if not load_balancer.listeners:
-                tb_ret_no_listeners.lines.append(load_balancer.name)
-
-            if load_balancer.arn not in lbs_using_tg:
-                tb_ret_no_tgs.lines.append(load_balancer.name)
-
-        if len(tb_ret_no_tgs.lines) > 0:
-            tb_ret.blocks.append(tb_ret_no_tgs)
-
-        if len(tb_ret_no_listeners.lines) > 0:
-            tb_ret.blocks.append(tb_ret_no_listeners)
-
-        return tb_ret if len(tb_ret.blocks) > 0 else None
-
-    def cleanup_target_groups(self):
-        """
-        Cleanup report find unhealthy target groups
-        @return:
-        """
-        tb_ret = TextBlock("Following target groups have a bad health")
-        for target_group in self.target_groups:
-            if not target_group.target_health:
-                tb_ret.lines.append(target_group.name)
-        return tb_ret if len(tb_ret.lines) > 0 else None
-
-    def cleanup_report_security_groups(self, report_file_path):
-        """
-        Generating security group cleanup reports.
-
-        @param report_file_path:
-        @return:
-        """
-        tb_ret = TextBlock("EC2 security groups cleanup")
-        tb_ret.blocks.append(self.cleanup_report_wrong_port_lbs_security_groups())
-        tb_ret.blocks.append(self.cleanup_report_unused_security_groups())
-        tb_ret.blocks.append(self.cleanup_report_dangerous_security_groups())
-
-        with open(report_file_path, "w+", encoding="utf-8") as file_handler:
-            file_handler.write(str(tb_ret))
-
-        return tb_ret
-
-    def cleanup_report_wrong_port_lbs_security_groups(self):
-        """
-        Checks load balancers' ports to security groups' internal ports.
-
-        @return:
-        """
-        tb_ret = TextBlock("Wrong load balancer listeners ports")
-        for load_balancer in self.load_balancers + self.classic_load_balancers:
-            lines = self.cleanup_report_wrong_port_lb_security_groups(load_balancer)
-            tb_ret.lines += lines
-
-        return tb_ret
-
-    def cleanup_report_unused_security_groups(self):
-        """
-        Unassigned security groups.
-
-        @return:
-        """
-
-        tb_ret = TextBlock("Unused security groups")
-        used_security_group_ids = []
-        for interface in self.network_interfaces:
-            sg_ids = interface.get_used_security_group_ids()
-            used_security_group_ids += sg_ids
-        used_security_group_ids = list(set(used_security_group_ids))
-        all_security_groups_dict = {sg.id: sg.name for sg in self.security_groups}
-        tb_ret.lines = [
-            f"{sg_id} [{all_security_groups_dict[sg_id]}]"
-            for sg_id in all_security_groups_dict
-            if sg_id not in used_security_group_ids
-        ]
-        return tb_ret
-
-    def cleanup_report_dangerous_security_groups(self):
-        """
-        Security groups with to wide permissions.
-
-        @return:
-        """
-
-        tb_ret = TextBlock("Dangerously open security groups")
-        for security_group in self.security_groups:
-            pairs = security_group.get_ingress_pairs()
-            if len(pairs) == 0:
-                tb_ret.lines.append(
-                    f"No ingress rules in group {security_group.id} [{security_group.name}]"
-                )
-                continue
-            for ip, service in pairs:
-                if ip is IP.any():
-                    tb_ret.lines.append(
-                        f"Dangerously wide range of addresses {security_group.id} [{security_group.name}] - {ip}"
-                    )
-
-                if service is Service.any():
-                    tb_ret.lines.append(
-                        f"Dangerously wide range of services {security_group.id} [{security_group.name}] - {service}"
-                    )
-
-        return tb_ret
-
-    def cleanup_report_wrong_port_lb_security_groups(self, load_balancer):
-        """
-        Checks single load balancer's ports to security groups' internal ports.
-
-        @param load_balancer:
-        @return:
-        """
-
-        lines = []
-        if load_balancer.network_security_groups is None:
-            return lines
-
-        listeners_ports = [listener.port for listener in load_balancer.listeners]
-        listeners_ports = set(listeners_ports)
-
-        listeners_services = []
-        for port in listeners_ports:
-            service = ServiceTCP()
-            service.start = port
-            service.end = port
-            listeners_services.append(service)
-
-        for security_group_id in load_balancer.network_security_groups:
-            security_group = CommonUtils.find_objects_by_values(
-                self.security_groups, {"id": security_group_id}, max_count=1
-            )[0]
-            security_group_dst_pairs = security_group.get_ingress_pairs()
-
-            for _, sg_service in security_group_dst_pairs:
-                for listener_service in listeners_services:
-                    if listener_service.intersect(sg_service) is not None:
-                        break
-                else:
-                    lines.append(
-                        f"Security group '{security_group.name}' has and open service '{str(sg_service)}' but no LB '{load_balancer.name}' listener on this port"
-                    )
-
-            for listener_service in listeners_services:
-                for _, sg_service in security_group_dst_pairs:
-                    if listener_service.intersect(sg_service) is not None:
-                        break
-                else:
-                    lines.append(
-                        f"There is LB '{load_balancer.name}' listener service '{listener_service}' but no security group permits a traffic to it"
-                    )
-        return lines
 
     def find_loadbalnacers_target_groups(self, load_balancer):
         """
@@ -4950,13 +4725,4 @@ class AWSAPI:
     class ServiceUsageRangePointMissingError(RuntimeError):
         """
         No value set for range decision
-        """
-
-    def todo_cleanup(self):
-        """
-
-        #todo: Route53 old ACM certificates
-        #todo: Route53 old load balancers.
-
-        :return:
         """

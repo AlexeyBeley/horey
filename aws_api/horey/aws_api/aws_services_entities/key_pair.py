@@ -17,16 +17,8 @@ class KeyPair(AwsObject):
         if from_cache:
             self._init_object_from_cache(dict_src)
             return
-        init_options = {
-            "KeyPairId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
-            "KeyName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
-            "KeyFingerprint": self.init_default_attr,
-            "Tags": self.init_default_attr,
-            "KeyType": self.init_default_attr,
-            "CreateTime": self.init_default_attr,
-        }
 
-        self.init_attrs(dict_src, init_options)
+        self.update_from_raw_response(dict_src)
 
     def _init_object_from_cache(self, dict_src):
         """
@@ -49,3 +41,23 @@ class KeyPair(AwsObject):
             request["KeyType"] = self.key_type
 
         return request
+
+    def update_from_raw_response(self, dict_src):
+        """
+        Update self attributes.
+
+        :param dict_src:
+        :return:
+        """
+
+        init_options = {
+            "KeyPairId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
+            "KeyName": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "KeyFingerprint": self.init_default_attr,
+            "Tags": self.init_default_attr,
+            "KeyType": self.init_default_attr,
+            "CreateTime": self.init_default_attr,
+            "KeyMaterial": self.init_default_attr,
+        }
+
+        self.init_attrs(dict_src, init_options)

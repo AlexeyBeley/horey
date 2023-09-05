@@ -2009,11 +2009,10 @@ class EC2Client(Boto3Client):
                 key_pair.id = region_key_pair.id
                 return None
 
-        try:
-            return self.provision_key_pair_raw(key_pair.generate_create_request())
-        except Exception as exception_inst:
-            logger.warning(repr(exception_inst))
-            raise
+        response = self.provision_key_pair_raw(key_pair.generate_create_request())
+        key_pair.update_from_raw_response(response)
+        return response
+
 
     def provision_key_pair_raw(self, request_dict):
         """

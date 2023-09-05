@@ -5,7 +5,7 @@ AWS Cleaner. Money, money, money...
 import os
 import json
 import datetime
-# pylint: disable=no-name-in-module
+# pylint: disable=no-name-in-module, too-many-lines
 from collections import defaultdict
 import requests
 
@@ -16,6 +16,8 @@ from horey.aws_cleaner.aws_cleaner_configuration_policy import AWSCleanerConfigu
 from horey.common_utils.text_block import TextBlock
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.common_utils.common_utils import CommonUtils
+from horey.network.service import ServiceTCP, Service
+from horey.network.ip import IP
 
 logger = get_logger()
 
@@ -33,6 +35,28 @@ class AWSCleaner:
         aws_api_configuration.accounts_file = self.configuration.managed_accounts_file_path
         aws_api_configuration.aws_api_account = self.configuration.aws_api_account_name
         self.aws_api = AWSAPI(aws_api_configuration)
+
+    def init_ecr_images(self, permissions_only=False):
+        """
+        Init AWS Lambdas
+
+        :return:
+        """
+        if not permissions_only and not self.aws_api.ecr_images:
+            self.aws_api.init_ecr_images()
+        return [
+            {
+                "Sid": "ECRTags",
+                "Effect": "Allow",
+                "Action": "ecr:ListTagsForResource",
+                "Resource": "*"
+            },
+            *[{
+                "Sid": "GetECR",
+                "Effect": "Allow",
+                "Action": ["ecr:DescribeRepositories", "ecr:DescribeImages"],
+                "Resource": f"arn:aws:ecr:{region.region_mark}:{self.aws_api.acm_client.account_id}:repository/*"
+            } for region in AWSAccount.get_aws_account().regions.values()]]
 
     def init_cloud_watch_log_groups(self, permissions_only=False):
         """
@@ -216,7 +240,7 @@ class AWSCleaner:
 
     def init_load_balancers(self, permissions_only=False):
         """
-        Init ACM certificates.
+        Init ELB/ALB Load balancers
 
         :return:
         """
@@ -233,6 +257,26 @@ class AWSCleaner:
                 "elasticloadbalancing:DescribeListeners",
                 "elasticloadbalancing:DescribeRules",
                 "elasticloadbalancing:DescribeTags"
+            ],
+            "Resource": "*"
+        }]
+
+    def init_target_groups(self, permissions_only=False):
+        """
+        Init ELB/ALB target groups
+
+        :return:
+        """
+
+        if not permissions_only and not self.aws_api.target_groups:
+            self.aws_api.init_target_groups()
+
+        return [{
+            "Sid": "GetTargetGroups",
+            "Effect": "Allow",
+            "Action": [
+                "elasticloadbalancing:DescribeTargetGroups",
+                "elasticloadbalancing:DescribeTargetHealth"
             ],
             "Resource": "*"
         }]
@@ -929,15 +973,37 @@ class AWSCleaner:
 
         return tb_ret
 
-    def cleanup_report_old_ecr_images(self, permissions_only=False):
+    def cleanup_report_ecr_images(self, permissions_only=False):
         """
-        # todo: images compiled 6 months ago
+        Images compiled 6 months ago and later.
+
         :return:
         """
 
+        permissions = self.init_ecr_images(permissions_only=permissions_only)
         if permissions_only:
-            return []
-        return None
+            return permissions
+
+        tb_ret = TextBlock("ECR Images half year and older")
+        images_by_ecr_repo = defaultdict(list)
+        for image in self.aws_api.ecr_images:
+            images_by_ecr_repo[image.repository_name].append(image)
+
+        half_year_date = None
+        for images in images_by_ecr_repo.values():
+            half_year_date = datetime.datetime.now(tz=images[0].image_pushed_at.tzinfo) - datetime.timedelta(days=6 * 30)
+            break
+
+        for repo_name, images in images_by_ecr_repo.items():
+            last_image = sorted(images, key=lambda _image: _image.image_pushed_at)[-1]
+            if last_image.image_pushed_at < half_year_date:
+                tb_ret.lines.append(f"Repository '{repo_name}' last image pushed at: {last_image.image_pushed_at.strftime('%Y-%m-%d %H:%M')} ")
+
+        with open(self.configuration.ecr_report_file_path, "w+", encoding="utf-8") as file_handler:
+            file_handler.write(tb_ret.format_pprint())
+
+        logger.info(f"Output in: {self.configuration.ecr_report_file_path}")
+        return tb_ret
 
     def cleanup_report_ec2_instances(self, permissions_only=False):
         """
@@ -966,3 +1032,273 @@ class AWSCleaner:
 
         logger.info(f"Output in: {self.configuration.ec2_instances_report_file_path}")
         return tb_ret
+
+    def cleanup_report_load_balancers(self, permissions_only=False):
+        """
+        Generate load balancers' cleanup report.
+
+        @return:
+        """
+        if permissions_only:
+            permissions = self.sub_cleanup_classic_load_balancers(permissions_only=permissions_only)
+            permissions += self.sub_cleanup_alb_load_balancers(permissions_only=permissions_only)
+            permissions += self.sub_cleanup_target_groups(permissions_only=permissions_only)
+            return permissions
+
+        tb_ret = TextBlock("Load Balancers Cleanup")
+        tb_ret_tmp = self.sub_cleanup_classic_load_balancers()
+        if tb_ret_tmp is not None:
+            tb_ret.blocks.append(tb_ret_tmp)
+
+        tb_ret_tmp = self.sub_cleanup_alb_load_balancers()
+        if tb_ret_tmp is not None:
+            tb_ret.blocks.append(tb_ret_tmp)
+
+        tb_ret_tmp = self.sub_cleanup_target_groups()
+        if tb_ret_tmp.lines or tb_ret_tmp.blocks:
+            tb_ret.blocks.append(tb_ret_tmp)
+
+        tb_ret.write_to_file(self.configuration.load_balancer_report_file_path)
+
+        logger.info(f"Output in: {self.configuration.load_balancer_report_file_path}")
+
+        return tb_ret
+
+    def sub_cleanup_classic_load_balancers(self, permissions_only=False):
+        """
+        Generate cleanup report for classic load balancers.
+
+        @return:
+        """
+
+        permissions = self.init_load_balancers(permissions_only=permissions_only)
+        if permissions_only:
+            return permissions
+
+        tb_ret = TextBlock("Cleanup report classic load balancers")
+        tb_ret_no_instances = TextBlock(
+            "No instances associated with these load balancers"
+        )
+        tb_ret_no_listeners = TextBlock(
+            "No listeners associated with these load balancers"
+        )
+        for load_balancer in self.aws_api.classic_load_balancers:
+            if not load_balancer.listeners:
+                tb_ret_no_listeners.lines.append(load_balancer.name)
+
+            if not load_balancer.instances:
+                tb_ret_no_instances.lines.append(load_balancer.name)
+
+        if len(tb_ret_no_instances.lines) > 0:
+            tb_ret.blocks.append(tb_ret_no_instances)
+
+        if len(tb_ret_no_listeners.lines) > 0:
+            tb_ret.blocks.append(tb_ret_no_listeners)
+
+        return tb_ret if len(tb_ret.blocks) > 0 else None
+
+    def sub_cleanup_alb_load_balancers(self, permissions_only=False):
+        """
+        Generate cleanup report for alb load balancers.
+
+        @return:
+        """
+
+        permissions = self.init_load_balancers(permissions_only=permissions_only)
+        permissions += self.init_target_groups(permissions_only=permissions_only)
+        if permissions_only:
+            return permissions
+
+        tb_ret = TextBlock("Cleanup report ALBs")
+        tb_ret_no_tgs = TextBlock(
+            "No target groups associated with these load balancers"
+        )
+        tb_ret_no_listeners = TextBlock(
+            "No listeners associated with these load balancers"
+        )
+
+        lbs_using_tg = set()
+        for target_group in self.aws_api.target_groups:
+            lbs_using_tg.update(target_group.load_balancer_arns)
+
+        for load_balancer in self.aws_api.load_balancers:
+            if not load_balancer.listeners:
+                tb_ret_no_listeners.lines.append(load_balancer.name)
+
+            if load_balancer.arn not in lbs_using_tg:
+                tb_ret_no_tgs.lines.append(load_balancer.name)
+
+        if len(tb_ret_no_tgs.lines) > 0:
+            tb_ret.blocks.append(tb_ret_no_tgs)
+
+        if len(tb_ret_no_listeners.lines) > 0:
+            tb_ret.blocks.append(tb_ret_no_listeners)
+
+        return tb_ret if len(tb_ret.blocks) > 0 else None
+
+    def sub_cleanup_target_groups(self, permissions_only=False):
+        """
+
+        Cleanup report find unhealthy target groups
+        @return:
+        """
+
+        permissions = self.init_target_groups(permissions_only=permissions_only)
+        if permissions_only:
+            return permissions
+
+        tb_ret = TextBlock("Following target groups have health problems")
+        for target_group in self.aws_api.target_groups:
+            if not target_group.target_health:
+                tb_ret.lines.append(target_group.name)
+        return tb_ret if len(tb_ret.lines) > 0 else None
+
+    def cleanup_report_security_groups(self, permissions_only=False):
+        """
+        Generating security group cleanup reports.
+
+        @param permissions_only:
+        @return:
+        """
+
+        if permissions_only:
+            permissions = self.sub_cleanup_report_wrong_port_lbs_security_groups(permissions_only=permissions_only)
+            permissions += self.sub_cleanup_report_unused_security_groups(permissions_only=permissions_only)
+            permissions += self.sub_cleanup_report_dangerous_security_groups(permissions_only=permissions_only)
+            return permissions
+
+        tb_ret = TextBlock("EC2 security groups cleanup")
+        tb_ret.blocks.append(self.sub_cleanup_report_wrong_port_lbs_security_groups())
+        tb_ret.blocks.append(self.sub_cleanup_report_unused_security_groups())
+        tb_ret.blocks.append(self.sub_cleanup_report_dangerous_security_groups())
+
+        tb_ret.write_to_file(self.configuration.ec2_security_groups_report_file_path)
+        return tb_ret
+
+    def sub_cleanup_report_wrong_port_lbs_security_groups(self, permissions_only=False):
+        """
+        Checks load balancers' ports to security groups' internal ports.
+
+        @return:
+        """
+
+        permissions = self.init_load_balancers()
+        if permissions_only:
+            permissions += self.sub_cleanup_report_wrong_port_lb_security_groups(None, permissions_only=permissions_only)
+            return permissions
+
+        tb_ret = TextBlock("Wrong load balancer listeners ports")
+        for load_balancer in self.aws_api.load_balancers + self.aws_api.classic_load_balancers:
+            lines = self.sub_cleanup_report_wrong_port_lb_security_groups(load_balancer)
+            tb_ret.lines += lines
+
+        return tb_ret
+
+    def sub_cleanup_report_unused_security_groups(self, permissions_only=False):
+        """
+        Unassigned security groups.
+
+        @return:
+        """
+
+        permissions = self.init_security_groups(permissions_only=permissions_only)
+        permissions += self.init_ec2_network_interfaces(permissions_only=permissions_only)
+        if permissions_only:
+            return permissions
+
+        tb_ret = TextBlock("Unused security groups")
+        used_security_group_ids = []
+        for interface in self.aws_api.network_interfaces:
+            sg_ids = interface.get_used_security_group_ids()
+            used_security_group_ids += sg_ids
+        used_security_group_ids = list(set(used_security_group_ids))
+        all_security_groups_dict = {sg.id: sg.name for sg in self.aws_api.security_groups}
+        tb_ret.lines = [
+            f"{sg_id} [{all_security_groups_dict[sg_id]}]"
+            for sg_id in all_security_groups_dict
+            if sg_id not in used_security_group_ids
+        ]
+        return tb_ret
+
+    def sub_cleanup_report_dangerous_security_groups(self, permissions_only=False):
+        """
+        Security groups with to wide permissions.
+
+        @return:
+        """
+
+        permissions = self.init_security_groups(permissions_only=permissions_only)
+        if permissions_only:
+            return permissions
+
+        tb_ret = TextBlock("Dangerously open security groups")
+        for security_group in self.aws_api.security_groups:
+            pairs = security_group.get_ingress_pairs()
+            if len(pairs) == 0:
+                tb_ret.lines.append(
+                    f"No ingress rules in group {security_group.id} [{security_group.name}]"
+                )
+                continue
+            for ip, service in pairs:
+                if ip is IP.any():
+                    tb_ret.lines.append(
+                        f"Dangerously wide range of addresses {security_group.id} [{security_group.name}] - {ip}"
+                    )
+
+                if service is Service.any():
+                    tb_ret.lines.append(
+                        f"Dangerously wide range of services {security_group.id} [{security_group.name}] - {service}"
+                    )
+
+        return tb_ret
+
+    def sub_cleanup_report_wrong_port_lb_security_groups(self, load_balancer, permissions_only=False):
+        """
+        Checks single load balancer's ports to security groups' internal ports.
+
+        @param load_balancer:
+        @return:
+        """
+
+        permissions = self.init_security_groups(permissions_only=permissions_only)
+        if permissions_only:
+            return permissions
+
+        lines = []
+        if load_balancer.security_groups is None:
+            raise NotImplementedError(load_balancer.security_groups)
+
+        listeners_ports = [listener.port for listener in load_balancer.listeners]
+        listeners_ports = set(listeners_ports)
+
+        listeners_services = []
+        for port in listeners_ports:
+            service = ServiceTCP()
+            service.start = port
+            service.end = port
+            listeners_services.append(service)
+
+        for security_group_id in load_balancer.security_groups:
+            security_group = CommonUtils.find_objects_by_values(
+                self.aws_api.security_groups, {"id": security_group_id}, max_count=1
+            )[0]
+            security_group_dst_pairs = security_group.get_ingress_pairs()
+
+            for _, sg_service in security_group_dst_pairs:
+                for listener_service in listeners_services:
+                    if listener_service.intersect(sg_service) is not None:
+                        break
+                else:
+                    lines.append(
+                        f"Security group '{security_group.name}' has and open service '{str(sg_service)}' but no LB '{load_balancer.name}' listener on this port"
+                    )
+
+            for listener_service in listeners_services:
+                for _, sg_service in security_group_dst_pairs:
+                    if listener_service.intersect(sg_service) is not None:
+                        break
+                else:
+                    lines.append(
+                        f"There is LB '{load_balancer.name}' listener service '{listener_service}' but no security group permits a traffic to it"
+                    )
+        return lines

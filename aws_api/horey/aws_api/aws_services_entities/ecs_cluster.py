@@ -86,6 +86,9 @@ class ECSCluster(AwsObject):
         :return:
         """
 
+        if not cluster_desired.default_capacity_provider_strategy and not cluster_desired.capacity_providers:
+            return None
+
         if self.capacity_providers != cluster_desired.capacity_providers or \
                 self.default_capacity_provider_strategy != cluster_desired.default_capacity_provider_strategy:
             return {

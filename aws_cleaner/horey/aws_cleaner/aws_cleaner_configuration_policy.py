@@ -5,8 +5,7 @@ Alert system configuration policy.
 import os
 from horey.configuration_policy.configuration_policy import ConfigurationPolicy
 
-# pylint: disable=missing-function-docstring
-
+# pylint: disable=missing-function-docstring, too-many-instance-attributes
 
 class AWSCleanerConfigurationPolicy(ConfigurationPolicy):
     """
@@ -27,18 +26,42 @@ class AWSCleanerConfigurationPolicy(ConfigurationPolicy):
         self._cleanup_report_acm_certificate = None
         self._cleanup_report_lambdas = None
         self._cleanup_report_network_interfaces = None
-        self._cleanup_report_old_ecr_images = None
+        self._cleanup_report_ecr_images = None
+        self._cleanup_report_security_groups = None
+        self._cleanup_report_load_balancers = None
 
     @property
-    def cleanup_report_old_ecr_images(self):
-        if self._cleanup_report_old_ecr_images is None:
-            self._cleanup_report_old_ecr_images = True
-        return self._cleanup_report_old_ecr_images
+    def cleanup_report_load_balancers(self):
+        if self._cleanup_report_load_balancers is None:
+            self._cleanup_report_load_balancers = True
+        return self._cleanup_report_load_balancers
 
-    @cleanup_report_old_ecr_images.setter
+    @cleanup_report_load_balancers.setter
     @ConfigurationPolicy.validate_type_decorator(bool)
-    def cleanup_report_old_ecr_images(self, value):
-        self._cleanup_report_old_ecr_images = value
+    def cleanup_report_load_balancers(self, value):
+        self._cleanup_report_load_balancers = value
+
+    @property
+    def cleanup_report_security_groups(self):
+        if self._cleanup_report_security_groups is None:
+            self._cleanup_report_security_groups = True
+        return self._cleanup_report_security_groups
+
+    @cleanup_report_security_groups.setter
+    @ConfigurationPolicy.validate_type_decorator(bool)
+    def cleanup_report_security_groups(self, value):
+        self._cleanup_report_security_groups = value
+
+    @property
+    def cleanup_report_ecr_images(self):
+        if self._cleanup_report_ecr_images is None:
+            self._cleanup_report_ecr_images = True
+        return self._cleanup_report_ecr_images
+
+    @cleanup_report_ecr_images.setter
+    @ConfigurationPolicy.validate_type_decorator(bool)
+    def cleanup_report_ecr_images(self, value):
+        self._cleanup_report_ecr_images = value
 
     @property
     def cleanup_report_network_interfaces(self):
@@ -171,6 +194,10 @@ class AWSCleanerConfigurationPolicy(ConfigurationPolicy):
         return os.path.join(self.ec2_reports_dir, "enis.txt")
 
     @property
+    def ec2_security_groups_report_file_path(self):
+        return os.path.join(self.ec2_reports_dir, "security_groups.txt")
+
+    @property
     def route53_reports_dir(self):
         ret = os.path.join(self.reports_dir, "route53")
         if not os.path.exists(ret):
@@ -202,6 +229,28 @@ class AWSCleanerConfigurationPolicy(ConfigurationPolicy):
     @property
     def lambda_report_file_path(self):
         return os.path.join(self.lambda_reports_dir, "lambdas.txt")
+
+    @property
+    def load_balancer_reports_dir(self):
+        ret = os.path.join(self.reports_dir, "load_balancer")
+        if not os.path.exists(ret):
+            os.makedirs(ret, exist_ok=True)
+        return ret
+
+    @property
+    def load_balancer_report_file_path(self):
+        return os.path.join(self.load_balancer_reports_dir, "load_balancers.txt")
+
+    @property
+    def ecr_reports_dir(self):
+        ret = os.path.join(self.reports_dir, "ecr")
+        if not os.path.exists(ret):
+            os.makedirs(ret, exist_ok=True)
+        return ret
+
+    @property
+    def ecr_report_file_path(self):
+        return os.path.join(self.ecr_reports_dir, "ecr_images.txt")
 
     @property
     def cache_dir(self):

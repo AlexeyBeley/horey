@@ -1,7 +1,6 @@
 """
-Class to represent ec2 instance
+Class to represent ec2 service
 """
-import pdb
 
 from horey.network.ip import IP
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
@@ -21,7 +20,7 @@ class NetworkInterface(AwsObject):
         self.ipv6_addresses = []
         self.private_ip_address = None
         self.attachment = None
-        self.association = None
+        self.association = {}
 
         if from_cache:
             self._init_interface_from_cache(dict_src)
@@ -50,6 +49,7 @@ class NetworkInterface(AwsObject):
             "RequesterId": self.init_default_attr,
             "RequesterManaged": self.init_default_attr,
             "TagSet": self.init_default_attr,
+            "DenyAllIgwTraffic": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -97,13 +97,25 @@ class NetworkInterface(AwsObject):
         self.private_ip_address = IP(value + "/32")
 
     def get_private_addresses(self):
+        """
+        All addresses.
+
+        :return:
+        """
+
         all_addresses = []
         for dict_addr in self.private_ip_addresses:
             all_addresses.append(dict_addr["PrivateIpAddress"])
         return all_addresses
 
     def get_public_addresses(self):
-        if self.association is None:
+        """
+        All public.
+
+        :return:
+        """
+
+        if not self.association:
             raise RuntimeError(
                 f"self.association is None in  interface {self.dict_src}"
             )
@@ -122,9 +134,7 @@ class NetworkInterface(AwsObject):
             for dict_addr in self.private_ip_addresses:
                 # Public
                 description = (
-                    "Inteface: SubnetId: {} NetworkInterfaceId: {}- '{}'".format(
-                        self.subnet_id, self.id, self.description
-                    )
+                    f"Inteface: SubnetId: {self.subnet_id} NetworkInterfaceId: {self.id}- '{self.description}'"
                 )
                 dict_ret = {
                     "sg_id": sec_grp["GroupId"],
@@ -153,18 +163,24 @@ class NetworkInterface(AwsObject):
                 lst_ret.append(dict_ret)
 
             if self.private_ip_address.str_address not in all_addresses:
-                raise Exception
+                raise RuntimeError("Not implemented")
 
             if self.dict_src["Ipv6Addresses"]:
-                pdb.set_trace()
+                raise NotImplementedError(self.dict_src)
 
-            for dict_addr in self.ipv6_addresses:
-                pdb.set_trace()
-                all_addresses.append(dict_addr["Association"]["PublicIp"])
-                all_addresses.append(dict_addr["PrivateIpAddress"])
+            for _ in self.ipv6_addresses:
+                raise NotImplementedError("""all_addresses.append(dict_addr["Association"]["PublicIp"])
+                all_addresses.append(dict_addr["PrivateIpAddress"])""")
+
             if self.private_ip_address.str_address not in all_addresses:
-                raise Exception
+                raise RuntimeError("Not implemented")
         return lst_ret
 
     def get_used_security_group_ids(self):
+        """
+        Security group ids.
+
+        :return:
+        """
+
         return [group["GroupId"] for group in self.groups]

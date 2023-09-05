@@ -11,6 +11,7 @@ VENV_BIN_DIR := $(realpath ${BUILD_TMP_DIR}/_venv/bin)
 build:
 	source ${VENV_BIN_DIR}/activate &&\
 	cd ${HOREY_DIR_PATH} &&\
+	make raw_install_from_source-aws_api &&\
 	make raw_install_from_source-aws_cleaner
 
 build_aws_api:
