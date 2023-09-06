@@ -29,6 +29,67 @@ class AWSCleanerConfigurationPolicy(ConfigurationPolicy):
         self._cleanup_report_ecr_images = None
         self._cleanup_report_security_groups = None
         self._cleanup_report_load_balancers = None
+        self._cleanup_report_sqs = None
+        self._cleanup_report_cloudwatch_logs = None
+        self._cleanup_report_elasticache = None
+        self._cleanup_report_rds = None
+        self._cleanup_report_dynamodb = None
+
+    @property
+    def cleanup_report_dynamodb(self):
+        if self._cleanup_report_dynamodb is None:
+            self._cleanup_report_dynamodb = True
+        return self._cleanup_report_dynamodb
+
+    @cleanup_report_dynamodb.setter
+    @ConfigurationPolicy.validate_type_decorator(bool)
+    def cleanup_report_dynamodb(self, value):
+        self._cleanup_report_dynamodb = value
+
+    @property
+    def cleanup_report_rds(self):
+        if self._cleanup_report_rds is None:
+            self._cleanup_report_rds = True
+        return self._cleanup_report_rds
+
+    @cleanup_report_rds.setter
+    @ConfigurationPolicy.validate_type_decorator(bool)
+    def cleanup_report_rds(self, value):
+        self._cleanup_report_rds = value
+
+    @property
+    def cleanup_report_elasticache(self):
+        if self._cleanup_report_elasticache is None:
+            self._cleanup_report_elasticache = True
+        return self._cleanup_report_elasticache
+
+    @cleanup_report_elasticache.setter
+    @ConfigurationPolicy.validate_type_decorator(bool)
+    def cleanup_report_elasticache(self, value):
+        self._cleanup_report_elasticache = value
+
+    @property
+    def cleanup_report_cloudwatch_logs(self):
+        if self._cleanup_report_cloudwatch_logs is None:
+            self._cleanup_report_cloudwatch_logs = True
+        return self._cleanup_report_cloudwatch_logs
+
+    @cleanup_report_cloudwatch_logs.setter
+    @ConfigurationPolicy.validate_type_decorator(bool)
+    def cleanup_report_cloudwatch_logs(self, value):
+        self._cleanup_report_cloudwatch_logs = value
+
+
+    @property
+    def cleanup_report_sqs(self):
+        if self._cleanup_report_sqs is None:
+            self._cleanup_report_sqs = True
+        return self._cleanup_report_sqs
+
+    @cleanup_report_sqs.setter
+    @ConfigurationPolicy.validate_type_decorator(bool)
+    def cleanup_report_sqs(self, value):
+        self._cleanup_report_sqs = value
 
     @property
     def cleanup_report_load_balancers(self):
@@ -251,6 +312,72 @@ class AWSCleanerConfigurationPolicy(ConfigurationPolicy):
     @property
     def ecr_report_file_path(self):
         return os.path.join(self.ecr_reports_dir, "ecr_images.txt")
+
+    @property
+    def dynamodb_reports_dir(self):
+        ret = os.path.join(self.reports_dir, "dynamodb")
+        if not os.path.exists(ret):
+            os.makedirs(ret, exist_ok=True)
+        return ret
+
+    @property
+    def dynamodb_report_file_path(self):
+        return os.path.join(self.dynamodb_reports_dir, "dynamodb.txt")
+
+    @property
+    def rds_reports_dir(self):
+        ret = os.path.join(self.reports_dir, "rds")
+        if not os.path.exists(ret):
+            os.makedirs(ret, exist_ok=True)
+        return ret
+
+    @property
+    def rds_report_file_path(self):
+        return os.path.join(self.rds_reports_dir, "rds.txt")
+
+    @property
+    def elasticsearch_domains_reports_dir(self):
+        ret = os.path.join(self.reports_dir, "elasticsearch_domains")
+        if not os.path.exists(ret):
+            os.makedirs(ret, exist_ok=True)
+        return ret
+
+    @property
+    def elasticsearch_domains_report_file_path(self):
+        return os.path.join(self.elasticsearch_domains_reports_dir, "elasticsearch_domains.txt")
+
+    @property
+    def elasticache_clusters_reports_dir(self):
+        ret = os.path.join(self.reports_dir, "elasticache_clusters")
+        if not os.path.exists(ret):
+            os.makedirs(ret, exist_ok=True)
+        return ret
+
+    @property
+    def elasticache_report_file_path(self):
+        return os.path.join(self.elasticache_clusters_reports_dir, "elasticache.txt")
+
+    @property
+    def cloudwatch_logs_reports_dir(self):
+        ret = os.path.join(self.reports_dir, "cloudwatch_logs")
+        if not os.path.exists(ret):
+            os.makedirs(ret, exist_ok=True)
+        return ret
+
+    @property
+    def cloud_watch_report_file_path(self):
+        return os.path.join(self.cloudwatch_logs_reports_dir, "cloudwatch.txt")
+
+    @property
+    def sqs_reports_dir(self):
+        ret = os.path.join(self.reports_dir, "sqs")
+        if not os.path.exists(ret):
+            os.makedirs(ret, exist_ok=True)
+        return ret
+
+    @property
+    def sqs_report_file_path(self):
+        return os.path.join(self.sqs_reports_dir, "sqs.txt")
 
     @property
     def cache_dir(self):

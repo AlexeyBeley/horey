@@ -281,6 +281,106 @@ class AWSCleaner:
             "Resource": "*"
         }]
 
+    def init_dynamodb_tables(self, permissions_only=False):
+        """
+        Init dynamodb_tables
+
+        :return:
+        """
+
+        if not permissions_only and not self.aws_api.dynamodb_tables:
+            self.aws_api.init_dynamodb_tables()
+
+        return [{
+            "Sid": "getDynamodb",
+            "Effect": "Allow",
+            "Action": [
+                "dynamodb:ListTables",
+            ],
+            "Resource": "*"
+        },
+        *[{
+                "Sid": "getDynamodbTable",
+                "Effect": "Allow",
+                "Action": ["dynamodb:DescribeTable", "dynamodb:ListTagsOfResource"],
+                "Resource": f"arn:aws:dynamodb:{region.region_mark}:{self.aws_api.acm_client.account_id}:table/*"
+            } for region in AWSAccount.get_aws_account().regions.values()]
+        ]
+
+    def init_rds(self, permissions_only=False):
+        """
+        Init rds
+
+        :return:
+        """
+
+        if not permissions_only and not self.aws_api.rds_db_clusters:
+            self.aws_api.init_rds_db_clusters()
+
+        return [
+            *[{
+                "Sid": "getRDS",
+                "Effect": "Allow",
+                "Action": ["rds:DescribeDBClusters", "rds:ListTagsForResource"],
+                "Resource": f"arn:aws:rds:{region.region_mark}:{self.aws_api.acm_client.account_id}:cluster:*"
+            } for region in AWSAccount.get_aws_account().regions.values()]]
+
+    def init_elasticsearch_domains(self, permissions_only=False):
+        """
+        Init elasticsearch_domains
+
+        :return:
+        """
+
+        if not permissions_only and not self.aws_api.elasticsearch_domains:
+            self.aws_api.init_elasticsearch_domains()
+
+        return [{
+            "Sid": "getElasticsearch",
+            "Effect": "Allow",
+            "Action": [
+                "es:ListDomainNames",
+            ],
+            "Resource": "*"
+        }]
+
+    def init_elasticache_clusters(self, permissions_only=False):
+        """
+        Init elasticache_clusters
+
+        :return:
+        """
+
+        if not permissions_only and not self.aws_api.elasticache_clusters:
+            self.aws_api.init_elasticache_clusters()
+
+        return [{
+            "Sid": "getElasticache",
+            "Effect": "Allow",
+            "Action": [
+                "elasticache:DescribeCacheClusters",
+            ],
+            "Resource": "*"
+        }]
+
+    def init_sqs_queues(self, permissions_only=False):
+        """
+        Init sqs_queues
+
+        :return:
+        """
+
+        if not permissions_only and not self.aws_api.sqs_queues:
+            self.aws_api.init_sqs_queues()
+
+        return [
+            *[{
+                "Sid": "getSQS",
+                "Effect": "Allow",
+                "Action": ["sqs:ListQueues", "sqs:GetQueueAttributes", "sqs:ListQueueTags"],
+                "Resource": f"arn:aws:sqs:{region.region_mark}:{self.aws_api.acm_client.account_id}:*"
+            } for region in AWSAccount.get_aws_account().regions.values()]]
+
     def get_active_cleanups(self):
         """
         Return All active clean up functions.
@@ -1033,6 +1133,154 @@ class AWSCleaner:
         logger.info(f"Output in: {self.configuration.ec2_instances_report_file_path}")
         return tb_ret
 
+    def cleanup_report_dynamodb(self, permissions_only=False):
+        """
+        DynamoDB has no backup.
+        Used read/write much less than reservation.
+
+        :param permissions_only:
+        :return:
+        """
+
+        permissions = self.init_dynamodb_tables(permissions_only=permissions_only)
+
+        if permissions_only:
+            return permissions
+
+        tb_ret = TextBlock("EC2 half a year and older AMIs.")
+        for table in self.aws_api.dynamodb_tables:
+            tb_ret.lines.append(f"{table.name} ike it was either deleted or made private.")
+
+        with open(self.configuration.dynamodb_report_file_path, "w+", encoding="utf-8") as file_handler:
+            file_handler.write(tb_ret.format_pprint())
+
+        logger.info(f"Output in: {self.configuration.dynamodb_report_file_path}")
+        return tb_ret
+
+    def cleanup_report_rds(self, permissions_only=False):
+        """
+        RDS have public subnets
+        RDS engine version
+        RDS has no snapshots.
+        RDS has no metrics
+
+        :param permissions_only:
+        :return:
+        """
+
+        permissions = self.init_rds(permissions_only=permissions_only)
+
+        if permissions_only:
+            return permissions
+
+        tb_ret = TextBlock("EC2 half a year and older AMIs.")
+        for table in self.aws_api.rds_db_clusters:
+            tb_ret.lines.append(f"{table.name} ike it was either deleted or made private.")
+
+        with open(self.configuration.rds_report_file_path, "w+", encoding="utf-8") as file_handler:
+            file_handler.write(tb_ret.format_pprint())
+
+        logger.info(f"Output in: {self.configuration.rds_report_file_path}")
+        return tb_ret
+
+    def cleanup_opensearch(self, permissions_only=False):
+        """
+        RDS engine version
+        RDS has no retention.
+        opensearch has no metrics
+
+        :param permissions_only:
+        :return:
+        """
+
+        permissions = self.init_elasticsearch_domains(permissions_only=permissions_only)
+
+        if permissions_only:
+            return permissions
+
+        tb_ret = TextBlock("EC2 half a year and older AMIs.")
+        for table in self.aws_api.elasticsearch_domains:
+            tb_ret.lines.append(f"{table.name} ike it was either deleted or made private.")
+
+        with open(self.configuration.elasticsearch_domains_report_file_path, "w+", encoding="utf-8") as file_handler:
+            file_handler.write(tb_ret.format_pprint())
+
+        logger.info(f"Output in: {self.configuration.elasticsearch_domains_report_file_path}")
+        return tb_ret
+
+    def cleanup_report_elasticache(self, permissions_only=False):
+        """
+        Elasticache have public subnets
+        Elasticache version
+
+        :param permissions_only:
+        :return:
+        """
+
+        permissions = self.init_elasticache_clusters(permissions_only=permissions_only)
+
+        if permissions_only:
+            return permissions
+
+        tb_ret = TextBlock("EC2 half a year and older AMIs.")
+        for table in self.aws_api.elasticache_clusters:
+            tb_ret.lines.append(f"{table.name} ike it was either deleted or made private.")
+
+        with open(self.configuration.elasticache_report_file_path, "w+", encoding="utf-8") as file_handler:
+            file_handler.write(tb_ret.format_pprint())
+
+        logger.info(f"Output in: {self.configuration.elasticache_report_file_path}")
+        return tb_ret
+
+    def cleanup_report_cloudwatch_logs(self, permissions_only=False):
+        """
+        No metrics on logs.
+        Has no retention.
+
+        :param permissions_only:
+        :return:
+        """
+
+        permissions = self.init_cloud_watch_log_groups(permissions_only=permissions_only)
+
+        if permissions_only:
+            return permissions
+
+        tb_ret = TextBlock("EC2 half a year and older AMIs.")
+        for table in self.aws_api.cloud_watch_log_groups:
+            tb_ret.lines.append(f"{table.name} ike it was either deleted or made private.")
+
+        with open(self.configuration.cloud_watch_report_file_path, "w+",
+                  encoding="utf-8") as file_handler:
+            file_handler.write(tb_ret.format_pprint())
+
+        logger.info(f"Output in: {self.configuration.cloud_watch_report_file_path}")
+        return tb_ret
+
+    def cleanup_report_sqs(self, permissions_only=False):
+        """
+        No metrics on SQS.
+
+        :param permissions_only:
+        :return:
+        """
+
+        permissions = self.init_sqs_queues(permissions_only=permissions_only)
+
+        if permissions_only:
+            return permissions
+
+        tb_ret = TextBlock("EC2 half a year and older AMIs.")
+        for table in self.aws_api.sqs_queues:
+            tb_ret.lines.append(f"{table.name} ike it was either deleted or made private.")
+
+        with open(self.configuration.sqs_report_file_path, "w+",
+                  encoding="utf-8") as file_handler:
+            file_handler.write(tb_ret.format_pprint())
+
+        logger.info(f"Output in: {self.configuration.sqs_report_file_path}")
+        return tb_ret
+
     def cleanup_report_load_balancers(self, permissions_only=False):
         """
         Generate load balancers' cleanup report.
@@ -1043,6 +1291,8 @@ class AWSCleaner:
             permissions = self.sub_cleanup_classic_load_balancers(permissions_only=permissions_only)
             permissions += self.sub_cleanup_alb_load_balancers(permissions_only=permissions_only)
             permissions += self.sub_cleanup_target_groups(permissions_only=permissions_only)
+            permissions += self.sub_cleanup_loadbalancer_private_subnet(permissions_only=permissions_only)
+            permissions += self.sub_cleanup_loadbalancer_has_no_metrics(permissions_only=permissions_only)
             return permissions
 
         tb_ret = TextBlock("Load Balancers Cleanup")
@@ -1055,6 +1305,14 @@ class AWSCleaner:
             tb_ret.blocks.append(tb_ret_tmp)
 
         tb_ret_tmp = self.sub_cleanup_target_groups()
+        if tb_ret_tmp.lines or tb_ret_tmp.blocks:
+            tb_ret.blocks.append(tb_ret_tmp)
+
+        tb_ret_tmp = self.sub_cleanup_loadbalancer_private_subnet()
+        if tb_ret_tmp.lines or tb_ret_tmp.blocks:
+            tb_ret.blocks.append(tb_ret_tmp)
+
+        tb_ret_tmp = self.sub_cleanup_loadbalancer_has_no_metrics()
         if tb_ret_tmp.lines or tb_ret_tmp.blocks:
             tb_ret.blocks.append(tb_ret_tmp)
 
@@ -1136,10 +1394,35 @@ class AWSCleaner:
 
         return tb_ret if len(tb_ret.blocks) > 0 else None
 
-    def sub_cleanup_target_groups(self, permissions_only=False):
+    def sub_cleanup_loadbalancer_private_subnet(self, permissions_only=False):
+        """
+        Check public load balancers have public subnet.
+        Check private load balancers have private subnets.
+
+        @return:
         """
 
+        permissions = self.init_load_balancers(permissions_only=permissions_only)
+        if permissions_only:
+            return permissions
+        breakpoint()
+
+    def sub_cleanup_loadbalancer_has_no_metrics(self, permissions_only=False):
+        """
+        No metrics configured to monitor Load Balancer.
+
+        @return:
+        """
+
+        permissions = self.init_load_balancers(permissions_only=permissions_only)
+        if permissions_only:
+            return permissions
+        breakpoint()
+
+    def sub_cleanup_target_groups(self, permissions_only=False):
+        """
         Cleanup report find unhealthy target groups
+
         @return:
         """
 
@@ -1182,7 +1465,7 @@ class AWSCleaner:
         @return:
         """
 
-        permissions = self.init_load_balancers()
+        permissions = self.init_load_balancers(permissions_only=permissions_only)
         if permissions_only:
             permissions += self.sub_cleanup_report_wrong_port_lb_security_groups(None, permissions_only=permissions_only)
             return permissions
@@ -1266,7 +1549,8 @@ class AWSCleaner:
 
         lines = []
         if load_balancer.security_groups is None:
-            raise NotImplementedError(load_balancer.security_groups)
+            lines.append(f"Load balancer '{load_balancer.name}' has no security groups assigned")
+            return lines
 
         listeners_ports = [listener.port for listener in load_balancer.listeners]
         listeners_ports = set(listeners_ports)

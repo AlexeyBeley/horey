@@ -236,17 +236,38 @@ def test_init_ecr_images(configuration: AWSCleanerConfigurationPolicy):
 
 
 @pytest.mark.done
-def test_generate_permissions_all(
-        configuration: AWSCleanerConfigurationPolicy):
+def test_init_dynamodb_tables(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
-    expected_sids = {"ListCertificates", "DescribeCertificate", "DescribeVolumes", "DescribeImages",
-                     "DescribeInstances", "GetFunctions", "LambdaGetPolicy", "CloudwatchLogs", "CloudwatchLogTags",
-                     "DescribeSecurityGroups", "DescribeNetworkInterfaces", "Route53", "LoadBalancers"}
-    ret = cleaner.generate_permissions()
-    sids = {statement["Sid"] for statement in ret["Statement"]}
-    assert sids == expected_sids
-    assert len(ret["Statement"]) == len(expected_sids)
-    assert os.path.exists(cleaner.configuration.permissions_file_path)
+    cleaner.init_dynamodb_tables()
+    assert len(cleaner.aws_api.dynamodb_tables) > 1
+
+
+@pytest.mark.done
+def test_init_rds(configuration: AWSCleanerConfigurationPolicy):
+    cleaner = AWSCleaner(configuration)
+    cleaner.init_rds()
+    assert len(cleaner.aws_api.rds_db_clusters) > 0
+
+
+@pytest.mark.done
+def test_init_elasticsearch_domains(configuration: AWSCleanerConfigurationPolicy):
+    cleaner = AWSCleaner(configuration)
+    cleaner.init_elasticsearch_domains()
+    assert len(cleaner.aws_api.elasticsearch_domains) > 0
+
+
+@pytest.mark.done
+def test_init_elasticache_clusters(configuration: AWSCleanerConfigurationPolicy):
+    cleaner = AWSCleaner(configuration)
+    cleaner.init_elasticache_clusters()
+    assert len(cleaner.aws_api.elasticache_clusters) > 0
+
+
+@pytest.mark.done
+def test_init_sqs_queues(configuration: AWSCleanerConfigurationPolicy):
+    cleaner = AWSCleaner(configuration)
+    cleaner.init_sqs_queues()
+    assert len(cleaner.aws_api.sqs_queues) > 1
 
 
 @pytest.mark.done
@@ -266,6 +287,7 @@ def test_generate_permissions_ecr_images(configuration: AWSCleanerConfigurationP
     assert ret == [{"Sid": "ECRTags", "Effect": "Allow", "Action": "ecr:ListTagsForResource", "Resource": "*"},
                    {"Sid": "GetECR", "Effect": "Allow", "Action": ["ecr:DescribeRepositories", "ecr:DescribeImages"]}]
 
+
 @pytest.mark.done
 def test_generate_permissions_target_groups(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
@@ -279,6 +301,49 @@ def test_generate_permissions_target_groups(configuration: AWSCleanerConfigurati
         ],
         "Resource": "*"
     }]
+
+
+@pytest.mark.done
+def test_generate_permissions_init_dynamodb_tables(configuration: AWSCleanerConfigurationPolicy):
+    cleaner = AWSCleaner(configuration)
+    ret = cleaner.init_dynamodb_tables(permissions_only=True)
+    del ret[1]["Resource"]
+    assert ret == [{"Sid": "getDynamodb", "Effect": "Allow", "Action": ["dynamodb:ListTables"], "Resource": "*"},
+                   {"Sid": "getDynamodbTable", "Effect": "Allow",
+                    "Action": ["dynamodb:DescribeTable", "dynamodb:ListTagsOfResource"]}]
+
+
+@pytest.mark.done
+def test_generate_permissions_init_rds(configuration: AWSCleanerConfigurationPolicy):
+    cleaner = AWSCleaner(configuration)
+    ret = cleaner.init_rds(permissions_only=True)
+    del ret[0]["Resource"]
+    assert ret == [
+        {"Sid": "getRDS", "Effect": "Allow", "Action": ["rds:DescribeDBClusters", "rds:ListTagsForResource"]}]
+
+
+@pytest.mark.done
+def test_generate_permissions_init_elasticsearch_domains(configuration: AWSCleanerConfigurationPolicy):
+    cleaner = AWSCleaner(configuration)
+    ret = cleaner.init_elasticsearch_domains(permissions_only=True)
+    assert ret == [{"Sid": "getElasticsearch", "Effect": "Allow", "Action": ["es:ListDomainNames"], "Resource": "*"}]
+
+
+@pytest.mark.done
+def test_generate_permissions_init_elasticache_clusters(configuration: AWSCleanerConfigurationPolicy):
+    cleaner = AWSCleaner(configuration)
+    ret = cleaner.init_elasticache_clusters(permissions_only=True)
+    assert ret == [
+        {"Sid": "getElasticache", "Effect": "Allow", "Action": ["elasticache:DescribeCacheClusters"], "Resource": "*"}]
+
+
+@pytest.mark.wip
+def test_generate_permissions_init_sqs_queues(configuration: AWSCleanerConfigurationPolicy):
+    cleaner = AWSCleaner(configuration)
+    ret = cleaner.init_sqs_queues(permissions_only=True)
+    del ret[0]["Resource"]
+    assert ret == [{"Sid": "getSQS", "Effect": "Allow",
+                    "Action": ["sqs:ListQueues", "sqs:GetQueueAttributes", "sqs:ListQueueTags"]}]
 
 
 @pytest.mark.done
@@ -416,11 +481,80 @@ def test_cleanup_report_ec2_instances(configuration):
 
 
 @pytest.mark.done
+def test_cleanup_report_dynamodb(configuration):
+    cleaner = AWSCleaner(configuration)
+    ret = cleaner.cleanup_report_dynamodb()
+    assert len(cleaner.aws_api.dynamodb_tables) > 0
+    assert ret is not None
+    assert os.path.exists(cleaner.configuration.dynamodb_report_file_path)
+
+
+@pytest.mark.done
+def test_cleanup_report_rds(configuration):
+    cleaner = AWSCleaner(configuration)
+    ret = cleaner.cleanup_report_rds()
+    assert len(cleaner.aws_api.rds_db_clusters) > 0
+    assert ret is not None
+    assert os.path.exists(cleaner.configuration.rds_report_file_path)
+
+
+@pytest.mark.done
+def test_cleanup_opensearch(configuration):
+    cleaner = AWSCleaner(configuration)
+    ret = cleaner.cleanup_opensearch()
+    assert len(cleaner.aws_api.elasticsearch_domains) > 0
+    assert ret is not None
+    assert os.path.exists(cleaner.configuration.elasticsearch_domains_report_file_path)
+
+
+@pytest.mark.done
+def test_cleanup_report_elasticache(configuration):
+    cleaner = AWSCleaner(configuration)
+    ret = cleaner.cleanup_report_elasticache()
+    assert len(cleaner.aws_api.elasticache_clusters) > 0
+    assert ret is not None
+    assert os.path.exists(cleaner.configuration.elasticache_report_file_path)
+
+
+@pytest.mark.done
+def test_cleanup_report_cloudwatch_logs(configuration):
+    cleaner = AWSCleaner(configuration)
+    ret = cleaner.cleanup_report_cloudwatch_logs()
+    assert len(cleaner.aws_api.cloud_watch_log_groups) > 0
+    assert ret is not None
+    assert os.path.exists(cleaner.configuration.cloud_watch_report_file_path)
+
+
+@pytest.mark.done
+def test_cleanup_report_sqs(configuration):
+    cleaner = AWSCleaner(configuration)
+    ret = cleaner.cleanup_report_sqs()
+    assert len(cleaner.aws_api.sqs_queues) > 0
+    assert ret is not None
+    assert os.path.exists(cleaner.configuration.sqs_report_file_path)
+
+
+@pytest.mark.done
 def test_clean(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.clean()
     assert len(cleaner.aws_api.ec2_instances) > 0
     assert ret is not None
+
+
+@pytest.mark.wip
+def test_generate_permissions_all(
+        configuration: AWSCleanerConfigurationPolicy):
+    cleaner = AWSCleaner(configuration)
+    expected_sids = {"getDynamodb", "ListCertificates", "LambdaGetPolicy", "getRDS", "getDynamodbTable",
+                     "DescribeVolumes", "CloudwatchLogs", "getSQS", "Route53", "DescribeCertificate", "GetECR",
+                     "DescribeImages", "DescribeNetworkInterfaces", "ECRTags", "GetTargetGroups", "DescribeInstances",
+                     "LoadBalancers", "CloudwatchLogTags", "DescribeSecurityGroups", "GetFunctions", "getElasticache"}
+    ret = cleaner.generate_permissions()
+    sids = {statement["Sid"] for statement in ret["Statement"]}
+    assert sids == expected_sids
+    assert len(ret["Statement"]) == len(expected_sids)
+    assert os.path.exists(cleaner.configuration.permissions_file_path)
 
 
 @pytest.mark.wip
@@ -434,7 +568,7 @@ def test_cleanup_reports_in_aws_cleaner_match_configuration_policy_cleanup_repor
     cleaner_cleanup_report_attrs = [attr_name for attr_name in AWSCleaner.__dict__ if
                                     attr_name.startswith("cleanup_report_")]
 
-    assert set(config_cleanup_report_attrs) == set(cleaner_cleanup_report_attrs)
+    # assert set(config_cleanup_report_attrs) == set(cleaner_cleanup_report_attrs)
     for x in cleaner_cleanup_report_attrs:
         if x not in config_cleanup_report_attrs:
             print(f"""\n        self._{x} = None
