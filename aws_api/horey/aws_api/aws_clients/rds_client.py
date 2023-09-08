@@ -80,31 +80,32 @@ class RDSClient(Boto3Client):
 
         return final_result
 
-    def get_all_db_clusters(self, region=None):
+    def get_all_db_clusters(self, region=None, full_information=False):
         """
         Get all db_clusters in all regions.
         :return:
         """
 
         if region is not None:
-            return self.get_region_db_clusters(region)
+            return self.get_region_db_clusters(region, full_information=full_information)
 
         final_result = []
         for _region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_db_clusters(_region)
+            final_result += self.get_region_db_clusters(_region, full_information=full_information)
 
         return final_result
 
-    def get_region_db_clusters(self, region, filters=None, update_tags=True):
+    def get_region_db_clusters(self, region, filters=None, update_tags=True, full_information=False):
         """
         Standard.
 
         :param region:
         :param filters:
         :param update_tags:
+        :param full_information:
         :return:
         """
-
+        default_engine_versions = {}
         final_result = []
         if filters is not None:
             filters = {"Filters": filters}
@@ -115,6 +116,11 @@ class RDSClient(Boto3Client):
         ):
             obj = RDSDBCluster(response)
             final_result.append(obj)
+            if full_information:
+                if obj.engine not in default_engine_versions:
+                    default_engine_versions[obj.engine] = self.get_default_engine_version(region, obj.engine)
+
+                obj.default_engine_version = default_engine_versions[obj.engine]
 
         if update_tags:
             self.update_tags(final_result)
@@ -276,7 +282,6 @@ class RDSClient(Boto3Client):
 
         if region is not None:
             return self.get_region_db_subnet_groups(region)
-
         final_result = []
         for _region in AWSAccount.get_aws_account().regions.values():
             final_result += self.get_region_db_subnet_groups(_region)
@@ -293,6 +298,7 @@ class RDSClient(Boto3Client):
 
         final_result = []
         AWSAccount.set_aws_region(region)
+
         for response in self.execute(
                 self.client.describe_db_subnet_groups, "DBSubnetGroups"
         ):
@@ -850,11 +856,11 @@ class RDSClient(Boto3Client):
 
         AWSAccount.set_aws_region(region)
 
-        aurora_engine_versions = list(self.execute(
+        engine_versions = list(self.execute(
                 self.client.describe_db_engine_versions, "DBEngineVersions",
                 filters_req={"Engine": engine_type, "DefaultOnly": True}))
 
-        if len(aurora_engine_versions) != 1:
+        if len(engine_versions) != 1:
             raise RuntimeError(f"Can not find single default version for {engine_type} in {str(region)}")
 
-        return aurora_engine_versions[0]
+        return engine_versions[0]

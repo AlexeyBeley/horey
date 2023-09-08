@@ -494,20 +494,21 @@ class AWSAPI:
 
         self.nat_gateways = objects
 
-    def init_dynamodb_tables(self, from_cache=False, cache_file=None, region=None):
+    def init_dynamodb_tables(self, from_cache=False, cache_file=None, region=None, full_information=False):
         """
-        Self explanatory.
+        Self-explanatory.
 
         @param from_cache:
         @param cache_file:
         @param region:
+        @param full_information:
         @return:
         """
 
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, DynamoDBTable)
         else:
-            objects = self.dynamodb_client.get_all_tables(region=region)
+            objects = self.dynamodb_client.get_all_tables(region=region, full_information=full_information)
 
         self.dynamodb_tables = objects
 
@@ -1586,18 +1587,19 @@ class AWSAPI:
 
         self.rds_db_instances = objects
 
-    def init_rds_db_clusters(self, from_cache=False, cache_file=None, region=None):
+    def init_rds_db_clusters(self, from_cache=False, cache_file=None, region=None, full_information=False):
         """
         Init RDSs
 
         @param from_cache:
         @param cache_file:
+        @param full_information:
         @return:
         """
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, RDSDBInstance)
         else:
-            objects = self.rds_client.get_all_db_clusters(region=region)
+            objects = self.rds_client.get_all_db_clusters(region=region, full_information=full_information)
 
         self.rds_db_clusters = objects
 
@@ -3490,25 +3492,24 @@ class AWSAPI:
         request = {"AllocationId": elastic_address.id, "InstanceId": ec2_instance.id}
         self.ec2_client.associate_elastic_address_raw(request)
 
-    def find_route_table_by_subnet(self, region, subnet):
+    def find_route_table_by_subnet(self, _, subnet):
         """
-        Find route table attahed to subnet.
+        Find route table attached to subnet.
 
-        @param region:
         @param subnet:
+        @param _: was region before
         @return:
         """
 
-        self.init_route_tables(region=region)
         main_route_tables = []
         for route_table in self.route_tables:
             if route_table.vpc_id != subnet.vpc_id:
                 continue
+            if route_table.check_subnet_associated(subnet.id):
+                return route_table
             for association in route_table.associations:
                 if association["Main"]:
                     main_route_tables.append(route_table)
-                if association.get("SubnetId") == subnet.id:
-                    return route_table
 
         if len(main_route_tables) != 1:
             raise RuntimeError(f"{len(main_route_tables)} != 1")

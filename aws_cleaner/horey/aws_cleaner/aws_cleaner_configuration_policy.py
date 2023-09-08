@@ -30,7 +30,7 @@ class AWSCleanerConfigurationPolicy(ConfigurationPolicy):
         self._cleanup_report_security_groups = None
         self._cleanup_report_load_balancers = None
         self._cleanup_report_sqs = None
-        self._cleanup_report_cloudwatch_logs = None
+        self._cleanup_report_cloudwatch = None
         self._cleanup_report_elasticache = None
         self._cleanup_report_rds = None
         self._cleanup_report_dynamodb = None
@@ -69,15 +69,15 @@ class AWSCleanerConfigurationPolicy(ConfigurationPolicy):
         self._cleanup_report_elasticache = value
 
     @property
-    def cleanup_report_cloudwatch_logs(self):
-        if self._cleanup_report_cloudwatch_logs is None:
-            self._cleanup_report_cloudwatch_logs = True
-        return self._cleanup_report_cloudwatch_logs
+    def cleanup_report_cloudwatch(self):
+        if self._cleanup_report_cloudwatch is None:
+            self._cleanup_report_cloudwatch = True
+        return self._cleanup_report_cloudwatch
 
-    @cleanup_report_cloudwatch_logs.setter
+    @cleanup_report_cloudwatch.setter
     @ConfigurationPolicy.validate_type_decorator(bool)
-    def cleanup_report_cloudwatch_logs(self, value):
-        self._cleanup_report_cloudwatch_logs = value
+    def cleanup_report_cloudwatch(self, value):
+        self._cleanup_report_cloudwatch = value
 
 
     @property

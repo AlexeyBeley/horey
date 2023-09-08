@@ -57,9 +57,21 @@ class DynamoDBClient(Boto3Client):
             final_result.append(obj)
 
             if full_information:
-                raise NotImplementedError()
+                self.update_table_full_information(obj)
 
         return final_result
+
+    def update_table_full_information(self, table: DynamoDBTable):
+        """
+        Get excessive data.
+
+        :param table:
+        :return:
+        """
+
+        for response in self.execute(self.client.describe_continuous_backups, "ContinuousBackupsDescription",
+                                     filters_req={"TableName": table.name}):
+            table.continuous_backups = response
 
     def get_all_endpoints(self, region=None, full_information=False):
         """
@@ -162,7 +174,7 @@ class DynamoDBClient(Boto3Client):
             raise ValueError(f"Dict expected: {type(obj_src)}")
 
         return {key: convert_to_dynamodbish_subroutine(value) for key, value in obj_src.items()}
-    
+
     @staticmethod
     def convert_from_dynamodbish(obj_src):
         """
@@ -234,7 +246,7 @@ class DynamoDBClient(Boto3Client):
             raise RuntimeError("deletion_protection is enabled")
 
         AWSAccount.set_aws_region(table.region)
-        self.dispose_table_raw(table.generate_dispose_request())
+        return self.dispose_table_raw(table.generate_dispose_request())
 
     def dispose_table_raw(self, request_dict):
         """

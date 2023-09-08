@@ -21,6 +21,7 @@ class DynamoDBTable(AwsObject):
         self.attribute_definitions = None
         self.key_schema = None
         self.deletion_protection_enabled = None
+        self.continuous_backups = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)

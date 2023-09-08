@@ -36,7 +36,7 @@ class RDSDBCluster(AwsObject):
         self.preferred_backup_window = None
         self.preferred_maintenance_window = None
         self.storage_encrypted = None
-        self.enable_cloudwatch_logs_exports = None
+        self.enabled_cloudwatch_logs_exports = None
         self.kms_key_id = None
         self.engine_mode = None
         self.deletion_protection = None
@@ -44,6 +44,7 @@ class RDSDBCluster(AwsObject):
         self.arn = None
         self.status = None
         self.skip_final_snapshot = None
+        self.default_engine_version = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -196,7 +197,7 @@ class RDSDBCluster(AwsObject):
         request["PreferredMaintenanceWindow"] = self.preferred_maintenance_window
         request["StorageEncrypted"] = self.storage_encrypted
 
-        request["EnableCloudwatchLogsExports"] = self.enable_cloudwatch_logs_exports
+        request["EnableCloudwatchLogsExports"] = self.enabled_cloudwatch_logs_exports
 
         if self.kms_key_id:
             request["KmsKeyId"] = self.kms_key_id
@@ -261,7 +262,7 @@ class RDSDBCluster(AwsObject):
         request["EngineVersion"] = self.engine_version
         request["Port"] = self.port
 
-        request["EnableCloudwatchLogsExports"] = self.enable_cloudwatch_logs_exports
+        request["EnableCloudwatchLogsExports"] = self.enabled_cloudwatch_logs_exports
 
         if self.kms_key_id:
             request["KmsKeyId"] = self.kms_key_id

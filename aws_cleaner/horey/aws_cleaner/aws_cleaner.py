@@ -36,9 +36,33 @@ class AWSCleaner:
         aws_api_configuration.aws_api_account = self.configuration.aws_api_account_name
         self.aws_api = AWSAPI(aws_api_configuration)
 
+    def init_cloudwatch_metrics(self, permissions_only=False):
+        """
+        Init cloudwatch metrics and alarms
+
+        :return:
+        """
+
+        if not permissions_only and not self.aws_api.cloud_watch_alarms:
+            self.aws_api.init_cloud_watch_alarms()
+
+        return [
+            {
+                "Sid": "ECRTags",
+                "Effect": "Allow",
+                "Action": "ecr:ListTagsForResource",
+                "Resource": "*"
+            },
+            *[{
+                "Sid": "GetECR",
+                "Effect": "Allow",
+                "Action": ["ecr:DescribeRepositories", "ecr:DescribeImages"],
+                "Resource": f"arn:aws:ecr:{region.region_mark}:{self.aws_api.acm_client.account_id}:repository/*"
+            } for region in AWSAccount.get_aws_account().regions.values()]]
+
     def init_ecr_images(self, permissions_only=False):
         """
-        Init AWS Lambdas
+        Init ECR images
 
         :return:
         """
@@ -65,22 +89,33 @@ class AWSCleaner:
         :return:
         """
 
-        if not permissions_only and not self.aws_api.cloud_watch_log_groups:
+        if not permissions_only and \
+                (not self.aws_api.cloud_watch_log_groups or not
+                self.aws_api.cloud_watch_log_groups_metric_filters or not
+                 self.aws_api.cloud_watch_alarms):
             self.aws_api.init_cloud_watch_log_groups()
+            self.aws_api.init_cloud_watch_log_groups_metric_filters()
+            self.aws_api.init_cloud_watch_alarms()
 
         return [{
             "Sid": "CloudwatchLogs",
             "Effect": "Allow",
-            "Action": [
-                "logs:DescribeLogGroups"
-            ],
+            "Action": ["logs:DescribeLogGroups", "logs:ListTagsForResource"],
             "Resource": "*"
+        },
+            {
+                "Sid": "DescribeMetricFilters",
+                "Effect": "Allow",
+                "Action": "logs:DescribeMetricFilters",
+                "Resource": [f"arn:aws:logs:{region.region_mark}:{self.aws_api.acm_client.account_id}:log-group:*"
+                             for region in AWSAccount.get_aws_account().regions.values()]
             },
             {
-                "Sid": "CloudwatchLogTags",
+                "Sid": "CloudwatchAlarms",
                 "Effect": "Allow",
-                "Action": "logs:ListTagsForResource",
-                "Resource": "*"
+                "Action": "cloudwatch:DescribeAlarms",
+                "Resource": [f"arn:aws:cloudwatch:{region.region_mark}:{self.aws_api.acm_client.account_id}:alarm:*"
+                             for region in AWSAccount.get_aws_account().regions.values()]
             }
         ]
 
@@ -289,7 +324,7 @@ class AWSCleaner:
         """
 
         if not permissions_only and not self.aws_api.dynamodb_tables:
-            self.aws_api.init_dynamodb_tables()
+            self.aws_api.init_dynamodb_tables(full_information=True)
 
         return [{
             "Sid": "getDynamodb",
@@ -299,13 +334,51 @@ class AWSCleaner:
             ],
             "Resource": "*"
         },
-        *[{
+            *[{
                 "Sid": "getDynamodbTable",
                 "Effect": "Allow",
-                "Action": ["dynamodb:DescribeTable", "dynamodb:ListTagsOfResource"],
+                "Action": ["dynamodb:DescribeTable",
+                           "dynamodb:ListTagsOfResource",
+                           "dynamodb:DescribeContinuousBackups"],
                 "Resource": f"arn:aws:dynamodb:{region.region_mark}:{self.aws_api.acm_client.account_id}:table/*"
             } for region in AWSAccount.get_aws_account().regions.values()]
         ]
+
+    def init_route_tables(self, permissions_only=False):
+        """
+        Init route tables
+
+        :return:
+        """
+
+        if not permissions_only and not self.aws_api.route_tables:
+            self.aws_api.init_route_tables()
+
+        return [{
+            "Sid": "getRouteTables",
+            "Effect": "Allow",
+            "Action": ["ec2:DescribeRouteTables"],
+            "Resource": "*"
+        }]
+
+    def init_subnets(self, permissions_only=False):
+        """
+        Init subnets
+
+        :return:
+        """
+
+        if not permissions_only and not self.aws_api.subnets:
+            self.aws_api.init_subnets()
+
+        return [{
+            "Sid": "DescribeSubnets",
+            "Effect": "Allow",
+            "Action": [
+                "ec2:DescribeSubnets"
+            ],
+            "Resource": "*"
+        }]
 
     def init_rds(self, permissions_only=False):
         """
@@ -315,15 +388,33 @@ class AWSCleaner:
         """
 
         if not permissions_only and not self.aws_api.rds_db_clusters:
-            self.aws_api.init_rds_db_clusters()
+            self.aws_api.init_rds_db_clusters(full_information=True)
+            self.aws_api.init_rds_db_subnet_groups()
 
         return [
-            *[{
+            {
                 "Sid": "getRDS",
                 "Effect": "Allow",
                 "Action": ["rds:DescribeDBClusters", "rds:ListTagsForResource"],
-                "Resource": f"arn:aws:rds:{region.region_mark}:{self.aws_api.acm_client.account_id}:cluster:*"
-            } for region in AWSAccount.get_aws_account().regions.values()]]
+                "Resource": [f"arn:aws:rds:{region.region_mark}:{self.aws_api.acm_client.account_id}:cluster:*" for
+                             region in AWSAccount.get_aws_account().regions.values()]
+            },
+            {
+                "Sid": "DescribeDBSubnetGroups",
+                "Effect": "Allow",
+                "Action": ["rds:DescribeDBSubnetGroups"],
+                "Resource": [f"arn:aws:rds:{region.region_mark}:{self.aws_api.acm_client.account_id}:subgrp:*" for
+                             region in AWSAccount.get_aws_account().regions.values()]
+            },
+            {
+                "Sid": "DescribeDBEngineVersions",
+                "Effect": "Allow",
+                "Action": [
+                    "rds:DescribeDBEngineVersions"
+                ],
+                "Resource": "*"
+            },
+        ]
 
     def init_elasticsearch_domains(self, permissions_only=False):
         """
@@ -732,6 +823,8 @@ class AWSCleaner:
     def cleanup_report_lambdas(self, permissions_only=False):
         """
         Generated various lambdas' cleanup reports.
+        "namespace" : "AWS/Lambda"
+        dimensions: [{'Name': 'FunctionName', 'Value': ''}]
 
         @return:
         """
@@ -1091,13 +1184,15 @@ class AWSCleaner:
 
         half_year_date = None
         for images in images_by_ecr_repo.values():
-            half_year_date = datetime.datetime.now(tz=images[0].image_pushed_at.tzinfo) - datetime.timedelta(days=6 * 30)
+            half_year_date = datetime.datetime.now(tz=images[0].image_pushed_at.tzinfo) - datetime.timedelta(
+                days=6 * 30)
             break
 
         for repo_name, images in images_by_ecr_repo.items():
             last_image = sorted(images, key=lambda _image: _image.image_pushed_at)[-1]
             if last_image.image_pushed_at < half_year_date:
-                tb_ret.lines.append(f"Repository '{repo_name}' last image pushed at: {last_image.image_pushed_at.strftime('%Y-%m-%d %H:%M')} ")
+                tb_ret.lines.append(
+                    f"Repository '{repo_name}' last image pushed at: {last_image.image_pushed_at.strftime('%Y-%m-%d %H:%M')} ")
 
         with open(self.configuration.ecr_report_file_path, "w+", encoding="utf-8") as file_handler:
             file_handler.write(tb_ret.format_pprint())
@@ -1136,7 +1231,7 @@ class AWSCleaner:
     def cleanup_report_dynamodb(self, permissions_only=False):
         """
         DynamoDB has no backup.
-        Used read/write much less than reservation.
+        todo: Used read/write much less than reservation.
 
         :param permissions_only:
         :return:
@@ -1147,9 +1242,13 @@ class AWSCleaner:
         if permissions_only:
             return permissions
 
-        tb_ret = TextBlock("EC2 half a year and older AMIs.")
+        tb_ret = TextBlock("DynamoDB tables have no backup configured.")
         for table in self.aws_api.dynamodb_tables:
-            tb_ret.lines.append(f"{table.name} ike it was either deleted or made private.")
+            if not table.deletion_protection_enabled:
+                tb_ret.lines.append(f"Table '{table.name}' deletion_protection is disabled")
+
+            if table.continuous_backups["ContinuousBackupsStatus"] != "ENABLED":
+                tb_ret.lines.append(f"Table '{table.name}' has no continuous backup enabled")
 
         with open(self.configuration.dynamodb_report_file_path, "w+", encoding="utf-8") as file_handler:
             file_handler.write(tb_ret.format_pprint())
@@ -1159,9 +1258,6 @@ class AWSCleaner:
 
     def cleanup_report_rds(self, permissions_only=False):
         """
-        RDS have public subnets
-        RDS engine version
-        RDS has no snapshots.
         RDS has no metrics
 
         :param permissions_only:
@@ -1169,13 +1265,16 @@ class AWSCleaner:
         """
 
         permissions = self.init_rds(permissions_only=permissions_only)
-
+        permissions += self.init_route_tables(permissions_only=permissions_only)
+        permissions += self.init_security_groups(permissions_only=permissions_only)
         if permissions_only:
             return permissions
 
-        tb_ret = TextBlock("EC2 half a year and older AMIs.")
-        for table in self.aws_api.rds_db_clusters:
-            tb_ret.lines.append(f"{table.name} ike it was either deleted or made private.")
+        tb_ret = TextBlock("RDS Cleanups")
+        for cluster in self.aws_api.rds_db_clusters:
+            tb_ret_tmp = self.sub_cleanup_report_rds_cluster(cluster)
+            if tb_ret_tmp:
+                tb_ret.blocks.append(tb_ret_tmp)
 
         with open(self.configuration.rds_report_file_path, "w+", encoding="utf-8") as file_handler:
             file_handler.write(tb_ret.format_pprint())
@@ -1183,11 +1282,89 @@ class AWSCleaner:
         logger.info(f"Output in: {self.configuration.rds_report_file_path}")
         return tb_ret
 
+    def sub_cleanup_report_rds_cluster(self, cluster):
+        """
+        All sub routines to clean the RDS cluster.
+
+        :param cluster:
+        :return:
+        """
+
+        tb_ret = TextBlock(f"Cluster '{cluster.id}' [{cluster.region}]")
+        tb_ret_tmp = self.sub_cleanup_rds_best_practices(cluster)
+        if tb_ret_tmp:
+            tb_ret.blocks.append(tb_ret_tmp)
+        tb_ret_tmp = self.sub_cleanup_rds_security_groups(cluster)
+        if tb_ret_tmp:
+            tb_ret.blocks.append(tb_ret_tmp)
+        return tb_ret if tb_ret.blocks else None
+
+    def sub_cleanup_rds_best_practices(self, cluster):
+        """
+        Best practices for prod cluster.
+
+        :param cluster:
+        :return:
+        """
+
+        tb_ret = TextBlock("Production environment best practices")
+
+        if not cluster.deletion_protection:
+            tb_ret.lines.append("Disabled: Deletion protection")
+        if not cluster.storage_encrypted:
+            tb_ret.lines.append("Disabled: Storage is not encryption")
+        if not cluster.enabled_cloudwatch_logs_exports:
+            tb_ret.lines.append("Disabled: Log export to cloudwatch.")
+        if not cluster.multi_az:
+            tb_ret.lines.append("Disabled: multi-az.")
+        if cluster.engine_version != cluster.default_engine_version["EngineVersion"]:
+            tb_ret.lines.append(
+                f"Engine version '{cluster.engine_version}' is not the default "
+                f"'{cluster.default_engine_version['EngineVersion']}'")
+
+        subnet_group = \
+        CommonUtils.find_objects_by_values(self.aws_api.rds_db_subnet_groups, {"name": cluster.db_subnet_group},
+                                           max_count=1)[0]
+        for dict_subnet in subnet_group.subnets:
+            subnet_id = dict_subnet['SubnetIdentifier']
+            subnet = CommonUtils.find_objects_by_values(self.aws_api.subnets, {"id": subnet_id}, max_count=1)[0]
+            route_table = self.aws_api.find_route_table_by_subnet(cluster.region, subnet)
+
+            default_route = route_table.get_default_route()
+            if not default_route:
+                tb_ret.lines.append(f"Can not find default route for {subnet_id} route table {route_table.id}")
+                continue
+            if default_route.get("GatewayId"):
+                tb_ret.lines.append(f"Subnet is public: {dict_subnet['SubnetIdentifier']}")
+
+        return tb_ret if tb_ret.lines else None
+
+    def sub_cleanup_rds_security_groups(self, cluster):
+        """
+        Check the DB port is the only one open in all security groups.
+
+        :return:
+        """
+
+        tb_ret = TextBlock("Security groups analysis")
+        for dict_security_group in cluster.vpc_security_groups:
+            sg_id = dict_security_group["VpcSecurityGroupId"]
+            security_group = \
+            CommonUtils.find_objects_by_values(self.aws_api.security_groups, {"id": sg_id}, max_count=1)[0]
+            for ip, service in security_group.get_ingress_pairs():
+                if service is Service.any():
+                    tb_ret.lines.append(f"SG '{security_group.name}' {ip}:{service}")
+                    continue
+                if service.start != service.end != cluster.port:
+                    tb_ret.lines.append(f"SG '{security_group.name}' {ip}:{service}")
+        return tb_ret if tb_ret.lines else None
+
     def cleanup_opensearch(self, permissions_only=False):
         """
         RDS engine version
         RDS has no retention.
         opensearch has no metrics
+        deletion_protection is disabled
 
         :param permissions_only:
         :return:
@@ -1232,10 +1409,11 @@ class AWSCleaner:
         logger.info(f"Output in: {self.configuration.elasticache_report_file_path}")
         return tb_ret
 
-    def cleanup_report_cloudwatch_logs(self, permissions_only=False):
+    def cleanup_report_cloudwatch(self, permissions_only=False):
         """
-        No metrics on logs.
-        Has no retention.
+        No metric_filters on logs.
+        no alarms on metric
+        disabled alarms
 
         :param permissions_only:
         :return:
@@ -1246,9 +1424,37 @@ class AWSCleaner:
         if permissions_only:
             return permissions
 
-        tb_ret = TextBlock("EC2 half a year and older AMIs.")
-        for table in self.aws_api.cloud_watch_log_groups:
-            tb_ret.lines.append(f"{table.name} ike it was either deleted or made private.")
+        tb_ret = TextBlock("Cloudwatch cleanup.")
+        no_retention = []
+        no_metrics = []
+        all_metric_filters = []
+        for group in self.aws_api.cloud_watch_log_groups:
+            if group.retention_in_days is None:
+                no_retention.append(f"{group.name}: No retention")
+
+            metric_filters = CommonUtils.find_objects_by_values(self.aws_api.cloud_watch_log_groups_metric_filters,
+                                                         {"log_group_name": group.name})
+            all_metric_filters += metric_filters
+            if not metric_filters:
+                no_metrics.append(f"{group.name}: No metric filters")
+
+            tb_ret_tmp = self.sub_cleanup_report_cloudwatch_logs_metrics(metric_filters)
+            tb_ret_tmp.header = f"Group: {group.name}. {tb_ret_tmp.header}"
+            metric_filters_patterns = defaultdict(list)
+            for metric_filter in metric_filters:
+                if metric_filter.filter_pattern:
+                    metric_filters_patterns[metric_filter.filter_pattern].append(metric_filter)
+            tb_ret_tmp.lines = [
+                                   f"Same filter pattern '{filter_pattern}' appears in  multiple metric filters: {[metric.name for metric in _metric_filters]}"
+                                   for filter_pattern, _metric_filters in metric_filters_patterns.items() if
+                                   len(_metric_filters)] + tb_ret_tmp.lines
+
+            if tb_ret_tmp.lines or tb_ret_tmp.blocks:
+                tb_ret.blocks.append(tb_ret_tmp)
+        tb_ret.lines = no_retention + no_metrics
+
+        if len(all_metric_filters) != len(self.aws_api.cloud_watch_log_groups_metric_filters):
+            tb_ret.lines.append(f"Something went wrong Checked metric filters count {len(all_metric_filters)} != fetched via AWS API {len(self.aws_api.cloud_watch_log_groups_metric_filters)}")
 
         with open(self.configuration.cloud_watch_report_file_path, "w+",
                   encoding="utf-8") as file_handler:
@@ -1257,9 +1463,51 @@ class AWSCleaner:
         logger.info(f"Output in: {self.configuration.cloud_watch_report_file_path}")
         return tb_ret
 
+    def sub_cleanup_report_cloudwatch_logs_metrics(self, metrics):
+        """
+        Generate report for cloudwatch_metrics
+
+        :param metrics:
+        :return:
+        """
+
+        tb_ret = TextBlock("Cloudwatch metrics report")
+        for metric in metrics:
+            lines = self.sub_cleanup_lines_cloudwatch_log_metric(metric)
+            tb_ret.lines += lines
+        return tb_ret
+
+    def sub_cleanup_lines_cloudwatch_log_metric(self, metric):
+        """
+        Generate report for cloudwatch metric
+
+        :param metric:
+        :return:
+        """
+
+        lines = []
+        if not metric.metric_transformations or len(metric.metric_transformations) > 1:
+            raise NotImplementedError("Can not check the metric filter")
+
+        alarms = CommonUtils.find_objects_by_values(self.aws_api.cloud_watch_alarms,
+                                                    {"namespace": metric.metric_transformations[
+                                                        0]["metricNamespace"],
+                                                     "metric_name":
+                                                         metric.metric_transformations[
+                                                             0]["metricName"]})
+        if not alarms:
+            lines.append(f"Metric: '{metric.name}' No alarms")
+        for alarm in alarms:
+            if not alarm.actions_enabled:
+                lines.append(f"Metric: '{metric.name}' Disabled Alarm")
+        return lines
+
     def cleanup_report_sqs(self, permissions_only=False):
         """
         No metrics on SQS.
+        "namespace" :
+        dimensions: [{'Name': 'QueueName', 'Value': ''}]
+        sqs_alarms = CommonUtils.find_objects_by_values(self.aws_api.cloud_watch_alarms, {"namespace": "AWS/SQS"})
 
         :param permissions_only:
         :return:
@@ -1403,9 +1651,30 @@ class AWSCleaner:
         """
 
         permissions = self.init_load_balancers(permissions_only=permissions_only)
+        permissions += self.init_route_tables(permissions_only=permissions_only)
+        permissions += self.init_subnets(permissions_only=permissions_only)
+
         if permissions_only:
             return permissions
-        breakpoint()
+
+        tb_ret = TextBlock("Load balancers with wrong subnet type association (public/private)")
+        for load_balancer in self.aws_api.load_balancers:
+            for availability_zone in load_balancer.availability_zones:
+                subnet_id = availability_zone["SubnetId"]
+                subnet = CommonUtils.find_objects_by_values(self.aws_api.subnets, {"id": subnet_id}, max_count=1)[0]
+                route_table = self.aws_api.find_route_table_by_subnet(load_balancer.region, subnet)
+
+                default_route = route_table.get_default_route()
+                if not default_route:
+                    tb_ret.lines.append(
+                        f"Can not find default route for {availability_zone['SubnetId']} route table {route_table.id}")
+                    continue
+                if default_route.get("GatewayId") and load_balancer.scheme != "internet-facing":
+                    tb_ret.lines.append(f"Internal LB {load_balancer.name} has public {availability_zone['SubnetId']}")
+                elif not default_route.get("GatewayId") and load_balancer.scheme == "internet-facing":
+                    tb_ret.lines.append(
+                        f"Internet facing LB {load_balancer.name} has private {availability_zone['SubnetId']}")
+        return tb_ret
 
     def sub_cleanup_loadbalancer_has_no_metrics(self, permissions_only=False):
         """
@@ -1417,7 +1686,8 @@ class AWSCleaner:
         permissions = self.init_load_balancers(permissions_only=permissions_only)
         if permissions_only:
             return permissions
-        breakpoint()
+        tb_ret = TextBlock("todo: Load balancer with no metrics in cloudwatch")
+        return tb_ret
 
     def sub_cleanup_target_groups(self, permissions_only=False):
         """
@@ -1467,7 +1737,8 @@ class AWSCleaner:
 
         permissions = self.init_load_balancers(permissions_only=permissions_only)
         if permissions_only:
-            permissions += self.sub_cleanup_report_wrong_port_lb_security_groups(None, permissions_only=permissions_only)
+            permissions += self.sub_cleanup_report_wrong_port_lb_security_groups(None,
+                                                                                 permissions_only=permissions_only)
             return permissions
 
         tb_ret = TextBlock("Wrong load balancer listeners ports")

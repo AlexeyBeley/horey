@@ -2,7 +2,7 @@
 Testing AWS Cleaner
 
 """
-
+import json
 import os
 import pytest
 
@@ -226,6 +226,7 @@ def test_init_cloud_watch_log_groups(configuration: AWSCleanerConfigurationPolic
     cleaner = AWSCleaner(configuration)
     cleaner.init_cloud_watch_log_groups()
     assert len(cleaner.aws_api.cloud_watch_log_groups) > 1
+    assert len(cleaner.aws_api.cloud_watch_log_groups_metric_filters) > 1
 
 
 @pytest.mark.done
@@ -247,6 +248,20 @@ def test_init_rds(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     cleaner.init_rds()
     assert len(cleaner.aws_api.rds_db_clusters) > 0
+
+
+@pytest.mark.done
+def test_init_route_tables(configuration: AWSCleanerConfigurationPolicy):
+    cleaner = AWSCleaner(configuration)
+    cleaner.init_route_tables()
+    assert len(cleaner.aws_api.route_tables) > 0
+
+
+@pytest.mark.done
+def test_init_subnets(configuration: AWSCleanerConfigurationPolicy):
+    cleaner = AWSCleaner(configuration)
+    cleaner.init_subnets()
+    assert len(cleaner.aws_api.subnets) > 0
 
 
 @pytest.mark.done
@@ -274,9 +289,15 @@ def test_init_sqs_queues(configuration: AWSCleanerConfigurationPolicy):
 def test_generate_permissions_cloud_watch_log_groups(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.init_cloud_watch_log_groups(permissions_only=True)
-    assert ret == [{"Sid": "CloudwatchLogs", "Effect": "Allow", "Action": ["logs:DescribeLogGroups"], "Resource": "*"},
-                   {"Sid": "CloudwatchLogTags", "Effect": "Allow", "Action": "logs:ListTagsForResource",
-                    "Resource": "*"}]
+    for statement in ret:
+        if "arn" in str(statement["Resource"]):
+            del statement["Resource"]
+
+    assert json.loads(json.dumps(ret)) == [
+        {"Sid": "CloudwatchLogs", "Effect": "Allow", "Action": ["logs:DescribeLogGroups", "logs:ListTagsForResource"],
+         "Resource": "*"},
+        {"Sid": "DescribeMetricFilters", "Effect": "Allow", "Action": "logs:DescribeMetricFilters"},
+        {"Sid": "CloudwatchAlarms", "Effect": "Allow", "Action": "cloudwatch:DescribeAlarms"}]
 
 
 @pytest.mark.done
@@ -310,7 +331,8 @@ def test_generate_permissions_init_dynamodb_tables(configuration: AWSCleanerConf
     del ret[1]["Resource"]
     assert ret == [{"Sid": "getDynamodb", "Effect": "Allow", "Action": ["dynamodb:ListTables"], "Resource": "*"},
                    {"Sid": "getDynamodbTable", "Effect": "Allow",
-                    "Action": ["dynamodb:DescribeTable", "dynamodb:ListTagsOfResource"]}]
+                    "Action": ["dynamodb:DescribeTable", "dynamodb:ListTagsOfResource",
+                               "dynamodb:DescribeContinuousBackups"]}]
 
 
 @pytest.mark.done
@@ -318,8 +340,38 @@ def test_generate_permissions_init_rds(configuration: AWSCleanerConfigurationPol
     cleaner = AWSCleaner(configuration)
     ret = cleaner.init_rds(permissions_only=True)
     del ret[0]["Resource"]
+    del ret[1]["Resource"]
     assert ret == [
-        {"Sid": "getRDS", "Effect": "Allow", "Action": ["rds:DescribeDBClusters", "rds:ListTagsForResource"]}]
+        {"Sid": "getRDS", "Effect": "Allow", "Action": ["rds:DescribeDBClusters", "rds:ListTagsForResource"]},
+        {"Sid": "DescribeDBSubnetGroups", "Effect": "Allow", "Action": ["rds:DescribeDBSubnetGroups"]},
+        {"Sid": "DescribeDBEngineVersions", "Effect": "Allow", "Action": ["rds:DescribeDBEngineVersions"],
+         "Resource": "*"}]
+
+
+@pytest.mark.done
+def test_generate_permissions_init_route_tables(configuration: AWSCleanerConfigurationPolicy):
+    cleaner = AWSCleaner(configuration)
+    ret = cleaner.init_route_tables(permissions_only=True)
+    assert ret == [{
+        "Sid": "getRouteTables",
+        "Effect": "Allow",
+        "Action": ["ec2:DescribeRouteTables"],
+        "Resource": "*"
+    }]
+
+
+@pytest.mark.done
+def test_generate_permissions_init_subnets(configuration: AWSCleanerConfigurationPolicy):
+    cleaner = AWSCleaner(configuration)
+    ret = cleaner.init_subnets(permissions_only=True)
+    assert ret == [{
+        "Sid": "DescribeSubnets",
+        "Effect": "Allow",
+        "Action": [
+            "ec2:DescribeSubnets"
+        ],
+        "Resource": "*"
+    }]
 
 
 @pytest.mark.done
@@ -337,7 +389,7 @@ def test_generate_permissions_init_elasticache_clusters(configuration: AWSCleane
         {"Sid": "getElasticache", "Effect": "Allow", "Action": ["elasticache:DescribeCacheClusters"], "Resource": "*"}]
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_generate_permissions_init_sqs_queues(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.init_sqs_queues(permissions_only=True)
@@ -352,16 +404,15 @@ def test_generate_permissions_cleanup_report_load_balancers(
     configuration_generate_permissions.cleanup_report_load_balancers = True
     cleaner = AWSCleaner(configuration_generate_permissions)
     ret = cleaner.generate_permissions()
-    assert ret == {"Version": "2012-10-17", "Statement": [{"Sid": "LoadBalancers", "Effect": "Allow",
-                                                           "Action": ["elasticloadbalancing:DescribeLoadBalancers",
-                                                                      "elasticloadbalancing:DescribeListeners",
-                                                                      "elasticloadbalancing:DescribeRules",
-                                                                      "elasticloadbalancing:DescribeTags"],
-                                                           "Resource": "*"},
-                                                          {"Sid": "GetTargetGroups", "Effect": "Allow",
-                                                           "Action": ["elasticloadbalancing:DescribeTargetGroups",
-                                                                      "elasticloadbalancing:DescribeTargetHealth"],
-                                                           "Resource": "*"}]}
+    assert json.loads(json.dumps(ret)) == {"Version": "2012-10-17", "Statement": [
+        {"Sid": "LoadBalancers", "Effect": "Allow",
+         "Action": ["elasticloadbalancing:DescribeLoadBalancers", "elasticloadbalancing:DescribeListeners",
+                    "elasticloadbalancing:DescribeRules", "elasticloadbalancing:DescribeTags"], "Resource": "*"},
+        {"Sid": "GetTargetGroups", "Effect": "Allow",
+         "Action": ["elasticloadbalancing:DescribeTargetGroups", "elasticloadbalancing:DescribeTargetHealth"],
+         "Resource": "*"},
+        {"Sid": "getRouteTables", "Effect": "Allow", "Action": ["ec2:DescribeRouteTables"], "Resource": "*"},
+        {"Sid": "DescribeSubnets", "Effect": "Allow", "Action": ["ec2:DescribeSubnets"], "Resource": "*"}]}
 
 
 @pytest.mark.done
@@ -422,7 +473,7 @@ def test_generate_permissions_cleanup_report_lambdas(
     ret = cleaner.generate_permissions()
 
     for statement in ret["Statement"]:
-        if "arn" in statement["Resource"]:
+        if "arn" in str(statement["Resource"]):
             del statement["Resource"]
         assert statement in expected
     assert len(expected) == len(ret["Statement"])
@@ -517,9 +568,9 @@ def test_cleanup_report_elasticache(configuration):
 
 
 @pytest.mark.done
-def test_cleanup_report_cloudwatch_logs(configuration):
+def test_cleanup_report_cloudwatch(configuration):
     cleaner = AWSCleaner(configuration)
-    ret = cleaner.cleanup_report_cloudwatch_logs()
+    ret = cleaner.cleanup_report_cloudwatch()
     assert len(cleaner.aws_api.cloud_watch_log_groups) > 0
     assert ret is not None
     assert os.path.exists(cleaner.configuration.cloud_watch_report_file_path)
@@ -546,10 +597,13 @@ def test_clean(configuration):
 def test_generate_permissions_all(
         configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
-    expected_sids = {"getDynamodb", "ListCertificates", "LambdaGetPolicy", "getRDS", "getDynamodbTable",
-                     "DescribeVolumes", "CloudwatchLogs", "getSQS", "Route53", "DescribeCertificate", "GetECR",
-                     "DescribeImages", "DescribeNetworkInterfaces", "ECRTags", "GetTargetGroups", "DescribeInstances",
-                     "LoadBalancers", "CloudwatchLogTags", "DescribeSecurityGroups", "GetFunctions", "getElasticache"}
+    expected_sids = {"DescribeDBEngineVersions", "getDynamodbTable", "getRouteTables", "getSQS", "ECRTags",
+                     "getElasticache", "DescribeVolumes", "CloudwatchLogs", "Route53", "ListCertificates",
+                     "DescribeInstances", "DescribeSubnets", "DescribeSecurityGroups", "getDynamodb", "DescribeImages",
+                     "CloudwatchAlarms", "LoadBalancers", "GetTargetGroups", "DescribeDBSubnetGroups",
+                     "DescribeMetricFilters", "DescribeCertificate", "GetECR", "DescribeNetworkInterfaces", "getRDS",
+                     "GetFunctions", "LambdaGetPolicy"}
+
     ret = cleaner.generate_permissions()
     sids = {statement["Sid"] for statement in ret["Statement"]}
     assert sids == expected_sids
@@ -568,7 +622,7 @@ def test_cleanup_reports_in_aws_cleaner_match_configuration_policy_cleanup_repor
     cleaner_cleanup_report_attrs = [attr_name for attr_name in AWSCleaner.__dict__ if
                                     attr_name.startswith("cleanup_report_")]
 
-    # assert set(config_cleanup_report_attrs) == set(cleaner_cleanup_report_attrs)
+    assert set(config_cleanup_report_attrs) == set(cleaner_cleanup_report_attrs)
     for x in cleaner_cleanup_report_attrs:
         if x not in config_cleanup_report_attrs:
             print(f"""\n        self._{x} = None

@@ -20,15 +20,16 @@ build_aws_api:
 	make raw_install_from_source-aws_api
 
 
-test:
-	echo ${LAST_DEPLOYMENT_DIR}
-
-pytest_%: FORCE build
+test: FORCE build
 	source ${VENV_BIN_DIR}/activate &&\
-	python -m pytest ${CURRENT_DIR}/$(subst pytest_,,$@) -v
+	python -m pytest ${CURRENT_DIR}/ -v
 
 wip_%: FORCE build
 	source ${VENV_BIN_DIR}/activate &&\
 	python -m pytest -m wip --full-trace ${CURRENT_DIR}/$(subst wip_,,$@) -v -s
+
+wip: FORCE build
+	source ${VENV_BIN_DIR}/activate &&\
+	python -m pytest -m wip --full-trace ${CURRENT_DIR}/ -v -s
 
 FORCE: ;
