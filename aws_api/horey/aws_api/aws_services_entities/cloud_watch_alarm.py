@@ -66,6 +66,7 @@ class CloudWatchAlarm(AwsObject):
             "AlarmDescription": self.init_default_attr,
             "MetricName": self.init_default_attr,
             "StateTransitionedTimestamp": self.init_default_attr,
+            "Unit": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)

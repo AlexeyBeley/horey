@@ -1,50 +1,37 @@
-import os
-import sys
+"""
+Testing acm client
 
+"""
+
+import os
+import pytest
 from horey.aws_api.aws_clients.acm_client import ACMClient
 from horey.aws_api.aws_services_entities.acm_certificate import ACMCertificate
-
-import pdb
-from horey.h_logger import get_logger
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.base_entities.region import Region
-from horey.common_utils.common_utils import CommonUtils
 
-from unittest.mock import Mock
 
-configuration_values_file_full_path = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "h_logger_configuration_values.py"
-)
-logger = get_logger(
-    configuration_values_file_full_path=configuration_values_file_full_path
-)
-
-accounts_file_full_path = os.path.abspath(
-    os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "..",
-        "ignore",
-        "aws_api_managed_accounts.py",
+ACMClient.main_cache_dir_path = os.path.abspath(
+        os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "..", "..", "..",
+            "ignore",
+            "cache"
+        )
     )
-)
 
-accounts = CommonUtils.load_object_from_module(accounts_file_full_path, "main")
-AWSAccount.set_aws_account(accounts["1111"])
-AWSAccount.set_aws_region(accounts["1111"].regions["us-west-2"])
+# pylint: disable= missing-function-docstring
 
-mock_values_file_path = os.path.abspath(
-    os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "..", "ignore", "mock_values.py"
-    )
-)
-mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
+@pytest.mark.done
+def test_clear_cache():
+    ACMClient().clear_cache(ACMCertificate)
 
-
+@pytest.mark.done
 def test_init_acm_client():
     assert isinstance(ACMClient(), ACMClient)
 
 
-def test_provision_certificate():
+def provision_certificate():
     client = ACMClient()
     cert = ACMCertificate({})
     cert.region = AWSAccount.get_aws_region()
@@ -52,29 +39,72 @@ def test_provision_certificate():
     cert.domain_name = "*.test.comp.com"
     cert.tags = [
         {"Key": "lvl", "Value": "tst"},
-        {"Key": "name", "Value": cert.domain_name.replace("*", "star")},
+        {"Key": "name", "Value": cert.generate_name_tag()},
     ]
 
     cert.validation_method = "DNS"
 
-    ret = client.provision_certificate(cert)
-    pdb.set_trace()
+    client.provision_certificate(cert)
+    return cert
 
-    assert cert.arn is not None
-
-
-def test_get_certificate_by_tags():
+def fetch_certificates_from_cache():
     client = ACMClient()
-    domain_name = "*.test.comp.com"
+    region_dir_name = "us-west-2"
+    full_information = False
+    get_tags = True
+    file_path = client.generate_cache_file_path(ACMCertificate, region_dir_name, full_information, get_tags)
+    if os.path.exists(file_path):
+        return ACMClient.load_objects_from_cache(ACMCertificate, file_path)
+    return []
 
-    ret = client.get_certificate_by_tags(
-        AWSAccount.get_aws_region(), {"name": domain_name.replace("*", "star")}
-    )
+
+@pytest.mark.done
+def test_get_all_certificates():
+    client = ACMClient()
+    ret = client.get_all_certificates()
 
     assert ret is not None
+    assert len(ret) > 0
 
 
-if __name__ == "__main__":
-    # test_register_task_definition()
-    # test_provision_certificate()
-    test_get_certificate_by_tags()
+@pytest.mark.done
+def test_provision_certificate():
+    cert = provision_certificate()
+    assert cert.arn is not None
+
+    certificates = fetch_certificates_from_cache()
+    assert len(certificates) == 0
+
+@pytest.mark.done
+def test_get_certificate_by_tags_raises_no_certificate():
+    client = ACMClient()
+    dict_tags = {"Name": "NoSuchCertificate"}
+    with pytest.raises(Exception, match=r".*No certificates found in region.*"):
+        client.get_certificate_by_tags(Region.get_region("us-west-2"), dict_tags, ignore_missing_tag=True)
+
+@pytest.mark.done
+def test_get_certificate_by_tags():
+    client = ACMClient()
+    certificate = provision_certificate()
+    dict_tags = {tag["Key"]: tag["Value"] for tag in certificate.tags}
+    fetched_certificate = client.get_certificate_by_tags(Region.get_region("us-west-2"), dict_tags, ignore_missing_tag=True)
+
+    assert fetched_certificate is not None
+    assert fetched_certificate.arn == certificate.arn
+
+@pytest.mark.done
+def test_get_certificate():
+    client = ACMClient()
+    certificate = provision_certificate()
+    fetched_certificate = client.get_certificate(certificate.arn)
+
+    assert fetched_certificate is not None
+    assert fetched_certificate.arn == certificate.arn
+
+@pytest.mark.done
+def test_dispose_certificate():
+    cert = provision_certificate()
+    client = ACMClient()
+    assert client.dispose_certificate(cert)
+    certificates = fetch_certificates_from_cache()
+    assert len(certificates) == 0

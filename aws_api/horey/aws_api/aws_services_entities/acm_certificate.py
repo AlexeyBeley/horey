@@ -108,11 +108,7 @@ class ACMCertificate(AwsObject):
         @return:
         """
 
-        request = dict()
-        request["DomainName"] = self.domain_name
-        request["ValidationMethod"] = self.validation_method
-
-        request["Tags"] = self.tags
+        request = {"DomainName": self.domain_name, "ValidationMethod": self.validation_method, "Tags": self.tags}
 
         return request
 
@@ -145,3 +141,12 @@ class ACMCertificate(AwsObject):
             raise ValueError(value)
 
         self._region = value
+
+    def generate_name_tag(self):
+        """
+        Generate name tag from name
+
+        :return:
+        """
+
+        return self.domain_name.replace("*", "star")

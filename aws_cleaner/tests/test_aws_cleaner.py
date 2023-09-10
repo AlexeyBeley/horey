@@ -185,6 +185,17 @@ def test_cleanup_report_ecr_images(configuration):
     assert ret is not None
     assert os.path.exists(configuration.ec2_security_groups_report_file_path)
 
+@pytest.mark.wip
+def test_init_cloudwatch_metrics(configuration: AWSCleanerConfigurationPolicy):
+    cleaner = AWSCleaner(configuration)
+    cleaner.init_cloudwatch_metrics()
+    assert len(cleaner.aws_api.cloud_watch_metrics) > 0
+
+@pytest.mark.wip
+def test_init_cloudwatch_alarms(configuration: AWSCleanerConfigurationPolicy):
+    cleaner = AWSCleaner(configuration)
+    cleaner.init_cloudwatch_alarms()
+    assert len(cleaner.aws_api.cloud_watch_alarms) > 0
 
 @pytest.mark.done
 def test_init_acm_certificates(configuration: AWSCleanerConfigurationPolicy):
@@ -285,7 +296,7 @@ def test_init_sqs_queues(configuration: AWSCleanerConfigurationPolicy):
     assert len(cleaner.aws_api.sqs_queues) > 1
 
 
-@pytest.mark.done
+@pytest.mark.wip
 def test_generate_permissions_cloud_watch_log_groups(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.init_cloud_watch_log_groups(permissions_only=True)
@@ -296,8 +307,28 @@ def test_generate_permissions_cloud_watch_log_groups(configuration: AWSCleanerCo
     assert json.loads(json.dumps(ret)) == [
         {"Sid": "CloudwatchLogs", "Effect": "Allow", "Action": ["logs:DescribeLogGroups", "logs:ListTagsForResource"],
          "Resource": "*"},
-        {"Sid": "DescribeMetricFilters", "Effect": "Allow", "Action": "logs:DescribeMetricFilters"},
+        {"Sid": "DescribeMetricFilters", "Effect": "Allow", "Action": "logs:DescribeMetricFilters"}]
+
+@pytest.mark.wip
+def test_generate_permissions_cloud_watch_metrics(configuration: AWSCleanerConfigurationPolicy):
+    cleaner = AWSCleaner(configuration)
+    ret = cleaner.init_cloudwatch_metrics(permissions_only=True)
+    for statement in ret:
+        if "arn" in str(statement["Resource"]):
+            del statement["Resource"]
+
+    assert json.loads(json.dumps(ret)) == [
         {"Sid": "CloudwatchAlarms", "Effect": "Allow", "Action": "cloudwatch:DescribeAlarms"}]
+
+
+@pytest.mark.wip
+def test_generate_permissions_cloud_watch_alarms(configuration: AWSCleanerConfigurationPolicy):
+    cleaner = AWSCleaner(configuration)
+    ret = cleaner.init_cloudwatch_alarms(permissions_only=True)
+    for statement in ret:
+        if "arn" in str(statement["Resource"]):
+            del statement["Resource"]
+    assert json.loads(json.dumps(ret)) == [{"Sid": "CloudwatchAlarms", "Effect": "Allow", "Action": "cloudwatch:DescribeAlarms"}]
 
 
 @pytest.mark.done
@@ -498,6 +529,12 @@ def test_sub_cleanup_report_lambdas_large_size(configuration):
     assert len(cleaner.aws_api.lambdas) > 0
     assert ret is not None
 
+@pytest.mark.wip
+def test_sub_cleanup_report_lambdas_not_running(configuration):
+    cleaner = AWSCleaner(configuration)
+    ret = cleaner.sub_cleanup_report_lambdas_not_running()
+    assert len(cleaner.aws_api.lambdas) > 0
+    assert ret is not None
 
 @pytest.mark.done
 def test_sub_cleanup_report_lambdas_deprecate(configuration):
@@ -576,7 +613,7 @@ def test_cleanup_report_cloudwatch(configuration):
     assert os.path.exists(cleaner.configuration.cloud_watch_report_file_path)
 
 
-@pytest.mark.done
+@pytest.mark.wip
 def test_cleanup_report_sqs(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.cleanup_report_sqs()

@@ -34,6 +34,7 @@ class AWSCleaner:
         aws_api_configuration = AWSAPIConfigurationPolicy()
         aws_api_configuration.accounts_file = self.configuration.managed_accounts_file_path
         aws_api_configuration.aws_api_account = self.configuration.aws_api_account_name
+        aws_api_configuration.aws_api_cache_dir = configuration.cache_dir
         self.aws_api = AWSAPI(aws_api_configuration)
 
     def init_cloudwatch_metrics(self, permissions_only=False):
@@ -43,22 +44,36 @@ class AWSCleaner:
         :return:
         """
 
+        if not permissions_only and not self.aws_api.cloud_watch_metrics:
+            self.aws_api.init_cloud_watch_metrics()
+
+        return [{
+                "Sid": "cloudwatchMetrics",
+                "Effect": "Allow",
+                "Action": "cloudwatch:ListMetrics",
+                "Resource": "*"
+            }
+            ]
+
+    def init_cloudwatch_alarms(self, permissions_only=False):
+        """
+        Init cloudwatch alarms
+
+        :param permissions_only:
+        :return:
+        """
+
         if not permissions_only and not self.aws_api.cloud_watch_alarms:
             self.aws_api.init_cloud_watch_alarms()
 
-        return [
-            {
-                "Sid": "ECRTags",
-                "Effect": "Allow",
-                "Action": "ecr:ListTagsForResource",
-                "Resource": "*"
-            },
-            *[{
-                "Sid": "GetECR",
-                "Effect": "Allow",
-                "Action": ["ecr:DescribeRepositories", "ecr:DescribeImages"],
-                "Resource": f"arn:aws:ecr:{region.region_mark}:{self.aws_api.acm_client.account_id}:repository/*"
-            } for region in AWSAccount.get_aws_account().regions.values()]]
+
+        return [{
+            "Sid": "CloudwatchAlarms",
+            "Effect": "Allow",
+            "Action": "cloudwatch:DescribeAlarms",
+            "Resource": [f"arn:aws:cloudwatch:{region.region_mark}:{self.aws_api.acm_client.account_id}:alarm:*"
+                         for region in AWSAccount.get_aws_account().regions.values()]
+        }]
 
     def init_ecr_images(self, permissions_only=False):
         """
@@ -95,7 +110,6 @@ class AWSCleaner:
                  self.aws_api.cloud_watch_alarms):
             self.aws_api.init_cloud_watch_log_groups()
             self.aws_api.init_cloud_watch_log_groups_metric_filters()
-            self.aws_api.init_cloud_watch_alarms()
 
         return [{
             "Sid": "CloudwatchLogs",
@@ -108,13 +122,6 @@ class AWSCleaner:
                 "Effect": "Allow",
                 "Action": "logs:DescribeMetricFilters",
                 "Resource": [f"arn:aws:logs:{region.region_mark}:{self.aws_api.acm_client.account_id}:log-group:*"
-                             for region in AWSAccount.get_aws_account().regions.values()]
-            },
-            {
-                "Sid": "CloudwatchAlarms",
-                "Effect": "Allow",
-                "Action": "cloudwatch:DescribeAlarms",
-                "Resource": [f"arn:aws:cloudwatch:{region.region_mark}:{self.aws_api.acm_client.account_id}:alarm:*"
                              for region in AWSAccount.get_aws_account().regions.values()]
             }
         ]
@@ -1054,12 +1061,8 @@ class AWSCleaner:
         """
         permissions = self.init_lambdas(permissions_only=permissions_only)
         permissions += self.init_cloud_watch_log_groups(permissions_only=permissions_only)
-
         if permissions_only:
             return permissions
-
-        if not os.path.exists(self.configuration.cloudwatch_log_groups_streams_cache_dir):
-            return None
 
         tb_ret = TextBlock(
             "Not functioning lambdas- either the last run was to much time ago or it never run"
@@ -1088,10 +1091,13 @@ class AWSCleaner:
             ) > datetime.datetime.now() - datetime.timedelta(days=31):
                 continue
 
-            lines = self.sub_cleanup_report_lambdas_not_running_stream_analysis(
-                log_group
-            )
-            tb_ret.lines += lines
+            if os.path.exists(self.configuration.cloudwatch_log_groups_streams_cache_dir):
+                lines = self.sub_cleanup_report_lambdas_not_running_stream_analysis(
+                    log_group
+                )
+                tb_ret.lines += lines
+            else:
+                logger.error(f"No log group streams {self.configuration.cloudwatch_log_groups_streams_cache_dir}")
 
         return tb_ret
 
@@ -1420,6 +1426,7 @@ class AWSCleaner:
         """
 
         permissions = self.init_cloud_watch_log_groups(permissions_only=permissions_only)
+        permissions += self.init_cloudwatch_alarms(permissions_only=permissions_only)
 
         if permissions_only:
             return permissions
@@ -1447,7 +1454,7 @@ class AWSCleaner:
             tb_ret_tmp.lines = [
                                    f"Same filter pattern '{filter_pattern}' appears in  multiple metric filters: {[metric.name for metric in _metric_filters]}"
                                    for filter_pattern, _metric_filters in metric_filters_patterns.items() if
-                                   len(_metric_filters)] + tb_ret_tmp.lines
+                                   len(_metric_filters)>1] + tb_ret_tmp.lines
 
             if tb_ret_tmp.lines or tb_ret_tmp.blocks:
                 tb_ret.blocks.append(tb_ret_tmp)
@@ -1496,7 +1503,7 @@ class AWSCleaner:
                                                          metric.metric_transformations[
                                                              0]["metricName"]})
         if not alarms:
-            lines.append(f"Metric: '{metric.name}' No alarms")
+            lines.append(f"Metric '{metric.name}' has no alarms")
         for alarm in alarms:
             if not alarm.actions_enabled:
                 lines.append(f"Metric: '{metric.name}' Disabled Alarm")
@@ -1514,6 +1521,7 @@ class AWSCleaner:
         """
 
         permissions = self.init_sqs_queues(permissions_only=permissions_only)
+        permissions += self.init_cloudwatch_alarms(permissions_only=permissions_only)
 
         if permissions_only:
             return permissions

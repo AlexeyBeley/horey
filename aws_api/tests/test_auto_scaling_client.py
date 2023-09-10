@@ -71,7 +71,3 @@ def test_detach_instances():
         ec2_instance.region = region
         ec2_instance.id = inst_id
         ec2_client.dispose_instance(ec2_instance)
-
-if __name__ == "__main__":
-    test_init_client()
-    test_detach_instances()

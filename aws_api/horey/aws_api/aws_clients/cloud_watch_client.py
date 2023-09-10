@@ -1,6 +1,7 @@
 """
-AWS client to handle cloud watch logs.
+AWS client to handle cloud watch entities
 """
+
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlarm
 from horey.aws_api.aws_services_entities.cloud_watch_metric import CloudWatchMetric
@@ -10,12 +11,11 @@ from horey.h_logger import get_logger
 logger = get_logger()
 
 
-import pdb
 
 
 class CloudWatchClient(Boto3Client):
     """
-    Client to work with cloud watch logs API.
+    Client to work with cloud watch entities API
     """
 
     def __init__(self):
@@ -32,54 +32,48 @@ class CloudWatchClient(Boto3Client):
             for response in self.execute(self.client.list_metrics, "Metrics"):
                 yield response
 
-    def get_region_metrics(self, region):
+    def get_all_metrics(self, update_info=False):
         """
-        Get region metrics
+        Get all metrics
 
         :return:
         """
 
-        AWSAccount.set_aws_region(region)
-        ret = []
-        pdb.set_trace()
-        for response in self.execute(self.client.list_metrics, "Metrics"):
-            obj = CloudWatchMetric(response)
-            ret.append(obj)
-        return ret
+        regional_fetcher_generator = self.execute(self.client.list_metrics, "Metrics")
+        return list(self.regional_service_entities_generator(regional_fetcher_generator, CloudWatchMetric, update_info=update_info))
 
-    def get_all_alarms(self):
+    def get_all_alarms(self, update_info=False):
         """
         Get all alarms in all regions.
-        :return:
-        """
-        final_result = list()
-
-        for region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_alarms(region)
-
-        return final_result
-
-    def get_region_alarms(self, region):
-        """
-        Get all alarms in the region.
 
         :return:
         """
 
-        AWSAccount.set_aws_region(region)
-        final_result = list()
+        regional_fetcher_generator = self.regional_fetcher_generator_alarms()
+        return list(self.regional_service_entities_generator(regional_fetcher_generator, CloudWatchAlarm, update_info=update_info))
+
+    def regional_fetcher_generator_alarms(self):
+        """
+        Generator. Yield over the fetched alarms.
+
+        :return:
+        """
+
 
         for dict_src in self.execute(self.client.describe_alarms, None, raw_data=True):
             if len(dict_src["CompositeAlarms"]) != 0:
                 raise NotImplementedError("CompositeAlarms")
             for dict_alarm in dict_src["MetricAlarms"]:
-                alarm = CloudWatchAlarm(dict_alarm)
-                alarm.region = AWSAccount.get_aws_region()
-                final_result.append(alarm)
-
-        return final_result
+                yield dict_alarm
 
     def set_cloudwatch_alarm(self, alarm):
+        """
+        Provision alarm.
+
+        :param alarm:
+        :return:
+        """
+
         request_dict = alarm.generate_create_request()
         AWSAccount.set_aws_region(alarm.region)
         logger.info(

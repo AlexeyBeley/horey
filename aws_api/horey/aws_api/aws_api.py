@@ -254,6 +254,7 @@ class AWSAPI:
         self.cloud_watch_log_groups = []
         self.cloud_watch_log_groups_metric_filters = []
         self.cloud_watch_alarms = []
+        self.cloud_watch_metrics = []
         self.cloudfront_distributions = []
         self.cloudfront_origin_access_identities = []
         self.event_bridge_rules = []
@@ -1150,6 +1151,16 @@ class AWSAPI:
 
         self.cloud_watch_alarms = objects
 
+    def init_cloud_watch_metrics(self, update_info=False):
+        """
+        Self-explanatory.
+
+        @param update_info:
+        @return:
+        """
+
+        self.cloud_watch_metrics = self.cloud_watch_client.get_all_metrics(update_info=update_info)
+
     def init_cloud_watch_log_groups(self, from_cache=False, cache_file=None):
         """
         Init the cloudwatch log groups.
@@ -1937,6 +1948,7 @@ class AWSAPI:
 
         @param objects:
         @param file_name:
+        @param indent:
         @return:
         """
         objects_dicts = [obj.convert_to_dict() for obj in objects]
