@@ -85,7 +85,7 @@ def test_init_target_groups(configuration):
     assert len(cleaner.aws_api.target_groups) > 0
 
 
-@pytest.mark.todo
+@pytest.mark.wip
 def test_init_ec2_network_interfaces(configuration):
     """
     Test initiation.
@@ -98,7 +98,7 @@ def test_init_ec2_network_interfaces(configuration):
     assert len(cleaner.aws_api.network_interfaces) > 0
 
 
-@pytest.mark.todo
+@pytest.mark.wip
 def test_sub_cleanup_report_ebs_volumes_in_use(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.sub_cleanup_report_ebs_volumes_in_use()
@@ -106,7 +106,7 @@ def test_sub_cleanup_report_ebs_volumes_in_use(configuration):
     assert ret is not None
 
 
-@pytest.mark.todo
+@pytest.mark.wip
 def test_sub_cleanup_report_ebs_volumes_sizes(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.sub_cleanup_report_ebs_volumes_sizes()
@@ -114,7 +114,7 @@ def test_sub_cleanup_report_ebs_volumes_sizes(configuration):
     assert ret is not None
 
 
-@pytest.mark.todo
+@pytest.mark.wip
 def test_sub_cleanup_report_ebs_volumes_types(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.sub_cleanup_report_ebs_volumes_types()

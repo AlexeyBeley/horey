@@ -174,22 +174,41 @@ class EC2Client(Boto3Client):
             final_result.append(obj)
         return final_result
 
-    def get_all_interfaces(self):
+    def yield_network_interfaces(self, region=None, update_info=False, filters_req=None):
         """
-        Get all interfaces in all regions.
+        Yield over all volumes.
+
         :return:
         """
-        final_result = []
 
-        for _region in AWSAccount.get_aws_account().regions.values():
-            AWSAccount.set_aws_region(_region)
-            for dict_src in self.execute(
-                    self.client.describe_network_interfaces, "NetworkInterfaces"
-            ):
-                interface = NetworkInterface(dict_src)
-                final_result.append(interface)
+        regional_fetcher_generator = self.yield_network_interfaces_raw
+        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                  NetworkInterface,
+                                                  update_info=update_info,
+                                                  regions=[region] if region else None,
+                                                                    filters_req=filters_req):
+            yield certificate
 
-        return final_result
+    def yield_network_interfaces_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.client.describe_network_interfaces, "NetworkInterfaces", filters_req=filters_req
+        ):
+            yield dict_src
+
+    def get_all_interfaces(self, region=None, update_info=False):
+        """
+        Get all interfaces in all regions.
+
+        :return:
+        """
+
+        return list(self.yield_network_interfaces(region=region, update_info=update_info))
 
     def get_all_instances(self, region=None):
         """

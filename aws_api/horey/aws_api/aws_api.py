@@ -17,7 +17,6 @@ from horey.aws_api.aws_clients.ecr_client import ECRClient
 
 from horey.aws_api.aws_clients.ec2_client import EC2Client
 from horey.aws_api.aws_services_entities.ec2_instance import EC2Instance
-from horey.aws_api.aws_services_entities.network_interface import NetworkInterface
 from horey.aws_api.aws_services_entities.ec2_security_group import EC2SecurityGroup
 from horey.aws_api.aws_services_entities.ec2_spot_fleet_request import (
     EC2SpotFleetRequest,
@@ -970,20 +969,14 @@ class AWSAPI:
 
         self.elastic_addresses = objects
 
-    def init_network_interfaces(self, from_cache=False, cache_file=None):
+    def init_network_interfaces(self):
         """
         Init ec2 instances.
 
-        @param from_cache:
-        @param cache_file:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, NetworkInterface)
-        else:
-            objects = self.ec2_client.get_all_interfaces()
 
-        self.network_interfaces = objects
+        self.network_interfaces = self.ec2_client.get_all_interfaces()
 
         return self.network_interfaces
 
@@ -1002,20 +995,14 @@ class AWSAPI:
 
         self.ec2_instances = objects
 
-    def init_ec2_volumes(self, from_cache=False, cache_file=None, region=None):
+    def init_ec2_volumes(self, region=None):
         """
         Init ec2 volumes.
 
-        @param from_cache:
-        @param cache_file:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, EC2Instance)
-        else:
-            objects = self.ec2_client.get_all_volumes(region=region)
 
-        self.ec2_volumes = objects
+        self.ec2_volumes = self.ec2_client.get_all_volumes(region=region)
 
     def init_spot_fleet_requests(self, from_cache=False, cache_file=None):
         """
