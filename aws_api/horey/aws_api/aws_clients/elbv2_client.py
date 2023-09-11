@@ -344,6 +344,7 @@ class ELBV2Client(Boto3Client):
         for response in self.execute(
             self.client.create_target_group, "TargetGroups", filters_req=request_dict
         ):
+            self.clear_cache(ELBV2TargetGroup)
             return response
 
     def register_targets_raw(self, request_dict):
@@ -358,6 +359,7 @@ class ELBV2Client(Boto3Client):
         for response in self.execute(
             self.client.register_targets, None, filters_req=request_dict, raw_data=True
         ):
+            self.clear_cache(ELBV2TargetGroup)
             return response
 
     def provision_load_balancer_listener(self, listener: LoadBalancer.Listener):
@@ -397,6 +399,7 @@ class ELBV2Client(Boto3Client):
         for response in self.execute(
             self.client.create_listener, "Listeners", filters_req=request_dict
         ):
+            self.clear_cache(LoadBalancer.Listener)
             return response
 
     def add_listener_certificates_raw(self, request_dict):
@@ -412,6 +415,7 @@ class ELBV2Client(Boto3Client):
         for response in self.execute(
             self.client.add_listener_certificates, "Certificates", filters_req=request_dict
         ):
+            self.clear_cache(LoadBalancer.Listener)
             return response
 
     def provision_load_balancer_rule(self, rule: LoadBalancer.Rule):
