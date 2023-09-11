@@ -32,6 +32,16 @@ class CloudWatchClient(Boto3Client):
             for response in self.execute(self.client.list_metrics, "Metrics"):
                 yield response
 
+    def yield_client_metrics(self, filters_req=None):
+        """
+        Generator for standard region fetcher
+
+        :param filters_req:
+        :return:
+        """
+        for response in self.execute(self.client.list_metrics, "Metrics", filters_req=filters_req):
+            yield response
+
     def get_all_metrics(self, update_info=False):
         """
         Get all metrics
@@ -39,7 +49,7 @@ class CloudWatchClient(Boto3Client):
         :return:
         """
 
-        regional_fetcher_generator = self.execute(self.client.list_metrics, "Metrics")
+        regional_fetcher_generator = self.yield_client_metrics
         return list(self.regional_service_entities_generator(regional_fetcher_generator, CloudWatchMetric, update_info=update_info))
 
     def get_all_alarms(self, update_info=False):
@@ -49,10 +59,10 @@ class CloudWatchClient(Boto3Client):
         :return:
         """
 
-        regional_fetcher_generator = self.regional_fetcher_generator_alarms()
+        regional_fetcher_generator = self.regional_fetcher_generator_alarms
         return list(self.regional_service_entities_generator(regional_fetcher_generator, CloudWatchAlarm, update_info=update_info))
 
-    def regional_fetcher_generator_alarms(self):
+    def regional_fetcher_generator_alarms(self, filters_req=None):
         """
         Generator. Yield over the fetched alarms.
 
@@ -60,7 +70,7 @@ class CloudWatchClient(Boto3Client):
         """
 
 
-        for dict_src in self.execute(self.client.describe_alarms, None, raw_data=True):
+        for dict_src in self.execute(self.client.describe_alarms, None, raw_data=True, filters_req=filters_req):
             if len(dict_src["CompositeAlarms"]) != 0:
                 raise NotImplementedError("CompositeAlarms")
             for dict_alarm in dict_src["MetricAlarms"]:

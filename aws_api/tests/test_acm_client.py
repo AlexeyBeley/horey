@@ -22,11 +22,11 @@ ACMClient.main_cache_dir_path = os.path.abspath(
 
 # pylint: disable= missing-function-docstring
 
-@pytest.mark.done
+@pytest.mark.wip
 def test_clear_cache():
     ACMClient().clear_cache(ACMCertificate)
 
-@pytest.mark.done
+@pytest.mark.wip
 def test_init_acm_client():
     assert isinstance(ACMClient(), ACMClient)
 
@@ -58,7 +58,7 @@ def fetch_certificates_from_cache():
     return []
 
 
-@pytest.mark.done
+@pytest.mark.wip
 def test_get_all_certificates():
     client = ACMClient()
     ret = client.get_all_certificates()
@@ -67,7 +67,7 @@ def test_get_all_certificates():
     assert len(ret) > 0
 
 
-@pytest.mark.done
+@pytest.mark.wip
 def test_provision_certificate():
     cert = provision_certificate()
     assert cert.arn is not None
@@ -75,14 +75,14 @@ def test_provision_certificate():
     certificates = fetch_certificates_from_cache()
     assert len(certificates) == 0
 
-@pytest.mark.done
+@pytest.mark.wip
 def test_get_certificate_by_tags_raises_no_certificate():
     client = ACMClient()
     dict_tags = {"Name": "NoSuchCertificate"}
     with pytest.raises(Exception, match=r".*No certificates found in region.*"):
         client.get_certificate_by_tags(Region.get_region("us-west-2"), dict_tags, ignore_missing_tag=True)
 
-@pytest.mark.done
+@pytest.mark.wip
 def test_get_certificate_by_tags():
     client = ACMClient()
     certificate = provision_certificate()
@@ -92,7 +92,7 @@ def test_get_certificate_by_tags():
     assert fetched_certificate is not None
     assert fetched_certificate.arn == certificate.arn
 
-@pytest.mark.done
+@pytest.mark.wip
 def test_get_certificate():
     client = ACMClient()
     certificate = provision_certificate()
@@ -101,7 +101,7 @@ def test_get_certificate():
     assert fetched_certificate is not None
     assert fetched_certificate.arn == certificate.arn
 
-@pytest.mark.done
+@pytest.mark.wip
 def test_dispose_certificate():
     cert = provision_certificate()
     client = ACMClient()

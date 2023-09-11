@@ -41,7 +41,6 @@ from horey.aws_api.aws_services_entities.s3_bucket import S3Bucket
 
 from horey.aws_api.aws_clients.elbv2_client import ELBV2Client
 from horey.aws_api.aws_services_entities.elbv2_load_balancer import LoadBalancer
-from horey.aws_api.aws_services_entities.elbv2_target_group import ELBV2TargetGroup
 
 from horey.aws_api.aws_clients.acm_client import ACMClient
 from horey.aws_api.aws_services_entities.acm_certificate import ACMCertificate
@@ -314,6 +313,8 @@ class AWSAPI:
 
         if self.configuration is None:
             return
+
+        STSClient().main_cache_dir_path = self.configuration.aws_api_cache_dir
         self.aws_accounts = self.get_all_managed_accounts()
         AWSAccount.set_aws_account(
             self.aws_accounts[self.configuration.aws_api_account]
@@ -1736,19 +1737,15 @@ class AWSAPI:
 
         self.lambda_event_source_mappings = objects
 
-    def init_target_groups(self, from_cache=False, cache_file=None):
+    def init_target_groups(self, update_info=False):
         """
         Init ELB target groups
-        @param from_cache:
-        @param cache_file:
+
+        @param update_info:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, ELBV2TargetGroup)
-        else:
-            objects = self.elbv2_client.get_all_target_groups()
 
-        self.target_groups = objects
+        self.target_groups = self.elbv2_client.get_all_target_groups(update_info=update_info)
 
     def init_acm_certificates(self, from_cache=False, cache_file=None):
         """

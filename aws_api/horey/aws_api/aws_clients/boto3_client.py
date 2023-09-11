@@ -26,6 +26,7 @@ class Boto3Client:
     NEXT_PAGE_RESPONSE_KEY = "NextToken"
     NEXT_PAGE_INITIAL_KEY = None
     DEBUG = False
+    _main_cache_dir_path = None
 
     def __init__(self, client_name):
         """
@@ -38,7 +39,6 @@ class Boto3Client:
 
         self.client_name = client_name
         self._account_id = None
-        self._main_cache_dir_path = None
 
     @property
     def main_cache_dir_path(self):
@@ -48,9 +48,9 @@ class Boto3Client:
         :return:
         """
 
-        if self._main_cache_dir_path is None:
+        if Boto3Client._main_cache_dir_path is None:
             raise ValueError("Main cache dir was not set in boto3_client.py")
-        return self._main_cache_dir_path
+        return Boto3Client._main_cache_dir_path
 
     @main_cache_dir_path.setter
     def main_cache_dir_path(self, value):
@@ -58,7 +58,7 @@ class Boto3Client:
             raise ValueError(f"Not existing cache dir: {value}")
         if not os.path.isdir(value):
             raise ValueError(f"main_cache_dir_path must point to a dir: {value}")
-        self._main_cache_dir_path = value
+        Boto3Client._main_cache_dir_path = value
 
     @property
     def client_cache_dir_name(self):
@@ -651,9 +651,13 @@ class Boto3Client:
 
         for region_name in os.listdir(cache_dir):
             region_client_dir = os.path.join(cache_dir, region_name, self.client_cache_dir_name)
+            if not os.path.exists(region_client_dir):
+                continue
             for file_name in os.listdir(region_client_dir):
                 if entity_class_file_raw_name in file_name:
-                    os.remove(os.path.join(region_client_dir, file_name))
+                    cache_file_path = os.path.join(region_client_dir, file_name)
+                    logger.info(f"Clearing cache at '{cache_file_path}'")
+                    os.remove(cache_file_path)
 
     def add_entity_to_cache(self, entity, full_information, get_tags):
         """
@@ -718,13 +722,15 @@ class Boto3Client:
                                       full_information_callback=None,
                                       get_tags_callback=None,
                                       update_info=False,
-                                      regions=None):
+                                      regions=None,
+                                      filters_req=None):
         """
         Be sure you know what you do, when you set full_information=True.
         This can kill your memory, if you have a lot of data.
         For example in Cloudwatch or S3.
         Sometimes it's better using yield* or explicitly setting full_information=None
 
+        :param filters_req:
         :param regional_fetcher_generator:
         :param entity_class:
         :param full_information_callback:
@@ -742,24 +748,35 @@ class Boto3Client:
                 region, regional_fetcher_generator, entity_class,
                 full_information_callback=full_information_callback,
                 get_tags_callback=get_tags_callback,
-                update_info=update_info
+                update_info=update_info,
+                filters_req=filters_req
             ):
                 yield obj
 
-    def region_service_entities_generator(self, region, regional_fetcher_generator, entity_class, full_information_callback=None, get_tags_callback=None, update_info=False):
+    def region_service_entities_generator(self, region,
+                                          regional_fetcher_generator,
+                                          entity_class,
+                                          full_information_callback=None,
+                                          get_tags_callback=None,
+                                          update_info=False,
+                                          filters_req=None):
         """
         Get region log groups.
 
+        :param regional_fetcher_generator:
+        :param entity_class:
+        :param full_information_callback:
+        :param get_tags_callback:
+        :param update_info:
+        :param filters_req:
         :param region:
-        :param full_information:
-        :param get_tags:
         :return:
         """
 
         full_information = full_information_callback is not None
         get_tags = get_tags_callback is not None
         file_name = self.generate_cache_file_path(entity_class, region.region_mark, full_information, get_tags)
-        if not update_info:
+        if not update_info and not filters_req:
             objects = self.load_objects_from_cache(entity_class, file_name)
             if objects is not None:
                 for obj in objects:
@@ -768,7 +785,7 @@ class Boto3Client:
 
         final_result = []
         AWSAccount.set_aws_region(region)
-        for result in regional_fetcher_generator:
+        for result in regional_fetcher_generator(filters_req=filters_req):
             obj = entity_class(result)
             if full_information_callback:
                 full_information_callback(obj)
@@ -778,4 +795,5 @@ class Boto3Client:
             final_result.append(obj)
             yield obj
 
-        self.cache_objects(final_result, file_name)
+        if filters_req is None:
+            self.cache_objects(final_result, file_name)

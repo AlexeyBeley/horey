@@ -118,37 +118,61 @@ class ELBV2Client(Boto3Client):
                 filters_req={"ListenerArn": listener_response["ListenerArn"]},
             ))
 
-    def get_all_target_groups(self, full_information=True):
+    def get_target_group_full_information(self, target_group):
+        """
+        Target group full info.
+
+        :param target_group:
+        :return:
+        """
+
+        for response in self.execute(
+                self.client.describe_target_health,
+                "TargetHealthDescriptions",
+                filters_req={"TargetGroupArn": target_group.arn},
+        ):
+            target_group.update_target_health(response)
+
+    def yield_target_groups(self, region=None, update_info=False, full_information=True, filters_req=None):
+        """
+        Yield target_groups
+
+        :return:
+        """
+
+        full_information_callback = None if not full_information else self.get_target_group_full_information
+
+        regional_fetcher_generator = self.yield_target_groups_raw
+        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                  ELBV2TargetGroup,
+                                                  update_info=update_info,
+                                                  full_information_callback=full_information_callback,
+                                                  regions=[region] if region else None,
+                                                  filters_req=filters_req):
+            yield certificate
+
+    def yield_target_groups_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.client.describe_target_groups, "TargetGroups", filters_req=filters_req
+        ):
+            yield dict_src
+
+    def get_all_target_groups(self, full_information=True, update_info=False):
         """
         Get all target groups.
 
+        :param update_info:
         :param full_information:
         :return:
         """
 
-        final_result = []
-        for response in self.execute(
-            self.client.describe_target_groups, "TargetGroups"
-        ):
-
-            obj = ELBV2TargetGroup(response)
-            final_result.append(obj)
-
-            if full_information:
-                try:
-                    for update_info in self.execute(
-                        self.client.describe_target_health,
-                        "TargetHealthDescriptions",
-                        filters_req={"TargetGroupArn": obj.arn},
-                    ):
-                        obj.update_target_health(update_info)
-                except Exception as inst:
-                    print(response)
-                    str_repr = repr(inst)
-                    print(str_repr)
-                    raise
-
-        return final_result
+        return list(self.yield_target_groups(full_information=full_information, update_info=update_info))
 
     def get_region_target_groups(
         self,
@@ -168,33 +192,14 @@ class ELBV2Client(Boto3Client):
         """
 
         AWSAccount.set_aws_region(region)
-        final_result = []
         filters_req = {}
         if target_group_names is not None:
             filters_req["Names"] = target_group_names
         if load_balancer_arn is not None:
             filters_req["LoadBalancerArn"] = load_balancer_arn
 
-        for response in self.execute(
-            self.client.describe_target_groups, "TargetGroups", filters_req=filters_req
-        ):
-            obj = ELBV2TargetGroup(response)
-            final_result.append(obj)
-
-            if full_information:
-                try:
-                    for update_info in self.execute(
-                        self.client.describe_target_health,
-                        "TargetHealthDescriptions",
-                        filters_req={"TargetGroupArn": obj.arn},
-                    ):
-                        obj.update_target_health(update_info)
-                except Exception as inst:
-                    print(response)
-                    str_repr = repr(inst)
-                    print(str_repr)
-                    raise
-        return final_result
+        filters_req = filters_req if filters_req else None
+        return list(self.yield_target_groups(region=region, full_information=full_information, filters_req=filters_req))
 
     def get_region_listeners(
         self, region, full_information=False, load_balancer_arn=None

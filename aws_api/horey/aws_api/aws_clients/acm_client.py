@@ -29,7 +29,7 @@ class ACMClient(Boto3Client):
         :return:
         """
 
-        regional_fetcher_generator = self.yield_certificates_raw()
+        regional_fetcher_generator = self.yield_certificates_raw
         for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
                                                   ACMCertificate,
                                                   update_info=update_info,
@@ -46,7 +46,7 @@ class ACMClient(Boto3Client):
 
         return list(self.yield_certificates(region=region, update_info=update_info))
 
-    def yield_certificates_raw(self):
+    def yield_certificates_raw(self, filters_req=None):
         """
         Yield dictionaries.
 
@@ -54,13 +54,13 @@ class ACMClient(Boto3Client):
         """
 
         for dict_src_arn in self.execute(
-            self.client.list_certificates, "CertificateSummaryList"
+            self.client.list_certificates, "CertificateSummaryList", filters_req=filters_req
         ):
             arn = dict_src_arn["CertificateArn"]
-            filters_req = {"CertificateArn": arn}
+            _filters_req = {"CertificateArn": arn}
             certs_dicts = list(
                 self.execute(
-                    self.client.describe_certificate, "Certificate", filters_req=filters_req
+                    self.client.describe_certificate, "Certificate", filters_req=_filters_req
                 )
             )
 
