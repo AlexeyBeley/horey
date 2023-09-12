@@ -274,9 +274,9 @@ class AWSCleaner:
             "Resource": "*"
         },
             *[{
-                "Sid": "DescribeCertificate",
+                "Sid": "SpecificCertificate",
                 "Effect": "Allow",
-                "Action": "acm:DescribeCertificate",
+                "Action": ["acm:DescribeCertificate", "acm:ListTagsForCertificate"],
                 "Resource": f"arn:aws:acm:{region.region_mark}:{self.aws_api.acm_client.account_id}:certificate/*"
             } for region in AWSAccount.get_aws_account().regions.values()]]
 

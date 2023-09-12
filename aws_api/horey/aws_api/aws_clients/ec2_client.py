@@ -50,43 +50,59 @@ class EC2Client(Boto3Client):
         client_name = "ec2"
         super().__init__(client_name)
 
-    def get_all_subnets(self, region=None):
+    def yield_subnets(self, region=None, update_info=False, filters_req=None):
+        """
+        Yield over all subnets.
+
+        :return:
+        """
+
+        regional_fetcher_generator = self.yield_subnets_raw
+        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                  Subnet,
+                                                  update_info=update_info,
+                                                  regions=[region] if region else None,
+                                                                    filters_req=filters_req):
+            yield certificate
+
+    def yield_subnets_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.client.describe_subnets, "Subnets", filters_req=filters_req
+        ):
+            yield dict_src
+
+
+    def get_all_subnets(self, region=None, filters_req=None):
         """
         Get all subnets in all regions.
         :return:
         """
 
-        if region is not None:
-            return self.get_region_subnets(region)
+        return list(self.yield_subnets(region=region, filters_req=filters_req))
 
-        final_result = []
-        for _region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_subnets(_region)
-
-        return final_result
-
-    def get_region_subnets(self, region, filters=None):
+    def get_region_subnets(self, region, filters=None, filters_req=None):
         """
         Get region subnets.
 
         @param region:
         @param filters:
+        @param filters_req:
         @return:
         """
 
-        final_result = []
-        filters_req = None
         if filters is not None:
-            filters_req = {"Filters": filters}
+            logger.error("DEPRECATED, use filters_req instead")
+            if filters_req is None:
+                filters_req = {}
+            filters_req["Filters"] = filters
 
-        AWSAccount.set_aws_region(region)
-        for dict_src in self.execute(
-                self.client.describe_subnets, "Subnets", filters_req=filters_req
-        ):
-            obj = Subnet(dict_src)
-            final_result.append(obj)
-
-        return final_result
+        return list(self.yield_subnets(region=region, filters_req=filters_req))
 
     def get_all_vpcs(self, region=None, filters=None):
         """

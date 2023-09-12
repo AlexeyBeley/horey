@@ -59,8 +59,7 @@ def test_init_aws_cleaner(configuration):
     assert isinstance(AWSCleaner(configuration), AWSCleaner)
 
 
-
-@pytest.mark.todo
+@pytest.mark.wip
 def test_init_load_balancers(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     cleaner.init_load_balancers()
@@ -149,7 +148,7 @@ def test_cleanup_report_ebs_volumes(configuration):
     assert os.path.exists(configuration.ec2_ebs_report_file_path)
 
 
-@pytest.mark.todo
+@pytest.mark.wip
 def test_cleanup_report_acm_certificate(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.cleanup_report_acm_certificate()
@@ -158,7 +157,7 @@ def test_cleanup_report_acm_certificate(configuration):
     assert os.path.exists(configuration.acm_certificate_report_file_path)
 
 
-@pytest.mark.todo
+@pytest.mark.wip
 def test_cleanup_report_lambdas(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.cleanup_report_lambdas()
@@ -167,7 +166,7 @@ def test_cleanup_report_lambdas(configuration):
     assert os.path.exists(configuration.lambda_report_file_path)
 
 
-@pytest.mark.todo
+@pytest.mark.wip
 def test_cleanup_report_network_interfaces(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.cleanup_report_network_interfaces()
@@ -193,17 +192,20 @@ def test_cleanup_report_ecr_images(configuration):
     assert ret is not None
     assert os.path.exists(configuration.ec2_security_groups_report_file_path)
 
+
 @pytest.mark.done
 def test_init_cloudwatch_metrics(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     cleaner.init_cloudwatch_metrics()
     assert len(cleaner.aws_api.cloud_watch_metrics) > 0
 
+
 @pytest.mark.done
 def test_init_cloudwatch_alarms(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     cleaner.init_cloudwatch_alarms()
     assert len(cleaner.aws_api.cloud_watch_alarms) > 0
+
 
 @pytest.mark.todo
 def test_init_acm_certificates(configuration: AWSCleanerConfigurationPolicy):
@@ -318,7 +320,8 @@ def test_generate_permissions_cloud_watch_metrics(configuration: AWSCleanerConfi
     for statement in ret:
         if "arn" in str(statement["Resource"]):
             del statement["Resource"]
-    assert json.loads(json.dumps(ret)) == [{"Sid": "cloudwatchMetrics", "Effect": "Allow", "Action": "cloudwatch:ListMetrics", "Resource": "*"}]
+    assert json.loads(json.dumps(ret)) == [
+        {"Sid": "cloudwatchMetrics", "Effect": "Allow", "Action": "cloudwatch:ListMetrics", "Resource": "*"}]
 
 
 @pytest.mark.done
@@ -328,7 +331,8 @@ def test_generate_permissions_cloud_watch_alarms(configuration: AWSCleanerConfig
     for statement in ret:
         if "arn" in str(statement["Resource"]):
             del statement["Resource"]
-    assert json.loads(json.dumps(ret)) == [{"Sid": "CloudwatchAlarms", "Effect": "Allow", "Action": "cloudwatch:DescribeAlarms"}]
+    assert json.loads(json.dumps(ret)) == [
+        {"Sid": "CloudwatchAlarms", "Effect": "Allow", "Action": "cloudwatch:DescribeAlarms"}]
 
 
 @pytest.mark.todo
@@ -529,12 +533,14 @@ def test_sub_cleanup_report_lambdas_large_size(configuration):
     assert len(cleaner.aws_api.lambdas) > 0
     assert ret is not None
 
+
 @pytest.mark.todo
 def test_sub_cleanup_report_lambdas_not_running(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.sub_cleanup_report_lambdas_not_running()
     assert len(cleaner.aws_api.lambdas) > 0
     assert ret is not None
+
 
 @pytest.mark.todo
 def test_sub_cleanup_report_lambdas_deprecate(configuration):
@@ -634,12 +640,12 @@ def test_clean(configuration):
 def test_generate_permissions_all(
         configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
-    expected_sids = {"DescribeDBEngineVersions", "getDynamodbTable", "getRouteTables", "getSQS", "ECRTags",
-                     "getElasticache", "DescribeVolumes", "CloudwatchLogs", "Route53", "ListCertificates",
-                     "DescribeInstances", "DescribeSubnets", "DescribeSecurityGroups", "getDynamodb", "DescribeImages",
-                     "CloudwatchAlarms", "LoadBalancers", "GetTargetGroups", "DescribeDBSubnetGroups",
-                     "DescribeMetricFilters", "DescribeCertificate", "GetECR", "DescribeNetworkInterfaces", "getRDS",
-                     "GetFunctions", "LambdaGetPolicy"}
+    expected_sids = {"ListCertificates", "ECRTags", "GetFunctions", "DescribeSubnets", "DescribeNetworkInterfaces",
+                     "getSQS", "DescribeMetricFilters", "getRouteTables", "CloudwatchLogs", "SpecificCertificate",
+                     "getRDS", "DescribeImages", "getDynamodb", "DescribeDBEngineVersions", "DescribeInstances",
+                     "DescribeDBSubnetGroups", "getElasticache", "DescribeSecurityGroups", "Route53", "LoadBalancers",
+                     "CloudwatchAlarms", "getDynamodbTable", "GetECR", "GetTargetGroups", "DescribeVolumes",
+                     "LambdaGetPolicy"}
 
     ret = cleaner.generate_permissions()
     sids = {statement["Sid"] for statement in ret["Statement"]}
