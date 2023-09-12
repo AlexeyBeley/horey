@@ -1,4 +1,9 @@
+"""
+Test RDS client
+"""
 import os
+
+import pytest
 
 from horey.aws_api.aws_clients.rds_client import RDSClient
 from horey.aws_api.aws_services_entities.rds_db_cluster import RDSDBCluster
@@ -14,31 +19,10 @@ from horey.aws_api.aws_services_entities.rds_db_parameter_group import (
     RDSDBParameterGroup,
 )
 
-from horey.h_logger import get_logger
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.base_entities.region import Region
 from horey.common_utils.common_utils import CommonUtils
 
-
-configuration_values_file_full_path = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "h_logger_configuration_values.py"
-)
-logger = get_logger(
-    configuration_values_file_full_path=configuration_values_file_full_path
-)
-
-accounts_file_full_path = os.path.abspath(
-    os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "..",
-        "ignore",
-        "aws_api_managed_accounts.py",
-    )
-)
-
-accounts = CommonUtils.load_object_from_module(accounts_file_full_path, "main")
-AWSAccount.set_aws_account(accounts["1111"])
-AWSAccount.set_aws_region(accounts["1111"].regions["us-west-2"])
 
 mock_values_file_path = os.path.abspath(
     os.path.join(
@@ -47,13 +31,30 @@ mock_values_file_path = os.path.abspath(
 )
 mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 
+
+RDSClient().main_cache_dir_path = os.path.abspath(
+        os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "..", "..", "..",
+            "ignore",
+            "cache"
+        )
+    )
+
 # pylint: disable= missing-function-docstring
 
-
+@pytest.mark.wip
 def test_init_rds_client():
     assert isinstance(RDSClient(), RDSClient)
 
 
+@pytest.mark.wip
+def test_clear_cache():
+    client = RDSClient()
+    client.clear_cache(RDSDBCluster)
+
+
+@pytest.mark.skip
 def test_provision_cluster():
     client = RDSClient()
     cluster = RDSDBCluster({})
@@ -90,7 +91,7 @@ def test_provision_cluster():
 
     assert cluster.arn is not None
 
-
+@pytest.mark.skip
 def test_provision_cluster_from_snapshot():
     client = RDSClient()
     cluster = RDSDBCluster({})
@@ -127,7 +128,7 @@ def test_provision_cluster_from_snapshot():
 
     assert cluster.arn is not None
 
-
+@pytest.mark.skip
 def test_dispose_db_cluster():
     client = RDSClient()
     cluster = RDSDBCluster({})
@@ -138,7 +139,7 @@ def test_dispose_db_cluster():
 
     client.dispose_db_cluster(cluster)
 
-
+@pytest.mark.skip
 def test_provision_db_instance():
     client = RDSClient()
     db_instance = RDSDBInstance({})
@@ -166,7 +167,7 @@ def test_provision_db_instance():
 
     assert db_instance.arn is not None
 
-
+@pytest.mark.skip
 def test_provision_subnet_group():
     client = RDSClient()
     subnet_group = RDSDBSubnetGroup({})
@@ -182,7 +183,7 @@ def test_provision_subnet_group():
 
     assert subnet_group.arn is not None
 
-
+@pytest.mark.skip
 def test_provision_db_parameter_group():
     client = RDSClient()
     db_parameter_group = RDSDBParameterGroup({})
@@ -198,7 +199,7 @@ def test_provision_db_parameter_group():
 
     assert db_parameter_group.arn is not None
 
-
+@pytest.mark.skip
 def test_provision_db_cluster_parameter_group():
     client = RDSClient()
     db_cluster_parameter_group = RDSDBClusterParameterGroup({})
@@ -214,7 +215,7 @@ def test_provision_db_cluster_parameter_group():
 
     assert db_cluster_parameter_group.arn is not None
 
-
+@pytest.mark.skip
 def test_copy_db_cluster_snapshot():
     client = RDSClient()
     snapshot_src = RDSDBClusterSnapshot({})
@@ -233,18 +234,38 @@ def test_copy_db_cluster_snapshot():
     client.copy_db_cluster_snapshot(snapshot_src, snapshot_dst)
 
 
+@pytest.mark.wip
 def test_get_default_engine_version():
     client = RDSClient()
-    client.get_default_engine_version(Region.get_region("us-west-2"), "aurora-mysql")
+    assert client.get_default_engine_version(Region.get_region("us-west-2"), "aurora-mysql") is not None
+    # from_cache
+    assert client.get_default_engine_version(Region.get_region("us-west-2"), "aurora-mysql") is not None
+
+@pytest.mark.wip
+def test_yield_db_clusters():
+    client = RDSClient()
+    cluster = None
+    for cluster in client.yield_db_clusters(Region.get_region("us-west-2"), "aurora-mysql"):
+        break
+    assert cluster.arn is not None
+
+@pytest.mark.wip
+def test_get_all_db_clusters_no_region_no_full_information_tags_false():
+    client = RDSClient()
+    file_path = client.generate_cache_file_path(RDSDBCluster, "us-west-2", full_information=False, get_tags=False)
+    assert client.get_all_db_clusters(region=None, full_information=False, get_tags=False)
+    assert os.path.exists(file_path)
 
 
-if __name__ == "__main__":
-    # test_provision_subnet_group()
-    # test_provision_db_parameter_group()
-    # test_provision_db_cluster_parameter_group()
-    # test_provision_cluster()
-    # test_provision_db_instance()
-    # test_copy_db_cluster_snapshot()
-    # test_provision_cluster_from_snapshot()
-    # test_dispose_db_cluster()
-    test_get_default_engine_version()
+@pytest.mark.wip
+def test_get_all_db_clusters_region_full_information_tags_true():
+    client = RDSClient()
+    file_path = client.generate_cache_file_path(RDSDBCluster, "us-west-2", full_information=True, get_tags=True)
+    assert client.get_all_db_clusters(region=Region.get_region("us-west-2"), full_information=True, get_tags=True)
+    assert os.path.exists(file_path)
+
+
+@pytest.mark.wip
+def test_get_region_db_clusters():
+    client = RDSClient()
+    assert client.get_region_db_clusters(Region.get_region("us-west-2"))

@@ -3,8 +3,6 @@ AWS elb client to handle elb service API requests.
 """
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.elb_load_balancer import ClassicLoadBalancer
-from horey.aws_api.base_entities.aws_account import AWSAccount
-import pdb
 
 
 class ELBClient(Boto3Client):
@@ -16,22 +14,42 @@ class ELBClient(Boto3Client):
         client_name = "elb"
         super().__init__(client_name)
 
-    def get_all_load_balancers(self, full_information=True):
+    def get_all_load_balancers(self, region=None, update_info=False, filters_req=None):
         """
-        Get all loadbalancers.
+        Get all load balancers.
+
+        :param filters_req:
+        :param region:
+        :param update_info:
         :param full_information:
         :return:
         """
-        final_result = list()
-        for region in AWSAccount.get_aws_account().regions.values():
-            AWSAccount.set_aws_region(region)
-            for response in self.execute(
-                self.client.describe_load_balancers, "LoadBalancerDescriptions"
-            ):
-                obj = ClassicLoadBalancer(response)
-                final_result.append(obj)
 
-                if full_information:
-                    pass
+        return list(self.yield_load_balancers(region=region, update_info=update_info, filters_req=filters_req))
 
-        return final_result
+    def yield_load_balancers(self, region=None, update_info=False, filters_req=None):
+        """
+        Yield load_balancers
+
+        :return:
+        """
+
+        regional_fetcher_generator = self.yield_load_balancers_raw
+        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                  ClassicLoadBalancer,
+                                                  update_info=update_info,
+                                                  regions=[region] if region else None,
+                                                  filters_req=filters_req):
+            yield certificate
+
+    def yield_load_balancers_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.client.describe_load_balancers, "LoadBalancerDescriptions", filters_req=filters_req
+        ):
+            yield dict_src

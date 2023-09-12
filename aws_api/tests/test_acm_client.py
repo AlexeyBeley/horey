@@ -11,7 +11,7 @@ from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.base_entities.region import Region
 
 
-ACMClient.main_cache_dir_path = os.path.abspath(
+ACMClient().main_cache_dir_path = os.path.abspath(
         os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
             "..", "..", "..",

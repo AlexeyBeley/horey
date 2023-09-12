@@ -3,6 +3,7 @@ AWS rds client to handle rds service API requests.
 """
 import datetime
 import time
+from collections import defaultdict
 
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.rds_db_instance import RDSDBInstance
@@ -31,6 +32,7 @@ class RDSClient(Boto3Client):
 
     NEXT_PAGE_REQUEST_KEY = "Marker"
     NEXT_PAGE_RESPONSE_KEY = "Marker"
+    ENGINE_VERSIONS = defaultdict(dict)
     """
     Client to handle specific aws service API calls.
     """
@@ -80,20 +82,44 @@ class RDSClient(Boto3Client):
 
         return final_result
 
-    def get_all_db_clusters(self, region=None, full_information=False):
+    # pylint: disable= too-many-arguments
+    def yield_db_clusters(self, region=None, update_info=False, full_information=True, filters_req=None, get_tags=True):
+        """
+        Yield db_clusters
+
+        :return:
+        """
+
+        regional_fetcher_generator = self.yield_db_clusters_raw
+        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                  RDSDBCluster,
+                                                  update_info=update_info,
+                                                  full_information_callback=self.update_cluster_full_information if full_information else None,
+                                                  get_tags_callback=self.get_tags if get_tags else None,
+                                                  regions=[region] if region else None,
+                                                  filters_req=filters_req):
+            yield certificate
+
+    def yield_db_clusters_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.client.describe_db_clusters, "DBClusters", filters_req=filters_req
+        ):
+            yield dict_src
+
+
+    def get_all_db_clusters(self, region=None, full_information=False, filters_req=None, get_tags=None):
         """
         Get all db_clusters in all regions.
         :return:
         """
 
-        if region is not None:
-            return self.get_region_db_clusters(region, full_information=full_information)
-
-        final_result = []
-        for _region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_db_clusters(_region, full_information=full_information)
-
-        return final_result
+        return list(self.yield_db_clusters(region=region, filters_req=filters_req, get_tags=get_tags, full_information=full_information))
 
     def get_region_db_clusters(self, region, filters=None, update_tags=True, full_information=False):
         """
@@ -105,27 +131,18 @@ class RDSClient(Boto3Client):
         :param full_information:
         :return:
         """
-        default_engine_versions = {}
-        final_result = []
-        if filters is not None:
-            filters = {"Filters": filters}
 
-        AWSAccount.set_aws_region(region)
-        for response in self.execute(
-                self.client.describe_db_clusters, "DBClusters", filters_req=filters
-        ):
-            obj = RDSDBCluster(response)
-            final_result.append(obj)
-            if full_information:
-                if obj.engine not in default_engine_versions:
-                    default_engine_versions[obj.engine] = self.get_default_engine_version(region, obj.engine)
+        return list(self.yield_db_clusters(region=region, filters_req=filters, get_tags=update_tags, full_information=full_information))
 
-                obj.default_engine_version = default_engine_versions[obj.engine]
+    def update_cluster_full_information(self, cluster):
+        """
+        Fetch excessive information.
 
-        if update_tags:
-            self.update_tags(final_result)
+        :param cluster:
+        :return:
+        """
 
-        return final_result
+        cluster.default_engine_version = self.get_default_engine_version(cluster.region, cluster.engine)
 
     def provision_db_cluster(self, db_cluster: RDSDBCluster, snapshot_id=None):
         """
@@ -833,17 +850,26 @@ class RDSClient(Boto3Client):
         :return:
         """
 
-        if len(objects) == 0:
-            return
         for obj in objects:
-            tags = list(
-                self.execute(
-                    self.client.list_tags_for_resource,
-                    "TagList",
-                    filters_req={"ResourceName": obj.arn},
-                )
+            self.get_tags(obj)
+
+    # pylint: disable= arguments-differ
+    def get_tags(self, obj):
+        """
+        Get tags for object
+
+        :param obj:
+        :return:
+        """
+
+        tags = list(
+            self.execute(
+                self.client.list_tags_for_resource,
+                "TagList",
+                filters_req={"ResourceName": obj.arn},
             )
-            obj.tags = tags
+        )
+        obj.tags = tags
 
     def get_default_engine_version(self, region, engine_type):
         """
@@ -854,6 +880,10 @@ class RDSClient(Boto3Client):
         :return:
         """
 
+        if per_region:=self.ENGINE_VERSIONS.get(region.region_mark):
+            if engine_version:=per_region[engine_type]:
+                return engine_version
+
         AWSAccount.set_aws_region(region)
 
         engine_versions = list(self.execute(
@@ -863,4 +893,6 @@ class RDSClient(Boto3Client):
         if len(engine_versions) != 1:
             raise RuntimeError(f"Can not find single default version for {engine_type} in {str(region)}")
 
-        return engine_versions[0]
+        self.ENGINE_VERSIONS[region.region_mark][engine_type] = engine_versions[0]
+
+        return self.ENGINE_VERSIONS[region.region_mark][engine_type]
