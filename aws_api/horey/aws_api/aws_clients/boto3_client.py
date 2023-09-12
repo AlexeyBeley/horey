@@ -627,7 +627,7 @@ class Boto3Client:
         :return:
         """
 
-        if not objects:
+        if objects is None:
             return
 
         objects_dicts = [obj.convert_to_dict() for obj in objects]
@@ -794,6 +794,5 @@ class Boto3Client:
             obj.region = region
             final_result.append(obj)
             yield obj
-
         if filters_req is None:
             self.cache_objects(final_result, file_name)

@@ -59,6 +59,14 @@ def test_init_aws_cleaner(configuration):
     assert isinstance(AWSCleaner(configuration), AWSCleaner)
 
 
+
+@pytest.mark.todo
+def test_init_load_balancers(configuration: AWSCleanerConfigurationPolicy):
+    cleaner = AWSCleaner(configuration)
+    cleaner.init_load_balancers()
+    assert len(cleaner.aws_api.load_balancers) > 1
+
+
 @pytest.mark.wip
 def test_init_ec2_volumes(configuration):
     """
@@ -132,7 +140,7 @@ def test_cleanup_report_load_balancers(configuration):
     assert os.path.exists(configuration.load_balancer_report_file_path)
 
 
-@pytest.mark.todo
+@pytest.mark.wip
 def test_cleanup_report_ebs_volumes(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.cleanup_report_ebs_volumes()
@@ -209,13 +217,6 @@ def test_init_hosted_zones(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     cleaner.init_hosted_zones()
     assert len(cleaner.aws_api.hosted_zones) > 0
-
-
-@pytest.mark.todo
-def test_init_load_balancers(configuration: AWSCleanerConfigurationPolicy):
-    cleaner = AWSCleaner(configuration)
-    cleaner.init_load_balancers()
-    assert len(cleaner.aws_api.load_balancers) > 1
 
 
 @pytest.mark.todo

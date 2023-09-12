@@ -420,3 +420,23 @@ def test_dispose_volume():
     volume.tags = [{"Key": "Name", "Value": "test"}]
     ec2_client.dispose_volume(volume)
     assert volume.id is not None
+
+@pytest.mark.wip
+def test_yield_route_tables():
+    ec2_client = EC2Client()
+    ret = None
+    for ret in ec2_client.yield_route_tables(region=Region.get_region("us-west-2")):
+        break
+    assert ret.id is not None
+
+@pytest.mark.wip
+def test_get_all_route_tables():
+    ec2_client = EC2Client()
+    ret = ec2_client.get_all_route_tables()
+    assert len(ret) > 0
+
+@pytest.mark.wip
+def test_get_region_route_tables():
+    ec2_client = EC2Client()
+    ret = ec2_client.get_region_route_tables(Region.get_region("us-west-2"))
+    assert len(ret) > 0

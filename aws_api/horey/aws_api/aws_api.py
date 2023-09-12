@@ -39,7 +39,6 @@ from horey.aws_api.aws_clients.s3_client import S3Client
 from horey.aws_api.aws_services_entities.s3_bucket import S3Bucket
 
 from horey.aws_api.aws_clients.elbv2_client import ELBV2Client
-from horey.aws_api.aws_services_entities.elbv2_load_balancer import LoadBalancer
 
 from horey.aws_api.aws_clients.acm_client import ACMClient
 from horey.aws_api.aws_services_entities.acm_certificate import ACMCertificate
@@ -1319,20 +1318,14 @@ class AWSAPI:
 
         self.lambdas = objects
 
-    def init_load_balancers(self, from_cache=False, cache_file=None, region=None):
+    def init_load_balancers(self, region=None):
         """
         Init elbs v2
 
-        @param from_cache:
-        @param cache_file:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, LoadBalancer)
-        else:
-            objects = self.elbv2_client.get_all_load_balancers(region=region)
 
-        self.load_balancers = objects
+        self.load_balancers = self.elbv2_client.get_all_load_balancers(region=region)
 
     def init_classic_load_balancers(self, from_cache=False, cache_file=None):
         """

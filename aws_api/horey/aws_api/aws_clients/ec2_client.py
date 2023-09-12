@@ -1242,45 +1242,52 @@ class EC2Client(Boto3Client):
 
         return final_result
 
-    def get_all_route_tables(self, full_information=True, region=None):
+    def yield_route_tables(self, region=None, update_info=False, filters_req=None):
+        """
+        Yield over all route_tables.
+
+        :return:
+        """
+
+        regional_fetcher_generator = self.yield_route_tables_raw
+        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                  RouteTable,
+                                                  update_info=update_info,
+                                                  regions=[region] if region else None,
+                                                                    filters_req=filters_req):
+            yield certificate
+
+    def yield_route_tables_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.client.describe_route_tables, "RouteTables", filters_req=filters_req
+        ):
+            yield dict_src
+
+    def get_all_route_tables(self, region=None):
         """
         Standard
 
-        @param full_information:
         @param region:
         @return:
         """
-        if region is not None:
-            return self.get_region_route_tables(
-                region, full_information=full_information
-            )
 
-        final_result = []
-        for _region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_route_tables(
-                _region, full_information=full_information
-            )
-        return final_result
+        return list(self.yield_route_tables(region=region))
 
-    def get_region_route_tables(self, region, full_information=True):
+    def get_region_route_tables(self, region):
         """
         Standard
 
         @param region:
-        @param full_information:
         @return:
         """
-        AWSAccount.set_aws_region(region)
-        final_result = []
 
-        for response in self.execute(self.client.describe_route_tables, "RouteTables"):
-            obj = RouteTable(response)
-            if full_information is True:
-                pass
-
-            final_result.append(obj)
-
-        return final_result
+        return list(self.yield_route_tables(region=region))
 
     def get_all_elastic_addresses(self, full_information=True, region=None):
         """
