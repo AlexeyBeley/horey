@@ -21,60 +21,74 @@ class ELBV2Client(Boto3Client):
         client_name = "elbv2"
         super().__init__(client_name)
 
-    def get_all_load_balancers(self, full_information=True, region=None):
+    # pylint: disable= too-many-arguments
+    def get_all_load_balancers(self, region=None, update_info=False, filters_req=None, full_information=True, get_tags=True):
         """
-        Get all loadnbalancers
-        :param full_information:
+        Get all load balancers.
+
+        :param filters_req:
         :param region:
+        :param update_info:
+        :param full_information:
         :return:
         """
-        if region is not None:
-            return self.get_region_load_balancers(
-                region, full_information=full_information
-            )
 
-        final_result = []
-        for _region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_load_balancers(
-                _region, full_information=full_information
-            )
-        return final_result
+        return list(self.yield_load_balancers(region=region, update_info=update_info, filters_req=filters_req, full_information=full_information, get_tags=get_tags))
 
+    # pylint: disable= too-many-arguments
+    def yield_load_balancers(self, region=None, update_info=False, filters_req=None, full_information=True, get_tags=True):
+        """
+        Yield load_balancers
+
+        :return:
+        """
+
+        regional_fetcher_generator = self.yield_load_balancers_raw
+        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                  LoadBalancer,
+                                                  update_info=update_info,
+                                                  full_information_callback=self.get_load_balancer_full_information if full_information else None,
+                                                  get_tags_callback=self.get_tags if get_tags else None,
+                                                  regions=[region] if region else None,
+                                                  filters_req=filters_req):
+            yield certificate
+
+    def yield_load_balancers_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.client.describe_load_balancers, "LoadBalancers", filters_req=filters_req
+        ):
+            yield dict_src
+
+    # pylint: disable= too-many-arguments
     def get_region_load_balancers(
-        self, region, names=None, full_information=True, get_tags=True
-    ):
+        self, region, names=None, full_information=True, get_tags=True, filters_req=None):
         """
         Standard
 
         @param region:
         @param names:
         @param full_information:
+        @param filters_req:
         @param get_tags:
         @return:
+
         """
         AWSAccount.set_aws_region(region)
-        final_result = []
 
-        filters_req = None
         if names is not None:
-            filters_req = {"Names": names}
+            logger.error("DEPRECATION WARNING! Use filters_req")
+            if filters_req is None:
+                filters_req = {}
+            filters_req["Names"] = names
 
-        for response in self.execute(
-            self.client.describe_load_balancers,
-            "LoadBalancers",
-            filters_req=filters_req,
-            exception_ignore_callback=lambda error: "LoadBalancerNotFound"
-            in repr(error),
-        ):
-            obj = LoadBalancer(response)
-            final_result.append(obj)
+        return list(self.yield_load_balancers(full_information=full_information, region=region, get_tags=get_tags, filters_req=filters_req))
 
-            if full_information:
-                self.get_load_balancer_full_information(obj)
-
-        if get_tags:
-            self.update_tags(final_result)
-        return final_result
 
     def update_tags(self, objects):
         """
@@ -94,6 +108,23 @@ class ELBV2Client(Boto3Client):
                 objects, {"arn": response["ResourceArn"]}, max_count=1
             )[0]
             obj.tags = response["Tags"]
+
+    # pylint: disable= arguments-differ
+    def get_tags(self, obj):
+        """
+        Standard
+
+        @param obj:
+        @return:
+        """
+
+        for response in self.execute(
+            self.client.describe_tags,
+            "TagDescriptions",
+            filters_req={"ResourceArns": [obj.arn]},
+        ):
+            obj.tags = response["Tags"]
+
 
     def get_load_balancer_full_information(self, load_balancer):
         """

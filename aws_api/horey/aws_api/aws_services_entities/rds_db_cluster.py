@@ -43,7 +43,7 @@ class RDSDBCluster(AwsObject):
         self.copy_tags_to_snapshot = None
         self.arn = None
         self.status = None
-        self.skip_final_snapshot = None
+        self.skip_final_snapshot = False
         self.default_engine_version = None
 
         if from_cache:

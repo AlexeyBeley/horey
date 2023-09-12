@@ -122,7 +122,7 @@ def test_sub_cleanup_report_ebs_volumes_types(configuration):
     assert ret is not None
 
 
-@pytest.mark.todo
+@pytest.mark.wip
 def test_cleanup_report_load_balancers(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.cleanup_report_load_balancers()

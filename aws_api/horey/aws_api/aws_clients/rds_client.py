@@ -181,6 +181,7 @@ class RDSClient(Boto3Client):
         for response in self.execute(
                 self.client.create_db_cluster, "DBCluster", filters_req=request_dict
         ):
+            self.clear_cache(RDSDBCluster)
             return response
 
     def dispose_db_cluster(self, db_cluster: RDSDBCluster):
@@ -239,6 +240,8 @@ class RDSClient(Boto3Client):
         for response in self.execute(
                 self.client.delete_db_cluster, "DBCluster", filters_req=request_dict
         ):
+
+            self.clear_cache(RDSDBCluster)
             return response
 
     def dispose_db_instance(self, db_instance: RDSDBInstance):
@@ -262,6 +265,7 @@ class RDSClient(Boto3Client):
         for response in self.execute(
                 self.client.delete_db_instance, "DBInstance", filters_req=request_dict
         ):
+            self.clear_cache(RDSDBInstance)
             return response
 
     def restore_db_cluster_from_snapshot(self, db_cluster, snapshot_id):
@@ -289,6 +293,7 @@ class RDSClient(Boto3Client):
                 "DBCluster",
                 filters_req=request_dict,
         ):
+            self.clear_cache(RDSDBCluster)
             return response
 
     def get_all_db_subnet_groups(self, region=None):
@@ -611,6 +616,7 @@ class RDSClient(Boto3Client):
         for response in self.execute(
                 self.client.create_db_instance, "DBInstance", filters_req=request_dict
         ):
+            self.clear_cache(RDSDBInstance)
             return response
 
     def copy_db_cluster_snapshot(
@@ -814,6 +820,7 @@ class RDSClient(Boto3Client):
         for response in self.execute(
                 self.client.modify_db_cluster, "DBCluster", filters_req=request_dict
         ):
+            self.clear_cache(RDSDBCluster)
             return response
 
     def modify_db_instance(self, db_instance: RDSDBCluster):
@@ -840,6 +847,7 @@ class RDSClient(Boto3Client):
         for response in self.execute(
                 self.client.modify_db_instance, "DBInstance", filters_req=request_dict
         ):
+            self.clear_cache(RDSDBInstance)
             return response
 
     def update_tags(self, objects):

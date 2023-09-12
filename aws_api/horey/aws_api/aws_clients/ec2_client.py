@@ -1860,6 +1860,7 @@ class EC2Client(Boto3Client):
         @param wait_until_active:
         @return:
         """
+
         filter_by_tag = {
             "Filters": [{"Name": "tag:Name", "Values": [ec2_instance.get_tagname()]}]
         }

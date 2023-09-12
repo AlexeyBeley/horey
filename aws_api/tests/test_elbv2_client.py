@@ -7,6 +7,7 @@ import pytest
 
 from horey.aws_api.aws_clients.elbv2_client import ELBV2Client
 from horey.aws_api.aws_services_entities.elbv2_load_balancer import LoadBalancer
+from horey.aws_api.aws_services_entities.elbv2_target_group import ELBV2TargetGroup
 
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.base_entities.region import Region
@@ -33,6 +34,10 @@ client = ELBV2Client()
 
 # pylint: disable= missing-function-docstring
 
+@pytest.mark.done
+def test_clear_cache():
+    client.clear_cache(ELBV2TargetGroup)
+    client.clear_cache(LoadBalancer)
 
 def test_init_client():
     assert isinstance(ELBV2Client(), ELBV2Client)
@@ -159,19 +164,48 @@ def test_set_rule_priorities_raw():
     ret = client.set_rule_priorities_raw(request)
     print(ret)
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_get_all_target_groups_not_full_information():
     response = client.get_all_target_groups(full_information=False)
     assert len(response) > 1
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_get_all_target_groups_full_information():
     response = client.get_all_target_groups(full_information=True)
     assert len(response) > 1
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_yield_target_groups():
     obj = None
     for obj in client.yield_target_groups():
+        break
+    assert obj.arn is not None
+
+# pylint: disable= missing-function-docstring
+
+@pytest.mark.done
+def test_get_all_load_balancers():
+    response = client.get_all_load_balancers()
+    assert len(response) > 1
+
+@pytest.mark.done
+def test_get_all_load_balancers_no_full_info_no_tags():
+    response = client.get_all_load_balancers(full_information=False, get_tags=False)
+    assert len(response) > 1
+
+@pytest.mark.done
+def test_get_all_load_balancers_full_info_no_tags():
+    response = client.get_all_load_balancers(full_information=True, get_tags=False)
+    assert len(response) > 1
+
+@pytest.mark.done
+def test_get_all_load_balancers_no_full_info_tags():
+    response = client.get_all_load_balancers(full_information=False, get_tags=True)
+    assert len(response) > 1
+
+@pytest.mark.done
+def test_yield_load_balancers():
+    obj = None
+    for obj in client.yield_load_balancers():
         break
     assert obj.arn is not None
