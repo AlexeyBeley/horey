@@ -115,7 +115,8 @@ class SecretsManagerClient(Boto3Client):
             AWSAccount.set_aws_region(region)
         else:
             region = AWSAccount.get_aws_region()
-        logger.info(f"Fetching secret value for secret '{secret_id}' region: {region.region_mark}")
+            logger.info("getting region")
+        logger.info(f"Fetching secret value for secret '{secret_id}' region: {region}")
 
         for response in self.execute(
             self.client.get_secret_value,
