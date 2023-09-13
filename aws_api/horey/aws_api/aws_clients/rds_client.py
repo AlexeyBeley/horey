@@ -112,7 +112,6 @@ class RDSClient(Boto3Client):
         ):
             yield dict_src
 
-
     def get_all_db_clusters(self, region=None, full_information=False, filters_req=None, get_tags=None):
         """
         Get all db_clusters in all regions.

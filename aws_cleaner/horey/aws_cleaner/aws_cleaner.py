@@ -134,9 +134,6 @@ class AWSCleaner:
         """
 
         if not permissions_only and not self.aws_api.lambdas:
-            # cache_file = os.path.join(self.configuration.cache_dir, "lambdas.json")
-            # self.aws_api.cache_objects(self.aws_api.lambdas, cache_file, indent=4)
-            # self.aws_api.init_lambdas(from_cache=True, cache_file=cache_file)
             self.aws_api.init_lambdas()
 
         return [{

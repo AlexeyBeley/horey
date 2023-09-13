@@ -30,6 +30,37 @@ class CloudWatchLogsClient(Boto3Client):
         client_name = "logs"
         super().__init__(client_name)
 
+    # pylint: disable= too-many-arguments
+    def yield_log_groups(self, region=None, update_info=False, full_information=True, filters_req=None, get_tags=True):
+        """
+        Yield log_groups
+
+        :return:
+        """
+
+        full_info_callback = self.update_log_group_full_information if full_information else None
+        get_tags_callback = self.get_tags if get_tags else None
+        regional_fetcher_generator = self.yield_log_groups_raw
+        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                  CloudWatchLogGroup,
+                                                  update_info=update_info,
+                                                  full_information_callback=full_info_callback,
+                                                  get_tags_callback= get_tags_callback,
+                                                  regions=[region] if region else None,
+                                                  filters_req=filters_req):
+            yield certificate
+
+    def yield_log_groups_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+        for dict_src in self.execute(
+                self.client.describe_log_groups, "logGroups", filters_req=filters_req
+        ):
+            yield dict_src
+
     def get_cloud_watch_log_groups(self, full_information=False):
         """
         Be sure you know what you do, when you set full_information=True.
@@ -40,12 +71,7 @@ class CloudWatchLogsClient(Boto3Client):
         :return:
         """
 
-        final_result = []
-        for region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_cloud_watch_log_groups(
-                region, full_information=full_information
-            )
-        return final_result
+        return list(self.yield_log_groups(full_information=full_information))
 
     def get_region_cloud_watch_log_groups(self, region, full_information=False, get_tags=True):
         """
@@ -57,29 +83,7 @@ class CloudWatchLogsClient(Boto3Client):
         :return:
         """
 
-        final_result = []
-        AWSAccount.set_aws_region(region)
-        for result in self.execute(self.client.describe_log_groups, "logGroups"):
-            obj = CloudWatchLogGroup(result)
-            if full_information:
-                self.update_log_group_full_information(obj)
-            if get_tags:
-                arn = obj.arn
-                if arn.endswith(":*"):
-                    # WHY? Because AWS has f*ng bug!!! They end "insights" ARN with ":*" FFFFFFK
-                    # pylint: disable= unsubscriptable-object
-                    arn = obj.arn[:-2]
-
-                request = {"resourceArn": arn}
-                tags = list(self.execute(self.client.list_tags_for_resource, "tags", filters_req=request))
-
-                if tags != [{}]:
-                    obj.tags = tags
-
-            obj.region = AWSAccount.get_aws_region()
-            final_result.append(obj)
-
-        return final_result
+        return list(self.yield_log_groups(region=region, full_information=full_information, get_tags=get_tags))
 
     def get_log_group_metric_filters(self):
         """
@@ -275,3 +279,24 @@ class CloudWatchLogsClient(Boto3Client):
             self.client.put_log_events, None, raw_data=True, filters_req=request_dict
         ):
             return response
+
+    # pylint: disable= arguments-differ
+    def get_tags(self, obj):
+        """
+        Get tags
+
+        :param obj:
+        :return:
+        """
+
+        arn = obj.arn
+        if arn.endswith(":*"):
+            # WHY? Because AWS has f*ng bug!!! They end "insights" ARN with ":*" FFFFFFK
+            # pylint: disable= unsubscriptable-object
+            arn = obj.arn[:-2]
+
+        request = {"resourceArn": arn}
+        tags = list(self.execute(self.client.list_tags_for_resource, "tags", filters_req=request))
+
+        if tags != [{}]:
+            obj.tags = tags

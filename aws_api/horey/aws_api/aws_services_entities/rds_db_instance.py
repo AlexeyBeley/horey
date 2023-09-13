@@ -41,7 +41,6 @@ class RDSDBInstance(AwsObject):
             self._init_object_from_cache(dict_src)
             return
 
-
         self.update_from_raw_response(dict_src)
 
     def _init_object_from_cache(self, dict_src):

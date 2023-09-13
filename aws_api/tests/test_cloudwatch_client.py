@@ -10,7 +10,7 @@ from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlar
 from horey.aws_api.aws_services_entities.cloud_watch_metric import CloudWatchMetric
 from horey.aws_api.aws_clients.cloud_watch_client import CloudWatchClient
 
-CloudWatchClient.main_cache_dir_path = os.path.abspath(
+CloudWatchClient().main_cache_dir_path = os.path.abspath(
         os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
             "..", "..", "..",

@@ -52,7 +52,6 @@ from horey.aws_api.aws_clients.elb_client import ELBClient
 from horey.aws_api.aws_services_entities.elb_load_balancer import ClassicLoadBalancer
 
 from horey.aws_api.aws_clients.lambda_client import LambdaClient
-from horey.aws_api.aws_services_entities.aws_lambda import AWSLambda
 
 from horey.aws_api.aws_clients.route53_client import Route53Client
 from horey.aws_api.aws_services_entities.route53_hosted_zone import HostedZone
@@ -1301,22 +1300,16 @@ class AWSAPI:
                 )
                 continue
 
-    def init_lambdas(self, from_cache=False, cache_file=None, full_information=True):
+    def init_lambdas(self, full_information=True):
         """
         Init AWS lambdas
-        @param from_cache:
-        @param cache_file:
         @param full_information:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, AWSLambda)
-        else:
-            objects = self.lambda_client.get_all_lambdas(
+
+        self.lambdas = self.lambda_client.get_all_lambdas(
                 full_information=full_information
             )
-
-        self.lambdas = objects
 
     def init_load_balancers(self, region=None):
         """
