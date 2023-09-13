@@ -175,7 +175,7 @@ def test_cleanup_report_network_interfaces(configuration):
     assert os.path.exists(configuration.ec2_interfaces_report_file_path)
 
 
-@pytest.mark.todo
+@pytest.mark.wip
 def test_cleanup_report_security_groups(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.cleanup_report_security_groups()
@@ -193,21 +193,21 @@ def test_cleanup_report_ecr_images(configuration):
     assert os.path.exists(configuration.ec2_security_groups_report_file_path)
 
 
-@pytest.mark.done
+@pytest.mark.wip
 def test_init_cloudwatch_metrics(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     cleaner.init_cloudwatch_metrics()
     assert len(cleaner.aws_api.cloud_watch_metrics) > 0
 
 
-@pytest.mark.done
+@pytest.mark.wip
 def test_init_cloudwatch_alarms(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     cleaner.init_cloudwatch_alarms()
     assert len(cleaner.aws_api.cloud_watch_alarms) > 0
 
 
-@pytest.mark.todo
+@pytest.mark.wip
 def test_init_acm_certificates(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     cleaner.init_acm_certificates()

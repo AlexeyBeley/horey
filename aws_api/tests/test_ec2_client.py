@@ -191,14 +191,6 @@ DICT_AUTHORIZE_SECURITY_GROUP_INGRESS_REQUEST_2 = {
     ],
 }
 
-
-@pytest.mark.skip
-def test_get_all_security_groups():
-    client = EC2Client()
-    sec_groups = client.get_all_security_groups()
-    assert isinstance(sec_groups, list)
-
-
 @pytest.mark.skip
 def test_raw_create_managed_prefix_list():
     request = {
@@ -459,4 +451,47 @@ def test_get_all_subnets():
 def test_get_region_subnets():
     ec2_client = EC2Client()
     ret = ec2_client.get_region_subnets(Region.get_region("us-west-2"))
+    assert len(ret) > 0
+
+
+
+@pytest.mark.wip
+def test_yield_security_groups():
+    ec2_client = EC2Client()
+    ret = None
+    for ret in ec2_client.yield_security_groups(region=Region.get_region("us-west-2")):
+        break
+    assert ret.id is not None
+
+@pytest.mark.wip
+def test_get_all_security_groups():
+    ec2_client = EC2Client()
+    ret = ec2_client.get_all_security_groups()
+    assert len(ret) > 0
+
+@pytest.mark.wip
+def test_get_region_security_groups():
+    ec2_client = EC2Client()
+    ret = ec2_client.get_region_security_groups(Region.get_region("us-west-2"))
+    assert len(ret) > 0
+
+
+@pytest.mark.wip
+def test_yield_instances():
+    ec2_client = EC2Client()
+    ret = None
+    for ret in ec2_client.yield_instances(region=Region.get_region("us-west-2")):
+        break
+    assert ret.id is not None
+
+@pytest.mark.wip
+def test_get_all_instances():
+    ec2_client = EC2Client()
+    ret = ec2_client.get_all_instances()
+    assert len(ret) > 0
+
+@pytest.mark.wip
+def test_get_region_instances():
+    ec2_client = EC2Client()
+    ret = ec2_client.get_region_instances(Region.get_region("us-west-2"))
     assert len(ret) > 0

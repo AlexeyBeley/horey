@@ -1191,7 +1191,6 @@ class AWSAPI:
         @return:
         """
         log_groups = self.cloud_watch_logs_client.get_cloud_watch_log_groups(
-            full_information=False
         )
         for log_group in log_groups:
             if log_group_names is not None:
@@ -1749,21 +1748,19 @@ class AWSAPI:
         self.kms_keys = objects
 
     def init_security_groups(
-            self, from_cache=False, cache_file=None, full_information=False
+            self, from_cache=False, cache_file=None
     ):
         """
         Init security groups
 
         @param from_cache:
         @param cache_file:
-        @param full_information:
         @return:
         """
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, EC2SecurityGroup)
         else:
             objects = self.ec2_client.get_all_security_groups(
-                full_information=full_information
             )
         self.security_groups = objects
 
@@ -3877,13 +3874,12 @@ class AWSAPI:
         snapshot_id = snapshot.id if snapshot is not None else None
         self.rds_client.provision_db_cluster(cluster, snapshot_id=snapshot_id)
 
-    def get_security_group_by_vpc_and_name(self, vpc, name, full_information=False):
+    def get_security_group_by_vpc_and_name(self, vpc, name):
         """
         Find security group in a vpc by its name.
 
         @param vpc:
         @param name:
-        @param full_information:
         @return:
         """
 
@@ -3892,7 +3888,7 @@ class AWSAPI:
             {"Name": "group-name", "Values": [name]},
         ]
         security_groups = self.ec2_client.get_region_security_groups(
-            vpc.region, full_information=full_information, filters=filters
+            vpc.region, filters=filters
         )
         if len(security_groups) != 1:
             raise RuntimeError(f"Can not find security group {name} in vpc {vpc.id}")

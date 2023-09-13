@@ -198,12 +198,12 @@ class EC2Client(Boto3Client):
         """
 
         regional_fetcher_generator = self.yield_network_interfaces_raw
-        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
+        for dict_src in self.regional_service_entities_generator(regional_fetcher_generator,
                                                   NetworkInterface,
                                                   update_info=update_info,
                                                   regions=[region] if region else None,
                                                                     filters_req=filters_req):
-            yield certificate
+            yield dict_src
 
     def yield_network_interfaces_raw(self, filters_req=None):
         """
@@ -226,21 +226,41 @@ class EC2Client(Boto3Client):
 
         return list(self.yield_network_interfaces(region=region, update_info=update_info))
 
+    def yield_instances(self, region=None, update_info=False, filters_req=None):
+        """
+        Yield over all volumes.
+
+        :return:
+        """
+
+        regional_fetcher_generator = self.yield_instances_raw
+        for dict_src in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                  EC2Instance,
+                                                  update_info=update_info,
+                                                  regions=[region] if region else None,
+                                                                    filters_req=filters_req):
+            yield dict_src
+
+    def yield_instances_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        for dict_reservations in self.execute(
+                self.client.describe_instances, "Reservations", filters_req=filters_req
+        ):
+            for dict_src in dict_reservations["Instances"]:
+                yield dict_src
+
     def get_all_instances(self, region=None):
         """
         Get all ec2 instances in current region.
         :return:
         """
 
-        if region is not None:
-            return self.get_region_instances(region)
-
-        final_result = []
-
-        for _region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_instances(_region)
-
-        return final_result
+        return list(self.yield_instances(region=region))
 
     def get_region_instances(self, region, filters=None):
         """
@@ -251,57 +271,54 @@ class EC2Client(Boto3Client):
         @return:
         """
 
-        AWSAccount.set_aws_region(region)
-        final_result = []
+        return list(self.yield_instances(region=region, filters_req=filters))
 
-        for instance in self.execute(
-                self.client.describe_instances, "Reservations", filters_req=filters
-        ):
-            final_result.extend(instance["Instances"])
 
-        return [EC2Instance(instance) for instance in final_result]
-
-    def get_all_security_groups(self, full_information=False):
+    def yield_security_groups(self, region=None, update_info=False, filters_req=None):
         """
-        Get all security groups in the region.
-        :param full_information:
+        Yield over all volumes.
+
         :return:
         """
-        final_result = []
 
-        for _region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_security_groups(_region, full_information=full_information)
+        regional_fetcher_generator = self.yield_security_groups_raw
+        for dict_src in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                  EC2SecurityGroup,
+                                                  update_info=update_info,
+                                                  regions=[region] if region else None,
+                                                                    filters_req=filters_req):
+            yield dict_src
 
-        return final_result
+    def yield_security_groups_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
 
-    def get_region_security_groups(self, region, full_information=False, filters=None):
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.client.describe_security_groups, "SecurityGroups", filters_req=filters_req
+        ):
+            yield dict_src
+
+    def get_all_security_groups(self):
+        """
+        Get all security groups in the region.
+        :return:
+        """
+
+        return list(self.yield_security_groups())
+
+    def get_region_security_groups(self, region, filters=None):
         """
         Standard.
 
         @param region:
-        @param full_information:
         @param filters:
         @return:
         """
 
-        logger.info(f"Fetching region '{region.region_mark}' security groups")
-        AWSAccount.set_aws_region(region)
-        final_result = []
-        filters_req = {}
-        if filters is not None:
-            filters_req["Filters"] = filters
-        for ret in self.execute(
-                self.client.describe_security_groups,
-                "SecurityGroups",
-                filters_req=filters_req,
-        ):
-            obj = EC2SecurityGroup(ret)
-            if full_information is True:
-                raise NotImplementedError()
-
-            final_result.append(obj)
-
-        return final_result
+        return list(self.yield_security_groups(region=region, filters_req=filters))
 
     def update_security_group_information(self, security_group):
         """
@@ -324,7 +341,7 @@ class EC2Client(Boto3Client):
             filters.append({"Name": "vpc-id", "Values": [security_group.vpc_id]})
 
         security_groups = self.get_region_security_groups(
-            security_group.region, full_information=False, filters=filters
+            security_group.region, filters=filters
         )
         if len(security_groups) > 1:
             raise ValueError(
