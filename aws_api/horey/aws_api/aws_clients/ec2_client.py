@@ -2371,7 +2371,7 @@ class EC2Client(Boto3Client):
         ):
             yield dict_src
 
-    def get_all_volumes(self, region=None, update_info=None, filters_req=None):
+    def get_all_volumes(self, region=None, update_info=False, filters_req=None):
         """
         Get all ec2 volumes in current region.
 

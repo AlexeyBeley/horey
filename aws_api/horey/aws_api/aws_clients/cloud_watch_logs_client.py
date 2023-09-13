@@ -31,20 +31,19 @@ class CloudWatchLogsClient(Boto3Client):
         super().__init__(client_name)
 
     # pylint: disable= too-many-arguments
-    def yield_log_groups(self, region=None, update_info=False, full_information=True, filters_req=None, get_tags=True):
+    def yield_log_groups(self, region=None, update_info=False, filters_req=None, get_tags=True):
         """
         Yield log_groups
 
         :return:
         """
 
-        full_info_callback = self.update_log_group_full_information if full_information else None
         get_tags_callback = self.get_tags if get_tags else None
         regional_fetcher_generator = self.yield_log_groups_raw
         for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
                                                   CloudWatchLogGroup,
                                                   update_info=update_info,
-                                                  full_information_callback=full_info_callback,
+                                                  full_information_callback=None,
                                                   get_tags_callback= get_tags_callback,
                                                   regions=[region] if region else None,
                                                   filters_req=filters_req):
@@ -61,29 +60,55 @@ class CloudWatchLogsClient(Boto3Client):
         ):
             yield dict_src
 
-    def get_cloud_watch_log_groups(self, full_information=False):
+    def get_cloud_watch_log_groups(self):
         """
         Be sure you know what you do, when you set full_information=True.
         This can kill your memory, if you have a lot of data in cloudwatch.
         Better using yield_log_group_streams_raw if you need.
 
-        :param full_information:
         :return:
         """
 
-        return list(self.yield_log_groups(full_information=full_information))
+        return list(self.yield_log_groups())
 
-    def get_region_cloud_watch_log_groups(self, region, full_information=False, get_tags=True):
+    def get_region_cloud_watch_log_groups(self, region, get_tags=True):
         """
         Get region log groups.
 
         :param region:
-        :param full_information:
         :param get_tags:
         :return:
         """
 
-        return list(self.yield_log_groups(region=region, full_information=full_information, get_tags=get_tags))
+        return list(self.yield_log_groups(region=region, get_tags=get_tags))
+
+    def yield_log_group_metric_filters(self, region=None, update_info=False, filters_req=None):
+        """
+        Yield log_group_metric_filters
+
+        :return:
+        """
+
+        regional_fetcher_generator = self.yield_log_group_metric_filters_raw
+        for dict_src in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                  CloudWatchLogGroupMetricFilter,
+                                                  update_info=update_info,
+                                                  regions=[region] if region else None,
+                                                  filters_req=filters_req):
+            yield dict_src
+
+    def yield_log_group_metric_filters_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.client.describe_metric_filters, "metricFilters", filters_req=filters_req
+        ):
+            yield dict_src
+
 
     def get_log_group_metric_filters(self):
         """
@@ -92,10 +117,7 @@ class CloudWatchLogsClient(Boto3Client):
         :return:
         """
 
-        final_result = []
-        for region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_log_group_metric_filters(region)
-        return final_result
+        return list(self.yield_log_group_metric_filters())
 
     def get_region_log_group_metric_filters(self, region):
         """
@@ -105,30 +127,7 @@ class CloudWatchLogsClient(Boto3Client):
         @param region:
         """
 
-        final_result = []
-        AWSAccount.set_aws_region(region)
-        for result in self.execute(
-            self.client.describe_metric_filters, "metricFilters"
-        ):
-            obj = CloudWatchLogGroupMetricFilter(result)
-
-            obj.region = region
-            final_result.append(obj)
-        return final_result
-
-    def update_log_group_full_information(self, obj):
-        """
-        Fetches and updates obj
-        :param obj:
-        :return: None, raise if fails
-        """
-
-        for response in self.execute(
-            self.client.describe_log_streams,
-            "logStreams",
-            filters_req={"logGroupName": obj.name},
-        ):
-            obj.update_log_stream(response)
+        return list(self.yield_log_group_metric_filters(region=region))
 
     def yield_log_group_streams_raw(self, log_group):
         """

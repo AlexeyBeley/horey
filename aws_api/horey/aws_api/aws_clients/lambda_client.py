@@ -32,6 +32,35 @@ class LambdaClient(Boto3Client):
         client_name = "lambda"
         super().__init__(client_name)
 
+    # pylint: disable= too-many-arguments
+    def yield_lambdas(self, region=None, update_info=False, filters_req=None, full_information=True):
+        """
+        Yield lambdas
+
+        :return:
+        """
+
+        regional_fetcher_generator = self.yield_lambdas_raw
+        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                  AWSLambda,
+                                                  update_info=update_info,
+                                                  full_information_callback=self.update_lambda_full_information if full_information else None,
+                                                  regions=[region] if region else None,
+                                                  filters_req=filters_req):
+            yield certificate
+
+    def yield_lambdas_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.client.list_functions, "Functions", filters_req=filters_req
+        ):
+            yield dict_src
+
     def get_all_lambdas(self, full_information=True, region=None):
         """
         Get all lambda in all regions
@@ -39,16 +68,8 @@ class LambdaClient(Boto3Client):
         @param full_information:
         @param region:
         """
-        if region is not None:
-            return self.get_region_lambdas(region, full_information=full_information)
 
-        final_result = []
-        for _region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_lambdas(
-                _region, full_information=full_information
-            )
-
-        return final_result
+        return list(self.yield_lambdas(full_information=full_information, region=region))
 
     def get_region_lambdas(self, region, full_information=True):
         """
@@ -59,14 +80,7 @@ class LambdaClient(Boto3Client):
         @return:
         """
 
-        final_result = []
-        AWSAccount.set_aws_region(region)
-        for response in self.execute(self.client.list_functions, "Functions"):
-            obj = AWSLambda(response)
-            final_result.append(obj)
-            if full_information:
-                self.update_lambda_full_information(obj)
-        return final_result
+        return list(self.yield_lambdas(full_information=full_information, region=region))
 
     def update_lambda_full_information(self, obj: AWSLambda):
         """

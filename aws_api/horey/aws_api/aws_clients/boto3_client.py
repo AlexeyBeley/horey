@@ -210,7 +210,6 @@ class Boto3Client:
         :param internal_starting_token:
         :return:
         """
-
         for _page in self.client.get_paginator(func_command_name).paginate(
             PaginationConfig={self.NEXT_PAGE_REQUEST_KEY: starting_token}, **filters_req
         ):
@@ -739,6 +738,8 @@ class Boto3Client:
         :param regions:
         :return:
         """
+        if not isinstance(update_info, bool):
+            raise ValueError(f"update_info must be bool, received: '{update_info}'")
 
         if not regions:
             regions = AWSAccount.get_aws_account().regions.values()
