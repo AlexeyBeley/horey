@@ -1024,51 +1024,53 @@ class EC2Client(Boto3Client):
         managed_prefix_list.update_from_raw_create(raw_region_pl)
         return None
 
-    def get_all_amis(self, full_information=True, region=None):
+    def yield_amis(self, region=None, update_info=False, filters_req=None):
+        """
+        Yield over all amis.
+
+        :return:
+        """
+
+        regional_fetcher_generator = self.yield_amis_raw
+        for obj in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                  AMI,
+                                                  update_info=update_info,
+                                                  regions=[region] if region else None,
+                                                                    filters_req=filters_req):
+            yield obj
+
+    def yield_amis_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.client.describe_images, "Images", filters_req=filters_req
+        ):
+            yield dict_src
+
+    def get_all_amis(self, region=None):
         """
         Self explanatory.
 
-        @param full_information:
         @param region:
         @return:
         """
 
-        if region is not None:
-            return self.get_region_amis(region, full_information=full_information)
+        return list(self.yield_amis(region=region))
 
-        final_result = []
-        for _region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_amis(
-                _region, full_information=full_information
-            )
-        return final_result
-
-    def get_region_amis(self, region, full_information=True, custom_filters=None):
+    def get_region_amis(self, region, custom_filters=None):
         """
         Standard.
 
         @param region:
-        @param full_information:
         @param custom_filters:
         @return:
         """
 
-        AWSAccount.set_aws_region(region)
-        final_result = []
-
-        logger.info(f"Fetching amis for in region {region.region_mark}")
-
-        for response in self.execute(
-                self.client.describe_images, "Images", filters_req=custom_filters
-        ):
-            obj = AMI(response)
-            obj.region = AWSAccount.get_aws_region()
-            if full_information is True:
-                pass
-
-            final_result.append(obj)
-
-        return final_result
+        return list(self.yield_amis(region=region, filters_req=custom_filters))
 
     def create_image(self, instance: EC2Instance, timeout=600):
         """

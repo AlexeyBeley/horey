@@ -1270,6 +1270,8 @@ class AWSCleaner:
         permissions = self.init_rds(permissions_only=permissions_only)
         permissions += self.init_route_tables(permissions_only=permissions_only)
         permissions += self.init_security_groups(permissions_only=permissions_only)
+        permissions += self.init_subnets(permissions_only=permissions_only)
+
         if permissions_only:
             return permissions
 

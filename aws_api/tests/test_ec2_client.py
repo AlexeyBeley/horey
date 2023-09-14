@@ -413,7 +413,7 @@ def test_dispose_volume():
     ec2_client.dispose_volume(volume)
     assert volume.id is not None
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_yield_route_tables():
     ec2_client = EC2Client()
     ret = None
@@ -421,19 +421,19 @@ def test_yield_route_tables():
         break
     assert ret.id is not None
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_get_all_route_tables():
     ec2_client = EC2Client()
     ret = ec2_client.get_all_route_tables()
     assert len(ret) > 0
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_get_region_route_tables():
     ec2_client = EC2Client()
     ret = ec2_client.get_region_route_tables(Region.get_region("us-west-2"))
     assert len(ret) > 0
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_yield_subnets():
     ec2_client = EC2Client()
     ret = None
@@ -441,13 +441,13 @@ def test_yield_subnets():
         break
     assert ret.id is not None
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_get_all_subnets():
     ec2_client = EC2Client()
     ret = ec2_client.get_all_subnets()
     assert len(ret) > 0
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_get_region_subnets():
     ec2_client = EC2Client()
     ret = ec2_client.get_region_subnets(Region.get_region("us-west-2"))
@@ -455,7 +455,7 @@ def test_get_region_subnets():
 
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_yield_security_groups():
     ec2_client = EC2Client()
     ret = None
@@ -463,20 +463,20 @@ def test_yield_security_groups():
         break
     assert ret.id is not None
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_get_all_security_groups():
     ec2_client = EC2Client()
     ret = ec2_client.get_all_security_groups()
     assert len(ret) > 0
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_get_region_security_groups():
     ec2_client = EC2Client()
     ret = ec2_client.get_region_security_groups(Region.get_region("us-west-2"))
     assert len(ret) > 0
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_yield_instances():
     ec2_client = EC2Client()
     ret = None
@@ -484,14 +484,20 @@ def test_yield_instances():
         break
     assert ret.id is not None
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_get_all_instances():
     ec2_client = EC2Client()
     ret = ec2_client.get_all_instances()
     assert len(ret) > 0
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_get_region_instances():
     ec2_client = EC2Client()
     ret = ec2_client.get_region_instances(Region.get_region("us-west-2"))
+    assert len(ret) > 0
+
+@pytest.mark.wip
+def test_get_region_amis():
+    ec2_client = EC2Client()
+    ret = ec2_client.get_region_amis(Region.get_region("us-west-2"))
     assert len(ret) > 0

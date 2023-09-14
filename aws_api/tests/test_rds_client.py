@@ -245,7 +245,7 @@ def test_get_default_engine_version():
 def test_yield_db_clusters():
     client = RDSClient()
     cluster = None
-    for cluster in client.yield_db_clusters(Region.get_region("us-west-2"), "aurora-mysql"):
+    for cluster in client.yield_db_clusters(Region.get_region("us-west-2")):
         break
     assert cluster.arn is not None
 
@@ -269,3 +269,39 @@ def test_get_all_db_clusters_region_full_information_tags_true():
 def test_get_region_db_clusters():
     client = RDSClient()
     assert client.get_region_db_clusters(Region.get_region("us-west-2"))
+
+
+@pytest.mark.wip
+def test_get_region_db_subnet_groups():
+    client = RDSClient()
+    ret = client.get_region_db_subnet_groups(Region.get_region("us-west-2"))
+    assert len(ret) > 0
+
+@pytest.mark.wip
+def test_yield_db_subnet_groups():
+    client = RDSClient()
+    obj = None
+    for obj in client.yield_db_subnet_groups():
+        break
+    assert obj.arn is not None
+
+@pytest.mark.wip
+def test_get_region_db_cluster_parameter_groups():
+    client = RDSClient()
+    ret = client.get_region_db_cluster_parameter_groups(Region.get_region("us-west-2"))
+    assert len(ret) > 0
+
+@pytest.mark.wip
+def test_get_region_db_cluster_parameter_groups_full_info_false():
+    client = RDSClient()
+    ret = client.get_region_db_cluster_parameter_groups(Region.get_region("us-west-2"), full_information=False)
+    assert len(ret) > 0
+
+
+@pytest.mark.wip
+def test_yield_db_cluster_parameter_groups():
+    client = RDSClient()
+    obj = None
+    for obj in client.yield_db_cluster_parameter_groups():
+        break
+    assert obj.arn is not None

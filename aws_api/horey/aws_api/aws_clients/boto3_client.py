@@ -625,7 +625,6 @@ class Boto3Client:
         :param indent:
         :return:
         """
-
         if objects is None:
             return
 

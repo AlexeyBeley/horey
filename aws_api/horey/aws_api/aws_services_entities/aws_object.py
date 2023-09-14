@@ -74,9 +74,18 @@ class AwsObject:
 
         if value.get(self.SELF_CACHED_TYPE_KEY_NAME) == "datetime":
             # Example: datetime.datetime.strptime('2017-07-26 15:54:10.000000+0000', '%Y-%m-%d %H:%M:%S.%f%z')
-            new_value = datetime.datetime.strptime(
-                value["value"], "%Y-%m-%d %H:%M:%S.%f%z"
-            )
+            try:
+                new_value = datetime.datetime.strptime(
+                    value["value"], "%Y-%m-%d %H:%M:%S.%f%z"
+                )
+            except Exception as inst:
+                if len(value["value"].split(".")[-1]) == 6:
+                    new_value = datetime.datetime.strptime(
+                        value["value"], "%Y-%m-%d %H:%M:%S.%f"
+                    )
+                else:
+                    raise RuntimeError(value["value"]) from inst
+
         elif value.get(self.SELF_CACHED_TYPE_KEY_NAME) == "ip":
             new_value = IP(value["value"], from_dict=True)
         elif value.get(self.SELF_CACHED_TYPE_KEY_NAME) == "region":

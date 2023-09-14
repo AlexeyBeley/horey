@@ -140,7 +140,6 @@ class ECRClient(Boto3Client):
 
         return list(self.yield_images(region=region, filters_req=filters_req))
 
-
     # pylint: disable= too-many-arguments
     def yield_repositories(self, region=None, update_info=False, filters_req=None, get_tags=True):
         """
