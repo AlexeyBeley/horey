@@ -492,23 +492,16 @@ class AWSAPI:
 
         self.nat_gateways = objects
 
-    def init_dynamodb_tables(self, from_cache=False, cache_file=None, region=None, full_information=False):
+    def init_dynamodb_tables(self, region=None, full_information=False):
         """
         Self-explanatory.
 
-        @param from_cache:
-        @param cache_file:
         @param region:
         @param full_information:
         @return:
         """
 
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, DynamoDBTable)
-        else:
-            objects = self.dynamodb_client.get_all_tables(region=region, full_information=full_information)
-
-        self.dynamodb_tables = objects
+        self.dynamodb_tables = self.dynamodb_client.get_all_tables(region=region, full_information=full_information)
 
     def init_dynamodb_endpoints(self, from_cache=False, cache_file=None, region=None):
         """

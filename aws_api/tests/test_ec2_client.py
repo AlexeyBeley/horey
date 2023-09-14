@@ -17,7 +17,7 @@ from horey.aws_api.aws_services_entities.ec2_security_group import EC2SecurityGr
 from horey.aws_api.aws_services_entities.ec2_volume import EC2Volume
 from horey.aws_api.base_entities.region import Region
 
-EC2Client.main_cache_dir_path = os.path.abspath(
+EC2Client().main_cache_dir_path = os.path.abspath(
         os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
             "..", "..", "..",

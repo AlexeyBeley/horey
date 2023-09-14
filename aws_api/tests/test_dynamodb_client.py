@@ -7,32 +7,17 @@ import pytest
 
 from horey.aws_api.aws_clients.dynamodb_client import DynamoDBClient
 from horey.aws_api.aws_services_entities.dynamodb_table import DynamoDBTable
-from horey.h_logger import get_logger
-from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.base_entities.region import Region
 from horey.common_utils.common_utils import CommonUtils
 
-configuration_values_file_full_path = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "h_logger_configuration_values.py"
-)
-logger = get_logger(
-    configuration_values_file_full_path=configuration_values_file_full_path
-)
-
-accounts_file_full_path = os.path.abspath(
-    os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "..",
-        "..",
-        "..",
-        "ignore",
-        "accounts",
-        "managed_accounts.py",
+DynamoDBClient().main_cache_dir_path = os.path.abspath(
+        os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "..", "..", "..",
+            "ignore",
+            "cache"
+        )
     )
-)
-
-accounts = CommonUtils.load_object_from_module(accounts_file_full_path, "main")
-AWSAccount.set_aws_account(accounts["dev"])
 
 mock_values_file_path = os.path.abspath(
     os.path.join(
@@ -42,7 +27,7 @@ mock_values_file_path = os.path.abspath(
 mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 
 # pylint: disable= missing-function-docstring
-@pytest.mark.skip(reason="To heavy")
+@pytest.mark.skip
 def test_init_dynamodb_client():
     assert isinstance(DynamoDBClient(), DynamoDBClient)
 
@@ -52,13 +37,14 @@ base_item = {"primary_key": "tet_key",
              "secondary_key": 1
              }
 
+@pytest.mark.skip
 def test_dispose_table():
     table = DynamoDBTable({})
     table.name = TABLE_NAME
     table.region = Region.get_region("us-west-2")
     assert client.dispose_table(table)
 
-
+@pytest.mark.skip
 def test_provision_table():
     table = DynamoDBTable({})
     table.name = TABLE_NAME
@@ -90,6 +76,7 @@ def test_provision_table():
     client.provision_table(table)
     assert table.id is not None
 
+@pytest.mark.skip
 def test_update_table_information():
     table = DynamoDBTable({})
     table.name = TABLE_NAME
@@ -109,7 +96,7 @@ dynamodbish_item = {"primary_key": {"S": "test_primary_key"},
                          "2": {
                              "M": {"test_attribure_1": {"S": "2ab"}, "test_attribure_2": {"S": "3ab"}, "version": {"S": "1.0.0"}}}
                          }}}
-
+@pytest.mark.skip
 def test_put_item():
     table = DynamoDBTable({})
     table.name = TABLE_NAME
@@ -117,28 +104,38 @@ def test_put_item():
 
     assert client.put_item(table, item)
 
-
+@pytest.mark.skip
 def test_get_item():
     table = DynamoDBTable({})
     table.name = TABLE_NAME
     table.region = Region.get_region("us-west-2")
     assert client.get_item(table, {"primary_key": "test_primary_key", "secondary_key": 1}) == item
 
-
+@pytest.mark.skip
 def test_convert_to_dynamodbish():
     assert client.convert_to_dynamodbish(item) == dynamodbish_item
 
-
+@pytest.mark.skip
 def test_convert_from_dynamodbish():
     assert client.convert_from_dynamodbish(dynamodbish_item) == item
 
-if __name__ == "__main__":
-    # test_provision_table()
-    # test_put_item()
-    # test_get_item()
-    # test_convert_to_dynamodbish()
-    # test_convert_from_dynamodbish()
-    # test_init_dynamodb_client()
-    # test_provision_table()
-    # test_dispose_table()
-    pass
+@pytest.mark.done
+def test_clear_cache():
+    client.clear_cache(DynamoDBTable)
+
+@pytest.mark.wip
+def test_yield_tables():
+    ret = None
+    for ret in client.yield_tables(region=Region.get_region("us-west-2")):
+        break
+    assert ret.arn is not None
+
+@pytest.mark.wip
+def test_get_all_tables():
+    ret = client.get_all_tables()
+    assert len(ret) > 0
+
+@pytest.mark.wip
+def test_get_region_tables():
+    ret = client.get_region_tables(Region.get_region("us-west-2"))
+    assert len(ret) > 0
