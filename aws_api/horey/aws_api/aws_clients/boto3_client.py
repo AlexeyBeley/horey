@@ -722,6 +722,7 @@ class Boto3Client:
                                       get_tags_callback=None,
                                       update_info=False,
                                       regions=None,
+                                      global_service=False,
                                       filters_req=None):
         """
         Be sure you know what you do, when you set full_information=True.
@@ -736,13 +737,27 @@ class Boto3Client:
         :param get_tags_callback:
         :param update_info:
         :param regions:
+        :param global_service:
         :return:
         """
+
+        if global_service:
+            if regions:
+                raise ValueError(f"Can not set both {global_service=} and {regions=}")
+            region = AWSAccount.get_aws_region()
+            if region is None:
+                regions = list(AWSAccount.get_aws_account().regions.values())[:1]
+            else:
+                regions = [region]
+
         if not isinstance(update_info, bool):
             raise ValueError(f"update_info must be bool, received: '{update_info}'")
 
         if not regions:
             regions = AWSAccount.get_aws_account().regions.values()
+
+        if not regions:
+            raise ValueError(f"Was not able to find region while fetching {entity_class} information.")
 
         for region in regions:
             for obj in  self.region_service_entities_generator(

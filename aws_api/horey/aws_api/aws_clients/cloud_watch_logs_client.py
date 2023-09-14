@@ -40,14 +40,14 @@ class CloudWatchLogsClient(Boto3Client):
 
         get_tags_callback = self.get_tags if get_tags else None
         regional_fetcher_generator = self.yield_log_groups_raw
-        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
+        for obj in self.regional_service_entities_generator(regional_fetcher_generator,
                                                   CloudWatchLogGroup,
                                                   update_info=update_info,
                                                   full_information_callback=None,
                                                   get_tags_callback= get_tags_callback,
                                                   regions=[region] if region else None,
                                                   filters_req=filters_req):
-            yield certificate
+            yield obj
 
     def yield_log_groups_raw(self, filters_req=None):
         """

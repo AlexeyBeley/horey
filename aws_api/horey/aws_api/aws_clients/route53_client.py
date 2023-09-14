@@ -17,26 +17,52 @@ class Route53Client(Boto3Client):
         client_name = "route53"
         super().__init__(client_name)
 
+    # pylint: disable= too-many-arguments
+    def yield_hosted_zones(self, update_info=False, filters_req=None, full_information=True):
+        """
+        Yield hosted_zones
+
+        :return:
+        """
+
+        regional_fetcher_generator = self.yield_hosted_zones_raw
+        for entity in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                  HostedZone,
+                                                  update_info=update_info,
+                                                  full_information_callback=self.get_hosted_zone_full_information if full_information else None,
+                                                  global_service=True,
+                                                  filters_req=filters_req):
+            yield entity
+
+    def yield_hosted_zones_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.client.list_hosted_zones, "HostedZones", filters_req=filters_req
+        ):
+            yield dict_src
+
     def get_all_hosted_zones(self, full_information=True, name=None):
         """
-        Get all osted zones
+        Get all hosted zones
+
+        :param name:
         :param full_information:
         :return:
         """
 
-        final_result = []
-        if name is not None and not name.endswith("."):
-            name += "."
-        for response in self.execute(self.client.list_hosted_zones, "HostedZones"):
-            obj = HostedZone(response)
-            if name is not None and obj.name != name:
-                continue
+        hosted_zones = list(self.yield_hosted_zones(full_information=full_information))
 
-            if full_information:
-                self.get_hosted_zone_full_information(obj)
-            final_result.append(obj)
+        if name is not None:
+            if not name.endswith("."):
+                name += "."
+            hosted_zones = [hz for hz in hosted_zones if hz.name == name]
 
-        return final_result
+        return hosted_zones
 
     def get_hosted_zone_full_information(self, hosted_zone):
         """

@@ -1,35 +1,46 @@
+"""
+Test route 53 client.
+
+"""
+
 import os
-import pdb
+import pytest
 
 from horey.aws_api.aws_clients.route53_client import Route53Client
-from horey.aws_api.aws_api_configuration_policy import AWSAPIConfigurationPolicy
-from horey.h_logger import get_logger
-from horey.common_utils.common_utils import CommonUtils
 
-from horey.aws_api.base_entities.aws_account import AWSAccount
+# pylint: disable= missing-function-docstring
 
-logger = get_logger()
-
-configuration = AWSAPIConfigurationPolicy()
-configuration.configuration_file_full_path = os.path.abspath(
-    os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "..",
-        "..",
-        "..",
-        "ignore",
-        "aws_api_configuration_values.py",
+Route53Client().main_cache_dir_path = os.path.abspath(
+        os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "..", "..", "..",
+            "ignore",
+            "cache"
+        )
     )
-)
-configuration.init_from_file()
 
-accounts = CommonUtils.load_object_from_module(configuration.accounts_file, "main")
-AWSAccount.set_aws_account(accounts[configuration.aws_api_account])
-
-
+@pytest.mark.wip
 def test_init_route53_client():
     assert isinstance(Route53Client(), Route53Client)
 
+@pytest.mark.wip
+def test_yield_hosted_zones():
+    client = Route53Client()
+    obj = None
+    for obj in client.yield_hosted_zones():
+        break
+    assert obj.id is not None
 
-if __name__ == "__main__":
-    test_init_route53_client()
+
+@pytest.mark.wip
+def test_get_all_hosted_zones_full_info_true():
+    client = Route53Client()
+    ret = client.get_all_hosted_zones(full_information=True)
+    assert len(ret) > 0
+
+
+@pytest.mark.wip
+def test_get_all_hosted_zones_full_info_false():
+    client = Route53Client()
+    ret = client.get_all_hosted_zones(full_information=False)
+    assert len(ret) > 0

@@ -214,7 +214,7 @@ def test_init_acm_certificates(configuration: AWSCleanerConfigurationPolicy):
     assert len(cleaner.aws_api.acm_certificates) > 0
 
 
-@pytest.mark.todo
+@pytest.mark.wip
 def test_init_hosted_zones(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     cleaner.init_hosted_zones()
