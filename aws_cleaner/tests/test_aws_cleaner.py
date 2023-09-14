@@ -221,21 +221,21 @@ def test_init_hosted_zones(configuration: AWSCleanerConfigurationPolicy):
     assert len(cleaner.aws_api.hosted_zones) > 0
 
 
-@pytest.mark.todo
+@pytest.mark.wip
 def test_init_security_groups(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     cleaner.init_security_groups()
     assert len(cleaner.aws_api.security_groups) > 1
 
 
-@pytest.mark.todo
+@pytest.mark.wip
 def test_init_lambdas(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     cleaner.init_lambdas()
     assert len(cleaner.aws_api.lambdas) > 1
 
 
-@pytest.mark.todo
+@pytest.mark.wip
 def test_init_cloud_watch_log_groups(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     cleaner.init_cloud_watch_log_groups()
@@ -243,7 +243,7 @@ def test_init_cloud_watch_log_groups(configuration: AWSCleanerConfigurationPolic
     assert len(cleaner.aws_api.cloud_watch_log_groups_metric_filters) > 1
 
 
-@pytest.mark.todo
+@pytest.mark.wip
 def test_init_ecr_images(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     cleaner.init_ecr_images()

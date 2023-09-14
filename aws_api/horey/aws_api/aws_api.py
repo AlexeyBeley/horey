@@ -144,7 +144,6 @@ from horey.aws_api.aws_services_entities.route_table import RouteTable
 from horey.aws_api.aws_services_entities.elastic_address import ElasticAddress
 from horey.aws_api.aws_services_entities.nat_gateway import NatGateway
 from horey.aws_api.aws_services_entities.ecr_repository import ECRRepository
-from horey.aws_api.aws_services_entities.ecr_image import ECRImage
 from horey.aws_api.aws_services_entities.ecs_cluster import ECSCluster
 from horey.aws_api.aws_services_entities.ecs_capacity_provider import (
     ECSCapacityProvider,
@@ -656,35 +655,18 @@ class AWSAPI:
         self.eks_addons = objects
         return objects
 
-    def init_ecr_images(
-            self, from_cache=False, cache_file=None, region=None, ecr_repositories=None
-    ):
+    def init_ecr_images(self):
         """
-        Self explanatory.
+        Standard.
 
-        @param from_cache:
-        @param cache_file:
-        @param region:
-        @param ecr_repositories:
         @return:
         """
 
-        objects = []
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, ECRImage)
-        else:
-            if ecr_repositories is None:
-                ecr_repositories = self.ecr_client.get_all_repositories(region=region)
-
-            for ecr_repository in ecr_repositories:
-                if region is not None and ecr_repository.region != region:
-                    continue
-                objects += self.ecr_client.get_all_images(ecr_repository)
-        self.ecr_images = objects
+        self.ecr_images = self.ecr_client.get_all_images()
 
     def init_ecr_repositories(self, from_cache=False, cache_file=None, region=None):
         """
-        Self explanatory.
+        Standard.
 
         @param from_cache:
         @param cache_file:

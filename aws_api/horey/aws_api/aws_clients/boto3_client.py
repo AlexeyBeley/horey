@@ -730,14 +730,14 @@ class Boto3Client:
         For example in Cloudwatch or S3.
         Sometimes it's better using yield* or explicitly setting full_information=None
 
-        :param filters_req:
-        :param regional_fetcher_generator:
-        :param entity_class:
-        :param full_information_callback:
-        :param get_tags_callback:
-        :param update_info:
-        :param regions:
-        :param global_service:
+        :param filters_req: Request input params if any.
+        :param regional_fetcher_generator: The lowest API facing function. Retrieves raw dictionaries.
+        :param entity_class: Class of the entity to init with the raw Data.
+        :param full_information_callback: Get excessive information
+        :param get_tags_callback: Fetch tags separately from the main data request
+        :param update_info: Fetch the data form AWS API
+        :param regions: regions to fetch the entities from
+        :param global_service: no need to go over all regions - use the one set in AWSAccount or the first one of available
         :return:
         """
 

@@ -84,26 +84,99 @@ class ECRClient(Boto3Client):
         ):
             return response
 
-    def get_all_images(self, repository):
+    # pylint: disable= too-many-arguments
+    def yield_images(self, region=None, update_info=False, filters_req=None):
+        """
+        Yield images
+
+        :return:
+        """
+
+
+        regional_fetcher_generator = self.yield_images_raw
+        for obj in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                  ECRImage,
+                                                  update_info=update_info,
+                                                  regions=[region] if region else None,
+                                                  filters_req=filters_req):
+            yield obj
+
+    def yield_images_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        if filters_req is None:
+            for repository in self.yield_repositories(region=AWSAccount.get_aws_region()):
+                _filters_req = {
+                    "repositoryName": repository.name,
+                    "filter": {"tagStatus": "ANY"},
+                }
+                for dict_src in self.execute(
+                        self.client.describe_images, "imageDetails",
+                        filters_req=_filters_req,
+                        exception_ignore_callback=lambda error: "RepositoryNotFoundException"
+                                                                in repr(error)
+                ):
+                    yield dict_src
+            return
+
+        for dict_src in self.execute(
+                self.client.describe_images, "imageDetails",
+                filters_req=filters_req,
+                exception_ignore_callback=lambda error: "RepositoryNotFoundException"
+            in repr(error)
+        ):
+            yield dict_src
+
+    def get_all_images(self, region=None, filters_req=None):
         """
         Get all images in all regions.
 
         :return:
         """
 
-        final_result = []
-        AWSAccount.set_aws_region(repository.region)
-        filters_req = {
-            "repositoryName": repository.name,
-            "filter": {"tagStatus": "ANY"},
-        }
-        for dict_src in self.execute(
-            self.client.describe_images, "imageDetails", filters_req=filters_req
-        ):
-            obj = ECRImage(dict_src)
-            final_result.append(obj)
+        return list(self.yield_images(region=region, filters_req=filters_req))
 
-        return final_result
+
+    # pylint: disable= too-many-arguments
+    def yield_repositories(self, region=None, update_info=False, filters_req=None, get_tags=True):
+        """
+        Yield repositories
+
+        :return:
+        """
+
+        get_tags_callback = None if not get_tags else \
+            lambda _obj: self.get_tags(_obj, function=self.client.list_tags_for_resource,
+                                                                                 arn_identifier="resourceArn",
+                                                                                 tags_identifier="tags")
+
+        regional_fetcher_generator = self.yield_repositories_raw
+        for obj in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                  ECRRepository,
+                                                  update_info=update_info,
+                                                  get_tags_callback= get_tags_callback,
+                                                  regions=[region] if region else None,
+                                                  filters_req=filters_req):
+            yield obj
+
+    def yield_repositories_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.client.describe_repositories, "repositories",
+                filters_req=filters_req,
+                exception_ignore_callback=lambda error: "RepositoryNotFoundException"
+            in repr(error)
+        ):
+            yield dict_src
 
     def get_all_repositories(self, region=None):
         """
@@ -111,14 +184,7 @@ class ECRClient(Boto3Client):
         :return:
         """
 
-        if region is not None:
-            return self.get_region_repositories(region)
-
-        final_result = []
-        for _region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_repositories(_region)
-
-        return final_result
+        return list(self.yield_repositories(region=region))
 
     def get_region_repositories(self, region, repository_names=None, get_tags=True):
         """
@@ -131,25 +197,11 @@ class ECRClient(Boto3Client):
         """
 
         logger.info(f"Getting all repositories in region {str(region)}")
-        filters_req = {}
+        filters_req = None
         if repository_names is not None:
-            filters_req["repositoryNames"] = repository_names
+            filters_req = {"repositoryNames": repository_names}
 
-        final_result = []
-        AWSAccount.set_aws_region(region)
-        for dict_src in self.execute(
-            self.client.describe_repositories,
-            "repositories",
-            filters_req=filters_req,
-            exception_ignore_callback=lambda error: "RepositoryNotFoundException"
-            in repr(error),
-        ):
-            obj = ECRRepository(dict_src)
-            final_result.append(obj)
-            if get_tags:
-                obj.tags = self.get_tags(obj, function=self.client.list_tags_for_resource, arn_identifier="resourceArn", tags_identifier="tags")
-
-        return final_result
+        return list(self.yield_repositories(region=region, get_tags=get_tags, filters_req=filters_req))
 
     def dispose_repository(self, repository: ECRRepository):
         """

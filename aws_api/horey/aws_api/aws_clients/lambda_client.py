@@ -41,13 +41,13 @@ class LambdaClient(Boto3Client):
         """
 
         regional_fetcher_generator = self.yield_lambdas_raw
-        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
+        for obj in self.regional_service_entities_generator(regional_fetcher_generator,
                                                   AWSLambda,
                                                   update_info=update_info,
                                                   full_information_callback=self.update_lambda_full_information if full_information else None,
                                                   regions=[region] if region else None,
                                                   filters_req=filters_req):
-            yield certificate
+            yield obj
 
     def yield_lambdas_raw(self, filters_req=None):
         """
