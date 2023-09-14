@@ -105,6 +105,27 @@ class ECRClient(Boto3Client):
 
         return final_result
 
+    def get_repository_images(self, repository):
+        """
+        Get images of a repo.
+
+        :return:
+        """
+
+        final_result = []
+        AWSAccount.set_aws_region(repository.region)
+        filters_req = {
+            "repositoryName": repository.name,
+            "filter": {"tagStatus": "ANY"},
+        }
+        for dict_src in self.execute(
+            self.client.describe_images, "imageDetails", filters_req=filters_req
+        ):
+            obj = ECRImage(dict_src)
+            final_result.append(obj)
+
+        return final_result
+
     def get_all_repositories(self, region=None):
         """
         Get all repositories in all regions.
