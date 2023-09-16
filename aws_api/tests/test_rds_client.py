@@ -305,3 +305,51 @@ def test_yield_db_cluster_parameter_groups():
     for obj in client.yield_db_cluster_parameter_groups():
         break
     assert obj.arn is not None
+
+@pytest.mark.wip
+def test_get_region_db_instances_update_tags_true():
+    client = RDSClient()
+    ret = client.get_region_db_instances(Region.get_region("us-west-2"), update_tags=True)
+    assert len(ret) > 0
+
+@pytest.mark.wip
+def test_get_region_db_instances_update_tags_false():
+    client = RDSClient()
+    ret = client.get_region_db_instances(Region.get_region("us-west-2"), update_tags=False)
+    assert len(ret) > 0
+
+
+@pytest.mark.wip
+def test_yield_db_instances():
+    client = RDSClient()
+    obj = None
+    for obj in client.yield_db_instances():
+        break
+    assert obj.arn is not None
+
+@pytest.mark.wip
+def test_yield_db_cluster_snapshots():
+    client = RDSClient()
+    obj = None
+    for obj in client.yield_db_cluster_snapshots():
+        break
+    assert obj.arn is not None
+
+
+def test_yield_db_cluster_snapshots_full_information_false_get_tags_false():
+    client = RDSClient()
+    obj = None
+    for obj in client.yield_db_cluster_snapshots(full_information=False, get_tags=False):
+        break
+    assert obj.arn is not None
+
+def test_get_all_db_cluster_snapshots():
+    client = RDSClient()
+    ret = client.get_all_db_cluster_snapshots()
+    assert len(ret) > 0
+
+
+def test_get_region_db_cluster_snapshots():
+    client = RDSClient()
+    ret = client.get_region_db_cluster_snapshots(Region.get_region("us-west-2"))
+    assert len(ret) > 0

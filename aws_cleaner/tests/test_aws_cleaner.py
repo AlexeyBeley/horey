@@ -48,7 +48,7 @@ def fixture_configuration_generate_permissions(configuration):
 
 # pylint: disable=missing-function-docstring
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_init_aws_cleaner(configuration):
     """
     Test initiation.
@@ -59,14 +59,14 @@ def test_init_aws_cleaner(configuration):
     assert isinstance(AWSCleaner(configuration), AWSCleaner)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_init_load_balancers(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     cleaner.init_load_balancers()
     assert len(cleaner.aws_api.load_balancers) > 1
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_init_ec2_volumes(configuration):
     """
     Test initiation.
@@ -79,7 +79,7 @@ def test_init_ec2_volumes(configuration):
     assert len(cleaner.aws_api.ec2_volumes) > 0
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_init_target_groups(configuration):
     """
     Test initiation.
@@ -92,7 +92,7 @@ def test_init_target_groups(configuration):
     assert len(cleaner.aws_api.target_groups) > 0
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_init_ec2_network_interfaces(configuration):
     """
     Test initiation.
@@ -105,7 +105,7 @@ def test_init_ec2_network_interfaces(configuration):
     assert len(cleaner.aws_api.network_interfaces) > 0
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_sub_cleanup_report_ebs_volumes_in_use(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.sub_cleanup_report_ebs_volumes_in_use()
@@ -113,7 +113,7 @@ def test_sub_cleanup_report_ebs_volumes_in_use(configuration):
     assert ret is not None
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_sub_cleanup_report_ebs_volumes_sizes(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.sub_cleanup_report_ebs_volumes_sizes()
@@ -121,7 +121,7 @@ def test_sub_cleanup_report_ebs_volumes_sizes(configuration):
     assert ret is not None
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_sub_cleanup_report_ebs_volumes_types(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.sub_cleanup_report_ebs_volumes_types()
@@ -129,7 +129,7 @@ def test_sub_cleanup_report_ebs_volumes_types(configuration):
     assert ret is not None
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_cleanup_report_load_balancers(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.cleanup_report_load_balancers()
@@ -139,7 +139,7 @@ def test_cleanup_report_load_balancers(configuration):
     assert os.path.exists(configuration.load_balancer_report_file_path)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_cleanup_report_ebs_volumes(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.cleanup_report_ebs_volumes()
@@ -148,7 +148,7 @@ def test_cleanup_report_ebs_volumes(configuration):
     assert os.path.exists(configuration.ec2_ebs_report_file_path)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_cleanup_report_acm_certificate(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.cleanup_report_acm_certificate()
@@ -157,7 +157,7 @@ def test_cleanup_report_acm_certificate(configuration):
     assert os.path.exists(configuration.acm_certificate_report_file_path)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_cleanup_report_lambdas(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.cleanup_report_lambdas()
@@ -166,7 +166,7 @@ def test_cleanup_report_lambdas(configuration):
     assert os.path.exists(configuration.lambda_report_file_path)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_cleanup_report_network_interfaces(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.cleanup_report_network_interfaces()
@@ -175,7 +175,7 @@ def test_cleanup_report_network_interfaces(configuration):
     assert os.path.exists(configuration.ec2_interfaces_report_file_path)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_cleanup_report_security_groups(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.cleanup_report_security_groups()
@@ -184,7 +184,7 @@ def test_cleanup_report_security_groups(configuration):
     assert os.path.exists(configuration.ec2_security_groups_report_file_path)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_cleanup_report_ecr_images(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.cleanup_report_ecr_images()
@@ -193,49 +193,49 @@ def test_cleanup_report_ecr_images(configuration):
     assert os.path.exists(configuration.ec2_security_groups_report_file_path)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_init_cloudwatch_metrics(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     cleaner.init_cloudwatch_metrics()
     assert len(cleaner.aws_api.cloud_watch_metrics) > 0
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_init_cloudwatch_alarms(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     cleaner.init_cloudwatch_alarms()
     assert len(cleaner.aws_api.cloud_watch_alarms) > 0
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_init_acm_certificates(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     cleaner.init_acm_certificates()
     assert len(cleaner.aws_api.acm_certificates) > 0
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_init_hosted_zones(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     cleaner.init_hosted_zones()
     assert len(cleaner.aws_api.hosted_zones) > 0
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_init_security_groups(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     cleaner.init_security_groups()
     assert len(cleaner.aws_api.security_groups) > 1
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_init_lambdas(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     cleaner.init_lambdas()
     assert len(cleaner.aws_api.lambdas) > 1
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_init_cloud_watch_log_groups(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     cleaner.init_cloud_watch_log_groups()
@@ -243,35 +243,35 @@ def test_init_cloud_watch_log_groups(configuration: AWSCleanerConfigurationPolic
     assert len(cleaner.aws_api.cloud_watch_log_groups_metric_filters) > 1
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_init_ecr_images(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     cleaner.init_ecr_images()
     assert len(cleaner.aws_api.ecr_images) > 1
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_init_dynamodb_tables(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     cleaner.init_dynamodb_tables()
     assert len(cleaner.aws_api.dynamodb_tables) > 1
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_init_rds(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     cleaner.init_rds()
     assert len(cleaner.aws_api.rds_db_clusters) > 0
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_init_route_tables(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     cleaner.init_route_tables()
     assert len(cleaner.aws_api.route_tables) > 0
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_init_subnets(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     cleaner.init_subnets()
@@ -285,7 +285,7 @@ def test_init_elasticsearch_domains(configuration: AWSCleanerConfigurationPolicy
     assert len(cleaner.aws_api.elasticsearch_domains) > 0
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_init_elasticache_clusters(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     cleaner.init_elasticache_clusters()
@@ -299,7 +299,7 @@ def test_init_sqs_queues(configuration: AWSCleanerConfigurationPolicy):
     assert len(cleaner.aws_api.sqs_queues) > 1
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_generate_permissions_cloud_watch_log_groups(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.init_cloud_watch_log_groups(permissions_only=True)
@@ -313,7 +313,7 @@ def test_generate_permissions_cloud_watch_log_groups(configuration: AWSCleanerCo
         {"Sid": "DescribeMetricFilters", "Effect": "Allow", "Action": "logs:DescribeMetricFilters"}]
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_generate_permissions_cloud_watch_metrics(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.init_cloudwatch_metrics(permissions_only=True)
@@ -324,7 +324,7 @@ def test_generate_permissions_cloud_watch_metrics(configuration: AWSCleanerConfi
         {"Sid": "cloudwatchMetrics", "Effect": "Allow", "Action": "cloudwatch:ListMetrics", "Resource": "*"}]
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_generate_permissions_cloud_watch_alarms(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.init_cloudwatch_alarms(permissions_only=True)
@@ -335,7 +335,7 @@ def test_generate_permissions_cloud_watch_alarms(configuration: AWSCleanerConfig
         {"Sid": "CloudwatchAlarms", "Effect": "Allow", "Action": "cloudwatch:DescribeAlarms"}]
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_generate_permissions_ecr_images(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.init_ecr_images(permissions_only=True)
@@ -344,7 +344,7 @@ def test_generate_permissions_ecr_images(configuration: AWSCleanerConfigurationP
                    {"Sid": "GetECR", "Effect": "Allow", "Action": ["ecr:DescribeRepositories", "ecr:DescribeImages"]}]
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_generate_permissions_target_groups(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.init_target_groups(permissions_only=True)
@@ -359,7 +359,7 @@ def test_generate_permissions_target_groups(configuration: AWSCleanerConfigurati
     }]
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_generate_permissions_init_dynamodb_tables(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.init_dynamodb_tables(permissions_only=True)
@@ -370,7 +370,7 @@ def test_generate_permissions_init_dynamodb_tables(configuration: AWSCleanerConf
                                "dynamodb:DescribeContinuousBackups"]}]
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_generate_permissions_init_rds(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.init_rds(permissions_only=True)
@@ -383,7 +383,7 @@ def test_generate_permissions_init_rds(configuration: AWSCleanerConfigurationPol
          "Resource": "*"}]
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_generate_permissions_init_route_tables(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.init_route_tables(permissions_only=True)
@@ -395,7 +395,7 @@ def test_generate_permissions_init_route_tables(configuration: AWSCleanerConfigu
     }]
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_generate_permissions_init_subnets(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.init_subnets(permissions_only=True)
@@ -409,14 +409,14 @@ def test_generate_permissions_init_subnets(configuration: AWSCleanerConfiguratio
     }]
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_generate_permissions_init_elasticsearch_domains(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.init_elasticsearch_domains(permissions_only=True)
     assert ret == [{"Sid": "getElasticsearch", "Effect": "Allow", "Action": ["es:ListDomainNames"], "Resource": "*"}]
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_generate_permissions_init_elasticache_clusters(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.init_elasticache_clusters(permissions_only=True)
@@ -424,7 +424,7 @@ def test_generate_permissions_init_elasticache_clusters(configuration: AWSCleane
         {"Sid": "getElasticache", "Effect": "Allow", "Action": ["elasticache:DescribeCacheClusters"], "Resource": "*"}]
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_generate_permissions_init_sqs_queues(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.init_sqs_queues(permissions_only=True)
@@ -433,7 +433,7 @@ def test_generate_permissions_init_sqs_queues(configuration: AWSCleanerConfigura
                     "Action": ["sqs:ListQueues", "sqs:GetQueueAttributes", "sqs:ListQueueTags"]}]
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_generate_permissions_cleanup_report_load_balancers(
         configuration_generate_permissions: AWSCleanerConfigurationPolicy):
     configuration_generate_permissions.cleanup_report_load_balancers = True
@@ -450,7 +450,7 @@ def test_generate_permissions_cleanup_report_load_balancers(
         {"Sid": "DescribeSubnets", "Effect": "Allow", "Action": ["ec2:DescribeSubnets"], "Resource": "*"}]}
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_generate_permissions_cleanup_report_ebs_volumes(
         configuration_generate_permissions: AWSCleanerConfigurationPolicy):
     configuration_generate_permissions.cleanup_report_ebs_volumes = True
@@ -461,7 +461,7 @@ def test_generate_permissions_cleanup_report_ebs_volumes(
         {"Sid": "DescribeVolumes", "Effect": "Allow", "Action": "ec2:DescribeVolumes", "Resource": "*"}]}
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_generate_permissions_cleanup_report_route53_certificates(
         configuration_generate_permissions: AWSCleanerConfigurationPolicy):
     configuration_generate_permissions.cleanup_report_route53_certificates = True
@@ -480,7 +480,7 @@ def test_generate_permissions_cleanup_report_route53_certificates(
         assert statement in expected
     assert len(expected) == len(ret["Statement"])
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_generate_permissions_cleanup_report_route53_loadbalancers(
         configuration_generate_permissions: AWSCleanerConfigurationPolicy):
     configuration_generate_permissions.cleanup_report_route53_loadbalancers = True
@@ -496,7 +496,7 @@ def test_generate_permissions_cleanup_report_route53_loadbalancers(
                     "elasticloadbalancing:DescribeTags"], "Resource": "*"}]
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_generate_permissions_cleanup_report_lambdas(
         configuration_generate_permissions: AWSCleanerConfigurationPolicy):
     configuration_generate_permissions.cleanup_report_lambdas = True
@@ -520,7 +520,7 @@ def test_generate_permissions_cleanup_report_lambdas(
     assert len(expected) == len(ret["Statement"])
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_generate_permissions_cleanup_report_ec2_instances(
         configuration_generate_permissions: AWSCleanerConfigurationPolicy):
     configuration_generate_permissions.cleanup_report_ec2_instances = True
@@ -532,7 +532,7 @@ def test_generate_permissions_cleanup_report_ec2_instances(
         {"Sid": "DescribeInstances", "Effect": "Allow", "Action": "ec2:DescribeInstances", "Resource": "*"}]
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_sub_cleanup_report_lambdas_large_size(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.sub_cleanup_report_lambdas_large_size()
@@ -540,7 +540,7 @@ def test_sub_cleanup_report_lambdas_large_size(configuration):
     assert ret is not None
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_sub_cleanup_report_lambdas_not_running(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.sub_cleanup_report_lambdas_not_running()
@@ -548,7 +548,7 @@ def test_sub_cleanup_report_lambdas_not_running(configuration):
     assert ret is not None
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_sub_cleanup_report_lambdas_deprecate(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.sub_cleanup_report_lambdas_deprecate()
@@ -556,7 +556,7 @@ def test_sub_cleanup_report_lambdas_deprecate(configuration):
     assert ret is not None
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_sub_cleanup_report_lambdas_security_group(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.sub_cleanup_report_lambdas_security_group()
@@ -564,7 +564,7 @@ def test_sub_cleanup_report_lambdas_security_group(configuration):
     assert ret is not None
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_sub_cleanup_report_lambdas_old_code(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.sub_cleanup_report_lambdas_old_code()
@@ -572,7 +572,7 @@ def test_sub_cleanup_report_lambdas_old_code(configuration):
     assert ret is not None
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_cleanup_report_ec2_instances(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.cleanup_report_ec2_instances()
@@ -580,7 +580,7 @@ def test_cleanup_report_ec2_instances(configuration):
     assert ret is not None
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_cleanup_report_dynamodb(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.cleanup_report_dynamodb()
@@ -589,7 +589,7 @@ def test_cleanup_report_dynamodb(configuration):
     assert os.path.exists(cleaner.configuration.dynamodb_report_file_path)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_cleanup_report_rds(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.cleanup_report_rds()
@@ -607,7 +607,7 @@ def test_cleanup_opensearch(configuration):
     assert os.path.exists(cleaner.configuration.elasticsearch_domains_report_file_path)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_cleanup_report_elasticache(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.cleanup_report_elasticache()
@@ -616,7 +616,7 @@ def test_cleanup_report_elasticache(configuration):
     assert os.path.exists(cleaner.configuration.elasticache_report_file_path)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_cleanup_report_cloudwatch(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.cleanup_report_cloudwatch()
@@ -625,7 +625,7 @@ def test_cleanup_report_cloudwatch(configuration):
     assert os.path.exists(cleaner.configuration.cloud_watch_report_file_path)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_cleanup_report_sqs(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.cleanup_report_sqs()
@@ -642,7 +642,37 @@ def test_clean(configuration):
     assert ret is not None
 
 
+@pytest.mark.done
+def test_sub_cleanup_loadbalancer_has_no_metrics(configuration):
+    cleaner = AWSCleaner(configuration)
+    ret = cleaner.sub_cleanup_loadbalancer_has_no_metrics()
+    assert len(cleaner.aws_api.load_balancers) > 0
+    assert ret is not None
+
+
+@pytest.mark.done
+def test_sub_cleanup_target_groups(configuration):
+    cleaner = AWSCleaner(configuration)
+    ret = cleaner.sub_cleanup_target_groups()
+    assert len(cleaner.aws_api.target_groups) > 0
+    assert ret is not None
+
+
 @pytest.mark.wip
+def test_sub_cleanup_report_rds_cluster_monitoring(configuration):
+    cleaner = AWSCleaner(configuration)
+    ret = cleaner.sub_cleanup_report_rds_cluster_monitoring()
+    assert len(cleaner.aws_api.rds_db_clusters) > 0
+    assert ret is not None
+
+@pytest.mark.wip
+def test_sub_cleanup_report_rds_instance_monitoring(configuration):
+    cleaner = AWSCleaner(configuration)
+    ret = cleaner.sub_cleanup_report_rds_instance_monitoring()
+    assert len(cleaner.aws_api.rds_db_instances) > 0
+    assert ret is not None
+
+@pytest.mark.done
 def test_generate_permissions_all(
         configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
@@ -660,7 +690,7 @@ def test_generate_permissions_all(
     assert os.path.exists(cleaner.configuration.permissions_file_path)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_cleanup_reports_in_aws_cleaner_match_configuration_policy_cleanup_reports():
     """
 

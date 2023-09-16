@@ -10,3 +10,6 @@ todo: expired certificates in RDS
 
 todo: too old ecr images - older then a year can be deleted.
 todo: too big ecr images.
+
+lambda no cloudwatch alarms
+ecs no cloudwatch alarms

@@ -391,9 +391,14 @@ class AWSCleaner:
         :return:
         """
 
-        if not permissions_only and not self.aws_api.rds_db_clusters:
+        if not permissions_only and (not self.aws_api.rds_db_clusters or
+                                     not self.aws_api.rds_db_subnet_groups or
+                                     not self.aws_api.rds_db_instances):
+
             self.aws_api.init_rds_db_clusters(full_information=True)
             self.aws_api.init_rds_db_subnet_groups()
+            self.aws_api.init_rds_db_cluster_snapshots()
+            self.aws_api.init_rds_db_instances()
 
         return [
             {
@@ -401,6 +406,13 @@ class AWSCleaner:
                 "Effect": "Allow",
                 "Action": ["rds:DescribeDBClusters", "rds:ListTagsForResource"],
                 "Resource": [f"arn:aws:rds:{region.region_mark}:{self.aws_api.acm_client.account_id}:cluster:*" for
+                             region in AWSAccount.get_aws_account().regions.values()]
+            },
+            {
+                "Sid": "ListTagsForResourceDB",
+                "Effect": "Allow",
+                "Action": ["rds:ListTagsForResource"],
+                "Resource": [f"arn:aws:rds:{region.region_mark}:{self.aws_api.acm_client.account_id}:db:*" for
                              region in AWSAccount.get_aws_account().regions.values()]
             },
             {
@@ -414,9 +426,18 @@ class AWSCleaner:
                 "Sid": "DescribeDBEngineVersions",
                 "Effect": "Allow",
                 "Action": [
-                    "rds:DescribeDBEngineVersions"
+                    "rds:DescribeDBEngineVersions",
+                    "rds:DescribeDBClusterSnapshots",
+                    "rds:DescribeDBInstances"
                 ],
                 "Resource": "*"
+            },
+            {
+                "Sid": "DescribeDBClusterSnapshotAttributes",
+                "Effect": "Allow",
+                "Action": ["rds:DescribeDBClusterSnapshotAttributes", "rds:ListTagsForResource"],
+                "Resource": [f"arn:aws:rds:{region.region_mark}:{self.aws_api.acm_client.account_id}:cluster-snapshot:*" for
+                             region in AWSAccount.get_aws_account().regions.values()]
             },
         ]
 
@@ -1273,6 +1294,8 @@ class AWSCleaner:
         permissions += self.init_subnets(permissions_only=permissions_only)
 
         if permissions_only:
+            permissions += self.sub_cleanup_report_rds_cluster_monitoring(permissions_only=permissions_only)
+            permissions += self.sub_cleanup_report_rds_instance_monitoring(permissions_only=permissions_only)
             return permissions
 
         tb_ret = TextBlock("RDS Cleanups")
@@ -1281,11 +1304,107 @@ class AWSCleaner:
             if tb_ret_tmp:
                 tb_ret.blocks.append(tb_ret_tmp)
 
+        tb_ret_tmp = self.sub_cleanup_report_rds_cluster_monitoring(permissions_only=permissions_only)
+        if tb_ret_tmp:
+            tb_ret.blocks.append(tb_ret_tmp)
+
+        tb_ret_tmp = self.sub_cleanup_report_rds_instance_monitoring(permissions_only=permissions_only)
+        if tb_ret_tmp:
+            tb_ret.blocks.append(tb_ret_tmp)
+
         with open(self.configuration.rds_report_file_path, "w+", encoding="utf-8") as file_handler:
             file_handler.write(tb_ret.format_pprint())
 
         logger.info(f"Output in: {self.configuration.rds_report_file_path}")
         return tb_ret
+
+    def sub_cleanup_report_rds_cluster_monitoring(self, permissions_only=False):
+        """
+        Metrics and alarms misconfiguration.
+
+        :return:
+        """
+
+        permissions = self.init_cloudwatch_alarms(permissions_only=permissions_only)
+        permissions += self.init_cloudwatch_metrics(permissions_only=permissions_only)
+        permissions = self.init_rds(permissions_only=permissions_only)
+
+        if permissions_only:
+            return permissions
+
+        tb_ret = TextBlock("RDS monitoring report")
+        for rds_cluster in self.aws_api.rds_db_clusters:
+            dimension_value = rds_cluster.id
+            namespaces = ["AWS/RDS"]
+            dimension_name = "DBClusterIdentifier"
+            metrics = self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_metrics, namespaces, dimension_name, dimension_value)
+            if not metrics:
+                tb_ret.lines.append(f"RDS Cluster: {rds_cluster.id} has no available metrics.")
+                continue
+
+            alarms = self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_alarms, namespaces, dimension_name, dimension_value)
+            inactive_alarms = []
+            active_alarms = []
+            for alarm in alarms:
+                if alarm.actions_enabled:
+                    active_alarms.append(alarm)
+                else:
+                    inactive_alarms.append(alarm)
+
+            tb_ret_tmp = TextBlock(f"RDS Cluster: {rds_cluster.id}")
+            if inactive_alarms:
+                tb_ret_tmp.lines.append(f"Disabled alarms: {[alarm.name for alarm in inactive_alarms]}")
+            elif not active_alarms:
+                tb_ret_tmp.lines.append("No Alarms. Following metrics are available:")
+                tb_ret_tmp.lines += list({metric.name for metric in metrics})
+            if tb_ret_tmp.lines:
+                tb_ret.blocks.append(tb_ret_tmp)
+
+        return tb_ret if tb_ret.lines or tb_ret.blocks else None
+
+    def sub_cleanup_report_rds_instance_monitoring(self, permissions_only=False):
+        """
+        Metrics and alarms misconfiguration.
+
+        :return:
+        """
+
+        permissions = self.init_cloudwatch_alarms(permissions_only=permissions_only)
+        permissions += self.init_cloudwatch_metrics(permissions_only=permissions_only)
+        permissions = self.init_rds(permissions_only=permissions_only)
+
+        if permissions_only:
+            return permissions
+
+        tb_ret = TextBlock("RDS monitoring report")
+        for rds_instance in self.aws_api.rds_db_instances:
+            dimension_value = rds_instance.id
+            namespaces = ["AWS/RDS"]
+            dimension_name = "DBInstanceIdentifier"
+            metrics = self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_metrics, namespaces, dimension_name, dimension_value)
+            if not metrics:
+                tb_ret.lines.append(f"RDS DB Instance: {rds_instance.id} has no available metrics.")
+                continue
+
+            alarms = self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_alarms, namespaces, dimension_name, dimension_value)
+            inactive_alarms = []
+            active_alarms = []
+            for alarm in alarms:
+                if alarm.actions_enabled:
+                    active_alarms.append(alarm)
+                else:
+                    inactive_alarms.append(alarm)
+
+            tb_ret_tmp = TextBlock(f"RDS DB Instance: {rds_instance.id}")
+            if inactive_alarms:
+                tb_ret_tmp.lines.append(f"Disabled alarms: {[alarm.name for alarm in inactive_alarms]}")
+            elif not active_alarms:
+                tb_ret_tmp.lines.append("No Alarms. Following metrics are available:")
+                tb_ret_tmp.lines += list({metric.name for metric in metrics})
+            if tb_ret_tmp.lines:
+                tb_ret.blocks.append(tb_ret_tmp)
+
+        return tb_ret if tb_ret.lines or tb_ret.blocks else None
 
     def sub_cleanup_report_rds_cluster(self, cluster):
         """
@@ -1568,7 +1687,7 @@ class AWSCleaner:
             tb_ret.blocks.append(tb_ret_tmp)
 
         tb_ret_tmp = self.sub_cleanup_loadbalancer_has_no_metrics()
-        if tb_ret_tmp.lines or tb_ret_tmp.blocks:
+        if tb_ret_tmp:
             tb_ret.blocks.append(tb_ret_tmp)
 
         tb_ret.write_to_file(self.configuration.load_balancer_report_file_path)
@@ -1691,10 +1810,41 @@ class AWSCleaner:
         """
 
         permissions = self.init_load_balancers(permissions_only=permissions_only)
+        permissions += self.init_cloudwatch_metrics(permissions_only=permissions_only)
+        permissions += self.init_cloudwatch_alarms(permissions_only=permissions_only)
+
         if permissions_only:
             return permissions
-        tb_ret = TextBlock("todo: Load balancer with no metrics in cloudwatch")
-        return tb_ret
+
+        tb_ret = TextBlock("Load Balancer monitoring report")
+        for load_balancer in self.aws_api.load_balancers:
+            dimension_value = load_balancer.arn[load_balancer.arn.find(":loadbalancer/")+len(":loadbalancer/"):]
+            namespaces = ["AWS/ApplicationELB", "AWS/NetworkELB"]
+            dimension_name = "LoadBalancer"
+            metrics = self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_metrics, namespaces, dimension_name, dimension_value)
+            if not metrics:
+                tb_ret.lines.append(f"Load Balancer: {load_balancer.name} has no available metrics.")
+                continue
+
+            alarms = self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_alarms, namespaces, dimension_name, dimension_value)
+            inactive_alarms = []
+            active_alarms = []
+            for alarm in alarms:
+                if alarm.actions_enabled:
+                    active_alarms.append(alarm)
+                else:
+                    inactive_alarms.append(alarm)
+
+            tb_ret_tmp = TextBlock(f"Load Balancer: {load_balancer.name}")
+            if inactive_alarms:
+                tb_ret_tmp.lines.append(f"Disabled alarms: {[alarm.name for alarm in inactive_alarms]}")
+            elif not active_alarms:
+                tb_ret_tmp.lines.append("No Alarms. Following metrics are available:")
+                tb_ret_tmp.lines += list({metric.name for metric in metrics})
+            if tb_ret_tmp.lines:
+                tb_ret.blocks.append(tb_ret_tmp)
+
+        return tb_ret if tb_ret.lines or tb_ret.blocks else None
 
     def sub_cleanup_target_groups(self, permissions_only=False):
         """
@@ -1704,6 +1854,8 @@ class AWSCleaner:
         """
 
         permissions = self.init_target_groups(permissions_only=permissions_only)
+        permissions += self.init_cloudwatch_alarms(permissions_only=permissions_only)
+        permissions += self.init_cloudwatch_metrics(permissions_only=permissions_only)
         if permissions_only:
             return permissions
 
@@ -1711,7 +1863,58 @@ class AWSCleaner:
         for target_group in self.aws_api.target_groups:
             if not target_group.target_health:
                 tb_ret.lines.append(target_group.name)
-        return tb_ret if len(tb_ret.lines) > 0 else None
+
+        tb_ret = TextBlock("Target Groups monitoring report")
+        for target_group in self.aws_api.target_groups:
+            dimension_value = target_group.arn[target_group.arn.find(":targetgroup/")+1:]
+            namespaces = ["AWS/ApplicationELB", "AWS/NetworkELB"]
+            dimension_name = "TargetGroup"
+            metrics = self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_metrics, namespaces, dimension_name, dimension_value)
+            if not metrics:
+                tb_ret.lines.append(f"Target Group: {target_group.name} has no available metrics.")
+                continue
+
+            alarms = self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_alarms, namespaces, dimension_name, dimension_value)
+            inactive_alarms = []
+            active_alarms = []
+            for alarm in alarms:
+                if alarm.actions_enabled:
+                    active_alarms.append(alarm)
+                else:
+                    inactive_alarms.append(alarm)
+
+            tb_ret_tmp = TextBlock(f"Target Group: {target_group.name}")
+            if inactive_alarms:
+                tb_ret_tmp.lines.append(f"Disabled alarms: {[alarm.name for alarm in inactive_alarms]}")
+            elif not active_alarms:
+                tb_ret_tmp.lines.append("No Alarms. Following metrics are available:")
+                tb_ret_tmp.lines += list({metric.name for metric in metrics})
+            if tb_ret_tmp.lines:
+                tb_ret.blocks.append(tb_ret_tmp)
+        return tb_ret if tb_ret.lines or tb_ret.blocks else None
+
+    @staticmethod
+    def find_cloudwatch_object_by_namespace_and_dimension(monitor_objects, namespaces, dimension_name, dimension_value):
+        """
+        Metrics or alarms are filtered the same way.
+
+        :param monitor_objects:
+        :param namespaces:
+        :param dimension_name:
+        :param dimension_value:
+        :return:
+        """
+
+        lst_ret = []
+        for mon_obj in monitor_objects:
+            if mon_obj.namespace not in namespaces:
+                continue
+
+            if dimension_value not in [dimension["Value"] for dimension in mon_obj.dimensions if
+                             dimension["Name"] == dimension_name]:
+                continue
+            lst_ret.append(mon_obj)
+        return lst_ret
 
     def cleanup_report_security_groups(self, permissions_only=False):
         """
