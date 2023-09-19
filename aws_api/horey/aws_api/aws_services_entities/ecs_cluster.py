@@ -21,6 +21,7 @@ class ECSCluster(AwsObject):
         self.settings = None
         self.configuration = None
         self.status = None
+        self.registered_container_instances_count = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
