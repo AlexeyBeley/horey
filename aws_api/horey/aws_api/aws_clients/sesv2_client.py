@@ -26,31 +26,67 @@ class SESV2Client(Boto3Client):
         client_name = "sesv2"
         super().__init__(client_name)
 
-    def get_all_email_identities(self, region=None, full_information=True):
+    # pylint: disable= too-many-arguments
+    def yield_email_identities(self, region=None, update_info=False, filters_req=None):
+        """
+        Yield email_identities
+
+        :return:
+        """
+
+        regional_fetcher_generator = self.yield_email_identities_raw
+        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                  SESV2EmailIdentity,
+                                                  update_info=update_info,
+                                                  regions=[region] if region else None,
+                                                  filters_req=filters_req):
+            yield certificate
+
+    def yield_email_identities_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        for email_identity_dict in self.execute(
+                self.client.list_email_identities, "EmailIdentities", filters_req=filters_req
+        ):
+            response = list(
+                self.execute(
+                    self.client.get_email_identity,
+                    None,
+                    raw_data=True,
+                    filters_req={"EmailIdentity": email_identity_dict["IdentityName"]},
+                    exception_ignore_callback=lambda x: "NotFoundException" in repr(x),
+                )
+            )
+            if len(response) == 0:
+                return
+
+            if len(response) > 1:
+                raise RuntimeError(f"Expected to find <= 1 but found {len(response)}")
+
+            dict_src = response[0]
+            del dict_src["ResponseMetadata"]
+            dict_src.update(email_identity_dict)
+
+            yield dict_src
+
+
+    def get_all_email_identities(self, region=None):
         """
         Get all email_identities in all regions.
         :return:
         """
 
-        if region is not None:
-            return self.get_region_email_identities(
-                region, full_information=full_information
-            )
+        return list(self.yield_email_identities(region=region))
 
-        final_result = []
-        for _region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_email_identities(
-                _region, full_information=full_information
-            )
-
-        return final_result
-
-    def get_region_email_identities(self, region, full_information=True):
+    def get_region_email_identities(self, region):
         """
         Standard
 
         @param region:
-        @param full_information:
         @return:
         """
 
@@ -58,17 +94,8 @@ class SESV2Client(Boto3Client):
             return []
 
         logger.info(f"get_region_email_identities: {region.region_mark}")
-        final_result = []
-        AWSAccount.set_aws_region(region)
-        for dict_src in self.execute(
-            self.client.list_email_identities, "EmailIdentities"
-        ):
-            obj = SESV2EmailIdentity(dict_src)
-            final_result.append(obj)
+        return list(self.yield_email_identities(region=region))
 
-            if full_information:
-                self.update_email_identity_information(obj)
-        return final_result
 
     def update_email_identity_information(self, obj: SESV2EmailIdentity):
         """
@@ -98,43 +125,33 @@ class SESV2Client(Boto3Client):
 
         obj.update_from_raw_response(dict_src)
 
-    def get_all_configuration_sets(self, region=None, full_information=False):
+    # pylint: disable= too-many-arguments
+    def yield_configuration_sets(self, region=None, update_info=False, full_information=True, filters_req=None):
         """
-        Get all configuration_sets in all regions.
+        Yield configuration_sets
 
         :return:
         """
 
-        if region is not None:
-            return self.get_region_configuration_sets(
-                region, full_information=full_information
-            )
+        full_information_callback = self.get_configuration_set_full_information if full_information else None
+        regional_fetcher_generator = self.yield_configuration_sets_raw
+        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                  SESV2ConfigurationSet,
+                                                  update_info=update_info,
+                                                  full_information_callback= full_information_callback,
+                                                  regions=[region] if region else None,
+                                                  filters_req=filters_req):
+            yield certificate
 
-        final_result = []
-        for _region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_configuration_sets(
-                _region, full_information=full_information
-            )
-
-        return final_result
-
-    def get_region_configuration_sets(self, region, full_information=False):
+    def yield_configuration_sets_raw(self, filters_req=None):
         """
-        Standard
+        Yield dictionaries.
 
-        @param region:
-        @param full_information:
-        @return:
+        :return:
         """
 
-        if region.region_mark in self.UNSUPPORTED_REGIONS:
-            return []
-
-        logger.info(f"get_region_configuration_sets: {region.region_mark}")
-        final_result = []
-        AWSAccount.set_aws_region(region)
         for name in self.execute(
-            self.client.list_configuration_sets, "ConfigurationSets"
+                self.client.list_configuration_sets, "ConfigurationSets", filters_req=filters_req
         ):
             dict_src = list(
                 self.execute(
@@ -145,24 +162,77 @@ class SESV2Client(Boto3Client):
                 )
             )[0]
             del dict_src["ResponseMetadata"]
-            obj = SESV2ConfigurationSet(dict_src)
-            final_result.append(obj)
+            yield dict_src
 
-            if full_information:
-                obj.event_destinations = []
-                for response in self.execute(
-                        self.client.get_configuration_set_event_destinations,
-                        None,
-                        raw_data=True,
-                        filters_req={"ConfigurationSetName": name},
-                    ):
-                    del response["ResponseMetadata"]
-                    try:
-                        obj.event_destinations += response["EventDestinations"]
-                    except KeyError:
-                        pass
+    def get_all_configuration_sets(self, region=None, full_information=False):
+        """
+        Get all configuration_sets in all regions.
 
-        return final_result
+        :return:
+        """
+
+        return list(self.yield_configuration_sets(region=region, full_information=full_information))
+
+    def get_region_configuration_sets(self, region, full_information=False):
+        """
+        Standard
+
+        @param region:
+        @param full_information:
+        @return:
+        """
+
+        return list(self.yield_configuration_sets(region=region, full_information=full_information))
+
+    def get_configuration_set_full_information(self, obj):
+        """
+        Standard.
+
+        :param obj: 
+        :return: 
+        """
+        obj.event_destinations = []
+        for response in self.execute(
+                self.client.get_configuration_set_event_destinations,
+                None,
+                raw_data=True,
+                filters_req={"ConfigurationSetName": obj.name},
+        ):
+            del response["ResponseMetadata"]
+            try:
+                obj.event_destinations += response["EventDestinations"]
+            except KeyError:
+                pass
+
+    # pylint: disable= too-many-arguments
+    def yield_email_templates(self, region=None, update_info=False, full_information=True, filters_req=None):
+        """
+        Yield email_templates
+
+        :return:
+        """
+
+        full_information_callback = self.get_email_template_full_information if full_information else None
+        regional_fetcher_generator = self.yield_email_templates_raw
+        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                  SESV2EmailTemplate,
+                                                  update_info=update_info,
+                                                  full_information_callback= full_information_callback,
+                                                  regions=[region] if region else None,
+                                                  filters_req=filters_req):
+            yield certificate
+
+    def yield_email_templates_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.client.list_email_templates, "TemplatesMetadata", filters_req=filters_req
+        ):
+            yield dict_src
 
     def get_all_email_templates(self, region=None, full_information=True):
         """
@@ -170,19 +240,7 @@ class SESV2Client(Boto3Client):
 
         :return:
         """
-
-        if region is not None:
-            return self.get_region_email_templates(
-                region, full_information=full_information
-            )
-
-        final_result = []
-        for _region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_email_templates(
-                _region, full_information=full_information
-            )
-
-        return final_result
+        return list(self.yield_email_templates(region=region, full_information=full_information))
 
     def get_region_email_templates(self, region, full_information=True):
         """
@@ -193,23 +251,9 @@ class SESV2Client(Boto3Client):
         @return:
         """
 
-        if region.region_mark in self.UNSUPPORTED_REGIONS:
-            return []
+        return list(self.yield_email_templates(region=region, full_information=full_information))
 
-        logger.info(f"get_region_email_templates: {region.region_mark}")
-        final_result = []
-        AWSAccount.set_aws_region(region)
-        for dict_src in self.execute(
-            self.client.list_email_templates, "TemplatesMetadata"
-        ):
-            obj = SESV2EmailTemplate(dict_src)
-            final_result.append(obj)
-
-            if full_information:
-                self.update_email_template_information(obj)
-        return final_result
-
-    def update_email_template_information(self, obj: SESV2EmailTemplate):
+    def get_email_template_full_information(self, obj: SESV2EmailTemplate):
         """
         Standard
 

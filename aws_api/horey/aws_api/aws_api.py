@@ -156,10 +156,6 @@ from horey.aws_api.aws_services_entities.lambda_event_source_mapping import (
 from horey.aws_api.aws_services_entities.dynamodb_table import DynamoDBTable
 from horey.aws_api.aws_clients.sesv2_client import SESV2Client
 from horey.aws_api.aws_services_entities.sesv2_email_identity import SESV2EmailIdentity
-from horey.aws_api.aws_services_entities.sesv2_configuration_set import (
-    SESV2ConfigurationSet,
-)
-from horey.aws_api.aws_services_entities.sesv2_email_template import SESV2EmailTemplate
 
 from horey.aws_api.aws_clients.sns_client import SNSClient
 from horey.aws_api.aws_services_entities.sns_subscription import SNSSubscription
@@ -539,44 +535,28 @@ class AWSAPI:
 
         self.sesv2_email_identities = objects
 
-    def init_sesv2_email_templates(
-            self, from_cache=False, cache_file=None, region=None
-    ):
+    def init_sesv2_email_templates(self, region=None):
         """
-        Self explanatory.
+        Standard
 
-        @param from_cache:
-        @param cache_file:
         @param region:
         @return:
         """
 
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, SESV2EmailTemplate)
-        else:
-            objects = self.sesv2_client.get_all_email_templates(region=region)
-
-        self.sesv2_email_templates = objects
+        self.sesv2_email_templates = self.sesv2_client.get_all_email_templates(region=region)
 
     def init_sesv2_configuration_sets(
-            self, from_cache=False, cache_file=None, region=None, full_information=False
+            self, region=None, full_information=False
     ):
         """
-        Self explanatory.
+        Standard
 
-        @param from_cache:
-        @param cache_file:
         @param region:
         @return:
         :param full_information:
         """
 
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, SESV2ConfigurationSet)
-        else:
-            objects = self.sesv2_client.get_all_configuration_sets(region=region, full_information=full_information)
-
-        self.sesv2_configuration_sets = objects
+        self.sesv2_configuration_sets = self.sesv2_client.get_all_configuration_sets(region=region, full_information=full_information)
 
     def init_sns_topics(self, from_cache=False, cache_file=None, region=None):
         """

@@ -37,9 +37,113 @@ class AWSCleaner:
         aws_api_configuration.aws_api_cache_dir = configuration.cache_dir
         self.aws_api = AWSAPI(aws_api_configuration)
 
+    def cleanup_report_todo(self):
+        """
+        :return:
+        """
+
+        tb_ret = TextBlock("In the plans")
+
+        tb_ret_tmp = TextBlock("Cloudwatch")
+        tb_ret_tmp.lines.append("Cloudwatch alarms can have issues. They can fault to be triggered.")
+        tb_ret_tmp.lines.append("One reason - sns topic policy does not grant permissions to the alarm to publish.")
+        tb_ret_tmp.lines.append("Use client.describe_alarm_history functionality to fetch history about failed to trigger actios.")
+        tb_ret_tmp.lines.append("Check if there are cloudwatch metrics to see failing alarm actions.")
+        tb_ret.blocks.append(tb_ret_tmp)
+
+        tb_ret_tmp = TextBlock("SNS")
+        tb_ret_tmp.lines.append("To wide permissions in the SNS publish policy")
+        tb_ret_tmp.lines.append("Resource ARN in the policy is not covering owning topic's ARN.")
+        tb_ret_tmp.lines.append("Metrics/Alarms")
+        tb_ret.blocks.append(tb_ret_tmp)
+
+        tb_ret_tmp = TextBlock("VPC")
+        tb_ret_tmp.lines.append("There are sometimes routing black holes towards erases VPC peering connection.")
+        tb_ret_tmp.lines.append("Subnet naming - the name can contain public/private word but be the opposite.")
+        tb_ret.blocks.append(tb_ret_tmp)
+
+        tb_ret_tmp = TextBlock("Opensearch")
+        tb_ret_tmp.lines.append("Opensearch has no active cloudwatch alarms")
+        tb_ret.blocks.append(tb_ret_tmp)
+
+        tb_ret_tmp = TextBlock("Elasticache")
+        tb_ret_tmp.lines.append("Has public subnets configures")
+        tb_ret_tmp.lines.append("Engine version is old")
+        tb_ret_tmp.lines.append("Security group to wide")
+        tb_ret.blocks.append(tb_ret_tmp)
+
+        tb_ret_tmp = TextBlock("SQS")
+        tb_ret_tmp.lines.append("No cloudwatch alarms were configured for SQS queues")
+        tb_ret_tmp.lines.append("No dead latter queue was configured for the queue")
+        tb_ret.blocks.append(tb_ret_tmp)
+
+        tb_ret_tmp = TextBlock("Route 53")
+        tb_ret_tmp.lines.append("todo: cleanup_report_route53_certificates")
+        tb_ret_tmp.lines.append("ACM Certificates need to be validated using Route 53 records. "
+                                "Expired/missing certificates information has to be cleaned from Route 53.")
+        tb_ret_tmp.lines.append("Load balancers dns addresses: Missing Load Balancer.")
+        tb_ret_tmp.lines.append("Load balancers dns addresses: Missing DNS record pointing to the load balancer DNS address.")
+        tb_ret.blocks.append(tb_ret_tmp)
+
+        tb_ret_tmp = TextBlock("ACM")
+        tb_ret_tmp.lines.append("ACM Certificates Validation failed")
+        tb_ret.blocks.append(tb_ret_tmp)
+
+        tb_ret_tmp = TextBlock("Lambda")
+        tb_ret_tmp.lines.append("Cloudwatch alarm missing.")
+        tb_ret.blocks.append(tb_ret_tmp)
+
+        """
+
+        todo: Used read/write much less than reservation.
+        """
+
+        return tb_ret
+
+    def init_ses(self, permissions_only=False):
+        """
+        Init SES related entities.
+
+        :param permissions_only:
+        :return:
+        """
+
+        if not permissions_only and not self.aws_api.sesv2_email_identities:
+            self.aws_api.init_sesv2_configuration_sets()
+            self.aws_api.init_sesv2_email_identities()
+
+        return [{
+                "Sid": "SES",
+                "Effect": "Allow",
+                "Action": ["ses:ListConfigurationSets"],
+                "Resource": "*"
+            },
+            {
+                "Sid": "SESConfigSet",
+                "Effect": "Allow",
+                "Action": ["ses:GetConfigurationSet"],
+                "Resource": [f"arn:aws:ses:{region.region_mark}:{self.aws_api.acm_client.account_id}:configuration-set/*"
+                         for region in AWSAccount.get_aws_account().regions.values()]
+            },
+            {
+                "Sid": "SESEmailIdentities",
+                "Effect": "Allow",
+                "Action": ["ses:ListEmailIdentities"],
+                "Resource": "*"
+            },
+            {
+                "Sid": "SESEmailIdentity",
+                "Effect": "Allow",
+                "Action": ["ses:GetEmailIdentity"],
+                "Resource": [
+                    f"arn:aws:ses:{region.region_mark}:{self.aws_api.acm_client.account_id}:identity/*"
+                    for region in AWSAccount.get_aws_account().regions.values()]
+            }
+            ]
+
     def init_cloudwatch_metrics(self, permissions_only=False):
         """
-        Init cloudwatch metrics and alarms
+        Init cloudwatch metrics.
 
         :return:
         """
@@ -99,15 +203,14 @@ class AWSCleaner:
 
     def init_cloud_watch_log_groups(self, permissions_only=False):
         """
-        Init Cloudwatch logs groups
+        Init Cloudwatch logs groups and log group metric filters
 
         :return:
         """
 
         if not permissions_only and \
                 (not self.aws_api.cloud_watch_log_groups or not
-                self.aws_api.cloud_watch_log_groups_metric_filters or not
-                 self.aws_api.cloud_watch_alarms):
+                self.aws_api.cloud_watch_log_groups_metric_filters):
             self.aws_api.init_cloud_watch_log_groups()
             self.aws_api.init_cloud_watch_log_groups_metric_filters()
 
@@ -279,7 +382,7 @@ class AWSCleaner:
 
     def init_load_balancers(self, permissions_only=False):
         """
-        Init ELB/ALB Load balancers
+        Init Network, Classic and Application Load Balancers
 
         :return:
         """
@@ -302,7 +405,7 @@ class AWSCleaner:
 
     def init_target_groups(self, permissions_only=False):
         """
-        Init ELB/ALB target groups
+        Init ELB target groups
 
         :return:
         """
@@ -322,7 +425,7 @@ class AWSCleaner:
 
     def init_dynamodb_tables(self, permissions_only=False):
         """
-        Init dynamodb_tables
+        Init DynamoDB Tables
 
         :return:
         """
@@ -350,7 +453,7 @@ class AWSCleaner:
 
     def init_route_tables(self, permissions_only=False):
         """
-        Init route tables
+        Init VPC route tables
 
         :return:
         """
@@ -386,7 +489,7 @@ class AWSCleaner:
 
     def init_rds(self, permissions_only=False):
         """
-        Init rds
+        Init RDS Clusters, Instances, Subnet Groups, Snapshots' metadata
 
         :return:
         """
@@ -443,7 +546,7 @@ class AWSCleaner:
 
     def init_elasticsearch_domains(self, permissions_only=False):
         """
-        Init elasticsearch_domains
+        Init Opensearch domains
 
         :return:
         """
@@ -462,7 +565,7 @@ class AWSCleaner:
 
     def init_elasticache_clusters(self, permissions_only=False):
         """
-        Init elasticache_clusters
+        Init Elasticache clusters
 
         :return:
         """
@@ -530,7 +633,7 @@ class AWSCleaner:
     # pylint: disable= too-many-branches
     def generate_permissions(self):
         """
-        Generate iam permissions.
+        Generate IAM permissions based on the cleanup_report checks set to active.
         https://iam.cloudonaut.io/
 
         :return:
@@ -554,7 +657,10 @@ class AWSCleaner:
 
     def cleanup_report_ebs_volumes(self, permissions_only=False):
         """
-        Generate cleanup report for Volumes
+        Generate multiple Cleanup and Usage reports for EBS Volumes:
+        * Unused Volumes.
+        * Volumes' types.
+        * Sizes report.
 
         :return:
         """
@@ -580,7 +686,7 @@ class AWSCleaner:
 
     def sub_cleanup_report_ebs_volumes_in_use(self, permissions_only=False):
         """
-        Check volumes not in use
+        Find unattached volumes.
 
         :return:
         """
@@ -604,7 +710,7 @@ class AWSCleaner:
 
     def sub_cleanup_report_ebs_volumes_sizes(self, permissions_only=False):
         """
-        Generate EBS Volume sizes
+        Generate EBS Volume size report.
 
         :return:
         """
@@ -623,7 +729,7 @@ class AWSCleaner:
                 name = volume.id
 
             try:
-                attachment_string = volume.attachments[0]['InstanceId']
+                attachment_string = volume.attachments[0]["InstanceId"]
             except IndexError:
                 attachment_string = "Not-attached"
 
@@ -633,7 +739,7 @@ class AWSCleaner:
 
     def sub_cleanup_report_ebs_volumes_types(self, permissions_only=False):
         """
-        Generate EBS Volume sizes by type.
+        Generate EBS Volume sizes and size summarising by volume type.
 
         :return:
         """
@@ -668,23 +774,23 @@ class AWSCleaner:
 
         return tb_ret
 
-    def cleanup_route_53(self, permissions_only=False):
+    def cleanup_report_route_53_service(self, permissions_only=False):
         """
-        Clean the Route 53 service.
+        Route 53 service reports.
 
         :return:
         """
         if permissions_only:
-            permissions = self.cleanup_report_route53_certificates(permissions_only=permissions_only)
-            permissions += self.cleanup_report_route53_loadbalancers(permissions_only=permissions_only)
+            permissions = self.sub_cleanup_report_route53_certificates(permissions_only=permissions_only)
+            permissions += self.sub_cleanup_report_route53_loadbalancers(permissions_only=permissions_only)
             return permissions
 
         tb_ret = TextBlock("Route53 Report")
-        tb_ret_tmp = self.cleanup_report_route53_certificates()
+        tb_ret_tmp = self.sub_cleanup_report_route53_certificates()
         if tb_ret_tmp.blocks or tb_ret_tmp.lines:
             tb_ret.blocks.append(tb_ret_tmp)
 
-        tb_ret_tmp = self.cleanup_report_route53_loadbalancers()
+        tb_ret_tmp = self.sub_cleanup_report_route53_loadbalancers()
         if tb_ret_tmp.blocks or tb_ret_tmp.lines:
             tb_ret.blocks.append(tb_ret_tmp)
 
@@ -694,13 +800,8 @@ class AWSCleaner:
         logger.info(f"Output in: {self.configuration.route53_report_file_path}")
         return tb_ret
 
-    def cleanup_report_route53_certificates(self, permissions_only=False):
+    def sub_cleanup_report_route53_certificates(self, permissions_only=False):
         """
-        * Expired certificate validation
-        * Certificate renew failed.
-        * Not existing.
-        * Wrong CNAME Value.
-
         :return:
         """
 
@@ -712,7 +813,7 @@ class AWSCleaner:
         tb_ret = TextBlock("Route53 Certificate")
         return tb_ret
 
-    def cleanup_report_route53_loadbalancers(self, permissions_only=False):
+    def sub_cleanup_report_route53_loadbalancers(self, permissions_only=False):
         """
         DNS records pointing to missing load balancers.
 
@@ -729,7 +830,7 @@ class AWSCleaner:
 
     def cleanup_report_acm_certificate(self, permissions_only=False):
         """
-        ACM Certificates
+        ACM Certificates cleanups: Unused, ineligible for renew, expired/short expiration period.
 
         :return:
         """
@@ -819,7 +920,7 @@ class AWSCleaner:
 
     def cleanup_report_network_interfaces(self, permissions_only=False):
         """
-        Cleanup report for ec2 interfaces
+        Cleanup report for unused ENIs
 
         :return:
         """
@@ -847,12 +948,17 @@ class AWSCleaner:
 
     def cleanup_report_lambdas(self, permissions_only=False):
         """
-        Generated various lambdas' cleanup reports.
-        "namespace" : "AWS/Lambda"
-        dimensions: [{'Name': 'FunctionName', 'Value': ''}]
+        Generated various lambdas' cleanup reports:
+
+        * Lambdas which were not running - no logs or to old logs.
+        * Lambdas with deprecates runtimes.
+        * Oversize Lambdas.
+        * Lambdas security groups should not have incoming ports.
+        * Lambdas code is too old - Lambda was not deployed for too long.
 
         @return:
         """
+
         if permissions_only:
             permissions = self.sub_cleanup_report_lambdas_not_running(permissions_only=permissions_only)
             permissions += self.sub_cleanup_report_lambdas_deprecate(permissions_only=permissions_only)
@@ -927,6 +1033,7 @@ class AWSCleaner:
     def sub_cleanup_report_lambdas_large_size(self, permissions_only=False):
         """
         Large lambdas - over 100MiB size code.
+
         :return:
         """
 
@@ -1071,6 +1178,7 @@ class AWSCleaner:
     def sub_cleanup_report_lambdas_not_running(self, permissions_only=False):
         """
         Lambda report checking if lambdas write logs:
+
         * No log group
         * Log group is empty
         * To old streams
@@ -1123,7 +1231,7 @@ class AWSCleaner:
                                                                log_group
                                                                ):
         """
-        Lambda report checking if the last log stream is to old
+        Lambda report checking if the last log stream is too old
 
         @param log_group:
         @return:
@@ -1164,6 +1272,7 @@ class AWSCleaner:
     def sub_cleanup_report_lambdas_old_code(self, permissions_only=False):
         """
         Find all lambdas, which code wasn't updated for a year or more.
+
         :return:
         """
 
@@ -1226,7 +1335,7 @@ class AWSCleaner:
 
     def cleanup_report_ec2_instances(self, permissions_only=False):
         """
-        Old AMI. It's important to renew AMIs on a regular basics.
+        Detect old AMIs. It's important to renew AMIs on a regular basics.
 
         :return:
         """
@@ -1254,8 +1363,9 @@ class AWSCleaner:
 
     def cleanup_report_dynamodb(self, permissions_only=False):
         """
-        DynamoDB has no backup.
-        todo: Used read/write much less than reservation.
+        DynamoDB Cleanup:
+        * Backups are not enabled.
+        * Deletion protection is disabled.
 
         :param permissions_only:
         :return:
@@ -1283,6 +1393,7 @@ class AWSCleaner:
     def cleanup_report_rds(self, permissions_only=False):
         """
         RDS has no metrics
+        ret = self.find_cloudwatch_metrics_by_namespace_excluding_dimension(["AWS/RDS"], ["DBInstanceIdentifier", "DBClusterIdentifier", "DbClusterIdentifier"])
 
         :param permissions_only:
         :return:
@@ -1296,6 +1407,7 @@ class AWSCleaner:
         if permissions_only:
             permissions += self.sub_cleanup_report_rds_cluster_monitoring(permissions_only=permissions_only)
             permissions += self.sub_cleanup_report_rds_instance_monitoring(permissions_only=permissions_only)
+            permissions += self.sub_cleanup_report_rds_snapshots(permissions_only=permissions_only)
             return permissions
 
         tb_ret = TextBlock("RDS Cleanups")
@@ -1309,6 +1421,10 @@ class AWSCleaner:
             tb_ret.blocks.append(tb_ret_tmp)
 
         tb_ret_tmp = self.sub_cleanup_report_rds_instance_monitoring(permissions_only=permissions_only)
+        if tb_ret_tmp:
+            tb_ret.blocks.append(tb_ret_tmp)
+
+        tb_ret_tmp = self.sub_cleanup_report_rds_snapshots(permissions_only=permissions_only)
         if tb_ret_tmp:
             tb_ret.blocks.append(tb_ret_tmp)
 
@@ -1338,11 +1454,15 @@ class AWSCleaner:
             namespaces = ["AWS/RDS"]
             dimension_name = "DBClusterIdentifier"
             metrics = self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_metrics, namespaces, dimension_name, dimension_value)
+            dimension_name_1 = "DbClusterIdentifier"
+            metrics += self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_metrics, namespaces, dimension_name_1, dimension_value)
             if not metrics:
                 tb_ret.lines.append(f"RDS Cluster: {rds_cluster.id} has no available metrics.")
                 continue
 
             alarms = self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_alarms, namespaces, dimension_name, dimension_value)
+            dimension_name_1 = "DbClusterIdentifier"
+            alarms += self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_alarms, namespaces, dimension_name_1, dimension_value)
             inactive_alarms = []
             active_alarms = []
             for alarm in alarms:
@@ -1403,6 +1523,28 @@ class AWSCleaner:
                 tb_ret_tmp.lines += list({metric.name for metric in metrics})
             if tb_ret_tmp.lines:
                 tb_ret.blocks.append(tb_ret_tmp)
+
+        return tb_ret if tb_ret.lines or tb_ret.blocks else None
+
+    def sub_cleanup_report_rds_snapshots(self, permissions_only=False):
+        """
+        Metrics and alarms misconfiguration.
+
+        :return:
+        """
+
+        permissions = self.init_cloudwatch_alarms(permissions_only=permissions_only)
+        permissions += self.init_cloudwatch_metrics(permissions_only=permissions_only)
+        permissions += self.init_rds(permissions_only=permissions_only)
+        if permissions_only:
+            return permissions
+
+        tb_ret = TextBlock("RDS snapshots report")
+        for rds_snapshot in self.aws_api.rds_db_cluster_snapshots:
+            if not rds_snapshot.storage_encrypted:
+                tb_ret.lines.append(f"Snapshot {rds_snapshot.id} unencrypted storage")
+            if rds_snapshot.master_username.lower() in ["root", "admin", "administrator"]:
+                tb_ret.lines.append(f"Snapshot {rds_snapshot.id} obvious master_username")
 
         return tb_ret if tb_ret.lines or tb_ret.blocks else None
 
@@ -1511,8 +1653,6 @@ class AWSCleaner:
 
     def cleanup_report_elasticache(self, permissions_only=False):
         """
-        Elasticache have public subnets
-        Elasticache version
 
         :param permissions_only:
         :return:
@@ -1629,12 +1769,7 @@ class AWSCleaner:
 
     def cleanup_report_sqs(self, permissions_only=False):
         """
-        No metrics on SQS.
-        "namespace" :
-        dimensions: [{'Name': 'QueueName', 'Value': ''}]
-        sqs_alarms = CommonUtils.find_objects_by_values(self.aws_api.cloud_watch_alarms, {"namespace": "AWS/SQS"})
-
-        :param permissions_only:
+         :param permissions_only:
         :return:
         """
 
@@ -1658,6 +1793,7 @@ class AWSCleaner:
     def cleanup_report_load_balancers(self, permissions_only=False):
         """
         Generate load balancers' cleanup report.
+        ret = self.find_cloudwatch_metrics_by_namespace_excluding_dimension(["AWS/ApplicationELB", "AWS/NetworkELB"], ["TargetGroup", "LoadBalancer"])
 
         @return:
         """
@@ -1916,6 +2052,27 @@ class AWSCleaner:
             lst_ret.append(mon_obj)
         return lst_ret
 
+    def find_cloudwatch_metrics_by_namespace_excluding_dimension(self, namespaces, dimension_names):
+        """
+        Metrics or alarms are filtered the same way.
+
+        :param namespaces:
+        :param dimension_names:
+        :return:
+        """
+
+        lst_ret = []
+        for mon_obj in self.aws_api.cloud_watch_metrics:
+            if mon_obj.namespace not in namespaces:
+                continue
+
+            for dimension_name in dimension_names:
+                if dimension_name in [dimension["Name"] for dimension in mon_obj.dimensions]:
+                    break
+            else:
+                lst_ret.append(mon_obj)
+        return lst_ret
+
     def cleanup_report_security_groups(self, permissions_only=False):
         """
         Generating security group cleanup reports.
@@ -2067,3 +2224,123 @@ class AWSCleaner:
                         f"There is LB '{load_balancer.name}' listener service '{listener_service}' but no security group permits a traffic to it"
                     )
         return lines
+
+    def cleanup_report_ses(self, permissions_only=False):
+        """
+        Generating ses cleanup reports.
+        todo: sesv2 get_account
+
+
+        @param permissions_only:
+        @return:
+        """
+
+        permissions = self.init_ses(permissions_only=permissions_only)
+        if permissions_only:
+            permissions += self.sub_ses_cloudwatch(permissions_only=permissions_only)
+            return permissions
+
+        tb_ret = TextBlock("SES cleanup")
+
+        tb_ret_tmp = self.sub_ses_configuration_set()
+        if tb_ret_tmp:
+            tb_ret.blocks.append(tb_ret_tmp)
+
+        tb_ret_tmp = self.sub_ses_email_identity()
+        if tb_ret_tmp:
+            tb_ret.blocks.append(tb_ret_tmp)
+
+        tb_ret_tmp = self.sub_ses_cloudwatch(permissions_only=permissions_only)
+        if tb_ret_tmp:
+            tb_ret.blocks.append(tb_ret_tmp)
+
+        tb_ret.write_to_file(self.configuration.ses_report_file_path)
+        return tb_ret
+
+    def sub_ses_configuration_set(self):
+        """
+        todo: Check following events set:
+        ['BOUNCE', 'COMPLAINT', 'REJECT', 'RENDERING_FAILURE'']
+
+        :return:
+        """
+
+        tb_ret = TextBlock("Configuration sets report")
+        for conf_set in self.aws_api.sesv2_configuration_sets:
+            if conf_set.reputation_options and \
+                "ReputationMetricsEnabled" in conf_set.reputation_options and \
+                    not conf_set.reputation_options.get("ReputationMetricsEnabled"):
+                tb_ret.lines.append(f"Configuration Set {conf_set.name} Reputation metrics disabled.")
+            if not conf_set.event_destinations:
+                tb_ret.lines.append(f"Configuration Set {conf_set.name} Event destinations not set.")
+
+        return tb_ret if tb_ret.lines or tb_ret.blocks else None
+
+    def sub_ses_email_identity(self):
+        """
+        Report SES identity.
+
+        :return:
+        """
+
+        tb_ret = TextBlock("Email identities report")
+        for identity in self.aws_api.sesv2_email_identities:
+            if identity.verification_status != "SUCCESS":
+                tb_ret.lines.append(f"Email identity '{identity.name}' verification status is not success!")
+            if identity.dkim_attributes:
+                if "SigningEnabled" in identity.dkim_attributes:
+                    if not identity.dkim_attributes["SigningEnabled"]:
+                        tb_ret.lines.append(f"Configuration Set '{identity.name}' DKIM Signing is disabled")
+        return tb_ret if tb_ret.lines or tb_ret.blocks else None
+
+    def sub_ses_cloudwatch(self, permissions_only=False):
+        """
+        Report SES identity.
+        ret = self.find_cloudwatch_metrics_by_namespace_excluding_dimension(["AWS/SES"], ["ORG", "ses:configuration-set", "RuleSetName", "RuleName"])
+
+        :return:
+        """
+
+        permissions = self.init_cloudwatch_alarms(permissions_only=permissions_only)
+        permissions += self.init_cloudwatch_metrics(permissions_only=permissions_only)
+        if permissions_only:
+            return permissions
+
+        tb_ret = TextBlock("SES monitoring report")
+        metrics = [metric for metric in self.aws_api.cloud_watch_metrics if metric.namespace == "AWS/SES"]
+        if not metrics:
+            tb_ret.lines.append("Could find AWS/SES metrics")
+            return
+        breakpoint()
+
+        alarms = [alarm for alarm in self.aws_api.cloud_watch_alarms if alarm.namespace == "AWS/SES"]
+        inactive_alarms = []
+        active_alarms = []
+        for alarm in alarms:
+            if alarm.actions_enabled:
+                active_alarms.append(alarm)
+            else:
+                inactive_alarms.append(alarm)
+
+        tb_ret_tmp = TextBlock(f"RDS Cluster: {rds_cluster.id}")
+        if inactive_alarms:
+            tb_ret_tmp.lines.append(f"Disabled alarms: {[alarm.name for alarm in inactive_alarms]}")
+        elif not active_alarms:
+            tb_ret_tmp.lines.append("No Alarms. Following metrics are available:")
+            tb_ret_tmp.lines += list({metric.name for metric in metrics})
+        if tb_ret_tmp.lines:
+            tb_ret.blocks.append(tb_ret_tmp)
+
+        return tb_ret if tb_ret.lines or tb_ret.blocks else None
+
+    def cleanup_report_sns(self, permissions_only=False):
+        """
+        todo: find sns topics set to handle cloudwatch alarms but have to policy permitting cloudwatch sending sns.
+
+        :param permissions_only:
+        :return:
+        """
+        permissions = self.init_cloudwatch_alarms(permissions_only=permissions_only)
+        permissions += self.init_cloudwatch_metrics(permissions_only=permissions_only)
+        if permissions_only:
+            return permissions

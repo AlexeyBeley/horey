@@ -13,3 +13,8 @@ todo: too big ecr images.
 
 lambda no cloudwatch alarms
 ecs no cloudwatch alarms
+
+
+security:
+lambda:InvokeFunction on "*" or region == *
+If created using infrastructure as a code, development role gets access to prod functions.

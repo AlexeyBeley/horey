@@ -59,6 +59,14 @@ def test_init_aws_cleaner(configuration):
     assert isinstance(AWSCleaner(configuration), AWSCleaner)
 
 
+@pytest.mark.wip
+def test_init_ses(configuration: AWSCleanerConfigurationPolicy):
+    cleaner = AWSCleaner(configuration)
+    cleaner.init_ses()
+    assert len(cleaner.aws_api.sesv2_email_identities) > 0
+    assert len(cleaner.aws_api.sesv2_configuration_sets) > 0
+
+
 @pytest.mark.done
 def test_init_load_balancers(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
@@ -299,6 +307,21 @@ def test_init_sqs_queues(configuration: AWSCleanerConfigurationPolicy):
     assert len(cleaner.aws_api.sqs_queues) > 1
 
 
+@pytest.mark.wip
+def test_init_ses_permissions_only(configuration: AWSCleanerConfigurationPolicy):
+    cleaner = AWSCleaner(configuration)
+    ret = cleaner.init_ses(permissions_only=True)
+    for statement in ret:
+        if "arn" in str(statement["Resource"]):
+            del statement["Resource"]
+
+    assert json.loads(json.dumps(ret)) == [{"Sid": "SES", "Effect": "Allow", "Action": ["ses:ListConfigurationSets"], "Resource": "*"},
+                                           {"Sid": "SESConfigSet", "Effect": "Allow", "Action": ["ses:GetConfigurationSet"]},
+                                           {"Sid": "SESEmailIdentities", "Effect": "Allow", "Action": ["ses:ListEmailIdentities"], "Resource": "*"},
+                                           {"Sid": "SESEmailIdentity", "Effect": "Allow", "Action": ["ses:GetEmailIdentity"]}
+                                           ]
+
+
 @pytest.mark.done
 def test_generate_permissions_cloud_watch_log_groups(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
@@ -480,6 +503,7 @@ def test_generate_permissions_cleanup_report_route53_certificates(
         assert statement in expected
     assert len(expected) == len(ret["Statement"])
 
+
 @pytest.mark.done
 def test_generate_permissions_cleanup_report_route53_loadbalancers(
         configuration_generate_permissions: AWSCleanerConfigurationPolicy):
@@ -507,7 +531,8 @@ def test_generate_permissions_cleanup_report_lambdas(
                 {"Sid": "LambdaGetPolicy", "Effect": "Allow", "Action": "lambda:GetPolicy"},
                 {"Sid": "DescribeSecurityGroups", "Effect": "Allow", "Action": "ec2:DescribeSecurityGroups",
                  "Resource": "*"},
-                {"Sid": "CloudwatchLogs", "Effect": "Allow", "Action": ["logs:DescribeLogGroups", "logs:ListTagsForResource"], "Resource": "*"},
+                {"Sid": "CloudwatchLogs", "Effect": "Allow",
+                 "Action": ["logs:DescribeLogGroups", "logs:ListTagsForResource"], "Resource": "*"},
                 {"Action": "logs:DescribeMetricFilters", "Effect": "Allow", "Sid": "DescribeMetricFilters"}
                 ]
 
@@ -658,19 +683,37 @@ def test_sub_cleanup_target_groups(configuration):
     assert ret is not None
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_sub_cleanup_report_rds_cluster_monitoring(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.sub_cleanup_report_rds_cluster_monitoring()
     assert len(cleaner.aws_api.rds_db_clusters) > 0
     assert ret is not None
 
-@pytest.mark.wip
+
+@pytest.mark.done
 def test_sub_cleanup_report_rds_instance_monitoring(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.sub_cleanup_report_rds_instance_monitoring()
     assert len(cleaner.aws_api.rds_db_instances) > 0
     assert ret is not None
+
+
+@pytest.mark.done
+def test_sub_cleanup_report_rds_snapshots(configuration):
+    cleaner = AWSCleaner(configuration)
+    ret = cleaner.sub_cleanup_report_rds_snapshots()
+    assert len(cleaner.aws_api.rds_db_cluster_snapshots) > 0
+    assert ret is not None
+
+
+@pytest.mark.wip
+def test_cleanup_report_ses(configuration):
+    cleaner = AWSCleaner(configuration)
+    ret = cleaner.cleanup_report_ses()
+    assert len(cleaner.aws_api.sesv2_configuration_sets) > 0
+    assert ret is not None
+
 
 @pytest.mark.done
 def test_generate_permissions_all(

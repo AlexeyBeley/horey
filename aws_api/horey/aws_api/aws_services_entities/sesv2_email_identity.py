@@ -22,15 +22,7 @@ class SESV2EmailIdentity(AwsObject):
             self._init_object_from_cache(dict_src)
             return
 
-        init_options = {
-            "IdentityName": lambda x, y: self.init_default_attr(
-                x, y, formatted_name="name"
-            ),
-            "IdentityType": self.init_default_attr,
-            "SendingEnabled": self.init_default_attr,
-        }
-
-        self.init_attrs(dict_src, init_options)
+        self.update_from_raw_response(dict_src)
 
     def _init_object_from_cache(self, dict_src):
         """
@@ -61,6 +53,7 @@ class SESV2EmailIdentity(AwsObject):
             "Policies": self.init_default_attr,
             "Tags": self.init_default_attr,
             "SendingEnabled": self.init_default_attr,
+            "VerificationStatus": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
