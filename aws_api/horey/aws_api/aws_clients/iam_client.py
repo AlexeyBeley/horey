@@ -9,7 +9,6 @@ from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.iam_role import IamRole
 from horey.aws_api.aws_services_entities.iam_group import IamGroup
 from horey.aws_api.aws_services_entities.iam_instance_profile import IamInstanceProfile
-from horey.common_utils.common_utils import CommonUtils
 
 from horey.h_logger import get_logger
 
@@ -141,25 +140,46 @@ class IamClient(Boto3Client):
 
         return final_result
 
-    def get_all_roles(self, full_information=True, policies=None):
+    # pylint: disable= too-many-arguments
+    def yield_roles(self, update_info=False, filters_req=None, full_information=True):
+        """
+        Yield roles
+
+        :return:
+        """
+
+        regional_fetcher_generator = self.yield_roles_raw
+        for obj in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                  IamRole,
+                                                  update_info=update_info,
+                                                  full_information_callback=self.get_role_full_information if full_information else None,
+                                                  global_service = True,
+                                                  filters_req=filters_req):
+            yield obj
+
+    def yield_roles_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.client.list_roles, "Roles", filters_req=filters_req
+        ):
+            yield dict_src
+
+
+    def get_all_roles(self, full_information=True):
         """
         Get all roles
 
         :param full_information:
-        :param policies:
         :return:
         """
 
-        final_result = []
-        for result in self.execute(
-            self.client.list_roles, "Roles", filters_req={"MaxItems": 1000}
-        ):
-            role = IamRole(result)
-            final_result.append(role)
-            if full_information:
-                self.update_iam_role_full_information(role, policies=policies)
+        return list(self.yield_roles(full_information=full_information))
 
-        return final_result
 
     def get_all_groups(self, full_information=True):
         """
@@ -232,23 +252,19 @@ class IamClient(Boto3Client):
             final_result.append(instance_profile)
         return final_result
 
-    def update_iam_role_full_information(self, iam_role, policies=None):
+    def get_role_full_information(self, iam_role):
         """
 
         :param iam_role:
-        :param policies: if policies already polled, you can pass them to save time.
         :return:
         """
 
-        self.update_role_information(iam_role)
+        if self.update_role_information(iam_role):
+            self.update_role_managed_policies(iam_role)
+            self.update_role_inline_policies(iam_role)
+            return True
 
-        if policies is None:
-            policies = self.get_all_policies(
-                full_information=False, filters_req={"OnlyAttached": True}
-            )
-
-        self.update_iam_role_managed_policies(iam_role, policies=policies)
-        self.update_iam_role_inline_policies(iam_role)
+        return False
 
     def update_role_information(self, iam_role: IamRole):
         """
@@ -265,55 +281,46 @@ class IamClient(Boto3Client):
             return True
         return False
 
-    def update_iam_role_managed_policies(self, iam_role, policies=None):
+    def update_role_managed_policies(self, iam_role):
         """
         Full information part
 
         @param iam_role:
-        @param policies:
         @return:
         """
-        if policies is None:
-            return
 
-        for managed_policy in self.execute(
+        iam_role.managed_policies_arns = [dict_src["PolicyArn"] for dict_src in self.execute(
             self.client.list_attached_role_policies,
             "AttachedPolicies",
             filters_req={"RoleName": iam_role.name, "MaxItems": 1000},
-        ):
-            found_policies = CommonUtils.find_objects_by_values(
-                policies, {"arn": managed_policy["PolicyArn"]}
-            )
+        )]
 
-            if len(found_policies) != 1:
-                found_policies = [managed_policy["PolicyArn"]]
-
-            policy = found_policies[0]
-            iam_role.add_policy(policy)
-
-    def update_iam_role_inline_policies(self, iam_role):
+    def update_role_inline_policies(self, iam_role: IamRole):
         """
-        Full information part update.
+        Full information part update - inline policies
+
         :param iam_role:
         :return:
         """
-        for poilcy_name in self.execute(
+
+        policies = []
+        for policy_name in self.execute(
             self.client.list_role_policies,
             "PolicyNames",
             filters_req={"RoleName": iam_role.name, "MaxItems": 1000},
         ):
-            for document_dict in self.execute(
+            for document in self.execute(
                 self.client.get_role_policy,
                 "PolicyDocument",
-                filters_req={"RoleName": iam_role.name, "PolicyName": poilcy_name},
+                filters_req={"RoleName": iam_role.name, "PolicyName": policy_name},
             ):
-                policy_dict = {"PolicyName": poilcy_name}
+                policy_dict = {"PolicyName": policy_name,
+                               "Document": document
+                               }
                 policy = IamPolicy(policy_dict)
+                policies.append(policy)
 
-                policy_dict = {"Document": document_dict}
-                policy.update_statements(policy_dict)
-
-                iam_role.add_policy(policy)
+        iam_role.inline_policies = policies
 
     def yield_policies(self, full_information=True, filters_req=None):
         """
@@ -353,7 +360,7 @@ class IamClient(Boto3Client):
 
         return final_result
 
-    def update_policy_default_statement(self, policy):
+    def update_policy_default_statement(self, policy: IamPolicy):
         """
         Fetches and updates the policy statements
 
@@ -369,7 +376,7 @@ class IamClient(Boto3Client):
                 "VersionId": policy.default_version_id,
             },
         ):
-            policy.update_statements(response)
+            policy.update_from_raw_response(response)
 
     def update_policy_versions(self, policy: IamPolicy):
         """
@@ -378,17 +385,15 @@ class IamClient(Boto3Client):
         :param policy: The IamPolicy obj
         :return: None, raise if fails
         """
-        ret = []
-        for response in self.execute(
+
+        policy.versions = list(self.execute(
             self.client.list_policy_versions,
             "Versions",
             filters_req={
                 "PolicyArn": policy.arn
             },
-        ):
-            ret.append(response)
+        ))
 
-        policy.versions = ret
 
     def attach_role_policy_raw(self, request_dict):
         """
@@ -401,10 +406,29 @@ class IamClient(Boto3Client):
         logger.info(f"Attaching policy to role: {request_dict}")
         for response in self.execute(
             self.client.attach_role_policy,
-            "Role",
+            None,
             filters_req=request_dict,
             raw_data=True,
         ):
+            self.clear_cache(IamRole)
+            return response
+
+    def detach_role_policy_raw(self, request_dict):
+        """
+        Detach a policy from role.
+
+        @param request_dict:
+        @return:
+        """
+
+        logger.info(f"Detaching policy from role: {request_dict}")
+        for response in self.execute(
+            self.client.detach_role_policy,
+            None,
+            filters_req=request_dict,
+            raw_data=True,
+        ):
+            self.clear_cache(IamRole)
             return response
 
     def attach_role_inline_policy(self, role: IamRole, policy: IamPolicy):
@@ -421,10 +445,10 @@ class IamClient(Boto3Client):
                         "PolicyName": policy.name,
                         "PolicyDocument": policy.document}
 
-        return self.attach_role_inline_policy_raw(request_dict=request_dict)
+        return self.put_role_policy_raw(request_dict=request_dict)
 
 
-    def attach_role_inline_policy_raw(self, request_dict):
+    def put_role_policy_raw(self, request_dict):
         """
         Attach an inline policy to role.
 
@@ -432,14 +456,33 @@ class IamClient(Boto3Client):
         @return:
         """
 
+        logger.info(f"Putting inline role policy: {request_dict}")
+
         for response in self.execute(
             self.client.put_role_policy, "ResponseMetadata", filters_req=request_dict
         ):
+            self.clear_cache(IamRole)
             return response
 
-    def provision_iam_role(self, iam_role: IamRole):
+    def delete_role_policy_raw(self, request_dict):
         """
-        ATTENTION!!! Role is not updated - only created if it does not exist.
+        Delete an inline policy to role.
+
+        @param request_dict:
+        @return:
+        """
+
+        logger.info(f"Deleting inline role policy: {request_dict}")
+
+        for response in self.execute(
+                self.client.delete_role_policy, "ResponseMetadata", filters_req=request_dict
+        ):
+            self.clear_cache(IamRole)
+            return response
+
+
+    def provision_role(self, iam_role: IamRole):
+        """
         Provision role object
 
         @param iam_role:
@@ -449,16 +492,42 @@ class IamClient(Boto3Client):
         region_role = IamRole({})
         region_role.name = iam_role.name
         region_role.path = iam_role.path
-        if not self.update_role_information(region_role):
+        if not self.get_role_full_information(region_role):
             role_dict_src = self.provision_iam_role_raw(
                 iam_role.generate_create_request()
             )
-            iam_role.update_from_raw_response(role_dict_src)
-        else:
-            self.update_role_information(iam_role)
+            region_role.update_from_raw_response(role_dict_src)
 
-        for request in iam_role.generate_attach_policies_requests():
-            self.attach_role_policy_raw(request)
+        attach_requests, detach_requests = region_role.generate_managed_policies_requests(iam_role)
+        for attach_request in attach_requests:
+            self.attach_role_policy_raw(attach_request)
+        for detach_request in detach_requests:
+            self.detach_role_policy_raw(detach_request)
+
+        put_requests, delete_requests =  region_role.generate_inline_policies_requests(iam_role)
+        for put_request in put_requests:
+            self.put_role_policy_raw(put_request)
+
+        for delete_request in delete_requests:
+            self.delete_role_policy_raw(delete_request)
+
+        self.update_role_information(iam_role)
+
+    def dispose_role(self, role: IamRole):
+        """
+        Standard.
+
+        :param role:
+        :return:
+        """
+
+        logger.warning(f"Deleting iam role: {role.name}")
+
+        for response in self.execute(
+            self.client.delete_role, None, filters_req={"RoleName": role.name}, raw_data=True
+        ):
+            self.clear_cache(IamRole)
+            return response
 
     def provision_iam_role_raw(self, request_dict):
         """
@@ -473,6 +542,7 @@ class IamClient(Boto3Client):
         for response in self.execute(
             self.client.create_role, "Role", filters_req=request_dict
         ):
+            self.clear_cache(IamRole)
             return response
 
     def update_instance_profile_information(

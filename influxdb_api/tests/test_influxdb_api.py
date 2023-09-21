@@ -39,7 +39,8 @@ def test_init_measurements():
     :return:
     """
 
-    influxdb_api.init_measurements(mock_values["db_name"])
+    ret = influxdb_api.init_measurements(mock_values["db_name"])
+    assert len(ret) > 0
 
 
 def test_yield_series():
@@ -53,7 +54,7 @@ def test_yield_series():
         index_tmp = 42
         for lst_value in measurement_series["values"]:
             if not isinstance(lst_value[index_tmp], int) and lst_value[index_tmp] is not None:
-                raise Exception("not int")
+                raise ValueError("not int")
 
 
 def test_cast_measurement():
@@ -80,10 +81,10 @@ def test_find_max_count():
 
 if __name__ == "__main__":
     #test_parse_journalctl()
-    #test_init_measurements()
+    test_init_measurements()
     #test_yield_series()
     #test_write()
     #test_count_measurement()
     #test_find_max_count()
     #breakpoint()
-    test_cast_measurement()
+    #test_cast_measurement()

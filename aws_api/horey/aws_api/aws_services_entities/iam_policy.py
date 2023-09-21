@@ -20,28 +20,14 @@ class IamPolicy(AwsObject):
         self.arn = None
         self.versions = None
         self.description = None
+        self.default_version_id = None
 
         super().__init__(dict_src, from_cache=from_cache)
         if from_cache:
             self._init_policy_from_cache(dict_src)
             return
 
-        init_options = {
-            "PolicyId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
-            "Path": self.init_default_attr,
-            "PolicyName": lambda x, y: self.init_default_attr(
-                x, y, formatted_name="name"
-            ),
-            "Arn": self.init_default_attr,
-            "CreateDate": self.init_default_attr,
-            "DefaultVersionId": self.init_default_attr,
-            "AttachmentCount": self.init_default_attr,
-            "PermissionsBoundaryUsageCount": self.init_default_attr,
-            "IsAttachable": self.init_default_attr,
-            "UpdateDate": self.init_default_attr,
-        }
-
-        self.init_attrs(dict_src, init_options)
+        self.update_from_raw_response(dict_src)
 
     def _init_policy_from_cache(self, dict_src):
         """
@@ -64,21 +50,6 @@ class IamPolicy(AwsObject):
         """
         self.document = IamPolicy.Document(value, from_cache=True)
 
-    def update_statements(self, dict_src):
-        """
-        Update statement from AWS API dict
-        :param dict_src:
-        :return:
-        """
-        init_options = {
-            "CreateDate": self.init_default_attr,
-            "IsDefaultVersion": self.init_default_attr,
-            "VersionId": self.init_default_attr,
-            "Document": self.init_document,
-        }
-
-        self.init_attrs(dict_src, init_options)
-
     def init_document(self, _, value):
         """
         Init document. Value received from AWS API
@@ -86,8 +57,8 @@ class IamPolicy(AwsObject):
         :param value:
         :return:
         """
-        document = IamPolicy.Document(value)
-        self.init_default_attr("document", document)
+
+        self.document = IamPolicy.Document(value)
 
     def generate_create_request(self):
         """
@@ -172,6 +143,7 @@ class IamPolicy(AwsObject):
             "UpdateDate": self.init_default_attr,
             "Tags": self.init_default_attr,
             "Description": self.init_default_attr,
+            "Document": self.init_document
         }
 
         self.init_attrs(dict_src, init_options)
