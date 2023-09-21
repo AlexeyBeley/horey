@@ -407,6 +407,23 @@ class IamClient(Boto3Client):
         ):
             return response
 
+    def attach_role_inline_policy(self, role: IamRole, policy: IamPolicy):
+        """
+        Attach a policy to role.
+
+        @param role:
+        @param policy:
+        @return:
+        """
+
+        logger.info(f"Attaching policy {policy.name} to role: {role.name}")
+        request_dict = {"RoleName": role.name,
+                        "PolicyName": policy.name,
+                        "PolicyDocument": policy.document}
+
+        return self.attach_role_inline_policy_raw(request_dict=request_dict)
+
+
     def attach_role_inline_policy_raw(self, request_dict):
         """
         Attach an inline policy to role.
