@@ -198,11 +198,8 @@ class SESV2Client(Boto3Client):
                 raw_data=True,
                 filters_req={"ConfigurationSetName": obj.name},
         ):
-            del response["ResponseMetadata"]
-            try:
+            if "EventDestinations" in response:
                 obj.event_destinations += response["EventDestinations"]
-            except KeyError:
-                pass
 
     # pylint: disable= too-many-arguments
     def yield_email_templates(self, region=None, update_info=False, full_information=True, filters_req=None):

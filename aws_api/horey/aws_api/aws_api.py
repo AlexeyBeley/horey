@@ -546,7 +546,7 @@ class AWSAPI:
         self.sesv2_email_templates = self.sesv2_client.get_all_email_templates(region=region)
 
     def init_sesv2_configuration_sets(
-            self, region=None, full_information=False
+            self, region=None, full_information=True
     ):
         """
         Standard
@@ -1046,7 +1046,7 @@ class AWSAPI:
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, IamRole)
         else:
-            objects = self.iam_client.get_all_roles(policies=self.iam_policies)
+            objects = self.iam_client.get_all_roles()
 
         self.iam_roles = objects
 
@@ -4197,7 +4197,7 @@ class AWSAPI:
         @return:
         """
 
-        self.iam_client.provision_iam_role(iam_role)
+        self.iam_client.provision_role(iam_role)
 
     def provision_iam_policy(self, iam_policy):
         """

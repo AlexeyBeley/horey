@@ -1,25 +1,24 @@
 """
-Cloud watch specific log group representation
+Cloud watch Metric
 """
-import sys
-import os
-from horey.common_utils.common_utils import CommonUtils
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 
 
 class CloudWatchMetric(AwsObject):
     """
-    The class to represent instances of the log group objects.
+    The class to represent instances of the cloudwatch metric objects.
     """
 
     def __init__(self, dict_src, from_cache=False):
         """
         Init with boto3 dict
+
         :param dict_src:
         """
 
-        self.log_streams = []
+        self._dict_dimensions = None
+        self.dimensions = []
 
         super().__init__(dict_src, from_cache=from_cache)
 
@@ -36,6 +35,18 @@ class CloudWatchMetric(AwsObject):
         }
 
         self.init_attrs(dict_src, init_options)
+
+    @property
+    def dict_dimensions(self):
+        """
+        Formatted in a dict for ease of comparison.
+
+        :return:
+        """
+
+        if self._dict_dimensions is None:
+            self._dict_dimensions = {dimension["Name"]: dimension["Value"] for dimension in self.dimensions}
+        return self._dict_dimensions
 
     def _init_cloud_watch_metric_from_cache(self, dict_src):
         """

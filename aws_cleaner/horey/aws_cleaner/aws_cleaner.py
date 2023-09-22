@@ -37,6 +37,7 @@ class AWSCleaner:
         aws_api_configuration.aws_api_cache_dir = configuration.cache_dir
         self.aws_api = AWSAPI(aws_api_configuration)
 
+    # pylint: disable= too-many-statements
     def cleanup_report_todo(self):
         """
         :return:
@@ -64,6 +65,9 @@ class AWSCleaner:
 
         tb_ret_tmp = TextBlock("Opensearch")
         tb_ret_tmp.lines.append("Opensearch has no active cloudwatch alarms")
+        tb_ret_tmp.lines.append("Opensearch engine version")
+        tb_ret_tmp.lines.append("Opensearch has no retention.")
+        tb_ret_tmp.lines.append("deletion_protection is disabled")
         tb_ret.blocks.append(tb_ret_tmp)
 
         tb_ret_tmp = TextBlock("Elasticache")
@@ -91,12 +95,37 @@ class AWSCleaner:
 
         tb_ret_tmp = TextBlock("Lambda")
         tb_ret_tmp.lines.append("Cloudwatch alarm missing.")
+        tb_ret_tmp.lines.append('"No log group streams" logic to implement')
+
         tb_ret.blocks.append(tb_ret_tmp)
 
-        """
+        tb_ret_tmp = TextBlock("SNS")
+        tb_ret_tmp.lines.append("find sns topics set to handle cloudwatch alarms but have no policy permitting cloudwatch sending sns.")
+        tb_ret.blocks.append(tb_ret_tmp)
 
-        todo: Used read/write much less than reservation.
-        """
+        tb_ret_tmp = TextBlock("IAM")
+        tb_ret_tmp.lines.append("Action per service: for example * action on  ECR:* and S3:* - bad idea, you must manage at least per service")
+        tb_ret_tmp.lines.append("Single role should permit deletion on *, all others must be restricted either by region or by resource arn")
+
+        tb_ret_tmp.lines.append("To check an option to do report per resource: for example who can delete RDS/ECS/Lambda - which roles/policies and who can use them - user/ec2-instance/lambda")
+        tb_ret.blocks.append(tb_ret_tmp)
+
+        tb_ret_tmp = TextBlock("EC2")
+        tb_ret_tmp.lines.append("cleanup_report_ec2_instances add deletion protection check")
+        tb_ret_tmp.lines.append("cleanup_report_ec2_instances add iam instance profile role too permissive check")
+        tb_ret.blocks.append(tb_ret_tmp)
+
+        tb_ret_tmp = TextBlock("DynamoDB")
+        tb_ret_tmp.lines.append("Used read/write much less than reservation")
+        tb_ret.blocks.append(tb_ret_tmp)
+
+        tb_ret_tmp = TextBlock("RDS")
+        tb_ret.blocks.append(tb_ret_tmp)
+
+        tb_ret_tmp = TextBlock("SESv2")
+        tb_ret_tmp.lines.append("sesv2 get_account presents excessive information about SES account.")
+        tb_ret.blocks.append(tb_ret_tmp)
+
 
         return tb_ret
 
@@ -1675,9 +1704,10 @@ class AWSCleaner:
 
     def cleanup_report_cloudwatch(self, permissions_only=False):
         """
-        No metric_filters on logs.
-        no alarms on metric
-        disabled alarms
+        Checks the following:
+        * No metric_filters on logs.
+        * No alarms on metric
+        * Disabled alarms
 
         :param permissions_only:
         :return:
@@ -2029,6 +2059,21 @@ class AWSCleaner:
                 tb_ret.blocks.append(tb_ret_tmp)
         return tb_ret if tb_ret.lines or tb_ret.blocks else None
 
+    def find_cloudwatch_metric_alarms(self, metric, alarms=None):
+        """
+        Find alarms matching the metric.
+
+        :param metric:
+        :param alarms:
+        :return:
+        """
+
+        alarms = alarms if alarms is not None else self.aws_api.cloud_watch_alarms
+        return [alarm for alarm in alarms if
+                alarm.metric_name == metric.name and
+                alarm.namespace == metric.namespace and
+                alarm.dict_dimensions == metric.dict_dimensions]
+
     @staticmethod
     def find_cloudwatch_object_by_namespace_and_dimension(monitor_objects, namespaces, dimension_name, dimension_value):
         """
@@ -2228,8 +2273,6 @@ class AWSCleaner:
     def cleanup_report_ses(self, permissions_only=False):
         """
         Generating ses cleanup reports.
-        todo: sesv2 get_account
-
 
         @param permissions_only:
         @return:
@@ -2259,8 +2302,6 @@ class AWSCleaner:
 
     def sub_ses_configuration_set(self):
         """
-        todo: Check following events set:
-        ['BOUNCE', 'COMPLAINT', 'REJECT', 'RENDERING_FAILURE'']
 
         :return:
         """
@@ -2272,7 +2313,11 @@ class AWSCleaner:
                     not conf_set.reputation_options.get("ReputationMetricsEnabled"):
                 tb_ret.lines.append(f"Configuration Set {conf_set.name} Reputation metrics disabled.")
             if not conf_set.event_destinations:
-                tb_ret.lines.append(f"Configuration Set {conf_set.name} Event destinations not set.")
+                tb_ret.lines.append(f"Configuration Set '{conf_set.name}' Event destinations not set.")
+            else:
+                for event_destination in conf_set.event_destinations:
+                    if not event_destination["Enabled"]:
+                        tb_ret.lines.append(f"Configuration Set '{conf_set.name}' Event destination '{event_destination['Name']}' disabled")
 
         return tb_ret if tb_ret.lines or tb_ret.blocks else None
 
@@ -2295,8 +2340,10 @@ class AWSCleaner:
 
     def sub_ses_cloudwatch(self, permissions_only=False):
         """
-        Report SES identity.
-        ret = self.find_cloudwatch_metrics_by_namespace_excluding_dimension(["AWS/SES"], ["ORG", "ses:configuration-set", "RuleSetName", "RuleName"])
+        Report SES cloudwatch monitoring.
+        * Configured alarms are enabled.
+        * Critical alarms are on - such as Reputation and Bounce.
+        * Nice to have alarms are on - such as Send and Received.
 
         :return:
         """
@@ -2308,34 +2355,48 @@ class AWSCleaner:
 
         tb_ret = TextBlock("SES monitoring report")
         metrics = [metric for metric in self.aws_api.cloud_watch_metrics if metric.namespace == "AWS/SES"]
-        if not metrics:
-            tb_ret.lines.append("Could find AWS/SES metrics")
-            return
-        breakpoint()
 
         alarms = [alarm for alarm in self.aws_api.cloud_watch_alarms if alarm.namespace == "AWS/SES"]
-        inactive_alarms = []
-        active_alarms = []
-        for alarm in alarms:
-            if alarm.actions_enabled:
-                active_alarms.append(alarm)
-            else:
-                inactive_alarms.append(alarm)
+        inactive_alarms = [alarm for alarm in alarms if not alarm.actions_enabled]
 
-        tb_ret_tmp = TextBlock(f"RDS Cluster: {rds_cluster.id}")
         if inactive_alarms:
-            tb_ret_tmp.lines.append(f"Disabled alarms: {[alarm.name for alarm in inactive_alarms]}")
-        elif not active_alarms:
-            tb_ret_tmp.lines.append("No Alarms. Following metrics are available:")
-            tb_ret_tmp.lines += list({metric.name for metric in metrics})
-        if tb_ret_tmp.lines:
-            tb_ret.blocks.append(tb_ret_tmp)
+            tb_ret.lines.append(f"Disabled alarms: {[alarm.name for alarm in inactive_alarms]}")
 
+        if not metrics:
+            tb_ret.lines.append("Could find AWS/SES metrics")
+            return tb_ret
+
+        recommended_metrics = ["Reputation.BounceRate",
+                                    "Reputation.ComplaintRate",
+                                    "Reputation.DeliveriesEligibleForBounceRate",
+                                    "Reputation.DeliveriesEligibleForComplaintRate",
+                                    "RenderingFailure",
+                                    "Bounce", "PublishFailure", "PublishExpired"]
+        nice_to_have_metrics = ["Open", "Delivery", "Send", "PublishSuccess", "Received", "Click"]
+
+        known_metrics = recommended_metrics + nice_to_have_metrics
+        critical_report = []
+        nice_to_have_report = []
+        for metric in metrics:
+            if {dimension["Name"] for dimension in metric.dimensions} == {"EMAIL", "ORG"}:
+                continue
+
+            metric_alarms = self.find_cloudwatch_metric_alarms(metric, alarms=alarms)
+            if len(metric_alarms) > 1:
+                tb_ret.lines.append(f"Unknown Cloudwatch Metric status. Multiple alarms found for metric: {metric.name}: {[alarm.name for alarm in metric_alarms]}" )
+
+            if not metric_alarms:
+                if metric.name in recommended_metrics:
+                    critical_report.append(f"Critical Alarm missing for metric: {metric.name}. {metric.dict_dimensions}")
+                elif metric.name in nice_to_have_metrics:
+                    nice_to_have_report.append(f"Nice to have Alarm for metric: {metric.name}. {metric.dict_dimensions}")
+                elif metric.name not in known_metrics:
+                    tb_ret.lines.append(f"Unknown Cloudwatch Metric: '{metric.name}'. {metric.dict_dimensions}. Can not deside if alarm is needed.")
+        tb_ret.lines += critical_report + nice_to_have_report
         return tb_ret if tb_ret.lines or tb_ret.blocks else None
 
     def cleanup_report_sns(self, permissions_only=False):
         """
-        todo: find sns topics set to handle cloudwatch alarms but have to policy permitting cloudwatch sending sns.
 
         :param permissions_only:
         :return:
@@ -2344,3 +2405,4 @@ class AWSCleaner:
         permissions += self.init_cloudwatch_metrics(permissions_only=permissions_only)
         if permissions_only:
             return permissions
+        return None

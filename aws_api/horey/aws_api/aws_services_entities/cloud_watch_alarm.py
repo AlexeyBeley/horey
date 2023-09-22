@@ -19,7 +19,7 @@ class CloudWatchAlarm(AwsObject):
         self.log_streams = []
         self.alarm_description = None
         self.insufficient_data_actions = None
-        self.dimensions = None
+        self.dimensions = []
         self.ok_actions = None
         self.unit = None
         self.actions_enabled = None
@@ -33,6 +33,7 @@ class CloudWatchAlarm(AwsObject):
         self.threshold = None
         self.comparison_operator = None
         self.treat_missing_data = None
+        self._dict_dimensions = None
 
         super().__init__(dict_src, from_cache=from_cache)
 
@@ -70,6 +71,18 @@ class CloudWatchAlarm(AwsObject):
         }
 
         self.init_attrs(dict_src, init_options)
+
+    @property
+    def dict_dimensions(self):
+        """
+        Formatted in a dict for ease of comparison.
+
+        :return:
+        """
+
+        if self._dict_dimensions is None:
+            self._dict_dimensions = {dimension["Name"]: dimension["Value"] for dimension in self.dimensions}
+        return self._dict_dimensions
 
     def _init_cloud_watch_alarm_from_cache(self, dict_src):
         """
