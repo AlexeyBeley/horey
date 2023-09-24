@@ -391,6 +391,17 @@ class AWSCleanerConfigurationPolicy(ConfigurationPolicy):
         return os.path.join(self.sqs_reports_dir, "sqs.txt")
 
     @property
+    def sns_reports_dir(self):
+        ret = os.path.join(self.reports_dir, "sns")
+        if not os.path.exists(ret):
+            os.makedirs(ret, exist_ok=True)
+        return ret
+
+    @property
+    def sns_report_file_path(self):
+        return os.path.join(self.sns_reports_dir, "sns.txt")
+
+    @property
     def cache_dir(self):
         return self._cache_dir
 

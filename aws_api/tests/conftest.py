@@ -27,11 +27,14 @@ def activate_account():
         )
     )
     accounts = CommonUtils.load_object_from_module(accounts_file_full_path, "main")
-    AWSAccount.set_aws_account(accounts["admin"])
-    AWSAccount.set_aws_region(accounts["admin"].regions["us-west-2"])
+    #AWSAccount.set_aws_account(accounts["admin"])
+    #AWSAccount.set_aws_region(accounts["admin"].regions["us-west-2"])
 
     #AWSAccount.set_aws_account(accounts["full_ro_access"])
     #AWSAccount.set_aws_region(accounts["full_ro_access"].regions["us-west-2"])
 
-    #AWSAccount.set_aws_account(accounts["development"])
-    #AWSAccount.set_aws_region(accounts["development"].regions["us-west-2"])
+    AWSAccount.set_aws_account(accounts["development"])
+    AWSAccount.set_aws_region(accounts["development"].regions["us-west-2"])
+
+    #AWSAccount.set_aws_account(accounts["main"])
+    #AWSAccount.set_aws_region(accounts["main"].regions["us-east-1"])

@@ -158,8 +158,6 @@ from horey.aws_api.aws_clients.sesv2_client import SESV2Client
 from horey.aws_api.aws_services_entities.sesv2_email_identity import SESV2EmailIdentity
 
 from horey.aws_api.aws_clients.sns_client import SNSClient
-from horey.aws_api.aws_services_entities.sns_subscription import SNSSubscription
-from horey.aws_api.aws_services_entities.sns_topic import SNSTopic
 
 from horey.aws_api.aws_clients.eks_client import EKSClient
 from horey.aws_api.aws_services_entities.eks_addon import EKSAddon
@@ -558,43 +556,29 @@ class AWSAPI:
 
         self.sesv2_configuration_sets = self.sesv2_client.get_all_configuration_sets(region=region, full_information=full_information)
 
-    def init_sns_topics(self, from_cache=False, cache_file=None, region=None):
+    def init_sns_topics(self, region=None):
         """
-        Self explanatory.
+        Standard.
 
-        @param from_cache:
-        @param cache_file:
         @param region:
         @return:
         """
 
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, SNSTopic)
-        else:
-            objects = self.sns_client.get_all_topics(region=region)
+        self.sns_topics = self.sns_client.get_all_topics(region=region)
 
-        self.sns_topics = objects
-
-    def init_sns_subscriptions(self, from_cache=False, cache_file=None, region=None):
+    def init_sns_subscriptions(self, region=None):
         """
-        Self explanatory.
+        Standard.
 
-        @param from_cache:
-        @param cache_file:
         @param region:
         @return:
         """
 
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, SNSSubscription)
-        else:
-            objects = self.sns_client.get_all_subscriptions(region=region)
-
-        self.sns_subscriptions = objects
+        self.sns_subscriptions = self.sns_client.get_all_subscriptions(region=region)
 
     def init_eks_clusters(self, from_cache=False, region=None):
         """
-        Self explanatory.
+        Standard.
 
         @param from_cache:
         @param region:
@@ -612,7 +596,7 @@ class AWSAPI:
 
     def init_eks_addons(self, from_cache=False, region=None):
         """
-        Self explanatory.
+        Standard.
 
         @param from_cache:
         @param region:

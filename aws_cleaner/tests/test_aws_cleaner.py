@@ -23,10 +23,19 @@ def fixture_configuration():
     _configuration = AWSCleanerConfigurationPolicy()
     _configuration.reports_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "reports")
     _configuration.cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")
-    _configuration.aws_api_account_name = "cleaner"
+    _configuration.aws_api_account_name = "development"
+    #_configuration.managed_accounts_file_path = os.path.abspath(
+    #    os.path.join(
+    #        os.path.dirname(os.path.abspath(__file__)),
+    #        "aws_managed_accounts.py",
+    #    )
+    #)
     _configuration.managed_accounts_file_path = os.path.abspath(
         os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
+            "..", "..", "..",
+            "ignore",
+            "accounts",
             "aws_managed_accounts.py",
         )
     )
@@ -59,7 +68,7 @@ def test_init_aws_cleaner(configuration):
     assert isinstance(AWSCleaner(configuration), AWSCleaner)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_init_ses(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     cleaner.init_ses()
@@ -135,6 +144,16 @@ def test_sub_cleanup_report_ebs_volumes_types(configuration):
     ret = cleaner.sub_cleanup_report_ebs_volumes_types()
     assert len(cleaner.aws_api.ec2_volumes) > 0
     assert ret is not None
+
+
+@pytest.mark.wip
+def test_cleanup_report_sns(configuration):
+    cleaner = AWSCleaner(configuration)
+    ret = cleaner.cleanup_report_sns()
+    assert len(cleaner.aws_api.sns_topics) > 0
+    assert len(cleaner.aws_api.sns_subscriptions) > 0
+    assert ret is not None
+    assert os.path.exists(configuration.sns_report_file_path)
 
 
 @pytest.mark.done
@@ -307,7 +326,7 @@ def test_init_sqs_queues(configuration: AWSCleanerConfigurationPolicy):
     assert len(cleaner.aws_api.sqs_queues) > 1
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_init_ses_permissions_only(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.init_ses(permissions_only=True)
@@ -707,7 +726,7 @@ def test_sub_cleanup_report_rds_snapshots(configuration):
     assert ret is not None
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_cleanup_report_ses(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.cleanup_report_ses()

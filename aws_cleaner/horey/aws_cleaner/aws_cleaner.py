@@ -101,6 +101,10 @@ class AWSCleaner:
 
         tb_ret_tmp = TextBlock("SNS")
         tb_ret_tmp.lines.append("find sns topics set to handle cloudwatch alarms but have no policy permitting cloudwatch sending sns.")
+        tb_ret_tmp.lines.append("Too permissive default policy- policy permitting Topic deletion to *")
+        tb_ret_tmp.lines.append("Delivery status logging disabled")
+        tb_ret_tmp.lines.append("Delivery status logging is not permitting logging for subscription protocol")
+        tb_ret_tmp.lines.append("Delivery status logging is permitting logging for protocol without subscription")
         tb_ret.blocks.append(tb_ret_tmp)
 
         tb_ret_tmp = TextBlock("IAM")
@@ -124,6 +128,10 @@ class AWSCleaner:
 
         tb_ret_tmp = TextBlock("SESv2")
         tb_ret_tmp.lines.append("sesv2 get_account presents excessive information about SES account.")
+        tb_ret.blocks.append(tb_ret_tmp)
+
+        tb_ret_tmp = TextBlock("Cloudtrail")
+        tb_ret_tmp.lines.append("Check there are policies to trail user activity such as Delete and remove deletion protection")
         tb_ret.blocks.append(tb_ret_tmp)
 
 
@@ -187,6 +195,25 @@ class AWSCleaner:
                 "Resource": "*"
             }
             ]
+
+    def init_sns(self, permissions_only=False):
+        """
+        Init SNS topics
+
+        :return:
+        """
+
+        if not permissions_only and (not self.aws_api.sns_topics or not self.aws_api.sns_subscriptions):
+            self.aws_api.init_sns_topics()
+            self.aws_api.init_sns_subscriptions()
+
+        return [{
+            "Sid": "cloudwatchMetrics",
+            "Effect": "Allow",
+            "Action": "cloudwatch:ListMetrics",
+            "Resource": "*"
+        }
+        ]
 
     def init_cloudwatch_alarms(self, permissions_only=False):
         """
@@ -2397,12 +2424,150 @@ class AWSCleaner:
 
     def cleanup_report_sns(self, permissions_only=False):
         """
+        https://docs.aws.amazon.com/sns/latest/dg/sns-topic-attributes.html Amazon SNS message delivery status cloudwatch
+
+        * Data protection policy - monitor unexpected sensitive data.
+        * Topics without subscriptions.
+        * Encryption is set.
+        * Failure feedback to cloudwatch is set.
+        * Subscriptions pointing to deleted topics.
+        * Dead letter queue is not configured.
+        * Topic with no available cloudwatch metrics - looks like an idle Topic.
+        * Disabled SNS cloudwatch alarms.
+        * Crucial cloudwatch metrics have no alerts set.
 
         :param permissions_only:
         :return:
         """
+
         permissions = self.init_cloudwatch_alarms(permissions_only=permissions_only)
         permissions += self.init_cloudwatch_metrics(permissions_only=permissions_only)
+        permissions += self.init_sns(permissions_only=permissions_only)
+
         if permissions_only:
             return permissions
-        return None
+
+        tb_ret = TextBlock("SNS Cleanup")
+        tb_ret_tmp = self.sub_cleanup_report_sns_topics_recommended_configs()
+        if tb_ret_tmp:
+            tb_ret.blocks.append(tb_ret_tmp)
+
+        tb_ret_tmp = self.sub_cleanup_report_sns_subscriptions_recommended_configs()
+        if tb_ret_tmp:
+            tb_ret.blocks.append(tb_ret_tmp)
+
+        tb_ret_tmp = self.sub_cleanup_report_sns_monitoring()
+        if tb_ret_tmp:
+            tb_ret.blocks.append(tb_ret_tmp)
+
+        tb_ret.write_to_file(self.configuration.sns_report_file_path)
+
+        logger.info(f"Output in: {self.configuration.sns_report_file_path}")
+
+        return tb_ret
+
+    def sub_cleanup_report_sns_topics_recommended_configs(self):
+        """
+        SNS recommended configurations for prod environment.
+
+        * Data protection policy - monitor unexpected sensitive data.
+        * Topics without subscriptions.
+        * Encryption is set.
+        * Failure feedback to cloudwatch is set.
+
+        :return:
+        """
+        tb_ret = TextBlock("Topics recommended configurations")
+        for topic in self.aws_api.sns_topics:
+            if not topic.data_protection_policy:
+                tb_ret.lines.append(
+                    f"Topic: {topic.name} Data Protection Policy was not set")
+
+            if int(topic.attributes.get("SubscriptionsConfirmed")) < 1:
+                tb_ret.lines.append(
+                    f"Topic: {topic.name} has no confirmed subscriptions")
+
+            if not topic.attributes.get("KmsMasterKeyId"):
+                tb_ret.lines.append(
+                    f"Topic: {topic.name} Encryption not set")
+
+            for attribute_name, value in topic.attributes.items():
+                if "FailureFeedbackRoleArn" in attribute_name and value:
+                    break
+            else:
+                tb_ret.lines.append(
+                    f"Topic: {topic.name} Delivery status logging not set")
+
+        return tb_ret if tb_ret.lines or tb_ret.blocks else None
+
+    def sub_cleanup_report_sns_subscriptions_recommended_configs(self):
+        """
+        SNS recommended configurations for prod environment.
+        * Subscriptions pointing to deleted topics.
+        * Dead letter queue is not configured.
+
+        :return:
+        """
+
+        all_topic_arns = [topic.arn for topic in self.aws_api.sns_topics]
+        tb_ret = TextBlock("Subscriptions recommended configurations")
+        for subscription in self.aws_api.sns_subscriptions:
+            if subscription.topic_arn not in all_topic_arns:
+                tb_ret.lines.append(
+                    f"Subscription: {subscription.arn} Topic does not exist")
+
+            if not subscription.attributes.get("RedrivePolicy"):
+                tb_ret.lines.append(
+                    f"Subscription: {subscription.arn} Dead letter queue not configured")
+            else:
+                policy = json.loads(subscription.attributes.get("RedrivePolicy"))
+                if not policy.get("deadLetterTargetArn"):
+                    tb_ret.lines.append(
+                        f"Subscription: {subscription.arn} Dead letter queue not configured")
+
+        return tb_ret if tb_ret.lines or tb_ret.blocks else None
+
+    def sub_cleanup_report_sns_monitoring(self):
+        """
+        SNS monitoring configuration
+
+        * Topic with no available cloudwatch metrics - looks like an idle Topic.
+        * Disabled SNS cloudwatch alarms.
+        * Crucial cloudwatch metrics have no alerts set.
+
+        :return:
+        """
+        for metric in self.aws_api.cloud_watch_metrics:
+            if "sns" in metric.namespace.lower():
+                print(metric.namespace)
+
+        tb_ret = TextBlock("RDS monitoring report")
+
+        for topic in self.aws_api.sns_topics:
+            dimension_value = topic.name
+            namespaces = ["AWS/SNS"]
+            dimension_name = "TopicName"
+            metrics = self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_metrics, namespaces, dimension_name, dimension_value)
+            if not metrics:
+                tb_ret.lines.append(f"Topic: {topic.name} has no available metrics.")
+                continue
+
+            alarms = self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_alarms, namespaces, dimension_name, dimension_value)
+            inactive_alarms = []
+            active_alarms = []
+            for alarm in alarms:
+                if alarm.actions_enabled:
+                    active_alarms.append(alarm)
+                else:
+                    inactive_alarms.append(alarm)
+
+            tb_ret_tmp = TextBlock(f"Topic: {topic.name}")
+            if inactive_alarms:
+                tb_ret_tmp.lines.append(f"Disabled alarms: {[alarm.name for alarm in inactive_alarms]}")
+            elif not active_alarms:
+                tb_ret_tmp.lines.append("No cloudwatch alarms configured. Following metrics are available:")
+                tb_ret_tmp.lines += list({metric.name for metric in metrics})
+            if tb_ret_tmp.lines:
+                tb_ret.blocks.append(tb_ret_tmp)
+
+        return tb_ret if tb_ret.lines or tb_ret.blocks else None
