@@ -1,5 +1,5 @@
 """
-Message being received by the receiver lambda.
+Message being received by the Alert System Lambda.
 
 """
 

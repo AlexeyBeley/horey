@@ -1,5 +1,7 @@
 """
-Alert system deployment module.
+AlertSystem deployment and testing module.
+It is responsible to Manage all parts of the system:
+SNS, Cloudwatch Log Filter, Cloudwatch Alarms and AlertSystemLambda.
 
 """
 import copy
@@ -47,7 +49,13 @@ class AlertSystem:
 
     def provision(self, tags, lambda_files):
         """
-        Provision alert system receiving side components.
+        Full provision of the AlertSystem receiving side components.
+        i.e. parts that receive the Alarms and sends the notifications to the User Facing Channels.
+
+        The opposite part of the system - Alarm sending part is implemented separately since it's part of
+        the monitored services CI/CD.
+        However I do have the provision_cloudwatch_alarm and provision_cloudwatch_logs_alarm to help automate the
+        sending side as well.
 
         @param tags:
         @param lambda_files:

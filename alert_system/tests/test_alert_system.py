@@ -5,6 +5,7 @@ Testing alert system functions.
 
 import json
 import os
+import pytest
 
 from horey.alert_system.alert_system import AlertSystem
 from horey.alert_system.alert_system_configuration_policy import (
@@ -45,7 +46,7 @@ notification_channel_slack_configuration_file = os.path.abspath(
 
 # pylint: disable=missing-function-docstring
 
-
+@pytest.mark.wip
 def test_init_alert_system():
     """
     Test initiation.
@@ -240,19 +241,3 @@ def test_send_message_to_sns():
     message.data = {"tags": ["alert_system"], "level": "alert"}
     alert_system = AlertSystem(as_configuration)
     alert_system.send_message_to_sns(message)
-
-
-if __name__ == "__main__":
-    # test_provision_lambda()
-    # test_provision_sns_topic()
-    # test_provision_sns_subscription()
-    # test_provision_cloudwatch_alarm()
-    # test_provision_cloudwatch_logs_alarm()
-    # test_deploy_lambda()
-    # test_provision_self_monitoring()
-    # test_create_lambda_package()
-    #test_provision()
-    #test_provision_and_trigger_locally_lambda_handler()
-    test_provision_and_trigger_locally_lambda_handler_info()
-    # test_provision_cloudwatch_sqs_visible_alarm()
-    #test_send_message_to_sns()
