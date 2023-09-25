@@ -72,7 +72,7 @@ class CloudfrontResponseHeadersPolicy(AwsObject):
         Standard.
         {'ResponseHeadersPolicyConfig':
         {'Comment': 'Response headers policy',
-        'Name': 'response_headers_policy_controlup_demo-us',
+        'Name': 'sample',
         'SecurityHeadersConfig':
         {'XSSProtection':
         {'Override': True, 'Protection': True, 'ModeBlock': True},
