@@ -52,11 +52,6 @@ class AWSCleaner:
         tb_ret_tmp.lines.append("Check if there are cloudwatch metrics to see failing alarm actions.")
         tb_ret.blocks.append(tb_ret_tmp)
 
-        tb_ret_tmp = TextBlock("SNS")
-        tb_ret_tmp.lines.append("To wide permissions in the SNS publish policy")
-        tb_ret_tmp.lines.append("Resource ARN in the policy is not covering owning topic's ARN.")
-        tb_ret_tmp.lines.append("Metrics/Alarms")
-        tb_ret.blocks.append(tb_ret_tmp)
 
         tb_ret_tmp = TextBlock("VPC")
         tb_ret_tmp.lines.append("There are sometimes routing black holes towards erases VPC peering connection.")
@@ -94,7 +89,7 @@ class AWSCleaner:
         tb_ret.blocks.append(tb_ret_tmp)
 
         tb_ret_tmp = TextBlock("Lambda")
-        tb_ret_tmp.lines.append("Cloudwatch alarm missing.")
+        tb_ret_tmp.lines.append("Lambda policy has no permissions to write logs")
         tb_ret_tmp.lines.append('"No log group streams" logic to implement')
 
         tb_ret.blocks.append(tb_ret_tmp)
@@ -105,6 +100,8 @@ class AWSCleaner:
         tb_ret_tmp.lines.append("Delivery status logging disabled")
         tb_ret_tmp.lines.append("Delivery status logging is not permitting logging for subscription protocol")
         tb_ret_tmp.lines.append("Delivery status logging is permitting logging for protocol without subscription")
+        tb_ret_tmp.lines.append("Resource ARN in the policy is not covering owning topic's ARN.")
+        tb_ret.blocks.append(tb_ret_tmp)
         tb_ret.blocks.append(tb_ret_tmp)
 
         tb_ret_tmp = TextBlock("IAM")
@@ -1021,6 +1018,7 @@ class AWSCleaner:
             permissions += self.sub_cleanup_report_lambdas_large_size(permissions_only=permissions_only)
             permissions += self.sub_cleanup_report_lambdas_security_group(permissions_only=permissions_only)
             permissions += self.sub_cleanup_report_lambdas_old_code(permissions_only=permissions_only)
+            permissions += self.sub_cleanup_report_lambdas_monitoring(permissions_only=permissions_only)
             return permissions
 
         tb_ret = TextBlock("AWS Lambdas cleanup")
@@ -1029,13 +1027,24 @@ class AWSCleaner:
             tb_ret.blocks.append(tb_ret_tmp)
 
         tb_ret_tmp = self.sub_cleanup_report_lambdas_deprecate()
-        tb_ret.blocks.append(tb_ret_tmp)
+        if tb_ret_tmp:
+            tb_ret.blocks.append(tb_ret_tmp)
+
         tb_ret_tmp = self.sub_cleanup_report_lambdas_large_size()
-        tb_ret.blocks.append(tb_ret_tmp)
+        if tb_ret_tmp:
+            tb_ret.blocks.append(tb_ret_tmp)
+
         tb_ret_tmp = self.sub_cleanup_report_lambdas_security_group()
-        tb_ret.blocks.append(tb_ret_tmp)
+        if tb_ret_tmp:
+            tb_ret.blocks.append(tb_ret_tmp)
+
         tb_ret_tmp = self.sub_cleanup_report_lambdas_old_code()
-        tb_ret.blocks.append(tb_ret_tmp)
+        if tb_ret_tmp:
+            tb_ret.blocks.append(tb_ret_tmp)
+
+        tb_ret_tmp = self.sub_cleanup_report_lambdas_monitoring()
+        if tb_ret_tmp:
+            tb_ret.blocks.append(tb_ret_tmp)
 
         with open(self.configuration.lambda_report_file_path, "w+", encoding="utf-8") as file_handler:
             file_handler.write(tb_ret.format_pprint())
@@ -1257,14 +1266,14 @@ class AWSCleaner:
             )
             if len(log_groups) == 0:
                 tb_ret.lines.append(
-                    f"{aws_lambda.name}- never run [Log group does not exist]"
+                    f"Lambda '{aws_lambda.name}' never run [Log group does not exist]"
                 )
                 continue
 
             log_group = log_groups[0]
             if log_group.stored_bytes == 0:
                 tb_ret.lines.append(
-                    f"{aws_lambda.name}- never run [No logs in log group]"
+                    f"Lambda '{aws_lambda.name}' never run [Log group is empty]"
                 )
                 continue
 
@@ -1349,11 +1358,63 @@ class AWSCleaner:
 
         lst_names_dates = sorted(lst_names_dates, key=lambda x: x[1])
         tb_ret.lines = [
-            f"Lambda {name} was last update: {update_date.strftime('%Y-%m-%d %H:%M')}"
+            f"Lambda '{name}' was last update: {update_date.strftime('%Y-%m-%d %H:%M')}"
             for name, update_date in lst_names_dates
         ]
 
         return tb_ret
+
+    def sub_cleanup_report_lambdas_monitoring(self, permissions_only=False):
+        """
+        Lambda monitoring configuration
+
+        * Lambda with no available cloudwatch metrics - looks like an idle Topic.
+        * Disabled AWS Lambda cloudwatch alarms.
+        * Crucial cloudwatch metrics have no alerts set.
+
+        :return:
+        """
+        permissions = self.init_lambdas(permissions_only=permissions_only)
+        permissions += self.init_cloudwatch_metrics(permissions_only=permissions_only)
+        permissions += self.init_cloudwatch_alarms(permissions_only=permissions_only)
+
+        if permissions_only:
+            return permissions
+
+        tb_ret = TextBlock("AWS Lambda monitoring report")
+
+        for aws_lambda in self.aws_api.lambdas:
+            dimension_value = aws_lambda.name
+            namespaces = ["AWS/Lambda"]
+            dimension_name = "FunctionName"
+            metrics = self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_metrics, namespaces, dimension_name, dimension_value)
+            if not metrics:
+                tb_ret.lines.append(f"Lambda '{aws_lambda.name}' has no available metrics.")
+                continue
+
+            alarms = self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_alarms, namespaces, dimension_name, dimension_value)
+            inactive_alarms = []
+            crucial_alarms = ["Errors", "Invocations", "Duration", "ConcurrentExecutions"]
+            for alarm in alarms:
+                if not alarm.actions_enabled:
+                    inactive_alarms.append(alarm)
+                try:
+                    crucial_alarms.remove(alarm.metric_name)
+                except ValueError:
+                    pass
+
+            tb_ret_tmp = TextBlock(f"Lambda: {aws_lambda.name}")
+
+            if inactive_alarms:
+                tb_ret_tmp.lines.append(f"Disabled alarms: {[alarm.name for alarm in inactive_alarms]}")
+
+            if crucial_alarms:
+                tb_ret_tmp.lines.append(f"Crucial alarms not set: {crucial_alarms}")
+
+            if tb_ret_tmp.lines:
+                tb_ret.blocks.append(tb_ret_tmp)
+
+        return tb_ret if tb_ret.lines or tb_ret.blocks else None
 
     def cleanup_report_ecr_images(self, permissions_only=False):
         """
@@ -2537,9 +2598,6 @@ class AWSCleaner:
 
         :return:
         """
-        for metric in self.aws_api.cloud_watch_metrics:
-            if "sns" in metric.namespace.lower():
-                print(metric.namespace)
 
         tb_ret = TextBlock("RDS monitoring report")
 

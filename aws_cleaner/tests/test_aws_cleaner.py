@@ -146,7 +146,7 @@ def test_sub_cleanup_report_ebs_volumes_types(configuration):
     assert ret is not None
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_cleanup_report_sns(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.cleanup_report_sns()
@@ -155,6 +155,14 @@ def test_cleanup_report_sns(configuration):
     assert ret is not None
     assert os.path.exists(configuration.sns_report_file_path)
 
+@pytest.mark.done
+def test_sub_cleanup_report_lambdas_monitoring(configuration):
+    cleaner = AWSCleaner(configuration)
+    ret = cleaner.sub_cleanup_report_lambdas_monitoring()
+    assert len(cleaner.aws_api.lambdas) > 0
+    assert len(cleaner.aws_api.cloud_watch_metrics) > 0
+    assert len(cleaner.aws_api.cloud_watch_alarms) > 0
+    assert ret is not None
 
 @pytest.mark.done
 def test_cleanup_report_load_balancers(configuration):
@@ -184,7 +192,7 @@ def test_cleanup_report_acm_certificate(configuration):
     assert os.path.exists(configuration.acm_certificate_report_file_path)
 
 
-@pytest.mark.done
+@pytest.mark.wip
 def test_cleanup_report_lambdas(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.cleanup_report_lambdas()
@@ -319,7 +327,7 @@ def test_init_elasticache_clusters(configuration: AWSCleanerConfigurationPolicy)
     assert len(cleaner.aws_api.elasticache_clusters) > 0
 
 
-@pytest.mark.todo
+@pytest.mark.wip
 def test_init_sqs_queues(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     cleaner.init_sqs_queues()
