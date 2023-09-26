@@ -9,6 +9,7 @@ import os
 from unittest.mock import Mock
 from horey.aws_api.aws_clients.cloud_watch_logs_client import CloudWatchLogsClient
 from horey.aws_api.base_entities.region import Region
+from horey.aws_api.aws_services_entities.cloud_watch_log_group import CloudWatchLogGroup
 
 from horey.h_logger import get_logger
 from horey.aws_api.base_entities.aws_account import AWSAccount
@@ -31,8 +32,8 @@ accounts_file_full_path = os.path.abspath(
 )
 
 accounts = CommonUtils.load_object_from_module(accounts_file_full_path, "main")
-AWSAccount.set_aws_account(accounts["1111"])
-AWSAccount.set_aws_region(accounts["1111"].regions["us-west-2"])
+AWSAccount.set_aws_account(accounts["main"])
+AWSAccount.set_aws_region(accounts["main"].regions["us-west-2"])
 
 mock_values_file_path = os.path.abspath(
     os.path.join(
@@ -129,6 +130,31 @@ def test_put_log_events_raw():
     assert ret.get("rejectedLogEventsInfo") is None
 
 
+log_group_name = "test-log-group"
+log_stream_name = "test-stream-name"
+
+def test_provision_log_group():
+    log_group = CloudWatchLogGroup({})
+    log_group.name = log_group_name
+    log_group.region = Region.get_region("us-west-2")
+    log_group.tags = {"name": log_group.name}
+
+    client = CloudWatchLogsClient()
+    client.provision_log_group(log_group)
+
+def test_create_log_stream_raw():
+    client = CloudWatchLogsClient()
+    client.create_log_stream_raw({"logGroupName": log_group_name,
+                                  "logStreamName": log_stream_name})
+
+def test_put_log_lines():
+    client = CloudWatchLogsClient()
+    log_group = CloudWatchLogGroup({})
+    log_group.name = log_group_name
+    log_group.region = Region.get_region("us-west-2")
+    client.put_log_lines(log_group, ["test log line"])
+
+
 if __name__ == "__main__":
     # test_init_client()
     # test_get_region_log_group_metric_filters()
@@ -136,4 +162,7 @@ if __name__ == "__main__":
     # test_yield_log_events()
     # test_get_region_cloud_watch_log_groups()
     # test_put_log_events_raw()
-    test_save_stream_events()
+    # test_save_stream_events()
+    # test_provision_log_group()
+    # test_create_log_stream_raw()
+    test_put_log_lines()

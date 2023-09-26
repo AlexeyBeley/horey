@@ -1,7 +1,9 @@
 """
 AWS client to handle cloud watch logs.
 """
+import datetime
 import time
+import uuid
 
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.cloud_watch_log_group import CloudWatchLogGroup
@@ -262,9 +264,35 @@ class CloudWatchLogsClient(Boto3Client):
         ):
             return response
 
+    def put_log_lines(self, log_group, lines, log_stream_name=None):
+        """
+        Put this lines in a log group.
+
+        :param log_stream_name:
+        :param log_group: Log group with region set.
+        :param lines: list of strings to put
+        :return:
+        """
+
+        events = [{"timestamp": int(datetime.datetime.now().timestamp() * 1000),
+                            "message": line
+                        } for line in lines]
+        AWSAccount.set_aws_region(log_group.region)
+        if log_stream_name is None:
+            log_stream_name = str(uuid.uuid4())
+            log_stream_create_request = {"logGroupName": log_group.name,
+                                     "logStreamName": log_stream_name}
+            self.create_log_stream_raw(log_stream_create_request)
+        dict_request = {"logGroupName": log_group.name,
+                        "logStreamName": log_stream_name,
+                        "logEvents": events
+                        }
+        return self.put_log_events_raw(dict_request)
+
     def put_log_events_raw(self, request_dict):
         """
         Standard.
+        assert ret.get("rejectedLogEventsInfo") is None
 
         :param request_dict:
         :return:
@@ -273,5 +301,19 @@ class CloudWatchLogsClient(Boto3Client):
         logger.info(f"Writing log events: '{request_dict}'")
         for response in self.execute(
             self.client.put_log_events, None, raw_data=True, filters_req=request_dict
+        ):
+            return response
+
+    def create_log_stream_raw(self, request_dict):
+        """
+        Standard.
+
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Creating log stream: '{request_dict}'")
+        for response in self.execute(
+            self.client.create_log_stream, None, raw_data=True, filters_req=request_dict
         ):
             return response

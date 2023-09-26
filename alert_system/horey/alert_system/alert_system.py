@@ -30,6 +30,7 @@ from horey.alert_system.lambda_package.message import Message
 from horey.alert_system.lambda_package.notification_channel_base import (
     NotificationChannelBase,
 )
+from horey.alert_system.alert_system_configuration_policy import AlertSystemConfigurationPolicy
 
 
 logger = get_logger()
@@ -41,7 +42,7 @@ class AlertSystem:
 
     """
 
-    def __init__(self, configuration):
+    def __init__(self, configuration: AlertSystemConfigurationPolicy):
         self.configuration = configuration
         self.packer = Packer()
         self.aws_api = AWSAPI()
@@ -82,7 +83,7 @@ class AlertSystem:
 
         log_group = CloudWatchLogGroup({})
         log_group.region = self.region
-        log_group.name = f"/aws/lambda/{self.configuration.lambda_name}"
+        log_group.name = self.configuration.alert_system_lambda_log_group_name
         log_group.tags = {tag["Key"]: tag["Value"] for tag in tags}
         log_group.tags["name"] = log_group.name
         self.aws_api.provision_cloudwatch_log_group(log_group)
@@ -117,12 +118,11 @@ class AlertSystem:
         @return:
         """
 
-        log_group_name = f"/aws/lambda/{self.configuration.lambda_name}"
         filter_text = '"[ERROR]"'
         metric_name_raw = f"{self.configuration.lambda_name}-log-error"
         message_data = {"tags": ["alert_system_monitoring"]}
         self.provision_cloudwatch_logs_alarm(
-            log_group_name, filter_text, metric_name_raw, message_data
+            self.configuration.alert_system_lambda_log_group_name, filter_text, metric_name_raw, message_data
         )
 
     def provision_self_monitoring_log_timeout_alarm(self):
@@ -132,12 +132,11 @@ class AlertSystem:
         @return:
         """
 
-        log_group_name = f"/aws/lambda/{self.configuration.lambda_name}"
         filter_text = "Task timed out after"
         metric_name_raw = f"{self.configuration.lambda_name}-log-timeout"
         message_data = {"tags": ["alert_system_monitoring"]}
         self.provision_cloudwatch_logs_alarm(
-            log_group_name, filter_text, metric_name_raw, message_data
+            self.configuration.alert_system_lambda_log_group_name, filter_text, metric_name_raw, message_data
         )
 
     def provision_self_monitoring_duration_alarm(self):
@@ -573,3 +572,25 @@ class AlertSystem:
             self.aws_api.sns_client.update_topic_information(topic, full_information=False)
             topic_arn = topic.arn
         self.aws_api.sns_client.raw_publish(topic_arn, message.type, json.dumps(message.convert_to_dict()))
+
+    def trigger_self_monitoring_log_error_alarm(self):
+        """
+        Trigger the alarm using cloudwatch log stream filter metric.
+
+        :return:
+        """
+
+        log_group = CloudWatchLogGroup({})
+        log_group.region = self.region
+        log_group.name = self.configuration.alert_system_lambda_log_group_name
+
+        self.aws_api.cloud_watch_logs_client.put_log_lines(log_group, ["[ERROR]: Neo, the Horey has you!"])
+
+    def trigger_self_monitoring_log_timeout_alarm(self):
+        breakpoint()
+
+    def trigger_self_monitoring_errors_metric_alarm(self):
+        breakpoint()
+
+    def trigger_self_monitoring_duration_alarm(self):
+        breakpoint()

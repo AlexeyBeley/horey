@@ -33,6 +33,7 @@ as_configuration.sns_topic_name = "topic_test_alert_system"
 
 as_configuration.deployment_dir_path = "/tmp/horey_deployment"
 as_configuration.notification_channel_file_names = "notification_channel_slack.py"
+as_configuration.active_deployment_validation = True
 notification_channel_slack_configuration_file = os.path.abspath(
     os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
@@ -46,7 +47,7 @@ notification_channel_slack_configuration_file = os.path.abspath(
 
 # pylint: disable=missing-function-docstring
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_init_alert_system():
     """
     Test initiation.
@@ -57,6 +58,7 @@ def test_init_alert_system():
     assert isinstance(AlertSystem(as_configuration), AlertSystem)
 
 
+@pytest.mark.done
 def test_provision_sns_topic():
     """
     Test provisioning alert_system sns topic
@@ -68,6 +70,7 @@ def test_provision_sns_topic():
     alert_system.provision_sns_topic([])
 
 
+@pytest.mark.done
 def test_provision_sns_subscription():
     """
     Test provisioning alert_system sns topic subscription
@@ -80,6 +83,7 @@ def test_provision_sns_subscription():
     alert_system.provision_sns_subscription()
 
 
+@pytest.mark.done
 def test_provision_lambda_role():
     """
     Test provisioning alert_system lambda role.
@@ -91,6 +95,7 @@ def test_provision_lambda_role():
     alert_system.provision_lambda_role()
 
 
+@pytest.mark.done
 def test_provision_lambda():
     """
     Test provisioning alert_system lambda.
@@ -102,6 +107,7 @@ def test_provision_lambda():
     alert_system.provision_lambda([notification_channel_slack_configuration_file])
 
 
+@pytest.mark.done
 def test_provision():
     """
     Test provisioning all the alert_system components.
@@ -114,6 +120,7 @@ def test_provision():
     alert_system.provision(tags, [notification_channel_slack_configuration_file])
 
 
+@pytest.mark.done
 def test_provision_and_trigger_locally_lambda_handler():
     """
     Test provisioned lambda locally
@@ -126,6 +133,7 @@ def test_provision_and_trigger_locally_lambda_handler():
                                                               os.path.join(os.path.dirname(os.path.abspath(__file__)), "raw_messages", "sns_form_raw_1.json"))
 
 
+@pytest.mark.done
 def test_provision_and_trigger_locally_lambda_handler_info():
     """
     Test provisioned lambda locally
@@ -138,6 +146,7 @@ def test_provision_and_trigger_locally_lambda_handler_info():
                                                               os.path.join(os.path.dirname(os.path.abspath(__file__)), "raw_messages", "sns_form_raw_info.json"))
 
 
+@pytest.mark.done
 def test_create_lambda_package():
     """
     Test local package creation.
@@ -149,6 +158,7 @@ def test_create_lambda_package():
     alert_system.create_lambda_package([notification_channel_slack_configuration_file])
 
 
+@pytest.mark.done
 def test_provision_self_monitoring():
     """
     Test provisioning self monitoring
@@ -160,6 +170,7 @@ def test_provision_self_monitoring():
     alert_system.provision_self_monitoring()
 
 
+@pytest.mark.done
 def test_provision_cloudwatch_alarm():
     """
     Test provisioning cloudwatch generic alarm
@@ -191,6 +202,7 @@ def test_provision_cloudwatch_alarm():
     alert_system.provision_cloudwatch_alarm(alarm)
 
 
+@pytest.mark.wip
 def test_provision_cloudwatch_logs_alarm():
     """
     Test provisioning cloudwatch logs alarm
@@ -202,10 +214,11 @@ def test_provision_cloudwatch_logs_alarm():
 
     message_data = {"key": "value", "tags": ["team_name"]}
     alert_system.provision_cloudwatch_logs_alarm(
-        mock_values["log_group_name"], "[INFO]", "clwtch-log-error", message_data
+        as_configuration.alert_system_lambda_log_group_name, "[INFO]", "clwtch-log-error", message_data
     )
 
 
+@pytest.mark.done
 def test_deploy_lambda():
     """
     Build and deploy alert_system lambda.
@@ -220,6 +233,7 @@ def test_deploy_lambda():
     alert_system.provision(tags, [notification_channel_slack_configuration_file])
 
 
+@pytest.mark.done
 def test_provision_cloudwatch_sqs_visible_alarm():
     """
     Provision cloudwatch sqs visible alarm.
@@ -234,6 +248,7 @@ def test_provision_cloudwatch_sqs_visible_alarm():
     )
 
 
+@pytest.mark.done
 def test_send_message_to_sns():
     message = Message()
     message.uuid = "test1-test2"
@@ -241,3 +256,26 @@ def test_send_message_to_sns():
     message.data = {"tags": ["alert_system"], "level": "alert"}
     alert_system = AlertSystem(as_configuration)
     alert_system.send_message_to_sns(message)
+
+@pytest.mark.wip
+def test_trigger_self_monitoring_log_error_alarm():
+    alert_system = AlertSystem(as_configuration)
+    alert_system.trigger_self_monitoring_log_error_alarm()
+
+
+@pytest.mark.wip
+def test_trigger_self_monitoring_log_timeout_alarm():
+    alert_system = AlertSystem(as_configuration)
+    alert_system.trigger_self_monitoring_log_timeout_alarm()
+
+
+@pytest.mark.wip
+def test_trigger_self_monitoring_errors_metric_alarm():
+    alert_system = AlertSystem(as_configuration)
+    alert_system.trigger_self_monitoring_errors_metric_alarm()
+
+
+@pytest.mark.wip
+def test_trigger_self_monitoring_duration_alarm():
+    alert_system = AlertSystem(as_configuration)
+    alert_system.trigger_self_monitoring_duration_alarm()

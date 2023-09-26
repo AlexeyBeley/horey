@@ -25,6 +25,7 @@ class AlertSystemConfigurationPolicy(ConfigurationPolicy):
         self._sns_topic_name = None
         self._region = None
         self._notification_channel_file_names = None
+        self._active_deployment_validation = False
 
     @property
     def deployment_datetime(self):
@@ -114,4 +115,12 @@ class AlertSystemConfigurationPolicy(ConfigurationPolicy):
 
     @property
     def active_deployment_validation(self):
-        return False
+        return self._active_deployment_validation
+
+    @active_deployment_validation.setter
+    def active_deployment_validation(self, value):
+        self._active_deployment_validation = value
+
+    @property
+    def alert_system_lambda_log_group_name(self):
+        return f"/aws/lambda/{self.lambda_name}"
