@@ -1,13 +1,12 @@
 # Serverless alert system 
 
 Components:
-Alert system - provisions all parts of the system.
+alert_system - provisions all parts of the system, provides testing functionality.
 
+lambda_package - files used in the AlertSystemLambda to handle notifications.
+message_dispatcher- Dispatches various messages from multiple sources: Cloudwatch, Opensearch etc.
+notification_channel - a user facing destinations to send the messages to. 
 
+Both message_dispatcher and notification_channel are implementation specific: you can use the base implementation
+but better overwriting them with your own to customize the message appearance and notification destinations. 
 
-# Alert system
-docker run --name=nginx -d -v ~/nginxlogs:/var/log/nginx -p 5000:80 nginx
-
-#create image from container
-docker commit {container_id} {image_name}
-docker run -it --entrypoint=/bin/bash
