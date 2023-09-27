@@ -1,7 +1,7 @@
 """
 Module handling most of the basic message behavior.
-Check message type - invoke relevant handler.
-Send the notification to the channels.
+Checks message type to invoke relevant handler.
+Sends the notification to the channels.
 
 """
 

@@ -122,6 +122,34 @@ def test_put_log_events_raw():
     assert ret.get("rejectedLogEventsInfo") is None
 
 
+log_group_name = "test-log-group"
+log_stream_name = "test-stream-name"
+
+
+@pytest.mark.wip
+def test_provision_log_group():
+    log_group = CloudWatchLogGroup({})
+    log_group.name = log_group_name
+    log_group.region = Region.get_region("us-west-2")
+    log_group.tags = {"name": log_group.name}
+
+    client = CloudWatchLogsClient()
+    client.provision_log_group(log_group)
+@pytest.mark.wip
+def test_create_log_stream_raw():
+    client = CloudWatchLogsClient()
+    client.create_log_stream_raw({"logGroupName": log_group_name,
+
+                                  "logStreamName": log_stream_name})
+@pytest.mark.wip
+def test_put_log_lines():
+    client = CloudWatchLogsClient()
+    log_group = CloudWatchLogGroup({})
+    log_group.name = log_group_name
+    log_group.region = Region.get_region("us-west-2")
+    client.put_log_lines(log_group, ["test log line"])
+
+
 @pytest.mark.wip
 def test_yield_log_groups():
     client = CloudWatchLogsClient()
@@ -129,6 +157,7 @@ def test_yield_log_groups():
     for cluster in client.yield_log_groups(region=Region.get_region("us-west-2")):
         break
     assert cluster.arn is not None
+
 
 @pytest.mark.wip
 def test_get_cloud_watch_log_groups_region_false():

@@ -94,3 +94,62 @@ class CloudWatchClient(Boto3Client):
         ):
             if response["HTTPStatusCode"] != 200:
                 raise RuntimeError(f"{response}")
+
+    def put_metric_data_raw(self, request_dict):
+        """
+        {Namespace:'string',
+            MetricData:[]
+        }
+
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Putting metric data: {request_dict}")
+
+        for response in self.execute(
+                self.client.put_metric_data,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
+        ):
+            del response["ResponseMetadata"]
+            return response
+
+    def get_metric_data_raw(self, request_dict):
+        """
+        Fetch metric data.
+
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Getting metric data: {request_dict}")
+
+        return list(self.execute(
+                self.client.get_metric_data,
+                "MetricDataResults",
+                raw_data=True,
+                filters_req=request_dict,
+        ))
+
+    def set_alarm_state_raw(self, request_dict):
+        """
+          AlarmName='string',
+          StateValue='OK'|'ALARM'|'INSUFFICIENT_DATA',
+          StateReason='string',
+
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Setting alarm state: {request_dict}")
+
+        for response in self.execute(
+                self.client.set_alarm_state,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
+        ):
+            del response["ResponseMetadata"]
+            return response
