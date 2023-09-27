@@ -120,6 +120,8 @@ class IamRole(AwsObject):
             "AssumeRolePolicyDocument": self.assume_role_policy_document,
             "MaxSessionDuration": self.max_session_duration,
         }
+        if self.path == "":
+            raise ValueError(f"Creating role {self.name} without 'path' set")
 
         self.extend_request_with_optional_parameters(request, ["Tags", "Description", "Path"])
         return request
