@@ -568,9 +568,11 @@ class Boto3Client:
             function = self.client.get_tags
 
         logger.info(f"Getting resource tags: {obj.arn}")
-        return list(
+        ret = list(
             self.execute(function, tags_identifier, filters_req={arn_identifier: obj.arn})
         )
+        obj.tags = ret
+        return ret
 
     def tag_resource(self, obj, arn_identifier="ResourceArn", tags_identifier="TagsToAdd"):
         """
