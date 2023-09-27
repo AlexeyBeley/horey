@@ -124,3 +124,7 @@ class AlertSystemConfigurationPolicy(ConfigurationPolicy):
     @property
     def alert_system_lambda_log_group_name(self):
         return f"/aws/lambda/{self.lambda_name}"
+
+    @property
+    def self_monitoring_log_timeout_metric_name_raw(self):
+        return f"{self.lambda_name}-log-timeout"

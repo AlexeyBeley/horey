@@ -10,9 +10,6 @@ from horey.h_logger import get_logger
 logger = get_logger()
 
 
-import pdb
-
-
 class CloudWatchClient(Boto3Client):
     """
     Client to work with cloud watch logs API.
@@ -41,7 +38,6 @@ class CloudWatchClient(Boto3Client):
 
         AWSAccount.set_aws_region(region)
         ret = []
-        pdb.set_trace()
         for response in self.execute(self.client.list_metrics, "Metrics"):
             obj = CloudWatchMetric(response)
             ret.append(obj)
@@ -52,7 +48,7 @@ class CloudWatchClient(Boto3Client):
         Get all alarms in all regions.
         :return:
         """
-        final_result = list()
+        final_result = []
 
         for region in AWSAccount.get_aws_account().regions.values():
             final_result += self.get_region_alarms(region)
@@ -67,7 +63,7 @@ class CloudWatchClient(Boto3Client):
         """
 
         AWSAccount.set_aws_region(region)
-        final_result = list()
+        final_result = []
 
         for dict_src in self.execute(self.client.describe_alarms, None, raw_data=True):
             if len(dict_src["CompositeAlarms"]) != 0:
@@ -80,6 +76,12 @@ class CloudWatchClient(Boto3Client):
         return final_result
 
     def set_cloudwatch_alarm(self, alarm):
+        """
+        Standard.
+
+        :param alarm:
+        :return:
+        """
         request_dict = alarm.generate_create_request()
         AWSAccount.set_aws_region(alarm.region)
         logger.info(
@@ -90,3 +92,62 @@ class CloudWatchClient(Boto3Client):
         ):
             if response["HTTPStatusCode"] != 200:
                 raise RuntimeError(f"{response}")
+
+    def put_metric_data_raw(self, request_dict):
+        """
+        {Namespace:'string',
+            MetricData:[]
+        }
+
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Putting metric data: {request_dict}")
+
+        for response in self.execute(
+                self.client.put_metric_data,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
+        ):
+            del response["ResponseMetadata"]
+            return response
+
+    def get_metric_data_raw(self, request_dict):
+        """
+        Fetch metric data.
+
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Getting metric data: {request_dict}")
+
+        return list(self.execute(
+                self.client.get_metric_data,
+                "MetricDataResults",
+                raw_data=True,
+                filters_req=request_dict,
+        ))
+
+    def set_alarm_state_raw(self, request_dict):
+        """
+          AlarmName='string',
+          StateValue='OK'|'ALARM'|'INSUFFICIENT_DATA',
+          StateReason='string',
+
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Setting alarm state: {request_dict}")
+
+        for response in self.execute(
+                self.client.set_alarm_state,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
+        ):
+            del response["ResponseMetadata"]
+            return response

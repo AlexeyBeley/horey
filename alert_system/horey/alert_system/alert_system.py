@@ -5,6 +5,7 @@ SNS, Cloudwatch Log Filter, Cloudwatch Alarms and AlertSystemLambda.
 
 """
 import copy
+import datetime
 import json
 import os
 import shutil
@@ -72,6 +73,8 @@ class AlertSystem:
 
         self.provision_self_monitoring()
 
+        self.test_self_monitoring()
+
     def provision_log_group(self, tags):
         """
         Provision log group- on a fresh provisioning self monitoring will have no log group to monitor.
@@ -111,6 +114,18 @@ class AlertSystem:
         self.provision_self_monitoring_errors_metric_alarm()
         self.provision_self_monitoring_duration_alarm()
 
+    def test_self_monitoring(self):
+        """
+        Run all self monitoring testing functions.
+
+        :return:
+        """
+
+        self.trigger_self_monitoring_log_error_alarm()
+        self.trigger_self_monitoring_log_timeout_alarm()
+        self.trigger_self_monitoring_errors_metric_alarm()
+        self.trigger_self_monitoring_duration_alarm()
+
     def provision_self_monitoring_log_error_alarm(self):
         """
         Find [ERROR] log messages in self log.
@@ -133,10 +148,9 @@ class AlertSystem:
         """
 
         filter_text = "Task timed out after"
-        metric_name_raw = f"{self.configuration.lambda_name}-log-timeout"
         message_data = {"tags": ["alert_system_monitoring"]}
         self.provision_cloudwatch_logs_alarm(
-            self.configuration.alert_system_lambda_log_group_name, filter_text, metric_name_raw, message_data
+            self.configuration.alert_system_lambda_log_group_name, filter_text, self.configuration.self_monitoring_log_timeout_metric_name_raw, message_data
         )
 
     def provision_self_monitoring_duration_alarm(self):
@@ -587,10 +601,40 @@ class AlertSystem:
         self.aws_api.cloud_watch_logs_client.put_log_lines(log_group, ["[ERROR]: Neo, the Horey has you!"])
 
     def trigger_self_monitoring_log_timeout_alarm(self):
-        breakpoint()
+        """
+        Test
+
+        :return:
+        """
+        dict_request = {"Namespace": self.configuration.alert_system_lambda_log_group_name,
+                        "MetricData": [{"MetricName": f"metric-{self.configuration.self_monitoring_log_timeout_metric_name_raw}",
+                                        "Timestamp": datetime.datetime.utcnow(),
+                                        "Value": 1
+                                        }]}
+        self.aws_api.cloud_watch_client.put_metric_data_raw(dict_request)
 
     def trigger_self_monitoring_errors_metric_alarm(self):
-        breakpoint()
+        """
+        These are built in metrics. So we can not change the metric itself and must move
+        one step further - set alarm state manually.
+
+        :return:
+        """
+
+        dict_request = {"AlarmName": f"{self.configuration.lambda_name}-metric-errors",
+                        "StateValue": "ALARM",
+                        "StateReason":"Test"}
+        self.aws_api.cloud_watch_client.set_alarm_state_raw(dict_request)
 
     def trigger_self_monitoring_duration_alarm(self):
-        breakpoint()
+        """
+        These are built in metrics. So we can not change the metric itself and must move
+        one step further - set alarm state manually.
+
+        :return:
+        """
+
+        dict_request = {"AlarmName": f"{self.configuration.lambda_name}-metric-duration",
+                        "StateValue": "ALARM",
+                        "StateReason": "Test"}
+        self.aws_api.cloud_watch_client.set_alarm_state_raw(dict_request)

@@ -202,7 +202,7 @@ def test_provision_cloudwatch_alarm():
     alert_system.provision_cloudwatch_alarm(alarm)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_provision_cloudwatch_logs_alarm():
     """
     Test provisioning cloudwatch logs alarm
@@ -214,23 +214,8 @@ def test_provision_cloudwatch_logs_alarm():
 
     message_data = {"key": "value", "tags": ["team_name"]}
     alert_system.provision_cloudwatch_logs_alarm(
-        as_configuration.alert_system_lambda_log_group_name, "[INFO]", "clwtch-log-error", message_data
+        as_configuration.alert_system_lambda_log_group_name, "[ERROR]", "clwtch-log-error", message_data
     )
-
-
-@pytest.mark.done
-def test_deploy_lambda():
-    """
-    Build and deploy alert_system lambda.
-
-    @return:
-    """
-
-    alert_system = AlertSystem(as_configuration)
-
-    tags = [{"Key": "name", "Value": as_configuration.lambda_name}]
-
-    alert_system.provision(tags, [notification_channel_slack_configuration_file])
 
 
 @pytest.mark.done
@@ -257,25 +242,25 @@ def test_send_message_to_sns():
     alert_system = AlertSystem(as_configuration)
     alert_system.send_message_to_sns(message)
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_trigger_self_monitoring_log_error_alarm():
     alert_system = AlertSystem(as_configuration)
     alert_system.trigger_self_monitoring_log_error_alarm()
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_trigger_self_monitoring_log_timeout_alarm():
     alert_system = AlertSystem(as_configuration)
     alert_system.trigger_self_monitoring_log_timeout_alarm()
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_trigger_self_monitoring_errors_metric_alarm():
     alert_system = AlertSystem(as_configuration)
     alert_system.trigger_self_monitoring_errors_metric_alarm()
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_trigger_self_monitoring_duration_alarm():
     alert_system = AlertSystem(as_configuration)
     alert_system.trigger_self_monitoring_duration_alarm()
