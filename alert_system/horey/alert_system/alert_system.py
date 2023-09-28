@@ -56,11 +56,12 @@ class AlertSystem:
 
         The opposite part of the system - Alarm sending part is implemented separately since it's part of
         the monitored services CI/CD.
-        However I do have the provision_cloudwatch_alarm and provision_cloudwatch_logs_alarm to help automate the
+
+        There are provision_cloudwatch_alarm and provision_cloudwatch_logs_alarm to help automate the
         sending side as well.
 
-        @param tags:
-        @param lambda_files:
+        @param tags: [{"Key": "string", "Value": "string"}]
+        @param lambda_files: Files needed by AlertSystemLambda - new dispatcher or SlackAPI configuration.
         @return:
         """
 
