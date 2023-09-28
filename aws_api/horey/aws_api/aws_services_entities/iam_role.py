@@ -133,7 +133,7 @@ class IamRole(AwsObject):
         @return:
         """
 
-        attach =  [
+        attach = [
             {"PolicyArn": arn, "RoleName": self.name} for arn in desired_role.managed_policies_arns
             if arn not in self.managed_policies_arns
         ]
@@ -158,8 +158,32 @@ class IamRole(AwsObject):
         put_requests = []
         for policy_name, dict_document in desired_inline.items():
             if policy_name not in self_inline or self_inline[policy_name] != dict_document:
-                put_requests.append({"PolicyName": policy_name, "RoleName": self.name, "PolicyDocument": json.dumps(dict_document)})
+                put_requests.append(
+                    {"PolicyName": policy_name, "RoleName": self.name, "PolicyDocument": json.dumps(dict_document)})
 
-        delete_requests = [{"PolicyName": policy_name, "RoleName": self.name} for policy_name in self_inline if policy_name not in desired_inline]
+        delete_requests = [{"PolicyName": policy_name, "RoleName": self.name} for policy_name in self_inline if
+                           policy_name not in desired_inline]
 
         return put_requests, delete_requests
+
+    def generate_update_assume_role_policy_request(self, desired_role):
+        """
+        Assume role policy.
+
+        :param desired_role:
+        :return:
+        """
+
+        dict_self_assume_role_policy_document = self.assume_role_policy_document if isinstance(
+            self.assume_role_policy_document, dict) \
+            else json.loads(self.assume_role_policy_document)
+
+        dict_desired_assume_role_policy_document = desired_role.assume_role_policy_document if isinstance(
+            desired_role.assume_role_policy_document, dict) \
+            else json.loads(desired_role.assume_role_policy_document)
+
+        if dict_self_assume_role_policy_document != dict_desired_assume_role_policy_document:
+            return {"RoleName": self.name,
+                    "PolicyDocument": desired_role.assume_role_policy_document}
+
+        return None

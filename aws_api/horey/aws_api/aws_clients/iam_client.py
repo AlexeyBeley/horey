@@ -511,6 +511,10 @@ class IamClient(Boto3Client):
         for delete_request in delete_requests:
             self.delete_role_policy_raw(delete_request)
 
+        update_assume_role_policy_request = region_role.generate_update_assume_role_policy_request(iam_role)
+        if update_assume_role_policy_request:
+            self.update_assume_role_policy_raw(update_assume_role_policy_request)
+
         self.update_role_information(iam_role)
 
     def dispose_role(self, role: IamRole):
@@ -583,6 +587,22 @@ class IamClient(Boto3Client):
                 self.add_role_to_instance_profile_raw(request)
 
         self.update_instance_profile_information(iam_instance_profile)
+
+    def update_assume_role_policy_raw(self, request):
+        """
+
+        :return:
+        """
+
+        logger.info(f"Updating role assume policy {request}")
+
+        for response in self.execute(
+            self.client.update_assume_role_policy,
+            None,
+            raw_data=True,
+            filters_req=request,
+        ):
+            return response
 
     def add_role_to_instance_profile_raw(self, request):
         """
