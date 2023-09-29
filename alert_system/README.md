@@ -1,11 +1,11 @@
 # Serverless alert system 
 
 <pre>
-Grafana---------------------------------------.
-Opensearch-----------------------------.      |
-Production_service--.                  |      |
+Grafana---------------------------------------╮
+Opensearch-----------------------------╮      |
+Production_service--╮                  |      |
 ↓                   ↓                  ↓      ↓
-Cloudwatch Logs  -> Metric -> Alarm -> SNS -> AlertSystemLambda.
+Cloudwatch Logs  -> Metric -> Alarm -> SNS -> AlertSystemLambda╮
 ↑                   ↑_________________________↓                |
 |______________________________________________________________↓
 </pre>
