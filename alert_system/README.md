@@ -1,5 +1,12 @@
 # Serverless alert system 
 
+
+production_service--.
+↓                   ↓
+Cloudwatch Logs  -> Metric -> Alarm -> SNS -> AlertSystemLambda.
+↑                   ↑_________________________↓                |
+|______________________________________________________________↓
+
 Components:
 alert_system - provisions all parts of the system, provides testing functionality.
 
