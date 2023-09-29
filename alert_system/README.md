@@ -1,10 +1,10 @@
 # Serverless alert system 
 
 
-production_service--.
-↓                   ↓
-Cloudwatch Logs  -> Metric -> Alarm -> SNS -> AlertSystemLambda.
-↑                   ↑_________________________↓                |
+production_service--.\
+↓                   ↓\
+Cloudwatch Logs  -> Metric -> Alarm -> SNS -> AlertSystemLambda.\
+↑                   ↑_________________________↓                |\
 |______________________________________________________________↓
 
 Components:
