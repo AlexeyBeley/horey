@@ -6,8 +6,9 @@ Opensearch----------------------------╮      |
 Production_service-╮                  |      |
 ↓                  ↓                  ↓      ↓
 Cloudwatch Logs -> Metric -> Alarm -> SNS -> AlertSystemLambda╮
-↑                  ↑_________________________↓                |
-|_____________________________________________________________↓
+↑                  ↑                         |                |
+|                  ╰-------------------------╯                |
+╰-------------------------------------------------------------╯
 
 * Grafana: Triggers Lambda directly from a Bash script using AWS CLI.
 * Opensearch: Monitor alert sends notification to SNS topic.
