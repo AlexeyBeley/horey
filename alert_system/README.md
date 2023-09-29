@@ -1,12 +1,15 @@
 # Serverless alert system 
 
 <pre>
-production_service--.\
-↓                   ↓\
-Cloudwatch Logs  -> Metric -> Alarm -> SNS -> AlertSystemLambda.\
-↑                   ↑_________________________↓                |\
+Grafana---------------------------------------
+Opensearch------------------------------     |
+Production_service--.                  |     |
+↓                   ↓                  ↓     ↓
+Cloudwatch Logs  -> Metric -> Alarm -> SNS -> AlertSystemLambda.
+↑                   ↑_________________________↓                |
 |______________________________________________________________↓
 </pre>
+
 Components:
 alert_system - provisions all parts of the system, provides testing functionality.
 
