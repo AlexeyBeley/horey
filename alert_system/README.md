@@ -4,15 +4,16 @@
 Grafana--------------------------------------╮
 Opensearch----------------------------╮      |
 Production_service-╮                  |      |
-↓                  ⇓                  ⇓      ⇓
+↓                  V                  V      V
 Cloudwatch Logs -> Metric -> Alarm -> SNS -> AlertSystemLambda╮
-↑                  ↑                         |                |
+^                  ^                         |                |
 |                  ╰-------------------------╯                |
 ╰-------------------------------------------------------------╯
 
 * Grafana: Triggers Lambda directly from a Bash script using AWS CLI.
 * Opensearch: Monitor alert sends notification to SNS topic.
 * Production_service: Writes logs to Cloudwatch Logs service and sends metrics to the Cloudwatch service.
+* AlertSystemLambda: Writes logs to Cloudwatch Logs service and sends metrics to the Cloudwatch service.
 </pre>
 
 Components:
