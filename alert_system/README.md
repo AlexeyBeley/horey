@@ -11,7 +11,7 @@ Cloudwatch Logs -> Metric -> Alarm -> SNS -> AlertSystemLambda╮
 
 * Grafana: Triggers Lambda directly from a Bash script using AWS CLI.
 * Opensearch: Monitor alert sends notification to SNS topic.
-* Production_service: both writes logs to Cloudwatch logs and sends metrics to the Cloudwatch service.
+* Production_service: Writes logs to Cloudwatch Logs service and sends metrics to the Cloudwatch service.
 </pre>
 
 Components:
