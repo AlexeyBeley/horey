@@ -4,7 +4,8 @@
 Grafana--------------------------------------╮
 Opensearch----------------------------╮      |
 Production_service-╮                  |      |
-↓                  V                  V      V
+|                  |                  |      |
+V                  V                  V      V
 Cloudwatch Logs -> Metric -> Alarm -> SNS -> AlertSystemLambda╮
 ^                  ^                         |                |
 |                  ╰-------------------------╯                |
