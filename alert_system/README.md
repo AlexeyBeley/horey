@@ -1,13 +1,17 @@
 # Serverless alert system 
 
 <pre>
-Grafana---------------------------------------╮
-Opensearch-----------------------------╮      |
-Production_service--╮                  |      |
-↓                   ↓                  ↓      ⌄
-Cloudwatch Logs  -> Metric -> Alarm -> SNS -> AlertSystemLambda╮
-↑                   ↑_________________________↓                |
-|______________________________________________________________↓
+Grafana--------------------------------------╮
+Opensearch----------------------------╮      |
+Production_service-╮                  |      |
+↓                  ↓                  ↓      ↓
+Cloudwatch Logs -> Metric -> Alarm -> SNS -> AlertSystemLambda╮
+↑                  ↑_________________________↓                |
+|_____________________________________________________________↓
+
+* Grafana: uses Bash script to trigger the alert directly.
+* Opensearch: uses monitor to send notification to SNS topic.
+* Production_service: both writes logs to Cloudwatch logs and sends metrics to the Cloudwatch service.
 </pre>
 
 Components:
