@@ -305,6 +305,7 @@ class AlertSystem:
         iam_role = IamRole({})
         iam_role.description = "alert_system lambda role"
         iam_role.name = self.configuration.lambda_role_name
+        iam_role.path = self.configuration.lambda_role_path
         iam_role.max_session_duration = 12 * 60 * 60
         iam_role.assume_role_policy_document = """{
           "Version": "2012-10-17",
