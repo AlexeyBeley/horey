@@ -145,6 +145,7 @@ class AWSCleaner:
         if not permissions_only and not self.aws_api.sesv2_email_identities:
             self.aws_api.init_sesv2_configuration_sets()
             self.aws_api.init_sesv2_email_identities()
+            self.aws_api.init_sesv2_accounts()
 
         return [{
                 "Sid": "SES",

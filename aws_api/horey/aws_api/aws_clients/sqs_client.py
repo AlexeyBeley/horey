@@ -29,7 +29,6 @@ class SQSClient(Boto3Client):
         :return:
         """
 
-
         regional_fetcher_generator = self.yield_queues_raw
         for obj in self.regional_service_entities_generator(regional_fetcher_generator,
                                                   SQSQueue,

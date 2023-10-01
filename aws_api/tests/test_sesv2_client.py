@@ -163,7 +163,7 @@ def test_send_email_with_config_set_html():
     client.send_email_raw(dict_request)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_yield_configuration_sets():
     client = SESV2Client()
     obj = None
@@ -172,20 +172,20 @@ def test_yield_configuration_sets():
     assert obj.name is not None
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_get_all_configuration_sets_full_information_false():
     client = SESV2Client()
     ret = client.get_all_configuration_sets(full_information=False)
     assert len(ret) > 0
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_get_all_configuration_sets_full_information_true():
     client = SESV2Client()
     ret = client.get_all_configuration_sets(full_information=True)
     assert len(ret) > 0
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_yield_email_templates():
     client = SESV2Client()
     obj = None
@@ -194,21 +194,21 @@ def test_yield_email_templates():
     assert obj.name is not None
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_get_all_email_templates_full_information_false():
     client = SESV2Client()
     ret = client.get_all_email_templates(full_information=False)
     assert len(ret) > 0
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_get_all_email_templates_full_information_true():
     client = SESV2Client()
     ret = client.get_all_email_templates(full_information=True)
     assert len(ret) > 0
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_yield_email_identities():
     client = SESV2Client()
     obj = None
@@ -217,8 +217,18 @@ def test_yield_email_identities():
     assert obj.name is not None
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_get_all_email_identities_full_information_false():
     client = SESV2Client()
     ret = client.get_all_email_identities()
     assert len(ret) > 0
+
+
+@pytest.mark.wip
+def test_yield_accounts():
+    client = SESV2Client()
+    obj = None
+    for obj in client.yield_accounts():
+        break
+    assert obj.dict_src is not None
+

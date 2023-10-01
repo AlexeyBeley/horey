@@ -192,7 +192,7 @@ def test_cleanup_report_acm_certificate(configuration):
     assert os.path.exists(configuration.acm_certificate_report_file_path)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_cleanup_report_lambdas(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.cleanup_report_lambdas()
@@ -327,7 +327,7 @@ def test_init_elasticache_clusters(configuration: AWSCleanerConfigurationPolicy)
     assert len(cleaner.aws_api.elasticache_clusters) > 0
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_init_sqs_queues(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     cleaner.init_sqs_queues()
@@ -734,7 +734,7 @@ def test_sub_cleanup_report_rds_snapshots(configuration):
     assert ret is not None
 
 
-@pytest.mark.done
+@pytest.mark.wip
 def test_cleanup_report_ses(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.cleanup_report_ses()

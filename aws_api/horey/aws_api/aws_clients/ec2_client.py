@@ -2283,6 +2283,28 @@ class EC2Client(Boto3Client):
             self.clear_cache(volume.__class__)
             return response
 
+    def dispose_vpc(self, vpc):
+        """
+        Dispose EC2 volume.
+
+        :param vpc:
+        :return:
+        """
+
+        lst_vpcs = self.get_all_vpcs(region=vpc.region)
+        request = None
+        for vpc_exists in lst_vpcs:
+            if vpc_exists.get_tagname(ignore_missing_tag=True) == vpc.get_tagname():
+                if vpc_exists.cidr_block != vpc.cidr_block:
+                    raise RuntimeError(
+                        f"VPC {vpc_exists.name} exists with different cidr_block {vpc_exists.cidr_block} != {vpc.cidr_block}"
+                    )
+                request = {"VpcId": vpc_exists.id}
+
+        for response in self.execute(self.client.delete_vpc, None, raw_data=True,
+                                     filters_req=request):
+            self.clear_cache(vpc.__class__)
+            return response
 
     def attach_volume(self, volume, device_name, instance_id):
         """

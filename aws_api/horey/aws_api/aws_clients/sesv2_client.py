@@ -4,6 +4,7 @@ AWS lambda client to handle lambda service API requests.
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 
 from horey.aws_api.base_entities.aws_account import AWSAccount
+from horey.aws_api.aws_services_entities.sesv2_account import SESV2Account
 from horey.aws_api.aws_services_entities.sesv2_email_identity import SESV2EmailIdentity
 from horey.aws_api.aws_services_entities.sesv2_email_template import SESV2EmailTemplate
 from horey.aws_api.aws_services_entities.sesv2_configuration_set import (
@@ -25,6 +26,35 @@ class SESV2Client(Boto3Client):
     def __init__(self):
         client_name = "sesv2"
         super().__init__(client_name)
+
+    # pylint: disable= too-many-arguments
+    def yield_accounts(self, region=None, update_info=False, filters_req=None):
+        """
+        Yield accounts
+
+        :return:
+        """
+
+        regional_fetcher_generator = self.yield_accounts_raw
+        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                  SESV2Account,
+                                                  update_info=update_info,
+                                                  regions=[region] if region else None,
+                                                  filters_req=filters_req):
+            yield certificate
+
+    def yield_accounts_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.client.get_account, None, raw_data=True, filters_req=filters_req
+        ):
+            del dict_src["ResponseMetadata"]
+            yield dict_src
 
     # pylint: disable= too-many-arguments
     def yield_email_identities(self, region=None, update_info=False, filters_req=None):

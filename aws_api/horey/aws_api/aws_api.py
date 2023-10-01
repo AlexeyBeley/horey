@@ -149,13 +149,12 @@ from horey.aws_api.aws_services_entities.ecs_capacity_provider import (
     ECSCapacityProvider,
 )
 from horey.aws_api.aws_services_entities.ecs_service import ECSService
-from horey.aws_api.aws_services_entities.sqs_queue import SQSQueue
 from horey.aws_api.aws_services_entities.lambda_event_source_mapping import (
     LambdaEventSourceMapping,
 )
 from horey.aws_api.aws_services_entities.dynamodb_table import DynamoDBTable
 from horey.aws_api.aws_clients.sesv2_client import SESV2Client
-from horey.aws_api.aws_services_entities.sesv2_email_identity import SESV2EmailIdentity
+from horey.aws_api.aws_clients.ses_client import SESClient
 
 from horey.aws_api.aws_clients.sns_client import SNSClient
 
@@ -197,6 +196,7 @@ class AWSAPI:
         self.pricing_client = PricingClient()
         self.dynamodb_client = DynamoDBClient()
         self.sesv2_client = SESV2Client()
+        self.ses_client = SESClient()
         self.sns_client = SNSClient()
         self.autoscaling_client = AutoScalingClient()
         self.application_autoscaling_client = ApplicationAutoScalingClient()
@@ -265,6 +265,8 @@ class AWSAPI:
         self.dynamodb_tables = []
         self.dynamodb_endpoints = []
         self.sesv2_email_identities = []
+        self.ses_identities = []
+        self.sesv2_accounts = []
         self.sesv2_email_templates = []
         self.sesv2_configuration_sets = []
         self.ecr_images = []
@@ -515,23 +517,40 @@ class AWSAPI:
         self.dynamodb_endpoints = objects
 
     def init_sesv2_email_identities(
-            self, from_cache=False, cache_file=None, region=None
+            self,region=None
     ):
         """
-        Self explanatory.
+        Standard
 
-        @param from_cache:
-        @param cache_file:
         @param region:
         @return:
         """
 
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, SESV2EmailIdentity)
-        else:
-            objects = self.sesv2_client.get_all_email_identities(region=region)
+        self.sesv2_email_identities = self.sesv2_client.get_all_email_identities(region=region)
 
-        self.sesv2_email_identities = objects
+    def init_ses_identities(
+            self, region=None
+    ):
+        """
+        Standard
+
+        @param region:
+        @return:
+        """
+
+        self.ses_identities = list(self.ses_client.yield_identities(region=region, full_information=True))
+
+    def init_sesv2_accounts(
+            self, region=None
+    ):
+        """
+        Standard
+
+        @param region:
+        @return:
+        """
+
+        self.sesv2_accounts = list(self.sesv2_client.yield_accounts(region=region))
 
     def init_sesv2_email_templates(self, region=None):
         """
@@ -1618,19 +1637,14 @@ class AWSAPI:
 
         self.elasticache_replication_groups = objects
 
-    def init_sqs_queues(self, from_cache=False, cache_file=None, region=None):
+    def init_sqs_queues(self, region=None):
         """
+        Standard
 
-        @param from_cache:
-        @param cache_file:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, SQSQueue)
-        else:
-            objects = self.sqs_client.get_all_queues(region=region)
 
-        self.sqs_queues = objects
+        self.sqs_queues = self.sqs_client.get_all_queues(region=region)
 
     def init_lambda_event_source_mappings(
             self, from_cache=False, cache_file=None, region=None
@@ -3822,10 +3836,10 @@ class AWSAPI:
         @return:
         """
 
-        filters = [
+        filters = {"Filters": [
             {"Name": "vpc-id", "Values": [vpc.id]},
             {"Name": "group-name", "Values": [name]},
-        ]
+        ]}
         security_groups = self.ec2_client.get_region_security_groups(
             vpc.region, filters=filters
         )
