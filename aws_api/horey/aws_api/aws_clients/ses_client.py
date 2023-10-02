@@ -118,10 +118,13 @@ class SESClient(Boto3Client):
         policy_names = list(self.execute(
                 self.client.list_identity_policies, "PolicyNames", filters_req={"Identity": obj.name}
         ))
+        if policy_names:
+            dict_policies = {"Policies": list(self.execute(
+                    self.client.get_identity_policies, "Policies", filters_req={"Identity": obj.name, "PolicyNames": policy_names}))}
+            obj.update_from_raw_response(dict_policies)
+        else:
+            logger.info(f"No identity policies for identity '{obj.name}'")
 
-        dict_policies = {"Policies": list(self.execute(
-                self.client.get_identity_policies, "Policies", filters_req={"Identity": obj.name, "PolicyNames": policy_names}))}
-        obj.update_from_raw_response(dict_policies)
         for dict_src in self.execute(
                 self.client.get_identity_verification_attributes, "VerificationAttributes", filters_req={"Identities": [obj.name]}
         ):
