@@ -137,6 +137,15 @@ class AWSCleaner:
     def init_ses(self, permissions_only=False):
         """
         Init SES related entities.
+        "ses:GetIdentityDkimAttributes",
+                "ses:GetIdentityMailFromDomainAttributes",
+                "ses:GetIdentityNotificationAttributes",
+                "ses:ListReceiptRuleSets",
+                "ses:ListIdentityPolicies",
+                "ses:DescribeReceiptRuleSet",
+                "ses:GetIdentityPolicies",
+                "ses:GetIdentityVerificationAttributes"
+                on *
 
         :param permissions_only:
         :return:

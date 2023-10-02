@@ -30,8 +30,7 @@ def test_yield_identities():
     obj = None
     for obj in client.yield_identities():
         break
-    breakpoint()
-    assert obj.arn is None
+    assert obj.name is not None
 
 
 @pytest.mark.wip
@@ -39,5 +38,4 @@ def test_yield_receipt_rule_sets():
     obj = None
     for obj in client.yield_receipt_rule_sets():
         break
-    breakpoint()
-    assert obj.arn is None
+    assert obj.rules is not None

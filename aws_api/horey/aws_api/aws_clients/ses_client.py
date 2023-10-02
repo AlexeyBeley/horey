@@ -30,7 +30,6 @@ class SESClient(Boto3Client):
         :return:
         """
 
-        breakpoint()
         regional_fetcher_generator = self.yield_receipt_rule_sets_raw
         for obj in self.regional_service_entities_generator(regional_fetcher_generator,
                                                   SESReceiptRuleSet,
@@ -47,8 +46,14 @@ class SESClient(Boto3Client):
         """
 
         for dict_src in self.execute(
-                self.client.get_account, None, raw_data=True, filters_req=filters_req
+                self.client.list_receipt_rule_sets, "RuleSets", filters_req=filters_req
         ):
+            for dict_src_tmp in self.execute(
+                    self.client.describe_receipt_rule_set, None, raw_data=True, filters_req={"RuleSetName": dict_src["Name"]}
+            ):
+                del dict_src_tmp["Metadata"]
+                del dict_src_tmp["ResponseMetadata"]
+                dict_src.update(dict_src_tmp)
             yield dict_src
 
     # pylint: disable= too-many-arguments
@@ -58,11 +63,12 @@ class SESClient(Boto3Client):
 
         :return:
         """
-        breakpoint()
+        full_information_callback = self.update_identity_full_information if full_information else None
         regional_fetcher_generator = self.yield_identities_raw
         for obj in self.regional_service_entities_generator(regional_fetcher_generator,
                                                   SESIdentity,
                                                   update_info=update_info,
+                                                  full_information_callback = full_information_callback,
                                                   regions=[region] if region else None,
                                                   filters_req=filters_req):
             yield obj
@@ -74,8 +80,51 @@ class SESClient(Boto3Client):
         :return:
         """
 
-        for dict_src in self.execute(
+        for str_src in self.execute(
                 self.client.list_identities, "Identities", filters_req=filters_req
         ):
-            breakpoint()
-            yield dict_src
+
+            yield {"name": str_src}
+
+    def update_identity_full_information(self, obj: SESIdentity):
+        """
+        Standard.
+
+        :param obj:
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.client.get_identity_dkim_attributes, "DkimAttributes", filters_req={"Identities": [obj.name]}
+        ):
+            if list(dict_src.keys()) != [obj.name]:
+                raise ValueError(dict_src)
+            obj.update_from_raw_response(dict_src[obj.name])
+
+        for dict_src in self.execute(
+                self.client.get_identity_mail_from_domain_attributes, "MailFromDomainAttributes", filters_req={"Identities": [obj.name]}
+        ):
+            if list(dict_src.keys()) != [obj.name]:
+                raise ValueError(dict_src)
+            obj.update_from_raw_response(dict_src[obj.name])
+
+        for dict_src in self.execute(
+                self.client.get_identity_notification_attributes, "NotificationAttributes", filters_req={"Identities": [obj.name]}
+        ):
+            if list(dict_src.keys()) != [obj.name]:
+                raise ValueError(dict_src)
+            obj.update_from_raw_response(dict_src[obj.name])
+
+        policy_names = list(self.execute(
+                self.client.list_identity_policies, "PolicyNames", filters_req={"Identity": obj.name}
+        ))
+
+        dict_policies = {"Policies": list(self.execute(
+                self.client.get_identity_policies, "Policies", filters_req={"Identity": obj.name, "PolicyNames": policy_names}))}
+        obj.update_from_raw_response(dict_policies)
+        for dict_src in self.execute(
+                self.client.get_identity_verification_attributes, "VerificationAttributes", filters_req={"Identities": [obj.name]}
+        ):
+            if list(dict_src.keys()) != [obj.name]:
+                raise ValueError(dict_src)
+            obj.update_from_raw_response(dict_src[obj.name])

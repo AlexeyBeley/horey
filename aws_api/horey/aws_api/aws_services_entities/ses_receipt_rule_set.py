@@ -11,6 +11,8 @@ class SESReceiptRuleSet(AwsObject):
     """
 
     def __init__(self, dict_src, from_cache=False):
+        self.created_timestamp = None
+        self.rules = None
         super().__init__(dict_src)
 
         if from_cache:
@@ -40,8 +42,9 @@ class SESReceiptRuleSet(AwsObject):
         """
 
         init_options = {
-            "DedicatedIpAutoWarmupEnabled": self.init_default_attr,
+            "Name": self.init_default_attr,
+            "CreatedTimestamp": self.init_default_attr,
+            "Rules": self.init_default_attr,
         }
-        breakpoint()
 
         self.init_attrs(dict_src, init_options)
