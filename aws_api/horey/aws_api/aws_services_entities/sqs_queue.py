@@ -108,9 +108,6 @@ class SQSQueue(AwsObject):
         for key in to_del:
             del self_req["Attributes"][key]
 
-        if target_req["tags"] != self_req["tags"]:
-            raise NotImplementedError()
-
         if not changed:
             return None
 
@@ -119,6 +116,20 @@ class SQSQueue(AwsObject):
         del self_req["tags"]
 
         return self_req
+
+    def generate_tag_queue_request(self, desired_queue):
+        """
+        Standard.
+
+        :param desired_queue:
+        :return:
+        """
+
+        if self.tags != desired_queue.tags:
+            return {"QueueUrl": self.queue_url, "Tags": desired_queue.tags}
+
+        return None
+
 
     # pylint: disable= too-many-branches
     def generate_create_request(self):

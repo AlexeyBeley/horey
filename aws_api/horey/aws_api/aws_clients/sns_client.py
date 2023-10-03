@@ -237,7 +237,7 @@ class SNSClient(Boto3Client):
         topic.tags = self.get_tags(topic, function=self.client.list_tags_for_resource)
         return True
 
-    def provision_topic(self, topic):
+    def provision_topic(self, topic: SNSTopic):
         """
         Standard.
 
@@ -249,11 +249,15 @@ class SNSClient(Boto3Client):
         region_topic.region = topic.region
         region_topic.name = topic.name
         if self.update_topic_information(region_topic):
+            update_tags = region_topic.generate_tag_resource_request(topic)
+            if update_tags:
+                self.clear_cache(SNSTopic)
+                self.tag_resource_raw(update_tags)
             topic.update_from_raw_response(region_topic.dict_src)
-
-        AWSAccount.set_aws_region(topic.region)
-        response = self.provision_topic_raw(topic.generate_create_request())
-        topic.update_from_raw_response(response)
+        else:
+            AWSAccount.set_aws_region(topic.region)
+            response = self.provision_topic_raw(topic.generate_create_request())
+            topic.update_from_raw_response(response)
 
     def provision_topic_raw(self, request_dict):
         """
@@ -265,6 +269,25 @@ class SNSClient(Boto3Client):
         logger.info(f"Creating topic: {request_dict}")
         for response in self.execute(
             self.client.create_topic, None, raw_data=True, filters_req=request_dict
+        ):
+            self.clear_cache(SNSTopic)
+            del response["ResponseMetadata"]
+
+            return response
+
+
+    def tag_resource_raw(self, request_dict):
+        """
+        Standard.
+
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Tagging resource: {request_dict}")
+
+        for response in self.execute(
+            self.client.tag_resource, None, raw_data=True, filters_req=request_dict
         ):
             del response["ResponseMetadata"]
 

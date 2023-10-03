@@ -129,6 +129,11 @@ class SQSClient(Boto3Client):
         if update_request is not None:
             self.set_queue_attributes_raw(update_request)
 
+        tag_request = region_queue.generate_tag_queue_request(queue)
+
+        if tag_request is not None:
+            self.tag_queue_raw(tag_request)
+
         queue.update_from_raw_response(region_queue.dict_src)
         self.update_queue_information(queue)
 
@@ -147,6 +152,7 @@ class SQSClient(Boto3Client):
             raw_data=True,
             filters_req=request_dict,
         ):
+            self.clear_cache(SQSQueue)
             return response
 
     def provision_queue_raw(self, request_dict):
@@ -161,6 +167,7 @@ class SQSClient(Boto3Client):
         for response in self.execute(
             self.client.create_queue, "QueueUrl", filters_req=request_dict
         ):
+            self.clear_cache(SQSQueue)
             return response
 
     def receive_message(self, queue):
@@ -229,3 +236,18 @@ class SQSClient(Boto3Client):
                 self.client.list_queue_tags, None, raw_data=True, filters_req=filters_req
         ):
             queue.tags = raw_response.get("Tags")
+
+    def tag_queue_raw(self, request_dict):
+        """
+        Standard.
+
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Tag queue: {request_dict}")
+        for response in self.execute(
+                self.client.tag_queue, None, raw_data=True, filters_req=request_dict
+            ):
+            self.clear_cache(SQSQueue)
+            return response
