@@ -898,14 +898,16 @@ class EC2Client(Boto3Client):
                         f"VPC {vpc_exists.name} exists with different cidr_block {vpc_exists.cidr_block} != {vpc.cidr_block}"
                     )
                 vpc.id = vpc_exists.id
+                for request in vpc_exists.generate_modify_vpc_attribute_requests(desired=vpc):
+                    self.modify_vpc_attribute_raw(request)
+                return
 
         if vpc.id is None:
-            AWSAccount.set_aws_region(vpc.region.region_mark)
             response = self.provision_vpc_raw(vpc.generate_create_request())
             vpc.update_from_raw_create(response)
 
-        for request in vpc.generate_modify_vpc_attribute_requests():
-            self.modify_vpc_attribute_raw(request)
+            for request in vpc.generate_modify_vpc_attribute_requests():
+                self.modify_vpc_attribute_raw(request)
 
     def provision_vpc_raw(self, request):
         """
@@ -917,6 +919,7 @@ class EC2Client(Boto3Client):
         for response in self.execute(
                 self.client.create_vpc, "Vpc", filters_req=request
         ):
+            self.clear_cache(VPC)
             return response
 
     def modify_vpc_attribute_raw(self, request):
@@ -2030,7 +2033,6 @@ class EC2Client(Boto3Client):
         """
 
         logger.info(f"Provisioning key_pair: {request_dict}")
-
         for response in self.execute(
                 self.client.create_key_pair, None, filters_req=request_dict, raw_data=True
         ):
@@ -2292,7 +2294,6 @@ class EC2Client(Boto3Client):
         """
 
         lst_vpcs = self.get_all_vpcs(region=vpc.region)
-        request = None
         for vpc_exists in lst_vpcs:
             if vpc_exists.get_tagname(ignore_missing_tag=True) == vpc.get_tagname():
                 if vpc_exists.cidr_block != vpc.cidr_block:
@@ -2300,10 +2301,13 @@ class EC2Client(Boto3Client):
                         f"VPC {vpc_exists.name} exists with different cidr_block {vpc_exists.cidr_block} != {vpc.cidr_block}"
                     )
                 request = {"VpcId": vpc_exists.id}
+                break
+        else:
+            return True
 
         for response in self.execute(self.client.delete_vpc, None, raw_data=True,
                                      filters_req=request):
-            self.clear_cache(vpc.__class__)
+            self.clear_cache(VPC)
             return response
 
     def attach_volume(self, volume, device_name, instance_id):

@@ -650,6 +650,8 @@ class Boto3Client:
 
         aws_api_account = AWSAccount.get_aws_account()
         cache_dir = os.path.join(self.main_cache_dir_path, aws_api_account.name)
+        if not os.path.exists(cache_dir):
+            return False
         entity_class_file_raw_name = entity_class.get_cache_file_name().replace(".json", "")
 
         for region_name in os.listdir(cache_dir):
@@ -661,6 +663,7 @@ class Boto3Client:
                     cache_file_path = os.path.join(region_client_dir, file_name)
                     logger.info(f"Clearing cache at '{cache_file_path}'")
                     os.remove(cache_file_path)
+        return True
 
     def add_entity_to_cache(self, entity, full_information, get_tags):
         """

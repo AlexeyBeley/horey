@@ -1,7 +1,6 @@
 """
-AWS Lambda representation
+AWS VPC representation
 """
-import pdb
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 from horey.network.ip import IP
@@ -18,24 +17,13 @@ class VPC(AwsObject):
         self.cidr_block = None
         self.enable_dns_hostnames = True
         self.enable_dns_support = True
+        self.cidr_block_association_set = []
 
         if from_cache:
             self._init_object_from_cache(dict_src)
             return
-        init_options = {
-            "VpcId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
-            "CidrBlock": self.init_default_attr,
-            "DhcpOptionsId": self.init_default_attr,
-            "State": self.init_default_attr,
-            "OwnerId": self.init_default_attr,
-            "InstanceTenancy": self.init_default_attr,
-            "CidrBlockAssociationSet": self.init_default_attr,
-            "IsDefault": self.init_default_attr,
-            "Tags": self.init_default_attr,
-            "Ipv6CidrBlockAssociationSet": self.init_default_attr,
-        }
 
-        self.init_attrs(dict_src, init_options)
+        self.update_from_raw_response(dict_src)
 
     def _init_object_from_cache(self, dict_src):
         """
@@ -57,28 +45,48 @@ class VPC(AwsObject):
         TagSpecifications=
         )
         """
-        request = dict()
+
+        request = {}
         request["CidrBlock"] = self.cidr_block
         request["TagSpecifications"] = [{"ResourceType": "vpc", "Tags": self.tags}]
 
         return request
 
-    def generate_modify_vpc_attribute_requests(self):
+    def generate_modify_vpc_attribute_requests(self, desired=None):
+        """
+        Standard.
+
+        :param desired:
+        :return:
+        """
         lst_ret = []
-        request = dict()
-        request["EnableDnsHostnames"] = {"Value": self.enable_dns_hostnames}
-        request["VpcId"] = self.id
+        if not desired or self.enable_dns_hostnames != desired.enable_dns_hostnames:
+            request = {"EnableDnsHostnames": {"Value": self.enable_dns_hostnames}, "VpcId": self.id}
+            lst_ret.append(request)
 
-        lst_ret.append(request)
+        if not desired or self.enable_dns_support != desired.enable_dns_support:
+            request = {"EnableDnsSupport": {"Value": self.enable_dns_support}, "VpcId": self.id}
+            lst_ret.append(request)
 
-        request = dict()
-        request["EnableDnsSupport"] = {"Value": self.enable_dns_support}
-        request["VpcId"] = self.id
-
-        lst_ret.append(request)
         return lst_ret
 
     def update_from_raw_create(self, dict_src):
+        """
+        Backward compatible.
+
+        :param dict_src:
+        :return:
+        """
+
+        self.update_from_raw_response(dict_src)
+
+    def update_from_raw_response(self, dict_src):
+        """
+        Standard.
+
+        :param dict_src:
+        :return:
+        """
         init_options = {
             "VpcId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
             "CidrBlock": self.init_default_attr,
@@ -96,15 +104,32 @@ class VPC(AwsObject):
 
     @property
     def name(self):
+        """
+        Tag name.
+
+        :return:
+        """
         return self.get_tagname(ignore_missing_tag=True)
 
     @name.setter
     def name(self, value):
+        """
+        For default initiation.
+
+        :param value:
+        :return:
+        """
         if value is None:
             return
         raise NotImplementedError()
 
     def get_associated_cidr_ips(self):
+        """
+        Except the main cidr.
+
+        :return:
+        """
+
         return [
             IP(association_set["CidrBlock"])
             for association_set in self.cidr_block_association_set
