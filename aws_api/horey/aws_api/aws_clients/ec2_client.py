@@ -328,17 +328,17 @@ class EC2Client(Boto3Client):
         @return:
         """
 
-        filters = [
+        filters = {"Filters": [
             {
                 "Name": "group-name",
                 "Values": [
                     security_group.name,
                 ],
             }
-        ]
+        ]}
 
         if security_group.vpc_id is not None:
-            filters.append({"Name": "vpc-id", "Values": [security_group.vpc_id]})
+            filters["Filters"].append({"Name": "vpc-id", "Values": [security_group.vpc_id]})
 
         security_groups = self.get_region_security_groups(
             security_group.region, filters=filters
