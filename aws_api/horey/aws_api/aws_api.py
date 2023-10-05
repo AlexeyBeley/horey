@@ -4658,3 +4658,18 @@ class AWSAPI:
         """
         No value set for range decision
         """
+
+    def decode_authorization_message(self, exception):
+        """
+        Read internal message. Make sure you have relevant permissions.
+
+        :param exception:
+        :return:
+        """
+
+        str_exception = str(exception)
+        message_prefix = "Encoded authorization failure message: "
+        if message_prefix not in str_exception:
+            raise ValueError(f'"{message_prefix}" was not found in exception') from exception
+        str_message = str_exception[str_exception.find(message_prefix)+len(message_prefix):]
+        return json.dumps(json.loads(self.sts_client.decode_authorization_message(str_message)), indent=2)
