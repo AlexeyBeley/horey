@@ -3454,6 +3454,8 @@ class AWSAPI:
 
         @return:
         """
+        if not self.route_tables:
+            self.init_route_tables(region=subnet.region)
 
         route_table = self.find_route_table_by_subnet(subnet.region, subnet)
         for route in route_table.routes:
