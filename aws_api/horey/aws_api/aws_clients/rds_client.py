@@ -51,11 +51,11 @@ class RDSClient(Boto3Client):
 
         regional_fetcher_generator = self.yield_db_instances_raw
         for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                  RDSDBInstance,
-                                                  update_info=update_info,
-                                                  get_tags_callback=self.get_tags if get_tags else None,
-                                                  regions=[region] if region else None,
-                                                  filters_req=filters_req):
+                                                                    RDSDBInstance,
+                                                                    update_info=update_info,
+                                                                    get_tags_callback=self.get_tags if get_tags else None,
+                                                                    regions=[region] if region else None,
+                                                                    filters_req=filters_req):
             yield certificate
 
     def yield_db_instances_raw(self, filters_req=None):
@@ -100,12 +100,12 @@ class RDSClient(Boto3Client):
 
         regional_fetcher_generator = self.yield_db_clusters_raw
         for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                  RDSDBCluster,
-                                                  update_info=update_info,
-                                                  full_information_callback=self.update_cluster_full_information if full_information else None,
-                                                  get_tags_callback=self.get_tags if get_tags else None,
-                                                  regions=[region] if region else None,
-                                                  filters_req=filters_req):
+                                                                    RDSDBCluster,
+                                                                    update_info=update_info,
+                                                                    full_information_callback=self.update_cluster_full_information if full_information else None,
+                                                                    get_tags_callback=self.get_tags if get_tags else None,
+                                                                    regions=[region] if region else None,
+                                                                    filters_req=filters_req):
             yield certificate
 
     def yield_db_clusters_raw(self, filters_req=None):
@@ -126,7 +126,8 @@ class RDSClient(Boto3Client):
         :return:
         """
 
-        return list(self.yield_db_clusters(region=region, filters_req=filters_req, get_tags=get_tags, full_information=full_information))
+        return list(self.yield_db_clusters(region=region, filters_req=filters_req, get_tags=get_tags,
+                                           full_information=full_information))
 
     def get_region_db_clusters(self, region, filters=None, update_tags=True, full_information=False):
         """
@@ -139,7 +140,8 @@ class RDSClient(Boto3Client):
         :return:
         """
 
-        return list(self.yield_db_clusters(region=region, filters_req=filters, get_tags=update_tags, full_information=full_information))
+        return list(self.yield_db_clusters(region=region, filters_req=filters, get_tags=update_tags,
+                                           full_information=full_information))
 
     def update_cluster_full_information(self, cluster):
         """
@@ -247,7 +249,6 @@ class RDSClient(Boto3Client):
         for response in self.execute(
                 self.client.delete_db_cluster, "DBCluster", filters_req=request_dict
         ):
-
             self.clear_cache(RDSDBCluster)
             return response
 
@@ -313,10 +314,10 @@ class RDSClient(Boto3Client):
 
         regional_fetcher_generator = self.yield_db_subnet_groups_raw
         for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                  RDSDBSubnetGroup,
-                                                  update_info=update_info,
-                                                  regions=[region] if region else None,
-                                                  filters_req=filters_req):
+                                                                    RDSDBSubnetGroup,
+                                                                    update_info=update_info,
+                                                                    regions=[region] if region else None,
+                                                                    filters_req=filters_req):
             yield certificate
 
     def yield_db_subnet_groups_raw(self, filters_req=None):
@@ -386,7 +387,8 @@ class RDSClient(Boto3Client):
             return response
 
     # pylint: disable= too-many-arguments
-    def yield_db_cluster_parameter_groups(self, region=None, update_info=False, filters_req=None, full_information=True):
+    def yield_db_cluster_parameter_groups(self, region=None, update_info=False, filters_req=None,
+                                          full_information=True):
         """
         Yield db_cluster_parameter_groups
 
@@ -395,11 +397,11 @@ class RDSClient(Boto3Client):
         full_information_callback = self.get_db_cluster_parameters_group_full_information if full_information else None
         regional_fetcher_generator = self.yield_db_cluster_parameter_groups_raw
         for obj in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                  RDSDBClusterParameterGroup,
-                                                  update_info=update_info,
-                                                  full_information_callback=full_information_callback,
-                                                  regions=[region] if region else None,
-                                                  filters_req=filters_req):
+                                                            RDSDBClusterParameterGroup,
+                                                            update_info=update_info,
+                                                            full_information_callback=full_information_callback,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req):
             yield obj
 
     def yield_db_cluster_parameter_groups_raw(self, filters_req=None):
@@ -451,7 +453,8 @@ class RDSClient(Boto3Client):
             obj.parameters.append(response_param)
 
     # pylint: disable= too-many-arguments
-    def yield_db_cluster_snapshots(self, region=None, update_info=False, full_information=True, filters_req=None, get_tags=True):
+    def yield_db_cluster_snapshots(self, region=None, update_info=False, full_information=True, filters_req=None,
+                                   get_tags=True):
         """
         Yield db_cluster_snapshots
 
@@ -461,12 +464,12 @@ class RDSClient(Boto3Client):
         full_information_callback = self.update_db_cluster_snapshot_full_information if full_information else None
         regional_fetcher_generator = self.yield_db_cluster_snapshots_raw
         for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                  RDSDBClusterSnapshot,
-                                                  update_info=update_info,
-                                                  get_tags_callback=self.get_tags if get_tags else None,
-                                                  full_information_callback= full_information_callback,
-                                                  regions=[region] if region else None,
-                                                  filters_req=filters_req):
+                                                                    RDSDBClusterSnapshot,
+                                                                    update_info=update_info,
+                                                                    get_tags_callback=self.get_tags if get_tags else None,
+                                                                    full_information_callback=full_information_callback,
+                                                                    regions=[region] if region else None,
+                                                                    filters_req=filters_req):
             yield certificate
 
     def yield_db_cluster_snapshots_raw(self, filters_req=None):
@@ -506,7 +509,8 @@ class RDSClient(Boto3Client):
         :return:
         """
 
-        return list(self.yield_db_cluster_snapshots(region=region, full_information=full_information, filters_req=custom_filters, get_tags=update_tags))
+        return list(self.yield_db_cluster_snapshots(region=region, full_information=full_information,
+                                                    filters_req=custom_filters, get_tags=update_tags))
 
     def update_db_cluster_snapshot_full_information(self, obj):
         """
@@ -797,7 +801,7 @@ class RDSClient(Boto3Client):
 
         if db_cluster.id is None:
             raise NotImplementedError()
-        filters = [{"Name": "db-cluster-id", "Values": [db_cluster.id]}]
+        filters = {"Filters": [{"Name": "db-cluster-id", "Values": [db_cluster.id]}]}
         region_db_clusters = self.get_region_db_clusters(
             db_cluster.region, filters=filters
         )
@@ -819,14 +823,14 @@ class RDSClient(Boto3Client):
         :return:
         """
 
-        filters_req = [
+        filters_req = {"Filters": [
             {
                 "Name": "db-instance-id",
                 "Values": [
                     db_instance.id,
                 ],
             }
-        ]
+        ]}
 
         region_db_instances = self.get_region_db_instances(
             db_instance.region, filters=filters_req
@@ -953,15 +957,15 @@ class RDSClient(Boto3Client):
         :return:
         """
 
-        if per_region:=self.ENGINE_VERSIONS.get(region.region_mark):
-            if engine_version:=per_region[engine_type]:
+        if per_region := self.ENGINE_VERSIONS.get(region.region_mark):
+            if engine_version := per_region[engine_type]:
                 return engine_version
 
         AWSAccount.set_aws_region(region)
 
         engine_versions = list(self.execute(
-                self.client.describe_db_engine_versions, "DBEngineVersions",
-                filters_req={"Engine": engine_type, "DefaultOnly": True}))
+            self.client.describe_db_engine_versions, "DBEngineVersions",
+            filters_req={"Engine": engine_type, "DefaultOnly": True}))
 
         if len(engine_versions) != 1:
             raise RuntimeError(f"Can not find single default version for {engine_type} in {str(region)}")
