@@ -1,8 +1,6 @@
 """
 AWS clietn to handle service API requests.
 """
-import pdb
-
 
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.base_entities.aws_account import AWSAccount
@@ -39,32 +37,54 @@ class ElasticacheClient(Boto3Client):
         client_name = "elasticache"
         super().__init__(client_name)
 
+    # pylint: disable= too-many-arguments
+    def yield_clusters(self, region=None, update_info=False, filters_req=None):
+        """
+        Yield clusters
+
+        :return:
+        """
+
+        regional_fetcher_generator = self.yield_clusters_raw
+        for obj in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                  ElasticacheCluster,
+                                                  update_info=update_info,
+                                                  regions=[region] if region else None,
+                                                  filters_req=filters_req):
+            yield obj
+
+    def yield_clusters_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.client.describe_cache_clusters, "CacheClusters",
+                filters_req=filters_req,
+                exception_ignore_callback=lambda error: "RepositoryNotFoundException"
+            in repr(error)
+        ):
+            yield dict_src
+
     def get_all_clusters(self, region=None):
         """
         Get all clusters in all regions.
         :return:
         """
 
-        if region is not None:
-            return self.get_region_clusters(region)
-        final_result = list()
-        for region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_clusters(region)
-
-        return final_result
+        return list(self.yield_clusters(region=region))
 
     def get_region_clusters(self, region):
-        AWSAccount.set_aws_region(region)
+        """
+        Get clusters.
 
-        final_result = list()
+        :param region:
+        :return:
+        """
 
-        for dict_src in self.execute(
-            self.client.describe_cache_clusters, "CacheClusters"
-        ):
-            obj = ElasticacheCluster(dict_src)
-            final_result.append(obj)
-
-        return final_result
+        return list(self.yield_clusters(region=region))
 
     def get_all_cache_parameter_groups(self, region=None):
         """
@@ -74,16 +94,22 @@ class ElasticacheClient(Boto3Client):
 
         if region is not None:
             return self.get_region_cache_parameter_groups(region)
-        final_result = list()
-        for region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_cache_parameter_groups(region)
+        final_result = []
+        for _region in AWSAccount.get_aws_account().regions.values():
+            final_result += self.get_region_cache_parameter_groups(_region)
 
         return final_result
 
     def get_region_cache_parameter_groups(self, region):
+        """
+        Stanard.
+
+        :param region:
+        :return:
+        """
         AWSAccount.set_aws_region(region)
 
-        final_result = list()
+        final_result = []
 
         for dict_src in self.execute(
             self.client.describe_cache_parameter_groups, "CacheParameterGroups"
@@ -101,16 +127,22 @@ class ElasticacheClient(Boto3Client):
 
         if region is not None:
             return self.get_region_cache_subnet_groups(region)
-        final_result = list()
-        for region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_cache_subnet_groups(region)
+        final_result = []
+        for _region in AWSAccount.get_aws_account().regions.values():
+            final_result += self.get_region_cache_subnet_groups(_region)
 
         return final_result
 
     def get_region_cache_subnet_groups(self, region):
+        """
+        Stanard.
+
+        :param region:
+        :return:
+        """
         AWSAccount.set_aws_region(region)
 
-        final_result = list()
+        final_result = []
 
         for dict_src in self.execute(
             self.client.describe_cache_subnet_groups, "CacheSubnetGroups"
@@ -128,16 +160,22 @@ class ElasticacheClient(Boto3Client):
 
         if region is not None:
             return self.get_region_replication_groups(region)
-        final_result = list()
-        for region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_replication_groups(region)
+        final_result = []
+        for _region in AWSAccount.get_aws_account().regions.values():
+            final_result += self.get_region_replication_groups(_region)
 
         return final_result
 
     def get_region_replication_groups(self, region):
+        """
+        Stanard.
+
+        :param region:
+        :return:
+        """
         AWSAccount.set_aws_region(region)
 
-        final_result = list()
+        final_result = []
 
         for dict_src in self.execute(
             self.client.describe_replication_groups, "ReplicationGroups"
@@ -155,16 +193,23 @@ class ElasticacheClient(Boto3Client):
 
         if region is not None:
             return self.get_region_cache_security_groups(region)
-        final_result = list()
-        for region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_cache_security_groups(region)
+        final_result = []
+        for _region in AWSAccount.get_aws_account().regions.values():
+            final_result += self.get_region_cache_security_groups(_region)
 
         return final_result
 
     def get_region_cache_security_groups(self, region, cache_security_group_name=None):
+        """
+        Standard.
+
+        :param region:
+        :param cache_security_group_name:
+        :return:
+        """
         AWSAccount.set_aws_region(region)
 
-        final_result = list()
+        final_result = []
         filters_req = (
             {"CacheSecurityGroupName": cache_security_group_name}
             if cache_security_group_name is not None
@@ -180,27 +225,13 @@ class ElasticacheClient(Boto3Client):
 
         return final_result
 
-    def test(self):
-        ret = list(
-            self.execute(self.client.describe_service_updates, "", raw_data=True)
-        )
-
-        # describe_cache_parameters() #CacheParameterGroupName
-
-        # describe_engine_default_parameters() #CacheParameterGroupFamily
-        # ret = list(self.execute(self.client.describe_global_replication_groups, "GlobalReplicationGroups", raw_data=True))
-        # describe_reserved_cache_nodes() #ReservedCacheNodes
-        # ret = list(self.execute(self.client.describe_reserved_cache_nodes_offerings, "ReservedCacheNodesOfferings"))
-
-        # ret = list(self.execute(self.client.describe_service_updates, "ServiceUpdates"))
-        # ret = list(self.execute(self.client.describe_snapshots, "Snapshots"))
-        # ret = list(self.execute(self.client.describe_update_actions, "UpdateActions"))
-        # ret = list(self.execute(self.client.describe_user_groups, "UserGroups"))
-        # ret = list(self.execute(self.client.describe_users, "Users"))
-        # ret = list(self.execute(self.client.list_allowed_node_type_modifications, "", raw_data=True)) #CacheClusterId or ReplicationGroupId
-        # ret = list(self.execute(self.client.list_tags_for_resource, "", raw_data=True)) #ResourceName
-
     def provision_subnet_group(self, subnet_group):
+        """
+        Stanard.
+
+        :param subnet_group:
+        :return:
+        """
         region_subnet_groups = self.get_region_cache_subnet_groups(subnet_group.region)
         for region_subnet_group in region_subnet_groups:
             if subnet_group.name == region_subnet_group.name:
@@ -226,7 +257,12 @@ class ElasticacheClient(Boto3Client):
             return response
 
     def provision_cluster(self, cluster):
-        pdb.set_trace()
+        """
+        Standard.
+
+        :param cluster:
+        :return:
+        """
         region_clusters = self.get_region_clusters(cluster.region)
         for region_cluster in region_clusters:
             if cluster.id == region_cluster.id:
@@ -247,6 +283,12 @@ class ElasticacheClient(Boto3Client):
             return response
 
     def provision_replication_group(self, replication_group):
+        """
+        Standard.
+
+        :param replication_group:
+        :return:
+        """
         region_replication_groups = self.get_region_replication_groups(
             replication_group.region
         )
@@ -271,55 +313,6 @@ class ElasticacheClient(Boto3Client):
         for response in self.execute(
             self.client.create_replication_group,
             "ReplicationGroup",
-            filters_req=request_dict,
-        ):
-            return response
-
-    def provision_security_group(self, security_group):
-        pdb.set_trace()
-        region_security_groups = self.get_region_cache_security_groups(
-            security_group.region, cache_security_group_name=security_group.name
-        )
-        if len(region_security_groups) > 0:
-            region_security_group = region_security_groups[0]
-            request = security_group.generate_authorize_request(
-                existing_security_group=region_security_group
-            )
-            if request:
-                self.authorize_security_group_raw(request)
-            security_group.update_from_raw_response(region_security_group.dict_src)
-            return
-
-        AWSAccount.set_aws_region(security_group.region)
-        response = self.provision_security_group_raw(
-            security_group.generate_create_request()
-        )
-        security_group.update_from_raw_response(response)
-
-        request = security_group.generate_authorize_request()
-        if request:
-            self.authorize_security_group_raw(request)
-
-    def provision_security_group_raw(self, request_dict):
-        """
-        Returns ARN
-        """
-        logger.info(f"Creating redis_security_group: {request_dict}")
-        for response in self.execute(
-            self.client.create_cache_security_group,
-            "CachesecurityGroup",
-            filters_req=request_dict,
-        ):
-            return response
-
-    def authorize_security_group_raw(self, request_dict):
-        """
-        Returns ARN
-        """
-        logger.info(f"Authorizing redis_security_group: {request_dict}")
-        for response in self.execute(
-            self.client.authorize_cache_security_group_ingress,
-            "CacheSecurityGroup",
             filters_req=request_dict,
         ):
             return response

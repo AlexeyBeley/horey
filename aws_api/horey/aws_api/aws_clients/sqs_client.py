@@ -1,10 +1,10 @@
 """
-AWS lambda client to handle lambda service API requests.
+AWS sqs client
+
 """
-import pdb
+
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 
-from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.aws_services_entities.sqs_queue import SQSQueue
 
 from horey.h_logger import get_logger
@@ -21,55 +21,75 @@ class SQSClient(Boto3Client):
         client_name = "sqs"
         super().__init__(client_name)
 
-    def get_all_queues(self, region=None, full_information=True):
+    # pylint: disable= too-many-arguments
+    def yield_queues(self, region=None, update_info=False, filters_req=None, get_tags=True):
+        """
+        Yield queues
+
+        :return:
+        """
+
+        regional_fetcher_generator = self.yield_queues_raw
+        for obj in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                  SQSQueue,
+                                                  update_info=update_info,
+                                                  get_tags_callback=self.get_queue_tags if get_tags else None,
+                                                  regions=[region] if region else None,
+                                                  filters_req=filters_req):
+            yield obj
+
+    def yield_queues_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        for queue_url  in self.execute(
+                self.client.list_queues, "QueueUrls",
+                filters_req=filters_req,
+                exception_ignore_callback=lambda error: "RepositoryNotFoundException"
+            in repr(error)
+        ):
+            filters_req = {"QueueUrl": queue_url, "AttributeNames": ["All"]}
+            for dict_src in self.execute(
+                    self.client.get_queue_attributes, "Attributes", filters_req=filters_req
+            ):
+                dict_src["QueueUrl"] = queue_url
+                yield dict_src
+
+    def get_all_queues(self, region=None):
         """
         Get all queues in all regions.
         :return:
         """
 
-        if region is not None:
-            return self.get_region_queues(region, full_information=full_information)
 
-        final_result = list()
-        for region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_queues(
-                region, full_information=full_information
-            )
+        return list(self.yield_queues(region=region))
 
-        return final_result
+    def get_region_queues(self, region, filters_req=None):
+        """
+        Standard.
 
-    def get_region_queues(self, region, full_information=True, filters_req=None):
-        final_result = list()
-        AWSAccount.set_aws_region(region)
+        :param region:
+        :param filters_req:
+        :return:
+        """
 
-        raw_data = list(
-            self.execute(
-                self.client.list_queues, None, raw_data=True, filters_req=filters_req
-            )
-        )[0]
-        urls = raw_data.get("QueueUrls") or []
-
-        for url in urls:
-            dict_src = {"QueueUrl": url}
-            obj = SQSQueue(dict_src)
-            final_result.append(obj)
-            if full_information:
-                self.update_queue_information(obj)
-
-        return final_result
+        return list(self.yield_queues(region=region, filters_req=filters_req))
 
     def update_queue_information(self, sqs_queue):
+        """
+        Standard.
+
+        :param sqs_queue:
+        :return:
+        """
         filters_req = {"QueueUrl": sqs_queue.queue_url, "AttributeNames": ["All"]}
         for dict_attributes in self.execute(
             self.client.get_queue_attributes, "Attributes", filters_req=filters_req
         ):
-            sqs_queue.update_attributes_from_raw_response(dict_attributes)
-
-        filters_req = {"QueueUrl": sqs_queue.queue_url}
-        for dict_attributes in self.execute(
-            self.client.list_queue_tags, None, raw_data=True, filters_req=filters_req
-        ):
-            sqs_queue.update_tags_from_raw_response(dict_attributes)
+            sqs_queue.update_from_raw_response(dict_attributes)
 
     def provision_queue(self, queue: SQSQueue, declarative=True):
         """
@@ -109,10 +129,22 @@ class SQSClient(Boto3Client):
         if update_request is not None:
             self.set_queue_attributes_raw(update_request)
 
+        tag_request = region_queue.generate_tag_queue_request(queue)
+
+        if tag_request is not None:
+            self.tag_queue_raw(tag_request)
+
         queue.update_from_raw_response(region_queue.dict_src)
         self.update_queue_information(queue)
 
     def set_queue_attributes_raw(self, request_dict):
+        """
+        Update queue
+
+        :param request_dict:
+        :return:
+        """
+
         logger.info(f"Updating queue: {request_dict}")
         for response in self.execute(
             self.client.set_queue_attributes,
@@ -120,21 +152,44 @@ class SQSClient(Boto3Client):
             raw_data=True,
             filters_req=request_dict,
         ):
+            self.clear_cache(SQSQueue)
             return response
 
     def provision_queue_raw(self, request_dict):
+        """
+        Standard.
+
+        :param request_dict:
+        :return:
+        """
+
         logger.info(f"Creating queue: {request_dict}")
         for response in self.execute(
             self.client.create_queue, "QueueUrl", filters_req=request_dict
         ):
+            self.clear_cache(SQSQueue)
             return response
 
     def receive_message(self, queue):
+        """
+        Get message from queue object.
+
+        :param queue:
+        :return:
+        """
+
         return self.receive_message_raw(
             {"QueueUrl": queue.queue_url, "MaxNumberOfMessages": 10}
         )
 
     def receive_message_raw(self, request_dict):
+        """
+        Get message request.
+
+        :param request_dict:
+        :return:
+        """
+
         logger.info(f"Receiving from queue: {request_dict}")
         return list(
             self.execute(
@@ -143,14 +198,56 @@ class SQSClient(Boto3Client):
         )
 
     def send_message(self, queue, message):
+        """
+        Send dict message to queue object.
+
+        :param queue:
+        :param message:
+        :return:
+        """
         return self.send_message_raw(
             {"QueueUrl": queue.queue_url, "MessageBody": message}
         )
 
     def send_message_raw(self, request_dict):
+        """
+        Send dict message to queue.
+
+        :param request_dict:
+        :return:
+        """
+
         logger.info(f"Sending message to queue: {request_dict}")
         return list(
             self.execute(
                 self.client.send_message, None, raw_data=True, filters_req=request_dict
             )
         )
+
+    def get_queue_tags(self, queue):
+        """
+        Get all tags for queue
+
+        :return:
+        """
+
+        filters_req = {"QueueUrl": queue.queue_url}
+        for raw_response in self.execute(
+                self.client.list_queue_tags, None, raw_data=True, filters_req=filters_req
+        ):
+            queue.tags = raw_response.get("Tags")
+
+    def tag_queue_raw(self, request_dict):
+        """
+        Standard.
+
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Tag queue: {request_dict}")
+        for response in self.execute(
+                self.client.tag_queue, None, raw_data=True, filters_req=request_dict
+            ):
+            self.clear_cache(SQSQueue)
+            return response

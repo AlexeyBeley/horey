@@ -26,6 +26,8 @@ class AlertSystemConfigurationPolicy(ConfigurationPolicy):
         self._region = None
         self._notification_channel_file_names = None
         self._active_deployment_validation = False
+        self._lambda_role_name = None
+        self._lambda_role_path = None
 
     @property
     def deployment_datetime(self):
@@ -95,7 +97,23 @@ class AlertSystemConfigurationPolicy(ConfigurationPolicy):
 
     @property
     def lambda_role_name(self):
-        return "role-lambda-alert_system"
+        if self._lambda_role_name is None:
+            self._lambda_role_name = "role-lambda-alert_system"
+        return self._lambda_role_name
+
+    @lambda_role_name.setter
+    def lambda_role_name(self, value):
+        self._lambda_role_name = value
+
+    @property
+    def lambda_role_path(self):
+        if self._lambda_role_path is None:
+            self._lambda_role_path = "role-lambda-alert_system"
+        return self._lambda_role_path
+
+    @lambda_role_path.setter
+    def lambda_role_path(self, value):
+        self._lambda_role_path = value
 
     @property
     def subscription_name(self):

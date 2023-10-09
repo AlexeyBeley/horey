@@ -50,43 +50,59 @@ class EC2Client(Boto3Client):
         client_name = "ec2"
         super().__init__(client_name)
 
-    def get_all_subnets(self, region=None):
+    def yield_subnets(self, region=None, update_info=False, filters_req=None):
+        """
+        Yield over all subnets.
+
+        :return:
+        """
+
+        regional_fetcher_generator = self.yield_subnets_raw
+        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                  Subnet,
+                                                  update_info=update_info,
+                                                  regions=[region] if region else None,
+                                                                    filters_req=filters_req):
+            yield certificate
+
+    def yield_subnets_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.client.describe_subnets, "Subnets", filters_req=filters_req
+        ):
+            yield dict_src
+
+
+    def get_all_subnets(self, region=None, filters_req=None):
         """
         Get all subnets in all regions.
         :return:
         """
 
-        if region is not None:
-            return self.get_region_subnets(region)
+        return list(self.yield_subnets(region=region, filters_req=filters_req))
 
-        final_result = []
-        for _region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_subnets(_region)
-
-        return final_result
-
-    def get_region_subnets(self, region, filters=None):
+    def get_region_subnets(self, region, filters=None, filters_req=None):
         """
         Get region subnets.
 
         @param region:
         @param filters:
+        @param filters_req:
         @return:
         """
 
-        final_result = []
-        filters_req = None
         if filters is not None:
-            filters_req = {"Filters": filters}
+            logger.error("DEPRECATED, use filters_req instead")
+            if filters_req is None:
+                filters_req = {}
+            filters_req["Filters"] = filters
 
-        AWSAccount.set_aws_region(region)
-        for dict_src in self.execute(
-                self.client.describe_subnets, "Subnets", filters_req=filters_req
-        ):
-            obj = Subnet(dict_src)
-            final_result.append(obj)
-
-        return final_result
+        return list(self.yield_subnets(region=region, filters_req=filters_req))
 
     def get_all_vpcs(self, region=None, filters=None):
         """
@@ -174,22 +190,69 @@ class EC2Client(Boto3Client):
             final_result.append(obj)
         return final_result
 
-    def get_all_interfaces(self):
+    def yield_network_interfaces(self, region=None, update_info=False, filters_req=None):
         """
-        Get all interfaces in all regions.
+        Yield over all volumes.
+
         :return:
         """
-        final_result = []
 
-        for _region in AWSAccount.get_aws_account().regions.values():
-            AWSAccount.set_aws_region(_region)
-            for dict_src in self.execute(
-                    self.client.describe_network_interfaces, "NetworkInterfaces"
-            ):
-                interface = NetworkInterface(dict_src)
-                final_result.append(interface)
+        regional_fetcher_generator = self.yield_network_interfaces_raw
+        for dict_src in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                  NetworkInterface,
+                                                  update_info=update_info,
+                                                  regions=[region] if region else None,
+                                                                    filters_req=filters_req):
+            yield dict_src
 
-        return final_result
+    def yield_network_interfaces_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.client.describe_network_interfaces, "NetworkInterfaces", filters_req=filters_req
+        ):
+            yield dict_src
+
+    def get_all_interfaces(self, region=None, update_info=False):
+        """
+        Get all interfaces in all regions.
+
+        :return:
+        """
+
+        return list(self.yield_network_interfaces(region=region, update_info=update_info))
+
+    def yield_instances(self, region=None, update_info=False, filters_req=None):
+        """
+        Yield over all volumes.
+
+        :return:
+        """
+
+        regional_fetcher_generator = self.yield_instances_raw
+        for dict_src in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                  EC2Instance,
+                                                  update_info=update_info,
+                                                  regions=[region] if region else None,
+                                                                    filters_req=filters_req):
+            yield dict_src
+
+    def yield_instances_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        for dict_reservations in self.execute(
+                self.client.describe_instances, "Reservations", filters_req=filters_req
+        ):
+            for dict_src in dict_reservations["Instances"]:
+                yield dict_src
 
     def get_all_instances(self, region=None):
         """
@@ -197,15 +260,7 @@ class EC2Client(Boto3Client):
         :return:
         """
 
-        if region is not None:
-            return self.get_region_instances(region)
-
-        final_result = []
-
-        for _region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_instances(_region)
-
-        return final_result
+        return list(self.yield_instances(region=region))
 
     def get_region_instances(self, region, filters=None):
         """
@@ -216,112 +271,54 @@ class EC2Client(Boto3Client):
         @return:
         """
 
-        AWSAccount.set_aws_region(region)
-        final_result = []
+        return list(self.yield_instances(region=region, filters_req=filters))
 
-        for instance in self.execute(
-                self.client.describe_instances, "Reservations", filters_req=filters
-        ):
-            final_result.extend(instance["Instances"])
 
-        return [EC2Instance(instance) for instance in final_result]
-
-    def get_all_volumes(self, region=None):
+    def yield_security_groups(self, region=None, update_info=False, filters_req=None):
         """
-        Get all ec2 volumes in current region.
+        Yield over all volumes.
 
         :return:
         """
 
-        if region is not None:
-            return self.get_region_volumes(region)
+        regional_fetcher_generator = self.yield_security_groups_raw
+        for dict_src in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                  EC2SecurityGroup,
+                                                  update_info=update_info,
+                                                  regions=[region] if region else None,
+                                                                    filters_req=filters_req):
+            yield dict_src
 
-        final_result = []
-
-        for _region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_volumes(_region)
-
-        return final_result
-
-    def get_region_volumes(self, region, filters_req=None):
+    def yield_security_groups_raw(self, filters_req=None):
         """
-        Standard
+        Yield dictionaries.
 
-        @param region:
-        @param filters_req:
-        @return:
+        :return:
         """
-
-        AWSAccount.set_aws_region(region)
-        final_result = []
-        logger.info(f"Fetching volumes in region: {str(region)}")
-        for dict_src in self.execute(
-                self.client.describe_volumes, "Volumes", filters_req=filters_req
-        ):
-            final_result.append(EC2Volume(dict_src))
-
-        return final_result
-
-    def get_region_volume_modifications(self, region, filters_req=None):
-        """
-        Standard
-
-        @param region:
-        @param filters_req:
-        @return:
-        """
-
-        AWSAccount.set_aws_region(region)
-        final_result = []
 
         for dict_src in self.execute(
-                self.client.describe_volumes_modifications, "VolumesModifications", filters_req=filters_req
+                self.client.describe_security_groups, "SecurityGroups", filters_req=filters_req
         ):
-            final_result.append(EC2VolumeModification(dict_src))
+            yield dict_src
 
-        return final_result
-
-    def get_all_security_groups(self, full_information=False):
+    def get_all_security_groups(self):
         """
         Get all security groups in the region.
-        :param full_information:
         :return:
         """
-        final_result = []
 
-        for _region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_security_groups(_region, full_information=full_information)
+        return list(self.yield_security_groups())
 
-        return final_result
-
-    def get_region_security_groups(self, region, full_information=False, filters=None):
+    def get_region_security_groups(self, region, filters=None):
         """
         Standard.
 
         @param region:
-        @param full_information:
         @param filters:
         @return:
         """
 
-        logger.info(f"Fetching region '{region.region_mark}' security groups")
-        AWSAccount.set_aws_region(region)
-        final_result = []
-        filters_req = {}
-        if filters is not None:
-            filters_req["Filters"] = filters
-        for ret in self.execute(
-                self.client.describe_security_groups,
-                "SecurityGroups",
-                filters_req=filters_req,
-        ):
-            obj = EC2SecurityGroup(ret)
-            if full_information is True:
-                raise NotImplementedError()
-
-            final_result.append(obj)
-
-        return final_result
+        return list(self.yield_security_groups(region=region, filters_req=filters))
 
     def update_security_group_information(self, security_group):
         """
@@ -331,20 +328,20 @@ class EC2Client(Boto3Client):
         @return:
         """
 
-        filters = [
+        filters = {"Filters": [
             {
                 "Name": "group-name",
                 "Values": [
                     security_group.name,
                 ],
             }
-        ]
+        ]}
 
         if security_group.vpc_id is not None:
-            filters.append({"Name": "vpc-id", "Values": [security_group.vpc_id]})
+            filters["Filters"].append({"Name": "vpc-id", "Values": [security_group.vpc_id]})
 
         security_groups = self.get_region_security_groups(
-            security_group.region, full_information=False, filters=filters
+            security_group.region, filters=filters
         )
         if len(security_groups) > 1:
             raise ValueError(
@@ -901,14 +898,16 @@ class EC2Client(Boto3Client):
                         f"VPC {vpc_exists.name} exists with different cidr_block {vpc_exists.cidr_block} != {vpc.cidr_block}"
                     )
                 vpc.id = vpc_exists.id
+                for request in vpc_exists.generate_modify_vpc_attribute_requests(desired=vpc):
+                    self.modify_vpc_attribute_raw(request)
+                return
 
         if vpc.id is None:
-            AWSAccount.set_aws_region(vpc.region.region_mark)
             response = self.provision_vpc_raw(vpc.generate_create_request())
             vpc.update_from_raw_create(response)
 
-        for request in vpc.generate_modify_vpc_attribute_requests():
-            self.modify_vpc_attribute_raw(request)
+            for request in vpc.generate_modify_vpc_attribute_requests():
+                self.modify_vpc_attribute_raw(request)
 
     def provision_vpc_raw(self, request):
         """
@@ -920,6 +919,7 @@ class EC2Client(Boto3Client):
         for response in self.execute(
                 self.client.create_vpc, "Vpc", filters_req=request
         ):
+            self.clear_cache(VPC)
             return response
 
     def modify_vpc_attribute_raw(self, request):
@@ -1027,49 +1027,53 @@ class EC2Client(Boto3Client):
         managed_prefix_list.update_from_raw_create(raw_region_pl)
         return None
 
-    def get_all_amis(self, full_information=True, region=None):
+    def yield_amis(self, region=None, update_info=False, filters_req=None):
+        """
+        Yield over all amis.
+
+        :return:
+        """
+
+        regional_fetcher_generator = self.yield_amis_raw
+        for obj in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                  AMI,
+                                                  update_info=update_info,
+                                                  regions=[region] if region else None,
+                                                                    filters_req=filters_req):
+            yield obj
+
+    def yield_amis_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.client.describe_images, "Images", filters_req=filters_req
+        ):
+            yield dict_src
+
+    def get_all_amis(self, region=None):
         """
         Self explanatory.
 
-        @param full_information:
         @param region:
         @return:
         """
 
-        if region is not None:
-            return self.get_region_amis(region, full_information=full_information)
+        return list(self.yield_amis(region=region))
 
-        final_result = []
-        for _region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_amis(
-                _region, full_information=full_information
-            )
-        return final_result
-
-    def get_region_amis(self, region, full_information=True, custom_filters=None):
+    def get_region_amis(self, region, custom_filters=None):
         """
-        Self explanatory.
+        Standard.
 
         @param region:
-        @param full_information:
         @param custom_filters:
         @return:
         """
 
-        AWSAccount.set_aws_region(region)
-        final_result = []
-
-        for response in self.execute(
-                self.client.describe_images, "Images", filters_req=custom_filters
-        ):
-            obj = AMI(response)
-            obj.region = AWSAccount.get_aws_region()
-            if full_information is True:
-                pass
-
-            final_result.append(obj)
-
-        return final_result
+        return list(self.yield_amis(region=region, filters_req=custom_filters))
 
     def create_image(self, instance: EC2Instance, timeout=600):
         """
@@ -1276,45 +1280,52 @@ class EC2Client(Boto3Client):
 
         return final_result
 
-    def get_all_route_tables(self, full_information=True, region=None):
+    def yield_route_tables(self, region=None, update_info=False, filters_req=None):
+        """
+        Yield over all route_tables.
+
+        :return:
+        """
+
+        regional_fetcher_generator = self.yield_route_tables_raw
+        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                  RouteTable,
+                                                  update_info=update_info,
+                                                  regions=[region] if region else None,
+                                                                    filters_req=filters_req):
+            yield certificate
+
+    def yield_route_tables_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.client.describe_route_tables, "RouteTables", filters_req=filters_req
+        ):
+            yield dict_src
+
+    def get_all_route_tables(self, region=None):
         """
         Standard
 
-        @param full_information:
         @param region:
         @return:
         """
-        if region is not None:
-            return self.get_region_route_tables(
-                region, full_information=full_information
-            )
 
-        final_result = []
-        for _region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_route_tables(
-                _region, full_information=full_information
-            )
-        return final_result
+        return list(self.yield_route_tables(region=region))
 
-    def get_region_route_tables(self, region, full_information=True):
+    def get_region_route_tables(self, region):
         """
         Standard
 
         @param region:
-        @param full_information:
         @return:
         """
-        AWSAccount.set_aws_region(region)
-        final_result = []
 
-        for response in self.execute(self.client.describe_route_tables, "RouteTables"):
-            obj = RouteTable(response)
-            if full_information is True:
-                pass
-
-            final_result.append(obj)
-
-        return final_result
+        return list(self.yield_route_tables(region=region))
 
     def get_all_elastic_addresses(self, full_information=True, region=None):
         """
@@ -1894,6 +1905,7 @@ class EC2Client(Boto3Client):
         @param wait_until_active:
         @return:
         """
+
         filter_by_tag = {
             "Filters": [{"Name": "tag:Name", "Values": [ec2_instance.get_tagname()]}]
         }
@@ -2007,11 +2019,10 @@ class EC2Client(Boto3Client):
                 key_pair.id = region_key_pair.id
                 return None
 
-        try:
-            return self.provision_key_pair_raw(key_pair.generate_create_request())
-        except Exception as exception_inst:
-            logger.warning(repr(exception_inst))
-            raise
+        response = self.provision_key_pair_raw(key_pair.generate_create_request())
+        key_pair.update_from_raw_response(response)
+        return response
+
 
     def provision_key_pair_raw(self, request_dict):
         """
@@ -2022,7 +2033,6 @@ class EC2Client(Boto3Client):
         """
 
         logger.info(f"Provisioning key_pair: {request_dict}")
-
         for response in self.execute(
                 self.client.create_key_pair, None, filters_req=request_dict, raw_data=True
         ):
@@ -2143,7 +2153,7 @@ class EC2Client(Boto3Client):
         else:
             filters_req = {"Filters": [{"Name": "tag:Name", "Values": [volume.get_tagname()]}]}
 
-        lst_ret = self.get_region_volumes(volume.region, filters_req=filters_req)
+        lst_ret = list(self.yield_volumes(region=volume.region, filters_req=filters_req))
 
         if len(lst_ret) > 1:
             raise RuntimeError(f"Found more then 1 ec2 volume with filter: {filters_req}")
@@ -2243,6 +2253,7 @@ class EC2Client(Boto3Client):
         for response in self.execute(self.client.create_volume, None, raw_data=True,
                                      filters_req=dict_request):
             del response["ResponseMetadata"]
+            self.clear_cache(EC2Volume)
             return response
 
     def modify_volume_raw(self, dict_request):
@@ -2254,6 +2265,7 @@ class EC2Client(Boto3Client):
         """
         for response in self.execute(self.client.modify_volume, "VolumeModification",
                                      filters_req=dict_request, instant_raise=True):
+            self.clear_cache(EC2Volume)
             return response
 
     def dispose_volume(self, volume):
@@ -2270,9 +2282,33 @@ class EC2Client(Boto3Client):
 
         for response in self.execute(self.client.delete_volume, None, raw_data=True,
                                      filters_req={"VolumeId": volume.id}):
+            self.clear_cache(volume.__class__)
             return response
 
-        return None
+    def dispose_vpc(self, vpc):
+        """
+        Dispose EC2 volume.
+
+        :param vpc:
+        :return:
+        """
+
+        lst_vpcs = self.get_all_vpcs(region=vpc.region)
+        for vpc_exists in lst_vpcs:
+            if vpc_exists.get_tagname(ignore_missing_tag=True) == vpc.get_tagname():
+                if vpc_exists.cidr_block != vpc.cidr_block:
+                    raise RuntimeError(
+                        f"VPC {vpc_exists.name} exists with different cidr_block {vpc_exists.cidr_block} != {vpc.cidr_block}"
+                    )
+                request = {"VpcId": vpc_exists.id}
+                break
+        else:
+            return True
+
+        for response in self.execute(self.client.delete_vpc, None, raw_data=True,
+                                     filters_req=request):
+            self.clear_cache(VPC)
+            return response
 
     def attach_volume(self, volume, device_name, instance_id):
         """
@@ -2352,3 +2388,58 @@ class EC2Client(Boto3Client):
         for response in self.execute(self.client.describe_instance_types, "InstanceTypes"):
             ret.append(EC2InstanceType(response))
         return ret
+
+    def yield_volumes(self, region=None, update_info=False, filters_req=None):
+        """
+        Yield over all volumes.
+
+        :return:
+        """
+
+        regional_fetcher_generator = self.yield_volumes_raw
+        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                  EC2Volume,
+                                                  update_info=update_info,
+                                                  regions=[region] if region else None,
+                                                                    filters_req=filters_req):
+            yield certificate
+
+    def yield_volumes_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.client.describe_volumes, "Volumes", filters_req=filters_req
+        ):
+            yield dict_src
+
+    def get_all_volumes(self, region=None, update_info=False, filters_req=None):
+        """
+        Get all ec2 volumes in current region.
+
+        :return:
+        """
+
+        return list(self.yield_volumes(region=region, update_info=update_info, filters_req=filters_req))
+
+    def get_region_volume_modifications(self, region, filters_req=None):
+        """
+        Standard
+
+        @param region:
+        @param filters_req:
+        @return:
+        """
+
+        AWSAccount.set_aws_region(region)
+        final_result = []
+
+        for dict_src in self.execute(
+                self.client.describe_volumes_modifications, "VolumesModifications", filters_req=filters_req
+        ):
+            final_result.append(EC2VolumeModification(dict_src))
+
+        return final_result

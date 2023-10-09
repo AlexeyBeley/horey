@@ -1,15 +1,13 @@
 """
-Cloud watch specific log group representation
+Cloud watch log group metric
 """
-import pdb
-from horey.common_utils.common_utils import CommonUtils
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 
 
 class CloudWatchLogGroupMetricFilter(AwsObject):
     """
-    The class to represent instances of the log group objects.
+    The class to represent Cloud watch log group metric
     """
 
     def __init__(self, dict_src, from_cache=False):
@@ -19,6 +17,9 @@ class CloudWatchLogGroupMetricFilter(AwsObject):
         """
 
         self.log_streams = []
+        self.filter_pattern = None
+        self.log_group_name = None
+        self.metric_transformations = None
 
         super().__init__(dict_src, from_cache=from_cache)
 
@@ -47,18 +48,15 @@ class CloudWatchLogGroupMetricFilter(AwsObject):
         options = {}
         self._init_from_cache(dict_src, options)
 
-    def update_log_stream(self, dict_src, from_cache=False):
+    def generate_dir_name(self):
         """
-        When needed full information the stream is updated from AWS.
-        :param dict_src:
-        :param from_cache:
+        Looks like copy/past error from cloudwatch log group
+
+        return self.name.lower().replace("/", "_")
         :return:
         """
-        ls = CloudWatchLogGroup.LogStream(dict_src, from_cache=from_cache)
-        self.log_streams.append(ls)
 
-    def generate_dir_name(self):
-        return self.name.lower().replace("/", "_")
+        raise NotImplementedError()
 
     def generate_create_request(self):
         """
@@ -78,45 +76,3 @@ class CloudWatchLogGroupMetricFilter(AwsObject):
             "metricTransformations": self.metric_transformations,
         }
         return request_dict
-
-    class LogStream(AwsObject):
-        """
-        The class representing log group's log stream
-        """
-
-        def __init__(self, dict_src, from_cache=False):
-            self.statements = []
-
-            super(CloudWatchLogGroup.LogStream, self).__init__(
-                dict_src, from_cache=from_cache
-            )
-
-            if from_cache:
-                self.init_log_stream_from_cache(dict_src)
-                return
-
-            init_options = {
-                "logStreamName": self.init_default_attr,
-                "creationTime": lambda name, value: (
-                    name,
-                    CommonUtils.timestamp_to_datetime(value / 1000.0),
-                ),
-                "firstEventTimestamp": self.init_default_attr,
-                "lastEventTimestamp": self.init_default_attr,
-                "lastIngestionTime": self.init_default_attr,
-                "uploadSequenceToken": self.init_default_attr,
-                "arn": self.init_default_attr,
-                "storedBytes": self.init_default_attr,
-            }
-
-            self.init_attrs(dict_src, init_options)
-
-        def init_log_stream_from_cache(self, dict_src):
-            """
-            Init the logstream from a preserved cache dict.
-            :param dict_src:
-            :return:
-            """
-            options = {}
-
-            self._init_from_cache(dict_src, options)

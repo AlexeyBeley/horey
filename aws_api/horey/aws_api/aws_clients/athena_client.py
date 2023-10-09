@@ -20,35 +20,34 @@ class AthenaClient(Boto3Client):
     def __init__(self):
         client_name = "athena"
         super().__init__(client_name)
-        pdb.set_trace()
-        ret = list(self.execute(self.client.list_work_groups, "WorkGroups"))
-        ret = list(self.execute(self.client.list_data_catalogs, "DataCatalogsSummary"))
-        ret = list(
+        ret1 = list(self.execute(self.client.list_work_groups, "WorkGroups"))
+        ret2 = list(self.execute(self.client.list_data_catalogs, "DataCatalogsSummary"))
+        ret3 = list(
             self.execute(
                 self.client.list_databases,
                 "DatabaseList",
                 filters_req={"CatalogName": "AwsDataCatalog"},
             )
         )
-        ret = list(
+        ret4 = list(
+            self.execute(
+                self.client.list_table_metadata,
+                "TableMetadataList",
+                filters_req={"CatalogName": "AwsDataCatalog", "DatabaseName": ""},
+            )
+        )
+        ret5 = list(
             self.execute(
                 self.client.get_table_metadata,
                 "TableMetadata",
                 filters_req={
                     "CatalogName": "AwsDataCatalog",
-                    "DatabaseName": "test",
-                    "TableName": "test",
+                    "DatabaseName": "",
+                    "TableName": "",
                 },
             )
         )
-
-        ret = list(
-            self.execute(
-                self.client.list_table_metadata,
-                "TableMetadataList",
-                filters_req={"CatalogName": "AwsDataCatalog", "DatabaseName": "test"},
-            )
-        )
+        breakpoint()
 
         ret = list(self.execute(self.client.list_data_catalogs, "DataCatalogsSummary"))
         ret = list(

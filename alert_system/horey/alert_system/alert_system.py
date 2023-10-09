@@ -19,7 +19,6 @@ from horey.aws_api.aws_services_entities.aws_lambda import AWSLambda
 from horey.aws_api.base_entities.region import Region
 from horey.aws_api.aws_api import AWSAPI
 from horey.aws_api.aws_services_entities.iam_role import IamRole
-from horey.aws_api.aws_services_entities.iam_policy import IamPolicy
 from horey.aws_api.aws_services_entities.sns_subscription import SNSSubscription
 from horey.aws_api.aws_services_entities.sns_topic import SNSTopic
 from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlarm
@@ -306,6 +305,7 @@ class AlertSystem:
         iam_role = IamRole({})
         iam_role.description = "alert_system lambda role"
         iam_role.name = self.configuration.lambda_role_name
+        iam_role.path = self.configuration.lambda_role_path
         iam_role.max_session_duration = 12 * 60 * 60
         iam_role.assume_role_policy_document = """{
           "Version": "2012-10-17",
@@ -319,10 +319,7 @@ class AlertSystem:
             }
           ]
         }"""
-        policy = IamPolicy({})
-        policy.arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-        iam_role.policies.append(policy)
-        iam_role.policies.append(policy)
+        iam_role.managed_policies_arns = ["arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"]
         iam_role.tags = [{"Key": "Name", "Value": iam_role.name}]
         self.aws_api.provision_iam_role(iam_role)
         return iam_role

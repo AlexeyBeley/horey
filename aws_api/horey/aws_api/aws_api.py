@@ -13,13 +13,10 @@ import zipfile
 from collections import defaultdict
 import requests
 
-from horey.network.ip import IP
-
 from horey.aws_api.aws_clients.ecr_client import ECRClient
 
 from horey.aws_api.aws_clients.ec2_client import EC2Client
 from horey.aws_api.aws_services_entities.ec2_instance import EC2Instance
-from horey.aws_api.aws_services_entities.network_interface import NetworkInterface
 from horey.aws_api.aws_services_entities.ec2_security_group import EC2SecurityGroup
 from horey.aws_api.aws_services_entities.ec2_spot_fleet_request import (
     EC2SpotFleetRequest,
@@ -42,8 +39,6 @@ from horey.aws_api.aws_clients.s3_client import S3Client
 from horey.aws_api.aws_services_entities.s3_bucket import S3Bucket
 
 from horey.aws_api.aws_clients.elbv2_client import ELBV2Client
-from horey.aws_api.aws_services_entities.elbv2_load_balancer import LoadBalancer
-from horey.aws_api.aws_services_entities.elbv2_target_group import ELBV2TargetGroup
 
 from horey.aws_api.aws_clients.acm_client import ACMClient
 from horey.aws_api.aws_services_entities.acm_certificate import ACMCertificate
@@ -57,7 +52,6 @@ from horey.aws_api.aws_clients.elb_client import ELBClient
 from horey.aws_api.aws_services_entities.elb_load_balancer import ClassicLoadBalancer
 
 from horey.aws_api.aws_clients.lambda_client import LambdaClient
-from horey.aws_api.aws_services_entities.aws_lambda import AWSLambda
 
 from horey.aws_api.aws_clients.route53_client import Route53Client
 from horey.aws_api.aws_services_entities.route53_hosted_zone import HostedZone
@@ -150,27 +144,19 @@ from horey.aws_api.aws_services_entities.route_table import RouteTable
 from horey.aws_api.aws_services_entities.elastic_address import ElasticAddress
 from horey.aws_api.aws_services_entities.nat_gateway import NatGateway
 from horey.aws_api.aws_services_entities.ecr_repository import ECRRepository
-from horey.aws_api.aws_services_entities.ecr_image import ECRImage
 from horey.aws_api.aws_services_entities.ecs_cluster import ECSCluster
 from horey.aws_api.aws_services_entities.ecs_capacity_provider import (
     ECSCapacityProvider,
 )
 from horey.aws_api.aws_services_entities.ecs_service import ECSService
-from horey.aws_api.aws_services_entities.sqs_queue import SQSQueue
 from horey.aws_api.aws_services_entities.lambda_event_source_mapping import (
     LambdaEventSourceMapping,
 )
 from horey.aws_api.aws_services_entities.dynamodb_table import DynamoDBTable
 from horey.aws_api.aws_clients.sesv2_client import SESV2Client
-from horey.aws_api.aws_services_entities.sesv2_email_identity import SESV2EmailIdentity
-from horey.aws_api.aws_services_entities.sesv2_configuration_set import (
-    SESV2ConfigurationSet,
-)
-from horey.aws_api.aws_services_entities.sesv2_email_template import SESV2EmailTemplate
+from horey.aws_api.aws_clients.ses_client import SESClient
 
 from horey.aws_api.aws_clients.sns_client import SNSClient
-from horey.aws_api.aws_services_entities.sns_subscription import SNSSubscription
-from horey.aws_api.aws_services_entities.sns_topic import SNSTopic
 
 from horey.aws_api.aws_clients.eks_client import EKSClient
 from horey.aws_api.aws_services_entities.eks_addon import EKSAddon
@@ -182,7 +168,6 @@ from horey.h_logger import get_logger
 from horey.common_utils.text_block import TextBlock
 
 from horey.network.dns_map import DNSMap
-from horey.network.service import ServiceTCP, Service
 from horey.aws_api.base_entities.aws_account import AWSAccount
 
 logger = get_logger()
@@ -211,6 +196,7 @@ class AWSAPI:
         self.pricing_client = PricingClient()
         self.dynamodb_client = DynamoDBClient()
         self.sesv2_client = SESV2Client()
+        self.ses_client = SESClient()
         self.sns_client = SNSClient()
         self.autoscaling_client = AutoScalingClient()
         self.application_autoscaling_client = ApplicationAutoScalingClient()
@@ -257,6 +243,7 @@ class AWSAPI:
         self.cloud_watch_log_groups = []
         self.cloud_watch_log_groups_metric_filters = []
         self.cloud_watch_alarms = []
+        self.cloud_watch_metrics = []
         self.cloudfront_distributions = []
         self.cloudfront_origin_access_identities = []
         self.event_bridge_rules = []
@@ -278,6 +265,8 @@ class AWSAPI:
         self.dynamodb_tables = []
         self.dynamodb_endpoints = []
         self.sesv2_email_identities = []
+        self.ses_identities = []
+        self.sesv2_accounts = []
         self.sesv2_email_templates = []
         self.sesv2_configuration_sets = []
         self.ecr_images = []
@@ -316,6 +305,8 @@ class AWSAPI:
 
         if self.configuration is None:
             return
+
+        STSClient().main_cache_dir_path = self.configuration.aws_api_cache_dir
         self.aws_accounts = self.get_all_managed_accounts()
         AWSAccount.set_aws_account(
             self.aws_accounts[self.configuration.aws_api_account]
@@ -497,22 +488,16 @@ class AWSAPI:
 
         self.nat_gateways = objects
 
-    def init_dynamodb_tables(self, from_cache=False, cache_file=None, region=None):
+    def init_dynamodb_tables(self, region=None, full_information=False):
         """
-        Self explanatory.
+        Self-explanatory.
 
-        @param from_cache:
-        @param cache_file:
         @param region:
+        @param full_information:
         @return:
         """
 
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, DynamoDBTable)
-        else:
-            objects = self.dynamodb_client.get_all_tables(region=region)
-
-        self.dynamodb_tables = objects
+        self.dynamodb_tables = self.dynamodb_client.get_all_tables(region=region, full_information=full_information)
 
     def init_dynamodb_endpoints(self, from_cache=False, cache_file=None, region=None):
         """
@@ -532,100 +517,87 @@ class AWSAPI:
         self.dynamodb_endpoints = objects
 
     def init_sesv2_email_identities(
-            self, from_cache=False, cache_file=None, region=None
+            self,region=None
     ):
         """
-        Self explanatory.
+        Standard
 
-        @param from_cache:
-        @param cache_file:
         @param region:
         @return:
         """
 
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, SESV2EmailIdentity)
-        else:
-            objects = self.sesv2_client.get_all_email_identities(region=region)
+        self.sesv2_email_identities = self.sesv2_client.get_all_email_identities(region=region)
 
-        self.sesv2_email_identities = objects
-
-    def init_sesv2_email_templates(
-            self, from_cache=False, cache_file=None, region=None
+    def init_ses_identities(
+            self, region=None
     ):
         """
-        Self explanatory.
+        Standard
 
-        @param from_cache:
-        @param cache_file:
         @param region:
         @return:
         """
 
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, SESV2EmailTemplate)
-        else:
-            objects = self.sesv2_client.get_all_email_templates(region=region)
+        self.ses_identities = list(self.ses_client.yield_identities(region=region, full_information=True))
 
-        self.sesv2_email_templates = objects
+    def init_sesv2_accounts(
+            self, region=None
+    ):
+        """
+        Standard
+
+        @param region:
+        @return:
+        """
+
+        self.sesv2_accounts = list(self.sesv2_client.yield_accounts(region=region))
+
+    def init_sesv2_email_templates(self, region=None):
+        """
+        Standard
+
+        @param region:
+        @return:
+        """
+
+        self.sesv2_email_templates = self.sesv2_client.get_all_email_templates(region=region)
 
     def init_sesv2_configuration_sets(
-            self, from_cache=False, cache_file=None, region=None, full_information=False
+            self, region=None, full_information=True
     ):
         """
-        Self explanatory.
+        Standard
 
-        @param from_cache:
-        @param cache_file:
         @param region:
         @return:
         :param full_information:
         """
 
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, SESV2ConfigurationSet)
-        else:
-            objects = self.sesv2_client.get_all_configuration_sets(region=region, full_information=full_information)
+        self.sesv2_configuration_sets = self.sesv2_client.get_all_configuration_sets(region=region, full_information=full_information)
 
-        self.sesv2_configuration_sets = objects
-
-    def init_sns_topics(self, from_cache=False, cache_file=None, region=None):
+    def init_sns_topics(self, region=None):
         """
-        Self explanatory.
+        Standard.
 
-        @param from_cache:
-        @param cache_file:
         @param region:
         @return:
         """
 
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, SNSTopic)
-        else:
-            objects = self.sns_client.get_all_topics(region=region)
+        self.sns_topics = self.sns_client.get_all_topics(region=region)
 
-        self.sns_topics = objects
-
-    def init_sns_subscriptions(self, from_cache=False, cache_file=None, region=None):
+    def init_sns_subscriptions(self, region=None):
         """
-        Self explanatory.
+        Standard.
 
-        @param from_cache:
-        @param cache_file:
         @param region:
         @return:
         """
 
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, SNSSubscription)
-        else:
-            objects = self.sns_client.get_all_subscriptions(region=region)
-
-        self.sns_subscriptions = objects
+        self.sns_subscriptions = self.sns_client.get_all_subscriptions(region=region)
 
     def init_eks_clusters(self, from_cache=False, region=None):
         """
-        Self explanatory.
+        Standard.
 
         @param from_cache:
         @param region:
@@ -643,7 +615,7 @@ class AWSAPI:
 
     def init_eks_addons(self, from_cache=False, region=None):
         """
-        Self explanatory.
+        Standard.
 
         @param from_cache:
         @param region:
@@ -659,35 +631,18 @@ class AWSAPI:
         self.eks_addons = objects
         return objects
 
-    def init_ecr_images(
-            self, from_cache=False, cache_file=None, region=None, ecr_repositories=None
-    ):
+    def init_ecr_images(self):
         """
-        Self explanatory.
+        Standard.
 
-        @param from_cache:
-        @param cache_file:
-        @param region:
-        @param ecr_repositories:
         @return:
         """
 
-        objects = []
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, ECRImage)
-        else:
-            if ecr_repositories is None:
-                ecr_repositories = self.ecr_client.get_all_repositories(region=region)
-
-            for ecr_repository in ecr_repositories:
-                if region is not None and ecr_repository.region != region:
-                    continue
-                objects += self.ecr_client.get_all_images(ecr_repository)
-        self.ecr_images = objects
+        self.ecr_images = self.ecr_client.get_all_images()
 
     def init_ecr_repositories(self, from_cache=False, cache_file=None, region=None):
         """
-        Self explanatory.
+        Standard.
 
         @param from_cache:
         @param cache_file:
@@ -873,7 +828,7 @@ class AWSAPI:
 
     def init_amis(self, from_cache=False, cache_file=None):
         """
-        Self explanatory.
+        Standard.
 
         @param from_cache:
         @param cache_file:
@@ -970,20 +925,14 @@ class AWSAPI:
 
         self.elastic_addresses = objects
 
-    def init_network_interfaces(self, from_cache=False, cache_file=None):
+    def init_network_interfaces(self):
         """
         Init ec2 instances.
 
-        @param from_cache:
-        @param cache_file:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, NetworkInterface)
-        else:
-            objects = self.ec2_client.get_all_interfaces()
 
-        self.network_interfaces = objects
+        self.network_interfaces = self.ec2_client.get_all_interfaces()
 
         return self.network_interfaces
 
@@ -1002,20 +951,14 @@ class AWSAPI:
 
         self.ec2_instances = objects
 
-    def init_ec2_volumes(self, from_cache=False, cache_file=None, region=None):
+    def init_ec2_volumes(self, region=None):
         """
         Init ec2 volumes.
 
-        @param from_cache:
-        @param cache_file:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, EC2Instance)
-        else:
-            objects = self.ec2_client.get_all_volumes(region=region)
 
-        self.ec2_volumes = objects
+        self.ec2_volumes = self.ec2_client.get_all_volumes(region=region)
 
     def init_spot_fleet_requests(self, from_cache=False, cache_file=None):
         """
@@ -1106,7 +1049,7 @@ class AWSAPI:
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, IamRole)
         else:
-            objects = self.iam_client.get_all_roles(policies=self.iam_policies)
+            objects = self.iam_client.get_all_roles()
 
         self.iam_roles = objects
 
@@ -1152,6 +1095,16 @@ class AWSAPI:
 
         self.cloud_watch_alarms = objects
 
+    def init_cloud_watch_metrics(self, update_info=False):
+        """
+        Self-explanatory.
+
+        @param update_info:
+        @return:
+        """
+
+        self.cloud_watch_metrics = self.cloud_watch_client.get_all_metrics(update_info=update_info)
+
     def init_cloud_watch_log_groups(self, from_cache=False, cache_file=None):
         """
         Init the cloudwatch log groups.
@@ -1196,7 +1149,6 @@ class AWSAPI:
         @return:
         """
         log_groups = self.cloud_watch_logs_client.get_cloud_watch_log_groups(
-            full_information=False
         )
         for log_group in log_groups:
             if log_group_names is not None:
@@ -1305,37 +1257,25 @@ class AWSAPI:
                 )
                 continue
 
-    def init_lambdas(self, from_cache=False, cache_file=None, full_information=True):
+    def init_lambdas(self, full_information=True):
         """
         Init AWS lambdas
-        @param from_cache:
-        @param cache_file:
         @param full_information:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, AWSLambda)
-        else:
-            objects = self.lambda_client.get_all_lambdas(
+
+        self.lambdas = self.lambda_client.get_all_lambdas(
                 full_information=full_information
             )
 
-        self.lambdas = objects
-
-    def init_load_balancers(self, from_cache=False, cache_file=None, region=None):
+    def init_load_balancers(self, region=None):
         """
         Init elbs v2
 
-        @param from_cache:
-        @param cache_file:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, LoadBalancer)
-        else:
-            objects = self.elbv2_client.get_all_load_balancers(region=region)
 
-        self.load_balancers = objects
+        self.load_balancers = self.elbv2_client.get_all_load_balancers(region=region)
 
     def init_classic_load_balancers(self, from_cache=False, cache_file=None):
         """
@@ -1589,18 +1529,19 @@ class AWSAPI:
 
         self.rds_db_instances = objects
 
-    def init_rds_db_clusters(self, from_cache=False, cache_file=None, region=None):
+    def init_rds_db_clusters(self, from_cache=False, cache_file=None, region=None, full_information=False):
         """
         Init RDSs
 
         @param from_cache:
         @param cache_file:
+        @param full_information:
         @return:
         """
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, RDSDBInstance)
         else:
-            objects = self.rds_client.get_all_db_clusters(region=region)
+            objects = self.rds_client.get_all_db_clusters(region=region, full_information=full_information)
 
         self.rds_db_clusters = objects
 
@@ -1696,19 +1637,14 @@ class AWSAPI:
 
         self.elasticache_replication_groups = objects
 
-    def init_sqs_queues(self, from_cache=False, cache_file=None, region=None):
+    def init_sqs_queues(self, region=None):
         """
+        Standard
 
-        @param from_cache:
-        @param cache_file:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, SQSQueue)
-        else:
-            objects = self.sqs_client.get_all_queues(region=region)
 
-        self.sqs_queues = objects
+        self.sqs_queues = self.sqs_client.get_all_queues(region=region)
 
     def init_lambda_event_source_mappings(
             self, from_cache=False, cache_file=None, region=None
@@ -1726,19 +1662,15 @@ class AWSAPI:
 
         self.lambda_event_source_mappings = objects
 
-    def init_target_groups(self, from_cache=False, cache_file=None):
+    def init_target_groups(self, update_info=False):
         """
         Init ELB target groups
-        @param from_cache:
-        @param cache_file:
+
+        @param update_info:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, ELBV2TargetGroup)
-        else:
-            objects = self.elbv2_client.get_all_target_groups()
 
-        self.target_groups = objects
+        self.target_groups = self.elbv2_client.get_all_target_groups(update_info=update_info)
 
     def init_acm_certificates(self, from_cache=False, cache_file=None):
         """
@@ -1769,21 +1701,19 @@ class AWSAPI:
         self.kms_keys = objects
 
     def init_security_groups(
-            self, from_cache=False, cache_file=None, full_information=False
+            self, from_cache=False, cache_file=None
     ):
         """
         Init security groups
 
         @param from_cache:
         @param cache_file:
-        @param full_information:
         @return:
         """
         if from_cache:
             objects = self.load_objects_from_cache(cache_file, EC2SecurityGroup)
         else:
             objects = self.ec2_client.get_all_security_groups(
-                full_information=full_information
             )
         self.security_groups = objects
 
@@ -1938,6 +1868,7 @@ class AWSAPI:
 
         @param objects:
         @param file_name:
+        @param indent:
         @return:
         """
         objects_dicts = [obj.convert_to_dict() for obj in objects]
@@ -1994,228 +1925,6 @@ class AWSAPI:
 
         dns_map.prepare_map()
         return dns_map
-
-    def cleanup_report_network_interfaces(self, output_file):
-        """
-        Cleanup report.
-
-        :param output_file:
-        :return:
-        """
-
-        tb_ret = TextBlock("Unused network interfaces")
-        for interface in self.network_interfaces:
-            if interface.attachment is None:
-                tb_ret.lines.append(
-                    f"Name: {interface.name}, Private dns name: {interface.private_dns_name}, "
-                    f"availability_zone: {interface.availability_zone}, subnet: {interface.subnet_id}"
-                )
-
-            if interface.status not in ["available", "in-use"]:
-                raise NotImplementedError(interface.status)
-
-        tb_ret.header += f" ({len(tb_ret.lines)})"
-        tb_ret.write_to_file(output_file)
-        return tb_ret
-
-    def cleanup_report_lambdas(
-            self, report_file_path, aws_api_cloudwatch_log_groups_streams_cache_dir
-    ):
-        """
-        Generated various lambdas' cleanup reports.
-
-        @param report_file_path:
-        @param aws_api_cloudwatch_log_groups_streams_cache_dir:
-        @return:
-        """
-        tb_ret = TextBlock("AWS Lambdas cleanup")
-        tb_ret.blocks.append(
-            self.cleanup_report_lambdas_not_running(
-                aws_api_cloudwatch_log_groups_streams_cache_dir
-            )
-        )
-        tb_ret.blocks.append(self.cleanup_report_lambdas_large_size())
-        tb_ret.blocks.append(self.cleanup_report_lambdas_security_group())
-        tb_ret.blocks.append(self.cleanup_report_lambdas_old_code())
-
-        with open(report_file_path, "w+", encoding="utf-8") as file_handler:
-            file_handler.write(str(tb_ret))
-
-        return tb_ret
-
-    def cleanup_report_lambdas_security_group(self):
-        """
-        Lambda uses external resources, while can not be accessed from the outside itself.
-        No need to keep an open port for that. If there is - misconfiguration might have occurred.
-
-        :return:
-        """
-
-        tb_ret = TextBlock("Lambdas' security groups report")
-        tb_ret_open_ingress = TextBlock(
-            "Lambdas with open ingress security groups - no need to open a port into lambda"
-        )
-        tb_ret_nonexistent_security_groups = TextBlock(
-            "Security groups being assigned to lambdas, but were deleted."
-        )
-
-        for aws_lambda in self.lambdas:
-            lst_str_sgs = aws_lambda.get_assinged_security_group_ids()
-            for security_group_id in lst_str_sgs:
-                lst_security_group = CommonUtils.find_objects_by_values(
-                    self.security_groups, {"id": security_group_id}, max_count=1
-                )
-                if len(lst_security_group) == 0:
-                    line = f"{aws_lambda.name}: {security_group_id}"
-                    tb_ret_nonexistent_security_groups.lines.append(line)
-                    continue
-
-                security_group = lst_security_group[0]
-                if len(security_group.ip_permissions) > 0:
-                    line = f"{aws_lambda.name}: {security_group.name}"
-                    tb_ret_open_ingress.lines.append(line)
-
-        if len(tb_ret_open_ingress.lines) > 0:
-            tb_ret.blocks.append(tb_ret_open_ingress)
-        if len(tb_ret_nonexistent_security_groups.lines) > 0:
-            tb_ret.blocks.append(tb_ret_nonexistent_security_groups)
-        return tb_ret
-
-    def cleanup_report_lambdas_large_size(self):
-        """
-        Large lambdas - over 100MiB size code.
-        :return:
-        """
-        tb_ret = TextBlock("Large lambdas: Maximum size is 250 MiB")
-        limit = 100 * 1024 * 1024
-        lst_names_sizes = []
-        for aws_lambda in self.lambdas:
-            if aws_lambda.code_size >= limit:
-                lst_names_sizes.append([aws_lambda.name, aws_lambda.code_size])
-
-        if len(lst_names_sizes) > 0:
-            lst_names_sizes = sorted(lst_names_sizes, key=lambda x: x[1], reverse=True)
-            tb_ret.lines = [
-                f"Lambda '{name}' size:{CommonUtils.bytes_to_str(code_size)}"
-                for name, code_size in lst_names_sizes
-            ]
-        else:
-            tb_ret.lines = [
-                f"No lambdas found with size over {CommonUtils.bytes_to_str(limit)}"
-            ]
-        return tb_ret
-
-    def cleanup_report_lambdas_not_running(
-            self, aws_api_cloudwatch_log_groups_streams_cache_dir
-    ):
-        """
-        Lambda report checking if lambdas write logs:
-        * No log group
-        * Log group is empty
-        * To old streams
-
-        @param aws_api_cloudwatch_log_groups_streams_cache_dir:
-        @return:
-        """
-        tb_ret = TextBlock(
-            "Not functioning lambdas- either the last run was to much time ago or it never run"
-        )
-        for aws_lambda in self.lambdas:
-            log_groups = CommonUtils.find_objects_by_values(
-                self.cloud_watch_log_groups,
-                {"name": f"/aws/lambda/{aws_lambda.name}"},
-                max_count=1,
-            )
-            if len(log_groups) == 0:
-                tb_ret.lines.append(
-                    f"{aws_lambda.name}- never run [Log group does not exist]"
-                )
-                continue
-
-            log_group = log_groups[0]
-            if log_group.stored_bytes == 0:
-                tb_ret.lines.append(
-                    f"{aws_lambda.name}- never run [No logs in log group]"
-                )
-                continue
-
-            if CommonUtils.timestamp_to_datetime(
-                    log_group.creation_time / 1000
-            ) > datetime.datetime.now() - datetime.timedelta(days=31):
-                continue
-
-            lines = self.cleanup_report_lambdas_not_running_stream_analysis(
-                log_group, aws_api_cloudwatch_log_groups_streams_cache_dir
-            )
-            tb_ret.lines += lines
-
-        return tb_ret
-
-    @staticmethod
-    def cleanup_report_lambdas_not_running_stream_analysis(
-            log_group, aws_api_cloudwatch_log_groups_streams_cache_dir
-    ):
-        """
-        Lambda report checking if the last log stream is to old
-
-        @param log_group:
-        @param aws_api_cloudwatch_log_groups_streams_cache_dir:
-        @return:
-        """
-
-        lines = []
-        file_names = os.listdir(
-            os.path.join(
-                aws_api_cloudwatch_log_groups_streams_cache_dir,
-                log_group.generate_dir_name(),
-            )
-        )
-
-        last_file = str(max(int(file_name) for file_name in file_names))
-        with open(
-                os.path.join(
-                    aws_api_cloudwatch_log_groups_streams_cache_dir,
-                    log_group.generate_dir_name(),
-                    last_file,
-                ),
-                encoding="utf-8",
-        ) as file_handler:
-            last_stream = json.load(file_handler)[-1]
-        if CommonUtils.timestamp_to_datetime(
-                last_stream["lastIngestionTime"] / 1000
-        ) < datetime.datetime.now() - datetime.timedelta(days=365):
-            lines.append(
-                f"Cloudwatch log group '{log_group.name}' last event was more then year ago: {CommonUtils.timestamp_to_datetime(last_stream['lastIngestionTime'] / 1000)}"
-            )
-        elif CommonUtils.timestamp_to_datetime(
-                last_stream["lastIngestionTime"] / 1000
-        ) < datetime.datetime.now() - datetime.timedelta(days=62):
-            lines.append(
-                f"Cloudwatch log group '{log_group.name}' last event was more then 2 months ago: {CommonUtils.timestamp_to_datetime(last_stream['lastIngestionTime'] / 1000)}"
-            )
-        return lines
-
-    def cleanup_report_lambdas_old_code(self):
-        """
-        Find all lambdas, which code wasn't updated for a year or more.
-        :return:
-        """
-        days_limit = 365
-        tb_ret = TextBlock(f"Lambdas with code older than {days_limit} days")
-        time_limit = datetime.datetime.now(
-            tz=datetime.timezone.utc
-        ) - datetime.timedelta(days=days_limit)
-        lst_names_dates = []
-        for aws_lambda in self.lambdas:
-            if aws_lambda.last_modified < time_limit:
-                lst_names_dates.append([aws_lambda.name, aws_lambda.last_modified])
-
-        lst_names_dates = sorted(lst_names_dates, key=lambda x: x[1])
-        tb_ret.lines = [
-            f"Lambda {name} was last update: {update_date.strftime('%Y-%m-%d %H:%M')}"
-            for name, update_date in lst_names_dates
-        ]
-        return tb_ret
 
     @staticmethod
     def cleanup_report_s3_buckets_objects(summarised_data_file, output_file):
@@ -2420,65 +2129,6 @@ class AWSAPI:
             logger.info(f"{name}: {inst.cpu_options}")
         with open(output_file, "w+", encoding="utf-8") as file_handler:
             file_handler.write(tb_ret.format_pprint())
-
-    def cleanup_report_ebs_volumes(self, output_file):
-        """
-        Generate cleanup report for Volumes
-
-        :param output_file:
-        :return:
-        """
-        tb_ret = TextBlock("EBS Volumes not in use")
-        tb_ret_tmp = self.cleanup_report_ebs_volumes_in_use()
-        tb_ret.blocks.append(tb_ret_tmp)
-        tb_ret_tmp = self.cleanup_report_ebs_volumes_sizes()
-        tb_ret.blocks.append(tb_ret_tmp)
-        with open(output_file, "w+", encoding="utf-8") as file_handler:
-            file_handler.write(tb_ret.format_pprint())
-        logger.info(f"Output in: {output_file}")
-
-    def cleanup_report_ebs_volumes_in_use(self):
-        """
-        Check volumes not in use
-
-        :return:
-        """
-        tb_ret = TextBlock("EBS Volumes not in use")
-        for volume in self.ec2_volumes:
-            if volume.state == "in-use":
-                continue
-            try:
-                name = volume.get_tagname()
-            except RuntimeError as exception_instance:
-                if "No tag" not in repr(exception_instance):
-                    raise
-                name = volume.id
-            tb_ret.lines.append(f"{name}: {volume}")
-        return tb_ret
-
-    def cleanup_report_ebs_volumes_sizes(self):
-        """
-        Generate cleanup report for Volumes
-
-        :return:
-        """
-        tb_ret = TextBlock("EBS Volumes' sizes")
-        for volume in sorted(self.ec2_volumes, key=lambda vol: vol.size, reverse=True):
-            try:
-                name = volume.get_tagname()
-            except RuntimeError as exception_instance:
-                if "No tag" not in repr(exception_instance):
-                    raise
-                name = volume.id
-
-            try:
-                attachment_string = volume.attachments[0]['InstanceId']
-            except IndexError:
-                attachment_string = "Not-attached"
-
-            tb_ret.lines.append(
-                f"{volume.availability_zone}, {name}, {volume.volume_type}, {volume.size}GB, {volume.iops}IOPS, Attached:{attachment_string}")
-        return tb_ret
 
     @staticmethod
     def cleanup_report_cloud_watch_metrics(metrics_dir, output_file):
@@ -2689,228 +2339,6 @@ class AWSAPI:
 
             tb_ret.blocks.append(tb_log_group)
         return tb_ret
-
-    def cleanup_load_balancers(self, output_file):
-        """
-        Generate load balancers' cleanup report.
-        @param output_file:
-        @return:
-        """
-        tb_ret = TextBlock("Load Balancers Cleanup")
-        tb_ret_tmp = self.cleanup_classic_load_balancers()
-        if tb_ret_tmp is not None:
-            tb_ret.blocks.append(tb_ret_tmp)
-
-        tb_ret_tmp = self.cleanup_alb_load_balancers()
-        if tb_ret_tmp is not None:
-            tb_ret.blocks.append(tb_ret_tmp)
-
-        tb_ret_tmp = self.cleanup_target_groups()
-        if tb_ret_tmp.lines or tb_ret_tmp.blocks:
-            tb_ret.blocks.append(tb_ret_tmp)
-
-        with open(output_file, "w+", encoding="utf-8") as file_handler:
-            file_handler.write(tb_ret.format_pprint())
-
-        return tb_ret
-
-    def cleanup_classic_load_balancers(self):
-        """
-        Generate cleanup report for classic load balancers.
-
-        @return:
-        """
-        tb_ret = TextBlock("Cleanup report classic load balancers")
-        tb_ret_no_instances = TextBlock(
-            "No instances associated with these load balancers"
-        )
-        tb_ret_no_listeners = TextBlock(
-            "No listeners associated with these load balancers"
-        )
-        for load_balancer in self.classic_load_balancers:
-            if not load_balancer.listeners:
-                tb_ret_no_listeners.lines.append(load_balancer.name)
-
-            if not load_balancer.instances:
-                tb_ret_no_instances.lines.append(load_balancer.name)
-
-        if len(tb_ret_no_instances.lines) > 0:
-            tb_ret.blocks.append(tb_ret_no_instances)
-
-        if len(tb_ret_no_listeners.lines) > 0:
-            tb_ret.blocks.append(tb_ret_no_listeners)
-
-        return tb_ret if len(tb_ret.blocks) > 0 else None
-
-    def cleanup_alb_load_balancers(self):
-        """
-        Generate cleanup report for alb load balancers.
-
-        @return:
-        """
-        tb_ret = TextBlock("Cleanup report ALBs")
-        tb_ret_no_tgs = TextBlock(
-            "No target groups associated with these load balancers"
-        )
-        tb_ret_no_listeners = TextBlock(
-            "No listeners associated with these load balancers"
-        )
-
-        lbs_using_tg = set()
-        for target_group in self.target_groups:
-            lbs_using_tg.update(target_group.load_balancer_arns)
-
-        for load_balancer in self.load_balancers:
-            if not load_balancer.listeners:
-                tb_ret_no_listeners.lines.append(load_balancer.name)
-
-            if load_balancer.arn not in lbs_using_tg:
-                tb_ret_no_tgs.lines.append(load_balancer.name)
-
-        if len(tb_ret_no_tgs.lines) > 0:
-            tb_ret.blocks.append(tb_ret_no_tgs)
-
-        if len(tb_ret_no_listeners.lines) > 0:
-            tb_ret.blocks.append(tb_ret_no_listeners)
-
-        return tb_ret if len(tb_ret.blocks) > 0 else None
-
-    def cleanup_target_groups(self):
-        """
-        Cleanup report find unhealthy target groups
-        @return:
-        """
-        tb_ret = TextBlock("Following target groups have a bad health")
-        for target_group in self.target_groups:
-            if not target_group.target_health:
-                tb_ret.lines.append(target_group.name)
-        return tb_ret if len(tb_ret.lines) > 0 else None
-
-    def cleanup_report_security_groups(self, report_file_path):
-        """
-        Generating security group cleanup reports.
-
-        @param report_file_path:
-        @return:
-        """
-        tb_ret = TextBlock("EC2 security groups cleanup")
-        tb_ret.blocks.append(self.cleanup_report_wrong_port_lbs_security_groups())
-        tb_ret.blocks.append(self.cleanup_report_unused_security_groups())
-        tb_ret.blocks.append(self.cleanup_report_dangerous_security_groups())
-
-        with open(report_file_path, "w+", encoding="utf-8") as file_handler:
-            file_handler.write(str(tb_ret))
-
-        return tb_ret
-
-    def cleanup_report_wrong_port_lbs_security_groups(self):
-        """
-        Checks load balancers' ports to security groups' internal ports.
-
-        @return:
-        """
-        tb_ret = TextBlock("Wrong load balancer listeners ports")
-        for load_balancer in self.load_balancers + self.classic_load_balancers:
-            lines = self.cleanup_report_wrong_port_lb_security_groups(load_balancer)
-            tb_ret.lines += lines
-
-        return tb_ret
-
-    def cleanup_report_unused_security_groups(self):
-        """
-        Unassigned security groups.
-
-        @return:
-        """
-
-        tb_ret = TextBlock("Unused security groups")
-        used_security_group_ids = []
-        for interface in self.network_interfaces:
-            sg_ids = interface.get_used_security_group_ids()
-            used_security_group_ids += sg_ids
-        used_security_group_ids = list(set(used_security_group_ids))
-        all_security_groups_dict = {sg.id: sg.name for sg in self.security_groups}
-        tb_ret.lines = [
-            f"{sg_id} [{all_security_groups_dict[sg_id]}]"
-            for sg_id in all_security_groups_dict
-            if sg_id not in used_security_group_ids
-        ]
-        return tb_ret
-
-    def cleanup_report_dangerous_security_groups(self):
-        """
-        Security groups with to wide permissions.
-
-        @return:
-        """
-
-        tb_ret = TextBlock("Dangerously open security groups")
-        for security_group in self.security_groups:
-            pairs = security_group.get_ingress_pairs()
-            if len(pairs) == 0:
-                tb_ret.lines.append(
-                    f"No ingress rules in group {security_group.id} [{security_group.name}]"
-                )
-                continue
-            for ip, service in pairs:
-                if ip is IP.any():
-                    tb_ret.lines.append(
-                        f"Dangerously wide range of addresses {security_group.id} [{security_group.name}] - {ip}"
-                    )
-
-                if service is Service.any():
-                    tb_ret.lines.append(
-                        f"Dangerously wide range of services {security_group.id} [{security_group.name}] - {service}"
-                    )
-
-        return tb_ret
-
-    def cleanup_report_wrong_port_lb_security_groups(self, load_balancer):
-        """
-        Checks single load balancer's ports to security groups' internal ports.
-
-        @param load_balancer:
-        @return:
-        """
-
-        lines = []
-        if load_balancer.network_security_groups is None:
-            return lines
-
-        listeners_ports = [listener.port for listener in load_balancer.listeners]
-        listeners_ports = set(listeners_ports)
-
-        listeners_services = []
-        for port in listeners_ports:
-            service = ServiceTCP()
-            service.start = port
-            service.end = port
-            listeners_services.append(service)
-
-        for security_group_id in load_balancer.network_security_groups:
-            security_group = CommonUtils.find_objects_by_values(
-                self.security_groups, {"id": security_group_id}, max_count=1
-            )[0]
-            security_group_dst_pairs = security_group.get_ingress_pairs()
-
-            for _, sg_service in security_group_dst_pairs:
-                for listener_service in listeners_services:
-                    if listener_service.intersect(sg_service) is not None:
-                        break
-                else:
-                    lines.append(
-                        f"Security group '{security_group.name}' has and open service '{str(sg_service)}' but no LB '{load_balancer.name}' listener on this port"
-                    )
-
-            for listener_service in listeners_services:
-                for _, sg_service in security_group_dst_pairs:
-                    if listener_service.intersect(sg_service) is not None:
-                        break
-                else:
-                    lines.append(
-                        f"There is LB '{load_balancer.name}' listener service '{listener_service}' but no security group permits a traffic to it"
-                    )
-        return lines
 
     def find_loadbalnacers_target_groups(self, load_balancer):
         """
@@ -3996,25 +3424,24 @@ class AWSAPI:
         request = {"AllocationId": elastic_address.id, "InstanceId": ec2_instance.id}
         self.ec2_client.associate_elastic_address_raw(request)
 
-    def find_route_table_by_subnet(self, region, subnet):
+    def find_route_table_by_subnet(self, _, subnet):
         """
-        Find route table attahed to subnet.
+        Find route table attached to subnet.
 
-        @param region:
         @param subnet:
+        @param _: was region before
         @return:
         """
 
-        self.init_route_tables(region=region)
         main_route_tables = []
         for route_table in self.route_tables:
             if route_table.vpc_id != subnet.vpc_id:
                 continue
+            if route_table.check_subnet_associated(subnet.id):
+                return route_table
             for association in route_table.associations:
                 if association["Main"]:
                     main_route_tables.append(route_table)
-                if association.get("SubnetId") == subnet.id:
-                    return route_table
 
         if len(main_route_tables) != 1:
             raise RuntimeError(f"{len(main_route_tables)} != 1")
@@ -4027,6 +3454,8 @@ class AWSAPI:
 
         @return:
         """
+        if not self.route_tables:
+            self.init_route_tables(region=subnet.region)
 
         route_table = self.find_route_table_by_subnet(subnet.region, subnet)
         for route in route_table.routes:
@@ -4400,22 +3829,21 @@ class AWSAPI:
         snapshot_id = snapshot.id if snapshot is not None else None
         self.rds_client.provision_db_cluster(cluster, snapshot_id=snapshot_id)
 
-    def get_security_group_by_vpc_and_name(self, vpc, name, full_information=False):
+    def get_security_group_by_vpc_and_name(self, vpc, name):
         """
         Find security group in a vpc by its name.
 
         @param vpc:
         @param name:
-        @param full_information:
         @return:
         """
 
-        filters = [
+        filters = {"Filters": [
             {"Name": "vpc-id", "Values": [vpc.id]},
             {"Name": "group-name", "Values": [name]},
-        ]
+        ]}
         security_groups = self.ec2_client.get_region_security_groups(
-            vpc.region, full_information=full_information, filters=filters
+            vpc.region, filters=filters
         )
         if len(security_groups) != 1:
             raise RuntimeError(f"Can not find security group {name} in vpc {vpc.id}")
@@ -4769,7 +4197,7 @@ class AWSAPI:
         @return:
         """
 
-        self.iam_client.provision_iam_role(iam_role)
+        self.iam_client.provision_role(iam_role)
 
     def provision_iam_policy(self, iam_policy):
         """
@@ -5233,11 +4661,17 @@ class AWSAPI:
         No value set for range decision
         """
 
-    def todo_cleanup(self):
+    def decode_authorization_message(self, exception):
         """
+        Read internal message. Make sure you have relevant permissions.
 
-        #todo: Route53 old ACM certificates
-        #todo: Route53 old load balancers.
-
+        :param exception:
         :return:
         """
+
+        str_exception = str(exception)
+        message_prefix = "Encoded authorization failure message: "
+        if message_prefix not in str_exception:
+            raise ValueError(f'"{message_prefix}" was not found in exception') from exception
+        str_message = str_exception[str_exception.find(message_prefix)+len(message_prefix):]
+        return json.dumps(json.loads(self.sts_client.decode_authorization_message(str_message)), indent=2)

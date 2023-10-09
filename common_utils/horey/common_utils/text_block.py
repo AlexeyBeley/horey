@@ -16,9 +16,12 @@ class TextBlock:
 
     def __str__(self):
         ret = self.header
-        ret += "\n" + "\n".join(self.lines)
-        ret += "\n" + "\n".join([str(block) for block in self.blocks])
-        ret += "\n" + "\n".join(self.footer)
+        if self.lines:
+            ret += "\n" + "\n".join(self.lines)
+        if self.blocks:
+            ret += "\n" + "\n".join([str(block) for block in self.blocks])
+        if self.footer:
+            ret += "\n" + "\n".join(self.footer)
         return ret
 
     def format_pprint(self, shift=0, multiline=False):
@@ -28,6 +31,7 @@ class TextBlock:
         :param shift:
         :return:
         """
+
         header_shift = " " * shift
         ret = f"{header_shift}* {self.header}"
 
@@ -50,7 +54,6 @@ class TextBlock:
         if len(self.footer) > 0:
             ret += "\n" + "\n".join(self.footer)
 
-        ret += "\n"
         return ret
 
     def write_to_file(self, output_file, multiline=False, shift=4):
@@ -64,4 +67,4 @@ class TextBlock:
         """
 
         with open(output_file, "w+", encoding="utf-8") as file_handler:
-            file_handler.write(self.format_pprint(shift=shift, multiline=multiline))
+            file_handler.write(self.format_pprint(shift=shift, multiline=multiline).strip("\n ") + "\n")

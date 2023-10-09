@@ -36,68 +36,21 @@ class RDSDBCluster(AwsObject):
         self.preferred_backup_window = None
         self.preferred_maintenance_window = None
         self.storage_encrypted = None
-        self.enable_cloudwatch_logs_exports = None
+        self.enabled_cloudwatch_logs_exports = None
         self.kms_key_id = None
         self.engine_mode = None
         self.deletion_protection = None
         self.copy_tags_to_snapshot = None
         self.arn = None
         self.status = None
-        self.skip_final_snapshot = None
+        self.skip_final_snapshot = False
+        self.default_engine_version = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
             return
 
-        init_options = {
-            "DBClusterIdentifier": lambda x, y: self.init_default_attr(
-                x, y, formatted_name="id"
-            ),
-            "DBClusterArn": lambda x, y: self.init_default_attr(
-                x, y, formatted_name="arn"
-            ),
-            "AllocatedStorage": self.init_default_attr,
-            "AvailabilityZones": self.init_default_attr,
-            "BackupRetentionPeriod": self.init_default_attr,
-            "DatabaseName": self.init_default_attr,
-            "DBClusterParameterGroup": self.init_default_attr,
-            "DBSubnetGroup": self.init_default_attr,
-            "Status": self.init_default_attr,
-            "EarliestRestorableTime": self.init_default_attr,
-            "Endpoint": self.init_default_attr,
-            "ReaderEndpoint": self.init_default_attr,
-            "MultiAZ": self.init_default_attr,
-            "Engine": self.init_default_attr,
-            "EngineVersion": self.init_default_attr,
-            "LatestRestorableTime": self.init_default_attr,
-            "Port": self.init_default_attr,
-            "MasterUsername": self.init_default_attr,
-            "PreferredBackupWindow": self.init_default_attr,
-            "PreferredMaintenanceWindow": self.init_default_attr,
-            "ReadReplicaIdentifiers": self.init_default_attr,
-            "DBClusterMembers": self.init_default_attr,
-            "VpcSecurityGroups": self.init_default_attr,
-            "HostedZoneId": self.init_default_attr,
-            "StorageEncrypted": self.init_default_attr,
-            "KmsKeyId": self.init_default_attr,
-            "DbClusterResourceId": self.init_default_attr,
-            "AssociatedRoles": self.init_default_attr,
-            "IAMDatabaseAuthenticationEnabled": self.init_default_attr,
-            "ClusterCreateTime": self.init_default_attr,
-            "EnabledCloudwatchLogsExports": self.init_default_attr,
-            "EngineMode": self.init_default_attr,
-            "DeletionProtection": self.init_default_attr,
-            "HttpEndpointEnabled": self.init_default_attr,
-            "ActivityStreamStatus": self.init_default_attr,
-            "CopyTagsToSnapshot": self.init_default_attr,
-            "CrossAccountClone": self.init_default_attr,
-            "DomainMemberships": self.init_default_attr,
-            "TagList": self.init_default_attr,
-            "PendingModifiedValues": self.init_default_attr,
-            "AutoMinorVersionUpgrade": self.init_default_attr,
-        }
-
-        self.init_attrs(dict_src, init_options)
+        self.update_from_raw_response(dict_src)
 
     def _init_object_from_cache(self, dict_src):
         """
@@ -161,6 +114,7 @@ class RDSDBCluster(AwsObject):
             "TagList": self.init_default_attr,
             "PendingModifiedValues": self.init_default_attr,
             "AutoMinorVersionUpgrade": self.init_default_attr,
+            "NetworkType": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -196,7 +150,7 @@ class RDSDBCluster(AwsObject):
         request["PreferredMaintenanceWindow"] = self.preferred_maintenance_window
         request["StorageEncrypted"] = self.storage_encrypted
 
-        request["EnableCloudwatchLogsExports"] = self.enable_cloudwatch_logs_exports
+        request["EnableCloudwatchLogsExports"] = self.enabled_cloudwatch_logs_exports
 
         if self.kms_key_id:
             request["KmsKeyId"] = self.kms_key_id
@@ -261,7 +215,7 @@ class RDSDBCluster(AwsObject):
         request["EngineVersion"] = self.engine_version
         request["Port"] = self.port
 
-        request["EnableCloudwatchLogsExports"] = self.enable_cloudwatch_logs_exports
+        request["EnableCloudwatchLogsExports"] = self.enabled_cloudwatch_logs_exports
 
         if self.kms_key_id:
             request["KmsKeyId"] = self.kms_key_id

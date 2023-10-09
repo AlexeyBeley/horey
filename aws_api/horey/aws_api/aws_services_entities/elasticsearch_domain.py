@@ -1,7 +1,6 @@
 """
-AWS Lambda representation
+AWS Opensearch domain representation
 """
-import pdb
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 
@@ -42,6 +41,7 @@ class ElasticsearchDomain(AwsObject):
             "DomainEndpointOptions": self.init_default_attr,
             "AdvancedSecurityOptions": self.init_default_attr,
             "AutoTuneOptions": self.init_default_attr,
+            "ChangeProgressDetails": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -52,8 +52,6 @@ class ElasticsearchDomain(AwsObject):
         :param dict_src:
         :return:
         """
+
         options = {}
         self._init_from_cache(dict_src, options)
-
-    def update_value_from_raw_response(self, raw_value):
-        pdb.set_trace()

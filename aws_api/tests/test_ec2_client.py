@@ -5,8 +5,10 @@ Testing EC2 client
 
 import os
 from unittest.mock import Mock
+
+import pytest
+
 from horey.aws_api.aws_clients.ec2_client import EC2Client
-from horey.h_logger import get_logger
 from horey.common_utils.common_utils import CommonUtils
 
 from horey.aws_api.base_entities.aws_account import AWSAccount
@@ -15,25 +17,14 @@ from horey.aws_api.aws_services_entities.ec2_security_group import EC2SecurityGr
 from horey.aws_api.aws_services_entities.ec2_volume import EC2Volume
 from horey.aws_api.base_entities.region import Region
 
-configuration_values_file_full_path = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "h_logger_configuration_values.py"
-)
-logger = get_logger(
-    configuration_values_file_full_path=configuration_values_file_full_path
-)
-
-accounts_file_full_path = os.path.abspath(
-    os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "..",
-        "ignore",
-        "aws_api_managed_accounts.py",
+EC2Client().main_cache_dir_path = os.path.abspath(
+        os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "..", "..", "..",
+            "ignore",
+            "cache"
+        )
     )
-)
-
-accounts = CommonUtils.load_object_from_module(accounts_file_full_path, "main")
-AWSAccount.set_aws_account(accounts["1111"])
-AWSAccount.set_aws_region(accounts["1111"].regions["us-west-2"])
 
 mock_values_file_path = os.path.abspath(
     os.path.join(
@@ -54,13 +45,13 @@ DICT_CREATE_SECURITY_GROUP_REQUEST = {
     "GroupName": "sg_test-group",
 }
 
-
+@pytest.mark.skip
 def test_create_security_group():
     client = EC2Client()
     ret = client.raw_create_security_group(DICT_CREATE_SECURITY_GROUP_REQUEST)
     assert ret is not None
 
-
+@pytest.mark.skip
 def test_provision_security_group():
     """
     Test provisioning.
@@ -82,6 +73,7 @@ def test_provision_security_group():
     client.provision_security_group(security_group)
 
 
+@pytest.mark.skip
 def test_provision_security_group_revoke():
     """
     Test provisioning.
@@ -103,6 +95,7 @@ def test_provision_security_group_revoke():
     client.provision_security_group(security_group)
 
 
+@pytest.mark.skip
 def test_provision_security_group_complex():
     """
     Test:
@@ -198,13 +191,7 @@ DICT_AUTHORIZE_SECURITY_GROUP_INGRESS_REQUEST_2 = {
     ],
 }
 
-
-def test_get_all_security_groups():
-    client = EC2Client()
-    sec_groups = client.get_all_security_groups()
-    assert isinstance(sec_groups, list)
-
-
+@pytest.mark.skip
 def test_raw_create_managed_prefix_list():
     request = {
         "PrefixListName": "pl_test_name",
@@ -234,9 +221,10 @@ def test_raw_create_managed_prefix_list():
         assert isinstance(ret, dict)
 
 
+@pytest.mark.skip
 def test_raw_modify_managed_prefix_list():
     client = EC2Client()
-    pl_id = "pl-0d1adbd1928158a65"
+    pl_id = "pl-111111111"
     base_version = 7
     request = {
         "CurrentVersion": base_version,
@@ -258,6 +246,7 @@ def test_raw_modify_managed_prefix_list():
     assert isinstance(ret, dict)
 
 
+@pytest.mark.skip
 def test_raw_modify_managed_prefix_list_add():
     client = EC2Client()
     pl_id = ""
@@ -271,6 +260,7 @@ def test_raw_modify_managed_prefix_list_add():
     assert isinstance(ret, dict)
 
 
+@pytest.mark.skip
 def test_raw_describe_managed_prefix_list_by_id():
     pl_id = "pl-111111111"
     client = EC2Client()
@@ -278,6 +268,7 @@ def test_raw_describe_managed_prefix_list_by_id():
     print(ret)
 
 
+@pytest.mark.skip
 def test_raw_describe_managed_prefix_list_by_name():
     prefix_list_name = "pl_horey_test-name"
     client = EC2Client()
@@ -285,6 +276,7 @@ def test_raw_describe_managed_prefix_list_by_name():
     print(ret)
 
 
+@pytest.mark.skip
 def test_provision_launch_template():
     ec2_client = EC2Client()
     iam_instance_profile = Mock()
@@ -345,6 +337,44 @@ def test_provision_launch_template():
     assert launch_template.id is not None
 
 
+@pytest.mark.skip
+def test_find_launch_template():
+    launch_template = Mock()
+    launch_template.region = Region.get_region("us-west-2")
+    launch_template.name = mock_values["launch_template.name"]
+
+    ec2_client = EC2Client()
+    ret = ec2_client.find_launch_template(launch_template)
+    assert ret is not None
+
+
+@pytest.mark.skip
+def test_get_instance_password():
+    ec2_client = EC2Client()
+    instance = Mock()
+    instance.id = mock_values["test_get_instance_data_instance_id"]
+    instance.region = Region.get_region("us-east-1")
+    private_key_file_path = mock_values["test_get_instance_data_private_key_file_path"]
+    ret = ec2_client.get_instance_password(instance, private_key_file_path)
+    print(ret)
+    assert ret is not None
+
+@pytest.mark.done
+def test_yield_volumes():
+    ec2_client = EC2Client()
+    volume = None
+    for volume in ec2_client.yield_volumes(region=Region.get_region("us-west-2")):
+        break
+    assert volume.id is not None
+
+@pytest.mark.done
+def test_get_all_volumes():
+    ec2_client = EC2Client()
+    ret = ec2_client.get_all_volumes()
+    assert len(ret) > 0
+
+
+@pytest.mark.done
 def test_provision_volume():
     ec2_client = EC2Client()
     volume = EC2Volume({})
@@ -359,6 +389,7 @@ def test_provision_volume():
     assert volume.id is not None
 
 
+@pytest.mark.done
 def test_modify_volume():
     ec2_client = EC2Client()
     volume = EC2Volume({})
@@ -373,6 +404,7 @@ def test_modify_volume():
     assert volume.id is not None
 
 
+@pytest.mark.done
 def test_dispose_volume():
     ec2_client = EC2Client()
     volume = EC2Volume({})
@@ -381,39 +413,91 @@ def test_dispose_volume():
     ec2_client.dispose_volume(volume)
     assert volume.id is not None
 
-
-def test_find_launch_template():
-    launch_template = Mock()
-    launch_template.region = Region.get_region("us-west-2")
-    launch_template.name = mock_values["launch_template.name"]
-
+@pytest.mark.done
+def test_yield_route_tables():
     ec2_client = EC2Client()
-    ret = ec2_client.find_launch_template(launch_template)
-    assert ret is not None
+    ret = None
+    for ret in ec2_client.yield_route_tables(region=Region.get_region("us-west-2")):
+        break
+    assert ret.id is not None
 
-
-def test_get_instance_password():
+@pytest.mark.done
+def test_get_all_route_tables():
     ec2_client = EC2Client()
-    instance = Mock()
-    instance.id = mock_values["test_get_instance_data_instance_id"]
-    instance.region = Region.get_region("us-east-1")
-    private_key_file_path = mock_values["test_get_instance_data_private_key_file_path"]
-    ret = ec2_client.get_instance_password(instance, private_key_file_path)
-    print(ret)
-    assert ret is not None
+    ret = ec2_client.get_all_route_tables()
+    assert len(ret) > 0
+
+@pytest.mark.done
+def test_get_region_route_tables():
+    ec2_client = EC2Client()
+    ret = ec2_client.get_region_route_tables(Region.get_region("us-west-2"))
+    assert len(ret) > 0
+
+@pytest.mark.done
+def test_yield_subnets():
+    ec2_client = EC2Client()
+    ret = None
+    for ret in ec2_client.yield_subnets(region=Region.get_region("us-west-2")):
+        break
+    assert ret.id is not None
+
+@pytest.mark.done
+def test_get_all_subnets():
+    ec2_client = EC2Client()
+    ret = ec2_client.get_all_subnets()
+    assert len(ret) > 0
+
+@pytest.mark.done
+def test_get_region_subnets():
+    ec2_client = EC2Client()
+    ret = ec2_client.get_region_subnets(Region.get_region("us-west-2"))
+    assert len(ret) > 0
 
 
-if __name__ == "__main__":
-    # test_provision_security_group()
-    # test_provision_security_group_revoke()
-    # test_provision_security_group_complex()
-    # test_provision_launch_template()
 
-    # test_raw_modify_managed_prefix_list()
-    # test_raw_describe_managed_prefix_list_by_id()
-    # test_raw_describe_managed_prefix_list_by_name()
-    # test_find_launch_template()
-    #test_provision_volume()
-    #test_modify_volume()
-    #test_dispose_volume()
-    test_get_instance_password()
+@pytest.mark.done
+def test_yield_security_groups():
+    ec2_client = EC2Client()
+    ret = None
+    for ret in ec2_client.yield_security_groups(region=Region.get_region("us-west-2")):
+        break
+    assert ret.id is not None
+
+@pytest.mark.done
+def test_get_all_security_groups():
+    ec2_client = EC2Client()
+    ret = ec2_client.get_all_security_groups()
+    assert len(ret) > 0
+
+@pytest.mark.done
+def test_get_region_security_groups():
+    ec2_client = EC2Client()
+    ret = ec2_client.get_region_security_groups(Region.get_region("us-west-2"))
+    assert len(ret) > 0
+
+
+@pytest.mark.done
+def test_yield_instances():
+    ec2_client = EC2Client()
+    ret = None
+    for ret in ec2_client.yield_instances(region=Region.get_region("us-west-2")):
+        break
+    assert ret.id is not None
+
+@pytest.mark.done
+def test_get_all_instances():
+    ec2_client = EC2Client()
+    ret = ec2_client.get_all_instances()
+    assert len(ret) > 0
+
+@pytest.mark.done
+def test_get_region_instances():
+    ec2_client = EC2Client()
+    ret = ec2_client.get_region_instances(Region.get_region("us-west-2"))
+    assert len(ret) > 0
+
+@pytest.mark.wip
+def test_get_region_amis():
+    ec2_client = EC2Client()
+    ret = ec2_client.get_region_amis(Region.get_region("us-west-2"))
+    assert len(ret) > 0

@@ -74,9 +74,18 @@ class AwsObject:
 
         if value.get(self.SELF_CACHED_TYPE_KEY_NAME) == "datetime":
             # Example: datetime.datetime.strptime('2017-07-26 15:54:10.000000+0000', '%Y-%m-%d %H:%M:%S.%f%z')
-            new_value = datetime.datetime.strptime(
-                value["value"], "%Y-%m-%d %H:%M:%S.%f%z"
-            )
+            try:
+                new_value = datetime.datetime.strptime(
+                    value["value"], "%Y-%m-%d %H:%M:%S.%f%z"
+                )
+            except Exception as inst:
+                if len(value["value"].split(".")[-1]) == 6:
+                    new_value = datetime.datetime.strptime(
+                        value["value"], "%Y-%m-%d %H:%M:%S.%f"
+                    )
+                else:
+                    raise RuntimeError(value["value"]) from inst
+
         elif value.get(self.SELF_CACHED_TYPE_KEY_NAME) == "ip":
             new_value = IP(value["value"], from_dict=True)
         elif value.get(self.SELF_CACHED_TYPE_KEY_NAME) == "region":
@@ -97,6 +106,16 @@ class AwsObject:
 
         self.init_default_attr(attr_name, new_value)
 
+    @classmethod
+    def get_cache_file_name(cls):
+        """
+        This object's cache file name.
+
+        :return:
+        """
+
+        return CommonUtils.camel_case_to_snake_case(cls.__name__) + ".json"
+
     @property
     def h_class_name(self):
         """
@@ -112,7 +131,7 @@ class AwsObject:
         :param _:
         :return:
         """
-        raise ValueError("System parameter, can't set")
+        raise ValueError("Static system parameter")
 
     @property
     def name(self):
@@ -271,9 +290,12 @@ class AwsObject:
     def convert_to_dict(self):
         """
         Convert self to a cache dict
+
         :return:
         """
-        return self.convert_to_dict_static(self.__dict__)
+
+        ret_dict = self.convert_to_dict_static(self.__dict__)
+        return ret_dict
 
     @staticmethod
     def convert_to_dict_static(obj_src, custom_types=None):
@@ -357,12 +379,14 @@ class AwsObject:
         Can't parse the object while initializing.
         """
 
+    # pylint: disable= too-many-arguments
     def get_tag(
         self,
         key,
         ignore_missing_tag=False,
         tag_key_specifier="Key",
         tag_value_specifier="Value",
+        tags = None
     ):
         """
         Get tag value by name
@@ -371,16 +395,20 @@ class AwsObject:
         :param ignore_missing_tag:
         :param tag_key_specifier:
         :param tag_value_specifier:
+        :param tags:
         :return:
         """
 
-        if self.tags is None:
+        if not tags:
+            tags = self.tags
+
+        if tags is None:
             if ignore_missing_tag:
                 return None
             raise RuntimeError("No tags associated")
 
         # pylint: disable= not-an-iterable
-        for tag in self.tags:
+        for tag in tags:
             tag_key_value = tag.get(tag_key_specifier)
             tag_key_value = (
                 tag_key_value

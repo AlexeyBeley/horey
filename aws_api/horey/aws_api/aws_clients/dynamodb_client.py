@@ -22,22 +22,49 @@ class DynamoDBClient(Boto3Client):
         client_name = "dynamodb"
         super().__init__(client_name)
 
+    # pylint: disable= too-many-arguments
+    def yield_tables(self, region=None, update_info=False, filters_req=None, get_tags=True, full_information=True):
+        """
+        Yield tables
+
+        :return:
+        """
+
+        regional_fetcher_generator = self.yield_tables_raw
+        for obj in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                  DynamoDBTable,
+                                                  update_info=update_info,
+                                                  get_tags_callback = lambda _obj: self.get_tags(_obj, function=self.client.list_tags_of_resource) if get_tags else None,
+                                                  full_information_callback = self.update_table_full_information if full_information else None,
+                                                  regions=[region] if region else None,
+                                                  filters_req=filters_req):
+            yield obj
+
+    def yield_tables_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        for str_name in self.execute(
+                self.client.list_tables, "TableNames",
+                filters_req=filters_req,
+                exception_ignore_callback=lambda error: "RepositoryNotFoundException"
+            in repr(error)
+        ):
+
+            for response in self.execute(self.client.describe_table, "Table", filters_req={"TableName": str_name},
+                                         exception_ignore_callback=lambda x: "ResourceNotFoundException" in repr(x)):
+                yield response
+
     def get_all_tables(self, region=None, full_information=False):
         """
         Get all tables in all regions.
         :return:
         """
 
-        if region is not None:
-            return self.get_region_tables(region, full_information=full_information)
-
-        final_result = []
-        for _region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_tables(
-                _region, full_information=full_information
-            )
-
-        return final_result
+        return list(self.yield_tables(region=region, full_information=full_information))
 
     def get_region_tables(self, region, full_information=False):
         """
@@ -48,18 +75,19 @@ class DynamoDBClient(Boto3Client):
         @return:
         """
 
-        final_result = []
-        AWSAccount.set_aws_region(region)
-        for table_name in self.execute(self.client.list_tables, "TableNames"):
-            obj = DynamoDBTable({"TableName": table_name})
-            obj.region = region
-            self.update_table_information(obj)
-            final_result.append(obj)
+        return list(self.yield_tables(region=region, full_information=full_information))
 
-            if full_information:
-                raise NotImplementedError()
+    def update_table_full_information(self, table: DynamoDBTable):
+        """
+        Get excessive data.
 
-        return final_result
+        :param table:
+        :return:
+        """
+
+        for response in self.execute(self.client.describe_continuous_backups, "ContinuousBackupsDescription",
+                                     filters_req={"TableName": table.name}):
+            table.continuous_backups = response
 
     def get_all_endpoints(self, region=None, full_information=False):
         """
@@ -162,7 +190,7 @@ class DynamoDBClient(Boto3Client):
             raise ValueError(f"Dict expected: {type(obj_src)}")
 
         return {key: convert_to_dynamodbish_subroutine(value) for key, value in obj_src.items()}
-    
+
     @staticmethod
     def convert_from_dynamodbish(obj_src):
         """
@@ -234,7 +262,7 @@ class DynamoDBClient(Boto3Client):
             raise RuntimeError("deletion_protection is enabled")
 
         AWSAccount.set_aws_region(table.region)
-        self.dispose_table_raw(table.generate_dispose_request())
+        return self.dispose_table_raw(table.generate_dispose_request())
 
     def dispose_table_raw(self, request_dict):
         """

@@ -4,6 +4,7 @@ AWS ec2 security group representation
 import copy
 
 from horey.network.service import ServiceTCP, ServiceUDP, ServiceICMP, ServiceRDP
+from horey.network.ip import IP
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 
 
@@ -64,25 +65,32 @@ class EC2SecurityGroup(AwsObject):
 
         lst_ret = []
         for ip_permission in self.ip_permissions:
-            if ip_permission.ip_protocol == "-1":
+            if ip_permission["IpProtocol"] == "-1":
                 service = ServiceTCP.any()
-            elif ip_permission.ip_protocol == "tcp":
+            elif ip_permission["IpProtocol"] == "tcp":
                 service = ServiceTCP()
-                service.start = ip_permission.from_port
-                service.end = ip_permission.to_port
-            elif ip_permission.ip_protocol == "udp":
+                service.start = ip_permission["FromPort"]
+                service.end = ip_permission["ToPort"]
+            elif ip_permission["IpProtocol"] == "udp":
                 service = ServiceUDP()
-                service.start = ip_permission.from_port
-                service.end = ip_permission.to_port
-            elif ip_permission.ip_protocol == "27":
+                service.start = ip_permission["FromPort"]
+                service.end = ip_permission["ToPort"]
+            elif ip_permission["IpProtocol"] == "27":
                 service = ServiceRDP()
-            elif ip_permission.ip_protocol == "icmp":
+            elif ip_permission["IpProtocol"] == "icmp":
                 service = ServiceICMP.any()
             else:
-                raise NotImplementedError(ip_permission.ip_protocol)
+                raise NotImplementedError(ip_permission["IpProtocol"])
 
-            for address in ip_permission.ipv4_ranges:
-                lst_ret.append((address.ip, service))
+            ranges = ip_permission.get("IpRanges")
+            if ranges:
+                for address in ranges:
+                    lst_ret.append((IP(address["CidrIp"]), service))
+
+            ranges = ip_permission.get("Ipv6Ranges")
+            if ranges:
+                for address in ranges:
+                    lst_ret.append((IP(address["CidrIpv6"]), service))
 
         return lst_ret
 

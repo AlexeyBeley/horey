@@ -3,6 +3,7 @@ sudo mount -t nfs4 -o  nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,re
 """
 
 import os
+import pytest
 from horey.aws_api.aws_api import AWSAPI
 from horey.h_logger import get_logger
 from horey.aws_api.aws_api_configuration_policy import AWSAPIConfigurationPolicy
@@ -11,6 +12,7 @@ from horey.aws_api.aws_services_entities.acm_certificate import ACMCertificate
 from horey.aws_api.aws_services_entities.sesv2_email_identity import SESV2EmailIdentity
 from horey.aws_api.aws_services_entities.aws_lambda import AWSLambda
 from horey.aws_api.aws_services_entities.key_pair import KeyPair
+from horey.aws_api.aws_services_entities.vpc import VPC
 from horey.aws_api.aws_services_entities.lambda_event_source_mapping import (
     LambdaEventSourceMapping,
 )
@@ -33,9 +35,12 @@ configuration.configuration_file_full_path = os.path.abspath(
         "..",
         "..",
         "ignore",
+        "accounts",
         "aws_api_configuration_values.py",
     )
 )
+
+
 configuration.init_from_file()
 
 aws_api = AWSAPI(configuration=configuration)
@@ -49,11 +54,12 @@ mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 
 # pylint: disable = missing-function-docstring
 
-
+@pytest.mark.wip
 def test_add_managed_region():
     aws_api.add_managed_region(Region.get_region("us-west-2"))
 
 
+@pytest.mark.todo
 def test_provision_certificate():
     cert = ACMCertificate({})
     cert.region = Region.get_region("us-east-1")
@@ -70,6 +76,7 @@ def test_provision_certificate():
     assert cert.status == "ISSUED"
 
 
+@pytest.mark.todo
 def test_provision_sesv2_domain_email_identity():
     email_identity = SESV2EmailIdentity({})
     email_identity.name = mock_values["email_identity.name"]
@@ -80,6 +87,7 @@ def test_provision_sesv2_domain_email_identity():
     assert email_identity.verified_for_sending_status == "ISSUED"
 
 
+@pytest.mark.todo
 def test_provision_aws_lambda_from_filelist():
     aws_lambda = AWSLambda({})
     aws_lambda.region = Region.get_region("us-west-2")
@@ -101,6 +109,7 @@ def test_provision_aws_lambda_from_filelist():
     assert aws_lambda.state == "Active"
 
 
+@pytest.mark.todo
 def test_provision_lambda_event_source_mapping():
     event_mapping = LambdaEventSourceMapping({})
     event_mapping.region = Region.get_region("us-west-2")
@@ -115,12 +124,14 @@ def test_provision_lambda_event_source_mapping():
     assert event_mapping.state == "Enabled"
 
 
+@pytest.mark.todo
 def test_find_cloudfront_distributions():
     aws_api.init_cloudfront_distributions()
     ret = aws_api.find_cloudfront_distributions(tags=[{"Key": "test_tag", "Value": "test_value"}])
     assert ret is not None
 
 
+@pytest.mark.todo
 def test_provision_key_pair():
     key_pair = KeyPair({})
     key_pair.name = "test-default-type-key"
@@ -132,30 +143,52 @@ def test_provision_key_pair():
     aws_api.provision_key_pair(key_pair, save_to_secrets_manager=True, secrets_manager_region="us-west-2")
 
 
+@pytest.mark.todo
 def test_get_secret_value():
     ret = aws_api.get_secret_value("test", ignore_missing=True)
     assert ret is None
 
 
+@pytest.mark.todo
 def test_provision_generated_ssh_key():
     owner_email = "test_horey@gmail.com"
     output_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test.key")
     aws_api.provision_generated_ssh_key(output_file_path, owner_email, "us-west-2")
 
+@pytest.mark.todo
 def test_renew_ecs_cluster_container_instances():
     ecs_cluster = ECSCluster({})
     ecs_cluster.region = Region.get_region("us-west-2")
     ecs_cluster.name = mock_values["renew_ecs_cluster.name"]
     aws_api.renew_ecs_cluster_container_instances(ecs_cluster)
 
-if __name__ == "__main__":
-    # test_provision_certificate()
-    # test_provision_aws_lambda_from_filelist()
-    # test_provision_lambda_event_source_mapping()
-    # test_copy_ecr_image()
-    # test_provision_sesv2_domain_email_identity()
-    # test_find_cloudfront_distributions()
-    # test_provision_key_pair()
-    # test_get_secret_value()
-    # test_provision_generated_ssh_key()
-    test_renew_ecs_cluster_container_instances()
+security_group_name = "test_sg"
+vpc_name = "test_vpc"
+def provision_vpc():
+    vpc= VPC({})
+    vpc.region = Region.get_region("us-west-2")
+    vpc.cidr_block = "10.255.0.0/16"
+    vpc.tags = [{
+    "Key": "Name",
+    "Value": vpc_name}]
+
+    aws_api.provision_vpc(vpc)
+    return vpc
+
+@pytest.mark.wip
+def test_provision_vpc():
+    vpc = provision_vpc()
+    assert vpc.id is not None
+
+
+@pytest.mark.wip
+def test_get_security_group_by_vpc_and_name():
+    vpc = provision_vpc()
+    aws_api.get_security_group_by_vpc_and_name(vpc, security_group_name)
+
+
+@pytest.mark.wip
+def test_dispose_vpc():
+    vpc = provision_vpc()
+    aws_api.ec2_client.dispose_vpc(vpc)
+    assert vpc.id is not None

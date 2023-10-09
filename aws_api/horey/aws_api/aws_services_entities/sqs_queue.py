@@ -1,15 +1,14 @@
 """
-AWS Lambda representation
+AWS SQS queue representation
 """
-import pdb
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
-from horey.aws_api.base_entities.region import Region
 
+# pylint: disable= too-many-instance-attributes
 
 class SQSQueue(AwsObject):
     """
-    AWS TemplateEntity class
+    AWS SQS queue class
     """
 
     def __init__(self, dict_src, from_cache=False):
@@ -32,16 +31,13 @@ class SQSQueue(AwsObject):
         self.fifo_throughput_limit = None
         self.deduplication_scope = None
         self.fifo_throughput_limit = None
+        self.queue_url = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
             return
 
-        init_options = {
-            "QueueUrl": self.init_default_attr,
-        }
-
-        self.init_attrs(dict_src, init_options)
+        self.update_from_raw_response(dict_src)
 
     def _init_object_from_cache(self, dict_src):
         """
@@ -53,13 +49,13 @@ class SQSQueue(AwsObject):
         self._init_from_cache(dict_src, options)
 
     def update_from_raw_response(self, dict_src):
-        init_options = {
-            "QueueUrl": self.init_default_attr,
-        }
+        """
+        Standard.
 
-        self.init_attrs(dict_src, init_options)
+        :param dict_src:
+        :return:
+        """
 
-    def update_attributes_from_raw_response(self, dict_src):
         init_options = {
             "QueueUrl": self.init_default_attr,
             "QueueArn": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
@@ -87,10 +83,13 @@ class SQSQueue(AwsObject):
 
         self.init_attrs(dict_src, init_options)
 
-    def update_tags_from_raw_response(self, dict_src):
-        self.tags = dict_src.get("Tags")
-
     def generate_set_attributes_request(self, target_queue):
+        """
+        Standard.
+
+        :param target_queue:
+        :return:
+        """
         target_req = target_queue.generate_create_request()
         self_req = self.generate_create_request()
 
@@ -109,11 +108,8 @@ class SQSQueue(AwsObject):
         for key in to_del:
             del self_req["Attributes"][key]
 
-        if target_req["tags"] != self_req["tags"]:
-            raise NotImplementedError()
-
         if not changed:
-            return
+            return None
 
         self_req["QueueUrl"] = self.queue_url
         del self_req["QueueName"]
@@ -121,10 +117,29 @@ class SQSQueue(AwsObject):
 
         return self_req
 
+    def generate_tag_queue_request(self, desired_queue):
+        """
+        Standard.
+
+        :param desired_queue:
+        :return:
+        """
+
+        if self.tags != desired_queue.tags:
+            return {"QueueUrl": self.queue_url, "Tags": desired_queue.tags}
+
+        return None
+
+
+    # pylint: disable= too-many-branches
     def generate_create_request(self):
-        request = dict()
-        request["QueueName"] = self.name
-        request["tags"] = self.tags
+        """
+        Standard.
+
+        :return:
+        """
+
+        request = {"QueueName": self.name, "tags": self.tags}
 
         attributes = {}
         if self.delay_seconds is not None:
@@ -187,24 +202,15 @@ class SQSQueue(AwsObject):
 
         return request
 
-    @property
-    def region(self):
-        if self._region is not None:
-            return self._region
-
-        if self.arn is not None:
-            self._region = Region.get_region(self.arn.split(":")[3])
-
-        return self._region
-
-    @region.setter
-    def region(self, value):
-        if not isinstance(value, Region):
-            raise ValueError(value)
-
-        self._region = value
-
+    # pylint: disable= arguments-differ
     def get_tag(self, key, ignore_missing_tag=False):
+        """
+        SQS Queue has dict and not list...
+
+        :param key:
+        :param ignore_missing_tag:
+        :return:
+        """
         if self.tags is None:
             if ignore_missing_tag:
                 return None
@@ -212,7 +218,7 @@ class SQSQueue(AwsObject):
 
         try:
             return self.tags.get(key)
-        except KeyError:
+        except KeyError as inst:
             if ignore_missing_tag:
-                return
-            raise RuntimeError(f"No tag '{key}' associated")
+                return None
+            raise RuntimeError(f"No tag '{key}' associated") from inst

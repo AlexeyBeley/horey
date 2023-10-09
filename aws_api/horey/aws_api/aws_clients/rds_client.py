@@ -3,6 +3,7 @@ AWS rds client to handle rds service API requests.
 """
 import datetime
 import time
+from collections import defaultdict
 
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.rds_db_instance import RDSDBInstance
@@ -31,6 +32,7 @@ class RDSClient(Boto3Client):
 
     NEXT_PAGE_REQUEST_KEY = "Marker"
     NEXT_PAGE_RESPONSE_KEY = "Marker"
+    ENGINE_VERSIONS = defaultdict(dict)
     """
     Client to handle specific aws service API calls.
     """
@@ -39,20 +41,42 @@ class RDSClient(Boto3Client):
         client_name = "rds"
         super().__init__(client_name)
 
+    # pylint: disable= too-many-arguments
+    def yield_db_instances(self, region=None, update_info=False, filters_req=None, get_tags=True):
+        """
+        Yield db_instances
+
+        :return:
+        """
+
+        regional_fetcher_generator = self.yield_db_instances_raw
+        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                                    RDSDBInstance,
+                                                                    update_info=update_info,
+                                                                    get_tags_callback=self.get_tags if get_tags else None,
+                                                                    regions=[region] if region else None,
+                                                                    filters_req=filters_req):
+            yield certificate
+
+    def yield_db_instances_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.client.describe_db_instances, "DBInstances", filters_req=filters_req
+        ):
+            yield dict_src
+
     def get_all_db_instances(self, region=None):
         """
         Get all db_instances in all regions.
         :return:
         """
 
-        if region is not None:
-            return self.get_region_db_instances(region)
-
-        final_result = []
-        for _region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_db_instances(_region)
-
-        return final_result
+        return list(self.yield_db_instances(region=region))
 
     def get_region_db_instances(self, region, filters=None, update_tags=True):
         """
@@ -64,62 +88,70 @@ class RDSClient(Boto3Client):
         :return:
         """
 
-        final_result = []
-        if filters is not None:
-            filters = {"Filters": filters}
+        return list(self.yield_db_instances(region=region, filters_req=filters, get_tags=update_tags))
 
-        AWSAccount.set_aws_region(region)
-        for response in self.execute(
-                self.client.describe_db_instances, "DBInstances", filters_req=filters
+    # pylint: disable= too-many-arguments
+    def yield_db_clusters(self, region=None, update_info=False, full_information=True, filters_req=None, get_tags=True):
+        """
+        Yield db_clusters
+
+        :return:
+        """
+
+        regional_fetcher_generator = self.yield_db_clusters_raw
+        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                                    RDSDBCluster,
+                                                                    update_info=update_info,
+                                                                    full_information_callback=self.update_cluster_full_information if full_information else None,
+                                                                    get_tags_callback=self.get_tags if get_tags else None,
+                                                                    regions=[region] if region else None,
+                                                                    filters_req=filters_req):
+            yield certificate
+
+    def yield_db_clusters_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.client.describe_db_clusters, "DBClusters", filters_req=filters_req
         ):
-            obj = RDSDBInstance(response)
-            final_result.append(obj)
+            yield dict_src
 
-        if update_tags:
-            self.update_tags(final_result)
-
-        return final_result
-
-    def get_all_db_clusters(self, region=None):
+    def get_all_db_clusters(self, region=None, full_information=False, filters_req=None, get_tags=None):
         """
         Get all db_clusters in all regions.
         :return:
         """
 
-        if region is not None:
-            return self.get_region_db_clusters(region)
+        return list(self.yield_db_clusters(region=region, filters_req=filters_req, get_tags=get_tags,
+                                           full_information=full_information))
 
-        final_result = []
-        for _region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_db_clusters(_region)
-
-        return final_result
-
-    def get_region_db_clusters(self, region, filters=None, update_tags=True):
+    def get_region_db_clusters(self, region, filters=None, update_tags=True, full_information=False):
         """
         Standard.
 
         :param region:
         :param filters:
         :param update_tags:
+        :param full_information:
         :return:
         """
 
-        final_result = []
-        if filters is not None:
-            filters = {"Filters": filters}
+        return list(self.yield_db_clusters(region=region, filters_req=filters, get_tags=update_tags,
+                                           full_information=full_information))
 
-        AWSAccount.set_aws_region(region)
-        for response in self.execute(
-                self.client.describe_db_clusters, "DBClusters", filters_req=filters
-        ):
-            obj = RDSDBCluster(response)
-            final_result.append(obj)
+    def update_cluster_full_information(self, cluster):
+        """
+        Fetch excessive information.
 
-        if update_tags:
-            self.update_tags(final_result)
+        :param cluster:
+        :return:
+        """
 
-        return final_result
+        cluster.default_engine_version = self.get_default_engine_version(cluster.region, cluster.engine)
 
     def provision_db_cluster(self, db_cluster: RDSDBCluster, snapshot_id=None):
         """
@@ -158,6 +190,7 @@ class RDSClient(Boto3Client):
         for response in self.execute(
                 self.client.create_db_cluster, "DBCluster", filters_req=request_dict
         ):
+            self.clear_cache(RDSDBCluster)
             return response
 
     def dispose_db_cluster(self, db_cluster: RDSDBCluster):
@@ -216,6 +249,7 @@ class RDSClient(Boto3Client):
         for response in self.execute(
                 self.client.delete_db_cluster, "DBCluster", filters_req=request_dict
         ):
+            self.clear_cache(RDSDBCluster)
             return response
 
     def dispose_db_instance(self, db_instance: RDSDBInstance):
@@ -239,6 +273,7 @@ class RDSClient(Boto3Client):
         for response in self.execute(
                 self.client.delete_db_instance, "DBInstance", filters_req=request_dict
         ):
+            self.clear_cache(RDSDBInstance)
             return response
 
     def restore_db_cluster_from_snapshot(self, db_cluster, snapshot_id):
@@ -266,7 +301,36 @@ class RDSClient(Boto3Client):
                 "DBCluster",
                 filters_req=request_dict,
         ):
+            self.clear_cache(RDSDBCluster)
             return response
+
+    # pylint: disable= too-many-arguments
+    def yield_db_subnet_groups(self, region=None, update_info=False, filters_req=None):
+        """
+        Yield db_subnet_groups
+
+        :return:
+        """
+
+        regional_fetcher_generator = self.yield_db_subnet_groups_raw
+        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                                    RDSDBSubnetGroup,
+                                                                    update_info=update_info,
+                                                                    regions=[region] if region else None,
+                                                                    filters_req=filters_req):
+            yield certificate
+
+    def yield_db_subnet_groups_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.client.describe_db_subnet_groups, "DBSubnetGroups", filters_req=filters_req
+        ):
+            yield dict_src
 
     def get_all_db_subnet_groups(self, region=None):
         """
@@ -274,14 +338,7 @@ class RDSClient(Boto3Client):
         :return:
         """
 
-        if region is not None:
-            return self.get_region_db_subnet_groups(region)
-
-        final_result = []
-        for _region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_db_subnet_groups(_region)
-
-        return final_result
+        return list(self.yield_db_subnet_groups(region=region))
 
     def get_region_db_subnet_groups(self, region):
         """
@@ -291,15 +348,7 @@ class RDSClient(Boto3Client):
         :return:
         """
 
-        final_result = []
-        AWSAccount.set_aws_region(region)
-        for response in self.execute(
-                self.client.describe_db_subnet_groups, "DBSubnetGroups"
-        ):
-            obj = RDSDBSubnetGroup(response)
-            final_result.append(obj)
-
-        return final_result
+        return list(self.yield_db_subnet_groups(region=region))
 
     def provision_db_subnet_group(self, db_subnet_group):
         """
@@ -337,20 +386,43 @@ class RDSClient(Boto3Client):
         ):
             return response
 
+    # pylint: disable= too-many-arguments
+    def yield_db_cluster_parameter_groups(self, region=None, update_info=False, filters_req=None,
+                                          full_information=True):
+        """
+        Yield db_cluster_parameter_groups
+
+        :return:
+        """
+        full_information_callback = self.get_db_cluster_parameters_group_full_information if full_information else None
+        regional_fetcher_generator = self.yield_db_cluster_parameter_groups_raw
+        for obj in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                            RDSDBClusterParameterGroup,
+                                                            update_info=update_info,
+                                                            full_information_callback=full_information_callback,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req):
+            yield obj
+
+    def yield_db_cluster_parameter_groups_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.client.describe_db_cluster_parameter_groups, "DBClusterParameterGroups", filters_req=filters_req
+        ):
+            yield dict_src
+
     def get_all_db_cluster_parameter_groups(self, region=None):
         """
         Get all db_cluster_parameter_groups in all regions.
         :return:
         """
 
-        if region is not None:
-            return self.get_region_db_cluster_parameter_groups(region)
-
-        final_result = []
-        for _region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_db_cluster_parameter_groups(_region)
-
-        return final_result
+        return list(self.yield_db_cluster_parameter_groups(region=region))
 
     def get_region_db_cluster_parameter_groups(self, region, full_information=True):
         """
@@ -361,24 +433,60 @@ class RDSClient(Boto3Client):
         :return:
         """
 
-        final_result = []
-        AWSAccount.set_aws_region(region)
-        for response in self.execute(
-                self.client.describe_db_cluster_parameter_groups, "DBClusterParameterGroups"
-        ):
-            obj = RDSDBClusterParameterGroup(response)
-            final_result.append(obj)
-            if full_information:
-                filters_req = {"DBClusterParameterGroupName": obj.name}
-                obj.parameters = []
-                for response_param in self.execute(
-                        self.client.describe_db_cluster_parameters,
-                        "Parameters",
-                        filters_req=filters_req,
-                ):
-                    obj.parameters.append(response_param)
+        return list(self.yield_db_cluster_parameter_groups(region=region, full_information=full_information))
 
-        return final_result
+    def get_db_cluster_parameters_group_full_information(self, obj):
+        """
+        Standard.
+
+        :param obj:
+        :return:
+        """
+
+        filters_req = {"DBClusterParameterGroupName": obj.name}
+        obj.parameters = []
+        for response_param in self.execute(
+                self.client.describe_db_cluster_parameters,
+                "Parameters",
+                filters_req=filters_req,
+        ):
+            obj.parameters.append(response_param)
+
+    # pylint: disable= too-many-arguments
+    def yield_db_cluster_snapshots(self, region=None, update_info=False, full_information=True, filters_req=None,
+                                   get_tags=True):
+        """
+        Yield db_cluster_snapshots
+
+        :return:
+        """
+
+        full_information_callback = self.update_db_cluster_snapshot_full_information if full_information else None
+        regional_fetcher_generator = self.yield_db_cluster_snapshots_raw
+        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                                    RDSDBClusterSnapshot,
+                                                                    update_info=update_info,
+                                                                    get_tags_callback=self.get_tags if get_tags else None,
+                                                                    full_information_callback=full_information_callback,
+                                                                    regions=[region] if region else None,
+                                                                    filters_req=filters_req):
+            yield certificate
+
+    def yield_db_cluster_snapshots_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.client.describe_db_cluster_snapshots,
+                "DBClusterSnapshots",
+                filters_req=filters_req,
+                exception_ignore_callback=lambda x: "DBClusterSnapshotNotFoundFault"
+                                                    in repr(x),
+        ):
+            yield dict_src
 
     def get_all_db_cluster_snapshots(self, region=None):
         """
@@ -386,14 +494,7 @@ class RDSClient(Boto3Client):
         :return:
         """
 
-        if region is not None:
-            return self.get_region_db_cluster_snapshots(region)
-
-        final_result = []
-        for _region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_db_cluster_snapshots(_region)
-
-        return final_result
+        return list(self.yield_db_cluster_snapshots(region=region))
 
     def get_region_db_cluster_snapshots(
             self, region, full_information=True, custom_filters=None, update_tags=True
@@ -408,29 +509,24 @@ class RDSClient(Boto3Client):
         :return:
         """
 
-        final_result = []
-        AWSAccount.set_aws_region(region)
-        for response in self.execute(
-                self.client.describe_db_cluster_snapshots,
-                "DBClusterSnapshots",
-                filters_req=custom_filters,
-                exception_ignore_callback=lambda x: "DBClusterSnapshotNotFoundFault"
-                                                    in repr(x),
+        return list(self.yield_db_cluster_snapshots(region=region, full_information=full_information,
+                                                    filters_req=custom_filters, get_tags=update_tags))
+
+    def update_db_cluster_snapshot_full_information(self, obj):
+        """
+        Standard.
+
+        :param obj:
+        :return:
+        """
+        filters_req = {"DBClusterSnapshotIdentifier": obj.id}
+        obj.parameters = []
+        for response_param in self.execute(
+                self.client.describe_db_cluster_snapshot_attributes,
+                "DBClusterSnapshotAttributesResult",
+                filters_req=filters_req,
         ):
-            obj = RDSDBClusterSnapshot(response)
-            final_result.append(obj)
-            if full_information:
-                filters_req = {"DBClusterSnapshotIdentifier": obj.id}
-                obj.parameters = []
-                for response_param in self.execute(
-                        self.client.describe_db_cluster_snapshot_attributes,
-                        "DBClusterSnapshotAttributesResult",
-                        filters_req=filters_req,
-                ):
-                    obj.parameters.append(response_param)
-        if update_tags:
-            self.update_tags(final_result)
-        return final_result
+            obj.parameters.append(response_param)
 
     def get_all_db_parameter_groups(self, region=None):
         """
@@ -588,6 +684,7 @@ class RDSClient(Boto3Client):
         for response in self.execute(
                 self.client.create_db_instance, "DBInstance", filters_req=request_dict
         ):
+            self.clear_cache(RDSDBInstance)
             return response
 
     def copy_db_cluster_snapshot(
@@ -704,7 +801,7 @@ class RDSClient(Boto3Client):
 
         if db_cluster.id is None:
             raise NotImplementedError()
-        filters = [{"Name": "db-cluster-id", "Values": [db_cluster.id]}]
+        filters = {"Filters": [{"Name": "db-cluster-id", "Values": [db_cluster.id]}]}
         region_db_clusters = self.get_region_db_clusters(
             db_cluster.region, filters=filters
         )
@@ -726,14 +823,14 @@ class RDSClient(Boto3Client):
         :return:
         """
 
-        filters_req = [
+        filters_req = {"Filters": [
             {
                 "Name": "db-instance-id",
                 "Values": [
                     db_instance.id,
                 ],
             }
-        ]
+        ]}
 
         region_db_instances = self.get_region_db_instances(
             db_instance.region, filters=filters_req
@@ -791,6 +888,7 @@ class RDSClient(Boto3Client):
         for response in self.execute(
                 self.client.modify_db_cluster, "DBCluster", filters_req=request_dict
         ):
+            self.clear_cache(RDSDBCluster)
             return response
 
     def modify_db_instance(self, db_instance: RDSDBCluster):
@@ -817,6 +915,7 @@ class RDSClient(Boto3Client):
         for response in self.execute(
                 self.client.modify_db_instance, "DBInstance", filters_req=request_dict
         ):
+            self.clear_cache(RDSDBInstance)
             return response
 
     def update_tags(self, objects):
@@ -827,17 +926,27 @@ class RDSClient(Boto3Client):
         :return:
         """
 
-        if len(objects) == 0:
-            return
         for obj in objects:
-            tags = list(
-                self.execute(
-                    self.client.list_tags_for_resource,
-                    "TagList",
-                    filters_req={"ResourceName": obj.arn},
-                )
+            self.get_tags(obj)
+
+    # pylint: disable= arguments-differ
+    def get_tags(self, obj):
+        """
+        Get tags for object
+
+        :param obj:
+        :return:
+        """
+
+        tags = list(
+            self.execute(
+                self.client.list_tags_for_resource,
+                "TagList",
+                filters_req={"ResourceName": obj.arn},
+                instant_raise=True
             )
-            obj.tags = tags
+        )
+        obj.tags = tags
 
     def get_default_engine_version(self, region, engine_type):
         """
@@ -848,13 +957,19 @@ class RDSClient(Boto3Client):
         :return:
         """
 
+        if per_region := self.ENGINE_VERSIONS.get(region.region_mark):
+            if engine_version := per_region[engine_type]:
+                return engine_version
+
         AWSAccount.set_aws_region(region)
 
-        aurora_engine_versions = list(self.execute(
-                self.client.describe_db_engine_versions, "DBEngineVersions",
-                filters_req={"Engine": engine_type, "DefaultOnly": True}))
+        engine_versions = list(self.execute(
+            self.client.describe_db_engine_versions, "DBEngineVersions",
+            filters_req={"Engine": engine_type, "DefaultOnly": True}))
 
-        if len(aurora_engine_versions) != 1:
+        if len(engine_versions) != 1:
             raise RuntimeError(f"Can not find single default version for {engine_type} in {str(region)}")
 
-        return aurora_engine_versions[0]
+        self.ENGINE_VERSIONS[region.region_mark][engine_type] = engine_versions[0]
+
+        return self.ENGINE_VERSIONS[region.region_mark][engine_type]

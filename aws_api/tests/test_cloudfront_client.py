@@ -6,6 +6,7 @@ import os
 import json
 from unittest.mock import Mock
 from unittest import TestCase
+import pytest
 
 from horey.aws_api.aws_clients.cloudfront_client import CloudfrontClient
 from horey.aws_api.aws_services_entities.cloudfront_distribution import (
@@ -22,29 +23,8 @@ from horey.aws_api.aws_services_entities.cloudfront_response_headers_policy impo
     CloudfrontResponseHeadersPolicy,
 )
 
-from horey.h_logger import get_logger
-from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.common_utils.common_utils import CommonUtils
 
-configuration_values_file_full_path = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "h_logger_configuration_values.py"
-)
-logger = get_logger(
-    configuration_values_file_full_path=configuration_values_file_full_path
-)
-
-accounts_file_full_path = os.path.abspath(
-    os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "..",
-        "ignore",
-        "aws_api_managed_accounts.py",
-    )
-)
-
-accounts = CommonUtils.load_object_from_module(accounts_file_full_path, "main")
-AWSAccount.set_aws_account(accounts["1111"])
-AWSAccount.set_aws_region(accounts["1111"].regions["us-west-2"])
 
 mock_values_file_path = os.path.abspath(
     os.path.join(
@@ -56,11 +36,11 @@ mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 
 # pylint: disable= missing-function-docstring
 
-
+@pytest.mark.wip
 def test_init_cloudfront_client():
     assert isinstance(CloudfrontClient(), CloudfrontClient)
 
-
+@pytest.mark.wip
 def test_provision_origin_access_identity():
     cloudfront_client = CloudfrontClient()
     cloudfront_origin_access_identity = CloudfrontOriginAccessIdentity({})
@@ -69,7 +49,7 @@ def test_provision_origin_access_identity():
         cloudfront_origin_access_identity
     )
 
-
+@pytest.mark.wip
 def test_provision_distribution():
     cloudfront_client = CloudfrontClient()
 
@@ -164,31 +144,22 @@ def test_provision_distribution():
 
     cloudfront_client.provision_distribution(cloudfront_distribution)
 
-
+@pytest.mark.wip
 def test_get_all_functions():
     cloudfront_client = CloudfrontClient()
     functions = cloudfront_client.get_all_functions()
     assert isinstance(functions, list)
 
-
+@pytest.mark.wip
 def test_get_all_functions_full_info():
     cloudfront_client = CloudfrontClient()
     functions = cloudfront_client.get_all_functions(full_information=True)
     assert isinstance(functions, list)
 
-
-def test_update_function_info():
-    cloudfront_client = CloudfrontClient()
-    function = Mock()
-    function.name = "some-function"
-    function.region = "us-east-1"
-    function.stage = "DEVELOPMENT"
-    assert cloudfront_client.update_function_info(function, full_information=True)
-
-
+@pytest.mark.wip
 def test_update_function_info_non_existing_function():
     function = Mock()
-    function.name = "some-function-non-existing"
+    function.name = "test-some-function-non-existing"
     function.stage = "LIVE"
     function.region = "us-east-1"
     cloudfront_client = CloudfrontClient()
@@ -196,7 +167,7 @@ def test_update_function_info_non_existing_function():
 
 
 function_to_provision = CloudfrontFunction({})
-function_to_provision.name = "some-function"
+function_to_provision.name = "test-some-function"
 function_to_provision.region = "us-west-2"
 function_to_provision.function_config = {"Comment": function_to_provision.name,
                                          "Runtime": "cloudfront-js-2.0"
@@ -207,14 +178,14 @@ function_to_provision.function_code = "function handler(event) {\n    // NOTE: T
                                       "          'cloudfront-functions': { value: 'generated-by-CloudFront-Functions-' }\n        }\n    };\n   " \
                                       " return response;\n}"
 
-
+@pytest.mark.wip
 def test_provision_function_development():
     cloudfront_client = CloudfrontClient()
     function_to_provision.stage = "DEVELOPMENT"
     cloudfront_client.provision_function(function_to_provision)
     assert function_to_provision.e_tag is not None and function_to_provision.stage == "DEVELOPMENT"
 
-
+@pytest.mark.wip
 def test_provision_function_update_development():
     cloudfront_client = CloudfrontClient()
     function_to_provision.function_code = "function handler(event) {\n    // NOTE: This example_2 function is for a viewer request event trigger. \n" \
@@ -226,14 +197,14 @@ def test_provision_function_update_development():
     cloudfront_client.provision_function(function_to_provision)
     assert function_to_provision.e_tag is not None and function_to_provision.stage == "DEVELOPMENT"
 
-
+@pytest.mark.wip
 def test_provision_function_live():
     cloudfront_client = CloudfrontClient()
     function_to_provision.stage = "LIVE"
     cloudfront_client.provision_function(function_to_provision)
     assert function_to_provision.e_tag is not None and function_to_provision.stage == "LIVE"
 
-
+@pytest.mark.wip
 def test_provision_function_update_live():
     cloudfront_client = CloudfrontClient()
     function_to_provision.function_code = "function handler(event) {\n    // NOTE: This example_2 function is for a viewer request event trigger. \n" \
@@ -247,11 +218,22 @@ def test_provision_function_update_live():
     assert function_to_provision.e_tag is not None and function_to_provision.stage == "LIVE"
 
 
+@pytest.mark.wip
+def test_update_function_info():
+    cloudfront_client = CloudfrontClient()
+    function = Mock()
+    function.name = "test-some-function"
+    function.region = "us-east-1"
+    function.stage = "DEVELOPMENT"
+    assert cloudfront_client.update_function_info(function, full_information=True)
+
+
+@pytest.mark.wip
 def test_dispose_function():
     cloudfront_client = CloudfrontClient()
     cloudfront_client.dispose_function(function_to_provision)
 
-
+@pytest.mark.wip
 def test_test_function_live():
     event_object = {
         "version": "1.0",
@@ -276,7 +258,7 @@ def test_test_function_live():
     assert json.loads(ret["FunctionOutput"])["response"]["headers"]["cloudfront-functions"][
                "value"] == "generated-by-CloudFront-Functions-"
 
-
+@pytest.mark.wip
 def test_test_function_live_must_fail():
     class TestFunctionLiveMustFail(TestCase):
         """
@@ -295,7 +277,7 @@ def test_test_function_live_must_fail():
 
     TestFunctionLiveMustFail().test_does_not_exist()
 
-
+@pytest.mark.wip
 def test_provision_function_development_deploy_bug():
     """
     Replace "return" with "return_does_not_exist"
@@ -313,7 +295,7 @@ def test_provision_function_development_deploy_bug():
     cloudfront_client.provision_function(function_to_provision)
     assert function_to_provision.e_tag is not None and function_to_provision.stage == "DEVELOPMENT"
 
-
+@pytest.mark.wip
 def test_test_function_development_fail_on_bug():
     event_object = {
         "version": "1.0",
@@ -338,7 +320,7 @@ def test_test_function_development_fail_on_bug():
 
     assert ret.get("FunctionErrorMessage")
 
-
+@pytest.mark.wip
 def test_get_all_response_headers_policies():
     cloudfront_client = CloudfrontClient()
     cloudfront_client.get_all_response_headers_policies()
@@ -346,14 +328,14 @@ def test_get_all_response_headers_policies():
 
 POLICY_NAME = "test-policy"
 
-
+@pytest.mark.wip
 def test_update_response_headers_policy_info():
     cloudfront_client = CloudfrontClient()
     policy = CloudfrontResponseHeadersPolicy({})
     policy.name = POLICY_NAME
     cloudfront_client.update_response_headers_policy_info(policy, full_information=True)
 
-
+@pytest.mark.wip
 def test_provision_response_headers_policy_new():
     cloudfront_client = CloudfrontClient()
     policy = CloudfrontResponseHeadersPolicy({})
@@ -368,7 +350,7 @@ def test_provision_response_headers_policy_new():
             "OriginOverride": False}}
     cloudfront_client.provision_response_headers_policy(policy)
 
-
+@pytest.mark.wip
 def test_provision_response_headers_policy_existing():
     cloudfront_client = CloudfrontClient()
     policy = CloudfrontResponseHeadersPolicy({})
@@ -383,7 +365,7 @@ def test_provision_response_headers_policy_existing():
     policy.name = POLICY_NAME
     cloudfront_client.provision_response_headers_policy(policy)
 
-
+@pytest.mark.wip
 def test_provision_response_headers_policy_update():
     cloudfront_client = CloudfrontClient()
     policy = CloudfrontResponseHeadersPolicy({})
@@ -398,37 +380,9 @@ def test_provision_response_headers_policy_update():
     policy.name = POLICY_NAME
     cloudfront_client.provision_response_headers_policy(policy)
 
-
+@pytest.mark.wip
 def test_dispose_response_headers_policy():
     cloudfront_client = CloudfrontClient()
     policy = CloudfrontResponseHeadersPolicy({})
     policy.name = POLICY_NAME
     cloudfront_client.dispose_response_headers_policy(policy)
-
-
-if __name__ == "__main__":
-    # test_provision_origin_access_identity()
-    # test_provision_distribution()
-    # test_get_all_functions()
-    # test_get_all_functions_full_info()
-    # test_update_function_info_non_existing_function()
-
-    # test_provision_function_development()
-    # test_test_function_live_must_fail()
-    # test_update_function_info()
-    # test_provision_function_update_development()
-    # test_dispose_function()
-
-    # test_provision_function_live()
-    # test_test_function_live()
-    # test_provision_function_update_live()
-    # test_provision_function_development_deploy_bug()
-    # test_test_function_development_fail_on_bug()
-    # test_dispose_function()
-
-    test_get_all_response_headers_policies()
-    test_update_response_headers_policy_info()
-    test_provision_response_headers_policy_new()
-    test_provision_response_headers_policy_existing()
-    test_provision_response_headers_policy_update()
-    test_dispose_response_headers_policy()

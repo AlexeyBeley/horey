@@ -650,7 +650,7 @@ class AzureDevopsAPI:
             ret = response.json()
             lst_src = ret["workItemRelations"]
 
-            logger.info("Starting to fetch work items")
+            logger.info("Fetching work items")
             for work_item_rel in lst_src:
                 try:
                     int_id = work_item_rel["source"].get("id")
@@ -756,7 +756,7 @@ class AzureDevopsAPI:
             lst_src = ret["workItems"]
 
             lst_ret = []
-            logger.info("Starting to fetch work items")
+            logger.info(f"Fetching work items for backlog: {backlog_id}")
             for work_item in lst_src:
                 str_id = work_item["target"]["id"]
                 if ignore_ids and (int(str_id) in ignore_ids):

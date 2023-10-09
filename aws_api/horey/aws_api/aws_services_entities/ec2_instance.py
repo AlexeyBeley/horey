@@ -102,7 +102,7 @@ class EC2Instance(AwsObject):
 
         self.init_attrs(dict_src, init_options)
 
-        tag_name = self.get_tagname("Name")
+        tag_name = self.get_tagname(ignore_missing_tag=True)
         self.name = tag_name if tag_name else self.id
 
     def _init_instance_from_cache(self, dict_src):

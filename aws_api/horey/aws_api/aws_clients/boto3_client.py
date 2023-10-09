@@ -1,11 +1,15 @@
 """
 Base Boto3 client. It provides sessions and client management.
 """
-import datetime
 
+import os
+import datetime
+import json
 import time
 from horey.aws_api.aws_clients.sessions_manager import SessionsManager
 from horey.h_logger import get_logger
+from horey.aws_api.base_entities.aws_account import AWSAccount
+from horey.common_utils.common_utils import CommonUtils
 
 logger = get_logger()
 
@@ -22,6 +26,7 @@ class Boto3Client:
     NEXT_PAGE_RESPONSE_KEY = "NextToken"
     NEXT_PAGE_INITIAL_KEY = None
     DEBUG = False
+    _main_cache_dir_path = None
 
     def __init__(self, client_name):
         """
@@ -34,6 +39,36 @@ class Boto3Client:
 
         self.client_name = client_name
         self._account_id = None
+
+    @property
+    def main_cache_dir_path(self):
+        """
+        The highest level cache dir path
+
+        :return:
+        """
+
+        if Boto3Client._main_cache_dir_path is None:
+            raise ValueError("Main cache dir was not set in boto3_client.py")
+        return Boto3Client._main_cache_dir_path
+
+    @main_cache_dir_path.setter
+    def main_cache_dir_path(self, value):
+        if not os.path.exists(value):
+            raise ValueError(f"Not existing cache dir: {value}")
+        if not os.path.isdir(value):
+            raise ValueError(f"main_cache_dir_path must point to a dir: {value}")
+        Boto3Client._main_cache_dir_path = value
+
+    @property
+    def client_cache_dir_name(self):
+        """
+        This client's dir name.
+
+        :return:
+        """
+
+        return CommonUtils.camel_case_to_snake_case(self.__class__.__name__)
 
     @property
     def account_id(self):
@@ -138,7 +173,7 @@ class Boto3Client:
                 ):
                     return
 
-                if  "AccessDeniedException" in repr(exception_instance):
+                if  "AccessDenied" in repr(exception_instance):
                     raise
 
                 if "UnauthorizedOperation" in repr(exception_instance):
@@ -175,7 +210,6 @@ class Boto3Client:
         :param internal_starting_token:
         :return:
         """
-
         for _page in self.client.get_paginator(func_command_name).paginate(
             PaginationConfig={self.NEXT_PAGE_REQUEST_KEY: starting_token}, **filters_req
         ):
@@ -379,10 +413,16 @@ class Boto3Client:
                 ):
                     return []
 
-                if "AccessDeniedException" in repr(exception_instance):
+                if "AccessDenied" in repr(exception_instance):
                     raise
 
                 if "UnauthorizedOperation" in repr(exception_instance):
+                    raise
+
+                if "UnauthorizedOperation" in repr(exception_instance):
+                    raise
+
+                if "AuthFailure" in repr(exception_instance):
                     raise
 
                 if instant_raise:
@@ -531,9 +571,11 @@ class Boto3Client:
             function = self.client.get_tags
 
         logger.info(f"Getting resource tags: {obj.arn}")
-        return list(
+        ret = list(
             self.execute(function, tags_identifier, filters_req={arn_identifier: obj.arn})
         )
+        obj.tags = ret
+        return ret
 
     def tag_resource(self, obj, arn_identifier="ResourceArn", tags_identifier="TagsToAdd"):
         """
@@ -577,3 +619,203 @@ class Boto3Client:
         To many values.
 
         """
+
+    @staticmethod
+    def cache_objects(objects, file_path, indent=4):
+        """
+        Cache the objects.
+
+        :param objects:
+        :param file_path:
+        :param indent:
+        :return:
+        """
+        if objects is None:
+            return
+
+        objects_dicts = [obj.convert_to_dict() for obj in objects]
+
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+
+        with open(file_path, "w", encoding="utf-8") as file_handler:
+            json.dump(objects_dicts, file_handler, indent=indent)
+
+    def clear_cache(self, entity_class):
+        """
+        Clear all cache of this entity class
+
+        :param entity_class:
+        :return:
+        """
+
+        aws_api_account = AWSAccount.get_aws_account()
+        cache_dir = os.path.join(self.main_cache_dir_path, aws_api_account.name)
+        if not os.path.exists(cache_dir):
+            return False
+        entity_class_file_raw_name = entity_class.get_cache_file_name().replace(".json", "")
+
+        for region_name in os.listdir(cache_dir):
+            region_client_dir = os.path.join(cache_dir, region_name, self.client_cache_dir_name)
+            if not os.path.exists(region_client_dir):
+                continue
+            for file_name in os.listdir(region_client_dir):
+                if entity_class_file_raw_name in file_name:
+                    cache_file_path = os.path.join(region_client_dir, file_name)
+                    logger.info(f"Clearing cache at '{cache_file_path}'")
+                    os.remove(cache_file_path)
+        return True
+
+    def add_entity_to_cache(self, entity, full_information, get_tags):
+        """
+        Add new entity.
+
+        :param get_tags:
+        :param full_information:
+        :param entity:
+        :return:
+        """
+
+        file_path = self.generate_cache_file_path(entity.__class__, entity.region.region_mark, full_information, get_tags)
+        if os.path.exists(file_path):
+            with open(file_path, encoding="utf-8") as file_handler:
+                objects = json.load(file_handler)
+
+            objects.append(entity.convert_to_dict())
+            with open(file_path, "w", encoding="utf-8") as file_handler:
+                json.dump(objects, file_handler, indent=4)
+
+    def generate_cache_file_path(self, class_type, region_dir_name, full_information, get_tags):
+        """
+        Generate cache file path to write and read from.
+
+        :param get_tags:
+        :param full_information:
+        :param class_type:
+        :param region_dir_name:
+        :return:
+        """
+
+        file_name = class_type.get_cache_file_name()
+        if file_name.count(".") != 1:
+            raise ValueError(f"Unsupported cache file name. Single dot should present: {file_name}")
+
+        if full_information:
+            file_name = file_name.replace(".", "_full_info.")
+        if get_tags:
+            file_name = file_name.replace(".", "_tags.")
+        aws_api_account = AWSAccount.get_aws_account()
+        return os.path.join(self.main_cache_dir_path, aws_api_account.name, region_dir_name, self.client_cache_dir_name, file_name)
+
+    @staticmethod
+    def load_objects_from_cache(class_type, file_path):
+        """
+        Load objects from cached file
+
+        @param file_path:
+        @param class_type:
+        @return:
+        """
+
+        if not os.path.exists(file_path):
+            return None
+        with open(file_path, encoding="utf-8") as file_handler:
+            return [
+                class_type(dict_src, from_cache=True) for dict_src in json.load(file_handler)
+            ]
+
+    def regional_service_entities_generator(self, regional_fetcher_generator,
+                                      entity_class,
+                                      full_information_callback=None,
+                                      get_tags_callback=None,
+                                      update_info=False,
+                                      regions=None,
+                                      global_service=False,
+                                      filters_req=None):
+        """
+        Be sure you know what you do, when you set full_information=True.
+        This can kill your memory, if you have a lot of data.
+        For example in Cloudwatch or S3.
+        Sometimes it's better using yield* or explicitly setting full_information=None
+
+        :param filters_req: Request input params if any.
+        :param regional_fetcher_generator: The lowest API facing function. Retrieves raw dictionaries.
+        :param entity_class: Class of the entity to init with the raw Data.
+        :param full_information_callback: Get excessive information
+        :param get_tags_callback: Fetch tags separately from the main data request
+        :param update_info: Fetch the data form AWS API
+        :param regions: regions to fetch the entities from
+        :param global_service: no need to go over all regions - use the one set in AWSAccount or the first one of available
+        :return:
+        """
+
+        if global_service:
+            if regions:
+                raise ValueError(f"Can not set both {global_service=} and {regions=}")
+            region = AWSAccount.get_aws_region()
+            if region is None:
+                regions = list(AWSAccount.get_aws_account().regions.values())[:1]
+            else:
+                regions = [region]
+
+        if not isinstance(update_info, bool):
+            raise ValueError(f"update_info must be bool, received: '{update_info}'")
+
+        if not regions:
+            regions = AWSAccount.get_aws_account().regions.values()
+
+        if not regions:
+            raise ValueError(f"Was not able to find region while fetching {entity_class} information.")
+
+        for region in regions:
+            for obj in  self.region_service_entities_generator(
+                region, regional_fetcher_generator, entity_class,
+                full_information_callback=full_information_callback,
+                get_tags_callback=get_tags_callback,
+                update_info=update_info,
+                filters_req=filters_req
+            ):
+                yield obj
+
+    def region_service_entities_generator(self, region,
+                                          regional_fetcher_generator,
+                                          entity_class,
+                                          full_information_callback=None,
+                                          get_tags_callback=None,
+                                          update_info=False,
+                                          filters_req=None):
+        """
+        Get region log groups.
+
+        :param regional_fetcher_generator:
+        :param entity_class:
+        :param full_information_callback:
+        :param get_tags_callback:
+        :param update_info:
+        :param filters_req:
+        :param region:
+        :return:
+        """
+
+        full_information = full_information_callback is not None
+        get_tags = get_tags_callback is not None
+        file_name = self.generate_cache_file_path(entity_class, region.region_mark, full_information, get_tags)
+        if not update_info and not filters_req:
+            objects = self.load_objects_from_cache(entity_class, file_name)
+            if objects is not None:
+                for obj in objects:
+                    yield obj
+                return
+
+        final_result = []
+        AWSAccount.set_aws_region(region)
+        for result in regional_fetcher_generator(filters_req=filters_req):
+            obj = entity_class(result)
+            if full_information_callback:
+                full_information_callback(obj)
+            if get_tags_callback:
+                get_tags_callback(obj)
+            obj.region = region
+            final_result.append(obj)
+            yield obj
+        if filters_req is None:
+            self.cache_objects(final_result, file_name)

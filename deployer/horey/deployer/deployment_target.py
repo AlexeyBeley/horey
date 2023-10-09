@@ -15,7 +15,7 @@ class DeploymentTarget:
     SupportedSSHKeys = ["rsa", "ed25519key"]
 
     def __init__(self):
-        self.hostame = None
+        self.hostname = None
         self.remote_deployment_dir_path = "/tmp/remote_deployer"
         self.deployment_data_dir_name = "deployment_data"
 

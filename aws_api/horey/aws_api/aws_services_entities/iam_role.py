@@ -1,6 +1,7 @@
 """
 Module handling IAM role object
 """
+import json
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 from horey.aws_api.base_entities.region import Region
@@ -15,7 +16,8 @@ class IamRole(AwsObject):
 
         :param dict_src:
         """
-        self.policies = []
+        self.managed_policies_arns = []
+        self.inline_policies = []
         self.role_last_used_time = None
         self.role_last_used_region = None
         self.arn = None
@@ -62,15 +64,13 @@ class IamRole(AwsObject):
 
             raise NotImplementedError(key)
 
-    def add_policy(self, policy):
+    def add_policy(self):
         """
         Add single AWS Iam Policy.
 
-        :param policy:
         :return:
         """
-
-        self.policies.append(policy)
+        raise DeprecationWarning("use attached_policies or inline_policies")
 
     def init_assume_role_policy_document(self, key, value):
         """
@@ -120,17 +120,70 @@ class IamRole(AwsObject):
             "AssumeRolePolicyDocument": self.assume_role_policy_document,
             "MaxSessionDuration": self.max_session_duration,
         }
+        if self.path == "":
+            raise ValueError(f"Creating role {self.name} without 'path' set")
 
         self.extend_request_with_optional_parameters(request, ["Tags", "Description", "Path"])
         return request
 
-    def generate_attach_policies_requests(self):
+    def generate_managed_policies_requests(self, desired_role):
         """
-        Attach policies request.
+        Attach and detach managed policies request.
 
         @return:
         """
 
-        return [
-            {"PolicyArn": policy.arn, "RoleName": self.name} for policy in self.policies
+        attach = [
+            {"PolicyArn": arn, "RoleName": self.name} for arn in desired_role.managed_policies_arns
+            if arn not in self.managed_policies_arns
         ]
+
+        detach = [
+            {"PolicyArn": arn, "RoleName": self.name} for arn in self.managed_policies_arns
+            if arn not in desired_role.managed_policies_arns
+        ]
+
+        return attach, detach
+
+    def generate_inline_policies_requests(self, desired_role):
+        """
+        Inline policies.
+
+        :param desired_role:
+        :return:
+        """
+
+        self_inline = {policy.name: policy.document for policy in self.inline_policies}
+        desired_inline = {policy.name: policy.document for policy in desired_role.inline_policies}
+        put_requests = []
+        for policy_name, dict_document in desired_inline.items():
+            if policy_name not in self_inline or self_inline[policy_name] != dict_document:
+                put_requests.append(
+                    {"PolicyName": policy_name, "RoleName": self.name, "PolicyDocument": json.dumps(dict_document)})
+
+        delete_requests = [{"PolicyName": policy_name, "RoleName": self.name} for policy_name in self_inline if
+                           policy_name not in desired_inline]
+
+        return put_requests, delete_requests
+
+    def generate_update_assume_role_policy_request(self, desired_role):
+        """
+        Assume role policy.
+
+        :param desired_role:
+        :return:
+        """
+
+        dict_self_assume_role_policy_document = self.assume_role_policy_document if isinstance(
+            self.assume_role_policy_document, dict) \
+            else json.loads(self.assume_role_policy_document)
+
+        dict_desired_assume_role_policy_document = desired_role.assume_role_policy_document if isinstance(
+            desired_role.assume_role_policy_document, dict) \
+            else json.loads(desired_role.assume_role_policy_document)
+
+        if dict_self_assume_role_policy_document != dict_desired_assume_role_policy_document:
+            return {"RoleName": self.name,
+                    "PolicyDocument": desired_role.assume_role_policy_document}
+
+        return None

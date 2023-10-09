@@ -1,14 +1,13 @@
 """
-Cloud watch specific log group representation
+Cloud watch Alarm
 """
-import pdb
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 
-
+# pylint: disable= too-many-instance-attributes
 class CloudWatchAlarm(AwsObject):
     """
-    The class to represent instances of the log group objects.
+    The class to represent instances of the Cloudwatch alarm
     """
 
     def __init__(self, dict_src, from_cache=False):
@@ -20,9 +19,21 @@ class CloudWatchAlarm(AwsObject):
         self.log_streams = []
         self.alarm_description = None
         self.insufficient_data_actions = None
-        self.dimensions = None
+        self.dimensions = []
         self.ok_actions = None
         self.unit = None
+        self.actions_enabled = None
+        self.alarm_actions = None
+        self.metric_name = None
+        self.namespace = None
+        self.statistic = None
+        self.period = None
+        self.evaluation_periods = None
+        self.datapoints_to_alarm = None
+        self.threshold = None
+        self.comparison_operator = None
+        self.treat_missing_data = None
+        self._dict_dimensions = None
 
         super().__init__(dict_src, from_cache=from_cache)
 
@@ -55,9 +66,23 @@ class CloudWatchAlarm(AwsObject):
             "TreatMissingData": self.init_default_attr,
             "AlarmDescription": self.init_default_attr,
             "MetricName": self.init_default_attr,
+            "StateTransitionedTimestamp": self.init_default_attr,
+            "Unit": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
+
+    @property
+    def dict_dimensions(self):
+        """
+        Formatted in a dict for ease of comparison.
+
+        :return:
+        """
+
+        if self._dict_dimensions is None:
+            self._dict_dimensions = {dimension["Name"]: dimension["Value"] for dimension in self.dimensions}
+        return self._dict_dimensions
 
     def _init_cloud_watch_alarm_from_cache(self, dict_src):
         """
