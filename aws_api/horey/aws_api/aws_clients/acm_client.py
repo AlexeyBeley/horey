@@ -134,7 +134,9 @@ class ACMClient(Boto3Client):
         if not certificate.tags:
             raise ValueError("Can not provision certificates without unique tags set. Look at certificate.generate_name_tag")
         try:
-            current_certificate = self.get_certificate_by_tags(certificate.region, {tag["Key"]: tag["Value"] for tag in certificate.tags}, ignore_missing_tag=True)
+            #self.clear_cache(ACMCertificate)
+            #current_certificate = self.get_certificate_by_tags(certificate.region, {tag["Key"]: tag["Value"] for tag in certificate.tags}, ignore_missing_tag=True)
+            current_certificate = self.get_certificate_by_tags(certificate.region, {"name": tag["Value"] for tag in certificate.tags if tag["Key"] == "name"}, ignore_missing_tag=True)
             if current_certificate.domain_name == certificate.domain_name:
                 certificate.update_from_raw_response(current_certificate.dict_src)
                 return certificate.arn
@@ -172,7 +174,6 @@ class ACMClient(Boto3Client):
         :param update_info:
         :return:
         """
-
         ret = []
         for cert in self.yield_certificates(region, update_info=update_info):
             for tag_key, tag_value in dict_tags.items():
