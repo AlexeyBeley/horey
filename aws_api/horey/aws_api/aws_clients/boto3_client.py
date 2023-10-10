@@ -654,10 +654,13 @@ class Boto3Client:
             return False
         entity_class_file_raw_name = entity_class.get_cache_file_name().replace(".json", "")
 
+        logger.info(f"Starting clearing cache per region in '{cache_dir}'")
         for region_name in os.listdir(cache_dir):
+            logger.info(f"Starting clearing regional cache for '{region_name}'")
             region_client_dir = os.path.join(cache_dir, region_name, self.client_cache_dir_name)
             if not os.path.exists(region_client_dir):
                 continue
+            logger.info(f"Starting clearing regional cache for client dir '{self.client_cache_dir_name}'")
             for file_name in os.listdir(region_client_dir):
                 if entity_class_file_raw_name in file_name:
                     cache_file_path = os.path.join(region_client_dir, file_name)
