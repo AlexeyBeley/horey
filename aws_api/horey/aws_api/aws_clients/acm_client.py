@@ -185,7 +185,7 @@ class ACMClient(Boto3Client):
 
         if len(ret) > 1:
             raise ValueError(
-                f"Found more then 1 certificate in region '{str(region)}' with tags: {dict_tags}"
+                f"Found more then 1 certificate in region '{str(region)}' with tags: {dict_tags}: {[cert.arn for cert in ret]}"
             )
 
         try:
