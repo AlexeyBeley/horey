@@ -5,6 +5,7 @@ Base Boto3 client. It provides sessions and client management.
 import os
 import datetime
 import json
+import shutil
 import time
 from horey.aws_api.aws_clients.sessions_manager import SessionsManager
 from horey.h_logger import get_logger
@@ -640,10 +641,11 @@ class Boto3Client:
         with open(file_path, "w", encoding="utf-8") as file_handler:
             json.dump(objects_dicts, file_handler, indent=indent)
 
-    def clear_cache(self, entity_class):
+    def clear_cache(self, entity_class, all_cache=False):
         """
         Clear all cache of this entity class
 
+        :param all_cache:
         :param entity_class:
         :return:
         """
@@ -652,6 +654,9 @@ class Boto3Client:
         cache_dir = os.path.join(self.main_cache_dir_path, aws_api_account.name)
         if not os.path.exists(cache_dir):
             return False
+        if all_cache:
+            shutil.rmtree(cache_dir)
+
         entity_class_file_raw_name = entity_class.get_cache_file_name().replace(".json", "")
 
         logger.info(f"Starting clearing cache per region in '{cache_dir}'")
@@ -708,7 +713,12 @@ class Boto3Client:
         if get_tags:
             file_name = file_name.replace(".", "_tags.")
         aws_api_account = AWSAccount.get_aws_account()
-        return os.path.join(self.main_cache_dir_path, aws_api_account.name, region_dir_name, self.client_cache_dir_name, file_name)
+
+        cache_client_dir_path = os.path.join(self.main_cache_dir_path, aws_api_account.name, region_dir_name, self.client_cache_dir_name)
+        if not os.path.exists(cache_client_dir_path):
+            os.makedirs(cache_client_dir_path, exist_ok=True)
+
+        return os.path.join(cache_client_dir_path, file_name)
 
     @staticmethod
     def load_objects_from_cache(class_type, file_path):
