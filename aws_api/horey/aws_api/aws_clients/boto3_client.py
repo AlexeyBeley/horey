@@ -719,6 +719,8 @@ class Boto3Client:
         @return:
         """
 
+        logger.info(f"Loading '{class_type}' objects from cache file: {file_path}")
+
         if not os.path.exists(file_path):
             return None
         with open(file_path, encoding="utf-8") as file_handler:
