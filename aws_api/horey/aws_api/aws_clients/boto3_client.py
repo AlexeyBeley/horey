@@ -659,6 +659,7 @@ class Boto3Client:
             logger.info(f"Starting clearing regional cache for '{region_name}'")
             region_client_dir = os.path.join(cache_dir, region_name, self.client_cache_dir_name)
             if not os.path.exists(region_client_dir):
+                logger.info(f"Path does not exist: '{region_client_dir}'")
                 continue
             logger.info(f"Starting clearing regional cache for client dir '{self.client_cache_dir_name}'")
             for file_name in os.listdir(region_client_dir):
