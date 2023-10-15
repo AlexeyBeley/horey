@@ -21,6 +21,7 @@ class IamPolicy(AwsObject):
         self.versions = None
         self.description = None
         self.default_version_id = None
+        self.path = None
 
         super().__init__(dict_src, from_cache=from_cache)
         if from_cache:
@@ -67,8 +68,8 @@ class IamPolicy(AwsObject):
         :return:
         """
 
-        dict_ret = {"PolicyName": self.name, "PolicyDocument": self.document, "Description": self.description,
-                    "Tags": self.tags}
+        dict_ret = {"PolicyName": self.name, "PolicyDocument": self.document}
+        self.extend_request_with_required_parameters(dict_ret, ["Description", "Path", "Tags"])
         return dict_ret
 
     def generate_delete_policy_version_request(self):
@@ -143,7 +144,9 @@ class IamPolicy(AwsObject):
             "UpdateDate": self.init_default_attr,
             "Tags": self.init_default_attr,
             "Description": self.init_default_attr,
-            "Document": self.init_document
+            "Document": self.init_document,
+            "VersionId": self.init_default_attr,
+            "IsDefaultVersion": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -156,7 +159,7 @@ class IamPolicy(AwsObject):
         :return:
         """
 
-        return f"arn:aws:iam::{account_id}:policy/{self.name}"
+        return f"arn:aws:iam::{account_id}:policy{self.path if self.path else '/'}{self.name}"
 
     class Document(AwsObject):
         """

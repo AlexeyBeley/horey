@@ -82,6 +82,7 @@ class AWSCleaner:
                                 "Expired/missing certificates information has to be cleaned from Route 53.")
         tb_ret_tmp.lines.append("Load balancers dns addresses: Missing Load Balancer.")
         tb_ret_tmp.lines.append("Load balancers dns addresses: Missing DNS record pointing to the load balancer DNS address.")
+        tb_ret_tmp.lines.append("AssociateVPCWithHostedZone: erased VPCs ids associated with hosted zone.")
         tb_ret.blocks.append(tb_ret_tmp)
 
         tb_ret_tmp = TextBlock("ACM")

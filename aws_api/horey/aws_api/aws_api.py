@@ -2906,7 +2906,7 @@ class AWSAPI:
             "HostedZoneId": master_hosted_zone.id,
             "ChangeBatch": {"Changes": changes},
         }
-        self.route53_client.raw_change_resource_record_sets(request)
+        self.route53_client.change_resource_record_sets_raw(request)
 
     def dispose_hosted_zone_resource_record_sets(self, hosted_zone, records):
         """
@@ -2933,7 +2933,7 @@ class AWSAPI:
         if not changes:
             return
         request = {"HostedZoneId": hosted_zone.id, "ChangeBatch": {"Changes": changes}}
-        self.route53_client.raw_change_resource_record_sets(request)
+        self.route53_client.change_resource_record_sets_raw(request)
 
     def dispose_load_balancer(self, load_balancer):
         """
@@ -3859,12 +3859,12 @@ class AWSAPI:
         @return:
         """
 
-        filters = [
+        filters_req = {"Filters": [
             {"Name": "vpc-id", "Values": [vpc.id]},
             {"Name": "tag:Name", "Values": [name]},
-        ]
+        ]}
 
-        subnets = self.ec2_client.get_region_subnets(vpc.region, filters=filters)
+        subnets = self.ec2_client.get_region_subnets(vpc.region, filters_req=filters_req)
         if len(subnets) != 1:
             raise RuntimeError(f"Can not find subnet '{name}' in vpc {vpc.id}")
 
