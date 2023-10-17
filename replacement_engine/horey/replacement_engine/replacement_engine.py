@@ -143,6 +143,8 @@ class ReplacementEngine:
                     single_key_results_aggregator.append(aggregator_string_source)
             results_aggregator = single_key_results_aggregator
 
+        return results_aggregator
+
     @staticmethod
     def perform_raw_recursive_cartesian_replacements(json_src, string_to_list_replacements):
         """
