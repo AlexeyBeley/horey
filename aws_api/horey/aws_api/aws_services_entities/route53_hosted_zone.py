@@ -210,7 +210,6 @@ class HostedZone(AwsObject):
 
             changes.append(change)
 
-        breakpoint()
         if len(changes) != 0:
             return {
                 "HostedZoneId": self.id,
@@ -237,6 +236,5 @@ class HostedZone(AwsObject):
         for vpc_association in desired_state.vpc_associations:
             if vpc_association not in self.vpc_associations:
                 associate_requests.append({"HostedZoneId": self.id, "VPC": vpc_association})
-        breakpoint()
 
         return associate_requests, disassociate_requests

@@ -121,7 +121,7 @@ class Route53Client(Boto3Client):
             self.change_resource_record_sets_raw(request)
 
         associate_requests, disassociate_requests = current_hosted_zone.generate_association_requests(hosted_zone, declarative=declarative)
-        breakpoint()
+
         if associate_requests:
             self.associate_vpc_with_hosted_zone_raw(associate_requests)
 
