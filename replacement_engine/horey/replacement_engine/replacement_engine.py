@@ -160,6 +160,10 @@ class ReplacementEngine:
                 raise ReplacementEngine.UnresolvedReplacementsError(
                     f"Not all STRING_REPLACEMENT_ were replaced in {json_src}"
                 )
+            return json_src
+
+        if json_src is None:
+            return None
 
         if isinstance(json_src, (bool, float, int)):
             return json_src
@@ -178,7 +182,7 @@ class ReplacementEngine:
                 ret += results_aggregator
             return ret
 
-        raise ValueError(f"Unknown type: {json_src}")
+        raise ValueError(f"Unknown type: {json_src=}, {type(json_src)=}")
 
     @staticmethod
     def perform_raw_cartesian_replacements(str_src, string_to_list_replacements):
