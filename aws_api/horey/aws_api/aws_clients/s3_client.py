@@ -1125,18 +1125,19 @@ class S3Client(Boto3Client):
             AWSAccount.set_aws_region(bucket.region)
             response = self.provision_bucket_raw(bucket.generate_create_request())
             bucket.location = response
+            if bucket.policy is not None:
+                self.put_bucket_policy_raw(bucket.generate_put_bucket_policy_request())
         else:
             if bucket.region != current_bucket.region:
                 raise RuntimeError(
                     f"Provisioning bucket {bucket.name} in '{bucket.region.region_mark}' fails. "
                     f"Exists in region '{current_bucket.region.region_mark}'"
                 )
+            if current_bucket.policy is None and bucket.policy is not None:
+                self.put_bucket_policy_raw(bucket.generate_put_bucket_policy_request())
 
-        if bucket.policy is not None:
-            self.put_bucket_policy_raw(bucket.generate_put_bucket_policy_request())
-
-        if bucket.acl is not None:
-            self.put_bucket_acl_raw(bucket.generate_put_bucket_acl_request())
+            if current_bucket.acl is None and bucket.acl is not None:
+                self.put_bucket_acl_raw(bucket.generate_put_bucket_acl_request())
 
     def provision_bucket_raw(self, request_dict):
         """

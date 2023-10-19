@@ -519,3 +519,19 @@ class AwsObject:
             attr_value = getattr(self, attr_name)
             if attr_value is not None:
                 request[attribute] = attr_value
+
+    def extend_request_with_required_parameters(self, request, camel_case_parameters):
+        """
+        Extend the request dictionary - changes the input object!
+
+        :param request:
+        :param camel_case_parameters:
+        :return:
+        """
+
+        for attribute in camel_case_parameters:
+            attr_name = CommonUtils.camel_case_to_snake_case(attribute)
+            attr_value = getattr(self, attr_name)
+            if not attr_value:
+                raise ValueError(f"Attribute {attr_name} is not set, value: '{attr_value}'")
+            request[attribute] = attr_value

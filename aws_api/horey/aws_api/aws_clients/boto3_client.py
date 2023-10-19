@@ -654,8 +654,10 @@ class Boto3Client:
         cache_dir = os.path.join(self.main_cache_dir_path, aws_api_account.name)
         if not os.path.exists(cache_dir):
             return False
+
         if all_cache:
             shutil.rmtree(cache_dir)
+            return True
 
         entity_class_file_raw_name = entity_class.get_cache_file_name().replace(".json", "")
 

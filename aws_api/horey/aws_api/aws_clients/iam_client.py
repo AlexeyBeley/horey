@@ -676,6 +676,7 @@ class IamClient(Boto3Client):
         """
 
         existing_policy = IamPolicy({})
+        existing_policy.path = policy_desired.path
         existing_policy.arn = policy_desired.generate_arn(self.account_id)
         if not self.update_policy_information(existing_policy, full_information=True):
             for existing_policy in self.yield_policies(full_information=False):
@@ -699,7 +700,7 @@ class IamClient(Boto3Client):
             ):
                 break
 
-        logger.info(f"Updating policy: {create_version_request}")
+        logger.info(f"Pushing new policy version: {create_version_request}")
         for _ in self.execute(
             self.client.create_policy_version, "PolicyVersion", filters_req=create_version_request
         ):
@@ -715,7 +716,6 @@ class IamClient(Boto3Client):
         """
 
         logger.warning(f"Creating iam policy: {request_dict}")
-
         for response in self.execute(
             self.client.create_policy, "Policy", filters_req=request_dict
         ):

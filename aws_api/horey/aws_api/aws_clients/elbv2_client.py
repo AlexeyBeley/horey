@@ -304,7 +304,7 @@ class ELBV2Client(Boto3Client):
         """
 
         region_load_balancers = self.get_region_load_balancers(
-            load_balancer.region, full_information=False, names=[load_balancer.name]
+            load_balancer.region, full_information=False, filters_req={"Names": [load_balancer.name]}
         )
         for region_load_balancer in region_load_balancers:
             if region_load_balancer.get_state() not in [

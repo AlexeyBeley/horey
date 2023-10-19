@@ -64,14 +64,13 @@ class Route53Client(Boto3Client):
 
         return hosted_zones
 
-    def get_hosted_zone_full_information(self, hosted_zone):
+    def get_hosted_zone_full_information(self, hosted_zone: HostedZone):
         """
         Standard.
 
         :param hosted_zone:
         :return:
         """
-
         hosted_zone.records = []
         for update_info in self.execute(
             self.client.list_resource_record_sets,
@@ -80,61 +79,57 @@ class Route53Client(Boto3Client):
         ):
             hosted_zone.update_record_set(update_info)
 
+        for response in self.execute(
+            self.client.get_hosted_zone,
+            None,
+            raw_data=True,
+            filters_req={"Id": hosted_zone.id},
+        ):
+            response.update(response["HostedZone"])
+            del response["ResponseMetadata"]
+            del response["HostedZone"]
+            hosted_zone.update_from_raw_response(response)
 
-    def provision_hosted_zone(self, hosted_zone):
+    def provision_hosted_zone(self, hosted_zone, declarative=False):
         """
         Standard.
 
+        :param declarative:
         :param hosted_zone:
         :return:
         """
 
-        changes = []
-        for record in hosted_zone.records:
-            change = {
-                "Action": "UPSERT",
-                "ResourceRecordSet": {
-                    "Name": record.name,
-                    "Type": record.type,
-                }
-            }
-
-            if record.ttl is not None:
-                change["ResourceRecordSet"]["TTL"] = record.ttl
-
-            if record.resource_records is not None:
-                change["ResourceRecordSet"]["ResourceRecords"] = record.resource_records
-
-            if record.alias_target is not None:
-                change["ResourceRecordSet"]["AliasTarget"] = record.alias_target
-
-            changes.append(change)
-
-        hosted_zones = self.get_all_hosted_zones(name=hosted_zone.name)
+        hosted_zones = self.get_all_hosted_zones(name=hosted_zone.name, full_information=False)
         if len(hosted_zones) > 1:
             raise ValueError(
                 f"More then 1 '{hosted_zone.name}' hosted_zone found: {len(hosted_zones)}"
             )
 
-        if len(hosted_zones) == 1:
-            hosted_zone.update_from_raw_response(hosted_zones[0].dict_src)
-        else:
+        if len(hosted_zones) == 0:
             request = hosted_zone.generate_create_request()
             response = self.raw_create_hosted_zone(request)
             hosted_zone.id = response["Id"]
+            self.associate_hosted_zone(hosted_zone)
+            return hosted_zone
 
-        self.associate_hosted_zone(hosted_zone)
+        current_hosted_zone = hosted_zones[0]
+        self.get_hosted_zone_full_information(current_hosted_zone)
 
-        if len(changes) != 0:
-            request = {
-                "HostedZoneId": hosted_zone.id,
-                "ChangeBatch": {"Changes": changes},
-            }
-            self.raw_change_resource_record_sets(request)
+        hosted_zone.id = current_hosted_zone.id
+        request = current_hosted_zone.generate_change_resource_record_sets_request(hosted_zone)
+        if request:
+            self.change_resource_record_sets_raw(request)
 
-        hosted_zones = self.get_all_hosted_zones(name=hosted_zone.name)
-        hosted_zone.update_from_raw_response(hosted_zones[0].dict_src)
-        hosted_zone.records = hosted_zones[0].records
+        associate_requests, disassociate_requests = current_hosted_zone.generate_association_requests(hosted_zone, declarative=declarative)
+
+        if associate_requests:
+            self.associate_vpc_with_hosted_zone_raw(associate_requests)
+
+        if disassociate_requests:
+            self.disassociate_vpc_from_hosted_zone_raw(disassociate_requests)
+
+        self.get_hosted_zone_full_information(hosted_zone)
+        return hosted_zone
 
     def update(self, hosted_zone):
         """
@@ -160,7 +155,7 @@ class Route53Client(Boto3Client):
 
         for vpc_association in hosted_zone.vpc_associations:
             associate_request = {"HostedZoneId": hosted_zone.id, "VPC": vpc_association}
-            self.raw_associate_vpc_with_hosted_zone(associate_request)
+            self.associate_vpc_with_hosted_zone_raw(associate_request)
 
     def raw_create_hosted_zone(self, request_dict):
         """
@@ -176,7 +171,7 @@ class Route53Client(Boto3Client):
         ):
             return response
 
-    def raw_associate_vpc_with_hosted_zone(self, request_dict):
+    def associate_vpc_with_hosted_zone_raw(self, request_dict):
         """
         Standard.
 
@@ -193,7 +188,24 @@ class Route53Client(Boto3Client):
         ):
             return response
 
-    def raw_change_resource_record_sets(self, request_dict):
+    def disassociate_vpc_from_hosted_zone_raw(self, request_dict):
+        """
+        Standard.
+
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Disassociating VPC from hosted zone: {request_dict}")
+        for response in self.execute(
+                self.client.disassociate_vpc_from_hosted_zone,
+                "ChangeInfo",
+                filters_req=request_dict,
+                exception_ignore_callback=lambda exception: "ConflictingDomainExists" in repr(exception)
+        ):
+            return response
+
+    def change_resource_record_sets_raw(self, request_dict):
         """
         Standard.
 
@@ -202,18 +214,13 @@ class Route53Client(Boto3Client):
         """
 
         logger.info(f"Updating hosted zone record set: {request_dict}")
-        try:
-            for response in self.execute(
-                self.client.change_resource_record_sets,
-                "ChangeInfo",
-                filters_req=request_dict,
-            ):
-                return response
-        except Exception as exception_instance:
-            repr_exception = repr(exception_instance)
-            if "already exists" not in repr_exception:
-                raise
-            logger.warning(repr_exception)
+
+        for response in self.execute(
+            self.client.change_resource_record_sets,
+            "ChangeInfo",
+            filters_req=request_dict,
+        ):
+            return response
 
         return None
 
