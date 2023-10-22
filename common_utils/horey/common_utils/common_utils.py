@@ -94,6 +94,37 @@ class CommonUtils:
                 setattr(obj_dst, key_src, value)
 
     @staticmethod
+    def init_from_api_dict(obj_dst, dict_src, custom_types=None, validate_attributes=True):
+        """
+        Init object from dict
+
+        :param custom_types:
+        :param obj_dst:
+        :param dict_src:
+        :param validate_attributes:
+        :return:
+        """
+
+        obj_dst.dict_src = dict_src
+        known_attributes = list(obj_dst.__dict__.keys())
+        unknown_attributes = []
+        for key_src, value in dict_src.items():
+            attribute_new_name = CommonUtils.camel_case_to_snake_case(key_src)
+            if attribute_new_name not in known_attributes:
+                unknown_attributes.append(attribute_new_name)
+
+            if custom_types and key_src in custom_types:
+                setattr(obj_dst, attribute_new_name, custom_types[key_src](value))
+            else:
+                setattr(obj_dst, attribute_new_name, value)
+
+        if unknown_attributes:
+            composed_errors = [f"self.{CommonUtils.camel_case_to_snake_case(key_src)} = None" for key_src in unknown_attributes]
+            print("\n".join(composed_errors))
+            if validate_attributes:
+                raise ValueError(unknown_attributes)
+
+    @staticmethod
     def init_horey_cached_type(value):
         """
         Init automatically cached values

@@ -300,13 +300,14 @@ class SNSClient(Boto3Client):
         :param subscription:
         :return:
         """
-        region_subscriptions = self.get_region_subscriptions(subscription.region)
+        region_subscriptions = self.get_region_subscriptions(subscription.region, full_information=False)
         for region_subscription in region_subscriptions:
             if (
                 region_subscription.endpoint == subscription.endpoint
                 and region_subscription.topic_arn == subscription.topic_arn
             ):
                 subscription.update_from_raw_response(region_subscription.dict_src)
+                self.get_subscription_full_information(subscription)
                 return
 
         AWSAccount.set_aws_region(subscription.region)

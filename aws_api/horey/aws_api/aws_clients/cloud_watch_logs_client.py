@@ -265,6 +265,7 @@ class CloudWatchLogsClient(Boto3Client):
         for response in self.execute(
             self.client.create_log_group, None, raw_data=True, filters_req=request_dict
         ):
+            self.clear_cache(CloudWatchLogGroup)
             return response
 
     def put_log_lines(self, log_group, lines, log_stream_name=None):
