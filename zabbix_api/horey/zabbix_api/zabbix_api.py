@@ -2,7 +2,6 @@
 Shamelessly stolen from:
 https://github.com/lukecyca/pyzabbix
 """
-import pdb
 
 import requests
 import json
@@ -35,6 +34,9 @@ class ZabbixAPIException(Exception):
 
 
 class ZabbixAPI(object):
+    """
+    Main class
+    """
     def __init__(self, configuration: ZabbixAPIConfigurationPolicy = None):
         if configuration.session is not None:
             self.session = configuration.session
@@ -93,6 +95,12 @@ class ZabbixAPI(object):
 
     @property
     def is_authenticated(self):
+        """
+        Checks if auth works.
+
+        :return:
+        """
+
         try:
             self.user.checkAuthentication(sessionid=self.auth)
         except ZabbixAPIException:
@@ -113,9 +121,23 @@ class ZabbixAPI(object):
         )["result"]
 
     def api_version(self):
+        """
+        Standard.
+
+        :return:
+        """
+
         return self.apiinfo.version()
 
     def do_request(self, method, params=None):
+        """
+        Perform post request.
+
+        :param method:
+        :param params:
+        :return:
+        """
+
         request_json = {
             "jsonrpc": "2.0",
             "method": method,
@@ -178,6 +200,12 @@ class ZabbixAPI(object):
         return ZabbixAPIObjectClass(attr, self)
 
     def init_hosts(self):
+        """
+        Fetch hosts.
+
+        :return:
+        """
+
         self.login()
         host_dicts = self.host.get(
             selectGroups="extend",
@@ -196,27 +224,48 @@ class ZabbixAPI(object):
         self.hosts = [Host(host_dict) for host_dict in host_dicts]
 
     def init_templates(self):
+        """
+        Fetch templates
+        :return:
+        """
         self.login()
-        templates = self.template.get()
-        for template in templates:
-            if template["name"] != "Linux CPU by Zabbix agent active":
-                continue
-            pdb.set_trace()
-        # hosts = self.host.get(filter={"host": host_name}, selectInterfaces=["interfaceid"])
+        return self.template.get()
+
 
     def raw_create_host(self, dict_request):
+        """
+        Create host using prepared request.
+
+        :param dict_request:
+        :return:
+        """
+
         logger.info(f"Raw create Zabbix host: {dict_request['host']}")
         response = self.host.create(**dict_request)
         logger.info(response)
         return response
 
     def raw_update_host(self, dict_request):
+        """
+        Update host using ready request.
+
+        :param dict_request:
+        :return:
+        """
+
         logger.info(f"Raw update Zabbix host: {dict_request['host']}")
         response = self.host.update(**dict_request)
         logger.info(response)
         return response
 
     def get_host_id(self, host_src):
+        """
+        Find host id by hostname.
+
+        :param host_src:
+        :return:
+        """
+
         self.init_hosts()
         for host in self.hosts:
             if host.host == host_src.host:
@@ -224,18 +273,40 @@ class ZabbixAPI(object):
         raise RuntimeError(f"Host not found {host_src.host}")
 
     def delete_host(self, host_src):
+        """
+        Remove host by hostname.
+
+        :param host_src:
+        :return:
+        """
+
         self.init_hosts()
         for host in self.hosts:
             if host.host == host_src.host:
                 self.raw_delete_host(host.generate_delete_request())
+                return True
+        return True
 
     def raw_delete_host(self, request):
+        """
+        Delete host using ready request.
+
+        :param request:
+        :return:
+        """
+
         logger.info(f"Raw delete Zabbix host: {request}")
         response = self.host.delete(*request)
         logger.info(response)
         return response
 
     def provision_host(self, host):
+        """
+        Create or update a host.
+
+        :param host:
+        :return:
+        """
         logger.info(f"Provisioning Zabbix host: {host.name}")
         try:
             response = self.raw_create_host(host.generate_create_request())
@@ -256,6 +327,9 @@ class ZabbixAPI(object):
 
 
 class ZabbixAPIObjectClass(object):
+    """
+    Base object class
+    """
     def __init__(self, name, parent):
         self.name = name
         self.parent = parent
