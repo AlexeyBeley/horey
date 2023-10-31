@@ -2383,11 +2383,35 @@ class EC2Client(Boto3Client):
         :return:
         """
 
-        ret = []
-        AWSAccount.set_aws_region(region)
-        for response in self.execute(self.client.describe_instance_types, "InstanceTypes"):
-            ret.append(EC2InstanceType(response))
-        return ret
+        return list(self.yield_instance_types(region=region))
+
+    def yield_instance_types(self, region=None, update_info=False, filters_req=None):
+        """
+        Yield over all instance_types.
+
+        :return:
+        """
+
+        regional_fetcher_generator = self.yield_instance_types_raw
+        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                  EC2InstanceType,
+                                                  update_info=update_info,
+                                                  regions=[region] if region else None,
+                                                                    filters_req=filters_req):
+            yield certificate
+
+    def yield_instance_types_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.client.describe_instance_types, "InstanceTypes", filters_req=filters_req
+        ):
+            yield dict_src
+
 
     def yield_volumes(self, region=None, update_info=False, filters_req=None):
         """

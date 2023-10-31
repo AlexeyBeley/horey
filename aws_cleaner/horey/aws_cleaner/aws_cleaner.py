@@ -48,10 +48,10 @@ class AWSCleaner:
         tb_ret_tmp = TextBlock("Cloudwatch")
         tb_ret_tmp.lines.append("Cloudwatch alarms can have issues. They can fault to be triggered.")
         tb_ret_tmp.lines.append("One reason - sns topic policy does not grant permissions to the alarm to publish.")
-        tb_ret_tmp.lines.append("Use client.describe_alarm_history functionality to fetch history about failed to trigger actios.")
+        tb_ret_tmp.lines.append(
+            "Use client.describe_alarm_history functionality to fetch history about failed to trigger actios.")
         tb_ret_tmp.lines.append("Check if there are cloudwatch metrics to see failing alarm actions.")
         tb_ret.blocks.append(tb_ret_tmp)
-
 
         tb_ret_tmp = TextBlock("VPC")
         tb_ret_tmp.lines.append("There are sometimes routing black holes towards erases VPC peering connection.")
@@ -81,7 +81,8 @@ class AWSCleaner:
         tb_ret_tmp.lines.append("ACM Certificates need to be validated using Route 53 records. "
                                 "Expired/missing certificates information has to be cleaned from Route 53.")
         tb_ret_tmp.lines.append("Load balancers dns addresses: Missing Load Balancer.")
-        tb_ret_tmp.lines.append("Load balancers dns addresses: Missing DNS record pointing to the load balancer DNS address.")
+        tb_ret_tmp.lines.append(
+            "Load balancers dns addresses: Missing DNS record pointing to the load balancer DNS address.")
         tb_ret_tmp.lines.append("AssociateVPCWithHostedZone: erased VPCs ids associated with hosted zone.")
         tb_ret.blocks.append(tb_ret_tmp)
 
@@ -96,7 +97,8 @@ class AWSCleaner:
         tb_ret.blocks.append(tb_ret_tmp)
 
         tb_ret_tmp = TextBlock("SNS")
-        tb_ret_tmp.lines.append("find sns topics set to handle cloudwatch alarms but have no policy permitting cloudwatch sending sns.")
+        tb_ret_tmp.lines.append(
+            "find sns topics set to handle cloudwatch alarms but have no policy permitting cloudwatch sending sns.")
         tb_ret_tmp.lines.append("Too permissive default policy- policy permitting Topic deletion to *")
         tb_ret_tmp.lines.append("Delivery status logging disabled")
         tb_ret_tmp.lines.append("Delivery status logging is not permitting logging for subscription protocol")
@@ -106,10 +108,13 @@ class AWSCleaner:
         tb_ret.blocks.append(tb_ret_tmp)
 
         tb_ret_tmp = TextBlock("IAM")
-        tb_ret_tmp.lines.append("Action per service: for example * action on  ECR:* and S3:* - bad idea, you must manage at least per service")
-        tb_ret_tmp.lines.append("Single role should permit deletion on *, all others must be restricted either by region or by resource arn")
+        tb_ret_tmp.lines.append(
+            "Action per service: for example * action on  ECR:* and S3:* - bad idea, you must manage at least per service")
+        tb_ret_tmp.lines.append(
+            "Single role should permit deletion on *, all others must be restricted either by region or by resource arn")
 
-        tb_ret_tmp.lines.append("To check an option to do report per resource: for example who can delete RDS/ECS/Lambda - which roles/policies and who can use them - user/ec2-instance/lambda")
+        tb_ret_tmp.lines.append(
+            "To check an option to do report per resource: for example who can delete RDS/ECS/Lambda - which roles/policies and who can use them - user/ec2-instance/lambda")
         tb_ret.blocks.append(tb_ret_tmp)
 
         tb_ret_tmp = TextBlock("EC2")
@@ -129,9 +134,9 @@ class AWSCleaner:
         tb_ret.blocks.append(tb_ret_tmp)
 
         tb_ret_tmp = TextBlock("Cloudtrail")
-        tb_ret_tmp.lines.append("Check there are policies to trail user activity such as Delete and remove deletion protection")
+        tb_ret_tmp.lines.append(
+            "Check there are policies to trail user activity such as Delete and remove deletion protection")
         tb_ret.blocks.append(tb_ret_tmp)
-
 
         return tb_ret
 
@@ -158,17 +163,18 @@ class AWSCleaner:
             self.aws_api.init_sesv2_accounts()
 
         return [{
-                "Sid": "SES",
-                "Effect": "Allow",
-                "Action": ["ses:ListConfigurationSets"],
-                "Resource": "*"
-            },
+            "Sid": "SES",
+            "Effect": "Allow",
+            "Action": ["ses:ListConfigurationSets"],
+            "Resource": "*"
+        },
             {
                 "Sid": "SESConfigSet",
                 "Effect": "Allow",
                 "Action": ["ses:GetConfigurationSet"],
-                "Resource": [f"arn:aws:ses:{region.region_mark}:{self.aws_api.acm_client.account_id}:configuration-set/*"
-                         for region in AWSAccount.get_aws_account().regions.values()]
+                "Resource": [
+                    f"arn:aws:ses:{region.region_mark}:{self.aws_api.acm_client.account_id}:configuration-set/*"
+                    for region in AWSAccount.get_aws_account().regions.values()]
             },
             {
                 "Sid": "SESEmailIdentities",
@@ -184,7 +190,7 @@ class AWSCleaner:
                     f"arn:aws:ses:{region.region_mark}:{self.aws_api.acm_client.account_id}:identity/*"
                     for region in AWSAccount.get_aws_account().regions.values()]
             }
-            ]
+        ]
 
     def init_cloudwatch_metrics(self, permissions_only=False):
         """
@@ -197,12 +203,12 @@ class AWSCleaner:
             self.aws_api.init_cloud_watch_metrics()
 
         return [{
-                "Sid": "cloudwatchMetrics",
-                "Effect": "Allow",
-                "Action": "cloudwatch:ListMetrics",
-                "Resource": "*"
-            }
-            ]
+            "Sid": "cloudwatchMetrics",
+            "Effect": "Allow",
+            "Action": "cloudwatch:ListMetrics",
+            "Resource": "*"
+        }
+        ]
 
     def init_sns(self, permissions_only=False):
         """
@@ -233,7 +239,6 @@ class AWSCleaner:
 
         if not permissions_only and not self.aws_api.cloud_watch_alarms:
             self.aws_api.init_cloud_watch_alarms()
-
 
         return [{
             "Sid": "CloudwatchAlarms",
@@ -561,7 +566,6 @@ class AWSCleaner:
         if not permissions_only and (not self.aws_api.rds_db_clusters or
                                      not self.aws_api.rds_db_subnet_groups or
                                      not self.aws_api.rds_db_instances):
-
             self.aws_api.init_rds_db_clusters(full_information=True)
             self.aws_api.init_rds_db_subnet_groups()
             self.aws_api.init_rds_db_cluster_snapshots()
@@ -603,7 +607,8 @@ class AWSCleaner:
                 "Sid": "DescribeDBClusterSnapshotAttributes",
                 "Effect": "Allow",
                 "Action": ["rds:DescribeDBClusterSnapshotAttributes", "rds:ListTagsForResource"],
-                "Resource": [f"arn:aws:rds:{region.region_mark}:{self.aws_api.acm_client.account_id}:cluster-snapshot:*" for
+                "Resource": [f"arn:aws:rds:{region.region_mark}:{self.aws_api.acm_client.account_id}:cluster-snapshot:*"
+                             for
                              region in AWSAccount.get_aws_account().regions.values()]
             },
         ]
@@ -1398,12 +1403,15 @@ class AWSCleaner:
             dimension_value = aws_lambda.name
             namespaces = ["AWS/Lambda"]
             dimension_name = "FunctionName"
-            metrics = self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_metrics, namespaces, dimension_name, dimension_value)
+            metrics = self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_metrics,
+                                                                             namespaces, dimension_name,
+                                                                             dimension_value)
             if not metrics:
                 tb_ret.lines.append(f"Lambda '{aws_lambda.name}' has no available metrics.")
                 continue
 
-            alarms = self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_alarms, namespaces, dimension_name, dimension_value)
+            alarms = self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_alarms, namespaces,
+                                                                            dimension_name, dimension_value)
             inactive_alarms = []
             crucial_alarms = ["Errors", "Invocations", "Duration", "ConcurrentExecutions"]
             for alarm in alarms:
@@ -1581,16 +1589,23 @@ class AWSCleaner:
             dimension_value = rds_cluster.id
             namespaces = ["AWS/RDS"]
             dimension_name = "DBClusterIdentifier"
-            metrics = self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_metrics, namespaces, dimension_name, dimension_value)
+            metrics = self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_metrics,
+                                                                             namespaces, dimension_name,
+                                                                             dimension_value)
             dimension_name_1 = "DbClusterIdentifier"
-            metrics += self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_metrics, namespaces, dimension_name_1, dimension_value)
+            metrics += self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_metrics,
+                                                                              namespaces, dimension_name_1,
+                                                                              dimension_value)
             if not metrics:
                 tb_ret.lines.append(f"RDS Cluster: {rds_cluster.id} has no available metrics.")
                 continue
 
-            alarms = self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_alarms, namespaces, dimension_name, dimension_value)
+            alarms = self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_alarms, namespaces,
+                                                                            dimension_name, dimension_value)
             dimension_name_1 = "DbClusterIdentifier"
-            alarms += self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_alarms, namespaces, dimension_name_1, dimension_value)
+            alarms += self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_alarms,
+                                                                             namespaces, dimension_name_1,
+                                                                             dimension_value)
             inactive_alarms = []
             active_alarms = []
             for alarm in alarms:
@@ -1629,12 +1644,15 @@ class AWSCleaner:
             dimension_value = rds_instance.id
             namespaces = ["AWS/RDS"]
             dimension_name = "DBInstanceIdentifier"
-            metrics = self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_metrics, namespaces, dimension_name, dimension_value)
+            metrics = self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_metrics,
+                                                                             namespaces, dimension_name,
+                                                                             dimension_value)
             if not metrics:
                 tb_ret.lines.append(f"RDS DB Instance: {rds_instance.id} has no available metrics.")
                 continue
 
-            alarms = self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_alarms, namespaces, dimension_name, dimension_value)
+            alarms = self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_alarms, namespaces,
+                                                                            dimension_name, dimension_value)
             inactive_alarms = []
             active_alarms = []
             for alarm in alarms:
@@ -1717,8 +1735,8 @@ class AWSCleaner:
                 f"'{cluster.default_engine_version['EngineVersion']}'")
 
         subnet_group = \
-        CommonUtils.find_objects_by_values(self.aws_api.rds_db_subnet_groups, {"name": cluster.db_subnet_group},
-                                           max_count=1)[0]
+            CommonUtils.find_objects_by_values(self.aws_api.rds_db_subnet_groups, {"name": cluster.db_subnet_group},
+                                               max_count=1)[0]
         for dict_subnet in subnet_group.subnets:
             subnet_id = dict_subnet['SubnetIdentifier']
             subnet = CommonUtils.find_objects_by_values(self.aws_api.subnets, {"id": subnet_id}, max_count=1)[0]
@@ -1744,7 +1762,7 @@ class AWSCleaner:
         for dict_security_group in cluster.vpc_security_groups:
             sg_id = dict_security_group["VpcSecurityGroupId"]
             security_group = \
-            CommonUtils.find_objects_by_values(self.aws_api.security_groups, {"id": sg_id}, max_count=1)[0]
+                CommonUtils.find_objects_by_values(self.aws_api.security_groups, {"id": sg_id}, max_count=1)[0]
             for ip, service in security_group.get_ingress_pairs():
                 if service is Service.any():
                     tb_ret.lines.append(f"SG '{security_group.name}' {ip}:{service}")
@@ -1827,7 +1845,7 @@ class AWSCleaner:
                 no_retention.append(f"{group.name}: No retention")
 
             metric_filters = CommonUtils.find_objects_by_values(self.aws_api.cloud_watch_log_groups_metric_filters,
-                                                         {"log_group_name": group.name})
+                                                                {"log_group_name": group.name})
             all_metric_filters += metric_filters
             if not metric_filters:
                 no_metrics.append(f"{group.name}: No metric filters")
@@ -1841,14 +1859,15 @@ class AWSCleaner:
             tb_ret_tmp.lines = [
                                    f"Same filter pattern '{filter_pattern}' appears in  multiple metric filters: {[metric.name for metric in _metric_filters]}"
                                    for filter_pattern, _metric_filters in metric_filters_patterns.items() if
-                                   len(_metric_filters)>1] + tb_ret_tmp.lines
+                                   len(_metric_filters) > 1] + tb_ret_tmp.lines
 
             if tb_ret_tmp.lines or tb_ret_tmp.blocks:
                 tb_ret.blocks.append(tb_ret_tmp)
         tb_ret.lines = no_retention + no_metrics
 
         if len(all_metric_filters) != len(self.aws_api.cloud_watch_log_groups_metric_filters):
-            tb_ret.lines.append(f"Something went wrong Checked metric filters count {len(all_metric_filters)} != fetched via AWS API {len(self.aws_api.cloud_watch_log_groups_metric_filters)}")
+            tb_ret.lines.append(
+                f"Something went wrong Checked metric filters count {len(all_metric_filters)} != fetched via AWS API {len(self.aws_api.cloud_watch_log_groups_metric_filters)}")
 
         with open(self.configuration.cloud_watch_report_file_path, "w+",
                   encoding="utf-8") as file_handler:
@@ -2083,15 +2102,18 @@ class AWSCleaner:
 
         tb_ret = TextBlock("Load Balancer monitoring report")
         for load_balancer in self.aws_api.load_balancers:
-            dimension_value = load_balancer.arn[load_balancer.arn.find(":loadbalancer/")+len(":loadbalancer/"):]
+            dimension_value = load_balancer.arn[load_balancer.arn.find(":loadbalancer/") + len(":loadbalancer/"):]
             namespaces = ["AWS/ApplicationELB", "AWS/NetworkELB"]
             dimension_name = "LoadBalancer"
-            metrics = self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_metrics, namespaces, dimension_name, dimension_value)
+            metrics = self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_metrics,
+                                                                             namespaces, dimension_name,
+                                                                             dimension_value)
             if not metrics:
                 tb_ret.lines.append(f"Load Balancer: {load_balancer.name} has no available metrics.")
                 continue
 
-            alarms = self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_alarms, namespaces, dimension_name, dimension_value)
+            alarms = self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_alarms, namespaces,
+                                                                            dimension_name, dimension_value)
             inactive_alarms = []
             active_alarms = []
             for alarm in alarms:
@@ -2131,15 +2153,18 @@ class AWSCleaner:
 
         tb_ret = TextBlock("Target Groups monitoring report")
         for target_group in self.aws_api.target_groups:
-            dimension_value = target_group.arn[target_group.arn.find(":targetgroup/")+1:]
+            dimension_value = target_group.arn[target_group.arn.find(":targetgroup/") + 1:]
             namespaces = ["AWS/ApplicationELB", "AWS/NetworkELB"]
             dimension_name = "TargetGroup"
-            metrics = self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_metrics, namespaces, dimension_name, dimension_value)
+            metrics = self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_metrics,
+                                                                             namespaces, dimension_name,
+                                                                             dimension_value)
             if not metrics:
                 tb_ret.lines.append(f"Target Group: {target_group.name} has no available metrics.")
                 continue
 
-            alarms = self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_alarms, namespaces, dimension_name, dimension_value)
+            alarms = self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_alarms, namespaces,
+                                                                            dimension_name, dimension_value)
             inactive_alarms = []
             active_alarms = []
             for alarm in alarms:
@@ -2191,7 +2216,7 @@ class AWSCleaner:
                 continue
 
             if dimension_value not in [dimension["Value"] for dimension in mon_obj.dimensions if
-                             dimension["Name"] == dimension_name]:
+                                       dimension["Name"] == dimension_name]:
                 continue
             lst_ret.append(mon_obj)
         return lst_ret
@@ -2408,7 +2433,7 @@ class AWSCleaner:
         tb_ret = TextBlock("Configuration sets report")
         for conf_set in self.aws_api.sesv2_configuration_sets:
             if conf_set.reputation_options and \
-                "ReputationMetricsEnabled" in conf_set.reputation_options and \
+                    "ReputationMetricsEnabled" in conf_set.reputation_options and \
                     not conf_set.reputation_options.get("ReputationMetricsEnabled"):
                 tb_ret.lines.append(f"Configuration Set {conf_set.name} Reputation metrics disabled.")
             if not conf_set.event_destinations:
@@ -2416,7 +2441,8 @@ class AWSCleaner:
             else:
                 for event_destination in conf_set.event_destinations:
                     if not event_destination["Enabled"]:
-                        tb_ret.lines.append(f"Configuration Set '{conf_set.name}' Event destination '{event_destination['Name']}' disabled")
+                        tb_ret.lines.append(
+                            f"Configuration Set '{conf_set.name}' Event destination '{event_destination['Name']}' disabled")
 
         return tb_ret if tb_ret.lines or tb_ret.blocks else None
 
@@ -2466,11 +2492,11 @@ class AWSCleaner:
             return tb_ret
 
         recommended_metrics = ["Reputation.BounceRate",
-                                    "Reputation.ComplaintRate",
-                                    "Reputation.DeliveriesEligibleForBounceRate",
-                                    "Reputation.DeliveriesEligibleForComplaintRate",
-                                    "RenderingFailure",
-                                    "Bounce", "PublishFailure", "PublishExpired"]
+                               "Reputation.ComplaintRate",
+                               "Reputation.DeliveriesEligibleForBounceRate",
+                               "Reputation.DeliveriesEligibleForComplaintRate",
+                               "RenderingFailure",
+                               "Bounce", "PublishFailure", "PublishExpired"]
         nice_to_have_metrics = ["Open", "Delivery", "Send", "PublishSuccess", "Received", "Click"]
 
         known_metrics = recommended_metrics + nice_to_have_metrics
@@ -2482,15 +2508,19 @@ class AWSCleaner:
 
             metric_alarms = self.find_cloudwatch_metric_alarms(metric, alarms=alarms)
             if len(metric_alarms) > 1:
-                tb_ret.lines.append(f"Unknown Cloudwatch Metric status. Multiple alarms found for metric: {metric.name}: {[alarm.name for alarm in metric_alarms]}" )
+                tb_ret.lines.append(
+                    f"Unknown Cloudwatch Metric status. Multiple alarms found for metric: {metric.name}: {[alarm.name for alarm in metric_alarms]}")
 
             if not metric_alarms:
                 if metric.name in recommended_metrics:
-                    critical_report.append(f"Critical Alarm missing for metric: {metric.name}. {metric.dict_dimensions}")
+                    critical_report.append(
+                        f"Critical Alarm missing for metric: {metric.name}. {metric.dict_dimensions}")
                 elif metric.name in nice_to_have_metrics:
-                    nice_to_have_report.append(f"Nice to have Alarm for metric: {metric.name}. {metric.dict_dimensions}")
+                    nice_to_have_report.append(
+                        f"Nice to have Alarm for metric: {metric.name}. {metric.dict_dimensions}")
                 elif metric.name not in known_metrics:
-                    tb_ret.lines.append(f"Unknown Cloudwatch Metric: '{metric.name}'. {metric.dict_dimensions}. Can not deside if alarm is needed.")
+                    tb_ret.lines.append(
+                        f"Unknown Cloudwatch Metric: '{metric.name}'. {metric.dict_dimensions}. Can not deside if alarm is needed.")
         tb_ret.lines += critical_report + nice_to_have_report
         return tb_ret if tb_ret.lines or tb_ret.blocks else None
 
@@ -2616,12 +2646,15 @@ class AWSCleaner:
             dimension_value = topic.name
             namespaces = ["AWS/SNS"]
             dimension_name = "TopicName"
-            metrics = self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_metrics, namespaces, dimension_name, dimension_value)
+            metrics = self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_metrics,
+                                                                             namespaces, dimension_name,
+                                                                             dimension_value)
             if not metrics:
                 tb_ret.lines.append(f"Topic: {topic.name} has no available metrics.")
                 continue
 
-            alarms = self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_alarms, namespaces, dimension_name, dimension_value)
+            alarms = self.find_cloudwatch_object_by_namespace_and_dimension(self.aws_api.cloud_watch_alarms, namespaces,
+                                                                            dimension_name, dimension_value)
             inactive_alarms = []
             active_alarms = []
             for alarm in alarms:
@@ -2640,3 +2673,352 @@ class AWSCleaner:
                 tb_ret.blocks.append(tb_ret_tmp)
 
         return tb_ret if tb_ret.lines or tb_ret.blocks else None
+
+    def cleanup_report_ec2_pricing(self, regions):
+        """
+        Generate EC2 instance types pricing reports
+
+        :param regions:
+        :return:
+        """
+
+        for region in regions:
+            self.cleanup_report_ec2_pricing_per_region(region)
+
+    def cleanup_report_ec2_pricing_per_region(self, region, permissions_only=False):
+        """
+        Generate EC2 instance types pricing report per region
+
+        :return:
+        """
+
+        if permissions_only:
+            permissions = self.sub_cleanup_report_ec2_pricing_per_region(region, permissions_only=permissions_only)
+            return permissions
+
+        tb_ret = TextBlock("Pricing cleanup")
+
+        tb_ret_tmp = self.sub_cleanup_report_ec2_pricing_per_region(region)
+        if tb_ret_tmp:
+            tb_ret.blocks.append(tb_ret_tmp)
+
+        tb_ret.write_to_file(
+            self.configuration.ec2_pricing_per_region_report_file_template.format(region=region.region_mark))
+        return tb_ret
+
+    def sub_cleanup_report_ec2_pricing_per_region(self, region, permissions_only=False):
+        """
+        Generate report based on available region ec2 instance types
+
+        :param region:
+        :return:
+        """
+
+        if permissions_only:
+            return [{
+                "Sid": "DescribeInstanceTypes",
+                "Effect": "Allow",
+                "Action": "ec2:DescribeInstanceTypes",
+                "Resource": "*"
+                },
+                {
+                    "Sid": "Pricing",
+                    "Effect": "Allow",
+                    "Action": ["pricing:ListPriceLists", "pricing:GetPriceListFileUrl"],
+                    "Resource": "*"
+                }
+            ]
+
+        region_instance_types = self.aws_api.ec2_client.get_region_instance_types(region)
+        region_instance_types = [_type.instance_type for _type in region_instance_types]
+
+        service_code = "AmazonEC2"
+        price_list = self.aws_api.get_price_list(region, service_code)
+
+        region_products = self.get_region_available_instance_type_products(region_instance_types, price_list)
+        tb_ret = TextBlock(f"Cleanup report of ec2 pricing in region {region.region_mark}")
+
+        tb_ret_tmp = self.sub_cleanup_report_ec2_cpu_pricing_per_region(region_products, price_list)
+        tb_ret.blocks.append(tb_ret_tmp)
+        output_file = self.configuration.aws_api_cleanups_ec2_cpu_pricing_file_template.format(
+            region=region.region_mark)
+
+        tb_ret_tmp.write_to_file(output_file)
+        logger.info(f"Output is at {output_file}")
+
+        # tb_ret_tmp = self.sub_cleanup_report_ec2_ratio_pricing_per_region(region_instance_types, price_list)
+        # tb_ret.blocks.append(tb_ret_tmp)
+        return tb_ret
+
+    def sub_cleanup_report_ec2_ratio_pricing_per_region(self, region_instance_types, price_list):
+        """
+        CPU / RAM ratio pricing.
+
+        :param region_instance_types:
+        :param price_list:
+        :return:
+        """
+
+        available_ratios = defaultdict(list)
+        families = []
+        for product in price_list.products.values():
+            if product["productFamily"] == "Compute Instance":
+                if product["attributes"]["operatingSystem"] != "Linux":
+                    continue
+                if product["attributes"]["memory"].endswith("GiB"):
+                    float_memory = product["attributes"]["memory"] = float(
+                        product["attributes"]["memory"][:-len(" GiB")])
+                else:
+                    raise NotImplementedError(f'{product["attributes"]["memory"]=}')
+                float_cpu = float(product["attributes"]["vcpu"])
+
+                ratio = round(float_cpu / float_memory, 3)
+                available_ratios[ratio].append(product)
+            elif product["productFamily"] not in families:
+                families.append(product["productFamily"])
+        required_ratios = {0.5: defaultdict(list), 1: defaultdict(list)}
+
+        # pylint: disable= too-many-nested-blocks
+        for cpu_ram_ratio, products_by_price_dict in required_ratios.items():
+            min_ratio = cpu_ram_ratio * 0.8
+            max_ratio = cpu_ram_ratio * 1.2
+            for available_ratio, products in available_ratios.items():
+                if min_ratio <= available_ratio <= max_ratio:
+                    for product in products:
+                        if len(price_list.terms["OnDemand"][product["sku"]]) != 1:
+                            raise NotImplementedError(f'{len(price_list.terms["OnDemand"][product["sku"]])=}')
+                        for sku_value in price_list.terms["OnDemand"][product["sku"]].values():
+                            if len(sku_value["priceDimensions"]) != 1:
+                                raise NotImplementedError(f'{len(sku_value["priceDimensions"])=}')
+
+                            for price_dimension in sku_value["priceDimensions"].values():
+                                price = float(price_dimension["pricePerUnit"]["USD"])
+                                if price != 0.0:
+                                    products_by_price_dict[price].append(product)
+
+        tb_ret = TextBlock(f"Best prices in")
+        for ratio, products_by_price_dict in required_ratios.items():
+            tb_ret_ratio = TextBlock(f"Sorted from cheapest : for CPU/RAM {ratio=}")
+            for price in sorted(products_by_price_dict):
+                types = [
+                    f'{product["attributes"]["instanceType"]}-{product["attributes"]["vcpu"]}/{product["attributes"]["memory"]}'
+                    for product in products_by_price_dict[price] if
+                    product["attributes"]["instanceType"] in region_instance_types]
+                types = list(set(types))
+                if types:
+                    tb_ret_ratio.lines.append(f"{price=}, {types=}")
+            tb_ret.blocks.append(tb_ret_ratio)
+
+        for ratio, price_to_product_dict in required_ratios.items():
+            tb_ret_ratio = TextBlock(f"Sorted best price/value: for CPU/RAM {ratio=}")
+
+            dict_per_giga_ram = defaultdict(list)
+            for price, products in price_to_product_dict.items():
+                for product in products:
+                    if product["attributes"]["instanceType"] not in region_instance_types:
+                        continue
+                    dict_per_giga_ram[price / product["attributes"]["memory"]].append((price, product))
+
+            for price_per_giga_ram in sorted(dict_per_giga_ram):
+                for price, product in dict_per_giga_ram[price_per_giga_ram]:
+                    line = f'{product["attributes"]["instanceType"]}-{product["attributes"]["vcpu"]}/{product["attributes"]["memory"]}'
+                    tb_ret_ratio.lines.append(f"{price_per_giga_ram=}, {price=}, {line}")
+            tb_ret.blocks.append(tb_ret_ratio)
+
+        tb_ret.lines.append(f"More pricing families to optimize the costs: {families}")
+
+        return tb_ret
+
+    @staticmethod
+    def get_region_available_instance_type_products(region_instance_types, price_list):
+        """
+        Get only products available in the region.
+
+        :param region_instance_types:
+        :param price_list:
+        :return:
+        """
+        lst_ret = []
+        for product in price_list.products.values():
+            if product["productFamily"] != "Compute Instance":
+                continue
+
+            if product["attributes"]["operatingSystem"] != "Linux":
+                continue
+
+            if product["attributes"]["instanceType"] not in region_instance_types:
+                continue
+            lst_ret.append(Product(product))
+        return lst_ret
+
+    def sub_cleanup_report_ec2_cpu_pricing_per_region(self, region_products, price_list,
+                                                      min_cores=2,
+                                                      max_cores=16,
+                                                      capacitystatus="Used",
+                                                      tenancy="Shared"):
+        """
+        Generate per cpu costs.
+        https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/capacity-reservations-pricing-billing.html
+        "For example, if you create a Capacity Reservation for 20 m4.large Linux instances and run 15 m4.large
+        Linux instances in the same Availability Zone, you will be charged for 15 active instances and for 5 unused
+        instances in the reservation."
+
+        :param max_cores:
+        :param min_cores:
+        :param region_products:
+        :param price_list:
+        :param capacitystatus:
+        :param tenancy:
+        :return:
+        """
+        seen_types = {}
+        tb_ret = TextBlock("Instance types sorted by single core price")
+        products_by_cpu_cost = defaultdict(list)
+        for product in region_products:
+            if product.cpu > max_cores or product.cpu < min_cores:
+                continue
+
+            if product.capacitystatus != capacitystatus:
+                continue
+
+            if product.tenancy != tenancy:
+                continue
+
+            if "graviton" in str(product.physical_processor).lower():
+                continue
+
+            price = self.get_price_by_sku(price_list, product.sku)
+            if price == 0:
+                continue
+
+            products_by_cpu_cost[price/product.cpu].append(product)
+
+        for price in sorted(products_by_cpu_cost):
+            price_products = products_by_cpu_cost[price]
+            for product in price_products:
+                if product.instance_type in seen_types:
+                    report_line = f"{price}$: {product.instance_type} [{product.cpu} Cores/ {product.ram} RAM]"
+                    for attr_name, attr_value in product.attributes.items():
+                        if seen_types[product.instance_type].attributes[attr_name] != attr_value:
+                            report_line += " {"+f"{attr_name}: '{seen_types[product.instance_type].attributes[attr_name]}'/'{attr_value}'" +"}"
+                else:
+                    seen_types[product.instance_type] = product
+                    report_line = f"{price}$: {product.instance_type} [{product.cpu} Cores/ {product.ram} RAM]"
+                tb_ret.lines.append(report_line)
+        return tb_ret
+
+    def cleanup_report_lambda_pricing(self, regions):
+        """
+        Generate Lambda pricing report
+
+        :return:
+        """
+
+        for region in regions:
+            self.cleanup_report_lambda_pricing_per_region(region)
+
+    def cleanup_report_lambda_pricing_per_region(self, region):
+        """
+        Generate Lambda pricing report per region
+
+        :param region:
+        :return:
+        """
+
+        service_code = "AWSLambda"
+        price_lists = self.aws_api.get_price_list(region, service_code)
+        prices_with_products = []
+        for product in price_lists["products"].values():
+            try:
+                range_point = None
+                if product["attributes"]["usagetype"] in ["Lambda-GB-Second", "Lambda-GB-Second-ARM"]:
+                    range_point = 0
+                price = self.get_price_by_sku(price_lists, product["sku"], range_point=range_point)
+            except self.ServiceUsageRangePointMissingError as error_inst:
+                raise RuntimeError(product) from error_inst
+            if product["attributes"]["groupDescription"] == "Invocation call for a Lambda function":
+                print(product["attributes"])
+            prices_with_products.append(
+                (price, product["attributes"]["groupDescription"], product["attributes"]["usagetype"]))
+
+        for line in sorted(prices_with_products, key=lambda x: x[0]):
+            print(line)
+
+    def get_price_by_sku(self, price_list, sku, range_point=None):
+        """
+        Get the actual price by SKU.
+
+        :param range_point:
+        :param price_lists:
+        :param sku:
+        :return:
+        """
+
+        if len(price_list.terms["OnDemand"][sku]) != 1:
+            raise NotImplementedError(f"{price_list.terms['OnDemand'][sku]=}")
+
+        for sku_value in price_list.terms["OnDemand"][sku].values():
+            if len(sku_value["priceDimensions"]) == 1:
+                for price_dimension in sku_value["priceDimensions"].values():
+                    return float(price_dimension["pricePerUnit"]["USD"])
+
+            if range_point is None:
+                raise self.ServiceUsageRangePointMissingError(f"Range point should be set if there are multiple ranges: {sku_value['priceDimensions']}")
+
+            for price_dimension in sku_value["priceDimensions"].values():
+                if float(price_dimension["beginRange"]) <= range_point <= float(price_dimension["endRange"]):
+                    return float(price_dimension["pricePerUnit"]["USD"])
+
+        raise RuntimeError(f"Could not find price for SKU: {sku}")
+
+    class ServiceUsageRangePointMissingError(RuntimeError):
+        """
+        No value set for range decision
+        """
+
+class Product:
+    """
+    Pricing product.
+    """
+
+    def __init__(self, dict_src):
+        self.dict_src = dict_src
+        self.attributes = dict_src["attributes"]
+
+    @property
+    def cpu(self):
+        return float(self.attributes["vcpu"])
+
+    @property
+    def ram(self):
+        return self.attributes["memory"]
+
+    @property
+    def capacitystatus(self):
+        return self.attributes["capacitystatus"]
+
+    @property
+    def instance_type(self):
+        return self.attributes["instanceType"]
+
+    @property
+    def tenancy(self):
+        return self.attributes["tenancy"]
+
+    @property
+    def sku(self):
+        return self.dict_src["sku"]
+
+    @property
+    def physical_processor(self):
+        return self.attributes.get("physicalProcessor")
+
+    def print_attributes(self):
+        """
+        Print self attributes.
+
+        :return:
+        """
+
+        for attr_pair in self.attributes.items():
+            print(attr_pair)

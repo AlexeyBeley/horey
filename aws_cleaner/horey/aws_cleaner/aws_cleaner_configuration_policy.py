@@ -402,6 +402,21 @@ class AWSCleanerConfigurationPolicy(ConfigurationPolicy):
         return os.path.join(self.sns_reports_dir, "sns.txt")
 
     @property
+    def pricing_reports_dir(self):
+        ret = os.path.join(self.reports_dir, "pricing")
+        if not os.path.exists(ret):
+            os.makedirs(ret, exist_ok=True)
+        return ret
+
+    @property
+    def ec2_pricing_per_region_report_file_template(self):
+        return os.path.join(self.pricing_reports_dir, "ec2_pricing_{region}.txt")
+
+    @property
+    def aws_api_cleanups_ec2_cpu_pricing_file_template(self):
+        return os.path.join(self.pricing_reports_dir, "ec2_per_cpu_pricing_{region}.txt")
+
+    @property
     def cache_dir(self):
         return self._cache_dir
 

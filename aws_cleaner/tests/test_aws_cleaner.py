@@ -10,6 +10,7 @@ from horey.aws_cleaner.aws_cleaner import AWSCleaner
 from horey.aws_cleaner.aws_cleaner_configuration_policy import (
     AWSCleanerConfigurationPolicy,
 )
+from horey.aws_api.base_entities.region import Region
 
 
 @pytest.fixture(name="configuration")
@@ -23,22 +24,23 @@ def fixture_configuration():
     _configuration = AWSCleanerConfigurationPolicy()
     _configuration.reports_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "reports")
     _configuration.cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")
-    _configuration.aws_api_account_name = "development"
+    #_configuration.aws_api_account_name = "development"
     #_configuration.managed_accounts_file_path = os.path.abspath(
     #    os.path.join(
     #        os.path.dirname(os.path.abspath(__file__)),
+    #        "..", "..", "..",
+    #        "ignore",
+    #        "accounts",
     #        "aws_managed_accounts.py",
     #    )
     #)
     _configuration.managed_accounts_file_path = os.path.abspath(
         os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
-            "..", "..", "..",
-            "ignore",
-            "accounts",
             "aws_managed_accounts.py",
         )
     )
+    _configuration.aws_api_account_name = "cleaner"
     return _configuration
 
 
@@ -734,11 +736,28 @@ def test_sub_cleanup_report_rds_snapshots(configuration):
     assert ret is not None
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_cleanup_report_ses(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.cleanup_report_ses()
     assert len(cleaner.aws_api.sesv2_configuration_sets) > 0
+    assert ret is not None
+
+@pytest.mark.wip
+def test_cleanup_report_ec2_pricing_per_region_us_east_1(configuration):
+    cleaner = AWSCleaner(configuration)
+    ret = cleaner.cleanup_report_ec2_pricing_per_region(Region.get_region("ap-southeast-2"))
+    ret = cleaner.cleanup_report_ec2_pricing_per_region(Region.get_region("us-west-1"))
+    ret = cleaner.cleanup_report_ec2_pricing_per_region(Region.get_region("us-east-1"))
+    ret = cleaner.cleanup_report_ec2_pricing_per_region(Region.get_region("ca-central-1"))
+    ret = cleaner.cleanup_report_ec2_pricing_per_region(Region.get_region("af-south-1"))
+    ret = cleaner.cleanup_report_ec2_pricing_per_region(Region.get_region("eu-west-1"))
+    ret = cleaner.cleanup_report_ec2_pricing_per_region(Region.get_region("eu-central-1"))
+    ret = cleaner.cleanup_report_ec2_pricing_per_region(Region.get_region("eu-west-2"))
+    ret = cleaner.cleanup_report_ec2_pricing_per_region(Region.get_region("sa-east-1"))
+    ret = cleaner.cleanup_report_ec2_pricing_per_region(Region.get_region("il-central-1"))
+    ret = cleaner.cleanup_report_ec2_pricing_per_region(Region.get_region("us-west-2"))
+    ret = cleaner.cleanup_report_ec2_pricing_per_region(Region.get_region("us-east-2"))
     assert ret is not None
 
 

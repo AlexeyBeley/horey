@@ -1,51 +1,46 @@
 """
-Testing pricing client functionality
-
+Test Pricing client
 """
 import os
+import datetime
+import pytest
 
 from horey.aws_api.aws_clients.pricing_client import PricingClient
 from horey.aws_api.base_entities.region import Region
+from horey.common_utils.common_utils import CommonUtils
 
-from horey.h_logger import get_logger
 
-configuration_values_file_full_path = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "h_logger_configuration_values.py"
-)
-logger = get_logger(
-    configuration_values_file_full_path=configuration_values_file_full_path
-)
-
-accounts_file_full_path = os.path.abspath(
+mock_values_file_path = os.path.abspath(
     os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "..",
-        "ignore",
-        "aws_api_configuration_values_all_access.py",
+        os.path.dirname(os.path.abspath(__file__)), "..", "ignore", "mock_values.py"
     )
 )
+mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
+
+
+PricingClient().main_cache_dir_path = os.path.abspath(
+        os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "..", "..", "..",
+            "ignore",
+            "cache"
+        )
+    )
 
 # pylint: disable= missing-function-docstring
 
-
-def test_init_cloudfront_client():
+@pytest.mark.wip
+def test_init_pricing_client():
     assert isinstance(PricingClient(), PricingClient)
 
-def test_get_price_list_urls():
-    """
-
-    :return:
-    """
+@pytest.mark.wip
+def test_yield_price_lists():
     client = PricingClient()
-    ret = client.get_price_list_urls("AWSLambda", Region.get_region("us-east-1"))
-    assert len(ret) == 1
-
-def test_get_services():
-    client = PricingClient()
-    ret = client.get_services()
-    assert len(ret) > 0
-
-if __name__ == "__main__":
-    # test_init_cloudfront_client()
-    # test_get_services()
-    test_get_price_list_urls()
+    price_list = None
+    region = Region.get_region("us-west-2")
+    for price_list in client.yield_price_lists(region=region, filters_req={"ServiceCode":"AmazonEC2",
+                             "EffectiveDate": datetime.datetime.now(),
+                             "RegionCode": region.region_mark,
+                             "CurrencyCode": "USD"}):
+        break
+    assert price_list.version is not None

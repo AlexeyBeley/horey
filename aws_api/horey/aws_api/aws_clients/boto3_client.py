@@ -695,7 +695,7 @@ class Boto3Client:
             with open(file_path, "w", encoding="utf-8") as file_handler:
                 json.dump(objects, file_handler, indent=4)
 
-    def generate_cache_file_path(self, class_type, region_dir_name, full_information, get_tags):
+    def generate_cache_file_path(self, class_type, region_dir_name, full_information, get_tags, cache_suffix=None):
         """
         Generate cache file path to write and read from.
 
@@ -703,6 +703,8 @@ class Boto3Client:
         :param full_information:
         :param class_type:
         :param region_dir_name:
+        :param cache_suffix:
+
         :return:
         """
 
@@ -714,6 +716,9 @@ class Boto3Client:
             file_name = file_name.replace(".", "_full_info.")
         if get_tags:
             file_name = file_name.replace(".", "_tags.")
+        if cache_suffix:
+            file_name = file_name.replace(".", f"_{cache_suffix}.")
+
         aws_api_account = AWSAccount.get_aws_account()
 
         cache_client_dir_path = os.path.join(self.main_cache_dir_path, aws_api_account.name, region_dir_name, self.client_cache_dir_name)
@@ -748,7 +753,8 @@ class Boto3Client:
                                       update_info=False,
                                       regions=None,
                                       global_service=False,
-                                      filters_req=None):
+                                      filters_req=None,
+                                      cache_filter_callback=None):
         """
         Be sure you know what you do, when you set full_information=True.
         This can kill your memory, if you have a lot of data.
@@ -763,6 +769,7 @@ class Boto3Client:
         :param update_info: Fetch the data form AWS API
         :param regions: regions to fetch the entities from
         :param global_service: no need to go over all regions - use the one set in AWSAccount or the first one of available
+        :param cache_filter_callback: Cache and load from cache filtered items. Generates cache file prefix
         :return:
         """
 
@@ -785,22 +792,25 @@ class Boto3Client:
             raise ValueError(f"Was not able to find region while fetching {entity_class} information.")
 
         for region in regions:
-            for obj in  self.region_service_entities_generator(
+            for obj in self.region_service_entities_generator(
                 region, regional_fetcher_generator, entity_class,
                 full_information_callback=full_information_callback,
                 get_tags_callback=get_tags_callback,
                 update_info=update_info,
-                filters_req=filters_req
+                filters_req=filters_req,
+                cache_filter_callback=cache_filter_callback
             ):
                 yield obj
 
+    # pylint: disable= too-many-locals
     def region_service_entities_generator(self, region,
                                           regional_fetcher_generator,
                                           entity_class,
                                           full_information_callback=None,
                                           get_tags_callback=None,
                                           update_info=False,
-                                          filters_req=None):
+                                          filters_req=None,
+                                          cache_filter_callback=None):
         """
         Get region log groups.
 
@@ -811,13 +821,20 @@ class Boto3Client:
         :param update_info:
         :param filters_req:
         :param region:
+        :param cache_filter_callback:
         :return:
         """
 
         full_information = full_information_callback is not None
         get_tags = get_tags_callback is not None
-        file_name = self.generate_cache_file_path(entity_class, region.region_mark, full_information, get_tags)
-        if not update_info and not filters_req:
+
+        if cache_filter_callback and filters_req:
+            cache_suffix = cache_filter_callback(filters_req)
+        else:
+            cache_suffix = None
+        file_name = self.generate_cache_file_path(entity_class, region.region_mark, full_information, get_tags, cache_suffix=cache_suffix)
+
+        if not update_info and (not filters_req or cache_filter_callback):
             objects = self.load_objects_from_cache(entity_class, file_name)
             if objects is not None:
                 for obj in objects:
@@ -835,5 +852,6 @@ class Boto3Client:
             obj.region = region
             final_result.append(obj)
             yield obj
-        if filters_req is None:
+
+        if filters_req is None or cache_filter_callback:
             self.cache_objects(final_result, file_name)
