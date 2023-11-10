@@ -67,7 +67,7 @@ class ReplacementEngine:
                 new_file_contents = ReplacementEngine.perform_raw_cartesian_replacements(new_file_contents, cartesian_replacements)
         except Exception as exception_instance:
             raise ValueError(
-                f"Replacing file contents of {os.path.join(root, filename)}"
+                f"Replacing file contents of {os.path.join(root, filename)}: {repr(exception_instance)}"
             ) from exception_instance
 
         new_filename = filename[len("template_") :]

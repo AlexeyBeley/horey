@@ -1317,15 +1317,16 @@ class EC2Client(Boto3Client):
 
         return list(self.yield_route_tables(region=region))
 
-    def get_region_route_tables(self, region):
+    def get_region_route_tables(self, region, update_info=False):
         """
         Standard
 
         @param region:
+        @param update_info:
         @return:
         """
 
-        return list(self.yield_route_tables(region=region))
+        return list(self.yield_route_tables(region=region, update_info=update_info))
 
     def get_all_elastic_addresses(self, full_information=True, region=None):
         """
@@ -2467,3 +2468,30 @@ class EC2Client(Boto3Client):
             final_result.append(EC2VolumeModification(dict_src))
 
         return final_result
+
+    def modify_instance_attribute_raw(self, request):
+        """
+        modify_instance_attribute request.
+
+        :return:
+        """
+
+        logger.info(f"Modifying instance: {request}")
+        for response in self.execute(
+                self.client.modify_instance_attribute, None, raw_data=True, filters_req=request
+        ):
+            self.clear_cache(EC2Instance)
+            return response
+
+    def start_instances_raw(self, request):
+        """
+        modify_instance_attribute request.
+
+        :return:
+        """
+
+        logger.info(f"Starting instances: {request}")
+        for response in self.execute(
+                self.client.start_instances, "StartingInstances", filters_req=request
+        ):
+            return response

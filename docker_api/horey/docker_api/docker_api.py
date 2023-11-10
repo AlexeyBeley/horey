@@ -99,24 +99,24 @@ class DockerAPI:
         key = "status"
         if key in log_line:
             logger.info(log_line[key])
-            return
+            return True
 
         key = "stream"
         if key in log_line:
             logger.info(log_line[key])
-            return
+            return True
 
         key = "aux"
         if key in log_line:
             logger.info(log_line[key])
-            return
+            return True
 
         key = "error"
         if key in log_line:
-            logger.error(log_line[key])
-            return
+            raise DockerAPI.OutputError(log_line)
 
         logger.error(f"Unknown keys in: {log_line}")
+        return True
 
     def tag_image(self, image, tags):
         """
@@ -140,6 +140,7 @@ class DockerAPI:
         @return:
         """
 
+        errors_detected = False
         logger.info(f"Uploading image to repository {repo_tags}")
         for repository in repo_tags:
             logger.info(f"Uploading {repository} to repository")
@@ -147,8 +148,15 @@ class DockerAPI:
             for log_line in self.client.images.push(
                 repository=repository, stream=True, decode=True
             ):
-                self.print_log_line(log_line)
+                try:
+                    self.print_log_line(log_line)
+                except DockerAPI.OutputError:
+                    errors_detected = True
+
             time_end = datetime.datetime.now()
+            if errors_detected:
+                raise RuntimeError(f"Failed to upload {repository} took {time_end-time_start} time.")
+
             logger.info(
                 f"Uploading repository {repository} took {time_end-time_start} time."
             )
@@ -317,3 +325,8 @@ class DockerAPI:
                     child_ids.append(image.id)
                     break
         return child_ids
+
+    class OutputError(RuntimeError):
+        """
+        Error caught in a log line.
+        """

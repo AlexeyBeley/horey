@@ -13,6 +13,7 @@ from horey.h_logger import get_logger
 from horey.aws_api.aws_api import AWSAPI
 from horey.aws_api.aws_api_configuration_policy import AWSAPIConfigurationPolicy
 from horey.aws_cleaner.aws_cleaner_configuration_policy import AWSCleanerConfigurationPolicy
+from horey.aws_cleaner.price_list_product import PriceListProduct
 from horey.common_utils.text_block import TextBlock
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.common_utils.common_utils import CommonUtils
@@ -2746,86 +2747,59 @@ class AWSCleaner:
         tb_ret_tmp.write_to_file(output_file)
         logger.info(f"Output is at {output_file}")
 
-        # tb_ret_tmp = self.sub_cleanup_report_ec2_ratio_pricing_per_region(region_instance_types, price_list)
-        # tb_ret.blocks.append(tb_ret_tmp)
+        tb_ret_tmp = self.sub_cleanup_report_ec2_ratio_pricing_per_region(region_products, price_list)
+        tb_ret.blocks.append(tb_ret_tmp)
         return tb_ret
 
-    def sub_cleanup_report_ec2_ratio_pricing_per_region(self, region_instance_types, price_list):
+    def sub_cleanup_report_ec2_ratio_pricing_per_region(self, region_products, price_list):
         """
         CPU / RAM ratio pricing.
 
-        :param region_instance_types:
+        :param region_products:
         :param price_list:
         :return:
         """
 
         available_ratios = defaultdict(list)
-        families = []
-        for product in price_list.products.values():
-            if product["productFamily"] == "Compute Instance":
-                if product["attributes"]["operatingSystem"] != "Linux":
-                    continue
-                if product["attributes"]["memory"].endswith("GiB"):
-                    float_memory = product["attributes"]["memory"] = float(
-                        product["attributes"]["memory"][:-len(" GiB")])
-                else:
-                    raise NotImplementedError(f'{product["attributes"]["memory"]=}')
-                float_cpu = float(product["attributes"]["vcpu"])
-
-                ratio = round(float_cpu / float_memory, 3)
-                available_ratios[ratio].append(product)
-            elif product["productFamily"] not in families:
-                families.append(product["productFamily"])
+        for product in region_products:
+            ratio = round(product.cpu / product.float_ram, 3)
+            available_ratios[ratio].append(product)
         required_ratios = {0.5: defaultdict(list), 1: defaultdict(list)}
 
-        # pylint: disable= too-many-nested-blocks
         for cpu_ram_ratio, products_by_price_dict in required_ratios.items():
             min_ratio = cpu_ram_ratio * 0.8
             max_ratio = cpu_ram_ratio * 1.2
             for available_ratio, products in available_ratios.items():
                 if min_ratio <= available_ratio <= max_ratio:
                     for product in products:
-                        if len(price_list.terms["OnDemand"][product["sku"]]) != 1:
-                            raise NotImplementedError(f'{len(price_list.terms["OnDemand"][product["sku"]])=}')
-                        for sku_value in price_list.terms["OnDemand"][product["sku"]].values():
-                            if len(sku_value["priceDimensions"]) != 1:
-                                raise NotImplementedError(f'{len(sku_value["priceDimensions"])=}')
+                        price = self.get_price_by_sku(price_list, product.sku)
+                        products_by_price_dict[price].append(product)
 
-                            for price_dimension in sku_value["priceDimensions"].values():
-                                price = float(price_dimension["pricePerUnit"]["USD"])
-                                if price != 0.0:
-                                    products_by_price_dict[price].append(product)
-
-        tb_ret = TextBlock(f"Best prices in")
+        tb_ret = TextBlock("Best prices per ratio")
         for ratio, products_by_price_dict in required_ratios.items():
-            tb_ret_ratio = TextBlock(f"Sorted from cheapest : for CPU/RAM {ratio=}")
+            tb_ret_ratio = TextBlock(f"Sorted from cheapest: for CPU/RAM {ratio=}")
             for price in sorted(products_by_price_dict):
                 types = [
-                    f'{product["attributes"]["instanceType"]}-{product["attributes"]["vcpu"]}/{product["attributes"]["memory"]}'
-                    for product in products_by_price_dict[price] if
-                    product["attributes"]["instanceType"] in region_instance_types]
+                    f'{product.instance_type}-{product.cpu}/{product.ram}'
+                    for product in products_by_price_dict[price]]
                 types = list(set(types))
                 if types:
                     tb_ret_ratio.lines.append(f"{price=}, {types=}")
             tb_ret.blocks.append(tb_ret_ratio)
 
         for ratio, price_to_product_dict in required_ratios.items():
-            tb_ret_ratio = TextBlock(f"Sorted best price/value: for CPU/RAM {ratio=}")
+            tb_ret_ratio = TextBlock(f"Sorted by price per 1GB RAM: for CPU/RAM {ratio=}")
 
             dict_per_giga_ram = defaultdict(list)
             for price, products in price_to_product_dict.items():
                 for product in products:
-                    if product["attributes"]["instanceType"] not in region_instance_types:
-                        continue
-                    dict_per_giga_ram[price / product["attributes"]["memory"]].append((price, product))
+                    dict_per_giga_ram[price / product.float_ram].append((price, product))
 
             for price_per_giga_ram in sorted(dict_per_giga_ram):
                 for price, product in dict_per_giga_ram[price_per_giga_ram]:
-                    line = f'{product["attributes"]["instanceType"]}-{product["attributes"]["vcpu"]}/{product["attributes"]["memory"]}'
+                    line = f'{product.instance_type}-{product.cpu}/{product.ram}'
                     tb_ret_ratio.lines.append(f"{price_per_giga_ram=}, {price=}, {line}")
             tb_ret.blocks.append(tb_ret_ratio)
-
-        tb_ret.lines.append(f"More pricing families to optimize the costs: {families}")
 
         return tb_ret
 
@@ -2848,7 +2822,7 @@ class AWSCleaner:
 
             if product["attributes"]["instanceType"] not in region_instance_types:
                 continue
-            lst_ret.append(Product(product))
+            lst_ret.append(PriceListProduct(product))
         return lst_ret
 
     def sub_cleanup_report_ec2_cpu_pricing_per_region(self, region_products, price_list,
@@ -2872,7 +2846,7 @@ class AWSCleaner:
         :return:
         """
         seen_types = {}
-        tb_ret = TextBlock("Instance types sorted by single core price")
+        tb_ret = TextBlock(f"Instance types sorted by single core price [not gravitron, {tenancy=}, {capacitystatus=}, {min_cores=}, {max_cores=}]")
         products_by_cpu_cost = defaultdict(list)
         for product in region_products:
             if product.cpu > max_cores or product.cpu < min_cores:
@@ -2949,7 +2923,7 @@ class AWSCleaner:
         Get the actual price by SKU.
 
         :param range_point:
-        :param price_lists:
+        :param price_list:
         :param sku:
         :return:
         """
@@ -2976,49 +2950,77 @@ class AWSCleaner:
         No value set for range decision
         """
 
-class Product:
-    """
-    Pricing product.
-    """
-
-    def __init__(self, dict_src):
-        self.dict_src = dict_src
-        self.attributes = dict_src["attributes"]
-
-    @property
-    def cpu(self):
-        return float(self.attributes["vcpu"])
-
-    @property
-    def ram(self):
-        return self.attributes["memory"]
-
-    @property
-    def capacitystatus(self):
-        return self.attributes["capacitystatus"]
-
-    @property
-    def instance_type(self):
-        return self.attributes["instanceType"]
-
-    @property
-    def tenancy(self):
-        return self.attributes["tenancy"]
-
-    @property
-    def sku(self):
-        return self.dict_src["sku"]
-
-    @property
-    def physical_processor(self):
-        return self.attributes.get("physicalProcessor")
-
-    def print_attributes(self):
+    def cleanup_report_ecs_usage(self, regions):
         """
-        Print self attributes.
+        Generate cleanup for regions
+
+        :param regions:
+        :return:
+        """
+
+        htb_ret = TextBlock("ECS container instances cleanup")
+        for region in regions:
+            htb_ret.blocks.append(self.cleanup_report_ecs_usage_region(region))
+        return htb_ret
+
+    def cleanup_report_ecs_usage_region(self, region):
+        """
+        Generate ecs capacity providers report per region
 
         :return:
         """
 
-        for attr_pair in self.attributes.items():
-            print(attr_pair)
+        tb_ret = TextBlock(str(region))
+        blocks_by_cluster_size = defaultdict(list)
+        for cluster in self.ecs_client.get_region_clusters(region):
+            current_container_instances = self.ecs_client.get_region_container_instances(region, cluster_identifier=cluster.arn)
+            cpu_reserved = 0
+            cpu_free = 0
+            memory_reserved = 0
+            memory_free = 0
+            for container_instance in current_container_instances:
+                for resource in container_instance.remaining_resources:
+                    if resource["name"] == "CPU":
+                        cpu_free += resource["integerValue"]/1024
+                    elif resource["name"] == "MEMORY":
+                        memory_free += resource["integerValue"]/1024
+
+                for resource in container_instance.registered_resources:
+                    if resource["name"] == "CPU":
+                        cpu_reserved += resource["integerValue"]/1024
+                    elif resource["name"] == "MEMORY":
+                        memory_reserved += resource["integerValue"]/1024
+
+            memory_gb_used = round(memory_reserved-memory_free, 2)
+            cpu_count_used = cpu_reserved-cpu_free
+            memory_reserved = round(memory_reserved, 2)
+            memory_free = round(memory_free, 2)
+
+            tb_ret_tmp = TextBlock(f"Cluster: '{cluster.name}'. Size: CPUs {cpu_reserved}, Memory {memory_reserved}GB")
+
+            if cpu_reserved > 0:
+                tb_ret_tmp.lines.append(f"CPUs: In use {cpu_count_used} Free {cpu_free}")
+            else:
+                tb_ret_tmp.lines.append("No CPU Registered")
+
+            if memory_reserved > 0:
+                tb_ret_tmp.lines.append(f"MEMORY: In use {memory_gb_used}GB Free {memory_free}GB")
+                cpu_usage = f"CPU: {round((cpu_count_used/cpu_reserved) * 100, 2)}%"
+                memory_usage = f"Memory: {round((memory_gb_used/memory_reserved) * 100, 2)}%"
+                if memory_reserved - memory_free > 0:
+                    str_ratio = str(round((cpu_count_used/memory_gb_used), 1))
+                else:
+                    str_ratio = f"{cpu_count_used} / {memory_gb_used}"
+                tb_ret_tmp.lines.append(f"Usage: {cpu_usage}, {memory_usage}, ratio: {str_ratio}")
+            else:
+                tb_ret_tmp.lines.append("No Memory Registered")
+            blocks_by_cluster_size[cpu_reserved+memory_reserved].append(tb_ret_tmp)
+
+        tb_ret.blocks = [block for key in sorted(blocks_by_cluster_size, reverse=True) for block in blocks_by_cluster_size[key]]
+
+        output_file_path = self.configuration.aws_api_cleanups_ecs_report_file_template.format(
+            region_mark=region.region_mark)
+
+        tb_ret.write_to_file(output_file_path)
+        logger.info(f"Wrote ecs cleanup to file: {output_file_path}")
+        return tb_ret

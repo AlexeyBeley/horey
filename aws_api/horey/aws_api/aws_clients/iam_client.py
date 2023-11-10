@@ -681,6 +681,8 @@ class IamClient(Boto3Client):
         if not self.update_policy_information(existing_policy, full_information=True):
             for existing_policy in self.yield_policies(full_information=False):
                 if existing_policy.name == policy_desired.name:
+                    if existing_policy.path != policy_desired.path:
+                        raise ValueError(f"Existing policy path: '{existing_policy.path}' when desired is {policy_desired.path}")
                     break
             else:
                 dict_src = self.provision_policy_raw(policy_desired.generate_create_request())

@@ -4152,6 +4152,8 @@ class AWSAPI:
             if ec2_instance.get_state() not in [
                 ec2_instance.State.PENDING,
                 ec2_instance.State.RUNNING,
+                ec2_instance.State.STOPPING,
+                ec2_instance.State.STOPPED,
             ]:
                 continue
 
@@ -4415,82 +4417,6 @@ class AWSAPI:
             raise ValueError(f'"{message_prefix}" was not found in exception') from exception
         str_message = str_exception[str_exception.find(message_prefix)+len(message_prefix):]
         return json.dumps(json.loads(self.sts_client.decode_authorization_message(str_message)), indent=2)
-
-    def cleanup_report_ecs_usage(self, regions):
-        """
-        Generate cleanup for regions
-
-        :param regions:
-        :return:
-        """
-
-        htb_ret = TextBlock("ECS container instances cleanup")
-        for region in regions:
-            htb_ret.blocks.append(self.cleanup_report_ecs_usage_region(region))
-        return htb_ret
-
-    # pylint: disable=too-many-locals, too-many-branches
-    def cleanup_report_ecs_usage_region(self, region):
-        """
-        Generate ecs capacity providers report per region
-
-        :return:
-        """
-
-        tb_ret = TextBlock(str(region))
-        blocks_by_cluster_size = defaultdict(list)
-        for cluster in self.ecs_client.get_region_clusters(region):
-            current_container_instances = self.ecs_client.get_region_container_instances(region, cluster_identifier=cluster.arn)
-            cpu_reserved = 0
-            cpu_free = 0
-            memory_reserved = 0
-            memory_free = 0
-            for container_instance in current_container_instances:
-                for resource in container_instance.remaining_resources:
-                    if resource["name"] == "CPU":
-                        cpu_free += resource["integerValue"]/1024
-                    elif resource["name"] == "MEMORY":
-                        memory_free += resource["integerValue"]/1024
-
-                for resource in container_instance.registered_resources:
-                    if resource["name"] == "CPU":
-                        cpu_reserved += resource["integerValue"]/1024
-                    elif resource["name"] == "MEMORY":
-                        memory_reserved += resource["integerValue"]/1024
-
-            memory_gb_used = round(memory_reserved-memory_free, 2)
-            cpu_count_used = cpu_reserved-cpu_free
-            memory_reserved = round(memory_reserved, 2)
-            memory_free = round(memory_free, 2)
-
-            tb_ret_tmp = TextBlock(f"Cluster: '{cluster.name}'. Size: CPUs {cpu_reserved}, Memory {memory_reserved}GB")
-
-            if cpu_reserved > 0:
-                tb_ret_tmp.lines.append(f"CPUs: In use {cpu_count_used} Free {cpu_free}")
-            else:
-                tb_ret_tmp.lines.append("No CPU Registered")
-
-            if memory_reserved > 0:
-                tb_ret_tmp.lines.append(f"MEMORY: In use {memory_gb_used}GB Free {memory_free}GB")
-                cpu_usage = f"CPU: {round((cpu_count_used/cpu_reserved) * 100, 2)}%"
-                memory_usage = f"Memory: {round((memory_gb_used/memory_reserved) * 100, 2)}%"
-                if memory_reserved - memory_free > 0:
-                    str_ratio = str(round((cpu_count_used/memory_gb_used), 1))
-                else:
-                    str_ratio = f"{cpu_count_used} / {memory_gb_used}"
-                tb_ret_tmp.lines.append(f"Usage: {cpu_usage}, {memory_usage}, ratio: {str_ratio}")
-            else:
-                tb_ret_tmp.lines.append("No Memory Registered")
-            blocks_by_cluster_size[cpu_reserved+memory_reserved].append(tb_ret_tmp)
-
-        tb_ret.blocks = [block for key in sorted(blocks_by_cluster_size, reverse=True) for block in blocks_by_cluster_size[key]]
-
-        output_file_path = self.configuration.aws_api_cleanups_ecs_report_file_template.format(
-            region_mark=region.region_mark)
-
-        tb_ret.write_to_file(output_file_path)
-        logger.info(f"Wrote ecs cleanup to file: {output_file_path}")
-        return tb_ret
 
     def get_price_list(self, region, service_code):
         """
