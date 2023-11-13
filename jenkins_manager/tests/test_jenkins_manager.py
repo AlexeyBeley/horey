@@ -4,20 +4,24 @@ Not really tests but more like a usage demonstration.
 """
 import os
 import datetime
+import pytest
 
 from horey.jenkins_manager.jenkins_manager import JenkinsManager
 from horey.jenkins_manager.jenkins_job import JenkinsJob
 from horey.jenkins_manager.jenkins_configuration_policy import JenkinsConfigurationPolicy
+from horey.jenkins_manager.build import Build
 
-influxdb_ignore_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore")
+ignore_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore")
 configuration = JenkinsConfigurationPolicy()
-configuration.configuration_file_full_path = os.path.join(influxdb_ignore_dir, "jenkins_manager_configuration.py")
+configuration.configuration_file_full_path = os.path.join(ignore_dir, "jenkins_manager_configuration.py")
 configuration.init_from_file()
 jenkins_manager = JenkinsManager(
     configuration
 )
 
+# pylint: disable= missing-function-docstring
 
+@pytest.mark.skip
 def test_cleanup():
     """
     Run the cleanup function and save the output to file.
@@ -28,7 +32,7 @@ def test_cleanup():
         fh.write(ret)
     print(ret)
 
-
+@pytest.mark.skip
 def test_connection():
     """
     Test the connection to Jenkins.
@@ -46,7 +50,7 @@ def test_connection():
 
     print(f"Succeed after {datetime.datetime.now() - begin_time}")
 
-
+@pytest.mark.skip
 def test_trigger_job():
     """
     Trigger single job.
@@ -55,7 +59,7 @@ def test_trigger_job():
     job = JenkinsJob("Horey_Test_Project_1", {})
     jenkins_manager.trigger_job(job)
 
-
+@pytest.mark.skip
 def test_execute_same_job_multiple_times():
     """
     Execute one job multiple times.
@@ -69,7 +73,7 @@ def test_execute_same_job_multiple_times():
     )
     print(report)
 
-
+@pytest.mark.skip
 def test_execute_jobs():
     """
     Execute 4 jobs multiple times.
@@ -84,7 +88,7 @@ def test_execute_jobs():
     report = jenkins_manager.execute_jobs(jobs)
     print(report)
 
-
+@pytest.mark.skip
 def test_get_job_config():
     """
     Test get single job configuration_policy.
@@ -94,7 +98,7 @@ def test_get_job_config():
     conf_xml = jenkins_manager.get_job_config(job.name)
     print(conf_xml)
 
-
+@pytest.mark.skip
 def test_save_job_config():
     """
     Test get single job configuration_policy.
@@ -103,7 +107,7 @@ def test_save_job_config():
     job = JenkinsJob("Horey_Test_Project_1", {})
     jenkins_manager.save_job_config(job.name, "./output.txt")
 
-
+@pytest.mark.skip
 def test_create_jobs():
     """
     Create the jobs to be tested.
@@ -115,7 +119,7 @@ def test_create_jobs():
     for job_ in jobs:
         jenkins_manager.create_job(job_, "job_sample.xml")
 
-
+@pytest.mark.skip
 def test_delete_jobs():
     """
     Delete the jobs created for tests.
@@ -127,21 +131,39 @@ def test_delete_jobs():
     ]
     jenkins_manager.delete_jobs(jobs)
 
-
+@pytest.mark.skip
 def test_backup_jobs():
     jenkins_manager.backup_jobs("./backups")
 
-
+@pytest.mark.skip
 def test_get_all_jobs():
     ret = jenkins_manager.get_all_jobs()
     assert isinstance(ret, list)
 
-
+@pytest.mark.skip
 def test_create_user():
-    ret = jenkins_manager.create_user("horey", "horeyhorey")
-    breakpoint()
+    jenkins_manager.create_user("horey", "horeyhorey")
+
+@pytest.mark.skip
+def test_get_job_info():
+    jenkins_manager.get_job_info("unit_tester")
+
+@pytest.mark.skip
+def test_get_build_console_output():
+    assert jenkins_manager.get_build_console_output("unit_tester", 1)
 
 
-if __name__ == "__main__":
-    # test_get_all_jobs()
-    test_create_user()
+@pytest.mark.skip
+def test_update_build_info():
+    build = Build({"name": "unit_tester", "number": 1})
+    assert jenkins_manager.update_build_info(build)
+
+@pytest.mark.skip
+def test_yield_build_logs():
+    build = Build({"name": "unit_tester", "number": 1})
+    for _ in jenkins_manager.yield_build_logs(build):
+        pass
+
+@pytest.mark.wip
+def test_get_running_builds():
+    assert isinstance(jenkins_manager.get_running_builds(), list)

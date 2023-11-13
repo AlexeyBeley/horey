@@ -1,7 +1,14 @@
+"""
+Jenkins Manager configuration policy
+"""
 from horey.configuration_policy.configuration_policy import ConfigurationPolicy
 
-
+#pylint: disable= missing-function-docstring
 class JenkinsConfigurationPolicy(ConfigurationPolicy):
+    """
+    Main class.
+
+    """
     def __init__(self):
         super().__init__()
         self._jenkins_host = None
@@ -10,6 +17,7 @@ class JenkinsConfigurationPolicy(ConfigurationPolicy):
         self._jenkins_protocol = None
         self._jenkins_port = None
         self._jenkins_timeout = None
+        self._cache_dir_path = None
 
     @property
     def jenkins_host(self):
@@ -58,3 +66,11 @@ class JenkinsConfigurationPolicy(ConfigurationPolicy):
     @jenkins_timeout.setter
     def jenkins_timeout(self, value):
         self._jenkins_timeout = value
+
+    @property
+    def cache_dir_path(self):
+        return self._cache_dir_path
+
+    @cache_dir_path.setter
+    def cache_dir_path(self, value):
+        self._cache_dir_path = value

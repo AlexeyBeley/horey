@@ -1,6 +1,7 @@
 """
 Module to handle jenkins server.
 """
+import json
 import os
 import datetime
 import time
@@ -8,9 +9,10 @@ import threading
 from collections import defaultdict
 import jenkins
 import requests
-from .jenkins_job import JenkinsJob
+from horey.jenkins_manager.node import Node
+from horey.jenkins_manager.jenkins_job import JenkinsJob
+from horey.jenkins_manager.build import Build
 from horey.h_logger import get_logger
-import pdb
 
 logger = get_logger()
 
@@ -54,6 +56,7 @@ class JenkinsManager:
     BUILDS_PER_JOB = defaultdict(lambda: defaultdict(lambda: None))
 
     def __init__(self, configuration):
+        self.configuration = configuration
         jenkins_address = configuration.jenkins_host
         username = configuration.jenkins_username
         password = configuration.jenkins_token
@@ -75,6 +78,7 @@ class JenkinsManager:
         :param jobs:
         :return:
         """
+
         self.set_jobs_current_builds(jobs)
         self.trigger_jobs(jobs)
         self.wait_for_builds_to_start_execution(jobs)
@@ -118,7 +122,7 @@ class JenkinsManager:
         )
 
     @retry_on_errors((requests.exceptions.ConnectionError,), count=5, timeout=5)
-    def thread_trigger_job(self, job):
+    def thread_trigger_job(self, job: JenkinsJob):
         """
         Function to trigger single job.
         :param job:
@@ -528,6 +532,14 @@ class JenkinsManager:
         self.delete_jobs(jobs)
 
     def find_build(self, jobs_names, search_string):
+        """
+        Find builds including a search string in their configuration.
+
+        :param jobs_names:
+        :param search_string:
+        :return:
+        """
+
         for job_name in jobs_names:
             job_info = self.get_job_info(job_name)
             for build in job_info["builds"]:
@@ -551,3 +563,156 @@ class JenkinsManager:
         breakpoint()
         job_dicts = self.server.get_all_jobs()
         return job_dicts
+
+    def get_build_console_output(self, build, start_offset=0):
+        """
+        Many thanks to:
+        https://github.com/arangamani/jenkins_api_client
+
+
+        get_msg = "/job/#{path_encode job_name}/#{build_num}/logText/progressive#{mode}?"
+        get_msg << "start=#{start}"
+        progressiveText / progressiveHTML
+        url =  self.server._build_url(request_sub_url)
+        response = self.server.jenkins_open(requests.Request("GET", url))
+
+        :param build:
+        :return:
+        """
+
+        logger.info(f"Fetching console output for {build.name=}, {build.number=}")
+        request_sub_url = f"job/{build.name}/{build.number}/logText/progressiveText?start={start_offset}"
+        return self.get(request_sub_url)
+
+    def get(self, request_sub_url):
+        """
+        Run GET.
+        https://www.postman.com/api-evangelist/workspace/jenkins/request/18795395-655e1dfd-9dd0-44c5-aa1e-7bbeadbfb065
+
+        :param request_sub_url:
+        :return:
+        """
+        url = self.server._build_url(request_sub_url)
+        response = self.server.jenkins_open(requests.Request("GET", url))
+        if not response:
+            raise ValueError(f"Was not able to extract data: '{response}'")
+        return response
+
+    def update_build_info(self, build):
+        """
+        Update_build info.
+
+        :param build:
+        :return:
+        """
+
+        try:
+            build_info = self.server.get_build_info(build.name, build.number)
+        except jenkins.JenkinsException as exception_received:
+            if "does not exist" not in repr(
+                    exception_received
+            ):
+                raise
+            return False
+
+        build.update_from_raw_response(build_info)
+        return True
+
+    def yield_build_logs(self, build, timeout=5):
+        """
+        Yield log chunks received from running build
+
+        :param build:
+        :param timeout:
+        :return:
+        """
+
+        full_log = ""
+        while not build.finished:
+            new_full_log = self.get_build_console_output(build)
+            if full_log != new_full_log:
+                log_chunk = new_full_log[len(full_log):]
+                chunk_log_lines = log_chunk.split("\n")
+                logger.info(chunk_log_lines[-2])
+                yield log_chunk
+                self.update_build_info(build)
+                full_log = new_full_log
+
+            logger.info(f"Waiting for job to finish {timeout=} seconds")
+            time.sleep(timeout)
+
+        return full_log
+
+    def get_running_builds(self):
+        """
+        Get all active builds.
+
+        :return:
+        """
+
+        busy_executors = self.find_busy_executors()
+        return [Build(busy_executor["currentExecutable"]) for busy_executor in busy_executors]
+
+    def get_nodes(self, update_info=False, depth=1):
+        """
+        Fetch nodes data.
+
+        :return:
+        """
+
+        cache_file_name = f"computer_depth_{depth}"
+        if update_info:
+            response = self.get(f"computer/api/json?depth={depth}")
+            self.cache(cache_file_name, response)
+            dict_src = json.loads(response)
+        else:
+            dict_src = self.load_from_cache(cache_file_name)
+            if dict_src is None:
+                return self.get_nodes(update_info=True, depth=depth)
+
+        nodes = [Node(computer_src) for computer_src in dict_src["computer"]]
+
+        return nodes
+    
+    def cache(self, file_name, cache_obj):
+        """
+        Cache response.
+
+        :return: 
+        """
+        if not isinstance(cache_obj, str):
+            cache_obj = json.dumps(cache_obj)
+        
+        with open(os.path.join(self.configuration.cache_dir_path, file_name), "w", encoding="utf-8") as file_handler:
+            file_handler.write(cache_obj)
+
+    def load_from_cache(self, file_name):
+        """
+        Cache response.
+
+        :return: 
+        """
+
+        file_path = os.path.join(self.configuration.cache_dir_path, file_name)
+        if not os.path.exists(file_path):
+            return None
+
+        with open(file_path, "r", encoding="utf-8") as file_handler:
+            return json.load(file_handler)
+        
+    def find_busy_executors(self, depth=2):
+        """
+        Find busy executors.
+        [{'currentExecutable': {'_class': 'org.jenkinsci.plugins.workflow.support.steps.ExecutorStepExecution$PlaceholderTask$PlaceholderExecutable', 'displayName': 'scoutbees_update_component #4125 (Build)', 'estimatedDuration': 2616353, 'fullDisplayName': 'scoutbees_update_component #4125 (Build)', 'number': 4125, 'timestamp': 1699864544118, 'url': 'http://jenkins.development.private.management.scoutbees:8080/job/scoutbees_update_component/4125/'}, 'idle': False, 'likelyStuck': False, 'number': 3, 'progress': 5}]
+
+        :return:
+        """
+
+        lst_ret = []
+        for node in self.get_nodes(update_info=False, depth=depth):
+            for executor in node.executors:
+                if executor["idle"]:
+                    continue
+                lst_ret.append(executor)
+
+        return lst_ret

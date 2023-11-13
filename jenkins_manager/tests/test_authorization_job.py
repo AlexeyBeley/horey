@@ -14,13 +14,6 @@ from horey.jenkins_manager.authorization_job.authorization_job_configuration_pol
     AuthorizationJobConfigurationPolicy,
 )
 
-from horey.common_utils.common_utils import CommonUtils
-
-mock_values_file_path = os.path.abspath(
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "ignore", "mock_values.py")
-)
-mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
-
 
 # pylint: disable=missing-function-docstring
 
@@ -29,7 +22,6 @@ configuration.authorization_map_file_path = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "authorization_map.json"
 )
 authorization_job = AuthorizationJob(configuration)
-
 
 @pytest.mark.skip(reason="Can not test")
 def test_authorization_applicator_serialize():
@@ -170,17 +162,3 @@ def test_authorization_job_authorize_deny_job_name():
         )
     )
     assert not authorization_job.authorize(request)
-
-
-if __name__ == "__main__":
-    test_authorization_applicator_serialize()
-    test_authorization_applicator_deserialize()
-    test_authorization_applicator_request_serialize()
-    test_authorization_applicator_request_init()
-    test_authorization_job_authorize_permit()
-    test_authorization_job_authorize_deny_var()
-    test_authorization_job_authorize_deny_val()
-    test_authorization_job_authorize_deny_identity()
-    test_authorization_job_authorize_deny_job_name()
-    test_authorization_applicator_request_serialize_special_chars()
-    test_authorization_applicator_request_init_special_chars()

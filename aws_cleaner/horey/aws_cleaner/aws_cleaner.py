@@ -41,6 +41,11 @@ class AWSCleaner:
     # pylint: disable= too-many-statements
     def cleanup_report_todo(self):
         """
+        Adding tags for cost calculations:
+        https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/cost-alloc-tags.html
+        And S3 tagging for cost calculations
+        put_bucket_tagging
+
         :return:
         """
 
