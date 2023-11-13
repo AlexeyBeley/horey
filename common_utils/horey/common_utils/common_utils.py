@@ -107,6 +107,11 @@ class CommonUtils:
 
         obj_dst.dict_src = dict_src
         known_attributes = list(obj_dst.__dict__.keys())
+
+        for bound_method in dir(obj_dst):
+            if f"_{bound_method}" in known_attributes:
+                known_attributes.append(bound_method)
+
         unknown_attributes = []
         for key_src, value in dict_src.items():
             attribute_new_name = CommonUtils.camel_case_to_snake_case(key_src)

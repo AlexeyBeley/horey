@@ -633,12 +633,16 @@ class JenkinsManager:
             if full_log != new_full_log:
                 log_chunk = new_full_log[len(full_log):]
                 chunk_log_lines = log_chunk.split("\n")
-                logger.info(chunk_log_lines[-2])
+                if len(chunk_log_lines) < 2:
+                    log_line_to_print = "\n".join(chunk_log_lines)
+                else:
+                    log_line_to_print = chunk_log_lines[-2]
+                logger.info(f"LOG LINE >>> {log_line_to_print}")
                 yield log_chunk
                 self.update_build_info(build)
                 full_log = new_full_log
 
-            logger.info(f"Waiting for job to finish {timeout=} seconds")
+            logger.info(f"Fetching build {build.number} logs. Going to sleep {timeout=} seconds")
             time.sleep(timeout)
 
         return full_log
@@ -709,7 +713,7 @@ class JenkinsManager:
         """
 
         lst_ret = []
-        for node in self.get_nodes(update_info=False, depth=depth):
+        for node in self.get_nodes(update_info=True, depth=depth):
             for executor in node.executors:
                 if executor["idle"]:
                     continue

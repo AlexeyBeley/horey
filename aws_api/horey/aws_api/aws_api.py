@@ -3080,15 +3080,16 @@ class AWSAPI:
 
         self.ecs_client.provision_cluster(ecs_cluster)
 
-    def provision_ecs_service(self, ecs_service):
+    def provision_ecs_service(self, ecs_service, wait_timeout=10*60):
         """
         Self explanatory
 
         @param ecs_service:
+        @param wait_timeout:
         @return:
         """
 
-        self.ecs_client.provision_service(ecs_service)
+        self.ecs_client.provision_service(ecs_service, wait_timeout=wait_timeout)
 
     def provision_key_pair(
             self, key_pair: KeyPair, save_to_secrets_manager=None, secrets_manager_region=None

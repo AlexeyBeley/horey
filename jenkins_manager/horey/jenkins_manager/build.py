@@ -99,3 +99,32 @@ class Build:
         """
 
         return datetime.datetime.fromtimestamp(self.timestamp/1000)
+
+    @property
+    def parameters_dict(self):
+        """
+        Convert parameters to key:value format. If not initiated return None
+
+        :return: dict with params if initialized. None else.
+        """
+
+        if not self.actions:
+            return None
+        for action in self.actions:
+            if action.get("_class") == "hudson.model.ParametersAction":
+                return {param_dict["name"]: param_dict["value"] for param_dict in action["parameters"]}
+
+        raise RuntimeError("Can not find action class: hudson.model.ParametersAction")
+
+    def compare_parameters(self, required_parameters):
+        """
+        Compare parameters - only src to self checked. Self to src ignored. (Default values assumed)
+
+        :param required_parameters:
+        :return:
+        """
+
+        for key, value in required_parameters.items():
+            if self.parameters_dict.get(key) != value:
+                return False
+        return True

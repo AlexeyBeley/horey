@@ -520,10 +520,12 @@ class ECSClient(Boto3Client):
 
         return False
 
-    def provision_service(self, service: ECSService, asyncronous=False):
+    def provision_service(self, service: ECSService, asyncronous=False, wait_timeout=10*60):
         """
         Standard
 
+        :param asyncronous:
+        :param wait_timeout:
         :param service:
         :return:
         """
@@ -542,7 +544,7 @@ class ECSClient(Boto3Client):
             service.update_from_raw_response(response)
 
         if not asyncronous:
-            self.wait_for_deployment_end(service)
+            self.wait_for_deployment_end(service, timeout=wait_timeout)
 
     def wait_for_deployment_end(self, service, timeout=10*60):
         """
