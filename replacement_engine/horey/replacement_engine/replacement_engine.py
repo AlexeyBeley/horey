@@ -194,6 +194,12 @@ class ReplacementEngine:
         :return:
         """
 
+        for key, value in string_to_list_replacements.items():
+            if not isinstance(value, list):
+                raise ValueError(f"Cartesian replacement values should be list. Received: '{value}', {type(value)=}")
+            if not isinstance(key, str):
+                raise ValueError(f"Cartesian replacement keys should be list. Received: '{value}', {type(value)=}")
+
         src_json = json.loads(str_src)
         new_json = ReplacementEngine.perform_raw_recursive_cartesian_replacements(src_json, string_to_list_replacements)
         new_str = json.dumps(new_json, indent=4)

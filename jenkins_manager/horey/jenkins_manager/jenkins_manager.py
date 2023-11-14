@@ -17,7 +17,7 @@ from horey.h_logger import get_logger
 logger = get_logger()
 
 
-def retry_on_errors(exceptions_to_catch, count=5, timeout=5):
+def retry_on_errors(exceptions_to_catch, count=12, timeout=5):
     """
     Decorator to catch errors against Jenkins server and perform retries.
 
@@ -34,7 +34,7 @@ def retry_on_errors(exceptions_to_catch, count=5, timeout=5):
                     return base_func(*args, **kwargs)
                 except exceptions_to_catch:
                     logger.info(
-                        f"{base_func.__name__} failed, retry {i} after {timeout} seconds"
+                        f"{base_func.__name__} failed, retry {i}/{count} after {timeout} seconds"
                     )
                 time.sleep(timeout)
             raise TimeoutError(f"count: {count} timeout: {timeout}")
@@ -121,7 +121,7 @@ class JenkinsManager:
             f"Finished triggering jobs took {datetime.datetime.now() - start_time}"
         )
 
-    @retry_on_errors((requests.exceptions.ConnectionError,), count=5, timeout=5)
+    @retry_on_errors((requests.exceptions.ConnectionError,), count=12, timeout=5)
     def thread_trigger_job(self, job: JenkinsJob):
         """
         Function to trigger single job.
@@ -174,7 +174,7 @@ class JenkinsManager:
             )
             time.sleep(self.SLEEP_TIME)
 
-    @retry_on_errors((requests.exceptions.ConnectionError,), count=5, timeout=5)
+    @retry_on_errors((requests.exceptions.ConnectionError,), count=12, timeout=5)
     def update_job_build_id_by_queue_id(self, job):
         """
         Find the build Id based on queue item Id.
@@ -185,7 +185,7 @@ class JenkinsManager:
         if "executable" in dict_item:
             job.build_id = dict_item["executable"].get("number")
 
-    @retry_on_errors((requests.exceptions.ConnectionError,), count=5, timeout=5)
+    @retry_on_errors((requests.exceptions.ConnectionError,), count=12, timeout=5)
     def update_job_build_id_by_parameter_uid(self, job):
         """
         If the queue item was already deleted use the parameter uid to find the build in the history.
@@ -277,7 +277,7 @@ class JenkinsManager:
                     f"Finished execution build_id: {job.build_id} with result: {job.build_status}"
                 )
 
-    @retry_on_errors((requests.exceptions.ConnectionError,), count=5, timeout=5)
+    @retry_on_errors((requests.exceptions.ConnectionError,), count=12, timeout=5)
     def update_build_status(self, job_name, build_id):
         """
         Fetch single build status from Jenkins.
@@ -293,7 +293,7 @@ class JenkinsManager:
 
         return build_status
 
-    @retry_on_errors((requests.exceptions.ConnectionError,), count=5, timeout=5)
+    @retry_on_errors((requests.exceptions.ConnectionError,), count=12, timeout=5)
     def get_job_info(self, job_name):
         """
         Fetch single job's information from Jenkins.
@@ -360,7 +360,7 @@ class JenkinsManager:
         with open(file_output, "w+") as file_handler:
             file_handler.write(str_job_xml)
 
-    @retry_on_errors((requests.exceptions.HTTPError,), count=5, timeout=5)
+    @retry_on_errors((requests.exceptions.HTTPError,), count=12, timeout=5)
     def create_job(self, job, file_input, overwrite=False):
         """
         Create a job with specific name and xml configs file.
@@ -403,7 +403,7 @@ class JenkinsManager:
                 job, os.path.join(backups_dir, file_name), overwrite=overwrite
             )
 
-    @retry_on_errors((requests.exceptions.HTTPError,), count=5, timeout=5)
+    @retry_on_errors((requests.exceptions.HTTPError,), count=12, timeout=5)
     def delete_jobs(self, jobs):
         """
         Delete jobs - ignore not existing jobs.
@@ -477,7 +477,7 @@ class JenkinsManager:
 
         return report
 
-    @retry_on_errors((requests.exceptions.ConnectionError,), count=5, timeout=5)
+    @retry_on_errors((requests.exceptions.ConnectionError,), count=12, timeout=5)
     def get_all_jobs(self):
         """
         Get all jobs' overview information.
@@ -554,7 +554,7 @@ class JenkinsManager:
                         f"Found in Job: '{job_name}' Build: '{build['number']}'"
                     )
 
-    @retry_on_errors((requests.exceptions.ConnectionError,), count=5, timeout=5)
+    @retry_on_errors((requests.exceptions.ConnectionError,), count=12, timeout=5)
     def create_user(self, user, password):
         """
         Get all jobs' overview information.
@@ -584,6 +584,7 @@ class JenkinsManager:
         request_sub_url = f"job/{build.name}/{build.number}/logText/progressiveText?start={start_offset}"
         return self.get(request_sub_url)
 
+    @retry_on_errors((requests.exceptions.ConnectionError, jenkins.TimeoutException), count=12, timeout=5)
     def get(self, request_sub_url):
         """
         Run GET.
@@ -594,10 +595,12 @@ class JenkinsManager:
         """
         url = self.server._build_url(request_sub_url)
         response = self.server.jenkins_open(requests.Request("GET", url))
+
         if not response:
             raise ValueError(f"Was not able to extract data: '{response}'")
         return response
 
+    @retry_on_errors((requests.exceptions.ConnectionError, jenkins.TimeoutException), count=12, timeout=5)
     def update_build_info(self, build):
         """
         Update_build info.
