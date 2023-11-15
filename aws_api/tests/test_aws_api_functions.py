@@ -175,20 +175,28 @@ def provision_vpc():
     aws_api.provision_vpc(vpc)
     return vpc
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_provision_vpc():
     vpc = provision_vpc()
     assert vpc.id is not None
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_get_security_group_by_vpc_and_name():
     vpc = provision_vpc()
     aws_api.get_security_group_by_vpc_and_name(vpc, security_group_name)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_dispose_vpc():
     vpc = provision_vpc()
     aws_api.ec2_client.dispose_vpc(vpc)
     assert vpc.id is not None
+
+@pytest.mark.done
+def test_find_route_table_by_subnet():
+    region = Region.get_region("us-west-2")
+    aws_api.init_subnets(region=region)
+    subnet = aws_api.subnets[0]
+    ret = aws_api.find_route_table_by_subnet(None, subnet)
+    assert ret is not None

@@ -3220,7 +3220,13 @@ class AWSAPI:
         """
 
         main_route_tables = []
-        for route_table in self.route_tables:
+        logger.info(f"Looking for subnet route table {subnet.id=}, {subnet.region.region_mark=}")
+        route_tables = [route_table for route_table in self.route_tables if route_table.region == subnet.region]
+
+        if len(route_tables) == 0:
+            route_tables = self.ec2_client.get_region_route_tables(subnet.region)
+
+        for route_table in route_tables:
             if route_table.vpc_id != subnet.vpc_id:
                 continue
             if route_table.check_subnet_associated(subnet.id):
