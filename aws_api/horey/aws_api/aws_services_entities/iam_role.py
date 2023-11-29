@@ -122,8 +122,8 @@ class IamRole(AwsObject):
         }
         if self.path == "":
             raise ValueError(f"Creating role {self.name} without 'path' set")
-
-        self.extend_request_with_optional_parameters(request, ["Tags", "Description", "Path"])
+        self.extend_request_with_required_parameters(request, ["Tags", "Path"])
+        self.extend_request_with_optional_parameters(request, ["Description"])
         return request
 
     def generate_managed_policies_requests(self, desired_role):

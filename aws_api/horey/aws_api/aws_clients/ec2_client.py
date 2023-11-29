@@ -2495,3 +2495,16 @@ class EC2Client(Boto3Client):
                 self.client.start_instances, "StartingInstances", filters_req=request
         ):
             return response
+
+    def create_tags_raw(self, request):
+        """
+        Creates or modifies tags.
+
+        :return:
+        """
+
+        logger.info(f"Creating or modifying tags: {request}")
+        for response in self.execute(
+                self.client.create_tags, None, raw_data=True, filters_req=request
+        ):
+            return response

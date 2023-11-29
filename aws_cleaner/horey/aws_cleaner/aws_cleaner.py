@@ -216,6 +216,24 @@ class AWSCleaner:
         }
         ]
 
+    def init_iam_policies(self, permissions_only=False):
+        """
+        Init iam policies.
+
+        :return:
+        """
+
+        if not permissions_only and not self.aws_api.iam_policies:
+            self.aws_api.init_iam_policies()
+
+        return [{
+            "Sid": "IamPolicies",
+            "Effect": "Allow",
+            "Action": "cloudwatch:ListMetrics",
+            "Resource": "*"
+        }
+        ]
+
     def init_sns(self, permissions_only=False):
         """
         Init SNS topics
@@ -3029,3 +3047,36 @@ class AWSCleaner:
         tb_ret.write_to_file(output_file_path)
         logger.info(f"Wrote ecs cleanup to file: {output_file_path}")
         return tb_ret
+
+    def cleanup_report_iam(self, permissions_only=False):
+        """
+        Generating ses cleanup reports.
+
+        @param permissions_only:
+        @return:
+        """
+
+        if permissions_only:
+            permissions = self.sub_cleanup_report_iam_policies(permissions_only=permissions_only)
+            return permissions
+
+        tb_ret = TextBlock("IAM cleanup")
+
+        tb_ret_tmp = self.sub_cleanup_report_iam_policies()
+        if tb_ret_tmp:
+            tb_ret.blocks.append(tb_ret_tmp)
+
+        tb_ret.write_to_file(self.configuration.iam_report_file_path)
+        return tb_ret
+
+    def sub_cleanup_report_iam_policies(self, permissions_only=False):
+        """
+        Generate cleanup report for policies.
+
+        :param permissions_only:
+        :return:
+        """
+
+        permissions = self.init_iam_policies(permissions_only=permissions_only)
+        if permissions_only:
+            return permissions

@@ -517,21 +517,47 @@ class IamClient(Boto3Client):
 
         self.update_role_information(iam_role)
 
-    def dispose_role(self, role: IamRole):
+    def dispose_role(self, role: IamRole, detach_policies=False):
         """
         Standard.
+
+        :param detach_policies:
+        :param role:
+        :return:
+        """
+
+        if detach_policies:
+            self.detach_role_policies(role)
+
+        logger.warning(f"Deleting iam role: {role.name}")
+
+        for response in self.execute(
+            self.client.delete_role, None, filters_req={"RoleName": role.name}, raw_data=True,
+                exception_ignore_callback=lambda x: "NoSuchEntity" in repr(x)
+        ):
+            self.clear_cache(IamRole)
+            return response
+
+    def detach_role_policies(self, role):
+        """
+        Detach policies from the role.
 
         :param role:
         :return:
         """
 
-        logger.warning(f"Deleting iam role: {role.name}")
+        if not role.managed_policies_arns:
+            self.update_role_information(role)
 
-        for response in self.execute(
-            self.client.delete_role, None, filters_req={"RoleName": role.name}, raw_data=True
-        ):
+        for policy_arn in role.managed_policies_arns:
+            request = {"RoleName": role.name, "PolicyArn": policy_arn}
+            logger.warning(f"Detaching policy from role: {request}")
+
+            for response in self.execute(
+                    self.client.detach_role_policy, None, raw_data=True, filters_req=request
+            ):
+                return response
             self.clear_cache(IamRole)
-            return response
 
     def provision_iam_role_raw(self, request_dict):
         """

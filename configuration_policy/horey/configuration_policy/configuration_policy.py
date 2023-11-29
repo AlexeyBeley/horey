@@ -1,6 +1,5 @@
 import os
 import json
-import sys
 import argparse
 
 
@@ -8,7 +7,6 @@ from horey.h_logger import get_logger
 from horey.common_utils.common_utils import CommonUtils
 
 logger = get_logger()
-import pdb
 
 
 class ConfigurationPolicy:
@@ -122,7 +120,7 @@ class ConfigurationPolicy:
         if self.configuration_file_full_path.endswith(".json"):
             return self.init_from_json_file()
 
-        raise TypeError(self.configuration_file_full_path)
+        raise TypeError(f"Known file types: [.py, .json]. Unknown filetype received: {self.configuration_file_full_path}")
 
     def init_from_python_file(self):
         config = CommonUtils.load_object_from_module(

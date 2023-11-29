@@ -53,8 +53,10 @@ class DeploymentStepConfigurationPolicy(ConfigurationPolicy):
         return self._uuid
 
     @uuid.setter
-    def uuid(self, _):
-        raise self.StaticValueError()
+    def uuid(self, value):
+        if self._uuid is not None:
+            raise self.StaticValueError(f"uuid: {self._uuid}")
+        self._uuid = value
 
     @property
     def script_name(self):

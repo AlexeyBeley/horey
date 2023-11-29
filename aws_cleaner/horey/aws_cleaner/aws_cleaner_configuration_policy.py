@@ -250,6 +250,13 @@ class AWSCleanerConfigurationPolicy(ConfigurationPolicy):
         return ret
 
     @property
+    def iam_reports_dir(self):
+        ret = os.path.join(self.reports_dir, "iam")
+        if not os.path.exists(ret):
+            os.makedirs(ret, exist_ok=True)
+        return ret
+
+    @property
     def ec2_ebs_report_file_path(self):
         return os.path.join(self.ec2_reports_dir, "ebs.txt")
 
@@ -268,6 +275,10 @@ class AWSCleanerConfigurationPolicy(ConfigurationPolicy):
     @property
     def ses_report_file_path(self):
         return os.path.join(self.ses_reports_dir, "ses.txt")
+
+    @property
+    def iam_report_file_path(self):
+        return os.path.join(self.iam_reports_dir, "iam.txt")
 
     @property
     def route53_reports_dir(self):

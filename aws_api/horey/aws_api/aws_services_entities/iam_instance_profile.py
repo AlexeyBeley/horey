@@ -77,8 +77,9 @@ class IamInstanceProfile(AwsObject):
 
         :return:
         """
+
         request = {"InstanceProfileName": self.name}
-        self.extend_request_with_optional_parameters(request, ["Tags", "Path"])
+        self.extend_request_with_required_parameters(request, ["Tags", "Path"])
 
         return request
 
