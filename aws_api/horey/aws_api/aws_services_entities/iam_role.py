@@ -187,3 +187,34 @@ class IamRole(AwsObject):
                     "PolicyDocument": desired_role.assume_role_policy_document}
 
         return None
+
+    def get_assume_arn_masks(self):
+        """
+        Get all arn masks allowed to assume this role.
+
+        :return:
+        """
+        ret = []
+        for statement in self.assume_role_policy_document["Statement"]:
+            if statement["Effect"] != "Allow":
+                continue
+            if statement["Action"] != "sts:AssumeRole":
+                continue
+
+            for principal_type, principal_value in statement["Principal"].items():
+                if principal_type == "Service":
+                    continue
+
+                if principal_type != "AWS":
+                    raise ValueError(f"Unsupported principal type code: {principal_type}")
+
+                if isinstance(principal_value, str):
+                    ret.append(principal_value)
+                    continue
+
+                if isinstance(principal_value, list):
+                    ret += principal_value
+                    continue
+
+                raise ValueError(f"Unsupported principal value: {principal_value}")
+        return ret

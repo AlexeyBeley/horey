@@ -67,46 +67,90 @@ class RouteTable(AwsObject):
 
         return request
 
-    def generate_associate_route_table_request(self):
+    def generate_associate_route_table_request(self, desired_route_table):
         """
         Standard.
 
         :return:
         """
 
-        request = {"RouteTableId": self.id}
-        if len(self.associations) > 1:
-            raise NotImplementedError()
-        request["SubnetId"] = self.associations[0]["SubnetId"]
-        return request
+        create_associations = []
 
-    def generate_create_route_requests(self):
-        """
-        response = client.create_route(
-        DestinationCidrBlock='string',
-        DestinationIpv6CidrBlock='string',
-        DestinationPrefixListId='string',
-        DryRun=True|False,
-        VpcEndpointId='string',
-        EgressOnlyInternetGatewayId='string',
-        GatewayId='string',
-        InstanceId='string',
-        NatGatewayId='string',
-        TransitGatewayId='string',
-        LocalGatewayId='string',
-        CarrierGatewayId='string',
-        NetworkInterfaceId='string',
-        RouteTableId='string',
-        VpcPeeringConnectionId='string'
-        )
-        """
-        lst_ret = []
-        for route in self.routes:
-            request = copy.deepcopy(route)
-            request["RouteTableId"] = self.id
-            lst_ret.append(request)
+        desired_subnets = []
+        for association in desired_route_table.associations:
+            if association.get("AssociationState") is not None:
+                raise NotImplementedError(f"State not supported: {association}")
+            desired_subnets.append(association["SubnetId"])
 
-        return lst_ret
+        self_subnets = []
+        for association in self.associations:
+            if association.get("AssociationState") != {"State": "associated"}:
+                raise NotImplementedError(f"State not supported: {association}")
+            self_subnets.append(association["SubnetId"])
+
+        for self_subnet in self_subnets:
+            if self_subnet in desired_subnets:
+                continue
+
+            raise NotImplementedError(f"Route disassociation is not yet implemented: {self_subnet}")
+
+        for desired_subnet in desired_subnets:
+            if desired_subnet in self_subnets:
+                continue
+
+            request = {"RouteTableId": self.id,
+                       "SubnetId": desired_subnet
+                       }
+            create_associations.append(request)
+
+        if len(create_associations) > 1:
+            raise NotImplementedError(create_associations)
+
+        return create_associations[0] if create_associations else None
+
+    def generate_change_route_requests(self, desired_route_table, declarative=True):
+        """
+        Create or change route rules.
+
+        :param desired_route_table:
+        :param declarative: Desired state should be implemented as is. Not declarative: only add desired routes.
+        :return: create_requests, replace_requests
+        """
+
+        create_requests, replace_requests = [], []
+        desired_routes_by_destination = {route["DestinationCidrBlock"]: route for route in desired_route_table.routes}
+        for self_route in self.routes:
+            if self_route.get("GatewayId") == "local":
+                continue
+            if self_route["State"] != "active":
+                raise RuntimeError(f"Can not handle inactive route: {self.id}, {self_route}")
+            if declarative and self_route["DestinationCidrBlock"] not in desired_routes_by_destination:
+                raise NotImplementedError(f"Erasing routes not implemented: {self.id}, {self_route}")
+
+        self_routes_by_destination = {route["DestinationCidrBlock"]: route for route in self.routes}
+        for desired_route in desired_route_table.routes:
+            if desired_route.get("State") is not None:
+                raise NotImplementedError(f"Can not handle setting state: {self.id}, {desired_route}")
+            destination = desired_route["DestinationCidrBlock"]
+            if destination not in self_routes_by_destination:
+                request = copy.deepcopy(desired_route)
+                request["RouteTableId"] = self.id
+                create_requests.append(request)
+            else:
+                if desired_route.get("GatewayId") is None and \
+                        self_routes_by_destination[destination].get("GatewayId") is None and \
+                        desired_route.get("NatGatewayId") is None and \
+                        self_routes_by_destination[destination].get("NatGatewayId"):
+                    raise NotImplementedError(f"Other gateways not implemented: {self.id}, {desired_route}")
+                if desired_route.get("GatewayId") != self_routes_by_destination[destination].get("GatewayId") or \
+                    desired_route.get("NatGatewayId") != self_routes_by_destination[destination].get("NatGatewayId"):
+                    if not declarative:
+                        raise RuntimeError("Destructive changes should be declarative.")
+                    request = copy.deepcopy(desired_route)
+                    request["RouteTableId"] = self.id
+                    replace_requests.append(request)
+
+        return create_requests, replace_requests
 
     def check_subnet_associated(self, subnet_id):
         """

@@ -1773,61 +1773,62 @@ class EC2Client(Boto3Client):
         ):
             return response
 
-    def provision_route_table(self, route_table):
+    def provision_route_table(self, route_table: RouteTable):
         """
         Standard
 
         @param route_table:
         @return:
         """
+
+        AWSAccount.set_aws_region(route_table.region)
+
         region_route_tables = self.get_region_route_tables(route_table.region)
         for region_route_table in region_route_tables:
             if (
                     region_route_table.get_tagname(ignore_missing_tag=True)
                     == route_table.get_tagname()
             ):
-                route_table.id = region_route_table.id
                 break
         else:
-            try:
-                response = self.provision_route_table_raw(
-                    route_table.generate_create_request()
-                )
-                route_table.id = response["RouteTableId"]
-            except Exception as exception_inst:
-                logger.warning(repr(exception_inst))
-                raise
-
-        try:
-            self.associate_route_table_raw(
-                route_table.generate_associate_route_table_request()
+            response = self.provision_route_table_raw(
+                route_table.generate_create_request()
             )
-        except Exception as exception_inst:
-            logger.warning(repr(exception_inst))
-            raise
+            region_route_table = RouteTable(response)
+            self.clear_cache(RouteTable)
 
-        self.create_routes(route_table)
+        request = region_route_table.generate_associate_route_table_request(route_table)
+        if request:
+            self.associate_route_table_raw(request)
 
-    def create_routes(self, route_table, replace=True):
+        create_requests, replace_requests = region_route_table.generate_change_route_requests(route_table)
+        for create_request in create_requests:
+            self.create_route_raw(create_request)
+        for replace_request in replace_requests:
+            self.replace_route_raw(replace_request)
+
+    def add_routes(self, route_table):
         """
         Create route table routes.
 
         @param route_table:
-        @param replace:
         @return:
         """
 
+        region_route_tables = self.get_region_route_tables(route_table.region)
+        for region_route_table in region_route_tables:
+            if (
+                    region_route_table.get_tagname(ignore_missing_tag=True)
+                    == route_table.get_tagname()
+            ):
+                break
+        else:
+            raise RuntimeError(f"Can not find route table: {route_table.get_tagname()}")
+
         AWSAccount.set_aws_region(route_table.region)
-        for request in route_table.generate_create_route_requests():
-            try:
-                self.create_route_raw(request)
-            except Exception as exception_inst:
-                repr_exception_inst = repr(exception_inst)
-                logger.warning(repr_exception_inst)
-                if "already exists" not in repr_exception_inst:
-                    raise
-                if replace:
-                    self.replace_route_raw(request)
+        requests, _ = region_route_table.generate_change_route_requests(route_table, declarative=False)
+        for request in requests:
+            self.create_route_raw(request)
 
     def provision_route_table_raw(self, request_dict):
         """
@@ -1865,6 +1866,7 @@ class EC2Client(Boto3Client):
         for response in self.execute(
                 self.client.create_route, "Return", filters_req=request_dict, instant_raise=True,
         ):
+            self.clear_cache(RouteTable)
             return response
 
     def replace_route_raw(self, request_dict):
@@ -1878,6 +1880,7 @@ class EC2Client(Boto3Client):
         for response in self.execute(
                 self.client.replace_route, None, filters_req=request_dict, raw_data=True
         ):
+            self.clear_cache(RouteTable)
             return response
 
     def get_region_ec2_instances(self, region, custom_filters=None):

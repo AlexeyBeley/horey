@@ -54,7 +54,7 @@ mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 
 # pylint: disable = missing-function-docstring
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_add_managed_region():
     aws_api.add_managed_region(Region.get_region("us-west-2"))
 
@@ -200,3 +200,8 @@ def test_find_route_table_by_subnet():
     subnet = aws_api.subnets[0]
     ret = aws_api.find_route_table_by_subnet(None, subnet)
     assert ret is not None
+
+@pytest.mark.wip
+def test_get_user_faces():
+    ret = aws_api.get_user_faces(mock_values["get_user_faces_user_name"])
+    assert len(ret) > 0

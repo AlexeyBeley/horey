@@ -33,8 +33,11 @@ def activate_account():
     #AWSAccount.set_aws_account(accounts["full_ro_access"])
     #AWSAccount.set_aws_region(accounts["full_ro_access"].regions["us-west-2"])
 
-    AWSAccount.set_aws_account(accounts["development"])
-    AWSAccount.set_aws_region(accounts["development"].regions["us-west-2"])
+    #AWSAccount.set_aws_account(accounts["development"])
+    #AWSAccount.set_aws_region(accounts["development"].regions["us-west-2"])
 
     #AWSAccount.set_aws_account(accounts["main"])
     #AWSAccount.set_aws_region(accounts["main"].regions["us-east-1"])
+
+    AWSAccount.set_aws_account(accounts["iam_manager"])
+    AWSAccount.set_aws_region(accounts["iam_manager"].regions["us-east-1"])
