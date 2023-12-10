@@ -58,12 +58,12 @@ class EC2Client(Boto3Client):
         """
 
         regional_fetcher_generator = self.yield_subnets_raw
-        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
+        for obj in self.regional_service_entities_generator(regional_fetcher_generator,
                                                   Subnet,
                                                   update_info=update_info,
                                                   regions=[region] if region else None,
                                                                     filters_req=filters_req):
-            yield certificate
+            yield obj
 
     def yield_subnets_raw(self, filters_req=None):
         """

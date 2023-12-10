@@ -101,7 +101,7 @@ class Boto3Client:
         """
         raise RuntimeError(f"Nobody can set a client explicitly in{self}")
 
-    # pylint: disable= too-many-arguments
+    # pylint: disable= too-many-arguments, too-many-branches
     def yield_with_paginator(
         self,
         func_command,
@@ -178,6 +178,9 @@ class Boto3Client:
                     raise
 
                 if "UnauthorizedOperation" in repr(exception_instance):
+                    raise
+
+                if "AuthFailure" in repr(exception_instance):
                     raise
 
                 retry_counter += exception_weight
@@ -424,6 +427,9 @@ class Boto3Client:
                     raise
 
                 if "AuthFailure" in repr(exception_instance):
+                    raise
+
+                if "InvalidClientTokenId" in repr(exception_instance):
                     raise
 
                 if instant_raise:

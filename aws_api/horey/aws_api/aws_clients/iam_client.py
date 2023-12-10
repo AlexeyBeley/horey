@@ -793,3 +793,47 @@ class IamClient(Boto3Client):
                 self.client.delete_user, None, raw_data=True, filters_req={"UserName": user.name}
         ):
             return response
+
+    def create_access_key(self, user):
+        """
+        Request new user access key.
+
+        :param user:
+        :return:
+        """
+        request = {"UserName": user.name}
+        return self.create_access_key_raw(request)
+
+    def create_access_key_raw(self, request_dict):
+        """
+        Create user access key.
+
+        @param request_dict:
+        @return:
+        """
+
+        logger.info(f"Creating iam user access key: {request_dict}")
+
+        for response in self.execute(
+            self.client.create_access_key, "AccessKey", filters_req=request_dict
+        ):
+            return response
+
+    def delete_access_key_raw(self, request_dict):
+        """
+        Delete user access key.
+        response = client.delete_access_key(
+            UserName='string',
+            AccessKeyId='string'
+        )
+
+        @param request_dict:
+        @return:
+        """
+
+        logger.warning(f"Deleting iam user access key: {request_dict}")
+
+        for response in self.execute(
+            self.client.delete_access_key, None, raw_data=True, filters_req=request_dict
+        ):
+            return response

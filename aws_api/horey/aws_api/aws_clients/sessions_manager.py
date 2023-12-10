@@ -2,9 +2,6 @@
 Manages sessions towards multiple AWS accounts and regions.
 """
 import threading
-import sys
-import os
-import pdb
 import datetime
 from typing import Any
 import boto3
@@ -40,14 +37,16 @@ class SessionsManager:
 
         def __init__(self, session):
             self.session = session
-            self.clients = dict()
+            self.clients = {}
 
         def get_client(self, client_name):
             """
-            If client to a specific region does not exists- creates it.
+            If client to a specific region does not exist, create it.
+
             :param client_name:
             :return:
             """
+
             aws_region = AWSAccount.get_aws_region()
             region_mark = (
                 aws_region.region_mark
@@ -123,26 +122,42 @@ class SessionsManager:
         :param session:
         :return:
         """
+        current_used_region = AWSAccount.get_aws_region()
+        if current_used_region is None:
+            region_name = connection_step.region.region_mark
+        else:
+            region_name = current_used_region.region_mark
+
         if connection_step.external_id is not None:
             extra_args = {"ExternalId": connection_step.external_id}
         else:
             extra_args = None
 
         if connection_step.type == connection_step.Type.PROFILE:
+            logger.info(f"Connecting session using profile: {connection_step.profile_name}")
             if session is not None:
                 raise RuntimeError("Initial session is not None")
 
             session = boto3.session.Session(
                 profile_name=connection_step.profile_name,
-                region_name=connection_step.region.region_mark,
+                region_name=region_name,
             )
         elif connection_step.type == connection_step.Type.ASSUME_ROLE:
+            logger.info("Connecting session using assumed role")
             session = SessionsManager.start_assuming_role(
                 connection_step.role_arn, session, extra_args=extra_args
             )
         elif connection_step.type == connection_step.Type.CURRENT_ROLE:
+            logger.info("Connecting session using current role")
             session = boto3.session.Session(
-                region_name=connection_step.region.region_mark
+                region_name=region_name
+            )
+        elif connection_step.type == connection_step.Type.CREDENTIALS:
+            logger.info("Connecting session using credentials")
+            session = boto3.session.Session(
+                aws_access_key_id=connection_step.aws_access_key_id,
+                aws_secret_access_key=connection_step.aws_secret_access_key,
+                region_name=region_name
             )
         else:
             raise NotImplementedError(

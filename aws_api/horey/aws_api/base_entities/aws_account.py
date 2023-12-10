@@ -59,7 +59,7 @@ class AWSAccount:
     def __init__(self):
         self._id = None
         self.name = None
-        self.regions = dict()
+        self.regions = {}
         self.connection_steps = []
 
     def __hash__(self):
@@ -93,11 +93,24 @@ class AWSAccount:
         self._id = value
 
     def add_region(self, region):
+        """
+        Add region to managed regions.
+
+        :param region:
+        :return:
+        """
+
         if region.region_mark in self.regions:
             return
+
         self.regions[region.region_mark] = region
 
     def get_regions(self):
+        """
+        Get managed regions.
+
+        :return:
+        """
         return self.regions.values()
 
     def init_from_dict(self, dict_src):
@@ -147,9 +160,6 @@ class AWSAccount:
             if "region_mark" in dict_src:
                 self.region = Region.get_region(dict_src["region_mark"])
 
-            if "credentials" in dict_src:
-                raise NotImplementedError()
-
             if "profile" in dict_src:
                 logger.info(
                     f"Setting connection step type to AWSAccount.ConnectionStep.Type.PROFILE: {dict_src}"
@@ -166,6 +176,10 @@ class AWSAccount:
                     f"Setting connection step type to AWSAccount.ConnectionStep.Type.CURRENT_ROLE: {dict_src}"
                 )
                 self.type = AWSAccount.ConnectionStep.Type.CURRENT_ROLE
+            elif "aws_access_key_id" in dict_src and "aws_secret_access_key" in dict_src:
+                self.type = AWSAccount.ConnectionStep.Type.CREDENTIALS
+                self.aws_access_key_id = dict_src["aws_access_key_id"]
+                self.aws_secret_access_key = dict_src["aws_secret_access_key"]
             else:
                 raise NotImplementedError(f"Unknown {dict_src}")
 

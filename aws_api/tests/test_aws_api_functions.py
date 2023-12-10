@@ -8,6 +8,7 @@ from horey.aws_api.aws_api import AWSAPI
 from horey.h_logger import get_logger
 from horey.aws_api.aws_api_configuration_policy import AWSAPIConfigurationPolicy
 from horey.aws_api.base_entities.region import Region
+from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.aws_services_entities.acm_certificate import ACMCertificate
 from horey.aws_api.aws_services_entities.sesv2_email_identity import SESV2EmailIdentity
 from horey.aws_api.aws_services_entities.aws_lambda import AWSLambda
@@ -202,6 +203,16 @@ def test_find_route_table_by_subnet():
     assert ret is not None
 
 @pytest.mark.wip
-def test_get_user_faces():
-    ret = aws_api.get_user_faces(mock_values["get_user_faces_user_name"])
+def test_get_aws_api_accounts():
+    ret = aws_api.get_aws_api_accounts(mock_values["get_user_faces_user_name"])
     assert len(ret) > 0
+
+@pytest.mark.wip
+def test_provision_lambda_fails():
+    credentials_tester_provision_lambda_request = {}
+    accounts = aws_api.get_aws_api_accounts(mock_values["get_user_faces_user_name"])
+    for account in accounts:
+        AWSAccount.set_aws_account(account)
+        aws_api.lambda_client.provision_lambda_raw(credentials_tester_provision_lambda_request)
+
+    assert len(accounts) > 0

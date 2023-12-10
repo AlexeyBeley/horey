@@ -405,14 +405,17 @@ class AWSLambda(AwsObject):
 
         if self.policy is None:
             requests = []
-            for statement in desired_aws_lambda.policy["Statement"]:
+            for desired_statement in desired_aws_lambda.policy["Statement"]:
                 request = {
                     "FunctionName": self.name,
-                    "StatementId": statement["Sid"],
-                    "Action": statement["Action"],
-                    "Principal": statement["Principal"]["Service"],
-                    "SourceArn": statement["Condition"]["ArnLike"]["AWS:SourceArn"],
+                    "StatementId": desired_statement["Sid"],
+                    "Action": desired_statement["Action"],
+                    "Principal": desired_statement["Principal"]["Service"]
                 }
+
+                if "Condition" in desired_statement:
+                    request["SourceArn"] = desired_statement["Condition"]["ArnLike"]["AWS:SourceArn"]
+
                 requests.append(request)
             return requests, []
 
@@ -465,9 +468,11 @@ class AWSLambda(AwsObject):
                 "FunctionName": self.name,
                 "StatementId": desired_statement["Sid"],
                 "Action": desired_statement["Action"],
-                "Principal": desired_statement["Principal"]["Service"],
-                "SourceArn": desired_statement["Condition"]["ArnLike"]["AWS:SourceArn"],
+                "Principal": desired_statement["Principal"]["Service"]
             }
+            if "Condition" in desired_statement:
+                request["SourceArn"] = desired_statement["Condition"]["ArnLike"]["AWS:SourceArn"]
+
             ret.append(request)
         return ret
 
