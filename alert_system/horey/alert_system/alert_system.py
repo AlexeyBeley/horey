@@ -47,6 +47,7 @@ class AlertSystem:
         self.packer = Packer()
         self.aws_api = AWSAPI()
         self.region = Region.get_region(self.configuration.region)
+        self.tags = None
 
     def provision(self, tags, lambda_files):
         """
@@ -64,18 +65,18 @@ class AlertSystem:
         @return:
         """
 
-        tags = copy.deepcopy(tags)
+        self.tags = copy.deepcopy(tags)
         self.provision_sns_topic(tags)
         self.provision_lambda(lambda_files)
         self.provision_sns_subscription()
 
-        self.provision_log_group(tags)
+        self.provision_log_group()
 
         self.provision_self_monitoring()
 
         self.test_self_monitoring()
 
-    def provision_log_group(self, tags):
+    def provision_log_group(self):
         """
         Provision log group- on a fresh provisioning self monitoring will have no log group to monitor.
         Until first lambda invocation.
@@ -87,7 +88,7 @@ class AlertSystem:
         log_group = CloudWatchLogGroup({})
         log_group.region = self.region
         log_group.name = self.configuration.alert_system_lambda_log_group_name
-        log_group.tags = {tag["Key"]: tag["Value"] for tag in tags}
+        log_group.tags = {tag["Key"]: tag["Value"] for tag in self.tags}
         log_group.tags["name"] = log_group.name
         self.aws_api.provision_cloudwatch_log_group(log_group)
 
@@ -320,7 +321,9 @@ class AlertSystem:
           ]
         }"""
         iam_role.managed_policies_arns = ["arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"]
-        iam_role.tags = [{"Key": "name", "Value": iam_role.name}]
+        tags = copy.deepcopy(self.tags)
+        tags.append({"Key": "name", "Value": iam_role.name})
+        iam_role.tags = tags
         self.aws_api.provision_iam_role(iam_role)
         return iam_role
 
