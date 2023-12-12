@@ -320,7 +320,7 @@ class AlertSystem:
           ]
         }"""
         iam_role.managed_policies_arns = ["arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"]
-        iam_role.tags = [{"Key": "Name", "Value": iam_role.name}]
+        iam_role.tags = [{"Key": "name", "Value": iam_role.name}]
         self.aws_api.provision_iam_role(iam_role)
         return iam_role
 
