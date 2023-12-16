@@ -25,7 +25,7 @@ logger = get_logger()
 
 class AWSCleaner:
     """
-    Alert system management class.
+    Main logic class.
 
     """
 

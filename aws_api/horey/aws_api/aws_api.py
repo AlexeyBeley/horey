@@ -4438,160 +4438,19 @@ class AWSAPI:
         price_lists = list(self.pricing_client.yield_price_lists(region=region, filters_req=filters_req))
         return price_lists[0]
 
-    def get_aws_api_accounts(self, user_name):
+    def find_user_by_name(self, user_name, full_information=False):
         """
-        1. New create_access_key -> credentials
-        2. Use credentials to connect AWS.
-        3. Find all roles the user can assume. (Find recursive assumption if possible. i.e. You can assume role after assuming role.)
-        4. Run all the restricted commands and validate they fail.
-        5. Credentials -> delete_access_key
+        Find IAM user by name.
 
+        :param full_information:
         :param user_name:
         :return:
         """
-        lst_ret = []
 
-        for user in self.iam_client.get_all_users(full_information=False):
+        for user in self.iam_client.get_all_users(full_information=full_information):
             if user.name == user_name:
                 break
         else:
             raise ValueError(user_name)
-        dict_access_key = self.iam_client.create_access_key(user)
-        account = AWSAccount()
-        step_user = AWSAccount.ConnectionStep({
-                        "aws_access_key_id": dict_access_key["AccessKeyId"],
-                        "aws_secret_access_key": dict_access_key["SecretAccessKey"]
-                        })
-        account.connection_steps.append(step_user)
-        lst_ret.append(account)
 
-        for role in self.iam_client.yield_roles(update_info=False, full_information=False):
-            assume_arn_masks = role.get_assume_arn_masks()
-            for arn_mask in assume_arn_masks:
-                if self.check_arn_mask_match(user.arn, arn_mask):
-                    account = AWSAccount()
-                    step_assume_role = AWSAccount.ConnectionStep({
-                        "assume_role": role.arn
-                    })
-                    account.connection_steps.append(step_user)
-                    account.connection_steps.append(step_assume_role)
-                    lst_ret.append(account)
-                    break
-
-        return lst_ret
-
-    # pylint: disable= too-many-branches
-    @staticmethod
-    def check_arn_mask_match(arn, mask):
-        """
-        Check whether the ARN is permitted by mask.
-        https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_resource.html
-        https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html
-
-        arn:partition:service:region:account-id:resource-id
-        arn:partition:service:region:account-id:resource-type/resource-id
-        arn:partition:service:region:account-id:resource-type:resource-id
-
-        ARN:
-        Partition
-        Service
-        Region
-        AccountID
-        ResourceType (optional – empty string is missing)
-        Resource
-
-        :param arn:
-        :param mask:
-        :return:
-        """
-
-        if "?" in arn:
-            raise NotImplementedError(arn)
-
-        if "?" in mask:
-            raise NotImplementedError(mask)
-
-        lst_arn = arn.split(":", 5)
-        lst_mask = mask.split(":", 5)
-
-        for i, mask_segment in enumerate(lst_mask[:5]):
-            if "*" in mask_segment:
-                print(i)
-                raise NotImplementedError("""
-                mask_segment = mask_segment.replace("*", ".*")
-                lst_mask[i] = re.compile(mask_segment)""")
-            elif mask_segment != lst_arn[i]:
-                return False
-
-        if lst_arn[2] != "iam" or lst_mask[2] != "iam":
-            raise NotImplementedError(f"Did not yet test with these services: {arn=}, {mask=}")
-        resource_type, resource_id = AWSAPI.extract_resource_type_and_id_from_arn(lst_arn)
-        mask_resource_type, mask_resource_id = AWSAPI.extract_resource_type_and_id_regex_from_arn_mask(lst_arn)
-
-        if not isinstance(mask_resource_type, str) or resource_type is None:
-            raise NotImplementedError(f"Resource type: {mask=}, {resource_type=}")
-        if mask_resource_type != resource_type:
-            return False
-
-        if not isinstance(mask_resource_id, str) or resource_id is None:
-            raise NotImplementedError(f"Resource id: {mask=}, {resource_id=}")
-
-        if mask_resource_id != resource_id:
-            return False
-
-        for i, mask_segment in enumerate(lst_mask[:5]):
-            if not isinstance(mask_segment, str):
-                raise NotImplementedError(mask_segment)
-            if mask_segment != lst_arn[i]:
-                return False
-        return True
-
-    @staticmethod
-    def extract_resource_type_and_id_from_arn(lst_arn):
-        """
-        Extract resource type and id.
-
-        :param lst_arn:
-        :return:
-        """
-        resource_type_and_id = lst_arn[5]
-        delimiter = None
-        resource_type = None
-        resource_id = None
-        if "/" in resource_type_and_id:
-            resource_type, resource_id = resource_type_and_id.split("/")
-            delimiter = "/"
-
-        if ":" in resource_type_and_id:
-            resource_type, resource_id = resource_type_and_id.split(":")
-            delimiter = ":"
-        if delimiter is None:
-            raise NotImplementedError(f"Delimiter None not implemented: {lst_arn=}")
-
-        if delimiter not in lst_arn[5]:
-            raise NotImplementedError(f"No delimiter not implemented: {lst_arn=}")
-
-        return resource_type, resource_id
-
-    @staticmethod
-    def extract_resource_type_and_id_regex_from_arn_mask(lst_mask):
-        """
-        Extract resource type and id regex.
-
-        :param lst_mask:
-        :return:
-        """
-        if lst_mask[2] == "iam":
-            delimiter = "/"
-        else:
-            raise ValueError(f"Can not decide what delimiter is: {lst_mask=}")
-
-        mask_resource_type_and_id = lst_mask[5]
-        mask_resource_type, mask_resource_id = mask_resource_type_and_id.split(delimiter)
-
-        if "*" in mask_resource_type or "?" in mask_resource_type:
-            raise NotImplementedError(f"Resource type: {lst_mask=}")
-
-        if "*" in mask_resource_id or "?" in mask_resource_id:
-            raise NotImplementedError(f"Resource id: {lst_mask=}")
-        return mask_resource_type, mask_resource_id
+        return user
