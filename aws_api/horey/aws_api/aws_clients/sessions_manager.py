@@ -124,7 +124,7 @@ class SessionsManager:
         """
         current_used_region = AWSAccount.get_aws_region()
         if current_used_region is None:
-            region_name = connection_step.region.region_mark
+            region_name = connection_step.region.region_mark if connection_step.region is not None else None
         else:
             region_name = current_used_region.region_mark
 
@@ -153,7 +153,7 @@ class SessionsManager:
                 region_name=region_name
             )
         elif connection_step.type == connection_step.Type.CREDENTIALS:
-            logger.info("Connecting session using credentials")
+            logger.info(f"Connecting session using credentials. Region: '{region_name}'")
             session = boto3.session.Session(
                 aws_access_key_id=connection_step.aws_access_key_id,
                 aws_secret_access_key=connection_step.aws_secret_access_key,

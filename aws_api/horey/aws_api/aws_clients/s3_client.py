@@ -411,7 +411,7 @@ class S3Client(Boto3Client):
         except Exception as inst:
             if "AccessDenied" in repr(inst):
                 print(
-                    f"Init bucket full information failed {bucket.name}: {repr(inst)}"
+                    f"yield_bucket_objects failed {bucket.name}: {repr(inst)}"
                 )
             else:
                 raise

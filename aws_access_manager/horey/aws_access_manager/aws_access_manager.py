@@ -28,30 +28,6 @@ class AWSAccessManager:
         aws_api_configuration.aws_api_cache_dir = configuration.cache_dir
         self.aws_api = AWSAPI(aws_api_configuration)
 
-
-    def generate_user_aws_api_accounts(self, user_name):
-        """
-        1. New create_access_key -> credentials
-        2. Use credentials to connect AWS.
-        3. Find all roles the user can assume. (Find recursive assumption if possible. i.e. You can assume role after assuming role.)
-        4. Run all the restricted commands and validate they fail.
-        5. Credentials -> delete_access_key
-
-        :param user_name:
-        :return:
-        """
-        lst_ret = []
-
-        user = self.aws_api.find_user_by_name(user_name)
-        dict_access_key = self.aws_api.iam_client.create_access_key(user)
-        account = AWSAccount()
-        step_user = AWSAccount.ConnectionStep({
-                        "aws_access_key_id": dict_access_key["AccessKeyId"],
-                        "aws_secret_access_key": dict_access_key["SecretAccessKey"]
-                        })
-        account.connection_steps.append(step_user)
-        lst_ret.append(account)
-
     def get_user_assume_roles(self, user_name):
         """
         Find all the roles a user can assume.
@@ -203,9 +179,83 @@ class AWSAccessManager:
             raise NotImplementedError(f"Resource id: {lst_mask=}")
         return mask_resource_regex, mask_resource_id
 
-    def generate_user_access_report(self):
+    def generate_users_access_report(self):
         """
         Generate users access report.
 
         :return:
         """
+
+    @staticmethod
+    def generate_user_aws_api_accounts(aws_access_key_id, aws_secret_access_key, roles):
+        """
+        Generate all user accounts.
+
+        :param aws_access_key_id:
+        :param aws_secret_access_key:
+        :param roles:
+        :return:
+        """
+
+        return [AWSAccessManager.generate_user_credentials_account(aws_access_key_id, aws_secret_access_key)] +\
+        AWSAccessManager.generate_user_assume_roles_accounts(aws_access_key_id, aws_secret_access_key, roles)
+
+    @staticmethod
+    def generate_user_credentials_account(aws_access_key_id, aws_secret_access_key):
+        """
+        Vanila credentials.
+
+        :param aws_access_key_id:
+        :param aws_secret_access_key:
+        :return:
+        """
+
+        aws_api_account = AWSAccount()
+        aws_api_account.id = f"User-{aws_access_key_id}"
+        aws_api_account.name = aws_api_account.id
+        step_user_credentials = AWSAccount.ConnectionStep({
+            "aws_access_key_id": aws_access_key_id,
+            "aws_secret_access_key": aws_secret_access_key
+        })
+        aws_api_account.connection_steps.append(step_user_credentials)
+        return aws_api_account
+
+    @staticmethod
+    def generate_user_assume_roles_accounts(aws_access_key_id, aws_secret_access_key, roles):
+        """
+        Generate aws api accounts.
+
+        :param aws_access_key_id:
+        :param aws_secret_access_key:
+        :param roles:
+        :return:
+        """
+
+        step_user_credentials = AWSAccount.ConnectionStep({
+            "aws_access_key_id": aws_access_key_id,
+            "aws_secret_access_key": aws_secret_access_key
+        })
+
+        lst_ret = []
+        for role in roles:
+            aws_api_account = AWSAccount()
+            aws_api_account.id = role.name
+            aws_api_account.name = role.name
+            aws_api_account.connection_steps.append(step_user_credentials)
+            step_assume_role = AWSAccount.ConnectionStep({"assume_role": role.arn})
+            aws_api_account.connection_steps.append(step_assume_role)
+            lst_ret.append(aws_api_account)
+
+        return lst_ret
+
+    def run_permission_test(self, aws_api_account, test_function):
+        """
+        Run a test under
+
+        :param aws_api_account:
+        :param test_function:
+        :return:
+        """
+
+        AWSAccount.set_aws_account(aws_api_account)
+        test_function()

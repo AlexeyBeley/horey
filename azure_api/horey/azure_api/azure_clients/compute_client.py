@@ -173,6 +173,20 @@ class ComputeClient(AzureClient):
         response.wait()
         return response.result()
 
+    def dispose_disk(self, obj_disk: Disk, asynchronous=False):
+        """
+        Dispose disk.
+
+        :param obj_disk:
+        :param asynchronous:
+        :return:
+        """
+
+        response = self.raw_delete_disk(obj_disk.resource_group_name, obj_disk.name)
+        if not asynchronous:
+            response.wait()
+        return response
+
     def raw_delete_disk(self, resource_group_name, disk_name):
         """
         Delete disk.
@@ -182,15 +196,14 @@ class ComputeClient(AzureClient):
         @return:
         """
         logger.info(f"Begin disk deletion: '{disk_name}'")
-        response = self.client.disks.begin_delete(resource_group_name, disk_name)
-        response.wait()
-        return response.status() == "Succeeded"
+        return self.client.disks.begin_delete(resource_group_name, disk_name)
 
-    def raw_delete_virtual_machine(self, obj_repr):
+    def dispose_virtual_machine(self, obj_repr, asynchronous=False):
         """
         Delete the vm
 
         @param obj_repr:
+        @param asynchronous:
         @return:
         """
         logger.info(
@@ -199,8 +212,10 @@ class ComputeClient(AzureClient):
         response = self.client.virtual_machines.begin_delete(
             obj_repr.resource_group_name, obj_repr.name
         )
-        response.wait()
-        return response.status() == "Succeeded"
+
+        if not asynchronous:
+            response.wait()
+        return response
 
     def get_available_vm_sizes(self, region):
         """

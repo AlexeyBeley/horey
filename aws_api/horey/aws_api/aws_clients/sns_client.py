@@ -214,6 +214,8 @@ class SNSClient(Boto3Client):
         :return:
         """
 
+        AWSAccount.set_aws_region(topic.region)
+
         if topic.arn is None:
             for _topic in self.get_region_topics(topic.region, full_information=False):
                 if _topic.name == topic.name:
@@ -225,6 +227,7 @@ class SNSClient(Boto3Client):
         if not full_information:
             return True
 
+        logger.info(f"Fetching sns topic information: {topic.arn}")
         dict_src = self.execute_with_single_reply(
             self.client.get_topic_attributes,
             None,

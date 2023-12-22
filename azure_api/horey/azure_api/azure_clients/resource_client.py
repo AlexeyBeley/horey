@@ -13,6 +13,9 @@ class ResourceClient(AzureClient):
     CLIENT_CLASS = ResourceManagementClient
 
     def __init__(self):
+        """
+        https://learn.microsoft.com/en-us/python/api/azure-mgmt-resource/azure.mgmt.resource.resourcemanagementclient?view=azure-python
+        """
         super().__init__()
 
     def get_all_resource_groups(self):
