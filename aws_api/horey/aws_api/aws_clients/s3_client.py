@@ -1215,3 +1215,16 @@ class S3Client(Boto3Client):
 
         logger.info(f"Downloading from {bucket_name}/{key_path}")
         self.client.download_file(bucket_name, key_path, file_path)
+
+    def copy_object_raw(self, request_dict):
+        """
+        Execute raw copy_object request.
+
+        @param request_dict:
+        @return:
+        """
+        logger.info(f"Copying Bucket object {request_dict}")
+        for response in self.execute(
+                self.client.copy_object, "CopyObjectResult", filters_req=request_dict
+        ):
+            return response
