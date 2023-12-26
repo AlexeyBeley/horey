@@ -117,7 +117,7 @@ class IamRole(AwsObject):
 
         request = {
             "RoleName": self.name,
-            "AssumeRolePolicyDocument": self.assume_role_policy_document,
+            "AssumeRolePolicyDocument": json.dumps(self.assume_role_policy_document) if isinstance(self.assume_role_policy_document, dict) else self.assume_role_policy_document,
             "MaxSessionDuration": self.max_session_duration,
         }
         if self.path == "":

@@ -276,9 +276,7 @@ class IamPolicy(AwsObject):
                             action[str_action] = str_action
                             continue
 
-                        raise NotImplementedError(
-                            "Not yet implemented, replaced pdb.set_trace"
-                        )
+                        raise ValueError(f"No ':' in action: {value}")
 
                     service_name, action_value = str_action.split(":", 1)
 

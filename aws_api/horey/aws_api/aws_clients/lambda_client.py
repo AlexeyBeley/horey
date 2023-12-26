@@ -469,6 +469,7 @@ class LambdaClient(Boto3Client):
     def invoke_raw(self, request_dict):
         """
         Standard
+        request = {"FunctionName": lambda_name, "InvocationType": "DryRun"}
 
         @param request_dict:
         @return:

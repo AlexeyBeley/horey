@@ -169,7 +169,6 @@ class IamClient(Boto3Client):
         ):
             yield dict_src
 
-
     def get_all_roles(self, full_information=True):
         """
         Get all roles
@@ -322,22 +321,34 @@ class IamClient(Boto3Client):
 
         iam_role.inline_policies = policies
 
-    def yield_policies(self, full_information=True, filters_req=None):
+    # pylint: disable= too-many-arguments
+    def yield_policies(self, update_info=False, filters_req=None, full_information=True):
         """
-        Yield all policies objects.
+        Yield policies
 
-        @param full_information:
-        @param filters_req:
-        @return:
+        :return:
         """
 
-        for result in self.execute(
-            self.client.list_policies, "Policies", filters_req=filters_req
+        regional_fetcher_generator = self.yield_policies_raw
+        for obj in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                  IamPolicy,
+                                                  update_info=update_info,
+                                                  full_information_callback=self.update_policy_default_statement if full_information else None,
+                                                  global_service = True,
+                                                  filters_req=filters_req):
+            yield obj
+
+    def yield_policies_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.client.list_policies, "Policies", filters_req=filters_req
         ):
-            pol = IamPolicy(result)
-            if full_information:
-                self.update_policy_default_statement(pol)
-            yield pol
+            yield dict_src
 
     def get_all_policies(self, full_information=True, filters_req=None):
         """
@@ -348,17 +359,7 @@ class IamClient(Boto3Client):
         @return:
         """
 
-        final_result = []
-
-        for result in self.execute(
-            self.client.list_policies, "Policies", filters_req=filters_req
-        ):
-            pol = IamPolicy(result)
-            if full_information:
-                self.update_policy_default_statement(pol)
-            final_result.append(pol)
-
-        return final_result
+        return list(self.yield_policies(full_information=full_information, filters_req=filters_req))
 
     def update_policy_default_statement(self, policy: IamPolicy):
         """
@@ -747,6 +748,7 @@ class IamClient(Boto3Client):
         for response in self.execute(
             self.client.create_policy, "Policy", filters_req=request_dict
         ):
+            self.clear_cache(IamPolicy)
             return response
 
     def provision_user(self, user_desired: IamUser):

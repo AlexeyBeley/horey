@@ -70,6 +70,7 @@ class RuntimeData:
         # This block is needed for credentials propagation
         AWSAccount.set_aws_account(aws_api_accounts[0])
         start_perf_counter = time.perf_counter()
+        time.sleep(4)
         for i in range(60 * 10):
             try:
                 access_manager.aws_api.sts_client.get_account()
@@ -78,6 +79,9 @@ class RuntimeData:
                 if "InvalidClientTokenId" not in repr(inst_error):
                     raise
                 time.sleep(0.1)
+        else:
+            raise TimeoutError("Could not propagate the credentials")
+
         logger.info(f"Token propagation took: {time.perf_counter() - start_perf_counter}")
 
         AWSAccount.set_aws_account(original_aws_api_account)
@@ -108,7 +112,7 @@ def test_user_access_list_secrets(aws_api_account):
         for _ in access_manager.aws_api.secretsmanager_client.yield_secrets_raw():
             break
 
-@pytest.mark.wip
+@pytest.mark.done
 @pytest.mark.parametrize("aws_api_account", RuntimeData.aws_api_accounts)
 def test_user_access_get_secret(aws_api_account):
     """
@@ -118,15 +122,15 @@ def test_user_access_get_secret(aws_api_account):
     :return:
     """
 
+    secret_id = "test_secret_name"
     AWSAccount.set_aws_account(aws_api_account)
 
-    expected_error_string = r"An error occurred \(AccessDeniedException\) when calling the ListSecrets operation: User: .* " \
-                            r"is not authorized to perform: secretsmanager:ListSecrets because no identity-based policy allows " \
-                            r"the secretsmanager:ListSecrets action"
-    breakpoint()
+    expected_error_string = r"An error occurred \(AccessDeniedException\) when calling the GetSecretValue operation: User: .* is not authorized to perform: secretsmanager:GetSecretValue on resource: " + secret_id \
+                            + " because no identity-based policy allows the secretsmanager:GetSecretValue action"
+
     AWSAccount.set_aws_region(Region.get_region("us-east-1"))
     with pytest.raises(Exception, match=expected_error_string):
-        access_manager.aws_api.secretsmanager_client.get_secret_value("test_secret_name")
+        access_manager.aws_api.secretsmanager_client.get_secret_value(secret_id)
 
 @pytest.mark.done
 @pytest.mark.parametrize("aws_api_account", RuntimeData.aws_api_accounts)
