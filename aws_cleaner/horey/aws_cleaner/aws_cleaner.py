@@ -83,7 +83,7 @@ class AWSCleaner:
         tb_ret.blocks.append(tb_ret_tmp)
 
         tb_ret_tmp = TextBlock("Route 53")
-        tb_ret_tmp.lines.append("todo: cleanup_report_route53_certificates")
+        tb_ret_tmp.lines.append(" cleanup_report_route53_certificates")
         tb_ret_tmp.lines.append("ACM Certificates need to be validated using Route 53 records. "
                                 "Expired/missing certificates information has to be cleaned from Route 53.")
         tb_ret_tmp.lines.append("Load balancers dns addresses: Missing Load Balancer.")
@@ -114,6 +114,7 @@ class AWSCleaner:
         tb_ret.blocks.append(tb_ret_tmp)
 
         tb_ret_tmp = TextBlock("IAM")
+        tb_ret_tmp.lines.append("Mention of deleted user/role in policies ARNs- for example explicit mention of a specific user.")
         tb_ret_tmp.lines.append(
             "Action per service: for example * action on  ECR:* and S3:* - bad idea, you must manage at least per service")
         tb_ret_tmp.lines.append(

@@ -337,7 +337,7 @@ class AlertSystem:
         topic = SNSTopic({})
         topic.name = self.configuration.sns_topic_name
         topic.region = self.region
-        if not self.aws_api.sns_client.update_topic_information(topic):
+        if not self.aws_api.sns_client.update_topic_information(topic, full_information=False):
             raise RuntimeError("Could not update topic information")
 
         role = self.provision_lambda_role()
@@ -410,7 +410,7 @@ class AlertSystem:
         topic = SNSTopic({})
         topic.name = self.configuration.sns_topic_name
         topic.region = self.region
-        if not self.aws_api.sns_client.update_topic_information(topic):
+        if not self.aws_api.sns_client.update_topic_information(topic, full_information=False):
             raise RuntimeError("Could not update topic information")
 
         aws_lambda = AWSLambda({})
@@ -441,7 +441,7 @@ class AlertSystem:
         topic = SNSTopic({})
         topic.name = self.configuration.sns_topic_name
         topic.region = self.region
-        if not self.aws_api.sns_client.update_topic_information(topic):
+        if not self.aws_api.sns_client.update_topic_information(topic, full_information=False):
             raise RuntimeError("Could not update topic information")
 
         alarm.region = self.region

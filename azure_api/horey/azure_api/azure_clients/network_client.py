@@ -52,7 +52,41 @@ class NetworkClient(AzureClient):
         response.wait()
         return response.result()
 
+    def dispose_public_ip_addresses(self, public_ip, asynchronous=False):
+        """
+        resource_group_name: str, public_ip_address_name
+
+        :param public_ip:
+        :param asynchronous:
+        :return:
+        """
+
+        logger.info(f"Begin public ip address deletion: '{public_ip.resource_group_name} {public_ip.name}'")
+        response = self.client.public_ip_addresses.begin_delete(public_ip.resource_group_name, public_ip.name)
+        if not asynchronous:
+            response.wait()
+        return response
+
+    def provision_network_interface(self, network_interface):
+        """
+        Standard.
+
+        :param network_interface:
+        :return:
+        """
+
+        request = network_interface.generate_create_request()
+        response = self.raw_create_network_interfaces(request)
+        network_interface.update_after_creation(response)
+
     def raw_create_network_interfaces(self, lst_args):
+        """
+        Standard.
+
+        :param lst_args:
+        :return:
+        """
+
         logger.info(f"Begin network interface creation: '{lst_args[0]} {lst_args[1]}'")
         response = self.client.network_interfaces.begin_create_or_update(*lst_args)
         response.wait()
@@ -79,15 +113,23 @@ class NetworkClient(AzureClient):
         response.wait()
         return response.status() == "Succeeded"
 
-    def raw_delete_network_interface(self, obj_repr):
+    def dispose_network_interface(self, obj_repr, asynchronous=False):
+        """
+        Delete interfaces.
+
+        :param obj_repr:
+        :param asynchronous:
+        :return:
+        """
         logger.info(
             f"Begin network interface deletion: '{obj_repr.resource_group_name} {obj_repr.name}'"
         )
         response = self.client.network_interfaces.begin_delete(
             obj_repr.resource_group_name, obj_repr.name
         )
-        response.wait()
-        return response.status() == "Succeeded"
+        if not asynchronous:
+            response.wait()
+        return response
 
     def raw_create_network_security_group(self, lst_args):
         """

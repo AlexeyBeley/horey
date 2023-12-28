@@ -710,7 +710,6 @@ class JenkinsManager:
     def find_busy_executors(self, depth=2):
         """
         Find busy executors.
-        [{'currentExecutable': {'_class': 'org.jenkinsci.plugins.workflow.support.steps.ExecutorStepExecution$PlaceholderTask$PlaceholderExecutable', 'displayName': 'scoutbees_update_component #4125 (Build)', 'estimatedDuration': 2616353, 'fullDisplayName': 'scoutbees_update_component #4125 (Build)', 'number': 4125, 'timestamp': 1699864544118, 'url': 'http://jenkins.development.private.management.scoutbees:8080/job/scoutbees_update_component/4125/'}, 'idle': False, 'likelyStuck': False, 'number': 3, 'progress': 5}]
 
         :return:
         """

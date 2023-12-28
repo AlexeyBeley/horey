@@ -54,7 +54,7 @@ def user_access_report(arguments) -> None:
 
     aws_access_manager = AWSAccessManager(configuration)
 
-    aws_access_manager.generate_user_access_report()
+    aws_access_manager.generate_users_access_report()
 
 
 action_manager.register_action("user_access_report", user_access_report_parser, user_access_report)

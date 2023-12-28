@@ -59,20 +59,21 @@ class SecretsManagerClient(Boto3Client):
 
         return obj
 
-    def get_all_secrets(self, full_information=True):
+    def get_all_secrets(self, region=None, full_information=True):
         """
         Get all lambda in all regions
 
+        :param region:
         :param full_information:
         :return:
         """
 
         final_result = []
-
-        for region in AWSAccount.get_aws_account().regions.values():
-            AWSAccount.set_aws_region(region)
+        regions = [region] if region is not None else AWSAccount.get_aws_account().regions.values()
+        for _region in regions:
+            AWSAccount.set_aws_region(_region)
             for response in self.execute(self.client.list_secrets, "SecretList"):
-                obj = SecretsManagerSecret(response)
+                obj= SecretsManagerSecret(response)
                 final_result.append(obj)
 
                 if full_information:
@@ -80,6 +81,17 @@ class SecretsManagerClient(Boto3Client):
                     obj.update_value_from_raw_response(raw_value)
 
         return final_result
+
+    def yield_secrets_raw(self, request=None):
+        """
+        Standard.
+
+        :param request:
+        :return:
+        """
+
+        for response in self.execute(self.client.list_secrets, "SecretList", filters_req=request):
+            yield response
 
     def get_secret_value(self, secret_id):
         """

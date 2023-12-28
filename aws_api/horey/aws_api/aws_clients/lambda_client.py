@@ -465,3 +465,19 @@ class LambdaClient(Boto3Client):
             filters_req=request_dict,
         ):
             return response
+
+    def invoke_raw(self, request_dict):
+        """
+        Standard
+        request = {"FunctionName": lambda_name, "InvocationType": "DryRun"}
+
+        @param request_dict:
+        @return:
+        """
+
+        logger.info(f"Invoking lambda: {request_dict}")
+
+        for response in self.execute(
+            self.client.invoke, None, raw_data=True, filters_req=request_dict
+        ):
+            return response

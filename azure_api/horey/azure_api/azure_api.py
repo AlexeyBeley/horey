@@ -2,7 +2,7 @@
 Azure API
 
 """
-# pylint: disable= too-many-instance-attributes
+# pylint: disable= too-many-instance-attributes, no-name-in-module
 import json
 from horey.azure_api.azure_clients.compute_client import ComputeClient
 from horey.azure_api.azure_clients.resource_client import ResourceClient
@@ -327,7 +327,7 @@ class AzureAPI:
         :return:
         """
 
-        return self.network_client.raw_delete_network_interface(object_repr)
+        return self.network_client.dispose_network_interface(object_repr)
 
     def delete_load_balancer(self, object_repr):
         """
@@ -351,6 +351,17 @@ class AzureAPI:
         )
         public_ip_address.update_after_creation(response)
 
+    def dispose_public_ip_address(self, public_ip_address):
+        """
+        Delete if exists.
+
+        :param public_ip_address:
+        :return:
+        """
+        return self.network_client.dispose_public_ip_addresses(
+            public_ip_address
+        )
+
     def provision_nat_gateway(self, building_block):
         """
         Create or update
@@ -370,18 +381,15 @@ class AzureAPI:
             if nat_gateway.id == building_block.id:
                 return
 
-    def provision_network_interface(self, building_block):
+    def provision_network_interface(self, network_interface):
         """
         Create or update
 
-        :param building_block:
+        :param network_interface:
         :return:
         """
 
-        response = self.network_client.raw_create_network_interfaces(
-            building_block.generate_create_request()
-        )
-        building_block.update_after_creation(response)
+        self.network_client.provision_network_interface(network_interface)
 
     def provision_network_security_group(self, building_block):
         """
