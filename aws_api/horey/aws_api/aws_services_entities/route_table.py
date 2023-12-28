@@ -122,16 +122,18 @@ class RouteTable(AwsObject):
         desired_routes_by_destination = {route["DestinationCidrBlock"]: route for route in desired_route_table.routes}
 
         del_routes_errors = []
+        inactive_routes_errors = []
         for self_route in self.routes:
             if self_route.get("GatewayId") == "local":
                 continue
             if self_route["State"] != "active":
-                raise RuntimeError(f"Can not handle inactive route: {self.id}, {self_route}")
+                inactive_routes_errors.append(self_route)
             if declarative and self_route["DestinationCidrBlock"] not in desired_routes_by_destination:
                 del_routes_errors.append(self_route)
 
-        if del_routes_errors:
-            raise NotImplementedError(f"Erasing routes not implemented: {desired_route_table.region.region_mark}, {self.id}, {del_routes_errors}")
+        if del_routes_errors or inactive_routes_errors:
+            raise NotImplementedError(f"Erasing routes not implemented: {desired_route_table.region.region_mark}, {self.id}, {del_routes_errors}."
+                                      f" Inactive routes: {inactive_routes_errors}")
 
         self_routes_by_destination = {}
         for route in self.routes:
