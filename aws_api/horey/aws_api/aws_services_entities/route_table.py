@@ -108,6 +108,7 @@ class RouteTable(AwsObject):
 
         return create_associations[0] if create_associations else None
 
+    # pylint: disable = too-many-branches
     def generate_change_route_requests(self, desired_route_table, declarative=True):
         """
         Create or change route rules.
@@ -131,6 +132,10 @@ class RouteTable(AwsObject):
 
         if del_routes_errors:
             raise NotImplementedError(f"Erasing routes not implemented: {desired_route_table.region.region_mark}, {self.id}, {del_routes_errors}")
+
+        for route in self.routes:
+            if "DestinationCidrBlock" not in route:
+                raise ValueError(f"Unsupported route: {self.id} {route}")
 
         self_routes_by_destination = {route["DestinationCidrBlock"]: route for route in self.routes}
         for desired_route in desired_route_table.routes:
