@@ -8,6 +8,7 @@ from horey.h_logger import get_logger
 from horey.aws_api.aws_api import AWSAPI
 from horey.aws_api.aws_api_configuration_policy import AWSAPIConfigurationPolicy
 from horey.aws_api.aws_services_entities.iam_policy import IamPolicy
+from horey.aws_api.aws_services_entities.iam_role import IamRole
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_access_manager.aws_access_manager_configuration_policy import AWSAccessManagerConfigurationPolicy
 from horey.common_utils.common_utils import CommonUtils
@@ -41,11 +42,24 @@ class AWSAccessManager:
         if not self.aws_api.iam_roles:
             self.aws_api.init_iam_roles()
         user = self.aws_api.find_user_by_name(user_name)
+        return self.get_arn_assume_roles(user.arn)
+
+    def get_arn_assume_roles(self, arn):
+        """
+        Find all the roles an ARN can assume.
+
+        :param arn:
+        :return:
+        """
+
+        if not self.aws_api.iam_roles:
+            self.aws_api.init_iam_roles()
+
         lst_ret = []
         for role in self.aws_api.iam_roles:
             assume_arn_masks = role.get_assume_arn_masks()
             for arn_mask in assume_arn_masks:
-                if self.check_arn_mask_match(user.arn, arn_mask):
+                if self.check_arn_mask_match(arn, arn_mask):
                     logger.info(f"Role {role.arn} matches assume role mask: {arn_mask}")
                     lst_ret.append(role)
                     break
@@ -109,9 +123,10 @@ class AWSAccessManager:
                     return False
             else:
                 print(i)
-                raise NotImplementedError("""
-                mask_segment = mask_segment.replace("*", ".*")
-                lst_mask[i] = re.compile(mask_segment)""")
+                breakpoint()
+                re_mask_segment = AWSAccessManager.make_regex_from_string(mask_segment)
+                if re_mask_segment.fullmatch(action.lower()):
+                    return True
 
         mask_resource_regex, mask_resource_id = AWSAccessManager.extract_resource_type_and_id_regex_from_arn_mask(
             lst_mask)
@@ -148,14 +163,21 @@ class AWSAccessManager:
         :param lst_arn:
         :return:
         """
+        resource_type_and_id = lst_arn[5]
+
         if lst_arn[2] == "iam":
             delimiter = "/"
+            if resource_type_and_id.count(delimiter) in [2, 3]:
+                resource_type, resource_id = resource_type_and_id.split(delimiter, 1)
+                if resource_type != "role":
+                    raise ValueError(f"Role path supported, received: {lst_arn}")
+                return resource_type, resource_id
+
         elif lst_arn[2] == "lambda":
             delimiter = ":"
         else:
             raise NotImplementedError(f"Did not yet test with these services: {lst_arn=}")
 
-        resource_type_and_id = lst_arn[5]
         if delimiter in resource_type_and_id:
             resource_type, resource_id = resource_type_and_id.split(delimiter)
         else:
@@ -184,6 +206,10 @@ class AWSAccessManager:
                     mask_resource_id = "root"
                 else:
                     raise NotImplementedError(f"Resource type/id is not implemented: {mask_resource_type_and_id}")
+            elif mask_resource_type_and_id.count(delimiter) in [2, 3]:
+                mask_resource_type, mask_resource_id = mask_resource_type_and_id.split(delimiter, 1)
+                if mask_resource_type != "role":
+                    raise ValueError(f"Role path supported, received: {lst_mask}")
         elif lst_mask[2] == "lambda":
             delimiter = ":"
         else:
@@ -479,7 +505,26 @@ class AWSAccessManager:
                 lst_ret.append(policy)
 
             if group.policies:
-                raise NotImplementedError("group policies")
+                lst_ret += [IamPolicy(dict_policy, from_cache=True) for dict_policy in group.policies]
+
+        return lst_ret
+
+    def get_role_direct_policies(self, role: IamRole):
+        """
+        Get role attached and inline policies.
+
+        :param role:
+        :return:
+        """
+
+        lst_ret = []
+        for arn in role.managed_policies_arns:
+            policy = CommonUtils.find_objects_by_values(self.aws_api.iam_policies,
+                                                           {"arn": arn},
+                                                           max_count=1)[0]
+            lst_ret.append(policy)
+
+        lst_ret += [IamPolicy(dict_policy, from_cache=True) for dict_policy in role.inline_policies]
 
         return lst_ret
 
@@ -493,40 +538,83 @@ class AWSAccessManager:
         """
 
         for policy in node.policies:
-            candidate_nodes = self.get_policy_reachable_create_access_key_user_nodes(policy)
+            candidate_nodes = self.get_policy_reachable_user_nodes(policy)
+            candidate_nodes += self.get_policy_reachable_role_nodes(policy)
+            candidate_nodes += self.get_node_reachable_assume_role_nodes(node)
             for candidate_node in candidate_nodes:
-                breakpoint()
+                if candidate_node.id in tree.node_ids:
+                    continue
+                tree.add_child(node, candidate_node)
 
-            candidate_nodes = self.get_policy_reachable_roles(policy)
+        for child_node in node.children:
+            self.extend_security_domain_tree(child_node, tree)
 
-        breakpoint()
-        # iam:CreateAccessKey
-        # iam:PassRole
+        return True
 
-    def get_policy_reachable_user_nodes(self, policy):
+    def get_node_reachable_assume_role_nodes(self, node):
         """
-        Get users the policy can manage.
+        Get all nodes reachable from the source node by "assume role" mechanism.
 
-        :param policy:
+        :param node:
         :return:
         """
-        lst_users = [user for user in self.aws_api.users if self.check_policy_reachable_user(policy, user)]
+
+        assumable_roles = self.get_arn_assume_roles(node.id)
         lst_ret = []
-        for user in lst_users:
-            node = SecurityDomainTree.Node(user.arn, f"User managed by policy {policy.name}", self.get_user_direct_policies(user))
+        for role in assumable_roles:
+            node = SecurityDomainTree.Node(role.arn, "AssumeRole",
+                                               self.get_role_direct_policies(role))
             lst_ret.append(node)
+
         return lst_ret
 
-
-    def check_policy_reachable_user(self, policy, user):
+    def get_policy_reachable_role_nodes(self, policy):
         """
-        Check policy grants access to manage the user.
+        Get IAM-Role-Nodes reachable by a resource using the source-policy.
+        e.g. Pass Role, EditLambda, edit ECS service etc.
+
+        :param policy: 
+        :return: 
+        """
+
+        lst_ret = []
+        for role in self.aws_api.iam_roles:
+            if self.check_policy_permits_resource_action(policy, role.arn, "PassRole"):
+                node = SecurityDomainTree.Node(role.arn, f"Policy {policy.name} permits PassRole",
+                                               self.get_role_direct_policies(role))
+                lst_ret.append(node)
+
+        return lst_ret
+
+    def get_policy_reachable_user_nodes(self, policy, aggressive=True):
+        """
+        Get user-nodes the source-policy grants access to manage.
+        e.g. CreateAccessKey
+
+        Aggressive:
+        UpdateAccessKey. Preliminary information: Identity using this policy has access to these credentials.
 
         :param policy:
-        :param user:
+        :param aggressive:
         :return:
         """
-        return self.check_policy_permits_resource_action(policy, user.arn, "CreateAccessKey")
+
+        lst_users = [user for user in self.aws_api.users if self.check_policy_permits_resource_action(policy, user.arn, "CreateAccessKey")]
+        lst_ret = []
+        for user in lst_users:
+            node = SecurityDomainTree.Node(user.arn, f"Policy {policy.name} permits CreateAccessKey", self.get_user_direct_policies(user))
+            lst_ret.append(node)
+
+        if aggressive:
+            lst_users = [user for user in self.aws_api.users if
+                         self.check_policy_permits_resource_action(policy, user.arn, "UpdateAccessKey")]
+            for user in lst_users:
+                node = SecurityDomainTree.Node(user.arn, f"Policy {policy.name} permits UpdateAccessKey",
+                                               self.get_user_direct_policies(user))
+                lst_ret.append(node)
+
+
+        return lst_ret
 
     def check_policy_permits_resource_action(self, policy, resource_arn, action):
         """

@@ -28,13 +28,25 @@ class SecurityDomainTree:
         :return:
         """
 
-        breakpoint()
+        if node_child.id in self.node_ids:
+            raise RuntimeError(f"{node_child.id} already in the tree")
+
+        self.node_ids.append(node_child.id)
+        for policy in node_child.policies:
+            if not policy.arn or policy.arn in self.managed_policy_arns:
+                continue
+            self.managed_policy_arns.append(policy.arn)
+
+        node_parent.children.append(node_child)
 
     class Node:
+        """
+        Security tree node.
+
+        """
+
         def __init__(self, uid, access_type, policies):
             self.id = uid
             self.access_type = access_type
             self.policies = policies
             self.children = []
-
-

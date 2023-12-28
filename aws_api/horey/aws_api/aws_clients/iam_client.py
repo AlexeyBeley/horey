@@ -28,7 +28,46 @@ class IamClient(Boto3Client):
         client_name = "iam"
         super().__init__(client_name)
 
+    # pylint: disable= too-many-arguments
+    def yield_users(self, update_info=False, filters_req=None, full_information=True):
+        """
+        Yield users
+
+        :return:
+        """
+
+        regional_fetcher_generator = self.yield_users_raw
+        for obj in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                  IamUser,
+                                                  update_info=update_info,
+                                                  full_information_callback=self.update_user_information if full_information else None,
+                                                  global_service = True,
+                                                  filters_req=filters_req):
+            yield obj
+
+    def yield_users_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.client.list_users, "Users", filters_req=filters_req
+        ):
+            yield dict_src
+
     def get_all_users(self, full_information=True):
+        """
+        Get all users
+
+        :param full_information:
+        :return:
+        """
+
+        return list(self.yield_users(full_information=full_information))
+
+    def get_all_users_old(self, full_information=True):
         """
         Get all users.
 
@@ -179,6 +218,34 @@ class IamClient(Boto3Client):
 
         return list(self.yield_roles(full_information=full_information))
 
+    # pylint: disable= too-many-arguments
+    def yield_groups(self, update_info=False, filters_req=None, full_information=True):
+        """
+        Yield groups
+
+        :return:
+        """
+
+        regional_fetcher_generator = self.yield_groups_raw
+        for obj in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                  IamGroup,
+                                                  update_info=update_info,
+                                                  full_information_callback=self.update_group_full_information if full_information else None,
+                                                  global_service = True,
+                                                  filters_req=filters_req):
+            yield obj
+
+    def yield_groups_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.client.list_groups, "Groups", filters_req=filters_req
+        ):
+            yield dict_src
 
     def get_all_groups(self, full_information=True):
         """
@@ -188,16 +255,7 @@ class IamClient(Boto3Client):
         :return:
         """
 
-        final_result = []
-        for result in self.execute(
-            self.client.list_groups, "Groups", filters_req={"MaxItems": 1000}
-        ):
-            group = IamGroup(result)
-            final_result.append(group)
-            if full_information:
-                self.update_group_full_information(group)
-
-        return final_result
+        return list(self.yield_groups(full_information=full_information))
 
     def update_group_full_information(self, group):
         """
@@ -212,7 +270,7 @@ class IamClient(Boto3Client):
             self.execute(
                 self.client.list_group_policies,
                 "PolicyNames",
-                filters_req={"MaxItems": 1000, "GroupName": group.name},
+                filters_req={"GroupName": group.name},
             )
         )
         group.policies = []
@@ -230,7 +288,7 @@ class IamClient(Boto3Client):
             self.execute(
                 self.client.list_attached_group_policies,
                 "AttachedPolicies",
-                filters_req={"MaxItems": 1000, "GroupName": group.name},
+                filters_req={"GroupName": group.name},
             )
         )
 
@@ -244,8 +302,7 @@ class IamClient(Boto3Client):
         final_result = []
         for result in self.execute(
             self.client.list_instance_profiles,
-            "InstanceProfiles",
-            filters_req={"MaxItems": 1000},
+            "InstanceProfiles"
         ):
             instance_profile = IamInstanceProfile(result)
             final_result.append(instance_profile)
@@ -291,7 +348,7 @@ class IamClient(Boto3Client):
         iam_role.managed_policies_arns = [dict_src["PolicyArn"] for dict_src in self.execute(
             self.client.list_attached_role_policies,
             "AttachedPolicies",
-            filters_req={"RoleName": iam_role.name, "MaxItems": 1000},
+            filters_req={"RoleName": iam_role.name},
         )]
 
     def update_role_inline_policies(self, iam_role: IamRole):
