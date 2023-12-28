@@ -133,11 +133,15 @@ class RouteTable(AwsObject):
         if del_routes_errors:
             raise NotImplementedError(f"Erasing routes not implemented: {desired_route_table.region.region_mark}, {self.id}, {del_routes_errors}")
 
+        self_routes_by_destination = {}
         for route in self.routes:
-            if "DestinationCidrBlock" not in route:
+            if "DestinationCidrBlock" in route:
+                self_routes_by_destination[route["DestinationCidrBlock"]] = route
+            elif "DestinationIpv6CidrBlock" in route:
+                self_routes_by_destination[route["DestinationIpv6CidrBlock"]] = route
+            else:
                 raise ValueError(f"Unsupported route: {self.id} {route}")
 
-        self_routes_by_destination = {route["DestinationCidrBlock"]: route for route in self.routes}
         for desired_route in desired_route_table.routes:
             if desired_route.get("State") is not None:
                 raise NotImplementedError(f"Can not handle setting state: {self.id}, {desired_route}")
