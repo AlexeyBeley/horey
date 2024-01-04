@@ -84,4 +84,5 @@ def test_generate_user_aws_api_accounts(configuration: AWSAccessManagerConfigura
 @pytest.mark.wip
 def test_generate_user_security_domain_tree(configuration: AWSAccessManagerConfigurationPolicy):
     tree = AWSAccessManager(configuration).generate_user_security_domain_tree(mock_values["get_user_faces_user_name"])
+    tree.print()
     assert tree is not None

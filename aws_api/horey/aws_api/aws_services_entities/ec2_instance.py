@@ -105,6 +105,16 @@ class EC2Instance(AwsObject):
         tag_name = self.get_tagname(ignore_missing_tag=True)
         self.name = tag_name if tag_name else self.id
 
+    @property
+    def arn(self):
+        if self._arn is None:
+            if self.iam_instance_profile is None:
+                account_id = self.network_interfaces[0].owner_id
+            else:
+                account_id = self.iam_instance_profile["Arn"].split(":")[4]
+            self._arn = f"arn:aws:ec2:{self.region.region_mark}:{account_id}:instance/{self.id}"
+        return self._arn
+
     def _init_instance_from_cache(self, dict_src):
         """
         Init self from preserved dict.

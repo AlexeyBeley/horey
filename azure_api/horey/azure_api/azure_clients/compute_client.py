@@ -21,24 +21,37 @@ class ComputeClient(AzureClient):
 
     CLIENT_CLASS = ComputeManagementClient
 
-    def provision_virtual_machine(self, virtual_machine):
+    def provision_virtual_machine(self, virtual_machine, tags_only=False):
         """
         Provision VM.
 
         @param virtual_machine:
+        @param tags_only: only change the tags
         @return:
         """
         all_machines = self.get_all_virtual_machines(
             virtual_machine.resource_group_name
         )
-        for existing_machine in all_machines:
-            if existing_machine.name == virtual_machine.name:
-                virtual_machine.update_after_creation(existing_machine)
-                return virtual_machine
+
+        if not tags_only:
+            for existing_machine in all_machines:
+                if existing_machine.name == virtual_machine.name:
+                    virtual_machine.update_after_creation(existing_machine)
+                    return virtual_machine
 
         return self.raw_create_virtual_machines(
-            virtual_machine.generate_create_request()
+            virtual_machine.generate_create_request(tags_only=tags_only)
         )
+
+    def provision_virtual_machine_tags(self, virtual_machine):
+        """
+        Provision VM tags
+
+        @param virtual_machine:
+        @return:
+        """
+
+        return self.provision_virtual_machine(virtual_machine, tags_only=True)
 
     def get_vm(self, resource_group_name, name):
         """
@@ -111,13 +124,13 @@ class ComputeClient(AzureClient):
         response = self.client.ssh_public_keys.create(*lst_args)
         return response
 
-    def get_all_disks(self):
+    def get_all_disks(self, resource_group):
         """
         Standard.
 
         @return:
         """
-        return [Disk(obj.as_dict()) for obj in self.client.disks.list()]
+        return [Disk(obj.as_dict()) for obj in self.client.disks.list_by_resource_group(resource_group.name)]
 
     def get_disk(self, resource_group_name, disk_name):
         """
@@ -159,6 +172,17 @@ class ComputeClient(AzureClient):
             VirtualMachine(obj.as_dict())
             for obj in self.client.virtual_machines.list(resource_group_name)
         ]
+
+    def provision_disk(self, disk: Disk):
+        """
+        Create or update
+
+        :param disk:
+        :return:
+        """
+
+        response = self.raw_create_disk(disk.generate_create_request())
+        disk.update_after_creation(response)
 
     def raw_create_disk(self, lst_args):
         """

@@ -38,6 +38,7 @@ class PublicIpAddress(AzureObject):
             "resource_guid": self.init_default_attr,
             "provisioning_state": self.init_default_attr,
             "nat_gateway": self.init_default_attr,
+            "ddos_settings": self.init_default_attr
         }
 
         self.init_attrs(dict_src, init_options)
