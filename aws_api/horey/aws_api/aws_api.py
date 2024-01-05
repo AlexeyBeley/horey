@@ -654,22 +654,15 @@ class AWSAPI:
 
         self.ecr_repositories = objects
 
-    def init_ecs_clusters(self, from_cache=False, cache_file=None, region=None):
+    def init_ecs_clusters(self, region=None):
         """
         Self explanatory.
 
-        @param from_cache:
-        @param cache_file:
         @param region:
         @return:
         """
 
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, ECSCluster)
-        else:
-            objects = self.ecs_client.get_all_clusters(region=region)
-
-        self.ecs_clusters = objects
+        self.ecs_clusters = self.ecs_client.get_all_clusters(region=region)
 
     def init_ecs_capacity_providers(
             self, from_cache=False, cache_file=None, region=None
@@ -690,24 +683,21 @@ class AWSAPI:
 
         self.ecs_capacity_providers = objects
 
-    def init_ecs_services(self, from_cache=False, cache_file=None, region=None):
+    def init_ecs_services(self, region=None):
         """
-        Self explanatory.
+        Standard
 
-        @param from_cache:
-        @param cache_file:
         @param region:
         @return:
         """
 
+        if not self.ecs_clusters:
+            self.init_ecs_clusters(region=region)
         objects = []
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, ECSService)
-        else:
-            for cluster in self.ecs_clusters:
-                if region is not None and cluster.region != region:
-                    continue
-                objects += self.ecs_client.get_all_services(cluster)
+        for cluster in self.ecs_clusters:
+            if region is not None and cluster.region != region:
+                continue
+            objects += self.ecs_client.get_all_services(cluster)
 
         self.ecs_services = objects
 

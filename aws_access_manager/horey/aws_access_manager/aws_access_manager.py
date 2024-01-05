@@ -479,8 +479,6 @@ class AWSAccessManager:
         self.aws_api.init_iam_users()
         self.aws_api.init_iam_roles()
         self.aws_api.init_iam_policies()
-        #from horey.aws_api.aws_services_entities.iam_group import IamGroup
-        #self.aws_api.iam_client.clear_cache(IamGroup)
         self.aws_api.init_iam_groups()
         self.aws_api.init_lambdas(full_information=True)
 
@@ -492,6 +490,11 @@ class AWSAccessManager:
         self.aws_api.init_iam_instance_profiles()
         self.aws_api.init_sns_topics()
         self.aws_api.init_sns_subscriptions()
+        self.aws_api.init_ecs_clusters()
+        self.aws_api.init_ecs_tasks()
+        return
+        self.aws_api.init_ecs_services()
+        self.aws_api.init_ecs_task_definitions()
         self.extend_security_domain_tree(root, tree)
 
         return tree
@@ -569,7 +572,7 @@ class AWSAccessManager:
             candidate_nodes += self.get_policy_reachable_role_nodes(policy)
             candidate_nodes += self.get_policy_reachable_lambda_role_nodes(policy)
             candidate_nodes += self.get_policy_reachable_ec2_instance_role_nodes(policy)
-            candidate_nodes += self.get_policy_reachable_ecs_service_role_nodes(policy)
+            candidate_nodes += self.get_policy_reachable_ecs_role_nodes(policy)
             if tree.aggressive:
                 candidate_nodes += self.get_policy_reachable_sns_topic_lambdas_role_nodes(policy)
 
@@ -719,42 +722,114 @@ class AWSAccessManager:
         return lst_ret
 
 
-    def get_policy_reachable_ecs_service_role_nodes(self, policy, aggressive=True):
+    def get_policy_reachable_ecs_role_nodes(self, policy, aggressive=True):
         """
-        Get IAM-Role-Nodes reachable by a resource using the source-policy on ECS service
-        ModifyInstanceAttribute - modify user data
+        Get IAM-Role-Nodes reachable by a resource using the source-policy on ECS resources
 
         :param policy:
         :param aggressive:
         :return:
         """
-        breakpoint()
-        lst_ret = []
-        permissions = ["CreateInstanceConnectEndpoint", "ModifyInstanceAttribute"]
+
+        lst_ret = self.get_policy_reachable_ecs_service_role_nodes(policy) + \
+                self.get_policy_reachable_ecs_task_role_nodes(policy)
 
         if aggressive:
-            permissions += ["RunInstances", "StartInstances"]
+            lst_ret += self.get_policy_reachable_ecs_td_role_nodes(policy)
 
-        for ec2_instance in self.aws_api.ec2_instances:
-            if ec2_instance.iam_instance_profile is None:
+        return lst_ret
+
+    def get_policy_reachable_ecs_service_role_nodes(self, policy):
+        """
+        Get IAM-Role-Nodes reachable by a resource using the source-policy on ECS service
+
+
+        :param policy:
+        :return:
+        """
+        lst_ret = []
+        permissions = ["UpdateService"]
+        for ecs_service in self.aws_api.ecs_services:
+            if ecs_service.role_arn is None:
                 continue
 
             for permission in permissions:
-                statement = self.check_policy_permits_resource_action(policy, ec2_instance.arn, permission, ignore_condition=False)
+                statement = self.check_policy_permits_resource_action(policy, ecs_service.arn, permission, ignore_condition=False)
                 if statement:
-                    instance_profile_arn = ec2_instance.iam_instance_profile["Arn"]
-                    instance_profile = CommonUtils.find_objects_by_values(self.aws_api.iam_instance_profiles, {"arn": instance_profile_arn}, max_count=1)[0]
-                    for dict_role in instance_profile.roles:
-                        role = CommonUtils.find_objects_by_values(self.aws_api.iam_roles,
-                                                                  {"arn": dict_role["Arn"]},
-                                                                  max_count=1)[0]
-                        node = SecurityDomainTree.Node(role.arn,
-                                                       f"Role:{role.name}. Policy {policy.name} permits {permission} on ec2 instance {ec2_instance.arn} with profile {instance_profile_arn}",
-                                                       self.get_role_direct_policies(role))
-                        lst_ret.append(node)
+                    role = CommonUtils.find_objects_by_values(self.aws_api.iam_roles,
+                                                              {"arn": ecs_service.role_arn},
+                                                              max_count=1)[0]
+                    node = SecurityDomainTree.Node(role.arn,
+                                                   f"Role:{role.name}. Policy {policy.name} permits {permission} on ECS Service {ecs_service.arn}",
+                                                   self.get_role_direct_policies(role))
+                    lst_ret.append(node)
+                    break
+        return lst_ret
+
+    def get_policy_reachable_ecs_td_role_nodes(self, policy):
+        """
+        Get IAM-Role-Nodes reachable by a resource using the source-policy on ECS task definitions
+
+
+        :param policy:
+        :return:
+        """
+
+        lst_ret = []
+        permissions = ["RunTask", "StartTask"]
+
+        for task_definition in self.aws_api.ecs_task_definitions:
+            if task_definition.task_role_arn is None:
+                continue
+
+            for permission in permissions:
+                statement = self.check_policy_permits_resource_action(policy, task_definition.arn, permission, ignore_condition=False)
+                if statement:
+                    role = CommonUtils.find_objects_by_values(self.aws_api.iam_roles,
+                                                              {"arn": task_definition.task_role_arn},
+                                                              max_count=1)[0]
+                    node = SecurityDomainTree.Node(role.arn,
+                                                   f"Role:{role.name}. Policy {policy.name} permits {permission} on ECS Task Definition {task_definition.arn}",
+                                                   self.get_role_direct_policies(role))
+                    lst_ret.append(node)
                     break
 
         return lst_ret
+
+    def get_policy_reachable_ecs_task_role_nodes(self, policy):
+        """
+        Get IAM-Role-Nodes reachable by a resource using the source-policy on ECS tasks
+
+
+        :param policy:
+        :return:
+        """
+
+        lst_ret = []
+        permissions = ["ExecuteCommand"]
+
+        for task in self.aws_api.ecs_tasks:
+            if task.last_status != "RUNNING":
+                continue
+            task_definition = CommonUtils.find_objects_by_values(self.aws_api.ecs_task_definitions, {"arn": task.task_definition_arn}, max_count=1)[0]
+            if task_definition.task_role_arn is None:
+                continue
+            breakpoint()
+
+            for permission in permissions:
+                statement = self.check_policy_permits_resource_action(policy, task.arn, permission, ignore_condition=False)
+                if statement:
+                    role = CommonUtils.find_objects_by_values(self.aws_api.iam_roles,
+                                                              {"arn": task_definition.task_role_arn},
+                                                              max_count=1)[0]
+                    node = SecurityDomainTree.Node(role.arn,
+                                                   f"Role:{role.name}. Policy {policy.name} permits {permission} on ECS Task {task.arn} with td: {task.task_definition_arn}",
+                                                   self.get_role_direct_policies(role))
+                    lst_ret.append(node)
+                    break
+
+        return lst_ret
+
     def get_policy_reachable_lambda_role_nodes(self, policy, aggressive=True):
         """
         Get IAM-Role-Nodes reachable by a resource using the source-policy on Lambdas
