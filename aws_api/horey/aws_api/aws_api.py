@@ -222,7 +222,7 @@ class AWSAPI:
         self.load_balancers = []
         self.classic_load_balancers = []
         self.hosted_zones = []
-        self.users = []
+        self._users = []
         self.rds_db_instances = []
         self.rds_db_subnet_groups = []
         self.rds_db_cluster_parameter_groups = []
@@ -305,9 +305,21 @@ class AWSAPI:
             return
         STSClient().main_cache_dir_path = self.configuration.aws_api_cache_dir
         self.aws_accounts = self.get_all_managed_accounts()
-        AWSAccount.set_aws_account(
-            self.aws_accounts[self.configuration.aws_api_account]
-        )
+        if not self.configuration.aws_api_accounts and not self.configuration.aws_api_account:
+            raise ValueError(f"{self.configuration.aws_api_accounts=} {self.configuration.aws_api_account=}")
+
+        if not self.configuration.aws_api_accounts:
+            self.configuration.aws_api_accounts = [self.configuration.aws_api_account]
+
+            AWSAccount.set_aws_account(
+                self.aws_accounts[self.configuration.aws_api_account]
+            )
+        for aws_api_account_name in self.configuration.aws_api_accounts:
+            aws_api_account = self.aws_accounts[aws_api_account_name]
+            if not aws_api_account.regions:
+                AWSAccount.set_aws_account(aws_api_account)
+                regions = list(self.ec2_client.yield_regions(update_info=True))
+                aws_api_account.regions = {region.region_mark:region for region in regions}
 
     def get_all_managed_accounts(self):
         """
@@ -341,6 +353,12 @@ class AWSAPI:
         """
         account = AWSAccount.get_aws_account()
         return account.get_regions()
+
+    @property
+    def users(self):
+        if not self._users:
+            self.init_iam_users()
+        return self._users
 
     def init_managed_prefix_lists(
             self, from_cache=False, cache_file=None, region=None, full_information=True
@@ -656,13 +674,20 @@ class AWSAPI:
 
     def init_ecs_clusters(self, region=None):
         """
-        Self explanatory.
+        Standard.
 
         @param region:
         @return:
         """
-
-        self.ecs_clusters = self.ecs_client.get_all_clusters(region=region)
+        self.ecs_clusters = []
+        if self.configuration.aws_api_accounts:
+            for aws_api_account_name in self.configuration.aws_api_accounts:
+                AWSAccount.set_aws_account(
+                    self.aws_accounts[aws_api_account_name]
+                )
+                self.ecs_clusters += self.ecs_client.get_all_clusters(region=region)
+        else:
+            self.ecs_clusters += self.ecs_client.get_all_clusters(region=region)
 
     def init_ecs_capacity_providers(
             self, from_cache=False, cache_file=None, region=None
@@ -690,50 +715,53 @@ class AWSAPI:
         @param region:
         @return:
         """
+        self.ecs_services = []
+        if self.configuration.aws_api_accounts:
+            for aws_api_account_name in self.configuration.aws_api_accounts:
+                AWSAccount.set_aws_account(
+                    self.aws_accounts[aws_api_account_name]
+                )
+                self.ecs_services += self.ecs_client.get_all_services(region=region)
+        else:
+            self.ecs_services = self.ecs_client.get_all_services(region=region)
 
-        if not self.ecs_clusters:
-            self.init_ecs_clusters(region=region)
-        objects = []
-        for cluster in self.ecs_clusters:
-            if region is not None and cluster.region != region:
-                continue
-            objects += self.ecs_client.get_all_services(cluster)
-
-        self.ecs_services = objects
-
-    def init_ecs_task_definitions(self, from_cache=False, cache_file=None, region=None):
+    def init_ecs_task_definitions(self, region=None):
         """
-        Self explanatory.
+        Standard.
 
-        @param from_cache:
-        @param cache_file:
         @param region:
         @return:
         """
 
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, ECSService)
+        self.ecs_task_definitions = []
+
+        if self.configuration.aws_api_accounts:
+            for aws_api_account_name in self.configuration.aws_api_accounts:
+                AWSAccount.set_aws_account(
+                    self.aws_accounts[aws_api_account_name]
+                )
+                self.ecs_task_definitions += self.ecs_client.get_all_task_definitions(region=region)
         else:
-            objects = self.ecs_client.get_all_task_definitions(region=region)
+            self.ecs_task_definitions = self.ecs_client.get_all_task_definitions(region=region)
 
-        self.ecs_task_definitions = objects
-
-    def init_ecs_tasks(self, from_cache=False, cache_file=None, region=None):
+    def init_ecs_tasks(self, region=None):
         """
-        Self explanatory.
+        Standard.
 
-        @param from_cache:
-        @param cache_file:
         @param region:
         @return:
         """
 
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, ECSService)
-        else:
-            objects = self.ecs_client.get_all_tasks(region=region)
+        self.ecs_tasks = []
 
-        self.ecs_tasks = objects
+        if self.configuration.aws_api_accounts:
+            for aws_api_account_name in self.configuration.aws_api_accounts:
+                AWSAccount.set_aws_account(
+                    self.aws_accounts[aws_api_account_name]
+                )
+                self.ecs_tasks += self.ecs_client.get_all_tasks(region=region)
+        else:
+              self.ecs_tasks = self.ecs_client.get_all_tasks(region=region)
 
     def init_auto_scaling_groups(self, from_cache=False, cache_file=None, region=None):
         """
@@ -931,12 +959,17 @@ class AWSAPI:
         @param cache_file:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, EC2Instance)
-        else:
-            objects = self.ec2_client.get_all_instances(region=region)
 
-        self.ec2_instances = objects
+        self.ec2_instances = []
+        if self.configuration.aws_api_accounts:
+            for aws_api_account_name in self.configuration.aws_api_accounts:
+                AWSAccount.set_aws_account(
+                    self.aws_accounts[aws_api_account_name]
+                )
+                self.ec2_instances += self.ec2_client.get_all_instances(region=region)
+        else:
+            self.ec2_instances = self.ec2_client.get_all_instances(region=region)
+
 
     def init_ec2_volumes(self, region=None):
         """
@@ -1018,12 +1051,16 @@ class AWSAPI:
         @param cache_file:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, IamUser)
-        else:
-            objects = self.iam_client.get_all_users()
 
-        self.users = objects
+        self._users = []
+        if self.configuration.aws_api_accounts:
+            for aws_api_account_name in self.configuration.aws_api_accounts:
+                AWSAccount.set_aws_account(
+                    self.aws_accounts[aws_api_account_name]
+                )
+                self._users += self.iam_client.get_all_users()
+        else:
+            self._users = self.iam_client.get_all_users()
 
     def init_iam_roles(self, from_cache=False, cache_file=None):
         """
@@ -1033,12 +1070,17 @@ class AWSAPI:
         @param cache_file:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, IamRole)
-        else:
-            objects = self.iam_client.get_all_roles()
 
-        self.iam_roles = objects
+        self.iam_roles = []
+
+        if self.configuration.aws_api_accounts:
+            for aws_api_account_name in self.configuration.aws_api_accounts:
+                AWSAccount.set_aws_account(
+                    self.aws_accounts[aws_api_account_name]
+                )
+                self.iam_roles += self.iam_client.get_all_roles()
+        else:
+            self.iam_roles = self.iam_client.get_all_roles()
 
     def init_iam_instance_profiles(self, from_cache=False, cache_file=None):
         """
@@ -1048,12 +1090,17 @@ class AWSAPI:
         @param cache_file:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, IamInstanceProfile)
-        else:
-            objects = self.iam_client.get_all_instance_profiles()
 
-        self.iam_instance_profiles = objects
+        self.iam_instance_profiles = []
+
+        if self.configuration.aws_api_accounts:
+            for aws_api_account_name in self.configuration.aws_api_accounts:
+                AWSAccount.set_aws_account(
+                    self.aws_accounts[aws_api_account_name]
+                )
+                self.iam_instance_profiles += self.iam_client.get_all_instance_profiles()
+        else:
+            self.iam_instance_profiles = self.iam_client.get_all_instance_profiles()
 
     def cache_raw_cloud_watch_metrics(self, cache_dir):
         """
@@ -1160,12 +1207,15 @@ class AWSAPI:
         @param cache_file:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, IamPolicy)
+        self.iam_policies = []
+        if self.configuration.aws_api_accounts:
+            for aws_api_account_name in self.configuration.aws_api_accounts:
+                AWSAccount.set_aws_account(
+                    self.aws_accounts[aws_api_account_name]
+                )
+                self.iam_policies += self.iam_client.get_all_policies()
         else:
-            objects = self.iam_client.get_all_policies()
-
-        self.iam_policies = objects
+            self.iam_policies = self.iam_client.get_all_policies()
 
     def init_iam_groups(self, from_cache=False, cache_file=None):
         """
@@ -1175,12 +1225,15 @@ class AWSAPI:
         @param cache_file:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, IamPolicy)
+        self.iam_groups = []
+        if self.configuration.aws_api_accounts:
+            for aws_api_account_name in self.configuration.aws_api_accounts:
+                AWSAccount.set_aws_account(
+                    self.aws_accounts[aws_api_account_name]
+                )
+                self.iam_groups += self.iam_client.get_all_groups()
         else:
-            objects = self.iam_client.get_all_groups()
-
-        self.iam_groups = objects
+            self.iam_groups = self.iam_client.get_all_groups()
 
     def init_and_cache_s3_bucket_objects_synchronous(self, buckets_objects_cache_dir):
         """
@@ -1250,8 +1303,18 @@ class AWSAPI:
         @param full_information:
         @return:
         """
+        self.lambdas = []
 
-        self.lambdas = self.lambda_client.get_all_lambdas(
+        if self.configuration.aws_api_accounts:
+            for aws_api_account_name in self.configuration.aws_api_accounts:
+                AWSAccount.set_aws_account(
+                    self.aws_accounts[aws_api_account_name]
+                )
+                self.lambdas += self.lambda_client.get_all_lambdas(
+                    full_information=full_information
+                )
+        else:
+            self.lambdas = self.lambda_client.get_all_lambdas(
                 full_information=full_information
             )
 
@@ -1642,12 +1705,16 @@ class AWSAPI:
         @param cache_file:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, LambdaEventSourceMapping)
-        else:
-            objects = self.lambda_client.get_all_event_source_mappings(region=region)
 
-        self.lambda_event_source_mappings = objects
+        self.lambda_event_source_mappings = []
+        if self.configuration.aws_api_accounts:
+            for aws_api_account_name in self.configuration.aws_api_accounts:
+                AWSAccount.set_aws_account(
+                    self.aws_accounts[aws_api_account_name]
+                )
+                self.lambda_event_source_mappings += self.lambda_client.get_all_event_source_mappings(region=region)
+        else:
+            self.lambda_event_source_mappings = self.lambda_client.get_all_event_source_mappings(region=region)
 
     def init_target_groups(self, update_info=False):
         """
@@ -4090,15 +4157,16 @@ class AWSAPI:
 
         return self.ec2_client.get_all_vpcs(region=region, filters=filters)
 
-    def get_alive_ec2_instance_by_name(self, region, name):
+    def get_alive_ec2_instance_by_name(self, region, name, update_info=False):
         """
-        Get instance by tag "name". Raise Exception if more then one
+        Get instance by tag "name". Raise Exception if more than one
 
+        :param update_info:
         :param region:
         :param name:
         :return:
         """
-        instances = self.get_ec2_instances_by_name(region, name)
+        instances = self.get_ec2_instances_by_name(region, name, update_info=update_info)
 
         if len(instances) != 1:
             raise RuntimeError(
@@ -4107,7 +4175,7 @@ class AWSAPI:
 
         return instances[0]
 
-    def get_ec2_instances_by_name(self, region, name, alive=True, include_terminated=True):
+    def get_ec2_instances_by_name(self, region, name, alive=True, include_terminated=True, update_info=False):
         """
         Find running ec2 instances by "name" tag
 
@@ -4116,11 +4184,12 @@ class AWSAPI:
         @param alive:
         @param include_terminated:
         @return:
+        :param update_info:
         """
 
-        return self.get_ec2_instances_by_tags(region, {"Name": [name]}, alive=alive, include_terminated=include_terminated)
+        return self.get_ec2_instances_by_tags(region, {"Name": [name]}, alive=alive, include_terminated=include_terminated, update_info=update_info)
 
-    def get_ec2_instances_by_tags(self, region, tags_values_by_name, alive=True, include_terminated=True):
+    def get_ec2_instances_by_tags(self, region, tags_values_by_name, alive=True, include_terminated=True, update_info=False):
         """
         Find running ec2 instances by "name" tag
 
@@ -4129,10 +4198,11 @@ class AWSAPI:
         @param alive:
         @param include_terminated:
         @return:
+        :param update_info:
         """
 
         filters = {"Filters": [{"Name": f"tag:{name}", "Values": values} for name, values in tags_values_by_name.items()]}
-        ec2_instances = self.ec2_client.get_region_instances(region, filters=filters)
+        ec2_instances = self.ec2_client.get_region_instances(region, filters=filters, update_info=update_info)
 
         if not include_terminated:
             ec2_instances = [ec2_instance for ec2_instance in ec2_instances if ec2_instance.get_state() !=
@@ -4437,7 +4507,7 @@ class AWSAPI:
         :return:
         """
 
-        for user in self.iam_client.get_all_users(full_information=full_information):
+        for user in self.users:
             if user.name == user_name:
                 break
         else:

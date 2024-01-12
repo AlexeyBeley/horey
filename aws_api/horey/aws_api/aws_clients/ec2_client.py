@@ -35,6 +35,7 @@ from horey.aws_api.aws_services_entities.nat_gateway import NatGateway
 
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.base_entities.aws_account import AWSAccount
+from horey.aws_api.base_entities.region import Region
 
 from horey.h_logger import get_logger
 
@@ -262,16 +263,17 @@ class EC2Client(Boto3Client):
 
         return list(self.yield_instances(region=region))
 
-    def get_region_instances(self, region, filters=None):
+    def get_region_instances(self, region, filters=None, update_info=False):
         """
         Standard
 
         @param region:
         @param filters:
         @return:
+        :param update_info:
         """
 
-        return list(self.yield_instances(region=region, filters_req=filters))
+        return list(self.yield_instances(region=region, filters_req=filters, update_info=update_info))
 
 
     def yield_security_groups(self, region=None, update_info=False, filters_req=None):
@@ -2511,3 +2513,34 @@ class EC2Client(Boto3Client):
                 self.client.create_tags, None, raw_data=True, filters_req=request
         ):
             return response
+
+    def yield_regions(self, update_info=False, filters_req=None):
+        """
+        Yield over all regions.
+
+        :return:
+        """
+
+        regional_fetcher_generator = self.yield_regions_raw
+        for obj in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                  Region,
+                                                  update_info=update_info,
+                                                  filters_req=filters_req,
+                                                            global_service=True):
+            try:
+                delattr(obj, "region")
+            except AttributeError:
+                pass
+            yield obj
+
+    def yield_regions_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        for dict_src in self.execute(
+                self.client.describe_regions, "Regions", filters_req=filters_req
+        ):
+            yield dict_src

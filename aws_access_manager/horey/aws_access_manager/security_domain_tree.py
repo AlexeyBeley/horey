@@ -5,6 +5,7 @@ Security domain tree.
 
 from horey.h_logger import get_logger
 from horey.common_utils.text_block import TextBlock
+from horey.common_utils.common_utils import CommonUtils
 
 logger = get_logger()
 
@@ -50,6 +51,15 @@ class SecurityDomainTree:
 
         print(self.root.generate_text_block().format_pprint())
 
+    def convert_to_dict(self):
+        """
+        Serialize.
+
+        :return:
+        """
+
+        return CommonUtils.convert_to_dict(self.__dict__)
+
     class Node:
         """
         Security tree node.
@@ -76,3 +86,12 @@ class SecurityDomainTree:
                 tb_ret.blocks.append(child.generate_text_block())
 
             return tb_ret
+
+        def convert_to_dict(self):
+            """
+            Serialize.
+
+            :return:
+            """
+
+            return CommonUtils.convert_to_dict(self.__dict__)

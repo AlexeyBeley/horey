@@ -156,7 +156,7 @@ class ECSClient(Boto3Client):
         if cluster_identifiers is None:
             return region_clusters
 
-        return [region_cluster for region_cluster in region_clusters if region_cluster.name in cluster_identifiers or cluster_identifiers.arn in cluster_identifiers]
+        return [region_cluster for region_cluster in region_clusters if region_cluster.name in cluster_identifiers or region_cluster.arn in cluster_identifiers]
 
     def dispose_capacity_provider(self, capacity_provider: ECSCapacityProvider):
         """
@@ -315,45 +315,30 @@ class ECSClient(Boto3Client):
         ):
             return response
 
-    def get_all_services(self, cluster):
+    def get_all_services(self, cluster=None, region=None):
         """
         Standard
 
         :param cluster:
+        :param region:
         :return:
         """
 
-        filters_req = {"cluster": cluster.name}
-        AWSAccount.set_aws_region(cluster.region)
+        filters_req = {"cluster": cluster.name} if cluster else None
+        return list(self.yield_services(filters_req=filters_req, region=region))
 
-        final_result = []
-        service_arns = []
-
-        for dict_src in self.execute(
-            self.client.list_services, "serviceArns", filters_req=filters_req
-        ):
-            service_arns.append(dict_src)
-
-        if len(service_arns) == 0:
-            return []
-
-        if len(service_arns) > 10:
-            raise NotImplementedError()
-        filters_req["services"] = service_arns
-        for dict_src in self.execute(
-            self.client.describe_services, "services", filters_req=filters_req
-        ):
-            final_result.append(ECSService(dict_src))
-
-        return final_result
     @staticmethod
-    def tasks_cache_filter_callback(filters_req):
+    def services_cache_filter_callback(filters_req):
         """
         Generate suffix
 
         :param filters_req:
         :return:
         """
+        supported_filters = ["cluster", "region"]
+        for key in filters_req:
+            if key not in supported_filters:
+                raise ValueError(f"{key} is not one of {supported_filters}")
 
         if "/" not in filters_req["cluster"]:
             return filters_req["cluster"]
@@ -363,6 +348,75 @@ class ECSClient(Boto3Client):
 
         raise ValueError(filters_req)
 
+    def yield_services(self, region=None, update_info=False, filters_req=None):
+        """
+        Yield over all services.
+
+        :return:
+        """
+        regions = [region] if region is not None else AWSAccount.get_aws_account().regions.values()
+        regional_fetcher_generator = self.yield_services_raw
+        for region in regions:
+            clusters = [filters_req["cluster"]] if filters_req is not None and "cluster" in filters_req else \
+                [cluster.arn for cluster in list(self.yield_clusters(region=region, update_info=update_info))]
+            for cluster in clusters:
+                filters_req_new = copy.deepcopy(filters_req) if filters_req is not None else {}
+                filters_req_new["cluster"] = cluster
+                for obj in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                                    ECSService,
+                                                                    update_info=update_info,
+                                                                    regions=[region],
+                                                                    filters_req=filters_req_new,
+                                                                    cache_filter_callback=self.services_cache_filter_callback):
+                    yield obj
+
+    def yield_services_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+        task_arns = list(self.execute(self.client.list_services, "serviceArns", filters_req=filters_req))
+
+        if len(task_arns) == 0:
+            return []
+
+        final_result = []
+        for i in range(len(task_arns) // 10 + 1):
+            filters_req_new = {"services": task_arns[i * 10: (i + 1) * 10], "include": ["TAGS"],
+                               "cluster": filters_req["cluster"]}
+
+            for dict_src in self.execute(
+                    self.client.describe_services, "services", filters_req=filters_req_new
+            ):
+                yield dict_src
+                final_result.append(dict_src)
+
+        if len(task_arns) != len(final_result):
+            raise RuntimeError(f"{len(task_arns)=} {len(final_result)=}")
+
+        return final_result
+
+    @staticmethod
+    def tasks_cache_filter_callback(filters_req):
+        """
+        Generate suffix
+
+        :param filters_req:
+        :return:
+        """
+        supported_filters = ["cluster", "region"]
+        for key in filters_req:
+            if key not in supported_filters:
+                raise ValueError(f"{key} is not one of {supported_filters}")
+            
+        if "/" not in filters_req["cluster"]:
+            return filters_req["cluster"]
+
+        if "arn" in filters_req["cluster"]:
+            return filters_req["cluster"].split("/")[-1]
+
+        raise ValueError(filters_req)
 
     def yield_tasks(self, region=None, update_info=False, filters_req=None):
         """
@@ -483,15 +537,7 @@ class ECSClient(Boto3Client):
         :return:
         """
 
-        if region is not None:
-            return self.get_region_task_definitions(region)
-
-        final_result = []
-        for _region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_task_definitions(_region)
-
-        return final_result
-
+        return list(self.yield_task_definitions(region=region))
 
     def get_region_task_definitions(self, region, family_prefix=None):
         """
@@ -502,33 +548,44 @@ class ECSClient(Boto3Client):
         :return:
         """
 
-        list_arns = []
-        AWSAccount.set_aws_region(region)
-        filters_req = {}
-        if family_prefix is not None:
-            filters_req["familyPrefix"] = family_prefix
+        filters_req = {"familyPrefix": family_prefix} if family_prefix is not None else None
+        return list(self.yield_task_definitions(region=region, filters_req=filters_req))
 
-        for dict_src in self.execute(
-            self.client.list_task_definitions,
-            "taskDefinitionArns",
-            filters_req=filters_req,
-        ):
-            list_arns.append(dict_src)
+    def yield_task_definitions(self, region=None, update_info=False, filters_req=None):
+        """
+        Yield over all task_definitions.
 
-        if len(list_arns) == 0:
+        :return:
+        """
+
+        regional_fetcher_generator = self.yield_task_definitions_raw
+        for obj in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                            ECSTaskDefinition,
+                                                            update_info=update_info,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req):
+            yield obj
+
+    def yield_task_definitions_raw(self, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        arns = list(self.execute(
+                self.client.list_task_definitions, "taskDefinitionArns", filters_req=filters_req
+        ))
+
+        if len(arns) == 0:
             return []
 
-        final_result = []
-        for arn in list_arns:
+        for arn in arns:
             filters_req = {"taskDefinition": arn, "include": ["TAGS"]}
             for dict_src in self.execute(
-                self.client.describe_task_definition,
-                "taskDefinition",
-                filters_req=filters_req,
+                    self.client.describe_task_definition, "taskDefinition", filters_req=filters_req
             ):
-                final_result.append(ECSTaskDefinition(dict_src))
-
-        return final_result
+                yield dict_src
 
     def provision_ecs_task_definition(self, task_definition):
         """

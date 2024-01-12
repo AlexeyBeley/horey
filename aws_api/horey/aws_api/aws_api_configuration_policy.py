@@ -20,6 +20,7 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
         self._aws_api_regions = None
         self._accounts_file = None
         self._aws_api_account = None
+        self._aws_api_accounts = None
         self._aws_api_cache_dir = None
         self._aws_api_cleanup_cache_dir = None
         self._aws_api_dynamodb_cache_dir = None
@@ -83,8 +84,21 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
             raise ValueError(
                 f"aws_api_account must be a string received {value} of type: {type(value)}"
             )
-
         self._aws_api_account = value
+
+    @property
+    def aws_api_accounts(self):
+        if self._aws_api_accounts is None:
+            raise ValueError("aws_api_account was not set")
+        return self._aws_api_accounts
+
+    @aws_api_accounts.setter
+    def aws_api_accounts(self, value):
+        if not isinstance(value, list):
+            raise ValueError(
+                f"aws_api_account must be a list received {value} of type: {type(value)}"
+            )
+        self._aws_api_accounts = value
 
     @property
     def aws_api_cache_dir(self):

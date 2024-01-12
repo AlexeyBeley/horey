@@ -795,6 +795,9 @@ class Boto3Client:
             regions = AWSAccount.get_aws_account().regions.values()
 
         if not regions:
+            regions = [AWSAccount.get_aws_account().connection_steps[0].region]
+
+        if not regions:
             raise ValueError(f"Was not able to find region while fetching {entity_class} information.")
 
         for region in regions:

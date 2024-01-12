@@ -3,6 +3,7 @@ AWS Access manager.
 
 """
 import json
+import os
 import re
 
 from horey.h_logger import get_logger
@@ -29,7 +30,7 @@ class AWSAccessManager:
 
         aws_api_configuration = AWSAPIConfigurationPolicy()
         aws_api_configuration.accounts_file = self.configuration.managed_accounts_file_path
-        aws_api_configuration.aws_api_account = self.configuration.aws_api_account_name
+        aws_api_configuration.aws_api_accounts = self.configuration.aws_api_accounts
         aws_api_configuration.aws_api_cache_dir = configuration.cache_dir
         self.aws_api = AWSAPI(aws_api_configuration)
 
@@ -176,15 +177,21 @@ class AWSAccessManager:
             delimiter = ":"
         elif lst_arn[2] == "ec2":
             delimiter = "/"
+        elif lst_arn[2] == "ecs":
+            delimiter = "/"
+            if resource_type_and_id.count(delimiter) > 1:
+                if resource_type_and_id.startswith("service") or resource_type_and_id.startswith("task"):
+                    return resource_type_and_id.split(delimiter, 1)
         elif lst_arn[2] == "sns":
             delimiter = ":"
             if resource_type_and_id.count(delimiter) == 0:
                 resource_type, resource_id = "topic", resource_type_and_id
                 return resource_type, resource_id
             elif resource_type_and_id.count(delimiter) == 1:
-                breakpoint()
+                raise RuntimeError("""
                 resource_type, resource_id = "subscription", resource_type_and_id
                 return resource_type, resource_id
+                """)
             else:
                 raise NotImplementedError(f"sns has shitty arn convention, not implemented: {lst_arn}")
         else:
@@ -232,6 +239,8 @@ class AWSAccessManager:
                 mask_resource_type, mask_resource_id = mask_resource_type_and_id.split(delimiter, 1)
         elif lst_mask[2] == "ec2":
             delimiter = "/"
+        elif lst_mask[2] == "ecs":
+            delimiter = "/"
         elif lst_mask[2] == "sns":
             delimiter = ":"
             if mask_resource_type_and_id.count(delimiter) == 0:
@@ -241,9 +250,10 @@ class AWSAccessManager:
                 else:
                     mask_resource_type, mask_resource_id = "*", "*"
             elif mask_resource_type_and_id.count(delimiter) == 1:
-                breakpoint()
+                raise NotImplementedError("""
                 resource_type, resource_id = "subscription", mask_resource_type_and_id
                 return resource_type, resource_id
+                """)
             else:
                 raise NotImplementedError(f"sns has shitty arn convention, not implemented: {lst_mask}")
         else:
@@ -469,20 +479,33 @@ class AWSAccessManager:
 
         return statement_action == action
 
-    def generate_user_security_domain_tree(self, user_name):
+    def generate_users_security_domain_tree(self):
         """
+        Generate all users report.
 
-        :param user_name:
         :return:
         """
 
-        self.aws_api.init_iam_users()
+        lst_ret = []
+        for user in self.aws_api.users:
+            tree = self.generate_user_security_domain_tree(user)
+            with open (os.path.join(self.configuration.user_reports_dir_path, user.name.replace(".", "_")), "w") as file_handler:
+                json.dump(tree.convert_to_dict(), file_handler)
+            lst_ret.append(tree)
+        return lst_ret
+
+    def generate_user_security_domain_tree(self, user):
+        """
+
+        :param user:
+        :return:
+        """
+
         self.aws_api.init_iam_roles()
         self.aws_api.init_iam_policies()
         self.aws_api.init_iam_groups()
         self.aws_api.init_lambdas(full_information=True)
 
-        user = self.aws_api.find_user_by_name(user_name, full_information=True)
         direct_policies = self.get_user_direct_policies(user)
         root = SecurityDomainTree.Node(user.arn, "User credentials", direct_policies)
         tree = SecurityDomainTree(root)
@@ -492,7 +515,6 @@ class AWSAccessManager:
         self.aws_api.init_sns_subscriptions()
         self.aws_api.init_ecs_clusters()
         self.aws_api.init_ecs_tasks()
-        return
         self.aws_api.init_ecs_services()
         self.aws_api.init_ecs_task_definitions()
         self.extend_security_domain_tree(root, tree)
@@ -535,7 +557,7 @@ class AWSAccessManager:
                                                            max_count=1)[0]
             lst_ret.append(policy)
 
-        lst_ret += [IamPolicy(dict_policy, from_cache=True) for dict_policy in role.inline_policies]
+        lst_ret += role.inline_policies
 
         return lst_ret
 
@@ -570,9 +592,9 @@ class AWSAccessManager:
         for policy in node.policies:
             candidate_nodes += self.get_policy_reachable_user_nodes(policy)
             candidate_nodes += self.get_policy_reachable_role_nodes(policy)
-            candidate_nodes += self.get_policy_reachable_lambda_role_nodes(policy)
-            candidate_nodes += self.get_policy_reachable_ec2_instance_role_nodes(policy)
-            candidate_nodes += self.get_policy_reachable_ecs_role_nodes(policy)
+            candidate_nodes += self.get_policy_reachable_lambda_role_nodes(policy, aggressive=tree.aggressive)
+            candidate_nodes += self.get_policy_reachable_ec2_instance_role_nodes(policy, aggressive=tree.aggressive)
+            candidate_nodes += self.get_policy_reachable_ecs_role_nodes(policy, aggressive=tree.aggressive)
             if tree.aggressive:
                 candidate_nodes += self.get_policy_reachable_sns_topic_lambdas_role_nodes(policy)
 
@@ -600,7 +622,7 @@ class AWSAccessManager:
         assumable_roles = self.get_arn_assume_roles(node.id)
         lst_ret = []
         for role in assumable_roles:
-            node = SecurityDomainTree.Node(role.arn, "AssumeRole",
+            node = SecurityDomainTree.Node(role.arn, f"Role:{role.arn}. AssumeRole",
                                                self.get_role_direct_policies(role))
             lst_ret.append(node)
 
@@ -648,10 +670,7 @@ class AWSAccessManager:
                         continue
                     if subscription.protocol != "lambda":
                         continue
-                    try:
-                        aws_lambda = CommonUtils.find_objects_by_values(self.aws_api.lambdas, {"arn": subscription.endpoint}, max_count=1)[0]
-                    except Exception:
-                        breakpoint()
+                    aws_lambda = CommonUtils.find_objects_by_values(self.aws_api.lambdas, {"arn": subscription.endpoint}, max_count=1)[0]
                     node = self.construct_tree_node_from_aws_lambda(aws_lambda, f"Policy {policy.name} permits {permission} on sns topic {sns_topic.arn} triggering lambda {sns_topic.arn}")
 
                     lst_ret.append(node)
@@ -721,7 +740,6 @@ class AWSAccessManager:
 
         return lst_ret
 
-
     def get_policy_reachable_ecs_role_nodes(self, policy, aggressive=True):
         """
         Get IAM-Role-Nodes reachable by a resource using the source-policy on ECS resources
@@ -785,9 +803,12 @@ class AWSAccessManager:
             for permission in permissions:
                 statement = self.check_policy_permits_resource_action(policy, task_definition.arn, permission, ignore_condition=False)
                 if statement:
-                    role = CommonUtils.find_objects_by_values(self.aws_api.iam_roles,
+                    try:
+                        role = CommonUtils.find_objects_by_values(self.aws_api.iam_roles,
                                                               {"arn": task_definition.task_role_arn},
                                                               max_count=1)[0]
+                    except IndexError:
+                        break
                     node = SecurityDomainTree.Node(role.arn,
                                                    f"Role:{role.name}. Policy {policy.name} permits {permission} on ECS Task Definition {task_definition.arn}",
                                                    self.get_role_direct_policies(role))
@@ -814,7 +835,6 @@ class AWSAccessManager:
             task_definition = CommonUtils.find_objects_by_values(self.aws_api.ecs_task_definitions, {"arn": task.task_definition_arn}, max_count=1)[0]
             if task_definition.task_role_arn is None:
                 continue
-            breakpoint()
 
             for permission in permissions:
                 statement = self.check_policy_permits_resource_action(policy, task.arn, permission, ignore_condition=False)
@@ -919,7 +939,7 @@ class AWSAccessManager:
             if not self.check_statement_permits_service_action(service, action, statement):
                 continue
 
-            if not ignore_condition and not self.check_statement_permits_condition(lst_arn, action, statement):
+            if not ignore_condition and not self.check_statement_permits_condition(lst_arn, statement):
                 continue
 
             if statement.effect != statement.Effects.ALLOW:
@@ -977,12 +997,11 @@ class AWSAccessManager:
 
         return False
 
-    def check_statement_permits_condition(self, lst_arn, action, statement):
+    def check_statement_permits_condition(self, lst_arn, statement):
         """
         Check policy statement matches arn.
 
         :param lst_arn:
-        :param action:
         :param statement:
         :return:
         """
@@ -991,13 +1010,11 @@ class AWSAccessManager:
             return True
 
         if len(statement.condition) != 1:
-            breakpoint()
             raise NotImplementedError(statement.condition)
 
         if "StringEquals" in statement.condition or "StringEqualsIfExists" in statement.condition :
             logical_condition = "StringEquals" if "StringEquals" in statement.condition else "StringEqualsIfExists"
             if len(statement.condition[logical_condition]) != 1:
-                breakpoint()
                 raise NotImplementedError(statement.condition)
             if "ec2:Region" in statement.condition[logical_condition]:
                 if lst_arn[2] != "ec2":
@@ -1025,6 +1042,4 @@ class AWSAccessManager:
                 if "ec2" in service_mask:
                     return True
 
-        breakpoint()
         raise NotImplementedError(statement.condition)
-        return True
