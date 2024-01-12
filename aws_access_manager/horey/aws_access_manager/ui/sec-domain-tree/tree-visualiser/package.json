@@ -11,6 +11,9 @@
     "react-scripts": "5.0.1",
     "web-vitals": "^2.1.4",
     "cytoscape": "^3.16.3",
+    "cytoscape-elk": "2.0.2",
+    "cytoscape-klay": "3.1.4",
+    "cytoscape-fcose": "2.1.0",
     "react-cytoscapejs": "^1.2.1",
     "prop-types": "^15.7.2"
   },

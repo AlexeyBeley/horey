@@ -1,67 +1,13 @@
 import React, { useState } from "react";
 import "./style.css";
 import CytoscapeComponent from "react-cytoscapejs";
+import { layouts } from "./layouts";
 import { generateGraph, generateGraphFromDict } from "./generateGraph";
+import setupCy from "./setupCy";
+setupCy();
 
 
-
-export default function App() {
-
-  fetch("./nodes.json")
-    .then(function (res) {
-        console.log("res:", res.text());
-    })
-    .then(function (data) {
-        console.log("data:", data);
-    });
-
-  const [width, setWith] = useState("100%");
-  const [height, setHeight] = useState("400px");
-  const [graphData, setGraphData] = useState({
-    nodes: [
-      { data: { id: "1", label: "IP 1", type: "ip" } },
-      { data: { id: "2", label: "Device 1", type: "device" } },
-      { data: { id: "3", label: "IP 2", type: "ip" } },
-      { data: { id: "4", label: "Device 2", type: "device" } },
-      { data: { id: "5", label: "Device 3", type: "device" } },
-      { data: { id: "6", label: "IP 3", type: "ip" } },
-      { data: { id: "7", label: "Device 5", type: "device" } },
-      { data: { id: "8", label: "Device 6", type: "device" } },
-      { data: { id: "9", label: "Device 7", type: "device" } },
-      { data: { id: "10", label: "Device 8", type: "device" } },
-      { data: { id: "11", label: "Device 9", type: "device" } },
-      { data: { id: "12", label: "IP 3", type: "ip" } },
-      { data: { id: "13", label: "Device 10", type: "device" } }
-    ],
-    edges: [
-      {
-        data: { source: "1", target: "2", label: "Node2" }
-      },
-      {
-        data: { source: "3", target: "4", label: "Node4" }
-      },
-      {
-        data: { source: "3", target: "5", label: "Node5" }
-      },
-      {
-        data: { source: "6", target: "5", label: " 6 -> 5" }
-      },
-      {
-        data: { source: "6", target: "7", label: " 6 -> 7" }
-      },
-      {
-        data: { source: "6", target: "8", label: " 6 -> 8" }
-      },
-      {
-        data: { source: "6", target: "9", label: " 6 -> 9" }
-      },
-      {
-        data: { source: "3", target: "13", label: " 3 -> 13" }
-      }
-    ]
-  });
-  const [elements, setElements] = React.useState(() => generateGraph(26, 50));
-  const layout = {
+const base_layout = {
     name: "breadthfirst",
     fit: true,
     // circle: true,
@@ -73,6 +19,25 @@ export default function App() {
     avoidOverlap: true,
     nodeDimensionsIncludeLabels: false
   };
+
+const not_base_layout = {
+    name: "breadthfirst",
+    fit: true,
+    // circle: true,
+    directed: true,
+    padding: 40,
+    // spacingFactor: 1.5,
+    animate: true,
+    animationDuration: 1000,
+    avoidOverlap: true,
+    nodeDimensionsIncludeLabels: false
+  };
+
+export default function App() {
+  const [width, setWith] = useState("100%");
+  const [height, setHeight] = useState("400px");
+  const [elements, setElements] = React.useState(() => generateGraph(26, 50));
+  const [layout, setLayout] = React.useState(layouts.fcose);
 
   const styleSheet = [
     {
@@ -130,7 +95,9 @@ export default function App() {
   ];
   function btnClick(){
      var textArea = document.getElementById("myTextArea");
-     setElements(generateGraphFromDict(textArea.value))
+     setElements(generateGraphFromDict(textArea.value));
+     setLayout(not_base_layout);
+     setLayout(base_layout);
     }
   let myCyRef;
 
