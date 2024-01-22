@@ -90,6 +90,7 @@ class AWSAccessManager:
                     break
 
         return lst_ret
+
     # pylint: disable= too-many-branches, too-many-return-statements
     @staticmethod
     def check_arn_mask_match(arn, mask):
