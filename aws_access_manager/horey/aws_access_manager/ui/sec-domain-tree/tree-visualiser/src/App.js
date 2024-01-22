@@ -91,6 +91,22 @@ export default function App() {
         "target-arrow-shape": "triangle",
         "curve-style": "bezier"
       }
+    },
+    {
+      selector: "edge[label]",
+      style: {
+        label: "data(label)",
+        color: "white",
+        "font-size": "20",
+        "text-background-color": "white",
+        "text-background-opacity": 0,
+        "text-background-padding": "2px",
+        "text-margin-y": -4,
+        // so the transition is selected when its label/name is selected
+        "text-events": "yes",
+        "text-outline-color": "#4a56a6",
+        "text-outline-width": "2px",
+      },
     }
   ];
   function btnClick(){

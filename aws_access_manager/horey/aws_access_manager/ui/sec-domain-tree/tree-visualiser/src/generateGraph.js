@@ -21,7 +21,8 @@ export function generateGraphFromDict(str_src) {
   dict_src.edges.forEach((edge) => {
     let id1= edge.source;
     let id2= edge.target;
-    elements.push({ data: { source: id1, target: id2 } });
+    let label= edge.label;
+    elements.push({ data: { source: id1, target: id2, label: label} });
   });
 
   return elements;

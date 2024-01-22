@@ -60,6 +60,17 @@ class SecurityDomainTree:
 
         return CommonUtils.convert_to_dict(self.__dict__)
 
+    def generate_security_domain_graph(self):
+        """
+        Generate graph.
+
+        :return:
+        """
+
+        nodes, edges = self.root.generate_security_domain_graph_nodes_and_edges()
+        return {"nodes": nodes, "edges": edges}
+
+
     class Node:
         """
         Security tree node.
@@ -68,6 +79,7 @@ class SecurityDomainTree:
 
         def __init__(self, uid, access_type, policies):
             self.id = uid
+            self.full_admin = False
             self.access_type = access_type
             self.policies = policies
             self.children = []
@@ -95,3 +107,21 @@ class SecurityDomainTree:
             """
 
             return CommonUtils.convert_to_dict(self.__dict__)
+
+        def generate_security_domain_graph_nodes_and_edges(self):
+            """
+            Nodes and edges drawable in UI.
+
+            :return:
+            """
+
+            nodes, edges = [], []
+            nodes.append({"id": self.id, "label": self.id.split(":")[-1]})
+
+            for child in self.children:
+                child_nodes, child_edges = child.generate_security_domain_graph_nodes_and_edges()
+                edges.append({"source": self.id, "target": child.id, "label": child.access_type})
+                edges += child_edges
+                nodes += child_nodes
+
+            return nodes, edges

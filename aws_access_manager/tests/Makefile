@@ -24,9 +24,11 @@ test: FORCE build
 	source ${VENV_BIN_DIR}/activate &&\
 	python -m pytest ${CURRENT_DIR}/ -v
 
-wip_%: FORCE build
+wip_%: FORCE build wip_raw_%
+
+wip_raw_%:
 	source ${VENV_BIN_DIR}/activate &&\
-	python -m pytest -m wip --full-trace ${CURRENT_DIR}/$(subst wip_,,$@) -v -s
+	python -m pytest -m wip --full-trace ${CURRENT_DIR}/$(subst wip_raw_,,$@) -v -s
 
 wip: FORCE build
 	source ${VENV_BIN_DIR}/activate &&\

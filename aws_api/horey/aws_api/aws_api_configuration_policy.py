@@ -74,8 +74,6 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
 
     @property
     def aws_api_account(self):
-        if self._aws_api_account is None:
-            raise ValueError("aws_api_account was not set")
         return self._aws_api_account
 
     @aws_api_account.setter
@@ -88,15 +86,13 @@ class AWSAPIConfigurationPolicy(ConfigurationPolicy):
 
     @property
     def aws_api_accounts(self):
-        if self._aws_api_accounts is None:
-            raise ValueError("aws_api_account was not set")
         return self._aws_api_accounts
 
     @aws_api_accounts.setter
     def aws_api_accounts(self, value):
         if not isinstance(value, list):
             raise ValueError(
-                f"aws_api_account must be a list received {value} of type: {type(value)}"
+                f"aws_api_accounts must be a list received {value} of type: {type(value)}"
             )
         self._aws_api_accounts = value
 

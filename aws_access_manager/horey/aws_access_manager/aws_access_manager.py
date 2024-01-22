@@ -2,6 +2,8 @@
 AWS Access manager.
 
 """
+# pylint: disable= too-many-lines
+
 import json
 import os
 import re
@@ -88,7 +90,7 @@ class AWSAccessManager:
                     break
 
         return lst_ret
-    # pylint: disable= too-many-branches
+    # pylint: disable= too-many-branches, too-many-return-statements
     @staticmethod
     def check_arn_mask_match(arn, mask):
         """
@@ -187,13 +189,12 @@ class AWSAccessManager:
             if resource_type_and_id.count(delimiter) == 0:
                 resource_type, resource_id = "topic", resource_type_and_id
                 return resource_type, resource_id
-            elif resource_type_and_id.count(delimiter) == 1:
+            if resource_type_and_id.count(delimiter) == 1:
                 raise RuntimeError("""
                 resource_type, resource_id = "subscription", resource_type_and_id
                 return resource_type, resource_id
                 """)
-            else:
-                raise NotImplementedError(f"sns has shitty arn convention, not implemented: {lst_arn}")
+            raise NotImplementedError(f"sns has shitty arn convention, not implemented: {lst_arn}")
         else:
             raise NotImplementedError(f"Did not yet test with these services: {lst_arn=}")
 
@@ -204,6 +205,7 @@ class AWSAccessManager:
 
         return resource_type, resource_id
 
+    # pylint: disable= too-many-statements
     @staticmethod
     def extract_resource_type_and_id_regex_from_arn_mask(lst_mask):
         """
@@ -241,6 +243,10 @@ class AWSAccessManager:
             delimiter = "/"
         elif lst_mask[2] == "ecs":
             delimiter = "/"
+            if mask_resource_type_and_id.count(delimiter) > 1:
+                mask_resource_type, mask_resource_id = mask_resource_type_and_id.split(delimiter, 1)
+                if mask_resource_type not in ["task", "task-set", "service"]:
+                    raise NotImplementedError(f"Wasn't checked for {mask_resource_type}")
         elif lst_mask[2] == "sns":
             delimiter = ":"
             if mask_resource_type_and_id.count(delimiter) == 0:
@@ -260,7 +266,13 @@ class AWSAccessManager:
             raise ValueError(f"Can not decide what delimiter is: {lst_mask=}")
 
         if mask_resource_type is None and mask_resource_id is None:
-            mask_resource_type, mask_resource_id = mask_resource_type_and_id.split(delimiter)
+            if delimiter not in mask_resource_type_and_id:
+                if mask_resource_type_and_id == "*":
+                    mask_resource_type, mask_resource_id = "*", "*"
+                else:
+                    raise NotImplementedError(f"No delimiter in {mask_resource_type_and_id}")
+            else:
+                mask_resource_type, mask_resource_id = mask_resource_type_and_id.split(delimiter)
 
         if isinstance(mask_resource_type, str) and ("*" in mask_resource_type or "?" in mask_resource_type):
             mask_resource_regex = AWSAccessManager.make_regex_from_string(mask_resource_type)
@@ -365,7 +377,7 @@ class AWSAccessManager:
 
         return lst_ret
 
-    def get_iam_role_lambdas_assumable_roles(self, region, role):
+    def provision_iam_role_lambdas_assumable_roles(self, region, role):
         """
         Prepare a copy of role used by Lambdas accessible with this role.
 
@@ -377,20 +389,23 @@ class AWSAccessManager:
             self.aws_api.init_iam_roles()
 
         aws_lambdas = self.get_iam_role_lambdas(region, role)
+        lst_ret = []
         for aws_lambda in aws_lambdas:
             lambda_role = CommonUtils.find_objects_by_values(self.aws_api.iam_roles, {"arn": aws_lambda.role},
                                                              max_count=1)
             if not lambda_role:
-                breakpoint()
+                raise NotImplementedError(aws_lambda.role)
             lambda_role = CommonUtils.find_objects_by_values(self.aws_api.iam_roles, {"arn": aws_lambda.role}, max_count=1)[0]
             lambda_role.assume_role_policy_document = {"Version": "2012-10-17", "Statement": [{"Effect": "Allow", "Principal": {"AWS": role.arn}, "Action": "sts:AssumeRole"}]}
             lambda_role.description = "Horey test credentials copy role"
             lambda_role.name += "-hrycrdtst"
             lambda_role.arn = None
             if lambda_role.inline_policies:
-                breakpoint()
+                raise NotImplementedError(aws_lambda.role)
                 #lambda_role.inline_policies = [IamPolicy(dict_src, from_cache=True) for dict_src in lambda_role.inline_policies]
             self.aws_api.provision_iam_role(lambda_role)
+            lst_ret.append(lambda_role)
+        return lst_ret
 
     def get_iam_role_lambdas(self, region, role):
         """
@@ -489,8 +504,32 @@ class AWSAccessManager:
         lst_ret = []
         for user in self.aws_api.users:
             tree = self.generate_user_security_domain_tree(user)
-            with open (os.path.join(self.configuration.user_reports_dir_path, user.name.replace(".", "_")), "w") as file_handler:
+            with open (os.path.join(self.configuration.user_reports_dir_path, user.name.replace(".", "_")), "w", encoding="utf8") as file_handler:
                 json.dump(tree.convert_to_dict(), file_handler)
+            lst_ret.append(tree)
+        return lst_ret
+
+    def generate_users_security_domain_graphs(self):
+        """
+        Generate all users report.
+
+        :return:
+        """
+
+        lst_ret = []
+        aggressive_dir_path = os.path.join(self.configuration.user_reports_dir_path, "aggressive")
+        not_aggressive_dir_path = os.path.join(self.configuration.user_reports_dir_path, "not_aggressive")
+        os.makedirs(aggressive_dir_path, exist_ok=True)
+        os.makedirs(not_aggressive_dir_path, exist_ok=True)
+
+        for user in self.aws_api.users:
+            tree = self.generate_user_security_domain_tree(user)
+            dict_graph = tree.generate_security_domain_graph()
+            file_name = user.name.replace(".", "_") + "_graph.json"
+            file_full_path = os.path.join(self.configuration.user_reports_dir_path, aggressive_dir_path if tree.aggressive else not_aggressive_dir_path, file_name)
+            with open (file_full_path, "w", encoding="utf8") as file_handler:
+                json.dump(dict_graph, file_handler)
+            logger.info(f"UI graph in {file_full_path}")
             lst_ret.append(tree)
         return lst_ret
 
@@ -508,7 +547,7 @@ class AWSAccessManager:
 
         direct_policies = self.get_user_direct_policies(user)
         root = SecurityDomainTree.Node(user.arn, "User credentials", direct_policies)
-        tree = SecurityDomainTree(root)
+        tree = SecurityDomainTree(root, aggressive=False)
         self.aws_api.init_ec2_instances()
         self.aws_api.init_iam_instance_profiles()
         self.aws_api.init_sns_topics()
@@ -614,6 +653,7 @@ class AWSAccessManager:
     def get_node_reachable_assume_role_nodes(self, node):
         """
         Get all nodes reachable from the source node by "assume role" mechanism.
+        # to do: check if node can UpdateAssumeRolePolicy on roles.
 
         :param node:
         :return:
@@ -622,7 +662,7 @@ class AWSAccessManager:
         assumable_roles = self.get_arn_assume_roles(node.id)
         lst_ret = []
         for role in assumable_roles:
-            node = SecurityDomainTree.Node(role.arn, f"Role:{role.arn}. AssumeRole",
+            node = SecurityDomainTree.Node(role.arn, "AssumeRole",
                                                self.get_role_direct_policies(role))
             lst_ret.append(node)
 
@@ -644,7 +684,7 @@ class AWSAccessManager:
                     sid = f":{statement.sid}"
                 else:
                     sid = ""
-                node = SecurityDomainTree.Node(role.arn, f"Role:{role.name}. Policy '{policy.name}{sid}' permits PassRole",
+                node = SecurityDomainTree.Node(role.arn, f"Policy: {policy.name}-> {sid}-> PassRole",
                                                self.get_role_direct_policies(role))
                 lst_ret.append(node)
 
@@ -697,7 +737,7 @@ class AWSAccessManager:
                                                                         {"arn": dict_role["Arn"]},
                                                                       max_count=1)[0]
                 node = SecurityDomainTree.Node(role.arn,
-                                                f"Assuming user has access to instance {ec2_instance.arn} with profile {instance_profile_arn}",
+                                                f"SSH-> {ec2_instance.arn}-> {instance_profile_arn}",
                                                self.get_role_direct_policies(role))
                 lst_ret.append(node)
 
@@ -733,7 +773,7 @@ class AWSAccessManager:
                                                                               {"arn": dict_role["Arn"]},
                                                                               max_count=1)[0]
                         node = SecurityDomainTree.Node(role.arn,
-                                                       f"Role:{role.name}. Policy {policy.name} permits {permission} on ec2 instance {ec2_instance.arn} with profile {instance_profile_arn}",
+                                                       f"Policy: {policy.name}-> [{permission}-> {ec2_instance.arn}]",
                                                        self.get_role_direct_policies(role))
                         lst_ret.append(node)
                     break
@@ -778,7 +818,7 @@ class AWSAccessManager:
                                                               {"arn": ecs_service.role_arn},
                                                               max_count=1)[0]
                     node = SecurityDomainTree.Node(role.arn,
-                                                   f"Role:{role.name}. Policy {policy.name} permits {permission} on ECS Service {ecs_service.arn}",
+                                                   f"Policy {policy.name}-> {permission}-> {ecs_service.arn}",
                                                    self.get_role_direct_policies(role))
                     lst_ret.append(node)
                     break
@@ -810,7 +850,7 @@ class AWSAccessManager:
                     except IndexError:
                         break
                     node = SecurityDomainTree.Node(role.arn,
-                                                   f"Role:{role.name}. Policy {policy.name} permits {permission} on ECS Task Definition {task_definition.arn}",
+                                                   f"Policy: {policy.name}-> {permission}-> {task_definition.arn}",
                                                    self.get_role_direct_policies(role))
                     lst_ret.append(node)
                     break
@@ -843,7 +883,7 @@ class AWSAccessManager:
                                                               {"arn": task_definition.task_role_arn},
                                                               max_count=1)[0]
                     node = SecurityDomainTree.Node(role.arn,
-                                                   f"Role:{role.name}. Policy {policy.name} permits {permission} on ECS Task {task.arn} with td: {task.task_definition_arn}",
+                                                   f"Role: {role.name}-> Policy: {policy.name}-> {permission}-> {task.arn}-> {task.task_definition_arn}",
                                                    self.get_role_direct_policies(role))
                     lst_ret.append(node)
                     break
@@ -867,7 +907,7 @@ class AWSAccessManager:
         for aws_lambda in self.aws_api.lambdas:
             for permission in permissions:
                 if self.check_policy_permits_resource_action(policy, aws_lambda.arn, permission, ignore_condition=False):
-                    node = self.construct_tree_node_from_aws_lambda(aws_lambda, f"Policy {policy.name} permits {permission} on lambda {aws_lambda.arn}")
+                    node = self.construct_tree_node_from_aws_lambda(aws_lambda, f"Policy: {policy.name}-> {permission}-> {aws_lambda.arn}")
                     lst_ret.append(node)
                     break
 
@@ -892,6 +932,7 @@ class AWSAccessManager:
         """
         Get user-nodes the source-policy grants access to manage.
         e.g. CreateAccessKey
+        # to do: AttachUserPolicy
 
         Aggressive:
         UpdateAccessKey. Preliminary information: Identity using this policy has access to these credentials.
@@ -900,18 +941,25 @@ class AWSAccessManager:
         :param aggressive:
         :return:
         """
+        lst_permissions = ["CreateLoginProfile", "CreateAccessKey", "UpdateLoginProfile"]
+        lst_users = []
 
-        lst_users = [user for user in self.aws_api.users if self.check_policy_permits_resource_action(policy, user.arn, "CreateAccessKey")]
+        for user in self.aws_api.users:
+            for permission in lst_permissions:
+                if self.check_policy_permits_resource_action(policy, user.arn, permission):
+                    lst_users.append(user)
+                    break
+
         lst_ret = []
         for user in lst_users:
-            node = SecurityDomainTree.Node(user.arn, f"Policy {policy.name} permits CreateAccessKey", self.get_user_direct_policies(user))
+            node = SecurityDomainTree.Node(user.arn, f"Policy: {policy.name}-> CreateAccessKey-> {user.name}", self.get_user_direct_policies(user))
             lst_ret.append(node)
 
         if aggressive:
             lst_users = [user for user in self.aws_api.users if
                          self.check_policy_permits_resource_action(policy, user.arn, "UpdateAccessKey")]
             for user in lst_users:
-                node = SecurityDomainTree.Node(user.arn, f"Policy {policy.name} permits UpdateAccessKey",
+                node = SecurityDomainTree.Node(user.arn, f"Policy: {policy.name}-> UpdateAccessKey-> {user.name}",
                                                self.get_user_direct_policies(user))
                 lst_ret.append(node)
 
@@ -1021,10 +1069,7 @@ class AWSAccessManager:
                     return False
                 region_mask = statement.condition["StringEquals"]["ec2:Region"]
                 if "*" not in region_mask and "?" not in region_mask:
-                    if lst_arn[3] == region_mask:
-                        return True
-                    else:
-                        return False
+                    return lst_arn[3] == region_mask
             elif "iam:PassedToService" in statement.condition[logical_condition]:
                 service_masks = statement.condition[logical_condition]["iam:PassedToService"]
                 service_masks = [service_masks] if isinstance(service_masks, str) else service_masks

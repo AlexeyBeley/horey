@@ -1902,7 +1902,7 @@ class EC2Client(Boto3Client):
         return [EC2Instance(instance) for instance in final_result]
 
     def provision_ec2_instance(
-            self, ec2_instance: EC2Instance, wait_until_active=False
+            self, ec2_instance: EC2Instance, wait_until_active=False, tagname_uid=True,
     ):
         """
         Standard
@@ -1910,29 +1910,31 @@ class EC2Client(Boto3Client):
         @param ec2_instance:
         @param wait_until_active:
         @return:
+        :param tagname_uid:
         """
 
-        filter_by_tag = {
-            "Filters": [{"Name": "tag:Name", "Values": [ec2_instance.get_tagname()]}]
-        }
-        region_ec2_instances = self.get_region_ec2_instances(
-            ec2_instance.region, custom_filters=filter_by_tag
-        )
-        for region_ec2_instance in region_ec2_instances:
-            if region_ec2_instance.get_state() not in [
-                region_ec2_instance.State.RUNNING,
-                region_ec2_instance.State.PENDING,
-            ]:
-                continue
+        if tagname_uid:
+            filter_by_tag = {
+                "Filters": [{"Name": "tag:Name", "Values": [ec2_instance.get_tagname()]}]
+            }
+            region_ec2_instances = self.get_region_ec2_instances(
+                ec2_instance.region, custom_filters=filter_by_tag
+            )
+            for region_ec2_instance in region_ec2_instances:
+                if region_ec2_instance.get_state() not in [
+                    region_ec2_instance.State.RUNNING,
+                    region_ec2_instance.State.PENDING,
+                ]:
+                    continue
 
-            if (
-                    region_ec2_instance.get_tagname(ignore_missing_tag=True)
-                    == ec2_instance.get_tagname()
-            ):
-                ec2_instance.update_from_raw_response(region_ec2_instance.dict_src)
-                return
+                if (
+                        region_ec2_instance.get_tagname(ignore_missing_tag=True)
+                        == ec2_instance.get_tagname()
+                ):
+                    ec2_instance.update_from_raw_response(region_ec2_instance.dict_src)
+                    return
 
-            raise RuntimeError("Filter by tag Name did not work.")
+                raise RuntimeError("Filter by tag Name did not work.")
 
         try:
             response = self.provision_ec2_instance_raw(
