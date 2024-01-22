@@ -1,5 +1,3 @@
-import pdb
-
 from azure.mgmt.resource import ResourceManagementClient
 from horey.azure_api.azure_clients.azure_client import AzureClient
 from horey.azure_api.azure_service_entities.resource_group import ResourceGroup
@@ -7,6 +5,8 @@ from horey.azure_api.azure_service_entities.resource_group import ResourceGroup
 from horey.h_logger import get_logger
 
 logger = get_logger()
+# locks:
+# https://stackoverflow.com/questions/63432358/how-to-lock-all-resources-in-an-azure-resource-group-using-python
 
 
 class ResourceClient(AzureClient):

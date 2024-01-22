@@ -496,8 +496,14 @@ def test_get_region_instances():
     ret = ec2_client.get_region_instances(Region.get_region("us-west-2"))
     assert len(ret) > 0
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_get_region_amis():
     ec2_client = EC2Client()
     ret = ec2_client.get_region_amis(Region.get_region("us-west-2"))
+    assert len(ret) > 0
+
+@pytest.mark.wip
+def test_yield_regions():
+    ec2_client = EC2Client()
+    ret = list(ec2_client.yield_regions())
     assert len(ret) > 0

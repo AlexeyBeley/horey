@@ -115,7 +115,7 @@ class Disk(AzureObject):
                 "disk_size_gb": self.disk_size_gb,
                 "creation_data": {"create_option": DiskCreateOption.empty},
                 "tags": self.tags,
-            },
+            }
         ]
 
     def update_after_creation(self, disk):

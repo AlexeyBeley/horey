@@ -15,15 +15,6 @@ from horey.aws_api.aws_clients.ecr_client import ECRClient
 
 from horey.aws_api.aws_clients.ec2_client import EC2Client
 from horey.aws_api.aws_services_entities.ec2_instance import EC2Instance
-from horey.aws_api.aws_services_entities.ec2_security_group import EC2SecurityGroup
-from horey.aws_api.aws_services_entities.ec2_spot_fleet_request import (
-    EC2SpotFleetRequest,
-)
-from horey.aws_api.aws_services_entities.ec2_launch_template import EC2LaunchTemplate
-from horey.aws_api.aws_services_entities.ec2_launch_template_version import (
-    EC2LaunchTemplateVersion,
-)
-
 from horey.aws_api.aws_clients.glue_client import GlueClient
 
 from horey.aws_api.aws_clients.ecs_client import ECSClient
@@ -39,15 +30,11 @@ from horey.aws_api.aws_services_entities.s3_bucket import S3Bucket
 from horey.aws_api.aws_clients.elbv2_client import ELBV2Client
 
 from horey.aws_api.aws_clients.acm_client import ACMClient
-from horey.aws_api.aws_services_entities.acm_certificate import ACMCertificate
 
 from horey.aws_api.aws_clients.kms_client import KMSClient
-from horey.aws_api.aws_services_entities.kms_key import KMSKey
 
-from horey.aws_api.aws_services_entities.managed_prefix_list import ManagedPrefixList
 
 from horey.aws_api.aws_clients.elb_client import ELBClient
-from horey.aws_api.aws_services_entities.elb_load_balancer import ClassicLoadBalancer
 
 from horey.aws_api.aws_clients.lambda_client import LambdaClient
 
@@ -55,31 +42,15 @@ from horey.aws_api.aws_clients.route53_client import Route53Client
 from horey.aws_api.aws_services_entities.route53_hosted_zone import HostedZone
 
 from horey.aws_api.aws_clients.rds_client import RDSClient
-from horey.aws_api.aws_services_entities.rds_db_instance import RDSDBInstance
-from horey.aws_api.aws_services_entities.rds_db_cluster_parameter_group import (
-    RDSDBClusterParameterGroup,
-)
 from horey.aws_api.aws_services_entities.rds_db_cluster_snapshot import (
     RDSDBClusterSnapshot,
 )
-from horey.aws_api.aws_services_entities.rds_db_parameter_group import (
-    RDSDBParameterGroup,
-)
 
 from horey.aws_api.aws_clients.iam_client import IamClient
-from horey.aws_api.aws_services_entities.iam_policy import IamPolicy
-from horey.aws_api.aws_services_entities.iam_user import IamUser
-from horey.aws_api.aws_services_entities.iam_role import IamRole
-from horey.aws_api.aws_services_entities.iam_instance_profile import IamInstanceProfile
 
 from horey.aws_api.aws_clients.cloud_watch_logs_client import CloudWatchLogsClient
-from horey.aws_api.aws_services_entities.cloud_watch_log_group import CloudWatchLogGroup
-from horey.aws_api.aws_services_entities.cloud_watch_log_group_metric_filter import (
-    CloudWatchLogGroupMetricFilter,
-)
 
 from horey.aws_api.aws_services_entities.cloud_watch_metric import CloudWatchMetric
-from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlarm
 
 from horey.aws_api.aws_clients.cloud_watch_client import CloudWatchClient
 
@@ -87,78 +58,29 @@ from horey.aws_api.aws_clients.dynamodb_client import DynamoDBClient
 
 from horey.aws_api.aws_clients.stepfunctions_client import StepfunctionsClient
 from horey.aws_api.aws_clients.cloudfront_client import CloudfrontClient
-from horey.aws_api.aws_services_entities.cloudfront_distribution import (
-    CloudfrontDistribution,
-)
-from horey.aws_api.aws_services_entities.cloudfront_origin_access_identity import (
-    CloudfrontOriginAccessIdentity,
-)
-
 from horey.aws_api.aws_clients.events_client import EventsClient
-from horey.aws_api.aws_services_entities.event_bridge_rule import EventBridgeRule
 
 from horey.aws_api.aws_clients.sts_client import STSClient
 
 from horey.aws_api.aws_clients.secrets_manager_client import SecretsManagerClient
-from horey.aws_api.aws_services_entities.secrets_manager_secret import (
-    SecretsManagerSecret,
-)
 
 from horey.aws_api.aws_clients.servicediscovery_client import ServicediscoveryClient
-from horey.aws_api.aws_services_entities.servicediscovery_service import (
-    ServicediscoveryService,
-)
-from horey.aws_api.aws_services_entities.servicediscovery_namespace import (
-    ServicediscoveryNamespace,
-)
 
 from horey.aws_api.aws_clients.elasticsearch_client import ElasticsearchClient
-from horey.aws_api.aws_services_entities.elasticsearch_domain import ElasticsearchDomain
 
 from horey.aws_api.aws_clients.elasticache_client import ElasticacheClient
 from horey.aws_api.aws_clients.sqs_client import SQSClient
-from horey.aws_api.aws_services_entities.elasticache_cluster import ElasticacheCluster
-from horey.aws_api.aws_services_entities.elasticache_cache_parameter_group import (
-    ElasticacheCacheParameterGroup,
-)
-from horey.aws_api.aws_services_entities.elasticache_cache_subnet_group import (
-    ElasticacheCacheSubnetGroup,
-)
-from horey.aws_api.aws_services_entities.elasticache_cache_security_group import (
-    ElasticacheCacheSecurityGroup,
-)
-from horey.aws_api.aws_services_entities.elasticache_replication_group import (
-    ElasticacheReplicationGroup,
-)
-
-from horey.aws_api.aws_services_entities.vpc import VPC
 from horey.aws_api.aws_services_entities.subnet import Subnet
-from horey.aws_api.aws_services_entities.availability_zone import AvailabilityZone
-from horey.aws_api.aws_services_entities.ami import AMI
 from horey.aws_api.aws_services_entities.key_pair import KeyPair
-from horey.aws_api.aws_services_entities.internet_gateway import InternetGateway
-from horey.aws_api.aws_services_entities.vpc_peering import VPCPeering
-from horey.aws_api.aws_services_entities.route_table import RouteTable
-from horey.aws_api.aws_services_entities.elastic_address import ElasticAddress
-from horey.aws_api.aws_services_entities.nat_gateway import NatGateway
-from horey.aws_api.aws_services_entities.ecr_repository import ECRRepository
-from horey.aws_api.aws_services_entities.ecs_cluster import ECSCluster
 from horey.aws_api.aws_services_entities.ecs_capacity_provider import (
     ECSCapacityProvider,
 )
-from horey.aws_api.aws_services_entities.ecs_service import ECSService
-from horey.aws_api.aws_services_entities.lambda_event_source_mapping import (
-    LambdaEventSourceMapping,
-)
-from horey.aws_api.aws_services_entities.dynamodb_table import DynamoDBTable
 from horey.aws_api.aws_clients.sesv2_client import SESV2Client
 from horey.aws_api.aws_clients.ses_client import SESClient
 
 from horey.aws_api.aws_clients.sns_client import SNSClient
 
 from horey.aws_api.aws_clients.eks_client import EKSClient
-from horey.aws_api.aws_services_entities.eks_addon import EKSAddon
-from horey.aws_api.aws_services_entities.eks_cluster import EKSCluster
 
 from horey.common_utils.common_utils import CommonUtils
 
@@ -222,7 +144,7 @@ class AWSAPI:
         self.load_balancers = []
         self.classic_load_balancers = []
         self.hosted_zones = []
-        self.users = []
+        self._users = []
         self.rds_db_instances = []
         self.rds_db_subnet_groups = []
         self.rds_db_cluster_parameter_groups = []
@@ -305,9 +227,21 @@ class AWSAPI:
             return
         STSClient().main_cache_dir_path = self.configuration.aws_api_cache_dir
         self.aws_accounts = self.get_all_managed_accounts()
-        AWSAccount.set_aws_account(
-            self.aws_accounts[self.configuration.aws_api_account]
-        )
+        if not self.configuration.aws_api_account and not self.configuration.aws_api_accounts:
+            raise ValueError(f"{self.configuration.aws_api_accounts=} {self.configuration.aws_api_account=}")
+
+        if not self.configuration.aws_api_accounts:
+            self.configuration.aws_api_accounts = [self.configuration.aws_api_account]
+
+            AWSAccount.set_aws_account(
+                self.aws_accounts[self.configuration.aws_api_account]
+            )
+        for aws_api_account_name in self.configuration.aws_api_accounts:
+            aws_api_account = self.aws_accounts[aws_api_account_name]
+            if not aws_api_account.regions:
+                AWSAccount.set_aws_account(aws_api_account)
+                regions = list(self.ec2_client.yield_regions(update_info=True))
+                aws_api_account.regions = {region.region_mark:region for region in regions}
 
     def get_all_managed_accounts(self):
         """
@@ -342,146 +276,123 @@ class AWSAPI:
         account = AWSAccount.get_aws_account()
         return account.get_regions()
 
+    @property
+    def users(self):
+        """
+        IAM users.
+
+        :return:
+        """
+
+        if not self._users:
+            self.init_iam_users()
+        return self._users
+
     def init_managed_prefix_lists(
-            self, from_cache=False, cache_file=None, region=None, full_information=True
+            self, region=None, full_information=True
     ):
         """
-        Self explanatory.
+        Standard.
 
-        @param from_cache:
-        @param cache_file:
-        @param region:
+                @param region:
         @param full_information:
         @return:
         """
 
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, ManagedPrefixList)
-        else:
-            objects = self.ec2_client.get_all_managed_prefix_lists(
+        objects = self.ec2_client.get_all_managed_prefix_lists(
                 region=region, full_information=full_information
             )
 
         self.managed_prefix_lists = objects
 
-    def init_vpcs(self, from_cache=False, cache_file=None, region=None):
+    def init_vpcs(self, region=None):
         """
-        Self explanatory.
+        Standard.
 
-        @param from_cache:
-        @param cache_file:
         @param region:
         @return:
         """
 
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, VPC)
-        else:
-            if not isinstance(region, list):
-                region = [region]
+        if not isinstance(region, list):
+            region = [region]
 
-            objects = []
-            for _region in region:
-                objects += self.ec2_client.get_all_vpcs(region=_region)
+        objects = []
+        for _region in region:
+            objects += self.ec2_client.get_all_vpcs(region=_region)
 
         self.vpcs = objects
 
-    def init_subnets(self, from_cache=False, cache_file=None, region=None):
+    def init_subnets(self, region=None):
         """
         Ec2 Subnets
 
-        @param from_cache:
-        @param cache_file:
         @param region:
         @return:
         """
 
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, Subnet)
-        else:
-            if not isinstance(region, list):
-                region = [region]
+        if not isinstance(region, list):
+            region = [region]
 
-            objects = []
-            for _region in region:
-                objects += self.ec2_client.get_all_subnets(region=_region)
+        objects = []
+        for _region in region:
+            objects += self.ec2_client.get_all_subnets(region=_region)
 
         self.subnets = objects
 
-    def init_glue_tables(self, from_cache=False, cache_file=None, region=None):
+    def init_glue_tables(self, region=None):
         """
-        Self explanatory.
+        Standard.
 
-        @param from_cache:
-        @param cache_file:
         @param region:
         @return:
         """
 
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, Subnet)
-        else:
-            if not isinstance(region, list):
-                region = [region]
+        if not isinstance(region, list):
+            region = [region]
 
-            objects = []
-            for _region in region:
-                objects += self.glue_client.get_all_tables(region=_region)
+        objects = []
+        for _region in region:
+            objects += self.glue_client.get_all_tables(region=_region)
 
         self.glue_tables = objects
 
-    def init_glue_databases(self, from_cache=False, cache_file=None, region=None):
+    def init_glue_databases(self, region=None):
         """
-        Self explanatory.
+        Standard.
 
-        @param from_cache:
-        @param cache_file:
         @param region:
         @return:
         """
 
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, Subnet)
-        else:
-            if not isinstance(region, list):
-                region = [region]
+        if not isinstance(region, list):
+            region = [region]
 
-            objects = []
-            for _region in region:
-                objects += self.glue_client.get_all_databases(region=_region)
+        objects = []
+        for _region in region:
+            objects += self.glue_client.get_all_databases(region=_region)
 
         self.glue_databases = objects
 
-    def init_availability_zones(self, from_cache=False, cache_file=None):
+    def init_availability_zones(self):
         """
-        Self explanatory.
+        Standard.
 
-        @param from_cache:
-        @param cache_file:
         @return:
         """
 
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, AvailabilityZone)
-        else:
-            objects = self.ec2_client.get_all_availability_zones()
+        objects = self.ec2_client.get_all_availability_zones()
 
         self.availability_zones = objects
 
-    def init_nat_gateways(self, from_cache=False, cache_file=None, region=None):
+    def init_nat_gateways(self, region=None):
         """
-        Self explanatory.
+        Standard.
 
-        @param from_cache:
-        @param cache_file:
         @param region:
         @return:
         """
 
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, NatGateway)
-        else:
-            objects = self.ec2_client.get_all_nat_gateways(region=region)
+        objects = self.ec2_client.get_all_nat_gateways(region=region)
 
         self.nat_gateways = objects
 
@@ -496,20 +407,15 @@ class AWSAPI:
 
         self.dynamodb_tables = self.dynamodb_client.get_all_tables(region=region, full_information=full_information)
 
-    def init_dynamodb_endpoints(self, from_cache=False, cache_file=None, region=None):
+    def init_dynamodb_endpoints(self, region=None):
         """
-        Self explanatory.
+        Standard.
 
-        @param from_cache:
-        @param cache_file:
         @param region:
         @return:
         """
 
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, DynamoDBTable)
-        else:
-            objects = self.dynamodb_client.get_all_endpoints(region=region)
+        objects = self.dynamodb_client.get_all_endpoints(region=region)
 
         self.dynamodb_endpoints = objects
 
@@ -592,38 +498,28 @@ class AWSAPI:
 
         self.sns_subscriptions = self.sns_client.get_all_subscriptions(region=region)
 
-    def init_eks_clusters(self, from_cache=False, region=None):
+    def init_eks_clusters(self, region=None):
         """
         Standard.
 
-        @param from_cache:
         @param region:
         @return:
         """
 
-        if from_cache:
-            objects = self.load_from_cache(EKSCluster)
-        else:
-            objects = self.eks_client.get_all_clusters(region=region)
-            self.write_to_cache(objects)
+        objects = self.eks_client.get_all_clusters(region=region)
 
         self.eks_clusters = objects
         return objects
 
-    def init_eks_addons(self, from_cache=False, region=None):
+    def init_eks_addons(self, region=None):
         """
         Standard.
 
-        @param from_cache:
         @param region:
         @return:
         """
 
-        if from_cache:
-            objects = self.load_from_cache(EKSAddon)
-        else:
-            objects = self.eks_client.get_all_addons(region=region)
-            self.write_to_cache(objects)
+        objects = self.eks_client.get_all_addons(region=region)
 
         self.eks_addons = objects
         return objects
@@ -637,288 +533,228 @@ class AWSAPI:
 
         self.ecr_images = self.ecr_client.get_all_images()
 
-    def init_ecr_repositories(self, from_cache=False, cache_file=None, region=None):
+    def init_ecr_repositories(self, region=None):
         """
         Standard.
 
-        @param from_cache:
-        @param cache_file:
         @param region:
         @return:
         """
 
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, ECRRepository)
-        else:
-            objects = self.ecr_client.get_all_repositories(region=region)
+        objects = self.ecr_client.get_all_repositories(region=region)
 
         self.ecr_repositories = objects
 
-    def init_ecs_clusters(self, from_cache=False, cache_file=None, region=None):
+    def init_ecs_clusters(self, region=None):
         """
-        Self explanatory.
+        Standard.
 
-        @param from_cache:
-        @param cache_file:
         @param region:
         @return:
         """
-
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, ECSCluster)
+        self.ecs_clusters = []
+        if self.configuration.aws_api_accounts:
+            for aws_api_account_name in self.configuration.aws_api_accounts:
+                AWSAccount.set_aws_account(
+                    self.aws_accounts[aws_api_account_name]
+                )
+                self.ecs_clusters += self.ecs_client.get_all_clusters(region=region)
         else:
-            objects = self.ecs_client.get_all_clusters(region=region)
-
-        self.ecs_clusters = objects
+            self.ecs_clusters += self.ecs_client.get_all_clusters(region=region)
 
     def init_ecs_capacity_providers(
-            self, from_cache=False, cache_file=None, region=None
+            self, region=None
     ):
         """
-        Self explanatory.
+        Standard
 
-        @param from_cache:
-        @param cache_file:
         @param region:
         @return:
         """
 
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, ECSCapacityProvider)
-        else:
-            objects = self.ecs_client.get_all_capacity_providers(region=region)
+        objects = self.ecs_client.get_all_capacity_providers(region=region)
 
         self.ecs_capacity_providers = objects
 
-    def init_ecs_services(self, from_cache=False, cache_file=None, region=None):
+    def init_ecs_services(self, region=None):
         """
-        Self explanatory.
+        Standard
 
-        @param from_cache:
-        @param cache_file:
+        @param region:
+        @return:
+        """
+        self.ecs_services = []
+        if self.configuration.aws_api_accounts:
+            for aws_api_account_name in self.configuration.aws_api_accounts:
+                AWSAccount.set_aws_account(
+                    self.aws_accounts[aws_api_account_name]
+                )
+                self.ecs_services += self.ecs_client.get_all_services(region=region)
+        else:
+            self.ecs_services = self.ecs_client.get_all_services(region=region)
+
+    def init_ecs_task_definitions(self, region=None):
+        """
+        Standard.
+
         @param region:
         @return:
         """
 
-        objects = []
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, ECSService)
+        self.ecs_task_definitions = []
+
+        if self.configuration.aws_api_accounts:
+            for aws_api_account_name in self.configuration.aws_api_accounts:
+                AWSAccount.set_aws_account(
+                    self.aws_accounts[aws_api_account_name]
+                )
+                self.ecs_task_definitions += self.ecs_client.get_all_task_definitions(region=region)
         else:
-            for cluster in self.ecs_clusters:
-                if region is not None and cluster.region != region:
-                    continue
-                objects += self.ecs_client.get_all_services(cluster)
+            self.ecs_task_definitions = self.ecs_client.get_all_task_definitions(region=region)
 
-        self.ecs_services = objects
-
-    def init_ecs_task_definitions(self, from_cache=False, cache_file=None, region=None):
+    def init_ecs_tasks(self, region=None):
         """
-        Self explanatory.
+        Standard.
 
-        @param from_cache:
-        @param cache_file:
         @param region:
         @return:
         """
 
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, ECSService)
+        self.ecs_tasks = []
+
+        if self.configuration.aws_api_accounts:
+            for aws_api_account_name in self.configuration.aws_api_accounts:
+                AWSAccount.set_aws_account(
+                    self.aws_accounts[aws_api_account_name]
+                )
+                self.ecs_tasks += self.ecs_client.get_all_tasks(region=region)
         else:
-            objects = self.ecs_client.get_all_task_definitions(region=region)
+            self.ecs_tasks = self.ecs_client.get_all_tasks(region=region)
 
-        self.ecs_task_definitions = objects
-
-    def init_ecs_tasks(self, from_cache=False, cache_file=None, region=None):
+    def init_auto_scaling_groups(self, region=None):
         """
-        Self explanatory.
+        Standard
 
-        @param from_cache:
-        @param cache_file:
         @param region:
         @return:
         """
 
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, ECSService)
-        else:
-            objects = self.ecs_client.get_all_tasks(region=region)
-
-        self.ecs_tasks = objects
-
-    def init_auto_scaling_groups(self, from_cache=False, cache_file=None, region=None):
-        """
-        Self explanatory.
-
-        @param from_cache:
-        @param cache_file:
-        @param region:
-        @return:
-        """
-
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, ECSCluster)
-        else:
-            objects = self.autoscaling_client.get_all_auto_scaling_groups(region=region)
+        objects = self.autoscaling_client.get_all_auto_scaling_groups(region=region)
 
         self.auto_scaling_groups = objects
 
     def init_auto_scaling_policies(
-            self, from_cache=False, cache_file=None, region=None
+            self, region=None
     ):
         """
-        Self explanatory.
+        Standard
 
-        @param from_cache:
-        @param cache_file:
         @param region:
         @return:
         """
 
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, ECSCluster)
-        else:
-            objects = self.autoscaling_client.get_all_policies(region=region)
+        objects = self.autoscaling_client.get_all_policies(region=region)
 
         self.auto_scaling_policies = objects
 
     def init_application_auto_scaling_policies(
-            self, from_cache=False, cache_file=None, region=None
+            self, region=None
     ):
         """
-        Self explanatory.
+        Standard
 
-        @param from_cache:
-        @param cache_file:
         @param region:
         @return:
         """
 
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, ECSCluster)
-        else:
-            objects = self.application_autoscaling_client.get_all_policies(
+        objects = self.application_autoscaling_client.get_all_policies(
                 region=region
             )
 
         self.application_auto_scaling_policies = objects
 
     def init_application_auto_scaling_scalable_targets(
-            self, from_cache=False, cache_file=None, region=None
+            self, region=None
     ):
         """
-        Self explanatory.
+        Standard
 
-        @param from_cache:
-        @param cache_file:
         @param region:
         @return:
         """
 
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, ECSCluster)
-        else:
-            objects = self.application_autoscaling_client.get_all_scalable_targets(
+        objects = self.application_autoscaling_client.get_all_scalable_targets(
                 region=region
             )
 
         self.application_auto_scaling_scalable_targets = objects
 
-    def init_amis(self, from_cache=False, cache_file=None):
+    def init_amis(self):
         """
         Standard.
 
-        @param from_cache:
-        @param cache_file:
         @return:
         """
 
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, AMI)
-        else:
-            objects = self.ec2_client.get_all_amis()
+        objects = self.ec2_client.get_all_amis()
 
         self.amis = objects
 
-    def init_key_pairs(self, from_cache=False, cache_file=None):
+    def init_key_pairs(self):
         """
         Ec2 key pairs used for SSH.
 
-        @param from_cache:
-        @param cache_file:
         @return:
         """
 
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, KeyPair)
-        else:
-            objects = self.ec2_client.get_all_key_pairs()
+        objects = self.ec2_client.get_all_key_pairs()
 
         self.key_pairs = objects
 
-    def init_internet_gateways(self, from_cache=False, cache_file=None):
+    def init_internet_gateways(self):
         """
-        Self explanatory.
+        Standard.
 
-        @param from_cache:
-        @param cache_file:
         @return:
         """
 
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, InternetGateway)
-        else:
-            objects = self.ec2_client.get_all_internet_gateways()
+        objects = self.ec2_client.get_all_internet_gateways()
 
         self.internet_gateways = objects
 
-    def init_vpc_peerings(self, from_cache=False, cache_file=None, region=None):
+    def init_vpc_peerings(self, region=None):
         """
-        Self explanatory.
+        Standard.
 
-        @param from_cache:
-        @param cache_file:
         @param region:
         @return:
         """
 
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, VPCPeering)
-        else:
-            objects = self.ec2_client.get_all_vpc_peerings(region=region)
+        objects = self.ec2_client.get_all_vpc_peerings(region=region)
 
         self.vpc_peerings = objects
 
-    def init_route_tables(self, from_cache=False, cache_file=None, region=None):
+    def init_route_tables(self, region=None):
         """
-        Self explanatory.
+        Standard.
 
-        @param from_cache:
-        @param cache_file:
         @param region:
         @return:
         """
 
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, RouteTable)
-        else:
-            objects = self.ec2_client.get_all_route_tables(region=region)
+        objects = self.ec2_client.get_all_route_tables(region=region)
 
         self.route_tables = objects
 
-    def init_elastic_addresses(self, from_cache=False, cache_file=None, region=None):
+    def init_elastic_addresses(self, region=None):
         """
-        Self explanatory.
+        Standard.
 
-        @param from_cache:
-        @param cache_file:
         @param region:
         @return:
         """
 
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, ElasticAddress)
-        else:
-            objects = self.ec2_client.get_all_elastic_addresses(region=region)
+        objects = self.ec2_client.get_all_elastic_addresses(region=region)
 
         self.elastic_addresses = objects
 
@@ -933,20 +769,23 @@ class AWSAPI:
 
         return self.network_interfaces
 
-    def init_ec2_instances(self, from_cache=False, cache_file=None, region=None):
+    def init_ec2_instances(self, region=None):
         """
         Init ec2 instances.
 
-        @param from_cache:
-        @param cache_file:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, EC2Instance)
-        else:
-            objects = self.ec2_client.get_all_instances(region=region)
 
-        self.ec2_instances = objects
+        self.ec2_instances = []
+        if self.configuration.aws_api_accounts:
+            for aws_api_account_name in self.configuration.aws_api_accounts:
+                AWSAccount.set_aws_account(
+                    self.aws_accounts[aws_api_account_name]
+                )
+                self.ec2_instances += self.ec2_client.get_all_instances(region=region)
+        else:
+            self.ec2_instances = self.ec2_client.get_all_instances(region=region)
+
 
     def init_ec2_volumes(self, region=None):
         """
@@ -957,113 +796,102 @@ class AWSAPI:
 
         self.ec2_volumes = self.ec2_client.get_all_volumes(region=region)
 
-    def init_spot_fleet_requests(self, from_cache=False, cache_file=None):
+    def init_spot_fleet_requests(self):
         """
         Init spot fleet requests instances.
 
-        @param from_cache:
-        @param cache_file:
         @return:
         """
 
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, EC2SpotFleetRequest)
-        else:
-            objects = self.ec2_client.get_all_spot_fleet_requests()
+        objects = self.ec2_client.get_all_spot_fleet_requests()
 
         self.spot_fleet_requests = objects
 
-    def init_ec2_launch_templates(self, from_cache=False, cache_file=None):
+    def init_ec2_launch_templates(self):
         """
         Init ec2 launch templates.
 
-        @param from_cache:
-        @param cache_file:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, EC2LaunchTemplate)
-        else:
-            objects = self.ec2_client.get_all_ec2_launch_templates()
+
+        objects = self.ec2_client.get_all_ec2_launch_templates()
 
         self.ec2_launch_templates = objects
 
-    def init_ec2_launch_template_versions(self, from_cache=False, cache_file=None):
+    def init_ec2_launch_template_versions(self):
         """
         Init ec2 launch template_versions.
 
-        @param from_cache:
-        @param cache_file:
         @return:
         """
-        objects = []
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, EC2LaunchTemplateVersion)
-        else:
-            objects += self.ec2_client.get_all_launch_template_versions()
+        objects =  self.ec2_client.get_all_launch_template_versions()
 
         self.ec2_launch_template_versions = objects
 
-    def init_s3_buckets(self, from_cache=False, cache_file=None, full_information=True):
+    def init_s3_buckets(self, full_information=True):
         """
         Init all s3 buckets.
 
-        @param from_cache:
-        @param cache_file:
         @param full_information:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, S3Bucket)
-        else:
-            objects = self.s3_client.get_all_buckets(full_information=full_information)
+
+        objects = self.s3_client.get_all_buckets(full_information=full_information)
 
         self.s3_buckets = objects
 
-    def init_iam_users(self, from_cache=False, cache_file=None):
+    def init_iam_users(self):
         """
         Init IAM users.
 
-        @param from_cache:
-        @param cache_file:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, IamUser)
+
+        self._users = []
+        if self.configuration.aws_api_accounts:
+            for aws_api_account_name in self.configuration.aws_api_accounts:
+                AWSAccount.set_aws_account(
+                    self.aws_accounts[aws_api_account_name]
+                )
+                self._users += self.iam_client.get_all_users()
         else:
-            objects = self.iam_client.get_all_users()
+            self._users = self.iam_client.get_all_users()
 
-        self.users = objects
-
-    def init_iam_roles(self, from_cache=False, cache_file=None):
+    def init_iam_roles(self):
         """
         Init iam roles
 
-        @param from_cache:
-        @param cache_file:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, IamRole)
+
+        self.iam_roles = []
+
+        if self.configuration.aws_api_accounts:
+            for aws_api_account_name in self.configuration.aws_api_accounts:
+                AWSAccount.set_aws_account(
+                    self.aws_accounts[aws_api_account_name]
+                )
+                self.iam_roles += self.iam_client.get_all_roles()
         else:
-            objects = self.iam_client.get_all_roles()
+            self.iam_roles = self.iam_client.get_all_roles()
 
-        self.iam_roles = objects
-
-    def init_iam_instance_profiles(self, from_cache=False, cache_file=None):
+    def init_iam_instance_profiles(self):
         """
         Init iam roles
 
-        @param from_cache:
-        @param cache_file:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, IamInstanceProfile)
-        else:
-            objects = self.iam_client.get_all_instance_profiles()
 
-        self.iam_instance_profiles = objects
+        self.iam_instance_profiles = []
+
+        if self.configuration.aws_api_accounts:
+            for aws_api_account_name in self.configuration.aws_api_accounts:
+                AWSAccount.set_aws_account(
+                    self.aws_accounts[aws_api_account_name]
+                )
+                self.iam_instance_profiles += self.iam_client.get_all_instance_profiles()
+        else:
+            self.iam_instance_profiles = self.iam_client.get_all_instance_profiles()
 
     def cache_raw_cloud_watch_metrics(self, cache_dir):
         """
@@ -1076,19 +904,14 @@ class AWSAPI:
         metrics_generator = self.cloud_watch_client.yield_cloud_watch_metrics()
         self.cache_objects_from_generator(metrics_generator, cache_dir)
 
-    def init_cloud_watch_alarms(self, from_cache=False, cache_file=None):
+    def init_cloud_watch_alarms(self):
         """
-        Self explanatory.
+        Standard.
 
-        @param from_cache:
-        @param cache_file:
         @return:
         """
 
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, CloudWatchAlarm)
-        else:
-            objects = self.cloud_watch_client.get_all_alarms()
+        objects = self.cloud_watch_client.get_all_alarms()
 
         self.cloud_watch_alarms = objects
 
@@ -1102,37 +925,27 @@ class AWSAPI:
 
         self.cloud_watch_metrics = self.cloud_watch_client.get_all_metrics(update_info=update_info)
 
-    def init_cloud_watch_log_groups(self, from_cache=False, cache_file=None):
+    def init_cloud_watch_log_groups(self):
         """
         Init the cloudwatch log groups.
 
-        @param from_cache:
-        @param cache_file:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, CloudWatchLogGroup)
-        else:
-            objects = self.cloud_watch_logs_client.get_cloud_watch_log_groups()
+
+        objects = self.cloud_watch_logs_client.get_cloud_watch_log_groups()
 
         self.cloud_watch_log_groups = objects
 
     def init_cloud_watch_log_groups_metric_filters(
-            self, from_cache=False, cache_file=None
+            self
     ):
         """
         Init the cloudwatch log groups.
 
-        @param from_cache:
-        @param cache_file:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(
-                cache_file, CloudWatchLogGroupMetricFilter
-            )
-        else:
-            objects = self.cloud_watch_logs_client.get_log_group_metric_filters()
+
+        objects = self.cloud_watch_logs_client.get_log_group_metric_filters()
 
         self.cloud_watch_log_groups_metric_filters = objects
 
@@ -1144,6 +957,7 @@ class AWSAPI:
 
         @param cloudwatch_log_groups_streams_cache_dir:
         @return:
+        :param log_group_names:
         """
         log_groups = self.cloud_watch_logs_client.get_cloud_watch_log_groups(
         )
@@ -1162,35 +976,37 @@ class AWSAPI:
             )
             self.cache_objects_from_generator(stream_generator, sub_dir)
 
-    def init_iam_policies(self, from_cache=False, cache_file=None):
+    def init_iam_policies(self):
         """
         Init iam policies.
 
-        @param from_cache:
-        @param cache_file:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, IamPolicy)
+        self.iam_policies = []
+        if self.configuration.aws_api_accounts:
+            for aws_api_account_name in self.configuration.aws_api_accounts:
+                AWSAccount.set_aws_account(
+                    self.aws_accounts[aws_api_account_name]
+                )
+                self.iam_policies += self.iam_client.get_all_policies()
         else:
-            objects = self.iam_client.get_all_policies()
+            self.iam_policies = self.iam_client.get_all_policies()
 
-        self.iam_policies = objects
-
-    def init_iam_groups(self, from_cache=False, cache_file=None):
+    def init_iam_groups(self):
         """
         Init iam groups.
 
-        @param from_cache:
-        @param cache_file:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, IamPolicy)
+        self.iam_groups = []
+        if self.configuration.aws_api_accounts:
+            for aws_api_account_name in self.configuration.aws_api_accounts:
+                AWSAccount.set_aws_account(
+                    self.aws_accounts[aws_api_account_name]
+                )
+                self.iam_groups += self.iam_client.get_all_groups()
         else:
-            objects = self.iam_client.get_all_groups()
-
-        self.iam_groups = objects
+            self.iam_groups = self.iam_client.get_all_groups()
 
     def init_and_cache_s3_bucket_objects_synchronous(self, buckets_objects_cache_dir):
         """
@@ -1260,8 +1076,18 @@ class AWSAPI:
         @param full_information:
         @return:
         """
+        self.lambdas = []
 
-        self.lambdas = self.lambda_client.get_all_lambdas(
+        if self.configuration.aws_api_accounts:
+            for aws_api_account_name in self.configuration.aws_api_accounts:
+                AWSAccount.set_aws_account(
+                    self.aws_accounts[aws_api_account_name]
+                )
+                self.lambdas += self.lambda_client.get_all_lambdas(
+                    full_information=full_information
+                )
+        else:
+            self.lambdas = self.lambda_client.get_all_lambdas(
                 full_information=full_information
             )
 
@@ -1274,363 +1100,272 @@ class AWSAPI:
 
         self.load_balancers = self.elbv2_client.get_all_load_balancers(region=region)
 
-    def init_classic_load_balancers(self, from_cache=False, cache_file=None):
+    def init_classic_load_balancers(self):
         """
         Init elbs.
 
-        @param from_cache:
-        @param cache_file:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, ClassicLoadBalancer)
-        else:
-            objects = self.elb_client.get_all_load_balancers()
+
+        objects = self.elb_client.get_all_load_balancers()
 
         self.classic_load_balancers = objects
 
     def init_hosted_zones(
-            self, from_cache=False, cache_file=None, full_information=True
+            self, full_information=True
     ):
         """
         Init hosted zones
-        @param from_cache:
-        @param cache_file:
         @param full_information:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, HostedZone)
-        else:
-            objects = self.route53_client.get_all_hosted_zones(
+
+        objects = self.route53_client.get_all_hosted_zones(
                 full_information=full_information
             )
 
         self.hosted_zones = objects
 
     def init_cloudfront_distributions(
-            self, from_cache=False, cache_file=None, full_information=True
+            self, full_information=True
     ):
         """
         Init cloudfront distributions
-        @param from_cache:
-        @param cache_file:
         @param full_information:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, CloudfrontDistribution)
-        else:
-            objects = self.cloudfront_client.get_all_distributions(
+
+        objects = self.cloudfront_client.get_all_distributions(
                 full_information=full_information
             )
 
         self.cloudfront_distributions = objects
 
     def init_cloudfront_origin_access_identities(
-            self, from_cache=False, cache_file=None, full_information=True
+            self, full_information=True
     ):
         """
         Init cloudfront distributions
-        @param from_cache:
-        @param cache_file:
         @param full_information:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(
-                cache_file, CloudfrontOriginAccessIdentity
-            )
-        else:
-            objects = self.cloudfront_client.get_all_origin_access_identities(
+
+        objects = self.cloudfront_client.get_all_origin_access_identities(
                 full_information=full_information
             )
 
         self.cloudfront_origin_access_identities = objects
 
     def init_event_bridge_rules(
-            self, from_cache=False, cache_file=None, full_information=True
+            self, full_information=True
     ):
         """
         Init event_bridge distributions
-        @param from_cache:
-        @param cache_file:
         @param full_information:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, EventBridgeRule)
-        else:
-            objects = self.events_client.get_all_rules(
+
+        objects = self.events_client.get_all_rules(
                 full_information=full_information
             )
 
         self.event_bridge_rules = objects
 
     def init_servicediscovery_services(
-            self, from_cache=False, cache_file=None, full_information=True
+            self, full_information=True
     ):
         """
         Init servicediscovery serivces
-        @param from_cache:
-        @param cache_file:
         @param full_information:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, ServicediscoveryService)
-        else:
-            objects = self.servicediscovery_client.get_all_services(
+
+        objects = self.servicediscovery_client.get_all_services(
                 full_information=full_information
             )
 
         self.servicediscovery_services = objects
 
     def init_servicediscovery_namespaces(
-            self, from_cache=False, cache_file=None, full_information=True
+            self, full_information=True
     ):
         """
         Init servicediscovery serivces
-        @param from_cache:
-        @param cache_file:
         @param full_information:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(
-                cache_file, ServicediscoveryNamespace
-            )
-        else:
-            objects = self.servicediscovery_client.get_all_namespaces(
+
+        objects = self.servicediscovery_client.get_all_namespaces(
                 full_information=full_information
             )
 
         self.servicediscovery_namespaces = objects
 
     def init_elasticsearch_domains(
-            self, from_cache=False, cache_file=None,
+            self,
     ):
         """
         Init elasticsearch services
 
-        @param from_cache:
-        @param cache_file:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, ElasticsearchDomain)
-        else:
-            objects = self.elasticsearch_client.get_all_domains()
+
+        objects = self.elasticsearch_client.get_all_domains()
 
         self.elasticsearch_domains = objects
 
     def init_secrets_manager_secrets(
-            self, from_cache=False, cache_file=None, full_information=True
+            self, full_information=True
     ):
         """
         Init secrets_manager_secrets
-        @param from_cache:
-        @param cache_file:
         @param full_information:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, SecretsManagerSecret)
-        else:
-            objects = self.secretsmanager_client.get_all_secrets(
+
+        objects = self.secretsmanager_client.get_all_secrets(
                 full_information=full_information
             )
 
         self.secrets_manager_secrets = objects
 
-    def init_rds_db_subnet_groups(self, from_cache=False, cache_file=None, region=None):
+    def init_rds_db_subnet_groups(self, region=None):
         """
         Init RDSs
 
-        @param from_cache:
-        @param cache_file:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, RDSDBInstance)
-        else:
-            objects = self.rds_client.get_all_db_subnet_groups(region=region)
+
+        objects = self.rds_client.get_all_db_subnet_groups(region=region)
 
         self.rds_db_subnet_groups = objects
 
     def init_rds_db_cluster_parameter_groups(
-            self, from_cache=False, cache_file=None, region=None
+            self, region=None
     ):
         """
         Init RDSs
 
-        @param from_cache:
-        @param cache_file:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(
-                cache_file, RDSDBClusterParameterGroup
-            )
-        else:
-            objects = self.rds_client.get_all_db_cluster_parameter_groups(region=region)
+
+        objects = self.rds_client.get_all_db_cluster_parameter_groups(region=region)
 
         self.rds_db_cluster_parameter_groups = objects
 
     def init_rds_db_cluster_snapshots(
-            self, from_cache=False, cache_file=None, region=None
+            self, region=None
     ):
         """
         Init RDSs
 
-        @param from_cache:
-        @param cache_file:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, RDSDBClusterSnapshot)
-        else:
-            objects = self.rds_client.get_all_db_cluster_snapshots(region=region)
+
+        objects = self.rds_client.get_all_db_cluster_snapshots(region=region)
 
         self.rds_db_cluster_snapshots = objects
 
     def init_rds_db_parameter_groups(
-            self, from_cache=False, cache_file=None, region=None
+            self, region=None
     ):
         """
         Init RDSs
 
-        @param from_cache:
-        @param cache_file:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, RDSDBParameterGroup)
-        else:
-            objects = self.rds_client.get_all_db_parameter_groups(region=region)
+
+        objects = self.rds_client.get_all_db_parameter_groups(region=region)
 
         self.rds_db_parameter_groups = objects
 
-    def init_rds_db_instances(self, from_cache=False, cache_file=None, region=None):
+    def init_rds_db_instances(self, region=None):
         """
         Init RDSs
 
-        @param from_cache:
-        @param cache_file:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, RDSDBInstance)
-        else:
-            objects = self.rds_client.get_all_db_instances(region=region)
+
+        objects = self.rds_client.get_all_db_instances(region=region)
 
         self.rds_db_instances = objects
 
-    def init_rds_db_clusters(self, from_cache=False, cache_file=None, region=None, full_information=False):
+    def init_rds_db_clusters(self, region=None, full_information=False):
         """
         Init RDSs
 
-        @param from_cache:
-        @param cache_file:
         @param full_information:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, RDSDBInstance)
-        else:
-            objects = self.rds_client.get_all_db_clusters(region=region, full_information=full_information)
+
+        objects = self.rds_client.get_all_db_clusters(region=region, full_information=full_information)
 
         self.rds_db_clusters = objects
 
-    def init_elasticache_clusters(self, from_cache=False, cache_file=None, region=None):
+    def init_elasticache_clusters(self, region=None):
         """
+        Standard.
 
-        @param from_cache:
-        @param cache_file:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, ElasticacheCluster)
-        else:
-            objects = self.elasticache_client.get_all_clusters(region=region)
+
+        objects = self.elasticache_client.get_all_clusters(region=region)
 
         self.elasticache_clusters = objects
 
     def init_elasticache_cache_parameter_groups(
-            self, from_cache=False, cache_file=None, region=None
+            self, region=None
     ):
         """
+        Standard.
 
-        @param from_cache:
-        @param cache_file:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(
-                cache_file, ElasticacheCacheParameterGroup
-            )
-        else:
-            objects = self.elasticache_client.get_all_cache_parameter_groups(
+
+        objects = self.elasticache_client.get_all_cache_parameter_groups(
                 region=region
             )
 
         self.elasticache_cache_parameter_groups = objects
 
     def init_elasticache_cache_subnet_groups(
-            self, from_cache=False, cache_file=None, region=None
+            self, region=None
     ):
         """
+        Standard.
 
-        @param from_cache:
-        @param cache_file:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(
-                cache_file, ElasticacheCacheSubnetGroup
-            )
-        else:
-            objects = self.elasticache_client.get_all_cache_subnet_groups(region=region)
+
+        objects = self.elasticache_client.get_all_cache_subnet_groups(region=region)
 
         self.elasticache_cache_subnet_groups = objects
 
     def init_elasticache_cache_security_groups(
-            self, from_cache=False, cache_file=None, region=None
+            self, region=None
     ):
         """
-        Self explanatory.
+        Standard.
 
-        @param from_cache:
-        @param cache_file:
         @return:
         """
 
-        if from_cache:
-            objects = self.load_objects_from_cache(
-                cache_file, ElasticacheCacheSecurityGroup
-            )
-        else:
-            objects = self.elasticache_client.get_all_cache_security_groups(
+        objects = self.elasticache_client.get_all_cache_security_groups(
                 region=region
             )
 
         self.elasticache_cache_security_groups = objects
 
     def init_elasticache_replication_groups(
-            self, from_cache=False, cache_file=None, region=None
+            self, region=None
     ):
         """
+        Standard.
 
-        @param from_cache:
-        @param cache_file:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(
-                cache_file, ElasticacheReplicationGroup
-            )
-        else:
-            objects = self.elasticache_client.get_all_replication_groups(region=region)
+
+        objects = self.elasticache_client.get_all_replication_groups(region=region)
 
         self.elasticache_replication_groups = objects
 
@@ -1644,20 +1379,23 @@ class AWSAPI:
         self.sqs_queues = self.sqs_client.get_all_queues(region=region)
 
     def init_lambda_event_source_mappings(
-            self, from_cache=False, cache_file=None, region=None
+            self, region=None
     ):
         """
 
-        @param from_cache:
-        @param cache_file:
+        @param region:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, LambdaEventSourceMapping)
-        else:
-            objects = self.lambda_client.get_all_event_source_mappings(region=region)
 
-        self.lambda_event_source_mappings = objects
+        self.lambda_event_source_mappings = []
+        if self.configuration.aws_api_accounts:
+            for aws_api_account_name in self.configuration.aws_api_accounts:
+                AWSAccount.set_aws_account(
+                    self.aws_accounts[aws_api_account_name]
+                )
+                self.lambda_event_source_mappings += self.lambda_client.get_all_event_source_mappings(region=region)
+        else:
+            self.lambda_event_source_mappings = self.lambda_client.get_all_event_source_mappings(region=region)
 
     def init_target_groups(self, update_info=False):
         """
@@ -1669,48 +1407,37 @@ class AWSAPI:
 
         self.target_groups = self.elbv2_client.get_all_target_groups(update_info=update_info)
 
-    def init_acm_certificates(self, from_cache=False, cache_file=None):
+    def init_acm_certificates(self):
         """
         Init ELB target groups
-        @param from_cache:
-        @param cache_file:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, ACMCertificate)
-        else:
-            objects = self.acm_client.get_all_certificates()
+
+        objects = self.acm_client.get_all_certificates()
 
         self.acm_certificates = objects
 
-    def init_kms_keys(self, from_cache=False, cache_file=None):
+    def init_kms_keys(self):
         """
         Init ELB target groups
-        @param from_cache:
-        @param cache_file:
+
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, KMSKey)
-        else:
-            objects = self.kms_client.get_all_keys()
+
+        objects = self.kms_client.get_all_keys()
 
         self.kms_keys = objects
 
     def init_security_groups(
-            self, from_cache=False, cache_file=None
+            self
     ):
         """
         Init security groups
 
-        @param from_cache:
-        @param cache_file:
         @return:
         """
-        if from_cache:
-            objects = self.load_objects_from_cache(cache_file, EC2SecurityGroup)
-        else:
-            objects = self.ec2_client.get_all_security_groups(
+
+        objects = self.ec2_client.get_all_security_groups(
             )
         self.security_groups = objects
 
@@ -1805,76 +1532,6 @@ class AWSAPI:
 
         with open(file_path, "w", encoding="utf-8") as fd:
             json.dump(data_to_dump, fd)
-
-    def load_objects_from_cache(self, file_name, class_type):
-        """
-        Load objects from cached file
-
-        @param file_name:
-        @param class_type:
-        @return:
-        """
-        with open(file_name, encoding="utf-8") as fil:
-            return [
-                class_type(dict_src, from_cache=True) for dict_src in json.load(fil)
-            ]
-
-    def generate_cache_file_path(self, class_type):
-        """
-        Generate cache file path for this class
-
-        :param class_type:
-        :return:
-        """
-
-        return os.path.join(self.configuration.aws_api_cache_dir,
-                            self.configuration.aws_api_account,
-                            class_type.get_cache_file_sub_path())
-
-    def load_from_cache(self, class_type):
-        """
-        Generate the file path automatically.
-
-        :param class_type:
-        :return:
-        """
-        with open(self.generate_cache_file_path(class_type), encoding="utf-8") as fil:
-            return [
-                class_type(dict_src, from_cache=True) for dict_src in json.load(fil)
-            ]
-
-    def write_to_cache(self, objects, indent=None):
-        """
-        Prepare a cache file from objects.
-
-        @param objects:
-        @return:
-        """
-        file_path = self.generate_cache_file_path(objects[0])
-        objects_dicts = [obj.convert_to_dict() for obj in objects]
-
-        if not os.path.exists(os.path.dirname(file_path)):
-            os.makedirs(os.path.dirname(file_path))
-
-        with open(file_path, "w", encoding="utf-8") as fil:
-            json.dump(objects_dicts, fil, indent=indent)
-
-    def cache_objects(self, objects, file_name, indent=None):
-        """
-        Prepare a cache file from objects.
-
-        @param objects:
-        @param file_name:
-        @param indent:
-        @return:
-        """
-        objects_dicts = [obj.convert_to_dict() for obj in objects]
-
-        if not os.path.exists(os.path.dirname(file_name)):
-            os.makedirs(os.path.dirname(file_name))
-
-        with open(file_name, "w", encoding="utf-8") as fil:
-            json.dump(objects_dicts, fil, indent=indent)
 
     def get_down_instances(self):
         """
@@ -3328,7 +2985,7 @@ class AWSAPI:
 
     def provision_ecs_task_definition(self, task_definition):
         """
-        Self explanatory.
+        Standard.
 
         @param task_definition:
         @return:
@@ -3609,7 +3266,7 @@ class AWSAPI:
 
     def provision_rds_db_cluster(self, cluster, snapshot=None):
         """
-        Self explanatory.
+        Standard.
 
         @param cluster:
         @param snapshot:
@@ -3662,7 +3319,7 @@ class AWSAPI:
 
     def provision_db_cluster_parameter_group(self, db_cluster_parameter_group):
         """
-        Self explanatory.
+        Standard.
 
         @param db_cluster_parameter_group:
         @return:
@@ -3672,7 +3329,7 @@ class AWSAPI:
 
     def provision_db_parameter_group(self, db_parameter_group):
         """
-        Self explanatory.
+        Standard.
 
         @param db_parameter_group:
         @return:
@@ -3682,7 +3339,7 @@ class AWSAPI:
 
     def provision_db_subnet_group(self, db_subnet_group):
         """
-        Self explanatory.
+        Standard.
 
         @param db_subnet_group:
         @return:
@@ -3692,7 +3349,7 @@ class AWSAPI:
 
     def provision_db_instance(self, db_instance):
         """
-        Self explanatory.
+        Standard.
 
         @param db_instance:
         @return:
@@ -3702,7 +3359,7 @@ class AWSAPI:
 
     def provision_elasticache_cahce_subnet_group(self, subnet_group):
         """
-        Self explanatory.
+        Standard.
 
         @param subnet_group:
         @return:
@@ -3712,7 +3369,7 @@ class AWSAPI:
 
     def provision_elaticache_cluster(self, cluster):
         """
-        Self explanatory.
+        Standard.
 
         @param cluster:
         @return:
@@ -3722,7 +3379,7 @@ class AWSAPI:
 
     def provision_elaticache_replication_group(self, replication_group):
         """
-        Self explanatory.
+        Standard.
 
         @param replication_group:
         @return:
@@ -3732,7 +3389,7 @@ class AWSAPI:
 
     def provision_s3_bucket(self, s3_bucket):
         """
-        Self explanatory.
+        Standard.
 
         @param s3_bucket:
         @return:
@@ -3742,7 +3399,7 @@ class AWSAPI:
 
     def provision_cloudfront_distribution(self, cloudfront_distribution):
         """
-        Self explanatory.
+        Standard.
 
         @param cloudfront_distribution:
         @return:
@@ -3754,7 +3411,7 @@ class AWSAPI:
             self, cloudfront_origin_access_identity
     ):
         """
-        Self explanatory.
+        Standard.
 
         @param cloudfront_origin_access_identity:
         @return:
@@ -3853,7 +3510,7 @@ class AWSAPI:
 
     def provision_ecr_repository(self, ecr_repo):
         """
-        Self explanatory.
+        Standard.
 
         @param ecr_repo:
         @return:
@@ -3863,7 +3520,7 @@ class AWSAPI:
 
     def dispose_ecr_repository(self, ecr_repo):
         """
-        Self explanatory.
+        Standard.
 
         @param ecr_repo:
         @return:
@@ -3873,7 +3530,7 @@ class AWSAPI:
 
     def dispose_ecs_service(self, cluster, service):
         """
-        Self explanatory.
+        Standard.
 
         @param service:
         @param cluster:
@@ -3884,7 +3541,7 @@ class AWSAPI:
 
     def dispose_ecs_cluster(self, cluster):
         """
-        Self explanatory.
+        Standard.
 
         @param cluster:
         @return:
@@ -3894,7 +3551,7 @@ class AWSAPI:
 
     def dispose_auto_scaling_group(self, auto_scaling_group):
         """
-        Self explanatory.
+        Standard.
 
         @param auto_scaling_group:
         @return:
@@ -4100,15 +3757,16 @@ class AWSAPI:
 
         return self.ec2_client.get_all_vpcs(region=region, filters=filters)
 
-    def get_alive_ec2_instance_by_name(self, region, name):
+    def get_alive_ec2_instance_by_name(self, region, name, update_info=False):
         """
-        Get instance by tag "name". Raise Exception if more then one
+        Get instance by tag "name". Raise Exception if more than one
 
+        :param update_info:
         :param region:
         :param name:
         :return:
         """
-        instances = self.get_ec2_instances_by_name(region, name)
+        instances = self.get_ec2_instances_by_name(region, name, update_info=update_info)
 
         if len(instances) != 1:
             raise RuntimeError(
@@ -4117,7 +3775,7 @@ class AWSAPI:
 
         return instances[0]
 
-    def get_ec2_instances_by_name(self, region, name, alive=True, include_terminated=True):
+    def get_ec2_instances_by_name(self, region, name, alive=True, include_terminated=True, update_info=False):
         """
         Find running ec2 instances by "name" tag
 
@@ -4126,11 +3784,12 @@ class AWSAPI:
         @param alive:
         @param include_terminated:
         @return:
+        :param update_info:
         """
 
-        return self.get_ec2_instances_by_tags(region, {"Name": [name]}, alive=alive, include_terminated=include_terminated)
+        return self.get_ec2_instances_by_tags(region, {"Name": [name]}, alive=alive, include_terminated=include_terminated, update_info=update_info)
 
-    def get_ec2_instances_by_tags(self, region, tags_values_by_name, alive=True, include_terminated=True):
+    def get_ec2_instances_by_tags(self, region, tags_values_by_name, alive=True, include_terminated=True, update_info=False):
         """
         Find running ec2 instances by "name" tag
 
@@ -4139,10 +3798,11 @@ class AWSAPI:
         @param alive:
         @param include_terminated:
         @return:
+        :param update_info:
         """
 
         filters = {"Filters": [{"Name": f"tag:{name}", "Values": values} for name, values in tags_values_by_name.items()]}
-        ec2_instances = self.ec2_client.get_region_instances(region, filters=filters)
+        ec2_instances = self.ec2_client.get_region_instances(region, filters=filters, update_info=update_info)
 
         if not include_terminated:
             ec2_instances = [ec2_instance for ec2_instance in ec2_instances if ec2_instance.get_state() !=
@@ -4212,15 +3872,11 @@ class AWSAPI:
         """
         h_tb = TextBlock("IAM security report")
         self.init_iam_policies(
-            from_cache=True,
-            cache_file=self.configuration.aws_api_iam_policies_cache_file,
         )
         # self.init_iam_roles()
         self.init_iam_users(
-            from_cache=True, cache_file=self.configuration.aws_api_iam_users_cache_file
         )
         self.init_iam_groups(
-            from_cache=True, cache_file=self.configuration.aws_api_iam_groups_cache_file
         )
 
         h_tb_users = self.generate_security_report_users()
@@ -4438,7 +4094,7 @@ class AWSAPI:
         price_lists = list(self.pricing_client.yield_price_lists(region=region, filters_req=filters_req))
         return price_lists[0]
 
-    def find_user_by_name(self, user_name, full_information=False):
+    def find_user_by_name(self, user_name):
         """
         Find IAM user by name.
 
@@ -4447,7 +4103,7 @@ class AWSAPI:
         :return:
         """
 
-        for user in self.iam_client.get_all_users(full_information=full_information):
+        for user in self.users:
             if user.name == user_name:
                 break
         else:

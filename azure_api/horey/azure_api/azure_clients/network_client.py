@@ -46,6 +46,19 @@ class NetworkClient(AzureClient):
         response = self.client.subnet.begin_create_or_update(*lst_args)
         return response
 
+    def provision_public_ip_addresses(self, public_ip_address):
+        """
+        Standard.
+
+        :param public_ip_address:
+        :return:
+        """
+
+        response = self.raw_create_public_ip_addresses(
+            public_ip_address.generate_create_request()
+        )
+        public_ip_address.update_after_creation(response)
+
     def raw_create_public_ip_addresses(self, lst_args):
         logger.info(f"Begin public ip address creation: '{lst_args[0]} {lst_args[1]}'")
         response = self.client.public_ip_addresses.begin_create_or_update(*lst_args)
@@ -67,7 +80,7 @@ class NetworkClient(AzureClient):
             response.wait()
         return response
 
-    def provision_network_interface(self, network_interface):
+    def provision_network_interface(self, network_interface: NetworkInterface):
         """
         Standard.
 

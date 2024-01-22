@@ -1,9 +1,17 @@
-import pdb
+"""
+Public IP representation.
 
+"""
+
+# pylint: disable= no-name-in-module
 from horey.azure_api.azure_service_entities.azure_object import AzureObject
 
 
 class PublicIpAddress(AzureObject):
+    """
+    Main class
+
+    """
     def __init__(self, dict_src, from_cache=False):
         self.name = None
         self.id = None
@@ -14,6 +22,7 @@ class PublicIpAddress(AzureObject):
         self.public_ip_allocation_method = None
         self.public_ip_address_version = None
         self.ip_address = None
+        self.ip_configuration = None
 
         super().__init__(dict_src, from_cache=from_cache)
 
@@ -38,6 +47,7 @@ class PublicIpAddress(AzureObject):
             "resource_guid": self.init_default_attr,
             "provisioning_state": self.init_default_attr,
             "nat_gateway": self.init_default_attr,
+            "ddos_settings": self.init_default_attr
         }
 
         self.init_attrs(dict_src, init_options)
@@ -79,5 +89,12 @@ class PublicIpAddress(AzureObject):
         return ret
 
     def update_after_creation(self, public_ip_address):
+        """
+        Update runtime info.
+
+        :param public_ip_address:
+        :return:
+        """
+
         self.id = public_ip_address.id
         self.ip_address = public_ip_address.ip_address

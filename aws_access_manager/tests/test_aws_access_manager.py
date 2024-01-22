@@ -30,17 +30,18 @@ def fixture_configuration():
     """
 
     _configuration = AWSAccessManagerConfigurationPolicy()
-    _configuration.cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")
-    _configuration.aws_api_account_name = "iam_manager"
+    _configuration.aws_api_accounts = ["test1"]
+    ignore_dir_path = os.path.join( os.path.dirname(os.path.abspath(__file__)),
+            "..", "..", "..",
+            "ignore")
     _configuration.managed_accounts_file_path = os.path.abspath(
         os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),
-            "..", "..", "..",
-            "ignore",
+            ignore_dir_path,
             "accounts",
-            "aws_managed_accounts.py",
+            "aws_managed_accounts.py"
         )
     )
+    _configuration.cache_dir = os.path.join(ignore_dir_path, "access_manager", "cache")
 
     return _configuration
 
@@ -59,10 +60,10 @@ def test_get_iam_role_lambdas(configuration: AWSAccessManagerConfigurationPolicy
         assert isinstance(ret, list)
 
 @pytest.mark.skip
-def test_get_iam_role_lambdas_assumable_roles(configuration: AWSAccessManagerConfigurationPolicy):
+def test_provision_iam_role_lambdas_assumable_roles(configuration: AWSAccessManagerConfigurationPolicy):
     roles = AWSAccessManager(configuration).get_user_assume_roles(mock_values["get_user_faces_user_name"])
     for role in roles:
-        ret = AWSAccessManager(configuration).get_iam_role_lambdas_assumable_roles(Region.get_region("us-west-2"), role)
+        ret = AWSAccessManager(configuration).provision_iam_role_lambdas_assumable_roles(Region.get_region("us-west-2"), role)
         assert isinstance(ret, list)
 
 @pytest.mark.todo
@@ -81,7 +82,21 @@ def test_generate_user_aws_api_accounts(configuration: AWSAccessManagerConfigura
     accounts = aws_access_manager.generate_user_aws_api_accounts(aws_access_key_id, aws_secret_access_key, roles)
     assert isinstance(accounts, list)
 
-@pytest.mark.wip
+
+@pytest.mark.done
 def test_generate_user_security_domain_tree(configuration: AWSAccessManagerConfigurationPolicy):
-    tree = AWSAccessManager(configuration).generate_user_security_domain_tree(mock_values["get_user_faces_user_name"])
+    access_manager = AWSAccessManager(configuration)
+    user = access_manager.aws_api.find_user_by_name(mock_values["get_user_faces_user_name"])
+    tree = access_manager.generate_user_security_domain_tree(user)
+    tree.print()
     assert tree is not None
+
+@pytest.mark.done
+def test_generate_users_security_domain_tree(configuration: AWSAccessManagerConfigurationPolicy):
+    ret = AWSAccessManager(configuration).generate_users_security_domain_tree()
+    assert ret is not None
+
+@pytest.mark.wip
+def test_generate_users_security_domain_graphs(configuration: AWSAccessManagerConfigurationPolicy):
+    ret = AWSAccessManager(configuration).generate_users_security_domain_graphs()
+    assert ret is not None

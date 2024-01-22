@@ -145,6 +145,8 @@ class IamPolicy(AwsObject):
             "Tags": self.init_default_attr,
             "Description": self.init_default_attr,
             "Document": self.init_document,
+            "PolicyDocument": self.init_document,
+            "GroupName": self.init_default_attr,
             "VersionId": self.init_default_attr,
             "IsDefaultVersion": self.init_default_attr,
         }

@@ -60,15 +60,15 @@ class AzureAPI:
         )
         AzureAccount.set_azure_account(accounts[self.configuration.azure_account])
 
-    def init_disks(self):
+    def init_disks(self, resource_group):
         """
         Request from API and init objects.
 
         :return:
         """
 
-        objects = self.compute_client.get_all_disks()
-        self.disks += objects
+        objects = self.compute_client.get_all_disks(resource_group)
+        self.disks = objects
 
     def init_nat_gateways(self, resource_group=None):
         """
@@ -76,6 +76,7 @@ class AzureAPI:
 
         :return:
         """
+        self.nat_gateways = []
         if resource_group is not None:
             objects = self.network_client.get_all_nat_gateways(resource_group)
             self.nat_gateways = objects
@@ -96,7 +97,7 @@ class AzureAPI:
 
         :return:
         """
-
+        self.load_balancers = []
         if len(self.resource_groups) == 0:
             raise RuntimeError(
                 "resource_groups must be inited before running init_load_balancers"
@@ -113,6 +114,7 @@ class AzureAPI:
         :return:
         """
 
+        self.network_interfaces = []
         if resource_group is not None:
             self.network_interfaces = self.network_client.get_all_network_interfaces(resource_group)
             return
@@ -132,6 +134,7 @@ class AzureAPI:
 
         :return:
         """
+        self.public_ip_addresses = []
         if resource_group is not None:
             objects = self.network_client.get_all_public_ip_addresses(resource_group)
             self.public_ip_addresses += objects
@@ -152,6 +155,8 @@ class AzureAPI:
 
         :return:
         """
+
+        self.network_security_groups = []
         if resource_group is not None:
             self.network_security_groups = self.network_client.get_all_network_security_groups(
                 resource_group
@@ -175,6 +180,7 @@ class AzureAPI:
 
         :return:
         """
+        self.virtual_machines = []
         if resource_group is not None:
             self.virtual_machines = self.compute_client.get_all_virtual_machines(resource_group.name)
             return
@@ -194,6 +200,7 @@ class AzureAPI:
 
         :return:
         """
+        self.virtual_networks = []
         if resource_group is not None:
             self.virtual_networks = self.network_client.get_all_virtual_networks(resource_group)
             return
@@ -213,6 +220,7 @@ class AzureAPI:
 
         :return:
         """
+        self.ssh_keys = []
         if resource_group is not None:
             self.ssh_keys = self.compute_client.get_all_ssh_keys(resource_group)
             return
@@ -234,7 +242,7 @@ class AzureAPI:
         """
 
         objects = self.resource_client.get_all_resource_groups()
-        self.resource_groups += objects
+        self.resource_groups = objects
 
     def cache_objects(self, objects, cache_file_path):
         """
@@ -309,7 +317,7 @@ class AzureAPI:
 
         return self.compute_client.raw_delete_disk(disk.resource_group_name, disk.name)
 
-    def delete_virtual_machine(self, object_repr):
+    def dispose_virtual_machine(self, object_repr):
         """
         Dispose the resource.
 
@@ -317,7 +325,7 @@ class AzureAPI:
         :return:
         """
 
-        return self.compute_client.raw_delete_virtual_machine(object_repr)
+        return self.compute_client.dispose_virtual_machine(object_repr)
 
     def delete_network_interface(self, object_repr):
         """
@@ -515,12 +523,12 @@ class AzureAPI:
         self.provision_disk(disk)
         self.compute_client.start_vm(vm)
 
-    def print_vm_disk_sizes(self):
+    def print_vm_disk_sizes(self, resource_group):
         """
         All OS-disK sizes.
 
         :return:
         """
 
-        for disk in self.compute_client.get_all_disks():
+        for disk in self.compute_client.get_all_disks(resource_group):
             print(f"{disk.name} - {disk.disk_size_gb} GB")
