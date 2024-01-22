@@ -505,7 +505,7 @@ class AWSAccessManager:
         lst_ret = []
         for user in self.aws_api.users:
             tree = self.generate_user_security_domain_tree(user)
-            with open (os.path.join(self.configuration.user_reports_dir_path, user.name.replace(".", "_")), "w", encoding="utf8") as file_handler:
+            with open (os.path.join(self.configuration.user_reports_dir_path, user.name.replace(".", "_")), "w", encoding="utf-8") as file_handler:
                 json.dump(tree.convert_to_dict(), file_handler)
             lst_ret.append(tree)
         return lst_ret
@@ -528,7 +528,7 @@ class AWSAccessManager:
             dict_graph = tree.generate_security_domain_graph()
             file_name = user.name.replace(".", "_") + "_graph.json"
             file_full_path = os.path.join(self.configuration.user_reports_dir_path, aggressive_dir_path if tree.aggressive else not_aggressive_dir_path, file_name)
-            with open (file_full_path, "w", encoding="utf8") as file_handler:
+            with open (file_full_path, "w", encoding="utf-8") as file_handler:
                 json.dump(dict_graph, file_handler)
             logger.info(f"UI graph in {file_full_path}")
             lst_ret.append(tree)
