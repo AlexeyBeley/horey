@@ -298,3 +298,38 @@ class ECRClient(Boto3Client):
                 },
             ):
                 assert response
+
+    def dispose_images(self, images):
+        """
+        Dispose the images.
+
+        :param images:
+        :return:
+        """
+
+        if not images:
+            return None
+
+        repository_names = {image.repository_name for image in images}
+
+        if len(repository_names) > 1:
+            raise NotImplementedError(repository_names)
+
+        request_dict = {"repositoryName": images[0].repository_name, "imageIds": [{"imageDigest": image.image_digest} for image in images]}
+        return self.batch_delete_image_raw(request_dict)
+
+    def batch_delete_image_raw(self, request_dict):
+        """
+        Standard.
+
+        :param request_dict:
+        :return:
+        """
+
+        for response in self.execute(
+            self.client.batch_delete_image, None, raw_data=True, filters_req=request_dict
+        ):
+            if response.get("failures"):
+                raise ValueError(response)
+            self.clear_cache(ECRImage)
+            return response

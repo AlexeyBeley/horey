@@ -79,13 +79,13 @@ class EC2Client(Boto3Client):
             yield dict_src
 
 
-    def get_all_subnets(self, region=None, filters_req=None):
+    def get_all_subnets(self, region=None, filters_req=None, update_info=False):
         """
         Get all subnets in all regions.
         :return:
         """
 
-        return list(self.yield_subnets(region=region, filters_req=filters_req))
+        return list(self.yield_subnets(region=region, filters_req=filters_req, update_info=update_info))
 
     def get_region_subnets(self, region, filters=None, filters_req=None):
         """

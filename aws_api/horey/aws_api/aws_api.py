@@ -173,13 +173,13 @@ class AWSAPI:
         self.elasticsearch_domains = []
         self.managed_prefix_lists = []
         self.vpcs = []
-        self.subnets = []
+        self._subnets = []
         self.availability_zones = []
         self.amis = []
         self.key_pairs = []
         self.internet_gateways = []
         self.vpc_peerings = []
-        self.route_tables = []
+        self._route_tables = []
         self.elastic_addresses = []
         self.nat_gateways = []
         self.dynamodb_tables = []
@@ -322,22 +322,34 @@ class AWSAPI:
 
         self.vpcs = objects
 
-    def init_subnets(self, region=None):
+    @property
+    def subnets(self):
+        """
+        Inited/All VPC subnets.
+
+        :return:
+        """
+        if not self._subnets:
+            self.init_subnets()
+
+        return self._subnets
+
+    def init_subnets(self, region=None, update_info=False):
         """
         Ec2 Subnets
 
         @param region:
+        @param update_info:
         @return:
         """
 
-        if not isinstance(region, list):
-            region = [region]
+        regions = [region] if not isinstance(region, list) else region
 
         objects = []
-        for _region in region:
-            objects += self.ec2_client.get_all_subnets(region=_region)
+        for _region in regions:
+            objects += self.ec2_client.get_all_subnets(region=_region, update_info=update_info)
 
-        self.subnets = objects
+        self._subnets = objects
 
     def init_glue_tables(self, region=None):
         """
@@ -734,6 +746,18 @@ class AWSAPI:
 
         self.vpc_peerings = objects
 
+    @property
+    def route_tables(self):
+        """
+        Get inited/All route tables.
+
+        :return:
+        """
+
+        if not self._route_tables:
+            self.init_route_tables()
+        return self._route_tables
+
     def init_route_tables(self, region=None):
         """
         Standard.
@@ -744,7 +768,7 @@ class AWSAPI:
 
         objects = self.ec2_client.get_all_route_tables(region=region)
 
-        self.route_tables = objects
+        self._route_tables = objects
 
     def init_elastic_addresses(self, region=None):
         """
@@ -2876,10 +2900,7 @@ class AWSAPI:
 
         main_route_tables = []
         logger.info(f"Looking for subnet route table {subnet.id=}, {subnet.region.region_mark=}")
-        route_tables = [route_table for route_table in self.route_tables if route_table.region == subnet.region]
-
-        if len(route_tables) == 0:
-            route_tables = self.ec2_client.get_region_route_tables(subnet.region)
+        route_tables = list(self.ec2_client.yield_route_tables(region=subnet.region))
 
         for route_table in route_tables:
             if route_table.vpc_id != subnet.vpc_id:
@@ -2891,7 +2912,7 @@ class AWSAPI:
                     main_route_tables.append(route_table)
 
         if len(main_route_tables) != 1:
-            raise RuntimeError(f"{len(main_route_tables)} != 1")
+            raise RuntimeError(f"Subnet: {subnet.id}, region: {subnet.region.region_mark}. {subnet.tags=} {len(main_route_tables)} != 1")
 
         return main_route_tables[0]
 
@@ -2901,8 +2922,6 @@ class AWSAPI:
 
         @return:
         """
-        if not self.route_tables:
-            self.init_route_tables(region=subnet.region)
 
         route_table = self.find_route_table_by_subnet(subnet.region, subnet)
         for route in route_table.routes:

@@ -1,6 +1,12 @@
-from horey.azure_api.base_entities.region import Region
+"""
+Base class for all azure entities.
+
+"""
+
 import datetime
 from enum import Enum
+# pylint: disable= no-name-in-module
+from horey.azure_api.base_entities.region import Region
 
 from horey.h_logger import get_logger
 from horey.network.ip import IP
@@ -9,6 +15,10 @@ logger = get_logger()
 
 
 class AzureObject:
+    """
+    Main class.
+
+    """
     SELF_CACHED_TYPE_KEY_NAME = "horey_cached_type"
 
     def __init__(self, dict_src, from_cache=False):
@@ -26,6 +36,7 @@ class AzureObject:
         """
         return self.convert_to_dict_static(self.__dict__)
 
+    # pylint: disable= too-many-return-statements, too-many-branches
     @staticmethod
     def convert_to_dict_static(obj_src, custom_types=None):
         """
@@ -42,7 +53,7 @@ class AzureObject:
             ret = {}
             for key, value in obj_src.items():
                 if type(key) not in [int, str]:
-                    raise Exception
+                    raise ValueError(f"{key=}, {type(key)=}")
                 ret[key] = AzureObject.convert_to_dict_static(
                     value, custom_types=custom_types
                 )
@@ -111,11 +122,13 @@ class AzureObject:
     def init_attrs(self, dict_src, dict_options, raise_on_no_option=False):
         """
         Init the object attributes according to given "recipe"
-        :param dict_src:
-        :param dict_options:
+
+        @param dict_src:
+        @param dict_options:
         @param raise_on_no_option: If key not set explicitly raise exception.
         :return:
         """
+
         composed_errors = []
         for key_src, value in dict_src.items():
             try:
@@ -123,9 +136,9 @@ class AzureObject:
             except KeyError as caught_exception:
                 for key_src_ in dict_src:
                     if key_src_ not in dict_options:
-                        line_to_add = '"{}":  self.init_default_attr,'.format(key_src_)
+                        line_to_add = f'"{key_src_}":  self.init_default_attr,'
+                        logger.warning(f"{self.__class__.__name__}: {line_to_add}")
                         composed_errors.append(line_to_add)
-                        logger.error(line_to_add)
 
                 if not raise_on_no_option:
                     self.init_default_attr(key_src, value)
@@ -151,7 +164,7 @@ class AzureObject:
                 and value.get(self.SELF_CACHED_TYPE_KEY_NAME) is not None
             ):
                 raise NotImplementedError()
-            elif key_src in dict_options:
+            if key_src in dict_options:
                 dict_options[key_src](key_src, value)
             else:
                 self.init_default_attr(key_src, value)

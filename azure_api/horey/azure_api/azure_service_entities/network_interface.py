@@ -1,9 +1,17 @@
-import pdb
+"""
+Azure network interface.
 
+"""
+
+# pylint: disable= no-name-in-module
 from horey.azure_api.azure_service_entities.azure_object import AzureObject
 
 
 class NetworkInterface(AzureObject):
+    """
+    Main class.
+
+    """
     def __init__(self, dict_src, from_cache=False):
         self.name = None
         self.resource_group_name = None
@@ -40,6 +48,9 @@ class NetworkInterface(AzureObject):
             "hosted_workloads": self.init_default_attr,
             "nic_type": self.init_default_attr,
             "vnet_encryption_supported": self.init_default_attr,
+            "auxiliary_mode": self.init_default_attr,
+            "auxiliary_sku": self.init_default_attr,
+            "disable_tcp_state_tracking": self.init_default_attr
         }
 
         self.init_attrs(dict_src, init_options)
@@ -47,13 +58,21 @@ class NetworkInterface(AzureObject):
     def init_network_interface_from_cache(self, dict_src):
         """
         Init from cache
+
         :param dict_src:
         :return:
         """
+
         options = {}
         self._init_from_cache(dict_src, options)
 
     def generate_create_request(self):
+        """
+        Standard.
+
+        :return:
+        """
+
         return [
             self.resource_group_name,
             self.name,
@@ -62,10 +81,17 @@ class NetworkInterface(AzureObject):
                 "ip_configurations": self.ip_configurations,
                 "network_security_group": self.network_security_group,
                 "tags": self.tags,
-            },
+            }
         ]
 
     def update_after_creation(self, network_interface):
+        """
+        Initialize.
+
+        :param network_interface:
+        :return:
+        """
+
         self.ip_configurations = [
             config.as_dict() for config in network_interface.ip_configurations
         ]

@@ -219,3 +219,16 @@ class ACMClient(Boto3Client):
 
         self.clear_cache(certificate.__class__)
         return True
+
+    def import_certificate_raw(self, request_dict):
+        """
+        Standard.
+
+        :param request_dict:
+        :return:
+        """
+        logger.info(f"Importing certificate: {request_dict['CertificateArn']}")
+        for response in self.execute(
+            self.client.import_certificate, "CertificateArn", filters_req=request_dict
+        ):
+            return response
