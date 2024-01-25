@@ -325,7 +325,7 @@ class ECSClient(Boto3Client):
         """
 
         filters_req = {"cluster": cluster.name} if cluster else None
-        return list(self.yield_services(filters_req=filters_req, region=region))
+        return list(self.yield_services(filters_req=filters_req, region=cluster.region if cluster else region))
 
     @staticmethod
     def services_cache_filter_callback(filters_req):
@@ -666,7 +666,7 @@ class ECSClient(Boto3Client):
         """
 
         cluster = self.get_cluster_from_arn(service.cluster_arn)
-        region_objects = self.get_all_services(cluster)
+        region_objects = self.get_all_services(cluster=cluster)
         for region_object in region_objects:
             if region_object.name == service.name:
                 AWSAccount.set_aws_region(service.region)
