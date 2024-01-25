@@ -565,7 +565,7 @@ class AWSAPI:
         @return:
         """
         self.ecs_clusters = []
-        if self.configuration.aws_api_accounts:
+        if self.configuration:
             for aws_api_account_name in self.configuration.aws_api_accounts:
                 AWSAccount.set_aws_account(
                     self.aws_accounts[aws_api_account_name]
@@ -596,7 +596,7 @@ class AWSAPI:
         @return:
         """
         self.ecs_services = []
-        if self.configuration.aws_api_accounts:
+        if self.configuration:
             for aws_api_account_name in self.configuration.aws_api_accounts:
                 AWSAccount.set_aws_account(
                     self.aws_accounts[aws_api_account_name]
@@ -615,7 +615,7 @@ class AWSAPI:
 
         self.ecs_task_definitions = []
 
-        if self.configuration.aws_api_accounts:
+        if self.configuration:
             for aws_api_account_name in self.configuration.aws_api_accounts:
                 AWSAccount.set_aws_account(
                     self.aws_accounts[aws_api_account_name]
@@ -634,7 +634,7 @@ class AWSAPI:
 
         self.ecs_tasks = []
 
-        if self.configuration.aws_api_accounts:
+        if self.configuration:
             for aws_api_account_name in self.configuration.aws_api_accounts:
                 AWSAccount.set_aws_account(
                     self.aws_accounts[aws_api_account_name]
@@ -801,7 +801,7 @@ class AWSAPI:
         """
 
         self.ec2_instances = []
-        if self.configuration.aws_api_accounts:
+        if self.configuration:
             for aws_api_account_name in self.configuration.aws_api_accounts:
                 AWSAccount.set_aws_account(
                     self.aws_accounts[aws_api_account_name]
@@ -872,7 +872,7 @@ class AWSAPI:
         """
 
         self._users = []
-        if self.configuration.aws_api_accounts:
+        if self.configuration:
             for aws_api_account_name in self.configuration.aws_api_accounts:
                 AWSAccount.set_aws_account(
                     self.aws_accounts[aws_api_account_name]
@@ -890,7 +890,7 @@ class AWSAPI:
 
         self.iam_roles = []
 
-        if self.configuration.aws_api_accounts:
+        if self.configuration:
             for aws_api_account_name in self.configuration.aws_api_accounts:
                 AWSAccount.set_aws_account(
                     self.aws_accounts[aws_api_account_name]
@@ -908,7 +908,7 @@ class AWSAPI:
 
         self.iam_instance_profiles = []
 
-        if self.configuration.aws_api_accounts:
+        if self.configuration:
             for aws_api_account_name in self.configuration.aws_api_accounts:
                 AWSAccount.set_aws_account(
                     self.aws_accounts[aws_api_account_name]
@@ -1007,7 +1007,7 @@ class AWSAPI:
         @return:
         """
         self.iam_policies = []
-        if self.configuration.aws_api_accounts:
+        if self.configuration:
             for aws_api_account_name in self.configuration.aws_api_accounts:
                 AWSAccount.set_aws_account(
                     self.aws_accounts[aws_api_account_name]
@@ -1023,7 +1023,7 @@ class AWSAPI:
         @return:
         """
         self.iam_groups = []
-        if self.configuration.aws_api_accounts:
+        if self.configuration:
             for aws_api_account_name in self.configuration.aws_api_accounts:
                 AWSAccount.set_aws_account(
                     self.aws_accounts[aws_api_account_name]
@@ -1102,7 +1102,7 @@ class AWSAPI:
         """
         self.lambdas = []
 
-        if self.configuration.aws_api_accounts:
+        if self.configuration:
             for aws_api_account_name in self.configuration.aws_api_accounts:
                 AWSAccount.set_aws_account(
                     self.aws_accounts[aws_api_account_name]
@@ -1412,7 +1412,7 @@ class AWSAPI:
         """
 
         self.lambda_event_source_mappings = []
-        if self.configuration.aws_api_accounts:
+        if self.configuration:
             for aws_api_account_name in self.configuration.aws_api_accounts:
                 AWSAccount.set_aws_account(
                     self.aws_accounts[aws_api_account_name]
