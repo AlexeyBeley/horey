@@ -326,6 +326,8 @@ class ECRClient(Boto3Client):
         :return:
         """
 
+        logger.info(f"Deleting images: {request_dict}")
+
         for response in self.execute(
             self.client.batch_delete_image, None, raw_data=True, filters_req=request_dict
         ):
