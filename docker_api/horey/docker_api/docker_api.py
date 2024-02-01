@@ -171,7 +171,7 @@ class DockerAPI:
         @return:
         """
 
-        logger.info(f"Pulling image from repository {repo}")
+        logger.info(f"Pulling image from repository: {repo}, tag: {tag}")
         if tag is not None and repo.find(":") > -1:
             raise RuntimeError(f"Using both repo tag and tag kwarg: {repo}, {tag}")
         images = self.client.images.pull(
