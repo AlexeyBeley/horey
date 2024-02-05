@@ -28,14 +28,14 @@ class AsyncOrchestrator:
         :return:
         """
 
-        logger.info(f"started start_task at {time.strftime('%X')}")
+        logger.info(f"Starting task '{task.id}' at {time.strftime('%X')}")
         if task.id in self.tasks:
             raise RuntimeError(f"Task with id {task.id} already in tasks: {self.tasks}")
         self.tasks[task.id] = task
 
         thread = threading.Thread(target=self.task_runner_thread, args=(task,))
         thread.start()
-        logger.info(f"finished start_task at {time.strftime('%X')}")
+        logger.info(f"Finished task '{task.id}' at {time.strftime('%X')}")
 
     @staticmethod
     def task_runner_thread(task):
