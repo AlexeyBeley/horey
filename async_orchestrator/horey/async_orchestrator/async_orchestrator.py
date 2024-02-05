@@ -35,7 +35,7 @@ class AsyncOrchestrator:
 
         thread = threading.Thread(target=self.task_runner_thread, args=(task,))
         thread.start()
-        logger.info(f"Finished task '{task.id}' at {time.strftime('%X')}")
+        logger.info(f"Started thread for '{task.id}' in start_task at {time.strftime('%X')}")
 
     @staticmethod
     def task_runner_thread(task):
