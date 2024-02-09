@@ -19,11 +19,11 @@ class Build:
         self._name = None
         self._class = None
         self.id = None
-        self.actions = None
+        self.actions = []
         self.artifacts = None
         self.building = None
         self.description = None
-        self.display_name = None
+        self.display_name = ""
         self.duration = None
         self.estimated_duration = None
         self.executor = None
@@ -33,11 +33,12 @@ class Build:
         self.queue_id = None
         self.result = None
         self.timestamp = None
-        self.url = None
+        self.url = ""
         self.change_sets = None
         self.culprits = None
         self.next_build = None
         self.previous_build = None
+        self.in_progress = None
         self.update_from_raw_response(dict_src)
 
     def update_from_raw_response(self, dict_src):

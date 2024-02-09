@@ -3,6 +3,7 @@ Manages sessions towards multiple AWS accounts and regions.
 """
 import threading
 import datetime
+import time
 from typing import Any
 import boto3
 import botocore
@@ -68,15 +69,19 @@ class SessionsManager:
             :param client_name:
             :return:
             """
-            acquired = SessionsManager.Connection.LOCK.acquire(blocking=False)
-            try:
-                if acquired is True:
-                    if region_mark not in self.clients:
-                        self.clients[region_mark] = {}
 
-                    self.clients[region_mark][client_name] = self.session.client(
-                        client_name, region_name=region_mark
-                    )
+            try:
+                for _ in range(10):
+                    acquired = SessionsManager.Connection.LOCK.acquire(blocking=False)
+                    if acquired is True:
+                        if region_mark not in self.clients:
+                            self.clients[region_mark] = {}
+
+                        self.clients[region_mark][client_name] = self.session.client(
+                            client_name, region_name=region_mark
+                        )
+                        break
+                    time.sleep(1)
                 else:
                     raise LockAcquiringFailError()
             finally:

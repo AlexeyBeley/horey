@@ -395,6 +395,38 @@ class RemoteDeployer:
 
         return shin, shout, sherr, exit_status
 
+    def execute_remote_windows(self, deployment_target, command):
+        """
+        This works:
+        powershell -Command "ls; echo \"1 2 $?\""
+        :param deployment_target:
+        :param command:
+        :return:
+        """
+        with self.get_deployment_target_client_context(deployment_target) as client:
+            _, stdout, stderr = client.exec_command(command, timeout=120)
+            stdout_string = stdout.read().decode("utf-8")
+            stderr_string = stderr.read().decode("utf-8")
+            if stderr_string:
+                raise RemoteDeployer.DeployerError(stderr_string)
+            return stdout_string
+
+    def put_file_windows(self, deployment_target, local_file_path, remote_file_path):
+        """
+        Copy file from local to remote.
+
+        :param deployment_target:
+        :param local_file_path:
+        :param remote_file_path:
+        :return:
+        """
+
+        with self.get_deployment_target_client_context(deployment_target) as client:
+            transport = client.get_transport()
+            sftp_client = HoreySFTPClient.from_transport(transport)
+            sftp_client.put(local_file_path, remote_file_path)
+        return True
+
     @staticmethod
     def execute_remote(client, command):
         """
