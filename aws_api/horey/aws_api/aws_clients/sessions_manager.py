@@ -77,6 +77,9 @@ class SessionsManager:
                         if region_mark not in self.clients:
                             self.clients[region_mark] = {}
 
+                        if client_name in self.clients[region_mark]:
+                            return
+
                         self.clients[region_mark][client_name] = self.session.client(
                             client_name, region_name=region_mark
                         )
