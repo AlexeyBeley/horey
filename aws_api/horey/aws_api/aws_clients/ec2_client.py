@@ -935,6 +935,7 @@ class EC2Client(Boto3Client):
         for response in self.execute(
                 self.client.modify_vpc_attribute, None, filters_req=request, raw_data=True
         ):
+            self.clear_cache(VPC)
             return response
 
     def provision_subnets(self, subnets):
@@ -2306,7 +2307,7 @@ class EC2Client(Boto3Client):
             if vpc_exists.get_tagname(ignore_missing_tag=True) == vpc.get_tagname():
                 if vpc_exists.cidr_block != vpc.cidr_block:
                     raise RuntimeError(
-                        f"VPC {vpc_exists.name} exists with different cidr_block {vpc_exists.cidr_block} != {vpc.cidr_block}"
+                        f"Disposing VPC {vpc_exists.name} exists with different cidr_block {vpc_exists.cidr_block} != {vpc.cidr_block}"
                     )
                 request = {"VpcId": vpc_exists.id}
                 break
