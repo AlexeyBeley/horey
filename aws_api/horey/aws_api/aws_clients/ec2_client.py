@@ -940,7 +940,7 @@ class EC2Client(Boto3Client):
 
     def provision_subnets(self, subnets):
         """
-        Self explanatory.
+        Standard.
 
         @param subnets:
         @return:
@@ -977,9 +977,57 @@ class EC2Client(Boto3Client):
                     continue
                 raise
 
+    def dispose_subnets(self, subnets):
+        """
+        Standard.
+
+        @param subnets:
+        @return:
+        """
+        for subnet in subnets[1:]:
+            if subnet.region.region_mark != subnets[0].region.region_mark:
+                raise RuntimeError("All subnets should be in one region")
+
+        region_subnets = self.get_region_subnets(subnets[0].region)
+        for subnet in subnets:
+            for region_subnet in region_subnets:
+                if (
+                        region_subnet.get_tagname(ignore_missing_tag=True)
+                        == subnet.get_tagname()
+                ):
+                    if region_subnet.cidr_block != subnet.cidr_block:
+                        raise RuntimeError(
+                            f"Subnet {subnet.get_tagname()} exists with different cidr_block {region_subnet.cidr_block} != {subnet.cidr_block}"
+                        )
+                    subnet.update_from_raw_create(region_subnet.dict_src)
+
+        for subnet in subnets:
+            if subnet.id is None:
+                raise RuntimeError(f"Subnet ID is None for subnet {subnet.get_tagname()}")
+
+            self.delete_subnet_raw({"SubnetId": subnet.id})
+
+    def delete_subnet_raw(self, request):
+        """
+        Standard.
+
+        @param request:
+        @return:
+        """
+
+        logger.info(f"Deleting subnet {request}")
+
+        for response in self.execute(
+                self.client.delete_subnet, None, raw_data=True, filters_req=request
+        ):
+            self.clear_cache(Subnet)
+            return response
+
+        return None
+
     def provision_subnet_raw(self, request):
         """
-        Self explanatory.
+        Standard.
 
         @param request:
         @return:
@@ -988,6 +1036,7 @@ class EC2Client(Boto3Client):
         for response in self.execute(
                 self.client.create_subnet, "Subnet", filters_req=request
         ):
+            self.clear_cache(Subnet)
             return response
 
         return None
@@ -1013,6 +1062,7 @@ class EC2Client(Boto3Client):
             response = self.raw_create_managed_prefix_list(
                 managed_prefix_list.generate_create_request()
             )
+            self.clear_cache(ManagedPrefixList)
             return managed_prefix_list.update_from_raw_create(response)
 
         region_object = ManagedPrefixList(raw_region_pl)
@@ -1026,6 +1076,7 @@ class EC2Client(Boto3Client):
             raw_region_pl = self.raw_describe_managed_prefix_list(
                 managed_prefix_list.region, prefix_list_name=managed_prefix_list.name
             )
+            self.clear_cache(ManagedPrefixList)
 
         managed_prefix_list.update_from_raw_create(raw_region_pl)
         return None

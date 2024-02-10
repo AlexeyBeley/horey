@@ -72,3 +72,19 @@ class LionKingConfigurationPolicy(ConfigurationPolicy):
     @property
     def vpc_name(self):
         return f"vpc_{self.project_name}_{self.environment_name}"
+
+    @property
+    def availability_zones_count(self):
+        return 2
+
+    @property
+    def subnet_mask_length(self):
+        return 24
+
+    @property
+    def private_subnet_name_template(self):
+        return f"subnet-private-{self.project_name}-{self.environment_name}-" + "{}"
+
+    @property
+    def public_subnet_name_template(self):
+        return f"subnet-public-{self.project_name}-{self.environment_name}-" + "{}"

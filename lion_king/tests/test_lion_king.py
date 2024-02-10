@@ -21,6 +21,17 @@ def test_provision_vpc():
     vpc = lion_king.provision_vpc()
     assert vpc.id
 
+
+@pytest.mark.wip
+def test_provision_subnets():
+    configuration = LionKingConfigurationPolicy()
+    configuration.configuration_file_full_path = configuration_file_path
+    configuration.init_from_file()
+    lion_king = LionKing(configuration)
+    subnets = lion_king.provision_subnets()
+    assert len(subnets) > 0
+
+
 @pytest.mark.wip
 def test_dispose():
     configuration = LionKingConfigurationPolicy()
