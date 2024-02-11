@@ -88,3 +88,11 @@ class LionKingConfigurationPolicy(ConfigurationPolicy):
     @property
     def public_subnet_name_template(self):
         return f"subnet-public-{self.project_name}-{self.environment_name}-" + "{}"
+
+    @property
+    def ecr_repository_name(self):
+        return f"repo-{self.project_name}-{self.environment_name}"
+
+    @property
+    def infrastructure_last_update_time_tag(self):
+        return "infra_update_datetime"

@@ -3,12 +3,15 @@ Async orchestrator
 
 """
 import copy
+import datetime
 
 from horey.h_logger import get_logger
+from horey.docker_api.docker_api import DockerAPI
 from horey.aws_api.aws_api import AWSAPI
 from horey.aws_api.aws_api_configuration_policy import AWSAPIConfigurationPolicy
 from horey.aws_api.aws_services_entities.vpc import VPC
 from horey.aws_api.aws_services_entities.subnet import Subnet
+from horey.aws_api.aws_services_entities.ecr_repository import ECRRepository
 from horey.aws_api.base_entities.region import Region
 from horey.network.ip import IP
 
@@ -24,6 +27,7 @@ class LionKing:
     def __init__(self, configuration):
         self.configuration = configuration
         self._aws_api = None
+        self._docker_api = None
         self._region = None
         self._vpc = None
         self.tags  = [{ "Key": "environment_name",
@@ -48,6 +52,18 @@ class LionKing:
             self._aws_api = AWSAPI(aws_api_configuration)
 
         return self._aws_api
+    
+    @property
+    def docker_api(self):
+        """
+        AWS API used for the deployment.
+
+        :return:
+        """
+        if self._docker_api is None:
+            self._docker_api = DockerAPI()
+
+        return self._docker_api
 
     @property
     def region(self):
@@ -178,6 +194,67 @@ class LionKing:
         self.aws_api.provision_subnets(subnets)
         return subnets
 
+    def provision_ecr_repository(self):
+        """
+        Create or update the ECR repo
+
+        :return:
+        """
+
+        repo = ECRRepository({})
+        repo.region = self.region
+        repo.name = self.configuration.ecr_repository_name
+        repo.tags = copy.deepcopy(self.tags)
+        repo.tags.append({
+            "Key": "Name",
+            "Value": repo.name
+        })
+
+        repo.tags.append({
+            "Key": self.configuration.infrastructure_last_update_time_tag,
+            "Value": datetime.datetime.now().strftime('%Y_%m_%d_%H_%M')
+        })
+        self.aws_api.provision_ecr_repository(repo)
+        return repo
+    
+    def login_to_ecr(self):
+        """
+        Login to ECR for Docker to be able to upload images.
+        
+        :return:
+        """
+        self.docker_api
+        logger.info(f"Fetching ECR credentials for region {self.configuration.region}")
+        credentials = self.aws_api.get_ecr_authorization_info(region=self.region)
+
+        if len(credentials) != 1:
+            raise ValueError("len(credentials) != 1")
+        credentials = credentials[0]
+
+        registry, username, password = credentials["proxy_host"], credentials["user_name"], credentials["decoded_token"]
+        return self.docker_api.login(registry, username, password)
+
+    def build_and_upload(self):
+        breakpoint()
+
+    def update_component(self):
+        """
+        Update code and infrastructure.
+
+        :return:
+        """
+
+        if self.configuration.provision_infrastructure:
+            self.provision_vpc()
+            self.provision_subnets()
+            self.provision_ecr_repository()
+            #self.provision_ssh_key_pairs
+            #self.generate_user_data
+            #self.provision_launch_template
+            #self.provision_ecs_capacity_provider
+            #self.attach_capacity_provider_to_ecs_cluster
+            #self.provision_ecs_cluster
+            #self.update_auto_scaling_group_desired_count
 
     def dispose(self):
         """
@@ -185,7 +262,6 @@ class LionKing:
 
         :return:
         """
-
 
         all_subnets = self.aws_api.ec2_client.get_region_subnets(region=self.region)
         subnets = [subnet for subnet in all_subnets if \
@@ -206,4 +282,9 @@ class LionKing:
             "Value": self.configuration.vpc_name
         })
         self.aws_api.ec2_client.dispose_vpc(vpc)
+
+        ecr_repository = ECRRepository({})
+        ecr_repository.name = self.configuration.ecr_repository_name
+        ecr_repository.region = self.configuration.region
+        self.aws_api.ecr_client.dispose_repository(ecr_repository)
         return True

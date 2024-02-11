@@ -33,6 +33,7 @@ class DockerAPI:
 
         ret = self.client.login(registry=registry, username=username, password=password)
         logger.info(ret)
+        return ret
 
     def get_image(self, name):
         """

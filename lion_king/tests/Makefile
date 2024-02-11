@@ -14,6 +14,7 @@ build:
 	source ${VENV_BIN_DIR}/activate &&\
 	cd ${HOREY_DIR_PATH} &&\
 	make raw_install_wheel-lion_king &&\
+	make raw_install_wheel-docker_api &&\
 	make raw_install_wheel-aws_api
 
 test: FORCE build

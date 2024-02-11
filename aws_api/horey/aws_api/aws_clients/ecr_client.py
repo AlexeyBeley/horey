@@ -225,7 +225,7 @@ class ECRClient(Boto3Client):
 
     def dispose_repository(self, repository: ECRRepository):
         """
-        Self explanatory
+        Standard.
 
         @param repository:
         @return:
@@ -238,7 +238,7 @@ class ECRClient(Boto3Client):
 
     def dispose_repository_raw(self, request_dict):
         """
-        Self explanatory
+        Standard
 
         @param request_dict:
         @return:
