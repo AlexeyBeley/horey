@@ -5,10 +5,11 @@ HOREY_DIR_PATH := $(realpath ${CURRENT_DIR}/../..)
 BUILD_DIR := ${HOREY_DIR_PATH}/build
 BUILD_TMP_DIR := ${BUILD_DIR}/_build
 VENV_BIN_DIR := $(realpath ${BUILD_TMP_DIR}/_venv/bin)
+USER_NAME:= $$(whoami)
 
 
 echo:
-	echo ${VENV_BIN_DIR}/activate
+	echo ${USER_NAME}
 
 build:
 	source ${VENV_BIN_DIR}/activate &&\
@@ -31,6 +32,6 @@ pytest_%: FORCE build
 
 wip: FORCE build
 	source ${VENV_BIN_DIR}/activate &&\
-	python3 -m pytest -m wip --full-trace ${CURRENT_DIR}/ -v -s
+	DOCKER_HOST="unix:///Users/${USER_NAME}/.docker/run/docker.sock" python3 -m pytest -m wip --full-trace ${CURRENT_DIR}/ -v -s
 
 FORCE: ;

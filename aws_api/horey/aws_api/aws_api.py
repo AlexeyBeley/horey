@@ -3271,7 +3271,7 @@ class AWSAPI:
         @return:
         """
 
-        self.sesv2_client.provision_email_template(email_template)
+        return self.sesv2_client.provision_email_template(email_template)
 
     def provision_sesv2_configuration_set(self, configuration_set):
         """
@@ -3281,7 +3281,7 @@ class AWSAPI:
         @return:
         """
 
-        self.sesv2_client.provision_configuration_set(configuration_set)
+        return self.sesv2_client.provision_configuration_set(configuration_set)
 
     def provision_rds_db_cluster(self, cluster, snapshot=None):
         """
@@ -3293,7 +3293,7 @@ class AWSAPI:
         """
 
         snapshot_id = snapshot.id if snapshot is not None else None
-        self.rds_client.provision_db_cluster(cluster, snapshot_id=snapshot_id)
+        return self.rds_client.provision_db_cluster(cluster, snapshot_id=snapshot_id)
 
     def get_security_group_by_vpc_and_name(self, vpc, name):
         """
@@ -3344,7 +3344,7 @@ class AWSAPI:
         @return:
         """
 
-        self.rds_client.provision_db_cluster_parameter_group(db_cluster_parameter_group)
+        return self.rds_client.provision_db_cluster_parameter_group(db_cluster_parameter_group)
 
     def provision_db_parameter_group(self, db_parameter_group):
         """
@@ -3354,7 +3354,7 @@ class AWSAPI:
         @return:
         """
 
-        self.rds_client.provision_db_parameter_group(db_parameter_group)
+        return self.rds_client.provision_db_parameter_group(db_parameter_group)
 
     def provision_db_subnet_group(self, db_subnet_group):
         """
@@ -3364,7 +3364,7 @@ class AWSAPI:
         @return:
         """
 
-        self.rds_client.provision_db_subnet_group(db_subnet_group)
+        return self.rds_client.provision_db_subnet_group(db_subnet_group)
 
     def provision_db_instance(self, db_instance):
         """
@@ -3374,7 +3374,7 @@ class AWSAPI:
         @return:
         """
 
-        self.rds_client.provision_db_instance(db_instance)
+        return self.rds_client.provision_db_instance(db_instance)
 
     def provision_elasticache_cahce_subnet_group(self, subnet_group):
         """
@@ -3384,7 +3384,7 @@ class AWSAPI:
         @return:
         """
 
-        self.elasticache_client.provision_subnet_group(subnet_group)
+        return self.elasticache_client.provision_subnet_group(subnet_group)
 
     def provision_elaticache_cluster(self, cluster):
         """
@@ -3394,7 +3394,7 @@ class AWSAPI:
         @return:
         """
 
-        self.elasticache_client.provision_cluster(cluster)
+        return self.elasticache_client.provision_cluster(cluster)
 
     def provision_elaticache_replication_group(self, replication_group):
         """
@@ -3404,7 +3404,7 @@ class AWSAPI:
         @return:
         """
 
-        self.elasticache_client.provision_replication_group(replication_group)
+        return self.elasticache_client.provision_replication_group(replication_group)
 
     def provision_s3_bucket(self, s3_bucket):
         """
@@ -3414,7 +3414,7 @@ class AWSAPI:
         @return:
         """
 
-        self.s3_client.provision_bucket(s3_bucket)
+        return self.s3_client.provision_bucket(s3_bucket)
 
     def provision_cloudfront_distribution(self, cloudfront_distribution):
         """
@@ -3424,7 +3424,7 @@ class AWSAPI:
         @return:
         """
 
-        self.cloudfront_client.provision_distribution(cloudfront_distribution)
+        return self.cloudfront_client.provision_distribution(cloudfront_distribution)
 
     def provision_cloudfront_origin_access_identity(
             self, cloudfront_origin_access_identity
@@ -3436,7 +3436,7 @@ class AWSAPI:
         @return:
         """
 
-        self.cloudfront_client.provision_origin_access_identity(
+        return self.cloudfront_client.provision_origin_access_identity(
             cloudfront_origin_access_identity
         )
 

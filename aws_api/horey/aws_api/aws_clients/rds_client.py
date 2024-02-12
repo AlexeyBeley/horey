@@ -152,6 +152,7 @@ class RDSClient(Boto3Client):
         """
 
         cluster.default_engine_version = self.get_default_engine_version(cluster.region, cluster.engine)
+        return cluster
 
     def provision_db_cluster(self, db_cluster: RDSDBCluster, snapshot_id=None):
         """
@@ -264,6 +265,7 @@ class RDSClient(Boto3Client):
         response = self.dispose_db_instance_raw(db_instance.generate_dispose_request())
 
         db_instance.update_from_raw_response(response)
+        return db_instance
 
     def dispose_db_instance_raw(self, request_dict):
         """
@@ -290,6 +292,7 @@ class RDSClient(Boto3Client):
             db_cluster.generate_restore_db_cluster_from_snapshot_request(snapshot_id)
         )
         db_cluster.update_from_raw_response(response)
+        return db_cluster
 
     def restore_db_cluster_from_snapshot_raw(self, request_dict):
         """
@@ -366,13 +369,14 @@ class RDSClient(Boto3Client):
                 db_subnet_group.update_from_raw_response(
                     region_db_subnet_group.dict_src
                 )
-                return
+                return db_subnet_group
 
         AWSAccount.set_aws_region(db_subnet_group.region)
         response = self.provision_db_subnet_group_raw(
             db_subnet_group.generate_create_request()
         )
         db_subnet_group.update_from_raw_response(response)
+        return db_subnet_group
 
     def provision_db_subnet_group_raw(self, request_dict):
         """
@@ -384,6 +388,7 @@ class RDSClient(Boto3Client):
                 "DBSubnetGroup",
                 filters_req=request_dict,
         ):
+            self.clear_cache(RDSDBSubnetGroup)
             return response
 
     # pylint: disable= too-many-arguments
@@ -451,6 +456,8 @@ class RDSClient(Boto3Client):
                 filters_req=filters_req,
         ):
             obj.parameters.append(response_param)
+
+        return obj
 
     # pylint: disable= too-many-arguments
     def yield_db_cluster_snapshots(self, region=None, update_info=False, full_information=True, filters_req=None,
@@ -527,6 +534,7 @@ class RDSClient(Boto3Client):
                 filters_req=filters_req,
         ):
             obj.parameters.append(response_param)
+        return obj
 
     def get_all_db_parameter_groups(self, region=None):
         """
@@ -584,6 +592,7 @@ class RDSClient(Boto3Client):
                 db_cluster_parameter_group.region
             )
         )
+
         for region_db_cluster_parameter_group in region_db_cluster_parameter_groups:
             if (
                     db_cluster_parameter_group.name
@@ -592,13 +601,14 @@ class RDSClient(Boto3Client):
                 db_cluster_parameter_group.update_from_raw_response(
                     region_db_cluster_parameter_group.dict_src
                 )
-                return
+                return db_cluster_parameter_group
 
         AWSAccount.set_aws_region(db_cluster_parameter_group.region)
         response = self.provision_db_cluster_parameter_group_raw(
             db_cluster_parameter_group.generate_create_request()
         )
         db_cluster_parameter_group.update_from_raw_response(response)
+        return db_cluster_parameter_group
 
     def provision_db_cluster_parameter_group_raw(self, request_dict):
         """
@@ -610,6 +620,7 @@ class RDSClient(Boto3Client):
                 "DBClusterParameterGroup",
                 filters_req=request_dict,
         ):
+            self.clear_cache(RDSDBClusterParameterGroup)
             return response
 
     def provision_db_parameter_group(self, db_parameter_group):
@@ -628,13 +639,13 @@ class RDSClient(Boto3Client):
                 db_parameter_group.update_from_raw_response(
                     region_db_parameter_group.dict_src
                 )
-                return
+                return db_parameter_group
 
         AWSAccount.set_aws_region(db_parameter_group.region)
         response = self.provision_db_parameter_group_raw(
             db_parameter_group.generate_create_request()
         )
-        db_parameter_group.update_from_raw_response(response)
+        return db_parameter_group.update_from_raw_response(response)
 
     def provision_db_parameter_group_raw(self, request_dict):
         """
@@ -646,6 +657,7 @@ class RDSClient(Boto3Client):
                 "DBParameterGroup",
                 filters_req=request_dict,
         ):
+            self.clear_cache(RDSDBParameterGroup)
             return response
 
     def provision_db_instance(self, db_instance: RDSDBInstance):
@@ -789,6 +801,7 @@ class RDSClient(Boto3Client):
                 "DBClusterSnapshot",
                 filters_req=request_dict,
         ):
+            self.clear_cache(RDSDBClusterSnapshot)
             return response
 
     def update_db_cluster_information(self, db_cluster):

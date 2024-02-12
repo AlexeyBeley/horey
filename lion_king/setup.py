@@ -14,7 +14,6 @@ from horey.lion_king import __version__
 with open("README.md", encoding="utf-8") as file_handler:
     readme_file = file_handler.read()
 
-
 setup(
     name="horey.lion_king",
     version=__version__,
@@ -25,5 +24,7 @@ setup(
     license="DWTFYWTPL",
     packages=["horey.lion_king"],
     include_package_data=True,
+    package_data={
+        "": [os.path.join(os.path.abspath(os.curdir), "horey", "lion_king", "source_code", "*")]},
     zip_safe=False,
 )

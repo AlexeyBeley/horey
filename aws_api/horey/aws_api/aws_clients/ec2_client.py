@@ -1025,6 +1025,50 @@ class EC2Client(Boto3Client):
 
         return None
 
+    def dispose_security_groups(self, security_groups):
+        """
+        Standard.
+
+        @param security_groups:
+        @return:
+        """
+        for security_group in security_groups[1:]:
+            if security_group.region.region_mark != security_groups[0].region.region_mark:
+                raise RuntimeError("All security_groups should be in one region")
+
+        region_security_groups = self.get_region_security_groups(security_groups[0].region)
+        for security_group in security_groups:
+            for region_security_group in region_security_groups:
+                if (
+                        region_security_group.get_tagname(ignore_missing_tag=True)
+                        == security_group.get_tagname()
+                ):
+                    security_group.id = region_security_group.id
+
+        for security_group in security_groups:
+            if security_group.id is None:
+                raise RuntimeError(f"security_group ID is None for security_group {security_group.get_tagname()}")
+
+            self.delete_security_group_raw({"GroupId": security_group.id})
+
+    def delete_security_group_raw(self, request):
+        """
+        Standard.
+
+        @param request:
+        @return:
+        """
+
+        logger.info(f"Deleting security_group {request}")
+
+        for response in self.execute(
+                self.client.delete_security_group, None, raw_data=True, filters_req=request
+        ):
+            self.clear_cache(EC2SecurityGroup)
+            return response
+
+        return None
+
     def provision_subnet_raw(self, request):
         """
         Standard.

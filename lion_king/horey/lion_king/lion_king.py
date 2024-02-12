@@ -4,6 +4,8 @@ Async orchestrator
 """
 import copy
 import datetime
+import os
+import shutil
 
 from horey.h_logger import get_logger
 from horey.docker_api.docker_api import DockerAPI
@@ -14,6 +16,15 @@ from horey.aws_api.aws_services_entities.subnet import Subnet
 from horey.aws_api.aws_services_entities.ecr_repository import ECRRepository
 from horey.aws_api.base_entities.region import Region
 from horey.network.ip import IP
+
+# from horey.aws_api.aws_services_entities.route53_hosted_zone import HostedZone
+from horey.aws_api.aws_services_entities.rds_db_cluster import RDSDBCluster
+from horey.aws_api.aws_services_entities.rds_db_parameter_group import RDSDBParameterGroup
+from horey.aws_api.aws_services_entities.ec2_security_group import EC2SecurityGroup
+# from horey.aws_api.aws_services_entities.rds_db_cluster_snapshot import RDSDBClusterSnapshot
+from horey.aws_api.aws_services_entities.rds_db_cluster_parameter_group import RDSDBClusterParameterGroup
+from horey.aws_api.aws_services_entities.rds_db_subnet_group import RDSDBSubnetGroup
+# from horey.aws_api.aws_services_entities.rds_db_instance import RDSDBInstance
 
 logger = get_logger()
 
@@ -30,7 +41,8 @@ class LionKing:
         self._docker_api = None
         self._region = None
         self._vpc = None
-        self.tags  = [{ "Key": "environment_name",
+        self._subnets = None
+        self.tags = [{"Key": "environment_name",
                       "Value": self.configuration.environment_name},
                       {"Key": "environment_level",
                        "Value": self.configuration.environment_level},
@@ -52,7 +64,7 @@ class LionKing:
             self._aws_api = AWSAPI(aws_api_configuration)
 
         return self._aws_api
-    
+
     @property
     def docker_api(self):
         """
@@ -114,6 +126,29 @@ class LionKing:
             self._vpc = vpc
 
         return self._vpc
+
+    @property
+    def subnets(self):
+        """
+        Init subnets
+
+        :return:
+        """
+
+        if self._subnets is None:
+
+            all_subnets = self.aws_api.ec2_client.get_region_subnets(region=self.region)
+
+            subnets = [subnet for subnet in all_subnets if \
+                       subnet.get_tag("environment_name", ignore_missing_tag=True) == self.configuration.environment_name and \
+                       subnet.get_tag("project_name", ignore_missing_tag=True) == self.configuration.project_name]
+
+            if len(subnets) != self.configuration.availability_zones_count*2:
+                raise RuntimeError(f"Disposing subnets: expected:{self.configuration.availability_zones_count*2:}, found: {len(subnets)}")
+
+            self._subnets = subnets
+
+        return self._subnets
 
     def provision_vpc(self):
         """
@@ -216,14 +251,160 @@ class LionKing:
         })
         self.aws_api.provision_ecr_repository(repo)
         return repo
-    
+
+    def provision_security_groups(self):
+        """
+        Provision all security groups.
+
+        :return:
+        """
+        security_group = EC2SecurityGroup({})
+        security_group.vpc_id = self.vpc.id
+        security_group.name = self.configuration.db_rds_security_group_name
+        security_group.description = f"Postgres {self.configuration.project_name} {self.configuration.environment_name}"
+        security_group.region = self.region
+        security_group.tags = copy.deepcopy(self.tags)
+        security_group.tags.append({
+            "Key": "Name",
+            "Value": security_group.name
+        })
+
+        self.aws_api.provision_security_group(security_group, provision_rules=False)
+        return security_group
+
+
+    def provision_db(self):
+        """
+        Provision Postrgress.
+
+        :return:
+        """
+
+        self.provision_rds_db_cluster_parameter_group()
+        self.provision_rds_db_instance_parameter_group()
+        self.provision_rds_subnet_group()
+
+        self.provision_rds_cluster()
+        #self.provision_rds_db_instances()
+        #self.change_password()
+        #self.provision_rds_dns_name()
+
+    def provision_rds_db_cluster_parameter_group(self):
+        """
+        Provision params.
+
+        :return:
+        """
+        db_cluster_parameter_group = RDSDBClusterParameterGroup({})
+        db_cluster_parameter_group.region = self.region
+        db_cluster_parameter_group.name = self.configuration.db_rds_cluster_parameter_group_name
+        db_cluster_parameter_group.db_parameter_group_family = self.aws_api.rds_client.get_default_engine_version(self.region, "postgres")["DBParameterGroupFamily"]
+        db_cluster_parameter_group.description = self.configuration.db_rds_cluster_parameter_group_description
+        db_cluster_parameter_group.tags = copy.deepcopy(self.tags)
+        db_cluster_parameter_group.tags.append({
+            "Key": "name",
+            "Value": db_cluster_parameter_group.name
+        })
+
+        return self.aws_api.provision_db_cluster_parameter_group(db_cluster_parameter_group)
+
+    def provision_rds_db_instance_parameter_group(self):
+        """
+        Database param group.
+
+        :return:
+        """
+
+        db_parameter_group = RDSDBParameterGroup({})
+        db_parameter_group.region = self.region
+        db_parameter_group.name = self.configuration.db_rds_instance_parameter_group_name
+        db_parameter_group.db_parameter_group_family = self.aws_api.rds_client.get_default_engine_version(self.region, "postgres")["DBParameterGroupFamily"]
+        db_parameter_group.description = self.configuration.db_rds_parameter_group_description
+        db_parameter_group.tags = copy.deepcopy(self.tags)
+        db_parameter_group.tags.append({
+            "Key": "name",
+            "Value": db_parameter_group.name
+        }
+        )
+
+        self.aws_api.provision_db_parameter_group(db_parameter_group)
+        return True
+
+    def provision_rds_subnet_group(self):
+        """
+        Subnets used by the cluster.
+
+        :return:
+        """
+
+        subnet_group = RDSDBSubnetGroup({})
+        subnet_group.region = self.region
+        subnet_group.name = self.configuration.db_rds_subnet_group_name
+        subnet_group.db_subnet_group_description = self.configuration.db_rds_subnet_group_description
+        subnet_group.subnet_ids = [subnet.id for subnet in self.subnets if "private" in subnet.get_tagname()]
+        subnet_group.tags = copy.deepcopy(self.tags)
+        subnet_group.tags.append({
+            "Key": "name",
+            "Value": subnet_group.name
+        }
+        )
+        return self.aws_api.provision_db_subnet_group(subnet_group)
+
+    def provision_rds_cluster(self, snapshot=None):
+        """
+        Provision the cluster itself.
+
+        :param snapshot:
+        :return:
+        """
+
+        db_rds_security_group = self.aws_api.get_security_group_by_vpc_and_name(self.vpc,
+                                                                                self.configuration.db_rds_security_group_name)
+
+        aurora_engine_default_version = self.aws_api.rds_client.get_default_engine_version(self.region, "postgres")["EngineVersion"]
+
+        cluster = RDSDBCluster({})
+        cluster.region = self.region
+        cluster.db_subnet_group_name = self.configuration.db_rds_subnet_group_name
+        cluster.db_cluster_parameter_group_name = self.configuration.db_rds_cluster_parameter_group_name
+        cluster.backup_retention_period = 7
+        cluster.database_name = self.configuration.db_rds_database_name
+        cluster.id = self.configuration.db_rds_cluster_identifier
+        cluster.vpc_security_group_ids = [db_rds_security_group.id]
+        cluster.engine = self.aws_api.rds_client.get_default_engine_version(self.region, "postgres")["Engine"]
+        cluster.engine_version = aurora_engine_default_version
+        cluster.port = 5432
+
+        cluster.master_username = "admin"
+        cluster.master_user_password = "admin123456!"
+        cluster.preferred_backup_window = "09:23-09:53"
+        cluster.preferred_maintenance_window = "sun:03:30-sun:04:00"
+        cluster.storage_encrypted = True
+        cluster.engine_mode = "provisioned"
+
+        cluster.deletion_protection = False
+        cluster.copy_tags_to_snapshot = True
+        cluster.enable_cloudwatch_logs_exports = [
+            "audit",
+            "error",
+            "general",
+            "slowquery"
+        ]
+
+        cluster.tags = copy.deepcopy(self.tags)
+        cluster.tags.append({
+            "Key": "name",
+            "Value": cluster.id
+        }
+        )
+        self.aws_api.provision_rds_db_cluster(cluster, snapshot=snapshot)
+
     def login_to_ecr(self):
         """
         Login to ECR for Docker to be able to upload images.
         
         :return:
         """
-        self.docker_api
         logger.info(f"Fetching ECR credentials for region {self.configuration.region}")
         credentials = self.aws_api.get_ecr_authorization_info(region=self.region)
 
@@ -234,27 +415,78 @@ class LionKing:
         registry, username, password = credentials["proxy_host"], credentials["user_name"], credentials["decoded_token"]
         return self.docker_api.login(registry, username, password)
 
+    def prepare_build_directory(self):
+        """
+        Copy source code to build directory
+
+        :return:
+        """
+
+        os.makedirs(self.configuration.local_deployment_directory_path, exist_ok=True)
+        shutil.rmtree(self.configuration.local_deployment_directory_path)
+        source_code_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "source_code"))
+        shutil.copytree(source_code_path, self.configuration.local_deployment_directory_path)
+        return True
+
+    def build(self):
+        """
+        Build the image.
+
+        :return:
+        """
+
+        tag_latest = f"{self.aws_account}.dkr.ecr.{self.configuration.region}.amazonaws.com/{self.configuration.ecr_repository_name}:latest"
+        tags = [tag_latest]
+        self.docker_api.build(self.configuration.local_deployment_directory_path, tags)
+        return tags
+
     def build_and_upload(self):
-        breakpoint()
+        """
+        Prepare build dir.
+        Build the image.
+        Login to ECR
+        Upload to ECR.
+
+        :return:
+        """
+        self.prepare_build_directory()
+        image_tags = self.build()
+        self.login_to_ecr()
+        return self.docker_api.upload_images(image_tags)
 
     def update_component(self):
         """
         Update code and infrastructure.
 
+        ECS + EC2:
+        self.provision_ssh_key_pairs
+        self.generate_user_data
+        self.provision_launch_template
+        self.provision_ecs_capacity_provider
+        self.attach_capacity_provider_to_ecs_cluster
+        self.provision_ecs_cluster
+        self.update_auto_scaling_group_desired_count
+
         :return:
         """
 
         if self.configuration.provision_infrastructure:
-            self.provision_vpc()
-            self.provision_subnets()
-            self.provision_ecr_repository()
-            #self.provision_ssh_key_pairs
-            #self.generate_user_data
-            #self.provision_launch_template
-            #self.provision_ecs_capacity_provider
-            #self.attach_capacity_provider_to_ecs_cluster
-            #self.provision_ecs_cluster
-            #self.update_auto_scaling_group_desired_count
+            self.provision_infrastructure()
+
+        return self.build_and_upload()
+
+    def provision_infrastructure(self):
+        """
+        Provision all infrastructure parts.
+
+        :return:
+        """
+
+        self.provision_vpc()
+        self.provision_subnets()
+        self.provision_ecr_repository()
+        self.provision_security_groups()
+        self.provision_db()
 
     def dispose(self):
         """
@@ -262,29 +494,28 @@ class LionKing:
 
         :return:
         """
+        # dispose
+        cluster = RDSDBCluster({})
+        cluster.region = self.region
+        cluster.skip_final_snapshot = True
+        cluster.id = self.configuration.db_rds_cluster_identifier
+        self.aws_api.rds_client.dispose_db_cluster(cluster)
 
-        all_subnets = self.aws_api.ec2_client.get_region_subnets(region=self.region)
-        subnets = [subnet for subnet in all_subnets if \
-                   subnet.get_tag("environment_name", ignore_missing_tag=True) == self.configuration.environment_name and \
-                   subnet.get_tag("project_name", ignore_missing_tag=True) == self.configuration.project_name]
+        #self.configuration.db_rds_cluster_parameter_group_name
+        #self.configuration.db_rds_instance_parameter_group_name
+        #self.configuration.db_rds_subnet_group_name
 
-        if len(subnets) != self.configuration.availability_zones_count*2:
-            raise RuntimeError(f"Disposing subnets: expected:{self.configuration.availability_zones_count*2:}, found: {len(subnets)}")
+        self.aws_api.ec2_client.dispose_subnets(self.subnets)
 
-        self.aws_api.ec2_client.dispose_subnets(subnets)
+        security_group = self.aws_api.get_security_group_by_vpc_and_name(self.vpc,
+                                                                         self.configuration.db_rds_security_group_name)
+        self.aws_api.ec2_client.dispose_security_groups([security_group])
 
-        vpc = VPC({})
-        vpc.region = self.region
-        vpc.cidr_block = self.configuration.vpc_cidr_block
-        vpc.tags = copy.deepcopy(self.tags)
-        vpc.tags.append({
-            "Key": "Name",
-            "Value": self.configuration.vpc_name
-        })
-        self.aws_api.ec2_client.dispose_vpc(vpc)
+        self.aws_api.ec2_client.dispose_vpc(self.vpc)
 
         ecr_repository = ECRRepository({})
         ecr_repository.name = self.configuration.ecr_repository_name
         ecr_repository.region = self.configuration.region
         self.aws_api.ecr_client.dispose_repository(ecr_repository)
+
         return True

@@ -3,6 +3,7 @@ Configuration policy used by Lion King project to set the configuration rules.
 
 """
 
+import os
 from horey.configuration_policy.configuration_policy import ConfigurationPolicy
 
 #pylint: disable= missing-function-docstring
@@ -21,6 +22,7 @@ class LionKingConfigurationPolicy(ConfigurationPolicy):
         self._environment_level = None
         self._project_name = None
         self._region = None
+        self._provision_infrastructure = None
 
     @property
     def aws_api_configuration_file_full_path(self):
@@ -29,7 +31,6 @@ class LionKingConfigurationPolicy(ConfigurationPolicy):
     @aws_api_configuration_file_full_path.setter
     def aws_api_configuration_file_full_path(self, value):
         self._aws_api_configuration_file_full_path = value
-
 
     @property
     def environment_name(self):
@@ -43,7 +44,6 @@ class LionKingConfigurationPolicy(ConfigurationPolicy):
     def environment_level(self):
         return self._environment_level
 
-
     @environment_level.setter
     def environment_level(self, value):
         self._environment_level = value
@@ -51,7 +51,6 @@ class LionKingConfigurationPolicy(ConfigurationPolicy):
     @property
     def project_name(self):
         return self._project_name
-
 
     @project_name.setter
     def project_name(self, value):
@@ -64,6 +63,14 @@ class LionKingConfigurationPolicy(ConfigurationPolicy):
     @region.setter
     def region(self, value):
         self._region = value
+
+    @property
+    def provision_infrastructure(self):
+        return self._provision_infrastructure
+
+    @provision_infrastructure.setter
+    def provision_infrastructure(self, value):
+        self._provision_infrastructure = value
 
     @property
     def vpc_cidr_block(self):
@@ -96,3 +103,43 @@ class LionKingConfigurationPolicy(ConfigurationPolicy):
     @property
     def infrastructure_last_update_time_tag(self):
         return "infra_update_datetime"
+
+    @property
+    def local_deployment_directory_path(self):
+        return os.path.join(os.path.dirname(self.aws_api_configuration_file_full_path), "deployment")
+
+    @property
+    def db_rds_cluster_parameter_group_name(self):
+        return f"cluster-param-grp-{self.project_name.replace('_', '-')}-{self.environment_name.replace('_', '-')}"
+
+    @property
+    def db_rds_cluster_parameter_group_description(self):
+        return f"Database cluster parameter group {self.project_name} {self.environment_name}"
+
+    @property
+    def db_rds_instance_parameter_group_name(self):
+        return f"instance-param-grp-{self.project_name.replace('_', '-')}-{self.environment_name.replace('_', '-')}"
+
+    @property
+    def db_rds_parameter_group_description(self):
+        return f"Database instance parameter group {self.project_name} {self.environment_name}"
+
+    @property
+    def db_rds_subnet_group_name(self):
+        return f"subnet-grp-{self.project_name.replace('_', '-')}-{self.environment_name.replace('_', '-')}"
+
+    @property
+    def db_rds_subnet_group_description(self):
+        return f"Database subnet group {self.project_name} {self.environment_name}"
+
+    @property
+    def db_rds_cluster_identifier(self):
+        return f"cluster-{self.project_name}-{self.environment_name}"
+
+    @property
+    def db_rds_database_name(self):
+        return self.project_name
+
+    @property
+    def db_rds_security_group_name(self):
+        return f"sg_postrgres-{self.project_name}-{self.environment_name}"
