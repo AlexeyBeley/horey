@@ -532,7 +532,8 @@ class Boto3Client:
 
             try:
                 object_status = observed_object.get_status()
-            except observed_object.UndefinedStatusError:
+            except observed_object.UndefinedStatusError as error_inst:
+                logger.exception(f"UndefinedStatusError: {repr(error_inst)}")
                 time.sleep(sleep_time)
                 continue
 

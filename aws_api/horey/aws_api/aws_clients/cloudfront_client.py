@@ -51,9 +51,9 @@ class CloudfrontClient(Boto3Client):
         """
 
         for response in self.execute(
-            self.client.list_distributions,
-            "DistributionList",
-            internal_starting_token=True,
+                self.client.list_distributions,
+                "DistributionList",
+                internal_starting_token=True,
         ):
             if response["Quantity"] == 0:
                 continue
@@ -62,7 +62,8 @@ class CloudfrontClient(Boto3Client):
                 obj = CloudfrontDistribution(item)
 
                 if full_information:
-                    for response_tags in self.execute(self.client.list_tags_for_resource, "Tags", filters_req={"Resource": obj.arn}):
+                    for response_tags in self.execute(self.client.list_tags_for_resource, "Tags",
+                                                      filters_req={"Resource": obj.arn}):
                         obj.tags = response_tags["Items"]
                 yield obj
 
@@ -89,8 +90,10 @@ class CloudfrontClient(Boto3Client):
 
         if existing_distribution.id is not None:
             request = existing_distribution.generate_update_request(desired_distribution)
+
             if request is not None:
-                self.update_distribution_raw(request)
+                response = self.update_distribution_raw(request)
+                desired_distribution.update_from_raw_response(response)
 
             self.update_distribution_information(desired_distribution)
             return
@@ -101,6 +104,42 @@ class CloudfrontClient(Boto3Client):
 
         desired_distribution.update_from_raw_response(response)
 
+    def dispose_distribution(self, distribution: CloudfrontDistribution):
+        """
+        WARNING! Comment is being used to identify distributions. If you've
+        provisioned multiple cloudfront distributions with the same comment -
+        it might raise an issue.
+
+        @param distribution:
+        @return:
+        """
+
+        if not distribution.get_tagname():
+            raise ValueError("Cloudfront distribution tag name was not set.")
+
+        self.update_distribution_information(distribution)
+        if distribution.distribution_config["Enabled"]:
+            distribution.distribution_config["Enabled"] = False
+            self.provision_distribution(distribution)
+
+        self.wait_for_status(distribution, self.update_distribution_information,
+                             [distribution.Status.DEPLOYED],
+                             [distribution.Status.IN_PROGRESS],
+                             [distribution.Status.FAILED],
+                             timeout=600
+                             )
+        if not distribution.e_tag:
+            self.update_distribution_information(distribution)
+
+        logger.info(f"Disposing distribution {distribution.get_tagname()} with id {distribution.id}")
+
+        for response in self.execute(self.client.delete_distribution, None, raw_data=True,
+                                     filters_req={"Id": distribution.id,
+                                                  "IfMatch": distribution.e_tag
+                                                  }):
+            self.clear_cache(CloudfrontDistribution)
+            return response
+
     def update_distribution_information(self, distribution: CloudfrontDistribution):
         """
         Get full information.
@@ -108,28 +147,39 @@ class CloudfrontClient(Boto3Client):
         :param distribution:
         :return:
         """
-        try:
-            distribution_aliases = distribution.distribution_config["Aliases"]["Items"]
-        except KeyError:
-            distribution_aliases = []
+        if distribution.id is None:
+            try:
+                distribution_aliases = distribution.distribution_config["Aliases"]["Items"]
+            except KeyError:
+                distribution_aliases = []
 
-        for existing_distribution in self.yield_all_distributions():
-            if existing_distribution.comment == distribution.comment:
-                break
-            if existing_distribution.get_tagname(ignore_missing_tag=True) == distribution.get_tagname():
-                break
-
-            for existing_distro_alias in existing_distribution.aliases["Items"]:
-                if existing_distro_alias in distribution_aliases:
+            for existing_distribution in self.yield_all_distributions():
+                if existing_distribution.comment == distribution.comment:
                     break
-            else:
-                continue
-            break
-        else:
-            return
+                if existing_distribution.get_tagname(ignore_missing_tag=True) == distribution.get_tagname():
+                    break
 
-        distribution.update_from_raw_response(existing_distribution.dict_src)
-        distribution.distribution_config = self.get_distribution_config_raw({"Id": distribution.id})
+                for existing_distro_alias in existing_distribution.aliases["Items"]:
+                    if existing_distro_alias in distribution_aliases:
+                        break
+                else:
+                    continue
+                break
+            else:
+                return
+
+            update_info = existing_distribution.dict_src
+        else:
+            for update_info in self.execute(self.client.get_distribution, "Distribution",
+                                            filters_req={"Id": distribution.id}):
+                break
+            else:
+                raise RuntimeError(f"Could not find cloudfront distribution: {distribution.id}")
+
+        distribution.update_from_raw_response(update_info)
+        response = self.get_distribution_config_raw({"Id": distribution.id})
+        del response["ResponseMetadata"]
+        distribution.update_from_raw_response(response)
 
     def provision_distribution_raw(self, request_dict):
         """
@@ -140,9 +190,9 @@ class CloudfrontClient(Boto3Client):
         """
         logger.info(f"Creating distribution {request_dict}")
         for response in self.execute(
-            self.client.create_distribution_with_tags,
-            "Distribution",
-            filters_req=request_dict,
+                self.client.create_distribution_with_tags,
+                "Distribution",
+                filters_req=request_dict,
         ):
             return response
 
@@ -169,9 +219,9 @@ class CloudfrontClient(Boto3Client):
         final_result = []
 
         for response in self.execute(
-            self.client.list_cloud_front_origin_access_identities,
-            "CloudFrontOriginAccessIdentityList",
-            internal_starting_token=True,
+                self.client.list_cloud_front_origin_access_identities,
+                "CloudFrontOriginAccessIdentityList",
+                internal_starting_token=True,
         ):
             if response["Quantity"] == 0:
                 continue
@@ -196,8 +246,8 @@ class CloudfrontClient(Boto3Client):
         existing_origin_access_identities = self.get_all_origin_access_identities()
         for existing_origin_access_identity in existing_origin_access_identities:
             if (
-                existing_origin_access_identity.comment
-                == origin_access_identity.comment
+                    existing_origin_access_identity.comment
+                    == origin_access_identity.comment
             ):
                 origin_access_identity.id = existing_origin_access_identity.id
                 return
@@ -216,9 +266,9 @@ class CloudfrontClient(Boto3Client):
         """
 
         for response in self.execute(
-            self.client.create_cloud_front_origin_access_identity,
-            "CloudFrontOriginAccessIdentity",
-            filters_req=request_dict,
+                self.client.create_cloud_front_origin_access_identity,
+                "CloudFrontOriginAccessIdentity",
+                filters_req=request_dict,
         ):
             return response
 
@@ -242,7 +292,7 @@ class CloudfrontClient(Boto3Client):
         """
 
         for response in self.execute(
-            self.client.create_invalidation, "Invalidation", filters_req=request
+                self.client.create_invalidation, "Invalidation", filters_req=request
         ):
             return response
 
@@ -286,7 +336,8 @@ class CloudfrontClient(Boto3Client):
         if function.region:
             AWSAccount.set_aws_region(function.region)
 
-        for response in self.execute(self.client.get_function, None, raw_data=True, filters_req={"Name": function.name}):
+        for response in self.execute(self.client.get_function, None, raw_data=True,
+                                     filters_req={"Name": function.name}):
             del response["ResponseMetadata"]
             response["FunctionCode"] = response["FunctionCode"].read().decode("utf-8")
             function.update_from_raw_response(response)
@@ -310,7 +361,9 @@ class CloudfrontClient(Boto3Client):
             filters_req["Stage"] = "LIVE"
 
         for response in self.execute(self.client.describe_function, None, raw_data=True,
-                                     filters_req=filters_req, exception_ignore_callback=lambda exception_inst: "NoSuchFunctionExists" in repr(exception_inst)):
+                                     filters_req=filters_req,
+                                     exception_ignore_callback=lambda exception_inst: "NoSuchFunctionExists" in repr(
+                                         exception_inst)):
             function.update_from_raw_response(response)
             break
         else:
@@ -319,7 +372,7 @@ class CloudfrontClient(Boto3Client):
         if full_information:
             self.update_function_full_information(function)
 
-        return  True
+        return True
 
     def provision_function(self, function: CloudfrontFunction):
         """
@@ -364,10 +417,10 @@ class CloudfrontClient(Boto3Client):
         logger.info(f"Creating cloudfornt function {request_dict}")
 
         for response in self.execute(
-            self.client.create_function,
-            None,
-            raw_data=True,
-            filters_req=request_dict,
+                self.client.create_function,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
         ):
             return response
 
@@ -382,10 +435,10 @@ class CloudfrontClient(Boto3Client):
         logger.info(f"Publishing cloudfornt function {request_dict}")
 
         for response in self.execute(
-            self.client.publish_function,
-            None,
-            raw_data=True,
-            filters_req=request_dict,
+                self.client.publish_function,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
         ):
             return response
 
@@ -400,10 +453,10 @@ class CloudfrontClient(Boto3Client):
         logger.info(f"Updating cloudfornt function {request_dict}")
 
         for response in self.execute(
-            self.client.update_function,
-            None,
-            raw_data=True,
-            filters_req=request_dict,
+                self.client.update_function,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
         ):
             return response
 
@@ -475,9 +528,9 @@ class CloudfrontClient(Boto3Client):
         final_result = []
 
         for response in self.execute(
-            self.client.list_response_headers_policies,
-            "ResponseHeadersPolicyList",
-            internal_starting_token=True,
+                self.client.list_response_headers_policies,
+                "ResponseHeadersPolicyList",
+                internal_starting_token=True,
         ):
             for dict_src in response["Items"]:
                 pol = CloudfrontResponseHeadersPolicy(dict_src)
@@ -496,10 +549,9 @@ class CloudfrontClient(Boto3Client):
         """
 
         for response in self.execute(
-            self.client.get_response_headers_policy,
-            None, raw_data=True, filters_req={"Id": policy.id}
+                self.client.get_response_headers_policy,
+                None, raw_data=True, filters_req={"Id": policy.id}
         ):
-
             policy.update_from_raw_response(response)
 
     def update_response_headers_policy_info(self, policy: CloudfrontResponseHeadersPolicy, full_information=False):

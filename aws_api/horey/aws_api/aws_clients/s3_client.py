@@ -399,14 +399,18 @@ class S3Client(Boto3Client):
                 if custom_filters is not None:
                     filters_req.update(custom_filters)
 
-                for object_info in self.execute(
-                        self.client.list_objects_v2, "Contents", filters_req=filters_req
+                for response in self.execute(
+                        self.client.list_objects_v2, None, raw_data=True, filters_req=filters_req
                 ):
-                    counter += 1
-                    bucket_object = S3Bucket.BucketObject(object_info)
-                    yield bucket_object
-
-                start_after = bucket_object.key if counter == max_keys else None
+                    if response.get("KeyCount") == 0:
+                        start_after = None
+                        break
+                    counter += response.get("KeyCount")
+                    bucket_object = None
+                    for object_info in response["Contents"]:
+                        bucket_object = S3Bucket.BucketObject(object_info)
+                        yield bucket_object
+                    start_after = bucket_object.key if counter == max_keys else None
 
         except Exception as inst:
             if "AccessDenied" in repr(inst):
@@ -1178,16 +1182,20 @@ class S3Client(Boto3Client):
         ):
             return response
 
-    def delete_objects(self, bucket):
+    def delete_objects(self, bucket, raw_objects=None):
         """
         Delete all bucket objects.
 
         @param bucket:
+        @param raw_objects:
         @return:
         """
-        keys_to_delete = list(self.yield_bucket_objects(bucket))
-        while len(keys_to_delete) != 0:
-            deletion_list = [{"Key": obj.key} for obj in keys_to_delete[:1000]]
+
+        if raw_objects is None:
+            raw_objects = [{"Key": obj.key} for obj in self.yield_bucket_objects(bucket)]
+
+        while len(raw_objects) != 0:
+            deletion_list = raw_objects[:1000]
             request_dict = {"Bucket": bucket.name, "Delete": {"Objects": deletion_list}}
             for response in self.execute(
                     self.client.delete_objects,
@@ -1201,7 +1209,7 @@ class S3Client(Boto3Client):
                 if "Errors" in response:
                     raise RuntimeError(response)
 
-            keys_to_delete = keys_to_delete[1000:]
+            raw_objects = raw_objects[1000:]
 
     def download_file(self, bucket_name, key_path, file_path):
         """

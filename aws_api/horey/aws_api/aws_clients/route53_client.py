@@ -219,6 +219,7 @@ class Route53Client(Boto3Client):
             self.client.change_resource_record_sets,
             "ChangeInfo",
             filters_req=request_dict,
+            exception_ignore_callback=lambda error: "InvalidChangeBatch" in repr(error)
         ):
             return response
 
