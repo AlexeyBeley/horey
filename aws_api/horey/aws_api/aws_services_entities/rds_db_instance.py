@@ -98,7 +98,8 @@ class RDSDBInstance(AwsObject):
             request["DBParameterGroupName"] = self.db_parameter_group_name
 
         request["DBInstanceIdentifier"] = self.id
-        request["DBClusterIdentifier"] = self.db_cluster_identifier
+        if self.db_cluster_identifier:
+            request["DBClusterIdentifier"] = self.db_cluster_identifier
         request["DBInstanceClass"] = self.db_instance_class
 
         if self.db_name is not None:
@@ -123,7 +124,7 @@ class RDSDBInstance(AwsObject):
             request["DeletionProtection"] = self.deletion_protection
 
         request["CopyTagsToSnapshot"] = self.copy_tags_to_snapshot
-
+        self.extend_request_with_optional_parameters(request, ["MaxAllocatedStorage", "AllocatedStorage"])
         request["Tags"] = self.tags
 
         return request
@@ -239,6 +240,8 @@ class RDSDBInstance(AwsObject):
             "StorageThroughput":  self.init_default_attr,
             "CertificateDetails": self.init_default_attr,
             "NetworkType": self.init_default_attr,
+            "MaxAllocatedStorage": self.init_default_attr,
+            "ActivityStreamStatus": self.init_default_attr
         }
 
         self.init_attrs(dict_src, init_options)
@@ -273,3 +276,4 @@ class RDSDBInstance(AwsObject):
         CONFIGURING_LOG_EXPORTS = "configuring-log-exports"
         CONFIGURING_IAM_DATABASE_AUTH = "configuring-iam-database-auth"
         CONVERTING_TO_VPC = "converting-to-vpc"
+        BACKING_UP = "backing-up"

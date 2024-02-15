@@ -4,6 +4,7 @@ Async orchestrator
 """
 import copy
 import datetime
+import json
 import os
 import shutil
 
@@ -17,14 +18,16 @@ from horey.aws_api.aws_services_entities.ecr_repository import ECRRepository
 from horey.aws_api.base_entities.region import Region
 from horey.network.ip import IP
 
-# from horey.aws_api.aws_services_entities.route53_hosted_zone import HostedZone
 from horey.aws_api.aws_services_entities.rds_db_cluster import RDSDBCluster
+from horey.aws_api.aws_services_entities.rds_db_instance import RDSDBInstance
 from horey.aws_api.aws_services_entities.rds_db_parameter_group import RDSDBParameterGroup
 from horey.aws_api.aws_services_entities.ec2_security_group import EC2SecurityGroup
-# from horey.aws_api.aws_services_entities.rds_db_cluster_snapshot import RDSDBClusterSnapshot
 from horey.aws_api.aws_services_entities.rds_db_cluster_parameter_group import RDSDBClusterParameterGroup
 from horey.aws_api.aws_services_entities.rds_db_subnet_group import RDSDBSubnetGroup
-# from horey.aws_api.aws_services_entities.rds_db_instance import RDSDBInstance
+from horey.aws_api.aws_services_entities.ecs_cluster import ECSCluster
+from horey.aws_api.aws_services_entities.ecs_task_definition import ECSTaskDefinition
+from horey.aws_api.aws_services_entities.iam_role import IamRole
+
 
 logger = get_logger()
 
@@ -272,22 +275,73 @@ class LionKing:
         self.aws_api.provision_security_group(security_group, provision_rules=False)
         return security_group
 
-
-    def provision_db(self):
+    def provision_db_cluster_components(self):
         """
-        Provision Postrgress.
+        Provision Postrgres cluster
 
         :return:
         """
 
         self.provision_rds_db_cluster_parameter_group()
-        self.provision_rds_db_instance_parameter_group()
         self.provision_rds_subnet_group()
 
         self.provision_rds_cluster()
         #self.provision_rds_db_instances()
         #self.change_password()
         #self.provision_rds_dns_name()
+
+    def provision_db(self):
+        """
+        Provision DB.
+
+        :return:
+        """
+
+        self.provision_rds_subnet_group()
+        self.provision_rds_db_instance_parameter_group()
+        self.provision_rds_instance()
+
+    def provision_rds_instance(self):
+        """
+        Provision all the instances.
+
+        :return:
+        """
+        aurora_engine_default_version = self.aws_api.rds_client.get_default_engine_version(self.region, self.configuration.db_type)["EngineVersion"]
+
+        for counter in range(self.configuration.db_instance_count):
+            db_instance = RDSDBInstance({})
+            db_instance.region = self.region
+
+            db_instance.id = self.configuration.db_rds_instance_id_template.format(counter=counter)
+            db_instance.db_instance_class = "db.t3.micro"
+
+            #db_instance.db_cluster_identifier = self.configuration.db_rds_cluster_identifier
+            db_instance.db_subnet_group_name = self.configuration.db_rds_subnet_group_name
+            db_instance.db_parameter_group_name = self.configuration.db_rds_instance_parameter_group_name
+            db_instance.engine = \
+            self.aws_api.rds_client.get_default_engine_version(self.region, self.configuration.db_type)["Engine"]
+            db_instance.engine_version = aurora_engine_default_version
+
+            db_instance.preferred_maintenance_window = "sun:03:30-sun:04:00"
+            db_instance.storage_encrypted = True
+            db_instance.allocated_storage = 20
+            db_instance.max_allocated_storage = 100
+            db_instance.preferred_backup_window = "09:23-09:53"
+            db_instance.preferred_maintenance_window = "sun:03:30-sun:04:00"
+
+            db_instance.copy_tags_to_snapshot = True
+
+            db_instance.tags = copy.deepcopy(self.tags)
+            db_instance.tags.append({
+                "Key": "name",
+                "Value": db_instance.id
+            }
+            )
+            db_instance.master_username = "lion"
+            db_instance.master_user_password = "admin123456!"
+            self.aws_api.provision_db_instance(db_instance)
+        return True
 
     def provision_rds_db_cluster_parameter_group(self):
         """
@@ -298,7 +352,7 @@ class LionKing:
         db_cluster_parameter_group = RDSDBClusterParameterGroup({})
         db_cluster_parameter_group.region = self.region
         db_cluster_parameter_group.name = self.configuration.db_rds_cluster_parameter_group_name
-        db_cluster_parameter_group.db_parameter_group_family = self.aws_api.rds_client.get_default_engine_version(self.region, "postgres")["DBParameterGroupFamily"]
+        db_cluster_parameter_group.db_parameter_group_family = self.aws_api.rds_client.get_default_engine_version(self.region, self.configuration.db_type)["DBParameterGroupFamily"]
         db_cluster_parameter_group.description = self.configuration.db_rds_cluster_parameter_group_description
         db_cluster_parameter_group.tags = copy.deepcopy(self.tags)
         db_cluster_parameter_group.tags.append({
@@ -318,7 +372,7 @@ class LionKing:
         db_parameter_group = RDSDBParameterGroup({})
         db_parameter_group.region = self.region
         db_parameter_group.name = self.configuration.db_rds_instance_parameter_group_name
-        db_parameter_group.db_parameter_group_family = self.aws_api.rds_client.get_default_engine_version(self.region, "postgres")["DBParameterGroupFamily"]
+        db_parameter_group.db_parameter_group_family = self.aws_api.rds_client.get_default_engine_version(self.region, self.configuration.db_type)["DBParameterGroupFamily"]
         db_parameter_group.description = self.configuration.db_rds_parameter_group_description
         db_parameter_group.tags = copy.deepcopy(self.tags)
         db_parameter_group.tags.append({
@@ -361,7 +415,7 @@ class LionKing:
         db_rds_security_group = self.aws_api.get_security_group_by_vpc_and_name(self.vpc,
                                                                                 self.configuration.db_rds_security_group_name)
 
-        aurora_engine_default_version = self.aws_api.rds_client.get_default_engine_version(self.region, "postgres")["EngineVersion"]
+        aurora_engine_default_version = self.aws_api.rds_client.get_default_engine_version(self.region, self.configuration.db_type)["EngineVersion"]
 
         cluster = RDSDBCluster({})
         cluster.region = self.region
@@ -371,7 +425,7 @@ class LionKing:
         cluster.database_name = self.configuration.db_rds_database_name
         cluster.id = self.configuration.db_rds_cluster_identifier
         cluster.vpc_security_group_ids = [db_rds_security_group.id]
-        cluster.engine = self.aws_api.rds_client.get_default_engine_version(self.region, "postgres")["Engine"]
+        cluster.engine = self.aws_api.rds_client.get_default_engine_version(self.region, self.configuration.db_type)["Engine"]
         cluster.engine_version = aurora_engine_default_version
         cluster.port = 5432
 
@@ -380,6 +434,8 @@ class LionKing:
         cluster.preferred_backup_window = "09:23-09:53"
         cluster.preferred_maintenance_window = "sun:03:30-sun:04:00"
         cluster.storage_encrypted = True
+        #cluster.allocated_storage = 1
+        #cluster.db_cluster_instance_class = "db.t3.medium"
         cluster.engine_mode = "provisioned"
 
         cluster.deletion_protection = False
@@ -428,6 +484,15 @@ class LionKing:
         shutil.copytree(source_code_path, self.configuration.local_deployment_directory_path)
         return True
 
+    def compose_image_tag(self, tag_value):
+        """
+
+        :param tag_value:
+        :return:
+        """
+
+        return f"{self.aws_account}.dkr.ecr.{self.configuration.region}.amazonaws.com/{self.configuration.ecr_repository_name}:{tag_value}"
+
     def build(self):
         """
         Build the image.
@@ -435,8 +500,7 @@ class LionKing:
         :return:
         """
 
-        tag_latest = f"{self.aws_account}.dkr.ecr.{self.configuration.region}.amazonaws.com/{self.configuration.ecr_repository_name}:latest"
-        tags = [tag_latest]
+        tags = [self.compose_image_tag("latest")]
         self.docker_api.build(self.configuration.local_deployment_directory_path, tags)
         return tags
 
@@ -475,6 +539,196 @@ class LionKing:
 
         return self.build_and_upload()
 
+    def provision_ecs_cluster(self):
+        """
+        Provision the ECS cluster.
+
+        :return:
+        """
+
+        cluster = ECSCluster({})
+        cluster.settings = [
+            {
+                "name": "containerInsights",
+                "value": "disabled"
+            }
+        ]
+        cluster.name = self.configuration.cluster_name
+        cluster.region = self.region
+        cluster.tags = [{key.lower(): value for key, value in dict_tag.items()} for dict_tag in self.tags]
+        cluster.tags.append({
+            "key": "name",
+            "value": cluster.name
+        })
+
+        cluster.configuration = {}
+        self.aws_api.provision_ecs_cluster(cluster)
+
+        return cluster
+
+    def generate_environment_values(self):
+        """
+        Generate task env vars.
+
+        :return:
+        """
+
+        return []
+
+    def provision_roles(self):
+        """
+        Provision IAM roles.
+
+        :return:
+        """
+
+        self.provision_ecs_task_execution_role()
+        self.provision_ecs_task_role()
+        return True
+
+    def provision_ecs_task_execution_role(self):
+        """
+        Role used by ECS service task running on the container instance to manage containers.
+
+        :return:
+        """
+
+        assume_role_doc = json.dumps({
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "ecs-tasks.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole",
+              "Condition": {
+            "ArnLike":{
+            "aws:SourceArn": f"arn:aws:ecs:{self.configuration.region}:{self.aws_account}:*"
+            },
+            "StringEquals":{
+               "aws:SourceAccount": self.aws_account
+            }
+         }
+            }
+          ]
+        })
+
+        iam_role = IamRole({})
+        iam_role.assume_role_policy_document = assume_role_doc
+        iam_role.name = self.configuration.ecs_task_execution_role_name
+        iam_role.path = f"/{self.configuration.environment_level}/"
+        iam_role.description = "ECS task role used to control containers lifecycle"
+        iam_role.max_session_duration = 3600
+        iam_role.tags = copy.deepcopy(self.tags)
+        iam_role.tags.append({
+            "Key": "name",
+            "Value": iam_role.name
+        })
+
+        iam_role.managed_policies_arns = ["arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"]
+        iam_role.path = f"/{self.configuration.environment_level}/"
+        self.aws_api.provision_iam_role(iam_role)
+        return iam_role
+
+    def provision_ecs_task_role(self):
+        """
+        ECS task role.
+
+        :return:
+        """
+
+        iam_role = IamRole({})
+        iam_role.description = f"ECS task {self.configuration.project_name} {self.configuration.environment_name} backend"
+        iam_role.name = self.configuration.ecs_task_role_name
+        iam_role.path = f"/{self.configuration.environment_level}/"
+        iam_role.max_session_duration = 12 * 60 * 60
+        iam_role.assume_role_policy_document = json.dumps({
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Sid": "",
+                    "Effect": "Allow",
+                    "Principal": {
+                        "Service": "ecs-tasks.amazonaws.com"
+                    },
+                    "Action": "sts:AssumeRole"
+                }
+            ]
+        })
+
+        iam_role.tags = copy.deepcopy(self.tags)
+        iam_role.tags.append({
+            "Key": "name",
+            "Value": iam_role.name
+        })
+        iam_role.inline_policies = []
+        iam_role.path = f"/{self.configuration.environment_level}/"
+        self.aws_api.provision_iam_role(iam_role)
+        return iam_role
+
+    def provision_ecs_task_definition(self):
+        """
+        Provision task definition.
+
+        :return:
+        """
+
+        environ_values = self.generate_environment_values()
+
+        ecr_image_id = self.compose_image_tag("latest")
+
+        ecs_task_definition = ECSTaskDefinition({})
+        ecs_task_definition.region = self.region
+        ecs_task_definition.family = f"{self.configuration.project_name}-backend"
+
+        ecs_task_definition.tags = [{key.lower(): value for key, value in dict_tag.items()} for dict_tag in self.tags]
+        ecs_task_definition.tags.append({
+            "key": "Name",
+            "value": ecs_task_definition.family
+        })
+        port_mappings = [
+            {
+                "containerPort": 80,
+                "hostPort": 0,
+                "protocol": "tcp"
+            }
+        ]
+
+        log_config = {
+            "logDriver": "json-file",
+            "options": {
+                "labels": f"{self.configuration.environment_name}",
+                "max-size": "1g",
+                "max-file": "3"
+            }
+        }
+
+        ecs_task_definition.container_definitions = [{
+            "name": ecs_task_definition.family,
+            "image": ecr_image_id,
+            "portMappings": port_mappings,
+            "essential": True,
+            "environment": environ_values,
+            "logConfiguration": log_config
+        }
+        ]
+
+        ecs_task_definition.container_definitions[0]["cpu"] = self.configuration.ecs_task_definition_cpu_reservation
+
+        ecs_task_definition.container_definitions[0]["memoryReservation"] = self.configuration.ecs_task_definition_memory_reservation
+
+        ecs_task_definition.task_role_arn = f"arn:aws:iam::{self.aws_account}:role/{self.configuration.environment_level}/{self.configuration.ecs_task_role_name}"
+        ecs_task_definition.execution_role_arn = f"arn:aws:iam::{self.aws_account}:role/{self.configuration.environment_level}/{self.configuration.ecs_task_execution_role_name}"
+
+        ecs_task_definition.cpu = str(self.configuration.ecs_task_definition_cpu_reservation)
+
+        ecs_task_definition.memory = str(self.configuration.ecs_task_definition_memory_reservation)
+
+        self.aws_api.provision_ecs_task_definition(ecs_task_definition)
+
+        return ecs_task_definition
+
     def provision_infrastructure(self):
         """
         Provision all infrastructure parts.
@@ -494,16 +748,24 @@ class LionKing:
 
         :return:
         """
-        # dispose
-        cluster = RDSDBCluster({})
-        cluster.region = self.region
-        cluster.skip_final_snapshot = True
-        cluster.id = self.configuration.db_rds_cluster_identifier
-        self.aws_api.rds_client.dispose_db_cluster(cluster)
+
+        for counter in range(self.configuration.db_instance_count):
+            db_instance = RDSDBInstance({})
+            db_instance.region = self.region
+            db_instance.skip_final_snapshot = True
+            db_instance.id = self.configuration.db_rds_instance_id_template.format(counter=counter)
+            self.aws_api.rds_client.dispose_db_instance(db_instance)
+
+        subnet_group = RDSDBSubnetGroup({"name": self.configuration.db_rds_subnet_group_name})
+        subnet_group.region = self.region
+        self.aws_api.rds_client.dispose_db_subnet_group(subnet_group)
 
         #self.configuration.db_rds_cluster_parameter_group_name
         #self.configuration.db_rds_instance_parameter_group_name
-        #self.configuration.db_rds_subnet_group_name
+        #self.configuration.ecs_task_role_name
+        #self.configuration.ecs_task_execution_role_name
+        #self.configuration.cluster_name
+        #task_definition
 
         self.aws_api.ec2_client.dispose_subnets(self.subnets)
 

@@ -74,7 +74,7 @@ class LionKingConfigurationPolicy(ConfigurationPolicy):
 
     @property
     def vpc_cidr_block(self):
-        return "10.0.0.0/22"
+        return "10.0.0.0/21"
 
     @property
     def vpc_name(self):
@@ -82,7 +82,7 @@ class LionKingConfigurationPolicy(ConfigurationPolicy):
 
     @property
     def availability_zones_count(self):
-        return 2
+        return 3
 
     @property
     def subnet_mask_length(self):
@@ -121,6 +121,10 @@ class LionKingConfigurationPolicy(ConfigurationPolicy):
         return f"instance-param-grp-{self.project_name.replace('_', '-')}-{self.environment_name.replace('_', '-')}"
 
     @property
+    def db_rds_instance_id_template(self):
+        return f"instance-{self.project_name}-{self.environment_name}-" + "{counter}"
+
+    @property
     def db_rds_parameter_group_description(self):
         return f"Database instance parameter group {self.project_name} {self.environment_name}"
 
@@ -143,3 +147,31 @@ class LionKingConfigurationPolicy(ConfigurationPolicy):
     @property
     def db_rds_security_group_name(self):
         return f"sg_postrgres-{self.project_name}-{self.environment_name}"
+
+    @property
+    def db_type(self):
+        return "postgres"
+
+    @property
+    def db_instance_count(self):
+        return 1
+
+    @property
+    def cluster_name(self):
+        return f"cluster-{self.project_name}-{self.environment_name}"
+
+    @property
+    def ecs_task_definition_cpu_reservation(self):
+        return 0.5
+
+    @property
+    def ecs_task_definition_memory_reservation(self):
+        return 512
+
+    @property
+    def ecs_task_role_name(self):
+        return f"role_{self.environment_name}_{self.project_name}-backend-task"
+
+    @property
+    def ecs_task_execution_role_name(self):
+        return f"role_{self.environment_name}_{self.project_name}-backend-task-execution"

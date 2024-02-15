@@ -80,16 +80,6 @@ def test_build_and_upload():
 
 
 @pytest.mark.done
-def test_provision_infrastructure():
-    configuration = LionKingConfigurationPolicy()
-    configuration.configuration_file_full_path = configuration_file_path
-    configuration.provision_infrastructure = True
-    configuration.init_from_file()
-    lion_king = LionKing(configuration)
-    assert lion_king.provision_infrastructure()
-
-
-@pytest.mark.done
 def test_provision_rds_db_cluster_parameter_group():
     configuration = LionKingConfigurationPolicy()
     configuration.configuration_file_full_path = configuration_file_path
@@ -119,7 +109,7 @@ def test_provision_rds_subnet_group():
     assert lion_king.provision_rds_subnet_group()
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_provision_security_groups():
     configuration = LionKingConfigurationPolicy()
     configuration.configuration_file_full_path = configuration_file_path
@@ -127,16 +117,6 @@ def test_provision_security_groups():
     configuration.init_from_file()
     lion_king = LionKing(configuration)
     assert lion_king.provision_security_groups()
-
-
-@pytest.mark.todo
-def test_provision_rds_cluster():
-    configuration = LionKingConfigurationPolicy()
-    configuration.configuration_file_full_path = configuration_file_path
-    configuration.provision_infrastructure = True
-    configuration.init_from_file()
-    lion_king = LionKing(configuration)
-    assert lion_king.provision_rds_cluster()
 
 
 @pytest.mark.done
@@ -149,7 +129,57 @@ def test_update_component_provision_infra():
     assert lion_king.update_component()
 
 
+@pytest.mark.done
+def test_provision_infrastructure():
+    configuration = LionKingConfigurationPolicy()
+    configuration.configuration_file_full_path = configuration_file_path
+    configuration.provision_infrastructure = True
+    configuration.init_from_file()
+    lion_king = LionKing(configuration)
+    assert lion_king.provision_infrastructure()
+
+
+@pytest.mark.done
+def test_provision_ecs_cluster():
+    configuration = LionKingConfigurationPolicy()
+    configuration.configuration_file_full_path = configuration_file_path
+    configuration.provision_infrastructure = True
+    configuration.init_from_file()
+    lion_king = LionKing(configuration)
+    assert lion_king.provision_ecs_cluster()
+
+
+@pytest.mark.done
+def test_provision_roles():
+    configuration = LionKingConfigurationPolicy()
+    configuration.configuration_file_full_path = configuration_file_path
+    configuration.provision_infrastructure = True
+    configuration.init_from_file()
+    lion_king = LionKing(configuration)
+    assert lion_king.provision_roles()
+
+
 @pytest.mark.wip
+def provision_ecs_task_definition():
+    configuration = LionKingConfigurationPolicy()
+    configuration.configuration_file_full_path = configuration_file_path
+    configuration.provision_infrastructure = True
+    configuration.init_from_file()
+    lion_king = LionKing(configuration)
+    assert lion_king.provision_ecs_task_definition()
+
+
+@pytest.mark.done
+def test_provision_rds_instance():
+    configuration = LionKingConfigurationPolicy()
+    configuration.configuration_file_full_path = configuration_file_path
+    configuration.provision_infrastructure = True
+    configuration.init_from_file()
+    lion_king = LionKing(configuration)
+    assert lion_king.provision_rds_instance()
+
+
+@pytest.mark.done
 def test_dispose():
     configuration = LionKingConfigurationPolicy()
     configuration.configuration_file_full_path = configuration_file_path

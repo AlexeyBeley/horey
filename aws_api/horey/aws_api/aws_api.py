@@ -1314,7 +1314,7 @@ class AWSAPI:
 
         self.rds_db_instances = objects
 
-    def init_rds_db_clusters(self, region=None, full_information=False):
+    def init_rds_db_clusters(self, region=None, full_information=False, update_info=False):
         """
         Init RDSs
 
@@ -1322,7 +1322,7 @@ class AWSAPI:
         @return:
         """
 
-        objects = self.rds_client.get_all_db_clusters(region=region, full_information=full_information)
+        objects = self.rds_client.get_all_db_clusters(region=region, full_information=full_information, update_info=update_info)
 
         self.rds_db_clusters = objects
 

@@ -22,6 +22,7 @@ class RDSDBCluster(AwsObject):
         self.db_cluster_parameter_group_name = None
         self.kms_key_id = None
         self.cluster_create_time = None
+        self.enabled_cloudwatch_logs_exports = None
 
         self.backup_retention_period = None
         self.database_name = None
@@ -30,13 +31,15 @@ class RDSDBCluster(AwsObject):
         self.engine = None
         self.engine_version = None
         self.port = None
+        self.allocated_storage = None
+        self.db_cluster_instance_class = None
 
         self.master_username = None
         self.master_user_password = None
         self.preferred_backup_window = None
         self.preferred_maintenance_window = None
         self.storage_encrypted = None
-        self.enabled_cloudwatch_logs_exports = None
+        self.enable_cloudwatch_logs_exports = None
         self.kms_key_id = None
         self.engine_mode = None
         self.deletion_protection = None
@@ -150,7 +153,13 @@ class RDSDBCluster(AwsObject):
         request["PreferredMaintenanceWindow"] = self.preferred_maintenance_window
         request["StorageEncrypted"] = self.storage_encrypted
 
-        request["EnableCloudwatchLogsExports"] = self.enabled_cloudwatch_logs_exports
+        if self.allocated_storage:
+            request["AllocatedStorage"] = self.allocated_storage
+
+        if self.db_cluster_instance_class:
+            request["DBClusterInstanceClass"] = self.db_cluster_instance_class
+
+        request["EnableCloudwatchLogsExports"] = self.enable_cloudwatch_logs_exports
 
         if self.kms_key_id:
             request["KmsKeyId"] = self.kms_key_id
