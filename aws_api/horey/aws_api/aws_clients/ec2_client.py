@@ -1310,19 +1310,22 @@ class EC2Client(Boto3Client):
         return final_result
 
     def get_region_internet_gateways(
-            self, region, full_information=True, custom_filters=None
+            self, region, full_information=True, custom_filters=None, filters_req=None
     ):
         """
         Standard
 
         @param custom_filters:
+        @param filters_req:
         @param region:
         @param full_information:
         @return:
         """
         AWSAccount.set_aws_region(region)
         final_result = []
-        filters_req = None if custom_filters is None else {"Filters": custom_filters}
+        if custom_filters:
+            raise DeprecationWarning("Use 'filters_req' instead")
+
         for response in self.execute(
                 self.client.describe_internet_gateways,
                 "InternetGateways",
@@ -1335,6 +1338,23 @@ class EC2Client(Boto3Client):
             final_result.append(obj)
 
         return final_result
+
+    def update_internet_gateway_information(self, internet_gateway: InternetGateway):
+        """
+        Standard.
+
+        :param internet_gateway:
+        :return:
+        """
+
+        region_objects = self.get_region_internet_gateways(internet_gateway.region, filters_req={"Filters": [{"Name": "tag:name", "Values": [internet_gateway.get_tagname()]}]})
+        if len(region_objects) > 1:
+            raise RuntimeError(f"Was not expected to find 1 region object. Found: {len(region_objects)}")
+        if not region_objects:
+            return False
+
+        internet_gateway.update_from_raw_response(region_objects[0].dict_src)
+        return True
 
     def get_all_vpc_peerings(self, full_information=True, region=None):
         """
@@ -1566,6 +1586,27 @@ class EC2Client(Boto3Client):
         for response in self.execute(
                 self.client.create_internet_gateway, "InternetGateway", filters_req=request
         ):
+            self.clear_cache(InternetGateway)
+            return response
+
+    def dispose_internet_gateway(self, inet_gateway):
+        """
+        Standard
+
+        @param inet_gateway:
+        @return:
+        """
+
+        if inet_gateway.id is None:
+            if not self.update_internet_gateway_information(inet_gateway):
+                return True
+
+        logger.info(f"Disposing internet gateway: {inet_gateway.id}")
+        AWSAccount.set_aws_region(inet_gateway.region)
+        for response in self.execute(
+                self.client.delete_internet_gateway, None, raw_data=True, filters_req={"InternetGatewayId": inet_gateway.id}
+        ):
+            self.clear_cache(InternetGateway)
             return response
 
     def attach_internet_gateway_raw(self, request):

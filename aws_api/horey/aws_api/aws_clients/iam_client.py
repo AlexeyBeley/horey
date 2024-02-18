@@ -322,10 +322,12 @@ class IamClient(Boto3Client):
 
         return False
 
-    def update_role_information(self, iam_role: IamRole):
+    def update_role_information(self, iam_role: IamRole, full_information=True):
         """
         Full information part update.
+
         :param iam_role:
+        :param full_information:
         :return:
         """
 
@@ -334,6 +336,9 @@ class IamClient(Boto3Client):
                 exception_ignore_callback=lambda x: "NoSuchEntityException" in repr(x)
         ):
             iam_role.update_from_raw_response(response)
+            if full_information:
+                self.update_role_managed_policies(iam_role)
+                self.update_role_inline_policies(iam_role)
             return True
         return False
 
@@ -584,6 +589,9 @@ class IamClient(Boto3Client):
         :return:
         """
 
+        if not self.update_role_information(role):
+            return True
+
         if detach_policies:
             self.detach_role_policies(role)
 
@@ -603,9 +611,6 @@ class IamClient(Boto3Client):
         :param role:
         :return:
         """
-
-        if not role.managed_policies_arns:
-            self.update_role_information(role)
 
         for policy_arn in role.managed_policies_arns:
             request = {"RoleName": role.name, "PolicyArn": policy_arn}

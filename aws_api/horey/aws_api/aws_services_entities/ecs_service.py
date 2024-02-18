@@ -93,7 +93,7 @@ class ECSService(AwsObject):
             "launchType": self.init_default_attr,
             "tags": self.init_default_attr,
             "deploymentController": self.init_default_attr,
-            "networkConfiguration": self.init_default_attr,
+            "networkConfiguration": self.init_default_attr
         }
 
         self.init_attrs(dict_src, init_options)
@@ -115,25 +115,16 @@ class ECSService(AwsObject):
             if self.role_arn is not None:
                 request["role"] = self.role_arn
 
-        if self.service_registries is not None:
-            request["serviceRegistries"] = self.service_registries
-
         request["desiredCount"] = self.desired_count
 
         request["launchType"] = self.launch_type
 
-        request["deploymentConfiguration"] = self.deployment_configuration
-        request["placementStrategy"] = self.placement_strategy
         request["schedulingStrategy"] = self.scheduling_strategy
         request["enableECSManagedTags"] = self.enable_ecs_managed_tags
-        if self.propagate_tags is not None:
-            request["propagateTags"] = self.propagate_tags
         request["enableExecuteCommand"] = self.enable_execute_command
 
         request["tags"] = self.tags
-
-        if self.network_configuration:
-            request["networkConfiguration"] = self.network_configuration
+        self.extend_request_with_optional_parameters(request, ["placementStrategy", "propagateTags", "networkConfiguration", "serviceRegistries"])
 
         return request
 
@@ -218,9 +209,11 @@ class ECSService(AwsObject):
                 "rolloutState": self.init_default_attr,
                 "rolloutStateReason": self.init_default_attr,
                 "networkConfiguration": self.init_default_attr,
+                "platformFamily": self.init_default_attr,
+                "platformVersion": self.init_default_attr
             }
 
-            self.init_attrs(dict_src, init_options, raise_on_no_option=True)
+            self.init_attrs(dict_src, init_options, raise_on_no_option=False)
 
         def _init_object_from_cache(self, dict_src):
             """

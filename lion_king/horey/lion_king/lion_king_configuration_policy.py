@@ -23,6 +23,7 @@ class LionKingConfigurationPolicy(ConfigurationPolicy):
         self._project_name = None
         self._region = None
         self._provision_infrastructure = None
+        self._public_hosted_zone_name = None
 
     @property
     def aws_api_configuration_file_full_path(self):
@@ -97,8 +98,20 @@ class LionKingConfigurationPolicy(ConfigurationPolicy):
         return f"subnet-public-{self.project_name}-{self.environment_name}-" + "{}"
 
     @property
-    def ecr_repository_name(self):
-        return f"repo-{self.project_name}-{self.environment_name}"
+    def ecr_repository_name_template(self):
+        return f"repo-{self.project_name}-{self.environment_name}-" + "{name}"
+
+    @property
+    def ecr_repository_backend_name(self):
+        return self.ecr_repository_name_template.format(name="backend")
+
+    @property
+    def ecr_repository_adminer_name(self):
+        return self.ecr_repository_name_template.format(name="adminer")
+
+    @property
+    def ecr_repository_grafana_name(self):
+        return self.ecr_repository_name_template.format(name="grafana")
 
     @property
     def infrastructure_last_update_time_tag(self):
@@ -149,6 +162,14 @@ class LionKingConfigurationPolicy(ConfigurationPolicy):
         return f"sg_postrgres-{self.project_name}-{self.environment_name}"
 
     @property
+    def backend_security_group_name(self):
+        return f"sg_backend-{self.project_name}-{self.environment_name}"
+
+    @property
+    def public_load_balancer_security_group_name(self):
+        return f"sg_public-lb-{self.project_name}-{self.environment_name}"
+
+    @property
     def db_type(self):
         return "postgres"
 
@@ -162,7 +183,7 @@ class LionKingConfigurationPolicy(ConfigurationPolicy):
 
     @property
     def ecs_task_definition_cpu_reservation(self):
-        return 0.5
+        return 256
 
     @property
     def ecs_task_definition_memory_reservation(self):
@@ -175,3 +196,58 @@ class LionKingConfigurationPolicy(ConfigurationPolicy):
     @property
     def ecs_task_execution_role_name(self):
         return f"role_{self.environment_name}_{self.project_name}-backend-task-execution"
+
+    @property
+    def ecs_service_name(self):
+        return f"service_{self.environment_name}_{self.project_name}-backend"
+
+    @property
+    def ecs_backend_container_name(self):
+        return f"{self.project_name}-backend"
+
+    @property
+    def cloudwatch_log_group_name(self):
+        return f"{self.project_name}-backend"
+
+    @property
+    def ecs_task_definition_family(self):
+        return f"td_backend-{self.project_name}-{self.environment_name}"
+
+    @property
+    def public_hosted_zone_name(self):
+        if self._public_hosted_zone_name is None:
+            raise self.UndefinedValueError("public_hosted_zone_name")
+        return self._public_hosted_zone_name
+
+    @public_hosted_zone_name.setter
+    def public_hosted_zone_name(self, value):
+        self._public_hosted_zone_name = value
+
+    @property
+    def load_balancer_name(self):
+        return f"lb-public-{self.project_name}-{self.environment_name}"
+
+    @property
+    def internet_gateway_name(self):
+        return f"ig-{self.project_name}-{self.environment_name}"
+
+    @property
+    def route_table_template(self):
+        return "rt_{}"
+
+    @property
+    def target_group_name_template(self):
+        return "tg-{}" + f"-{self.project_name}-{self.environment_name}"
+
+    @property
+    def target_group_backend_name(self):
+        return self.target_group_name_template.format("backend")
+
+    @property
+    def target_group_grafana_name(self):
+        return self.target_group_name_template.format("grafana")
+
+    @property
+    def target_group_adminer_name(self):
+        return self.target_group_name_template.format("adminer")
+

@@ -265,6 +265,8 @@ class RDSClient(Boto3Client):
 
         AWSAccount.set_aws_region(db_instance.region)
         response = self.dispose_db_instance_raw(db_instance.generate_dispose_request())
+        if response is None:
+            return
         db_instance.update_from_raw_response(response)
         try:
             self.wait_for_status(
@@ -286,7 +288,8 @@ class RDSClient(Boto3Client):
         """
         logger.info(f"Disposing db_instance: {request_dict}")
         for response in self.execute(
-                self.client.delete_db_instance, "DBInstance", filters_req=request_dict
+                self.client.delete_db_instance, "DBInstance", filters_req=request_dict,
+                exception_ignore_callback=lambda error: "DBInstanceNotFound" in repr(error)
         ):
             self.clear_cache(RDSDBInstance)
             return response
@@ -689,6 +692,47 @@ class RDSClient(Boto3Client):
                 filters_req=request_dict,
         ):
             self.clear_cache(RDSDBClusterParameterGroup)
+            return response
+
+    def dispose_cluster_parameter_group(self, param_group):
+        """
+        Standard.
+
+        :param param_group:
+        :return:
+        """
+
+        AWSAccount.set_aws_region(param_group.region)
+        request_dict = {"DBClusterParameterGroupName": param_group.name}
+        logger.info(f"Disposing db_cluster_parameter_group: {request_dict}")
+        for response in self.execute(
+                self.client.delete_db_cluster_parameter_group,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
+                exception_ignore_callback=lambda error: "DBParameterGroupNotFound" in repr(error)
+        ):
+            self.clear_cache(RDSDBClusterParameterGroup)
+            return response
+
+    def dispose_parameter_group(self, param_group):
+        """
+        Standard.
+
+        :param param_group:
+        :return:
+        """
+        AWSAccount.set_aws_region(param_group.region)
+        request_dict = {"DBParameterGroupName": param_group.name}
+        logger.info(f"Disposing db_parameter_group: {request_dict}")
+        for response in self.execute(
+                self.client.delete_db_parameter_group,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
+                exception_ignore_callback=lambda error: "DBParameterGroupNotFound" in repr(error)
+        ):
+            self.clear_cache(RDSDBParameterGroup)
             return response
 
     def provision_db_parameter_group(self, db_parameter_group):

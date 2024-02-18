@@ -25,6 +25,9 @@ setup(
     packages=["horey.lion_king"],
     include_package_data=True,
     package_data={
-        "": [os.path.join(os.path.abspath(os.curdir), "horey", "lion_king", "source_code", "*")]},
+        "": [os.path.join(os.path.abspath(os.curdir), "horey", "lion_king", "source_code", "*"),
+             os.path.join(os.path.abspath(os.curdir), "horey", "lion_king", "grafana", "*"),
+             os.path.join(os.path.abspath(os.curdir), "horey", "lion_king", "adminer", "*")
+             ]},
     zip_safe=False,
 )

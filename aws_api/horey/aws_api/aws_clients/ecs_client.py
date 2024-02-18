@@ -777,9 +777,26 @@ class ECSClient(Boto3Client):
 
         logger.info(f"Disposing ECS Service: {request_dict}")
         for response in self.execute(
-            self.client.delete_service, "service", filters_req=request_dict
+            self.client.delete_service, "service", filters_req=request_dict,
+            exception_ignore_callback=lambda error: "ServiceNotFoundException" in repr(error)
         ):
             return response
+
+    def dispose_task_definition(self, task_definition):
+        """
+        Standard.
+
+        :param task_definition:
+        :return:
+        """
+        breakpoint()
+        request_dict = {"taskDefinitions": [f"{task_definition.family}:{task_definition.revision}"]}
+        logger.info(f"Disposing ECS Task Definistion: {request_dict}")
+        for response in self.execute(
+                self.client.delete_task_definitions, "taskDefinitions", filters_req=request_dict
+        ):
+            logger.info(response)
+        return True
 
     def get_region_container_instances(self, region, cluster_identifier=None):
         """

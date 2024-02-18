@@ -342,3 +342,24 @@ class CloudWatchLogsClient(Boto3Client):
             self.client.create_log_stream, None, raw_data=True, filters_req=request_dict
         ):
             return response
+
+    def dispose_log_group(self, log_group):
+        """
+        Standard.
+
+        :param log_group:
+        :return:
+        """
+
+        AWSAccount.set_aws_region(log_group.region)
+        request_dict = {"logGroupName": log_group.name}
+        logger.info(f"Disposing log group: {request_dict}")
+        for response in self.execute(
+                self.client.delete_log_group,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
+                exception_ignore_callback=lambda error: "ResourceNotFoundException" in repr(error)
+        ):
+            self.clear_cache(CloudWatchLogGroup)
+            return response
