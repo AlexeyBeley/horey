@@ -266,7 +266,7 @@ class RDSClient(Boto3Client):
         AWSAccount.set_aws_region(db_instance.region)
         response = self.dispose_db_instance_raw(db_instance.generate_dispose_request())
         if response is None:
-            return
+            return True
         db_instance.update_from_raw_response(response)
         try:
             self.wait_for_status(
@@ -1093,6 +1093,31 @@ class RDSClient(Boto3Client):
         engine_versions = list(self.execute(
             self.client.describe_db_engine_versions, "DBEngineVersions",
             filters_req={"Engine": engine_type, "DefaultOnly": True}))
+
+        if len(engine_versions) != 1:
+            raise RuntimeError(f"Can not find single default version for {engine_type} in {str(region)}")
+
+        self.ENGINE_VERSIONS[region.region_mark][engine_type] = engine_versions[0]
+
+        return self.ENGINE_VERSIONS[region.region_mark][engine_type]
+
+    def get_engine_version(self, region, engine_type, engine_version):
+        """
+        Get the default engine in the region.
+
+        :param engine_type:
+        :param region:
+        :param engine_version:
+        :return:
+        """
+
+        AWSAccount.set_aws_region(region)
+
+        all_engine_versions = list(self.execute(
+            self.client.describe_db_engine_versions, "DBEngineVersions",
+            filters_req={"Engine": engine_type, "DefaultOnly": False}))
+
+        engine_versions = [version for version in all_engine_versions if version["EngineVersion"] == engine_version]
 
         if len(engine_versions) != 1:
             raise RuntimeError(f"Can not find single default version for {engine_type} in {str(region)}")

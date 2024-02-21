@@ -166,12 +166,20 @@ class LionKingConfigurationPolicy(ConfigurationPolicy):
         return f"sg_backend-{self.project_name}-{self.environment_name}"
 
     @property
+    def bastion_security_group_name(self):
+        return f"sg_bastion-{self.project_name}-{self.environment_name}"
+
+    @property
     def public_load_balancer_security_group_name(self):
         return f"sg_public-lb-{self.project_name}-{self.environment_name}"
 
     @property
     def db_type(self):
         return "postgres"
+
+    @property
+    def db_engine_version(self):
+        return "16.1"
 
     @property
     def db_instance_count(self):
@@ -198,20 +206,40 @@ class LionKingConfigurationPolicy(ConfigurationPolicy):
         return f"role_{self.environment_name}_{self.project_name}-backend-task-execution"
 
     @property
-    def ecs_service_name(self):
+    def ecs_service_name_backend(self):
         return f"service_{self.environment_name}_{self.project_name}-backend"
+
+    @property
+    def ecs_service_name_adminer(self):
+        return f"service_{self.environment_name}_{self.project_name}-adminer"
 
     @property
     def ecs_backend_container_name(self):
         return f"{self.project_name}-backend"
 
     @property
-    def cloudwatch_log_group_name(self):
+    def cloudwatch_log_group_name_backend(self):
         return f"{self.project_name}-backend"
 
     @property
-    def ecs_task_definition_family(self):
+    def cloudwatch_log_group_name_adminer(self):
+        return f"{self.project_name}-adminer"
+
+    @property
+    def cloudwatch_log_group_name_grafana(self):
+        return f"{self.project_name}-grafana"
+
+    @property
+    def ecs_task_definition_family_backend(self):
         return f"td_backend-{self.project_name}-{self.environment_name}"
+
+    @property
+    def ecs_task_definition_family_adminer(self):
+        return f"td_adminer-{self.project_name}-{self.environment_name}"
+
+    @property
+    def ecs_task_definition_family_grafana(self):
+        return f"td_grafana-{self.project_name}-{self.environment_name}"
 
     @property
     def public_hosted_zone_name(self):
@@ -229,15 +257,21 @@ class LionKingConfigurationPolicy(ConfigurationPolicy):
 
     @property
     def internet_gateway_name(self):
-        return f"ig-{self.project_name}-{self.environment_name}"
+        return f"igw-{self.project_name}-{self.environment_name}"
 
     @property
     def route_table_template(self):
         return "rt_{}"
 
     @property
+    def env_name_abbr(self):
+        if self.environment_name == "production":
+            return "prd"
+        raise NotImplementedError(f"Environment name {self.environment_name} abbreviation is not supported")
+
+    @property
     def target_group_name_template(self):
-        return "tg-{}" + f"-{self.project_name}-{self.environment_name}"
+        return "tg-{}" + f"-{self.project_name}-{self.env_name_abbr}"
 
     @property
     def target_group_backend_name(self):
@@ -251,3 +285,10 @@ class LionKingConfigurationPolicy(ConfigurationPolicy):
     def target_group_adminer_name(self):
         return self.target_group_name_template.format("adminer")
 
+    @property
+    def bastion_instance_name(self):
+        return f"bastion-{self.project_name}-{self.environment_name}"
+
+    @property
+    def bastion_ssh_key_pair_name(self):
+        return f"keypair-bastion-{self.project_name}-{self.environment_name}"

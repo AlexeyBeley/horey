@@ -93,7 +93,9 @@ class ECSService(AwsObject):
             "launchType": self.init_default_attr,
             "tags": self.init_default_attr,
             "deploymentController": self.init_default_attr,
-            "networkConfiguration": self.init_default_attr
+            "networkConfiguration": self.init_default_attr,
+            "platformFamily": self.init_default_attr,
+            "platformVersion": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)

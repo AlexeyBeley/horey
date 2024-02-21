@@ -101,35 +101,18 @@ class ECSTaskDefinition(AwsObject):
         :return:
         """
 
-        request = {}
-        request["containerDefinitions"] = self.container_definitions
-        request["tags"] = self.tags
+        request = {"containerDefinitions": self.container_definitions, "tags": self.tags}
 
-        if self.family is not None:
-            request["family"] = self.family
-
-        if self.task_role_arn is not None:
-            request["taskRoleArn"] = self.task_role_arn
-
-        if self.execution_role_arn is not None:
-            request["executionRoleArn"] = self.execution_role_arn
-
-        if self.volumes is not None:
-            request["volumes"] = self.volumes
-
-        request["requiresCompatibilities"] = ["EC2"]
-
-        if self.cpu is not None:
-            request["cpu"] = self.cpu
-
-        if self.memory is not None:
-            request["memory"] = self.memory
-
-        if self.requires_compatibilities is not None:
-            request["requiresCompatibilities"] = self.requires_compatibilities
-
-        if self.network_mode is not None:
-            request["networkMode"] = self.network_mode
+        self.extend_request_with_optional_parameters(request, ["networkMode",
+                                                               "runtimePlatform",
+                                                               "requiresCompatibilities",
+                                                               "memory",
+                                                               "cpu",
+                                                               "requiresCompatibilities",
+                                                               "volumes",
+                                                               "executionRoleArn",
+                                                               "taskRoleArn",
+                                                               "family"])
 
         return request
 

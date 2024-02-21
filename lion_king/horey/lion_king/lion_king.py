@@ -1,7 +1,8 @@
 """
-Async orchestrator
+Lion King- infra as a code project from Horey )
 
 """
+# pylint: disable= too-many-lines
 import copy
 import datetime
 import json
@@ -11,6 +12,7 @@ import shutil
 from horey.h_logger import get_logger
 from horey.docker_api.docker_api import DockerAPI
 from horey.aws_api.aws_api import AWSAPI
+from horey.aws_api.aws_clients.ssm_client import SSMClient
 from horey.aws_api.aws_api_configuration_policy import AWSAPIConfigurationPolicy
 from horey.aws_api.aws_services_entities.vpc import VPC
 from horey.aws_api.aws_services_entities.subnet import Subnet
@@ -36,11 +38,14 @@ from horey.aws_api.aws_services_entities.elbv2_load_balancer import LoadBalancer
 from horey.aws_api.aws_services_entities.elbv2_target_group import ELBV2TargetGroup
 from horey.aws_api.aws_services_entities.internet_gateway import InternetGateway
 from horey.aws_api.aws_services_entities.route_table import RouteTable
-
+from horey.aws_api.aws_services_entities.route53_hosted_zone import HostedZone
+from horey.aws_api.aws_services_entities.ec2_instance import EC2Instance
+from horey.aws_api.aws_services_entities.key_pair import KeyPair
 
 logger = get_logger()
 
 
+# pylint: disable= too-many-instance-attributes
 class LionKing:
     """
     Main class.
@@ -58,6 +63,8 @@ class LionKing:
         self._adminer_target_group = None
         self._grafana_target_group = None
         self._backend_target_group = None
+        self._backend_security_group = None
+        self._ecs_cluster = None
 
         self.tags = [{"Key": "environment_name",
                       "Value": self.configuration.environment_name},
@@ -198,21 +205,63 @@ class LionKing:
 
     @property
     def adminer_target_group(self):
+        """
+        Initialized object to reuse.
+
+        :return:
+        """
         if not self._adminer_target_group:
             self._adminer_target_group = self.find_target_group_by_name(self.configuration.target_group_adminer_name)
         return self._adminer_target_group
 
     @property
     def grafana_target_group(self):
+        """
+        Initialized object to reuse.
+
+        :return:
+        """
         if not self._grafana_target_group:
             self._grafana_target_group = self.find_target_group_by_name(self.configuration.target_group_grafana_name)
         return self._grafana_target_group
 
     @property
     def backend_target_group(self):
+        """
+        Initialized object to reuse.
+
+        :return:
+        """
         if not self._backend_target_group:
             self._backend_target_group = self.find_target_group_by_name(self.configuration.target_group_backend_name)
         return self._backend_target_group
+
+    @property
+    def backend_security_group(self):
+        """
+        Initialized object to reuse.
+
+        :return:
+        """
+        if not self._backend_security_group:
+            self._backend_security_group = self.aws_api.get_security_group_by_vpc_and_name(self.vpc,
+                                                                                           self.configuration.backend_security_group_name)
+        return self._backend_security_group
+
+    @property
+    def ecs_cluster(self):
+        """
+        Initialized object to reuse.
+
+        :return:
+        """
+
+        if not self._ecs_cluster:
+            self._ecs_cluster = ECSCluster({"name": self.configuration.cluster_name})
+            self._ecs_cluster.region = self.region
+            if not self.aws_api.ecs_client.update_cluster_information(self._ecs_cluster):
+                raise RuntimeError(f"Was not able to find cluster {self.configuration.cluster_name}")
+        return self._ecs_cluster
 
     def provision_vpc(self):
         """
@@ -366,6 +415,7 @@ class LionKing:
                      self.configuration.ecr_repository_adminer_name,
                      self.configuration.ecr_repository_grafana_name]:
             self.provision_ecr_repository(name)
+        return True
 
     def provision_ecr_repository(self, repo_name):
         """
@@ -396,9 +446,76 @@ class LionKing:
 
         :return:
         """
-        
-        # Backend
+
+        administrators_addresses = ["84.229.110.142/32"]
+        administrator_ip_ranges = [{"CidrIp": address,
+                                    "Description": f"Administrator access {address}"} for address in
+                                   administrators_addresses]
+
         ret = []
+        # Bastion
+        security_group_bastion = EC2SecurityGroup({})
+        security_group_bastion.vpc_id = self.vpc.id
+        security_group_bastion.name = self.configuration.bastion_security_group_name
+        security_group_bastion.description = f"Internet facing instance {self.configuration.project_name} {self.configuration.environment_name}"
+        security_group_bastion.region = self.region
+        security_group_bastion.tags = copy.deepcopy(self.tags)
+        security_group_bastion.tags.append({
+            "Key": "Name",
+            "Value": security_group_bastion.name
+        })
+        security_group_bastion.ip_permissions = [
+            {
+                "IpProtocol": "tcp",
+                "FromPort": 22,
+                "ToPort": 22,
+                "IpRanges": administrator_ip_ranges,
+                "Ipv6Ranges": [],
+                "PrefixListIds": [],
+                "UserIdGroupPairs": []
+            }
+        ]
+        self.aws_api.provision_security_group(security_group_bastion, provision_rules=True)
+
+        ret.append(security_group_bastion)
+
+        # ALB
+        security_group_alb = EC2SecurityGroup({})
+        security_group_alb.vpc_id = self.vpc.id
+        security_group_alb.name = self.configuration.public_load_balancer_security_group_name
+        security_group_alb.description = f"Internet facing load balancer {self.configuration.project_name} {self.configuration.environment_name}"
+        security_group_alb.region = self.region
+        security_group_alb.tags = copy.deepcopy(self.tags)
+        security_group_alb.tags.append({
+            "Key": "Name",
+            "Value": security_group_alb.name
+        })
+        security_group_alb.ip_permissions = [
+            {
+                "IpProtocol": "tcp",
+                "FromPort": 444,
+                "ToPort": 445,
+                "IpRanges": administrator_ip_ranges,
+                "Ipv6Ranges": [],
+                "PrefixListIds": [],
+                "UserIdGroupPairs": []
+            },
+            {
+                "IpProtocol": "tcp",
+                "FromPort": 443,
+                "ToPort": 443,
+                "IpRanges": [{"CidrIp": "0.0.0.0/0",
+                              "Description": "Public access"}],
+                "Ipv6Ranges": [],
+                "PrefixListIds": [],
+                "UserIdGroupPairs": []
+            }
+        ]
+        self.aws_api.provision_security_group(security_group_alb, provision_rules=True)
+
+        ret.append(security_group_alb)
+
+        # Backend
         security_group = EC2SecurityGroup({})
         security_group.vpc_id = self.vpc.id
         security_group.name = self.configuration.backend_security_group_name
@@ -410,8 +527,26 @@ class LionKing:
             "Value": security_group.name
         })
         ret.append(security_group)
-        self.aws_api.provision_security_group(security_group, provision_rules=False)
-        
+        security_group.ip_permissions = [
+            {
+                "IpProtocol": "tcp",
+                "FromPort": 0,
+                "ToPort": 65535,
+                "IpRanges": [],
+                "Ipv6Ranges": [],
+                "PrefixListIds": [],
+                "UserIdGroupPairs": [
+                    {
+                        "GroupId": security_group_alb.id,
+                        "UserId": self.aws_account,
+                        "Description": "Access from public load balancer to ecs services"
+                    }
+                ]
+            }
+        ]
+        self.aws_api.provision_security_group(security_group, provision_rules=True)
+        self._backend_security_group = security_group
+
         # RDS
         security_group = EC2SecurityGroup({})
         security_group.vpc_id = self.vpc.id
@@ -424,23 +559,31 @@ class LionKing:
             "Value": security_group.name
         })
 
-        self.aws_api.provision_security_group(security_group, provision_rules=True)
-        
-        # ALB
-        security_group = EC2SecurityGroup({})
-        security_group.vpc_id = self.vpc.id
-        security_group.name = self.configuration.public_load_balancer_security_group_name
-        security_group.description = f"Internet facing load balancer {self.configuration.project_name} {self.configuration.environment_name}"
-        security_group.region = self.region
-        security_group.tags = copy.deepcopy(self.tags)
-        security_group.tags.append({
-            "Key": "Name",
-            "Value": security_group.name
-        })
+        security_group.ip_permissions = [
+            {
+                "IpProtocol": "tcp",
+                "FromPort": 5432,
+                "ToPort": 5432,
+                "IpRanges": [],
+                "Ipv6Ranges": [],
+                "PrefixListIds": [],
+                "UserIdGroupPairs": [
+                    {
+                        "GroupId": self.backend_security_group.id,
+                        "UserId": self.aws_account,
+                        "Description": "Access from ECS services to RDS"
+                    },
+                    {
+                        "GroupId": security_group_bastion.id,
+                        "UserId": self.aws_account,
+                        "Description": "Access from the backbone to RDS"
+                    }
 
+                ]
+            }
+        ]
         self.aws_api.provision_security_group(security_group, provision_rules=True)
 
-        ret.append(security_group)
         return ret
 
     def provision_db_cluster_components(self):
@@ -475,8 +618,6 @@ class LionKing:
 
         :return:
         """
-        aurora_engine_default_version = \
-        self.aws_api.rds_client.get_default_engine_version(self.region, self.configuration.db_type)["EngineVersion"]
 
         for counter in range(self.configuration.db_instance_count):
             db_instance = RDSDBInstance({})
@@ -489,8 +630,11 @@ class LionKing:
             db_instance.db_subnet_group_name = self.configuration.db_rds_subnet_group_name
             db_instance.db_parameter_group_name = self.configuration.db_rds_instance_parameter_group_name
             db_instance.engine = \
-                self.aws_api.rds_client.get_default_engine_version(self.region, self.configuration.db_type)["Engine"]
-            db_instance.engine_version = aurora_engine_default_version
+                self.aws_api.rds_client.get_engine_version(self.region, self.configuration.db_type,
+                                                           self.configuration.db_engine_version)["Engine"]
+            db_instance.engine_version = self.configuration.db_engine_version
+            db_instance.vpc_security_group_ids = [self.aws_api.get_security_group_by_vpc_and_name(self.vpc,
+                                                                                                  self.configuration.db_rds_security_group_name).id]
 
             db_instance.preferred_maintenance_window = "sun:03:30-sun:04:00"
             db_instance.storage_encrypted = True
@@ -507,6 +651,7 @@ class LionKing:
                 "Value": db_instance.id
             }
             )
+            db_instance.db_name = self.configuration.db_rds_database_name
             db_instance.master_username = "lion"
             db_instance.master_user_password = "admin123456!"
             self.aws_api.provision_db_instance(db_instance)
@@ -522,8 +667,9 @@ class LionKing:
         db_cluster_parameter_group.region = self.region
         db_cluster_parameter_group.name = self.configuration.db_rds_cluster_parameter_group_name
         db_cluster_parameter_group.db_parameter_group_family = \
-        self.aws_api.rds_client.get_default_engine_version(self.region, self.configuration.db_type)[
-            "DBParameterGroupFamily"]
+            self.aws_api.rds_client.get_engine_version(self.region, self.configuration.db_type,
+                                                       self.configuration.db_engine_version)[
+                "DBParameterGroupFamily"]
         db_cluster_parameter_group.description = self.configuration.db_rds_cluster_parameter_group_description
         db_cluster_parameter_group.tags = copy.deepcopy(self.tags)
         db_cluster_parameter_group.tags.append({
@@ -544,8 +690,9 @@ class LionKing:
         db_parameter_group.region = self.region
         db_parameter_group.name = self.configuration.db_rds_instance_parameter_group_name
         db_parameter_group.db_parameter_group_family = \
-        self.aws_api.rds_client.get_default_engine_version(self.region, self.configuration.db_type)[
-            "DBParameterGroupFamily"]
+            self.aws_api.rds_client.get_engine_version(self.region, self.configuration.db_type,
+                                                       self.configuration.db_engine_version)[
+                "DBParameterGroupFamily"]
         db_parameter_group.description = self.configuration.db_rds_parameter_group_description
         db_parameter_group.tags = copy.deepcopy(self.tags)
         db_parameter_group.tags.append({
@@ -589,7 +736,8 @@ class LionKing:
                                                                                 self.configuration.db_rds_security_group_name)
 
         aurora_engine_default_version = \
-        self.aws_api.rds_client.get_default_engine_version(self.region, self.configuration.db_type)["EngineVersion"]
+            self.aws_api.rds_client.get_engine_version(self.region, self.configuration.db_type,
+                                                       self.configuration.db_engine_version)["EngineVersion"]
 
         cluster = RDSDBCluster({})
         cluster.region = self.region
@@ -599,7 +747,8 @@ class LionKing:
         cluster.database_name = self.configuration.db_rds_database_name
         cluster.id = self.configuration.db_rds_cluster_identifier
         cluster.vpc_security_group_ids = [db_rds_security_group.id]
-        cluster.engine = self.aws_api.rds_client.get_default_engine_version(self.region, self.configuration.db_type)[
+        cluster.engine = self.aws_api.rds_client.get_engine_version(self.region, self.configuration.db_type,
+                                                                    self.configuration.db_engine_version)[
             "Engine"]
         cluster.engine_version = aurora_engine_default_version
         cluster.port = 5432
@@ -609,8 +758,6 @@ class LionKing:
         cluster.preferred_backup_window = "09:23-09:53"
         cluster.preferred_maintenance_window = "sun:03:30-sun:04:00"
         cluster.storage_encrypted = True
-        # cluster.allocated_storage = 1
-        # cluster.db_cluster_instance_class = "db.t3.medium"
         cluster.engine_mode = "provisioned"
 
         cluster.deletion_protection = False
@@ -632,16 +779,32 @@ class LionKing:
 
     def provision_cloudwatch_log_groups(self):
         """
-        Backend cloudwatch log group.
+        All cloudwatch log groups
 
+        :return:
+        """
+
+        self.provision_cloudwatch_log_group(self.configuration.cloudwatch_log_group_name_adminer)
+        self.provision_cloudwatch_log_group(self.configuration.cloudwatch_log_group_name_grafana)
+        self.provision_cloudwatch_log_group(self.configuration.cloudwatch_log_group_name_backend, retention=60)
+        return True
+
+    def provision_cloudwatch_log_group(self, name, retention=1):
+        """
+        Retention in days.
+
+        :param name:
+        :param retention:
         :return:
         """
         log_group = CloudWatchLogGroup({})
         log_group.region = self.region
-        log_group.name = self.configuration.cloudwatch_log_group_name
+        log_group.retention_in_days = retention
+        log_group.name = name
         log_group.tags = {tag["Key"]: tag["Value"] for tag in self.tags}
         log_group.tags["name"] = log_group.name
         self.aws_api.provision_cloudwatch_log_group(log_group)
+        return True
 
     def provision_load_balancer(self):
         """
@@ -652,7 +815,8 @@ class LionKing:
 
         all_public_subnets = [subnet for subnet in self.subnets if "public" in subnet.get_tagname()]
 
-        public_subnet_to_az_map = {public_subnet.availability_zone: public_subnet.id for public_subnet in all_public_subnets}
+        public_subnet_to_az_map = {public_subnet.availability_zone: public_subnet.id for public_subnet in
+                                   all_public_subnets}
 
         all_private_subnets = [subnet for subnet in self.subnets if "private" in subnet.get_tagname()]
         private_subnet_to_az_map = [private_subnet.availability_zone for private_subnet in all_private_subnets]
@@ -674,20 +838,24 @@ class LionKing:
         load_balancer.type = "application"
         load_balancer.ip_address_type = "ipv4"
 
-        security_group = self.aws_api.get_security_group_by_vpc_and_name(self.vpc, self.configuration.public_load_balancer_security_group_name)
+        security_group = self.aws_api.get_security_group_by_vpc_and_name(self.vpc,
+                                                                         self.configuration.public_load_balancer_security_group_name)
         load_balancer.security_groups = [security_group.id]
         self.aws_api.provision_load_balancer(load_balancer)
         return load_balancer
 
     def provision_load_balancer_target_groups(self):
         """
-        LB tg.
+        LB target groups.
         :return:
         """
 
-        self._adminer_target_group = self.provision_load_balancer_target_group(self.configuration.target_group_adminer_name, 8080)
-        self._grafana_target_group = self.provision_load_balancer_target_group(self.configuration.target_group_grafana_name, 3000)
-        self._backend_target_group = self.provision_load_balancer_target_group(self.configuration.target_group_backend_name, 80)
+        self._adminer_target_group = self.provision_load_balancer_target_group(
+            self.configuration.target_group_adminer_name, 8080)
+        self._grafana_target_group = self.provision_load_balancer_target_group(
+            self.configuration.target_group_grafana_name, 3000)
+        self._backend_target_group = self.provision_load_balancer_target_group(
+            self.configuration.target_group_backend_name, 80)
 
     def provision_load_balancer_target_group(self, name, port):
         """
@@ -724,7 +892,7 @@ class LionKing:
 
         self.aws_api.provision_load_balancer_target_group(target_group)
         return target_group
-    
+
     def provision_certificate(self):
         """
         Provision global certificate for this environment.
@@ -796,9 +964,33 @@ class LionKing:
         load_balancer = self.provision_load_balancer()
         self.provision_load_balancer_target_groups()
         self.provision_load_balancer_listeners(load_balancer)
+        self.provision_load_balancer_public_domain_name(load_balancer)
 
         return load_balancer
-        
+
+    def provision_load_balancer_public_domain_name(self, load_balancer):
+        """
+        Provision public Route53 hosted zone and relevant records.
+
+        :return:
+        """
+
+        hosted_zone = HostedZone({})
+        hosted_zone.name = self.configuration.public_hosted_zone_name
+        dict_record = {
+            "Name": f"app.{hosted_zone.name}",
+            "Type": "CNAME",
+            "TTL": 300,
+            "ResourceRecords": [
+                {
+                    "Value": load_balancer.dns_name
+                }
+            ]}
+
+        record = HostedZone.Record(dict_record)
+        hosted_zone.records.append(record)
+        self.aws_api.provision_hosted_zone(hosted_zone)
+
     def provision_grafana_postgres_db(self):
         """
         Provision database parts for grafana HA database.
@@ -815,7 +1007,7 @@ class LionKing:
     def provision_adminer(self):
         """
         Postgres manager.
-        docker run -p 8080:8080 lion_king_adminer:latest
+        docker run -p 9090:9090 lion_king_adminer:latest
 
         You can specify the default host with the ADMINER_DEFAULT_SERVER environment variable.
         This is useful if you are connecting to an external server or a docker container named something other than
@@ -824,32 +1016,31 @@ class LionKing:
         :return:
         """
 
-        # self.prepare_build_directory()
         os.makedirs(self.configuration.local_deployment_directory_path, exist_ok=True)
         shutil.rmtree(self.configuration.local_deployment_directory_path)
         source_code_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "adminer"))
         shutil.copytree(source_code_path, self.configuration.local_deployment_directory_path)
 
         image_tags = [self.compose_image_tag(self.configuration.ecr_repository_adminer_name, "latest")]
-        #todo: self.docker_api.build(self.configuration.local_deployment_directory_path, image_tags)
+        self.docker_api.build(self.configuration.local_deployment_directory_path, image_tags)
 
-        #todo: self.login_to_ecr()
+        self.login_to_ecr()
 
-        #todo: self.docker_api.upload_images(image_tags)
-        task_definition_family = self.configuration.ecs_task_definition_family
+        self.docker_api.upload_images(image_tags)
+        task_definition_family = self.configuration.ecs_task_definition_family_adminer
         environ_values = self.generate_environment_values()
-        log_group_name = self.configuration.cloudwatch_log_group_name
+        log_group_name = self.configuration.cloudwatch_log_group_name_adminer
         container_name = "adminer"
         container_port = 8080
-        td = self.provision_ecs_task_definition(image_tags[0], environ_values, task_definition_family, container_port, log_group_name, container_name)
+        ecs_task_definition = self.provision_ecs_task_definition(image_tags[0], environ_values, task_definition_family,
+                                                                 container_port,
+                                                                 log_group_name, container_name)
+        self.provision_ecs_service(self.configuration.ecs_service_name_adminer, self.ecs_cluster, ecs_task_definition,
+                                   self.adminer_target_group, self.backend_security_group)
 
     def provision_grafana(self):
         """
         Provision grafana components.
-
-        :return:
-        """
-
         environ_values = [
             {"name": "GF_SECURITY_ADMIN_USER",
              "value": "mufasa"
@@ -858,23 +1049,25 @@ class LionKing:
              "value": "Aa123456!"
              }
         ]
+
+        :return:
+        """
+
         self.provision_grafana_postgres_db()
 
-        # self.prepare_build_directory()
         os.makedirs(self.configuration.local_deployment_directory_path, exist_ok=True)
         shutil.rmtree(self.configuration.local_deployment_directory_path)
         source_code_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "grafana"))
         shutil.copytree(source_code_path, self.configuration.local_deployment_directory_path)
-        breakpoint()
         self.replacement_engine.perform_recursive_replacements(self.configuration.local_deployment_directory_path,
-                                                               {"STRING_REPLACEMENT_GRAFANA_DB_HOST": self.configuration.grafana_db_host_private_address,
-                                                                "STRING_REPLACEMENT_GRAFANA_DB_NAME": "grafana",
-                                                                "STRING_REPLACEMENT_GRAFANA_DB_USERNAME": "grafana_user",
-                                                                "STRING_REPLACEMENT_GRAFANA_DB_PASSWORD": "Aa123456!"})
+                                                               {
+                                                                   "STRING_REPLACEMENT_GRAFANA_DB_HOST": self.configuration.grafana_db_host_private_address,
+                                                                   "STRING_REPLACEMENT_GRAFANA_DB_NAME": "grafana",
+                                                                   "STRING_REPLACEMENT_GRAFANA_DB_USERNAME": "grafana_user",
+                                                                   "STRING_REPLACEMENT_GRAFANA_DB_PASSWORD": "Aa123456!"})
 
         tags = ["grafana:latest"]
         self.docker_api.build(self.configuration.local_deployment_directory_path, tags)
-        return tags
 
         image_tags = self.build()
         self.login_to_ecr()
@@ -966,12 +1159,17 @@ class LionKing:
             self.provision_infrastructure()
 
         image_tags = self.build_and_upload()
-        task_definition_family = self.configuration.ecs_task_definition_family
+        task_definition_family = self.configuration.ecs_task_definition_family_backend
         environ_values = self.generate_environment_values()
-        log_group_name = self.configuration.cloudwatch_log_group_name
+        log_group_name = self.configuration.cloudwatch_log_group_name_backend
         container_name = "backend"
-        container_port = 80
-        self.provision_ecs_task_definition(image_tags[0], environ_values, task_definition_family, container_port, log_group_name, container_name)
+        container_port = 9090
+        ecs_task_definition = self.provision_ecs_task_definition(image_tags[0], environ_values, task_definition_family,
+                                                                 container_port,
+                                                                 log_group_name, container_name)
+        self.provision_ecs_service(self.configuration.ecs_service_name_backend, self.ecs_cluster, ecs_task_definition,
+                                   self.backend_target_group, self.backend_security_group)
+        return True
 
     def provision_ecs_cluster(self):
         """
@@ -997,6 +1195,7 @@ class LionKing:
 
         cluster.configuration = {}
         self.aws_api.provision_ecs_cluster(cluster)
+        self._ecs_cluster = cluster
 
         return cluster
 
@@ -1101,7 +1300,9 @@ class LionKing:
         self.aws_api.provision_iam_role(iam_role)
         return iam_role
 
-    def provision_ecs_task_definition(self, ecr_image_id, environ_values, task_definition_family, container_port, log_group_name, container_name):
+    # pylint: disable= too-many-arguments
+    def provision_ecs_task_definition(self, ecr_image_id, environ_values, task_definition_family, container_port,
+                                      log_group_name, container_name):
         """
         Provision task definition.
 
@@ -1157,15 +1358,21 @@ class LionKing:
         ecs_task_definition.network_mode = "awsvpc"
 
         ecs_task_definition.memory = str(self.configuration.ecs_task_definition_memory_reservation)
+        ecs_task_definition.runtime_platform = {
+            "cpuArchitecture": "ARM64",
+            "operatingSystemFamily": "LINUX"
+        }
 
         self.aws_api.provision_ecs_task_definition(ecs_task_definition)
 
         return ecs_task_definition
 
-    def provision_ecs_service(self, ecs_cluster, ecs_task_definition, alb_target_group, security_group):
+    # pylint: disable= too-many-arguments
+    def provision_ecs_service(self, service_name, ecs_cluster, ecs_task_definition, alb_target_group, security_group):
         """
         Provision component's ECS service.
 
+        :param service_name:
         :param ecs_cluster:
         :param ecs_task_definition:
         :param alb_target_group:
@@ -1174,7 +1381,7 @@ class LionKing:
         """
 
         ecs_service = ECSService({})
-        ecs_service.name = self.configuration.ecs_service_name
+        ecs_service.name = service_name
         ecs_service.region = self.region
 
         ecs_service.tags = [{key.lower(): value for key, value in dict_tag.items()} for dict_tag in self.tags]
@@ -1186,19 +1393,20 @@ class LionKing:
         ecs_service.cluster_arn = ecs_cluster.arn
         ecs_service.task_definition = ecs_task_definition.arn
 
-        # ecs_service.load_balancers = [{
-        # "targetGroupArn": alb_target_group.arn,
-        #    "containerName": self.configuration.ecs_backend_container_name,
-        #    "containerPort": 80
-        # }]
+        ecs_service.load_balancers = [{
+            "targetGroupArn": alb_target_group.arn,
+            "containerName": ecs_task_definition.container_definitions[0]["name"],
+            "containerPort": ecs_task_definition.container_definitions[0]["portMappings"][0]["containerPort"]
+        }]
 
         ecs_service.desired_count = 1
 
         ecs_service.launch_type = "FARGATE"
         ecs_service.network_configuration = {
             "awsvpcConfiguration": {
-                "subnets": [subnet.id for subnet in self.subnets if "private" in subnet.get_tagname()],
-                "securityGroups": [security_group.id]
+                "subnets": [subnet.id for subnet in self.subnets if "public" in subnet.get_tagname()],
+                "securityGroups": [security_group.id],
+                "assignPublicIp": "ENABLED"
             }
         }
 
@@ -1210,16 +1418,7 @@ class LionKing:
             "maximumPercent": 200,
             "minimumHealthyPercent": 100
         }
-        # ecs_service.placement_strategy = [
-        #    {
-        #        "type": "spread",
-        #        "field": "attribute:ecs.availability-zone"
-        #    },
-        #    {
-        #        "type": "spread",
-        #        "field": "instanceId"
-        #    }
-        # ]
+
         ecs_service.health_check_grace_period_seconds = 10
         ecs_service.scheduling_strategy = "REPLICA"
         ecs_service.enable_ecs_managed_tags = False
@@ -1228,6 +1427,104 @@ class LionKing:
         wait_timeout = 10 * 60
         logger.info(f"Starting ECS service deployment with {wait_timeout=}")
         self.aws_api.provision_ecs_service(ecs_service, wait_timeout=wait_timeout)
+
+    def get_bastion_ami(self):
+        """
+        Find bastion ami
+
+        :return:
+        """
+        client = SSMClient()
+        param = client.get_region_parameter(self.configuration.region,
+                                            "/aws/service/canonical/ubuntu/server/22.04/stable/current/amd64/hvm/ebs-gp2/ami-id")
+
+        filter_request = {"ImageIds": [param.value]}
+        amis = self.aws_api.ec2_client.get_region_amis(self.region, custom_filters=filter_request)
+        if len(amis) != 1:
+            raise RuntimeError(f"Can not find single AMI using filter: {filter_request['Filters']}")
+        return amis[0]
+
+    def provision_bastion_ssh_key_pair(self):
+        """
+        Provision Bastion SSH Key-pair.
+
+        :return:
+        """
+
+        key_pair = KeyPair({})
+        key_pair.name = self.configuration.bastion_ssh_key_pair_name
+        key_pair.key_type = "ed25519"
+        key_pair.region = Region.get_region(self.configuration.region)
+        key_pair.tags = copy.deepcopy(self.tags)
+        key_pair.tags.append({
+            "Key": "Name",
+            "Value": key_pair.name
+        })
+
+        self.aws_api.provision_key_pair(key_pair, save_to_secrets_manager=True, secrets_manager_region=self.region)
+
+        return key_pair
+
+    def provision_bastion_instance(self):
+        """
+        Provision instance used as a gateway.
+
+        :return:
+        """
+
+        security_group = self.aws_api.get_security_group_by_vpc_and_name(self.vpc,
+                                                                         self.configuration.bastion_security_group_name)
+        self.provision_bastion_ssh_key_pair()
+
+        ami = self.get_bastion_ami()
+
+        target = EC2Instance({})
+        target.image_id = ami.id
+        target.instance_type = "t2.micro"
+
+        target.key_name = self.configuration.bastion_ssh_key_pair_name
+        target.region = self.region
+        target.min_count = 1
+        target.max_count = 1
+
+        target.tags = copy.deepcopy(self.tags)
+        target.tags.append({
+            "Key": "Name",
+            "Value": self.configuration.bastion_instance_name
+        })
+
+        target.ebs_optimized = True
+        target.instance_initiated_shutdown_behavior = "terminate"
+
+        target.network_interfaces = [
+            {
+                "AssociatePublicIpAddress": True,
+                "DeleteOnTermination": True,
+                "Description": "Primary network interface",
+                "DeviceIndex": 0,
+                "Groups": [
+                    security_group.id
+                ],
+                "Ipv6AddressCount": 0,
+                "SubnetId": [subnet for subnet in self.subnets if "public" in subnet.get_tagname()][0].id,
+                "InterfaceType": "interface",
+            }
+        ]
+
+        target.block_device_mappings = [
+            {
+                "DeviceName": "/dev/sda1",
+                "Ebs": {
+                    "DeleteOnTermination": True,
+                    "VolumeSize": 8,
+                    "VolumeType": "gp3",
+                },
+            }
+        ]
+        target.monitoring = {"Enabled": False}
+
+        self.aws_api.provision_ec2_instance(target)
+        return target
 
     def provision_infrastructure(self):
         """
@@ -1241,11 +1538,14 @@ class LionKing:
         self.provision_routing()
         self.provision_ecr_repositories()
         self.provision_security_groups()
+        self.provision_roles()
         self.provision_db()
         self.provision_cloudwatch_log_groups()
+        self.provision_ecs_cluster()
+        self.provision_certificate()
         self.provision_load_balancer_components()
         self.provision_adminer()
-        self.provision_grafana()
+        # self.provision_grafana()
 
     def dispose(self):
         """
@@ -1253,10 +1553,10 @@ class LionKing:
 
         :return:
         """
-
+        self.dispose_db_components()
         cluster = ECSCluster({"name": self.configuration.cluster_name})
         cluster.region = self.region
-        service = ECSService({"name": self.configuration.ecs_service_name})
+        service = ECSService({"name": self.configuration.ecs_service_name_backend})
         service.region = self.region
         self.aws_api.ecs_client.dispose_service(cluster, service)
         self.aws_api.ecs_client.dispose_cluster(cluster)
@@ -1278,28 +1578,6 @@ class LionKing:
             "Value": self.configuration.internet_gateway_name
         })
         self.aws_api.ec2_client.dispose_internet_gateway(inet_gateway)
-        return True
-
-        for counter in range(self.configuration.db_instance_count):
-            db_instance = RDSDBInstance({})
-            db_instance.region = self.region
-            db_instance.skip_final_snapshot = True
-            db_instance.id = self.configuration.db_rds_instance_id_template.format(counter=counter)
-            self.aws_api.rds_client.dispose_db_instance(db_instance)
-
-        subnet_group = RDSDBSubnetGroup({"name": self.configuration.db_rds_subnet_group_name})
-        subnet_group.region = self.region
-        self.aws_api.rds_client.dispose_db_subnet_group(subnet_group)
-
-        db_cluster_parameter_group = RDSDBClusterParameterGroup({})
-        db_cluster_parameter_group.region = self.region
-        db_cluster_parameter_group.name = self.configuration.db_rds_cluster_parameter_group_name
-        self.aws_api.rds_client.dispose_cluster_parameter_group(db_cluster_parameter_group)
-
-        db_parameter_group = RDSDBParameterGroup({})
-        db_parameter_group.region = self.region
-        db_parameter_group.name = self.configuration.db_rds_instance_parameter_group_name
-        self.aws_api.rds_client.dispose_parameter_group(db_cluster_parameter_group)
 
         iam_role = IamRole({})
         iam_role.name = self.configuration.ecs_task_role_name
@@ -1313,7 +1591,7 @@ class LionKing:
 
         ret = self.aws_api.ecs_client.get_all_task_definitions(region=self.region)
         for task_definition in ret:
-            if task_definition.family == self.configuration.ecs_task_definition_family:
+            if task_definition.family == self.configuration.ecs_task_definition_family_backend:
                 self.aws_api.ecs_client.dispose_task_definition(task_definition)
 
         log_group = CloudWatchLogGroup({})
@@ -1321,8 +1599,8 @@ class LionKing:
         log_group.name = self.configuration.cloudwatch_log_group_name
         self.aws_api.cloud_watch_logs_client.dispose_log_group(log_group)
 
-        # todo: self.aws_api.ec2_client.dispose_subnets(self.subnets)
-        # todo: self.aws_api.ec2_client.dispose_route_tables(self.subnets)
+        self.aws_api.ec2_client.dispose_subnets(self.subnets)
+        # self.aws_api.ec2_client.dispose_route_tables(route_tables)
 
         security_group = self.aws_api.get_security_group_by_vpc_and_name(self.vpc,
                                                                          self.configuration.db_rds_security_group_name)
@@ -1338,3 +1616,31 @@ class LionKing:
         self.aws_api.ec2_client.dispose_vpc(self.vpc)
 
         return True
+
+    def dispose_db_components(self):
+        """
+        Dispose all RDS related components.
+
+        :return:
+        """
+
+        for counter in range(self.configuration.db_instance_count):
+            db_instance = RDSDBInstance({})
+            db_instance.region = self.region
+            db_instance.skip_final_snapshot = True
+            db_instance.id = self.configuration.db_rds_instance_id_template.format(counter=counter)
+            self.aws_api.rds_client.dispose_db_instance(db_instance)
+
+        db_cluster_parameter_group = RDSDBClusterParameterGroup({})
+        db_cluster_parameter_group.region = self.region
+        db_cluster_parameter_group.name = self.configuration.db_rds_cluster_parameter_group_name
+        self.aws_api.rds_client.dispose_cluster_parameter_group(db_cluster_parameter_group)
+
+        db_parameter_group = RDSDBParameterGroup({})
+        db_parameter_group.region = self.region
+        db_parameter_group.name = self.configuration.db_rds_instance_parameter_group_name
+        self.aws_api.rds_client.dispose_parameter_group(db_cluster_parameter_group)
+
+        subnet_group = RDSDBSubnetGroup({"name": self.configuration.db_rds_subnet_group_name})
+        subnet_group.region = self.region
+        self.aws_api.rds_client.dispose_db_subnet_group(subnet_group)

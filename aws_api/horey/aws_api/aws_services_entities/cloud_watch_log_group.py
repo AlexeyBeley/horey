@@ -62,6 +62,26 @@ class CloudWatchLogGroup(AwsObject):
 
         return ret
 
+    def generate_retention_policy_requests(self, target_group, i_am_consenting_adult=False):
+        """
+        Standard
+
+        :param i_am_consenting_adult: permits retention policy deletion
+        :param target_group:
+        :return: del_request, put_request
+        """
+
+        del_req = put_req = None
+        if self.retention_in_days != target_group.retention_in_days:
+            if target_group.retention_in_days is None:
+                if not i_am_consenting_adult:
+                    raise RuntimeError("You must be a consenting adult to do so!")
+                del_req = {"logGroupName": self.name}
+            else:
+                put_req = {"logGroupName": self.name, "retentionInDays": target_group.retention_in_days}
+
+        return del_req, put_req
+
     def update_from_raw_response(self, dict_src):
         """
         Standard.

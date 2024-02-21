@@ -236,7 +236,7 @@ class CloudWatchLogsClient(Boto3Client):
             token = new_token
         return
 
-    def provision_log_group(self, log_group: CloudWatchLogGroup):
+    def update_log_group_information(self, log_group):
         """
         Standard.
 
@@ -244,14 +244,39 @@ class CloudWatchLogsClient(Boto3Client):
         :return:
         """
 
-        region_log_groups = self.get_region_cloud_watch_log_groups(log_group.region, get_tags=False)
+        region_log_groups = self.get_region_cloud_watch_log_groups(log_group.region, get_tags=True)
         for region_log_group in region_log_groups:
             if region_log_group.name == log_group.name:
                 log_group.update_from_raw_response(region_log_group.dict_src)
-                return
+                return True
+        return False
 
-        AWSAccount.set_aws_region(log_group.region)
-        self.provision_log_group_raw(log_group.generate_create_request())
+    def provision_log_group(self, log_group: CloudWatchLogGroup):
+        """
+        Standard.
+
+        :param log_group:
+        :return:
+        """
+        log_group_current = CloudWatchLogGroup({"name": log_group.name})
+        log_group_current.region = log_group.region
+        if self.update_log_group_information(log_group_current):
+            delete_request, put_request = log_group_current.generate_retention_policy_requests(log_group)
+            if delete_request and put_request:
+                raise RuntimeError(f"Can not be both: {delete_request=}, {put_request=}")
+
+            if delete_request:
+                for _ in self.execute(self.client.delete_retention_policy, None, raw_data=True, filters_req=delete_request):
+                    self.clear_cache(CloudWatchLogGroup)
+
+            if put_request:
+                for _ in self.execute(self.client.put_retention_policy, None, raw_data=True, filters_req=put_request):
+                    self.clear_cache(CloudWatchLogGroup)
+        else:
+            AWSAccount.set_aws_region(log_group.region)
+            self.provision_log_group_raw(log_group.generate_create_request())
+
+        self.update_log_group_information(log_group)
 
     def provision_log_group_raw(self, request_dict):
         """

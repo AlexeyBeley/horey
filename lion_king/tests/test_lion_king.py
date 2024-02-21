@@ -39,8 +39,7 @@ def test_provision_ecr_repositories():
     configuration.configuration_file_full_path = configuration_file_path
     configuration.init_from_file()
     lion_king = LionKing(configuration)
-    repo = lion_king.provision_ecr_repositories()
-    assert repo.arn
+    assert lion_king.provision_ecr_repositories()
 
 
 @pytest.mark.done
@@ -120,10 +119,40 @@ def test_provision_security_groups():
 
 
 @pytest.mark.done
-def test_update_component_provision_infra():
+def test_provision_cloudwatch_log_groups():
     configuration = LionKingConfigurationPolicy()
     configuration.configuration_file_full_path = configuration_file_path
     configuration.provision_infrastructure = True
+    configuration.init_from_file()
+    lion_king = LionKing(configuration)
+    assert lion_king.provision_cloudwatch_log_groups()
+
+
+@pytest.mark.done
+def test_provision_bastion_instance():
+    configuration = LionKingConfigurationPolicy()
+    configuration.configuration_file_full_path = configuration_file_path
+    configuration.provision_infrastructure = True
+    configuration.init_from_file()
+    lion_king = LionKing(configuration)
+    assert lion_king.provision_bastion_instance()
+
+
+@pytest.mark.done
+def test_update_component_provision_infra_true():
+    configuration = LionKingConfigurationPolicy()
+    configuration.configuration_file_full_path = configuration_file_path
+    configuration.provision_infrastructure = True
+    configuration.init_from_file()
+    lion_king = LionKing(configuration)
+    assert lion_king.update_component()
+
+
+@pytest.mark.done
+def test_update_component_provision_infra_false():
+    configuration = LionKingConfigurationPolicy()
+    configuration.configuration_file_full_path = configuration_file_path
+    configuration.provision_infrastructure = False
     configuration.init_from_file()
     lion_king = LionKing(configuration)
     assert lion_king.update_component()
@@ -158,30 +187,6 @@ def test_provision_roles():
     lion_king = LionKing(configuration)
     assert lion_king.provision_roles()
 
-
-@pytest.mark.done
-def test_provision_ecs_task_definition():
-    configuration = LionKingConfigurationPolicy()
-    configuration.configuration_file_full_path = configuration_file_path
-    configuration.provision_infrastructure = True
-    configuration.init_from_file()
-    lion_king = LionKing(configuration)
-    assert lion_king.provision_ecs_task_definition()
-
-
-@pytest.mark.done
-def test_provision_ecs_service():
-    configuration = LionKingConfigurationPolicy()
-    configuration.configuration_file_full_path = configuration_file_path
-    configuration.provision_infrastructure = True
-    configuration.init_from_file()
-    lion_king = LionKing(configuration)
-    ecs_cluster = lion_king.provision_ecs_cluster()
-    ecs_task_definition = lion_king.provision_ecs_task_definition()
-    sec_grps = lion_king.provision_security_groups()
-    assert lion_king.provision_ecs_service(ecs_cluster, ecs_task_definition, None, sec_grps[0])
-
-
 @pytest.mark.done
 def test_provision_rds_instance():
     configuration = LionKingConfigurationPolicy()
@@ -202,7 +207,7 @@ def test_provision_grafana():
     assert lion_king.provision_grafana()
 
 
-@pytest.mark.todo
+@pytest.mark.done
 def test_provision_adminer():
     configuration = LionKingConfigurationPolicy()
     configuration.configuration_file_full_path = configuration_file_path
@@ -222,7 +227,7 @@ def test_provision_certificate():
     assert lion_king.provision_certificate()
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_provision_routing():
     configuration = LionKingConfigurationPolicy()
     configuration.configuration_file_full_path = configuration_file_path
@@ -234,7 +239,7 @@ def test_provision_routing():
     assert lion_king.provision_routing()
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_provision_load_balancer_components():
     configuration = LionKingConfigurationPolicy()
     configuration.configuration_file_full_path = configuration_file_path
@@ -246,7 +251,7 @@ def test_provision_load_balancer_components():
     assert lion_king.provision_load_balancer_components()
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_dispose():
     configuration = LionKingConfigurationPolicy()
     configuration.configuration_file_full_path = configuration_file_path

@@ -1,7 +1,10 @@
 """
-AWS lambda client to handle lambda service API requests.
+ECS client to handle ECS api calls
 
 """
+
+# pylint: disable= too-many-lines
+
 import copy
 import datetime
 import time
@@ -52,7 +55,7 @@ class ECSClient(Boto3Client):
             self.client.run_task, "tasks", filters_req=request_dict
         ):
             return response
-    
+
     def get_all_clusters(self, region=None):
         """
         Get all clusters in all regions.
@@ -121,10 +124,10 @@ class ECSClient(Boto3Client):
         ))
 
         if len(cluster_identifiers) > 100:
-                raise NotImplementedError(
-                    """clusters (list) -- A list of up to 100 cluster names or full cluster
-                Amazon Resource Name (ARN) entries. If you do not specify a cluster, the default cluster is assumed."""
-                )
+            raise NotImplementedError(
+                """clusters (list) -- A list of up to 100 cluster names or full cluster
+            Amazon Resource Name (ARN) entries. If you do not specify a cluster, the default cluster is assumed."""
+            )
 
         filter_req = {
             "clusters": cluster_identifiers,
@@ -356,16 +359,16 @@ class ECSClient(Boto3Client):
         """
         regions = [region] if region is not None else AWSAccount.get_aws_account().regions.values()
         regional_fetcher_generator = self.yield_services_raw
-        for region in regions:
+        for _region in regions:
             clusters = [filters_req["cluster"]] if filters_req is not None and "cluster" in filters_req else \
-                [cluster.arn for cluster in list(self.yield_clusters(region=region, update_info=update_info))]
+                [cluster.arn for cluster in list(self.yield_clusters(region=_region, update_info=update_info))]
             for cluster in clusters:
                 filters_req_new = copy.deepcopy(filters_req) if filters_req is not None else {}
                 filters_req_new["cluster"] = cluster
                 for obj in self.regional_service_entities_generator(regional_fetcher_generator,
                                                                     ECSService,
                                                                     update_info=update_info,
-                                                                    regions=[region],
+                                                                    regions=[_region],
                                                                     filters_req=filters_req_new,
                                                                     cache_filter_callback=self.services_cache_filter_callback):
                     yield obj
@@ -409,7 +412,7 @@ class ECSClient(Boto3Client):
         for key in filters_req:
             if key not in supported_filters:
                 raise ValueError(f"{key} is not one of {supported_filters}")
-            
+
         if "/" not in filters_req["cluster"]:
             return filters_req["cluster"]
 
@@ -426,16 +429,16 @@ class ECSClient(Boto3Client):
         """
         regions = [region] if region is not None else AWSAccount.get_aws_account().regions.values()
         regional_fetcher_generator = self.yield_tasks_raw
-        for region in regions:
+        for _region in regions:
             clusters = [filters_req["cluster"]] if filters_req is not None and "cluster" in filters_req else\
-                [cluster.arn for cluster in list(self.yield_clusters(region=region, update_info=update_info))]
+                [cluster.arn for cluster in list(self.yield_clusters(region=_region, update_info=update_info))]
             for cluster in clusters:
                 filters_req_new = copy.deepcopy(filters_req) if filters_req is not None else {}
                 filters_req_new["cluster"] = cluster
                 for obj in self.regional_service_entities_generator(regional_fetcher_generator,
                                                                 ECSTask,
                                                                 update_info=update_info,
-                                                                regions=[region],
+                                                                regions=[_region],
                                                                 filters_req=filters_req_new,
                                                                 cache_filter_callback=self.tasks_cache_filter_callback):
                     yield obj
@@ -465,7 +468,7 @@ class ECSClient(Boto3Client):
             raise RuntimeError(f"{len(task_arns)=} {len(final_result)=}")
 
         return final_result
-    
+
     def get_all_tasks(self, region=None):
         """
         Standard
@@ -587,7 +590,9 @@ class ECSClient(Boto3Client):
             ):
                 yield dict_src
 
-    def provision_ecs_task_definition(self, task_definition):
+        return []
+
+    def provision_ecs_task_definition(self, task_definition: ECSTaskDefinition):
         """
         Standard
 
@@ -789,7 +794,6 @@ class ECSClient(Boto3Client):
         :param task_definition:
         :return:
         """
-        breakpoint()
         request_dict = {"taskDefinitions": [f"{task_definition.family}:{task_definition.revision}"]}
         logger.info(f"Disposing ECS Task Definistion: {request_dict}")
         for response in self.execute(
