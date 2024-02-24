@@ -148,7 +148,7 @@ def test_update_component_provision_infra_true():
     assert lion_king.update_component()
 
 
-@pytest.mark.done
+@pytest.mark.wip
 def test_update_component_provision_infra_false():
     configuration = LionKingConfigurationPolicy()
     configuration.configuration_file_full_path = configuration_file_path

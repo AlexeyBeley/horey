@@ -902,7 +902,8 @@ class LionKing:
 
         cert = ACMCertificate({})
         cert.region = self.region
-        cert.domain_name = f"*.{self.configuration.public_hosted_zone_name}"
+        cert.domain_name = self.configuration.public_hosted_zone_name
+        cert.subject_alternative_names = [f"*.{self.configuration.public_hosted_zone_name}"]
         cert.validation_method = "DNS"
         cert.tags = copy.deepcopy(self.tags)
         cert.tags.append({
@@ -919,7 +920,7 @@ class LionKing:
 
         :return:
         """
-        domain_name = f"*.{self.configuration.public_hosted_zone_name}"
+        domain_name = self.configuration.public_hosted_zone_name
         cert_name = domain_name.replace("*", "star")
         certificate = self.aws_api.acm_client.get_certificate_by_tags(self.region, {"name": cert_name},
                                                                       ignore_missing_tag=True)
@@ -986,6 +987,18 @@ class LionKing:
                     "Value": load_balancer.dns_name
                 }
             ]}
+
+        record = HostedZone.Record(dict_record)
+        hosted_zone.records.append(record)
+        dict_record = {
+            "Name": f"{hosted_zone.name}",
+            "Type": "A",
+            "AliasTarget": {
+                "HostedZoneId": "Z215JYRZR1TBD5",
+                "DNSName": load_balancer.dns_name,
+                "EvaluateTargetHealth": True
+            }
+        }
 
         record = HostedZone.Record(dict_record)
         hosted_zone.records.append(record)
@@ -1163,7 +1176,7 @@ class LionKing:
         environ_values = self.generate_environment_values()
         log_group_name = self.configuration.cloudwatch_log_group_name_backend
         container_name = "backend"
-        container_port = 9090
+        container_port = 80
         ecs_task_definition = self.provision_ecs_task_definition(image_tags[0], environ_values, task_definition_family,
                                                                  container_port,
                                                                  log_group_name, container_name)

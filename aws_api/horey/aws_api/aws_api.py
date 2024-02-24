@@ -3086,8 +3086,11 @@ class AWSAPI:
             )
             time.sleep(sleep_time)
 
-        if len(certificate.domain_validation_options) != 1:
+        if len(certificate.domain_validation_options) == 0:
             raise NotImplementedError(certificate.domain_validation_options)
+        if len(certificate.domain_validation_options) > 1:
+            assert len(list({domain_validation_option["ResourceRecord"]["Name"] for domain_validation_option in certificate.domain_validation_options})) == 1
+            assert len(list({domain_validation_option["ResourceRecord"]["Value"] for domain_validation_option in certificate.domain_validation_options})) == 1
 
         hosted_zones = self.route53_client.get_all_hosted_zones(
             name=master_hosted_zone_name
