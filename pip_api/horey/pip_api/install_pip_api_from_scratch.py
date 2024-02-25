@@ -27,8 +27,13 @@ def install_pip_api():
 
     :return:
     """
+
     install_dependencies()
+
     StaticMethods.install_requirements(StaticMethods.get_requirements_file_path(StaticMethods.HOREY_REPO_PATH, "pip_api"), {"horey": StaticMethods.HOREY_REPO_PATH})
+    requirement_pip_api = Requirement("", "horey.pip_api")
+    requirement_pip_api.multi_package_repo_path = StaticMethods.HOREY_REPO_PATH
+    StaticMethods.install_multi_package_repo_requirement(requirement_pip_api)
 
 
 def main():
