@@ -19,6 +19,7 @@ class StaticMethods:
 
     HOREY_REPO_PATH = os.path.abspath(os.path.join(__file__, "..", "..", "..", ".."))
     PYTHON_INTERPRETER_COMMAND = sys.executable if "win" not in sys.platform.lower() else f'"{sys.executable}"'
+    INSTALLED_PACKAGES = None
     logger = None
 
     @staticmethod
@@ -236,7 +237,7 @@ class StaticMethods:
                                                      multi_package_repos_prefix_map)
         if not requirements_aggregator:
             return
-        installed_packages = StaticMethods.init_packages()
+        installed_packages = StaticMethods.get_installed_packages()
 
         for requirement in reversed(requirements_aggregator.values()):
             if not StaticMethods.requirement_satisfied(requirement, installed_packages):
@@ -254,12 +255,14 @@ class StaticMethods:
                         break
 
     @staticmethod
-    def init_packages(multi_package_repos_prefix_map=None):
+    def get_installed_packages(multi_package_repos_prefix_map=None):
         """
         Initialize packages with their repo paths and versions
 
         :return:
         """
+        if StaticMethods.INSTALLED_PACKAGES:
+            return StaticMethods.INSTALLED_PACKAGES
 
         response = StaticMethods.execute(f"{StaticMethods.PYTHON_INTERPRETER_COMMAND} -m pip list --format json")
         lst_packages = json.loads(response["stdout"])
@@ -273,7 +276,9 @@ class StaticMethods:
                     if package.name.startswith(prefix):
                         package.multi_package_repo_prefix = prefix
                         package.multi_package_repo_path = repo_path
-        return objects
+
+        StaticMethods.INSTALLED_PACKAGES = objects
+        return StaticMethods.INSTALLED_PACKAGES
 
     @staticmethod
     def install_requirement(requirement: Requirement, multi_package_repos_prefix_map):
@@ -291,8 +296,20 @@ class StaticMethods:
                 requirement.multi_package_repo_path = repo_path
                 return StaticMethods.install_multi_package_repo_requirement(requirement)
 
+        return StaticMethods.install_requirement_default(requirement)
+
+    @staticmethod
+    def install_requirement_default(requirement):
+        """
+        Default pip install
+
+        :param requirement:
+        :return:
+        """
+
+        StaticMethods.INSTALLED_PACKAGES = None
         return StaticMethods.execute(
-            f"{StaticMethods.PYTHON_INTERPRETER_COMMAND} -m pip install --force-reinstall {requirement.generate_install_string()}")
+        f"{StaticMethods.PYTHON_INTERPRETER_COMMAND} -m pip install --force-reinstall {requirement.generate_install_string()}")
 
     @staticmethod
     def install_multi_package_repo_requirement(requirement):
@@ -316,23 +333,27 @@ class StaticMethods:
         :return:
         """
 
-        breakpoint()
         tmp_build_dir = os.path.join(multi_package_repo_path, "build", "_build")
         os.makedirs(tmp_build_dir, exist_ok=True)
 
         build_dir_path = os.path.join(tmp_build_dir, package_dir_name)
         response = StaticMethods.create_wheel(os.path.join(multi_package_repo_path, package_dir_name), build_dir_path)
         breakpoint()
+        wheel_file_name = None
+        for wheel_file_name in os.listdir(build_dir_path):
+            if wheel_file_name.endswith(".whl"):
+                break
 
-        ret = StaticMethods.execute(
-            f"cd {multi_package_repo_path} && make install_wheel-{package_dir_name}"
-        )
-        lines = ret["stdout"].split("\n")
+        command = f"{StaticMethods.PYTHON_INTERPRETER_COMMAND} -m pip install --force-reinstall {build_dir_path}/dist/{wheel_file_name}"
+        response = StaticMethods.execute(command)
+
+        lines = response["stdout"].split("\n")
         index = -2 if "Leaving directory" in lines[-1] else -1
         if lines[index] != f"done installing {package_dir_name}":
             raise RuntimeError(
-                f"Could not install {package_dir_name} from source code:\n {ret}"
+                f"Could not install {package_dir_name} from source code:\n {response}"
             )
+        StaticMethods.INSTALLED_PACKAGES = None
 
     @staticmethod
     def requirement_satisfied(requirement: Requirement, packages):
@@ -376,7 +397,7 @@ class StaticMethods:
         os.chdir(build_dir_path)
 
         try:
-            command = f"{sys.executable} setup.py sdist bdist_wheel"
+            command = f"{StaticMethods.PYTHON_INTERPRETER_COMMAND} setup.py sdist bdist_wheel"
             response = StaticMethods.execute(command)
         finally:
             os.chdir(old_cwd)
@@ -499,7 +520,6 @@ class StaticMethods:
         with open(file_name, "w", encoding="utf-8") as file_handler:
             file_handler.write("@echo off\r\n" + command)
             new_command = file_name
-        breakpoint()
         return StaticMethods.run_raw(new_command, file_name,
                                      ignore_on_error_callback=ignore_on_error_callback,
                                      timeout=timeout,

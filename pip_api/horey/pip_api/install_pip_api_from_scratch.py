@@ -5,34 +5,21 @@ Prerequisites: python, pip, OS (Mac, Linux or Windows)
 """
 import os
 import logging
-from time import perf_counter
 
-from subprocess import Popen, PIPE, STDOUT
 from static_methods import StaticMethods
+from requirement import Requirement
 
 
-def execute(lst_command):
+def install_dependencies():
     """
-    Run a command in a process.
+    Install system dependencies.
 
-    :param lst_command:
     :return:
     """
 
-    start_time = perf_counter()
-    StaticMethods.logger.info(f"Creating sub process: {start_time}")
-    # pylint: disable= consider-using-with
-    process = Popen(lst_command, stdout=PIPE, stderr=STDOUT)
-    StaticMethods.logger.info(f"Started sub process: {perf_counter() - start_time}")
-
-    try:
-        if process.stderr is not None:
-            StaticMethods.logger.error(process.stderr.read())
-
-        if process.stdout is not None:
-            StaticMethods.logger.info(process.stdout.read())
-    except Exception:
-        StaticMethods.logger.exception("Failed to read Popen stdout/stderr")
+    requirement = Requirement("", "wheel")
+    ret = StaticMethods.install_requirement_default(requirement)
+    breakpoint()
 
 
 def install_pip_api():
@@ -41,6 +28,7 @@ def install_pip_api():
 
     :return:
     """
+    install_dependencies()
     StaticMethods.install_requirements(StaticMethods.get_requirements_file_path(StaticMethods.HOREY_REPO_PATH, "pip_api"), {"horey": StaticMethods.HOREY_REPO_PATH})
 
 
