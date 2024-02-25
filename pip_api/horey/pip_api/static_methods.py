@@ -316,8 +316,11 @@ class StaticMethods:
         :return:
         """
 
-        raise RuntimeError("""
-        StaticMethods.create_wheel(multi_package_repo_path, package_dir_name)
+        breakpoint()
+        build_dir_path = os.path.join(multi_package_repo_path, "build", "_build", package_dir_name)
+        response = StaticMethods.create_wheel(os.path.join(multi_package_repo_path, package_dir_name), build_dir_path)
+        breakpoint()
+
         ret = StaticMethods.execute(
             f"cd {multi_package_repo_path} && make install_wheel-{package_dir_name}"
         )
@@ -327,7 +330,6 @@ class StaticMethods:
             raise RuntimeError(
                 f"Could not install {package_dir_name} from source code:\n {ret}"
             )
-        """)
 
     @staticmethod
     def requirement_satisfied(requirement: Requirement, packages):
@@ -372,11 +374,11 @@ class StaticMethods:
 
         try:
             command = f"{sys.executable} setup.py sdist bdist_wheel"
-            StaticMethods.execute(command)
+            response = StaticMethods.execute(command)
         finally:
             os.chdir(old_cwd)
 
-        return os.path.join(build_dir_path, "dist")
+        return response
 
     @staticmethod
     def execute(command, ignore_on_error_callback=None, timeout=60 * 10, debug=True):
