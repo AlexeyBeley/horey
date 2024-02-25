@@ -492,10 +492,10 @@ class StaticMethods:
 
         file_name = f"tmp-{str(uuid.uuid4())}.bat"
         with open(file_name, "w", encoding="utf-8") as file_handler:
-            file_handler.write(command)
-            command = file_name
-
-        return StaticMethods.run_raw(command, file_name,
+            file_handler.write("@echo off\r\n" + command)
+            new_command = file_name
+        breakpoint()
+        return StaticMethods.run_raw(new_command, file_name,
                                      ignore_on_error_callback=ignore_on_error_callback,
                                      timeout=timeout,
                                      debug=debug)
