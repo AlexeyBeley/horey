@@ -337,14 +337,15 @@ class StaticMethods:
         os.makedirs(tmp_build_dir, exist_ok=True)
 
         build_dir_path = os.path.join(tmp_build_dir, package_dir_name)
-        response = StaticMethods.create_wheel(os.path.join(multi_package_repo_path, package_dir_name), build_dir_path)
+        StaticMethods.create_wheel(os.path.join(multi_package_repo_path, package_dir_name), build_dir_path)
         breakpoint()
         wheel_file_name = None
-        for wheel_file_name in os.listdir(build_dir_path):
+        dist_dir_path = os.path.join(build_dir_path, "dist")
+        for wheel_file_name in os.listdir(dist_dir_path):
             if wheel_file_name.endswith(".whl"):
                 break
 
-        command = f"{StaticMethods.PYTHON_INTERPRETER_COMMAND} -m pip install --force-reinstall {build_dir_path}/dist/{wheel_file_name}"
+        command = f"{StaticMethods.PYTHON_INTERPRETER_COMMAND} -m pip install --force-reinstall {os.path.join(dist_dir_path, wheel_file_name)}"
         response = StaticMethods.execute(command)
 
         lines = response["stdout"].split("\n")

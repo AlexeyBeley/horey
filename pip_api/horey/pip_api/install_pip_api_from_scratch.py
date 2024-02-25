@@ -18,8 +18,7 @@ def install_dependencies():
     """
 
     requirement = Requirement("", "wheel")
-    ret = StaticMethods.install_requirement_default(requirement)
-    breakpoint()
+    StaticMethods.install_requirement_default(requirement)
 
 
 def install_pip_api():
