@@ -18,7 +18,7 @@ class StaticMethods:
     """
 
     HOREY_REPO_PATH = os.path.abspath(os.path.join(__file__, "..", "..", "..", ".."))
-    PYTHON_INTERPRETER_COMMAND = sys.executable
+    PYTHON_INTERPRETER_COMMAND = sys.executable if not "win" not in sys.platform else f'"{sys.executable}"'
     logger = None
 
     @staticmethod
