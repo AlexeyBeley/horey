@@ -317,7 +317,10 @@ class StaticMethods:
         """
 
         breakpoint()
-        build_dir_path = os.path.join(multi_package_repo_path, "build", "_build", package_dir_name)
+        tmp_build_dir = os.path.join(multi_package_repo_path, "build", "_build")
+        os.makedirs(tmp_build_dir, exist_ok=True)
+
+        build_dir_path = os.path.join(tmp_build_dir, package_dir_name)
         response = StaticMethods.create_wheel(os.path.join(multi_package_repo_path, package_dir_name), build_dir_path)
         breakpoint()
 
