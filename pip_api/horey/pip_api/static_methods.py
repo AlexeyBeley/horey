@@ -338,7 +338,6 @@ class StaticMethods:
 
         build_dir_path = os.path.join(tmp_build_dir, package_dir_name)
         StaticMethods.create_wheel(os.path.join(multi_package_repo_path, package_dir_name), build_dir_path)
-        breakpoint()
         wheel_file_name = None
         dist_dir_path = os.path.join(build_dir_path, "dist")
         for wheel_file_name in os.listdir(dist_dir_path):
@@ -350,7 +349,7 @@ class StaticMethods:
 
         lines = response["stdout"].split("\n")
         index = -2 if "Leaving directory" in lines[-1] else -1
-        if lines[index] != f"done installing {package_dir_name}":
+        if lines[index] != f"done installing {package_dir_name}" and "Successfully installed " not in lines[index]:
             raise RuntimeError(
                 f"Could not install {package_dir_name} from source code:\n {response}"
             )
