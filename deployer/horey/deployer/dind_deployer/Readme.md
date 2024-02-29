@@ -15,7 +15,3 @@ docker kill horey_deployer
 docker rm horey_deployer
 
 docker exec -it horey_deployer /bin/sh /opt/inseption_dockerfile/deployer.sh 
-
-
-
-https://us-west-2.console.aws.amazon.com/ecr/repositories/private/211921183446/dst_tst?region=us-west-2
