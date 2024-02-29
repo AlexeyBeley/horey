@@ -214,6 +214,10 @@ class LionKingConfigurationPolicy(ConfigurationPolicy):
         return f"service_{self.environment_name}_{self.project_name}-adminer"
 
     @property
+    def ecs_service_name_grafana(self):
+        return f"service_{self.environment_name}_{self.project_name}-grafana"
+
+    @property
     def ecs_backend_container_name(self):
         return f"{self.project_name}-backend"
 

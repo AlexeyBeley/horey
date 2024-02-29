@@ -10,10 +10,10 @@ from horey.lion_king.lion_king_configuration_policy import LionKingConfiguration
 
 # pylint: disable = missing-function-docstring
 
-configuration_file_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore", "lion_king", "lion_king_configuration.py"))
+configuration_file_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore", "lion_king_horey", "lion_king_configuration.py"))
 
 
-@pytest.mark.done
+@pytest.mark.wip
 def test_provision_vpc():
     configuration = LionKingConfigurationPolicy()
     configuration.configuration_file_full_path = configuration_file_path
@@ -148,7 +148,7 @@ def test_update_component_provision_infra_true():
     assert lion_king.update_component()
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_update_component_provision_infra_false():
     configuration = LionKingConfigurationPolicy()
     configuration.configuration_file_full_path = configuration_file_path
@@ -251,7 +251,7 @@ def test_provision_load_balancer_components():
     assert lion_king.provision_load_balancer_components()
 
 
-@pytest.mark.done
+@pytest.mark.wip
 def test_dispose():
     configuration = LionKingConfigurationPolicy()
     configuration.configuration_file_full_path = configuration_file_path

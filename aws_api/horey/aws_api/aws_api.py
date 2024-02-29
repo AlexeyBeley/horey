@@ -3314,8 +3314,12 @@ class AWSAPI:
         security_groups = self.ec2_client.get_region_security_groups(
             vpc.region, filters=filters
         )
-        if len(security_groups) != 1:
-            raise RuntimeError(f"Can not find security group {name} in vpc {vpc.id}")
+        if len(security_groups) > 1:
+            raise RuntimeError(f"Can not find single security group {name} in vpc {vpc.id}, "
+                               f"found {len(security_groups)} groups.")
+
+        if len(security_groups) == 0:
+            raise self.ResourceNotFound(name)
 
         return security_groups[0]
 
@@ -4132,3 +4136,9 @@ class AWSAPI:
             raise ValueError(user_name)
 
         return user
+
+    class ResourceNotFound(RuntimeError):
+        """
+        Can not find resource.
+
+        """

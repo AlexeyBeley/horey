@@ -493,7 +493,7 @@ class ELBV2Client(Boto3Client):
 
         if load_balancer.arn is None:
             region_lbs = self.get_region_load_balancers(
-                load_balancer.region, names=[load_balancer.name]
+                load_balancer.region, filters_req={"Names": [load_balancer.name]}
             )
 
             if len(region_lbs) > 1:

@@ -49,6 +49,12 @@ logger = get_logger()
 class LionKing:
     """
     Main class.
+    to do:
+    1. Dispose all elements.
+    2. Provision based on image cpu architecture.
+    3. Generate deployer user.
+    4. Hide secrets in secrets.
+    5. Mailbox.
 
     """
 
@@ -280,6 +286,16 @@ class LionKing:
             "Value": self.configuration.vpc_name
         })
         self.aws_api.provision_vpc(vpc)
+        for route_table in self.aws_api.ec2_client.get_region_route_tables(self.region):
+            route_table.tags = copy.deepcopy(self.tags)
+            route_table.region = self.region
+            route_table.tags.append({
+                "Key": "Name",
+                "Value": "Main"
+            })
+            self.aws_api.ec2_client.provision_route_table(route_table)
+
+        # todo: default route table naming
         self._vpc = vpc
         return vpc
 
@@ -1066,26 +1082,35 @@ class LionKing:
         :return:
         """
 
-        self.provision_grafana_postgres_db()
+        # self.provision_grafana_postgres_db()
 
         os.makedirs(self.configuration.local_deployment_directory_path, exist_ok=True)
         shutil.rmtree(self.configuration.local_deployment_directory_path)
         source_code_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "grafana"))
         shutil.copytree(source_code_path, self.configuration.local_deployment_directory_path)
+
         self.replacement_engine.perform_recursive_replacements(self.configuration.local_deployment_directory_path,
                                                                {
                                                                    "STRING_REPLACEMENT_GRAFANA_DB_HOST": self.configuration.grafana_db_host_private_address,
                                                                    "STRING_REPLACEMENT_GRAFANA_DB_NAME": "grafana",
                                                                    "STRING_REPLACEMENT_GRAFANA_DB_USERNAME": "grafana_user",
                                                                    "STRING_REPLACEMENT_GRAFANA_DB_PASSWORD": "Aa123456!"})
+        image_tags = [self.compose_image_tag(self.configuration.ecr_repository_grafana_name, "latest")]
+        self.docker_api.build(self.configuration.local_deployment_directory_path, image_tags)
 
-        tags = ["grafana:latest"]
-        self.docker_api.build(self.configuration.local_deployment_directory_path, tags)
-
-        image_tags = self.build()
         self.login_to_ecr()
 
-        return self.docker_api.upload_images(image_tags)
+        self.docker_api.upload_images(image_tags)
+        task_definition_family = self.configuration.ecs_task_definition_family_grafana
+        environ_values = self.generate_environment_values()
+        log_group_name = self.configuration.cloudwatch_log_group_name_grafana
+        container_name = "grafana"
+        container_port = 3000
+        ecs_task_definition = self.provision_ecs_task_definition(image_tags[0], environ_values, task_definition_family,
+                                                                 container_port,
+                                                                 log_group_name, container_name)
+        self.provision_ecs_service(self.configuration.ecs_service_name_grafana, self.ecs_cluster, ecs_task_definition,
+                                   self.grafana_target_group, self.backend_security_group)
 
     def login_to_ecr(self):
         """
@@ -1558,7 +1583,7 @@ class LionKing:
         self.provision_certificate()
         self.provision_load_balancer_components()
         self.provision_adminer()
-        # self.provision_grafana()
+        self.provision_grafana()
 
     def dispose(self):
         """
@@ -1569,9 +1594,12 @@ class LionKing:
         self.dispose_db_components()
         cluster = ECSCluster({"name": self.configuration.cluster_name})
         cluster.region = self.region
-        service = ECSService({"name": self.configuration.ecs_service_name_backend})
-        service.region = self.region
-        self.aws_api.ecs_client.dispose_service(cluster, service)
+        for service_name in [self.configuration.ecs_service_name_backend,
+                             self.configuration.ecs_service_name_grafana,
+                             self.configuration.ecs_service_name_adminer]:
+            service = ECSService({"name": service_name})
+            service.region = self.region
+            self.aws_api.ecs_client.dispose_service(cluster, service)
         self.aws_api.ecs_client.dispose_cluster(cluster)
 
         load_balancer = LoadBalancer({})
@@ -1580,17 +1608,17 @@ class LionKing:
         self.aws_api.elbv2_client.dispose_load_balancer(load_balancer)
 
         for target_group in [self.grafana_target_group, self.backend_target_group, self.adminer_target_group]:
+            if target_group is None:
+                continue
             self.aws_api.elbv2_client.dispose_target_group_raw(target_group.generate_dispose_request())
 
-        inet_gateway = InternetGateway({})
-        inet_gateway.region = self.region
-        inet_gateway.name = self.configuration.internet_gateway_name
-        inet_gateway.tags = copy.deepcopy(self.tags)
-        inet_gateway.tags.append({
-            "Key": "Name",
-            "Value": self.configuration.internet_gateway_name
-        })
-        self.aws_api.ec2_client.dispose_internet_gateway(inet_gateway)
+        for inet_gateway in self.aws_api.ec2_client.get_region_internet_gateways(self.region):
+            if len(inet_gateway.attachments) != 1:
+                raise ValueError(f"{inet_gateway.attachments=}")
+            if inet_gateway.attachments[0]["VpcId"] != self.vpc.id:
+                continue
+            inet_gateway.region = self.region
+            self.aws_api.ec2_client.dispose_internet_gateway(inet_gateway)
 
         iam_role = IamRole({})
         iam_role.name = self.configuration.ecs_task_role_name
@@ -1607,17 +1635,23 @@ class LionKing:
             if task_definition.family == self.configuration.ecs_task_definition_family_backend:
                 self.aws_api.ecs_client.dispose_task_definition(task_definition)
 
-        log_group = CloudWatchLogGroup({})
-        log_group.region = self.region
-        log_group.name = self.configuration.cloudwatch_log_group_name
-        self.aws_api.cloud_watch_logs_client.dispose_log_group(log_group)
+        for log_group_name in [self.configuration.cloudwatch_log_group_name_adminer,
+                               self.configuration.cloudwatch_log_group_name_grafana,
+                               self.configuration.cloudwatch_log_group_name_backend]:
+            log_group = CloudWatchLogGroup({})
+            log_group.region = self.region
+            log_group.name = log_group_name
+            self.aws_api.cloud_watch_logs_client.dispose_log_group(log_group)
 
-        self.aws_api.ec2_client.dispose_subnets(self.subnets)
-        # self.aws_api.ec2_client.dispose_route_tables(route_tables)
+        try:
+            self.aws_api.ec2_client.dispose_subnets(self.subnets)
+        except Exception as inst_error:
+            if "Looking for subnets" not in repr(inst_error):
+                raise
 
-        security_group = self.aws_api.get_security_group_by_vpc_and_name(self.vpc,
-                                                                         self.configuration.db_rds_security_group_name)
-        self.aws_api.ec2_client.dispose_security_groups([security_group])
+        self.dispose_route_tables()
+        self.dispose_security_groups()
+
         for name in [self.configuration.ecr_repository_backend_name,
                      self.configuration.ecr_repository_adminer_name,
                      self.configuration.ecr_repository_grafana_name]:
@@ -1629,6 +1663,48 @@ class LionKing:
         self.aws_api.ec2_client.dispose_vpc(self.vpc)
 
         return True
+
+    def dispose_route_tables(self):
+        """
+        Standard.
+
+        :return:
+        """
+        self.aws_api.ec2_client.clear_cache(RouteTable)
+        all_objects = list(self.aws_api.ec2_client.yield_route_tables(region=self.region))
+        objects = []
+        for obj in all_objects:
+            if obj.vpc_id != self.vpc.id:
+                continue
+
+            if len(obj.associations) != 1:
+                raise ValueError(f"{obj.associations=}")
+            if obj.associations[0].get("Main"):
+                continue
+            objects.append(obj)
+
+        self.aws_api.ec2_client.dispose_route_tables(objects)
+
+    def dispose_security_groups(self):
+        """
+        Dispose security groups if existed.
+
+        :return:
+        """
+
+        security_groups = []
+        for name in [self.configuration.db_rds_security_group_name,
+                     self.configuration.bastion_security_group_name,
+                     self.configuration.backend_security_group_name,
+                     self.configuration.public_load_balancer_security_group_name]:
+            try:
+                security_group = self.aws_api.get_security_group_by_vpc_and_name(self.vpc, name)
+            except self.aws_api.ResourceNotFound:
+                continue
+
+            security_groups.append(security_group)
+
+        self.aws_api.ec2_client.dispose_security_groups(security_groups)
 
     def dispose_db_components(self):
         """

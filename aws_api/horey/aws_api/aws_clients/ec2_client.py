@@ -275,7 +275,6 @@ class EC2Client(Boto3Client):
 
         return list(self.yield_instances(region=region, filters_req=filters, update_info=update_info))
 
-
     def yield_security_groups(self, region=None, update_info=False, filters_req=None):
         """
         Yield over all volumes.
@@ -1025,6 +1024,62 @@ class EC2Client(Boto3Client):
 
         return None
 
+    def dispose_route_tables(self, route_tables):
+        """
+        Standard.
+
+        @param route_tables:
+        @return:
+        """
+
+        if len(route_tables) == 0:
+            return True
+
+        AWSAccount.set_aws_region(route_tables[0].region)
+
+        for route_table in route_tables[1:]:
+            if route_table.region.region_mark != route_tables[0].region.region_mark:
+                raise RuntimeError("All route_tables should be in one region")
+
+        region_route_tables = self.get_region_route_tables(route_tables[0].region)
+        for route_table in route_tables:
+            for region_route_table in region_route_tables:
+                if (
+                        region_route_table.get_tagname(ignore_missing_tag=True)
+                        == route_table.get_tagname()
+                ):
+                    if region_route_table.vpc_id != route_table.vpc_id:
+                        raise RuntimeError(
+                            f"Subnet {route_table.get_tagname()} exists with different vpc_id {region_route_table.vpc_id} != {route_table.vpc_id}"
+                        )
+                    route_table.update_from_raw_response(region_route_table.dict_src)
+
+        for route_table in route_tables:
+            if route_table.id is None:
+                raise RuntimeError(f"Route_table ID is None for route_table {route_table.get_tagname()}")
+
+            self.delete_route_table_raw({"RouteTableId": route_table.id})
+
+        return True
+
+    def delete_route_table_raw(self, request):
+        """
+        Standard.
+
+        @param request:
+        @return:
+        """
+
+        logger.info(f"Deleting route table {request}")
+
+        for response in self.execute(
+                self.client.delete_route_table, None, raw_data=True, filters_req=request
+        ):
+            self.clear_cache(RouteTable)
+            return response
+
+        return None
+
     def dispose_security_groups(self, security_groups):
         """
         Standard.
@@ -1032,6 +1087,10 @@ class EC2Client(Boto3Client):
         @param security_groups:
         @return:
         """
+
+        if len(security_groups) == 0:
+            return True
+
         for security_group in security_groups[1:]:
             if security_group.region.region_mark != security_groups[0].region.region_mark:
                 raise RuntimeError("All security_groups should be in one region")
@@ -1050,6 +1109,7 @@ class EC2Client(Boto3Client):
                 raise RuntimeError(f"security_group ID is None for security_group {security_group.get_tagname()}")
 
             self.delete_security_group_raw({"GroupId": security_group.id})
+        return True
 
     def delete_security_group_raw(self, request):
         """
@@ -1589,17 +1649,26 @@ class EC2Client(Boto3Client):
             self.clear_cache(InternetGateway)
             return response
 
-    def dispose_internet_gateway(self, inet_gateway):
+    def dispose_internet_gateway(self, inet_gateway, force=True):
         """
         Standard
 
         @param inet_gateway:
         @return:
+        :param force:
         """
-
         if inet_gateway.id is None:
             if not self.update_internet_gateway_information(inet_gateway):
                 return True
+
+        if inet_gateway.attachments:
+            if force:
+                for attachment in inet_gateway.attachments:
+                    logger.info(f"Detaching internet gateway: {inet_gateway.id}, {attachment['VpcId']}")
+                    for _ in self.execute(self.client.detach_internet_gateway, None, raw_data=True, filters_req={"InternetGatewayId": inet_gateway.id, "VpcId": attachment["VpcId"]}):
+                        break
+            else:
+                raise RuntimeError(f"{inet_gateway.attachments=}")
 
         logger.info(f"Disposing internet gateway: {inet_gateway.id}")
         AWSAccount.set_aws_region(inet_gateway.region)
@@ -1924,7 +1993,10 @@ class EC2Client(Boto3Client):
 
         region_route_tables = self.get_region_route_tables(route_table.region)
         for region_route_table in region_route_tables:
-            if (
+            if route_table.id is not None:
+                if route_table.id == region_route_table.id:
+                    break
+            elif (
                     region_route_table.get_tagname(ignore_missing_tag=True)
                     == route_table.get_tagname()
             ):
@@ -1935,6 +2007,13 @@ class EC2Client(Boto3Client):
             )
             region_route_table = RouteTable(response)
             self.clear_cache(RouteTable)
+        create_tags_request, delete_tags_request = self.generate_tags_requests(region_route_table, route_table)
+        if create_tags_request:
+            self.clear_cache(RouteTable)
+            self.create_tags_raw(create_tags_request)
+        if delete_tags_request:
+            self.clear_cache(RouteTable)
+            self.delete_tags_raw(delete_tags_request)
 
         request = region_route_table.generate_associate_route_table_request(route_table)
         if request:
@@ -1945,6 +2024,28 @@ class EC2Client(Boto3Client):
             self.create_route_raw(create_request)
         for replace_request in replace_requests:
             self.replace_route_raw(replace_request)
+
+    def generate_tags_requests(self, current_object, desired_object):
+        """
+        Create, modify or delete tags.
+
+        :param current_object:
+        :param desired_object:
+        :return:
+        """
+
+        to_del = []
+        to_create = []
+        for tag in current_object.tags:
+            if tag not in desired_object.tags:
+                to_del.append(tag)
+
+        for tag in desired_object.tags:
+            if tag not in current_object.tags:
+                to_create.append(tag)
+        create_request = None if not to_create else {"Resources": [current_object.id], "Tags": to_create}
+        delete_request = None if not to_del else {"Resources": [current_object.id], "Tags": to_del}
+        return create_request, delete_request
 
     def add_routes(self, route_table):
         """
@@ -2650,6 +2751,19 @@ class EC2Client(Boto3Client):
         logger.info(f"Creating or modifying tags: {request}")
         for response in self.execute(
                 self.client.create_tags, None, raw_data=True, filters_req=request
+        ):
+            return response
+
+    def delete_tags_raw(self, request):
+        """
+        Deletes tags.
+
+        :return:
+        """
+
+        logger.info(f"Deleting tags: {request}")
+        for response in self.execute(
+                self.client.delete_tags, None, raw_data=True, filters_req=request
         ):
             return response
 
