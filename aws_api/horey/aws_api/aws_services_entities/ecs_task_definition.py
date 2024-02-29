@@ -24,6 +24,7 @@ class ECSTaskDefinition(AwsObject):
         self.task_role_arn = None
         self.execution_role_arn = None
         self.arn = None
+        self.runtime_platform = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -108,7 +109,6 @@ class ECSTaskDefinition(AwsObject):
                                                                "requiresCompatibilities",
                                                                "memory",
                                                                "cpu",
-                                                               "requiresCompatibilities",
                                                                "volumes",
                                                                "executionRoleArn",
                                                                "taskRoleArn",
