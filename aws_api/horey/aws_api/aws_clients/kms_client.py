@@ -49,15 +49,17 @@ class KMSClient(Boto3Client):
 
         final_result = []
         AWSAccount.set_aws_region(region)
-
+        logger.info(f"kms_client fetching KMS keys from region {region.region_mark}")
         for dict_src in self.execute(self.client.list_keys, "Keys"):
             obj = KMSKey(dict_src)
 
             if full_information:
                 filters_req = {"KeyId": obj.id}
 
+                logger.info(f"kms_client fetching more information about key {filters_req}")
                 for dict_response in self.execute(
-                    self.client.describe_key, "KeyMetadata", filters_req=filters_req
+                    self.client.describe_key, "KeyMetadata", filters_req=filters_req, exception_ignore_callback=
+                        lambda error: "NotFoundException" in repr(error)
                 ):
                     obj.update_from_raw_response(dict_response)
 
