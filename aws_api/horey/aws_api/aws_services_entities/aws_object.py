@@ -508,6 +508,7 @@ class AwsObject:
     def extend_request_with_optional_parameters(self, request, camel_case_parameters):
         """
         Extend the request dictionary - changes the input object!
+        self.extend_request_with_optional_parameters(request, ["Description"])
 
         :param request:
         :param camel_case_parameters:

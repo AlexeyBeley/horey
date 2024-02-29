@@ -404,12 +404,10 @@ class RemoteDeployer:
         :return:
         """
         with self.get_deployment_target_client_context(deployment_target) as client:
-            _, stdout, stderr = client.exec_command(command, timeout=120)
+            _, stdout, stderr = client.exec_command(command, timeout=600)
             stdout_string = stdout.read().decode("utf-8")
             stderr_string = stderr.read().decode("utf-8")
-            if stderr_string:
-                raise RemoteDeployer.DeployerError(stderr_string)
-            return stdout_string
+            return stdout_string, stderr_string
 
     def put_file_windows(self, deployment_target, local_file_path, remote_file_path):
         """
@@ -426,6 +424,34 @@ class RemoteDeployer:
             sftp_client = HoreySFTPClient.from_transport(transport)
             sftp_client.put(local_file_path, remote_file_path)
         return True
+
+    def get_file_windows(self, deployment_target, local_file_path, remote_file_path):
+        """
+        Copy file from local to remote.
+
+        :param deployment_target:
+        :param local_file_path:
+        :param remote_file_path:
+        :return:
+        """
+        sleep_time = 1
+        end_time = datetime.datetime.now() + datetime.timedelta(minutes=5)
+        while datetime.datetime.now() < end_time:
+            with self.get_deployment_target_client_context(deployment_target) as client:
+                transport = client.get_transport()
+                try:
+                    sftp_client = HoreySFTPClient.from_transport(transport)
+                    sftp_client.get(remote_file_path, local_file_path)
+                    return True
+                except Exception as inst_error:
+                    if "No such file" not in repr(inst_error):
+                        break
+                    logger.error(
+                        f"Was not able to fetch remote path '{remote_file_path}' to local path '{local_file_path}'")
+            logger.info(f"Going to sleep for {sleep_time}")
+            time.sleep(sleep_time)
+        logger.error(f"Was not able to fetch remote path '{remote_file_path}' to local path '{local_file_path}'")
+        return False
 
     @staticmethod
     def execute_remote(client, command):

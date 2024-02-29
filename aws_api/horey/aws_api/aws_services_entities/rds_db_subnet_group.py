@@ -67,6 +67,26 @@ class RDSDBSubnetGroup(AwsObject):
 
         return request
 
+    def generate_modify_request(self, desired_state):
+        """
+        Modify the subnet group.
+
+        :param desired_state:
+        :return:
+        """
+
+        if self.name != desired_state.name:
+            raise ValueError(f"{self.name=} {desired_state.name=}")
+
+        if self.db_subnet_group_description == desired_state.db_subnet_group_description and \
+                self.subnet_ids == desired_state.subnet_ids:
+            return None
+
+        return {"DBSubnetGroupName": self.name,
+                "DBSubnetGroupDescription": desired_state.db_subnet_group_description,
+                "SubnetIds": desired_state.subnet_ids,
+                }
+
     @property
     def region(self):
         """

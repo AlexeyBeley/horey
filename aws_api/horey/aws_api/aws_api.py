@@ -1314,7 +1314,7 @@ class AWSAPI:
 
         self.rds_db_instances = objects
 
-    def init_rds_db_clusters(self, region=None, full_information=False):
+    def init_rds_db_clusters(self, region=None, full_information=False, update_info=False):
         """
         Init RDSs
 
@@ -1322,7 +1322,7 @@ class AWSAPI:
         @return:
         """
 
-        objects = self.rds_client.get_all_db_clusters(region=region, full_information=full_information)
+        objects = self.rds_client.get_all_db_clusters(region=region, full_information=full_information, update_info=update_info)
 
         self.rds_db_clusters = objects
 
@@ -3086,8 +3086,11 @@ class AWSAPI:
             )
             time.sleep(sleep_time)
 
-        if len(certificate.domain_validation_options) != 1:
+        if len(certificate.domain_validation_options) == 0:
             raise NotImplementedError(certificate.domain_validation_options)
+        if len(certificate.domain_validation_options) > 1:
+            assert len(list({domain_validation_option["ResourceRecord"]["Name"] for domain_validation_option in certificate.domain_validation_options})) == 1
+            assert len(list({domain_validation_option["ResourceRecord"]["Value"] for domain_validation_option in certificate.domain_validation_options})) == 1
 
         hosted_zones = self.route53_client.get_all_hosted_zones(
             name=master_hosted_zone_name
@@ -3271,7 +3274,7 @@ class AWSAPI:
         @return:
         """
 
-        self.sesv2_client.provision_email_template(email_template)
+        return self.sesv2_client.provision_email_template(email_template)
 
     def provision_sesv2_configuration_set(self, configuration_set):
         """
@@ -3281,7 +3284,7 @@ class AWSAPI:
         @return:
         """
 
-        self.sesv2_client.provision_configuration_set(configuration_set)
+        return self.sesv2_client.provision_configuration_set(configuration_set)
 
     def provision_rds_db_cluster(self, cluster, snapshot=None):
         """
@@ -3293,7 +3296,7 @@ class AWSAPI:
         """
 
         snapshot_id = snapshot.id if snapshot is not None else None
-        self.rds_client.provision_db_cluster(cluster, snapshot_id=snapshot_id)
+        return self.rds_client.provision_db_cluster(cluster, snapshot_id=snapshot_id)
 
     def get_security_group_by_vpc_and_name(self, vpc, name):
         """
@@ -3311,8 +3314,12 @@ class AWSAPI:
         security_groups = self.ec2_client.get_region_security_groups(
             vpc.region, filters=filters
         )
-        if len(security_groups) != 1:
-            raise RuntimeError(f"Can not find security group {name} in vpc {vpc.id}")
+        if len(security_groups) > 1:
+            raise RuntimeError(f"Can not find single security group {name} in vpc {vpc.id}, "
+                               f"found {len(security_groups)} groups.")
+
+        if len(security_groups) == 0:
+            raise self.ResourceNotFound(name)
 
         return security_groups[0]
 
@@ -3344,7 +3351,7 @@ class AWSAPI:
         @return:
         """
 
-        self.rds_client.provision_db_cluster_parameter_group(db_cluster_parameter_group)
+        return self.rds_client.provision_db_cluster_parameter_group(db_cluster_parameter_group)
 
     def provision_db_parameter_group(self, db_parameter_group):
         """
@@ -3354,7 +3361,7 @@ class AWSAPI:
         @return:
         """
 
-        self.rds_client.provision_db_parameter_group(db_parameter_group)
+        return self.rds_client.provision_db_parameter_group(db_parameter_group)
 
     def provision_db_subnet_group(self, db_subnet_group):
         """
@@ -3364,7 +3371,7 @@ class AWSAPI:
         @return:
         """
 
-        self.rds_client.provision_db_subnet_group(db_subnet_group)
+        return self.rds_client.provision_db_subnet_group(db_subnet_group)
 
     def provision_db_instance(self, db_instance):
         """
@@ -3374,7 +3381,7 @@ class AWSAPI:
         @return:
         """
 
-        self.rds_client.provision_db_instance(db_instance)
+        return self.rds_client.provision_db_instance(db_instance)
 
     def provision_elasticache_cahce_subnet_group(self, subnet_group):
         """
@@ -3384,7 +3391,7 @@ class AWSAPI:
         @return:
         """
 
-        self.elasticache_client.provision_subnet_group(subnet_group)
+        return self.elasticache_client.provision_subnet_group(subnet_group)
 
     def provision_elaticache_cluster(self, cluster):
         """
@@ -3394,7 +3401,7 @@ class AWSAPI:
         @return:
         """
 
-        self.elasticache_client.provision_cluster(cluster)
+        return self.elasticache_client.provision_cluster(cluster)
 
     def provision_elaticache_replication_group(self, replication_group):
         """
@@ -3404,7 +3411,7 @@ class AWSAPI:
         @return:
         """
 
-        self.elasticache_client.provision_replication_group(replication_group)
+        return self.elasticache_client.provision_replication_group(replication_group)
 
     def provision_s3_bucket(self, s3_bucket):
         """
@@ -3414,7 +3421,7 @@ class AWSAPI:
         @return:
         """
 
-        self.s3_client.provision_bucket(s3_bucket)
+        return self.s3_client.provision_bucket(s3_bucket)
 
     def provision_cloudfront_distribution(self, cloudfront_distribution):
         """
@@ -3424,7 +3431,7 @@ class AWSAPI:
         @return:
         """
 
-        self.cloudfront_client.provision_distribution(cloudfront_distribution)
+        return self.cloudfront_client.provision_distribution(cloudfront_distribution)
 
     def provision_cloudfront_origin_access_identity(
             self, cloudfront_origin_access_identity
@@ -3436,7 +3443,7 @@ class AWSAPI:
         @return:
         """
 
-        self.cloudfront_client.provision_origin_access_identity(
+        return self.cloudfront_client.provision_origin_access_identity(
             cloudfront_origin_access_identity
         )
 
@@ -4129,3 +4136,9 @@ class AWSAPI:
             raise ValueError(user_name)
 
         return user
+
+    class ResourceNotFound(RuntimeError):
+        """
+        Can not find resource.
+
+        """

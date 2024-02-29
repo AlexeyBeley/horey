@@ -33,6 +33,7 @@ class DockerAPI:
 
         ret = self.client.login(registry=registry, username=username, password=password)
         logger.info(ret)
+        return ret
 
     def get_image(self, name):
         """
@@ -160,6 +161,7 @@ class DockerAPI:
             logger.info(
                 f"Uploading repository {repository} took {time_end-time_start} time."
             )
+        return True
 
     def pull_images(self, repo, tag=None, all_tags=False):
         """

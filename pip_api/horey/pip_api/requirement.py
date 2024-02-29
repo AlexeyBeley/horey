@@ -2,9 +2,6 @@
 Package requirement.
 
 """
-from horey.h_logger import get_logger
-
-logger = get_logger()
 
 
 class Requirement:
@@ -16,9 +13,6 @@ class Requirement:
         self.requirements_file_path = requirements_file_path
         requirement_str = requirement_str_src.replace(" ", "")
 
-        logger.info(
-            f"Initializing requirement from string '{requirement_str_src}', after cleanup '{requirement_str}'"
-        )
         self.str_src = requirement_str_src
         self.name = None
         self.min_version = None

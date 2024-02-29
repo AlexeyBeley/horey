@@ -1251,6 +1251,15 @@ class AzureDevopsAPI:
         if assigned_to is not None:
             request_data.append({"op": "add", "path": "/fields/System.AssignedTo", "value": assigned_to})
 
+        if "completed_time" in dict_src:
+            completed_time = dict_src["completed_time"]
+            left_attributes.remove("completed_time")
+            request_data.append({
+                "op": "add",
+                "path": "/fields/Microsoft.VSTS.Scheduling.CompletedWork",
+                "value": completed_time
+            })
+
         self.session.headers.update(
             {
                 "Content-Type": "application/json-patch+json",

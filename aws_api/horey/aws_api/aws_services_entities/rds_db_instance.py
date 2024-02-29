@@ -11,6 +11,7 @@ class RDSDBInstance(AwsObject):
     """
     Class representing RDS DB instance
     """
+
     # pylint: disable = too-many-instance-attributes
 
     def __init__(self, dict_src, from_cache=False):
@@ -36,6 +37,7 @@ class RDSDBInstance(AwsObject):
         self.db_instance_status = None
         self.engine = None
         self.arn = None
+        self.vpc_security_group_ids = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -88,21 +90,10 @@ class RDSDBInstance(AwsObject):
         )
         """
         request = {}
-        if self.availability_zones:
-            request["AvailabilityZones"] = self.availability_zones
-
-        if self.db_subnet_group_name:
-            request["DBSubnetGroupName"] = self.db_subnet_group_name
-
-        if self.db_parameter_group_name:
-            request["DBParameterGroupName"] = self.db_parameter_group_name
-
         request["DBInstanceIdentifier"] = self.id
-        request["DBClusterIdentifier"] = self.db_cluster_identifier
+        if self.db_cluster_identifier:
+            request["DBClusterIdentifier"] = self.db_cluster_identifier
         request["DBInstanceClass"] = self.db_instance_class
-
-        if self.db_name is not None:
-            request["DBName"] = self.db_name
 
         request["Engine"] = self.engine
         request["EngineVersion"] = self.engine_version
@@ -116,14 +107,11 @@ class RDSDBInstance(AwsObject):
         request["PreferredMaintenanceWindow"] = self.preferred_maintenance_window
         request["StorageEncrypted"] = self.storage_encrypted
 
-        if self.kms_key_id:
-            request["KmsKeyId"] = self.kms_key_id
-
-        if self.deletion_protection is not None:
-            request["DeletionProtection"] = self.deletion_protection
-
         request["CopyTagsToSnapshot"] = self.copy_tags_to_snapshot
-
+        self.extend_request_with_optional_parameters(request,
+                                                     ["AvailabilityZones", "DBParameterGroupName", "DBSubnetGroupName",
+                                                      "DBName", "KmsKeyId", "DeletionProtection", "MaxAllocatedStorage",
+                                                      "AllocatedStorage", "VpcSecurityGroupIds"])
         request["Tags"] = self.tags
 
         return request
@@ -236,9 +224,11 @@ class RDSDBInstance(AwsObject):
             "PerformanceInsightsRetentionPeriod": self.init_default_attr,
             "EnabledCloudwatchLogsExports": self.init_default_attr,
             "BackupTarget": self.init_default_attr,
-            "StorageThroughput":  self.init_default_attr,
+            "StorageThroughput": self.init_default_attr,
             "CertificateDetails": self.init_default_attr,
             "NetworkType": self.init_default_attr,
+            "MaxAllocatedStorage": self.init_default_attr,
+            "ActivityStreamStatus": self.init_default_attr
         }
 
         self.init_attrs(dict_src, init_options)
@@ -273,3 +263,4 @@ class RDSDBInstance(AwsObject):
         CONFIGURING_LOG_EXPORTS = "configuring-log-exports"
         CONFIGURING_IAM_DATABASE_AUTH = "configuring-iam-database-auth"
         CONVERTING_TO_VPC = "converting-to-vpc"
+        BACKING_UP = "backing-up"

@@ -225,7 +225,7 @@ class ECRClient(Boto3Client):
 
     def dispose_repository(self, repository: ECRRepository):
         """
-        Self explanatory
+        Standard.
 
         @param repository:
         @return:
@@ -234,18 +234,22 @@ class ECRClient(Boto3Client):
         AWSAccount.set_aws_region(repository.region)
 
         dict_ret = self.dispose_repository_raw(repository.generate_dispose_request())
-        return repository.update_from_raw_create(dict_ret)
+        if dict_ret:
+            repository.update_from_raw_create(dict_ret)
+        return True
 
     def dispose_repository_raw(self, request_dict):
         """
-        Self explanatory
+        Standard
 
         @param request_dict:
         @return:
         """
 
         for response in self.execute(
-            self.client.delete_repository, "repository", filters_req=request_dict
+            self.client.delete_repository, "repository", filters_req=request_dict,
+            exception_ignore_callback=lambda error: "RepositoryNotFoundException" in repr(error)
+
         ):
             return response
 

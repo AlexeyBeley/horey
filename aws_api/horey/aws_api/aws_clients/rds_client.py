@@ -1,6 +1,7 @@
 """
 AWS rds client to handle rds service API requests.
 """
+# pylint: disable= too-many-lines
 import datetime
 import time
 from collections import defaultdict
@@ -120,14 +121,15 @@ class RDSClient(Boto3Client):
         ):
             yield dict_src
 
-    def get_all_db_clusters(self, region=None, full_information=False, filters_req=None, get_tags=None):
+    def get_all_db_clusters(self, region=None, full_information=False, filters_req=None, get_tags=None,
+                            update_info=False):
         """
         Get all db_clusters in all regions.
         :return:
         """
 
         return list(self.yield_db_clusters(region=region, filters_req=filters_req, get_tags=get_tags,
-                                           full_information=full_information))
+                                           full_information=full_information, update_info=update_info))
 
     def get_region_db_clusters(self, region, filters=None, update_tags=True, full_information=False):
         """
@@ -152,6 +154,7 @@ class RDSClient(Boto3Client):
         """
 
         cluster.default_engine_version = self.get_default_engine_version(cluster.region, cluster.engine)
+        return cluster
 
     def provision_db_cluster(self, db_cluster: RDSDBCluster, snapshot_id=None):
         """
@@ -262,8 +265,22 @@ class RDSClient(Boto3Client):
 
         AWSAccount.set_aws_region(db_instance.region)
         response = self.dispose_db_instance_raw(db_instance.generate_dispose_request())
-
+        if response is None:
+            return True
         db_instance.update_from_raw_response(response)
+        try:
+            self.wait_for_status(
+                db_instance,
+                self.update_db_instance_information,
+                [db_instance.Status.STOPPED],
+                [db_instance.Status.DELETING],
+                [db_instance.Status.FAILED,
+                 db_instance.Status.AVAILABLE],
+                timeout=20 * 60 * 60,
+            )
+        except self.ResourceNotFoundError:
+            pass
+        return True
 
     def dispose_db_instance_raw(self, request_dict):
         """
@@ -271,7 +288,8 @@ class RDSClient(Boto3Client):
         """
         logger.info(f"Disposing db_instance: {request_dict}")
         for response in self.execute(
-                self.client.delete_db_instance, "DBInstance", filters_req=request_dict
+                self.client.delete_db_instance, "DBInstance", filters_req=request_dict,
+                exception_ignore_callback=lambda error: "DBInstanceNotFound" in repr(error)
         ):
             self.clear_cache(RDSDBInstance)
             return response
@@ -290,6 +308,7 @@ class RDSClient(Boto3Client):
             db_cluster.generate_restore_db_cluster_from_snapshot_request(snapshot_id)
         )
         db_cluster.update_from_raw_response(response)
+        return db_cluster
 
     def restore_db_cluster_from_snapshot_raw(self, request_dict):
         """
@@ -350,29 +369,56 @@ class RDSClient(Boto3Client):
 
         return list(self.yield_db_subnet_groups(region=region))
 
-    def provision_db_subnet_group(self, db_subnet_group):
+    def provision_db_subnet_group(self, db_subnet_group: RDSDBSubnetGroup):
         """
         Standard.
 
         :param db_subnet_group:
         :return:
         """
-
         region_db_subnet_groups = self.get_region_db_subnet_groups(
             db_subnet_group.region
         )
+        AWSAccount.set_aws_region(db_subnet_group.region)
         for region_db_subnet_group in region_db_subnet_groups:
             if db_subnet_group.name == region_db_subnet_group.name:
-                db_subnet_group.update_from_raw_response(
-                    region_db_subnet_group.dict_src
-                )
-                return
 
-        AWSAccount.set_aws_region(db_subnet_group.region)
+                request = region_db_subnet_group.generate_modify_request(db_subnet_group)
+                if request:
+                    update_info = self.modify_db_subnet_group_raw(request)
+                else:
+                    update_info = region_db_subnet_group.dict_src
+                db_subnet_group.update_from_raw_response(update_info)
+
+                return db_subnet_group
+
         response = self.provision_db_subnet_group_raw(
             db_subnet_group.generate_create_request()
         )
         db_subnet_group.update_from_raw_response(response)
+        return db_subnet_group
+
+    def dispose_db_subnet_group(self, db_subnet_group: RDSDBSubnetGroup):
+        """
+        Standard.
+
+        :param db_subnet_group:
+        :return:
+        """
+        region_db_subnet_groups = self.get_region_db_subnet_groups(
+            db_subnet_group.region
+        )
+        AWSAccount.set_aws_region(db_subnet_group.region)
+        for region_db_subnet_group in region_db_subnet_groups:
+            if db_subnet_group.name == region_db_subnet_group.name:
+                break
+        else:
+            return None
+
+        self.delete_db_subnet_group_raw(
+            {"DBSubnetGroupName": db_subnet_group.name}
+        )
+        return None
 
     def provision_db_subnet_group_raw(self, request_dict):
         """
@@ -384,6 +430,36 @@ class RDSClient(Boto3Client):
                 "DBSubnetGroup",
                 filters_req=request_dict,
         ):
+            self.clear_cache(RDSDBSubnetGroup)
+            return response
+
+    def modify_db_subnet_group_raw(self, request_dict):
+        """
+        Returns dict
+        """
+        logger.info(f"Modifying db_subnet_group: {request_dict}")
+        for response in self.execute(
+                self.client.modify_db_subnet_group,
+                "DBSubnetGroup",
+                filters_req=request_dict,
+        ):
+            self.clear_cache(RDSDBSubnetGroup)
+            return response
+
+    def delete_db_subnet_group_raw(self, request_dict):
+        """
+        Returns dict
+        """
+
+        logger.info(f"Deleting db_subnet_group: {request_dict}")
+
+        for response in self.execute(
+                self.client.delete_db_subnet_group,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
+        ):
+            self.clear_cache(RDSDBSubnetGroup)
             return response
 
     # pylint: disable= too-many-arguments
@@ -451,6 +527,8 @@ class RDSClient(Boto3Client):
                 filters_req=filters_req,
         ):
             obj.parameters.append(response_param)
+
+        return obj
 
     # pylint: disable= too-many-arguments
     def yield_db_cluster_snapshots(self, region=None, update_info=False, full_information=True, filters_req=None,
@@ -527,6 +605,7 @@ class RDSClient(Boto3Client):
                 filters_req=filters_req,
         ):
             obj.parameters.append(response_param)
+        return obj
 
     def get_all_db_parameter_groups(self, region=None):
         """
@@ -584,6 +663,7 @@ class RDSClient(Boto3Client):
                 db_cluster_parameter_group.region
             )
         )
+
         for region_db_cluster_parameter_group in region_db_cluster_parameter_groups:
             if (
                     db_cluster_parameter_group.name
@@ -592,13 +672,14 @@ class RDSClient(Boto3Client):
                 db_cluster_parameter_group.update_from_raw_response(
                     region_db_cluster_parameter_group.dict_src
                 )
-                return
+                return db_cluster_parameter_group
 
         AWSAccount.set_aws_region(db_cluster_parameter_group.region)
         response = self.provision_db_cluster_parameter_group_raw(
             db_cluster_parameter_group.generate_create_request()
         )
         db_cluster_parameter_group.update_from_raw_response(response)
+        return db_cluster_parameter_group
 
     def provision_db_cluster_parameter_group_raw(self, request_dict):
         """
@@ -610,6 +691,48 @@ class RDSClient(Boto3Client):
                 "DBClusterParameterGroup",
                 filters_req=request_dict,
         ):
+            self.clear_cache(RDSDBClusterParameterGroup)
+            return response
+
+    def dispose_cluster_parameter_group(self, param_group):
+        """
+        Standard.
+
+        :param param_group:
+        :return:
+        """
+
+        AWSAccount.set_aws_region(param_group.region)
+        request_dict = {"DBClusterParameterGroupName": param_group.name}
+        logger.info(f"Disposing db_cluster_parameter_group: {request_dict}")
+        for response in self.execute(
+                self.client.delete_db_cluster_parameter_group,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
+                exception_ignore_callback=lambda error: "DBParameterGroupNotFound" in repr(error)
+        ):
+            self.clear_cache(RDSDBClusterParameterGroup)
+            return response
+
+    def dispose_parameter_group(self, param_group):
+        """
+        Standard.
+
+        :param param_group:
+        :return:
+        """
+        AWSAccount.set_aws_region(param_group.region)
+        request_dict = {"DBParameterGroupName": param_group.name}
+        logger.info(f"Disposing db_parameter_group: {request_dict}")
+        for response in self.execute(
+                self.client.delete_db_parameter_group,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
+                exception_ignore_callback=lambda error: "DBParameterGroupNotFound" in repr(error)
+        ):
+            self.clear_cache(RDSDBParameterGroup)
             return response
 
     def provision_db_parameter_group(self, db_parameter_group):
@@ -628,13 +751,13 @@ class RDSClient(Boto3Client):
                 db_parameter_group.update_from_raw_response(
                     region_db_parameter_group.dict_src
                 )
-                return
+                return db_parameter_group
 
         AWSAccount.set_aws_region(db_parameter_group.region)
         response = self.provision_db_parameter_group_raw(
             db_parameter_group.generate_create_request()
         )
-        db_parameter_group.update_from_raw_response(response)
+        return db_parameter_group.update_from_raw_response(response)
 
     def provision_db_parameter_group_raw(self, request_dict):
         """
@@ -646,6 +769,7 @@ class RDSClient(Boto3Client):
                 "DBParameterGroup",
                 filters_req=request_dict,
         ):
+            self.clear_cache(RDSDBParameterGroup)
             return response
 
     def provision_db_instance(self, db_instance: RDSDBInstance):
@@ -669,7 +793,9 @@ class RDSClient(Boto3Client):
             db_instance,
             self.update_db_instance_information,
             [db_instance.Status.AVAILABLE],
-            [db_instance.Status.CREATING, db_instance.Status.CONFIGURING_LOG_EXPORTS,
+            [db_instance.Status.CREATING,
+             db_instance.Status.BACKING_UP,
+             db_instance.Status.CONFIGURING_LOG_EXPORTS,
              db_instance.Status.CONFIGURING_ENHANCED_MONITORING,
              db_instance.Status.CONFIGURING_IAM_DATABASE_AUTH],
             [db_instance.Status.DELETING, db_instance.Status.FAILED],
@@ -789,6 +915,7 @@ class RDSClient(Boto3Client):
                 "DBClusterSnapshot",
                 filters_req=request_dict,
         ):
+            self.clear_cache(RDSDBClusterSnapshot)
             return response
 
     def update_db_cluster_information(self, db_cluster):
@@ -966,6 +1093,31 @@ class RDSClient(Boto3Client):
         engine_versions = list(self.execute(
             self.client.describe_db_engine_versions, "DBEngineVersions",
             filters_req={"Engine": engine_type, "DefaultOnly": True}))
+
+        if len(engine_versions) != 1:
+            raise RuntimeError(f"Can not find single default version for {engine_type} in {str(region)}")
+
+        self.ENGINE_VERSIONS[region.region_mark][engine_type] = engine_versions[0]
+
+        return self.ENGINE_VERSIONS[region.region_mark][engine_type]
+
+    def get_engine_version(self, region, engine_type, engine_version):
+        """
+        Get the default engine in the region.
+
+        :param engine_type:
+        :param region:
+        :param engine_version:
+        :return:
+        """
+
+        AWSAccount.set_aws_region(region)
+
+        all_engine_versions = list(self.execute(
+            self.client.describe_db_engine_versions, "DBEngineVersions",
+            filters_req={"Engine": engine_type, "DefaultOnly": False}))
+
+        engine_versions = [version for version in all_engine_versions if version["EngineVersion"] == engine_version]
 
         if len(engine_versions) != 1:
             raise RuntimeError(f"Can not find single default version for {engine_type} in {str(region)}")

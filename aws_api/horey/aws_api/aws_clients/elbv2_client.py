@@ -44,14 +44,14 @@ class ELBV2Client(Boto3Client):
         """
 
         regional_fetcher_generator = self.yield_load_balancers_raw
-        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
+        for obj in self.regional_service_entities_generator(regional_fetcher_generator,
                                                   LoadBalancer,
                                                   update_info=update_info,
                                                   full_information_callback=self.get_load_balancer_full_information if full_information else None,
                                                   get_tags_callback=self.get_tags if get_tags else None,
                                                   regions=[region] if region else None,
                                                   filters_req=filters_req):
-            yield certificate
+            yield obj
 
     def yield_load_balancers_raw(self, filters_req=None):
         """
@@ -61,7 +61,8 @@ class ELBV2Client(Boto3Client):
         """
 
         for dict_src in self.execute(
-                self.client.describe_load_balancers, "LoadBalancers", filters_req=filters_req
+                self.client.describe_load_balancers, "LoadBalancers", filters_req=filters_req,
+                exception_ignore_callback= lambda error: "LoadBalancerNotFoundException" in repr(error)
         ):
             yield dict_src
 
@@ -88,7 +89,6 @@ class ELBV2Client(Boto3Client):
             filters_req["Names"] = names
 
         return list(self.yield_load_balancers(full_information=full_information, region=region, get_tags=get_tags, filters_req=filters_req))
-
 
     def update_tags(self, objects):
         """
@@ -493,7 +493,7 @@ class ELBV2Client(Boto3Client):
 
         if load_balancer.arn is None:
             region_lbs = self.get_region_load_balancers(
-                load_balancer.region, names=[load_balancer.name]
+                load_balancer.region, filters_req={"Names": [load_balancer.name]}
             )
 
             if len(region_lbs) > 1:

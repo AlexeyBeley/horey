@@ -19,6 +19,7 @@ class ACMCertificate(AwsObject):
         self.domain_name = None
         self.validation_method = None
         self.domain_validation_options = None
+        self.subject_alternative_names = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -109,6 +110,7 @@ class ACMCertificate(AwsObject):
         """
 
         request = {"DomainName": self.domain_name, "ValidationMethod": self.validation_method, "Tags": self.tags}
+        self.extend_request_with_optional_parameters(request, ["SubjectAlternativeNames"])
 
         return request
 
