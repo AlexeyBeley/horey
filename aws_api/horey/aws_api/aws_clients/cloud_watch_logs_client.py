@@ -244,10 +244,14 @@ class CloudWatchLogsClient(Boto3Client):
         :return:
         """
 
-        region_log_groups = self.get_region_cloud_watch_log_groups(log_group.region, get_tags=True)
+        region_log_groups = self.get_region_cloud_watch_log_groups(log_group.region, get_tags=False)
         for region_log_group in region_log_groups:
             if region_log_group.name == log_group.name:
-                log_group.update_from_raw_response(region_log_group.dict_src)
+                filters_req = {"logGroupNamePattern": log_group.name}
+                full_info_log_groups = list(self.yield_log_groups(region=log_group.region, update_info=True, filters_req=filters_req, get_tags=True))
+                if len(full_info_log_groups) != 1:
+                    raise RuntimeError(f"{len(full_info_log_groups)=}")
+                log_group.update_from_raw_response(full_info_log_groups[0].dict_src)
                 return True
         return False
 
