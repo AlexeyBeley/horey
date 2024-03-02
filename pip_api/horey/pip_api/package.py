@@ -2,7 +2,7 @@
 Installed package.
 
 """
-from requirement import Requirement
+from .requirement import Requirement
 
 
 class Package:

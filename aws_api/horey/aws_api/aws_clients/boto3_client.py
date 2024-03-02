@@ -843,13 +843,13 @@ class Boto3Client:
         else:
             cache_suffix = None
         file_name = self.generate_cache_file_path(entity_class, region.region_mark, full_information, get_tags, cache_suffix=cache_suffix)
-
-        if not update_info and (not filters_req or cache_filter_callback):
-            objects = self.load_objects_from_cache(entity_class, file_name)
-            if objects is not None:
-                for obj in objects:
-                    yield obj
-                return
+        if file_name:
+            if not update_info and (not filters_req or cache_filter_callback):
+                objects = self.load_objects_from_cache(entity_class, file_name)
+                if objects is not None:
+                    for obj in objects:
+                        yield obj
+                    return
 
         final_result = []
         AWSAccount.set_aws_region(region)
@@ -863,5 +863,6 @@ class Boto3Client:
             final_result.append(obj)
             yield obj
 
-        if filters_req is None or cache_filter_callback:
-            self.cache_objects(final_result, file_name)
+        if file_name:
+            if filters_req is None or cache_filter_callback:
+                self.cache_objects(final_result, file_name)
