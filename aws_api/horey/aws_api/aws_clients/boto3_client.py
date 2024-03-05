@@ -49,8 +49,6 @@ class Boto3Client:
         :return:
         """
 
-        if Boto3Client._main_cache_dir_path is None:
-            raise ValueError("Main cache dir was not set in boto3_client.py")
         return Boto3Client._main_cache_dir_path
 
     @main_cache_dir_path.setter
@@ -657,6 +655,9 @@ class Boto3Client:
         :return:
         """
 
+        if self.main_cache_dir_path is None:
+            return True
+
         aws_api_account = AWSAccount.get_aws_account()
         cache_dir = os.path.join(self.main_cache_dir_path, aws_api_account.name)
         if not os.path.exists(cache_dir):
@@ -714,6 +715,8 @@ class Boto3Client:
 
         :return:
         """
+        if self.main_cache_dir_path is None:
+            return None
 
         file_name = class_type.get_cache_file_name()
         if file_name.count(".") != 1:
