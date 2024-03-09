@@ -8,6 +8,7 @@ import subprocess
 import sys
 import shutil
 import urllib3
+import platform
 
 
 try:
@@ -23,7 +24,7 @@ class StaticMethods:
     """
 
     HOREY_REPO_PATH = os.path.abspath(os.path.join(__file__, "..", "..", "..", ".."))
-    PYTHON_INTERPRETER_COMMAND = sys.executable if "win" not in sys.platform.lower() else f'"{sys.executable}"'
+    PYTHON_INTERPRETER_COMMAND = sys.executable if platform.system().lower() != "windows" else f'"{sys.executable}"'
     INSTALLED_PACKAGES = None
     logger = None
 
@@ -421,7 +422,7 @@ class StaticMethods:
         :return:
         """
 
-        if "win" in sys.platform.lower():
+        if platform.system().lower() == "windows":
             return StaticMethods.run_bat(command,
                                          ignore_on_error_callback=ignore_on_error_callback,
                                          timeout=timeout,

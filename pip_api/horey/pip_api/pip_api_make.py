@@ -7,7 +7,17 @@ import argparse
 import importlib
 import os
 import sys
+import logging
 import urllib3
+
+handler = logging.StreamHandler()
+formatter = logging.Formatter(
+    "[%(asctime)s] %(levelname)s:%(filename)s:%(lineno)s: %(message)s"
+)
+handler.setFormatter(formatter)
+logger = logging.getLogger("pip_api_make")
+logger.setLevel("INFO")
+logger.addHandler(handler)
 
 
 def init_configuration_from_py(file_path):
@@ -80,7 +90,7 @@ def download_https_file(local_file_path, url):
     chunk_size = 16 * 1024
     r = http.request("GET", url, preload_content=False)
 
-    with open(local_file_path, "wb", encoding="utf-8") as out:
+    with open(local_file_path, "wb") as out:
         while True:
             data = r.read(chunk_size)
             if not data:
@@ -92,14 +102,22 @@ def download_https_file(local_file_path, url):
 
 def get_static_methods(dst_dir_path):
     """
-    Get source static_methods module
+    Get StaticMethods class either from local source code of from horey github
 
     :return:
     """
-    file_path = os.path.join(dst_dir_path, "static_methods.py")
-    download_https_file(file_path, "https://raw.githubusercontent.com/AlexeyBeley/horey/main/pip_api/horey/pip_api/static_methods.py")
-    module = load_module(file_path)
-    return module.StaticMethods
+
+    horey_repo = os.path.join(dst_dir_path, "horey")
+    if os.path.isdir(horey_repo):
+        module = load_module(os.path.join(horey_repo, "pip_api", "horey", "pip_api", "static_methods.py"))
+    else:
+        file_path = os.path.join(dst_dir_path, "static_methods.py")
+        download_https_file(file_path, "https://raw.githubusercontent.com/AlexeyBeley/horey/main/pip_api/horey/pip_api/static_methods.py")
+        module = load_module(file_path)
+
+    StaticMethods = module.StaticMethods
+    StaticMethods.logger = logger
+    return StaticMethods
 
 
 def install_pip(configs):
@@ -110,12 +128,13 @@ def install_pip(configs):
     :return:
     """
 
-
     horey_dir_path = configs.get("horey_dir_path") or "."
     StaticMethods = get_static_methods(horey_dir_path)
 
-    command = f"{sys.executable} -m pip freeze"
+    command = f"{sys.executable} -m pip -V"
     ret = StaticMethods.execute(command)
+    breakpoint()
+
     print(ret)
 
     pip_installer = os.path.join(horey_dir_path, "get-pip.py")
