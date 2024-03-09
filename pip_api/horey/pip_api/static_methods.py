@@ -4,12 +4,17 @@ Methods which can be used without package installation.
 import json
 import os
 import uuid
-
+import subprocess
 import sys
 import shutil
-import subprocess
-from requirement import Requirement
-from package import Package
+import urllib3
+
+
+try:
+    from requirement import Requirement
+    from package import Package
+except Exception:
+    print("Static methods can be used as standalone script for basic functional")
 
 
 class StaticMethods:
@@ -533,3 +538,25 @@ class StaticMethods:
         :param branch_name:
         :return:
         """
+
+    @staticmethod
+    def install_pip():
+        """
+        Download and install pip.
+
+        :return:
+        """
+
+        url = "https://bootstrap.pypa.io/get-pip.py"
+        http = urllib3.PoolManager()
+        chunk_size = 16 * 1024
+        r = http.request('GET', url, preload_content=False)
+
+        with open("./get-pip.py", 'wb') as out:
+            while True:
+                data = r.read(chunk_size)
+                if not data:
+                    break
+                out.write(data)
+
+        r.release_conn()

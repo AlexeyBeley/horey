@@ -5,6 +5,7 @@ Prerequisites: python, pip, OS (Mac, Linux or Windows)
 """
 import os
 import logging
+import argparse
 
 from static_methods import StaticMethods
 from requirement import Requirement
@@ -61,4 +62,8 @@ def main():
 
 
 if __name__ == "__main__":
+    description = "Install package"
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument("--pip_api_configuration", type=str)
+    args = parser.parse_args()
     main()

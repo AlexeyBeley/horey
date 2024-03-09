@@ -4,6 +4,7 @@ Pip API tests
 """
 
 import os
+import pytest
 from horey.common_utils.common_utils import CommonUtils
 from horey.pip_api.pip_api import PipAPI, Requirement
 from horey.pip_api.pip_api_configuration_policy import PipAPIConfigurationPolicy
@@ -26,12 +27,13 @@ pip_api_configuration_file_path = os.path.abspath(
     )
 )
 
-
+@pytest.mark.todo
 def test_init():
     pip_api = PipAPI()
     assert isinstance(pip_api, PipAPI)
 
 
+@pytest.mark.todo
 def test_init_configuration():
     configuration = PipAPIConfigurationPolicy()
     configuration.configuration_file_full_path = pip_api_configuration_file_path
@@ -39,12 +41,14 @@ def test_init_configuration():
     PipAPI(configuration=configuration)
 
 
+@pytest.mark.todo
 def test_init_packages():
     pip_api = PipAPI()
     pip_api.init_packages()
     assert isinstance(pip_api.packages, list)
 
 
+@pytest.mark.todo
 def test_install_requirements():
     requirements_file_path = os.path.abspath(
         os.path.join(
@@ -59,6 +63,7 @@ def test_install_requirements():
     assert isinstance(pip_api.packages, list)
 
 
+@pytest.mark.todo
 def test_install_requirements_real_data():
     requirements_file_path = os.path.abspath(
         os.path.join(
@@ -76,6 +81,7 @@ def test_install_requirements_real_data():
     assert isinstance(pip_api.packages, list)
 
 
+@pytest.mark.todo
 def test_update_existing_requirement_no_max():
     pip_api = PipAPI()
     requirement_this = Requirement("some/path", "requests>=2.28.1")
@@ -88,6 +94,7 @@ def test_update_existing_requirement_no_max():
     assert pip_api.REQUIREMENTS["requests"].include_max is None
 
 
+@pytest.mark.todo
 def test_update_existing_requirement_with_max():
     pip_api = PipAPI()
     requirement_this = Requirement("some/path", "requests>=2.28.1")
@@ -104,6 +111,7 @@ def test_update_existing_requirement_with_max():
     assert not pip_api.REQUIREMENTS["requests"].include_max
 
 
+@pytest.mark.todo
 def test_update_existing_requirement_single_version():
     pip_api = PipAPI()
     requirement_this = Requirement("some/path", "requests>=2.28.1")
@@ -118,6 +126,7 @@ def test_update_existing_requirement_single_version():
     assert pip_api.REQUIREMENTS["requests"].include_max
 
 
+@pytest.mark.todo
 def test_update_existing_requirement_exception_1():
     pip_api = PipAPI()
     requirement_this = Requirement("some/path", "requests>=2.28.1")
@@ -133,6 +142,7 @@ def test_update_existing_requirement_exception_1():
     assert pip_api.REQUIREMENTS["requests"].include_max
 
 
+@pytest.mark.todo
 def test_create_wheel():
     pip_api = PipAPI()
     setup_dir_path = os.path.join(horey_root_path, "pip_api")
@@ -140,6 +150,7 @@ def test_create_wheel():
     pip_api.create_wheel(setup_dir_path, build_dir_path)
 
 
+@pytest.mark.wip
 def test_create_wheel_from_branch():
     configuration = PipAPIConfigurationPolicy()
     configuration.configuration_file_full_path = pip_api_configuration_file_path
@@ -148,16 +159,3 @@ def test_create_wheel_from_branch():
     setup_dir_path = os.path.join(horey_root_path, "pip_api")
     build_dir_path = os.path.join(horey_root_path, "build", "_build", "pip_api")
     pip_api.create_wheel(setup_dir_path, build_dir_path, branch_name="pip_api_enhance")
-
-if __name__ == "__main__":
-    #test_init()
-    #test_init_configuration()
-    #test_init_packages()
-    #test_install_requirements()
-    #test_install_requirements_real_data()
-    #test_update_existing_requirement_no_max()
-    #test_update_existing_requirement_with_max()
-    #test_update_existing_requirement_single_version()
-    #test_update_existing_requirement_exception_1()
-    #test_create_wheel()
-    test_create_wheel_from_branch()

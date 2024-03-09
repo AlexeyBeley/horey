@@ -20,7 +20,7 @@ def get_logger():
         "[%(asctime)s] %(levelname)s:%(filename)s:%(lineno)s: %(message)s"
     )
     handler.setFormatter(formatter)
-    _logger = logging.getLogger("main")
+    _logger = logging.getLogger("bash_executor")
     _logger.setLevel("INFO")
     _logger.addHandler(handler)
     return _logger

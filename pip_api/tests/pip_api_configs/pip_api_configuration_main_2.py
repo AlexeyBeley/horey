@@ -11,11 +11,9 @@ class ConfigValues:
     """
 
     def __init__(self):
-        self.multi_package_repositories = [
-            os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../")
-        ]
+        tests_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         self.venv_dir_path = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "venv"
+            tests_dir, "venv"
         )
 
 

@@ -5,8 +5,6 @@ PIP API module.
 
 import sys
 import os
-import subprocess
-import uuid
 import json
 import shutil
 
@@ -119,59 +117,6 @@ class PipAPI:
         """
         return BashExecutor.run_bash(command, ignore_on_error_callback=ignore_on_error_callback, timeout=timeout, debug=debug,
                               logger=logger)
-
-    def run_bash_old(
-        self, command, ignore_on_error_callback=None, timeout=60 * 10, debug=True
-    ):
-        """
-        Run bash command, return stdout, stderr and return code.
-        Timeout is used fot stuck commands - for example if the command expects for user input.
-        Like dpkg installation approve - happens all the time with logstash package.
-
-        @param timeout: In seconds. Default 10 minutes
-        @param debug: print return code, stdout and stderr
-        @param command:
-        @param ignore_on_error_callback:
-        @return:
-        """
-
-        logger.info(f"run_bash: {command}")
-
-        file_name = f"tmp-{str(uuid.uuid4())}.sh"
-        with open(file_name, "w", encoding="utf-8") as file_handler:
-            file_handler.write(command)
-            command = f"/bin/bash {file_name}"
-
-        ret = subprocess.run(
-            [command], capture_output=True, shell=True, timeout=timeout, check=False
-        )
-
-        os.remove(file_name)
-
-        return_dict = {
-            "stdout": ret.stdout.decode().strip("\n"),
-            "stderr": ret.stderr.decode().strip("\n"),
-            "code": ret.returncode,
-        }
-        if debug:
-            logger.info(f"return_code: {return_dict['code']}")
-
-            stdout_log = "stdout:\n" + str(return_dict["stdout"])
-            for line in stdout_log.split("\n"):
-                logger.info(f"stdout_log line: {line}")
-
-            stderr_log = "stderr:\n" + str(return_dict["stderr"])
-            for line in stderr_log.split("\n"):
-                logger.info(f"stderr_log line: {line}")
-
-        if ret.returncode != 0:
-            if ignore_on_error_callback is None:
-                raise self.BashError(json.dumps(return_dict))
-
-            if not ignore_on_error_callback(return_dict):
-                raise self.BashError(json.dumps(return_dict))
-
-        return return_dict
 
     def execute(self, command, ignore_venv=False):
         """
