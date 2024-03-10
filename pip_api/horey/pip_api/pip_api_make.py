@@ -1,5 +1,6 @@
 """
 The entry point script to run authorization.
+python3 pip_api_make.py --pip_api_configuration config/config.py
 
 """
 
@@ -8,7 +9,7 @@ import importlib
 import os
 import sys
 import logging
-import urllib3
+import urllib.request
 
 handler = logging.StreamHandler()
 formatter = logging.Formatter(
@@ -86,18 +87,7 @@ def download_https_file(local_file_path, url):
     :return:
     """
 
-    http = urllib3.PoolManager()
-    chunk_size = 16 * 1024
-    r = http.request("GET", url, preload_content=False)
-
-    with open(local_file_path, "wb") as out:
-        while True:
-            data = r.read(chunk_size)
-            if not data:
-                break
-            out.write(data)
-
-    r.release_conn()
+    urllib.request.urlretrieve(url, local_file_path)
 
 
 def get_static_methods(dst_dir_path):
@@ -111,13 +101,24 @@ def get_static_methods(dst_dir_path):
     if os.path.isdir(horey_repo):
         module = load_module(os.path.join(horey_repo, "pip_api", "horey", "pip_api", "static_methods.py"))
     else:
+        file_path = os.path.join(dst_dir_path, "requirement.py")
+        download_https_file(file_path, "https://raw.githubusercontent.com/AlexeyBeley/horey/pip_api_make/pip_api/horey/pip_api/requirement.py")
+
         file_path = os.path.join(dst_dir_path, "static_methods.py")
-        download_https_file(file_path, "https://raw.githubusercontent.com/AlexeyBeley/horey/main/pip_api/horey/pip_api/static_methods.py")
+        download_https_file(file_path, "https://raw.githubusercontent.com/AlexeyBeley/horey/pip_api_make/pip_api/horey/pip_api/static_methods.py")
         module = load_module(file_path)
 
     StaticMethods = module.StaticMethods
     StaticMethods.logger = logger
     return StaticMethods
+
+
+def install_pip_raw():
+    """
+    Get pip and install
+
+    :return:
+    """
 
 
 def install_pip(configs):
@@ -132,13 +133,23 @@ def install_pip(configs):
     StaticMethods = get_static_methods(horey_dir_path)
 
     command = f"{sys.executable} -m pip -V"
-    ret = StaticMethods.execute(command)
-    breakpoint()
+    ret = StaticMethods.execute(command, ignore_on_error_callback=lambda error: "No module named pip" in repr(error))
+    stderr = ret.get("stderr")
+    if "No module named pip" in stderr:
+        pip_installer = os.path.join(horey_dir_path, "get-pip.py")
+        download_https_file(pip_installer, "https://bootstrap.pypa.io/get-pip.py")
+        command = f"{sys.executable} {pip_installer}"
+        ret = StaticMethods.execute(command)
+        if "Successfully installed pip" not in ret.get("stdout").strip("\r\n").split("\n")[-1]:
+            raise ValueError(ret)
+        command = f"{sys.executable} -m pip -V"
+        ret = StaticMethods.execute(command,
+                                    ignore_on_error_callback=lambda error: "No module named pip" in repr(error))
+    elif stderr:
+        raise RuntimeError(ret)
 
-    print(ret)
-
-    pip_installer = os.path.join(horey_dir_path, "get-pip.py")
-    download_https_file(pip_installer, "https://bootstrap.pypa.io/get-pip.py")
+    if "pip" not in ret.get("stdout") or "from" not in ret.get("stdout"):
+        raise RuntimeError(ret)
 
 
 def install_venv():
