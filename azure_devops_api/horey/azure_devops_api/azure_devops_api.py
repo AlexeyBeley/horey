@@ -95,6 +95,24 @@ class WorkItem(AzureDevopsObject):
             print(f"--> {field_name}: {field_value}")
 
     @property
+    def parent_id(self):
+        """
+        Extract parent id.
+
+        :return:
+        """
+        ret = []
+        for relation in self.relations:
+            if "name" not in relation["attributes"]:
+                continue
+            if relation["attributes"]["name"] == "Parent":
+                ret.append(int(relation["url"].split("/")[-1]))
+        if len(ret) > 1:
+            raise ValueError(ret)
+
+        return ret[0] if ret else None
+
+    @property
     def title(self):
         """
         WI title
@@ -180,6 +198,9 @@ class WorkItem(AzureDevopsObject):
         :return:
         """
         if self._created_date is None:
+            if "fields" not in self.dict_src:
+                return None
+
             value = self.dict_src["fields"]["System.CreatedDate"]
             self._created_date = self.strptime(value)
 
@@ -228,6 +249,9 @@ class WorkItem(AzureDevopsObject):
             if self.state_change_date_date is not None:
                 return self.state_change_date_date
 
+        if self.state == "Merge Request":
+            return None
+
         raise ValueError(f"Unknown state: {self.state}")
 
     @property
@@ -257,13 +281,16 @@ class WorkItem(AzureDevopsObject):
         value = self.fields.get("Microsoft.VSTS.Scheduling.OriginalEstimate")
         return value
 
+    # pylint: disable= too-many-branches
     def convert_to_dict(self):
         """
         Init base attributes.
 
         :return:
         """
-        ret = {"type": self.fields["System.WorkItemType"].replace(" ", ""),
+
+        try:
+            ret = {
                "id": str(self.fields["System.Id"]),
                "title": self.fields["System.Title"],
                "created_by": self.fields["System.CreatedBy"]["displayName"],
@@ -275,6 +302,15 @@ class WorkItem(AzureDevopsObject):
                "estimated_time": self.original_estimate,
                "completed_time": self.completed_work_hours
                }
+        except Exception:
+            if "you do not have permissions to read" in str(self.dict_src):
+                return self.dict_src
+            raise
+
+        try:
+            ret["type"] = self.fields["System.WorkItemType"].replace(" ", "")
+        except Exception as inst_error:
+            logger.info(f"Error: {inst_error}")
 
         if self.fields.get("System.AssignedTo") is not None:
             ret["assigned_to"] = self.fields["System.AssignedTo"]["displayName"]
@@ -678,7 +714,7 @@ class AzureDevopsAPI:
 
             logger.info(f"Totally initialized {len(lst_all_ids)} until iteration: {iteration_id}")
 
-        return CommonUtils.convert_to_dict(self.recursive_init_work_items(lst_all))
+        return self.recursive_init_work_items(lst_all)
 
     def recursive_init_work_items(self, lst_all, forward_only=False):
         """
@@ -1324,35 +1360,42 @@ class AzureDevopsAPI:
         self.patch(url, request_data)
         return wit_id
 
-    def generate_solution_retrospective(self, search_strings):
+    def generate_solution_retrospective(self, search_strings, ignore_wobject_ids=None):
         """
         Search for work items with these strings inside
 
+        :param ignore_wobject_ids:
         :param search_strings:
         :return:
         """
-
         wits_match = []
+        htb_all_wips = TextBlock("Found wips")
         for wit in self.work_items:
+            if ignore_wobject_ids and (wit.id in ignore_wobject_ids or wit.parent_id in ignore_wobject_ids):
+                continue
+
             for search_string in [search_string.lower().strip() for search_string in search_strings]:
                 if search_string in wit.title.lower():
                     wits_match.append(wit)
+                    htb_all_wips.lines.append(f"{wit.work_item_type}, {wit.id}, {wit.title}")
                     break
 
         recursively_found = self.recursive_init_work_items(wits_match, forward_only=True)
+        if ignore_wobject_ids:
+            recursively_found = [x for x in recursively_found if x.id not in ignore_wobject_ids and x.parent_id not in ignore_wobject_ids]
+
         base_task_bags = [wit for wit in wits_match if wit.work_item_type in ["Task", "Bug"]]
         recursive_task_bags = [wit for wit in recursively_found if wit.work_item_type in ["Task", "Bug"]]
         logger.info(f"Found {len(base_task_bags)} from string and {len(recursive_task_bags)} recursively")
-        for wit in recursive_task_bags:
-            print(wit.id, wit.title)
 
         htb_ret = TextBlock("Retrospective")
+        htb_ret.blocks.append(htb_all_wips)
         htb_low = self.generate_retrospective_per_type(
             [wit for wit in recursively_found if wit.work_item_type in ["Task", "Bug"]])
         htb_low.header = "Tasks/Bugs"
         htb_ret.blocks.append(htb_low)
 
-        high_order_wits = [wit for wit in recursively_found if wit.work_item_type not in ["Task", "Bug"]]
+        high_order_wits = [wit for wit in recursively_found if wit.work_item_type not in ["Task", "Bug", None]]
         htb_high = self.generate_retrospective_per_type(high_order_wits)
         htb_high.header = "/".join({wit.work_item_type for wit in high_order_wits})
         htb_ret.blocks.append(htb_high)
@@ -1368,6 +1411,9 @@ class AzureDevopsAPI:
 
         htb_ret = TextBlock("")
         types = []
+
+        wits = [wit for wit in wits if wit.created_date is not None]
+
         for wit in sorted(wits, key=lambda wit: wit.created_date):
             completed_work_hours = str(wit.completed_work_hours) if wit.completed_work_hours is not None else "?"
             activated_date = wit.activated_date.strftime("%d.%m.%Y") if wit.activated_date is not None else "?"

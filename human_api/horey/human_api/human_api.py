@@ -252,7 +252,7 @@ class HumanAPI:
         # with open("./tmp_cache.json", "w", encoding="utf-8") as fh:
         #    json.dump(work_objects, fh)
 
-        self.init_work_objects_from_dicts(work_objects)
+        self.init_work_objects_from_dicts(CommonUtils.convert_to_dict(work_objects))
 
     def init_work_objects_from_dicts(self, work_objects_dicts):
         """
@@ -1128,9 +1128,11 @@ class HumanAPI:
 
             with open(self.configuration.work_plan_summary_output_file_path_template.format(
                     sprint_name=sprint_name.replace(" ", "_")), "w", encoding="utf-8") as file_handler:
-                summary = ("-" * 40 + "\n").join(
+                summary = ("\n" + "-" * 40 + "\n").join(
                     summaries_map[item.hapi_uid].format_pprint(shift=4) for item in sprint_items if
                     item.hapi_uid in summaries_map)
+                total_time = sum(sprint_item.estimated_time for sprint_item in sprint_items if not sprint_item.child_ids and not sprint_item.child_hapi_uids and sprint_item.estimated_time)
+                summary += f"\nTotal time: {total_time}"
                 file_handler.write(summary)
 
         return items_map
@@ -1284,7 +1286,7 @@ class HumanAPI:
             if item.child_hapi_uids:
                 child_hapi_uids += item.child_hapi_uids
                 summaries[item.hapi_uid].lines += ["", "Children:"]
-            summaries[item.hapi_uid].blocks = [summaries[hapi_uid] for hapi_uid in item.child_hapi_uids]
+                summaries[item.hapi_uid].blocks = [summaries[hapi_uid] for hapi_uid in item.child_hapi_uids]
 
         # Return only top level summaries (Children are inside)
         return {uid: summary for uid, summary in summaries.items() if uid not in child_hapi_uids}

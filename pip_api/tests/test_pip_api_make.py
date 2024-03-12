@@ -9,10 +9,13 @@ import sys
 import pytest
 
 this_dir = os.path.dirname(__file__)
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(this_dir), "horey", "pip_api")))
+horey_repo_path = os.path.abspath(os.path.join(os.path.dirname(this_dir), "horey"))
+
+sys.path.insert(0, os.path.join(horey_repo_path, "pip_api"))
 import pip_api_make
 
 # pylint: disable= missing-function-docstring
+
 
 @pytest.fixture(name="tmp_dir_path")
 def tmp_dir_path_fixture():
@@ -92,7 +95,19 @@ def test_download_https_file_horey_file(tmp_dir_path):
     assert os.path.isfile(file_path)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_get_static_methods(tmp_dir_path):
     static_methods = pip_api_make.get_static_methods(tmp_dir_path)
+    assert static_methods is not None
+
+
+@pytest.mark.done
+def test_get_static_methods():
+    static_methods = pip_api_make.get_static_methods(os.path.dirname(horey_repo_path))
+    assert static_methods is not None
+
+
+@pytest.mark.wip
+def test_install_pip(tmp_dir_path):
+    static_methods = pip_api_make.install_pip({"horey_dir_path": os.path.dirname(horey_repo_path)})
     assert static_methods is not None
