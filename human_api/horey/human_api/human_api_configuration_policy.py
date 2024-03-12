@@ -115,7 +115,6 @@ class HumanAPIConfigurationPolicy(ConfigurationPolicy):
     def work_plan_output_file_path(self):
         return os.path.join(self.sprint_dir_path, "work_plan.json")
 
-
     @property
     def work_plan_summary_output_file_path_template(self):
         return os.path.join(self.reports_dir_path, "{sprint_name}", "hr_summary.txt")

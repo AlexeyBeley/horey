@@ -24,7 +24,7 @@ opensearch_api = OpensearchAPI(configuration=configuration)
 # pylint: disable= missing-function-docstring
 
 
-@pytest.mark.skip
+@pytest.mark.done
 def test_init_opensearch_api():
     """
     Test Opensearch API initiation
@@ -34,15 +34,39 @@ def test_init_opensearch_api():
     assert isinstance(_opensearch_api, OpensearchAPI)
 
 
-@pytest.mark.skip
+@pytest.mark.done
 def test_init_monitors():
-    """
-    Test dashboard object provisioning
-    @return:
-    """
-
     ret = opensearch_api.init_monitors()
     assert len(ret) > 0
+
+
+@pytest.mark.done
+def test_provision_monitor():
+    monitor_current = opensearch_api.monitors[0]
+    monitor = monitor_current.copy()
+    monitor.name = "test"
+    opensearch_api.provision_monitor(monitor)
+    assert len(opensearch_api.monitors) > 0
+
+
+@pytest.mark.done
+def test_provision_monitor_disable():
+    monitor_current = opensearch_api.monitors[0]
+    monitor = monitor_current.copy()
+    monitor.enabled = False
+    opensearch_api.provision_monitor(monitor)
+    monitor.name = "test"
+    opensearch_api.provision_monitor(monitor)
+    assert len(opensearch_api.monitors) > 0
+
+
+@pytest.mark.done
+def test_dispose_monitor():
+    monitor_current = opensearch_api.monitors[0]
+    monitor = monitor_current.copy()
+    monitor.name = "test"
+    opensearch_api.dispose_monitor(monitor)
+    assert len(opensearch_api.monitors) > 0
 
 
 @pytest.mark.skip
@@ -55,7 +79,8 @@ def test_post_document():
                                  })
     assert response.get("_id") is not None
 
-@pytest.mark.wip
+
+@pytest.mark.done
 def test_init_index_patterns():
     """
     Test dashboard object provisioning
@@ -64,6 +89,7 @@ def test_init_index_patterns():
 
     ret = opensearch_api.init_index_patterns()
     assert len(ret) > 0
+
 
 @pytest.mark.done
 def test_put_index_pattern():

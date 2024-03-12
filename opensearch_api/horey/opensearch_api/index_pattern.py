@@ -5,6 +5,7 @@ Index pattern.
 
 from horey.opensearch_api.opensearch_object import OpensearchObject
 
+
 class IndexPattern(OpensearchObject):
     """
     Main class.

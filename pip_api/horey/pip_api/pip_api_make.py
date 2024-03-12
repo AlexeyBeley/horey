@@ -21,6 +21,13 @@ logger.setLevel("INFO")
 logger.addHandler(handler)
 
 
+class Static:
+    """
+    Static data. A.K.A. global
+    """
+    methods = None
+
+
 def init_configuration_from_py(file_path):
     """
     Init basic config from python file.
@@ -90,13 +97,16 @@ def download_https_file(local_file_path, url):
     urllib.request.urlretrieve(url, local_file_path)
 
 
-def get_static_methods(dst_dir_path):
+def get_static_methods(configs):
     """
     Get StaticMethods class either from local source code of from horey github
 
     :return:
     """
 
+    if Static.methods is not None:
+        return Static.methods
+    dst_dir_path = configs.get("horey_dir_path") or "."
     horey_repo = os.path.join(dst_dir_path, "horey")
     if os.path.isdir(horey_repo):
         module = load_module(os.path.join(horey_repo, "pip_api", "horey", "pip_api", "static_methods.py"))
@@ -108,9 +118,10 @@ def get_static_methods(dst_dir_path):
         download_https_file(file_path, "https://raw.githubusercontent.com/AlexeyBeley/horey/pip_api_make/pip_api/horey/pip_api/static_methods.py")
         module = load_module(file_path)
 
-    StaticMethods = module.StaticMethods
-    StaticMethods.logger = logger
-    return StaticMethods
+    Static.methods = module.StaticMethods
+    Static.methods.logger = logger
+
+    return Static.methods
 
 
 def install_pip_raw():
@@ -130,7 +141,7 @@ def install_pip(configs):
     """
 
     horey_dir_path = configs.get("horey_dir_path") or "."
-    StaticMethods = get_static_methods(horey_dir_path)
+    StaticMethods = get_static_methods(configs)
 
     command = f"{sys.executable} -m pip -V"
     ret = StaticMethods.execute(command, ignore_on_error_callback=lambda error: "No module named pip" in repr(error))
@@ -143,8 +154,7 @@ def install_pip(configs):
         if "Successfully installed pip" not in ret.get("stdout").strip("\r\n").split("\n")[-1]:
             raise ValueError(ret)
         command = f"{sys.executable} -m pip -V"
-        ret = StaticMethods.execute(command,
-                                    ignore_on_error_callback=lambda error: "No module named pip" in repr(error))
+        ret = StaticMethods.execute(command)
     elif stderr:
         raise RuntimeError(ret)
 
@@ -152,12 +162,30 @@ def install_pip(configs):
         raise RuntimeError(ret)
 
 
-def install_venv():
+def install_venv(configs):
     """
     Install venv module
 
     :return:
     """
+
+    StaticMethods = get_static_methods(configs)
+
+    command = f"{sys.executable} -m virtualenv --version"
+    ret = StaticMethods.execute(command, ignore_on_error_callback=lambda error: "No module named virtualenv" in repr(error))
+    stderr = ret.get("stderr")
+    if "No module named virtualenv" in stderr:
+        command = f"{sys.executable} -m pip install virtualenv"
+        ret = StaticMethods.execute(command)
+        if "Successfully installed virtualenv" not in ret.get("stdout").strip("\r\n").split("\n")[-1]:
+            raise ValueError(ret)
+        command = f"{sys.executable} -m virtualenv --version"
+        ret = StaticMethods.execute(command)
+    elif stderr:
+        raise RuntimeError(ret)
+
+    if "virtualenv" not in ret.get("stdout") or "from" not in ret.get("stdout"):
+        raise RuntimeError(ret)
 
 
 def provision_venv(configs):
@@ -166,13 +194,23 @@ def provision_venv(configs):
 
     :return:
     """
-    print(configs)
+
+    if configs.get("venv_dir_path") is None:
+        return
+
+    install_venv(configs)
+    StaticMethods = get_static_methods(configs)
+    ret = StaticMethods.execute(f"{sys.executable} -m venv {configs.get('venv_dir_path')}")
+    print(ret)
 
 
 def provision_pip_api(configs):
     """
     Provision pip api package in the venv or global python.
 
+    "https://github.com/AlexeyBeley/horey/archive/refs/heads/main.zip"
+    "https://github.com/AlexeyBeley/horey/archive/refs/heads/pip_api_make.zip"
+    "pip_api_make"
     :return:
     """
     print(configs)
@@ -184,9 +222,9 @@ def bootstrap():
 
     :return:
     """
+
     configs = init_configuration()
     install_pip(configs)
-    install_venv()
     provision_venv(configs)
     provision_pip_api(configs)
 

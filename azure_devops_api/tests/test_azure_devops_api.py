@@ -131,6 +131,7 @@ def test_generate_solution_retrospective():
     azure_devops_api.init_work_items(from_cache=True)
     search_strings = mock_values["search_strings"]
     htb_ret = azure_devops_api.generate_solution_retrospective(search_strings)
+    htb_ret.write_to_file("tmp.htb")
     assert htb_ret is not None
     assert len(azure_devops_api.work_items) > 0
 
