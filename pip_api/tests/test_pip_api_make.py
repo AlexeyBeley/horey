@@ -107,7 +107,23 @@ def test_get_static_methods():
     assert static_methods is not None
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_install_pip(tmp_dir_path):
     static_methods = pip_api_make.install_pip({"horey_dir_path": os.path.dirname(horey_repo_path)})
+    assert static_methods is not None
+
+
+@pytest.mark.wip
+def test_provision_venv(tmp_dir_path):
+    static_methods = pip_api_make.provision_venv({"venv_dir_path": tmp_dir_path})
+    assert static_methods is not None
+
+@pytest.mark.todo
+def test_provision_pip_api_venv(tmp_dir_path):
+    static_methods = pip_api_make.provision_pip_api({"horey_dir_path": tmp_dir_path})
+    assert static_methods is not None
+
+@pytest.mark.todo
+def test_provision_pip_api_global(tmp_dir_path):
+    static_methods = pip_api_make.provision_pip_api({"horey_dir_path": tmp_dir_path})
     assert static_methods is not None
