@@ -26,6 +26,9 @@ class OpensearchAPI:
     def __init__(self, configuration: OpensearchAPIConfigurationPolicy = None):
         self._monitors = None
         self.configuration = configuration
+        if self.configuration.server_address.endswith("/"):
+            self.configuration.server_address = self.configuration.server_address[:-1]
+
         self.index_patterns = []
         self.headers = {"Content-Type": "application/json; charset=utf-8"}
 
@@ -192,10 +195,12 @@ class OpensearchAPI:
 
         if len(current_monitors) == 1:
             if request := current_monitors[0].generate_update_request(monitor):
+                logger.info(f"Updating monitor {current_monitors[0].name}")
                 self.put(f"_plugins/_alerting/monitors/{current_monitors[0].id}", request)
                 self._monitors = []
             return True
 
+        logger.info(f"Creating monitor {current_monitors[0].name}")
         self.post("_plugins/_alerting/monitors", data=monitor.generate_create_request())
         self._monitors = []
         return True
@@ -212,6 +217,7 @@ class OpensearchAPI:
             raise RuntimeError(current_monitors)
 
         if len(current_monitors) == 1:
+            logger.info(f"Disposing monitor {current_monitors[0].name}")
             self.delete(f"_plugins/_alerting/monitors/{current_monitors[0].id}")
 
         return True
