@@ -200,7 +200,7 @@ class OpensearchAPI:
                 self._monitors = []
             return True
 
-        logger.info(f"Creating monitor {current_monitors[0].name}")
+        logger.info(f"Creating monitor {monitor.name}")
         self.post("_plugins/_alerting/monitors", data=monitor.generate_create_request())
         self._monitors = []
         return True
