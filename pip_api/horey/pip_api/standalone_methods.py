@@ -30,10 +30,12 @@ class StandaloneMethods:
         :return: 
         """
 
-        if self.venv_dir_path is not None:
-            breakpoint()
+        command = sys.executable if platform.system().lower() != "windows" else f'"{sys.executable}"'
 
-        return sys.executable if platform.system().lower() != "windows" else f'"{sys.executable}"'
+        if self.venv_dir_path is not None:
+            command = f"source {os.path.join(self.venv_dir_path, 'bin/activate')} && {command}"
+
+        return command
 
     def __init__(self, venv_dir_path, multi_package_repo_to_prefix_map):
         self.multi_package_repo_to_prefix_map = multi_package_repo_to_prefix_map
@@ -296,7 +298,7 @@ class StandaloneMethods:
         :param requirement:
         :return:
         """
-
+        breakpoint()
         for prefix, repo_path in self.multi_package_repo_to_prefix_map.items():
             if requirement.name.startswith(prefix):
                 requirement.multi_package_repo_prefix = prefix

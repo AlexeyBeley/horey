@@ -9,9 +9,9 @@ import sys
 import pytest
 
 this_dir = os.path.dirname(__file__)
-horey_repo_path = os.path.abspath(os.path.join(os.path.dirname(this_dir), "horey"))
+horey_sub_path = os.path.abspath(os.path.join(os.path.dirname(this_dir), "horey"))
 
-sys.path.insert(0, os.path.join(horey_repo_path, "pip_api"))
+sys.path.insert(0, os.path.join(horey_sub_path, "pip_api"))
 import pip_api_make
 
 
@@ -105,13 +105,13 @@ def test_get_standalone_methods(tmp_dir_path):
 
 @pytest.mark.wip
 def test_get_standalone_methods():
-    standalone_methods = pip_api_make.get_standalone_methods(os.path.dirname(horey_repo_path))
+    standalone_methods = pip_api_make.get_standalone_methods(os.path.dirname(horey_sub_path))
     assert standalone_methods is not None
 
 
 @pytest.mark.wip
 def test_install_pip(tmp_dir_path):
-    standalone_methods = pip_api_make.install_pip({"horey_dir_path": os.path.dirname(horey_repo_path)})
+    standalone_methods = pip_api_make.install_pip({"horey_dir_path": os.path.dirname(horey_sub_path)})
     assert standalone_methods is not None
 
 
@@ -121,7 +121,14 @@ def test_provision_venv(tmp_dir_path):
 
 
 @pytest.mark.wip
-def test_provision_pip_api_venv(tmp_dir_path):
+def test_provision_pip_api_venv_with_horey_dir_path(tmp_dir_path):
+    standalone_methods = pip_api_make.provision_pip_api({"horey_dir_path": os.path.dirname(os.path.dirname(os.path.dirname(horey_sub_path))),
+                                                     "venv_dir_path": tmp_dir_path})
+    assert standalone_methods is not None
+
+
+@pytest.mark.wip
+def test_provision_pip_api_venv_without_horey_dir_path(tmp_dir_path):
     standalone_methods = pip_api_make.provision_pip_api({"horey_dir_path": tmp_dir_path,
                                                      "venv_dir_path": tmp_dir_path})
     assert standalone_methods is not None

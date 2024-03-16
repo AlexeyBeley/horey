@@ -105,10 +105,16 @@ def get_standalone_methods(configs):
     :return:
     """
 
-    if Standalone.methods is not None:
-        return Standalone.methods
     dst_dir_path = configs.get("horey_dir_path") or "."
     horey_repo = os.path.join(dst_dir_path, "horey")
+    venv_dir_path = configs.get("venv_dir_path")
+    multi_package_map = {"horey.": horey_repo}
+
+    if Standalone.methods is not None and \
+        Standalone.methods.venv_dir_path == venv_dir_path and \
+        Standalone.methods.multi_package_repo_to_prefix_map == multi_package_map:
+        return Standalone.methods
+
     if os.path.isdir(horey_repo):
         module = load_module(os.path.join(horey_repo, "pip_api", "horey", "pip_api", "standalone_methods.py"))
     else:
@@ -122,7 +128,7 @@ def get_standalone_methods(configs):
         download_https_file(file_path, "https://raw.githubusercontent.com/AlexeyBeley/horey/pip_api_make_provision/pip_api/horey/pip_api/standalone_methods.py")
         module = load_module(file_path)
 
-    Standalone.methods = module.StandaloneMethods(configs.get("venv_dir_path"), {"horey.": horey_repo})
+    Standalone.methods = module.StandaloneMethods(venv_dir_path, multi_package_map)
     Standalone.methods.logger = logger
 
     return Standalone.methods
@@ -210,17 +216,20 @@ def provision_pip_api(configs):
     :return:
     """
 
-    branch_name = "pip_api_make_provision"
     horey_dir_path = configs.get("horey_dir_path") or "."
-    file_path = os.path.join(horey_dir_path, "main.zip")
-    download_https_file(file_path,
-                        f"https://github.com/AlexeyBeley/horey/archive/refs/heads/{branch_name}.zip")
-    with zipfile.ZipFile(file_path, 'r') as zip_ref:
-        zip_ref.extractall(horey_dir_path)
+    if os.path.isdir(os.path.join(horey_dir_path, "horey")):
+        pip_api_requirements_file_path = os.path.join(horey_dir_path, "horey", "pip_api", "requirements.txt")
+    else:
+        breakpoint()
+        branch_name = "pip_api_make_provision"
+        file_path = os.path.join(horey_dir_path, "main.zip")
+        download_https_file(file_path,
+                            f"https://github.com/AlexeyBeley/horey/archive/refs/heads/{branch_name}.zip")
+        with zipfile.ZipFile(file_path, 'r') as zip_ref:
+            zip_ref.extractall(horey_dir_path)
+        pip_api_requirements_file_path = os.path.join(horey_dir_path, f"horey-{branch_name}", "pip_api", "requirements.txt")
     StandaloneMethods = get_standalone_methods(configs)
-    breakpoint()
     current_dir = os.getcwd()
-    pip_api_requirements_file_path = os.path.join(horey_dir_path, f"horey-{branch_name}", "pip_api", "requirements.txt")
     StandaloneMethods.install_requirements(pip_api_requirements_file_path)
     StandaloneMethods.build_and_install_package(os.path.join(horey_dir_path, "horey"), "pip_api")
 
