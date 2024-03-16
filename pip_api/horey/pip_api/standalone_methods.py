@@ -10,25 +10,37 @@ import shutil
 import platform
 
 
-try:
-    from requirement import Requirement
-    from package import Package
-except Exception:
-    print("Static methods can be used as standalone script for basic functional")
+from requirement import Requirement
+from package import Package
 
 
-class StaticMethods:
+class StandaloneMethods:
     """
     Static methods, can be used both from package and directly.
     """
 
-    HOREY_REPO_PATH = os.path.abspath(os.path.join(__file__, "..", "..", "..", ".."))
-    PYTHON_INTERPRETER_COMMAND = sys.executable if platform.system().lower() != "windows" else f'"{sys.executable}"'
     INSTALLED_PACKAGES = None
+
     logger = None
 
-    @staticmethod
-    def init_requirements_raw(requirements_file_path):
+    def generate_python_interpreter_command(self):
+        """
+        Consider venv and OS.
+
+        :return: 
+        """
+
+        if self.venv_dir_path is not None:
+            breakpoint()
+
+        return sys.executable if platform.system().lower() != "windows" else f'"{sys.executable}"'
+
+    def __init__(self, venv_dir_path, multi_package_repo_to_prefix_map):
+        self.multi_package_repo_to_prefix_map = multi_package_repo_to_prefix_map
+        self.venv_dir_path = venv_dir_path
+        self.python_interpreter_command = self.generate_python_interpreter_command()
+
+    def init_requirements_raw(self, requirements_file_path):
         """
         Init requirements from single file.
 
@@ -47,7 +59,7 @@ class StaticMethods:
             ]
 
         for line in lines:
-            StaticMethods.logger.info(f"Initializing requirement '{line}' from file '{requirements_file_path}'")
+            self.logger.info(f"Initializing requirement '{line}' from file '{requirements_file_path}'")
             requirements.append(Requirement(requirements_file_path, line))
 
         return requirements
@@ -64,42 +76,38 @@ class StaticMethods:
 
         return os.path.join(repo_path, package_name, "requirements.txt")
 
-    @staticmethod
-    def compose_requirements_recursive(requirements_file_path, requirements_aggregator, multi_package_repos_prefix_map):
+    def compose_requirements_recursive(self, requirements_file_path, requirements_aggregator):
         """
         Compose requirements based on multi package repos map.
 
-        :param multi_package_repos_prefix_map:
         :param requirements_aggregator:
         :param requirements_file_path:
         :return:
         """
 
-        requirements = StaticMethods.init_requirements_raw(requirements_file_path)
+        requirements = self.init_requirements_raw(requirements_file_path)
         for requirement in requirements:
             if requirement.name in requirements_aggregator:
-                StaticMethods.update_existing_requirement(requirement, requirements_aggregator)
+                self.update_existing_requirement(requirement, requirements_aggregator)
                 continue
 
             requirements_aggregator[requirement.name] = requirement
 
-            for prefix, repo_path in multi_package_repos_prefix_map.items():
+            for prefix, repo_path in self.multi_package_repo_to_prefix_map.items():
                 if requirement.name.startswith(prefix):
                     package_dir_name = requirement.name.split(".")[-1]
                     multi_package_repo_requirements_file_path = os.path.join(
                         repo_path, package_dir_name, "requirements.txt"
                     )
-                    StaticMethods.compose_requirements_recursive(
+                    self.compose_requirements_recursive(
                         multi_package_repo_requirements_file_path, requirements_aggregator,
-                        multi_package_repos_prefix_map
                     )
                     break
             else:
                 requirements_aggregator[requirement.name] = requirement
 
     # pylint: disable= too-many-branches
-    @staticmethod
-    def update_existing_requirement(requirement: Requirement, requirements_aggregator: dict):
+    def update_existing_requirement(self, requirement: Requirement, requirements_aggregator: dict):
         """
         Update with new requirements.
 
@@ -108,8 +116,8 @@ class StaticMethods:
         error_requirement = f"requirement.name: {requirement.name}"
 
         current = requirements_aggregator[requirement.name]
-        common_min_requirement = StaticMethods.get_common_min_requirement(current, requirement)
-        common_max_requirement = StaticMethods.get_common_max_requirement(current, requirement)
+        common_min_requirement = self.get_common_min_requirement(current, requirement)
+        common_max_requirement = self.get_common_max_requirement(current, requirement)
         if common_min_requirement.min_version is None:
             if current.min_version is not None:
                 raise RuntimeError(f"Unreachable state: Current min version: {current.min_version} "
@@ -225,9 +233,8 @@ class StaticMethods:
                 return this
         raise RuntimeError(f"This should be unreachable: this_min: {this.min_version}, other_min: {other.min_version}")
 
-    @staticmethod
-    def install_requirements(
-            requirements_file_path, multi_package_repos_prefix_map, update=False, update_from_source=False
+    def install_requirements(self,
+            requirements_file_path, update=False, update_from_source=False
     ):
         """
         Prepare list of requirements to be installed and install those missing.
@@ -236,75 +243,69 @@ class StaticMethods:
         :return:
         """
 
-        StaticMethods.logger.info(f"Installing requirements from file: '{requirements_file_path}'")
+        self.logger.info(f"Installing requirements from file: '{requirements_file_path}'")
         requirements_aggregator = {}
-        StaticMethods.compose_requirements_recursive(requirements_file_path, requirements_aggregator,
-                                                     multi_package_repos_prefix_map)
+        self.compose_requirements_recursive(requirements_file_path, requirements_aggregator)
         if not requirements_aggregator:
             return
-        installed_packages = StaticMethods.get_installed_packages()
+        installed_packages = self.get_installed_packages()
 
         for requirement in reversed(requirements_aggregator.values()):
-            if not StaticMethods.requirement_satisfied(requirement, installed_packages):
-                StaticMethods.install_requirement(requirement, multi_package_repos_prefix_map)
+            if not self.requirement_satisfied(requirement, installed_packages):
+                self.install_requirement(requirement)
                 continue
 
             if update:
-                StaticMethods.install_requirement(requirement, multi_package_repos_prefix_map)
+                self.install_requirement(requirement)
                 continue
 
             if update_from_source:
-                for prefix in multi_package_repos_prefix_map:
+                for prefix in self.multi_package_repo_to_prefix_map:
                     if requirement.name.startswith(prefix):
-                        StaticMethods.install_requirement(requirement, multi_package_repos_prefix_map)
+                        self.install_requirement(requirement)
                         break
 
-    @staticmethod
-    def get_installed_packages(multi_package_repos_prefix_map=None):
+    def get_installed_packages(self):
         """
         Initialize packages with their repo paths and versions
 
         :return:
         """
-        if StaticMethods.INSTALLED_PACKAGES:
-            return StaticMethods.INSTALLED_PACKAGES
+        if self.INSTALLED_PACKAGES:
+            return self.INSTALLED_PACKAGES
 
-        response = StaticMethods.execute(f"{StaticMethods.PYTHON_INTERPRETER_COMMAND} -m pip list --format json")
+        response = self.execute(f"{self.python_interpreter_command} -m pip list --format json")
         lst_packages = json.loads(response["stdout"])
 
         objects = []
         for dict_package in lst_packages:
             package = Package(dict_package)
             objects.append(package)
-            if multi_package_repos_prefix_map:
-                for prefix, repo_path in multi_package_repos_prefix_map.items():
-                    if package.name.startswith(prefix):
-                        package.multi_package_repo_prefix = prefix
-                        package.multi_package_repo_path = repo_path
+            for prefix, repo_path in self.multi_package_repo_to_prefix_map.items():
+                if package.name.startswith(prefix):
+                    package.multi_package_repo_prefix = prefix
+                    package.multi_package_repo_path = repo_path
 
-        StaticMethods.INSTALLED_PACKAGES = objects
-        return StaticMethods.INSTALLED_PACKAGES
+        self.INSTALLED_PACKAGES = objects
+        return self.INSTALLED_PACKAGES
 
-    @staticmethod
-    def install_requirement(requirement: Requirement, multi_package_repos_prefix_map):
+    def install_requirement(self, requirement: Requirement):
         """
         Install single requirement.
 
-        :param multi_package_repos_prefix_map:
         :param requirement:
         :return:
         """
 
-        for prefix, repo_path in multi_package_repos_prefix_map.items():
+        for prefix, repo_path in self.multi_package_repo_to_prefix_map.items():
             if requirement.name.startswith(prefix):
                 requirement.multi_package_repo_prefix = prefix
                 requirement.multi_package_repo_path = repo_path
-                return StaticMethods.install_multi_package_repo_requirement(requirement)
+                return self.install_multi_package_repo_requirement(requirement)
 
-        return StaticMethods.install_requirement_default(requirement)
+        return self.install_requirement_default(requirement)
 
-    @staticmethod
-    def install_requirement_default(requirement):
+    def install_requirement_default(self, requirement):
         """
         Default pip install
 
@@ -312,12 +313,11 @@ class StaticMethods:
         :return:
         """
 
-        StaticMethods.INSTALLED_PACKAGES = None
-        return StaticMethods.execute(
-        f"{StaticMethods.PYTHON_INTERPRETER_COMMAND} -m pip install --force-reinstall {requirement.generate_install_string()}")
+        self.INSTALLED_PACKAGES = None
+        return self.execute(
+        f"{self.python_interpreter_command} -m pip install --force-reinstall {requirement.generate_install_string()}")
 
-    @staticmethod
-    def install_multi_package_repo_requirement(requirement):
+    def install_multi_package_repo_requirement(self, requirement):
         """
         Build package and install it.
 
@@ -326,10 +326,9 @@ class StaticMethods:
         """
 
         package_dir_name = requirement.name.split(".")[-1]
-        StaticMethods.build_and_install_package(requirement.multi_package_repo_path, package_dir_name)
+        self.build_and_install_package(requirement.multi_package_repo_path, package_dir_name)
 
-    @staticmethod
-    def build_and_install_package(multi_package_repo_path, package_dir_name):
+    def build_and_install_package(self, multi_package_repo_path, package_dir_name):
         """
         Build the wheel and install it.
 
@@ -342,15 +341,15 @@ class StaticMethods:
         os.makedirs(tmp_build_dir, exist_ok=True)
 
         build_dir_path = os.path.join(tmp_build_dir, package_dir_name)
-        StaticMethods.create_wheel(os.path.join(multi_package_repo_path, package_dir_name), build_dir_path)
+        self.create_wheel(os.path.join(multi_package_repo_path, package_dir_name), build_dir_path)
         wheel_file_name = None
         dist_dir_path = os.path.join(build_dir_path, "dist")
         for wheel_file_name in os.listdir(dist_dir_path):
             if wheel_file_name.endswith(".whl"):
                 break
 
-        command = f"{StaticMethods.PYTHON_INTERPRETER_COMMAND} -m pip install --force-reinstall {os.path.join(dist_dir_path, wheel_file_name)}"
-        response = StaticMethods.execute(command)
+        command = f"{self.python_interpreter_command} -m pip install --force-reinstall {os.path.join(dist_dir_path, wheel_file_name)}"
+        response = self.execute(command)
 
         lines = response["stdout"].split("\n")
         index = -2 if "Leaving directory" in lines[-1] else -1
@@ -358,7 +357,7 @@ class StaticMethods:
             raise RuntimeError(
                 f"Could not install {package_dir_name} from source code:\n {response}"
             )
-        StaticMethods.INSTALLED_PACKAGES = None
+        self.INSTALLED_PACKAGES = None
 
     @staticmethod
     def requirement_satisfied(requirement: Requirement, packages):
@@ -377,8 +376,7 @@ class StaticMethods:
 
         return False
 
-    @staticmethod
-    def create_wheel(source_code_path, build_dir_path, branch_name=None):
+    def create_wheel(self, source_code_path, build_dir_path, branch_name=None):
         """
         Create wheel.
 
@@ -396,21 +394,20 @@ class StaticMethods:
 
         if branch_name:
             os.chdir(source_code_path)
-            StaticMethods.checkout_branch(branch_name)
+            self.checkout_branch(branch_name)
 
         shutil.copytree(source_code_path, build_dir_path)
         os.chdir(build_dir_path)
 
         try:
-            command = f"{StaticMethods.PYTHON_INTERPRETER_COMMAND} setup.py sdist bdist_wheel"
-            response = StaticMethods.execute(command)
+            command = f"{self.python_interpreter_command} setup.py sdist bdist_wheel"
+            response = self.execute(command)
         finally:
             os.chdir(old_cwd)
 
         return response
 
-    @staticmethod
-    def execute(command, ignore_on_error_callback=None, timeout=60 * 10, debug=True):
+    def execute(self, command, ignore_on_error_callback=None, timeout=60 * 10, debug=True):
         """
         Execute command in OS.
 
@@ -422,16 +419,15 @@ class StaticMethods:
         """
 
         if platform.system().lower() == "windows":
-            return StaticMethods.run_bat(command,
+            return self.run_bat(command,
                                          ignore_on_error_callback=ignore_on_error_callback,
                                          timeout=timeout,
                                          debug=debug)
 
-        return StaticMethods.run_bash(command, ignore_on_error_callback=ignore_on_error_callback, timeout=timeout,
+        return self.run_bash(command, ignore_on_error_callback=ignore_on_error_callback, timeout=timeout,
                                       debug=debug)
 
-    @staticmethod
-    def run_raw(command, file_name, ignore_on_error_callback=None, timeout=60 * 10, debug=True):
+    def run_raw(self, command, file_name, ignore_on_error_callback=None, timeout=60 * 10, debug=True):
         """
         Run bash command, return stdout, stderr and return code.
         Timeout is used fot stuck commands - for example if the command expects for user input.
@@ -445,7 +441,7 @@ class StaticMethods:
         @return:
         """
 
-        StaticMethods.logger.info(f"run raw: {command}")
+        self.logger.info(f"run raw: {command}")
 
         try:
             ret = subprocess.run(
@@ -466,17 +462,17 @@ class StaticMethods:
             "code": ret.returncode,
         }
         if debug:
-            StaticMethods.logger.info(f"return_code:{return_dict['code']}")
+            self.logger.info(f"return_code:{return_dict['code']}")
 
             stdout_log = "stdout:\n" + str(return_dict["stdout"])
             for line in stdout_log.split("\n"):
-                StaticMethods.logger.info(line)
+                self.logger.info(line)
 
             error_str = str(return_dict["stderr"])
             if error_str:
                 stderr_log = "stderr:\n" + error_str
                 for line in stderr_log.split("\n"):
-                    StaticMethods.logger.info(line)
+                    self.logger.info(line)
 
         if ret.returncode != 0:
             if ignore_on_error_callback is None:
@@ -487,8 +483,7 @@ class StaticMethods:
 
         return return_dict
 
-    @staticmethod
-    def run_bash(command, ignore_on_error_callback=None, timeout=60 * 10, debug=True):
+    def run_bash(self, command, ignore_on_error_callback=None, timeout=60 * 10, debug=True):
         """
         Generate file and run it.
 
@@ -504,13 +499,12 @@ class StaticMethods:
             file_handler.write(command)
             command = f"/bin/bash {file_name}"
 
-        return StaticMethods.run_raw(command, file_name,
+        return self.run_raw(command, file_name,
                                      ignore_on_error_callback=ignore_on_error_callback,
                                      timeout=timeout,
                                      debug=debug)
 
-    @staticmethod
-    def run_bat(command, ignore_on_error_callback=None, timeout=60 * 10, debug=True):
+    def run_bat(self, command, ignore_on_error_callback=None, timeout=60 * 10, debug=True):
         """
         Generate file and run it.
 
@@ -525,7 +519,7 @@ class StaticMethods:
         with open(file_name, "w", encoding="utf-8") as file_handler:
             file_handler.write("@echo off\r\n" + command)
             new_command = file_name
-        return StaticMethods.run_raw(new_command, file_name,
+        return self.run_raw(new_command, file_name,
                                      ignore_on_error_callback=ignore_on_error_callback,
                                      timeout=timeout,
                                      debug=debug)

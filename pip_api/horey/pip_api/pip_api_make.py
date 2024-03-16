@@ -10,6 +10,7 @@ import os
 import sys
 import logging
 import urllib.request
+import zipfile
 
 handler = logging.StreamHandler()
 formatter = logging.Formatter(
@@ -21,9 +22,9 @@ logger.setLevel("INFO")
 logger.addHandler(handler)
 
 
-class Static:
+class Standalone:
     """
-    Static data. A.K.A. global
+    Standalone data. A.K.A. global
     """
     methods = None
 
@@ -97,31 +98,34 @@ def download_https_file(local_file_path, url):
     urllib.request.urlretrieve(url, local_file_path)
 
 
-def get_static_methods(configs):
+def get_standalone_methods(configs):
     """
-    Get StaticMethods class either from local source code of from horey github
+    Get StandaloneMethods class either from local source code of from horey github
 
     :return:
     """
 
-    if Static.methods is not None:
-        return Static.methods
+    if Standalone.methods is not None:
+        return Standalone.methods
     dst_dir_path = configs.get("horey_dir_path") or "."
     horey_repo = os.path.join(dst_dir_path, "horey")
     if os.path.isdir(horey_repo):
-        module = load_module(os.path.join(horey_repo, "pip_api", "horey", "pip_api", "static_methods.py"))
+        module = load_module(os.path.join(horey_repo, "pip_api", "horey", "pip_api", "standalone_methods.py"))
     else:
+        file_path = os.path.join(dst_dir_path, "package.py")
+        download_https_file(file_path, "https://raw.githubusercontent.com/AlexeyBeley/horey/pip_api_make_provision/pip_api/horey/pip_api/package.py")
+
         file_path = os.path.join(dst_dir_path, "requirement.py")
         download_https_file(file_path, "https://raw.githubusercontent.com/AlexeyBeley/horey/pip_api_make_provision/pip_api/horey/pip_api/requirement.py")
 
-        file_path = os.path.join(dst_dir_path, "static_methods.py")
-        download_https_file(file_path, "https://raw.githubusercontent.com/AlexeyBeley/horey/pip_api_make_provision/pip_api/horey/pip_api/static_methods.py")
+        file_path = os.path.join(dst_dir_path, "standalone_methods.py")
+        download_https_file(file_path, "https://raw.githubusercontent.com/AlexeyBeley/horey/pip_api_make_provision/pip_api/horey/pip_api/standalone_methods.py")
         module = load_module(file_path)
 
-    Static.methods = module.StaticMethods
-    Static.methods.logger = logger
+    Standalone.methods = module.StandaloneMethods(configs.get("venv_dir_path"), {"horey.": horey_repo})
+    Standalone.methods.logger = logger
 
-    return Static.methods
+    return Standalone.methods
 
 
 def install_pip(configs):
@@ -133,20 +137,20 @@ def install_pip(configs):
     """
 
     horey_dir_path = configs.get("horey_dir_path") or "."
-    StaticMethods = get_static_methods(configs)
+    StandaloneMethods = get_standalone_methods(configs)
 
     command = f"{sys.executable} -m pip -V"
-    ret = StaticMethods.execute(command, ignore_on_error_callback=lambda error: "No module named pip" in repr(error))
+    ret = StandaloneMethods.execute(command, ignore_on_error_callback=lambda error: "No module named pip" in repr(error))
     stderr = ret.get("stderr")
     if "No module named pip" in stderr:
         pip_installer = os.path.join(horey_dir_path, "get-pip.py")
         download_https_file(pip_installer, "https://bootstrap.pypa.io/get-pip.py")
         command = f"{sys.executable} {pip_installer}"
-        ret = StaticMethods.execute(command)
+        ret = StandaloneMethods.execute(command)
         if "Successfully installed pip" not in ret.get("stdout").strip("\r\n").split("\n")[-1]:
             raise ValueError(ret)
         command = f"{sys.executable} -m pip -V"
-        ret = StaticMethods.execute(command)
+        ret = StandaloneMethods.execute(command)
     elif stderr:
         raise RuntimeError(ret)
 
@@ -161,18 +165,18 @@ def install_venv(configs):
     :return:
     """
 
-    StaticMethods = get_static_methods(configs)
+    StandaloneMethods = get_standalone_methods(configs)
 
     command = f"{sys.executable} -m virtualenv --version"
-    ret = StaticMethods.execute(command, ignore_on_error_callback=lambda error: "No module named virtualenv" in repr(error))
+    ret = StandaloneMethods.execute(command, ignore_on_error_callback=lambda error: "No module named virtualenv" in repr(error))
     stderr = ret.get("stderr")
     if "No module named virtualenv" in stderr:
         command = f"{sys.executable} -m pip install virtualenv"
-        ret = StaticMethods.execute(command)
+        ret = StandaloneMethods.execute(command)
         if "Successfully installed virtualenv" not in ret.get("stdout").strip("\r\n").split("\n")[-1]:
             raise ValueError(ret)
         command = f"{sys.executable} -m virtualenv --version"
-        ret = StaticMethods.execute(command)
+        ret = StandaloneMethods.execute(command)
     elif stderr:
         raise RuntimeError(ret)
 
@@ -186,15 +190,14 @@ def provision_venv(configs):
 
     :return:
     """
-    breakpoint()
     if configs.get("venv_dir_path") is None:
-        return
+        return True
 
     install_venv(configs)
-    StaticMethods = get_static_methods(configs)
-    ret = StaticMethods.execute(f"{sys.executable} -m venv {configs.get('venv_dir_path')}")
-    breakpoint()
+    StandaloneMethods = get_standalone_methods(configs)
+    ret = StandaloneMethods.execute(f"{sys.executable} -m venv {configs.get('venv_dir_path')}")
     logger.info(ret)
+    return True
 
 
 def provision_pip_api(configs):
@@ -206,6 +209,22 @@ def provision_pip_api(configs):
     "pip_api_make"
     :return:
     """
+
+    branch_name = "pip_api_make_provision"
+    horey_dir_path = configs.get("horey_dir_path") or "."
+    file_path = os.path.join(horey_dir_path, "main.zip")
+    download_https_file(file_path,
+                        f"https://github.com/AlexeyBeley/horey/archive/refs/heads/{branch_name}.zip")
+    with zipfile.ZipFile(file_path, 'r') as zip_ref:
+        zip_ref.extractall(horey_dir_path)
+    StandaloneMethods = get_standalone_methods(configs)
+    breakpoint()
+    current_dir = os.getcwd()
+    pip_api_requirements_file_path = os.path.join(horey_dir_path, f"horey-{branch_name}", "pip_api", "requirements.txt")
+    StandaloneMethods.install_requirements(pip_api_requirements_file_path)
+    StandaloneMethods.build_and_install_package(os.path.join(horey_dir_path, "horey"), "pip_api")
+
+    module = load_module(file_path)
     print(configs)
     breakpoint()
 

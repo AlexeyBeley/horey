@@ -14,6 +14,7 @@ horey_repo_path = os.path.abspath(os.path.join(os.path.dirname(this_dir), "horey
 sys.path.insert(0, os.path.join(horey_repo_path, "pip_api"))
 import pip_api_make
 
+
 # pylint: disable= missing-function-docstring
 
 
@@ -28,7 +29,7 @@ def tmp_dir_path_fixture():
     shutil.rmtree(tmp_dir)
 
 
-@pytest.mark.done
+@pytest.mark.wip
 def test_init_configuration_main():
     pip_api_configuration_file_path = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "pip_api_configs", "pip_api_configuration_main.py"))
@@ -38,7 +39,7 @@ def test_init_configuration_main():
     assert configs["venv_dir_path"] == os.path.abspath(os.path.join(this_dir, "venv"))
 
 
-@pytest.mark.done
+@pytest.mark.wip
 def test_init_configuration_main_1():
     pip_api_configuration_file_path = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "pip_api_configs", "pip_api_configuration_main_1.py"))
@@ -48,7 +49,7 @@ def test_init_configuration_main_1():
     assert configs["venv_dir_path"] is None
 
 
-@pytest.mark.done
+@pytest.mark.wip
 def test_init_configuration_main_2():
     pip_api_configuration_file_path = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "pip_api_configs", "pip_api_configuration_main_2.py"))
@@ -58,7 +59,7 @@ def test_init_configuration_main_2():
     assert configs["venv_dir_path"] == os.path.abspath(os.path.join(this_dir, "venv"))
 
 
-@pytest.mark.done
+@pytest.mark.wip
 def test_init_configuration_no_main():
     pip_api_configuration_file_path = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "pip_api_configs", "pip_api_configuration_no_main.py"))
@@ -68,7 +69,7 @@ def test_init_configuration_no_main():
     assert configs["venv_dir_path"] == os.path.abspath(os.path.join(this_dir, "venv"))
 
 
-@pytest.mark.done
+@pytest.mark.wip
 def test_init_configuration_no_main_1():
     pip_api_configuration_file_path = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "pip_api_configs", "pip_api_configuration_no_main_1.py"))
@@ -78,7 +79,7 @@ def test_init_configuration_no_main_1():
     assert configs["venv_dir_path"] is None
 
 
-@pytest.mark.done
+@pytest.mark.wip
 def test_init_configuration_no_main_2():
     pip_api_configuration_file_path = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "pip_api_configs", "pip_api_configuration_no_main_2.py"))
@@ -88,42 +89,45 @@ def test_init_configuration_no_main_2():
     assert configs["venv_dir_path"] == os.path.abspath(os.path.join(this_dir, "venv"))
 
 
-@pytest.mark.done
+@pytest.mark.wip
 def test_download_https_file_horey_file(tmp_dir_path):
-    file_path = os.path.join(tmp_dir_path, "static_methods.py")
-    pip_api_make.download_https_file(file_path, "https://raw.githubusercontent.com/AlexeyBeley/horey/main/pip_api/horey/pip_api/static_methods.py")
+    file_path = os.path.join(tmp_dir_path, "standalone_methods.py")
+    pip_api_make.download_https_file(file_path,
+                                     "https://raw.githubusercontent.com/AlexeyBeley/horey/main/pip_api/horey/pip_api/standalone_methods.py")
     assert os.path.isfile(file_path)
 
 
-@pytest.mark.done
-def test_get_static_methods(tmp_dir_path):
-    static_methods = pip_api_make.get_static_methods(tmp_dir_path)
-    assert static_methods is not None
+@pytest.mark.wip
+def test_get_standalone_methods(tmp_dir_path):
+    standalone_methods = pip_api_make.get_standalone_methods(tmp_dir_path)
+    assert standalone_methods is not None
 
 
-@pytest.mark.done
-def test_get_static_methods():
-    static_methods = pip_api_make.get_static_methods(os.path.dirname(horey_repo_path))
-    assert static_methods is not None
+@pytest.mark.wip
+def test_get_standalone_methods():
+    standalone_methods = pip_api_make.get_standalone_methods(os.path.dirname(horey_repo_path))
+    assert standalone_methods is not None
 
 
-@pytest.mark.done
+@pytest.mark.wip
 def test_install_pip(tmp_dir_path):
-    static_methods = pip_api_make.install_pip({"horey_dir_path": os.path.dirname(horey_repo_path)})
-    assert static_methods is not None
+    standalone_methods = pip_api_make.install_pip({"horey_dir_path": os.path.dirname(horey_repo_path)})
+    assert standalone_methods is not None
 
 
 @pytest.mark.wip
 def test_provision_venv(tmp_dir_path):
-    static_methods = pip_api_make.provision_venv({"venv_dir_path": tmp_dir_path})
-    assert static_methods is not None
+    assert pip_api_make.provision_venv({"venv_dir_path": tmp_dir_path})
 
-@pytest.mark.todo
+
+@pytest.mark.wip
 def test_provision_pip_api_venv(tmp_dir_path):
-    static_methods = pip_api_make.provision_pip_api({"horey_dir_path": tmp_dir_path})
-    assert static_methods is not None
+    standalone_methods = pip_api_make.provision_pip_api({"horey_dir_path": tmp_dir_path,
+                                                     "venv_dir_path": tmp_dir_path})
+    assert standalone_methods is not None
+
 
 @pytest.mark.todo
 def test_provision_pip_api_global(tmp_dir_path):
-    static_methods = pip_api_make.provision_pip_api({"horey_dir_path": tmp_dir_path})
-    assert static_methods is not None
+    standalone_methods = pip_api_make.provision_pip_api({"horey_dir_path": tmp_dir_path})
+    assert standalone_methods is not None
