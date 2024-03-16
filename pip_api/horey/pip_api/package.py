@@ -2,7 +2,15 @@
 Installed package.
 
 """
-from .requirement import Requirement
+try:
+    from .requirement import Requirement
+except Exception:
+    pass
+
+try:
+    from requirement import Requirement
+except Exception:
+    pass
 
 
 class Package:
