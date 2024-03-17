@@ -162,7 +162,34 @@ def install_pip(configs):
 
     if "pip" not in ret.get("stdout") or "from" not in ret.get("stdout"):
         raise RuntimeError(ret)
+    return True
 
+
+def install_wheel(configs):
+    """
+    Install pip in global python.
+
+    :param configs:
+    :return:
+    """
+
+    StandaloneMethods = get_standalone_methods(configs)
+    command = f"{sys.executable} -m wheel version"
+    ret = StandaloneMethods.execute(command, ignore_on_error_callback=lambda error: "No module named wheel" in repr(error))
+    stderr = ret.get("stderr")
+    if "No module named wheel" in stderr:
+        command = f"{StandaloneMethods.python_interpreter_command} -m pip install wheel"
+        ret = StandaloneMethods.execute(command)
+        if "Successfully installed wheel" not in ret.get("stdout").strip("\r\n").split("\n")[-1]:
+            raise ValueError(ret)
+        command = f"{sys.executable} -m wheel version"
+        ret = StandaloneMethods.execute(command)
+    elif stderr:
+        raise RuntimeError(ret)
+
+    if "wheel" not in ret.get("stdout") or "from" not in ret.get("stdout"):
+        raise RuntimeError(ret)
+    return True
 
 def install_venv(configs):
     """
@@ -220,7 +247,6 @@ def provision_pip_api(configs):
     if os.path.isdir(os.path.join(horey_dir_path, "horey")):
         pip_api_requirements_file_path = os.path.join(horey_dir_path, "horey", "pip_api", "requirements.txt")
     else:
-        breakpoint()
         branch_name = "pip_api_make_provision"
         file_path = os.path.join(horey_dir_path, "main.zip")
         download_https_file(file_path,
@@ -230,6 +256,7 @@ def provision_pip_api(configs):
         pip_api_requirements_file_path = os.path.join(horey_dir_path, f"horey-{branch_name}", "pip_api", "requirements.txt")
     StandaloneMethods = get_standalone_methods(configs)
     current_dir = os.getcwd()
+    breakpoint()
     StandaloneMethods.install_requirements(pip_api_requirements_file_path)
     StandaloneMethods.build_and_install_package(os.path.join(horey_dir_path, "horey"), "pip_api")
 
@@ -248,6 +275,7 @@ def bootstrap():
     configs = init_configuration()
     install_pip(configs)
     provision_venv(configs)
+    install_wheel(configs)
     provision_pip_api(configs)
 
 

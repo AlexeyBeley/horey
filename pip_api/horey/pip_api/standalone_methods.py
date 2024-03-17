@@ -30,10 +30,11 @@ class StandaloneMethods:
         :return: 
         """
 
-        command = sys.executable if platform.system().lower() != "windows" else f'"{sys.executable}"'
-
         if self.venv_dir_path is not None:
-            command = f"source {os.path.join(self.venv_dir_path, 'bin/activate')} && {command}"
+            interpreter = "python" if platform.system().lower() != "windows" else '"python"'
+            command = f"source {os.path.join(self.venv_dir_path, 'bin/activate')} && {interpreter}"
+        else:
+            command = sys.executable if platform.system().lower() != "windows" else f'"{sys.executable}"'
 
         return command
 
@@ -444,7 +445,6 @@ class StandaloneMethods:
         """
 
         self.logger.info(f"run raw: {command}")
-
         try:
             ret = subprocess.run(
                 [command], capture_output=True, shell=True, timeout=timeout, check=False

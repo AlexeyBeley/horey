@@ -98,21 +98,14 @@ def test_download_https_file_horey_file(tmp_dir_path):
 
 
 @pytest.mark.wip
-def test_get_standalone_methods(tmp_dir_path):
-    standalone_methods = pip_api_make.get_standalone_methods(tmp_dir_path)
-    assert standalone_methods is not None
-
-
-@pytest.mark.wip
 def test_get_standalone_methods():
-    standalone_methods = pip_api_make.get_standalone_methods(os.path.dirname(horey_sub_path))
+    standalone_methods = pip_api_make.get_standalone_methods({"horey_dir_path": os.path.dirname(horey_sub_path)})
     assert standalone_methods is not None
 
 
 @pytest.mark.wip
 def test_install_pip(tmp_dir_path):
-    standalone_methods = pip_api_make.install_pip({"horey_dir_path": os.path.dirname(horey_sub_path)})
-    assert standalone_methods is not None
+    assert pip_api_make.install_pip({"horey_dir_path": os.path.dirname(horey_sub_path)})
 
 
 @pytest.mark.wip
@@ -121,7 +114,21 @@ def test_provision_venv(tmp_dir_path):
 
 
 @pytest.mark.wip
+def test_install_wheel_venv(tmp_dir_path):
+    pip_api_make.provision_venv({"venv_dir_path": tmp_dir_path})
+    assert pip_api_make.install_wheel({"venv_dir_path": tmp_dir_path})
+
+
+@pytest.mark.wip
+def test_install_wheel_global(tmp_dir_path):
+    pip_api_make.provision_venv()
+    assert pip_api_make.install_wheel()
+
+
+@pytest.mark.wip
 def test_provision_pip_api_venv_with_horey_dir_path(tmp_dir_path):
+    pip_api_make.provision_venv({"venv_dir_path": tmp_dir_path})
+    pip_api_make.install_wheel({"venv_dir_path": tmp_dir_path})
     standalone_methods = pip_api_make.provision_pip_api({"horey_dir_path": os.path.dirname(os.path.dirname(os.path.dirname(horey_sub_path))),
                                                      "venv_dir_path": tmp_dir_path})
     assert standalone_methods is not None
@@ -129,6 +136,8 @@ def test_provision_pip_api_venv_with_horey_dir_path(tmp_dir_path):
 
 @pytest.mark.wip
 def test_provision_pip_api_venv_without_horey_dir_path(tmp_dir_path):
+    pip_api_make.provision_venv({"venv_dir_path": tmp_dir_path})
+    pip_api_make.install_wheel({"venv_dir_path": tmp_dir_path})
     standalone_methods = pip_api_make.provision_pip_api({"horey_dir_path": tmp_dir_path,
                                                      "venv_dir_path": tmp_dir_path})
     assert standalone_methods is not None
