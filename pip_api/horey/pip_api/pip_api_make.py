@@ -143,6 +143,7 @@ def install_pip(configs):
     :return:
     """
 
+    logger.info("Installing pip")
     horey_dir_path = configs.get("horey_dir_path") or "."
     StandaloneMethods = get_standalone_methods(configs)
 
@@ -174,6 +175,8 @@ def install_wheel(configs):
     :return:
     """
 
+    logger.info("Installing wheel")
+
     StandaloneMethods = get_standalone_methods(configs)
     command = f"{StandaloneMethods.python_interpreter_command} -m wheel version"
     ret = StandaloneMethods.execute(command, ignore_on_error_callback=lambda error: "No module named wheel" in repr(error))
@@ -200,6 +203,8 @@ def install_venv(configs):
     :return:
     """
 
+    logger.info("Installing venv")
+
     StandaloneMethods = get_standalone_methods(configs)
 
     command = f"{sys.executable} -m virtualenv --version"
@@ -225,12 +230,17 @@ def provision_venv(configs):
 
     :return:
     """
+
+    logger.info("Provisioning venv")
+
     if configs.get("venv_dir_path") is None:
         return True
 
     install_venv(configs)
     StandaloneMethods = get_standalone_methods(configs)
-    ret = StandaloneMethods.execute(f"{sys.executable} -m venv {configs.get('venv_dir_path')}")
+    venv_path = os.path.abspath(configs.get("venv_dir_path"))
+    logger.info(f"Creating new venv in: '{venv_path}'")
+    ret = StandaloneMethods.execute(f"{sys.executable} -m venv {venv_path}")
     logger.info(ret)
     return True
 
@@ -244,7 +254,7 @@ def provision_pip_api(configs):
     "pip_api_make"
     :return:
     """
-
+    logger.info("Provisioning pip_api")
     horey_dir_path = configs.get("horey_dir_path") or "."
     if not os.path.isdir(os.path.join(horey_dir_path, "horey")):
         branch_name = "pip_api_make_provision"

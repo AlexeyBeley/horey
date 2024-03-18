@@ -31,8 +31,10 @@ class StandaloneMethods:
         """
 
         if self.venv_dir_path is not None:
-            interpreter = "python" if platform.system().lower() != "windows" else '"python"'
-            command = f"source {os.path.join(self.venv_dir_path, 'bin/activate')} && {interpreter}"
+            if platform.system().lower() != "windows":
+                command = f"source {os.path.join(self.venv_dir_path, 'bin/activate')} && python"
+            else:
+                command = f'{os.path.join(self.venv_dir_path, "Scripts", "activate")} "python"'
         else:
             command = sys.executable if platform.system().lower() != "windows" else f'"{sys.executable}"'
 
