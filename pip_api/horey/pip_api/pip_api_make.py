@@ -14,8 +14,6 @@ import logging
 import urllib.request
 import zipfile
 
-import requests
-
 handler = logging.StreamHandler()
 formatter = logging.Formatter(
     "[%(asctime)s] %(levelname)s:%(filename)s:%(lineno)s: %(message)s"
@@ -90,15 +88,21 @@ def init_configuration():
     raise ValueError(arguments.pip_api_configuration)
 
 
-def download_https_file(local_file_path, url):
+def download_https_file_requests(local_file_path, url):
     """
     Download file from url.
+    Why should I use two methods and import requests in the middle of the script?
+    Because Microsoft is SHIT, that is why. It fails on SSL validation.
+
     Shamelessly stolen from: https://stackoverflow.com/questions/16694907/download-large-file-in-python-with-requests
 
     :param local_file_path:
     :param url:
     :return:
     """
+
+    # pylint: disable= import-outside-toplevel
+    import requests
     with requests.get(url, stream=True, timeout=180) as r:
         r.raise_for_status()
         with open(local_file_path, 'wb') as f:
@@ -110,7 +114,7 @@ def download_https_file(local_file_path, url):
     return local_file_path
 
 
-def download_https_file_old(local_file_path, url):
+def download_https_file_urllib(local_file_path, url):
     """
     Download file from url.
 
@@ -143,13 +147,13 @@ def get_standalone_methods(configs):
         module = load_module(os.path.join(horey_repo, "pip_api", "horey", "pip_api", "standalone_methods.py"))
     else:
         file_path = os.path.join(dst_dir_path, "package.py")
-        download_https_file(file_path, "https://raw.githubusercontent.com/AlexeyBeley/horey/pip_api_make_provision/pip_api/horey/pip_api/package.py")
+        download_https_file_urllib(file_path, "https://raw.githubusercontent.com/AlexeyBeley/horey/pip_api_make_provision/pip_api/horey/pip_api/package.py")
 
         file_path = os.path.join(dst_dir_path, "requirement.py")
-        download_https_file(file_path, "https://raw.githubusercontent.com/AlexeyBeley/horey/pip_api_make_provision/pip_api/horey/pip_api/requirement.py")
+        download_https_file_urllib(file_path, "https://raw.githubusercontent.com/AlexeyBeley/horey/pip_api_make_provision/pip_api/horey/pip_api/requirement.py")
 
         file_path = os.path.join(dst_dir_path, "standalone_methods.py")
-        download_https_file(file_path, "https://raw.githubusercontent.com/AlexeyBeley/horey/pip_api_make_provision/pip_api/horey/pip_api/standalone_methods.py")
+        download_https_file_urllib(file_path, "https://raw.githubusercontent.com/AlexeyBeley/horey/pip_api_make_provision/pip_api/horey/pip_api/standalone_methods.py")
         module = load_module(file_path)
 
     Standalone.methods = module.StandaloneMethods(venv_dir_path, multi_package_map)
@@ -175,7 +179,7 @@ def install_pip(configs):
     stderr = ret.get("stderr")
     if "No module named pip" in stderr:
         pip_installer = os.path.join(horey_dir_path, "get-pip.py")
-        download_https_file(pip_installer, "https://bootstrap.pypa.io/get-pip.py")
+        download_https_file_urllib(pip_installer, "https://bootstrap.pypa.io/get-pip.py")
         command = f"{sys.executable} {pip_installer}"
         ret = StandaloneMethods.execute(command)
         if "Successfully installed pip" not in ret.get("stdout").strip("\r\n").split("\n")[-1]:
@@ -201,18 +205,19 @@ def install_requests(configs):
     logger.info("Installing requests")
 
     StandaloneMethods = get_standalone_methods(configs)
-    command = f"{StandaloneMethods.python_interpreter_command} -m pip list --format json"
+    # check if possible command = f"{StandaloneMethods.python_interpreter_command} -m pip list --format json"
+    command = f"{sys.executable} -m pip list --format json"
     ret = StandaloneMethods.execute(command)
     installed_packages = json.loads(ret["stdout"])
     for dict_package in installed_packages:
         if dict_package.get("name") == "requests":
             return True
 
-    command = f"{StandaloneMethods.python_interpreter_command} -m pip install requests"
+    command = f"{sys.executable} -m pip install requests"
     ret = StandaloneMethods.execute(command)
     if "Successfully installed " not in ret.get("stdout").strip("\r\n").split("\n")[-1]:
         raise ValueError(ret)
-    command = f"{StandaloneMethods.python_interpreter_command} -m pip list --format json"
+    command = f"{sys.executable} -m pip list --format json"
     ret = StandaloneMethods.execute(command)
     installed_packages = json.loads(ret["stdout"])
     for dict_package in installed_packages:
@@ -315,7 +320,7 @@ def provision_pip_api(configs):
     if not os.path.isdir(os.path.join(horey_dir_path, "horey")):
         branch_name = "pip_api_make_provision"
         file_path = os.path.join(horey_dir_path, "main.zip")
-        download_https_file(file_path,
+        download_https_file_requests(file_path,
                             f"https://github.com/AlexeyBeley/horey/archive/refs/heads/{branch_name}.zip")
         with zipfile.ZipFile(file_path, 'r') as zip_ref:
             zip_ref.extractall(horey_dir_path)
@@ -336,8 +341,8 @@ def bootstrap():
 
     configs = init_configuration()
     install_pip(configs)
-    provision_venv(configs)
     install_requests(configs)
+    provision_venv(configs)
     install_wheel(configs)
     provision_pip_api(configs)
 
