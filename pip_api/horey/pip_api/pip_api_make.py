@@ -187,6 +187,7 @@ def install_wheel(configs):
         if "Successfully installed wheel" not in ret.get("stdout").strip("\r\n").split("\n")[-1]:
             raise ValueError(ret)
         command = f"{StandaloneMethods.python_interpreter_command} -m wheel version"
+        logger.info(f"Running: {command}")
         ret = StandaloneMethods.execute(command)
     elif stderr:
         raise RuntimeError(ret)
