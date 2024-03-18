@@ -6,12 +6,15 @@ python3 pip_api_make.py --pip_api_configuration config/config.py
 
 import argparse
 import importlib
+import json
 import os
 import shutil
 import sys
 import logging
 import urllib.request
 import zipfile
+
+import requests
 
 handler = logging.StreamHandler()
 formatter = logging.Formatter(
@@ -90,6 +93,26 @@ def init_configuration():
 def download_https_file(local_file_path, url):
     """
     Download file from url.
+    Shamelessly stolen from: https://stackoverflow.com/questions/16694907/download-large-file-in-python-with-requests
+
+    :param local_file_path:
+    :param url:
+    :return:
+    """
+    with requests.get(url, stream=True, timeout=180) as r:
+        r.raise_for_status()
+        with open(local_file_path, 'wb') as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                # If you have chunk encoded response uncomment if
+                # and set chunk_size parameter to None.
+                #if chunk:
+                f.write(chunk)
+    return local_file_path
+
+
+def download_https_file_old(local_file_path, url):
+    """
+    Download file from url.
 
     :param local_file_path:
     :param url:
@@ -165,6 +188,38 @@ def install_pip(configs):
     if "pip" not in ret.get("stdout") or "from" not in ret.get("stdout"):
         raise RuntimeError(ret)
     return True
+
+
+def install_requests(configs):
+    """
+    Install pip in global python.
+
+    :param configs:
+    :return:
+    """
+
+    logger.info("Installing requests")
+
+    StandaloneMethods = get_standalone_methods(configs)
+    command = f"{StandaloneMethods.python_interpreter_command} -m pip list --format json"
+    ret = StandaloneMethods.execute(command)
+    installed_packages = json.loads(ret["stdout"])
+    for dict_package in installed_packages:
+        if dict_package.get("name") == "requests":
+            return True
+
+    command = f"{StandaloneMethods.python_interpreter_command} -m pip install requests"
+    ret = StandaloneMethods.execute(command)
+    if "Successfully installed " not in ret.get("stdout").strip("\r\n").split("\n")[-1]:
+        raise ValueError(ret)
+    command = f"{StandaloneMethods.python_interpreter_command} -m pip list --format json"
+    ret = StandaloneMethods.execute(command)
+    installed_packages = json.loads(ret["stdout"])
+    for dict_package in installed_packages:
+        if dict_package.get("name") == "requests":
+            return True
+
+    raise RuntimeError("Was not able to install requests")
 
 
 def install_wheel(configs):
@@ -282,6 +337,7 @@ def bootstrap():
     configs = init_configuration()
     install_pip(configs)
     provision_venv(configs)
+    install_requests(configs)
     install_wheel(configs)
     provision_pip_api(configs)
 

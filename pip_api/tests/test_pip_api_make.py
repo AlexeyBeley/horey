@@ -93,7 +93,7 @@ def test_init_configuration_no_main_2():
 def test_download_https_file_horey_file(tmp_dir_path):
     file_path = os.path.join(tmp_dir_path, "standalone_methods.py")
     pip_api_make.download_https_file(file_path,
-                                     "https://raw.githubusercontent.com/AlexeyBeley/horey/main/pip_api/horey/pip_api/standalone_methods.py")
+                                     "https://raw.githubusercontent.com/AlexeyBeley/horey/pip_api_make_provision/pip_api/horey/pip_api/standalone_methods.py")
     assert os.path.isfile(file_path)
 
 
@@ -122,6 +122,13 @@ def test_install_wheel_venv(tmp_dir_path):
 @pytest.mark.wip
 def test_install_wheel_global():
     assert pip_api_make.install_wheel({})
+
+
+@pytest.mark.wip
+def test_install_requests_venv_with_horey_dir_path(tmp_dir_path):
+    pip_api_make.provision_venv({"venv_dir_path": tmp_dir_path})
+    pip_api_make.install_wheel({"venv_dir_path": tmp_dir_path})
+    assert pip_api_make.install_requests({"venv_dir_path": tmp_dir_path})
 
 
 @pytest.mark.wip
