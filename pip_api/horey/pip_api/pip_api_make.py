@@ -174,7 +174,7 @@ def install_wheel(configs):
     """
 
     StandaloneMethods = get_standalone_methods(configs)
-    command = f"{sys.executable} -m wheel version"
+    command = f"{StandaloneMethods.python_interpreter_command} -m wheel version"
     ret = StandaloneMethods.execute(command, ignore_on_error_callback=lambda error: "No module named wheel" in repr(error))
     stderr = ret.get("stderr")
     if "No module named wheel" in stderr:
@@ -182,14 +182,15 @@ def install_wheel(configs):
         ret = StandaloneMethods.execute(command)
         if "Successfully installed wheel" not in ret.get("stdout").strip("\r\n").split("\n")[-1]:
             raise ValueError(ret)
-        command = f"{sys.executable} -m wheel version"
+        command = f"{StandaloneMethods.python_interpreter_command} -m wheel version"
         ret = StandaloneMethods.execute(command)
     elif stderr:
         raise RuntimeError(ret)
 
-    if "wheel" not in ret.get("stdout") or "from" not in ret.get("stdout"):
+    if "wheel" not in ret.get("stdout"):
         raise RuntimeError(ret)
     return True
+
 
 def install_venv(configs):
     """
@@ -255,14 +256,8 @@ def provision_pip_api(configs):
             zip_ref.extractall(horey_dir_path)
         pip_api_requirements_file_path = os.path.join(horey_dir_path, f"horey-{branch_name}", "pip_api", "requirements.txt")
     StandaloneMethods = get_standalone_methods(configs)
-    current_dir = os.getcwd()
-    breakpoint()
     StandaloneMethods.install_requirements(pip_api_requirements_file_path)
-    StandaloneMethods.build_and_install_package(os.path.join(horey_dir_path, "horey"), "pip_api")
-
-    module = load_module(file_path)
-    print(configs)
-    breakpoint()
+    return StandaloneMethods.build_and_install_package(os.path.join(horey_dir_path, "horey"), "pip_api")
 
 
 def bootstrap():

@@ -299,7 +299,7 @@ class StandaloneMethods:
         :param requirement:
         :return:
         """
-        breakpoint()
+
         for prefix, repo_path in self.multi_package_repo_to_prefix_map.items():
             if requirement.name.startswith(prefix):
                 requirement.multi_package_repo_prefix = prefix
@@ -329,7 +329,7 @@ class StandaloneMethods:
         """
 
         package_dir_name = requirement.name.split(".")[-1]
-        self.build_and_install_package(requirement.multi_package_repo_path, package_dir_name)
+        return self.build_and_install_package(requirement.multi_package_repo_path, package_dir_name)
 
     def build_and_install_package(self, multi_package_repo_path, package_dir_name):
         """
@@ -361,6 +361,7 @@ class StandaloneMethods:
                 f"Could not install {package_dir_name} from source code:\n {response}"
             )
         self.INSTALLED_PACKAGES = None
+        return True
 
     @staticmethod
     def requirement_satisfied(requirement: Requirement, packages):
@@ -429,6 +430,8 @@ class StandaloneMethods:
 
         return self.run_bash(command, ignore_on_error_callback=ignore_on_error_callback, timeout=timeout,
                                       debug=debug)
+
+    # pylint: disable= too-many-arguments
 
     def run_raw(self, command, file_name, ignore_on_error_callback=None, timeout=60 * 10, debug=True):
         """

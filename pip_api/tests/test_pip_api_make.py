@@ -104,7 +104,7 @@ def test_get_standalone_methods():
 
 
 @pytest.mark.wip
-def test_install_pip(tmp_dir_path):
+def test_install_pip_global():
     assert pip_api_make.install_pip({"horey_dir_path": os.path.dirname(horey_sub_path)})
 
 
@@ -120,8 +120,7 @@ def test_install_wheel_venv(tmp_dir_path):
 
 
 @pytest.mark.wip
-def test_install_wheel_global(tmp_dir_path):
-    pip_api_make.provision_venv()
+def test_install_wheel_global():
     assert pip_api_make.install_wheel()
 
 
