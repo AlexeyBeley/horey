@@ -121,7 +121,7 @@ def test_install_wheel_venv(tmp_dir_path):
 
 @pytest.mark.wip
 def test_install_wheel_global():
-    assert pip_api_make.install_wheel()
+    assert pip_api_make.install_wheel({})
 
 
 @pytest.mark.wip

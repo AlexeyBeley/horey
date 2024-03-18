@@ -7,6 +7,7 @@ python3 pip_api_make.py --pip_api_configuration config/config.py
 import argparse
 import importlib
 import os
+import shutil
 import sys
 import logging
 import urllib.request
@@ -245,16 +246,16 @@ def provision_pip_api(configs):
     """
 
     horey_dir_path = configs.get("horey_dir_path") or "."
-    if os.path.isdir(os.path.join(horey_dir_path, "horey")):
-        pip_api_requirements_file_path = os.path.join(horey_dir_path, "horey", "pip_api", "requirements.txt")
-    else:
+    if not os.path.isdir(os.path.join(horey_dir_path, "horey")):
         branch_name = "pip_api_make_provision"
         file_path = os.path.join(horey_dir_path, "main.zip")
         download_https_file(file_path,
                             f"https://github.com/AlexeyBeley/horey/archive/refs/heads/{branch_name}.zip")
         with zipfile.ZipFile(file_path, 'r') as zip_ref:
             zip_ref.extractall(horey_dir_path)
-        pip_api_requirements_file_path = os.path.join(horey_dir_path, f"horey-{branch_name}", "pip_api", "requirements.txt")
+        shutil.copytree(os.path.join(horey_dir_path, f"horey-{branch_name}"), os.path.join(horey_dir_path, "horey"))
+
+    pip_api_requirements_file_path = os.path.join(horey_dir_path, "horey", "pip_api", "requirements.txt")
     StandaloneMethods = get_standalone_methods(configs)
     StandaloneMethods.install_requirements(pip_api_requirements_file_path)
     return StandaloneMethods.build_and_install_package(os.path.join(horey_dir_path, "horey"), "pip_api")
