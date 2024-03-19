@@ -194,6 +194,19 @@ def install_pip(configs):
     return True
 
 
+def check_package_installed(command_output, package_name):
+    """
+
+    :param command_output:
+    :return:
+    """
+    installed_packages = json.loads(command_output["stdout"])
+    for dict_package in installed_packages:
+        if dict_package.get("name") == package_name:
+            return True
+    return False
+
+
 def install_requests(configs):
     """
     Install pip in global python.
@@ -208,10 +221,9 @@ def install_requests(configs):
     # check if possible command = f"{StandaloneMethods.python_interpreter_command} -m pip list --format json"
     command = f"{sys.executable} -m pip list --format json"
     ret = StandaloneMethods.execute(command)
-    installed_packages = json.loads(ret["stdout"])
-    for dict_package in installed_packages:
-        if dict_package.get("name") == "requests":
-            return True
+    if check_package_installed(ret, "requests"):
+        return True
+
 
     command = f"{sys.executable} -m pip install requests"
     ret = StandaloneMethods.execute(command)
@@ -229,7 +241,7 @@ def install_requests(configs):
 
 def install_wheel(configs):
     """
-    Install pip in global python.
+    Install wheel in global python or venv
 
     :param configs:
     :return:
@@ -255,6 +267,37 @@ def install_wheel(configs):
     if "wheel" not in ret.get("stdout"):
         raise RuntimeError(ret)
     return True
+
+
+def install_setuptools(configs):
+    """
+    Install setuptools in global python or venv
+
+    :param configs:
+    :return:
+    """
+
+    logger.info("Installing setuptools")
+
+    StandaloneMethods = get_standalone_methods(configs)
+    command = f"{StandaloneMethods.python_interpreter_command} -m wheel version"
+    ret = StandaloneMethods.execute(command, ignore_on_error_callback=lambda error: "No module named wheel" in repr(error))
+    stderr = ret.get("stderr")
+    if "No module named wheel" in stderr:
+        command = f"{StandaloneMethods.python_interpreter_command} -m pip install wheel"
+        ret = StandaloneMethods.execute(command)
+        if "Successfully installed wheel" not in ret.get("stdout").strip("\r\n").split("\n")[-1]:
+            raise ValueError(ret)
+        command = f"{StandaloneMethods.python_interpreter_command} -m wheel version"
+        logger.info(f"Running: {command}")
+        ret = StandaloneMethods.execute(command)
+    elif stderr:
+        raise RuntimeError(ret)
+
+    if "wheel" not in ret.get("stdout"):
+        raise RuntimeError(ret)
+    return True
+
 
 
 def install_venv(configs):

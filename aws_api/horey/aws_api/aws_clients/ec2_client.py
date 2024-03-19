@@ -2335,7 +2335,7 @@ class EC2Client(Boto3Client):
         ):
             return response
 
-    def dispose_instance(self, instance):
+    def dispose_instance(self, instance, dry_run=False):
         """
         Standard
 
@@ -2344,7 +2344,10 @@ class EC2Client(Boto3Client):
         """
 
         AWSAccount.set_aws_region(instance.region)
-        self.dispose_instance_raw(instance.generate_dispose_request())
+        request = instance.generate_dispose_request()
+        if dry_run:
+            request["DryRun"] = True
+        self.dispose_instance_raw(request)
 
     def dispose_instance_raw(self, request_dict):
         """
