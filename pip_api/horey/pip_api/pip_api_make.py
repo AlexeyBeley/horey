@@ -224,17 +224,14 @@ def install_requests(configs):
     if check_package_installed(ret, "requests"):
         return True
 
-
     command = f"{sys.executable} -m pip install requests"
     ret = StandaloneMethods.execute(command)
     if "Successfully installed " not in ret.get("stdout").strip("\r\n").split("\n")[-1]:
         raise ValueError(ret)
     command = f"{sys.executable} -m pip list --format json"
     ret = StandaloneMethods.execute(command)
-    installed_packages = json.loads(ret["stdout"])
-    for dict_package in installed_packages:
-        if dict_package.get("name") == "requests":
-            return True
+    if check_package_installed(ret, "requests"):
+        return True
 
     raise RuntimeError("Was not able to install requests")
 
@@ -280,24 +277,21 @@ def install_setuptools(configs):
     logger.info("Installing setuptools")
 
     StandaloneMethods = get_standalone_methods(configs)
-    command = f"{StandaloneMethods.python_interpreter_command} -m wheel version"
-    ret = StandaloneMethods.execute(command, ignore_on_error_callback=lambda error: "No module named wheel" in repr(error))
-    stderr = ret.get("stderr")
-    if "No module named wheel" in stderr:
-        command = f"{StandaloneMethods.python_interpreter_command} -m pip install wheel"
-        ret = StandaloneMethods.execute(command)
-        if "Successfully installed wheel" not in ret.get("stdout").strip("\r\n").split("\n")[-1]:
-            raise ValueError(ret)
-        command = f"{StandaloneMethods.python_interpreter_command} -m wheel version"
-        logger.info(f"Running: {command}")
-        ret = StandaloneMethods.execute(command)
-    elif stderr:
-        raise RuntimeError(ret)
+    command = f"{StandaloneMethods.python_interpreter_command} -m pip list --format json"
+    ret = StandaloneMethods.execute(command)
+    if check_package_installed(ret, "setuptools"):
+        return True
 
-    if "wheel" not in ret.get("stdout"):
-        raise RuntimeError(ret)
-    return True
+    command = f"{StandaloneMethods.python_interpreter_command} -m pip install setuptools"
+    ret = StandaloneMethods.execute(command)
+    if "Successfully installed setuptools" not in ret.get("stdout").strip("\r\n").split("\n")[-1]:
+        raise ValueError(ret)
+    command = f"{StandaloneMethods.python_interpreter_command} -m pip list --format json"
+    ret = StandaloneMethods.execute(command)
+    if check_package_installed(ret, "setuptools"):
+        return True
 
+    raise RuntimeError("Was not able to install setuptools")
 
 
 def install_venv(configs):
@@ -386,6 +380,7 @@ def bootstrap():
     install_pip(configs)
     install_requests(configs)
     provision_venv(configs)
+    install_setuptools(configs)
     install_wheel(configs)
     provision_pip_api(configs)
 
