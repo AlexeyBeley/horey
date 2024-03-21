@@ -247,23 +247,7 @@ def install_wheel(configs):
     logger.info("Installing wheel")
 
     StandaloneMethods = get_standalone_methods(configs)
-    command = f"{StandaloneMethods.python_interpreter_command} -m wheel version"
-    ret = StandaloneMethods.execute(command, ignore_on_error_callback=lambda error: "No module named wheel" in repr(error))
-    stderr = ret.get("stderr")
-    if "No module named wheel" in stderr:
-        command = f"{StandaloneMethods.python_interpreter_command} -m pip install wheel"
-        ret = StandaloneMethods.execute(command)
-        if "Successfully installed wheel" not in ret.get("stdout").strip("\r\n").split("\n")[-1]:
-            raise ValueError(ret)
-        command = f"{StandaloneMethods.python_interpreter_command} -m wheel version"
-        logger.info(f"Running: {command}")
-        ret = StandaloneMethods.execute(command)
-    elif stderr:
-        raise RuntimeError(ret)
-
-    if "wheel" not in ret.get("stdout"):
-        raise RuntimeError(ret)
-    return True
+    return StandaloneMethods.install_requirement_standard(None, name="wheel")
 
 
 def install_setuptools(configs):
@@ -277,6 +261,7 @@ def install_setuptools(configs):
     logger.info("Installing setuptools")
     StandaloneMethods = get_standalone_methods(configs)
     return StandaloneMethods.install_requirement_standard(None, name="setuptools")
+
 
 def install_venv(configs):
     """
