@@ -133,6 +133,17 @@ def test_install_wheel_global():
 
 
 @pytest.mark.wip
+def test_install_setuptools_venv(tmp_dir_path):
+    pip_api_make.provision_venv({"venv_dir_path": tmp_dir_path})
+    assert pip_api_make.install_setuptools({"venv_dir_path": tmp_dir_path})
+
+
+@pytest.mark.wip
+def test_install_setuptools_global():
+    assert pip_api_make.install_setuptools({})
+
+
+@pytest.mark.wip
 def test_install_requests_venv_with_horey_dir_path(tmp_dir_path):
     pip_api_make.provision_venv({"venv_dir_path": tmp_dir_path})
     pip_api_make.install_wheel({"venv_dir_path": tmp_dir_path})

@@ -308,19 +308,30 @@ class StandaloneMethods:
                 requirement.multi_package_repo_path = repo_path
                 return self.install_multi_package_repo_requirement(requirement)
 
-        return self.install_requirement_default(requirement)
+        return self.install_requirement_standard(requirement)
 
-    def install_requirement_default(self, requirement):
+    def install_requirement_standard(self, requirement, force_reinstall=False):
         """
         Default pip install
 
+        :param force_reinstall:
         :param requirement:
         :return:
         """
 
+        packages = self.get_installed_packages()
+        for package in packages:
+            if package.name == requirement.name and not force_reinstall:
+                return True
+
         self.INSTALLED_PACKAGES = None
-        return self.execute(
+
+        ret = self.execute(
         f"{self.python_interpreter_command} -m pip install --force-reinstall {requirement.generate_install_string()}")
+        last_line = ret.get("stdout").strip("\r\n").split("\n")[-1]
+        if "Successfully installed" not in last_line or requirement.name not in last_line:
+            raise ValueError(ret)
+        return True
 
     def install_multi_package_repo_requirement(self, requirement):
         """

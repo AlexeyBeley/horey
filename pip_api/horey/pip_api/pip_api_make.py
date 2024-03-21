@@ -275,8 +275,9 @@ def install_setuptools(configs):
     """
 
     logger.info("Installing setuptools")
-
     StandaloneMethods = get_standalone_methods(configs)
+    StandaloneMethods.install_requirement_standard("setuptools")
+
     command = f"{StandaloneMethods.python_interpreter_command} -m pip list --format json"
     ret = StandaloneMethods.execute(command)
     if check_package_installed(ret, "setuptools"):
@@ -284,8 +285,7 @@ def install_setuptools(configs):
 
     command = f"{StandaloneMethods.python_interpreter_command} -m pip install setuptools"
     ret = StandaloneMethods.execute(command)
-    if "Successfully installed setuptools" not in ret.get("stdout").strip("\r\n").split("\n")[-1]:
-        raise ValueError(ret)
+
     command = f"{StandaloneMethods.python_interpreter_command} -m pip list --format json"
     ret = StandaloneMethods.execute(command)
     if check_package_installed(ret, "setuptools"):
