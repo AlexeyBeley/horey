@@ -310,26 +310,28 @@ class StandaloneMethods:
 
         return self.install_requirement_standard(requirement)
 
-    def install_requirement_standard(self, requirement, force_reinstall=False):
+    def install_requirement_standard(self, requirement, force_reinstall=False, name=None):
         """
         Default pip install
 
+        :param name:
         :param force_reinstall:
         :param requirement:
         :return:
         """
 
+        requirement_name = name or requirement.name
         packages = self.get_installed_packages()
         for package in packages:
-            if package.name == requirement.name and not force_reinstall:
+            if package.name == requirement_name and not force_reinstall:
                 return True
 
         self.INSTALLED_PACKAGES = None
-
+        requirement_string = name or requirement.generate_install_string()
         ret = self.execute(
-        f"{self.python_interpreter_command} -m pip install --force-reinstall {requirement.generate_install_string()}")
+        f"{self.python_interpreter_command} -m pip install --force-reinstall {requirement_string}")
         last_line = ret.get("stdout").strip("\r\n").split("\n")[-1]
-        if "Successfully installed" not in last_line or requirement.name not in last_line:
+        if "Successfully installed" not in last_line or requirement_name not in last_line:
             raise ValueError(ret)
         return True
 

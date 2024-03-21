@@ -276,23 +276,7 @@ def install_setuptools(configs):
 
     logger.info("Installing setuptools")
     StandaloneMethods = get_standalone_methods(configs)
-    StandaloneMethods.install_requirement_standard("setuptools")
-
-    command = f"{StandaloneMethods.python_interpreter_command} -m pip list --format json"
-    ret = StandaloneMethods.execute(command)
-    if check_package_installed(ret, "setuptools"):
-        return True
-
-    command = f"{StandaloneMethods.python_interpreter_command} -m pip install setuptools"
-    ret = StandaloneMethods.execute(command)
-
-    command = f"{StandaloneMethods.python_interpreter_command} -m pip list --format json"
-    ret = StandaloneMethods.execute(command)
-    if check_package_installed(ret, "setuptools"):
-        return True
-
-    raise RuntimeError("Was not able to install setuptools")
-
+    return StandaloneMethods.install_requirement_standard(None, name="setuptools")
 
 def install_venv(configs):
     """
