@@ -579,7 +579,7 @@ class StandaloneMethods:
         :param url:
         :return:
         """
-        with self.tmp_file("requests_doenloader.py", flags="wb") as file_handler:
+        with self.tmp_file("requests_doenloader.py") as file_handler:
             file_handler.write(
          """
         import requests
@@ -588,7 +588,7 @@ class StandaloneMethods:
             with open(local_file_path, 'wb') as f:
                 for chunk in r.iter_content(chunk_size=8192):
                     f.write(chunk)
-        """)
+        """.encode(""))
             breakpoint()
 
         return local_file_path
