@@ -88,7 +88,7 @@ def init_configuration():
     raise ValueError(arguments.pip_api_configuration)
 
 
-def download_https_file_requests(local_file_path, url):
+def download_https_file_requests(configs, local_file_path, url):
     """
     Download file from url.
     Why should I use two methods and import requests in the middle of the script?
@@ -101,17 +101,8 @@ def download_https_file_requests(local_file_path, url):
     :return:
     """
 
-    # pylint: disable= import-outside-toplevel
-    import requests
-    with requests.get(url, stream=True, timeout=180) as r:
-        r.raise_for_status()
-        with open(local_file_path, 'wb') as f:
-            for chunk in r.iter_content(chunk_size=8192):
-                # If you have chunk encoded response uncomment if
-                # and set chunk_size parameter to None.
-                #if chunk:
-                f.write(chunk)
-    return local_file_path
+    StandaloneMethods = get_standalone_methods(configs)
+    return StandaloneMethods.download_https_file_requests(local_file_path, url)
 
 
 def download_https_file_urllib(local_file_path, url):
@@ -208,6 +199,20 @@ def check_package_installed(command_output, package_name):
 
 
 def install_requests(configs):
+    """
+    Install wheel in global python or venv
+
+    :param configs:
+    :return:
+    """
+
+    logger.info("Installing requests")
+
+    StandaloneMethods = get_standalone_methods(configs)
+    return StandaloneMethods.install_requirement_standard(None, name="requests")
+
+
+def install_requests_old(configs):
     """
     Install pip in global python.
 
@@ -326,7 +331,7 @@ def provision_pip_api(configs):
     if not os.path.isdir(os.path.join(horey_dir_path, "horey")):
         branch_name = "pip_api_make_provision"
         file_path = os.path.join(horey_dir_path, "main.zip")
-        download_https_file_requests(file_path,
+        download_https_file_requests(configs, file_path,
                             f"https://github.com/AlexeyBeley/horey/archive/refs/heads/{branch_name}.zip")
         with zipfile.ZipFile(file_path, 'r') as zip_ref:
             zip_ref.extractall(horey_dir_path)

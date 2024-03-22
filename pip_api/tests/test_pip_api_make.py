@@ -92,7 +92,7 @@ def test_init_configuration_no_main_2():
 @pytest.mark.wip
 def test_download_https_file_requests_horey_file(tmp_dir_path):
     file_path = os.path.join(tmp_dir_path, "standalone_methods.py")
-    pip_api_make.download_https_file_requests(file_path,
+    pip_api_make.download_https_file_requests({"venv_dir_path": tmp_dir_path}, file_path,
                                      "https://raw.githubusercontent.com/AlexeyBeley/horey/pip_api_make_provision/pip_api/horey/pip_api/standalone_methods.py")
     assert os.path.isfile(file_path)
 

@@ -1,6 +1,7 @@
 """
 Methods which can be used without package installation.
 """
+import contextlib
 import json
 import os
 import uuid
@@ -552,3 +553,42 @@ class StandaloneMethods:
         :param branch_name:
         :return:
         """
+
+    @contextlib.contextmanager
+    def tmp_file(self, file_path, flags="w"):
+        """
+        Create tmp file.
+
+        :param file_path:
+        :param flags:
+        :return:
+        """
+        with open(file_path, flags) as file_handler:
+            yield file_handler
+        os.remove(file_path)
+
+    def download_https_file_requests(self, local_file_path, url):
+        """
+        Download file from url.
+        Why should I use two methods and import requests in the middle of the script?
+        Because Microsoft is SHIT, that is why. It fails on SSL validation.
+
+        Shamelessly stolen from: https://stackoverflow.com/questions/16694907/download-large-file-in-python-with-requests
+
+        :param local_file_path:
+        :param url:
+        :return:
+        """
+        with self.tmp_file("requests_doenloader.py", flags="wb") as file_handler:
+            file_handler.write(
+         """
+        import requests
+        with requests.get(url, stream=True, timeout=180) as r:
+            r.raise_for_status()
+            with open(local_file_path, 'wb') as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    f.write(chunk)
+        """)
+            breakpoint()
+
+        return local_file_path
