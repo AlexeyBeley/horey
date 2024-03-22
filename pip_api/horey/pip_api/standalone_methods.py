@@ -588,7 +588,7 @@ class StandaloneMethods:
             with open(local_file_path, 'wb') as f:
                 for chunk in r.iter_content(chunk_size=8192):
                     f.write(chunk)
-        """.encode(""))
+        """)
             breakpoint()
 
         return local_file_path
