@@ -89,15 +89,26 @@ def test_init_configuration_no_main_2():
     assert configs["venv_dir_path"] == os.path.abspath(os.path.join(this_dir, "venv"))
 
 
-@pytest.mark.done
-def test_download_https_file_requests_horey_file(tmp_dir_path):
+@pytest.mark.todo
+def test_download_https_file_requests_horey_file_from_remote_source_code(tmp_dir_path):
     file_path = os.path.join(tmp_dir_path, "standalone_methods.py")
     pip_api_make.download_https_file_requests({"venv_dir_path": tmp_dir_path}, file_path,
                                      "https://raw.githubusercontent.com/AlexeyBeley/horey/pip_api_make_provision/pip_api/horey/pip_api/standalone_methods.py")
     assert os.path.isfile(file_path)
 
 
-@pytest.mark.done
+@pytest.mark.wip
+def test_download_https_file_requests_horey_file_from_local_source_code(tmp_dir_path):
+    file_path = os.path.join(tmp_dir_path, "standalone_methods.py")
+    configs = {"venv_dir_path": tmp_dir_path, "horey_dir_path": horey_parent_dir}
+    pip_api_make.provision_venv(configs)
+    pip_api_make.install_requests(configs)
+    pip_api_make.download_https_file_requests(configs, file_path,
+                                     "https://raw.githubusercontent.com/AlexeyBeley/horey/pip_api_make_provision/pip_api/horey/pip_api/standalone_methods.py")
+    assert os.path.isfile(file_path)
+
+
+@pytest.mark.wip
 def test_download_https_file_urllib_horey_file(tmp_dir_path):
     file_path = os.path.join(tmp_dir_path, "standalone_methods.py")
     pip_api_make.download_https_file_urllib(file_path,
@@ -143,22 +154,23 @@ def test_install_setuptools_global():
     assert pip_api_make.install_setuptools({})
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_install_requests_venv_with_horey_dir_path(tmp_dir_path):
     config = {"venv_dir_path": tmp_dir_path, "horey_dir_path": horey_parent_dir}
     pip_api_make.provision_venv(config)
     assert pip_api_make.install_requests(config)
 
 
-@pytest.mark.wip
-def test_install_requests_global(tmp_dir_path):
+@pytest.mark.done
+def test_install_requests_global():
     config = {"horey_dir_path": horey_parent_dir}
     assert pip_api_make.install_requests(config)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_install_requests_venv_download_horey(tmp_dir_path):
     config = {"venv_dir_path": tmp_dir_path}
+    pip_api_make.provision_venv(config)
     assert pip_api_make.install_requests(config)
 
 
@@ -171,16 +183,17 @@ def test_provision_pip_api_venv_with_horey_dir_path(tmp_dir_path):
     assert standalone_methods is not None
 
 
-@pytest.mark.done
+@pytest.mark.todo
 def test_provision_pip_api_venv_without_horey_dir_path(tmp_dir_path):
-    pip_api_make.provision_venv({"venv_dir_path": tmp_dir_path})
-    pip_api_make.install_wheel({"venv_dir_path": tmp_dir_path})
-    standalone_methods = pip_api_make.provision_pip_api({"horey_dir_path": tmp_dir_path,
-                                                     "venv_dir_path": tmp_dir_path})
+    config = {"horey_dir_path": tmp_dir_path, "venv_dir_path": tmp_dir_path}
+    pip_api_make.provision_venv(config)
+    pip_api_make.install_wheel(config)
+    standalone_methods = pip_api_make.provision_pip_api(config)
     assert standalone_methods is not None
 
 
 @pytest.mark.todo
 def test_provision_pip_api_global(tmp_dir_path):
-    standalone_methods = pip_api_make.provision_pip_api({"horey_dir_path": tmp_dir_path})
+    config = {"horey_dir_path": tmp_dir_path}
+    standalone_methods = pip_api_make.provision_pip_api(config)
     assert standalone_methods is not None

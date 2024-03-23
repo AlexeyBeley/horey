@@ -1,7 +1,6 @@
 """
 Methods which can be used without package installation.
 """
-import contextlib
 import json
 import os
 import uuid
@@ -9,7 +8,6 @@ import subprocess
 import sys
 import shutil
 import platform
-
 
 from requirement import Requirement
 from package import Package
@@ -240,8 +238,8 @@ class StandaloneMethods:
         raise RuntimeError(f"This should be unreachable: this_min: {this.min_version}, other_min: {other.min_version}")
 
     def install_requirements(self,
-            requirements_file_path, update=False, update_from_source=False
-    ):
+                             requirements_file_path, update=False, update_from_source=False
+                             ):
         """
         Prepare list of requirements to be installed and install those missing.
 
@@ -330,7 +328,7 @@ class StandaloneMethods:
         self.INSTALLED_PACKAGES = None
         requirement_string = name or requirement.generate_install_string()
         ret = self.execute(
-        f"{self.python_interpreter_command} -m pip install --force-reinstall {requirement_string}")
+            f"{self.python_interpreter_command} -m pip install --force-reinstall {requirement_string}")
         last_line = ret.get("stdout").strip("\r\n").split("\n")[-1]
         if "Successfully installed" not in last_line or requirement_name not in last_line:
             raise ValueError(ret)
@@ -440,12 +438,12 @@ class StandaloneMethods:
 
         if platform.system().lower() == "windows":
             return self.run_bat(command,
-                                         ignore_on_error_callback=ignore_on_error_callback,
-                                         timeout=timeout,
-                                         debug=debug)
+                                ignore_on_error_callback=ignore_on_error_callback,
+                                timeout=timeout,
+                                debug=debug)
 
         return self.run_bash(command, ignore_on_error_callback=ignore_on_error_callback, timeout=timeout,
-                                      debug=debug)
+                             debug=debug)
 
     # pylint: disable= too-many-arguments
 
@@ -521,9 +519,9 @@ class StandaloneMethods:
             command = f"/bin/bash {file_name}"
 
         return self.run_raw(command, file_name,
-                                     ignore_on_error_callback=ignore_on_error_callback,
-                                     timeout=timeout,
-                                     debug=debug)
+                            ignore_on_error_callback=ignore_on_error_callback,
+                            timeout=timeout,
+                            debug=debug)
 
     def run_bat(self, command, ignore_on_error_callback=None, timeout=60 * 10, debug=True):
         """
@@ -541,9 +539,9 @@ class StandaloneMethods:
             file_handler.write("@echo off\r\n" + command)
             new_command = file_name
         return self.run_raw(new_command, file_name,
-                                     ignore_on_error_callback=ignore_on_error_callback,
-                                     timeout=timeout,
-                                     debug=debug)
+                            ignore_on_error_callback=ignore_on_error_callback,
+                            timeout=timeout,
+                            debug=debug)
 
     @staticmethod
     def checkout_branch(branch_name):
@@ -553,19 +551,6 @@ class StandaloneMethods:
         :param branch_name:
         :return:
         """
-
-    @contextlib.contextmanager
-    def tmp_file(self, file_path, flags="w"):
-        """
-        Create tmp file.
-
-        :param file_path:
-        :param flags:
-        :return:
-        """
-        with open(file_path, flags) as file_handler:
-            yield file_handler
-        os.remove(file_path)
 
     def download_https_file_requests(self, local_file_path, url):
         """
@@ -579,16 +564,22 @@ class StandaloneMethods:
         :param url:
         :return:
         """
-        with self.tmp_file("requests_doenloader.py") as file_handler:
-            file_handler.write(
-         """
-        import requests
-        with requests.get(url, stream=True, timeout=180) as r:
-            r.raise_for_status()
-            with open(local_file_path, 'wb') as f:
-                for chunk in r.iter_content(chunk_size=8192):
-                    f.write(chunk)
-        """)
-            breakpoint()
+
+        tmp_file_name = "requests_downloader.py"
+
+        try:
+            with open(tmp_file_name, "w", encoding="utf-8") as file_handler:
+                file_handler.write("\n".join([
+                    "import requests",
+                    f"with requests.get('{url}', stream=True, timeout=180) as r:",
+                    "    r.raise_for_status()",
+                    f"    with open('{local_file_path}', 'wb') as f:",
+                    "        for chunk in r.iter_content(chunk_size=8192):",
+                    "            f.write(chunk)"
+                ]))
+
+            self.execute(f"{self.python_interpreter_command} {tmp_file_name}")
+        finally:
+            os.remove(tmp_file_name)
 
         return local_file_path
