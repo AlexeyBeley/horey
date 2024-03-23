@@ -72,6 +72,10 @@ def load_module(module_full_path):
     return module
 
 
+pip_api_default_dir_name = "pip_api_default_dir"
+pip_api_default_dir_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), pip_api_default_dir_name)
+
+
 def init_configuration():
     """
     Provision
@@ -85,7 +89,13 @@ def init_configuration():
     if arguments.pip_api_configuration is not None:
         if arguments.pip_api_configuration.endswith(".py"):
             return init_configuration_from_py(arguments.pip_api_configuration)
-    raise ValueError(arguments.pip_api_configuration)
+
+    if not os.path.exists(pip_api_default_dir_path):
+        os.makedirs(pip_api_default_dir_path, exist_ok=True)
+
+    return {"venv_dir_path": pip_api_default_dir_path,
+            "multi_package_repositories": {"horey.": os.path.join(pip_api_default_dir_path, "horey")},
+            "horey_parent_dir_path": pip_api_default_dir_path}
 
 
 def download_https_file_requests(configs, local_file_path, url):
@@ -124,7 +134,7 @@ def get_standalone_methods(configs):
     :return:
     """
 
-    dst_dir_path = configs.get("horey_dir_path") or "."
+    dst_dir_path = configs.get("horey_parent_dir_path") or "."
     horey_repo = os.path.join(dst_dir_path, "horey")
     venv_dir_path = configs.get("venv_dir_path")
     multi_package_map = {"horey.": horey_repo}
@@ -162,14 +172,14 @@ def install_pip(configs):
     """
 
     logger.info("Installing pip")
-    horey_dir_path = configs.get("horey_dir_path") or "."
+    horey_parent_dir_path = configs.get("horey_parent_dir_path") or "."
     StandaloneMethods = get_standalone_methods(configs)
 
     command = f"{sys.executable} -m pip -V"
     ret = StandaloneMethods.execute(command, ignore_on_error_callback=lambda error: "No module named pip" in repr(error))
     stderr = ret.get("stderr")
     if "No module named pip" in stderr:
-        pip_installer = os.path.join(horey_dir_path, "get-pip.py")
+        pip_installer = os.path.join(horey_parent_dir_path, "get-pip.py")
         download_https_file_urllib(pip_installer, "https://bootstrap.pypa.io/get-pip.py")
         command = f"{sys.executable} {pip_installer}"
         ret = StandaloneMethods.execute(command)
@@ -327,20 +337,20 @@ def provision_pip_api(configs):
     :return:
     """
     logger.info("Provisioning pip_api")
-    horey_dir_path = configs.get("horey_dir_path") or "."
-    if not os.path.isdir(os.path.join(horey_dir_path, "horey")):
+    horey_parent_dir_path = configs.get("horey_parent_dir_path") or "."
+    if not os.path.isdir(os.path.join(horey_parent_dir_path, "horey")):
         branch_name = "pip_api_make_provision"
-        file_path = os.path.join(horey_dir_path, "main.zip")
+        file_path = os.path.join(horey_parent_dir_path, "main.zip")
         download_https_file_requests(configs, file_path,
                             f"https://github.com/AlexeyBeley/horey/archive/refs/heads/{branch_name}.zip")
         with zipfile.ZipFile(file_path, 'r') as zip_ref:
-            zip_ref.extractall(horey_dir_path)
-        shutil.copytree(os.path.join(horey_dir_path, f"horey-{branch_name}"), os.path.join(horey_dir_path, "horey"))
+            zip_ref.extractall(horey_parent_dir_path)
+        shutil.copytree(os.path.join(horey_parent_dir_path, f"horey-{branch_name}"), os.path.join(horey_parent_dir_path, "horey"))
 
-    pip_api_requirements_file_path = os.path.join(horey_dir_path, "horey", "pip_api", "requirements.txt")
+    pip_api_requirements_file_path = os.path.join(horey_parent_dir_path, "horey", "pip_api", "requirements.txt")
     StandaloneMethods = get_standalone_methods(configs)
     StandaloneMethods.install_requirements(pip_api_requirements_file_path)
-    return StandaloneMethods.build_and_install_package(os.path.join(horey_dir_path, "horey"), "pip_api")
+    return StandaloneMethods.build_and_install_package(os.path.join(horey_parent_dir_path, "horey"), "pip_api")
 
 
 def bootstrap():

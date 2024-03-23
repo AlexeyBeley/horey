@@ -35,7 +35,28 @@ def provisioned_parent_venv_dir_path_fixture(tmp_dir_path):
     yield tmp_dir_path
 
 
-@pytest.mark.wip
+@pytest.fixture(name="default_configs")
+def default_configs_fixture():
+    sys.argv = ['pip_api_make.py']
+    _default_configs = pip_api_make.init_configuration()
+    if os.path.exists(_default_configs["venv_dir_path"]):
+        shutil.rmtree(_default_configs["venv_dir_path"])
+    os.makedirs(_default_configs["venv_dir_path"])
+    yield _default_configs
+    if os.path.exists(_default_configs["venv_dir_path"]):
+        shutil.rmtree(_default_configs["venv_dir_path"])
+
+
+@pytest.fixture(name="provisioned_venv_default_configs")
+def provisioned_venv_default_configs_fixture(default_configs):
+    shutil.rmtree(default_configs["venv_dir_path"])
+    os.makedirs(default_configs["venv_dir_path"])
+    pip_api_make.provision_venv(default_configs)
+    yield default_configs
+    shutil.rmtree(default_configs["venv_dir_path"])
+
+
+@pytest.mark.done
 def test_init_configuration_main():
     pip_api_configuration_file_path = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "pip_api_configs", "pip_api_configuration_main.py"))
@@ -45,7 +66,7 @@ def test_init_configuration_main():
     assert configs["venv_dir_path"] == os.path.abspath(os.path.join(this_dir, "venv"))
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_init_configuration_main_1():
     pip_api_configuration_file_path = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "pip_api_configs", "pip_api_configuration_main_1.py"))
@@ -55,7 +76,7 @@ def test_init_configuration_main_1():
     assert configs["venv_dir_path"] is None
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_init_configuration_main_2():
     pip_api_configuration_file_path = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "pip_api_configs", "pip_api_configuration_main_2.py"))
@@ -65,7 +86,7 @@ def test_init_configuration_main_2():
     assert configs["venv_dir_path"] == os.path.abspath(os.path.join(this_dir, "venv"))
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_init_configuration_no_main():
     pip_api_configuration_file_path = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "pip_api_configs", "pip_api_configuration_no_main.py"))
@@ -75,7 +96,7 @@ def test_init_configuration_no_main():
     assert configs["venv_dir_path"] == os.path.abspath(os.path.join(this_dir, "venv"))
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_init_configuration_no_main_1():
     pip_api_configuration_file_path = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "pip_api_configs", "pip_api_configuration_no_main_1.py"))
@@ -85,7 +106,7 @@ def test_init_configuration_no_main_1():
     assert configs["venv_dir_path"] is None
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_init_configuration_no_main_2():
     pip_api_configuration_file_path = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "pip_api_configs", "pip_api_configuration_no_main_2.py"))
@@ -95,7 +116,7 @@ def test_init_configuration_no_main_2():
     assert configs["venv_dir_path"] == os.path.abspath(os.path.join(this_dir, "venv"))
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_download_https_file_requests_horey_file_from_remote_source_code(provisioned_venv_parent_dir_path):
     configs = {"venv_dir_path": provisioned_venv_parent_dir_path}
     file_path = os.path.join(provisioned_venv_parent_dir_path, "standalone_methods.py")
@@ -106,17 +127,17 @@ def test_download_https_file_requests_horey_file_from_remote_source_code(provisi
     assert os.path.isfile(file_path)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_download_https_file_requests_horey_file_from_local_source_code(provisioned_venv_parent_dir_path):
     file_path = os.path.join(provisioned_venv_parent_dir_path, "standalone_methods.py")
-    configs = {"venv_dir_path": provisioned_venv_parent_dir_path, "horey_dir_path": horey_parent_dir}
+    configs = {"venv_dir_path": provisioned_venv_parent_dir_path, "horey_parent_dir_path": horey_parent_dir}
     pip_api_make.install_requests(configs)
     pip_api_make.download_https_file_requests(configs, file_path,
                                      "https://raw.githubusercontent.com/AlexeyBeley/horey/pip_api_make_provision/pip_api/horey/pip_api/standalone_methods.py")
     assert os.path.isfile(file_path)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_download_https_file_urllib_horey_file(tmp_dir_path):
     file_path = os.path.join(tmp_dir_path, "standalone_methods.py")
     pip_api_make.download_https_file_urllib(file_path,
@@ -124,79 +145,156 @@ def test_download_https_file_urllib_horey_file(tmp_dir_path):
     assert os.path.isfile(file_path)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_get_standalone_methods():
-    standalone_methods = pip_api_make.get_standalone_methods({"horey_dir_path": os.path.dirname(horey_sub_path)})
+    standalone_methods = pip_api_make.get_standalone_methods({"horey_parent_dir_path": os.path.dirname(horey_sub_path)})
     assert standalone_methods is not None
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_install_pip_global():
-    assert pip_api_make.install_pip({"horey_dir_path": os.path.dirname(horey_sub_path)})
+    assert pip_api_make.install_pip({"horey_parent_dir_path": os.path.dirname(horey_sub_path)})
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_provision_venv(tmp_dir_path):
     assert pip_api_make.provision_venv({"venv_dir_path": tmp_dir_path})
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_install_wheel_venv(provisioned_venv_parent_dir_path):
     assert pip_api_make.install_wheel({"venv_dir_path": provisioned_venv_parent_dir_path})
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_install_wheel_global():
     assert pip_api_make.install_wheel({})
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_install_setuptools_venv(provisioned_venv_parent_dir_path):
     assert pip_api_make.install_setuptools({"venv_dir_path": provisioned_venv_parent_dir_path})
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_install_setuptools_global():
     assert pip_api_make.install_setuptools({})
 
 
-@pytest.mark.wip
-def test_install_requests_venv_with_horey_dir_path(provisioned_venv_parent_dir_path):
-    config = {"venv_dir_path": provisioned_venv_parent_dir_path, "horey_dir_path": horey_parent_dir}
+@pytest.mark.done
+def test_install_requests_venv_with_horey_parent_dir_path(provisioned_venv_parent_dir_path):
+    config = {"venv_dir_path": provisioned_venv_parent_dir_path, "horey_parent_dir_path": horey_parent_dir}
     assert pip_api_make.install_requests(config)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_install_requests_global():
-    config = {"horey_dir_path": horey_parent_dir}
+    config = {"horey_parent_dir_path": horey_parent_dir}
     assert pip_api_make.install_requests(config)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_install_requests_venv_download_horey(provisioned_venv_parent_dir_path):
     config = {"venv_dir_path": provisioned_venv_parent_dir_path}
     assert pip_api_make.install_requests(config)
 
 
-@pytest.mark.wip
-def test_provision_pip_api_venv_with_horey_dir_path(provisioned_venv_parent_dir_path):
+@pytest.mark.done
+def test_provision_pip_api_venv_with_horey_parent_dir_path(provisioned_venv_parent_dir_path):
     pip_api_make.install_wheel({"venv_dir_path": provisioned_venv_parent_dir_path})
-    standalone_methods = pip_api_make.provision_pip_api({"horey_dir_path": horey_parent_dir,
+    standalone_methods = pip_api_make.provision_pip_api({"horey_parent_dir_path": horey_parent_dir,
                                                      "venv_dir_path": provisioned_venv_parent_dir_path})
     assert standalone_methods is not None
 
 
-@pytest.mark.wip
-def test_provision_pip_api_venv_without_horey_dir_path(provisioned_venv_parent_dir_path):
-    config = {"horey_dir_path": provisioned_venv_parent_dir_path, "venv_dir_path": provisioned_venv_parent_dir_path}
+@pytest.mark.done
+def test_provision_pip_api_venv_without_horey_parent_dir_path(provisioned_venv_parent_dir_path):
+    config = {"horey_parent_dir_path": provisioned_venv_parent_dir_path, "venv_dir_path": provisioned_venv_parent_dir_path}
     pip_api_make.install_wheel(config)
     pip_api_make.install_requests(config)
     standalone_methods = pip_api_make.provision_pip_api(config)
     assert standalone_methods is not None
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_provision_pip_api_global(tmp_dir_path):
-    config = {"horey_dir_path": tmp_dir_path}
+    config = {"horey_parent_dir_path": tmp_dir_path}
     standalone_methods = pip_api_make.provision_pip_api(config)
+    assert standalone_methods is not None
+
+
+@pytest.mark.done
+def test_default_configs_init_configuration_main(default_configs):
+    base_dir = os.path.join(os.path.dirname(pip_api_make.__file__), pip_api_make.pip_api_default_dir_name)
+    assert default_configs["venv_dir_path"] == base_dir
+    assert default_configs["multi_package_repositories"] == {"horey.": os.path.join(base_dir, "horey")}
+    assert default_configs["horey_parent_dir_path"] == base_dir
+
+
+@pytest.mark.done
+def test_default_configs_download_https_file_requests_horey_file_from_remote_source_code(default_configs, provisioned_venv_default_configs):
+    file_path = os.path.join(provisioned_venv_default_configs["venv_dir_path"], "standalone_methods.py")
+    pip_api_make.install_requests(default_configs)
+
+    pip_api_make.download_https_file_requests(default_configs, file_path,
+                                     "https://raw.githubusercontent.com/AlexeyBeley/horey/pip_api_make_provision/pip_api/horey/pip_api/standalone_methods.py")
+    assert os.path.isfile(file_path)
+
+
+@pytest.mark.done
+def test_default_configs_get_standalone_methods(default_configs):
+    standalone_methods = pip_api_make.get_standalone_methods(default_configs)
+    assert standalone_methods is not None
+
+
+@pytest.mark.done
+def test_default_configs_install_pip_global(default_configs):
+    assert pip_api_make.install_pip(default_configs)
+
+
+@pytest.mark.done
+def test_default_configs_provision_venv(default_configs):
+    assert pip_api_make.provision_venv(default_configs)
+
+
+@pytest.mark.done
+def test_default_configs_install_wheel_venv(provisioned_venv_default_configs):
+    assert pip_api_make.install_wheel(provisioned_venv_default_configs)
+
+
+@pytest.mark.done
+def test_default_configs_install_setuptools_venv(provisioned_venv_default_configs):
+    assert pip_api_make.install_setuptools(provisioned_venv_default_configs)
+
+
+@pytest.mark.done
+def test_default_configs_install_requests_venv_with_horey_parent_dir_path(provisioned_venv_default_configs):
+    assert pip_api_make.install_requests(provisioned_venv_default_configs)
+
+
+@pytest.mark.done
+def test_default_configs_install_requests_global(provisioned_venv_default_configs):
+    provisioned_venv_default_configs["horey_parent_dir_path"] = horey_parent_dir
+    assert pip_api_make.install_requests(provisioned_venv_default_configs)
+
+
+@pytest.mark.done
+def test_default_configs_install_requests_venv_download_horey(provisioned_venv_default_configs):
+    assert pip_api_make.install_requests(provisioned_venv_default_configs)
+
+
+@pytest.mark.done
+def test_default_configs_provision_pip_api_venv_with_horey_parent_dir_path(provisioned_venv_default_configs):
+    provisioned_venv_default_configs["horey_parent_dir_path"] = horey_parent_dir
+    pip_api_make.install_wheel(provisioned_venv_default_configs)
+    pip_api_make.install_requests(provisioned_venv_default_configs)
+    standalone_methods = pip_api_make.provision_pip_api(provisioned_venv_default_configs)
+    assert standalone_methods is not None
+
+
+@pytest.mark.done
+def test_default_configs_provision_pip_api_venv_without_horey_parent_dir_path(provisioned_venv_default_configs):
+    pip_api_make.install_wheel(provisioned_venv_default_configs)
+    pip_api_make.install_requests(provisioned_venv_default_configs)
+    standalone_methods = pip_api_make.provision_pip_api(provisioned_venv_default_configs)
     assert standalone_methods is not None
