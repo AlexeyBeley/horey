@@ -528,8 +528,11 @@ class AzureDevopsAPI:
             return self.init_items_from_cache("iterations", Iteration)
 
         lst_ret = []
+
         response = self.session.get(
             f"https://dev.azure.com/{self.org_name}/{self.project_name}/{self.team_name}/_apis/work/teamsettings/iterations?api-version=7.0")
+        if response.status_code != 200:
+            raise ValueError(f"{response.status_code=}")
         ret = response.json()
         logger.info("Start fetching iterations")
         for iteration in ret["value"]:
@@ -1058,7 +1061,6 @@ class AzureDevopsAPI:
             logger.info(f"Adding parent: {wit_id}")
             return self.patch(url, request_data)
 
-
     def set_work_object_child(self, wit_id, child_id):
         """
 
@@ -1169,6 +1171,7 @@ class AzureDevopsAPI:
                     "value": "2"
                 }
             ]
+
         if original_estimate_time is not None:
             request_data.append(
                 {
