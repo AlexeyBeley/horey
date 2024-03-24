@@ -247,7 +247,7 @@ class RemoteDeployer:
 
                 stdin = channel.makefile('wb')
                 stdout = channel.makefile('r')
-                self.execute_remote_shell(stdin, stdout, command)
+                self.execute_remote_shell(stdin, stdout, command, deployment_target.deployment_target_address)
 
                 transport = client.get_transport()
                 sftp_client = HoreySFTPClient.from_transport(transport)
@@ -286,7 +286,7 @@ class RemoteDeployer:
                 command = f"/bin/bash {remote_unzip_file_path}"
 
                 try:
-                    _, shout, _, exit_status = self.execute_remote_shell(stdin, stdout, command)
+                    _, shout, _, exit_status = self.execute_remote_shell(stdin, stdout, command, deployment_target.deployment_target_address)
                     logger.info(f"{deployment_target.deployment_target_address} Unzip result: shell_output: {str(shout)}, exit_status: {exit_status}")
                 except RemoteDeployer.DeployerError as error_instance:
                     if "apt does not have a stable CLI interface" not in repr(error_instance):
@@ -320,11 +320,11 @@ class RemoteDeployer:
                 )
 
                 command = f"sudo chmod +x {os.path.join(deployment_target.remote_deployment_dir_path, 'remote_step_executor.sh')}"
-                self.execute_remote_shell(stdin, stdout, command)
+                self.execute_remote_shell(stdin, stdout, command, deployment_target.deployment_target_address)
 
                 if deployment_target.linux_distro == "redhat":
                     command = "sudo yum install screen -y"
-                    self.execute_remote_shell(stdin, stdout, command)
+                    self.execute_remote_shell(stdin, stdout, command, deployment_target.deployment_target_address)
                 deployment_target.remote_deployer_infrastructure_provisioning_succeeded = (
                     True
                 )
@@ -345,16 +345,19 @@ class RemoteDeployer:
                 raise RemoteDeployer.DeployerError from error_instance
 
     @staticmethod
-    def execute_remote_shell(stdin, stdout, cmd):
+    def execute_remote_shell(stdin, stdout, cmd, remote_address, timeout=60):
         """
 
+        :param remote_address:
+        :param timeout: in minutes
         :param cmd: the command to be executed on the remote computer
         :examples:  execute('ls')
                     execute('finger')
                     execute('cd folder_name')
         """
 
-        logger.info(f"[REMOTE->] {cmd}")
+        logger.info(f"[{remote_address} REMOTE->] {cmd}")
+        end_time = datetime.datetime.now() + datetime.timedelta(minutes=timeout)
 
         cmd = cmd.strip('\n')
         finish = 'end of stdOUT buffer. finished with exit status'
@@ -370,7 +373,7 @@ class RemoteDeployer:
             # get rid of 'coloring and formatting' special characters
             line = RemoteDeployer.REGEX_CLEANER.sub('', line).replace('\b', '').replace('\r', '')
 
-            logger.info(f"[REMOTE<-] {line}")
+            logger.info(f"[{remote_address} REMOTE<-] {line}")
             if str(line).startswith(cmd) or str(line).startswith(echo_cmd):
                 # up for now filled with shell junk from stdin
                 shout = []
@@ -382,6 +385,8 @@ class RemoteDeployer:
                 break
             else:
                 shout.append(line)
+            if datetime.datetime.now() > end_time:
+                raise RemoteDeployer.DeployerError(f"{remote_address} Reached timeout waiting: {timeout} minutes")
 
         # first and last lines of shout/sherr contain a prompt
         if shout and echo_cmd in shout[-1]:
