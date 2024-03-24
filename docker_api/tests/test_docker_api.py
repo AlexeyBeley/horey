@@ -4,16 +4,18 @@ Testing docker_api module.
 """
 
 import os
+
+import pytest
 from horey.docker_api.docker_api import DockerAPI
 from horey.common_utils.common_utils import CommonUtils
-# from horey.aws_api.aws_api import AWSAPI
+from horey.aws_api.aws_api import AWSAPI
 
 mock_values_file_path = os.path.abspath(
     os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "..", "ignore", "mock_values.py"
+        os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore", "docker_api_mock_values.py"
     )
 )
-print(mock_values_file_path)
+print(f"{mock_values_file_path=}")
 mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 
 src_aws_region = "us-west-2"
@@ -21,6 +23,8 @@ dst_aws_region = "us-west-2"
 
 # pylint: disable= missing-function-docstring
 
+
+@pytest.mark.wip
 def test_init_docker_api():
     """
     Test basic init.
@@ -50,6 +54,7 @@ def login(docker_api):
     docker_api.login(registry, username, password)
 
 
+@pytest.mark.wip
 def test_login():
     """
     Test login to aws region using aws_api
@@ -63,7 +68,6 @@ def test_login():
     if len(credentials) != 1:
         raise ValueError("len(credentials) != 1")
     credentials = credentials[0]
-
     registry, username, password = (
         credentials["proxy_host"],
         credentials["user_name"],
@@ -72,6 +76,7 @@ def test_login():
     docker_api.login(registry, username, password)
 
 
+@pytest.mark.wip
 def test_build():
     """
     Test building image.
@@ -86,6 +91,7 @@ def test_build():
     assert image is not None
 
 
+@pytest.mark.wip
 def test_get_image():
     """
     Self explanatory.
@@ -98,13 +104,8 @@ def test_get_image():
     assert image is not None
 
 
+@pytest.mark.wip
 def test_upload_image():
-    """
-    Self explanatory.
-
-    @return:
-    """
-
     docker_api = DockerAPI()
     login(docker_api)
     image = docker_api.get_image("horey-test:latest")
@@ -113,6 +114,7 @@ def test_upload_image():
     docker_api.upload_images(tags)
 
 
+@pytest.mark.wip
 def test_pull_image():
     """
     Self explanatory.
@@ -126,6 +128,7 @@ def test_pull_image():
     assert images is not None
 
 
+@pytest.mark.wip
 def test_copy_image():
     """
     Test copying image from source repo to dst
@@ -140,6 +143,7 @@ def test_copy_image():
     )
 
 
+@pytest.mark.wip
 def test_remove_image():
     """
     Test removing image.
@@ -151,6 +155,7 @@ def test_remove_image():
     docker_api.remove_image(mock_values["image_with_children_id"], force=True)
 
 
+@pytest.mark.wip
 def test_get_all_images():
     """
     Test getting all images.
@@ -164,21 +169,9 @@ def test_get_all_images():
     assert images is not None
 
 
+@pytest.mark.wip
 def test_get_child_image_ids():
     docker_api = DockerAPI()
     image_id = mock_values["image_with_children_id"]
     image_ids = docker_api.get_child_image_ids(image_id)
     assert isinstance(image_ids, list)
-
-
-if __name__ == "__main__":
-    # test_init_docker_api()
-    # test_build()
-    # test_get_image()
-    # test_login()
-    # test_upload_image()
-    # test_pull_image()
-    # test_copy_image()
-    test_remove_image()
-    # test_get_all_images()
-    #test_get_child_image_ids()
