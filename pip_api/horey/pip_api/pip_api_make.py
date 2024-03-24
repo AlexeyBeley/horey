@@ -84,18 +84,23 @@ def init_configuration():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--pip_api_configuration", type=str)
+    parser.add_argument("--action", type=str, required=True)
     arguments, rest_args = parser.parse_known_args()
     print(f"Ignoring {rest_args}")
     if arguments.pip_api_configuration is not None:
         if arguments.pip_api_configuration.endswith(".py"):
-            return init_configuration_from_py(arguments.pip_api_configuration)
+            ret = init_configuration_from_py(arguments.pip_api_configuration)
+            ret["action"] = arguments.acion
+            return ret
 
     if not os.path.exists(pip_api_default_dir_path):
         os.makedirs(pip_api_default_dir_path, exist_ok=True)
 
     return {"venv_dir_path": pip_api_default_dir_path,
             "multi_package_repositories": {"horey.": os.path.join(pip_api_default_dir_path, "horey")},
-            "horey_parent_dir_path": pip_api_default_dir_path}
+            "horey_parent_dir_path": pip_api_default_dir_path,
+            "action": "bootstrap"
+            }
 
 
 def download_https_file_requests(configs, local_file_path, url):
@@ -219,7 +224,7 @@ def install_requests(configs):
     logger.info("Installing requests")
 
     StandaloneMethods = get_standalone_methods(configs)
-    return StandaloneMethods.install_requirement_standard(None, name="requests")
+    return StandaloneMethods.install_requirement(StandaloneMethods.init_requirement_from_string(os.path.abspath(__file__), "requests"))
 
 
 def install_requests_old(configs):
@@ -262,7 +267,7 @@ def install_wheel(configs):
     logger.info("Installing wheel")
 
     StandaloneMethods = get_standalone_methods(configs)
-    return StandaloneMethods.install_requirement_standard(None, name="wheel")
+    return StandaloneMethods.install_requirement(StandaloneMethods.init_requirement_from_string(os.path.abspath(__file__), "wheel"))
 
 
 def install_setuptools(configs):
@@ -275,7 +280,8 @@ def install_setuptools(configs):
 
     logger.info("Installing setuptools")
     StandaloneMethods = get_standalone_methods(configs)
-    return StandaloneMethods.install_requirement_standard(None, name="setuptools")
+
+    return StandaloneMethods.install_requirement(StandaloneMethods.init_requirement_from_string(os.path.abspath(__file__), "setuptools"))
 
 
 def install_venv(configs):
@@ -353,14 +359,13 @@ def provision_pip_api(configs):
     return StandaloneMethods.build_and_install_package(os.path.join(horey_parent_dir_path, "horey"), "pip_api")
 
 
-def bootstrap():
+def bootstrap(configs):
     """
     Prepare the environment or venv.
 
     :return:
     """
 
-    configs = init_configuration()
     install_pip(configs)
     install_requests(configs)
     provision_venv(configs)
@@ -369,6 +374,49 @@ def bootstrap():
     provision_pip_api(configs)
 
 
+def install(configs):
+    """
+    Run install
+
+    :param configs:
+    :return:
+    """
+
+    StandaloneMethods = get_standalone_methods(configs)
+    force_reinstall = configs.get("force_reinstall")
+    if force_reinstall is None:
+        force_reinstall = False
+    else:
+        if force_reinstall.lower() not in ["true", "false"]:
+            raise ValueError("Force_reinstall param should be 'true' or 'false'")
+        force_reinstall = force_reinstall.lower() == "true"
+
+    if requirement := configs.get("requirement"):
+        return StandaloneMethods.install_requirement(StandaloneMethods.init_requirement_from_string(os.path.abspath(__file__), requirement), force_reinstall=force_reinstall)
+
+    if requirements_file_path := configs.get("requirements_file_path"):
+        return StandaloneMethods.install_requirements_(requirements_file_path, requirement, force_reinstall=force_reinstall)
+
+    raise ValueError(f"Either 'requirement' or 'requirements_file_path' must present: {configs}")
+
+
+def main():
+    """
+    Entrypoint
+
+    :return:
+    """
+
+    configs = init_configuration()
+    if configs["action"] == "bootstrap":
+        return bootstrap(configs)
+
+    if configs["action"] == "install":
+        return install(configs)
+
+    raise ValueError("Unknown state")
+
+
 if __name__ == "__main__":
     print(sys.argv)
-    bootstrap()
+    main()

@@ -64,9 +64,20 @@ class StandaloneMethods:
 
         for line in lines:
             self.logger.info(f"Initializing requirement '{line}' from file '{requirements_file_path}'")
-            requirements.append(Requirement(requirements_file_path, line))
+            requirements.append(self.init_requirement_from_string(requirements_file_path, line))
 
         return requirements
+
+    @staticmethod
+    def init_requirement_from_string(src_file_path, str_src):
+        """
+        Init from standard requirement string.
+
+        :param src_file_path:
+        :param str_src:
+        :return:
+        """
+        return Requirement(src_file_path, str_src)
 
     @staticmethod
     def get_requirements_file_path(repo_path, package_name):
@@ -80,7 +91,7 @@ class StandaloneMethods:
 
         return os.path.join(repo_path, package_name, "requirements.txt")
 
-    def compose_requirements_recursive(self, requirements_file_path, requirements_aggregator):
+    def compose_requirements_recursive_from_file(self, requirements_file_path, requirements_aggregator):
         """
         Compose requirements based on multi package repos map.
 
@@ -90,6 +101,17 @@ class StandaloneMethods:
         """
 
         requirements = self.init_requirements_raw(requirements_file_path)
+        self.compose_requirements_recursive(requirements, requirements_aggregator)
+
+    def compose_requirements_recursive(self, requirements, requirements_aggregator):
+        """
+        Standard and multi-package source requirements
+
+        :param requirements:
+        :param requirements_aggregator:
+        :return:
+        """
+
         for requirement in requirements:
             if requirement.name in requirements_aggregator:
                 self.update_existing_requirement(requirement, requirements_aggregator)
@@ -103,7 +125,7 @@ class StandaloneMethods:
                     multi_package_repo_requirements_file_path = os.path.join(
                         repo_path, package_dir_name, "requirements.txt"
                     )
-                    self.compose_requirements_recursive(
+                    self.compose_requirements_recursive_from_file(
                         multi_package_repo_requirements_file_path, requirements_aggregator,
                     )
                     break
@@ -238,36 +260,24 @@ class StandaloneMethods:
         raise RuntimeError(f"This should be unreachable: this_min: {this.min_version}, other_min: {other.min_version}")
 
     def install_requirements(self,
-                             requirements_file_path, update=False, update_from_source=False
+                             requirements_file_path, force_reinstall=False
                              ):
         """
         Prepare list of requirements to be installed and install those missing.
 
+        :param force_reinstall:
         :param requirements_file_path:
         :return:
         """
 
         self.logger.info(f"Installing requirements from file: '{requirements_file_path}'")
         requirements_aggregator = {}
-        self.compose_requirements_recursive(requirements_file_path, requirements_aggregator)
+        self.compose_requirements_recursive_from_file(requirements_file_path, requirements_aggregator)
         if not requirements_aggregator:
             return
-        installed_packages = self.get_installed_packages()
 
         for requirement in reversed(requirements_aggregator.values()):
-            if not self.requirement_satisfied(requirement, installed_packages):
-                self.install_requirement(requirement)
-                continue
-
-            if update:
-                self.install_requirement(requirement)
-                continue
-
-            if update_from_source:
-                for prefix in self.multi_package_repo_to_prefix_map:
-                    if requirement.name.startswith(prefix):
-                        self.install_requirement(requirement)
-                        break
+            self.install_requirement(requirement, force_reinstall=force_reinstall)
 
     def get_installed_packages(self):
         """
@@ -293,13 +303,17 @@ class StandaloneMethods:
         self.INSTALLED_PACKAGES = objects
         return self.INSTALLED_PACKAGES
 
-    def install_requirement(self, requirement: Requirement):
+    def install_requirement(self, requirement: Requirement, force_reinstall=False):
         """
         Install single requirement.
 
+        :param force_reinstall: 
         :param requirement:
         :return:
         """
+
+        if self.requirement_satisfied(requirement) and not force_reinstall:
+            return True
 
         for prefix, repo_path in self.multi_package_repo_to_prefix_map.items():
             if requirement.name.startswith(prefix):
@@ -309,28 +323,20 @@ class StandaloneMethods:
 
         return self.install_requirement_standard(requirement)
 
-    def install_requirement_standard(self, requirement, force_reinstall=False, name=None):
+    def install_requirement_standard(self, requirement):
         """
         Default pip install
 
-        :param name:
-        :param force_reinstall:
         :param requirement:
         :return:
         """
 
-        requirement_name = name or requirement.name
-        packages = self.get_installed_packages()
-        for package in packages:
-            if package.name == requirement_name and not force_reinstall:
-                return True
-
         self.INSTALLED_PACKAGES = None
-        requirement_string = name or requirement.generate_install_string()
+        requirement_string = requirement.generate_install_string()
         ret = self.execute(
             f"{self.python_interpreter_command} -m pip install --force-reinstall {requirement_string}")
         last_line = ret.get("stdout").strip("\r\n").split("\n")[-1]
-        if "Successfully installed" not in last_line or requirement_name not in last_line:
+        if "Successfully installed" not in last_line or requirement.name not in last_line:
             raise ValueError(ret)
         return True
 
@@ -377,17 +383,14 @@ class StandaloneMethods:
         self.INSTALLED_PACKAGES = None
         return True
 
-    @staticmethod
-    def requirement_satisfied(requirement: Requirement, packages):
+    def requirement_satisfied(self, requirement: Requirement):
         """
         Check weather the requirement is already installed.
 
-        :param packages:
         :param requirement:
         :return:
         """
-
-        for package in packages:
+        for package in self.get_installed_packages():
             if package.name.replace("_", "-") != requirement.name.replace("_", "-"):
                 continue
             return package.check_version_requirements(requirement)
