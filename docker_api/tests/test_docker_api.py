@@ -24,7 +24,7 @@ dst_aws_region = "us-west-2"
 # pylint: disable= missing-function-docstring
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_init_docker_api():
     """
     Test basic init.
@@ -52,9 +52,10 @@ def login(docker_api):
         credentials["decoded_token"],
     )
     docker_api.login(registry, username, password)
+    return registry
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_login():
     """
     Test login to aws region using aws_api
@@ -76,7 +77,7 @@ def test_login():
     docker_api.login(registry, username, password)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_build():
     """
     Test building image.
@@ -91,7 +92,7 @@ def test_build():
     assert image is not None
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_get_image():
     """
     Self explanatory.
@@ -104,17 +105,18 @@ def test_get_image():
     assert image is not None
 
 
-@pytest.mark.wip
+@pytest.mark.skip
 def test_upload_image():
     docker_api = DockerAPI()
-    login(docker_api)
-    image = docker_api.get_image("horey-test:latest")
-    tags = mock_values["src_image_tags"]
+    registry = login(docker_api)
+    image_tag = "horey-test:latest"
+    image = docker_api.get_image(image_tag)
+    tags = [f"{registry}/{image_tag}"]
     docker_api.tag_image(image, tags)
     docker_api.upload_images(tags)
 
 
-@pytest.mark.wip
+@pytest.mark.skip
 def test_pull_image():
     """
     Self explanatory.
@@ -123,12 +125,14 @@ def test_pull_image():
     """
 
     docker_api = DockerAPI()
-    login(docker_api)
-    images = docker_api.pull_images(mock_values["src_image_tags"][0])
+    registry = login(docker_api)
+    image_tag = "horey-test:latest"
+    tags = f"{registry}/{image_tag}"
+    images = docker_api.pull_images(tags)
     assert images is not None
 
 
-@pytest.mark.wip
+@pytest.mark.skip
 def test_copy_image():
     """
     Test copying image from source repo to dst
@@ -137,13 +141,17 @@ def test_copy_image():
     """
 
     docker_api = DockerAPI()
-    login(docker_api)
+    registry = login(docker_api)
+    image_tag = "horey-test:latest"
+    image_registry_path = f"{registry}/{image_tag}"
+    image_dst_tag = "horey-test:dst"
+    image_registry_path_dst = f"{registry}/{image_dst_tag}"
     docker_api.copy_image(
-        mock_values["src_image_tags"][0], mock_values["dst_repo"], copy_all_tags=True
+        image_registry_path, image_registry_path_dst, copy_all_tags=True
     )
 
 
-@pytest.mark.wip
+@pytest.mark.skip
 def test_remove_image():
     """
     Test removing image.
@@ -155,7 +163,7 @@ def test_remove_image():
     docker_api.remove_image(mock_values["image_with_children_id"], force=True)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_get_all_images():
     """
     Test getting all images.
@@ -164,14 +172,30 @@ def test_get_all_images():
     """
 
     docker_api = DockerAPI()
-    login(docker_api)
-    images = docker_api.get_all_images(repo_name=mock_values["repo_name"])
+    registry = login(docker_api)
+    images = docker_api.get_all_images(repo_name=f"{registry}/horey-test")
     assert images is not None
 
 
-@pytest.mark.wip
+@pytest.mark.skip
 def test_get_child_image_ids():
     docker_api = DockerAPI()
     image_id = mock_values["image_with_children_id"]
     image_ids = docker_api.get_child_image_ids(image_id)
     assert isinstance(image_ids, list)
+
+
+@pytest.mark.wip
+def test_save():
+    docker_api = DockerAPI()
+    image_tag = "horey-test:latest"
+    image = docker_api.get_image(image_tag)
+    assert docker_api.save(image, "tmp.tar")
+
+
+@pytest.mark.wip
+def test_load():
+    docker_api = DockerAPI()
+    image = docker_api.load("tmp.tar")
+    tags = ["horey-test:latest", "horey:file_loaded"]
+    assert docker_api.tag_image(image, tags)

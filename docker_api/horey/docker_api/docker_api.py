@@ -4,6 +4,7 @@ Docker API - used to communicate with docker service.
 """
 
 import datetime
+import os.path
 
 import docker
 from docker.errors import BuildError
@@ -127,11 +128,13 @@ class DockerAPI:
         @param tags:
         @return:
         """
+        if not isinstance(tags, list):
+            raise ValueError(f"Tags should be a list, received: {type(tags)}: {tags}")
 
         if len(tags) == 0:
-            return
+            return True
         image.tag(tags[0])
-        self.tag_image(image, tags[1:])
+        return self.tag_image(image, tags[1:])
 
     def upload_images(self, repo_tags):
         """
@@ -327,6 +330,52 @@ class DockerAPI:
                     child_ids.append(image.id)
                     break
         return child_ids
+
+    def save(self, image, file_path):
+        """
+        Save image to file.
+
+        Example:
+
+            >>> image = cli.images.get("busybox:latest")
+            >>> f = open('/tmp/busybox-latest.tar', 'wb')
+            >>> for chunk in image.save():
+            >>>   f.write(chunk)
+            >>> f.close()
+        :param file_path:
+        :param image:
+        :return:
+        """
+
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+        with open(file_path, "wb") as file_handler:
+            for chunk in image.save():
+                file_handler.write(chunk)
+
+        return os.path.exists(file_path)
+
+    def load(self, file_path):
+        """
+        Load from file.
+
+        :param file_path:
+        :return:
+        """
+
+        with open(file_path, "rb") as file_handler:
+            data = file_handler.read()
+
+        images = self.client.images.load(data)
+
+        if not isinstance(images, list):
+            raise ValueError(f"Expected list: {images=}")
+
+        if len(images) != 1:
+            raise ValueError(f"Expected list of length 1: {images=}")
+
+        return images[0]
 
     class OutputError(RuntimeError):
         """
