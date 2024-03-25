@@ -115,6 +115,7 @@ class DockerAPI:
 
         key = "error"
         if key in log_line:
+            logger.exception(log_line)
             raise DockerAPI.OutputError(log_line)
 
         logger.error(f"Unknown keys in: {log_line}")
