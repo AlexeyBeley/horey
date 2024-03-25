@@ -20,7 +20,7 @@ class DockerAPI:
     """
 
     def __init__(self):
-        self.client = docker.from_env()
+        self.client = docker.from_env(timeout=60*10)
 
     def login(self, registry, username, password):
         """
@@ -115,6 +115,7 @@ class DockerAPI:
 
         key = "error"
         if key in log_line:
+            logger.exception(log_line)
             raise DockerAPI.OutputError(log_line)
 
         logger.error(f"Unknown keys in: {log_line}")
