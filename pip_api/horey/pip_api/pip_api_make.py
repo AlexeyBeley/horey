@@ -43,7 +43,7 @@ def init_configuration_from_py(file_path):
     data = getattr(data, "main")() if hasattr(data, "main") else data
 
     ret = {}
-    for arg_name in ["venv_dir_path", "multi_package_repositories"]:
+    for arg_name in ["venv_dir_path", "multi_package_repositories", "horey_parent_dir_path"]:
         ret[arg_name] = getattr(data, arg_name) if hasattr(data, arg_name) else None
     return ret
 
@@ -84,13 +84,17 @@ def init_configuration():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--pip_api_configuration", type=str)
+    parser.add_argument("--requirement", type=str)
+    parser.add_argument("--requirements_file_path", type=str)
+    parser.add_argument("--force_reinstall", type=str)
     parser.add_argument("--action", type=str, required=True)
     arguments, rest_args = parser.parse_known_args()
-    print(f"Ignoring {rest_args}")
+    logger.info(f"Ignoring {rest_args}")
     if arguments.pip_api_configuration is not None:
         if arguments.pip_api_configuration.endswith(".py"):
             ret = init_configuration_from_py(arguments.pip_api_configuration)
-            ret["action"] = arguments.acion
+            for attr in ["action", "requirements_file_path", "requirement", "force_reinstall"]:
+                ret[attr] = getattr(arguments, attr)
             return ret
 
     if not os.path.exists(pip_api_default_dir_path):
@@ -367,8 +371,8 @@ def bootstrap(configs):
     """
 
     install_pip(configs)
-    install_requests(configs)
     provision_venv(configs)
+    install_requests(configs)
     install_setuptools(configs)
     install_wheel(configs)
     provision_pip_api(configs)
@@ -418,5 +422,5 @@ def main():
 
 
 if __name__ == "__main__":
-    print(sys.argv)
+    logger.info(sys.argv)
     main()

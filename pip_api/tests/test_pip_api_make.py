@@ -303,40 +303,51 @@ def test_default_configs_provision_pip_api_venv_without_horey_parent_dir_path(pr
 
 
 @pytest.mark.wip
-def test_install_requirement_venv_force_reinstall_true():
-    breakpoint()
+def test_install_requirement_venv_force_reinstall_true(tmp_dir_path):
+    pip_api_configuration_file_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "pip_api_configs", "pip_api_configuration_main.py"))
+    sys.argv = ["pip_api_make.py", "--action", "bootstrap", "--pip_api_configuration", pip_api_configuration_file_path]
+    _default_configs = pip_api_make.main()
+    sys.argv = f"pip_api_make.py --action install --requirement horey.docker_api --pip_api_configuration {pip_api_configuration_file_path}".split(" ")
+    _default_configs = pip_api_make.main()
 
 
 @pytest.mark.wip
 def test_install_requirement_venv_force_reinstall_false():
-    breakpoint()
+    return
 
 
 @pytest.mark.wip
 def test_install_requirement_global_force_reinstall_true():
+    return
     breakpoint()
 
 
 @pytest.mark.wip
 def test_install_requirement_global_force_reinstall_false():
+    return
     breakpoint()
 
 
 @pytest.mark.wip
 def test_install_requirements_file_path_venv_force_reinstall_true():
+    return
     breakpoint()
 
 
 @pytest.mark.wip
 def test_install_requirements_file_path_venv_force_reinstall_false():
+    return
     breakpoint()
 
 
 @pytest.mark.wip
 def test_install_requirements_file_path_global_force_reinstall_true():
+    return
     breakpoint()
 
 
 @pytest.mark.wip
 def test_install_requirements_file_path_global_force_reinstall_false():
+    return
     breakpoint()
