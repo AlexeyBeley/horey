@@ -152,13 +152,13 @@ class ECSService(AwsObject):
         """
 
         request = {"service": self.name, "cluster": self.cluster_arn, "taskDefinition": self.task_definition,
-                   "desiredCount": self.desired_count, "deploymentConfiguration": self.deployment_configuration,
-                   "placementStrategy": self.placement_strategy}
+                   "desiredCount": self.desired_count}
         if self.load_balancers is not None:
             request[
                 "healthCheckGracePeriodSeconds"
             ] = self.health_check_grace_period_seconds
         request["enableExecuteCommand"] = self.enable_execute_command
+        self.extend_request_with_optional_parameters(request, ["placementStrategy", "propagateTags", "networkConfiguration", "serviceRegistries", "deploymentConfiguration"])
 
         return request
 
