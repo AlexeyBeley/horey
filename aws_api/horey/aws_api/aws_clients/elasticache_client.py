@@ -333,6 +333,17 @@ class ElasticacheClient(Boto3Client):
                 filters_req=filters_req
         ))
 
+    def get_latest_engine_version_and_param_family(self, engine):
+        """
+        Get engine and latest param family for it
+
+        :param engine:
+        :return:
+        """
+        engine_raw = self.get_latest_engine_version(engine)
+        params_raw = self.get_latest_parameter_group(engine_raw["CacheParameterGroupFamily"])
+        return engine_raw, params_raw
+
     def get_latest_engine_version(self, engine):
         """
         Find the latest engine version and default configs.
@@ -356,3 +367,22 @@ class ElasticacheClient(Boto3Client):
             versions_dict = {key[key.find(".")+1:]: value for key, value in versions_dict.items() if int(key.split(".")[0]) == max_sub_version}
 
         return list(versions_dict.values())[0]
+
+    def get_latest_parameter_group(self, family_name):
+        """
+        Fetch and find max.
+
+        :param family_name:
+        :return:
+        """
+        versions_dicts = list(self.execute(self.client.describe_cache_parameter_groups, "CacheParameterGroups"))
+        ret = []
+        for version in versions_dicts:
+            if version["CacheParameterGroupFamily"] != family_name:
+                continue
+            if "cluster mode on" in version["Description"]:
+                continue
+            ret.append(version)
+        if len(ret) != 1:
+            raise RuntimeError(ret)
+        return ret[0]
