@@ -306,27 +306,46 @@ def test_default_configs_provision_pip_api_venv_without_horey_parent_dir_path(pr
 def test_install_requirement_venv_force_reinstall_true(tmp_dir_path):
     pip_api_configuration_file_path = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "pip_api_configs", "pip_api_configuration_main.py"))
-    sys.argv = ["pip_api_make.py", "--action", "bootstrap", "--pip_api_configuration", pip_api_configuration_file_path]
+    sys.argv = f"pip_api_make.py --action bootstrap --pip_api_configuration {pip_api_configuration_file_path}".split(" ")
     _default_configs = pip_api_make.main()
-    sys.argv = f"pip_api_make.py --action install --requirement horey.docker_api --pip_api_configuration {pip_api_configuration_file_path}".split(" ")
+    sys.argv = f"pip_api_make.py --action install --force_reinstall true --requirement horey.docker_api --pip_api_configuration {pip_api_configuration_file_path}".split(" ")
     _default_configs = pip_api_make.main()
 
 
 @pytest.mark.wip
 def test_install_requirement_venv_force_reinstall_false():
-    return
+    pip_api_configuration_file_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "pip_api_configs", "pip_api_configuration_main.py"))
+    sys.argv = f"pip_api_make.py --action bootstrap --pip_api_configuration {pip_api_configuration_file_path}".split(
+        " ")
+    _default_configs = pip_api_make.main()
+    sys.argv = f"pip_api_make.py --action install--requirement horey.docker_api --pip_api_configuration {pip_api_configuration_file_path}".split(
+        " ")
+    _default_configs = pip_api_make.main()
 
 
 @pytest.mark.wip
 def test_install_requirement_global_force_reinstall_true():
-    return
-    breakpoint()
+    pip_api_configuration_file_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "pip_api_configs", "pip_api_configuration_main_1.py"))
+    sys.argv = f"pip_api_make.py --action bootstrap --pip_api_configuration {pip_api_configuration_file_path}".split(
+        " ")
+    _default_configs = pip_api_make.main()
+    sys.argv = f"pip_api_make.py --action install --force_reinstall true --requirement horey.docker_api --pip_api_configuration {pip_api_configuration_file_path}".split(
+        " ")
+    _default_configs = pip_api_make.main()
 
 
 @pytest.mark.wip
 def test_install_requirement_global_force_reinstall_false():
-    return
-    breakpoint()
+    pip_api_configuration_file_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "pip_api_configs", "pip_api_configuration_main_1.py"))
+    sys.argv = f"pip_api_make.py --action bootstrap --pip_api_configuration {pip_api_configuration_file_path}".split(
+        " ")
+    _default_configs = pip_api_make.main()
+    sys.argv = f"pip_api_make.py --action install --requirement horey.docker_api --pip_api_configuration {pip_api_configuration_file_path}".split(
+        " ")
+    _default_configs = pip_api_make.main()
 
 
 @pytest.mark.wip
