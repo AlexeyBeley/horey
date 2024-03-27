@@ -316,3 +316,43 @@ class ElasticacheClient(Boto3Client):
             filters_req=request_dict,
         ):
             return response
+
+    def describe_cache_engine_versions_raw(self, filters_req):
+        """
+        Standard.
+
+        :param filters_req:
+        :param region:
+        :return:
+        """
+
+        logger.info("Describe_cache_engine_versions_raw.")
+        return list(self.execute(
+                self.client.describe_cache_engine_versions,
+                "CacheEngineVersions",
+                filters_req=filters_req
+        ))
+
+    def get_latest_engine_version(self, engine):
+        """
+        Find the latest engine version and default configs.
+
+        :param engine:
+        :return:
+        """
+
+        versions_dicts = self.describe_cache_engine_versions_raw({"Engine": engine})
+        versions_dict = {version_dict["EngineVersion"]: version_dict for version_dict in versions_dicts}
+
+        reached_end = False
+        while len(versions_dict) > 1:
+            if reached_end:
+                raise RuntimeError("reached_end")
+            if any("." not in key for key in versions_dict):
+                reached_end = True
+                if any("." in key for key in versions_dict):
+                    raise RuntimeError(versions_dict)
+            max_sub_version = max(int(key.split(".")[0]) for key in versions_dict)
+            versions_dict = {key[key.find(".")+1:]: value for key, value in versions_dict.items() if int(key.split(".")[0]) == max_sub_version}
+
+        return list(versions_dict.values())[0]

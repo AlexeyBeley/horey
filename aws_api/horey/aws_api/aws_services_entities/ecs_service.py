@@ -34,7 +34,7 @@ class ECSService(AwsObject):
         self.enable_ecs_managed_tags = None
         self.arn = None
         self.deployments = []
-        self.network_configuration = []
+        self.network_configuration = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
