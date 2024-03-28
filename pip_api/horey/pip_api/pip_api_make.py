@@ -13,6 +13,7 @@ import sys
 import logging
 import urllib.request
 import zipfile
+from time import perf_counter
 
 handler = logging.StreamHandler()
 formatter = logging.Formatter(
@@ -394,7 +395,8 @@ def install(configs):
     :param configs:
     :return:
     """
-
+    start = perf_counter()
+    logger.info(f"Starting installation: {configs}")
     StandaloneMethods = get_standalone_methods(configs)
     force_reinstall = configs.get("force_reinstall")
     if force_reinstall is None:
@@ -405,12 +407,14 @@ def install(configs):
         force_reinstall = force_reinstall.lower() == "true"
 
     if requirement := configs.get("requirement"):
-        return StandaloneMethods.install_requirement(StandaloneMethods.init_requirement_from_string(os.path.abspath(__file__), requirement), force_reinstall=force_reinstall)
+        response = StandaloneMethods.install_requirement(StandaloneMethods.init_requirement_from_string(os.path.abspath(__file__), requirement), force_reinstall=force_reinstall)
+    elif requirements_file_path := configs.get("requirements_file_path"):
+        response = StandaloneMethods.install_requirements(requirements_file_path, force_reinstall=force_reinstall)
+    else:
+        raise ValueError(f"Either 'requirement' or 'requirements_file_path' must present: {configs}")
 
-    if requirements_file_path := configs.get("requirements_file_path"):
-        return StandaloneMethods.install_requirements(requirements_file_path, force_reinstall=force_reinstall)
-
-    raise ValueError(f"Either 'requirement' or 'requirements_file_path' must present: {configs}")
+    logger.info(f"Installation took {perf_counter()-start}")
+    return response
 
 
 def main():
@@ -427,7 +431,7 @@ def main():
     if configs["action"] == "install":
         return install(configs)
 
-    raise ValueError("Unknown state")
+    raise ValueError(f"Unknown action: {configs}")
 
 
 if __name__ == "__main__":

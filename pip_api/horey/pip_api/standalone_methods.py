@@ -300,6 +300,7 @@ class StandaloneMethods:
         requirements_aggregator = {}
         self.compose_requirements_recursive_from_file(requirements_file_path, requirements_aggregator)
         self.init_source_code_versions(requirements_aggregator)
+
         if not requirements_aggregator:
             return
 
@@ -314,13 +315,13 @@ class StandaloneMethods:
         :return:
         """
 
-
         for requirement_name in requirements_aggregator:
             for prefix in self.multi_package_repo_to_prefix_map:
                 if requirement_name.startswith(prefix):
                     version = self.init_source_code_version(self.multi_package_repo_to_prefix_map.get(prefix), requirement_name, prefix)
+                    if not version:
+                        raise ValueError(f"Uninitialized {version=}")
                     StandaloneMethods.SOURCE_CODE_PACKAGE_VERSIONS[requirement_name] = version
-            breakpoint()
 
     def init_source_code_version(self, path_to_repo, requirement_name, prefix):
         """
@@ -331,10 +332,27 @@ class StandaloneMethods:
         :param requirement_name:
         :return:
         """
-        breakpoint()
+
         package_root_folder_name = requirement_name[len(prefix):]
         module_path = os.path.join(path_to_repo, package_root_folder_name, requirement_name.replace(".", "/"), "__init__.py")
-        module_setup = self.load_module(module_path)
+        if not os.path.exists(module_path):
+            raise ValueError(module_path)
+        with open(module_path, encoding="utf-8") as file_handler:
+            lines = file_handler.readlines()
+
+        for line in lines:
+            line = line.strip("\n")
+            if line.strip(" ").startswith("__version__"):
+                break
+        else:
+            raise RuntimeError(f"Can not find version line in {module_path}")
+
+        _, version_value = line.split("=")
+        version_value = version_value.strip(" ").strip('"').strip("'")
+        for x in version_value.split("."):
+            if not x.isdigit():
+                raise ValueError(f"Version from {line=} in {module_path}")
+        return version_value
 
     def get_installed_packages(self):
         """
@@ -450,7 +468,14 @@ class StandaloneMethods:
         for package in self.get_installed_packages():
             if package.name.replace("_", "-") != requirement.name.replace("_", "-"):
                 continue
-            return package.check_version_requirements(requirement)
+
+            if not package.check_version_requirements(requirement):
+                return False
+
+            for source_code_package_name, source_code_version in self.SOURCE_CODE_PACKAGE_VERSIONS.items():
+                if package.name == source_code_package_name:
+                    return package.version == source_code_version
+            return True
 
         return False
 
