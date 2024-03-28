@@ -45,6 +45,15 @@ def init_configuration_from_py(file_path):
     ret = {}
     for arg_name in ["venv_dir_path", "multi_package_repositories", "horey_parent_dir_path"]:
         ret[arg_name] = getattr(data, arg_name) if hasattr(data, arg_name) else None
+
+    if not ret.get("horey_parent_dir_path"):
+        if ret.get("multi_package_repositories"):
+            for repo_path in ret.get("multi_package_repositories"):
+                if not repo_path.strip("/").endswith("horey"):
+                    continue
+                ret["horey_parent_dir_path"] = os.path.dirname(repo_path)
+                break
+
     return ret
 
 
@@ -399,7 +408,7 @@ def install(configs):
         return StandaloneMethods.install_requirement(StandaloneMethods.init_requirement_from_string(os.path.abspath(__file__), requirement), force_reinstall=force_reinstall)
 
     if requirements_file_path := configs.get("requirements_file_path"):
-        return StandaloneMethods.install_requirements_(requirements_file_path, requirement, force_reinstall=force_reinstall)
+        return StandaloneMethods.install_requirements(requirements_file_path, force_reinstall=force_reinstall)
 
     raise ValueError(f"Either 'requirement' or 'requirements_file_path' must present: {configs}")
 

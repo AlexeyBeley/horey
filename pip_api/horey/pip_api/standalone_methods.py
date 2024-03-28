@@ -1,6 +1,7 @@
 """
 Methods which can be used without package installation.
 """
+import importlib
 import json
 import os
 import uuid
@@ -19,8 +20,33 @@ class StandaloneMethods:
     """
 
     INSTALLED_PACKAGES = None
+    SOURCE_CODE_PACKAGE_VERSIONS = {}
 
     logger = None
+
+    @staticmethod
+    def load_module(module_full_path):
+        """
+        Dynamically load python module.
+
+        @param module_full_path:
+        @return:
+        """
+
+        module_path = os.path.dirname(module_full_path)
+        sys.path.insert(0, module_path)
+        module_name = os.path.splitext(os.path.basename(module_full_path))[0]
+        module = importlib.import_module(module_name)
+        module = importlib.reload(module)
+
+        popped_path = sys.path.pop(0)
+        if popped_path != module_path:
+            raise RuntimeError(
+                f"System Path must not be changed while importing configuration_policy: {module_full_path}. "
+                f"Changed from {module_path} to {popped_path}"
+            )
+
+        return module
 
     def generate_python_interpreter_command(self):
         """
@@ -273,11 +299,42 @@ class StandaloneMethods:
         self.logger.info(f"Installing requirements from file: '{requirements_file_path}'")
         requirements_aggregator = {}
         self.compose_requirements_recursive_from_file(requirements_file_path, requirements_aggregator)
+        self.init_source_code_versions(requirements_aggregator)
         if not requirements_aggregator:
             return
 
         for requirement in reversed(requirements_aggregator.values()):
             self.install_requirement(requirement, force_reinstall=force_reinstall)
+
+    def init_source_code_versions(self, requirements_aggregator):
+        """
+        Init versions from source code.
+
+        :param requirements_aggregator:
+        :return:
+        """
+
+
+        for requirement_name in requirements_aggregator:
+            for prefix in self.multi_package_repo_to_prefix_map:
+                if requirement_name.startswith(prefix):
+                    version = self.init_source_code_version(self.multi_package_repo_to_prefix_map.get(prefix), requirement_name, prefix)
+                    StandaloneMethods.SOURCE_CODE_PACKAGE_VERSIONS[requirement_name] = version
+            breakpoint()
+
+    def init_source_code_version(self, path_to_repo, requirement_name, prefix):
+        """
+        Fetch the version:
+
+        :param prefix:
+        :param path_to_repo:
+        :param requirement_name:
+        :return:
+        """
+        breakpoint()
+        package_root_folder_name = requirement_name[len(prefix):]
+        module_path = os.path.join(path_to_repo, package_root_folder_name, requirement_name.replace(".", "/"), "__init__.py")
+        module_setup = self.load_module(module_path)
 
     def get_installed_packages(self):
         """

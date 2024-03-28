@@ -302,7 +302,7 @@ def test_default_configs_provision_pip_api_venv_without_horey_parent_dir_path(pr
     assert standalone_methods is not None
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_install_requirement_venv_force_reinstall_true(tmp_dir_path):
     pip_api_configuration_file_path = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "pip_api_configs", "pip_api_configuration_main.py"))
@@ -350,14 +350,28 @@ def test_install_requirement_global_force_reinstall_false():
 
 @pytest.mark.wip
 def test_install_requirements_file_path_venv_force_reinstall_true():
-    return
-    breakpoint()
+    pip_api_configuration_file_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "pip_api_configs", "pip_api_configuration_main.py"))
+    sys.argv = f"pip_api_make.py --action bootstrap --pip_api_configuration {pip_api_configuration_file_path}".split(
+        " ")
+    _default_configs = pip_api_make.main()
+    requirements_file_path = f"{horey_sub_path}/alert_system/requirements.txt"
+    sys.argv = f"pip_api_make.py --action install --force_reinstall true --requirements_file_path {requirements_file_path} --pip_api_configuration {pip_api_configuration_file_path}".split(
+        " ")
+    _default_configs = pip_api_make.main()
 
 
 @pytest.mark.wip
 def test_install_requirements_file_path_venv_force_reinstall_false():
-    return
-    breakpoint()
+    pip_api_configuration_file_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "pip_api_configs", "pip_api_configuration_main.py"))
+    sys.argv = f"pip_api_make.py --action bootstrap --pip_api_configuration {pip_api_configuration_file_path}".split(
+        " ")
+    _default_configs = pip_api_make.main()
+    requirements_file_path = f"{horey_sub_path}/alert_system/requirements.txt"
+    sys.argv = f"pip_api_make.py --action install --requirements_file_path {requirements_file_path} --pip_api_configuration {pip_api_configuration_file_path}".split(
+        " ")
+    _default_configs = pip_api_make.main()
 
 
 @pytest.mark.wip
