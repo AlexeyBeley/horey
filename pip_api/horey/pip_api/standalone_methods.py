@@ -504,7 +504,7 @@ class StandaloneMethods:
         self.logger.info(f"self.SOURCE_CODE_PACKAGE_VERSIONS: '{self.SOURCE_CODE_PACKAGE_VERSIONS}'")
 
         for package in self.get_installed_packages():
-            self.logger.info(f"Comparing with '{package.name=}'")
+            self.logger.debug(f"Comparing with '{package.name=}'")
             if package.name.replace("_", "-") != requirement.name.replace("_", "-"):
                 continue
             self.logger.info(f"Found installed '{package.name=}'")
