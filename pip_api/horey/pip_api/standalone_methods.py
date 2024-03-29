@@ -324,7 +324,9 @@ class StandaloneMethods:
         """
 
         for requirement_name in requirements_aggregator:
+            self.logger.info(f"Looking source version code for {requirement_name}")
             for prefix in self.multi_package_repo_to_prefix_map:
+                self.logger.info(f"Checking {requirement_name} with {prefix}")
                 if requirement_name.startswith(prefix):
                     version = self.init_source_code_version(self.multi_package_repo_to_prefix_map.get(prefix), requirement_name, prefix)
 
