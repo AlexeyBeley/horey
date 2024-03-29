@@ -384,6 +384,7 @@ class StandaloneMethods:
         objects = []
         for dict_package in lst_packages:
             package = Package(dict_package)
+            self.logger.info(f"Existing package '{package.name=}'")
             objects.append(package)
             for prefix, repo_path in self.multi_package_repo_to_prefix_map.items():
                 if package.name.startswith(prefix):
@@ -504,7 +505,6 @@ class StandaloneMethods:
         self.logger.info(f"self.SOURCE_CODE_PACKAGE_VERSIONS: '{self.SOURCE_CODE_PACKAGE_VERSIONS}'")
 
         for package in self.get_installed_packages():
-            self.logger.debug(f"Comparing with '{package.name=}'")
             if package.name.lower().replace("_", "-") != requirement.name.lower().replace("_", "-"):
                 continue
             self.logger.info(f"Found installed '{package.name=}'")
