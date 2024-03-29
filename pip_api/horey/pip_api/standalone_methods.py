@@ -635,6 +635,7 @@ class StandaloneMethods:
         :return:
         """
 
+        self.logger.info(f"Running bash: '{command}'")
         file_name = f"tmp-{str(uuid.uuid4())}.sh"
         with open(file_name, "w", encoding="utf-8") as file_handler:
             file_handler.write(command)
