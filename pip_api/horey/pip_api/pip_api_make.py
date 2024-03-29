@@ -165,7 +165,7 @@ def get_standalone_methods(configs):
 
     horey_repo = os.path.join(dst_dir_path, "horey")
     venv_dir_path = configs.get("venv_dir_path")
-    multi_package_map = {"horey.": horey_repo}
+    multi_package_map = configs.get("multi_package_repositories") or {"horey.": horey_repo}
 
     if Standalone.methods is not None and \
         Standalone.methods.venv_dir_path == venv_dir_path and \

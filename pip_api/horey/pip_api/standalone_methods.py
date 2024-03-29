@@ -502,7 +502,6 @@ class StandaloneMethods:
         """
         self.logger.info(f"Checking if requirement satisfied '{requirement.name}'")
         self.logger.info(f"self.SOURCE_CODE_PACKAGE_VERSIONS: '{self.SOURCE_CODE_PACKAGE_VERSIONS}'")
-        raise RuntimeError("here")
 
         for package in self.get_installed_packages():
             self.logger.info(f"Comparing with '{package.name=}'")
