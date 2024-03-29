@@ -306,6 +306,7 @@ class StandaloneMethods:
         self.logger.info(f"Installing requirements from file: '{requirements_file_path}'")
         requirements_aggregator = {requirement.name: requirement}
         self.compose_requirements_recursive_from_file(requirements_file_path, requirements_aggregator)
+        self.logger.info(f"Aggregated: {requirements_aggregator}")
         self.init_source_code_versions(requirements_aggregator)
 
         for aggregated_requirement in reversed(requirements_aggregator.values()):
