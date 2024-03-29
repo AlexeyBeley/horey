@@ -82,8 +82,18 @@ def load_module(module_full_path):
     return module
 
 
-pip_api_default_dir_name = "pip_api_default_dir"
-pip_api_default_dir_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), pip_api_default_dir_name)
+def get_default_dir():
+    """
+    Generate default build directory for downloads.
+
+    :return:
+    """
+
+    pip_api_default_dir_name = "pip_api_default_dir"
+    pip_api_default_dir_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), pip_api_default_dir_name)
+    if not os.path.exists(pip_api_default_dir_path):
+        os.makedirs(pip_api_default_dir_path, exist_ok=True)
+    return pip_api_default_dir_path
 
 
 def init_configuration():
@@ -91,7 +101,6 @@ def init_configuration():
     Provision
     :return:
     """
-
     parser = argparse.ArgumentParser()
     parser.add_argument("--pip_api_configuration", type=str)
     parser.add_argument("--install", type=str)
@@ -105,8 +114,7 @@ def init_configuration():
         else:
             raise RuntimeError("Not supported pip_api_configuration file extension")
     else:
-        if not os.path.exists(pip_api_default_dir_path):
-            os.makedirs(pip_api_default_dir_path, exist_ok=True)
+        pip_api_default_dir_path = get_default_dir()
 
         ret = {"venv_dir_path": pip_api_default_dir_path,
             "multi_package_repositories": {"horey.": os.path.join(pip_api_default_dir_path, "horey")},
@@ -153,7 +161,8 @@ def get_standalone_methods(configs):
     :return:
     """
 
-    dst_dir_path = configs.get("horey_parent_dir_path") or "."
+    dst_dir_path = configs.get("horey_parent_dir_path") or get_default_dir()
+
     horey_repo = os.path.join(dst_dir_path, "horey")
     venv_dir_path = configs.get("venv_dir_path")
     multi_package_map = {"horey.": horey_repo}
@@ -177,7 +186,7 @@ def get_standalone_methods(configs):
         module = load_module(file_path)
 
     Standalone.methods = module.StandaloneMethods(venv_dir_path, multi_package_map)
-    Standalone.methods.logger = logger
+    module.StandaloneMethods.logger = logger
 
     return Standalone.methods
 

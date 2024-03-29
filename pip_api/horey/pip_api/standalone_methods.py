@@ -94,8 +94,7 @@ class StandaloneMethods:
 
         return requirements
 
-    @staticmethod
-    def init_requirement_from_string(src_file_path, str_src):
+    def init_requirement_from_string(self, src_file_path, str_src):
         """
         Init from standard requirement string.
 
@@ -103,7 +102,14 @@ class StandaloneMethods:
         :param str_src:
         :return:
         """
-        return Requirement(src_file_path, str_src)
+
+        requirement = Requirement(src_file_path, str_src)
+        for prefix, repo_path in self.multi_package_repo_to_prefix_map.items():
+            if requirement.name.startswith(prefix):
+                requirement.multi_package_repo_prefix = prefix
+                requirement.multi_package_repo_path = repo_path
+                break
+        return requirement
 
     @staticmethod
     def get_requirements_file_path(repo_path, package_name):
@@ -387,11 +393,6 @@ class StandaloneMethods:
         :return:
         """
         requirement = self.init_requirement_from_string(src_file_path, str_src)
-        for prefix, repo_path in self.multi_package_repo_to_prefix_map.items():
-            if requirement.name.startswith(prefix):
-                requirement.multi_package_repo_prefix = prefix
-                requirement.multi_package_repo_path = repo_path
-                break
         return self.install_requirement(requirement, force_reinstall=force_reinstall)
 
     def install_requirement(self, requirement: Requirement, force_reinstall=False):
