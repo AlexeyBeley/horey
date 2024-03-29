@@ -423,6 +423,10 @@ class StandaloneMethods:
             return True
         self.INSTALLED_PACKAGES = None
         requirement_string = requirement.generate_install_string()
+        if ">" in requirement_string:
+            breakpoint()
+        if "<" in requirement_string:
+            breakpoint()
         ret = self.execute(
             f"{self.python_interpreter_command} -m pip install --force-reinstall {requirement_string}")
         last_line = ret.get("stdout").strip("\r\n").split("\n")[-1]
