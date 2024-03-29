@@ -505,11 +505,12 @@ class StandaloneMethods:
 
         for package in self.get_installed_packages():
             self.logger.debug(f"Comparing with '{package.name=}'")
-            if package.name.replace("_", "-") != requirement.name.replace("_", "-"):
+            if package.name.lower().replace("_", "-") != requirement.name.lower().replace("_", "-"):
                 continue
             self.logger.info(f"Found installed '{package.name=}'")
 
             if not package.check_version_requirements(requirement):
+                self.logger.info(f"Installed version do not much requirement '{package.name=}'")
                 return False
 
             for source_code_package_name, source_code_version in self.SOURCE_CODE_PACKAGE_VERSIONS.items():
@@ -518,6 +519,7 @@ class StandaloneMethods:
                     return package.version == source_code_version
             return True
 
+        self.logger.info(f"Was not able to find installed package for requirement '{requirement.name=}'")
         return False
 
     def create_wheel(self, source_code_path, build_dir_path, branch_name=None):
