@@ -424,7 +424,7 @@ class StandaloneMethods:
         ret = self.execute(
             f"{self.python_interpreter_command} -m pip install --force-reinstall {requirement_string}")
         last_line = ret.get("stdout").strip("\r\n").split("\n")[-1]
-        if ret.get("stdout") and "Successfully installed" not in last_line or requirement.name not in last_line:
+        if ret.get("stdout") and ("Successfully installed" not in last_line or requirement.name not in last_line):
             raise ValueError(ret)
         return True
 
@@ -536,6 +536,8 @@ class StandaloneMethods:
         :param debug:
         :return:
         """
+
+        StandaloneMethods.logger.info(f"Executing OS command: '{command}'")
 
         if platform.system().lower() == "windows":
             return self.run_bat(command,
