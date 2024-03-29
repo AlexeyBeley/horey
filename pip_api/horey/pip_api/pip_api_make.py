@@ -94,27 +94,27 @@ def init_configuration():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--pip_api_configuration", type=str)
-    parser.add_argument("--requirement", type=str)
-    parser.add_argument("--requirements_file_path", type=str)
-    parser.add_argument("--force_reinstall", type=str)
-    parser.add_argument("--action", type=str, required=True)
-    arguments, rest_args = parser.parse_known_args()
-    logger.info(f"Ignoring {rest_args}")
+    parser.add_argument("--install", type=str)
+    parser.add_argument("--bootstrap",  action=argparse.BooleanOptionalAction)
+    parser.add_argument("--force_reinstall", action=argparse.BooleanOptionalAction, default=False)
+    arguments = parser.parse_args()
+
     if arguments.pip_api_configuration is not None:
         if arguments.pip_api_configuration.endswith(".py"):
             ret = init_configuration_from_py(arguments.pip_api_configuration)
-            for attr in ["action", "requirements_file_path", "requirement", "force_reinstall"]:
-                ret[attr] = getattr(arguments, attr)
-            return ret
+        else:
+            raise RuntimeError("Not supported pip_api_configuration file extension")
+    else:
+        if not os.path.exists(pip_api_default_dir_path):
+            os.makedirs(pip_api_default_dir_path, exist_ok=True)
 
-    if not os.path.exists(pip_api_default_dir_path):
-        os.makedirs(pip_api_default_dir_path, exist_ok=True)
-
-    return {"venv_dir_path": pip_api_default_dir_path,
+        ret = {"venv_dir_path": pip_api_default_dir_path,
             "multi_package_repositories": {"horey.": os.path.join(pip_api_default_dir_path, "horey")},
             "horey_parent_dir_path": pip_api_default_dir_path,
-            "action": "bootstrap"
             }
+
+    ret.update(vars(arguments))
+    return ret
 
 
 def download_https_file_requests(configs, local_file_path, url):
@@ -238,7 +238,7 @@ def install_requests(configs):
     logger.info("Installing requests")
 
     StandaloneMethods = get_standalone_methods(configs)
-    return StandaloneMethods.install_requirement(StandaloneMethods.init_requirement_from_string(os.path.abspath(__file__), "requests"))
+    return StandaloneMethods.install_requirement_from_string(os.path.abspath(__file__), "requests")
 
 
 def install_requests_old(configs):
@@ -281,7 +281,7 @@ def install_wheel(configs):
     logger.info("Installing wheel")
 
     StandaloneMethods = get_standalone_methods(configs)
-    return StandaloneMethods.install_requirement(StandaloneMethods.init_requirement_from_string(os.path.abspath(__file__), "wheel"))
+    return StandaloneMethods.install_requirement_from_string(os.path.abspath(__file__), "wheel")
 
 
 def install_setuptools(configs):
@@ -295,7 +295,7 @@ def install_setuptools(configs):
     logger.info("Installing setuptools")
     StandaloneMethods = get_standalone_methods(configs)
 
-    return StandaloneMethods.install_requirement(StandaloneMethods.init_requirement_from_string(os.path.abspath(__file__), "setuptools"))
+    return StandaloneMethods.install_requirement_from_string(os.path.abspath(__file__), "setuptools")
 
 
 def install_venv(configs):
@@ -367,10 +367,8 @@ def provision_pip_api(configs):
             zip_ref.extractall(horey_parent_dir_path)
         shutil.copytree(os.path.join(horey_parent_dir_path, f"horey-{branch_name}"), os.path.join(horey_parent_dir_path, "horey"))
 
-    pip_api_requirements_file_path = os.path.join(horey_parent_dir_path, "horey", "pip_api", "requirements.txt")
     StandaloneMethods = get_standalone_methods(configs)
-    StandaloneMethods.install_requirements(pip_api_requirements_file_path)
-    return StandaloneMethods.build_and_install_package(os.path.join(horey_parent_dir_path, "horey"), "pip_api")
+    return StandaloneMethods.install_requirement_from_string(os.path.abspath(__file__), "horey.pip_api")
 
 
 def bootstrap(configs):
@@ -401,20 +399,13 @@ def install(configs):
     force_reinstall = configs.get("force_reinstall")
     if force_reinstall is None:
         force_reinstall = False
-    else:
-        if force_reinstall.lower() not in ["true", "false"]:
-            raise ValueError("Force_reinstall param should be 'true' or 'false'")
-        force_reinstall = force_reinstall.lower() == "true"
 
-    if requirement := configs.get("requirement"):
-        response = StandaloneMethods.install_requirement(StandaloneMethods.init_requirement_from_string(os.path.abspath(__file__), requirement), force_reinstall=force_reinstall)
-    elif requirements_file_path := configs.get("requirements_file_path"):
-        response = StandaloneMethods.install_requirements(requirements_file_path, force_reinstall=force_reinstall)
-    else:
-        raise ValueError(f"Either 'requirement' or 'requirements_file_path' must present: {configs}")
+    if requirement := configs.get("install"):
+        response = StandaloneMethods.install_requirement_from_string(os.path.abspath(__file__), requirement, force_reinstall=force_reinstall)
+        logger.info(f"Installation took {perf_counter()-start}")
+        return response
 
-    logger.info(f"Installation took {perf_counter()-start}")
-    return response
+    raise ValueError(f"Parameter 'install' must be valid: {configs}")
 
 
 def main():
@@ -425,13 +416,13 @@ def main():
     """
 
     configs = init_configuration()
-    if configs["action"] == "bootstrap":
+    if configs.get("bootstrap"):
         return bootstrap(configs)
 
-    if configs["action"] == "install":
+    if configs.get("install"):
         return install(configs)
 
-    raise ValueError(f"Unknown action: {configs}")
+    raise ValueError(f"Expecting for 'bootstrap' or 'install' command: {configs}")
 
 
 if __name__ == "__main__":

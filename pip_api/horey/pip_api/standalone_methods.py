@@ -52,7 +52,7 @@ class StandaloneMethods:
         """
         Consider venv and OS.
 
-        :return: 
+        :return:
         """
 
         if self.venv_dir_path is not None:
@@ -285,27 +285,25 @@ class StandaloneMethods:
                 return this
         raise RuntimeError(f"This should be unreachable: this_min: {this.min_version}, other_min: {other.min_version}")
 
-    def install_requirements(self,
-                             requirements_file_path, force_reinstall=False
-                             ):
+    def install_source_code_requirement(self, requirement, force_reinstall=False):
         """
         Prepare list of requirements to be installed and install those missing.
 
         :param force_reinstall:
-        :param requirements_file_path:
+        :param requirement:
         :return:
         """
-
+        requirements_file_path = os.path.join(requirement.multi_package_repo_path, requirement.name[len(requirement.multi_package_repo_prefix):], "requirements.txt")
         self.logger.info(f"Installing requirements from file: '{requirements_file_path}'")
-        requirements_aggregator = {}
+        requirements_aggregator = {requirement.name: requirement}
         self.compose_requirements_recursive_from_file(requirements_file_path, requirements_aggregator)
         self.init_source_code_versions(requirements_aggregator)
 
-        if not requirements_aggregator:
-            return
-
-        for requirement in reversed(requirements_aggregator.values()):
-            self.install_requirement(requirement, force_reinstall=force_reinstall)
+        for aggregated_requirement in reversed(requirements_aggregator.values()):
+            if aggregated_requirement.multi_package_repo_path:
+                self.install_source_code_requirement_raw(aggregated_requirement, force_reinstall=force_reinstall)
+            else:
+                self.install_requirement_standard(aggregated_requirement, force_reinstall=force_reinstall)
 
     def init_source_code_versions(self, requirements_aggregator):
         """
@@ -323,7 +321,8 @@ class StandaloneMethods:
                         raise ValueError(f"Uninitialized {version=}")
                     StandaloneMethods.SOURCE_CODE_PACKAGE_VERSIONS[requirement_name] = version
 
-    def init_source_code_version(self, path_to_repo, requirement_name, prefix):
+    @staticmethod
+    def init_source_code_version(path_to_repo, requirement_name, prefix):
         """
         Fetch the version:
 
@@ -378,53 +377,70 @@ class StandaloneMethods:
         self.INSTALLED_PACKAGES = objects
         return self.INSTALLED_PACKAGES
 
-    def install_requirement(self, requirement: Requirement, force_reinstall=False):
+    def install_requirement_from_string(self, src_file_path, str_src, force_reinstall=False):
         """
-        Install single requirement.
+        Entrypoint.
 
-        :param force_reinstall: 
-        :param requirement:
+        :param src_file_path: Requirement source file
+        :param str_src: line to initialize
+        :param force_reinstall:
         :return:
         """
-
-        if self.requirement_satisfied(requirement) and not force_reinstall:
-            return True
-
+        requirement = self.init_requirement_from_string(src_file_path, str_src)
         for prefix, repo_path in self.multi_package_repo_to_prefix_map.items():
             if requirement.name.startswith(prefix):
                 requirement.multi_package_repo_prefix = prefix
                 requirement.multi_package_repo_path = repo_path
-                return self.install_multi_package_repo_requirement(requirement)
+                break
+        return self.install_requirement(requirement, force_reinstall=force_reinstall)
 
-        return self.install_requirement_standard(requirement)
-
-    def install_requirement_standard(self, requirement):
+    def install_requirement(self, requirement: Requirement, force_reinstall=False):
         """
-        Default pip install
+        Install single requirement.
 
+        :param force_reinstall:
         :param requirement:
         :return:
         """
 
+        if requirement.multi_package_repo_path:
+            return self.install_source_code_requirement(requirement,
+                                              force_reinstall=force_reinstall)
+
+        return self.install_requirement_standard(requirement, force_reinstall=force_reinstall)
+
+    def install_requirement_standard(self, requirement, force_reinstall=False):
+        """
+        Default pip install
+
+        :param force_reinstall:
+        :param requirement:
+        :return:
+        """
+        if self.requirement_satisfied(requirement) and not force_reinstall:
+            return True
         self.INSTALLED_PACKAGES = None
         requirement_string = requirement.generate_install_string()
         ret = self.execute(
             f"{self.python_interpreter_command} -m pip install --force-reinstall {requirement_string}")
         last_line = ret.get("stdout").strip("\r\n").split("\n")[-1]
-        if "Successfully installed" not in last_line or requirement.name not in last_line:
+        if ret.get("stdout") and "Successfully installed" not in last_line or requirement.name not in last_line:
             raise ValueError(ret)
         return True
 
-    def install_multi_package_repo_requirement(self, requirement):
+    def install_source_code_requirement_raw(self, requirement, force_reinstall=False):
         """
         Build package and install it.
 
+        :param force_reinstall:
         :param requirement:
         :return:
         """
 
-        package_dir_name = requirement.name.split(".")[-1]
-        return self.build_and_install_package(requirement.multi_package_repo_path, package_dir_name)
+        if force_reinstall or not self.requirement_satisfied(requirement):
+            package_dir_name = requirement.name.split(".")[-1]
+            self.build_and_install_package(requirement.multi_package_repo_path, package_dir_name)
+            self.INSTALLED_PACKAGES = None
 
     def build_and_install_package(self, multi_package_repo_path, package_dir_name):
         """
