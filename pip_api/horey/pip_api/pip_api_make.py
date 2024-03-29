@@ -200,7 +200,7 @@ def install_pip(configs):
     """
 
     logger.info("Installing pip")
-    horey_parent_dir_path = configs.get("horey_parent_dir_path") or "."
+    horey_parent_dir_path = configs.get("horey_parent_dir_path") or get_default_dir()
     StandaloneMethods = get_standalone_methods(configs)
 
     command = f"{sys.executable} -m pip -V"
@@ -366,7 +366,7 @@ def provision_pip_api(configs):
     :return:
     """
     logger.info("Provisioning pip_api")
-    horey_parent_dir_path = configs.get("horey_parent_dir_path") or "."
+    horey_parent_dir_path = configs.get("horey_parent_dir_path") or get_default_dir()
     if not os.path.isdir(os.path.join(horey_parent_dir_path, "horey")):
         branch_name = "pip_api_make_provision"
         file_path = os.path.join(horey_parent_dir_path, "main.zip")
@@ -377,7 +377,9 @@ def provision_pip_api(configs):
         shutil.copytree(os.path.join(horey_parent_dir_path, f"horey-{branch_name}"), os.path.join(horey_parent_dir_path, "horey"))
 
     StandaloneMethods = get_standalone_methods(configs)
-    return StandaloneMethods.install_requirement_from_string(os.path.abspath(__file__), "horey.pip_api")
+    if not StandaloneMethods.install_requirement_from_string(os.path.abspath(__file__), "horey.pip_api"):
+        raise RuntimeError(f"Installation failed: {os.path.abspath(__file__)}, 'horey.pip_api'")
+    return StandaloneMethods
 
 
 def bootstrap(configs):

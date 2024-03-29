@@ -310,6 +310,7 @@ class StandaloneMethods:
                 self.install_source_code_requirement_raw(aggregated_requirement, force_reinstall=force_reinstall)
             else:
                 self.install_requirement_standard(aggregated_requirement, force_reinstall=force_reinstall)
+        return True
 
     def init_source_code_versions(self, requirements_aggregator):
         """
