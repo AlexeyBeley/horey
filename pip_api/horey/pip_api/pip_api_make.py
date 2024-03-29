@@ -32,32 +32,6 @@ class Standalone:
     methods = None
 
 
-def init_configuration_from_py(file_path):
-    """
-    Init basic config from python file.
-
-    :param file_path:
-    :return:
-    """
-
-    data = load_module(file_path)
-    data = getattr(data, "main")() if hasattr(data, "main") else data
-
-    ret = {}
-    for arg_name in ["venv_dir_path", "multi_package_repositories", "horey_parent_dir_path"]:
-        ret[arg_name] = getattr(data, arg_name) if hasattr(data, arg_name) else None
-
-    if not ret.get("horey_parent_dir_path"):
-        if ret.get("multi_package_repositories"):
-            for repo_path in ret.get("multi_package_repositories"):
-                if not repo_path.strip("/").endswith("horey"):
-                    continue
-                ret["horey_parent_dir_path"] = os.path.dirname(repo_path)
-                break
-
-    return ret
-
-
 def load_module(module_full_path):
     """
     Dynamically load python module.
@@ -122,6 +96,32 @@ def init_configuration():
             }
 
     ret.update(vars(arguments))
+    return ret
+
+
+def init_configuration_from_py(file_path):
+    """
+    Init basic config from python file.
+
+    :param file_path:
+    :return:
+    """
+
+    data = load_module(file_path)
+    data = getattr(data, "main")() if hasattr(data, "main") else data
+
+    ret = {}
+    for arg_name in ["venv_dir_path", "multi_package_repositories", "horey_parent_dir_path"]:
+        ret[arg_name] = getattr(data, arg_name) if hasattr(data, arg_name) else None
+
+    if not ret.get("horey_parent_dir_path"):
+        if ret.get("multi_package_repositories"):
+            for repo_path in ret.get("multi_package_repositories"):
+                if not repo_path.strip("/").endswith("horey"):
+                    continue
+                ret["horey_parent_dir_path"] = os.path.dirname(repo_path)
+                break
+
     return ret
 
 

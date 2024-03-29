@@ -299,6 +299,9 @@ class StandaloneMethods:
         :param requirement:
         :return:
         """
+
+        self.logger.info(f"install_source_code_requirement {requirement.name}")
+
         requirements_file_path = os.path.join(requirement.multi_package_repo_path, requirement.name[len(requirement.multi_package_repo_prefix):], "requirements.txt")
         self.logger.info(f"Installing requirements from file: '{requirements_file_path}'")
         requirements_aggregator = {requirement.name: requirement}
@@ -324,6 +327,9 @@ class StandaloneMethods:
             for prefix in self.multi_package_repo_to_prefix_map:
                 if requirement_name.startswith(prefix):
                     version = self.init_source_code_version(self.multi_package_repo_to_prefix_map.get(prefix), requirement_name, prefix)
+
+                    self.logger.info(f"{requirement_name} source code version initialized: {version}")
+
                     if not version:
                         raise ValueError(f"Uninitialized {version=}")
                     StandaloneMethods.SOURCE_CODE_PACKAGE_VERSIONS[requirement_name] = version
@@ -393,6 +399,7 @@ class StandaloneMethods:
         :param force_reinstall:
         :return:
         """
+        self.logger.info(f"install_requirement_from_string {src_file_path}, {str_src}")
         requirement = self.init_requirement_from_string(src_file_path, str_src)
         return self.install_requirement(requirement, force_reinstall=force_reinstall)
 
@@ -458,6 +465,7 @@ class StandaloneMethods:
         :param package_dir_name:
         :return:
         """
+        self.logger.info(f"Building and installing package from source code {multi_package_repo_path} -> {package_dir_name}")
 
         tmp_build_dir = os.path.join(multi_package_repo_path, "build", "_build")
         os.makedirs(tmp_build_dir, exist_ok=True)
@@ -489,6 +497,8 @@ class StandaloneMethods:
         :param requirement:
         :return:
         """
+        self.logger.info(f"Checking if requirement satisfied '{requirement.name}'")
+
         for package in self.get_installed_packages():
             if package.name.replace("_", "-") != requirement.name.replace("_", "-"):
                 continue
@@ -498,6 +508,7 @@ class StandaloneMethods:
 
             for source_code_package_name, source_code_version in self.SOURCE_CODE_PACKAGE_VERSIONS.items():
                 if package.name == source_code_package_name:
+                    self.logger.info(f"Comparing installed '{package.name}' package version '{package.version}' VS source code version {source_code_version}")
                     return package.version == source_code_version
             return True
 
