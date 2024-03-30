@@ -280,7 +280,7 @@ class DockerAPI:
         ]
         return ret
 
-    def remove_image(self, image_id, force=True, wait_to_finish=20*60):
+    def remove_image(self, image_id, force=True, wait_to_finish=20*60, childless=False):
         """
         Remove image.
 
@@ -288,11 +288,13 @@ class DockerAPI:
         @param force:
         @param wait_to_finish:
         @return:
+        :param childless: Do not look for childern - helpfull when there are many images.
         """
 
         if force:
-            for child_image_id in self.get_child_image_ids(image_id):
-                self.remove_image(child_image_id, force=True)
+            if not childless:
+                for child_image_id in self.get_child_image_ids(image_id):
+                    self.remove_image(child_image_id, force=True)
 
             for container in self.get_containers_by_image(image_id):
                 self.kill_container(container, remove=True, wait_to_finish=wait_to_finish)
