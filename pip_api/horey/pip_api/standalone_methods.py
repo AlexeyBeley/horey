@@ -308,12 +308,15 @@ class StandaloneMethods:
         self.compose_requirements_recursive_from_file(requirements_file_path, requirements_aggregator)
         self.logger.info(f"Aggregated: {requirements_aggregator}")
         self.init_source_code_versions(requirements_aggregator)
-
-        for aggregated_requirement in reversed(requirements_aggregator.values()):
+        all_reversed = list(reversed(requirements_aggregator.values()))
+        for aggregated_requirement in all_reversed[:-1]:
             if aggregated_requirement.multi_package_repo_path:
-                self.install_source_code_requirement_raw(aggregated_requirement, force_reinstall=force_reinstall)
+                self.install_source_code_requirement_raw(aggregated_requirement, force_reinstall=False)
             else:
-                self.install_requirement_standard(aggregated_requirement, force_reinstall=force_reinstall)
+                self.install_requirement_standard(aggregated_requirement, force_reinstall=False)
+
+        self.install_source_code_requirement_raw(requirement, force_reinstall=force_reinstall)
+
         return True
 
     def init_source_code_versions(self, requirements_aggregator):

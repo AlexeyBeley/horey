@@ -116,7 +116,7 @@ def init_configuration_from_py(file_path):
 
     if not ret.get("horey_parent_dir_path"):
         if ret.get("multi_package_repositories"):
-            for repo_path in ret.get("multi_package_repositories"):
+            for repo_path in ret.get("multi_package_repositories").values():
                 if not repo_path.strip("/").endswith("horey"):
                     continue
                 ret["horey_parent_dir_path"] = os.path.dirname(repo_path)

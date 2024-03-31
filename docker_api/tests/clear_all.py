@@ -26,7 +26,7 @@ def main():
         childless_images = get_childless_images(all_images)
         print(f"Childless images: {len(childless_images)}")
         for image in childless_images:
-            docker_api.remove_image(image.attrs["Id"], force=False)
+            docker_api.remove_image(image.attrs["Id"], force=True, childless=True)
 
         all_images = docker_api.get_all_images()
 
