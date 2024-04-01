@@ -176,13 +176,13 @@ def get_standalone_methods(configs):
         module = load_module(os.path.join(horey_repo, "pip_api", "horey", "pip_api", "standalone_methods.py"))
     else:
         file_path = os.path.join(dst_dir_path, "package.py")
-        download_https_file_urllib(file_path, "https://raw.githubusercontent.com/AlexeyBeley/horey/pip_api_make_provision/pip_api/horey/pip_api/package.py")
+        download_https_file_urllib(file_path, "https://raw.githubusercontent.com/AlexeyBeley/horey/main/pip_api/horey/pip_api/package.py")
 
         file_path = os.path.join(dst_dir_path, "requirement.py")
-        download_https_file_urllib(file_path, "https://raw.githubusercontent.com/AlexeyBeley/horey/pip_api_make_provision/pip_api/horey/pip_api/requirement.py")
+        download_https_file_urllib(file_path, "https://raw.githubusercontent.com/AlexeyBeley/horey/main/pip_api/horey/pip_api/requirement.py")
 
         file_path = os.path.join(dst_dir_path, "standalone_methods.py")
-        download_https_file_urllib(file_path, "https://raw.githubusercontent.com/AlexeyBeley/horey/pip_api_make_provision/pip_api/horey/pip_api/standalone_methods.py")
+        download_https_file_urllib(file_path, "https://raw.githubusercontent.com/AlexeyBeley/horey/main/pip_api/horey/pip_api/standalone_methods.py")
         module = load_module(file_path)
 
     Standalone.methods = module.StandaloneMethods(venv_dir_path, multi_package_map)
@@ -361,14 +361,14 @@ def provision_pip_api(configs):
     Provision pip api package in the venv or global python.
 
     "https://github.com/AlexeyBeley/horey/archive/refs/heads/main.zip"
-    "https://github.com/AlexeyBeley/horey/archive/refs/heads/pip_api_make_provision.zip"
+    "https://github.com/AlexeyBeley/horey/archive/refs/heads/main.zip"
     "pip_api_make"
     :return:
     """
     logger.info("Provisioning pip_api")
     horey_parent_dir_path = configs.get("horey_parent_dir_path") or get_default_dir()
     if not os.path.isdir(os.path.join(horey_parent_dir_path, "horey")):
-        branch_name = "pip_api_make_provision"
+        branch_name = "main"
         file_path = os.path.join(horey_parent_dir_path, "main.zip")
         download_https_file_requests(configs, file_path,
                             f"https://github.com/AlexeyBeley/horey/archive/refs/heads/{branch_name}.zip")

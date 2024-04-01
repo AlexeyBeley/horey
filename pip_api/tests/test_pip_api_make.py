@@ -122,7 +122,7 @@ def test_download_https_file_requests_horey_file_from_remote_source_code(provisi
     pip_api_make.install_requests(configs)
 
     pip_api_make.download_https_file_requests(configs, file_path,
-                                              "https://raw.githubusercontent.com/AlexeyBeley/horey/pip_api_make_provision/pip_api/horey/pip_api/standalone_methods.py")
+                                              "https://raw.githubusercontent.com/AlexeyBeley/horey/main/pip_api/horey/pip_api/standalone_methods.py")
     assert os.path.isfile(file_path)
 
 
@@ -132,7 +132,7 @@ def test_download_https_file_requests_horey_file_from_local_source_code(provisio
     configs = {"venv_dir_path": provisioned_venv_parent_dir_path, "horey_parent_dir_path": horey_parent_dir}
     pip_api_make.install_requests(configs)
     pip_api_make.download_https_file_requests(configs, file_path,
-                                              "https://raw.githubusercontent.com/AlexeyBeley/horey/pip_api_make_provision/pip_api/horey/pip_api/standalone_methods.py")
+                                              "https://raw.githubusercontent.com/AlexeyBeley/horey/main/pip_api/horey/pip_api/standalone_methods.py")
     assert os.path.isfile(file_path)
 
 
@@ -140,7 +140,7 @@ def test_download_https_file_requests_horey_file_from_local_source_code(provisio
 def test_download_https_file_urllib_horey_file(tmp_dir_path):
     file_path = os.path.join(tmp_dir_path, "standalone_methods.py")
     pip_api_make.download_https_file_urllib(file_path,
-                                            "https://raw.githubusercontent.com/AlexeyBeley/horey/pip_api_make_provision/pip_api/horey/pip_api/standalone_methods.py")
+                                            "https://raw.githubusercontent.com/AlexeyBeley/horey/main/pip_api/horey/pip_api/standalone_methods.py")
     assert os.path.isfile(file_path)
 
 
@@ -244,7 +244,7 @@ def test_default_configs_download_https_file_requests_horey_file_from_remote_sou
     pip_api_make.install_requests(default_configs)
 
     pip_api_make.download_https_file_requests(default_configs, file_path,
-                                              "https://raw.githubusercontent.com/AlexeyBeley/horey/pip_api_make_provision/pip_api/horey/pip_api/standalone_methods.py")
+                                              "https://raw.githubusercontent.com/AlexeyBeley/horey/main/pip_api/horey/pip_api/standalone_methods.py")
     assert os.path.isfile(file_path)
 
 
@@ -354,14 +354,6 @@ def test_install_requirement_global_force_reinstall_false():
     _default_configs = pip_api_make.main()
 
 
-@pytest.mark.wip
+@pytest.mark.skip
 def test_upgrade_requirement():
-    pip_api_configuration_file_path = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "pip_api_configs", "pip_api_configuration_main_1.py"))
-    sys.argv = f"pip_api_make.py --bootstrap".split(
-        " ")
-    _default_configs = pip_api_make.main()
-    sys.argv = f"pip_api_make.py --install horey.docker_api".split(
-        " ")
-    _default_configs = pip_api_make.main()
-    breakpoint()
+    pass
