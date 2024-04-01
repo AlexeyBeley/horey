@@ -82,6 +82,15 @@ class Boto3Client:
             self._account_id = sts_client.get_caller_identity()["Account"]
         return self._account_id
 
+    def get_session_client(self, region):
+        """
+        Thread safe - client per region.
+
+        :param region:
+        :return:
+        """
+        return self.SESSIONS_MANAGER.get_client(self.client_name, region=region)
+
     @property
     def client(self):
         """
@@ -108,11 +117,13 @@ class Boto3Client:
         raw_data=False,
         internal_starting_token=False,
         exception_ignore_callback=None,
+        region=None
     ):
         """
         Function to yeild replies, if there is no need to get all replies.
         It can save API requests if the expected information found before.
 
+        :param region:
         :param func_command: Bound method from _client instance
         :param return_string: string to retrive the infromation from reply dict
         :param filters_req: filters dict passed to the API client to filter the response
@@ -142,6 +153,7 @@ class Boto3Client:
                     filters_req,
                     raw_data=raw_data,
                     internal_starting_token=internal_starting_token,
+                    region=region
                 ):
                     retry_counter = 0
                     starting_token = new_starting_token
@@ -172,7 +184,7 @@ class Boto3Client:
                 ):
                     return
 
-                if  "AccessDenied" in repr(exception_instance):
+                if "AccessDenied" in repr(exception_instance):
                     raise
 
                 if "UnauthorizedOperation" in repr(exception_instance):
@@ -200,10 +212,12 @@ class Boto3Client:
         filters_req,
         raw_data=False,
         internal_starting_token=False,
+        region=None
     ):
         """
         Fetch data from single pagination loop run.
 
+        :param region:
         :param starting_token:
         :param func_command_name:
         :param return_string:
@@ -212,7 +226,7 @@ class Boto3Client:
         :param internal_starting_token:
         :return:
         """
-        for _page in self.client.get_paginator(func_command_name).paginate(
+        for _page in self.get_session_client(region=region).get_paginator(func_command_name).paginate(
             PaginationConfig={self.NEXT_PAGE_REQUEST_KEY: starting_token}, **filters_req
         ):
 
@@ -334,6 +348,7 @@ class Boto3Client:
         internal_starting_token=False,
         exception_ignore_callback=None,
         instant_raise=False,
+        region=None
     ):
         """
         Command to execute clients bound function- execute with paginator if available.
@@ -345,11 +360,12 @@ class Boto3Client:
         :param exception_ignore_callback: called on exception if returns true - do not retries on exception
         :return: list of replies
         """
-
+        if region is None:
+            logger.warning("Region is required for thread safe execution")
         if filters_req is None:
             filters_req = {}
 
-        if self.client.can_paginate(func_command.__name__):
+        if self.get_session_client(region).can_paginate(func_command.__name__):
             for ret_obj in self.yield_with_paginator(
                 func_command,
                 return_string,
@@ -562,10 +578,11 @@ class Boto3Client:
             f"Finished waiting loop for {observed_object.id} to become one of {desired_statuses}. Took {end_time - start_time}"
         )
 
-    def get_tags(self, obj, function=None, arn_identifier="ResourceArn", tags_identifier="Tags"):
+    def get_tags(self, obj, function=None, arn_identifier="ResourceArn", tags_identifier="Tags", region=None):
         """
         Get tags for resource.
 
+        :param region:
         :param obj:
         :param function:
         :param arn_identifier:
@@ -574,7 +591,7 @@ class Boto3Client:
         """
 
         if function is None:
-            function = self.client.get_tags
+            function = self.get_session_client(region).get_tags
 
         logger.info(f"Getting resource tags: {obj.arn}")
         ret = list(
@@ -583,10 +600,11 @@ class Boto3Client:
         obj.tags = ret
         return ret
 
-    def tag_resource(self, obj, arn_identifier="ResourceArn", tags_identifier="TagsToAdd"):
+    def tag_resource(self, obj, arn_identifier="ResourceArn", tags_identifier="TagsToAdd", region=None):
         """
         Tag resource.
 
+        :param region:
         :param obj:
         :param arn_identifier:
         :param tags_identifier:
@@ -595,7 +613,7 @@ class Boto3Client:
 
         logger.info(f"Tagging resource: {obj.arn}")
         for response in self.execute(
-            self.client.tag_resource,
+            self.get_session_client(region).tag_resource,
             "Tags",
             filters_req={arn_identifier: obj.arn, tags_identifier: obj.tags},
             raw_data=True,
