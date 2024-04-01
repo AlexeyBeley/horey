@@ -61,7 +61,7 @@ def test_init_configuration_main():
         os.path.join(os.path.dirname(__file__), "pip_api_configs", "pip_api_configuration_main.py"))
     sys.argv = ['pip_api_make.py', '--pip_api_configuration', pip_api_configuration_file_path]
     configs = pip_api_make.init_configuration()
-    assert configs["multi_package_repositories"] == [os.path.abspath(os.path.dirname(os.path.dirname(this_dir)))]
+    assert configs["multi_package_repositories"] == {"horey.": os.path.abspath(os.path.dirname(os.path.dirname(this_dir)))}
     assert configs["venv_dir_path"] == os.path.abspath(os.path.join(this_dir, "venv"))
 
 
@@ -71,7 +71,7 @@ def test_init_configuration_main_1():
         os.path.join(os.path.dirname(__file__), "pip_api_configs", "pip_api_configuration_main_1.py"))
     sys.argv = ['pip_api_make.py', '--pip_api_configuration', pip_api_configuration_file_path]
     configs = pip_api_make.init_configuration()
-    assert configs["multi_package_repositories"] == [os.path.abspath(os.path.dirname(os.path.dirname(this_dir)))]
+    assert configs["multi_package_repositories"] == {"horey.": os.path.abspath(os.path.dirname(os.path.dirname(this_dir)))}
     assert configs["venv_dir_path"] is None
 
 
@@ -91,7 +91,7 @@ def test_init_configuration_no_main():
         os.path.join(os.path.dirname(__file__), "pip_api_configs", "pip_api_configuration_no_main.py"))
     sys.argv = ['pip_api_make.py', '--pip_api_configuration', pip_api_configuration_file_path]
     configs = pip_api_make.init_configuration()
-    assert configs["multi_package_repositories"] == [os.path.abspath(os.path.dirname(os.path.dirname(this_dir)))]
+    assert configs["multi_package_repositories"] == {"horey.": os.path.abspath(os.path.dirname(os.path.dirname(this_dir)))}
     assert configs["venv_dir_path"] == os.path.abspath(os.path.join(this_dir, "venv"))
 
 
@@ -101,7 +101,7 @@ def test_init_configuration_no_main_1():
         os.path.join(os.path.dirname(__file__), "pip_api_configs", "pip_api_configuration_no_main_1.py"))
     sys.argv = ['pip_api_make.py', '--pip_api_configuration', pip_api_configuration_file_path]
     configs = pip_api_make.init_configuration()
-    assert configs["multi_package_repositories"] == [os.path.abspath(os.path.dirname(os.path.dirname(this_dir)))]
+    assert configs["multi_package_repositories"] == {"horey.": os.path.abspath(os.path.dirname(os.path.dirname(this_dir)))}
     assert configs["venv_dir_path"] is None
 
 
@@ -200,12 +200,13 @@ def test_install_requests_venv_download_horey(provisioned_venv_parent_dir_path):
 
 @pytest.mark.done
 def test_provision_pip_api_venv_with_horey_parent_dir_path(provisioned_venv_parent_dir_path):
-    pip_api_make.install_wheel({"venv_dir_path": provisioned_venv_parent_dir_path})
-    standalone_methods = pip_api_make.provision_pip_api({"horey_parent_dir_path": horey_parent_dir,
-                                                         "multi_package_repositories": {
-                                                             "horey.": os.path.join(provisioned_venv_parent_dir_path,
-                                                                                    "horey")},
-                                                         "venv_dir_path": provisioned_venv_parent_dir_path})
+    config = {"horey_parent_dir_path": provisioned_venv_parent_dir_path,
+              "multi_package_repositories": {"horey.": os.path.join(provisioned_venv_parent_dir_path, "horey")},
+              "venv_dir_path": provisioned_venv_parent_dir_path}
+    pip_api_make.install_wheel(config)
+    pip_api_make.install_requests(config)
+
+    standalone_methods = pip_api_make.provision_pip_api(config)
     assert standalone_methods is not None
 
 
@@ -294,6 +295,8 @@ def test_default_configs_install_requests_venv_download_horey(provisioned_venv_d
 @pytest.mark.done
 def test_default_configs_provision_pip_api_venv_with_horey_parent_dir_path(provisioned_venv_default_configs):
     provisioned_venv_default_configs["horey_parent_dir_path"] = horey_parent_dir
+    provisioned_venv_default_configs["multi_package_repositories"] = {"horey.": os.path.join(horey_parent_dir, "horey")}
+
     pip_api_make.install_wheel(provisioned_venv_default_configs)
     pip_api_make.install_requests(provisioned_venv_default_configs)
     standalone_methods = pip_api_make.provision_pip_api(provisioned_venv_default_configs)

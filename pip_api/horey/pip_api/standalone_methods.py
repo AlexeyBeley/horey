@@ -300,7 +300,7 @@ class StandaloneMethods:
         :return:
         """
 
-        self.logger.info(f"install_source_code_requirement {requirement.name}")
+        self.logger.info(f"install_source_code_requirement '{requirement.name}'")
 
         requirements_file_path = os.path.join(requirement.multi_package_repo_path, requirement.name[len(requirement.multi_package_repo_prefix):], "requirements.txt")
         self.logger.info(f"Installing requirements from file: '{requirements_file_path}'")

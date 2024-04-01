@@ -4,9 +4,9 @@ Pip api configuration
 import os
 
 tests_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-multi_package_repositories = [
-    os.path.dirname(os.path.dirname(tests_dir))
-]
+multi_package_repositories = {"horey.":
+            os.path.dirname(os.path.dirname(tests_dir))
+        }
 venv_dir_path = os.path.join(
     tests_dir, "venv"
 )
