@@ -45,7 +45,7 @@ class SQSClient(Boto3Client):
         :return:
         """
 
-        for queue_url  in self.execute(
+        for queue_url in self.execute(
                 self.client.list_queues, "QueueUrls",
                 filters_req=filters_req,
                 exception_ignore_callback=lambda error: "RepositoryNotFoundException"

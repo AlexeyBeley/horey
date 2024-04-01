@@ -25,34 +25,7 @@ class ACMCertificate(AwsObject):
             self._init_object_from_cache(dict_src)
             return
 
-        init_options = {
-            "CertificateArn": lambda x, y: self.init_default_attr(
-                x, y, formatted_name="arn"
-            ),
-            "DomainName": self.init_default_attr,
-            "SubjectAlternativeNames": self.init_default_attr,
-            "DomainValidationOptions": self.init_default_attr,
-            "Serial": self.init_default_attr,
-            "Subject": self.init_default_attr,
-            "Issuer": self.init_default_attr,
-            "CreatedAt": self.init_default_attr,
-            "IssuedAt": self.init_default_attr,
-            "Status": self.init_default_attr,
-            "NotBefore": self.init_default_attr,
-            "NotAfter": self.init_default_attr,
-            "KeyAlgorithm": self.init_default_attr,
-            "SignatureAlgorithm": self.init_default_attr,
-            "InUseBy": self.init_default_attr,
-            "Type": self.init_default_attr,
-            "KeyUsages": self.init_default_attr,
-            "ExtendedKeyUsages": self.init_default_attr,
-            "RenewalEligibility": self.init_default_attr,
-            "Options": self.init_default_attr,
-            "ImportedAt": self.init_default_attr,
-            "RenewalSummary": self.init_default_attr,
-        }
-
-        self.init_attrs(dict_src, init_options)
+        self.update_from_raw_response(dict_src)
 
     def _init_object_from_cache(self, dict_src):
         """
@@ -109,8 +82,9 @@ class ACMCertificate(AwsObject):
         @return:
         """
 
-        request = {"DomainName": self.domain_name, "ValidationMethod": self.validation_method, "Tags": self.tags}
-        self.extend_request_with_optional_parameters(request, ["SubjectAlternativeNames"])
+        request = {"DomainName": self.domain_name,
+                   "Tags": self.tags}
+        self.extend_request_with_optional_parameters(request, ["SubjectAlternativeNames", "ValidationMethod"])
 
         return request
 

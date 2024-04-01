@@ -66,6 +66,7 @@ class DynamoDBTable(AwsObject):
             "SSEDescription": self.init_default_attr,
             "BillingModeSummary": self.init_default_attr,
             "DeletionProtectionEnabled": self.init_default_attr,
+            "TableClassSummary": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)

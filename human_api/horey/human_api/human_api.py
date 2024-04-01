@@ -1345,6 +1345,7 @@ class HumanAPI:
                     pass
 
             logger.info(f"Provisioning WIT: {work_object_dict}")
+
             work_object_dict["id"] = str(self.azure_devops_api.provision_work_item_from_dict(tmp_dict))
             hapi_uids_map[work_object_dict["hapi_uid"]] = work_object_dict
 
@@ -1352,7 +1353,7 @@ class HumanAPI:
             json.dump(ret, file_handler, indent=4)
 
         for work_object_dict in hapi_uids_map.values():
-            status_comment = "human_api_json_encoded_current_status:" + json.dumps(work_object_dict)
+            status_comment = "human_api_json_encoded_current_status:\n" + json.dumps(work_object_dict, indent=4)
             self.azure_devops_api.add_wit_comment(work_object_dict["id"], status_comment)
             children_hapi_uids = work_object_dict.get("child_hapi_uids")
             if children_hapi_uids:

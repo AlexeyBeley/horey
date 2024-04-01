@@ -11,8 +11,6 @@ from horey.h_logger import get_logger
 logger = get_logger()
 
 
-
-
 class CloudWatchClient(Boto3Client):
     """
     Client to work with cloud watch entities API

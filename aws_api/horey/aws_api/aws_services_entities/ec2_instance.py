@@ -107,6 +107,12 @@ class EC2Instance(AwsObject):
 
     @property
     def arn(self):
+        """
+        ARN generator.
+
+        :return:
+        """
+
         if self._arn is None:
             if self.iam_instance_profile is None:
                 account_id = self.network_interfaces[0].owner_id
@@ -330,14 +336,14 @@ class EC2Instance(AwsObject):
 
         return request
 
-    def generate_dispose_request(self):
+    def generate_dispose_request(self, dry_run=False):
         """
         Standard.
 
         :return:
         """
 
-        request = {"InstanceIds": [self.id]}
+        request = {"InstanceIds": [self.id], "DryRun": dry_run}
         return request
 
     def generate_create_image_request(self, snapshots_raw=None):

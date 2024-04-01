@@ -1981,6 +1981,29 @@ class EC2Client(Boto3Client):
         ):
             return response
 
+    def dispose_nat_gateway(self, nat_gateway, dry_run=False):
+        """
+        Standard
+
+        @param nat_gateway:
+        @param dry_run:
+        @return:
+        """
+
+        return self.dispose_nat_gateway_raw(nat_gateway.generate_dispose_request(dry_run=dry_run))
+
+    def dispose_nat_gateway_raw(self, request_dict):
+        """
+        Standard
+
+        @param request_dict:
+        @return:
+        """
+        for response in self.execute(
+                self.client.delete_nat_gateway, "NatGatewayId", filters_req=request_dict
+        ):
+            return response
+
     def provision_route_table(self, route_table: RouteTable):
         """
         Standard
@@ -2335,16 +2358,17 @@ class EC2Client(Boto3Client):
         ):
             return response
 
-    def dispose_instance(self, instance):
+    def dispose_instance(self, instance: EC2Instance, dry_run=False):
         """
         Standard
 
         @param instance:
+        @param dry_run:
         @return:
         """
 
         AWSAccount.set_aws_region(instance.region)
-        self.dispose_instance_raw(instance.generate_dispose_request())
+        self.dispose_instance_raw(instance.generate_dispose_request(dry_run=dry_run))
 
     def dispose_instance_raw(self, request_dict):
         """
@@ -2353,7 +2377,6 @@ class EC2Client(Boto3Client):
         @param request_dict:
         @return:
         """
-
         for response in self.execute(
                 self.client.terminate_instances,
                 "TerminatingInstances",
