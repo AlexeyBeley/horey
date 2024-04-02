@@ -7,6 +7,8 @@ import datetime
 import json
 import shutil
 import time
+import traceback
+
 from horey.aws_api.aws_clients.sessions_manager import SessionsManager
 from horey.h_logger import get_logger
 from horey.aws_api.base_entities.aws_account import AWSAccount
@@ -361,7 +363,13 @@ class Boto3Client:
         :return: list of replies
         """
         if region is None:
-            logger.warning("Region is required for thread safe execution")
+            extracted_list = traceback.extract_stack()
+            lines = traceback.format_list(extracted_list)
+            logger.warning("Explicit region is required for thread safe execution tb_start")
+            for line in lines:
+                logger.warning(line.strip("\n"))
+            logger.warning("Explicit region is required for thread safe execution tb_end")
+
         if filters_req is None:
             filters_req = {}
 

@@ -43,7 +43,7 @@ class ElasticsearchClient(Boto3Client):
         final_result = []
         AWSAccount.set_aws_region(region)
         domain_names = []
-        for response in self.execute(self.client.list_domain_names, "DomainNames"):
+        for response in self.execute(self.get_session_client(region=region).list_domain_names, "DomainNames"):
             domain_names.append(response["DomainName"])
 
         if not domain_names:
@@ -51,7 +51,7 @@ class ElasticsearchClient(Boto3Client):
 
         filters_req = {"DomainNames": domain_names}
         for response in self.execute(
-            self.client.describe_elasticsearch_domains,
+            self.get_session_client(region=region).describe_elasticsearch_domains,
             "DomainStatusList",
             filters_req=filters_req,
         ):
@@ -73,7 +73,7 @@ class ElasticsearchClient(Boto3Client):
             AWSAccount.set_aws_region(region)
 
         for response in self.execute(
-            self.client.update_elasticsearch_domain_config,
+            self.get_session_client(region=region).update_elasticsearch_domain_config,
             "DomainConfig",
             filters_req=request,
         ):
