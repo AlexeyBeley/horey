@@ -324,7 +324,7 @@ def install_venv(configs):
     if "No module named virtualenv" in stderr:
         command = f"{sys.executable} -m pip install virtualenv"
         ret = StandaloneMethods.execute(command)
-        if "Successfully installed virtualenv" not in ret.get("stdout").strip("\r\n").split("\n")[-1]:
+        if "Successfully installed" not in ret.get("stdout").strip("\r\n").split("\n")[-1]:
             raise ValueError(ret)
         command = f"{sys.executable} -m virtualenv --version"
         ret = StandaloneMethods.execute(command)

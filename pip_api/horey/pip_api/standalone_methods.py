@@ -85,7 +85,7 @@ class StandaloneMethods:
 
         with open(requirements_file_path, "r", encoding="utf-8") as file_handler:
             lines = [
-                line.strip("\n") for line in file_handler.readlines() if line != "\n"
+                line.strip("\n") for line in file_handler.readlines() if line != "\n" and not line.startswith("#")
             ]
 
         for line in lines:
@@ -544,7 +544,6 @@ class StandaloneMethods:
         if branch_name:
             os.chdir(source_code_path)
             self.checkout_branch(branch_name)
-
         shutil.copytree(source_code_path, build_dir_path)
         os.chdir(build_dir_path)
 
