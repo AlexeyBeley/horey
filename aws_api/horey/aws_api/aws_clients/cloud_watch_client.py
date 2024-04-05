@@ -26,19 +26,17 @@ class CloudWatchClient(Boto3Client):
         :return:
         """
         for region in AWSAccount.get_aws_account().regions.values():
-            AWSAccount.set_aws_region(region)
-            for response in self.execute(self.client.list_metrics, "Metrics"):
-                yield response
+            yield from self.execute(self.get_session_client(region=region).list_metrics, "Metrics")
 
-    def yield_client_metrics(self, filters_req=None):
+    def yield_client_metrics(self, region, filters_req=None):
         """
         Generator for standard region fetcher
 
         :param filters_req:
         :return:
         """
-        for response in self.execute(self.client.list_metrics, "Metrics", filters_req=filters_req):
-            yield response
+        yield from self.execute(self.get_session_client(region=region).list_metrics, "Metrics",
+                                     filters_req=filters_req)
 
     def get_all_metrics(self, update_info=False):
         """
@@ -48,7 +46,8 @@ class CloudWatchClient(Boto3Client):
         """
 
         regional_fetcher_generator = self.yield_client_metrics
-        return list(self.regional_service_entities_generator(regional_fetcher_generator, CloudWatchMetric, update_info=update_info))
+        return list(self.regional_service_entities_generator(regional_fetcher_generator, CloudWatchMetric,
+                                                             update_info=update_info))
 
     def get_all_alarms(self, update_info=False):
         """
@@ -58,21 +57,21 @@ class CloudWatchClient(Boto3Client):
         """
 
         regional_fetcher_generator = self.regional_fetcher_generator_alarms
-        return list(self.regional_service_entities_generator(regional_fetcher_generator, CloudWatchAlarm, update_info=update_info))
+        return list(self.regional_service_entities_generator(regional_fetcher_generator, CloudWatchAlarm,
+                                                             update_info=update_info))
 
-    def regional_fetcher_generator_alarms(self, filters_req=None):
+    def regional_fetcher_generator_alarms(self, region, filters_req=None):
         """
         Generator. Yield over the fetched alarms.
 
         :return:
         """
 
-
-        for dict_src in self.execute(self.client.describe_alarms, None, raw_data=True, filters_req=filters_req):
+        for dict_src in self.execute(self.get_session_client(region=region).describe_alarms, None, raw_data=True,
+                                     filters_req=filters_req):
             if len(dict_src["CompositeAlarms"]) != 0:
                 raise NotImplementedError("CompositeAlarms")
-            for dict_alarm in dict_src["MetricAlarms"]:
-                yield dict_alarm
+            yield from dict_src["MetricAlarms"]
 
     def set_cloudwatch_alarm(self, alarm):
         """
@@ -83,17 +82,17 @@ class CloudWatchClient(Boto3Client):
         """
 
         request_dict = alarm.generate_create_request()
-        AWSAccount.set_aws_region(alarm.region)
         logger.info(
             f"Creating cloudwatch alarm '{alarm.name}' in region '{alarm.region}'"
         )
         for response in self.execute(
-            self.client.put_metric_alarm, "ResponseMetadata", filters_req=request_dict
+                self.get_session_client(region=alarm.region).put_metric_alarm, "ResponseMetadata",
+                filters_req=request_dict
         ):
             if response["HTTPStatusCode"] != 200:
                 raise RuntimeError(f"{response}")
 
-    def put_metric_data_raw(self, request_dict):
+    def put_metric_data_raw(self, region, request_dict):
         """
         {Namespace:'string',
             MetricData:[]
@@ -106,7 +105,7 @@ class CloudWatchClient(Boto3Client):
         logger.info(f"Putting metric data: {request_dict}")
 
         for response in self.execute(
-                self.client.put_metric_data,
+                self.get_session_client(region=region).put_metric_data,
                 None,
                 raw_data=True,
                 filters_req=request_dict,
@@ -114,7 +113,7 @@ class CloudWatchClient(Boto3Client):
             del response["ResponseMetadata"]
             return response
 
-    def get_metric_data_raw(self, request_dict):
+    def get_metric_data_raw(self, region, request_dict):
         """
         Fetch metric data.
 
@@ -125,13 +124,13 @@ class CloudWatchClient(Boto3Client):
         logger.info(f"Getting metric data: {request_dict}")
 
         return list(self.execute(
-                self.client.get_metric_data,
-                "MetricDataResults",
-                raw_data=True,
-                filters_req=request_dict,
+            self.get_session_client(region=region).get_metric_data,
+            "MetricDataResults",
+            raw_data=True,
+            filters_req=request_dict,
         ))
 
-    def set_alarm_state_raw(self, request_dict):
+    def set_alarm_state_raw(self, region, request_dict):
         """
           AlarmName='string',
           StateValue='OK'|'ALARM'|'INSUFFICIENT_DATA',
@@ -144,7 +143,7 @@ class CloudWatchClient(Boto3Client):
         logger.info(f"Setting alarm state: {request_dict}")
 
         for response in self.execute(
-                self.client.set_alarm_state,
+                self.get_session_client(region=region).set_alarm_state,
                 None,
                 raw_data=True,
                 filters_req=request_dict,

@@ -18,11 +18,11 @@ class StepfunctionsClient(Boto3Client):
 
     def __init__(self):
         """
-        list_activities = list(self.execute(self.client.list_activities, None, raw_data=True))
-        # list_executions = list(self.execute(self.client.list_executions, None, raw_data=True))
-        # list_map_runs = list(self.execute(self.client.list_map_runs, None, raw_data=True))
-        list_state_machines = list(self.execute(self.client.list_state_machines, None, raw_data=True))
-        # list_tags_for_resource = list(self.execute(self.client.list_tags_for_resource, None, raw_data=True))
+        list_activities = list(self.execute(self.get_session_client(region=region).list_activities, None, raw_data=True))
+        # list_executions = list(self.execute(self.get_session_client(region=region).list_executions, None, raw_data=True))
+        # list_map_runs = list(self.execute(self.get_session_client(region=region).list_map_runs, None, raw_data=True))
+        list_state_machines = list(self.execute(self.get_session_client(region=region).list_state_machines, None, raw_data=True))
+        # list_tags_for_resource = list(self.execute(self.get_session_client(region=region).list_tags_for_resource, None, raw_data=True))
 
         """
         client_name = "stepfunctions"
@@ -57,9 +57,8 @@ class StepfunctionsClient(Boto3Client):
         """
 
         final_result = []
-        AWSAccount.set_aws_region(region)
         for dict_src in self.execute(
-            self.client.list_state_machines, "stateMachines"
+                self.get_session_client(region=region).list_state_machines, "stateMachines"
         ):
             obj = StepfunctionsStateMachine(dict_src)
             final_result.append(obj)
@@ -76,9 +75,9 @@ class StepfunctionsClient(Boto3Client):
         :return:
         """
 
-        AWSAccount.set_aws_region(obj.region)
         for dict_src in self.execute(
-                self.client.describe_state_machine, None, raw_data=True, filters_req={"stateMachineArn": obj.arn}
+                self.get_session_client(region=obj.region).describe_state_machine, None, raw_data=True,
+                filters_req={"stateMachineArn": obj.arn}
         ):
             del dict_src["ResponseMetadata"]
             obj.update_from_raw_response(dict_src)
@@ -96,19 +95,18 @@ class StepfunctionsClient(Boto3Client):
         )
         for region_state_machine in region_state_machines:
             if (
-                region_state_machine.name == state_machine.name
+                    region_state_machine.name == state_machine.name
             ):
                 state_machine.update_from_raw_response(
                     region_state_machine.dict_src
                 )
                 return
-        AWSAccount.set_aws_region(state_machine.region)
-        response = self.provision_state_machine_raw(
-            state_machine.generate_create_request()
-        )
+        response = self.provision_state_machine_raw(state_machine.region,
+                                                    state_machine.generate_create_request()
+                                                    )
         state_machine.update_from_raw_response(response)
 
-    def provision_state_machine_raw(self, request_dict):
+    def provision_state_machine_raw(self, region, request_dict):
         """
         Provision from raw request.
 
@@ -118,10 +116,10 @@ class StepfunctionsClient(Boto3Client):
 
         logger.info(f"Creating state_machine: {request_dict}")
         for response in self.execute(
-            self.client.create_state_machine,
-            None,
-            raw_data=True,
-            filters_req=request_dict,
+                self.get_session_client(region=region).create_state_machine,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
         ):
             del response["ResponseMetadata"]
             return response

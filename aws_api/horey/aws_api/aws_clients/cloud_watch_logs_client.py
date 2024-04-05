@@ -10,7 +10,6 @@ from horey.aws_api.aws_services_entities.cloud_watch_log_group import CloudWatch
 from horey.aws_api.aws_services_entities.cloud_watch_log_group_metric_filter import (
     CloudWatchLogGroupMetricFilter,
 )
-from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.aws_services_entities.cloud_watch_log_stream import (
     CloudWatchLogStream,
 )
@@ -42,25 +41,23 @@ class CloudWatchLogsClient(Boto3Client):
 
         get_tags_callback = self.get_tags if get_tags else None
         regional_fetcher_generator = self.yield_log_groups_raw
-        for obj in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                  CloudWatchLogGroup,
-                                                  update_info=update_info,
-                                                  full_information_callback=None,
-                                                  get_tags_callback= get_tags_callback,
-                                                  regions=[region] if region else None,
-                                                  filters_req=filters_req):
-            yield obj
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                            CloudWatchLogGroup,
+                                                            update_info=update_info,
+                                                            full_information_callback=None,
+                                                            get_tags_callback=get_tags_callback,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req)
 
-    def yield_log_groups_raw(self, filters_req=None):
+    def yield_log_groups_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
         :return:
         """
-        for dict_src in self.execute(
-                self.client.describe_log_groups, "logGroups", filters_req=filters_req
-        ):
-            yield dict_src
+        yield from self.execute(
+                self.get_session_client(region=region).describe_log_groups, "logGroups", filters_req=filters_req
+        )
 
     def get_cloud_watch_log_groups(self):
         """
@@ -92,25 +89,22 @@ class CloudWatchLogsClient(Boto3Client):
         """
 
         regional_fetcher_generator = self.yield_log_group_metric_filters_raw
-        for dict_src in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                  CloudWatchLogGroupMetricFilter,
-                                                  update_info=update_info,
-                                                  regions=[region] if region else None,
-                                                  filters_req=filters_req):
-            yield dict_src
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                                 CloudWatchLogGroupMetricFilter,
+                                                                 update_info=update_info,
+                                                                 regions=[region] if region else None,
+                                                                 filters_req=filters_req)
 
-    def yield_log_group_metric_filters_raw(self, filters_req=None):
+    def yield_log_group_metric_filters_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
         :return:
         """
 
-        for dict_src in self.execute(
-                self.client.describe_metric_filters, "metricFilters", filters_req=filters_req
-        ):
-            yield dict_src
-
+        yield from self.execute(
+                self.get_session_client(region=region).describe_metric_filters, "metricFilters", filters_req=filters_req
+        )
 
     def get_log_group_metric_filters(self):
         """
@@ -137,15 +131,12 @@ class CloudWatchLogsClient(Boto3Client):
         :param log_group:
         :return:
         """
-        if AWSAccount.get_aws_region() != log_group.region:
-            AWSAccount.set_aws_region(log_group.region)
 
-        for response in self.execute(
-            self.client.describe_log_streams,
-            "logStreams",
-            filters_req={"logGroupName": log_group.name},
-        ):
-            yield response
+        yield from self.execute(
+                self.get_session_client(region=log_group.region).describe_log_streams,
+                "logStreams",
+                filters_req={"logGroupName": log_group.name},
+        )
 
     def yield_log_group_streams(self, log_group):
         """
@@ -153,12 +144,11 @@ class CloudWatchLogsClient(Boto3Client):
         :param log_group:
         :return:
         """
-        AWSAccount.set_aws_region(log_group.region)
 
         for response in self.execute(
-            self.client.describe_log_streams,
-            "logStreams",
-            filters_req={"logGroupName": log_group.name},
+                self.get_session_client(region=log_group.region).describe_log_streams,
+                "logStreams",
+                filters_req={"logGroupName": log_group.name},
         ):
             yield CloudWatchLogStream(response)
 
@@ -171,12 +161,12 @@ class CloudWatchLogsClient(Boto3Client):
         """
 
         request_dict = metric_filter.generate_create_request()
-        AWSAccount.set_aws_region(metric_filter.region)
         logger.info(
             f"Creating cloudwatch log group metric filter in region '{metric_filter.region}': {request_dict}"
         )
         for response in self.execute(
-            self.client.put_metric_filter, "ResponseMetadata", filters_req=request_dict
+                self.get_session_client(region=metric_filter.region).put_metric_filter, "ResponseMetadata",
+                filters_req=request_dict
         ):
             if response["HTTPStatusCode"] != 200:
                 raise RuntimeError(f"{response}")
@@ -186,7 +176,7 @@ class CloudWatchLogsClient(Boto3Client):
 
         # todo: refactor
         for response in self.execute(
-                self.client.get_log_events,
+                self.get_session_client(region=region).get_log_events,
                 "events",
                 raw_data=True,
                 filters_req={
@@ -202,9 +192,6 @@ class CloudWatchLogsClient(Boto3Client):
         :return:
         """
 
-        if AWSAccount.get_aws_region() != log_group.region:
-            AWSAccount.set_aws_region(log_group.region)
-
         self.NEXT_PAGE_RESPONSE_KEY = "nextForwardToken"
         token = None
         new_token = None
@@ -219,18 +206,17 @@ class CloudWatchLogsClient(Boto3Client):
                 filters_req["nextToken"] = token
 
             for response in self.execute(
-                self.client.get_log_events,
-                "events",
-                raw_data=True,
-                filters_req=filters_req,
+                    self.get_session_client(region=log_group.region).get_log_events,
+                    "events",
+                    raw_data=True,
+                    filters_req=filters_req,
             ):
                 new_token = response["nextForwardToken"]
                 logger.info(f"old token: {token} new token: {new_token}")
                 if new_token == token:
                     return
                 logger.info(f"Extracted {len(response['events'])} events")
-                for event in response["events"]:
-                    yield event
+                yield from response["events"]
                 time.sleep(10)
 
             token = new_token
@@ -248,7 +234,9 @@ class CloudWatchLogsClient(Boto3Client):
         for region_log_group in region_log_groups:
             if region_log_group.name == log_group.name:
                 filters_req = {"logGroupNamePattern": log_group.name}
-                full_info_log_groups = list(self.yield_log_groups(region=log_group.region, update_info=True, filters_req=filters_req, get_tags=True))
+                full_info_log_groups = list(
+                    self.yield_log_groups(region=log_group.region, update_info=True, filters_req=filters_req,
+                                          get_tags=True))
                 if len(full_info_log_groups) != 1:
                     raise RuntimeError(f"Found {len(full_info_log_groups)=} log groups with params: {filters_req}")
                 log_group.update_from_raw_response(full_info_log_groups[0].dict_src)
@@ -270,19 +258,20 @@ class CloudWatchLogsClient(Boto3Client):
                 raise RuntimeError(f"Can not be both: {delete_request=}, {put_request=}")
 
             if delete_request:
-                for _ in self.execute(self.client.delete_retention_policy, None, raw_data=True, filters_req=delete_request):
+                for _ in self.execute(self.get_session_client(region=log_group.region).delete_retention_policy, None,
+                                      raw_data=True, filters_req=delete_request):
                     self.clear_cache(CloudWatchLogGroup)
 
             if put_request:
-                for _ in self.execute(self.client.put_retention_policy, None, raw_data=True, filters_req=put_request):
+                for _ in self.execute(self.get_session_client(region=log_group.region).put_retention_policy, None,
+                                      raw_data=True, filters_req=put_request):
                     self.clear_cache(CloudWatchLogGroup)
         else:
-            AWSAccount.set_aws_region(log_group.region)
-            self.provision_log_group_raw(log_group.generate_create_request())
+            self.provision_log_group_raw(log_group.region, log_group.generate_create_request())
 
         self.update_log_group_information(log_group)
 
-    def provision_log_group_raw(self, request_dict):
+    def provision_log_group_raw(self, region, request_dict):
         """
         Standard.
 
@@ -292,7 +281,7 @@ class CloudWatchLogsClient(Boto3Client):
 
         logger.info(f"Creating log group '{request_dict}'")
         for response in self.execute(
-            self.client.create_log_group, None, raw_data=True, filters_req=request_dict
+                self.get_session_client(region=region).create_log_group, None, raw_data=True, filters_req=request_dict
         ):
             self.clear_cache(CloudWatchLogGroup)
             return response
@@ -308,21 +297,20 @@ class CloudWatchLogsClient(Boto3Client):
         """
 
         events = [{"timestamp": int(datetime.datetime.now().timestamp() * 1000),
-                            "message": line
-                        } for line in lines]
-        AWSAccount.set_aws_region(log_group.region)
+                   "message": line
+                   } for line in lines]
         if log_stream_name is None:
             log_stream_name = str(uuid.uuid4())
             log_stream_create_request = {"logGroupName": log_group.name,
-                                     "logStreamName": log_stream_name}
-            self.create_log_stream_raw(log_stream_create_request)
+                                         "logStreamName": log_stream_name}
+            self.create_log_stream_raw(log_group.region, log_stream_create_request)
         dict_request = {"logGroupName": log_group.name,
                         "logStreamName": log_stream_name,
                         "logEvents": events
                         }
-        return self.put_log_events_raw(dict_request)
+        return self.put_log_events_raw(log_group.region, dict_request)
 
-    def put_log_events_raw(self, request_dict):
+    def put_log_events_raw(self, region, request_dict):
         """
         Standard.
         assert ret.get("rejectedLogEventsInfo") is None
@@ -333,7 +321,7 @@ class CloudWatchLogsClient(Boto3Client):
 
         logger.info(f"Writing log events: '{request_dict}'")
         for response in self.execute(
-            self.client.put_log_events, None, raw_data=True, filters_req=request_dict
+                self.get_session_client(region=region).put_log_events, None, raw_data=True, filters_req=request_dict
         ):
             return response
 
@@ -353,12 +341,13 @@ class CloudWatchLogsClient(Boto3Client):
             arn = obj.arn[:-2]
 
         request = {"resourceArn": arn}
-        tags = list(self.execute(self.client.list_tags_for_resource, "tags", filters_req=request))
+        tags = list(self.execute(self.get_session_client(region=obj.region).list_tags_for_resource, "tags",
+                                 filters_req=request))
 
         if tags != [{}]:
             obj.tags = tags
 
-    def create_log_stream_raw(self, request_dict):
+    def create_log_stream_raw(self, region, request_dict):
         """
         Standard.
 
@@ -368,7 +357,7 @@ class CloudWatchLogsClient(Boto3Client):
 
         logger.info(f"Creating log stream: '{request_dict}'")
         for response in self.execute(
-            self.client.create_log_stream, None, raw_data=True, filters_req=request_dict
+                self.get_session_client(region=region).create_log_stream, None, raw_data=True, filters_req=request_dict
         ):
             return response
 
@@ -380,11 +369,10 @@ class CloudWatchLogsClient(Boto3Client):
         :return:
         """
 
-        AWSAccount.set_aws_region(log_group.region)
         request_dict = {"logGroupName": log_group.name}
         logger.info(f"Disposing log group: {request_dict}")
         for response in self.execute(
-                self.client.delete_log_group,
+                self.get_session_client(region=log_group.region).delete_log_group,
                 None,
                 raw_data=True,
                 filters_req=request_dict,

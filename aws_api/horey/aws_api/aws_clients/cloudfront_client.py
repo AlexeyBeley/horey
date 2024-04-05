@@ -14,7 +14,6 @@ from horey.aws_api.aws_services_entities.cloudfront_function import (
 from horey.aws_api.aws_services_entities.cloudfront_response_headers_policy import (
     CloudfrontResponseHeadersPolicy,
 )
-from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.h_logger import get_logger
 
 logger = get_logger()
@@ -51,7 +50,7 @@ class CloudfrontClient(Boto3Client):
         """
 
         for response in self.execute(
-                self.client.list_distributions,
+                self.get_session_client().list_distributions,
                 "DistributionList",
                 internal_starting_token=True,
         ):
@@ -62,7 +61,7 @@ class CloudfrontClient(Boto3Client):
                 obj = CloudfrontDistribution(item)
 
                 if full_information:
-                    for response_tags in self.execute(self.client.list_tags_for_resource, "Tags",
+                    for response_tags in self.execute(self.get_session_client().list_tags_for_resource, "Tags",
                                                       filters_req={"Resource": obj.arn}):
                         obj.tags = response_tags["Items"]
                 yield obj
@@ -133,7 +132,7 @@ class CloudfrontClient(Boto3Client):
 
         logger.info(f"Disposing distribution {distribution.get_tagname()} with id {distribution.id}")
 
-        for response in self.execute(self.client.delete_distribution, None, raw_data=True,
+        for response in self.execute(self.get_session_client().delete_distribution, None, raw_data=True,
                                      filters_req={"Id": distribution.id,
                                                   "IfMatch": distribution.e_tag
                                                   }):
@@ -170,7 +169,7 @@ class CloudfrontClient(Boto3Client):
 
             update_info = existing_distribution.dict_src
         else:
-            for update_info in self.execute(self.client.get_distribution, "Distribution",
+            for update_info in self.execute(self.get_session_client().get_distribution, "Distribution",
                                             filters_req={"Id": distribution.id}):
                 break
             else:
@@ -190,7 +189,7 @@ class CloudfrontClient(Boto3Client):
         """
         logger.info(f"Creating distribution {request_dict}")
         for response in self.execute(
-                self.client.create_distribution_with_tags,
+                self.get_session_client().create_distribution_with_tags,
                 "Distribution",
                 filters_req=request_dict,
         ):
@@ -205,7 +204,7 @@ class CloudfrontClient(Boto3Client):
         """
         logger.info(f"updating distribution {request_dict}")
         for response in self.execute(
-                self.client.update_distribution,
+                self.get_session_client().update_distribution,
                 "Distribution",
                 filters_req=request_dict,
         ):
@@ -219,7 +218,7 @@ class CloudfrontClient(Boto3Client):
         final_result = []
 
         for response in self.execute(
-                self.client.list_cloud_front_origin_access_identities,
+                self.get_session_client().list_cloud_front_origin_access_identities,
                 "CloudFrontOriginAccessIdentityList",
                 internal_starting_token=True,
         ):
@@ -266,7 +265,7 @@ class CloudfrontClient(Boto3Client):
         """
 
         for response in self.execute(
-                self.client.create_cloud_front_origin_access_identity,
+                self.get_session_client().create_cloud_front_origin_access_identity,
                 "CloudFrontOriginAccessIdentity",
                 filters_req=request_dict,
         ):
@@ -292,7 +291,7 @@ class CloudfrontClient(Boto3Client):
         """
 
         for response in self.execute(
-                self.client.create_invalidation, "Invalidation", filters_req=request
+                self.get_session_client().create_invalidation, "Invalidation", filters_req=request
         ):
             return response
 
@@ -305,7 +304,7 @@ class CloudfrontClient(Boto3Client):
         """
 
         for response in self.execute(
-                self.client.get_distribution_config, None, filters_req=request, raw_data=True
+                self.get_session_client().get_distribution_config, None, filters_req=request, raw_data=True
         ):
             return response
 
@@ -318,7 +317,7 @@ class CloudfrontClient(Boto3Client):
         """
 
         lst_ret = []
-        for ret in self.execute(self.client.list_functions, "FunctionList"):
+        for ret in self.execute(self.get_session_client().list_functions, "FunctionList"):
             for dict_item in ret["Items"]:
                 function = CloudfrontFunction(dict_item)
                 lst_ret.append(function)
@@ -333,10 +332,8 @@ class CloudfrontClient(Boto3Client):
         :param function:
         :return:
         """
-        if function.region:
-            AWSAccount.set_aws_region(function.region)
 
-        for response in self.execute(self.client.get_function, None, raw_data=True,
+        for response in self.execute(self.get_session_client(region=function.region).get_function, None, raw_data=True,
                                      filters_req={"Name": function.name}):
             del response["ResponseMetadata"]
             response["FunctionCode"] = response["FunctionCode"].read().decode("utf-8")
@@ -350,9 +347,6 @@ class CloudfrontClient(Boto3Client):
         :return:
         """
 
-        if function.region:
-            AWSAccount.set_aws_region(function.region)
-
         filters_req = {"Name": function.name}
 
         if function.stage:
@@ -360,7 +354,8 @@ class CloudfrontClient(Boto3Client):
         else:
             filters_req["Stage"] = "LIVE"
 
-        for response in self.execute(self.client.describe_function, None, raw_data=True,
+        for response in self.execute(self.get_session_client(region=function.region).describe_function, None,
+                                     raw_data=True,
                                      filters_req=filters_req,
                                      exception_ignore_callback=lambda exception_inst: "NoSuchFunctionExists" in repr(
                                          exception_inst)):
@@ -387,9 +382,8 @@ class CloudfrontClient(Boto3Client):
         function_current.name = function.name
         function_current.stage = function.stage if function.stage else "LIVE"
 
-        AWSAccount.set_aws_region(function.region)
         if not self.update_function_info(function_current, full_information=True):
-            response = self.provision_function_raw(function.generate_create_request())
+            response = self.provision_function_raw(function.region, function.generate_create_request())
             if function.stage == "LIVE":
                 function.update_from_raw_response(response)
                 response = self.publish_function_raw(function.generate_publish_request())
@@ -406,7 +400,7 @@ class CloudfrontClient(Boto3Client):
 
         return self.update_function_info(function)
 
-    def provision_function_raw(self, request_dict):
+    def provision_function_raw(self, region, request_dict):
         """
         Standard.
 
@@ -417,7 +411,7 @@ class CloudfrontClient(Boto3Client):
         logger.info(f"Creating cloudfornt function {request_dict}")
 
         for response in self.execute(
-                self.client.create_function,
+                self.get_session_client(region=region).create_function,
                 None,
                 raw_data=True,
                 filters_req=request_dict,
@@ -435,7 +429,7 @@ class CloudfrontClient(Boto3Client):
         logger.info(f"Publishing cloudfornt function {request_dict}")
 
         for response in self.execute(
-                self.client.publish_function,
+                self.get_session_client().publish_function,
                 None,
                 raw_data=True,
                 filters_req=request_dict,
@@ -453,7 +447,7 @@ class CloudfrontClient(Boto3Client):
         logger.info(f"Updating cloudfornt function {request_dict}")
 
         for response in self.execute(
-                self.client.update_function,
+                self.get_session_client().update_function,
                 None,
                 raw_data=True,
                 filters_req=request_dict,
@@ -468,11 +462,10 @@ class CloudfrontClient(Boto3Client):
         :return:
         """
 
-        AWSAccount.set_aws_region(function.region)
         if self.update_function_info(function, full_information=False):
-            self.dispose_function_raw(function.generate_dispose_request())
+            self.dispose_function_raw(function.region, function.generate_dispose_request())
 
-    def dispose_function_raw(self, request_dict):
+    def dispose_function_raw(self, region, request_dict):
         """
         Standard.
 
@@ -482,7 +475,7 @@ class CloudfrontClient(Boto3Client):
 
         logger.info(f"Deleting cloudfornt function{request_dict}")
         for response in self.execute(
-                self.client.delete_function,
+                self.get_session_client(region=region).delete_function,
                 None,
                 raw_data=True,
                 filters_req=request_dict,
@@ -499,10 +492,10 @@ class CloudfrontClient(Boto3Client):
         """
 
         request = function.generate_test_request(event_object)
-        response = self.test_function_raw(request)
+        response = self.test_function_raw(function.region, request)
         return response
 
-    def test_function_raw(self, request_dict):
+    def test_function_raw(self, region, request_dict):
         """
         Standard.
 
@@ -512,7 +505,7 @@ class CloudfrontClient(Boto3Client):
 
         logger.info(f"Testing cloudfornt function{request_dict}")
         for response in self.execute(
-                self.client.test_function,
+                self.get_session_client(region=region).test_function,
                 "TestResult",
                 filters_req=request_dict, instant_raise=True
         ):
@@ -528,7 +521,7 @@ class CloudfrontClient(Boto3Client):
         final_result = []
 
         for response in self.execute(
-                self.client.list_response_headers_policies,
+                self.get_session_client().list_response_headers_policies,
                 "ResponseHeadersPolicyList",
                 internal_starting_token=True,
         ):
@@ -549,7 +542,7 @@ class CloudfrontClient(Boto3Client):
         """
 
         for response in self.execute(
-                self.client.get_response_headers_policy,
+                self.get_session_client().get_response_headers_policy,
                 None, raw_data=True, filters_req={"Id": policy.id}
         ):
             policy.update_from_raw_response(response)
@@ -607,7 +600,7 @@ class CloudfrontClient(Boto3Client):
         """
         logger.info(f"Creating response_headers_policy {request_dict}")
         for response in self.execute(
-                self.client.create_response_headers_policy,
+                self.get_session_client().create_response_headers_policy,
                 "ResponseHeadersPolicy",
                 filters_req=request_dict, instant_raise=True
         ):
@@ -623,7 +616,7 @@ class CloudfrontClient(Boto3Client):
 
         logger.info(f"Updating response_headers_policy {request_dict}")
         for response in self.execute(
-                self.client.update_response_headers_policy,
+                self.get_session_client().update_response_headers_policy,
                 "ResponseHeadersPolicy",
                 filters_req=request_dict
         ):
@@ -649,7 +642,7 @@ class CloudfrontClient(Boto3Client):
 
         logger.info(f"Deleting response_headers_policy {request_dict}")
         for response in self.execute(
-                self.client.delete_response_headers_policy,
+                self.get_session_client().delete_response_headers_policy,
                 None,
                 raw_data=True,
                 filters_req=request_dict

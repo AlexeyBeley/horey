@@ -7,11 +7,11 @@ import datetime
 import json
 import shutil
 import time
-import traceback
 
 from horey.aws_api.aws_clients.sessions_manager import SessionsManager
 from horey.h_logger import get_logger
 from horey.aws_api.base_entities.aws_account import AWSAccount
+from horey.aws_api.base_entities.region import Region
 from horey.common_utils.common_utils import CommonUtils
 
 logger = get_logger()
@@ -84,13 +84,22 @@ class Boto3Client:
             self._account_id = sts_client.get_caller_identity()["Account"]
         return self._account_id
 
-    def get_session_client(self, region):
+    def get_session_client(self, region=None):
         """
         Thread safe - client per region.
 
         :param region:
         :return:
         """
+        if region is None:
+            region = AWSAccount.get_default_region()
+
+        if region is None:
+            raise NotImplementedError("Get default region or fetch region from AWS account")
+
+        if not isinstance(region, Region):
+            raise ValueError(f"Parameter region is not of a proper type: '{region}'")
+
         return self.SESSIONS_MANAGER.get_client(self.client_name, region=region)
 
     @property
@@ -112,14 +121,13 @@ class Boto3Client:
 
     # pylint: disable= too-many-arguments, too-many-branches
     def yield_with_paginator(
-        self,
-        func_command,
-        return_string,
-        filters_req=None,
-        raw_data=False,
-        internal_starting_token=False,
-        exception_ignore_callback=None,
-        region=None
+            self,
+            func_command,
+            return_string,
+            filters_req=None,
+            raw_data=False,
+            internal_starting_token=False,
+            exception_ignore_callback=None
     ):
         """
         Function to yeild replies, if there is no need to get all replies.
@@ -149,13 +157,12 @@ class Boto3Client:
                     )
 
                 for result, new_starting_token in self.unpack_pagination_loop(
-                    starting_token,
-                    func_command.__name__,
-                    return_string,
-                    filters_req,
-                    raw_data=raw_data,
-                    internal_starting_token=internal_starting_token,
-                    region=region
+                        starting_token,
+                        func_command,
+                        return_string,
+                        filters_req,
+                        raw_data=raw_data,
+                        internal_starting_token=internal_starting_token
                 ):
                     retry_counter = 0
                     starting_token = new_starting_token
@@ -168,7 +175,7 @@ class Boto3Client:
                     f"Exception received in paginator '{func_command.__name__}' Error: {repr(exception_instance)}"
                 )
                 if "The security token included in the request is invalid" in repr(
-                    exception_instance
+                        exception_instance
                 ):
                     raise
                 exception_weight = 10
@@ -182,7 +189,7 @@ class Boto3Client:
                     )
 
                 if exception_ignore_callback is not None and exception_ignore_callback(
-                    exception_instance
+                        exception_instance
                 ):
                     return
 
@@ -207,36 +214,34 @@ class Boto3Client:
 
     # pylint: disable= too-many-arguments
     def unpack_pagination_loop(
-        self,
-        starting_token,
-        func_command_name,
-        return_string,
-        filters_req,
-        raw_data=False,
-        internal_starting_token=False,
-        region=None
+            self,
+            starting_token,
+            func_command,
+            return_string,
+            filters_req,
+            raw_data=False,
+            internal_starting_token=False
     ):
         """
         Fetch data from single pagination loop run.
 
-        :param region:
         :param starting_token:
-        :param func_command_name:
+        :param func_command:
         :param return_string:
         :param filters_req:
         :param raw_data:
         :param internal_starting_token:
         :return:
         """
-        for _page in self.get_session_client(region=region).get_paginator(func_command_name).paginate(
-            PaginationConfig={self.NEXT_PAGE_REQUEST_KEY: starting_token}, **filters_req
+        for _page in func_command.__self__.get_paginator(func_command.__name__).paginate(
+                PaginationConfig={self.NEXT_PAGE_REQUEST_KEY: starting_token}, **filters_req
         ):
 
             starting_token = self.unpack_pagination_loop_starting_token(
                 _page, return_string, internal_starting_token
             )
             logger.info(
-                f"Updating '{func_command_name}' {filters_req} pagination starting_token: {starting_token}"
+                f"Updating '{func_command.__name__}' {filters_req} pagination starting_token: {starting_token}"
             )
 
             Boto3Client.EXEC_COUNT += 1
@@ -262,7 +267,7 @@ class Boto3Client:
                 return
 
     def unpack_pagination_loop_starting_token(
-        self, _page, return_string, internal_starting_token
+            self, _page, return_string, internal_starting_token
     ):
         """
         Fetch starting token from internal data.
@@ -279,78 +284,16 @@ class Boto3Client:
         return _page.get(self.NEXT_PAGE_RESPONSE_KEY)
 
     # pylint: disable= too-many-arguments
-    def execute_old(
-        self,
-        func_command,
-        return_string,
-        filters_req=None,
-        raw_data=False,
-        internal_starting_token=False,
-        exception_ignore_callback=None,
-    ):
-        """
-        Command to execute clients bound function- execute with paginator if available.
-
-        :param func_command: Bound method from _client instance
-        :param return_string: string to retrive the infromation from reply dict
-        :param filters_req: filters dict passed to the API client to filter the response
-        :param exception_ignore_callback: called on exception if returns true - do not retries on exception
-        :return: list of replies
-        """
-
-        if filters_req is None:
-            filters_req = {}
-
-        if self.client.can_paginate(func_command.__name__):
-            for ret_obj in self.yield_with_paginator(
-                func_command,
-                return_string,
-                filters_req=filters_req,
-                raw_data=raw_data,
-                internal_starting_token=internal_starting_token,
-                exception_ignore_callback=exception_ignore_callback,
-            ):
-                yield ret_obj
-            return
-
-        Boto3Client.EXEC_COUNT += 1
-        try:
-            response = func_command(**filters_req)
-        except Exception as exception_instance:
-            logger.warning(
-                f"Exception received '{func_command.__name__}' Error: {repr(exception_instance)}"
-            )
-            if exception_ignore_callback is not None and exception_ignore_callback(
-                exception_instance
-            ):
-                return
-            raise
-
-        if raw_data:
-            yield response
-            return
-
-        if isinstance(response[return_string], list):
-            ret_lst = response[return_string]
-        elif type(response[return_string]) in [str, dict, type(None), bool]:
-            ret_lst = [response[return_string]]
-        else:
-            raise NotImplementedError(f"{response[return_string]} type:{type(response[return_string])}")
-
-        for ret_obj in ret_lst:
-            yield ret_obj
-    # pylint: disable= too-many-arguments
 
     def execute(
-        self,
-        func_command,
-        return_string,
-        filters_req=None,
-        raw_data=False,
-        internal_starting_token=False,
-        exception_ignore_callback=None,
-        instant_raise=False,
-        region=None
+            self,
+            func_command,
+            return_string,
+            filters_req=None,
+            raw_data=False,
+            internal_starting_token=False,
+            exception_ignore_callback=None,
+            instant_raise=False
     ):
         """
         Command to execute clients bound function- execute with paginator if available.
@@ -362,36 +305,31 @@ class Boto3Client:
         :param exception_ignore_callback: called on exception if returns true - do not retries on exception
         :return: list of replies
         """
-        if region is None:
-            extracted_list = traceback.extract_stack()
-            lines = traceback.format_list(extracted_list)
-            logger.warning("Explicit region is required for thread safe execution tb_start")
-            for line in lines:
-                logger.warning(line.strip("\n"))
-            logger.warning("Explicit region is required for thread safe execution tb_end")
 
         if filters_req is None:
             filters_req = {}
 
-        if self.get_session_client(region).can_paginate(func_command.__name__):
-            for ret_obj in self.yield_with_paginator(
-                func_command,
-                return_string,
-                filters_req=filters_req,
-                raw_data=raw_data,
-                internal_starting_token=internal_starting_token,
-                exception_ignore_callback=exception_ignore_callback,
-            ):
-                yield ret_obj
+        if func_command.__self__.can_paginate(func_command.__name__):
+            yield from self.yield_with_paginator(
+                    func_command,
+                    return_string,
+                    filters_req=filters_req,
+                    raw_data=raw_data,
+                    internal_starting_token=internal_starting_token,
+                    exception_ignore_callback=exception_ignore_callback,
+            )
             return
 
-        response = self.execute_without_pagination(func_command, return_string, filters_req=filters_req, raw_data=raw_data, exception_ignore_callback=exception_ignore_callback, instant_raise=instant_raise)
+        response = self.execute_without_pagination(func_command, return_string, filters_req=filters_req,
+                                                   raw_data=raw_data,
+                                                   exception_ignore_callback=exception_ignore_callback,
+                                                   instant_raise=instant_raise)
 
-        for ret_obj in response:
-            yield ret_obj
+        yield from response
 
     # pylint: disable= too-many-branches
-    def execute_without_pagination(self, func_command, return_string, filters_req=None, raw_data=False, exception_ignore_callback=None, instant_raise=False):
+    def execute_without_pagination(self, func_command, return_string, filters_req=None, raw_data=False,
+                                   exception_ignore_callback=None, instant_raise=False):
         """
         Protected execution of an API call.
 
@@ -421,7 +359,7 @@ class Boto3Client:
                     f"Exception received in paginator '{func_command.__name__}' Error: {repr(exception_instance)}"
                 )
                 if "The security token included in the request is invalid" in repr(
-                    exception_instance
+                        exception_instance
                 ):
                     raise
                 exception_weight = 10
@@ -435,7 +373,7 @@ class Boto3Client:
                     )
 
                 if exception_ignore_callback is not None and exception_ignore_callback(
-                    exception_instance
+                        exception_instance
                 ):
                     return []
 
@@ -464,8 +402,8 @@ class Boto3Client:
                 )
         else:
             raise TimeoutError(
-                    f"Max attempts reached while executing '{func_command.__name__}': {self.EXECUTION_RETRY_COUNT}"
-                )
+                f"Max attempts reached while executing '{func_command.__name__}': {self.EXECUTION_RETRY_COUNT}"
+            )
 
         if raw_data:
             ret_value = response
@@ -484,11 +422,11 @@ class Boto3Client:
     def execute_with_single_reply(
             self,
             func_command,
-        return_string,
-        filters_req=None,
-        raw_data=False,
-        internal_starting_token=False,
-        exception_ignore_callback=None,
+            return_string,
+            filters_req=None,
+            raw_data=False,
+            internal_starting_token=False,
+            exception_ignore_callback=None,
     ):
         """
         Wait for a single result.
@@ -523,13 +461,13 @@ class Boto3Client:
     # pylint: disable= too-many-arguments
     @staticmethod
     def wait_for_status(
-        observed_object,
-        update_function,
-        desired_statuses,
-        permit_statues,
-        error_statuses,
-        timeout=300,
-        sleep_time=5,
+            observed_object,
+            update_function,
+            desired_statuses,
+            permit_statues,
+            error_statuses,
+            timeout=300,
+            sleep_time=5,
     ):
         """
         Wait for status change
@@ -621,10 +559,10 @@ class Boto3Client:
 
         logger.info(f"Tagging resource: {obj.arn}")
         for response in self.execute(
-            self.get_session_client(region).tag_resource,
-            "Tags",
-            filters_req={arn_identifier: obj.arn, tags_identifier: obj.tags},
-            raw_data=True,
+                self.get_session_client(region).tag_resource,
+                "Tags",
+                filters_req={arn_identifier: obj.arn, tags_identifier: obj.tags},
+                raw_data=True,
         ):
             return response
 
@@ -720,7 +658,8 @@ class Boto3Client:
         :return:
         """
 
-        file_path = self.generate_cache_file_path(entity.__class__, entity.region.region_mark, full_information, get_tags)
+        file_path = self.generate_cache_file_path(entity.__class__, entity.region.region_mark, full_information,
+                                                  get_tags)
         if os.path.exists(file_path):
             with open(file_path, encoding="utf-8") as file_handler:
                 objects = json.load(file_handler)
@@ -757,7 +696,8 @@ class Boto3Client:
 
         aws_api_account = AWSAccount.get_aws_account()
 
-        cache_client_dir_path = os.path.join(self.main_cache_dir_path, aws_api_account.name, region_dir_name, self.client_cache_dir_name)
+        cache_client_dir_path = os.path.join(self.main_cache_dir_path, aws_api_account.name, region_dir_name,
+                                             self.client_cache_dir_name)
         if not os.path.exists(cache_client_dir_path):
             os.makedirs(cache_client_dir_path, exist_ok=True)
 
@@ -783,14 +723,14 @@ class Boto3Client:
             ]
 
     def regional_service_entities_generator(self, regional_fetcher_generator,
-                                      entity_class,
-                                      full_information_callback=None,
-                                      get_tags_callback=None,
-                                      update_info=False,
-                                      regions=None,
-                                      global_service=False,
-                                      filters_req=None,
-                                      cache_filter_callback=None):
+                                            entity_class,
+                                            full_information_callback=None,
+                                            get_tags_callback=None,
+                                            update_info=False,
+                                            regions=None,
+                                            global_service=False,
+                                            filters_req=None,
+                                            cache_filter_callback=None):
         """
         Be sure you know what you do, when you set full_information=True.
         This can kill your memory, if you have a lot of data.
@@ -831,15 +771,14 @@ class Boto3Client:
             raise ValueError(f"Was not able to find region while fetching {entity_class} information.")
 
         for region in regions:
-            for obj in self.region_service_entities_generator(
-                region, regional_fetcher_generator, entity_class,
-                full_information_callback=full_information_callback,
-                get_tags_callback=get_tags_callback,
-                update_info=update_info,
-                filters_req=filters_req,
-                cache_filter_callback=cache_filter_callback
-            ):
-                yield obj
+            yield from self.region_service_entities_generator(
+                    region, regional_fetcher_generator, entity_class,
+                    full_information_callback=full_information_callback,
+                    get_tags_callback=get_tags_callback,
+                    update_info=update_info,
+                    filters_req=filters_req,
+                    cache_filter_callback=cache_filter_callback
+            )
 
     # pylint: disable= too-many-locals
     def region_service_entities_generator(self, region,
@@ -871,18 +810,17 @@ class Boto3Client:
             cache_suffix = cache_filter_callback(filters_req)
         else:
             cache_suffix = None
-        file_name = self.generate_cache_file_path(entity_class, region.region_mark, full_information, get_tags, cache_suffix=cache_suffix)
+        file_name = self.generate_cache_file_path(entity_class, region.region_mark, full_information, get_tags,
+                                                  cache_suffix=cache_suffix)
         if file_name:
             if not update_info and (not filters_req or cache_filter_callback):
                 objects = self.load_objects_from_cache(entity_class, file_name)
                 if objects is not None:
-                    for obj in objects:
-                        yield obj
+                    yield from objects
                     return
 
         final_result = []
-        AWSAccount.set_aws_region(region)
-        for result in regional_fetcher_generator(filters_req=filters_req):
+        for result in regional_fetcher_generator(region, filters_req=filters_req):
             obj = entity_class(result)
             if full_information_callback:
                 full_information_callback(obj)
@@ -895,3 +833,14 @@ class Boto3Client:
         if file_name:
             if filters_req is None or cache_filter_callback:
                 self.cache_objects(final_result, file_name)
+
+    @staticmethod
+    def get_region_from_arn(arn):
+        """
+        Get region from region mark
+
+        :param arn:
+        :return:
+        """
+
+        return Region.get_region(arn.split(":")[3])

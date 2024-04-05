@@ -3,7 +3,6 @@ AWS clietn to handle service API requests.
 """
 
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
-from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.aws_services_entities.sns_subscription import SNSSubscription
 from horey.aws_api.aws_services_entities.sns_topic import SNSTopic
 from horey.h_logger import get_logger
@@ -38,7 +37,8 @@ class SNSClient(Boto3Client):
         # state_dict = {"Ok": ":thumbsup:", "Info": ":information_source:", "Severe": ":exclamation:"}
 
         for response in self.execute(
-            self.client.publish, "MessageId", filters_req=filters_req
+                self.get_session_client(region=self.get_region_from_arn(topic_arn)).publish, "MessageId",
+                filters_req=filters_req
         ):
             return response
 
@@ -52,13 +52,12 @@ class SNSClient(Boto3Client):
 
         full_information_callback = self.get_subscription_full_information if full_information else None
         regional_fetcher_generator = self.yield_subscriptions_raw
-        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                  SNSSubscription,
-                                                  update_info=update_info,
-                                                  full_information_callback= full_information_callback,
-                                                  regions=[region] if region else None,
-                                                  filters_req=filters_req):
-            yield certificate
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                            SNSSubscription,
+                                                            update_info=update_info,
+                                                            full_information_callback=full_information_callback,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req)
 
     def get_subscription_full_information(self, obj):
         """
@@ -72,25 +71,24 @@ class SNSClient(Boto3Client):
             return True
 
         for dict_src in self.execute(
-            self.client.get_subscription_attributes,
-            None,
-            raw_data=True,
-            filters_req={"SubscriptionArn": obj.arn},
+                self.get_session_client(region=obj.region).get_subscription_attributes,
+                None,
+                raw_data=True,
+                filters_req={"SubscriptionArn": obj.arn},
         ):
             obj.attributes = dict_src["Attributes"]
         return True
 
-    def yield_subscriptions_raw(self, filters_req=None):
+    def yield_subscriptions_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
         :return:
         """
 
-        for dict_src in self.execute(
-                self.client.list_subscriptions, "Subscriptions", filters_req=filters_req
-        ):
-            yield dict_src
+        yield from self.execute(
+            self.get_session_client(region=region).list_subscriptions, "Subscriptions", filters_req=filters_req
+        )
 
     def get_all_subscriptions(self, region=None, full_information=True):
         """
@@ -124,10 +122,10 @@ class SNSClient(Boto3Client):
         )
 
         for dict_src in self.execute(
-            self.client.get_subscription_attributes,
-            None,
-            raw_data=True,
-            filters_req={"SubscriptionArn": subscription.arn},
+                self.get_session_client(region=subscription.region).get_subscription_attributes,
+                None,
+                raw_data=True,
+                filters_req={"SubscriptionArn": subscription.arn},
         ):
             subscription.attributes = dict_src["Attributes"]
 
@@ -141,26 +139,26 @@ class SNSClient(Boto3Client):
 
         full_information_callback = self.get_topic_full_information if full_information else None
         regional_fetcher_generator = self.yield_topics_raw
-        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                  SNSTopic,
-                                                  update_info=update_info,
-                                                  full_information_callback= full_information_callback,
-                                                  get_tags_callback=lambda topic: self.get_tags(topic, function=self.client.list_tags_for_resource) if get_tags else None,
-                                                  regions=[region] if region else None,
-                                                  filters_req=filters_req):
-            yield certificate
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                            SNSTopic,
+                                                            update_info=update_info,
+                                                            full_information_callback=full_information_callback,
+                                                            get_tags_callback=lambda topic: self.get_tags(topic,
+                                                                                                          function=self.get_session_client(
+                                                                                                              region=region).list_tags_for_resource) if get_tags else None,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req)
 
-    def yield_topics_raw(self, filters_req=None):
+    def yield_topics_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
         :return:
         """
 
-        for dict_src in self.execute(
-                self.client.list_topics, "Topics", filters_req=filters_req
-        ):
-            yield dict_src
+        yield from self.execute(
+            self.get_session_client(region=region).list_topics, "Topics", filters_req=filters_req
+        )
 
     def get_all_topics(self, region=None, full_information=True):
         """
@@ -190,7 +188,7 @@ class SNSClient(Boto3Client):
         """
 
         dict_src = self.execute_with_single_reply(
-            self.client.get_topic_attributes,
+            self.get_session_client(region=topic.region).get_topic_attributes,
             None,
             raw_data=True,
             filters_req={"TopicArn": topic.arn},
@@ -199,10 +197,10 @@ class SNSClient(Boto3Client):
         topic.attributes = dict_src["Attributes"]
 
         for dict_src in self.execute(
-                    self.client.get_data_protection_policy,
-                    "DataProtectionPolicy",
-                    filters_req={"ResourceArn": topic.arn},
-            ):
+                self.get_session_client(region=topic.region).get_data_protection_policy,
+                "DataProtectionPolicy",
+                filters_req={"ResourceArn": topic.arn},
+        ):
             topic.data_protection_policy = dict_src
 
     def update_topic_information(self, topic, full_information=True):
@@ -213,8 +211,6 @@ class SNSClient(Boto3Client):
         :param topic:
         :return:
         """
-
-        AWSAccount.set_aws_region(topic.region)
 
         if topic.arn is None:
             for _topic in self.get_region_topics(topic.region, full_information=False):
@@ -229,7 +225,7 @@ class SNSClient(Boto3Client):
 
         logger.info(f"Fetching sns topic information: {topic.arn}")
         dict_src = self.execute_with_single_reply(
-            self.client.get_topic_attributes,
+            self.get_session_client(region=topic.region).get_topic_attributes,
             None,
             raw_data=True,
             filters_req={"TopicArn": topic.arn},
@@ -237,7 +233,7 @@ class SNSClient(Boto3Client):
 
         topic.attributes = dict_src["Attributes"]
 
-        topic.tags = self.get_tags(topic, function=self.client.list_tags_for_resource)
+        topic.tags = self.get_tags(topic, function=self.get_session_client(region=topic.region).list_tags_for_resource)
         return True
 
     def provision_topic(self, topic: SNSTopic):
@@ -255,14 +251,13 @@ class SNSClient(Boto3Client):
             update_tags = region_topic.generate_tag_resource_request(topic)
             if update_tags:
                 self.clear_cache(SNSTopic)
-                self.tag_resource_raw(update_tags)
+                self.tag_resource_raw(topic.region, update_tags)
             topic.update_from_raw_response(region_topic.dict_src)
         else:
-            AWSAccount.set_aws_region(topic.region)
-            response = self.provision_topic_raw(topic.generate_create_request())
+            response = self.provision_topic_raw(topic.region, topic.generate_create_request())
             topic.update_from_raw_response(response)
 
-    def provision_topic_raw(self, request_dict):
+    def provision_topic_raw(self, region, request_dict):
         """
         Standard.
 
@@ -271,15 +266,14 @@ class SNSClient(Boto3Client):
         """
         logger.info(f"Creating topic: {request_dict}")
         for response in self.execute(
-            self.client.create_topic, None, raw_data=True, filters_req=request_dict
+                self.get_session_client(region=region).create_topic, None, raw_data=True, filters_req=request_dict
         ):
             self.clear_cache(SNSTopic)
             del response["ResponseMetadata"]
 
             return response
 
-
-    def tag_resource_raw(self, request_dict):
+    def tag_resource_raw(self, region, request_dict):
         """
         Standard.
 
@@ -290,7 +284,7 @@ class SNSClient(Boto3Client):
         logger.info(f"Tagging resource: {request_dict}")
 
         for response in self.execute(
-            self.client.tag_resource, None, raw_data=True, filters_req=request_dict
+                self.get_session_client(region=region).tag_resource, None, raw_data=True, filters_req=request_dict
         ):
             del response["ResponseMetadata"]
 
@@ -306,20 +300,19 @@ class SNSClient(Boto3Client):
         region_subscriptions = self.get_region_subscriptions(subscription.region, full_information=False)
         for region_subscription in region_subscriptions:
             if (
-                region_subscription.endpoint == subscription.endpoint
-                and region_subscription.topic_arn == subscription.topic_arn
+                    region_subscription.endpoint == subscription.endpoint
+                    and region_subscription.topic_arn == subscription.topic_arn
             ):
                 subscription.update_from_raw_response(region_subscription.dict_src)
                 self.get_subscription_full_information(subscription)
                 return
 
-        AWSAccount.set_aws_region(subscription.region)
-        response = self.provision_subscription_raw(
-            subscription.generate_create_request()
-        )
+        response = self.provision_subscription_raw(subscription.region,
+                                                   subscription.generate_create_request()
+                                                   )
         subscription.update_from_raw_response(response)
 
-    def provision_subscription_raw(self, request_dict):
+    def provision_subscription_raw(self, region, request_dict):
         """
         Standard.
 
@@ -328,7 +321,7 @@ class SNSClient(Boto3Client):
         """
         logger.info(f"Creating subscription: {request_dict}")
         for response in self.execute(
-            self.client.subscribe, None, raw_data=True, filters_req=request_dict
+                self.get_session_client(region=region).subscribe, None, raw_data=True, filters_req=request_dict
         ):
             del response["ResponseMetadata"]
             return response

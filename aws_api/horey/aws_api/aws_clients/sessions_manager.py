@@ -40,7 +40,7 @@ class SessionsManager:
             self.session = session
             self.clients = {}
 
-        def get_client(self, client_name, region=None):
+        def get_client(self, client_name, region):
             """
             If client to a specific region does not exist, create it.
 
@@ -48,16 +48,10 @@ class SessionsManager:
             :param client_name:
             :return:
             """
-
-            aws_region = region or AWSAccount.get_aws_region()
-            region_mark = (
-                aws_region.region_mark
-                if aws_region is not None
-                else self.session.region_name
-            )
+            region_mark = region.region_mark
             if (
-                region_mark not in self.clients
-                or client_name not in self.clients[region_mark]
+                    region_mark not in self.clients
+                    or client_name not in self.clients[region_mark]
             ):
                 self.connect_client(region_mark, client_name)
 
@@ -70,7 +64,7 @@ class SessionsManager:
             :param client_name:
             :return:
             """
-
+            # pylint: disable= consider-using-with
             try:
                 for _ in range(10):
                     acquired = SessionsManager.Connection.LOCK.acquire(blocking=False)
@@ -256,4 +250,4 @@ class SessionsManager:
         """
 
         connection = SessionsManager.get_connection(region=region)
-        return connection.get_client(client_name)
+        return connection.get_client(client_name, region)

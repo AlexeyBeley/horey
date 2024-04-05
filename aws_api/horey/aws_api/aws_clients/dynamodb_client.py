@@ -31,16 +31,17 @@ class DynamoDBClient(Boto3Client):
         """
 
         regional_fetcher_generator = self.yield_tables_raw
-        for obj in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                  DynamoDBTable,
-                                                  update_info=update_info,
-                                                  get_tags_callback = lambda _obj: self.get_tags(_obj, function=self.client.list_tags_of_resource) if get_tags else None,
-                                                  full_information_callback = self.update_table_full_information if full_information else None,
-                                                  regions=[region] if region else None,
-                                                  filters_req=filters_req):
-            yield obj
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                            DynamoDBTable,
+                                                            update_info=update_info,
+                                                            get_tags_callback=lambda _obj: self.get_tags(_obj,
+                                                                                                         function=self.get_session_client(
+                                                                                                             region=region).list_tags_of_resource) if get_tags else None,
+                                                            full_information_callback=self.update_table_full_information if full_information else None,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req)
 
-    def yield_tables_raw(self, filters_req=None):
+    def yield_tables_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
@@ -48,15 +49,15 @@ class DynamoDBClient(Boto3Client):
         """
 
         for str_name in self.execute(
-                self.client.list_tables, "TableNames",
+                self.get_session_client(region=region).list_tables, "TableNames",
                 filters_req=filters_req,
                 exception_ignore_callback=lambda error: "RepositoryNotFoundException"
-            in repr(error)
+                                                        in repr(error)
         ):
 
-            for response in self.execute(self.client.describe_table, "Table", filters_req={"TableName": str_name},
-                                         exception_ignore_callback=lambda x: "ResourceNotFoundException" in repr(x)):
-                yield response
+            yield from self.execute(self.get_session_client(region=region).describe_table, "Table",
+                                         filters_req={"TableName": str_name},
+                                         exception_ignore_callback=lambda x: "ResourceNotFoundException" in repr(x))
 
     def get_all_tables(self, region=None, full_information=False):
         """
@@ -85,7 +86,8 @@ class DynamoDBClient(Boto3Client):
         :return:
         """
 
-        for response in self.execute(self.client.describe_continuous_backups, "ContinuousBackupsDescription",
+        for response in self.execute(self.get_session_client(region=table.region).describe_continuous_backups,
+                                     "ContinuousBackupsDescription",
                                      filters_req={"TableName": table.name}):
             table.continuous_backups = response
 
@@ -116,8 +118,7 @@ class DynamoDBClient(Boto3Client):
         """
 
         final_result = []
-        AWSAccount.set_aws_region(region)
-        for dict_src in self.execute(self.client.describe_endpoints, "Endpoints"):
+        for dict_src in self.execute(self.get_session_client(region=region).describe_endpoints, "Endpoints"):
             obj = DynamoDBEndpoint(dict_src)
             final_result.append(obj)
 
@@ -141,12 +142,11 @@ class DynamoDBClient(Boto3Client):
             self.update_table_information(table)
             return
 
-        AWSAccount.set_aws_region(table.region)
-        response = self.provision_table_raw(table.generate_create_request())
+        response = self.provision_table_raw(table.region, table.generate_create_request())
         table.update_from_raw_response(response)
         return
 
-    def provision_table_raw(self, request_dict):
+    def provision_table_raw(self, region, request_dict):
         """
         Standard.
 
@@ -156,7 +156,7 @@ class DynamoDBClient(Boto3Client):
 
         logger.info(f"Creating table: {request_dict}")
         for response in self.execute(
-            self.client.create_table, "TableDescription", filters_req=request_dict
+                self.get_session_client(region=region).create_table, "TableDescription", filters_req=request_dict
         ):
             return response
 
@@ -219,7 +219,8 @@ class DynamoDBClient(Boto3Client):
             if "N" in sub_obj_src:
                 return int(sub_obj_src["N"])
             if "M" in sub_obj_src:
-                return {value_key: convert_from_dynamodbish_subroutine(value) for value_key, value in sub_obj_src["M"].items()}
+                return {value_key: convert_from_dynamodbish_subroutine(value) for value_key, value in
+                        sub_obj_src["M"].items()}
 
             raise ValueError(f"Unsupported type: {type(sub_obj_src)}")
 
@@ -237,12 +238,13 @@ class DynamoDBClient(Boto3Client):
         @return:
         """
 
-        AWSAccount.set_aws_region(table.region)
-        for response in self.execute(self.client.describe_table, "Table", filters_req={"TableName": table.name},
+        for response in self.execute(self.get_session_client(region=table.region).describe_table, "Table",
+                                     filters_req={"TableName": table.name},
                                      exception_ignore_callback=lambda x: "ResourceNotFoundException" in repr(x)):
             table.update_from_raw_response(response)
             if get_tags:
-                table.tags = self.get_tags(table, function=self.client.list_tags_of_resource)
+                table.tags = self.get_tags(table,
+                                           function=self.get_session_client(region=table.region).list_tags_of_resource)
                 return True
 
         return False
@@ -261,10 +263,9 @@ class DynamoDBClient(Boto3Client):
         if table.deletion_protection_enabled and not disable_deletion_protection:
             raise RuntimeError("deletion_protection is enabled")
 
-        AWSAccount.set_aws_region(table.region)
-        return self.dispose_table_raw(table.generate_dispose_request())
+        return self.dispose_table_raw(table.region, table.generate_dispose_request())
 
-    def dispose_table_raw(self, request_dict):
+    def dispose_table_raw(self, region, request_dict):
         """
         Standard.
 
@@ -274,7 +275,7 @@ class DynamoDBClient(Boto3Client):
 
         logger.info(f"Disposing table: {request_dict}")
         for response in self.execute(
-                self.client.delete_table, "TableDescription", filters_req=request_dict
+                self.get_session_client(region=region).delete_table, "TableDescription", filters_req=request_dict
         ):
             return response
 
@@ -290,10 +291,9 @@ class DynamoDBClient(Boto3Client):
         dynamodbish_item = self.convert_to_dynamodbish(item)
         filters_req = {"TableName": table.name,
                        "Item": dynamodbish_item}
-        AWSAccount.set_aws_region(table.region)
 
-        for response in self.execute(self.client.put_item, None, raw_data=True,
-                                                 filters_req=filters_req, instant_raise=True):
+        for response in self.execute(self.get_session_client(region=table.region).put_item, None, raw_data=True,
+                                     filters_req=filters_req, instant_raise=True):
             return response
 
     def get_item(self, table: DynamoDBTable, dict_key):
@@ -308,8 +308,6 @@ class DynamoDBClient(Boto3Client):
         filters_req = {"TableName": table.name,
                        "Key": self.convert_to_dynamodbish(dict_key)}
 
-        AWSAccount.set_aws_region(table.region)
-
-        for response in self.execute(self.client.get_item, "Item",
+        for response in self.execute(self.get_session_client(region=table.region).get_item, "Item",
                                      filters_req=filters_req, instant_raise=True):
             return self.convert_from_dynamodbish(response)

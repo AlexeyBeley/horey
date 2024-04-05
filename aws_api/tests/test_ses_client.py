@@ -10,20 +10,22 @@ import pytest
 
 from horey.aws_api.aws_clients.ses_client import SESClient
 
-
 SESClient().main_cache_dir_path = os.path.abspath(
-        os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),
-            "..", "..", "..",
-            "ignore",
-            "cache"
-        )
+    os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "..", "..", "..",
+        "ignore",
+        "cache"
     )
+)
 
 client = SESClient()
+
+
 @pytest.mark.wip
 def test_init_ses_client():
     assert isinstance(SESClient(), SESClient)
+
 
 @pytest.mark.wip
 def test_yield_identities():
@@ -35,7 +37,5 @@ def test_yield_identities():
 
 @pytest.mark.wip
 def test_yield_receipt_rule_sets():
-    obj = None
-    for obj in client.yield_receipt_rule_sets():
-        break
-    assert obj.rules is not None
+    objs = list(client.yield_receipt_rule_sets())
+    assert objs[0].rules is not None

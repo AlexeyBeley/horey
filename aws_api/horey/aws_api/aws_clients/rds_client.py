@@ -51,25 +51,23 @@ class RDSClient(Boto3Client):
         """
 
         regional_fetcher_generator = self.yield_db_instances_raw
-        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                                    RDSDBInstance,
-                                                                    update_info=update_info,
-                                                                    get_tags_callback=self.get_tags if get_tags else None,
-                                                                    regions=[region] if region else None,
-                                                                    filters_req=filters_req):
-            yield certificate
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                            RDSDBInstance,
+                                                            update_info=update_info,
+                                                            get_tags_callback=self.get_tags if get_tags else None,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req)
 
-    def yield_db_instances_raw(self, filters_req=None):
+    def yield_db_instances_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
         :return:
         """
 
-        for dict_src in self.execute(
-                self.client.describe_db_instances, "DBInstances", filters_req=filters_req
-        ):
-            yield dict_src
+        yield from self.execute(
+            self.get_session_client(region=region).describe_db_instances, "DBInstances", filters_req=filters_req
+        )
 
     def get_all_db_instances(self, region=None):
         """
@@ -100,26 +98,24 @@ class RDSClient(Boto3Client):
         """
 
         regional_fetcher_generator = self.yield_db_clusters_raw
-        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                                    RDSDBCluster,
-                                                                    update_info=update_info,
-                                                                    full_information_callback=self.update_cluster_full_information if full_information else None,
-                                                                    get_tags_callback=self.get_tags if get_tags else None,
-                                                                    regions=[region] if region else None,
-                                                                    filters_req=filters_req):
-            yield certificate
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                            RDSDBCluster,
+                                                            update_info=update_info,
+                                                            full_information_callback=self.update_cluster_full_information if full_information else None,
+                                                            get_tags_callback=self.get_tags if get_tags else None,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req)
 
-    def yield_db_clusters_raw(self, filters_req=None):
+    def yield_db_clusters_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
         :return:
         """
 
-        for dict_src in self.execute(
-                self.client.describe_db_clusters, "DBClusters", filters_req=filters_req
-        ):
-            yield dict_src
+        yield from self.execute(
+            self.get_session_client(region=region).describe_db_clusters, "DBClusters", filters_req=filters_req
+        )
 
     def get_all_db_clusters(self, region=None, full_information=False, filters_req=None, get_tags=None,
                             update_info=False):
@@ -173,8 +169,7 @@ class RDSClient(Boto3Client):
             if db_cluster.id == region_db_cluster.id:
                 return db_cluster.update_from_raw_response(region_db_cluster.dict_src)
 
-        AWSAccount.set_aws_region(db_cluster.region)
-        response = self.provision_db_cluster_raw(db_cluster.generate_create_request())
+        response = self.provision_db_cluster_raw(db_cluster.region, db_cluster.generate_create_request())
         db_cluster.update_from_raw_response(response)
 
         return self.wait_for_status(
@@ -185,13 +180,13 @@ class RDSClient(Boto3Client):
             [db_cluster.Status.FAILED, db_cluster.Status.DELETING],
         )
 
-    def provision_db_cluster_raw(self, request_dict):
+    def provision_db_cluster_raw(self, region, request_dict):
         """
         Returns ARN
         """
         logger.info(f"Creating db_cluster: {request_dict}")
         for response in self.execute(
-                self.client.create_db_cluster, "DBCluster", filters_req=request_dict
+                self.get_session_client(region=region).create_db_cluster, "DBCluster", filters_req=request_dict
         ):
             self.clear_cache(RDSDBCluster)
             return response
@@ -227,8 +222,7 @@ class RDSClient(Boto3Client):
             db_instance.skip_final_snapshot = db_cluster.skip_final_snapshot
             self.dispose_db_instance(db_instance)
 
-        AWSAccount.set_aws_region(db_cluster.region)
-        response = self.dispose_db_cluster_raw(db_cluster.generate_dispose_request())
+        response = self.dispose_db_cluster_raw(db_cluster.region, db_cluster.generate_dispose_request())
 
         db_cluster.update_from_raw_response(response)
 
@@ -244,13 +238,13 @@ class RDSClient(Boto3Client):
         except self.ResourceNotFoundError:
             pass
 
-    def dispose_db_cluster_raw(self, request_dict):
+    def dispose_db_cluster_raw(self, region, request_dict):
         """
         Returns ARN
         """
         logger.info(f"Disposing db_cluster: {request_dict}")
         for response in self.execute(
-                self.client.delete_db_cluster, "DBCluster", filters_req=request_dict
+                self.get_session_client(region=region).delete_db_cluster, "DBCluster", filters_req=request_dict
         ):
             self.clear_cache(RDSDBCluster)
             return response
@@ -263,8 +257,7 @@ class RDSClient(Boto3Client):
         :return:
         """
 
-        AWSAccount.set_aws_region(db_instance.region)
-        response = self.dispose_db_instance_raw(db_instance.generate_dispose_request())
+        response = self.dispose_db_instance_raw(db_instance.region, db_instance.generate_dispose_request())
         if response is None:
             return True
         db_instance.update_from_raw_response(response)
@@ -282,13 +275,13 @@ class RDSClient(Boto3Client):
             pass
         return True
 
-    def dispose_db_instance_raw(self, request_dict):
+    def dispose_db_instance_raw(self, region, request_dict):
         """
         Returns ARN
         """
         logger.info(f"Disposing db_instance: {request_dict}")
         for response in self.execute(
-                self.client.delete_db_instance, "DBInstance", filters_req=request_dict,
+                self.get_session_client(region=region).delete_db_instance, "DBInstance", filters_req=request_dict,
                 exception_ignore_callback=lambda error: "DBInstanceNotFound" in repr(error)
         ):
             self.clear_cache(RDSDBInstance)
@@ -303,20 +296,20 @@ class RDSClient(Boto3Client):
         :return:
         """
 
-        AWSAccount.set_aws_region(db_cluster.region)
-        response = self.restore_db_cluster_from_snapshot_raw(
-            db_cluster.generate_restore_db_cluster_from_snapshot_request(snapshot_id)
-        )
+        response = self.restore_db_cluster_from_snapshot_raw(db_cluster.region,
+                                                             db_cluster.generate_restore_db_cluster_from_snapshot_request(
+                                                                 snapshot_id)
+                                                             )
         db_cluster.update_from_raw_response(response)
         return db_cluster
 
-    def restore_db_cluster_from_snapshot_raw(self, request_dict):
+    def restore_db_cluster_from_snapshot_raw(self, region, request_dict):
         """
         Returns ARN
         """
         logger.info(f"restoring db_cluster from snapshot: {request_dict}")
         for response in self.execute(
-                self.client.restore_db_cluster_from_snapshot,
+                self.get_session_client(region=region).restore_db_cluster_from_snapshot,
                 "DBCluster",
                 filters_req=request_dict,
         ):
@@ -332,24 +325,23 @@ class RDSClient(Boto3Client):
         """
 
         regional_fetcher_generator = self.yield_db_subnet_groups_raw
-        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                                    RDSDBSubnetGroup,
-                                                                    update_info=update_info,
-                                                                    regions=[region] if region else None,
-                                                                    filters_req=filters_req):
-            yield certificate
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                            RDSDBSubnetGroup,
+                                                            update_info=update_info,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req)
 
-    def yield_db_subnet_groups_raw(self, filters_req=None):
+    def yield_db_subnet_groups_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
         :return:
         """
 
-        for dict_src in self.execute(
-                self.client.describe_db_subnet_groups, "DBSubnetGroups", filters_req=filters_req
-        ):
-            yield dict_src
+        yield from self.execute(
+            self.get_session_client(region=region).describe_db_subnet_groups, "DBSubnetGroups",
+            filters_req=filters_req
+        )
 
     def get_all_db_subnet_groups(self, region=None):
         """
@@ -379,22 +371,21 @@ class RDSClient(Boto3Client):
         region_db_subnet_groups = self.get_region_db_subnet_groups(
             db_subnet_group.region
         )
-        AWSAccount.set_aws_region(db_subnet_group.region)
         for region_db_subnet_group in region_db_subnet_groups:
             if db_subnet_group.name == region_db_subnet_group.name:
 
                 request = region_db_subnet_group.generate_modify_request(db_subnet_group)
                 if request:
-                    update_info = self.modify_db_subnet_group_raw(request)
+                    update_info = self.modify_db_subnet_group_raw(db_subnet_group.region, request)
                 else:
                     update_info = region_db_subnet_group.dict_src
                 db_subnet_group.update_from_raw_response(update_info)
 
                 return db_subnet_group
 
-        response = self.provision_db_subnet_group_raw(
-            db_subnet_group.generate_create_request()
-        )
+        response = self.provision_db_subnet_group_raw(db_subnet_group.region,
+                                                      db_subnet_group.generate_create_request()
+                                                      )
         db_subnet_group.update_from_raw_response(response)
         return db_subnet_group
 
@@ -408,45 +399,44 @@ class RDSClient(Boto3Client):
         region_db_subnet_groups = self.get_region_db_subnet_groups(
             db_subnet_group.region
         )
-        AWSAccount.set_aws_region(db_subnet_group.region)
         for region_db_subnet_group in region_db_subnet_groups:
             if db_subnet_group.name == region_db_subnet_group.name:
                 break
         else:
             return None
 
-        self.delete_db_subnet_group_raw(
-            {"DBSubnetGroupName": db_subnet_group.name}
-        )
+        self.delete_db_subnet_group_raw(db_subnet_group.region,
+                                        {"DBSubnetGroupName": db_subnet_group.name}
+                                        )
         return None
 
-    def provision_db_subnet_group_raw(self, request_dict):
+    def provision_db_subnet_group_raw(self, region, request_dict):
         """
         Returns ARN
         """
         logger.info(f"Creating db_subnet_group: {request_dict}")
         for response in self.execute(
-                self.client.create_db_subnet_group,
+                self.get_session_client(region=region).create_db_subnet_group,
                 "DBSubnetGroup",
                 filters_req=request_dict,
         ):
             self.clear_cache(RDSDBSubnetGroup)
             return response
 
-    def modify_db_subnet_group_raw(self, request_dict):
+    def modify_db_subnet_group_raw(self, region, request_dict):
         """
         Returns dict
         """
         logger.info(f"Modifying db_subnet_group: {request_dict}")
         for response in self.execute(
-                self.client.modify_db_subnet_group,
+                self.get_session_client(region=region).modify_db_subnet_group,
                 "DBSubnetGroup",
                 filters_req=request_dict,
         ):
             self.clear_cache(RDSDBSubnetGroup)
             return response
 
-    def delete_db_subnet_group_raw(self, request_dict):
+    def delete_db_subnet_group_raw(self, region, request_dict):
         """
         Returns dict
         """
@@ -454,7 +444,7 @@ class RDSClient(Boto3Client):
         logger.info(f"Deleting db_subnet_group: {request_dict}")
 
         for response in self.execute(
-                self.client.delete_db_subnet_group,
+                self.get_session_client(region=region).delete_db_subnet_group,
                 None,
                 raw_data=True,
                 filters_req=request_dict,
@@ -472,25 +462,24 @@ class RDSClient(Boto3Client):
         """
         full_information_callback = self.get_db_cluster_parameters_group_full_information if full_information else None
         regional_fetcher_generator = self.yield_db_cluster_parameter_groups_raw
-        for obj in self.regional_service_entities_generator(regional_fetcher_generator,
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
                                                             RDSDBClusterParameterGroup,
                                                             update_info=update_info,
                                                             full_information_callback=full_information_callback,
                                                             regions=[region] if region else None,
-                                                            filters_req=filters_req):
-            yield obj
+                                                            filters_req=filters_req)
 
-    def yield_db_cluster_parameter_groups_raw(self, filters_req=None):
+    def yield_db_cluster_parameter_groups_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
         :return:
         """
 
-        for dict_src in self.execute(
-                self.client.describe_db_cluster_parameter_groups, "DBClusterParameterGroups", filters_req=filters_req
-        ):
-            yield dict_src
+        yield from self.execute(
+            self.get_session_client(region=region).describe_db_cluster_parameter_groups, "DBClusterParameterGroups",
+            filters_req=filters_req
+        )
 
     def get_all_db_cluster_parameter_groups(self, region=None):
         """
@@ -522,7 +511,7 @@ class RDSClient(Boto3Client):
         filters_req = {"DBClusterParameterGroupName": obj.name}
         obj.parameters = []
         for response_param in self.execute(
-                self.client.describe_db_cluster_parameters,
+                self.get_session_client(region=obj.region).describe_db_cluster_parameters,
                 "Parameters",
                 filters_req=filters_req,
         ):
@@ -541,30 +530,28 @@ class RDSClient(Boto3Client):
 
         full_information_callback = self.update_db_cluster_snapshot_full_information if full_information else None
         regional_fetcher_generator = self.yield_db_cluster_snapshots_raw
-        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                                    RDSDBClusterSnapshot,
-                                                                    update_info=update_info,
-                                                                    get_tags_callback=self.get_tags if get_tags else None,
-                                                                    full_information_callback=full_information_callback,
-                                                                    regions=[region] if region else None,
-                                                                    filters_req=filters_req):
-            yield certificate
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                            RDSDBClusterSnapshot,
+                                                            update_info=update_info,
+                                                            get_tags_callback=self.get_tags if get_tags else None,
+                                                            full_information_callback=full_information_callback,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req)
 
-    def yield_db_cluster_snapshots_raw(self, filters_req=None):
+    def yield_db_cluster_snapshots_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
         :return:
         """
 
-        for dict_src in self.execute(
-                self.client.describe_db_cluster_snapshots,
-                "DBClusterSnapshots",
-                filters_req=filters_req,
-                exception_ignore_callback=lambda x: "DBClusterSnapshotNotFoundFault"
-                                                    in repr(x),
-        ):
-            yield dict_src
+        yield from self.execute(
+            self.get_session_client(region=region).describe_db_cluster_snapshots,
+            "DBClusterSnapshots",
+            filters_req=filters_req,
+            exception_ignore_callback=lambda x: "DBClusterSnapshotNotFoundFault"
+                                                in repr(x),
+        )
 
     def get_all_db_cluster_snapshots(self, region=None):
         """
@@ -600,7 +587,7 @@ class RDSClient(Boto3Client):
         filters_req = {"DBClusterSnapshotIdentifier": obj.id}
         obj.parameters = []
         for response_param in self.execute(
-                self.client.describe_db_cluster_snapshot_attributes,
+                self.get_session_client(region=obj.region).describe_db_cluster_snapshot_attributes,
                 "DBClusterSnapshotAttributesResult",
                 filters_req=filters_req,
         ):
@@ -632,9 +619,8 @@ class RDSClient(Boto3Client):
         """
 
         final_result = []
-        AWSAccount.set_aws_region(region)
         for response in self.execute(
-                self.client.describe_db_parameter_groups, "DBParameterGroups"
+                self.get_session_client(region=region).describe_db_parameter_groups, "DBParameterGroups"
         ):
             obj = RDSDBParameterGroup(response)
             final_result.append(obj)
@@ -642,7 +628,7 @@ class RDSClient(Boto3Client):
                 filters_req = {"DBParameterGroupName": obj.name}
                 obj.parameters = []
                 for response_param in self.execute(
-                        self.client.describe_db_parameters,
+                        self.get_session_client(region=region).describe_db_parameters,
                         "Parameters",
                         filters_req=filters_req,
                 ):
@@ -674,20 +660,19 @@ class RDSClient(Boto3Client):
                 )
                 return db_cluster_parameter_group
 
-        AWSAccount.set_aws_region(db_cluster_parameter_group.region)
-        response = self.provision_db_cluster_parameter_group_raw(
-            db_cluster_parameter_group.generate_create_request()
-        )
+        response = self.provision_db_cluster_parameter_group_raw(db_cluster_parameter_group.region,
+                                                                 db_cluster_parameter_group.generate_create_request()
+                                                                 )
         db_cluster_parameter_group.update_from_raw_response(response)
         return db_cluster_parameter_group
 
-    def provision_db_cluster_parameter_group_raw(self, request_dict):
+    def provision_db_cluster_parameter_group_raw(self, region, request_dict):
         """
         Returns ARN
         """
         logger.info(f"Creating db_cluster_parameter_group: {request_dict}")
         for response in self.execute(
-                self.client.create_db_cluster_parameter_group,
+                self.get_session_client(region=region).create_db_cluster_parameter_group,
                 "DBClusterParameterGroup",
                 filters_req=request_dict,
         ):
@@ -702,11 +687,10 @@ class RDSClient(Boto3Client):
         :return:
         """
 
-        AWSAccount.set_aws_region(param_group.region)
         request_dict = {"DBClusterParameterGroupName": param_group.name}
         logger.info(f"Disposing db_cluster_parameter_group: {request_dict}")
         for response in self.execute(
-                self.client.delete_db_cluster_parameter_group,
+                self.get_session_client(region=param_group.region).delete_db_cluster_parameter_group,
                 None,
                 raw_data=True,
                 filters_req=request_dict,
@@ -722,11 +706,10 @@ class RDSClient(Boto3Client):
         :param param_group:
         :return:
         """
-        AWSAccount.set_aws_region(param_group.region)
         request_dict = {"DBParameterGroupName": param_group.name}
         logger.info(f"Disposing db_parameter_group: {request_dict}")
         for response in self.execute(
-                self.client.delete_db_parameter_group,
+                self.get_session_client(region=param_group.region).delete_db_parameter_group,
                 None,
                 raw_data=True,
                 filters_req=request_dict,
@@ -753,19 +736,18 @@ class RDSClient(Boto3Client):
                 )
                 return db_parameter_group
 
-        AWSAccount.set_aws_region(db_parameter_group.region)
-        response = self.provision_db_parameter_group_raw(
-            db_parameter_group.generate_create_request()
-        )
+        response = self.provision_db_parameter_group_raw(db_parameter_group.region,
+                                                         db_parameter_group.generate_create_request()
+                                                         )
         return db_parameter_group.update_from_raw_response(response)
 
-    def provision_db_parameter_group_raw(self, request_dict):
+    def provision_db_parameter_group_raw(self, region, request_dict):
         """
         Returns ARN
         """
         logger.info(f"Creating db_parameter_group: {request_dict}")
         for response in self.execute(
-                self.client.create_db_parameter_group,
+                self.get_session_client(region=region).create_db_parameter_group,
                 "DBParameterGroup",
                 filters_req=request_dict,
         ):
@@ -785,8 +767,7 @@ class RDSClient(Boto3Client):
         except self.ResourceNotFoundError:
             pass
 
-        AWSAccount.set_aws_region(db_instance.region)
-        response = self.provision_db_instance_raw(db_instance.generate_create_request())
+        response = self.provision_db_instance_raw(db_instance.region, db_instance.generate_create_request())
         db_instance.update_from_raw_response(response)
 
         return self.wait_for_status(
@@ -802,13 +783,13 @@ class RDSClient(Boto3Client):
             timeout=20 * 60 * 60,
         )
 
-    def provision_db_instance_raw(self, request_dict):
+    def provision_db_instance_raw(self, region, request_dict):
         """
         Returns ARN
         """
         logger.info(f"Creating db_instance: {request_dict}")
         for response in self.execute(
-                self.client.create_db_instance, "DBInstance", filters_req=request_dict
+                self.get_session_client(region=region).create_db_instance, "DBInstance", filters_req=request_dict
         ):
             self.clear_cache(RDSDBInstance)
             return response
@@ -827,8 +808,6 @@ class RDSClient(Boto3Client):
         :param synchronous:
         :return:
         """
-
-        AWSAccount.set_aws_region(cluster_snapshot_src.region)
 
         filters_req = {"DBClusterSnapshotIdentifier": cluster_snapshot_dst.id}
         dst_region_cluster_snapshots = self.get_region_db_cluster_snapshots(
@@ -851,10 +830,9 @@ class RDSClient(Boto3Client):
                     f"Found destination snapshot with name {cluster_snapshot_dst.id} but src arn {dst_region_cluster_snapshot.source_db_cluster_snapshot_arn} is not equals to {cluster_snapshot_src.arn}"
                 )
 
-        AWSAccount.set_aws_region(cluster_snapshot_dst.region)
-        response = self.copy_db_cluster_snapshot_raw(
-            cluster_snapshot_src.generate_copy_request(cluster_snapshot_dst)
-        )
+        response = self.copy_db_cluster_snapshot_raw(cluster_snapshot_src.region,
+                                                     cluster_snapshot_src.generate_copy_request(cluster_snapshot_dst)
+                                                     )
         cluster_snapshot_dst.update_from_raw_response(response)
         if not synchronous:
             return
@@ -901,7 +879,7 @@ class RDSClient(Boto3Client):
 
         raise TimeoutError(f"Cluster did not become available for {timeout} seconds")
 
-    def copy_db_cluster_snapshot_raw(self, request_dict):
+    def copy_db_cluster_snapshot_raw(self, region, request_dict):
         """
         Copy from region to region.
 
@@ -911,7 +889,7 @@ class RDSClient(Boto3Client):
 
         logger.info(f"Copying cluster_snapshot: {request_dict}")
         for response in self.execute(
-                self.client.copy_db_cluster_snapshot,
+                self.get_session_client(region=region).copy_db_cluster_snapshot,
                 "DBClusterSnapshot",
                 filters_req=request_dict,
         ):
@@ -981,10 +959,8 @@ class RDSClient(Boto3Client):
         :return:
         """
 
-        AWSAccount.set_aws_region(db_cluster.region)
-
         request = db_cluster.generate_modify_request()
-        response = self.modify_db_cluster_raw(request)
+        response = self.modify_db_cluster_raw(db_cluster.region, request)
         db_cluster.update_from_raw_response(response)
         if "MasterUserPassword" in request:
             self.wait_for_status(
@@ -1003,7 +979,7 @@ class RDSClient(Boto3Client):
                 [],
             )
 
-    def modify_db_cluster_raw(self, request_dict):
+    def modify_db_cluster_raw(self, region, request_dict):
         """
         Standard.
 
@@ -1013,7 +989,7 @@ class RDSClient(Boto3Client):
 
         logger.info(f"Modifying db_cluster: {request_dict.keys()}")
         for response in self.execute(
-                self.client.modify_db_cluster, "DBCluster", filters_req=request_dict
+                self.get_session_client(region=region).modify_db_cluster, "DBCluster", filters_req=request_dict
         ):
             self.clear_cache(RDSDBCluster)
             return response
@@ -1026,11 +1002,10 @@ class RDSClient(Boto3Client):
         :return:
         """
 
-        AWSAccount.set_aws_region(db_instance.region)
-        response = self.modify_db_instance_raw(db_instance.generate_modify_request())
+        response = self.modify_db_instance_raw(db_instance.region, db_instance.generate_modify_request())
         db_instance.update_from_raw_response(response)
 
-    def modify_db_instance_raw(self, request_dict):
+    def modify_db_instance_raw(self, region, request_dict):
         """
         Standard.
 
@@ -1040,7 +1015,7 @@ class RDSClient(Boto3Client):
 
         logger.info(f"Modifying db_instance: {request_dict}")
         for response in self.execute(
-                self.client.modify_db_instance, "DBInstance", filters_req=request_dict
+                self.get_session_client(region=region).modify_db_instance, "DBInstance", filters_req=request_dict
         ):
             self.clear_cache(RDSDBInstance)
             return response
@@ -1067,7 +1042,7 @@ class RDSClient(Boto3Client):
 
         tags = list(
             self.execute(
-                self.client.list_tags_for_resource,
+                self.get_session_client(region=obj.region).list_tags_for_resource,
                 "TagList",
                 filters_req={"ResourceName": obj.arn},
                 instant_raise=True
@@ -1088,10 +1063,8 @@ class RDSClient(Boto3Client):
             if engine_version := per_region[engine_type]:
                 return engine_version
 
-        AWSAccount.set_aws_region(region)
-
         engine_versions = list(self.execute(
-            self.client.describe_db_engine_versions, "DBEngineVersions",
+            self.get_session_client(region=region).describe_db_engine_versions, "DBEngineVersions",
             filters_req={"Engine": engine_type, "DefaultOnly": True}))
 
         if len(engine_versions) != 1:
@@ -1111,10 +1084,8 @@ class RDSClient(Boto3Client):
         :return:
         """
 
-        AWSAccount.set_aws_region(region)
-
         all_engine_versions = list(self.execute(
-            self.client.describe_db_engine_versions, "DBEngineVersions",
+            self.get_session_client(region=region).describe_db_engine_versions, "DBEngineVersions",
             filters_req={"Engine": engine_type, "DefaultOnly": False}))
 
         engine_versions = [version for version in all_engine_versions if version["EngineVersion"] == engine_version]

@@ -37,5 +37,6 @@ class STSClient(Boto3Client):
         """
 
         filters_req = {"EncodedMessage": txt_message}
-        for response in self.execute(self.get_session_client(region=region).decode_authorization_message, "DecodedMessage", filters_req=filters_req):
+        for response in self.execute(self.get_session_client(region=region).decode_authorization_message,
+                                     "DecodedMessage", filters_req=filters_req):
             return response

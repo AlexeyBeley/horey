@@ -50,7 +50,7 @@ class KMSClient(Boto3Client):
         final_result = []
         AWSAccount.set_aws_region(region)
         logger.info(f"kms_client fetching KMS keys from region {region.region_mark}")
-        for dict_src in self.execute(self.client.list_keys, "Keys"):
+        for dict_src in self.execute(self.get_session_client(region=region).list_keys, "Keys"):
             obj = KMSKey(dict_src)
 
             if full_information:
@@ -58,18 +58,19 @@ class KMSClient(Boto3Client):
 
                 logger.info(f"kms_client fetching more information about key {filters_req}")
                 for dict_response in self.execute(
-                    self.client.describe_key, "KeyMetadata", filters_req=filters_req, exception_ignore_callback=
+                        self.get_session_client(region=region).describe_key, "KeyMetadata", filters_req=filters_req,
+                        exception_ignore_callback=
                         lambda error: "NotFoundException" in repr(error)
                 ):
                     obj.update_from_raw_response(dict_response)
 
                 tags = list(
                     self.execute(
-                        self.client.list_resource_tags,
+                        self.get_session_client(region=region).list_resource_tags,
                         "Tags",
                         filters_req=filters_req,
                         exception_ignore_callback=lambda error: "AccessDeniedException"
-                        in repr(error),
+                                                                in repr(error),
                     )
                 )
 
@@ -77,11 +78,11 @@ class KMSClient(Boto3Client):
 
                 aliases = list(
                     self.execute(
-                        self.client.list_aliases,
+                        self.get_session_client(region=region).list_aliases,
                         "Aliases",
                         filters_req=filters_req,
                         exception_ignore_callback=lambda error: "AccessDeniedException"
-                        in repr(error),
+                                                                in repr(error),
                     )
                 )
                 obj.update_from_list_aliases_response({"Aliases": aliases})
@@ -110,13 +111,13 @@ class KMSClient(Boto3Client):
                 continue
 
             if (
-                region_key.get_tag(
-                    key_name,
-                    ignore_missing_tag=True,
-                    tag_key_specifier="TagKey",
-                    tag_value_specifier="TagValue",
-                )
-                == key_value
+                    region_key.get_tag(
+                        key_name,
+                        ignore_missing_tag=True,
+                        tag_key_specifier="TagKey",
+                        tag_value_specifier="TagValue",
+                    )
+                    == key_value
             ):
                 found_keys.append(region_key)
 
@@ -147,25 +148,25 @@ class KMSClient(Boto3Client):
 
         if region_key is None:
             AWSAccount.set_aws_region(key.region)
-            response = self.provision_key_raw(key.generate_create_request())
+            response = self.provision_key_raw(key.region, key.generate_create_request())
             region_key = KMSKey({})
             region_key.update_from_raw_response(response)
         else:
             request = region_key.generate_tag_resource_request(key)
             if request:
-                self.tag_resource_raw(request)
+                self.tag_resource_raw(key.region, request)
 
         del_requests, create_requests = region_key.generate_alias_provision_requests(key)
 
         for del_request in del_requests:
-            self.delete_alias_raw(del_request)
+            self.delete_alias_raw(key.region, del_request)
 
         for create_request in create_requests:
-            self.create_alias_raw(create_request)
+            self.create_alias_raw(region_key.region, create_request)
 
         key.id = region_key.id
 
-    def tag_resource_raw(self, request_dict):
+    def tag_resource_raw(self, region, request_dict):
         """
         Standard.
 
@@ -174,7 +175,7 @@ class KMSClient(Boto3Client):
         """
         logger.info(f"Tagging KMS key: {request_dict}")
         for response in self.execute(
-            self.client.tag_resource, None, raw_data=True, filters_req=request_dict
+                self.get_session_client(region=region).tag_resource, None, raw_data=True, filters_req=request_dict
         ):
             return response
 
@@ -190,11 +191,10 @@ class KMSClient(Boto3Client):
         if key.id is None:
             raise NotImplementedError("Key must have 'id' set")
 
-        AWSAccount.set_aws_region(key.region)
-        response = self.schedule_key_deletion_raw(key.generate_schedule_key_deletion_request(days))
+        response = self.schedule_key_deletion_raw(key.region, key.generate_schedule_key_deletion_request(days))
         return response
 
-    def schedule_key_deletion_raw(self, request_dict):
+    def schedule_key_deletion_raw(self, region, request_dict):
         """
         Standard.
 
@@ -204,11 +204,12 @@ class KMSClient(Boto3Client):
 
         logger.info(f"Deleting key: {request_dict}")
         for response in self.execute(
-            self.client.schedule_key_deletion, None, raw_data=True, filters_req=request_dict
+                self.get_session_client(region=region).schedule_key_deletion, None, raw_data=True,
+                filters_req=request_dict
         ):
             return response
 
-    def provision_key_raw(self, request_dict):
+    def provision_key_raw(self, region, request_dict):
         """
         Standard.
 
@@ -218,11 +219,11 @@ class KMSClient(Boto3Client):
 
         logger.info(f"Creating key: {request_dict}")
         for response in self.execute(
-            self.client.create_key, "KeyMetadata", filters_req=request_dict
+                self.get_session_client(region=region).create_key, "KeyMetadata", filters_req=request_dict
         ):
             return response
 
-    def delete_alias_raw(self, request_dict):
+    def delete_alias_raw(self, region, request_dict):
         """
         Delete the alias from a key.
 
@@ -231,11 +232,11 @@ class KMSClient(Boto3Client):
         """
         logger.info(f"Deleting key alias: {request_dict}")
         for response in self.execute(
-            self.client.delete_alias, None, raw_data=True, filters_req=request_dict
+                self.get_session_client(region=region).delete_alias, None, raw_data=True, filters_req=request_dict
         ):
             return response
 
-    def create_alias_raw(self, request_dict):
+    def create_alias_raw(self, region, request_dict):
         """
         Create and alias.
 
@@ -245,7 +246,7 @@ class KMSClient(Boto3Client):
 
         logger.info(f"Creating key alias: {request_dict}")
         for response in self.execute(
-            self.client.create_alias, None, raw_data=True, filters_req=request_dict
+                self.get_session_client(region=region).create_alias, None, raw_data=True, filters_req=request_dict
         ):
             return response
 
@@ -257,7 +258,7 @@ class KMSClient(Boto3Client):
             filters_req["Description"] = name
 
         for response in self.execute(
-            self.client.create_key, "KeyMetadata", filters_req=filters_req
+            self.get_session_client(region=region).create_key, "KeyMetadata", filters_req=filters_req
         ):
             logger.info(
                 f"Created KMS key name: {response['Description']} arn: {response['Arn']}"
@@ -268,7 +269,7 @@ class KMSClient(Boto3Client):
 
         try:
             for _ in self.execute(
-                self.client.delete_alias, "ResponseMetadata", filters_req=filters_req
+                self.get_session_client(region=region).delete_alias, "ResponseMetadata", filters_req=filters_req
             ):
                 logger.info(f"Deleted {filters_req['AliasName']} from KMS key")
         except Exception as exception_received:
@@ -282,7 +283,7 @@ class KMSClient(Boto3Client):
 
         filters_req["TargetKeyId"] = response["KeyId"]
         for _ in self.execute(
-            self.client.create_alias, "ResponseMetadata", filters_req=filters_req
+            self.get_session_client(region=region).create_alias, "ResponseMetadata", filters_req=filters_req
         ):
             logger.info(f"Created {filters_req['AliasName']} for KMS key")
 

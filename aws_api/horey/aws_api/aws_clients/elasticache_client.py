@@ -18,9 +18,7 @@ from horey.aws_api.aws_services_entities.elasticache_replication_group import (
     ElasticacheReplicationGroup,
 )
 
-
 from horey.h_logger import get_logger
-
 
 logger = get_logger()
 
@@ -46,27 +44,25 @@ class ElasticacheClient(Boto3Client):
         """
 
         regional_fetcher_generator = self.yield_clusters_raw
-        for obj in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                  ElasticacheCluster,
-                                                  update_info=update_info,
-                                                  regions=[region] if region else None,
-                                                  filters_req=filters_req):
-            yield obj
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                            ElasticacheCluster,
+                                                            update_info=update_info,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req)
 
-    def yield_clusters_raw(self, filters_req=None):
+    def yield_clusters_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
         :return:
         """
 
-        for dict_src in self.execute(
-                self.client.describe_cache_clusters, "CacheClusters",
+        yield from self.execute(
+                self.get_session_client(region=region).describe_cache_clusters, "CacheClusters",
                 filters_req=filters_req,
                 exception_ignore_callback=lambda error: "RepositoryNotFoundException"
-            in repr(error)
-        ):
-            yield dict_src
+                                                        in repr(error)
+        )
 
     def get_all_clusters(self, region=None):
         """
@@ -107,12 +103,11 @@ class ElasticacheClient(Boto3Client):
         :param region:
         :return:
         """
-        AWSAccount.set_aws_region(region)
 
         final_result = []
 
         for dict_src in self.execute(
-            self.client.describe_cache_parameter_groups, "CacheParameterGroups"
+                self.get_session_client(region=region).describe_cache_parameter_groups, "CacheParameterGroups"
         ):
             obj = ElasticacheCacheParameterGroup(dict_src)
             final_result.append(obj)
@@ -140,12 +135,11 @@ class ElasticacheClient(Boto3Client):
         :param region:
         :return:
         """
-        AWSAccount.set_aws_region(region)
 
         final_result = []
 
         for dict_src in self.execute(
-            self.client.describe_cache_subnet_groups, "CacheSubnetGroups"
+                self.get_session_client(region=region).describe_cache_subnet_groups, "CacheSubnetGroups"
         ):
             obj = ElasticacheCacheSubnetGroup(dict_src)
             final_result.append(obj)
@@ -173,12 +167,11 @@ class ElasticacheClient(Boto3Client):
         :param region:
         :return:
         """
-        AWSAccount.set_aws_region(region)
 
         final_result = []
 
         for dict_src in self.execute(
-            self.client.describe_replication_groups, "ReplicationGroups"
+                self.get_session_client(region=region).describe_replication_groups, "ReplicationGroups"
         ):
             obj = ElasticacheReplicationGroup(dict_src)
             final_result.append(obj)
@@ -207,7 +200,6 @@ class ElasticacheClient(Boto3Client):
         :param cache_security_group_name:
         :return:
         """
-        AWSAccount.set_aws_region(region)
 
         final_result = []
         filters_req = (
@@ -216,9 +208,9 @@ class ElasticacheClient(Boto3Client):
             else None
         )
         for dict_src in self.execute(
-            self.client.describe_cache_security_groups,
-            "CacheSecurityGroups",
-            filters_req=filters_req,
+                self.get_session_client(region=region).describe_cache_security_groups,
+                "CacheSecurityGroups",
+                filters_req=filters_req,
         ):
             obj = ElasticacheCacheSecurityGroup(dict_src)
             final_result.append(obj)
@@ -238,21 +230,20 @@ class ElasticacheClient(Boto3Client):
                 subnet_group.update_from_raw_response(region_subnet_group.dict_src)
                 return
 
-        AWSAccount.set_aws_region(subnet_group.region)
-        response = self.provision_subnet_group_raw(
-            subnet_group.generate_create_request()
-        )
+        response = self.provision_subnet_group_raw(subnet_group.region,
+                                                   subnet_group.generate_create_request()
+                                                   )
         subnet_group.update_from_raw_response(response)
 
-    def provision_subnet_group_raw(self, request_dict):
+    def provision_subnet_group_raw(self, region, request_dict):
         """
         Returns ARN
         """
         logger.info(f"Creating redis_subnet_group: {request_dict}")
         for response in self.execute(
-            self.client.create_cache_subnet_group,
-            "CacheSubnetGroup",
-            filters_req=request_dict,
+                self.get_session_client(region=region).create_cache_subnet_group,
+                "CacheSubnetGroup",
+                filters_req=request_dict,
         ):
             return response
 
@@ -268,17 +259,16 @@ class ElasticacheClient(Boto3Client):
             if cluster.id == region_cluster.id:
                 cluster.update_from_raw_response(region_cluster.dict_src)
 
-        AWSAccount.set_aws_region(cluster.region)
-        response = self.provision_cluster_raw(cluster.generate_create_request())
+        response = self.provision_cluster_raw(cluster.region, cluster.generate_create_request())
         cluster.update_from_raw_response(response)
 
-    def provision_cluster_raw(self, request_dict):
+    def provision_cluster_raw(self, region, request_dict):
         """
         Returns ARN
         """
         logger.info(f"Creating redis_cluster: {request_dict}")
         for response in self.execute(
-            self.client.create_cache_cluster, "CacheCluster", filters_req=request_dict
+                self.get_session_client(region=region).create_cache_cluster, "CacheCluster", filters_req=request_dict
         ):
             return response
 
@@ -299,25 +289,24 @@ class ElasticacheClient(Boto3Client):
                 )
                 return
 
-        AWSAccount.set_aws_region(replication_group.region)
-        response = self.provision_replication_group_raw(
-            replication_group.generate_create_request()
-        )
+        response = self.provision_replication_group_raw(replication_group.reions,
+                                                        replication_group.generate_create_request()
+                                                        )
         replication_group.update_from_raw_response(response)
 
-    def provision_replication_group_raw(self, request_dict):
+    def provision_replication_group_raw(self, region, request_dict):
         """
         Returns ARN
         """
         logger.info(f"Creating redis_replication_group: {request_dict}")
         for response in self.execute(
-            self.client.create_replication_group,
-            "ReplicationGroup",
-            filters_req=request_dict,
+                self.get_session_client(region=region).create_replication_group,
+                "ReplicationGroup",
+                filters_req=request_dict,
         ):
             return response
 
-    def describe_cache_engine_versions_raw(self, filters_req):
+    def describe_cache_engine_versions_raw(self, region, filters_req):
         """
         Standard.
 
@@ -328,9 +317,9 @@ class ElasticacheClient(Boto3Client):
 
         logger.info("Describe_cache_engine_versions_raw.")
         return list(self.execute(
-                self.client.describe_cache_engine_versions,
-                "CacheEngineVersions",
-                filters_req=filters_req
+            self.get_session_client(region=region).describe_cache_engine_versions,
+            "CacheEngineVersions",
+            filters_req=filters_req
         ))
 
     def get_latest_engine_version_and_param_family(self, engine):
@@ -341,7 +330,7 @@ class ElasticacheClient(Boto3Client):
         :return:
         """
         engine_raw = self.get_latest_engine_version(engine)
-        params_raw = self.get_latest_parameter_group(engine_raw["CacheParameterGroupFamily"])
+        params_raw = self.get_latest_parameter_group(engine.region, engine_raw["CacheParameterGroupFamily"])
         return engine_raw, params_raw
 
     def get_latest_engine_version(self, engine):
@@ -352,7 +341,7 @@ class ElasticacheClient(Boto3Client):
         :return:
         """
 
-        versions_dicts = self.describe_cache_engine_versions_raw({"Engine": engine})
+        versions_dicts = self.describe_cache_engine_versions_raw(engine.region, {"Engine": engine})
         versions_dict = {version_dict["EngineVersion"]: version_dict for version_dict in versions_dicts}
 
         reached_end = False
@@ -364,18 +353,20 @@ class ElasticacheClient(Boto3Client):
                 if any("." in key for key in versions_dict):
                     raise RuntimeError(versions_dict)
             max_sub_version = max(int(key.split(".")[0]) for key in versions_dict)
-            versions_dict = {key[key.find(".")+1:]: value for key, value in versions_dict.items() if int(key.split(".")[0]) == max_sub_version}
+            versions_dict = {key[key.find(".") + 1:]: value for key, value in versions_dict.items() if
+                             int(key.split(".")[0]) == max_sub_version}
 
         return list(versions_dict.values())[0]
 
-    def get_latest_parameter_group(self, family_name):
+    def get_latest_parameter_group(self, region, family_name):
         """
         Fetch and find max.
 
         :param family_name:
         :return:
         """
-        versions_dicts = list(self.execute(self.client.describe_cache_parameter_groups, "CacheParameterGroups"))
+        versions_dicts = list(self.execute(self.get_session_client(region=region).describe_cache_parameter_groups,
+                                           "CacheParameterGroups"))
         ret = []
         for version in versions_dicts:
             if version["CacheParameterGroupFamily"] != family_name:

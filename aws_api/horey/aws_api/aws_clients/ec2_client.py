@@ -59,24 +59,22 @@ class EC2Client(Boto3Client):
         """
 
         regional_fetcher_generator = self.yield_subnets_raw
-        for obj in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                  Subnet,
-                                                  update_info=update_info,
-                                                  regions=[region] if region else None,
-                                                                    filters_req=filters_req):
-            yield obj
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                            Subnet,
+                                                            update_info=update_info,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req)
 
-    def yield_subnets_raw(self, filters_req=None, region=None):
+    def yield_subnets_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
         :return:
         """
 
-        for dict_src in self.execute(
+        yield from self.execute(
                 self.get_session_client(region=region).describe_subnets, "Subnets", filters_req=filters_req
-        ):
-            yield dict_src
+        )
 
     def get_all_subnets(self, region=None, filters_req=None, update_info=False):
         """
@@ -199,24 +197,23 @@ class EC2Client(Boto3Client):
         """
 
         regional_fetcher_generator = self.yield_network_interfaces_raw
-        for dict_src in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                  NetworkInterface,
-                                                  update_info=update_info,
-                                                  regions=[region] if region else None,
-                                                                    filters_req=filters_req):
-            yield dict_src
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                                 NetworkInterface,
+                                                                 update_info=update_info,
+                                                                 regions=[region] if region else None,
+                                                                 filters_req=filters_req)
 
-    def yield_network_interfaces_raw(self, filters_req=None, region=None):
+    def yield_network_interfaces_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
         :return:
         """
 
-        for dict_src in self.execute(
-                self.get_session_client(region=region).describe_network_interfaces, "NetworkInterfaces", filters_req=filters_req
-        ):
-            yield dict_src
+        yield from self.execute(
+                self.get_session_client(region=region).describe_network_interfaces, "NetworkInterfaces",
+                filters_req=filters_req
+        )
 
     def get_all_interfaces(self, region=None, update_info=False):
         """
@@ -235,14 +232,13 @@ class EC2Client(Boto3Client):
         """
 
         regional_fetcher_generator = self.yield_instances_raw
-        for dict_src in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                  EC2Instance,
-                                                  update_info=update_info,
-                                                  regions=[region] if region else None,
-                                                                    filters_req=filters_req):
-            yield dict_src
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                                 EC2Instance,
+                                                                 update_info=update_info,
+                                                                 regions=[region] if region else None,
+                                                                 filters_req=filters_req)
 
-    def yield_instances_raw(self, filters_req=None, region=None):
+    def yield_instances_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
@@ -252,8 +248,7 @@ class EC2Client(Boto3Client):
         for dict_reservations in self.execute(
                 self.get_session_client(region=region).describe_instances, "Reservations", filters_req=filters_req
         ):
-            for dict_src in dict_reservations["Instances"]:
-                yield dict_src
+            yield from dict_reservations["Instances"]
 
     def get_all_instances(self, region=None):
         """
@@ -283,24 +278,23 @@ class EC2Client(Boto3Client):
         """
 
         regional_fetcher_generator = self.yield_security_groups_raw
-        for dict_src in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                  EC2SecurityGroup,
-                                                  update_info=update_info,
-                                                  regions=[region] if region else None,
-                                                                    filters_req=filters_req):
-            yield dict_src
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                                 EC2SecurityGroup,
+                                                                 update_info=update_info,
+                                                                 regions=[region] if region else None,
+                                                                 filters_req=filters_req)
 
-    def yield_security_groups_raw(self, filters_req=None, region=None):
+    def yield_security_groups_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
         :return:
         """
 
-        for dict_src in self.execute(
-                self.get_session_client(region=region).describe_security_groups, "SecurityGroups", filters_req=filters_req
-        ):
-            yield dict_src
+        yield from self.execute(
+                self.get_session_client(region=region).describe_security_groups, "SecurityGroups",
+                filters_req=filters_req
+        )
 
     def get_all_security_groups(self):
         """
@@ -614,7 +608,8 @@ class EC2Client(Boto3Client):
         :param region:
         """
         for response in self.execute(
-                self.get_session_client(region=region).cancel_spot_fleet_requests, None, raw_data=True, filters_req=request
+                self.get_session_client(region=region).cancel_spot_fleet_requests, None, raw_data=True,
+                filters_req=request
         ):
             return response
 
@@ -1211,24 +1206,22 @@ class EC2Client(Boto3Client):
         """
 
         regional_fetcher_generator = self.yield_amis_raw
-        for obj in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                  AMI,
-                                                  update_info=update_info,
-                                                  regions=[region] if region else None,
-                                                                    filters_req=filters_req):
-            yield obj
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                            AMI,
+                                                            update_info=update_info,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req)
 
-    def yield_amis_raw(self, filters_req=None, region=None):
+    def yield_amis_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
         :return:
         """
 
-        for dict_src in self.execute(
+        yield from self.execute(
                 self.get_session_client(region=region).describe_images, "Images", filters_req=filters_req
-        ):
-            yield dict_src
+        )
 
     def get_all_amis(self, region=None):
         """
@@ -1427,7 +1420,8 @@ class EC2Client(Boto3Client):
         :return:
         """
 
-        region_objects = self.get_region_internet_gateways(internet_gateway.region, filters_req={"Filters": [{"Name": "tag:name", "Values": [internet_gateway.get_tagname()]}]})
+        region_objects = self.get_region_internet_gateways(internet_gateway.region, filters_req={
+            "Filters": [{"Name": "tag:name", "Values": [internet_gateway.get_tagname()]}]})
         if len(region_objects) > 1:
             raise RuntimeError(f"Was not expected to find 1 region object. Found: {len(region_objects)}")
         if not region_objects:
@@ -1486,24 +1480,22 @@ class EC2Client(Boto3Client):
         """
 
         regional_fetcher_generator = self.yield_route_tables_raw
-        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                  RouteTable,
-                                                  update_info=update_info,
-                                                  regions=[region] if region else None,
-                                                                    filters_req=filters_req):
-            yield certificate
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                                    RouteTable,
+                                                                    update_info=update_info,
+                                                                    regions=[region] if region else None,
+                                                                    filters_req=filters_req)
 
-    def yield_route_tables_raw(self, filters_req=None, region=None):
+    def yield_route_tables_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
         :return:
         """
 
-        for dict_src in self.execute(
+        yield from self.execute(
                 self.get_session_client(region=region).describe_route_tables, "RouteTables", filters_req=filters_req
-        ):
-            yield dict_src
+        )
 
     def get_all_route_tables(self, region=None):
         """
@@ -1690,7 +1682,9 @@ class EC2Client(Boto3Client):
             if force:
                 for attachment in inet_gateway.attachments:
                     logger.info(f"Detaching internet gateway: {inet_gateway.id}, {attachment['VpcId']}")
-                    for _ in self.execute(self.get_session_client(region=region).detach_internet_gateway, None, raw_data=True, filters_req={"InternetGatewayId": inet_gateway.id, "VpcId": attachment["VpcId"]}):
+                    for _ in self.execute(self.get_session_client(region=region).detach_internet_gateway, None,
+                                          raw_data=True, filters_req={"InternetGatewayId": inet_gateway.id,
+                                                                      "VpcId": attachment["VpcId"]}):
                         break
             else:
                 raise RuntimeError(f"{inet_gateway.attachments=}")
@@ -1698,7 +1692,8 @@ class EC2Client(Boto3Client):
         logger.info(f"Disposing internet gateway: {inet_gateway.id}")
         AWSAccount.set_aws_region(inet_gateway.region)
         for response in self.execute(
-                self.get_session_client(region=region).delete_internet_gateway, None, raw_data=True, filters_req={"InternetGatewayId": inet_gateway.id}
+                self.get_session_client(region=region).delete_internet_gateway, None, raw_data=True,
+                filters_req={"InternetGatewayId": inet_gateway.id}
         ):
             self.clear_cache(InternetGateway)
             return response
@@ -2154,7 +2149,8 @@ class EC2Client(Boto3Client):
         """
         logger.info(f"Creating route {request_dict}")
         for response in self.execute(
-                self.get_session_client(region=region).create_route, "Return", filters_req=request_dict, instant_raise=True,
+                self.get_session_client(region=region).create_route, "Return", filters_req=request_dict,
+                instant_raise=True,
         ):
             self.clear_cache(RouteTable)
             return response
@@ -2537,7 +2533,7 @@ class EC2Client(Boto3Client):
             modification.volume_id = current_volume.id
             self.wait_for_status(modification, self.update_modification_information, [modification.State.COMPLETED],
                                  [modification.State.OPTIMIZING, modification.State.MODIFYING],
-                                 [modification.State.FAILED], timeout=30*60)
+                                 [modification.State.FAILED], timeout=30 * 60)
 
         self.update_volume_information(desired_volume)
 
@@ -2653,7 +2649,8 @@ class EC2Client(Boto3Client):
         :return:
         """
 
-        for response in self.execute(self.get_session_client(region=region).attach_volume, None, raw_data=True, filters_req=dict_req):
+        for response in self.execute(self.get_session_client(region=region).attach_volume, None, raw_data=True,
+                                     filters_req=dict_req):
             return response
 
     def get_instance_password(self, instance, private_key_file_path):
@@ -2677,7 +2674,8 @@ class EC2Client(Boto3Client):
         cipher = PKCS1_v1_5.new(key)
 
         dict_req = {"InstanceId": instance.id}
-        for response in self.execute(self.get_session_client(region=instance.region).get_password_data, "PasswordData", filters_req=dict_req):
+        for response in self.execute(self.get_session_client(region=instance.region).get_password_data, "PasswordData",
+                                     filters_req=dict_req):
             return cipher.decrypt(base64.b64decode(response), None).decode('utf8')
 
     def get_region_instance_types(self, region):
@@ -2698,24 +2696,22 @@ class EC2Client(Boto3Client):
         """
 
         regional_fetcher_generator = self.yield_instance_types_raw
-        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                  EC2InstanceType,
-                                                  update_info=update_info,
-                                                  regions=[region] if region else None,
-                                                                    filters_req=filters_req):
-            yield certificate
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                                    EC2InstanceType,
+                                                                    update_info=update_info,
+                                                                    regions=[region] if region else None,
+                                                                    filters_req=filters_req)
 
-    def yield_instance_types_raw(self, filters_req=None, region=None):
+    def yield_instance_types_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
         :return:
         """
 
-        for dict_src in self.execute(
+        yield from self.execute(
                 self.get_session_client(region=region).describe_instance_types, "InstanceTypes", filters_req=filters_req
-        ):
-            yield dict_src
+        )
 
     def yield_volumes(self, region=None, update_info=False, filters_req=None):
         """
@@ -2725,24 +2721,22 @@ class EC2Client(Boto3Client):
         """
 
         regional_fetcher_generator = self.yield_volumes_raw
-        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                  EC2Volume,
-                                                  update_info=update_info,
-                                                  regions=[region] if region else None,
-                                                                    filters_req=filters_req):
-            yield certificate
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                                    EC2Volume,
+                                                                    update_info=update_info,
+                                                                    regions=[region] if region else None,
+                                                                    filters_req=filters_req)
 
-    def yield_volumes_raw(self, filters_req=None, region=None):
+    def yield_volumes_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
         :return:
         """
 
-        for dict_src in self.execute(
+        yield from self.execute(
                 self.get_session_client(region=region).describe_volumes, "Volumes", filters_req=filters_req
-        ):
-            yield dict_src
+        )
 
     def get_all_volumes(self, region=None, update_info=False, filters_req=None):
         """
@@ -2766,7 +2760,8 @@ class EC2Client(Boto3Client):
         final_result = []
 
         for dict_src in self.execute(
-                self.get_session_client(region=region).describe_volumes_modifications, "VolumesModifications", filters_req=filters_req
+                self.get_session_client(region=region).describe_volumes_modifications, "VolumesModifications",
+                filters_req=filters_req
         ):
             final_result.append(EC2VolumeModification(dict_src))
 
@@ -2781,7 +2776,8 @@ class EC2Client(Boto3Client):
 
         logger.info(f"Modifying instance: {request}")
         for response in self.execute(
-                self.get_session_client(region=region).modify_instance_attribute, None, raw_data=True, filters_req=request
+                self.get_session_client(region=region).modify_instance_attribute, None, raw_data=True,
+                filters_req=request
         ):
             self.clear_cache(EC2Instance)
             return response
@@ -2834,9 +2830,9 @@ class EC2Client(Boto3Client):
 
         regional_fetcher_generator = self.yield_regions_raw
         for obj in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                  Region,
-                                                  update_info=update_info,
-                                                  filters_req=filters_req,
+                                                            Region,
+                                                            update_info=update_info,
+                                                            filters_req=filters_req,
                                                             global_service=True):
             try:
                 delattr(obj, "region")
@@ -2844,14 +2840,13 @@ class EC2Client(Boto3Client):
                 pass
             yield obj
 
-    def yield_regions_raw(self, filters_req=None, region=None):
+    def yield_regions_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
         :return:
         """
 
-        for dict_src in self.execute(
+        yield from self.execute(
                 self.get_session_client(region=region).describe_regions, "Regions", filters_req=filters_req
-        ):
-            yield dict_src
+        )

@@ -1,8 +1,8 @@
+# pylint: skip-file
 import sys
 import pdb
 import argparse
 import json
-
 
 import ignore_me
 from kms_client import KMSClient

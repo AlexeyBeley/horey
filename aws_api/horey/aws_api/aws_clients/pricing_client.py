@@ -24,26 +24,25 @@ class PricingClient(Boto3Client):
         client_name = "pricing"
         super().__init__(client_name)
 
-    def get_services(self):
+    def get_services(self, region):
         """
         Get the full list
 
         :return:
         """
-        return list(self.yield_all_services())
+        return list(self.yield_all_services(region))
 
-    def yield_all_services(self):
+    def yield_all_services(self, region):
         """
         Yield over the services
 
         :return:
         """
 
-        for response in self.execute(
-            self.client.describe_services,
-            "Services",
-        ):
-            yield response
+        yield from self.execute(
+                self.get_session_client(region=region).describe_services,
+                "Services",
+        )
 
     def yield_price_lists(self, region=None, update_info=False, filters_req=None):
         """
@@ -62,14 +61,14 @@ class PricingClient(Boto3Client):
             return filters["ServiceCode"]
 
         regional_fetcher_generator = self.yield_price_lists_raw
-        for obj in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                  PriceList,
-                                                  update_info=update_info,
-                                                  regions=[region] if region else None,
-                                                  filters_req=filters_req, cache_filter_callback=cache_filter_callback):
-            yield obj
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                            PriceList,
+                                                            update_info=update_info,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req,
+                                                            cache_filter_callback=cache_filter_callback)
 
-    def yield_price_lists_raw(self, filters_req=None):
+    def yield_price_lists_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
@@ -77,12 +76,12 @@ class PricingClient(Boto3Client):
         """
         AWSAccount.set_aws_region("us-east-1")
         for response in self.execute(
-                self.client.list_price_lists,
+                self.get_session_client(region=region).list_price_lists,
                 "PriceLists",
                 filters_req=filters_req
         ):
             for response_file_url in self.execute(
-                    self.client.get_price_list_file_url,
+                    self.get_session_client(region=region).get_price_list_file_url,
                     "Url",
                     filters_req={"PriceListArn": response["PriceListArn"],
                                  "FileFormat": "json",
@@ -90,6 +89,6 @@ class PricingClient(Boto3Client):
             ):
                 headers = {"Content-Type": "application/json"}
                 logger.info(f"Fetching the price list from url: {response_file_url}")
-                response = requests.get(response_file_url, headers=headers, timeout=5*60)
+                response = requests.get(response_file_url, headers=headers, timeout=5 * 60)
                 price_list = response.json()
                 yield price_list

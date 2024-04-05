@@ -54,9 +54,9 @@ class GlueClient(Boto3Client):
         AWSAccount.set_aws_region(region)
         for database in self.get_region_databases(region):
             for dict_src in self.execute(
-                self.client.get_tables,
-                "TableList",
-                filters_req={"DatabaseName": database.name},
+                    self.get_session_client(region=region).get_tables,
+                    "TableList",
+                    filters_req={"DatabaseName": database.name},
             ):
                 obj = GlueTable(dict_src)
                 final_result.append(obj)
@@ -77,11 +77,11 @@ class GlueClient(Boto3Client):
 
         AWSAccount.set_aws_region(table.region)
         for dict_src in self.execute(
-            self.client.get_table,
-            "Table",
-            filters_req={"DatabaseName": table.database_name, "Name": table.name},
-            exception_ignore_callback=lambda x: f"Table {table.name} not found"
-            in repr(x),
+                self.get_session_client(region=table.region).get_table,
+                "Table",
+                filters_req={"DatabaseName": table.database_name, "Name": table.name},
+                exception_ignore_callback=lambda x: f"Table {table.name} not found"
+                                                    in repr(x),
         ):
             table.update_from_raw_response(dict_src)
             table.account_id = self.account_id
@@ -102,11 +102,11 @@ class GlueClient(Boto3Client):
             return
 
         AWSAccount.set_aws_region(table.region)
-        self.provision_table_raw(table.generate_create_request())
+        self.provision_table_raw(table.region, table.generate_create_request())
 
         self.update_table_information(table)
 
-    def provision_table_raw(self, request_dict):
+    def provision_table_raw(self, region, request_dict):
         """
         Standard.
 
@@ -116,7 +116,7 @@ class GlueClient(Boto3Client):
 
         logger.info(f"Creating table: {request_dict}")
         for response in self.execute(
-            self.client.create_table, None, raw_data=True, filters_req=request_dict
+                self.get_session_client(region=region).create_table, None, raw_data=True, filters_req=request_dict
         ):
             return response
 
@@ -153,7 +153,7 @@ class GlueClient(Boto3Client):
 
         final_result = []
         AWSAccount.set_aws_region(region)
-        for dict_src in self.execute(self.client.get_databases, "DatabaseList"):
+        for dict_src in self.execute(self.get_session_client(region=region).get_databases, "DatabaseList"):
             obj = GlueDatabase(dict_src)
             obj.region = region
             final_result.append(obj)
@@ -174,11 +174,11 @@ class GlueClient(Boto3Client):
 
         AWSAccount.set_aws_region(database.region)
         for dict_src in self.execute(
-            self.client.get_database,
-            "Database",
-            filters_req={"Name": database.name},
-            exception_ignore_callback=lambda x: f"Database {database.name} not found"
-            in repr(x),
+                self.get_session_client(region=database.region).get_database,
+                "Database",
+                filters_req={"Name": database.name},
+                exception_ignore_callback=lambda x: f"Database {database.name} not found"
+                                                    in repr(x),
         ):
             database.update_from_raw_response(dict_src)
             database.account_id = self.account_id
@@ -199,12 +199,12 @@ class GlueClient(Boto3Client):
             return
 
         AWSAccount.set_aws_region(database.region)
-        self.provision_database_raw(database.generate_create_request())
+        self.provision_database_raw(database.region, database.generate_create_request())
         database.account_id = self.account_id
         self.tag_resource(database)
         self.update_database_information(database)
 
-    def provision_database_raw(self, request_dict):
+    def provision_database_raw(self, region, request_dict):
         """
         Standard.
 
@@ -214,7 +214,7 @@ class GlueClient(Boto3Client):
 
         logger.info(f"Creating database: {request_dict}")
         for response in self.execute(
-            self.client.create_database, None, raw_data=True, filters_req=request_dict
+                self.get_session_client(region=region).create_database, None, raw_data=True, filters_req=request_dict
         ):
             return response
 

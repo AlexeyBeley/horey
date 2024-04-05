@@ -53,11 +53,10 @@ class AutoScalingClient(Boto3Client):
         filters_req = {}
         if names is not None:
             filters_req["AutoScalingGroupNames"] = names
-        AWSAccount.set_aws_region(region)
         for dict_src in self.execute(
-            self.client.describe_auto_scaling_groups,
-            "AutoScalingGroups",
-            filters_req=filters_req,
+                self.get_session_client(region=region).describe_auto_scaling_groups,
+                "AutoScalingGroups",
+                filters_req=filters_req,
         ):
             obj = AutoScalingGroup(dict_src)
             final_result.append(obj)
@@ -84,8 +83,8 @@ class AutoScalingClient(Boto3Client):
 
         retry_counter = 0
         while (
-            len(region_objects) > 0
-            and region_objects[0].get_status() == autoscaling_group.Status.DELETING
+                len(region_objects) > 0
+                and region_objects[0].get_status() == autoscaling_group.Status.DELETING
         ):
             retry_counter += 1
             if retry_counter > retries_count:
@@ -110,7 +109,7 @@ class AutoScalingClient(Boto3Client):
                 autoscaling_group
             )
             if update_request is not None:
-                self.update_auto_scaling_group_raw(update_request)
+                self.update_auto_scaling_group_raw(autoscaling_group.region, update_request)
                 for _ in range(retries_count):
                     region_objects = self.get_region_auto_scaling_groups(
                         autoscaling_group.region, names=[autoscaling_group.name]
@@ -129,17 +128,17 @@ class AutoScalingClient(Boto3Client):
                     )
 
             if autoscaling_group.desired_capacity != region_objects[0].desired_capacity:
-                self.set_desired_capacity_raw(
-                    autoscaling_group.generate_desired_capacity_request()
-                )
+                self.set_desired_capacity_raw(autoscaling_group.region,
+                                              autoscaling_group.generate_desired_capacity_request()
+                                              )
 
                 for _ in range(retries_count):
                     region_objects = self.get_region_auto_scaling_groups(
                         autoscaling_group.region, names=[autoscaling_group.name]
                     )
                     if (
-                        len(region_objects[0].instances)
-                        == autoscaling_group.desired_capacity
+                            len(region_objects[0].instances)
+                            == autoscaling_group.desired_capacity
                     ):
                         break
                     logger.info(
@@ -157,10 +156,9 @@ class AutoScalingClient(Boto3Client):
             return
 
         # creation
-        AWSAccount.set_aws_region(autoscaling_group.region)
-        self.provision_auto_scaling_group_raw(
-            autoscaling_group.generate_create_request()
-        )
+        self.provision_auto_scaling_group_raw(autoscaling_group.region,
+                                              autoscaling_group.generate_create_request()
+                                              )
 
         # update arn
         region_objects = self.get_region_auto_scaling_groups(
@@ -186,7 +184,7 @@ class AutoScalingClient(Boto3Client):
 
         autoscaling_group.update_from_raw_response(region_objects[0].dict_src)
 
-    def set_desired_capacity_raw(self, request_dict):
+    def set_desired_capacity_raw(self, region, request_dict):
         """
         Standard.
 
@@ -196,14 +194,14 @@ class AutoScalingClient(Boto3Client):
 
         logger.info(f"Modifying Scaling Group: {request_dict}")
         for response in self.execute(
-            self.client.set_desired_capacity,
-            None,
-            raw_data=True,
-            filters_req=request_dict,
+                self.get_session_client(region=region).set_desired_capacity,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
         ):
             return response
 
-    def update_auto_scaling_group_raw(self, request_dict):
+    def update_auto_scaling_group_raw(self, region, request_dict):
         """
         Standard.
 
@@ -213,14 +211,14 @@ class AutoScalingClient(Boto3Client):
 
         logger.info(f"Modifying Auto Scaling Group: {request_dict}")
         for response in self.execute(
-            self.client.update_auto_scaling_group,
-            None,
-            raw_data=True,
-            filters_req=request_dict,
+                self.get_session_client(region=region).update_auto_scaling_group,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
         ):
             return response
 
-    def provision_auto_scaling_group_raw(self, request_dict):
+    def provision_auto_scaling_group_raw(self, region, request_dict):
         """
         Standard.
 
@@ -230,10 +228,10 @@ class AutoScalingClient(Boto3Client):
 
         logger.info(f"Creating Auto Scaling Group: {request_dict}")
         for response in self.execute(
-            self.client.create_auto_scaling_group,
-            "ResponseMetadata",
-            raw_data=True,
-            filters_req=request_dict,
+                self.get_session_client(region=region).create_auto_scaling_group,
+                "ResponseMetadata",
+                raw_data=True,
+                filters_req=request_dict,
         ):
             return response
 
@@ -245,12 +243,11 @@ class AutoScalingClient(Boto3Client):
         :return:
         """
 
-        AWSAccount.set_aws_region(autoscaling_group.region)
-        self.dispose_auto_scaling_group_raw(
-            autoscaling_group.generate_dispose_request()
-        )
+        self.dispose_auto_scaling_group_raw(autoscaling_group.region,
+                                            autoscaling_group.generate_dispose_request()
+                                            )
 
-    def dispose_auto_scaling_group_raw(self, request_dict):
+    def dispose_auto_scaling_group_raw(self, region, request_dict):
         """
         Standard.
 
@@ -260,10 +257,10 @@ class AutoScalingClient(Boto3Client):
 
         logger.info(f"Disposing Auto Scaling Group: {request_dict}")
         for response in self.execute(
-            self.client.delete_auto_scaling_group,
-            None,
-            raw_data=True,
-            filters_req=request_dict,
+                self.get_session_client(region=region).delete_auto_scaling_group,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
         ):
             return response
 
@@ -292,9 +289,8 @@ class AutoScalingClient(Boto3Client):
         """
 
         final_result = []
-        AWSAccount.set_aws_region(region)
         for dict_src in self.execute(
-            self.client.describe_policies, "ScalingPolicies", filters_req=custom_filter
+                self.get_session_client(region=region).describe_policies, "ScalingPolicies", filters_req=custom_filter
         ):
             obj = AutoScalingPolicy(dict_src)
             final_result.append(obj)
@@ -309,13 +305,12 @@ class AutoScalingClient(Boto3Client):
         :return:
         """
 
-        AWSAccount.set_aws_region(autoscaling_policy.region)
-        response = self.provision_policy_raw(
-            autoscaling_policy.generate_create_request()
-        )
+        response = self.provision_policy_raw(autoscaling_policy.region,
+                                             autoscaling_policy.generate_create_request()
+                                             )
         autoscaling_policy.update_from_raw_response(response)
 
-    def provision_policy_raw(self, request_dict):
+    def provision_policy_raw(self, region, request_dict):
         """
         Standard.
 
@@ -325,10 +320,10 @@ class AutoScalingClient(Boto3Client):
 
         logger.info(f"Creating Auto Scaling Policy: {request_dict}")
         for response in self.execute(
-            self.client.put_scaling_policy,
-            None,
-            raw_data=True,
-            filters_req=request_dict,
+                self.get_session_client(region=region).put_scaling_policy,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
         ):
             del response["ResponseMetadata"]
             return response
@@ -344,10 +339,9 @@ class AutoScalingClient(Boto3Client):
         if policy.auto_scaling_group_name:
             filters_req["AutoScalingGroupName"] = policy.auto_scaling_group_name
 
-        AWSAccount.set_aws_region(policy.region)
         try:
             dict_src = self.execute_with_single_reply(
-                self.client.describe_policies,
+                self.get_session_client(region=policy.region).describe_policies,
                 "ScalingPolicies",
                 filters_req=filters_req
             )
@@ -365,10 +359,10 @@ class AutoScalingClient(Boto3Client):
         """
         filter_request = {"ActivityIds": [activity.id]}
 
-        ret= list(response for response in self.execute(
-                self.client.describe_scaling_activities,
-                "Activities",
-                filters_req=filter_request))
+        ret = list(response for response in self.execute(
+            self.get_session_client(region=activity.region).describe_scaling_activities,
+            "Activities",
+            filters_req=filter_request))
 
         if len(ret) != 1:
             raise RuntimeError(f"Found {len(ret)=} != 1 items with params: {filter_request=}")
@@ -385,24 +379,23 @@ class AutoScalingClient(Boto3Client):
         :return:
         """
 
-        AWSAccount.set_aws_region(auto_scaling_group.region)
         request_dict = {"InstanceIds": instance_ids,
                         "AutoScalingGroupName": auto_scaling_group.name,
                         "ShouldDecrementDesiredCapacity": decrement}
 
-        ret = self.detach_instances_raw(request_dict)
+        ret = self.detach_instances_raw(auto_scaling_group.region, request_dict)
 
         activity = AutoScalingActivity(ret)
         self.wait_for_status(activity,
-        self.update_activity_information,
-        [AutoScalingActivity.Status.SUCCESSFUL],
-        [AutoScalingActivity.Status.IN_PROGRESS],
-        [AutoScalingActivity.Status.FAILED],
-        )
+                             self.update_activity_information,
+                             [AutoScalingActivity.Status.SUCCESSFUL],
+                             [AutoScalingActivity.Status.IN_PROGRESS],
+                             [AutoScalingActivity.Status.FAILED],
+                             )
 
         auto_scaling_group.desired_capacity -= len(instance_ids)
 
-    def detach_instances_raw(self, request_dict):
+    def detach_instances_raw(self, region, request_dict):
         """
         Standard.
 
@@ -412,13 +405,13 @@ class AutoScalingClient(Boto3Client):
 
         logger.info(f"Detaching instances from Auto Scaling group: {request_dict}")
         for response in self.execute(
-            self.client.detach_instances,
-            "Activities",
-            filters_req=request_dict,
+                self.get_session_client(region=region).detach_instances,
+                "Activities",
+                filters_req=request_dict,
         ):
             return response
 
-    def update_auto_scaling_group_information(self, auto_scaling_group:AutoScalingGroup):
+    def update_auto_scaling_group_information(self, auto_scaling_group: AutoScalingGroup):
         """
         Standard.
 
@@ -428,11 +421,10 @@ class AutoScalingClient(Boto3Client):
 
         if auto_scaling_group.name is None:
             auto_scaling_group.name = auto_scaling_group.arn.split("/")[-1]
-        filters_req = {"AutoScalingGroupNames" : [auto_scaling_group.name]}
-        AWSAccount.set_aws_region(auto_scaling_group.region)
+        filters_req = {"AutoScalingGroupNames": [auto_scaling_group.name]}
 
         ret = list(self.execute(
-            self.client.describe_auto_scaling_groups,
+            self.get_session_client(region=auto_scaling_group.region).describe_auto_scaling_groups,
             "AutoScalingGroups",
             filters_req=filters_req,
         ))

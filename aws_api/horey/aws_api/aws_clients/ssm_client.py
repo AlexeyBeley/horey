@@ -3,7 +3,6 @@ AWS lambda client to handle lambda service API requests.
 """
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 
-from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.aws_services_entities.ssm_parameter import SSMParameter
 
 from horey.h_logger import get_logger
@@ -29,12 +28,11 @@ class SSMClient(Boto3Client):
         :return:
         """
 
-        AWSAccount.set_aws_region(region)
         filters_req = {"Name": name}
 
         raw_data = list(
             self.execute(
-                self.client.get_parameter, "Parameter", filters_req=filters_req
+                self.get_session_client(region=region).get_parameter, "Parameter", filters_req=filters_req
             )
         )
         if len(raw_data) != 1:

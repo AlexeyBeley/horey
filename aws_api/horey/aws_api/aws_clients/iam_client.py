@@ -37,13 +37,12 @@ class IamClient(Boto3Client):
         """
 
         regional_fetcher_generator = self.yield_users_raw
-        for obj in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                  IamUser,
-                                                  update_info=update_info,
-                                                  full_information_callback=self.update_user_information if full_information else None,
-                                                  global_service = True,
-                                                  filters_req=filters_req):
-            yield obj
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                            IamUser,
+                                                            update_info=update_info,
+                                                            full_information_callback=self.update_user_information if full_information else None,
+                                                            global_service=True,
+                                                            filters_req=filters_req)
 
     def yield_users_raw(self, filters_req=None):
         """
@@ -52,10 +51,9 @@ class IamClient(Boto3Client):
         :return:
         """
 
-        for dict_src in self.execute(
-                self.client.list_users, "Users", filters_req=filters_req
-        ):
-            yield dict_src
+        yield from self.execute(
+                self.get_session_client().list_users, "Users", filters_req=filters_req
+        )
 
     def get_all_users(self, full_information=True):
         """
@@ -77,7 +75,7 @@ class IamClient(Boto3Client):
 
         final_result = []
 
-        for response in self.execute(self.client.list_users, "Users"):
+        for response in self.execute(self.get_session_client().list_users, "Users"):
             user = IamUser(response)
             final_result.append(user)
             if full_information:
@@ -95,10 +93,10 @@ class IamClient(Boto3Client):
         """
 
         for response in self.execute(
-                self.client.get_user,
+                self.get_session_client().get_user,
                 "User",
                 filters_req={"UserName": user.name}, exception_ignore_callback=lambda x: "NoSuchEntity" in repr(x)
-            ):
+        ):
             user.update_from_raw_response(response)
             break
         else:
@@ -107,7 +105,7 @@ class IamClient(Boto3Client):
         if full_information:
             policies = list(
                 self.execute(
-                    self.client.list_user_policies,
+                    self.get_session_client().list_user_policies,
                     "PolicyNames",
                     filters_req={"UserName": user.name},
                 )
@@ -116,7 +114,7 @@ class IamClient(Boto3Client):
             user.policies = [
                 list(
                     self.execute(
-                        self.client.get_user_policy,
+                        self.get_session_client().get_user_policy,
                         "PolicyDocument",
                         filters_req={
                             "UserName": user.name,
@@ -129,7 +127,7 @@ class IamClient(Boto3Client):
 
             user.attached_policies = list(
                 self.execute(
-                    self.client.list_attached_user_policies,
+                    self.get_session_client().list_attached_user_policies,
                     "AttachedPolicies",
                     filters_req={"UserName": user.name},
                 )
@@ -137,7 +135,7 @@ class IamClient(Boto3Client):
 
             user.groups = list(
                 self.execute(
-                    self.client.list_groups_for_user,
+                    self.get_session_client().list_groups_for_user,
                     "Groups",
                     filters_req={"UserName": user.name},
                 )
@@ -154,7 +152,7 @@ class IamClient(Boto3Client):
 
         ret = []
         for update_info in self.execute(
-            self.client.get_account_authorization_details, None, raw_data=True
+                self.get_session_client().get_account_authorization_details, None, raw_data=True
         ):
             ret.append(update_info)
         return ret
@@ -171,9 +169,9 @@ class IamClient(Boto3Client):
 
         for user in users:
             for result in self.execute(
-                self.client.list_access_keys,
-                "AccessKeyMetadata",
-                filters_req={"UserName": user.name},
+                    self.get_session_client().list_access_keys,
+                    "AccessKeyMetadata",
+                    filters_req={"UserName": user.name},
             ):
                 final_result.append(IamAccessKey(result))
 
@@ -188,13 +186,12 @@ class IamClient(Boto3Client):
         """
 
         regional_fetcher_generator = self.yield_roles_raw
-        for obj in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                  IamRole,
-                                                  update_info=update_info,
-                                                  full_information_callback=self.get_role_full_information if full_information else None,
-                                                  global_service = True,
-                                                  filters_req=filters_req):
-            yield obj
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                            IamRole,
+                                                            update_info=update_info,
+                                                            full_information_callback=self.get_role_full_information if full_information else None,
+                                                            global_service=True,
+                                                            filters_req=filters_req)
 
     def yield_roles_raw(self, filters_req=None):
         """
@@ -203,10 +200,9 @@ class IamClient(Boto3Client):
         :return:
         """
 
-        for dict_src in self.execute(
-                self.client.list_roles, "Roles", filters_req=filters_req
-        ):
-            yield dict_src
+        yield from self.execute(
+                self.get_session_client().list_roles, "Roles", filters_req=filters_req
+        )
 
     def get_all_roles(self, full_information=True):
         """
@@ -227,13 +223,12 @@ class IamClient(Boto3Client):
         """
 
         regional_fetcher_generator = self.yield_groups_raw
-        for obj in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                  IamGroup,
-                                                  update_info=update_info,
-                                                  full_information_callback=self.update_group_full_information if full_information else None,
-                                                  global_service = True,
-                                                  filters_req=filters_req):
-            yield obj
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                            IamGroup,
+                                                            update_info=update_info,
+                                                            full_information_callback=self.update_group_full_information if full_information else None,
+                                                            global_service=True,
+                                                            filters_req=filters_req)
 
     def yield_groups_raw(self, filters_req=None):
         """
@@ -242,10 +237,9 @@ class IamClient(Boto3Client):
         :return:
         """
 
-        for dict_src in self.execute(
-                self.client.list_groups, "Groups", filters_req=filters_req
-        ):
-            yield dict_src
+        yield from self.execute(
+                self.get_session_client().list_groups, "Groups", filters_req=filters_req
+        )
 
     def get_all_groups(self, full_information=True):
         """
@@ -268,7 +262,7 @@ class IamClient(Boto3Client):
 
         policy_names = list(
             self.execute(
-                self.client.list_group_policies,
+                self.get_session_client().list_group_policies,
                 "PolicyNames",
                 filters_req={"GroupName": group.name},
             )
@@ -276,17 +270,17 @@ class IamClient(Boto3Client):
         group.policies = []
         for policy_name in policy_names:
             for response in self.execute(
-                self.client.get_group_policy,
-                None,
-                raw_data=True,
-                filters_req={"GroupName": group.name, "PolicyName": policy_name},
+                    self.get_session_client().get_group_policy,
+                    None,
+                    raw_data=True,
+                    filters_req={"GroupName": group.name, "PolicyName": policy_name},
             ):
                 del response["ResponseMetadata"]
                 group.policies.append(response)
 
         group.attached_policies = list(
             self.execute(
-                self.client.list_attached_group_policies,
+                self.get_session_client().list_attached_group_policies,
                 "AttachedPolicies",
                 filters_req={"GroupName": group.name},
             )
@@ -301,8 +295,8 @@ class IamClient(Boto3Client):
 
         final_result = []
         for result in self.execute(
-            self.client.list_instance_profiles,
-            "InstanceProfiles"
+                self.get_session_client().list_instance_profiles,
+                "InstanceProfiles"
         ):
             instance_profile = IamInstanceProfile(result)
             final_result.append(instance_profile)
@@ -332,7 +326,7 @@ class IamClient(Boto3Client):
         """
 
         for response in self.execute(
-            self.client.get_role, "Role", filters_req={"RoleName": iam_role.name},
+                self.get_session_client().get_role, "Role", filters_req={"RoleName": iam_role.name},
                 exception_ignore_callback=lambda x: "NoSuchEntityException" in repr(x)
         ):
             iam_role.update_from_raw_response(response)
@@ -351,7 +345,7 @@ class IamClient(Boto3Client):
         """
 
         iam_role.managed_policies_arns = [dict_src["PolicyArn"] for dict_src in self.execute(
-            self.client.list_attached_role_policies,
+            self.get_session_client().list_attached_role_policies,
             "AttachedPolicies",
             filters_req={"RoleName": iam_role.name},
         )]
@@ -366,14 +360,14 @@ class IamClient(Boto3Client):
 
         policies = []
         for policy_name in self.execute(
-            self.client.list_role_policies,
-            "PolicyNames",
-            filters_req={"RoleName": iam_role.name, "MaxItems": 1000},
+                self.get_session_client().list_role_policies,
+                "PolicyNames",
+                filters_req={"RoleName": iam_role.name, "MaxItems": 1000},
         ):
             for document in self.execute(
-                self.client.get_role_policy,
-                "PolicyDocument",
-                filters_req={"RoleName": iam_role.name, "PolicyName": policy_name},
+                    self.get_session_client().get_role_policy,
+                    "PolicyDocument",
+                    filters_req={"RoleName": iam_role.name, "PolicyName": policy_name},
             ):
                 policy_dict = {"PolicyName": policy_name,
                                "Document": document
@@ -392,13 +386,12 @@ class IamClient(Boto3Client):
         """
 
         regional_fetcher_generator = self.yield_policies_raw
-        for obj in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                  IamPolicy,
-                                                  update_info=update_info,
-                                                  full_information_callback=self.update_policy_default_statement if full_information else None,
-                                                  global_service = True,
-                                                  filters_req=filters_req):
-            yield obj
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                            IamPolicy,
+                                                            update_info=update_info,
+                                                            full_information_callback=self.update_policy_default_statement if full_information else None,
+                                                            global_service=True,
+                                                            filters_req=filters_req)
 
     def yield_policies_raw(self, filters_req=None):
         """
@@ -407,10 +400,9 @@ class IamClient(Boto3Client):
         :return:
         """
 
-        for dict_src in self.execute(
-                self.client.list_policies, "Policies", filters_req=filters_req
-        ):
-            yield dict_src
+        yield from self.execute(
+                self.get_session_client().list_policies, "Policies", filters_req=filters_req
+        )
 
     def get_all_policies(self, full_information=True, filters_req=None):
         """
@@ -432,12 +424,12 @@ class IamClient(Boto3Client):
         """
 
         for response in self.execute(
-            self.client.get_policy_version,
-            "PolicyVersion",
-            filters_req={
-                "PolicyArn": policy.arn,
-                "VersionId": policy.default_version_id,
-            },
+                self.get_session_client().get_policy_version,
+                "PolicyVersion",
+                filters_req={
+                    "PolicyArn": policy.arn,
+                    "VersionId": policy.default_version_id,
+                },
         ):
             policy.update_from_raw_response(response)
 
@@ -450,13 +442,12 @@ class IamClient(Boto3Client):
         """
 
         policy.versions = list(self.execute(
-            self.client.list_policy_versions,
+            self.get_session_client().list_policy_versions,
             "Versions",
             filters_req={
                 "PolicyArn": policy.arn
             },
         ))
-
 
     def attach_role_policy_raw(self, request_dict):
         """
@@ -468,10 +459,10 @@ class IamClient(Boto3Client):
 
         logger.info(f"Attaching policy to role: {request_dict}")
         for response in self.execute(
-            self.client.attach_role_policy,
-            None,
-            filters_req=request_dict,
-            raw_data=True,
+                self.get_session_client().attach_role_policy,
+                None,
+                filters_req=request_dict,
+                raw_data=True,
         ):
             self.clear_cache(IamRole)
             return response
@@ -486,10 +477,10 @@ class IamClient(Boto3Client):
 
         logger.info(f"Detaching policy from role: {request_dict}")
         for response in self.execute(
-            self.client.detach_role_policy,
-            None,
-            filters_req=request_dict,
-            raw_data=True,
+                self.get_session_client().detach_role_policy,
+                None,
+                filters_req=request_dict,
+                raw_data=True,
         ):
             self.clear_cache(IamRole)
             return response
@@ -510,7 +501,6 @@ class IamClient(Boto3Client):
 
         return self.put_role_policy_raw(request_dict=request_dict)
 
-
     def put_role_policy_raw(self, request_dict):
         """
         Attach an inline policy to role.
@@ -522,7 +512,7 @@ class IamClient(Boto3Client):
         logger.info(f"Putting inline role policy: {request_dict}")
 
         for response in self.execute(
-            self.client.put_role_policy, "ResponseMetadata", filters_req=request_dict
+                self.get_session_client().put_role_policy, "ResponseMetadata", filters_req=request_dict
         ):
             self.clear_cache(IamRole)
             return response
@@ -538,11 +528,10 @@ class IamClient(Boto3Client):
         logger.info(f"Deleting inline role policy: {request_dict}")
 
         for response in self.execute(
-                self.client.delete_role_policy, "ResponseMetadata", filters_req=request_dict
+                self.get_session_client().delete_role_policy, "ResponseMetadata", filters_req=request_dict
         ):
             self.clear_cache(IamRole)
             return response
-
 
     def provision_role(self, iam_role: IamRole):
         """
@@ -567,7 +556,7 @@ class IamClient(Boto3Client):
         for detach_request in detach_requests:
             self.detach_role_policy_raw(detach_request)
 
-        put_requests, delete_requests =  region_role.generate_inline_policies_requests(iam_role)
+        put_requests, delete_requests = region_role.generate_inline_policies_requests(iam_role)
         for put_request in put_requests:
             self.put_role_policy_raw(put_request)
 
@@ -598,7 +587,7 @@ class IamClient(Boto3Client):
         logger.warning(f"Deleting iam role: {role.name}")
 
         for response in self.execute(
-            self.client.delete_role, None, filters_req={"RoleName": role.name}, raw_data=True,
+                self.get_session_client().delete_role, None, filters_req={"RoleName": role.name}, raw_data=True,
                 exception_ignore_callback=lambda x: "NoSuchEntity" in repr(x)
         ):
             self.clear_cache(IamRole)
@@ -617,7 +606,7 @@ class IamClient(Boto3Client):
             logger.warning(f"Detaching policy from role: {request}")
 
             for response in self.execute(
-                    self.client.detach_role_policy, None, raw_data=True, filters_req=request
+                    self.get_session_client().detach_role_policy, None, raw_data=True, filters_req=request
             ):
                 return response
             self.clear_cache(IamRole)
@@ -633,13 +622,13 @@ class IamClient(Boto3Client):
         logger.warning(f"Creating iam role: {request_dict}")
 
         for response in self.execute(
-            self.client.create_role, "Role", filters_req=request_dict
+                self.get_session_client().create_role, "Role", filters_req=request_dict
         ):
             self.clear_cache(IamRole)
             return response
 
     def update_instance_profile_information(
-        self, iam_instance_profile: IamInstanceProfile
+            self, iam_instance_profile: IamInstanceProfile
     ):
         """
         Fetch and update instance profile info.
@@ -649,10 +638,10 @@ class IamClient(Boto3Client):
         """
 
         for response in self.execute(
-            self.client.get_instance_profile,
-            "InstanceProfile",
-            filters_req={"InstanceProfileName": iam_instance_profile.name},
-            exception_ignore_callback=lambda x: "NoSuchEntity" in repr(x),
+                self.get_session_client().get_instance_profile,
+                "InstanceProfile",
+                filters_req={"InstanceProfileName": iam_instance_profile.name},
+                exception_ignore_callback=lambda x: "NoSuchEntity" in repr(x),
         ):
             iam_instance_profile.update_from_raw_response(response)
             return True
@@ -686,10 +675,10 @@ class IamClient(Boto3Client):
         logger.info(f"Updating role assume policy {request}")
 
         for response in self.execute(
-            self.client.update_assume_role_policy,
-            None,
-            raw_data=True,
-            filters_req=request,
+                self.get_session_client().update_assume_role_policy,
+                None,
+                raw_data=True,
+                filters_req=request,
         ):
             return response
 
@@ -703,10 +692,10 @@ class IamClient(Boto3Client):
 
         logger.info(f"add_role_to_instance_profile: {request}")
         for response in self.execute(
-            self.client.add_role_to_instance_profile,
-            None,
-            raw_data=True,
-            filters_req=request,
+                self.get_session_client().add_role_to_instance_profile,
+                None,
+                raw_data=True,
+                filters_req=request,
         ):
             return response
 
@@ -721,9 +710,9 @@ class IamClient(Boto3Client):
         logger.warning(f"create_instance_profile: {request_dict}")
 
         for response in self.execute(
-            self.client.create_instance_profile,
-            "InstanceProfile",
-            filters_req=request_dict,
+                self.get_session_client().create_instance_profile,
+                "InstanceProfile",
+                filters_req=request_dict,
         ):
             return response
 
@@ -739,10 +728,10 @@ class IamClient(Boto3Client):
         request_dict = {"PolicyArn": policy.arn}
         try:
             for response in self.execute(
-                self.client.get_policy,
-                "Policy",
-                filters_req=request_dict,
-                instant_raise=True
+                    self.get_session_client().get_policy,
+                    "Policy",
+                    filters_req=request_dict,
+                    instant_raise=True
             ):
 
                 policy.update_from_raw_response(response)
@@ -771,7 +760,8 @@ class IamClient(Boto3Client):
             for existing_policy in self.yield_policies(full_information=False):
                 if existing_policy.name == policy_desired.name:
                     if existing_policy.path != policy_desired.path:
-                        raise ValueError(f"Existing policy path: '{existing_policy.path}' when desired is {policy_desired.path}")
+                        raise ValueError(
+                            f"Existing policy path: '{existing_policy.path}' when desired is {policy_desired.path}")
                     break
             else:
                 dict_src = self.provision_policy_raw(policy_desired.generate_create_request())
@@ -787,13 +777,14 @@ class IamClient(Boto3Client):
         delete_version_request = existing_policy.generate_delete_policy_version_request()
         if delete_version_request is not None:
             for _ in self.execute(
-                    self.client.delete_policy_version, None, raw_data=True, filters_req=delete_version_request
+                    self.get_session_client().delete_policy_version, None, raw_data=True,
+                    filters_req=delete_version_request
             ):
                 break
 
         logger.info(f"Pushing new policy version: {create_version_request}")
         for _ in self.execute(
-            self.client.create_policy_version, "PolicyVersion", filters_req=create_version_request
+                self.get_session_client().create_policy_version, "PolicyVersion", filters_req=create_version_request
         ):
             policy_desired.arn = existing_policy.arn
             self.update_policy_information(policy_desired, full_information=True)
@@ -808,7 +799,7 @@ class IamClient(Boto3Client):
 
         logger.warning(f"Creating iam policy: {request_dict}")
         for response in self.execute(
-            self.client.create_policy, "Policy", filters_req=request_dict
+                self.get_session_client().create_policy, "Policy", filters_req=request_dict
         ):
             self.clear_cache(IamPolicy)
             return response
@@ -839,7 +830,7 @@ class IamClient(Boto3Client):
         logger.warning(f"Creating iam user: {request_dict}")
 
         for response in self.execute(
-            self.client.create_user, "User", filters_req=request_dict
+                self.get_session_client().create_user, "User", filters_req=request_dict
         ):
             return response
 
@@ -854,7 +845,7 @@ class IamClient(Boto3Client):
         logger.warning(f"Disposing iam user: {user.name}")
 
         for response in self.execute(
-                self.client.delete_user, None, raw_data=True, filters_req={"UserName": user.name}
+                self.get_session_client().delete_user, None, raw_data=True, filters_req={"UserName": user.name}
         ):
             return response
 
@@ -879,7 +870,7 @@ class IamClient(Boto3Client):
         logger.info(f"Creating iam user access key: {request_dict}")
 
         for response in self.execute(
-            self.client.create_access_key, "AccessKey", filters_req=request_dict
+                self.get_session_client().create_access_key, "AccessKey", filters_req=request_dict
         ):
             return response
 
@@ -898,6 +889,6 @@ class IamClient(Boto3Client):
         logger.warning(f"Deleting iam user access key: {request_dict}")
 
         for response in self.execute(
-            self.client.delete_access_key, None, raw_data=True, filters_req=request_dict
+                self.get_session_client().delete_access_key, None, raw_data=True, filters_req=request_dict
         ):
             return response

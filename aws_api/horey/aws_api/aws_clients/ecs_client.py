@@ -43,7 +43,7 @@ class ECSClient(Boto3Client):
         client_name = "ecs"
         super().__init__(client_name)
 
-    def run_task(self, request_dict):
+    def run_task(self, region, request_dict):
         """
         Standard
 
@@ -52,7 +52,7 @@ class ECSClient(Boto3Client):
         """
 
         for response in self.execute(
-            self.client.run_task, "tasks", filters_req=request_dict
+                self.get_session_client(region=region).run_task, "tasks", filters_req=request_dict
         ):
             return response
 
@@ -88,9 +88,8 @@ class ECSClient(Boto3Client):
         """
 
         final_result = []
-        AWSAccount.set_aws_region(region)
         for dict_src in self.execute(
-            self.client.describe_capacity_providers, "capacityProviders"
+                self.get_session_client(region=region).describe_capacity_providers, "capacityProviders"
         ):
             obj = ECSCapacityProvider(dict_src)
             final_result.append(obj)
@@ -105,14 +104,13 @@ class ECSClient(Boto3Client):
         """
 
         regional_fetcher_generator = self.yield_clusters_raw
-        for obj in self.regional_service_entities_generator(regional_fetcher_generator,
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
                                                             ECSCluster,
                                                             update_info=update_info,
                                                             regions=[region] if region else None,
-                                                            filters_req=filters_req):
-            yield obj
+                                                            filters_req=filters_req)
 
-    def yield_clusters_raw(self, filters_req=None):
+    def yield_clusters_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
@@ -120,7 +118,7 @@ class ECSClient(Boto3Client):
         """
 
         cluster_identifiers = list(self.execute(
-                self.client.list_clusters, "clusterArns", filters_req=filters_req
+            self.get_session_client(region=region).list_clusters, "clusterArns", filters_req=filters_req
         ))
 
         if len(cluster_identifiers) > 100:
@@ -140,11 +138,9 @@ class ECSClient(Boto3Client):
             ],
         }
 
-        for dict_src in self.execute(
-                self.client.describe_clusters, "clusters", filters_req=filter_req
-        ):
-            yield dict_src
-
+        yield from self.execute(
+                self.get_session_client(region=region).describe_clusters, "clusters", filters_req=filter_req
+        )
 
     def get_region_clusters(self, region, cluster_identifiers=None):
         """
@@ -159,7 +155,8 @@ class ECSClient(Boto3Client):
         if cluster_identifiers is None:
             return region_clusters
 
-        return [region_cluster for region_cluster in region_clusters if region_cluster.name in cluster_identifiers or region_cluster.arn in cluster_identifiers]
+        return [region_cluster for region_cluster in region_clusters if
+                region_cluster.name in cluster_identifiers or region_cluster.arn in cluster_identifiers]
 
     def dispose_capacity_provider(self, capacity_provider: ECSCapacityProvider):
         """
@@ -172,17 +169,19 @@ class ECSClient(Boto3Client):
         if not self.update_capacity_provider_information(capacity_provider):
             return True
 
-        AWSAccount.set_aws_region(capacity_provider.region)
         for cluster in self.get_region_clusters(capacity_provider.region):
             if capacity_provider.name in cluster.capacity_providers:
                 self.attach_capacity_providers_to_ecs_cluster(cluster,
-                                                              [provider_name for provider_name in cluster.capacity_providers
+                                                              [provider_name for provider_name in
+                                                               cluster.capacity_providers
                                                                if provider_name != capacity_provider.name],
-                                                              [dict_cap for dict_cap in cluster.default_capacity_provider_strategy
-                                                               if dict_cap["capacityProvider"] != capacity_provider.name])
-        ret = self.dispose_capacity_provider_raw(
-            capacity_provider.generate_dispose_request()
-        )
+                                                              [dict_cap for dict_cap in
+                                                               cluster.default_capacity_provider_strategy
+                                                               if
+                                                               dict_cap["capacityProvider"] != capacity_provider.name])
+        ret = self.dispose_capacity_provider_raw(capacity_provider.region,
+                                                 capacity_provider.generate_dispose_request()
+                                                 )
         status = ret["updateStatus"]
 
         timeout = 300
@@ -202,7 +201,6 @@ class ECSClient(Boto3Client):
 
         raise TimeoutError(f"Waiting for capacity provider disposal: {timeout} seconds")
 
-
     def provision_capacity_provider(self, capacity_provider: ECSCapacityProvider):
         """
         Provision capacity provider
@@ -217,10 +215,9 @@ class ECSClient(Boto3Client):
                 capacity_provider.update_from_raw_response(region_object.dict_src)
                 return
 
-        AWSAccount.set_aws_region(capacity_provider.region)
-        response = self.provision_capacity_provider_raw(
-            capacity_provider.generate_create_request()
-        )
+        response = self.provision_capacity_provider_raw(capacity_provider.region,
+                                                        capacity_provider.generate_create_request()
+                                                        )
         capacity_provider.update_from_raw_response(response)
 
     def update_capacity_provider_information(self, capacity_provider):
@@ -231,7 +228,6 @@ class ECSClient(Boto3Client):
         :return:
         """
 
-        AWSAccount.set_aws_region(capacity_provider.region)
         region_objects = self.get_region_capacity_providers(capacity_provider.region)
         for region_object in region_objects:
             if region_object.name == capacity_provider.name:
@@ -239,7 +235,7 @@ class ECSClient(Boto3Client):
                 return True
         return False
 
-    def provision_capacity_provider_raw(self, request_dict):
+    def provision_capacity_provider_raw(self, region, request_dict):
         """
         Standard
 
@@ -249,13 +245,13 @@ class ECSClient(Boto3Client):
 
         logger.info(f"Creating ECS Capacity Provider: {request_dict}")
         for response in self.execute(
-            self.client.create_capacity_provider,
-            "capacityProvider",
-            filters_req=request_dict,
+                self.get_session_client(region=region).create_capacity_provider,
+                "capacityProvider",
+                filters_req=request_dict,
         ):
             return response
 
-    def dispose_capacity_provider_raw(self, request_dict):
+    def dispose_capacity_provider_raw(self, region, request_dict):
         """
         Standard.
 
@@ -265,7 +261,7 @@ class ECSClient(Boto3Client):
 
         logger.info(f"Disposing ECS Capacity Provider: {request_dict}")
         for response in self.execute(
-                self.client.delete_capacity_provider,
+                self.get_session_client(region=region).delete_capacity_provider,
                 "capacityProvider",
                 filters_req=request_dict,
         ):
@@ -273,20 +269,20 @@ class ECSClient(Boto3Client):
 
     def provision_cluster(self, cluster: ECSCluster):
         """
-        self.client.delete_cluster(capacityProvider='test-capacity-provider')
+        self.get_session_client(region=region).delete_cluster(capacityProvider='test-capacity-provider')
         """
         existing_cluster = ECSCluster({})
         existing_cluster.name = cluster.name
         existing_cluster.region = cluster.region
 
-        if not self.update_cluster_information(existing_cluster) or existing_cluster.get_status() == existing_cluster.Status.INACTIVE:
-            AWSAccount.set_aws_region(cluster.region)
-            response = self.provision_cluster_raw(cluster.generate_create_request())
+        if not self.update_cluster_information(
+                existing_cluster) or existing_cluster.get_status() == existing_cluster.Status.INACTIVE:
+            response = self.provision_cluster_raw(cluster.region, cluster.generate_create_request())
             cluster.update_from_raw_response(response)
         elif existing_cluster.get_status() == existing_cluster.Status.ACTIVE:
             request = existing_cluster.generate_capacity_providers_request(cluster)
             if request:
-                self.attach_capacity_providers_to_ecs_cluster_raw(request)
+                self.attach_capacity_providers_to_ecs_cluster_raw(cluster.region, request)
             return self.update_cluster_information(cluster)
 
         timeout = 300
@@ -305,7 +301,7 @@ class ECSClient(Boto3Client):
             return None
         raise TimeoutError(f"Cluster did not become available for {timeout} seconds")
 
-    def provision_cluster_raw(self, request_dict):
+    def provision_cluster_raw(self, region, request_dict):
         """
         Standard
 
@@ -314,7 +310,7 @@ class ECSClient(Boto3Client):
         """
         logger.info(f"Creating ECS Capacity Provider: {request_dict}")
         for response in self.execute(
-            self.client.create_cluster, "cluster", filters_req=request_dict
+                self.get_session_client(region=region).create_cluster, "cluster", filters_req=request_dict
         ):
             return response
 
@@ -365,21 +361,21 @@ class ECSClient(Boto3Client):
             for cluster in clusters:
                 filters_req_new = copy.deepcopy(filters_req) if filters_req is not None else {}
                 filters_req_new["cluster"] = cluster
-                for obj in self.regional_service_entities_generator(regional_fetcher_generator,
+                yield from self.regional_service_entities_generator(regional_fetcher_generator,
                                                                     ECSService,
                                                                     update_info=update_info,
                                                                     regions=[_region],
                                                                     filters_req=filters_req_new,
-                                                                    cache_filter_callback=self.services_cache_filter_callback):
-                    yield obj
+                                                                    cache_filter_callback=self.services_cache_filter_callback)
 
-    def yield_services_raw(self, filters_req=None):
+    def yield_services_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
         :return:
         """
-        task_arns = list(self.execute(self.client.list_services, "serviceArns", filters_req=filters_req))
+        task_arns = list(
+            self.execute(self.get_session_client(region=region).list_services, "serviceArns", filters_req=filters_req))
 
         if len(task_arns) == 0:
             return []
@@ -390,7 +386,7 @@ class ECSClient(Boto3Client):
                                "cluster": filters_req["cluster"]}
 
             for dict_src in self.execute(
-                    self.client.describe_services, "services", filters_req=filters_req_new
+                    self.get_session_client(region=region).describe_services, "services", filters_req=filters_req_new
             ):
                 yield dict_src
                 final_result.append(dict_src)
@@ -430,36 +426,37 @@ class ECSClient(Boto3Client):
         regions = [region] if region is not None else AWSAccount.get_aws_account().regions.values()
         regional_fetcher_generator = self.yield_tasks_raw
         for _region in regions:
-            clusters = [filters_req["cluster"]] if filters_req is not None and "cluster" in filters_req else\
+            clusters = [filters_req["cluster"]] if filters_req is not None and "cluster" in filters_req else \
                 [cluster.arn for cluster in list(self.yield_clusters(region=_region, update_info=update_info))]
             for cluster in clusters:
                 filters_req_new = copy.deepcopy(filters_req) if filters_req is not None else {}
                 filters_req_new["cluster"] = cluster
-                for obj in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                                ECSTask,
-                                                                update_info=update_info,
-                                                                regions=[_region],
-                                                                filters_req=filters_req_new,
-                                                                cache_filter_callback=self.tasks_cache_filter_callback):
-                    yield obj
+                yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                                    ECSTask,
+                                                                    update_info=update_info,
+                                                                    regions=[_region],
+                                                                    filters_req=filters_req_new,
+                                                                    cache_filter_callback=self.tasks_cache_filter_callback)
 
-    def yield_tasks_raw(self, filters_req=None):
+    def yield_tasks_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
         :return:
         """
-        task_arns = list(self.execute(self.client.list_tasks, "taskArns", filters_req=filters_req))
+        task_arns = list(
+            self.execute(self.get_session_client(region=region).list_tasks, "taskArns", filters_req=filters_req))
 
         if len(task_arns) == 0:
             return []
 
         final_result = []
-        for i in range(len(task_arns)//100 + 1):
-            filters_req_new = {"tasks": task_arns[i*100: (i+1)*100], "include": ["TAGS"], "cluster": filters_req["cluster"]}
+        for i in range(len(task_arns) // 100 + 1):
+            filters_req_new = {"tasks": task_arns[i * 100: (i + 1) * 100], "include": ["TAGS"],
+                               "cluster": filters_req["cluster"]}
 
             for dict_src in self.execute(
-                self.client.describe_tasks, "tasks", filters_req=filters_req_new
+                    self.get_session_client(region=region).describe_tasks, "tasks", filters_req=filters_req_new
             ):
                 yield dict_src
                 final_result.append(dict_src)
@@ -488,18 +485,17 @@ class ECSClient(Boto3Client):
         :param custom_list_filters:
         :return:
         """
-        AWSAccount.set_aws_region(region)
 
         if cluster_name is not None:
-            return self.get_cluster_tasks(cluster_name, custom_list_filters)
+            return self.get_cluster_tasks(region, cluster_name, custom_list_filters)
 
         final_result = []
         for cluster in self.get_region_clusters(region):
-            final_result += self.get_cluster_tasks(cluster.name, custom_list_filters)
+            final_result += self.get_cluster_tasks(region, cluster.name, custom_list_filters)
 
         return final_result
 
-    def get_cluster_tasks(self, cluster_name, custom_list_filters):
+    def get_cluster_tasks(self, region, cluster_name, custom_list_filters):
         """
         Standard
 
@@ -513,18 +509,19 @@ class ECSClient(Boto3Client):
             custom_list_filters = {}
         custom_list_filters["cluster"] = cluster_name
 
-        for arn in self.execute(self.client.list_tasks, "taskArns", filters_req=custom_list_filters):
+        for arn in self.execute(self.get_session_client(region=region).list_tasks, "taskArns",
+                                filters_req=custom_list_filters):
             task_arns.append(arn)
 
         if len(task_arns) == 0:
             return []
 
         final_result = []
-        for i in range(len(task_arns)//100 + 1):
-            filters_req = {"cluster": cluster_name, "tasks": task_arns[i*100: (i+1)*100], "include": ["TAGS"]}
+        for i in range(len(task_arns) // 100 + 1):
+            filters_req = {"cluster": cluster_name, "tasks": task_arns[i * 100: (i + 1) * 100], "include": ["TAGS"]}
 
             for dict_src in self.execute(
-                self.client.describe_tasks, "tasks", filters_req=filters_req
+                    self.get_session_client(region=region).describe_tasks, "tasks", filters_req=filters_req
             ):
                 final_result.append(ECSTask(dict_src))
 
@@ -562,14 +559,13 @@ class ECSClient(Boto3Client):
         """
 
         regional_fetcher_generator = self.yield_task_definitions_raw
-        for obj in self.regional_service_entities_generator(regional_fetcher_generator,
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
                                                             ECSTaskDefinition,
                                                             update_info=update_info,
                                                             regions=[region] if region else None,
-                                                            filters_req=filters_req):
-            yield obj
+                                                            filters_req=filters_req)
 
-    def yield_task_definitions_raw(self, filters_req=None):
+    def yield_task_definitions_raw_old(self, region, filters_req=None):
         """
         Yield dictionaries.
 
@@ -577,7 +573,7 @@ class ECSClient(Boto3Client):
         """
 
         arns = list(self.execute(
-                self.client.list_task_definitions, "taskDefinitionArns", filters_req=filters_req
+            self.get_session_client(region=region).list_task_definitions, "taskDefinitionArns", filters_req=filters_req
         ))
 
         if len(arns) == 0:
@@ -585,10 +581,32 @@ class ECSClient(Boto3Client):
 
         for arn in arns:
             filters_req = {"taskDefinition": arn, "include": ["TAGS"]}
-            for dict_src in self.execute(
-                    self.client.describe_task_definition, "taskDefinition", filters_req=filters_req
-            ):
-                yield dict_src
+            yield from self.execute(
+                    self.get_session_client(region=region).describe_task_definition, "taskDefinition",
+                    filters_req=filters_req
+            )
+
+        return []
+
+    def yield_task_definitions_raw(self, region, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+        arns = list(self.execute(
+            self.get_session_client(region=region).list_task_definitions, "taskDefinitionArns", filters_req=filters_req
+        ))
+
+        if len(arns) == 0:
+            return []
+
+        for arn in arns:
+            filters_req = {"taskDefinition": arn, "include": ["TAGS"]}
+            yield from self.execute(
+                self.get_session_client(region=region).describe_task_definition, "taskDefinition",
+                filters_req=filters_req
+            )
 
         return []
 
@@ -599,13 +617,13 @@ class ECSClient(Boto3Client):
         :param task_definition:
         :return:
         """
-        AWSAccount.set_aws_region(task_definition.region)
-        response = self.provision_ecs_task_definition_raw(
-            task_definition.generate_create_request()
-        )
+
+        response = self.provision_ecs_task_definition_raw(task_definition.region,
+                                                          task_definition.generate_create_request()
+                                                          )
         task_definition.update_from_raw_response(response)
 
-    def provision_ecs_task_definition_raw(self, request_dict):
+    def provision_ecs_task_definition_raw(self, region, request_dict):
         """
         Standard
 
@@ -615,9 +633,9 @@ class ECSClient(Boto3Client):
 
         logger.info(f"Creating ECS task definition: {request_dict}")
         for response in self.execute(
-            self.client.register_task_definition,
-            "taskDefinition",
-            filters_req=request_dict,
+                self.get_session_client(region=region).register_task_definition,
+                "taskDefinition",
+                filters_req=request_dict,
         ):
             return response
 
@@ -647,20 +665,19 @@ class ECSClient(Boto3Client):
         if not service.cluster_arn:
             raise ValueError("cluster_arn was not set")
 
-        AWSAccount.set_aws_region(service.region)
         filters_req = {"cluster": service.cluster_arn, "services": [service.arn]}
 
         for response in self.execute(
-            self.client.describe_services,
-            "services",
-            filters_req=filters_req
+                self.get_session_client(region=service.region).describe_services,
+                "services",
+                filters_req=filters_req
         ):
             service.update_from_raw_response(response)
             return True
 
         return False
 
-    def provision_service(self, service: ECSService, asyncronous=False, wait_timeout=10*60):
+    def provision_service(self, service: ECSService, asyncronous=False, wait_timeout=10 * 60):
         """
         Standard
 
@@ -674,19 +691,17 @@ class ECSClient(Boto3Client):
         region_objects = self.get_all_services(cluster=cluster)
         for region_object in region_objects:
             if region_object.name == service.name:
-                AWSAccount.set_aws_region(service.region)
-                response = self.update_service_raw(service.generate_update_request())
+                response = self.update_service_raw(service.region, service.generate_update_request())
                 service.update_from_raw_response(response)
                 break
         else:
-            AWSAccount.set_aws_region(service.region)
-            response = self.create_service_raw(service.generate_create_request())
+            response = self.create_service_raw(service.region, service.generate_create_request())
             service.update_from_raw_response(response)
 
         if not asyncronous:
             self.wait_for_deployment_end(service, timeout=wait_timeout)
 
-    def wait_for_deployment_end(self, service, timeout=10*60):
+    def wait_for_deployment_end(self, service, timeout=10 * 60):
         """
         Wait for deployment to end.
 
@@ -696,10 +711,10 @@ class ECSClient(Boto3Client):
         """
 
         self.wait_for_status(service,
-                         self.update_service_information,
-                         [service.Status.ACTIVE],
-                         [service.Status.INACTIVE],
-                         [service.Status.DRAINING])
+                             self.update_service_information,
+                             [service.Status.ACTIVE],
+                             [service.Status.INACTIVE],
+                             [service.Status.DRAINING])
 
         start_time = datetime.datetime.now()
         datetime_limit = start_time + datetime.timedelta(seconds=timeout)
@@ -732,7 +747,7 @@ class ECSClient(Boto3Client):
 
         raise TimeoutError(f"Reached timeout: {timeout} seconds")
 
-    def create_service_raw(self, request_dict):
+    def create_service_raw(self, region, request_dict):
         """
         Standard
 
@@ -742,11 +757,11 @@ class ECSClient(Boto3Client):
 
         logger.info(f"Creating ECS Service: {request_dict}")
         for response in self.execute(
-            self.client.create_service, "service", filters_req=request_dict
+                self.get_session_client(region=region).create_service, "service", filters_req=request_dict
         ):
             return response
 
-    def update_service_raw(self, request_dict):
+    def update_service_raw(self, region, request_dict):
         """
         Standard
 
@@ -756,7 +771,7 @@ class ECSClient(Boto3Client):
 
         logger.info(f"Updating ECS Service: {request_dict}")
         for response in self.execute(
-            self.client.update_service, "service", filters_req=request_dict
+                self.get_session_client(region=region).update_service, "service", filters_req=request_dict
         ):
             return response
 
@@ -769,10 +784,9 @@ class ECSClient(Boto3Client):
         :return:
         """
         service.cluster_arn = cluster.arn
-        AWSAccount.set_aws_region(service.region)
-        self.dispose_service_raw(service.generate_dispose_request(cluster))
+        self.dispose_service_raw(cluster.region, service.generate_dispose_request(cluster))
 
-    def dispose_service_raw(self, request_dict):
+    def dispose_service_raw(self, region, request_dict):
         """
         Delete service
 
@@ -782,8 +796,8 @@ class ECSClient(Boto3Client):
 
         logger.info(f"Disposing ECS Service: {request_dict}")
         for response in self.execute(
-            self.client.delete_service, "service", filters_req=request_dict,
-            exception_ignore_callback=lambda error: "ServiceNotFoundException" in repr(error)
+                self.get_session_client(region=region).delete_service, "service", filters_req=request_dict,
+                exception_ignore_callback=lambda error: "ServiceNotFoundException" in repr(error)
         ):
             return response
 
@@ -797,7 +811,8 @@ class ECSClient(Boto3Client):
         request_dict = {"taskDefinitions": [f"{task_definition.family}:{task_definition.revision}"]}
         logger.info(f"Disposing ECS Task Definistion: {request_dict}")
         for response in self.execute(
-                self.client.delete_task_definitions, "taskDefinitions", filters_req=request_dict
+                self.get_session_client(region=task_definition.region).delete_task_definitions, "taskDefinitions",
+                filters_req=request_dict
         ):
             logger.info(response)
         return True
@@ -811,11 +826,9 @@ class ECSClient(Boto3Client):
         :return:
         """
 
-        AWSAccount.set_aws_region(region)
-
         if cluster_identifier is None:
             cluster_identifiers = []
-            for cluster_arn in self.execute(self.client.list_clusters, "clusterArns"):
+            for cluster_arn in self.execute(self.get_session_client(region=region).list_clusters, "clusterArns"):
                 cluster_identifiers.append(cluster_arn)
         else:
             cluster_identifiers = [cluster_identifier]
@@ -827,9 +840,9 @@ class ECSClient(Boto3Client):
             filter_req = {"cluster": _cluster_identifier, "maxResults": 100}
 
             for container_instance_arn in self.execute(
-                self.client.list_container_instances,
-                "containerInstanceArns",
-                filters_req=filter_req,
+                    self.get_session_client(region=region).list_container_instances,
+                    "containerInstanceArns",
+                    filters_req=filter_req,
             ):
                 cluster_container_instances_arns.append(container_instance_arn)
 
@@ -843,9 +856,9 @@ class ECSClient(Boto3Client):
             }
 
             for dict_src in self.execute(
-                self.client.describe_container_instances,
-                "containerInstances",
-                filters_req=filter_req,
+                    self.get_session_client(region=region).describe_container_instances,
+                    "containerInstances",
+                    filters_req=filter_req,
             ):
                 obj = ECSContainerInstance(dict_src)
                 final_result.append(obj)
@@ -867,10 +880,9 @@ class ECSClient(Boto3Client):
             cluster.region, cluster_identifier=cluster.name
         )
         self.dispose_container_instances(cluster_container_instances, cluster)
-        AWSAccount.set_aws_region(cluster.region)
-        self.dispose_cluster_raw(cluster.generate_dispose_request())
+        self.dispose_cluster_raw(cluster.region, cluster.generate_dispose_request())
 
-    def dispose_cluster_raw(self, request_dict):
+    def dispose_cluster_raw(self, region, request_dict):
         """
         Standard
 
@@ -880,7 +892,7 @@ class ECSClient(Boto3Client):
 
         logger.info(f"Disposing ECS Cluster: {request_dict}")
         for response in self.execute(
-            self.client.delete_cluster, "cluster", filters_req=request_dict
+                self.get_session_client(region=region).delete_cluster, "cluster", filters_req=request_dict
         ):
             return response
 
@@ -893,11 +905,11 @@ class ECSClient(Boto3Client):
         :return:
         """
         for container_instance in container_instances:
-            self.dispose_container_instance_raw(
-                container_instance.generate_dispose_request(cluster)
-            )
+            self.dispose_container_instance_raw(container_instance.region,
+                                                container_instance.generate_dispose_request(cluster)
+                                                )
 
-    def dispose_container_instance_raw(self, request_dict):
+    def dispose_container_instance_raw(self, region, request_dict):
         """
         Deregister
 
@@ -907,9 +919,9 @@ class ECSClient(Boto3Client):
 
         logger.info(f"Disposing ECS container instance: {request_dict}")
         for response in self.execute(
-            self.client.deregister_container_instance,
-            "containerInstance",
-            filters_req=request_dict,
+                self.get_session_client(region=region).deregister_container_instance,
+                "containerInstance",
+                filters_req=request_dict,
         ):
             return response
 
@@ -922,17 +934,16 @@ class ECSClient(Boto3Client):
         :return:
         """
 
-        AWSAccount.set_aws_region(tasks[0].region)
         for task in tasks:
             for response in self.execute(
-                self.client.stop_task,
-                "task",
-                filters_req={"cluster": cluster_name, "task": task.arn},
+                    self.get_session_client(region=tasks[0].region).stop_task,
+                    "task",
+                    filters_req={"cluster": cluster_name, "task": task.arn},
             ):
                 logger.info(response)
 
     def attach_capacity_providers_to_ecs_cluster(
-        self, ecs_cluster, capacity_provider_names, default_capacity_provider_strategy
+            self, ecs_cluster, capacity_provider_names, default_capacity_provider_strategy
     ):
         """
         Standard
@@ -948,9 +959,9 @@ class ECSClient(Boto3Client):
             "capacityProviders": capacity_provider_names,
             "defaultCapacityProviderStrategy": default_capacity_provider_strategy,
         }
-        self.attach_capacity_providers_to_ecs_cluster_raw(request_dict)
+        self.attach_capacity_providers_to_ecs_cluster_raw(ecs_cluster.region, request_dict)
 
-    def attach_capacity_providers_to_ecs_cluster_raw(self, request_dict):
+    def attach_capacity_providers_to_ecs_cluster_raw(self, region, request_dict):
         """
         Standard
 
@@ -960,9 +971,9 @@ class ECSClient(Boto3Client):
 
         logger.info(f"Attaching capacity provider to ecs cluster: {request_dict}")
         for response in self.execute(
-            self.client.put_cluster_capacity_providers,
-            "cluster",
-            filters_req=request_dict,
+                self.get_session_client(region=region).put_cluster_capacity_providers,
+                "cluster",
+                filters_req=request_dict,
         ):
             return response
 
@@ -981,7 +992,7 @@ class ECSClient(Boto3Client):
         cluster.update_from_raw_response(ret[0].dict_src)
         return True
 
-    def update_container_instances_information(self, container_instance:ECSContainerInstance):
+    def update_container_instances_information(self, container_instance: ECSContainerInstance):
         """
         Standard.
 
@@ -990,7 +1001,7 @@ class ECSClient(Boto3Client):
         """
 
         for region_container_instance in self.get_region_container_instances(container_instance.region,
-                                                                  cluster_identifier=container_instance.get_cluster_name()):
+                                                                             cluster_identifier=container_instance.get_cluster_name()):
             if region_container_instance.arn == container_instance.arn:
                 container_instance.update_from_raw_response(region_container_instance.dict_src)
                 return True
@@ -1006,7 +1017,6 @@ class ECSClient(Boto3Client):
 
         region = container_instances[0].region
         status = container_instances[0].status
-        AWSAccount.set_aws_region(region)
 
         for container_instance in container_instances:
             if container_instance.region != region:
@@ -1020,8 +1030,8 @@ class ECSClient(Boto3Client):
 
         ret = []
         for instances_chunk in [container_instances[i:i + 10] for i in range(0, len(container_instances), 10)]:
-            filters_req["containerInstances"]= [container_instance.arn for container_instance in instances_chunk]
-            ret += self.update_container_instances_state_raw(filters_req)
+            filters_req["containerInstances"] = [container_instance.arn for container_instance in instances_chunk]
+            ret += self.update_container_instances_state_raw(region, filters_req)
 
         if status != "DRAINING":
             return ret
@@ -1031,7 +1041,8 @@ class ECSClient(Boto3Client):
             for container_instance in container_instances:
                 self.update_container_instances_information(container_instance)
                 if container_instance.running_tasks_count > 0:
-                    logger.info(f"Container instance {container_instance.ec2_instance_id} tasks: {container_instance.running_tasks_count}")
+                    logger.info(
+                        f"Container instance {container_instance.ec2_instance_id} tasks: {container_instance.running_tasks_count}")
                     break
             else:
                 return ret
@@ -1040,7 +1051,7 @@ class ECSClient(Boto3Client):
 
         raise TimeoutError("Waiting for all container instances to drain")
 
-    def update_container_instances_state_raw(self, dict_request):
+    def update_container_instances_state_raw(self, region, dict_request):
         """
         Standard.
 
@@ -1049,4 +1060,6 @@ class ECSClient(Boto3Client):
         """
 
         logger.info(f"Updating container instances states: {dict_request}")
-        return list(self.execute(self.client.update_container_instances_state, "containerInstances", filters_req=dict_request))
+        return list(
+            self.execute(self.get_session_client(region=region).update_container_instances_state, "containerInstances",
+                         filters_req=dict_request))

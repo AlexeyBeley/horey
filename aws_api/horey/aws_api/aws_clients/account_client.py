@@ -30,8 +30,9 @@ class AccountClient(Boto3Client):
 
         regional_fetcher_generator = self.yield_regions_raw
         for region in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                  Region,
-                                                  update_info=update_info):
+                                                               Region,
+                                                               update_info=update_info,
+                                                               global_service=True):
             delattr(region, "region")
             yield region
 
@@ -44,15 +45,12 @@ class AccountClient(Boto3Client):
 
         return list(self.yield_regions(update_info=update_info))
 
-    def yield_regions_raw(self, filters_req=None):
+    def yield_regions_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
         :return:
         """
-        for dict_src_arn in self.execute(
-            self.client.list_regions, "Regions", filters_req=filters_req
-        ):
-
-            yield dict_src_arn
-        return None
+        yield from self.execute(
+                self.get_session_client(region=region).list_regions, "Regions", filters_req=filters_req
+        )
