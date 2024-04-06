@@ -43,6 +43,15 @@ class AWSAccount:
         return AWSAccount._CURRENT_REGION
 
     @staticmethod
+    def get_account_default_region():
+        """
+        Get current region to work against.
+        :return:
+        """
+
+        return list(AWSAccount.get_aws_account().regions.values())[0]
+
+    @staticmethod
     def get_aws_region():
         """
         Get current region to work against.

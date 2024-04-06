@@ -80,7 +80,7 @@ class Boto3Client:
         """
 
         if self._account_id is None:
-            sts_client = self.SESSIONS_MANAGER.get_client("sts")
+            sts_client = self.SESSIONS_MANAGER.get_client("sts", region=AWSAccount.get_default_region() or AWSAccount.get_account_default_region())
             self._account_id = sts_client.get_caller_identity()["Account"]
         return self._account_id
 
@@ -752,7 +752,7 @@ class Boto3Client:
         if global_service:
             if regions:
                 raise ValueError(f"Can not set both {global_service=} and {regions=}")
-            region = AWSAccount.get_aws_region()
+            region = AWSAccount.get_default_region()
             if region is None:
                 regions = list(AWSAccount.get_aws_account().regions.values())[:1]
             else:

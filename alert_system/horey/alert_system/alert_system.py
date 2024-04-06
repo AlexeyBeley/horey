@@ -612,7 +612,7 @@ class AlertSystem:
                                         "Timestamp": datetime.datetime.utcnow(),
                                         "Value": 1
                                         }]}
-        self.aws_api.cloud_watch_client.put_metric_data_raw(dict_request)
+        self.aws_api.cloud_watch_client.put_metric_data_raw(self.region, dict_request)
 
     def trigger_self_monitoring_errors_metric_alarm(self):
         """
@@ -625,7 +625,7 @@ class AlertSystem:
         dict_request = {"AlarmName": f"{self.configuration.lambda_name}-metric-errors",
                         "StateValue": "ALARM",
                         "StateReason":"Test"}
-        self.aws_api.cloud_watch_client.set_alarm_state_raw(dict_request)
+        self.aws_api.cloud_watch_client.set_alarm_state_raw(self.region, dict_request)
 
     def trigger_self_monitoring_duration_alarm(self):
         """
@@ -638,4 +638,4 @@ class AlertSystem:
         dict_request = {"AlarmName": f"{self.configuration.lambda_name}-metric-duration",
                         "StateValue": "ALARM",
                         "StateReason": "Test"}
-        self.aws_api.cloud_watch_client.set_alarm_state_raw(dict_request)
+        self.aws_api.cloud_watch_client.set_alarm_state_raw(self.region, dict_request)

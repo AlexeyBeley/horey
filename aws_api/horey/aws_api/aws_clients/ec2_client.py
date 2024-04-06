@@ -790,11 +790,12 @@ class EC2Client(Boto3Client):
         if response is None:
             return None
         obj = ManagedPrefixList(response)
+        obj.region = region
         if full_information:
             self.update_managed_prefix_list_full_information(obj)
         return obj
 
-    def update_managed_prefix_list_full_information(self, prefix_list, region=None):
+    def update_managed_prefix_list_full_information(self, prefix_list):
         """
         Standard
 
@@ -820,7 +821,7 @@ class EC2Client(Boto3Client):
 
         filters_req = {"PrefixListId": prefix_list.id}
         for associations_response in self.execute(
-                self.get_session_client(region=region).get_managed_prefix_list_associations,
+                self.get_session_client(region=prefix_list.region).get_managed_prefix_list_associations,
                 "PrefixListAssociations",
                 filters_req=filters_req,
                 exception_ignore_callback=_ignore_unsupported_operation_callback,
@@ -828,7 +829,7 @@ class EC2Client(Boto3Client):
             prefix_list.add_association_from_raw_response(associations_response)
 
         for entries_response in self.execute(
-                self.get_session_client(region=region).get_managed_prefix_list_entries,
+                self.get_session_client(region=prefix_list.region).get_managed_prefix_list_entries,
                 "Entries",
                 filters_req=filters_req,
         ):
