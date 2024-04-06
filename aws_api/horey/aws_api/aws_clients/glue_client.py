@@ -51,7 +51,6 @@ class GlueClient(Boto3Client):
         """
 
         final_result = []
-        AWSAccount.set_aws_region(region)
         for database in self.get_region_databases(region):
             for dict_src in self.execute(
                     self.get_session_client(region=region).get_tables,
@@ -75,7 +74,6 @@ class GlueClient(Boto3Client):
         :return:
         """
 
-        AWSAccount.set_aws_region(table.region)
         for dict_src in self.execute(
                 self.get_session_client(region=table.region).get_table,
                 "Table",
@@ -101,7 +99,6 @@ class GlueClient(Boto3Client):
         if table.create_time is not None:
             return
 
-        AWSAccount.set_aws_region(table.region)
         self.provision_table_raw(table.region, table.generate_create_request())
 
         self.update_table_information(table)
@@ -152,7 +149,6 @@ class GlueClient(Boto3Client):
         """
 
         final_result = []
-        AWSAccount.set_aws_region(region)
         for dict_src in self.execute(self.get_session_client(region=region).get_databases, "DatabaseList"):
             obj = GlueDatabase(dict_src)
             obj.region = region
@@ -172,7 +168,6 @@ class GlueClient(Boto3Client):
         :return:
         """
 
-        AWSAccount.set_aws_region(database.region)
         for dict_src in self.execute(
                 self.get_session_client(region=database.region).get_database,
                 "Database",
@@ -198,7 +193,6 @@ class GlueClient(Boto3Client):
             self.get_tags(database)
             return
 
-        AWSAccount.set_aws_region(database.region)
         self.provision_database_raw(database.region, database.generate_create_request())
         database.account_id = self.account_id
         self.tag_resource(database)

@@ -48,7 +48,6 @@ class KMSClient(Boto3Client):
         """
 
         final_result = []
-        AWSAccount.set_aws_region(region)
         logger.info(f"kms_client fetching KMS keys from region {region.region_mark}")
         for dict_src in self.execute(self.get_session_client(region=region).list_keys, "Keys"):
             obj = KMSKey(dict_src)
@@ -147,7 +146,6 @@ class KMSClient(Boto3Client):
         )
 
         if region_key is None:
-            AWSAccount.set_aws_region(key.region)
             response = self.provision_key_raw(key.region, key.generate_create_request())
             region_key = KMSKey({})
             region_key.update_from_raw_response(response)

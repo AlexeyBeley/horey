@@ -131,7 +131,6 @@ class LambdaClient(Boto3Client):
         @return:
         """
         final_result = []
-        AWSAccount.set_aws_region(region)
         for response in self.execute(
                 self.get_session_client(region=region).list_event_source_mappings, "EventSourceMappings"
         ):
@@ -147,7 +146,6 @@ class LambdaClient(Boto3Client):
         @param full_information:
         @return:
         """
-        AWSAccount.set_aws_region(aws_lambda.region)
         for response in self.execute(
                 self.get_session_client(region=aws_lambda.region).get_function,
                 None,

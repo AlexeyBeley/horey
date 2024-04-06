@@ -40,7 +40,6 @@ class ElasticsearchClient(Boto3Client):
         """
 
         final_result = []
-        AWSAccount.set_aws_region(region)
         domain_names = []
         for response in self.execute(self.get_session_client(region=region).list_domain_names, "DomainNames"):
             domain_names.append(response["DomainName"])
@@ -67,9 +66,6 @@ class ElasticsearchClient(Boto3Client):
         :param region:
         :return:
         """
-
-        if region is not None:
-            AWSAccount.set_aws_region(region)
 
         for response in self.execute(
                 self.get_session_client(region=region).update_elasticsearch_domain_config,

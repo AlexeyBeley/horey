@@ -322,18 +322,18 @@ class ElasticacheClient(Boto3Client):
             filters_req=filters_req
         ))
 
-    def get_latest_engine_version_and_param_family(self, engine):
+    def get_latest_engine_version_and_param_family(self, region, str_engine):
         """
         Get engine and latest param family for it
 
         :param engine:
         :return:
         """
-        engine_raw = self.get_latest_engine_version(engine)
-        params_raw = self.get_latest_parameter_group(engine.region, engine_raw["CacheParameterGroupFamily"])
+        engine_raw = self.get_latest_engine_version(region, str_engine)
+        params_raw = self.get_latest_parameter_group(region, engine_raw["CacheParameterGroupFamily"])
         return engine_raw, params_raw
 
-    def get_latest_engine_version(self, engine):
+    def get_latest_engine_version(self, region, str_engine):
         """
         Find the latest engine version and default configs.
 
@@ -341,7 +341,7 @@ class ElasticacheClient(Boto3Client):
         :return:
         """
 
-        versions_dicts = self.describe_cache_engine_versions_raw(engine.region, {"Engine": engine})
+        versions_dicts = self.describe_cache_engine_versions_raw(region, {"Engine": str_engine})
         versions_dict = {version_dict["EngineVersion"]: version_dict for version_dict in versions_dicts}
 
         reached_end = False

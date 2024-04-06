@@ -24,16 +24,13 @@ class ECRClient(Boto3Client):
         client_name = "ecr"
         super().__init__(client_name)
 
-    def get_authorization_info(self, region=None):
+    def get_authorization_info(self, region):
         """
         Get authorization info to be used by docker client to connect the repo.
 
         @param region:
         @return:
         """
-
-        if region is not None:
-            AWSAccount.set_aws_region(region)
 
         filters_req = {"registryIds": [self.account_id]}
         lst_ret = list(
@@ -58,8 +55,6 @@ class ECRClient(Boto3Client):
         @param repository:
         @return:
         """
-
-        AWSAccount.set_aws_region(repository.region)
 
         region_repos = self.get_region_repositories(
             repository.region, repository_names=[repository.name], get_tags=False)
@@ -179,7 +174,6 @@ class ECRClient(Boto3Client):
         """
 
         final_result = []
-        AWSAccount.set_aws_region(repository.region)
         filters_req = {
             "repositoryName": repository.name,
             "filter": {"tagStatus": "ANY"},

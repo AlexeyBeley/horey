@@ -5,7 +5,6 @@ AWS elb-v2 client to handle elb-v2 service API requests.
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.elbv2_load_balancer import LoadBalancer
 from horey.aws_api.aws_services_entities.elbv2_target_group import ELBV2TargetGroup
-from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.common_utils.common_utils import CommonUtils
 from horey.h_logger import get_logger
 
@@ -82,7 +81,6 @@ class ELBV2Client(Boto3Client):
         @return:
 
         """
-        AWSAccount.set_aws_region(region)
 
         if names is not None:
             logger.error("DEPRECATION WARNING! Use filters_req")
@@ -221,7 +219,6 @@ class ELBV2Client(Boto3Client):
         @return:
         """
 
-        AWSAccount.set_aws_region(region)
         filters_req = {}
         if target_group_names is not None:
             filters_req["Names"] = target_group_names
@@ -243,7 +240,6 @@ class ELBV2Client(Boto3Client):
         @return:
         """
 
-        AWSAccount.set_aws_region(region)
         final_result = []
 
         filters_req = None
@@ -273,7 +269,6 @@ class ELBV2Client(Boto3Client):
         @return:
         """
 
-        AWSAccount.set_aws_region(region)
         final_result = []
 
         filters_req = None
@@ -489,7 +484,6 @@ class ELBV2Client(Boto3Client):
         @param load_balancer:
         @return:
         """
-        AWSAccount.set_aws_region(load_balancer.region)
 
         if load_balancer.arn is None:
             region_lbs = self.get_region_load_balancers(

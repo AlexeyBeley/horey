@@ -58,14 +58,14 @@ class AWSAccount:
         Set current region to work against.
         :return:
         """
+        if (AWSAccount._CURRENT_REGION is not None) and (AWSAccount._CURRENT_REGION != value):
+            raise ValueError(f"Default region can not be reset {str(AWSAccount._CURRENT_REGION)=}, {str(value)}")
+
         if isinstance(value, str):
             value = Region.get_region(value)
 
         if not isinstance(value, Region):
             raise ValueError(f"{value} is not of type Region")
-
-        if AWSAccount._CURRENT_REGION is not None:
-            raise ValueError("Default region can not be set twice")
 
         AWSAccount._CURRENT_REGION = value
 

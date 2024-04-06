@@ -49,7 +49,6 @@ class TemplateClient(Boto3Client):
         """
 
         final_result = []
-        AWSAccount.set_aws_region(region)
         for dict_src in self.execute(
                 self.get_session_client(region=region).describe_template_entities, "template_entities"
         ):
@@ -81,7 +80,6 @@ class TemplateClient(Boto3Client):
                 )
                 return
 
-        AWSAccount.set_aws_region(template_entity.region)
         response = self.provision_template_entity_raw(template_entity.region,
                                                       template_entity.generate_create_request()
                                                       )

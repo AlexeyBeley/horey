@@ -47,7 +47,6 @@ class EventsClient(Boto3Client):
         :return:
         """
         final_result = []
-        AWSAccount.set_aws_region(region)
         for dict_src in self.execute(
                 self.get_session_client(region=region).list_rules, "Rules", filters_req=custom_filter
         ):
@@ -113,7 +112,6 @@ class EventsClient(Boto3Client):
         :return:
         """
         self.update_rule_information(rule)
-        AWSAccount.set_aws_region(rule.region)
 
         if rule.arn is None:
             response = self.provision_rule_raw(rule.region, rule.generate_create_request())

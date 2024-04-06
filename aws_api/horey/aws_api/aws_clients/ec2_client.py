@@ -126,7 +126,6 @@ class EC2Client(Boto3Client):
         @return:
         """
 
-        AWSAccount.set_aws_region(region)
         final_result = []
         filters_req = {}
         if filters is not None:
@@ -164,17 +163,15 @@ class EC2Client(Boto3Client):
         """
 
         if region is not None:
-            AWSAccount.set_aws_region(region)
-            return self.get_all_availability_zones_in_current_region()
+            return self.get_region_availability_zones(region)
 
         final_result = []
         for _region in AWSAccount.get_aws_account().regions.values():
-            AWSAccount.set_aws_region(_region)
-            final_result += self.get_all_availability_zones_in_current_region()
+            final_result += self.get_region_availability_zones(_region)
 
         return final_result
 
-    def get_all_availability_zones_in_current_region(self, region=None):
+    def get_region_availability_zones(self, region):
         """
         Standard
 
@@ -385,7 +382,7 @@ class EC2Client(Boto3Client):
         )
 
         if add_request:
-            self.authorize_security_group_ingress_raw(add_request)
+            self.authorize_security_group_ingress_raw(desired_security_group.region, add_request)
 
         if revoke_request:
             self.revoke_security_group_ingress_raw(revoke_request)
@@ -434,9 +431,8 @@ class EC2Client(Boto3Client):
         @param request_dict:
         @return:
         """
-        AWSAccount.set_aws_region(region)
         try:
-            return self.authorize_security_group_ingress_raw(request_dict)
+            return self.authorize_security_group_ingress_raw(region, request_dict)
         except Exception as inst_exception:
             if "The same permission must not appear multiple times" in repr(
                     inst_exception
@@ -447,13 +443,13 @@ class EC2Client(Boto3Client):
                         "IpPermissions": [request_ip_permission],
                     }
 
-                    self.authorize_security_group_ingress_raw(request_dict_tmp)
+                    self.authorize_security_group_ingress_raw(region, request_dict_tmp)
             else:
                 raise
 
         return None
 
-    def authorize_security_group_ingress_raw(self, request_dict, region=None):
+    def authorize_security_group_ingress_raw(self, region, request_dict):
         """
         Standard
 
@@ -585,7 +581,6 @@ class EC2Client(Boto3Client):
         :return:
         """
 
-        AWSAccount.set_aws_region(region)
         final_result = []
 
         for ret in self.execute(
@@ -648,7 +643,6 @@ class EC2Client(Boto3Client):
         @return:
         """
 
-        AWSAccount.set_aws_region(region)
         final_result = []
         logger.info(f"Fetching all launch templates from {region}")
         for ret in self.execute(
@@ -687,7 +681,6 @@ class EC2Client(Boto3Client):
         @return:
         """
 
-        AWSAccount.set_aws_region(region)
         final_result = []
 
         def _callback_not_found_exception(exception_inst):
@@ -703,7 +696,7 @@ class EC2Client(Boto3Client):
             final_result.append(obj)
         return final_result
 
-    def raw_create_managed_prefix_list(self, request, add_client_token=False, region=None):
+    def raw_create_managed_prefix_list(self, region, request, add_client_token=False):
         """
         Standard
 
@@ -759,7 +752,6 @@ class EC2Client(Boto3Client):
         @return:
         """
 
-        AWSAccount.set_aws_region(region)
         if pl_id is None and prefix_list_name is None:
             raise ValueError("pl_id pr prefix_list_name must be specified")
 
@@ -874,7 +866,6 @@ class EC2Client(Boto3Client):
         @param full_information:
         @return:
         """
-        AWSAccount.set_aws_region(region)
         final_result = []
 
         for response in self.execute(
@@ -1045,8 +1036,6 @@ class EC2Client(Boto3Client):
         if len(route_tables) == 0:
             return True
 
-        AWSAccount.set_aws_region(route_tables[0].region)
-
         for route_table in route_tables[1:]:
             if route_table.region.region_mark != route_tables[0].region.region_mark:
                 raise RuntimeError("All route_tables should be in one region")
@@ -1175,8 +1164,7 @@ class EC2Client(Boto3Client):
         )
 
         if raw_region_pl is None:
-            AWSAccount.set_aws_region(managed_prefix_list.region)
-            response = self.raw_create_managed_prefix_list(
+            response = self.raw_create_managed_prefix_list(managed_prefix_list.region,
                 managed_prefix_list.generate_create_request()
             )
             self.clear_cache(ManagedPrefixList)
@@ -1253,8 +1241,6 @@ class EC2Client(Boto3Client):
         @return:
         """
 
-        # snapshots_raw = self.create_snapshots(instance)
-        AWSAccount.set_aws_region(instance.region)
         ami_id = self.create_image_raw(instance.generate_create_image_request())
         filter_request = {"ImageIds": [ami_id]}
 
@@ -1304,13 +1290,12 @@ class EC2Client(Boto3Client):
         """
 
         start = datetime.datetime.now()
-        AWSAccount.set_aws_region(instance.region)
-        ret = self.create_snapshots_raw(instance.generate_create_snapshots_request())
+        ret = self.create_snapshots_raw(instance.region, instance.generate_create_snapshots_request())
         end = datetime.datetime.now()
         logger.info(f"Snapshot creation took {end - start}")
         return ret
 
-    def create_snapshots_raw(self, request_dict, region=None):
+    def create_snapshots_raw(self, region, request_dict):
         """
         Standard
 
@@ -1350,7 +1335,6 @@ class EC2Client(Boto3Client):
         @param full_information:
         @return:
         """
-        AWSAccount.set_aws_region(region)
         final_result = []
 
         for response in self.execute(self.get_session_client(region=region).describe_key_pairs, "KeyPairs"):
@@ -1394,7 +1378,6 @@ class EC2Client(Boto3Client):
         @param full_information:
         @return:
         """
-        AWSAccount.set_aws_region(region)
         final_result = []
         if custom_filters:
             raise DeprecationWarning("Use 'filters_req' instead")
@@ -1458,7 +1441,6 @@ class EC2Client(Boto3Client):
         @param full_information:
         @return:
         """
-        AWSAccount.set_aws_region(region)
         final_result = []
 
         for response in self.execute(
@@ -1546,7 +1528,6 @@ class EC2Client(Boto3Client):
         @param full_information:
         @return:
         """
-        AWSAccount.set_aws_region(region)
         final_result = []
 
         for response in self.execute(self.get_session_client(region=region).describe_addresses, "Addresses"):
@@ -1592,7 +1573,6 @@ class EC2Client(Boto3Client):
         @param full_information:
         @return:
         """
-        AWSAccount.set_aws_region(region)
         final_result = []
         filters_req = None if custom_filters is None else {"Filters": custom_filters}
 
@@ -1646,7 +1626,7 @@ class EC2Client(Boto3Client):
                 "InternetGatewayId": internet_gateway.id,
                 "VpcId": attachment_vpc_id,
             }
-            self.attach_internet_gateway_raw(request)
+            self.attach_internet_gateway_raw(internet_gateway.region, request)
 
     def provision_internet_gateway_raw(self, request, region=None):
         """
@@ -1690,7 +1670,6 @@ class EC2Client(Boto3Client):
                 raise RuntimeError(f"{inet_gateway.attachments=}")
 
         logger.info(f"Disposing internet gateway: {inet_gateway.id}")
-        AWSAccount.set_aws_region(inet_gateway.region)
         for response in self.execute(
                 self.get_session_client(region=region).delete_internet_gateway, None, raw_data=True,
                 filters_req={"InternetGatewayId": inet_gateway.id}
@@ -1698,7 +1677,7 @@ class EC2Client(Boto3Client):
             self.clear_cache(InternetGateway)
             return response
 
-    def attach_internet_gateway_raw(self, request, region=None):
+    def attach_internet_gateway_raw(self, region, request):
         """
         Standard
 
@@ -1786,8 +1765,7 @@ class EC2Client(Boto3Client):
             break
 
         if vpc_peering.id is None:
-            AWSAccount.set_aws_region(vpc_peering.region)
-            response = self.provision_vpc_peering_raw(
+            response = self.provision_vpc_peering_raw(vpc_peering.region,
                 vpc_peering.generate_create_request()
             )
             vpc_peering.update_from_raw_response(response)
@@ -1796,10 +1774,9 @@ class EC2Client(Boto3Client):
             vpc_peering.Status.INITIATING_REQUEST,
             vpc_peering.Status.PENDING_ACCEPTANCE,
         ]:
-            AWSAccount.set_aws_region(vpc_peering.peer_region)
             for _ in range(20):
                 try:
-                    self.accept_vpc_peering_connection_raw(
+                    self.accept_vpc_peering_connection_raw(vpc_peering.peer_region,
                         vpc_peering.generate_accept_request()
                     )
                     break
@@ -1811,7 +1788,7 @@ class EC2Client(Boto3Client):
         else:
             raise RuntimeError(vpc_peering.get_status())
 
-    def provision_vpc_peering_raw(self, request_dict, region=None):
+    def provision_vpc_peering_raw(self, region, request_dict):
         """
         create_vpc_peering_connection
 
@@ -1826,7 +1803,7 @@ class EC2Client(Boto3Client):
         ):
             return response
 
-    def accept_vpc_peering_connection_raw(self, request_dict, region=None):
+    def accept_vpc_peering_connection_raw(self, region, request_dict):
         """
         Standard
 
@@ -2034,8 +2011,6 @@ class EC2Client(Boto3Client):
         @return:
         """
 
-        AWSAccount.set_aws_region(route_table.region)
-
         region_route_tables = self.get_region_route_tables(route_table.region)
         for region_route_table in region_route_tables:
             if route_table.id is not None:
@@ -2066,9 +2041,9 @@ class EC2Client(Boto3Client):
 
         create_requests, replace_requests = region_route_table.generate_change_route_requests(route_table)
         for create_request in create_requests:
-            self.create_route_raw(create_request)
+            self.create_route_raw(region_route_table.region, create_request)
         for replace_request in replace_requests:
-            self.replace_route_raw(replace_request)
+            self.replace_route_raw(region_route_table.region, replace_request)
 
     def generate_tags_requests(self, current_object, desired_object):
         """
@@ -2110,10 +2085,9 @@ class EC2Client(Boto3Client):
         else:
             raise RuntimeError(f"Can not find route table: {route_table.get_tagname()}")
 
-        AWSAccount.set_aws_region(route_table.region)
         requests, _ = region_route_table.generate_change_route_requests(route_table, declarative=False)
         for request in requests:
-            self.create_route_raw(request)
+            self.create_route_raw(route_table.region, request)
 
     def provision_route_table_raw(self, request_dict, region=None):
         """
@@ -2140,7 +2114,7 @@ class EC2Client(Boto3Client):
         ):
             return response
 
-    def create_route_raw(self, request_dict, region=None):
+    def create_route_raw(self, region, request_dict):
         """
         Standard
 
@@ -2177,7 +2151,6 @@ class EC2Client(Boto3Client):
         @param region:
         @return:
         """
-        AWSAccount.set_aws_region(region)
         final_result = []
         for instance in self.execute(
                 self.get_session_client(region=region).describe_instances, "Reservations", filters_req=custom_filters
@@ -2361,8 +2334,7 @@ class EC2Client(Boto3Client):
         @return:
         """
 
-        AWSAccount.set_aws_region(launch_template.region)
-        self.dispose_launch_template_raw(launch_template.generate_dispose_request())
+        self.dispose_launch_template_raw(launch_template.region, launch_template.generate_dispose_request())
 
     def dispose_launch_template_raw(self, request_dict, region=None):
         """
@@ -2389,10 +2361,9 @@ class EC2Client(Boto3Client):
         @return:
         """
 
-        AWSAccount.set_aws_region(instance.region)
-        self.dispose_instance_raw(instance.generate_dispose_request(dry_run=dry_run))
+        self.dispose_instance_raw(instance.region, instance.generate_dispose_request(dry_run=dry_run))
 
-    def dispose_instance_raw(self, request_dict, region=None):
+    def dispose_instance_raw(self, region, request_dict):
         """
         Standard.
 
@@ -2440,8 +2411,6 @@ class EC2Client(Boto3Client):
         :param volume:
         :return:
         """
-
-        AWSAccount.set_aws_region(volume.region)
 
         if volume.id is not None:
             filters_req = {"Filters": [{"Name": "volume-id", "Values": [volume.id]}]}
@@ -2666,7 +2635,6 @@ class EC2Client(Boto3Client):
         from Crypto.Cipher import PKCS1_v1_5
         # pylint: disable= import-outside-toplevel
         from Crypto.PublicKey import RSA
-        AWSAccount.set_aws_region(instance.region)
 
         with open(private_key_file_path, "r", encoding="utf-8") as key_file:
             key_text = key_file.read()
@@ -2756,7 +2724,6 @@ class EC2Client(Boto3Client):
         @return:
         """
 
-        AWSAccount.set_aws_region(region)
         final_result = []
 
         for dict_src in self.execute(
