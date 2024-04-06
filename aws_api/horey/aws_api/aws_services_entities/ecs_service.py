@@ -32,7 +32,6 @@ class ECSService(AwsObject):
         self.launch_type = None
         self.scheduling_strategy = None
         self.enable_ecs_managed_tags = None
-        self.arn = None
         self.deployments = []
         self.network_configuration = None
 
@@ -126,7 +125,9 @@ class ECSService(AwsObject):
         request["enableExecuteCommand"] = self.enable_execute_command
 
         request["tags"] = self.tags
-        self.extend_request_with_optional_parameters(request, ["placementStrategy", "propagateTags", "networkConfiguration", "serviceRegistries"])
+        self.extend_request_with_optional_parameters(request,
+                                                     ["placementStrategy", "propagateTags", "networkConfiguration",
+                                                      "serviceRegistries"])
 
         return request
 
@@ -158,7 +159,9 @@ class ECSService(AwsObject):
                 "healthCheckGracePeriodSeconds"
             ] = self.health_check_grace_period_seconds
         request["enableExecuteCommand"] = self.enable_execute_command
-        self.extend_request_with_optional_parameters(request, ["placementStrategy", "propagateTags", "networkConfiguration", "serviceRegistries", "deploymentConfiguration"])
+        self.extend_request_with_optional_parameters(request,
+                                                     ["placementStrategy", "propagateTags", "networkConfiguration",
+                                                      "serviceRegistries", "deploymentConfiguration"])
 
         return request
 

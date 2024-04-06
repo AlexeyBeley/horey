@@ -13,7 +13,6 @@ class RDSDBSubnetGroup(AwsObject):
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self._region = None
-        self.arn = None
         self.db_subnet_group_description = None
         self.subnet_ids = None
 

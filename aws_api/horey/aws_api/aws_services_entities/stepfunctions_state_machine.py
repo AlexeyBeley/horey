@@ -12,7 +12,6 @@ class StepfunctionsStateMachine(AwsObject):
     """
 
     def __init__(self, dict_src, from_cache=False):
-        self.arn = None
         super().__init__(dict_src)
         self.role_arn = None
         self.definition = None

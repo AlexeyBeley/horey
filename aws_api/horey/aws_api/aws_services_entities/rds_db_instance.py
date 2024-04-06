@@ -36,7 +36,6 @@ class RDSDBInstance(AwsObject):
         self.copy_tags_to_snapshot = None
         self.db_instance_status = None
         self.engine = None
-        self.arn = None
         self.vpc_security_group_ids = None
 
         if from_cache:

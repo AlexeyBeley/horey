@@ -26,7 +26,7 @@ class SecretsManagerClient(Boto3Client):
         Standard.
 
         :param secret_name:
-        :param region_name:
+        :param region:
         :return:
         """
 

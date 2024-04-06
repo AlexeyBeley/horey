@@ -18,7 +18,6 @@ class ManagedPrefixList(AwsObject):
         self.associations = []
         self.max_entries = None
         self.address_family = None
-        self.arn = None
         self.version = None
         self._region = None
 
@@ -135,9 +134,9 @@ class ManagedPrefixList(AwsObject):
         }
         for dst_managed_prefix_list_entry in dst_managed_prefix_list.entries:
             if (
-                dst_managed_prefix_list_entry.cidr not in self_cidr_descriptions
-                or dst_managed_prefix_list_entry.description
-                != self_cidr_descriptions[dst_managed_prefix_list_entry.cidr]
+                    dst_managed_prefix_list_entry.cidr not in self_cidr_descriptions
+                    or dst_managed_prefix_list_entry.description
+                    != self_cidr_descriptions[dst_managed_prefix_list_entry.cidr]
             ):
                 request_entries.append(
                     {
@@ -171,13 +170,13 @@ class ManagedPrefixList(AwsObject):
             found = False
             for entry in self.entries:
                 if (
-                    dst_managed_prefix_list_entry.cidr == entry.cidr
-                    or dst_managed_prefix_list_entry.description == entry.description
+                        dst_managed_prefix_list_entry.cidr == entry.cidr
+                        or dst_managed_prefix_list_entry.description == entry.description
                 ):
                     if (
-                        dst_managed_prefix_list_entry.cidr != entry.cidr
-                        or dst_managed_prefix_list_entry.description
-                        != entry.description
+                            dst_managed_prefix_list_entry.cidr != entry.cidr
+                            or dst_managed_prefix_list_entry.description
+                            != entry.description
                     ):
                         request_entries_remove.append({"Cidr": entry.cidr})
                     else:

@@ -29,15 +29,19 @@ class ServicediscoveryClient(Boto3Client):
         client_name = "servicediscovery"
         super().__init__(client_name)
 
-    def get_all_services(self):
+    def get_all_services(self, region=None):
         """
         Standard
 
         :return:
         """
+
+        if region:
+            return self.get_region_services(region)
+
         final_result = []
-        for region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_services(region)
+        for _region in AWSAccount.get_aws_account().regions.values():
+            final_result += self.get_region_services(_region)
         return final_result
 
     def get_region_services(self, region, custom_filters=None):

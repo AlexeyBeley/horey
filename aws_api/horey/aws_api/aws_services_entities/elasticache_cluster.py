@@ -1,11 +1,11 @@
 """
-AWS Lambda representation
+AWS object representation
 """
-import pdb
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 
 
+# pylint: disable= too-many-instance-attributes
 class ElasticacheCluster(AwsObject):
     """
     Elasticache Cluster class
@@ -13,7 +13,21 @@ class ElasticacheCluster(AwsObject):
 
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
-        self.instances = []
+        self.replication_group_id = None
+        self.az_mode = None
+        self.preferred_availability_zones = None
+        self.num_cache_nodes = None
+        self.cache_node_type = None
+        self.engine = None
+        self.engine_version = None
+        self.tags = None
+        self.security_group_ids = None
+        self.cache_parameter_group_name = None
+        self.cache_subnet_group_name = None
+        self.preferred_maintenance_window = None
+        self.auto_minor_version_upgrade = None
+        self.snapshot_retention_limit = None
+        self.snapshot_window = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -59,28 +73,26 @@ class ElasticacheCluster(AwsObject):
         options = {}
         self._init_from_cache(dict_src, options)
 
-    def update_value_from_raw_response(self, raw_value):
-        pdb.set_trace()
-
     def generate_create_request(self):
-        request = dict()
-
-        request["CacheClusterId"] = self.id
-        request["ReplicationGroupId"] = self.replication_group_id
-        request["AZMode"] = self.az_mode
-        request["PreferredAvailabilityZones"] = self.preferred_availability_zones
-        request["NumCacheNodes"] = self.num_cache_nodes
-        request["CacheNodeType"] = self.cache_node_type
-        request["Engine"] = self.engine
-        request["EngineVersion"] = self.engine_version
-        request["Tags"] = self.tags
-        request["SecurityGroupIds"] = self.security_group_ids
-        request["CacheParameterGroupName"] = self.cache_parameter_group_name
-        request["CacheSubnetGroupName"] = self.cache_subnet_group_name
-
-        request["PreferredMaintenanceWindow"] = self.preferred_maintenance_window
-        request["AutoMinorVersionUpgrade"] = self.auto_minor_version_upgrade
-        request["SnapshotRetentionLimit"] = self.snapshot_retention_limit
-        request["SnapshotWindow"] = self.snapshot_window
+        """
+        Standard
+        :return:
+        """
+        request = {"CacheClusterId": self.id,
+                   "ReplicationGroupId": self.replication_group_id,
+                   "AZMode": self.az_mode,
+                   "PreferredAvailabilityZones": self.preferred_availability_zones,
+                   "NumCacheNodes": self.num_cache_nodes,
+                   "CacheNodeType": self.cache_node_type,
+                   "Engine": self.engine,
+                   "EngineVersion": self.engine_version,
+                   "Tags": self.tags,
+                   "SecurityGroupIds": self.security_group_ids,
+                   "CacheParameterGroupName": self.cache_parameter_group_name,
+                   "CacheSubnetGroupName": self.cache_subnet_group_name,
+                   "PreferredMaintenanceWindow": self.preferred_maintenance_window,
+                   "AutoMinorVersionUpgrade": self.auto_minor_version_upgrade,
+                   "SnapshotRetentionLimit": self.snapshot_retention_limit,
+                   "SnapshotWindow": self.snapshot_window}
 
         return request

@@ -4,6 +4,7 @@ AWS ElasticacheReplicationGroup representation
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 
+
 # pylint: disable= too-many-instance-attributes
 class ElasticacheReplicationGroup(AwsObject):
     """
@@ -13,7 +14,6 @@ class ElasticacheReplicationGroup(AwsObject):
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self.security_group_ids = None
-        self.arn = None
         self.description = None
         self.preferred_cache_cluster_azs = None
         self.cache_node_type = None

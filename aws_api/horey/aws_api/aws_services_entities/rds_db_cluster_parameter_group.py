@@ -13,7 +13,6 @@ class RDSDBClusterParameterGroup(AwsObject):
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self._region = None
-        self.arn = None
         self.db_parameter_group_family = None
         self.description = None
 

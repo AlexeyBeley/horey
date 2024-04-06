@@ -19,7 +19,6 @@ class Subnet(AwsObject):
         self.cidr_block = None
         self.vpc_id = None
         self.availability_zone_id = None
-        self.arn = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -71,11 +70,8 @@ class Subnet(AwsObject):
             if tag["Key"] == "name":
                 tag["Key"] = "Name"
 
-        request = dict()
-        request["CidrBlock"] = self.cidr_block
-        request["AvailabilityZoneId"] = self.availability_zone_id
-        request["VpcId"] = self.vpc_id
-        request["TagSpecifications"] = [{"ResourceType": "subnet", "Tags": self.tags}]
+        request = {"CidrBlock": self.cidr_block, "AvailabilityZoneId": self.availability_zone_id, "VpcId": self.vpc_id,
+                   "TagSpecifications": [{"ResourceType": "subnet", "Tags": self.tags}]}
 
         return request
 

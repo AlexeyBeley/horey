@@ -14,7 +14,6 @@ class ECSCapacityProvider(AwsObject):
         super().__init__(dict_src)
         self._region = None
         self.auto_scaling_group_provider = {}
-        self.arn = None
         self.update_status = None
         self.update_status_reason = None
 

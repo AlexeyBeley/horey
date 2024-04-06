@@ -25,7 +25,6 @@ class CloudfrontDistribution(AwsObject):
         self.distribution_config = {}
         self.tags = []
         self.domain_name = None
-        self.arn = None
         self.aliases = None
         self.status = None
         self.e_tag = None
@@ -102,7 +101,8 @@ class CloudfrontDistribution(AwsObject):
         }
         request["DistributionConfig"]["CallerReference"] = self.distribution_config[
             "CallerReference"]
-        for required_attr in ["Logging", "DefaultRootObject", "WebACLId", "CacheBehaviors", "Origins", "DefaultCacheBehavior", "Comment", "PriceClass", "Aliases", "HttpVersion",
+        for required_attr in ["Logging", "DefaultRootObject", "WebACLId", "CacheBehaviors", "Origins",
+                              "DefaultCacheBehavior", "Comment", "PriceClass", "Aliases", "HttpVersion",
                               "CustomErrorResponses", "ViewerCertificate", "Restrictions"]:
             if required_attr not in request["DistributionConfig"]:
                 request["DistributionConfig"][required_attr] = self.distribution_config[required_attr]

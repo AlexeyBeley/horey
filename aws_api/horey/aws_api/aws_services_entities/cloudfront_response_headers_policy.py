@@ -40,6 +40,7 @@ class CloudfrontResponseHeadersPolicy(AwsObject):
             self._name = self.response_headers_policy_config["Name"]
 
         return self._name
+
     @name.setter
     def name(self, value):
         self._name = value
@@ -82,7 +83,8 @@ class CloudfrontResponseHeadersPolicy(AwsObject):
         :return:
         """
         if self.name != desired.name:
-            raise ValueError(f"Cloudfront cloudfront_response_headers_policy' names do not match: {desired.name=}, {self.name=}")
+            raise ValueError(
+                f"Cloudfront cloudfront_response_headers_policy' names do not match: {desired.name=}, {self.name=}")
 
         required_attrs = ["Id", "ResponseHeadersPolicyConfig", "ETag"]
 
@@ -92,7 +94,8 @@ class CloudfrontResponseHeadersPolicy(AwsObject):
             self_value = getattr(self, CommonUtils.camel_case_to_snake_case(attr_name))
             desired_value = getattr(desired, CommonUtils.camel_case_to_snake_case(attr_name))
             if not self_value:
-                raise RuntimeError(f"Attribute value was not set in self, this means the self is not initialized correctly: {attr_name}")
+                raise RuntimeError(
+                    f"Attribute value was not set in self, this means the self is not initialized correctly: {attr_name}")
 
             if not desired_value:
                 request[attr_name] = self_value
@@ -144,12 +147,12 @@ class CloudfrontResponseHeadersPolicy(AwsObject):
         dict_src = self.normalize_raw_data(dict_src)
 
         init_options = {
-                        "FunctionARN": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
-                        "ETag": self.init_default_attr,
-                        "Type": self.init_default_attr,
-                        "Id": self.init_default_attr,
-                        "LastModifiedTime": self.init_default_attr,
-                        "ResponseHeadersPolicyConfig": self.init_default_attr,
+            "FunctionARN": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "ETag": self.init_default_attr,
+            "Type": self.init_default_attr,
+            "Id": self.init_default_attr,
+            "LastModifiedTime": self.init_default_attr,
+            "ResponseHeadersPolicyConfig": self.init_default_attr,
 
         }
 

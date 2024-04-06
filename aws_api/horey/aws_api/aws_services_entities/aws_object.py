@@ -24,7 +24,7 @@ class AwsObject:
     _FIRST_CAP_RE = re.compile("(.)([A-Z][a-z]+)")
     _ALL_CAP_RE = re.compile("([a-z0-9])([A-Z])")
     # pylint: disable= anomalous-backslash-in-string
-    #'2017-07-26 15:54:10.000000+0000'
+    # '2017-07-26 15:54:10.000000+0000'
     _DATE_MICROSECONDS_FORMAT_RE = re.compile(
         "([0-9]{4})-([0-9]{2})-([0-9]{2}) ([0-9]{2}):([0-9]{2}):([0-9]{2})\.([0-9]{6})\+([0-9]{4})"
     )
@@ -40,7 +40,7 @@ class AwsObject:
             self.dict_src = dict_src
         self.name = None
         self.id = None
-        self.tags = None
+        self.tags = []
         self._region = None
         self._arn = None
 
@@ -55,8 +55,8 @@ class AwsObject:
 
         for key_src, value in dict_src.items():
             if (
-                isinstance(value, dict)
-                and value.get(self.SELF_CACHED_TYPE_KEY_NAME) is not None
+                    isinstance(value, dict)
+                    and value.get(self.SELF_CACHED_TYPE_KEY_NAME) is not None
             ):
                 self.init_horey_cached_type(key_src, value)
             elif key_src in dict_options:
@@ -175,7 +175,8 @@ class AwsObject:
         :return:
         """
 
-        return os.path.join(cls.CLIENT_NAME, f"{AwsObject.common_re_utils.pascal_case_case_to_snake_case(cls.__name__)}.json")
+        return os.path.join(cls.CLIENT_NAME,
+                            f"{AwsObject.common_re_utils.pascal_case_case_to_snake_case(cls.__name__)}.json")
 
     def init_default_attr(self, attr_name, value, formatted_name=None):
         """
@@ -190,7 +191,7 @@ class AwsObject:
         setattr(self, formatted_name, value)
 
     def init_date_attr_from_formatted_string(
-        self, attr_name, value, custom_format=None
+            self, attr_name, value, custom_format=None
     ):
         """
         "%Y-%m-%d %H:%M:%S.%f%z"
@@ -381,12 +382,12 @@ class AwsObject:
 
     # pylint: disable= too-many-arguments
     def get_tag(
-        self,
-        key,
-        ignore_missing_tag=False,
-        tag_key_specifier="Key",
-        tag_value_specifier="Value",
-        tags = None
+            self,
+            key,
+            ignore_missing_tag=False,
+            tag_key_specifier="Key",
+            tag_value_specifier="Value",
+            tags=None
     ):
         """
         Get tag value by name
@@ -478,8 +479,8 @@ class AwsObject:
         if self._region is not None:
             return self._region
 
-        if self._arn is not None:
-            self._region = Region.get_region(self._arn.split(":")[3])
+        if self.arn is not None:
+            self._region = Region.get_region(self.arn.split(":")[3])
 
         return self._region
 
@@ -499,6 +500,30 @@ class AwsObject:
             raise ValueError(value)
 
         self._region = value
+
+    @property
+    def arn(self):
+        """
+        arn getter
+
+        :return:
+        """
+
+        return self._arn
+
+    @arn.setter
+    def arn(self, value):
+        """
+        Setter.
+
+        :param value:
+        :return:
+        """
+
+        if not isinstance(value, str):
+            raise ValueError(f"ARN must be string: {value}")
+
+        self._arn = value
 
     class UndefinedStatusError(RuntimeError):
         """

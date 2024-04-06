@@ -333,7 +333,6 @@ class CloudWatchLogsClient(Boto3Client):
         :param obj:
         :return:
         """
-
         arn = obj.arn
         if arn.endswith(":*"):
             # WHY? Because AWS has f*ng bug!!! They end "insights" ARN with ":*" FFFFFFK

@@ -16,7 +16,6 @@ class CloudfrontFunction(AwsObject):
         dict_src = self.normalize_raw_data(dict_src)
 
         super().__init__(dict_src)
-        self.arn = None
         self.name = None
         self.function_config = None
         self.stage = None
@@ -94,7 +93,8 @@ class CloudfrontFunction(AwsObject):
             self_value = getattr(self, CommonUtils.camel_case_to_snake_case(attr_name))
             desired_value = getattr(desired_function, CommonUtils.camel_case_to_snake_case(attr_name))
             if not self_value:
-                raise RuntimeError(f"Attribute value was not set in self, this means the self is not initialized correctly: {attr_name}")
+                raise RuntimeError(
+                    f"Attribute value was not set in self, this means the self is not initialized correctly: {attr_name}")
 
             if not desired_value:
                 request[attr_name] = self_value
@@ -162,17 +162,17 @@ class CloudfrontFunction(AwsObject):
         dict_src = self.normalize_raw_data(dict_src)
 
         init_options = {
-                        "FunctionARN": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
-                        "Name": self.init_default_attr,
-                        "FunctionConfig": self.init_default_attr,
-                        "Stage": self.init_default_attr,
-                        "CreatedTime": self.init_default_attr,
-                        "LastModifiedTime": self.init_default_attr,
-                        "FunctionCode": self.init_default_attr,
-                        "Location": self.init_default_attr,
-                        "ETag": self.init_default_attr,
-                        "Status": self.init_default_attr,
-                        "ContentType": self.init_default_attr,
+            "FunctionARN": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
+            "Name": self.init_default_attr,
+            "FunctionConfig": self.init_default_attr,
+            "Stage": self.init_default_attr,
+            "CreatedTime": self.init_default_attr,
+            "LastModifiedTime": self.init_default_attr,
+            "FunctionCode": self.init_default_attr,
+            "Location": self.init_default_attr,
+            "ETag": self.init_default_attr,
+            "Status": self.init_default_attr,
+            "ContentType": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)

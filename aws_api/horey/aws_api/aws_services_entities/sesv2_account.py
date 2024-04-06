@@ -48,7 +48,7 @@ class SESV2Account(AwsObject):
 
         init_options = {
             "DedicatedIpAutoWarmupEnabled": self.init_default_attr,
-            "EnforcementStatus":  self.init_default_attr,
+            "EnforcementStatus": self.init_default_attr,
             "ProductionAccessEnabled": self.init_default_attr,
             "SendQuota": self.init_default_attr,
             "SendingEnabled": self.init_default_attr,

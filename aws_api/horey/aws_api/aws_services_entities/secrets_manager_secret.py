@@ -1,8 +1,6 @@
 """
 AWS Lambda representation
 """
-import json
-import pdb
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 
@@ -36,7 +34,13 @@ class SecretsManagerSecret(AwsObject):
         self.init_attrs(dict_src, init_options)
 
     def init_null(self, _1, _2):
-        pass
+        """
+        Place holder.
+
+        :param _1:
+        :param _2:
+        :return:
+        """
 
     def _init_object_from_cache(self, dict_src):
         """
@@ -48,4 +52,10 @@ class SecretsManagerSecret(AwsObject):
         self._init_from_cache(dict_src, options)
 
     def update_value_from_raw_response(self, raw_value):
+        """
+        Standard
+
+        :param raw_value:
+        :return:
+        """
         self.secret_string = raw_value["SecretString"]

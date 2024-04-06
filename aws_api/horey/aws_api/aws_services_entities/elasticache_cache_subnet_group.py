@@ -12,7 +12,6 @@ class ElasticacheCacheSubnetGroup(AwsObject):
 
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
-        self.arn = None
         self.cache_subnet_group_description = None
         self.subnet_ids = None
 

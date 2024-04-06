@@ -14,7 +14,6 @@ class RDSDBParameterGroup(AwsObject):
         super().__init__(dict_src)
         self._region = None
         self.parameters = None
-        self.arn =None
         self.db_parameter_group_family = None
         self.description = None
 

@@ -4,6 +4,7 @@ AWS SQS queue representation
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 
+
 # pylint: disable= too-many-instance-attributes
 
 class SQSQueue(AwsObject):
@@ -13,7 +14,6 @@ class SQSQueue(AwsObject):
 
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
-        self._region = None
         self.delay_seconds = None
         self.maximum_message_size = None
         self.message_retention_period = None
@@ -32,6 +32,7 @@ class SQSQueue(AwsObject):
         self.deduplication_scope = None
         self.fifo_throughput_limit = None
         self.queue_url = None
+        self.tags = {}
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -129,7 +130,6 @@ class SQSQueue(AwsObject):
             return {"QueueUrl": self.queue_url, "Tags": desired_queue.tags}
 
         return None
-
 
     # pylint: disable= too-many-branches
     def generate_create_request(self):

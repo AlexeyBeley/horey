@@ -16,7 +16,6 @@ class LoadBalancer(AwsObject):
         self.security_groups = None
         self.listeners = []
         self.rules = []
-        self.arn = None
         self.subnets = None
         self.scheme = None
         self.type = None
@@ -233,7 +232,6 @@ class LoadBalancer(AwsObject):
             super().__init__(dict_src)
             self.ssl_policy = None
             self.certificates = []
-            self.arn = None
             self.protocol = None
             self.port = None
             self.load_balancer_arn = None

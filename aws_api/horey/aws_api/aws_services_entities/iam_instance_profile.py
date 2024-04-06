@@ -15,7 +15,6 @@ class IamInstanceProfile(AwsObject):
         :param dict_src:
         """
         super().__init__(dict_src)
-        self.arn = None
         self.path = None
         self.roles = []
 
@@ -24,7 +23,6 @@ class IamInstanceProfile(AwsObject):
             return
 
         self.update_from_raw_response(dict_src)
-
 
     def _init_instance_profile_from_cache(self, dict_src):
         """

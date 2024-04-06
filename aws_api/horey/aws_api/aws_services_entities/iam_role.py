@@ -21,7 +21,6 @@ class IamRole(AwsObject):
         self.inline_policies = []
         self.role_last_used_time = None
         self.role_last_used_region = None
-        self.arn = None
         self.assume_role_policy_document = None
         self.max_session_duration = None
         self.description = None
@@ -93,7 +92,7 @@ class IamRole(AwsObject):
         :return:
         """
 
-        raise NotImplementedError("Not yet implemented, replaced pdb.set_trace")
+        raise NotImplementedError("Not yet implemented, replaced set_trace")
 
     def update_from_raw_response(self, dict_src):
         """
@@ -129,7 +128,8 @@ class IamRole(AwsObject):
 
         request = {
             "RoleName": self.name,
-            "AssumeRolePolicyDocument": json.dumps(self.assume_role_policy_document) if isinstance(self.assume_role_policy_document, dict) else self.assume_role_policy_document,
+            "AssumeRolePolicyDocument": json.dumps(self.assume_role_policy_document) if isinstance(
+                self.assume_role_policy_document, dict) else self.assume_role_policy_document,
             "MaxSessionDuration": self.max_session_duration,
         }
         if self.path == "":

@@ -16,7 +16,6 @@ class ServicediscoveryService(AwsObject):
         self.instances = []
         self.type = None
         self.namespace_id = None
-        self.arn = None
         self.health_check_custom_config = None
         self.dns_config = None
         self.description = None

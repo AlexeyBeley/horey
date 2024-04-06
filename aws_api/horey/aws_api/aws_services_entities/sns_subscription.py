@@ -16,7 +16,6 @@ class SNSSubscription(AwsObject):
         self.attributes = None
         self.topic_arn = None
         self.endpoint = None
-        self.arn = None
         self.protocol = None
 
         if from_cache:

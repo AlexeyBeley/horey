@@ -17,7 +17,6 @@ class EKSFargateProfile(AwsObject):
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self.cluster_name = None
-        self.arn = None
         self.pod_execution_role_arn = None
         self.selectors = None
 
