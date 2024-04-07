@@ -95,7 +95,10 @@ class Boto3Client:
             region = AWSAccount.get_default_region()
 
         if region is None:
-            raise NotImplementedError("Get default region or fetch region from AWS account")
+            region = AWSAccount.get_account_default_region()
+
+        if region is None:
+            raise NotImplementedError("Failed to get default region or fetch region from AWS account")
 
         if not isinstance(region, Region):
             raise ValueError(f"Parameter region is not of a proper type: '{region}'")
