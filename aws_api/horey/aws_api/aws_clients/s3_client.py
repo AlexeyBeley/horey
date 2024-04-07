@@ -430,7 +430,7 @@ class S3Client(Boto3Client):
         """
 
         for response in self.execute(
-                self.get_session_client(region=bucket.region).get_object,
+                self.get_session_client().get_object,
                 None,
                 raw_data=True,
                 filters_req={"Bucket": bucket.name, "Key": bucket_object.key},
@@ -462,7 +462,7 @@ class S3Client(Boto3Client):
         try:
             update_info = list(
                 self.execute(
-                    self.get_session_client(region=bucket.region).get_bucket_acl,
+                    self.get_session_client().get_bucket_acl,
                     "Grants",
                     filters_req={"Bucket": bucket.name},
                 )
@@ -471,7 +471,7 @@ class S3Client(Boto3Client):
 
             location_info = list(
                 self.execute(
-                    self.get_session_client(region=bucket.region).get_bucket_location,
+                    self.get_session_client().get_bucket_location,
                     "LocationConstraint",
                     filters_req={"Bucket": bucket.name},
                 )
@@ -492,12 +492,12 @@ class S3Client(Boto3Client):
             else:
                 raise
 
-        dict_src_tmp = self.get_bucket_website_raw(bucket.region, {"Bucket": bucket.name})
+        dict_src_tmp = self.get_bucket_website_raw({"Bucket": bucket.name})
         if dict_src_tmp is not None:
             bucket.update_website(dict_src_tmp)
 
         for update_info in self.execute(
-                self.get_session_client(region=bucket.region).get_bucket_policy,
+                self.get_session_client().get_bucket_policy,
                 "Policy",
                 filters_req={"Bucket": bucket.name},
                 exception_ignore_callback=lambda error_inst: "NoSuchBucketPolicy" in repr(error_inst) or
@@ -505,7 +505,7 @@ class S3Client(Boto3Client):
             bucket.update_policy(update_info)
         return True
 
-    def get_bucket_website_raw(self, region, filters_req):
+    def get_bucket_website_raw(self, filters_req):
         """
         Get website information
 
@@ -513,7 +513,7 @@ class S3Client(Boto3Client):
         :return:
         """
         for response in self.execute(
-                self.get_session_client(region=region).get_bucket_website,
+                self.get_session_client().get_bucket_website,
                 None,
                 filters_req=filters_req,
                 raw_data=True,
@@ -1148,6 +1148,7 @@ class S3Client(Boto3Client):
 
         @param request_dict:
         @return:
+        :param region:
         """
         logger.info(f"Creating S3 bucket '{request_dict}'")
         for response in self.execute(
