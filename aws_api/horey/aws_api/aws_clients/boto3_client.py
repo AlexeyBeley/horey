@@ -549,11 +549,10 @@ class Boto3Client:
         obj.tags = ret
         return ret
 
-    def tag_resource(self, obj, arn_identifier="ResourceArn", tags_identifier="TagsToAdd", region=None):
+    def tag_resource(self, obj, arn_identifier="ResourceArn", tags_identifier="TagsToAdd"):
         """
         Tag resource.
 
-        :param region:
         :param obj:
         :param arn_identifier:
         :param tags_identifier:
@@ -562,7 +561,7 @@ class Boto3Client:
 
         logger.info(f"Tagging resource: {obj.arn}")
         for response in self.execute(
-                self.get_session_client(region).tag_resource,
+                self.get_session_client(obj.region).tag_resource,
                 "Tags",
                 filters_req={arn_identifier: obj.arn, tags_identifier: obj.tags},
                 raw_data=True,
