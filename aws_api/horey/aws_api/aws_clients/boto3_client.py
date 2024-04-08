@@ -824,11 +824,11 @@ class Boto3Client:
         final_result = []
         for result in regional_fetcher_generator(region, filters_req=filters_req):
             obj = entity_class(result)
+            obj.region = region
             if full_information_callback:
                 full_information_callback(obj)
             if get_tags_callback:
                 get_tags_callback(obj)
-            obj.region = region
             final_result.append(obj)
             yield obj
 
