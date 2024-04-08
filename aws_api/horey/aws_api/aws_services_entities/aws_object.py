@@ -561,3 +561,15 @@ class AwsObject:
             if not attr_value:
                 raise ValueError(f"Attribute {attr_name} is not set, value: '{attr_value}'")
             request[attribute] = attr_value
+
+    def update_from_attrs(self, other_object):
+        """
+        Update self fom other.
+
+        :param other_object:
+        :return:
+        """
+
+        for attr_name, attr_value in other_object.__dict__.items():
+            setattr(self, attr_name, attr_value)
+        return True

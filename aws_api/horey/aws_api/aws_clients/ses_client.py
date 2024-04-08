@@ -5,6 +5,7 @@ from horey.aws_api.aws_clients.boto3_client import Boto3Client
 
 from horey.aws_api.aws_services_entities.ses_identity import SESIdentity
 from horey.aws_api.aws_services_entities.ses_receipt_rule_set import SESReceiptRuleSet
+from horey.common_utils.common_utils import CommonUtils
 
 from horey.h_logger import get_logger
 
@@ -55,6 +56,77 @@ class SESClient(Boto3Client):
                 del dict_src_tmp["ResponseMetadata"]
                 dict_src.update(dict_src_tmp)
             yield dict_src
+
+    def provision_receipt_rule_set(self, rule_set: SESReceiptRuleSet):
+        """
+        Standard.
+
+        :param rule_set:
+        :return:
+        """
+        region_rule_set = SESReceiptRuleSet({"name": rule_set.name})
+        region_rule_set.region = rule_set.region
+        if not self.update_rule_set_information(region_rule_set):
+            self.create_receipt_rule_set_raw(region_rule_set.region, {"RuleSetName": region_rule_set.name})
+
+        reorder_request, create_requests, delete_requests = region_rule_set.generate_change_rules_requests(rule_set)
+        if reorder_request:
+            raise NotImplementedError("Reorder rules set")
+
+        for create_request in create_requests:
+            self.create_receipt_rule_raw(rule_set.region, create_request)
+
+        for delete_request in delete_requests:
+            raise NotImplementedError(f"Delete rules set: {delete_request}")
+
+        update_requests = region_rule_set.generate_update_receipt_rule_requests(rule_set)
+        if update_requests:
+            raise NotImplementedError("Update rules in set")
+
+        return self.update_rule_set_information(rule_set)
+
+    def update_rule_set_information(self, rule_set):
+        """
+        Standard
+
+        :param rule_set:
+        :return:
+        """
+        all_sets = list(self.yield_receipt_rule_sets(region=rule_set.region))
+        name_sets = CommonUtils.find_objects_by_values(all_sets, {"name": rule_set.name})
+        if len(name_sets) == 0:
+            return False
+
+        if len(name_sets) > 1:
+            raise ValueError(f"More then 1 rule set found: {rule_set.name=}")
+
+        return rule_set.update_from_attrs(name_sets[0])
+
+    def create_receipt_rule_raw(self, region, dict_request):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+        logger.info(f"Creating rule: {dict_request} ")
+        for dict_ret in self.execute(
+                self.get_session_client(region=region).create_receipt_rule, None, raw_data=True, filters_req=dict_request
+        ):
+            self.clear_cache(SESReceiptRuleSet)
+            return dict_ret
+
+    def create_receipt_rule_set_raw(self, region, dict_request=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        for dict_ret in self.execute(
+                self.get_session_client(region=region).create_receipt_rule_set, None, raw_data=True, filters_req=dict_request
+        ):
+            self.clear_cache(SESReceiptRuleSet)
+            return dict_ret
 
     # pylint: disable= too-many-arguments
     def yield_identities(self, region=None, update_info=False, filters_req=None, full_information=True):

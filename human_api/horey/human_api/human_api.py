@@ -844,6 +844,9 @@ class HumanAPI:
         str_year = this_day_dir_name[:4]
         digit_names = [name for name in os.listdir(os.path.dirname(os.path.dirname(self.configuration.work_status_file_path)))
                        if name.startswith(str_year) and name != this_day_dir_name]
+        if not digit_names:
+            return True
+
         previous_report_file_path = os.path.join(self.configuration.sprint_dir_path, sorted(digit_names)[-1], self.configuration.work_status_file_name)
         with open(previous_report_file_path, encoding="utf-8") as file_handler:
             dict_wobjects = json.load(file_handler)
@@ -857,6 +860,8 @@ class HumanAPI:
             if htb_ret_tmp:
                 htb_ret.blocks.append(htb_ret_tmp)
         htb_ret.write_to_file(self.configuration.big_brother_file_path)
+        return True
+
 
     def genereate_worker_big_brother_report(self, worker, current_tasks_bugs_map, previous_wobjects_map, current_wobjects):
         """
