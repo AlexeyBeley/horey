@@ -399,7 +399,7 @@ class S3Client(Boto3Client):
                     filters_req.update(custom_filters)
 
                 for response in self.execute(
-                        self.get_session_client(region=bucket.region).list_objects_v2, None, raw_data=True,
+                        self.get_session_client().list_objects_v2, None, raw_data=True,
                         filters_req=filters_req
                 ):
                     if response.get("KeyCount") == 0:
