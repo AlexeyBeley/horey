@@ -398,6 +398,9 @@ class Boto3Client:
                 if "ParamValidationError" in repr(exception_instance):
                     raise
 
+                if "InvalidParameterValueException" in repr(exception_instance):
+                    raise
+
                 if instant_raise:
                     raise
 
