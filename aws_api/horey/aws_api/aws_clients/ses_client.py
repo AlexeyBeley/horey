@@ -77,11 +77,11 @@ class SESClient(Boto3Client):
             self.create_receipt_rule_raw(rule_set.region, create_request)
 
         for delete_request in delete_requests:
-            raise NotImplementedError(f"Delete rules set: {delete_request}")
+            self.delete_receipt_rule_raw(rule_set.region, delete_request)
 
         update_requests = region_rule_set.generate_update_receipt_rule_requests(rule_set)
-        if update_requests:
-            raise NotImplementedError("Update rules in set")
+        for update_request in update_requests:
+            self.update_receipt_rule_raw(rule_set.region, update_request)
 
         return self.update_rule_set_information(rule_set)
 
@@ -101,6 +101,32 @@ class SESClient(Boto3Client):
             raise ValueError(f"More then 1 rule set found: {rule_set.name=}")
 
         return rule_set.update_from_attrs(name_sets[0])
+
+    def delete_receipt_rule_raw(self, region, dict_request):
+        """
+        Standard.
+
+        :return:
+        """
+        logger.info(f"Deleting rule: {dict_request} ")
+        for dict_ret in self.execute(
+                self.get_session_client(region=region).delete_receipt_rule, None, raw_data=True, filters_req=dict_request
+        ):
+            self.clear_cache(SESReceiptRuleSet)
+            return dict_ret
+
+    def update_receipt_rule_raw(self, region, dict_request):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+        logger.info(f"Updating rule: {dict_request} ")
+        for dict_ret in self.execute(
+                self.get_session_client(region=region).update_receipt_rule, None, raw_data=True, filters_req=dict_request
+        ):
+            self.clear_cache(SESReceiptRuleSet)
+            return dict_ret
 
     def create_receipt_rule_raw(self, region, dict_request):
         """
