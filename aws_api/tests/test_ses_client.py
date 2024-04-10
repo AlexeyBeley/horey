@@ -113,7 +113,12 @@ def test_generate_update_receipt_rule_requests(base_rule_set):
     assert requests == [{"RuleSetName": "rest_rule_set", "Rule": {"Name": "string2", "Enabled": False}}, {"RuleSetName": "rest_rule_set", "Rule": {"Name": "string1", "Enabled": False}}]
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_provision_receipt_rule_set(base_rule_set):
     client.provision_receipt_rule_set(base_rule_set)
     assert base_rule_set.created_timestamp is not None
+
+
+@pytest.mark.wip
+def test_get_active_rule_set_name(base_rule_set):
+    assert client.get_active_rule_set_name(base_rule_set.region)

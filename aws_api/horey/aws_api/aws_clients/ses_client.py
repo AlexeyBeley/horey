@@ -66,8 +66,12 @@ class SESClient(Boto3Client):
         """
         region_rule_set = SESReceiptRuleSet({"name": rule_set.name})
         region_rule_set.region = rule_set.region
+
         if not self.update_rule_set_information(region_rule_set):
             self.create_receipt_rule_set_raw(region_rule_set.region, {"RuleSetName": region_rule_set.name})
+            region_rule_set.active = False
+        else:
+            region_rule_set.active = self.get_active_rule_set_name(rule_set.region) == region_rule_set.name
 
         reorder_request, create_requests, delete_requests = region_rule_set.generate_change_rules_requests(rule_set)
         if reorder_request:
@@ -83,7 +87,27 @@ class SESClient(Boto3Client):
         for update_request in update_requests:
             self.update_receipt_rule_raw(rule_set.region, update_request)
 
+        activate_request, deactivate_requests, = region_rule_set.generate_change_active_requests(rule_set)
+
+        if deactivate_requests:
+            raise NotImplementedError("deactivate_requests")
+
+        if activate_request:
+            self.set_active_receipt_rule_set_raw(rule_set.region, {"RuleSetName": rule_set.name})
+
         return self.update_rule_set_information(rule_set)
+
+    def get_active_rule_set_name(self, region):
+        """
+        Fetch current active rule set name.
+
+        :return:
+        """
+
+        for dict_ret in self.execute(
+                self.get_session_client(region=region).describe_active_receipt_rule_set, "Metadata"
+        ):
+            return dict_ret["Name"]
 
     def update_rule_set_information(self, rule_set):
         """
@@ -101,6 +125,19 @@ class SESClient(Boto3Client):
             raise ValueError(f"More then 1 rule set found: {rule_set.name=}")
 
         return rule_set.update_from_attrs(name_sets[0])
+
+    def set_active_receipt_rule_set_raw(self, region, dict_request):
+        """
+        Standard.
+
+        :return:
+        """
+        logger.info(f"Activatomg RuleSet: {dict_request} ")
+        for dict_ret in self.execute(
+                self.get_session_client(region=region).set_active_receipt_rule_set, None, raw_data=True, filters_req=dict_request
+        ):
+            self.clear_cache(SESReceiptRuleSet)
+            return dict_ret
 
     def delete_receipt_rule_raw(self, region, dict_request):
         """
