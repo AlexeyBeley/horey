@@ -459,7 +459,7 @@ class ELBV2Client(Boto3Client):
                 rule.arn = region_rule.arn
                 return
 
-        response = self.provision_load_balancer_rule_raw(rule.reigon, rule.generate_create_request())
+        response = self.provision_load_balancer_rule_raw(rule.region, rule.generate_create_request())
         rule.update_from_raw_response(response)
 
     def provision_load_balancer_rule_raw(self, region, request_dict):
