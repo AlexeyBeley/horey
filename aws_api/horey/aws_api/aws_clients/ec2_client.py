@@ -715,7 +715,7 @@ class EC2Client(Boto3Client):
         ):
             return response
 
-    def raw_modify_managed_prefix_list(self, request, region=None):
+    def raw_modify_managed_prefix_list(self, region, request):
         """
         Standard
 
@@ -1178,7 +1178,7 @@ class EC2Client(Boto3Client):
             managed_prefix_list, declarative
         )
         if request is not None:
-            self.raw_modify_managed_prefix_list(request)
+            self.raw_modify_managed_prefix_list(managed_prefix_list.region, request)
             raw_region_pl = self.raw_describe_managed_prefix_list(
                 managed_prefix_list.region, prefix_list_name=managed_prefix_list.name
             )
