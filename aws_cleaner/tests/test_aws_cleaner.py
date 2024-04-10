@@ -157,6 +157,7 @@ def test_cleanup_report_sns(configuration):
     assert ret is not None
     assert os.path.exists(configuration.sns_report_file_path)
 
+
 @pytest.mark.done
 def test_sub_cleanup_report_lambdas_monitoring(configuration):
     cleaner = AWSCleaner(configuration)
@@ -165,6 +166,7 @@ def test_sub_cleanup_report_lambdas_monitoring(configuration):
     assert len(cleaner.aws_api.cloud_watch_metrics) > 0
     assert len(cleaner.aws_api.cloud_watch_alarms) > 0
     assert ret is not None
+
 
 @pytest.mark.done
 def test_cleanup_report_load_balancers(configuration):
@@ -351,11 +353,12 @@ def test_init_ses_permissions_only(configuration: AWSCleanerConfigurationPolicy)
         if "arn" in str(statement["Resource"]):
             del statement["Resource"]
 
-    assert json.loads(json.dumps(ret)) == [{"Sid": "SES", "Effect": "Allow", "Action": ["ses:ListConfigurationSets"], "Resource": "*"},
-                                           {"Sid": "SESConfigSet", "Effect": "Allow", "Action": ["ses:GetConfigurationSet"]},
-                                           {"Sid": "SESEmailIdentities", "Effect": "Allow", "Action": ["ses:ListEmailIdentities"], "Resource": "*"},
-                                           {"Sid": "SESEmailIdentity", "Effect": "Allow", "Action": ["ses:GetEmailIdentity"]}
-                                           ]
+    assert json.loads(json.dumps(ret)) == [
+        {"Sid": "SES", "Effect": "Allow", "Action": ["ses:ListConfigurationSets"], "Resource": "*"},
+        {"Sid": "SESConfigSet", "Effect": "Allow", "Action": ["ses:GetConfigurationSet"]},
+        {"Sid": "SESEmailIdentities", "Effect": "Allow", "Action": ["ses:ListEmailIdentities"], "Resource": "*"},
+        {"Sid": "SESEmailIdentity", "Effect": "Allow", "Action": ["ses:GetEmailIdentity"]}
+        ]
 
 
 @pytest.mark.done
@@ -750,6 +753,7 @@ def test_cleanup_report_ses(configuration):
     assert len(cleaner.aws_api.sesv2_configuration_sets) > 0
     assert ret is not None
 
+
 @pytest.mark.done
 def test_cleanup_report_ec2_pricing_per_region_us_east_1(configuration):
     cleaner = AWSCleaner(configuration)
@@ -767,11 +771,13 @@ def test_cleanup_report_ec2_pricing_per_region_us_east_1(configuration):
     ret = cleaner.cleanup_report_ec2_pricing_per_region(Region.get_region("us-east-2"))
     assert ret is not None
 
+
 @pytest.mark.skip
 def test_cleanup_report_iam_permissions_only(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.cleanup_report_iam(permissions_only=True)
     assert ret is not None
+
 
 @pytest.mark.todo
 def test_cleanup_report_iam(configuration):
@@ -783,6 +789,7 @@ def test_cleanup_report_iam(configuration):
     assert ret is not None
     """
     print(configuration)
+
 
 @pytest.mark.done
 def test_generate_permissions_all(
