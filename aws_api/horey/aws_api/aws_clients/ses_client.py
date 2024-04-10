@@ -64,6 +64,7 @@ class SESClient(Boto3Client):
         :param rule_set:
         :return:
         """
+
         region_rule_set = SESReceiptRuleSet({"name": rule_set.name})
         region_rule_set.region = rule_set.region
 
