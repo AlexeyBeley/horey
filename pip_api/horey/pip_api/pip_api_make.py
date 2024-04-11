@@ -189,8 +189,12 @@ def get_standalone_methods(configs):
     module.StandaloneMethods.logger = logger
 
     logger.info(f"StandaloneMethods initialized with python command: {Standalone.methods.python_interpreter_command=}")
-    response = Standalone.methods.execute(f'{Standalone.methods.python_interpreter_command} -c "import sys; print(sys.executable)"')
-    logger.info(f"Going to use this python: {response}")
+    try:
+        response = Standalone.methods.execute(f'{Standalone.methods.python_interpreter_command} -c "import sys; print(sys.executable)"')
+        logger.info(f"Going to use this python: {response}")
+    except RuntimeError:
+        # This error can happend when venv is not yet initialized
+        pass
 
     return Standalone.methods
 
