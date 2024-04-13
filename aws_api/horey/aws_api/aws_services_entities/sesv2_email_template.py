@@ -61,3 +61,17 @@ class SESV2EmailTemplate(AwsObject):
         request = {"TemplateName": self.name, "TemplateContent": self.template_content}
 
         return request
+
+    def generate_update_request(self, desired_state):
+        """
+        Standard
+
+        :param desired_state:
+        :return:
+        """
+
+        request = {"TemplateName": self.name, "TemplateContent": desired_state.template_content} if \
+            desired_state.template_content != self.template_content else \
+            None
+
+        return request

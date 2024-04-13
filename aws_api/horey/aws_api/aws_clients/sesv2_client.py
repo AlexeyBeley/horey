@@ -353,6 +353,20 @@ class SESV2Client(Boto3Client):
         ):
             return response
 
+    def update_email_template_information(self, email_template: SESV2EmailTemplate):
+        """
+        Standard
+
+        :param email_template:
+        :return:
+        """
+
+        for region_template in self.yield_email_templates(email_template.region, full_information=True):
+            if region_template.name == email_template.name:
+                email_template.update_from_attrs(region_template)
+                return True
+        return False
+
     def provision_email_template(self, email_template: SESV2EmailTemplate):
         """
         Standard
@@ -361,14 +375,25 @@ class SESV2Client(Boto3Client):
         @return:
         """
 
-        self.provision_email_template_raw(email_template.region, email_template.generate_create_request())
+        current_template = SESV2EmailTemplate({"TemplateName": email_template.name})
+        current_template.region = email_template.region
+        if self.update_email_template_information(current_template):
+            update_request = current_template.generate_update_request(current_template)
+            if update_request:
+                self.update_email_template_raw(current_template.region, update_request)
+        else:
+            self.create_email_template_raw(current_template.region, email_template.generate_create_request())
 
-    def provision_email_template_raw(self, region, request_dict):
+        self.update_email_template_information(email_template)
+        return True
+
+    def update_email_template_raw(self, region, request_dict):
         """
         Standard
 
         @param request_dict:
         @return:
+        :param region:
         """
 
         for response in self.execute(
@@ -380,6 +405,16 @@ class SESV2Client(Boto3Client):
         ):
             logger.info(f"Updated email_template: {request_dict}")
             return response
+        return True
+
+    def create_email_template_raw(self, region, request_dict):
+        """
+        Create email template
+
+        :param region:
+        :param request_dict:
+        :return:
+        """
 
         logger.info(f"Creating email_template: {request_dict}")
         for response in self.execute(
@@ -390,8 +425,7 @@ class SESV2Client(Boto3Client):
                 exception_ignore_callback=lambda x: "NotFoundException" in repr(x),
         ):
             return response
-
-        return None
+        return True
 
     def provision_email_identity(self, email_identity: SESV2EmailIdentity):
         """

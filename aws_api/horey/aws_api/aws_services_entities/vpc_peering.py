@@ -11,9 +11,11 @@ class VPCPeering(AwsObject):
     """
 
     def __init__(self, dict_src, from_cache=False):
-        self.peer_vpc_id = None
-        self.vpc_id = None
-        self.peer_region = None
+        self._peer_vpc_id = None
+        self._vpc_id = None
+        self._peer_region = None
+        self.requester_vpc_info = {}
+        self.accepter_vpc_info = {}
         self.status = {}
         super().__init__(dict_src)
         self.instances = []
@@ -33,6 +35,48 @@ class VPCPeering(AwsObject):
         }
 
         self.init_attrs(dict_src, init_options)
+
+    @property
+    def vpc_id(self):
+        """
+        Find vpc_id
+        :return:
+        """
+        if self._vpc_id is None:
+            self._vpc_id = self.requester_vpc_info["VpcId"]
+        return self._vpc_id
+
+    @vpc_id.setter
+    def vpc_id(self, value):
+        self._vpc_id = value
+
+    @property
+    def peer_vpc_id(self):
+        """
+        Find peer_vpc_id
+        :return:
+        """
+        if self._peer_vpc_id is None:
+            self._peer_vpc_id = self.accepter_vpc_info["VpcId"]
+        return self._peer_vpc_id
+
+    @peer_vpc_id.setter
+    def peer_vpc_id(self, value):
+        self._peer_vpc_id = value
+
+    @property
+    def peer_region(self):
+        """
+        Find peer_region
+        :return:
+        """
+        if self._peer_region is None:
+            self._peer_region = self.requester_vpc_info["Region"]
+        return self._peer_region
+
+    @peer_region.setter
+    def peer_region(self, value):
+        self._peer_region = value
 
     def _init_object_from_cache(self, dict_src):
         """

@@ -345,16 +345,14 @@ class EC2Client(Boto3Client):
         security_group.update_from_raw_response(security_groups[0].dict_src)
         return True
 
-    def provision_security_group(self, desired_security_group, provision_rules=True):
+    def provision_security_group(self, desired_security_group, provision_rules=True, force=False):
         """
         Create/modify security group.
-        todo:
-        Generate permit_any_any on the outbound.
-        add_request, revoke_request = security_group_region.generate_modify_ip_permissions_egress_requests(
 
-        @param desired_security_group:
-        @param provision_rules:
-        @return:
+        :param desired_security_group:
+        :param provision_rules:
+        :param force: Permit all rules deletion.
+        :return:
         """
 
         existing_security_group = EC2SecurityGroup({})
@@ -378,7 +376,7 @@ class EC2Client(Boto3Client):
             revoke_request,
             update_description,
         ) = existing_security_group.generate_modify_ip_permissions_requests(
-            desired_security_group
+            desired_security_group, force=force
         )
 
         if add_request:
