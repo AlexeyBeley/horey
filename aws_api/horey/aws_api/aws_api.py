@@ -2969,6 +2969,7 @@ class AWSAPI:
         for route in route_table.routes:
             if route.get("State") is None:
                 logger.warning(f"Route has no State: route table: {route_table.region.region_mark} `{route_table.id}, `{route}")
+                continue
 
             if route["State"] != "active":
                 continue
