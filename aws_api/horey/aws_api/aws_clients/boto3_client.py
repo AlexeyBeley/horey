@@ -672,6 +672,7 @@ class Boto3Client:
             with open(file_path, encoding="utf-8") as file_handler:
                 objects = json.load(file_handler)
 
+            logger.info(f"Adding entity '{entity.convert_to_dict().keys()}' to cache {file_path}")
             objects.append(entity.convert_to_dict())
             with open(file_path, "w", encoding="utf-8") as file_handler:
                 json.dump(objects, file_handler, indent=4)
@@ -707,6 +708,7 @@ class Boto3Client:
         cache_client_dir_path = os.path.join(self.main_cache_dir_path, aws_api_account.name, region_dir_name,
                                              self.client_cache_dir_name)
         if not os.path.exists(cache_client_dir_path):
+            logger.info(f"Creating cache client dir: {cache_client_dir_path}")
             os.makedirs(cache_client_dir_path, exist_ok=True)
 
         return os.path.join(cache_client_dir_path, file_name)
