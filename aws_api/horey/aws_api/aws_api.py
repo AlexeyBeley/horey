@@ -2967,6 +2967,9 @@ class AWSAPI:
 
         route_table = self.find_route_table_by_subnet(subnet.region, subnet)
         for route in route_table.routes:
+            if route.get("State") is None:
+                logger.warning(f"Route has no State: route table: {route_table.region.region_mark} `{route_table.id}, `{route}")
+
             if route["State"] != "active":
                 continue
 
