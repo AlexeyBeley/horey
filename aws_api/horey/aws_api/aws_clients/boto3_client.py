@@ -617,8 +617,10 @@ class Boto3Client:
 
         with open(file_path, "w", encoding="utf-8") as file_handler:
 
-            logger.info(f"Caching objects '{len(objects_dicts)}' to cache {file_path}")
+            logger.info(f"Caching {len(objects_dicts)} objects to cache {file_path}")
             if objects_dicts:
+                if "pcx-052a85df30b1a3dd8" in str(objects_dicts):
+                    raise RuntimeError("here")
                 logger.info(f"Caching object sample '{objects_dicts[0].keys()=}' to cache {file_path}")
 
             json.dump(objects_dicts, file_handler, indent=indent)
