@@ -616,6 +616,11 @@ class Boto3Client:
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
 
         with open(file_path, "w", encoding="utf-8") as file_handler:
+
+            logger.info(f"Caching objects '{len(objects_dicts)}' to cache {file_path}")
+            if objects_dicts:
+                logger.info(f"Caching object sample '{objects_dicts[0].keys()=}' to cache {file_path}")
+
             json.dump(objects_dicts, file_handler, indent=indent)
 
     def clear_cache(self, entity_class, all_cache=False):
