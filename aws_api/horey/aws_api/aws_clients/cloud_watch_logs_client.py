@@ -238,7 +238,7 @@ class CloudWatchLogsClient(Boto3Client):
                     self.yield_log_groups(region=log_group.region, update_info=True, filters_req=filters_req,
                                           get_tags=True))
                 if len(full_info_log_groups) != 1:
-                    raise RuntimeError(f"Found {len(full_info_log_groups)=} log groups with params: {filters_req}")
+                    raise RuntimeError(f"Found {[x.name for x in full_info_log_groups]} log groups with params: {filters_req}")
                 log_group.update_from_raw_response(full_info_log_groups[0].dict_src)
                 return True
         return False

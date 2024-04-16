@@ -288,6 +288,7 @@ class ECRClient(Boto3Client):
                 filters_req=filters_req
         ):
             obj = ECRImage(dict_src)
+            obj.region = repository.region
             final_result.append(obj)
 
         return final_result
