@@ -82,25 +82,36 @@ class AsyncOrchestrator:
             time.sleep(sleep_time)
         raise TimeoutError(f"Finished wait_for_tasks at {time.strftime('%X')}")
 
-    def get_task_result(self, task_id, sleep_time=1, timeout=20*60):
+    def get_task_result(self, task_id, sleep_time=1, timeout=20*60, start_timeout=60):
         """
         Wait for all tasks to finish.
 
         :return:
         """
         logger.info(f"started wait_for_tasks at {time.strftime('%X')}")
+        now = datetime.datetime.now()
+        end_time = now + datetime.timedelta(seconds=timeout)
+        end_time_for_task_to_start = now + datetime.timedelta(seconds=start_timeout)
 
-        end_time = datetime.datetime.now() + datetime.timedelta(seconds=timeout)
+        while datetime.datetime.now() < end_time_for_task_to_start:
+            if self.tasks.get(task_id):
+                break
+            logger.info(f"Waiting for task '{task_id}' to start. Going to sleep {sleep_time}")
+            time.sleep(sleep_time)
+        else:
+            raise TimeoutError(f"Task '{task_id}' did not start for {start_timeout} seconds. {time.strftime('%X')}")
+
+        task = self.tasks.get(task_id)
+
         while datetime.datetime.now() < end_time:
-            task = self.tasks.get(task_id)
-            if task and task.finished:
+            if task.finished:
                 if task.exception:
                     raise RuntimeError(f"Task failed: '{task_id}'") from task.exception
                 return task.result
 
             logger.info(f"Waiting for task '{task_id}' to start and finish. Going to sleep {sleep_time}")
             time.sleep(sleep_time)
-        raise TimeoutError(f"Finished get_task_result at {time.strftime('%X')}")
+        raise TimeoutError(f"Task did not finish during {timeout} seconds. {time.strftime('%X')}")
 
     class Task:
         """

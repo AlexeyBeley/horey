@@ -98,7 +98,7 @@ class ElasticacheClient(Boto3Client):
 
     def get_region_cache_parameter_groups(self, region):
         """
-        Stanard.
+        Standard.
 
         :param region:
         :return:
@@ -130,7 +130,7 @@ class ElasticacheClient(Boto3Client):
 
     def get_region_cache_subnet_groups(self, region):
         """
-        Stanard.
+        Standard.
 
         :param region:
         :return:
@@ -162,7 +162,7 @@ class ElasticacheClient(Boto3Client):
 
     def get_region_replication_groups(self, region):
         """
-        Stanard.
+        Standard.
 
         :param region:
         :return:
@@ -219,7 +219,7 @@ class ElasticacheClient(Boto3Client):
 
     def provision_subnet_group(self, subnet_group):
         """
-        Stanard.
+        Standard
 
         :param subnet_group:
         :return:
@@ -245,6 +245,7 @@ class ElasticacheClient(Boto3Client):
                 "CacheSubnetGroup",
                 filters_req=request_dict,
         ):
+            self.clear_cache(ElasticacheCacheSubnetGroup)
             return response
 
     def provision_cluster(self, cluster):
@@ -270,29 +271,56 @@ class ElasticacheClient(Boto3Client):
         for response in self.execute(
                 self.get_session_client(region=region).create_cache_cluster, "CacheCluster", filters_req=request_dict
         ):
+            self.clear_cache(ElasticacheCluster)
             return response
 
-    def provision_replication_group(self, replication_group):
+    def provision_replication_group(self, replication_group: ElasticacheReplicationGroup):
         """
         Standard.
 
         :param replication_group:
         :return:
         """
+
+        if self.update_replication_group_information(replication_group):
+            return True
+
+        response = self.provision_replication_group_raw(replication_group.region,
+                                                        replication_group.generate_create_request()
+                                                        )
+        self.wait_for_status(
+            replication_group,
+            self.update_replication_group_information,
+            [replication_group.Status.AVAILABLE],
+            [replication_group.Status.CREATING,
+             replication_group.Status.MODIFYING,
+             replication_group.Status.SNAPSHOTTING],
+            [
+                replication_group.Status.DELETING,
+                replication_group.Status.CREATE_FAILED,
+            ], timeout=30*60
+        )
+        return replication_group.update_from_raw_response(response)
+
+    def update_replication_group_information(self, replication_group):
+        """
+        Standard
+
+        :param replication_group:
+        :return:
+        """
+
         region_replication_groups = self.get_region_replication_groups(
             replication_group.region
         )
+
         for region_replication_group in region_replication_groups:
             if replication_group.id == region_replication_group.id:
                 replication_group.update_from_raw_response(
                     region_replication_group.dict_src
                 )
-                return
-
-        response = self.provision_replication_group_raw(replication_group.reions,
-                                                        replication_group.generate_create_request()
-                                                        )
-        replication_group.update_from_raw_response(response)
+                return True
+        return False
 
     def provision_replication_group_raw(self, region, request_dict):
         """
@@ -304,6 +332,7 @@ class ElasticacheClient(Boto3Client):
                 "ReplicationGroup",
                 filters_req=request_dict,
         ):
+            self.clear_cache(ElasticacheReplicationGroup)
             return response
 
     def describe_cache_engine_versions_raw(self, region, filters_req):
