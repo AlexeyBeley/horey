@@ -13,7 +13,6 @@ class SESV2EmailIdentity(AwsObject):
 
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
-        self.arn = None
         self.tags = None
         self.identity_type = None
         self.verified_for_sending_status = None

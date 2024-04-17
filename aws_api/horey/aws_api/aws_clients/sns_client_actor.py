@@ -1,6 +1,8 @@
-import sys
+# pylint: skip-file
+"""
+Standard
+"""
 import argparse
-
 
 from horey.aws_api.aws_clients.sns_client import SNSClient
 from horey.h_logger import get_logger

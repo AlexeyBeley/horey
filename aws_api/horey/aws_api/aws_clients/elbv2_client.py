@@ -5,7 +5,6 @@ AWS elb-v2 client to handle elb-v2 service API requests.
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.elbv2_load_balancer import LoadBalancer
 from horey.aws_api.aws_services_entities.elbv2_target_group import ELBV2TargetGroup
-from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.common_utils.common_utils import CommonUtils
 from horey.h_logger import get_logger
 
@@ -22,7 +21,8 @@ class ELBV2Client(Boto3Client):
         super().__init__(client_name)
 
     # pylint: disable= too-many-arguments
-    def get_all_load_balancers(self, region=None, update_info=False, filters_req=None, full_information=True, get_tags=True):
+    def get_all_load_balancers(self, region=None, update_info=False, filters_req=None, full_information=True,
+                               get_tags=True):
         """
         Get all load balancers.
 
@@ -33,10 +33,12 @@ class ELBV2Client(Boto3Client):
         :return:
         """
 
-        return list(self.yield_load_balancers(region=region, update_info=update_info, filters_req=filters_req, full_information=full_information, get_tags=get_tags))
+        return list(self.yield_load_balancers(region=region, update_info=update_info, filters_req=filters_req,
+                                              full_information=full_information, get_tags=get_tags))
 
     # pylint: disable= too-many-arguments
-    def yield_load_balancers(self, region=None, update_info=False, filters_req=None, full_information=True, get_tags=True):
+    def yield_load_balancers(self, region=None, update_info=False, filters_req=None, full_information=True,
+                             get_tags=True):
         """
         Yield load_balancers
 
@@ -44,31 +46,30 @@ class ELBV2Client(Boto3Client):
         """
 
         regional_fetcher_generator = self.yield_load_balancers_raw
-        for obj in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                  LoadBalancer,
-                                                  update_info=update_info,
-                                                  full_information_callback=self.get_load_balancer_full_information if full_information else None,
-                                                  get_tags_callback=self.get_tags if get_tags else None,
-                                                  regions=[region] if region else None,
-                                                  filters_req=filters_req):
-            yield obj
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                            LoadBalancer,
+                                                            update_info=update_info,
+                                                            full_information_callback=self.get_load_balancer_full_information if full_information else None,
+                                                            get_tags_callback=self.get_tags if get_tags else None,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req)
 
-    def yield_load_balancers_raw(self, filters_req=None):
+    def yield_load_balancers_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
         :return:
         """
 
-        for dict_src in self.execute(
-                self.client.describe_load_balancers, "LoadBalancers", filters_req=filters_req,
-                exception_ignore_callback= lambda error: "LoadBalancerNotFoundException" in repr(error)
-        ):
-            yield dict_src
+        yield from self.execute(
+                self.get_session_client(region=region).describe_load_balancers, "LoadBalancers",
+                filters_req=filters_req,
+                exception_ignore_callback=lambda error: "LoadBalancerNotFoundException" in repr(error)
+        )
 
     # pylint: disable= too-many-arguments
     def get_region_load_balancers(
-        self, region, names=None, full_information=True, get_tags=True, filters_req=None):
+            self, region, names=None, full_information=True, get_tags=True, filters_req=None):
         """
         Standard
 
@@ -80,7 +81,6 @@ class ELBV2Client(Boto3Client):
         @return:
 
         """
-        AWSAccount.set_aws_region(region)
 
         if names is not None:
             logger.error("DEPRECATION WARNING! Use filters_req")
@@ -88,7 +88,8 @@ class ELBV2Client(Boto3Client):
                 filters_req = {}
             filters_req["Names"] = names
 
-        return list(self.yield_load_balancers(full_information=full_information, region=region, get_tags=get_tags, filters_req=filters_req))
+        return list(self.yield_load_balancers(full_information=full_information, region=region, get_tags=get_tags,
+                                              filters_req=filters_req))
 
     def update_tags(self, objects):
         """
@@ -100,9 +101,9 @@ class ELBV2Client(Boto3Client):
         if len(objects) == 0:
             return
         for response in self.execute(
-            self.client.describe_tags,
-            "TagDescriptions",
-            filters_req={"ResourceArns": [obj.arn for obj in objects]},
+                self.get_session_client(region=objects[0].region).describe_tags,
+                "TagDescriptions",
+                filters_req={"ResourceArns": [obj.arn for obj in objects]},
         ):
             obj = CommonUtils.find_objects_by_values(
                 objects, {"arn": response["ResourceArn"]}, max_count=1
@@ -119,12 +120,11 @@ class ELBV2Client(Boto3Client):
         """
 
         for response in self.execute(
-            self.client.describe_tags,
-            "TagDescriptions",
-            filters_req={"ResourceArns": [obj.arn]},
+                self.get_session_client(region=obj.region).describe_tags,
+                "TagDescriptions",
+                filters_req={"ResourceArns": [obj.arn]},
         ):
             obj.tags = response["Tags"]
-
 
     def get_load_balancer_full_information(self, load_balancer):
         """
@@ -135,16 +135,15 @@ class ELBV2Client(Boto3Client):
         """
 
         for listener_response in self.execute(
-            self.client.describe_listeners,
-            "Listeners",
-            filters_req={"LoadBalancerArn": load_balancer.arn},
+                self.get_session_client(region=load_balancer.region).describe_listeners,
+                "Listeners",
+                filters_req={"LoadBalancerArn": load_balancer.arn},
         ):
-
             listener = load_balancer.Listener(listener_response)
             load_balancer.listeners.append(listener)
 
             listener.rules = list(self.execute(
-                self.client.describe_rules,
+                self.get_session_client(region=load_balancer.region).describe_rules,
                 "Rules",
                 filters_req={"ListenerArn": listener_response["ListenerArn"]},
             ))
@@ -158,7 +157,7 @@ class ELBV2Client(Boto3Client):
         """
 
         for response in self.execute(
-                self.client.describe_target_health,
+                self.get_session_client(region=target_group.region).describe_target_health,
                 "TargetHealthDescriptions",
                 filters_req={"TargetGroupArn": target_group.arn},
         ):
@@ -174,25 +173,23 @@ class ELBV2Client(Boto3Client):
         full_information_callback = None if not full_information else self.get_target_group_full_information
 
         regional_fetcher_generator = self.yield_target_groups_raw
-        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                  ELBV2TargetGroup,
-                                                  update_info=update_info,
-                                                  full_information_callback=full_information_callback,
-                                                  regions=[region] if region else None,
-                                                  filters_req=filters_req):
-            yield certificate
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                                    ELBV2TargetGroup,
+                                                                    update_info=update_info,
+                                                                    full_information_callback=full_information_callback,
+                                                                    regions=[region] if region else None,
+                                                                    filters_req=filters_req)
 
-    def yield_target_groups_raw(self, filters_req=None):
+    def yield_target_groups_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
         :return:
         """
 
-        for dict_src in self.execute(
-                self.client.describe_target_groups, "TargetGroups", filters_req=filters_req
-        ):
-            yield dict_src
+        yield from self.execute(
+                self.get_session_client(region=region).describe_target_groups, "TargetGroups", filters_req=filters_req
+        )
 
     def get_all_target_groups(self, full_information=True, update_info=False):
         """
@@ -206,11 +203,11 @@ class ELBV2Client(Boto3Client):
         return list(self.yield_target_groups(full_information=full_information, update_info=update_info))
 
     def get_region_target_groups(
-        self,
-        region,
-        full_information=True,
-        target_group_names=None,
-        load_balancer_arn=None,
+            self,
+            region,
+            full_information=True,
+            target_group_names=None,
+            load_balancer_arn=None,
     ):
         """
         Standard
@@ -222,7 +219,6 @@ class ELBV2Client(Boto3Client):
         @return:
         """
 
-        AWSAccount.set_aws_region(region)
         filters_req = {}
         if target_group_names is not None:
             filters_req["Names"] = target_group_names
@@ -233,7 +229,7 @@ class ELBV2Client(Boto3Client):
         return list(self.yield_target_groups(region=region, full_information=full_information, filters_req=filters_req))
 
     def get_region_listeners(
-        self, region, full_information=False, load_balancer_arn=None
+            self, region, full_information=False, load_balancer_arn=None
     ):
         """
         Standard
@@ -244,7 +240,6 @@ class ELBV2Client(Boto3Client):
         @return:
         """
 
-        AWSAccount.set_aws_region(region)
         final_result = []
 
         filters_req = None
@@ -252,7 +247,7 @@ class ELBV2Client(Boto3Client):
             filters_req = {"LoadBalancerArn": load_balancer_arn}
 
         for response in self.execute(
-            self.client.describe_listeners, "Listeners", filters_req=filters_req
+                self.get_session_client(region=region).describe_listeners, "Listeners", filters_req=filters_req
         ):
             obj = LoadBalancer.Listener(response)
             final_result.append(obj)
@@ -262,7 +257,7 @@ class ELBV2Client(Boto3Client):
         return final_result
 
     def get_region_rules(
-        self, region, full_information=False, listener_arn=None, get_tags=True
+            self, region, full_information=False, listener_arn=None, get_tags=True
     ):
         """
         Standard
@@ -274,7 +269,6 @@ class ELBV2Client(Boto3Client):
         @return:
         """
 
-        AWSAccount.set_aws_region(region)
         final_result = []
 
         filters_req = None
@@ -282,7 +276,7 @@ class ELBV2Client(Boto3Client):
             filters_req = {"ListenerArn": listener_arn}
 
         for response in self.execute(
-            self.client.describe_rules, "Rules", filters_req=filters_req
+                self.get_session_client(region=region).describe_rules, "Rules", filters_req=filters_req
         ):
             obj = LoadBalancer.Rule(response)
             final_result.append(obj)
@@ -317,12 +311,12 @@ class ELBV2Client(Boto3Client):
             load_balancer.dns_name = region_load_balancer.dns_name
             return
 
-        response = self.provision_load_balancer_raw(
-            load_balancer.generate_create_request()
-        )
+        response = self.provision_load_balancer_raw(load_balancer.region,
+                                                    load_balancer.generate_create_request()
+                                                    )
         load_balancer.arn = response["LoadBalancerArn"]
 
-    def provision_load_balancer_raw(self, request_dict):
+    def provision_load_balancer_raw(self, region, request_dict):
         """
         Standard
 
@@ -331,7 +325,7 @@ class ELBV2Client(Boto3Client):
         """
         logger.info(f"Provisioning load balancer: {request_dict}")
         for response in self.execute(
-            self.client.create_load_balancer, "LoadBalancers", filters_req=request_dict
+                self.get_session_client(region=region).create_load_balancer, "LoadBalancers", filters_req=request_dict
         ):
             return response
 
@@ -348,22 +342,22 @@ class ELBV2Client(Boto3Client):
         )
         for region_target_group in region_target_groups:
             if (
-                region_target_group.get_tagname(ignore_missing_tag=True)
-                == target_group.get_tagname()
+                    region_target_group.get_tagname(ignore_missing_tag=True)
+                    == target_group.get_tagname()
             ):
                 target_group.arn = region_target_group.arn
                 break
         else:
-            response = self.provision_load_balancer_target_group_raw(
-                target_group.generate_create_request()
-            )
+            response = self.provision_load_balancer_target_group_raw(target_group.region,
+                                                                     target_group.generate_create_request()
+                                                                     )
             target_group.arn = response["TargetGroupArn"]
 
         register_targets_request = target_group.generate_register_targets_request()
         if register_targets_request:
-            self.register_targets_raw(register_targets_request)
+            self.register_targets_raw(target_group.region, register_targets_request)
 
-    def provision_load_balancer_target_group_raw(self, request_dict):
+    def provision_load_balancer_target_group_raw(self, region, request_dict):
         """
         Standard
 
@@ -373,12 +367,12 @@ class ELBV2Client(Boto3Client):
 
         logger.info(f"Provisioning load balancer's target group: {request_dict}")
         for response in self.execute(
-            self.client.create_target_group, "TargetGroups", filters_req=request_dict
+                self.get_session_client(region=region).create_target_group, "TargetGroups", filters_req=request_dict
         ):
             self.clear_cache(ELBV2TargetGroup)
             return response
 
-    def register_targets_raw(self, request_dict):
+    def register_targets_raw(self, region, request_dict):
         """
         Standard
 
@@ -388,7 +382,7 @@ class ELBV2Client(Boto3Client):
         logger.info(f"Registering load balancers' targets: {request_dict}")
 
         for response in self.execute(
-            self.client.register_targets, None, filters_req=request_dict, raw_data=True
+                self.get_session_client(region=region).register_targets, None, filters_req=request_dict, raw_data=True
         ):
             self.clear_cache(ELBV2TargetGroup)
             return response
@@ -410,15 +404,15 @@ class ELBV2Client(Boto3Client):
                 listener.arn = region_listener.arn
                 return
 
-        response = self.provision_load_balancer_listener_raw(
-            listener.generate_create_request()
-        )
+        response = self.provision_load_balancer_listener_raw(listener.region,
+                                                             listener.generate_create_request()
+                                                             )
         listener.arn = response["ListenerArn"]
 
         for request in listener.generate_add_certificate_requests():
-            self.add_listener_certificates_raw(request)
+            self.add_listener_certificates_raw(listener.region, request)
 
-    def provision_load_balancer_listener_raw(self, request_dict):
+    def provision_load_balancer_listener_raw(self, region, request_dict):
         """
         Standard
 
@@ -428,12 +422,12 @@ class ELBV2Client(Boto3Client):
         logger.info(f"Provisioning load balancer's listener: {request_dict}")
 
         for response in self.execute(
-            self.client.create_listener, "Listeners", filters_req=request_dict
+                self.get_session_client(region=region).create_listener, "Listeners", filters_req=request_dict
         ):
             self.clear_cache(LoadBalancer.Listener)
             return response
 
-    def add_listener_certificates_raw(self, request_dict):
+    def add_listener_certificates_raw(self, region, request_dict):
         """
         Standard
 
@@ -444,7 +438,8 @@ class ELBV2Client(Boto3Client):
         logger.info(f"Adding load balancer listener's certificate: {request_dict}")
 
         for response in self.execute(
-            self.client.add_listener_certificates, "Certificates", filters_req=request_dict
+                self.get_session_client(region=region).add_listener_certificates, "Certificates",
+                filters_req=request_dict
         ):
             self.clear_cache(LoadBalancer.Listener)
             return response
@@ -464,10 +459,10 @@ class ELBV2Client(Boto3Client):
                 rule.arn = region_rule.arn
                 return
 
-        response = self.provision_load_balancer_rule_raw(rule.generate_create_request())
+        response = self.provision_load_balancer_rule_raw(rule.region, rule.generate_create_request())
         rule.update_from_raw_response(response)
 
-    def provision_load_balancer_rule_raw(self, request_dict):
+    def provision_load_balancer_rule_raw(self, region, request_dict):
         """
         Standard
 
@@ -478,7 +473,7 @@ class ELBV2Client(Boto3Client):
         logger.info(f"Provisioning load balancer listener's rule: {request_dict}")
 
         for response in self.execute(
-            self.client.create_rule, "Rules", filters_req=request_dict
+                self.get_session_client(region=region).create_rule, "Rules", filters_req=request_dict
         ):
             return response
 
@@ -489,7 +484,6 @@ class ELBV2Client(Boto3Client):
         @param load_balancer:
         @return:
         """
-        AWSAccount.set_aws_region(load_balancer.region)
 
         if load_balancer.arn is None:
             region_lbs = self.get_region_load_balancers(
@@ -510,17 +504,17 @@ class ELBV2Client(Boto3Client):
             load_balancer.region, load_balancer_arn=load_balancer.arn
         )
         for listener in lb_listeners:
-            self.dispose_listener_raw(listener.generate_dispose_request())
+            self.dispose_listener_raw(listener.region, listener.generate_dispose_request())
 
         lb_target_groups = self.get_region_target_groups(
             load_balancer.region, load_balancer_arn=load_balancer.arn
         )
         for target_group in lb_target_groups:
-            self.dispose_target_group_raw(target_group.generate_dispose_request())
+            self.dispose_target_group_raw(target_group.region, target_group.generate_dispose_request())
 
-        self.dispose_load_balancer_raw(load_balancer.generate_dispose_request())
+        self.dispose_load_balancer_raw(load_balancer.region, load_balancer.generate_dispose_request())
 
-    def dispose_target_group_raw(self, request):
+    def dispose_target_group_raw(self, region, request):
         """
         Standard
 
@@ -530,11 +524,11 @@ class ELBV2Client(Boto3Client):
         logger.info(f"Disposing load balancer's target group: {request}")
 
         for response in self.execute(
-            self.client.delete_target_group, None, raw_data=True, filters_req=request
+                self.get_session_client(region=region).delete_target_group, None, raw_data=True, filters_req=request
         ):
             return response
 
-    def dispose_load_balancer_raw(self, request):
+    def dispose_load_balancer_raw(self, region, request):
         """
         Standard
 
@@ -544,11 +538,11 @@ class ELBV2Client(Boto3Client):
         logger.info(f"Disposing load balancer: {request}")
 
         for response in self.execute(
-            self.client.delete_load_balancer, None, raw_data=True, filters_req=request
+                self.get_session_client(region=region).delete_load_balancer, None, raw_data=True, filters_req=request
         ):
             return response
 
-    def dispose_listener_raw(self, request):
+    def dispose_listener_raw(self, region, request):
         """
         Standard
 
@@ -558,11 +552,11 @@ class ELBV2Client(Boto3Client):
         logger.info(f"Disposing load balancer's listener: {request}")
 
         for response in self.execute(
-            self.client.delete_listener, None, raw_data=True, filters_req=request
+                self.get_session_client(region=region).delete_listener, None, raw_data=True, filters_req=request
         ):
             return response
 
-    def set_rule_priorities_raw(self, request):
+    def set_rule_priorities_raw(self, region, request):
         """
         Standard
         {"RulePriorities": [{"RuleArn": "string", "Priority": 123}]}
@@ -573,6 +567,6 @@ class ELBV2Client(Boto3Client):
         logger.info(f"Change load balancer rule priority: {request}")
 
         for response in self.execute(
-            self.client.set_rule_priorities, "Rules", filters_req=request
+                self.get_session_client(region=region).set_rule_priorities, "Rules", filters_req=request
         ):
             return response

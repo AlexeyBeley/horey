@@ -81,6 +81,7 @@ from horey.aws_api.aws_clients.ses_client import SESClient
 from horey.aws_api.aws_clients.sns_client import SNSClient
 
 from horey.aws_api.aws_clients.eks_client import EKSClient
+from horey.aws_api.base_entities.region import Region
 
 from horey.common_utils.common_utils import CommonUtils
 
@@ -1196,31 +1197,31 @@ class AWSAPI:
         self.event_bridge_rules = objects
 
     def init_servicediscovery_services(
-            self, full_information=True
+            self, region=None
     ):
         """
-        Init servicediscovery serivces
-        @param full_information:
+        Init servicediscovery region
+        @param region:
         @return:
         """
 
         objects = self.servicediscovery_client.get_all_services(
-                full_information=full_information
+                region=region
             )
 
         self.servicediscovery_services = objects
 
     def init_servicediscovery_namespaces(
-            self, full_information=True
+            self, region=None
     ):
         """
-        Init servicediscovery serivces
-        @param full_information:
+        Init servicediscovery services
+        @param region:
         @return:
         """
 
         objects = self.servicediscovery_client.get_all_namespaces(
-                full_information=full_information
+                region=region
             )
 
         self.servicediscovery_namespaces = objects
@@ -2206,11 +2207,11 @@ class AWSAPI:
         @return:
         """
 
-        return self.secretsmanager_client.raw_get_secret_string(
-            secret_name, region=region, ignore_missing=ignore_missing
+        return self.secretsmanager_client.raw_get_secret_string(region,
+            secret_name, ignore_missing=ignore_missing
         )
 
-    def put_secret_value(self, secret_name, value, region=None):
+    def put_secret_value(self, region, secret_name, value):
         """
         Save secret in secrets manager service.
 
@@ -2220,8 +2221,8 @@ class AWSAPI:
         @return:
         """
 
-        return self.secretsmanager_client.raw_put_secret_string(
-            secret_name, value, region=region
+        return self.secretsmanager_client.raw_put_secret_string(region,
+            secret_name, value
         )
 
     def put_secret_file(self, secret_name, file_path, region=None):
@@ -2236,7 +2237,7 @@ class AWSAPI:
 
         with open(file_path, encoding="utf-8") as file_handler:
             contents = file_handler.read()
-        self.put_secret_value(secret_name, contents, region=region)
+        self.put_secret_value(region, secret_name, contents)
 
     # pylint: disable= too-many-arguments
     def get_secret_file(self, secret_name, dir_path: str, region=None, file_name=None, ignore_missing=False):
@@ -2283,10 +2284,10 @@ class AWSAPI:
         @return:
         """
 
-        secret = self.secretsmanager_client.get_secret(
-            secret_name, region_name=region_src
-        )
-        self.secretsmanager_client.put_secret(secret, region_name=region_dst)
+        secret = self.secretsmanager_client.get_secret(Region.get_region(region_src),
+            secret_name)
+        secret.region = Region.get_region(region_dst)
+        self.secretsmanager_client.put_secret(secret)
 
     def provision_managed_prefix_list(self, managed_prefix_list, declarative=False):
         """
@@ -2538,16 +2539,17 @@ class AWSAPI:
 
         self.ec2_client.provision_subnets(subnets)
 
-    def provision_security_group(self, security_group, provision_rules=True):
+    def provision_security_group(self, security_group, provision_rules=True, force=False):
         """
         Self explanatory
 
         @param security_group:
         @param provision_rules:
         @return:
+        :param force:
         """
 
-        self.ec2_client.provision_security_group(security_group, provision_rules=provision_rules)
+        self.ec2_client.provision_security_group(security_group, provision_rules=provision_rules, force=force)
 
     def provision_internet_gateway(self, internet_gateway):
         """
@@ -2791,8 +2793,7 @@ class AWSAPI:
             return None
 
         if save_to_secrets_manager:
-            AWSAccount.set_aws_region(secrets_manager_region)
-            self.put_secret_value(key_pair.name if key_pair.name.endswith(".key") else key_pair.name + ".key",
+            self.put_secret_value(Region.get_region(secrets_manager_region), key_pair.name if key_pair.name.endswith(".key") else key_pair.name + ".key",
                                   response["KeyMaterial"])
 
         return response
@@ -2813,8 +2814,8 @@ class AWSAPI:
         key_name = os.path.basename(output_file_path)
         output_public_file_path = output_file_path + ".pub"
         key_name_public = key_name + ".pub"
-        key_value = self.secretsmanager_client.raw_get_secret_string(key_name, region=region, ignore_missing=True)
-        key_public_value = self.secretsmanager_client.raw_get_secret_string(key_name_public, region=region,
+        key_value = self.secretsmanager_client.raw_get_secret_string(region, key_name, ignore_missing=True)
+        key_public_value = self.secretsmanager_client.raw_get_secret_string(region, key_name_public,
                                                                             ignore_missing=True)
 
         if (key_value is None) ^ (key_public_value is None):
@@ -2832,10 +2833,9 @@ class AWSAPI:
 
         CommonUtils.generate_ed25519_key(owner_email, output_file_path)
 
-        AWSAccount.set_aws_region(region)
         logger.info(f"Generated {key_name} and {key_name_public}. Uploading to secrets")
-        self.put_secret_file(key_name, output_file_path)
-        self.put_secret_file(key_name_public, output_public_file_path)
+        self.put_secret_file(key_name, output_file_path, region=region)
+        self.put_secret_file(key_name_public, output_public_file_path, region=region)
 
     def provision_load_balancer(self, load_balancer):
         """
@@ -2925,6 +2925,9 @@ class AWSAPI:
 
         route_table = self.find_route_table_by_subnet(subnet.region, subnet)
         for route in route_table.routes:
+            if route.get("State") is None:
+                logger.warning(f"Route has no State: route table: {route_table.region.region_mark} `{route_table.id}, `{route}")
+                continue
             if route["State"] != "active":
                 continue
             if route["DestinationCidrBlock"] != "0.0.0.0/0":
@@ -2964,6 +2967,10 @@ class AWSAPI:
 
         route_table = self.find_route_table_by_subnet(subnet.region, subnet)
         for route in route_table.routes:
+            if route.get("State") is None:
+                logger.warning(f"Route has no State: route table: {route_table.region.region_mark} `{route_table.id}, `{route}")
+                continue
+
             if route["State"] != "active":
                 continue
 

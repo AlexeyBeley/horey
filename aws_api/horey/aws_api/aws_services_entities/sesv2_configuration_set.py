@@ -14,7 +14,6 @@ class SESV2ConfigurationSet(AwsObject):
 
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
-        self.arn = None
         self.tags = None
         self.event_destinations = []
         self.tracking_options = None

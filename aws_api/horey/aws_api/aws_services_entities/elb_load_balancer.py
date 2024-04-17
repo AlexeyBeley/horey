@@ -4,7 +4,6 @@ Classic Loadbalancer module.
 
 from horey.network.dns import DNS
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
-import pdb
 
 
 class ClassicLoadBalancer(AwsObject):
@@ -46,6 +45,13 @@ class ClassicLoadBalancer(AwsObject):
         self.init_attrs(dict_src, init_options)
 
     def init_listener_descriptions(self, _, lst_src):
+        """
+        Listener descriptions
+
+        :param _:
+        :param lst_src:
+        :return:
+        """
         for dict_src in lst_src:
             listener = self.Listener(dict_src)
             self.listeners.append(listener)
@@ -60,6 +66,13 @@ class ClassicLoadBalancer(AwsObject):
         self._init_from_cache(dict_src, options)
 
     def init_listeners_from_cache(self, _, lst_src):
+        """
+        Init from cache
+
+        :param _:
+        :param lst_src:
+        :return:
+        """
         for dict_listener in lst_src:
             listener = self.Listener(dict_listener, from_cache=True)
             self.listeners.append(listener)
@@ -81,6 +94,10 @@ class ClassicLoadBalancer(AwsObject):
         return [DNS(self.dns_name)]
 
     class Listener(AwsObject):
+        """
+        Listener
+        """
+
         def __init__(self, dict_src, from_cache=False):
             super().__init__(dict_src)
             if from_cache:
@@ -95,6 +112,12 @@ class ClassicLoadBalancer(AwsObject):
             self.init_attrs(dict_src, init_options)
 
         def init_listener(self, _, dict_src):
+            """
+            Standard
+            :param _:
+            :param dict_src:
+            :return:
+            """
             init_options = {
                 "Protocol": self.init_default_attr,
                 "LoadBalancerPort": lambda x, y: self.init_default_attr(

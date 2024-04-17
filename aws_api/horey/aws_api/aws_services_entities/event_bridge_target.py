@@ -16,7 +16,6 @@ class EventBridgeTarget(AwsObject):
         self._region = None
         self.role_arn = None
         self.input = None
-        self.arn = None
         self.ecs_parameters = None
 
         if from_cache:

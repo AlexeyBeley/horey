@@ -15,7 +15,6 @@ class AutoScalingPolicy(AwsObject):
         super().__init__(dict_src)
         self._region = None
         self.target_tracking_configuration = None
-        self.arn = None
 
         self.auto_scaling_group_name = None
         self.policy_type = None

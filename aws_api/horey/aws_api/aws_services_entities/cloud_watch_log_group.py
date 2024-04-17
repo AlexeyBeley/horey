@@ -20,7 +20,6 @@ class CloudWatchLogGroup(AwsObject):
         """
 
         self.log_streams = []
-        self.arn = None
         self.retention_in_days = None
 
         super().__init__(dict_src, from_cache=from_cache)
@@ -38,6 +37,10 @@ class CloudWatchLogGroup(AwsObject):
             "arn": self.init_default_attr,
             "storedBytes": self.init_default_attr,
             "retentionInDays": self.init_default_attr,
+            "logGroupClass": self.init_default_attr,
+            "logGroupArn": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
         }
 
         self.init_attrs(dict_src, init_options)

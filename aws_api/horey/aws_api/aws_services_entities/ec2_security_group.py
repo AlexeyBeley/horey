@@ -94,62 +94,63 @@ class EC2SecurityGroup(AwsObject):
 
         return lst_ret
 
-    def generate_modify_ip_permissions_requests(self, target_security_group):
+    def generate_modify_ip_permissions_requests(self, target_security_group, force=False):
         """
         Generate add_request and revoke_request
 
         @param target_security_group:
         @return:
+        :param force:
         """
         add_request, revoke_request, update_description = [], [], []
         self_permissions_counter = 0
         for self_permission in self.split_permissions(self.ip_permissions):
             self_permissions_counter += 1
             if not any(
-                (
-                    self.check_permissions_equal(
-                        self_permission,
-                        target_permission,
-                        check_without_description=True,
-                    )
-                    for target_permission in self.split_permissions(
+                    (
+                            self.check_permissions_equal(
+                                self_permission,
+                                target_permission,
+                                check_without_description=True,
+                            )
+                            for target_permission in self.split_permissions(
                         target_security_group.ip_permissions
                     )
-                )
+                    )
             ):
                 revoke_request.append(self_permission)
 
-        if self_permissions_counter and len(revoke_request) == self_permissions_counter:
-            raise ValueError(f"Can not automatically delete all rules in security group '{self.get_tagname(ignore_missing_tag=True)}' {target_security_group.id=}. "
-                             f"You can do it only manually!")
-
-
         for target_permission in self.split_permissions(
-            target_security_group.ip_permissions
+                target_security_group.ip_permissions
         ):
             # No equals (Do not check description differences)
             if not any(
-                (
-                    self.check_permissions_equal(target_permission, self_permission)
-                    for self_permission in self.split_permissions(self.ip_permissions)
-                )
+                    (
+                            self.check_permissions_equal(target_permission, self_permission)
+                            for self_permission in self.split_permissions(self.ip_permissions)
+                    )
             ):
                 # Check weather there are equal by location but differ by description.
                 if any(
-                    (
-                        self.check_permissions_equal(
-                            target_permission,
-                            self_permission,
-                            check_without_description=True,
-                        )
-                        for self_permission in self.split_permissions(
+                        (
+                                self.check_permissions_equal(
+                                    target_permission,
+                                    self_permission,
+                                    check_without_description=True,
+                                )
+                                for self_permission in self.split_permissions(
                             self.ip_permissions
                         )
-                    )
+                        )
                 ):
                     update_description.append(target_permission)
                 else:
                     add_request.append(target_permission)
+
+        if not force and self_permissions_counter and len(revoke_request) == self_permissions_counter and not add_request:
+            raise ValueError(
+                f"Can not automatically delete all rules in security group '{self.get_tagname(ignore_missing_tag=True)}' {target_security_group.id=}. "
+                f"You can do it only manually!")
 
         add_request = (
             {"GroupId": self.id, "IpPermissions": add_request} if add_request else None
@@ -229,7 +230,7 @@ class EC2SecurityGroup(AwsObject):
 
     @staticmethod
     def check_permissions_equal(
-        permission_1, permission_2, check_without_description=False
+            permission_1, permission_2, check_without_description=False
     ):
         """
         Check weather two permissions are equal.

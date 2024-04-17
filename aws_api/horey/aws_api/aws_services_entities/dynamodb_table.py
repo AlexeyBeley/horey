@@ -12,7 +12,6 @@ class DynamoDBTable(AwsObject):
 
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
-        self.arn = None
         self.provisioned_throughput = None
         self.tags = None
         self.billing_mode = None

@@ -1,8 +1,8 @@
+# pylint: skip-file
 import sys
 import pdb
 import argparse
 import json
-
 
 import ignore_me
 from ecr_client import ECRClient
@@ -47,6 +47,8 @@ action_manager.register_action(
     get_authorization_information_parser,
     get_authorization_information,
 )
+
+
 # endregion
 
 

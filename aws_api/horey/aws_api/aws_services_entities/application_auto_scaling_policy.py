@@ -3,7 +3,6 @@ AWS ApplicationAutoScalingPolicy representation
 """
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
-from horey.aws_api.base_entities.region import Region
 
 
 class ApplicationAutoScalingPolicy(AwsObject):
@@ -19,7 +18,6 @@ class ApplicationAutoScalingPolicy(AwsObject):
         self.policy_type = None
         self.step_scaling_policy_configuration = None
         self.service_namespace = None
-        self.arn = None
         self.resource_id = None
         self.scalable_dimension = None
 
@@ -84,11 +82,13 @@ class ApplicationAutoScalingPolicy(AwsObject):
         self.init_attrs(dict_src, init_options)
 
     def generate_create_request(self):
-        request = dict()
-        request["ServiceNamespace"] = self.service_namespace
-        request["PolicyName"] = self.name
-        request["ResourceId"] = self.resource_id
-        request["ScalableDimension"] = self.scalable_dimension
+        """
+        Standard
+
+        :return:
+        """
+        request = {"ServiceNamespace": self.service_namespace, "PolicyName": self.name, "ResourceId": self.resource_id,
+                   "ScalableDimension": self.scalable_dimension}
 
         if self.policy_type is not None:
             request["PolicyType"] = self.policy_type
@@ -112,39 +112,6 @@ class ApplicationAutoScalingPolicy(AwsObject):
         @return:
         """
 
-        request = dict()
-        request["ServiceNamespace"] = self.service_namespace
-        request["PolicyName"] = self.name
-        request["ResourceId"] = self.resource_id
-        request["ScalableDimension"] = self.scalable_dimension
+        request = {"ServiceNamespace": self.service_namespace, "PolicyName": self.name, "ResourceId": self.resource_id,
+                   "ScalableDimension": self.scalable_dimension}
         return request
-
-    @property
-    def region(self):
-        """
-        This deployment's region
-
-        @return:
-        """
-
-        if self._region is not None:
-            return self._region
-
-        if self.arn is not None:
-            self._region = Region.get_region(self.arn.split(":")[3])
-
-        return self._region
-
-    @region.setter
-    def region(self, value):
-        """
-        Region setter.
-
-        @param value:
-        @return:
-        """
-
-        if not isinstance(value, Region):
-            raise ValueError(value)
-
-        self._region = value

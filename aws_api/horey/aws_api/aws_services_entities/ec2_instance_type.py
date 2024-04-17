@@ -5,6 +5,7 @@ CloudfrontFunction
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 
+
 # pylint: disable= too-many-instance-attributes
 class EC2InstanceType(AwsObject):
     """
@@ -64,33 +65,33 @@ class EC2InstanceType(AwsObject):
         """
 
         init_options = {
-                        "InstanceType": self.init_default_attr,
-                        "CurrentGeneration": self.init_default_attr,
-                        "FreeTierEligible": self.init_default_attr,
-                        "SupportedUsageClasses": self.init_default_attr,
-                        "SupportedRootDeviceTypes": self.init_default_attr,
-                        "SupportedVirtualizationTypes": self.init_default_attr,
-                        "BareMetal": self.init_default_attr,
-                        "Hypervisor": self.init_default_attr,
-                        "ProcessorInfo": self.init_default_attr,
-                        "VCpuInfo": self.init_default_attr,
-                        "MemoryInfo": self.init_default_attr,
-                        "InstanceStorageSupported": self.init_default_attr,
-                        "InstanceStorageInfo": self.init_default_attr,
-                        "EbsInfo": self.init_default_attr,
-                        "NetworkInfo": self.init_default_attr,
-                        "PlacementGroupInfo": self.init_default_attr,
-                        "HibernationSupported": self.init_default_attr,
-                        "BurstablePerformanceSupported": self.init_default_attr,
-                        "DedicatedHostsSupported": self.init_default_attr,
-                        "AutoRecoverySupported": self.init_default_attr,
-                        "SupportedBootModes": self.init_default_attr,
-                        "NitroEnclavesSupport": self.init_default_attr,
-                        "NitroTpmSupport": self.init_default_attr,
-                        "NitroTpmInfo": self.init_default_attr,
-                        "GpuInfo": self.init_default_attr,
-                        "InferenceAcceleratorInfo": self.init_default_attr,
-                        "FpgaInfo": self.init_default_attr,
+            "InstanceType": self.init_default_attr,
+            "CurrentGeneration": self.init_default_attr,
+            "FreeTierEligible": self.init_default_attr,
+            "SupportedUsageClasses": self.init_default_attr,
+            "SupportedRootDeviceTypes": self.init_default_attr,
+            "SupportedVirtualizationTypes": self.init_default_attr,
+            "BareMetal": self.init_default_attr,
+            "Hypervisor": self.init_default_attr,
+            "ProcessorInfo": self.init_default_attr,
+            "VCpuInfo": self.init_default_attr,
+            "MemoryInfo": self.init_default_attr,
+            "InstanceStorageSupported": self.init_default_attr,
+            "InstanceStorageInfo": self.init_default_attr,
+            "EbsInfo": self.init_default_attr,
+            "NetworkInfo": self.init_default_attr,
+            "PlacementGroupInfo": self.init_default_attr,
+            "HibernationSupported": self.init_default_attr,
+            "BurstablePerformanceSupported": self.init_default_attr,
+            "DedicatedHostsSupported": self.init_default_attr,
+            "AutoRecoverySupported": self.init_default_attr,
+            "SupportedBootModes": self.init_default_attr,
+            "NitroEnclavesSupport": self.init_default_attr,
+            "NitroTpmSupport": self.init_default_attr,
+            "NitroTpmInfo": self.init_default_attr,
+            "GpuInfo": self.init_default_attr,
+            "InferenceAcceleratorInfo": self.init_default_attr,
+            "FpgaInfo": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)

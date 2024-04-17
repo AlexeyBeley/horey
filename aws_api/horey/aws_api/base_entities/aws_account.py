@@ -35,7 +35,7 @@ class AWSAccount:
         AWSAccount._CURRENT_ACCOUNT = value
 
     @staticmethod
-    def get_aws_region():
+    def get_default_region():
         """
         Get current region to work against.
         :return:
@@ -43,11 +43,33 @@ class AWSAccount:
         return AWSAccount._CURRENT_REGION
 
     @staticmethod
-    def set_aws_region(value):
+    def get_account_default_region():
+        """
+        Get current region to work against.
+        :return:
+        """
+
+        return list(AWSAccount.get_aws_account().regions.values())[0]
+
+    @staticmethod
+    def get_aws_region():
+        """
+        Get current region to work against.
+        :return:
+        """
+        raise RuntimeError("""Use get_default_region instead
+        logger.error("Use get_default_region instead")
+        return AWSAccount.get_default_region()""")
+
+    @staticmethod
+    def set_aws_default_region(value):
         """
         Set current region to work against.
         :return:
         """
+        if (AWSAccount._CURRENT_REGION is not None) and (AWSAccount._CURRENT_REGION != value):
+            raise ValueError(f"Default region can not be reset {str(AWSAccount._CURRENT_REGION)=}, {str(value)}")
+
         if isinstance(value, str):
             value = Region.get_region(value)
 
@@ -55,6 +77,16 @@ class AWSAccount:
             raise ValueError(f"{value} is not of type Region")
 
         AWSAccount._CURRENT_REGION = value
+
+    @staticmethod
+    def set_aws_region(value):
+        """
+        Set current region to work against.
+        :return:
+        """
+
+        logger.error("Use set_aws_default_region instead")
+        return AWSAccount.set_aws_default_region(value)
 
     def __init__(self):
         self._id = None

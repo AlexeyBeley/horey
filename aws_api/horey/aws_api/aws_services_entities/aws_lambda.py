@@ -346,7 +346,8 @@ class AWSLambda(AwsObject):
             return None, {"FunctionName": self.name}
 
         if desired_aws_lambda.reserved_concurrent_executions != self.reserved_concurrent_executions:
-            return {"FunctionName": self.name, "ReservedConcurrentExecutions": desired_aws_lambda.reserved_concurrent_executions}, None
+            return {"FunctionName": self.name,
+                    "ReservedConcurrentExecutions": desired_aws_lambda.reserved_concurrent_executions}, None
 
         return None, None
 

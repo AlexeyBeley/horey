@@ -18,7 +18,6 @@ class ECSCluster(AwsObject):
         self.capacity_providers = None
         self.default_capacity_provider_strategy = None
         self.registered_container_instances_count = None
-        self.arn = None
         self.settings = None
         self.configuration = None
         self.status = None
@@ -94,10 +93,10 @@ class ECSCluster(AwsObject):
         if self.capacity_providers != cluster_desired.capacity_providers or \
                 self.default_capacity_provider_strategy != cluster_desired.default_capacity_provider_strategy:
             return {
-            "cluster": self.name,
-            "capacityProviders": cluster_desired.capacity_providers,
-            "defaultCapacityProviderStrategy": cluster_desired.default_capacity_provider_strategy,
-        }
+                "cluster": self.name,
+                "capacityProviders": cluster_desired.capacity_providers,
+                "defaultCapacityProviderStrategy": cluster_desired.default_capacity_provider_strategy,
+            }
 
         return None
 

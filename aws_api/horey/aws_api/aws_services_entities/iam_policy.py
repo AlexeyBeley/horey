@@ -17,7 +17,6 @@ class IamPolicy(AwsObject):
         :param dict_src:
         """
         self.document = None
-        self.arn = None
         self.versions = None
         self.description = None
         self.default_version_id = None
@@ -433,7 +432,7 @@ class IamPolicy(AwsObject):
                 if "*" not in service_name_1 and "*" not in service_name_2:
                     return False
 
-                raise NotImplementedError("Not yet implemented, replaced pdb.set_trace")
+                raise NotImplementedError("Not yet implemented, replaced set_trace")
 
             @staticmethod
             def check_action_intersect(action_1, action_2):
@@ -446,7 +445,7 @@ class IamPolicy(AwsObject):
                 """
                 if action_1 == action_2:
                     return True
-                raise NotImplementedError("Not yet implemented, replaced pdb.set_trace")
+                raise NotImplementedError("Not yet implemented, replaced set_trace")
 
             def action_values_intersect(self, action_1, action_2):
                 """
@@ -560,7 +559,7 @@ class IamPolicy(AwsObject):
                                 setattr(self, self.INIT_PARTS[part_index], arn_part)
                             else:
                                 raise NotImplementedError(
-                                    "Not yet implemented, replaced pdb.set_trace"
+                                    "Not yet implemented, replaced set_trace"
                                 )
                         else:
                             setattr(self, self.INIT_PARTS[part_index], arn_part)
@@ -588,7 +587,7 @@ class IamPolicy(AwsObject):
                             raise NotImplementedError(lst_part)
                         lst_ret.append(lst_part[0])
                     raise NotImplementedError(
-                        "Not yet implemented, replaced pdb.set_trace"
+                        "Not yet implemented, replaced set_trace"
                     )
 
                 @staticmethod
@@ -610,5 +609,5 @@ class IamPolicy(AwsObject):
                         return [self_part] if self_part == other_part else None
 
                     raise NotImplementedError(
-                        "Not yet implemented, replaced pdb.set_trace"
+                        "Not yet implemented, replaced set_trace"
                     )

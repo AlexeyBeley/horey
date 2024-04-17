@@ -1,8 +1,8 @@
+# pylint: skip-file
 import sys
 import pdb
 import argparse
 import json
-
 
 import ignore_me
 from codeartifact_client import CodeartifactClient
@@ -32,6 +32,8 @@ def create_domain(arguments) -> None:
 
 
 action_manager.register_action("create_domain", create_domain_parser, create_domain)
+
+
 # endregion
 
 
@@ -55,6 +57,8 @@ def create_repository(arguments) -> None:
 action_manager.register_action(
     "create_repository", create_repository_parser, create_repository
 )
+
+
 # endregion
 
 

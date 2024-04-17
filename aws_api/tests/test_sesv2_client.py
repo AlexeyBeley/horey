@@ -18,16 +18,14 @@ from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.base_entities.region import Region
 from horey.common_utils.common_utils import CommonUtils
 
-
 SESV2Client().main_cache_dir_path = os.path.abspath(
-        os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),
-            "..", "..", "..",
-            "ignore",
-            "cache"
-        )
+    os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "..", "..", "..",
+        "ignore",
+        "cache"
     )
-
+)
 
 mock_values_file_path = os.path.abspath(
     os.path.join(
@@ -40,6 +38,7 @@ mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 def test_init_sesv2_client():
     assert isinstance(SESV2Client(), SESV2Client)
 
+
 @pytest.mark.todo
 def test_provision_email_identity():
     client = SESV2Client()
@@ -49,7 +48,8 @@ def test_provision_email_identity():
     email_identity.tags = [{"Key": "name", "Value": "value"}]
     client.provision_email_identity(email_identity)
 
-@pytest.mark.todo
+
+@pytest.mark.wip
 def test_provision_email_template():
     client = SESV2Client()
     email_template = SESV2EmailTemplate({})
@@ -58,12 +58,23 @@ def test_provision_email_template():
     email_template.template_content = {"Subject": "test_subject", "Text": "sample text"}
     client.provision_email_template(email_template)
 
+
+@pytest.mark.wip
+def test_provision_email_template_update():
+    client = SESV2Client()
+    email_template = SESV2EmailTemplate({})
+    email_template.name = "test"
+    email_template.region = Region.get_region("us-west-2")
+    email_template.template_content = {"Subject": "test_subject_change", "Text": "sample text_2"}
+    client.provision_email_template(email_template)
+
+
 @pytest.mark.todo
 def test_get_region_suppressed_destinations():
     client = SESV2Client()
-    region = Region.get_region("eu-central-1")
     ret = client.get_region_suppressed_destinations(region)
     assert isinstance(ret, list)
+
 
 @pytest.mark.todo
 def test_provision_configuration_set():
@@ -78,6 +89,10 @@ def test_provision_configuration_set():
     configuration_set.sending_options = {"SendingEnabled": True}
     configuration_set.tags = [{"Key": "name", "Value": "value"}]
     client.provision_configuration_set(configuration_set)
+
+
+region = Region.get_region("us-west-2")
+
 
 @pytest.mark.todo
 def test_send_email():
@@ -103,7 +118,8 @@ def test_send_email():
                         },
                     ],
                     }
-    client.send_email_raw(dict_request)
+    client.send_email_raw(region, dict_request)
+
 
 @pytest.mark.todo
 def test_send_email_with_config_set():
@@ -131,7 +147,8 @@ def test_send_email_with_config_set():
                     ],
                     "ConfigurationSetName": mock_values["ConfigurationSetName"],
                     }
-    client.send_email_raw(dict_request)
+    client.send_email_raw(region, dict_request)
+
 
 @pytest.mark.todo
 def test_send_email_with_config_set_html():
@@ -160,7 +177,7 @@ def test_send_email_with_config_set_html():
                     ],
                     "ConfigurationSetName": mock_values["ConfigurationSetName2"],
                     }
-    client.send_email_raw(dict_request)
+    client.send_email_raw(region, dict_request)
 
 
 @pytest.mark.done
@@ -184,6 +201,7 @@ def test_get_all_configuration_sets_full_information_true():
     client = SESV2Client()
     ret = client.get_all_configuration_sets(full_information=True)
     assert len(ret) > 0
+
 
 @pytest.mark.done
 def test_yield_email_templates():
@@ -231,4 +249,3 @@ def test_yield_accounts():
     for obj in client.yield_accounts():
         break
     assert obj.dict_src is not None
-

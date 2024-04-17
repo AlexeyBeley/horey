@@ -14,7 +14,6 @@ from concurrent.futures import ThreadPoolExecutor
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.s3_bucket import S3Bucket
 from horey.h_logger import get_logger
-from horey.aws_api.base_entities.aws_account import AWSAccount
 
 logger = get_logger()
 
@@ -400,7 +399,8 @@ class S3Client(Boto3Client):
                     filters_req.update(custom_filters)
 
                 for response in self.execute(
-                        self.client.list_objects_v2, None, raw_data=True, filters_req=filters_req
+                        self.get_session_client().list_objects_v2, None, raw_data=True,
+                        filters_req=filters_req
                 ):
                     if response.get("KeyCount") == 0:
                         start_after = None
@@ -430,7 +430,7 @@ class S3Client(Boto3Client):
         """
 
         for response in self.execute(
-                self.client.get_object,
+                self.get_session_client().get_object,
                 None,
                 raw_data=True,
                 filters_req={"Bucket": bucket.name, "Key": bucket_object.key},
@@ -462,7 +462,7 @@ class S3Client(Boto3Client):
         try:
             update_info = list(
                 self.execute(
-                    self.client.get_bucket_acl,
+                    self.get_session_client().get_bucket_acl,
                     "Grants",
                     filters_req={"Bucket": bucket.name},
                 )
@@ -471,7 +471,7 @@ class S3Client(Boto3Client):
 
             location_info = list(
                 self.execute(
-                    self.client.get_bucket_location,
+                    self.get_session_client().get_bucket_location,
                     "LocationConstraint",
                     filters_req={"Bucket": bucket.name},
                 )
@@ -497,7 +497,7 @@ class S3Client(Boto3Client):
             bucket.update_website(dict_src_tmp)
 
         for update_info in self.execute(
-                self.client.get_bucket_policy,
+                self.get_session_client().get_bucket_policy,
                 "Policy",
                 filters_req={"Bucket": bucket.name},
                 exception_ignore_callback=lambda error_inst: "NoSuchBucketPolicy" in repr(error_inst) or
@@ -513,7 +513,7 @@ class S3Client(Boto3Client):
         :return:
         """
         for response in self.execute(
-                self.client.get_bucket_website,
+                self.get_session_client().get_bucket_website,
                 None,
                 filters_req=filters_req,
                 raw_data=True,
@@ -530,7 +530,7 @@ class S3Client(Boto3Client):
         :return:
         """
         final_result = []
-        all_buckets = list(self.execute(self.client.list_buckets, "Buckets"))
+        all_buckets = list(self.execute(self.get_session_client().list_buckets, "Buckets"))
         len_all_buckets = len(all_buckets)
 
         for i in range(len_all_buckets):
@@ -768,7 +768,7 @@ class S3Client(Boto3Client):
 
                 finished_uploads = list(
                     self.execute(
-                        self.client.complete_multipart_upload,
+                        self.get_session_client().complete_multipart_upload,
                         None,
                         raw_data=True,
                         filters_req=filters_req,
@@ -835,7 +835,7 @@ class S3Client(Boto3Client):
 
         try:
             for response in self.execute(
-                    self.client.put_object, None, filters_req=filters_req, raw_data=True
+                    self.get_session_client().put_object, None, filters_req=filters_req, raw_data=True
             ):
                 task.raw_response = response
             task.succeed = True
@@ -912,7 +912,7 @@ class S3Client(Boto3Client):
         start_time = datetime.datetime.now()
         try:
             for response in self.execute(
-                    self.client.upload_part, None, raw_data=True, filters_req=filters_req
+                    self.get_session_client().upload_part, None, raw_data=True, filters_req=filters_req
             ):
                 task.raw_response = response
             task.succeed = True
@@ -999,7 +999,7 @@ class S3Client(Boto3Client):
 
         multipart_upload_ids = list(
             self.execute(
-                self.client.create_multipart_upload, "UploadId", filters_req=filters_req
+                self.get_session_client().create_multipart_upload, "UploadId", filters_req=filters_req
             )
         )
 
@@ -1126,8 +1126,7 @@ class S3Client(Boto3Client):
         current_bucket = S3Bucket({})
         current_bucket.name = bucket.name
         if not self.update_bucket_information(current_bucket):
-            AWSAccount.set_aws_region(bucket.region)
-            response = self.provision_bucket_raw(bucket.generate_create_request())
+            response = self.provision_bucket_raw(bucket.region, bucket.generate_create_request())
             bucket.location = response
             if bucket.policy is not None:
                 self.put_bucket_policy_raw(bucket.generate_put_bucket_policy_request())
@@ -1143,16 +1142,17 @@ class S3Client(Boto3Client):
             if current_bucket.acl is None and bucket.acl is not None:
                 self.put_bucket_acl_raw(bucket.generate_put_bucket_acl_request())
 
-    def provision_bucket_raw(self, request_dict):
+    def provision_bucket_raw(self, region, request_dict):
         """
         Execute raw create_bucket request.
 
         @param request_dict:
         @return:
+        :param region:
         """
         logger.info(f"Creating S3 bucket '{request_dict}'")
         for response in self.execute(
-                self.client.create_bucket, "Location", filters_req=request_dict
+                self.get_session_client(region=region).create_bucket, "Location", filters_req=request_dict
         ):
             return response
 
@@ -1165,7 +1165,7 @@ class S3Client(Boto3Client):
         """
         logger.info(f"Putting Bucket policy {request_dict}")
         for response in self.execute(
-                self.client.put_bucket_policy, "ResponseMetadata", filters_req=request_dict
+                self.get_session_client().put_bucket_policy, "ResponseMetadata", filters_req=request_dict
         ):
             return response
 
@@ -1178,7 +1178,7 @@ class S3Client(Boto3Client):
         """
         logger.info(f"Putting Bucket acl {request_dict}")
         for response in self.execute(
-                self.client.put_bucket_acl, "ResponseMetadata", filters_req=request_dict
+                self.get_session_client().put_bucket_acl, "ResponseMetadata", filters_req=request_dict
         ):
             return response
 
@@ -1198,7 +1198,7 @@ class S3Client(Boto3Client):
             deletion_list = raw_objects[:1000]
             request_dict = {"Bucket": bucket.name, "Delete": {"Objects": deletion_list}}
             for response in self.execute(
-                    self.client.delete_objects,
+                    self.get_session_client().delete_objects,
                     None,
                     raw_data=True,
                     filters_req=request_dict,
@@ -1222,7 +1222,7 @@ class S3Client(Boto3Client):
         """
 
         logger.info(f"Downloading from {bucket_name}/{key_path}")
-        self.client.download_file(bucket_name, key_path, file_path)
+        self.get_session_client().download_file(bucket_name, key_path, file_path)
 
     def copy_object_raw(self, request_dict):
         """
@@ -1233,6 +1233,6 @@ class S3Client(Boto3Client):
         """
         logger.info(f"Copying Bucket object {request_dict}")
         for response in self.execute(
-                self.client.copy_object, "CopyObjectResult", filters_req=request_dict
+                self.get_session_client().copy_object, "CopyObjectResult", filters_req=request_dict
         ):
             return response

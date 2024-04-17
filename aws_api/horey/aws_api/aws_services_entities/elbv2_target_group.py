@@ -20,7 +20,6 @@ class ELBV2TargetGroup(AwsObject):
         self.health_check_path = None
         self.target_health = None
         self.targets = None
-        self.arn = None
 
         self.protocol = None
         self.port = None

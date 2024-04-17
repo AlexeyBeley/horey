@@ -132,8 +132,9 @@ class RouteTable(AwsObject):
                 del_routes_errors.append(self_route)
 
         if del_routes_errors or inactive_routes_errors:
-            raise NotImplementedError(f"Erasing routes not implemented: {desired_route_table.region.region_mark}, {self.id}, {del_routes_errors}."
-                                      f" Inactive routes: {inactive_routes_errors}")
+            raise NotImplementedError(
+                f"Erasing routes not implemented: {desired_route_table.region.region_mark}, {self.id}, {del_routes_errors}."
+                f" Inactive routes: {inactive_routes_errors}")
 
         self_routes_by_destination = {}
         for route in self.routes:
@@ -159,7 +160,8 @@ class RouteTable(AwsObject):
                         self_routes_by_destination[destination].get("NatGatewayId"):
                     raise NotImplementedError(f"Other gateways not implemented: {self.id}, {desired_route}")
                 if desired_route.get("GatewayId") != self_routes_by_destination[destination].get("GatewayId") or \
-                    desired_route.get("NatGatewayId") != self_routes_by_destination[destination].get("NatGatewayId"):
+                        desired_route.get("NatGatewayId") != self_routes_by_destination[destination].get(
+                    "NatGatewayId"):
                     if not declarative:
                         raise RuntimeError("Destructive changes should be declarative.")
                     request = copy.deepcopy(desired_route)
@@ -180,7 +182,7 @@ class RouteTable(AwsObject):
             if "SubnetId" not in association:
                 continue
             if association["SubnetId"] == subnet_id and \
-                association["AssociationState"] == {"State": "associated"}:
+                    association["AssociationState"] == {"State": "associated"}:
                 return True
         return False
 

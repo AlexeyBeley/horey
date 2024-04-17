@@ -6,7 +6,9 @@ import datetime
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 from horey.h_logger import get_logger
+
 logger = get_logger()
+
 
 class HostedZone(AwsObject):
     """

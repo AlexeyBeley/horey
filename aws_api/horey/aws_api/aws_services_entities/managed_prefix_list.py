@@ -3,7 +3,6 @@ AWS Lambda representation
 """
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
-from horey.aws_api.base_entities.region import Region
 
 
 class ManagedPrefixList(AwsObject):
@@ -18,7 +17,6 @@ class ManagedPrefixList(AwsObject):
         self.associations = []
         self.max_entries = None
         self.address_family = None
-        self.arn = None
         self.version = None
         self._region = None
 
@@ -80,33 +78,6 @@ class ManagedPrefixList(AwsObject):
         entry = self.Association(raw_value)
         self.associations.append(entry)
 
-    @property
-    def region(self):
-        """
-        Self region generator.
-
-        @return:
-        """
-
-        if self.arn is not None:
-            return Region.get_region(self.arn.split(":")[3])
-        return self._region
-
-    @region.setter
-    def region(self, value):
-        """
-        Self region setter
-
-        @param value:
-        @return:
-        """
-
-        if self.arn is not None:
-            raise ValueError("Can not explicitly set region when arn is set")
-        if not isinstance(value, Region):
-            raise ValueError(value)
-        self._region = value
-
     def get_entries_modify_request(self, managed_prefix_list, declarative):
         """
         Generate modifying request.
@@ -135,9 +106,9 @@ class ManagedPrefixList(AwsObject):
         }
         for dst_managed_prefix_list_entry in dst_managed_prefix_list.entries:
             if (
-                dst_managed_prefix_list_entry.cidr not in self_cidr_descriptions
-                or dst_managed_prefix_list_entry.description
-                != self_cidr_descriptions[dst_managed_prefix_list_entry.cidr]
+                    dst_managed_prefix_list_entry.cidr not in self_cidr_descriptions
+                    or dst_managed_prefix_list_entry.description
+                    != self_cidr_descriptions[dst_managed_prefix_list_entry.cidr]
             ):
                 request_entries.append(
                     {
@@ -171,13 +142,13 @@ class ManagedPrefixList(AwsObject):
             found = False
             for entry in self.entries:
                 if (
-                    dst_managed_prefix_list_entry.cidr == entry.cidr
-                    or dst_managed_prefix_list_entry.description == entry.description
+                        dst_managed_prefix_list_entry.cidr == entry.cidr
+                        or dst_managed_prefix_list_entry.description == entry.description
                 ):
                     if (
-                        dst_managed_prefix_list_entry.cidr != entry.cidr
-                        or dst_managed_prefix_list_entry.description
-                        != entry.description
+                            dst_managed_prefix_list_entry.cidr != entry.cidr
+                            or dst_managed_prefix_list_entry.description
+                            != entry.description
                     ):
                         request_entries_remove.append({"Cidr": entry.cidr})
                     else:

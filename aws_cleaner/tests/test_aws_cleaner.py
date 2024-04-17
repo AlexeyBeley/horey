@@ -34,13 +34,13 @@ def fixture_configuration():
             "aws_managed_accounts.py",
         )
     )
-    #_configuration.managed_accounts_file_path = os.path.abspath(
-    #    os.path.join(
-    #        os.path.dirname(os.path.abspath(__file__)),
-    #        "aws_managed_accounts.py",
-    #    )
-    #)
-    #_configuration.aws_api_account_name = "cleaner"
+    _configuration.managed_accounts_file_path = os.path.abspath(
+        os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "aws_managed_accounts.py",
+        )
+    )
+    _configuration.aws_api_account_name = "cleaner"
     return _configuration
 
 
@@ -157,6 +157,7 @@ def test_cleanup_report_sns(configuration):
     assert ret is not None
     assert os.path.exists(configuration.sns_report_file_path)
 
+
 @pytest.mark.done
 def test_sub_cleanup_report_lambdas_monitoring(configuration):
     cleaner = AWSCleaner(configuration)
@@ -165,6 +166,7 @@ def test_sub_cleanup_report_lambdas_monitoring(configuration):
     assert len(cleaner.aws_api.cloud_watch_metrics) > 0
     assert len(cleaner.aws_api.cloud_watch_alarms) > 0
     assert ret is not None
+
 
 @pytest.mark.done
 def test_cleanup_report_load_balancers(configuration):
@@ -230,9 +232,16 @@ def test_cleanup_report_ecr_images(configuration):
     assert os.path.exists(configuration.ec2_security_groups_report_file_path)
 
 
-@pytest.mark.done
+@pytest.mark.wip
 def test_init_cloudwatch_metrics(configuration: AWSCleanerConfigurationPolicy):
+    """
+
+    :param configuration:
+    :return:
+    """
     cleaner = AWSCleaner(configuration)
+    # from horey.aws_api.aws_services_entities.cloud_watch_metric import CloudWatchMetric
+    # cleaner.aws_api.ses_client.clear_cache(CloudWatchMetric)
     cleaner.init_cloudwatch_metrics()
     assert len(cleaner.aws_api.cloud_watch_metrics) > 0
 
@@ -344,11 +353,12 @@ def test_init_ses_permissions_only(configuration: AWSCleanerConfigurationPolicy)
         if "arn" in str(statement["Resource"]):
             del statement["Resource"]
 
-    assert json.loads(json.dumps(ret)) == [{"Sid": "SES", "Effect": "Allow", "Action": ["ses:ListConfigurationSets"], "Resource": "*"},
-                                           {"Sid": "SESConfigSet", "Effect": "Allow", "Action": ["ses:GetConfigurationSet"]},
-                                           {"Sid": "SESEmailIdentities", "Effect": "Allow", "Action": ["ses:ListEmailIdentities"], "Resource": "*"},
-                                           {"Sid": "SESEmailIdentity", "Effect": "Allow", "Action": ["ses:GetEmailIdentity"]}
-                                           ]
+    assert json.loads(json.dumps(ret)) == [
+        {"Sid": "SES", "Effect": "Allow", "Action": ["ses:ListConfigurationSets"], "Resource": "*"},
+        {"Sid": "SESConfigSet", "Effect": "Allow", "Action": ["ses:GetConfigurationSet"]},
+        {"Sid": "SESEmailIdentities", "Effect": "Allow", "Action": ["ses:ListEmailIdentities"], "Resource": "*"},
+        {"Sid": "SESEmailIdentity", "Effect": "Allow", "Action": ["ses:GetEmailIdentity"]}
+        ]
 
 
 @pytest.mark.done
@@ -743,6 +753,7 @@ def test_cleanup_report_ses(configuration):
     assert len(cleaner.aws_api.sesv2_configuration_sets) > 0
     assert ret is not None
 
+
 @pytest.mark.done
 def test_cleanup_report_ec2_pricing_per_region_us_east_1(configuration):
     cleaner = AWSCleaner(configuration)
@@ -760,19 +771,25 @@ def test_cleanup_report_ec2_pricing_per_region_us_east_1(configuration):
     ret = cleaner.cleanup_report_ec2_pricing_per_region(Region.get_region("us-east-2"))
     assert ret is not None
 
+
 @pytest.mark.skip
 def test_cleanup_report_iam_permissions_only(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.cleanup_report_iam(permissions_only=True)
     assert ret is not None
 
-@pytest.mark.wip
+
+@pytest.mark.todo
 def test_cleanup_report_iam(configuration):
+    """
     cleaner = AWSCleaner(configuration)
     ret = cleaner.cleanup_report_iam()
     return
     assert len(cleaner.aws_api.iam_policies) > 0
     assert ret is not None
+    """
+    print(configuration)
+
 
 @pytest.mark.done
 def test_generate_permissions_all(

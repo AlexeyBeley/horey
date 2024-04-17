@@ -3,7 +3,6 @@ AWS lambda client to handle lambda service API requests.
 """
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 
-from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.aws_services_entities.sesv2_account import SESV2Account
 from horey.aws_api.aws_services_entities.sesv2_email_identity import SESV2EmailIdentity
 from horey.aws_api.aws_services_entities.sesv2_email_template import SESV2EmailTemplate
@@ -36,14 +35,13 @@ class SESV2Client(Boto3Client):
         """
 
         regional_fetcher_generator = self.yield_accounts_raw
-        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                  SESV2Account,
-                                                  update_info=update_info,
-                                                  regions=[region] if region else None,
-                                                  filters_req=filters_req):
-            yield certificate
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                            SESV2Account,
+                                                            update_info=update_info,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req)
 
-    def yield_accounts_raw(self, filters_req=None):
+    def yield_accounts_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
@@ -51,7 +49,7 @@ class SESV2Client(Boto3Client):
         """
 
         for dict_src in self.execute(
-                self.client.get_account, None, raw_data=True, filters_req=filters_req
+                self.get_session_client(region=region).get_account, None, raw_data=True, filters_req=filters_req
         ):
             del dict_src["ResponseMetadata"]
             yield dict_src
@@ -65,14 +63,13 @@ class SESV2Client(Boto3Client):
         """
 
         regional_fetcher_generator = self.yield_email_identities_raw
-        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                  SESV2EmailIdentity,
-                                                  update_info=update_info,
-                                                  regions=[region] if region else None,
-                                                  filters_req=filters_req):
-            yield certificate
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                            SESV2EmailIdentity,
+                                                            update_info=update_info,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req)
 
-    def yield_email_identities_raw(self, filters_req=None):
+    def yield_email_identities_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
@@ -80,11 +77,11 @@ class SESV2Client(Boto3Client):
         """
 
         for email_identity_dict in self.execute(
-                self.client.list_email_identities, "EmailIdentities", filters_req=filters_req
+                self.get_session_client(region=region).list_email_identities, "EmailIdentities", filters_req=filters_req
         ):
             response = list(
                 self.execute(
-                    self.client.get_email_identity,
+                    self.get_session_client(region=region).get_email_identity,
                     None,
                     raw_data=True,
                     filters_req={"EmailIdentity": email_identity_dict["IdentityName"]},
@@ -102,7 +99,6 @@ class SESV2Client(Boto3Client):
             dict_src.update(email_identity_dict)
 
             yield dict_src
-
 
     def get_all_email_identities(self, region=None):
         """
@@ -126,7 +122,6 @@ class SESV2Client(Boto3Client):
         logger.info(f"get_region_email_identities: {region.region_mark}")
         return list(self.yield_email_identities(region=region))
 
-
     def update_email_identity_information(self, obj: SESV2EmailIdentity):
         """
         Standard
@@ -137,7 +132,7 @@ class SESV2Client(Boto3Client):
 
         response = list(
             self.execute(
-                self.client.get_email_identity,
+                self.get_session_client(region=obj.region).get_email_identity,
                 None,
                 raw_data=True,
                 filters_req={"EmailIdentity": obj.name},
@@ -165,15 +160,14 @@ class SESV2Client(Boto3Client):
 
         full_information_callback = self.get_configuration_set_full_information if full_information else None
         regional_fetcher_generator = self.yield_configuration_sets_raw
-        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                  SESV2ConfigurationSet,
-                                                  update_info=update_info,
-                                                  full_information_callback= full_information_callback,
-                                                  regions=[region] if region else None,
-                                                  filters_req=filters_req):
-            yield certificate
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                            SESV2ConfigurationSet,
+                                                            update_info=update_info,
+                                                            full_information_callback=full_information_callback,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req)
 
-    def yield_configuration_sets_raw(self, filters_req=None):
+    def yield_configuration_sets_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
@@ -181,11 +175,12 @@ class SESV2Client(Boto3Client):
         """
 
         for name in self.execute(
-                self.client.list_configuration_sets, "ConfigurationSets", filters_req=filters_req
+                self.get_session_client(region=region).list_configuration_sets, "ConfigurationSets",
+                filters_req=filters_req
         ):
             dict_src = list(
                 self.execute(
-                    self.client.get_configuration_set,
+                    self.get_session_client(region=region).get_configuration_set,
                     None,
                     raw_data=True,
                     filters_req={"ConfigurationSetName": name},
@@ -223,7 +218,7 @@ class SESV2Client(Boto3Client):
         """
         obj.event_destinations = []
         for response in self.execute(
-                self.client.get_configuration_set_event_destinations,
+                self.get_session_client(region=obj.region).get_configuration_set_event_destinations,
                 None,
                 raw_data=True,
                 filters_req={"ConfigurationSetName": obj.name},
@@ -241,25 +236,23 @@ class SESV2Client(Boto3Client):
 
         full_information_callback = self.get_email_template_full_information if full_information else None
         regional_fetcher_generator = self.yield_email_templates_raw
-        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                  SESV2EmailTemplate,
-                                                  update_info=update_info,
-                                                  full_information_callback= full_information_callback,
-                                                  regions=[region] if region else None,
-                                                  filters_req=filters_req):
-            yield certificate
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                            SESV2EmailTemplate,
+                                                            update_info=update_info,
+                                                            full_information_callback=full_information_callback,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req)
 
-    def yield_email_templates_raw(self, filters_req=None):
+    def yield_email_templates_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
         :return:
         """
 
-        for dict_src in self.execute(
-                self.client.list_email_templates, "TemplatesMetadata", filters_req=filters_req
-        ):
-            yield dict_src
+        yield from self.execute(
+            self.get_session_client(region=region).list_email_templates, "TemplatesMetadata", filters_req=filters_req
+        )
 
     def get_all_email_templates(self, region=None, full_information=True):
         """
@@ -290,7 +283,7 @@ class SESV2Client(Boto3Client):
 
         dict_src = list(
             self.execute(
-                self.client.get_email_template,
+                self.get_session_client(region=obj.region).get_email_template,
                 None,
                 raw_data=True,
                 filters_req={"TemplateName": obj.name},
@@ -318,16 +311,15 @@ class SESV2Client(Boto3Client):
                 )
                 break
         else:
-            AWSAccount.set_aws_region(configuration_set.region)
-            self.provision_configuration_set_raw(
-                configuration_set.generate_create_request()
-            )
+            self.provision_configuration_set_raw(configuration_set.region,
+                                                 configuration_set.generate_create_request()
+                                                 )
 
         create_requests = configuration_set.generate_create_requests_event_destinations()
         for create_request in create_requests:
-            self.create_request_event_destination_raw(create_request)
+            self.create_request_event_destination_raw(configuration_set.region, create_request)
 
-    def provision_configuration_set_raw(self, request_dict):
+    def provision_configuration_set_raw(self, region, request_dict):
         """
         Standard
 
@@ -337,14 +329,14 @@ class SESV2Client(Boto3Client):
 
         logger.info(f"Creating configuration_set: {request_dict}")
         for response in self.execute(
-            self.client.create_configuration_set,
-            None,
-            raw_data=True,
-            filters_req=request_dict,
+                self.get_session_client(region=region).create_configuration_set,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
         ):
             return response
 
-    def create_request_event_destination_raw(self, request_dict):
+    def create_request_event_destination_raw(self, region, request_dict):
         """
         Standard
 
@@ -354,12 +346,26 @@ class SESV2Client(Boto3Client):
 
         logger.info(f"Creating configuration_set event_destination: {request_dict}")
         for response in self.execute(
-            self.client.create_configuration_set_event_destination,
-            None,
-            raw_data=True,
-            filters_req=request_dict,
+                self.get_session_client(region=region).create_configuration_set_event_destination,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
         ):
             return response
+
+    def update_email_template_information(self, email_template: SESV2EmailTemplate):
+        """
+        Standard
+
+        :param email_template:
+        :return:
+        """
+
+        for region_template in self.yield_email_templates(email_template.region, full_information=True):
+            if region_template.name == email_template.name:
+                email_template.update_from_attrs(region_template)
+                return True
+        return False
 
     def provision_email_template(self, email_template: SESV2EmailTemplate):
         """
@@ -369,38 +375,57 @@ class SESV2Client(Boto3Client):
         @return:
         """
 
-        AWSAccount.set_aws_region(email_template.region)
-        self.provision_email_template_raw(email_template.generate_create_request())
+        current_template = SESV2EmailTemplate({"TemplateName": email_template.name})
+        current_template.region = email_template.region
+        if self.update_email_template_information(current_template):
+            update_request = current_template.generate_update_request(current_template)
+            if update_request:
+                self.update_email_template_raw(current_template.region, update_request)
+        else:
+            self.create_email_template_raw(current_template.region, email_template.generate_create_request())
 
-    def provision_email_template_raw(self, request_dict):
+        self.update_email_template_information(email_template)
+        return True
+
+    def update_email_template_raw(self, region, request_dict):
         """
         Standard
 
         @param request_dict:
         @return:
+        :param region:
         """
 
         for response in self.execute(
-            self.client.update_email_template,
-            None,
-            raw_data=True,
-            filters_req=request_dict,
-            exception_ignore_callback=lambda x: "NotFoundException" in repr(x),
+                self.get_session_client(region=region).update_email_template,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
+                exception_ignore_callback=lambda x: "NotFoundException" in repr(x),
         ):
             logger.info(f"Updated email_template: {request_dict}")
             return response
+        return True
+
+    def create_email_template_raw(self, region, request_dict):
+        """
+        Create email template
+
+        :param region:
+        :param request_dict:
+        :return:
+        """
 
         logger.info(f"Creating email_template: {request_dict}")
         for response in self.execute(
-            self.client.create_email_template,
-            None,
-            raw_data=True,
-            filters_req=request_dict,
-            exception_ignore_callback=lambda x: "NotFoundException" in repr(x),
+                self.get_session_client(region=region).create_email_template,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
+                exception_ignore_callback=lambda x: "NotFoundException" in repr(x),
         ):
             return response
-
-        return None
+        return True
 
     def provision_email_identity(self, email_identity: SESV2EmailIdentity):
         """
@@ -410,19 +435,17 @@ class SESV2Client(Boto3Client):
         @return:
         """
 
-        AWSAccount.set_aws_region(email_identity.region)
-
         self.update_email_identity_information(email_identity)
 
         if email_identity.identity_type is not None:
             return
 
-        response = self.provision_email_identity_raw(
-            email_identity.generate_create_request()
-        )
+        response = self.provision_email_identity_raw(email_identity.region,
+                                                     email_identity.generate_create_request()
+                                                     )
         email_identity.update_from_raw_response(response)
 
-    def provision_email_identity_raw(self, request_dict):
+    def provision_email_identity_raw(self, region, request_dict):
         """
         Standard
 
@@ -432,16 +455,16 @@ class SESV2Client(Boto3Client):
 
         logger.info(f"Creating email_identity: {request_dict}")
         for response in self.execute(
-            self.client.create_email_identity,
-            None,
-            raw_data=True,
-            filters_req=request_dict,
+                self.get_session_client(region=region).create_email_identity,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
         ):
             del response["ResponseMetadata"]
             return response
 
     def get_region_suppressed_destinations(
-        self, region, custom_filter=None, full_information=None
+            self, region, custom_filter=None, full_information=None
     ):
         """
         Get list of all suppressed destinations.
@@ -453,20 +476,19 @@ class SESV2Client(Boto3Client):
         """
         logger.info(f"list_suppressed_destinations in region {region.region_mark}")
 
-        AWSAccount.set_aws_region(region)
         ret = []
         for response in self.execute(
-            self.client.list_suppressed_destinations,
-            "SuppressedDestinationSummaries",
-            filters_req=custom_filter,
+                self.get_session_client(region=region).list_suppressed_destinations,
+                "SuppressedDestinationSummaries",
+                filters_req=custom_filter,
         ):
 
             if full_information:
                 full_info_custom_filter = {"EmailAddress": response["EmailAddress"]}
                 for full_information_response in self.execute(
-                    self.client.get_suppressed_destination,
-                    "SuppressedDestination",
-                    filters_req=full_info_custom_filter,
+                        self.get_session_client(region=region).get_suppressed_destination,
+                        "SuppressedDestination",
+                        filters_req=full_info_custom_filter,
                 ):
                     ret.append(full_information_response)
             else:
@@ -474,7 +496,7 @@ class SESV2Client(Boto3Client):
 
         return ret
 
-    def send_email_raw(self, request_dict):
+    def send_email_raw(self, region, request_dict):
         """
         Send an email.
 
@@ -482,16 +504,16 @@ class SESV2Client(Boto3Client):
         """
 
         for response in self.execute(
-            self.client.send_email,
-            None,
-            raw_data=True,
-            filters_req=request_dict,
+                self.get_session_client(region=region).send_email,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
         ):
             del response["ResponseMetadata"]
             conf_set_name = request_dict.get("ConfigurationSetName")
             if conf_set_name:
                 log_message = f"Email sent: from '{request_dict.get('FromEmailAddress')}', to " \
-                          f"'{request_dict.get('Destination')}', message_id: '{response.get('MessageId')}', " \
+                              f"'{request_dict.get('Destination')}', message_id: '{response.get('MessageId')}', " \
                               f"configuration set: '{conf_set_name}'"
             else:
                 log_message = f"Email sent: from '{request_dict.get('FromEmailAddress')}', to " \

@@ -10,6 +10,7 @@ class AutoScalingGroup(AwsObject):
     """
     AWS AutoScalingGroup class
     """
+
     # pylint: disable = too-many-instance-attributes
 
     def __init__(self, dict_src, from_cache=False):
@@ -29,7 +30,6 @@ class AutoScalingGroup(AwsObject):
         self.vpc_zone_identifier = None
         self.termination_policies = None
         self.new_instances_protected_from_scale_in = None
-        self.arn = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -100,18 +100,22 @@ class AutoScalingGroup(AwsObject):
             self.tags = []
 
         request = {"AutoScalingGroupName": self.name, "Tags": [
-                {
-                    "ResourceType": "auto-scaling-group",
-                    "Key": tag["Key"],
-                    "Value": tag["Value"],
-                    "PropagateAtLaunch": True,
-                }
-                for tag in self.tags
-            ]}
+            {
+                "ResourceType": "auto-scaling-group",
+                "Key": tag["Key"],
+                "Value": tag["Value"],
+                "PropagateAtLaunch": True,
+            }
+            for tag in self.tags
+        ]}
 
-        self.extend_request_with_optional_parameters(request, ["MaxSize", "MinSize", "ServiceLinkedRoleARN", "DesiredCapacity", "DefaultCooldown",
-                          "LaunchTemplate", "AvailabilityZones", "HealthCheckType", "HealthCheckGracePeriod",
-                          "VPCZoneIdentifier", "TerminationPolicies", "NewInstancesProtectedFromScaleIn"])
+        self.extend_request_with_optional_parameters(request,
+                                                     ["MaxSize", "MinSize", "ServiceLinkedRoleARN", "DesiredCapacity",
+                                                      "DefaultCooldown",
+                                                      "LaunchTemplate", "AvailabilityZones", "HealthCheckType",
+                                                      "HealthCheckGracePeriod",
+                                                      "VPCZoneIdentifier", "TerminationPolicies",
+                                                      "NewInstancesProtectedFromScaleIn"])
 
         return request
 

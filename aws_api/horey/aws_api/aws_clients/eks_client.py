@@ -23,9 +23,9 @@ class EKSClient(Boto3Client):
         """
         ret = self.get_all_clusters()
 
-        list_fargate_profiles = list(self.execute(self.client.list_fargate_profiles, "fargateProfileNames", filters_req={"clusterName": ret[0].name}))
-        list_identity_provider_configs = list(self.execute(self.client.list_identity_provider_configs, "identityProviderConfigs", filters_req={"clusterName": ret[0].name}))
-        list_nodegroups = list(self.execute(self.client.list_nodegroups, "nodegroups", filters_req={"clusterName": ret[0].name}))
+        list_fargate_profiles = list(self.execute(self.get_session_client(region=region).list_fargate_profiles, "fargateProfileNames", filters_req={"clusterName": ret[0].name}))
+        list_identity_provider_configs = list(self.execute(self.get_session_client(region=region).list_identity_provider_configs, "identityProviderConfigs", filters_req={"clusterName": ret[0].name}))
+        list_nodegroups = list(self.execute(self.get_session_client(region=region).list_nodegroups, "nodegroups", filters_req={"clusterName": ret[0].name}))
         """
         client_name = "eks"
         super().__init__(client_name)
@@ -60,9 +60,8 @@ class EKSClient(Boto3Client):
         """
 
         final_result = []
-        AWSAccount.set_aws_region(region)
         for name in self.execute(
-            self.client.list_clusters, "clusters"
+                self.get_session_client(region=region).list_clusters, "clusters"
         ):
             obj = EKSCluster({"name": name})
             obj.region = region
@@ -80,9 +79,8 @@ class EKSClient(Boto3Client):
         :return:
         """
 
-        AWSAccount.set_aws_region(obj.region)
         for dict_src in self.execute(
-                self.client.describe_cluster, "cluster", filters_req={"name": obj.name}
+                self.get_session_client(region=obj.region).describe_cluster, "cluster", filters_req={"name": obj.name}
         ):
             obj.update_from_raw_response(dict_src)
 
@@ -99,19 +97,18 @@ class EKSClient(Boto3Client):
         )
         for region_cluster in region_clusters:
             if (
-                region_cluster.name == cluster.name
+                    region_cluster.name == cluster.name
             ):
                 cluster.update_from_raw_response(
                     region_cluster.dict_src
                 )
                 return
-        AWSAccount.set_aws_region(cluster.region)
-        response = self.provision_cluster_raw(
-            cluster.generate_create_request()
-        )
+        response = self.provision_cluster_raw(cluster.region,
+                                              cluster.generate_create_request()
+                                              )
         cluster.update_from_raw_response(response)
 
-    def provision_cluster_raw(self, request_dict):
+    def provision_cluster_raw(self, region, request_dict):
         """
         Provision from raw request.
 
@@ -121,10 +118,10 @@ class EKSClient(Boto3Client):
 
         logger.info(f"Creating cluster: {request_dict}")
         for response in self.execute(
-            self.client.create_cluster,
-            None,
-            raw_data=True,
-            filters_req=request_dict,
+                self.get_session_client(region=region).create_cluster,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
         ):
             del response["ResponseMetadata"]
             return response
@@ -178,9 +175,9 @@ class EKSClient(Boto3Client):
         """
 
         final_result = []
-        AWSAccount.set_aws_region(cluster.region)
         for name in self.execute(
-                self.client.list_addons, "addons", filters_req={"clusterName": cluster.name}
+                self.get_session_client(region=cluster.region).list_addons, "addons",
+                filters_req={"clusterName": cluster.name}
         ):
             obj = EKSAddon({"addonName": name, "clusterName": cluster.name})
             final_result.append(obj)
@@ -198,7 +195,8 @@ class EKSClient(Boto3Client):
         """
 
         for dict_src in self.execute(
-                self.client.describe_addon, "addon", filters_req={"clusterName": obj.cluster_name, "addonName": obj.name}
+                self.get_session_client(region=obj.region).describe_addon, "addon",
+                filters_req={"clusterName": obj.cluster_name, "addonName": obj.name}
         ):
             obj.update_from_raw_response(dict_src)
 
@@ -221,13 +219,12 @@ class EKSClient(Boto3Client):
                     region_addon.dict_src
                 )
                 return
-        AWSAccount.set_aws_region(addon.region)
-        response = self.provision_addon_raw(
-            addon.generate_create_request()
-        )
+        response = self.provision_addon_raw(addon.region,
+                                            addon.generate_create_request()
+                                            )
         addon.update_from_raw_response(response)
 
-    def provision_addon_raw(self, request_dict):
+    def provision_addon_raw(self, region, request_dict):
         """
         Provision from raw request.
 
@@ -237,7 +234,7 @@ class EKSClient(Boto3Client):
 
         logger.info(f"Creating addon: {request_dict}")
         for response in self.execute(
-                self.client.create_addon,
+                self.get_session_client(region=region).create_addon,
                 None,
                 raw_data=True,
                 filters_req=request_dict,
@@ -294,9 +291,9 @@ class EKSClient(Boto3Client):
         """
 
         final_result = []
-        AWSAccount.set_aws_region(cluster.region)
         for name in self.execute(
-                self.client.list_fargate_profiles, "fargateProfileNames", filters_req={"clusterName": cluster.name}
+                self.get_session_client(region=cluster.region).list_fargate_profiles, "fargateProfileNames",
+                filters_req={"clusterName": cluster.name}
         ):
             obj = EKSFargateProfile({"fargateProfileName": name, "clusterName": cluster.name})
             final_result.append(obj)
@@ -314,7 +311,8 @@ class EKSClient(Boto3Client):
         """
 
         for dict_src in self.execute(
-                self.client.describe_fargate_profile, "fargateProfile", filters_req={"clusterName": obj.cluster_name, "fargateProfileName": obj.name}
+                self.get_session_client(region=obj.region).describe_fargate_profile, "fargateProfile",
+                filters_req={"clusterName": obj.cluster_name, "fargateProfileName": obj.name}
         ):
             obj.update_from_raw_response(dict_src)
 
@@ -336,13 +334,13 @@ class EKSClient(Boto3Client):
                 fargate_profile
             )
             return
-        AWSAccount.set_aws_region(fargate_profile.region)
-        response = self.provision_fargate_profile_raw(
-            fargate_profile.generate_create_request()
-        )
+
+        response = self.provision_fargate_profile_raw(fargate_profile.region,
+                                                      fargate_profile.generate_create_request()
+                                                      )
         fargate_profile.update_from_raw_response(response)
 
-    def provision_fargate_profile_raw(self, request_dict):
+    def provision_fargate_profile_raw(self, region, request_dict):
         """
         Provision from raw request.
 
@@ -352,7 +350,7 @@ class EKSClient(Boto3Client):
 
         logger.info(f"Creating fargate_profile: {request_dict}")
         for response in self.execute(
-                self.client.create_fargate_profile,
+                self.get_session_client(region=region).create_fargate_profile,
                 None,
                 raw_data=True,
                 filters_req=request_dict,
@@ -366,11 +364,12 @@ class EKSClient(Boto3Client):
 
         :return:
         """
+
         request_dict = {"clusterName": fargate_profile.cluster_name,
                         "fargateProfileName": fargate_profile.name}
         logger.info(f"Disposing fargate_profile: {request_dict}")
         for response in self.execute(
-                self.client.delete_fargate_profile,
+                self.get_session_client(region=fargate_profile.region).delete_fargate_profile,
                 "fargateProfile",
                 filters_req=request_dict,
         ):

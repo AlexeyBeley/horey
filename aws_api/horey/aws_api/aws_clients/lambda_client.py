@@ -41,25 +41,23 @@ class LambdaClient(Boto3Client):
         """
 
         regional_fetcher_generator = self.yield_lambdas_raw
-        for obj in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                  AWSLambda,
-                                                  update_info=update_info,
-                                                  full_information_callback=self.update_lambda_full_information if full_information else None,
-                                                  regions=[region] if region else None,
-                                                  filters_req=filters_req):
-            yield obj
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                            AWSLambda,
+                                                            update_info=update_info,
+                                                            full_information_callback=self.update_lambda_full_information if full_information else None,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req)
 
-    def yield_lambdas_raw(self, filters_req=None):
+    def yield_lambdas_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
         :return:
         """
 
-        for dict_src in self.execute(
-                self.client.list_functions, "Functions", filters_req=filters_req
-        ):
-            yield dict_src
+        yield from self.execute(
+                self.get_session_client(region=region).list_functions, "Functions", filters_req=filters_req
+        )
 
     def get_all_lambdas(self, full_information=True, region=None):
         """
@@ -93,20 +91,20 @@ class LambdaClient(Boto3Client):
         logger.info(f"Fetching Lambda's '{obj.name}' policy if exists.")
 
         for response in self.execute(
-            self.client.get_policy,
-            None,
-            raw_data=True,
-            filters_req={"FunctionName": obj.name},
-            exception_ignore_callback=lambda x: "ResourceNotFoundException" in repr(x),
+                self.get_session_client(region=obj.region).get_policy,
+                None,
+                raw_data=True,
+                filters_req={"FunctionName": obj.name},
+                exception_ignore_callback=lambda x: "ResourceNotFoundException" in repr(x),
         ):
             del response["ResponseMetadata"]
             obj.update_policy_from_get_policy_raw_response(response)
 
         for response in self.execute(
-            self.client.get_function_concurrency,
-            None,
-            raw_data=True,
-            filters_req={"FunctionName": obj.name}
+                self.get_session_client(region=obj.region).get_function_concurrency,
+                None,
+                raw_data=True,
+                filters_req={"FunctionName": obj.name}
         ):
             obj.reserved_concurrent_executions = response.get("ReservedConcurrentExecutions")
 
@@ -133,9 +131,8 @@ class LambdaClient(Boto3Client):
         @return:
         """
         final_result = []
-        AWSAccount.set_aws_region(region)
         for response in self.execute(
-            self.client.list_event_source_mappings, "EventSourceMappings"
+                self.get_session_client(region=region).list_event_source_mappings, "EventSourceMappings"
         ):
             obj = LambdaEventSourceMapping(response)
             final_result.append(obj)
@@ -149,13 +146,12 @@ class LambdaClient(Boto3Client):
         @param full_information:
         @return:
         """
-        AWSAccount.set_aws_region(aws_lambda.region)
         for response in self.execute(
-            self.client.get_function,
-            None,
-            raw_data=True,
-            filters_req={"FunctionName": aws_lambda.name},
-            exception_ignore_callback=lambda x: "ResourceNotFoundException" in repr(x),
+                self.get_session_client(region=aws_lambda.region).get_function,
+                None,
+                raw_data=True,
+                filters_req={"FunctionName": aws_lambda.name},
+                exception_ignore_callback=lambda x: "ResourceNotFoundException" in repr(x),
         ):
             del response["ResponseMetadata"]
             aws_lambda.update_from_raw_get_function_response(response)
@@ -181,20 +177,18 @@ class LambdaClient(Boto3Client):
             logger.warning("Deprecation: 'force' is going to be deprecated use update_code instead")
             update_code = force
 
-        AWSAccount.set_aws_region(desired_aws_lambda.region)
-
         current_lambda = AWSLambda({})
         current_lambda.name = desired_aws_lambda.name
         current_lambda.region = desired_aws_lambda.region
         self.update_lambda_information(current_lambda, full_information=True)
 
         if current_lambda.arn is None:
-            self.provision_lambda_raw(desired_aws_lambda.generate_create_request())
+            self.provision_lambda_raw(desired_aws_lambda.region, desired_aws_lambda.generate_create_request())
             if desired_aws_lambda.policy is not None:
                 for (
-                    add_permission_request
+                        add_permission_request
                 ) in desired_aws_lambda.generate_add_permissions_requests():
-                    self.add_permission_raw(add_permission_request)
+                    self.add_permission_raw(desired_aws_lambda.region, add_permission_request)
                     self.wait_for_status(
                         current_lambda,
                         self.update_lambda_information,
@@ -216,9 +210,9 @@ class LambdaClient(Boto3Client):
                 [current_lambda.Status.INPROGRESS],
                 [current_lambda.Status.FAILED],
             )
-            self.update_function_configuration_raw(
-                update_function_configuration_request
-            )
+            self.update_function_configuration_raw(desired_aws_lambda.region,
+                                                   update_function_configuration_request
+                                                   )
             self.wait_for_status(
                 current_lambda,
                 self.update_lambda_information,
@@ -242,9 +236,9 @@ class LambdaClient(Boto3Client):
                 [current_lambda.Status.INPROGRESS],
                 [current_lambda.Status.FAILED],
             )
-            self.put_function_concurrency_raw(
-                update_function_concurrency_request
-            )
+            self.put_function_concurrency_raw(desired_aws_lambda.region,
+                                              update_function_concurrency_request
+                                              )
             self.wait_for_status(
                 current_lambda,
                 self.update_lambda_information,
@@ -260,9 +254,9 @@ class LambdaClient(Boto3Client):
                 [current_lambda.Status.INPROGRESS],
                 [current_lambda.Status.FAILED],
             )
-            self.delete_function_concurrency_raw(
-                delete_function_concurrency_request
-            )
+            self.delete_function_concurrency_raw(desired_aws_lambda.region,
+                                                 delete_function_concurrency_request
+                                                 )
             self.wait_for_status(
                 current_lambda,
                 self.update_lambda_information,
@@ -278,7 +272,7 @@ class LambdaClient(Boto3Client):
         ) = current_lambda.generate_modify_permissions_requests(desired_aws_lambda)
 
         for update_permission_request in add_permission_requests:
-            self.add_permission_raw(update_permission_request)
+            self.add_permission_raw(desired_aws_lambda.region, update_permission_request)
             self.wait_for_status(
                 current_lambda,
                 self.update_lambda_information,
@@ -288,7 +282,7 @@ class LambdaClient(Boto3Client):
             )
 
         for update_permission_request in remove_permission_requests:
-            self.remove_permission_raw(update_permission_request)
+            self.remove_permission_raw(desired_aws_lambda.region, update_permission_request)
             self.wait_for_status(
                 current_lambda,
                 self.update_lambda_information,
@@ -305,11 +299,11 @@ class LambdaClient(Boto3Client):
             desired_aws_lambda
         )
         if update_code_request is not None:
-            self.update_function_code_raw(update_code_request)
+            self.update_function_code_raw(desired_aws_lambda.region, update_code_request)
 
         self.update_lambda_information(desired_aws_lambda, full_information=True)
 
-    def put_function_concurrency_raw(self, request_dict):
+    def put_function_concurrency_raw(self, region, request_dict):
         """
         Put concurrency.
 
@@ -320,11 +314,12 @@ class LambdaClient(Boto3Client):
         logger.info(f"Updating concurrency lambda: {request_dict}")
 
         for response in self.execute(
-            self.client.put_function_concurrency, None, raw_data=True, filters_req=request_dict
+                self.get_session_client(region=region).put_function_concurrency, None, raw_data=True,
+                filters_req=request_dict
         ):
             return response
 
-    def delete_function_concurrency_raw(self, request_dict):
+    def delete_function_concurrency_raw(self, region, request_dict):
         """
         Put concurrency.
 
@@ -335,11 +330,12 @@ class LambdaClient(Boto3Client):
         logger.info(f"Deleting concurrency lambda: {request_dict}")
 
         for response in self.execute(
-            self.client.delete_function_concurrency, None, raw_data=True, filters_req=request_dict
+                self.get_session_client(region=region).delete_function_concurrency, None, raw_data=True,
+                filters_req=request_dict
         ):
             return response
 
-    def provision_lambda_raw(self, request_dict):
+    def provision_lambda_raw(self, region, request_dict):
         """
         Standard
 
@@ -350,11 +346,11 @@ class LambdaClient(Boto3Client):
         log_dict = {key: value for key, value in request_dict.items() if key != "Code"}
         logger.info(f"Creating lambda: {log_dict}")
         for response in self.execute(
-            self.client.create_function, None, raw_data=True, filters_req=request_dict
+                self.get_session_client(region=region).create_function, None, raw_data=True, filters_req=request_dict
         ):
             return response
 
-    def update_function_code_raw(self, request_dict):
+    def update_function_code_raw(self, region, request_dict):
         """
         Standard
 
@@ -366,14 +362,14 @@ class LambdaClient(Boto3Client):
         }
         logger.info(f"Updating lambda code: {log_dict}")
         for response in self.execute(
-            self.client.update_function_code,
-            None,
-            raw_data=True,
-            filters_req=request_dict,
+                self.get_session_client(region=region).update_function_code,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
         ):
             return response
 
-    def update_function_configuration_raw(self, request_dict):
+    def update_function_configuration_raw(self, region, request_dict):
         """
         Standard
 
@@ -382,14 +378,14 @@ class LambdaClient(Boto3Client):
         """
         logger.info(f"Updating lambda configuration: {request_dict}")
         for response in self.execute(
-            self.client.update_function_configuration,
-            None,
-            raw_data=True,
-            filters_req=request_dict,
+                self.get_session_client(region=region).update_function_configuration,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
         ):
             return response
 
-    def remove_permission_raw(self, request_dict):
+    def remove_permission_raw(self, region, request_dict):
         """
         Standard
 
@@ -398,11 +394,11 @@ class LambdaClient(Boto3Client):
         """
         logger.info(f"Removing permissions from lambda: {request_dict}")
         for response in self.execute(
-            self.client.remove_permission, None, raw_data=True, filters_req=request_dict
+                self.get_session_client(region=region).remove_permission, None, raw_data=True, filters_req=request_dict
         ):
             return response
 
-    def add_permission_raw(self, request_dict):
+    def add_permission_raw(self, region, request_dict):
         """
         Permissions are used to permit different triggers/services to launch this lambda.
 
@@ -411,12 +407,12 @@ class LambdaClient(Boto3Client):
         """
         logger.info(f"Adding permissions to lambda: {request_dict}")
         for response in self.execute(
-            self.client.add_permission, None, raw_data=True, filters_req=request_dict
+                self.get_session_client(region=region).add_permission, None, raw_data=True, filters_req=request_dict
         ):
             return response
 
     def provision_event_source_mapping(
-        self, event_source_mapping: LambdaEventSourceMapping
+            self, event_source_mapping: LambdaEventSourceMapping
     ):
         """
         Standard
@@ -429,12 +425,12 @@ class LambdaClient(Boto3Client):
         )
         for region_event_source_mapping in region_event_source_mappings:
             if not region_event_source_mapping.function_arn.endswith(
-                event_source_mapping.function_identification
+                    event_source_mapping.function_identification
             ):
                 continue
             if (
-                region_event_source_mapping.event_source_arn
-                != event_source_mapping.event_source_arn
+                    region_event_source_mapping.event_source_arn
+                    != event_source_mapping.event_source_arn
             ):
                 continue
 
@@ -443,14 +439,13 @@ class LambdaClient(Boto3Client):
             )
             return
 
-        AWSAccount.set_aws_region(event_source_mapping.region)
-        response = self.provision_event_source_mapping_raw(
-            event_source_mapping.generate_create_request()
-        )
+        response = self.provision_event_source_mapping_raw(event_source_mapping.region,
+                                                           event_source_mapping.generate_create_request()
+                                                           )
         del response["ResponseMetadata"]
         event_source_mapping.update_from_raw_response(response)
 
-    def provision_event_source_mapping_raw(self, request_dict):
+    def provision_event_source_mapping_raw(self, region, request_dict):
         """
         Standard
 
@@ -459,14 +454,14 @@ class LambdaClient(Boto3Client):
         """
         logger.info(f"Creating lambda event_source_mapping: {request_dict}")
         for response in self.execute(
-            self.client.create_event_source_mapping,
-            None,
-            raw_data=True,
-            filters_req=request_dict,
+                self.get_session_client(region=region).create_event_source_mapping,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
         ):
             return response
 
-    def invoke_raw(self, request_dict):
+    def invoke_raw(self, region, request_dict):
         """
         Standard
         request = {"FunctionName": lambda_name, "InvocationType": "DryRun"}
@@ -478,6 +473,6 @@ class LambdaClient(Boto3Client):
         logger.info(f"Invoking lambda: {request_dict}")
 
         for response in self.execute(
-            self.client.invoke, None, raw_data=True, filters_req=request_dict
+                self.get_session_client(region=region).invoke, None, raw_data=True, filters_req=request_dict
         ):
             return response

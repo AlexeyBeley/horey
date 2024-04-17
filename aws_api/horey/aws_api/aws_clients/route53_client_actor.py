@@ -1,6 +1,5 @@
-import sys
+# pylint: skip-file
 import argparse
-
 
 import ignore_me
 from route53_client import Route53Client

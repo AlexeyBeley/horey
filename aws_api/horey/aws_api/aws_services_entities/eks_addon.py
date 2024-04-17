@@ -17,7 +17,6 @@ class EKSAddon(AwsObject):
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self.cluster_name = None
-        self.arn = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)

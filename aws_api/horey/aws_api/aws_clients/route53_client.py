@@ -26,25 +26,23 @@ class Route53Client(Boto3Client):
         """
 
         regional_fetcher_generator = self.yield_hosted_zones_raw
-        for entity in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                  HostedZone,
-                                                  update_info=update_info,
-                                                  full_information_callback=self.get_hosted_zone_full_information if full_information else None,
-                                                  global_service=True,
-                                                  filters_req=filters_req):
-            yield entity
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                               HostedZone,
+                                                               update_info=update_info,
+                                                               full_information_callback=self.get_hosted_zone_full_information if full_information else None,
+                                                               global_service=True,
+                                                               filters_req=filters_req)
 
-    def yield_hosted_zones_raw(self, filters_req=None):
+    def yield_hosted_zones_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
         :return:
         """
 
-        for dict_src in self.execute(
-                self.client.list_hosted_zones, "HostedZones", filters_req=filters_req
-        ):
-            yield dict_src
+        yield from self.execute(
+                self.get_session_client(region=region).list_hosted_zones, "HostedZones", filters_req=filters_req
+        )
 
     def get_all_hosted_zones(self, full_information=True, name=None):
         """
@@ -73,17 +71,17 @@ class Route53Client(Boto3Client):
         """
         hosted_zone.records = []
         for update_info in self.execute(
-            self.client.list_resource_record_sets,
-            "ResourceRecordSets",
-            filters_req={"HostedZoneId": hosted_zone.id},
+                self.get_session_client().list_resource_record_sets,
+                "ResourceRecordSets",
+                filters_req={"HostedZoneId": hosted_zone.id},
         ):
             hosted_zone.update_record_set(update_info)
 
         for response in self.execute(
-            self.client.get_hosted_zone,
-            None,
-            raw_data=True,
-            filters_req={"Id": hosted_zone.id},
+                self.get_session_client().get_hosted_zone,
+                None,
+                raw_data=True,
+                filters_req={"Id": hosted_zone.id},
         ):
             response.update(response["HostedZone"])
             del response["ResponseMetadata"]
@@ -120,7 +118,8 @@ class Route53Client(Boto3Client):
         if request:
             self.change_resource_record_sets_raw(request)
 
-        associate_requests, disassociate_requests = current_hosted_zone.generate_association_requests(hosted_zone, declarative=declarative)
+        associate_requests, disassociate_requests = current_hosted_zone.generate_association_requests(hosted_zone,
+                                                                                                      declarative=declarative)
 
         if associate_requests:
             self.associate_vpc_with_hosted_zone_raw(associate_requests)
@@ -167,7 +166,7 @@ class Route53Client(Boto3Client):
 
         logger.info(f"Creating hosted zone: {request_dict}")
         for response in self.execute(
-            self.client.create_hosted_zone, "HostedZone", filters_req=request_dict
+                self.get_session_client().create_hosted_zone, "HostedZone", filters_req=request_dict
         ):
             return response
 
@@ -181,10 +180,10 @@ class Route53Client(Boto3Client):
 
         logger.info(f"Associating VPC with hosted zone: {request_dict}")
         for response in self.execute(
-            self.client.associate_vpc_with_hosted_zone,
-            "ChangeInfo",
-            filters_req=request_dict,
-            exception_ignore_callback=lambda exception: "ConflictingDomainExists" in repr(exception)
+                self.get_session_client().associate_vpc_with_hosted_zone,
+                "ChangeInfo",
+                filters_req=request_dict,
+                exception_ignore_callback=lambda exception: "ConflictingDomainExists" in repr(exception)
         ):
             return response
 
@@ -198,7 +197,7 @@ class Route53Client(Boto3Client):
 
         logger.info(f"Disassociating VPC from hosted zone: {request_dict}")
         for response in self.execute(
-                self.client.disassociate_vpc_from_hosted_zone,
+                self.get_session_client().disassociate_vpc_from_hosted_zone,
                 "ChangeInfo",
                 filters_req=request_dict,
                 exception_ignore_callback=lambda exception: "ConflictingDomainExists" in repr(exception)
@@ -216,10 +215,10 @@ class Route53Client(Boto3Client):
         logger.info(f"Updating hosted zone record set: {request_dict}")
 
         for response in self.execute(
-            self.client.change_resource_record_sets,
-            "ChangeInfo",
-            filters_req=request_dict,
-            exception_ignore_callback=lambda error: "InvalidChangeBatch" in repr(error)
+                self.get_session_client().change_resource_record_sets,
+                "ChangeInfo",
+                filters_req=request_dict,
+                exception_ignore_callback=lambda error: "InvalidChangeBatch" in repr(error)
         ):
             return response
 
@@ -237,9 +236,9 @@ class Route53Client(Boto3Client):
         hosted_zone_name = hosted_zone.name.strip(".")
         filters_req = {"DNSName": hosted_zone_name}
         for response in self.execute(
-            self.client.list_hosted_zones_by_name,
-            "HostedZones",
-            filters_req=filters_req,
+                self.get_session_client().list_hosted_zones_by_name,
+                "HostedZones",
+                filters_req=filters_req,
         ):
             if response["Name"].strip(".") == hosted_zone_name:
                 hosted_zone.update_from_raw_response(response)

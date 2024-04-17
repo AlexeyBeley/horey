@@ -33,7 +33,7 @@ class AlertSystemConfigurationPolicy(ConfigurationPolicy):
     def deployment_datetime(self):
         if self._deployment_datetime is None:
             self._deployment_datetime = datetime.datetime.now().strftime(
-                "%Y_%m_%d_%H_%M"
+                "%Y_%m_%d_%H_%M_%S"
             )
         return self._deployment_datetime
 

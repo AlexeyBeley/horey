@@ -3,7 +3,6 @@ AWS lambda client to handle lambda service API requests.
 """
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 
-from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.aws_services_entities.acm_certificate import ACMCertificate
 
 from horey.h_logger import get_logger
@@ -30,12 +29,11 @@ class ACMClient(Boto3Client):
         """
 
         regional_fetcher_generator = self.yield_certificates_raw
-        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                  ACMCertificate,
-                                                  update_info=update_info,
-                                                  get_tags_callback=self.fetch_certificate_tags,
-                                                  regions=[region] if region else None):
-            yield certificate
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                                    ACMCertificate,
+                                                                    update_info=update_info,
+                                                                    get_tags_callback=self.fetch_certificate_tags,
+                                                                    regions=[region] if region else None)
 
     def get_all_certificates(self, region=None, update_info=False):
         """
@@ -46,7 +44,7 @@ class ACMClient(Boto3Client):
 
         return list(self.yield_certificates(region=region, update_info=update_info))
 
-    def yield_certificates_raw(self, filters_req=None):
+    def yield_certificates_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
@@ -54,13 +52,14 @@ class ACMClient(Boto3Client):
         """
 
         for dict_src_arn in self.execute(
-            self.client.list_certificates, "CertificateSummaryList", filters_req=filters_req
+                self.get_session_client(region=region).list_certificates, "CertificateSummaryList",
+                filters_req=filters_req
         ):
             arn = dict_src_arn["CertificateArn"]
             _filters_req = {"CertificateArn": arn}
             certs_dicts = list(
                 self.execute(
-                    self.client.describe_certificate, "Certificate", filters_req=_filters_req
+                    self.get_session_client(region=region).describe_certificate, "Certificate", filters_req=_filters_req
                 )
             )
 
@@ -81,8 +80,7 @@ class ACMClient(Boto3Client):
         :return:
         """
 
-        AWSAccount.set_aws_region(region)
-        return [ACMCertificate(dict_src) for dict_src in self.yield_certificates_raw()]
+        return [ACMCertificate(dict_src) for dict_src in self.yield_certificates_raw(region)]
 
     def fetch_certificate_tags(self, cert):
         """
@@ -94,7 +92,7 @@ class ACMClient(Boto3Client):
         filters_req = {"CertificateArn": cert.arn}
         cert.tags = list(
             self.execute(
-                self.client.list_tags_for_certificate, "Tags", filters_req=filters_req
+                self.get_session_client(region=cert.region).list_tags_for_certificate, "Tags", filters_req=filters_req
             )
         )
 
@@ -106,10 +104,11 @@ class ACMClient(Boto3Client):
         :return:
         """
 
+        region = self.get_region_from_arn(arn)
         filters_req = {"CertificateArn": arn}
         certs_dicts = list(
             self.execute(
-                self.client.describe_certificate, "Certificate", filters_req=filters_req,
+                self.get_session_client(region=region).describe_certificate, "Certificate", filters_req=filters_req,
                 exception_ignore_callback=lambda x: "ResourceNotFoundException" in repr(x)
             )
         )
@@ -132,9 +131,12 @@ class ACMClient(Boto3Client):
         :return:
         """
         if not certificate.tags:
-            raise ValueError("Can not provision certificates without unique tags set. Look at certificate.generate_name_tag")
+            raise ValueError(
+                "Can not provision certificates without unique tags set. Look at certificate.generate_name_tag")
         try:
-            current_certificate = self.get_certificate_by_tags(certificate.region, {"name": tag["Value"] for tag in certificate.tags if tag["Key"] == "name"}, ignore_missing_tag=True)
+            current_certificate = self.get_certificate_by_tags(certificate.region,
+                                                               {"name": tag["Value"] for tag in certificate.tags if
+                                                                tag["Key"] == "name"}, ignore_missing_tag=True)
             if current_certificate.domain_name == certificate.domain_name:
                 certificate.update_from_raw_response(current_certificate.dict_src)
                 return certificate.arn
@@ -142,23 +144,22 @@ class ACMClient(Boto3Client):
             if "ResourceNotFoundError" not in repr(inst_error):
                 raise
 
-        AWSAccount.set_aws_region(certificate.region)
-        response_arn = self.provision_certificate_raw(
-            certificate.generate_create_request()
-        )
+        response_arn = self.provision_certificate_raw(certificate.region,
+                                                      certificate.generate_create_request()
+                                                      )
         certificate.arn = response_arn
 
         self.clear_cache(ACMCertificate)
 
         return response_arn
 
-    def provision_certificate_raw(self, request_dict):
+    def provision_certificate_raw(self, region, request_dict):
         """
         Returns ARN
         """
         logger.info(f"Creating certificate: {request_dict}")
         for response in self.execute(
-            self.client.request_certificate, "CertificateArn", filters_req=request_dict
+                self.get_session_client(region=region).request_certificate, "CertificateArn", filters_req=request_dict
         ):
             return response
 
@@ -176,8 +177,8 @@ class ACMClient(Boto3Client):
         for cert in self.yield_certificates(region, update_info=update_info):
             for tag_key, tag_value in dict_tags.items():
                 if (
-                    cert.get_tag(tag_key, ignore_missing_tag=ignore_missing_tag)
-                    != tag_value
+                        cert.get_tag(tag_key, ignore_missing_tag=ignore_missing_tag)
+                        != tag_value
                 ):
                     break
             else:
@@ -209,9 +210,11 @@ class ACMClient(Boto3Client):
         if not current_certificate:
             raise RuntimeError("Was not able to find certificate")
 
-        logger.info(f"Disposing certificate. Domain Name: {current_certificate.domain_name} ARN: {current_certificate.arn}")
+        logger.info(
+            f"Disposing certificate. Domain Name: {current_certificate.domain_name} ARN: {current_certificate.arn}")
 
-        for response in self.execute(self.client.delete_certificate, None, raw_data=True,
+        for response in self.execute(self.get_session_client(region=certificate.region).delete_certificate, None,
+                                     raw_data=True,
                                      filters_req={"CertificateArn": current_certificate.arn}):
             if response["ResponseMetadata"]["HTTPStatusCode"] != 200:
                 logger.error(response)
@@ -220,7 +223,7 @@ class ACMClient(Boto3Client):
         self.clear_cache(certificate.__class__)
         return True
 
-    def import_certificate_raw(self, request_dict):
+    def import_certificate_raw(self, region, request_dict):
         """
         Standard.
 
@@ -229,6 +232,6 @@ class ACMClient(Boto3Client):
         """
         logger.info(f"Importing certificate: {request_dict['CertificateArn']}")
         for response in self.execute(
-            self.client.import_certificate, "CertificateArn", filters_req=request_dict
+                self.get_session_client(region=region).import_certificate, "CertificateArn", filters_req=request_dict
         ):
             return response

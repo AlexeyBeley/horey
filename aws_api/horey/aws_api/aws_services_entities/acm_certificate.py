@@ -15,7 +15,6 @@ class ACMCertificate(AwsObject):
         super().__init__(dict_src)
         self._region = None
         self.status = None
-        self.arn = None
         self.domain_name = None
         self.validation_method = None
         self.domain_validation_options = None

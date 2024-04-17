@@ -12,7 +12,6 @@ from horey.aws_api.aws_services_entities.application_auto_scaling_scalable_targe
     ApplicationAutoScalingScalableTarget,
 )
 
-
 from horey.h_logger import get_logger
 
 logger = get_logger()
@@ -52,19 +51,18 @@ class ApplicationAutoScalingClient(Boto3Client):
         :return:
         """
 
-        AWSAccount.set_aws_region(region)
         if custom_filter is not None and "ServiceNamespace" in custom_filter:
-            return self.get_region_policies_raw(custom_filter)
+            return self.get_region_policies_raw(region, custom_filter)
 
         final_result = []
         custom_filter = custom_filter if custom_filter is not None else {}
         for service_namespace in self.service_namespaces:
             custom_filter["ServiceNamespace"] = service_namespace
-            final_result += self.get_region_policies_raw(custom_filter)
+            final_result += self.get_region_policies_raw(region, custom_filter)
 
         return final_result
 
-    def get_region_policies_raw(self, dict_request):
+    def get_region_policies_raw(self, region, dict_request):
         """
         Standard.
 
@@ -74,9 +72,9 @@ class ApplicationAutoScalingClient(Boto3Client):
 
         final_result = []
         for dict_src in self.execute(
-            self.client.describe_scaling_policies,
-            "ScalingPolicies",
-            filters_req=dict_request,
+                self.get_session_client(region=region).describe_scaling_policies,
+                "ScalingPolicies",
+                filters_req=dict_request,
         ):
             obj = ApplicationAutoScalingPolicy(dict_src)
             final_result.append(obj)
@@ -91,13 +89,12 @@ class ApplicationAutoScalingClient(Boto3Client):
         :return:
         """
 
-        AWSAccount.set_aws_region(autoscaling_policy.region)
-        response = self.provision_policy_raw(
-            autoscaling_policy.generate_create_request()
-        )
+        response = self.provision_policy_raw(autoscaling_policy.region,
+                                             autoscaling_policy.generate_create_request()
+                                             )
         autoscaling_policy.update_from_raw_response(response)
 
-    def provision_policy_raw(self, request_dict):
+    def provision_policy_raw(self, region, request_dict):
         """
         Standard.
 
@@ -106,10 +103,10 @@ class ApplicationAutoScalingClient(Boto3Client):
         """
         logger.info(f"Creating Auto Scaling Policy: {request_dict}")
         for response in self.execute(
-            self.client.put_scaling_policy,
-            None,
-            raw_data=True,
-            filters_req=request_dict,
+                self.get_session_client(region=region).put_scaling_policy,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
         ):
             del response["ResponseMetadata"]
             return response
@@ -122,10 +119,9 @@ class ApplicationAutoScalingClient(Boto3Client):
         :return:
         """
 
-        AWSAccount.set_aws_region(policy.region)
         try:
             dict_src = self.execute_with_single_reply(
-                self.client.describe_scaling_policies,
+                self.get_session_client(region=policy.region).describe_scaling_policies,
                 "ScalingPolicies",
                 filters_req={
                     "ServiceNamespace": policy.service_namespace,
@@ -160,19 +156,18 @@ class ApplicationAutoScalingClient(Boto3Client):
         :return:
         """
 
-        AWSAccount.set_aws_region(region)
         if custom_filter is not None and "ServiceNamespace" in custom_filter:
-            return self.get_region_scalable_targets_raw(custom_filter)
+            return self.get_region_scalable_targets_raw(region, custom_filter)
 
         final_result = []
         custom_filter = custom_filter if custom_filter is not None else {}
         for service_namespace in self.service_namespaces:
             custom_filter["ServiceNamespace"] = service_namespace
-            final_result += self.get_region_scalable_targets_raw(custom_filter)
+            final_result += self.get_region_scalable_targets_raw(region, custom_filter)
 
         return final_result
 
-    def get_region_scalable_targets_raw(self, dict_request):
+    def get_region_scalable_targets_raw(self, region, dict_request):
         """
         Standard.
 
@@ -182,9 +177,9 @@ class ApplicationAutoScalingClient(Boto3Client):
 
         final_result = []
         for dict_src in self.execute(
-            self.client.describe_scalable_targets,
-            "ScalableTargets",
-            filters_req=dict_request,
+                self.get_session_client(region=region).describe_scalable_targets,
+                "ScalableTargets",
+                filters_req=dict_request,
         ):
             obj = ApplicationAutoScalingScalableTarget(dict_src)
             final_result.append(obj)
@@ -199,12 +194,11 @@ class ApplicationAutoScalingClient(Boto3Client):
         :return:
         """
 
-        AWSAccount.set_aws_region(autoscaling_scalable_target.region)
-        self.provision_scalable_target_raw(
-            autoscaling_scalable_target.generate_create_request()
-        )
+        self.provision_scalable_target_raw(autoscaling_scalable_target.region,
+                                           autoscaling_scalable_target.generate_create_request()
+                                           )
 
-    def provision_scalable_target_raw(self, request_dict):
+    def provision_scalable_target_raw(self, region, request_dict):
         """
         Standard.
 
@@ -214,10 +208,10 @@ class ApplicationAutoScalingClient(Boto3Client):
 
         logger.info(f"Registering Auto Scaling scalable target: {request_dict}")
         for response in self.execute(
-            self.client.register_scalable_target,
-            None,
-            raw_data=True,
-            filters_req=request_dict,
+                self.get_session_client(region=region).register_scalable_target,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
         ):
             return response
 
@@ -228,10 +222,9 @@ class ApplicationAutoScalingClient(Boto3Client):
         :param scalable_target:
         :return:
         """
-        AWSAccount.set_aws_region(scalable_target.region)
         try:
             dict_src = self.execute_with_single_reply(
-                self.client.describe_scalable_targets,
+                self.get_session_client(region=scalable_target.region).describe_scalable_targets,
                 "ScalingPolicies",
                 filters_req={"PolicyNames": [scalable_target.name]},
             )

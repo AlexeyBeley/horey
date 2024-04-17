@@ -15,7 +15,6 @@ class KMSKey(AwsObject):
         super().__init__(dict_src)
         self._region = None
         self.aliases = []
-        self.arn = None
         self.key_usage = None
         self.description = None
         self.enabled = None
@@ -129,7 +128,8 @@ class KMSKey(AwsObject):
         :param target:
         :return:
         """
-        name = target.get_tag("name", tag_key_specifier="TagKey", tag_value_specifier="TagValue", ignore_missing_tag=True)
+        name = target.get_tag("name", tag_key_specifier="TagKey", tag_value_specifier="TagValue",
+                              ignore_missing_tag=True)
         if name is None:
             raise ValueError("Missing Tag 'name'")
         alias_name = f"alias/{name}"

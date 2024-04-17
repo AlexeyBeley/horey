@@ -7,7 +7,6 @@ from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.aws_services_entities.elasticsearch_domain import ElasticsearchDomain
 from horey.h_logger import get_logger
 
-
 logger = get_logger()
 
 
@@ -41,9 +40,8 @@ class ElasticsearchClient(Boto3Client):
         """
 
         final_result = []
-        AWSAccount.set_aws_region(region)
         domain_names = []
-        for response in self.execute(self.client.list_domain_names, "DomainNames"):
+        for response in self.execute(self.get_session_client(region=region).list_domain_names, "DomainNames"):
             domain_names.append(response["DomainName"])
 
         if not domain_names:
@@ -51,9 +49,9 @@ class ElasticsearchClient(Boto3Client):
 
         filters_req = {"DomainNames": domain_names}
         for response in self.execute(
-            self.client.describe_elasticsearch_domains,
-            "DomainStatusList",
-            filters_req=filters_req,
+                self.get_session_client(region=region).describe_elasticsearch_domains,
+                "DomainStatusList",
+                filters_req=filters_req,
         ):
             obj = ElasticsearchDomain(response)
             final_result.append(obj)
@@ -69,12 +67,9 @@ class ElasticsearchClient(Boto3Client):
         :return:
         """
 
-        if region is not None:
-            AWSAccount.set_aws_region(region)
-
         for response in self.execute(
-            self.client.update_elasticsearch_domain_config,
-            "DomainConfig",
-            filters_req=request,
+                self.get_session_client(region=region).update_elasticsearch_domain_config,
+                "DomainConfig",
+                filters_req=request,
         ):
             return response

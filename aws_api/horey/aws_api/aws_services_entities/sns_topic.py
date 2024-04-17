@@ -13,7 +13,6 @@ class SNSTopic(AwsObject):
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self.attributes = None
-        self.arn = None
         self._name = None
 
         if from_cache:

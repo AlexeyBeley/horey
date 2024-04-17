@@ -35,21 +35,20 @@ class ELBClient(Boto3Client):
         """
 
         regional_fetcher_generator = self.yield_load_balancers_raw
-        for certificate in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                  ClassicLoadBalancer,
-                                                  update_info=update_info,
-                                                  regions=[region] if region else None,
-                                                  filters_req=filters_req):
-            yield certificate
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                                    ClassicLoadBalancer,
+                                                                    update_info=update_info,
+                                                                    regions=[region] if region else None,
+                                                                    filters_req=filters_req)
 
-    def yield_load_balancers_raw(self, filters_req=None):
+    def yield_load_balancers_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
         :return:
         """
 
-        for dict_src in self.execute(
-                self.client.describe_load_balancers, "LoadBalancerDescriptions", filters_req=filters_req
-        ):
-            yield dict_src
+        yield from self.execute(
+                self.get_session_client(region=region).describe_load_balancers, "LoadBalancerDescriptions",
+                filters_req=filters_req
+        )

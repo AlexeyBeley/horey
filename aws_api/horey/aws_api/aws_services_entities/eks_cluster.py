@@ -16,7 +16,6 @@ class EKSCluster(AwsObject):
 
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
-        self.arn = None
         self.endpoint = None
         self.certificate_authority = {}
 

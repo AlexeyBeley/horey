@@ -1,4 +1,4 @@
-import pdb
+# pylint: skip-file
 import argparse
 
 from horey.aws_api.aws_clients.sessions_manager import SessionsManager
@@ -6,7 +6,6 @@ from horey.aws_api.aws_api_configuration_policy import AWSAPIConfigurationPolicy
 from horey.common_utils.actions_manager import ActionsManager
 from horey.common_utils.common_utils import CommonUtils
 from horey.aws_api.base_entities.aws_account import AWSAccount
-
 
 action_manager = ActionsManager()
 

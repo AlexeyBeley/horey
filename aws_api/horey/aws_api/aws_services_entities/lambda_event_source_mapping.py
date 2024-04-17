@@ -23,7 +23,6 @@ class LambdaEventSourceMapping(AwsObject):
         self.state = None
         self.event_source_arn = None
         self.enabled = None
-        self.arn = None
 
         super().__init__(dict_src)
 

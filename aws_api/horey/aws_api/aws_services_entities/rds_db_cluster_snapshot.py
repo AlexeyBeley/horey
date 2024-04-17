@@ -1,11 +1,9 @@
 """
 Module to handle AWS RDS instances
 """
-import pdb
 
-from horey.aws_api.aws_services_entities.aws_object import AwsObject
-from horey.aws_api.base_entities.region import Region
 from enum import Enum
+from horey.aws_api.aws_services_entities.aws_object import AwsObject
 
 
 class RDSDBClusterSnapshot(AwsObject):
@@ -15,9 +13,9 @@ class RDSDBClusterSnapshot(AwsObject):
 
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
-        self._region = None
         self.parameters = None
         self.kms_key_id = None
+        self.status = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -64,6 +62,12 @@ class RDSDBClusterSnapshot(AwsObject):
         self._init_from_cache(dict_src, options)
 
     def update_from_raw_response(self, dict_src):
+        """
+        Standard
+
+        :param dict_src:
+        :return:
+        """
         init_options = {
             "DBClusterSnapshotIdentifier": lambda x, y: self.init_default_attr(
                 x, y, formatted_name="id"
@@ -95,13 +99,6 @@ class RDSDBClusterSnapshot(AwsObject):
 
         self.init_attrs(dict_src, init_options)
 
-    def generate_create_request(self):
-        request = dict()
-        pdb.set_trace()
-        request["Tags"] = self.tags
-
-        return request
-
     def generate_copy_request(self, dst_cluster_snapshot):
         """
         Warning known AWS bug- if there were no RDS databases created in the dst region
@@ -109,49 +106,41 @@ class RDSDBClusterSnapshot(AwsObject):
         @param dst_cluster_snapshot:
         @return:
         """
-        request = dict()
-        request["SourceDBClusterSnapshotIdentifier"] = self.arn
-        request["TargetDBClusterSnapshotIdentifier"] = dst_cluster_snapshot.id
-        request["KmsKeyId"] = dst_cluster_snapshot.kms_key_id
-        request["CopyTags"] = False
+        request = {"SourceDBClusterSnapshotIdentifier": self.arn,
+                   "TargetDBClusterSnapshotIdentifier": dst_cluster_snapshot.id,
+                   "KmsKeyId": dst_cluster_snapshot.kms_key_id, "CopyTags": False, "Tags": dst_cluster_snapshot.tags}
 
-        request["Tags"] = dst_cluster_snapshot.tags
         request["Tags"].append(self.get_src_snapshot_id_tag())
 
         request["SourceRegion"] = self.region.region_mark
         return request
 
     def get_src_snapshot_id_tag(self):
+        """
+        Source snapshot
+
+        :return:
+        """
         return {"Key": "src_snapshot_id", "Value": self.arn}
 
-    @property
-    def region(self):
-        if self._region is not None:
-            return self._region
-
-        if self.arn is not None:
-            self._region = Region.get_region(self.arn.split(":")[3])
-
-        return self._region
-
-    @region.setter
-    def region(self, value):
-        if not isinstance(value, Region):
-            raise ValueError(value)
-
-        self._region = value
-
     def get_status(self):
+        """
+        Standard
+        :return:
+        """
         if self.status == "copying":
             return self.Status.COPYING
-        elif self.status == "available":
+        if self.status == "available":
             return self.Status.AVAILABLE
-        elif self.status == "failed":
+        if self.status == "failed":
             return self.Status.FAILED
-        else:
-            raise NotImplementedError(self.status)
+
+        raise NotImplementedError(self.status)
 
     class Status(Enum):
+        """
+        Standard
+        """
         COPYING = 0
         AVAILABLE = 1
         FAILED = 2

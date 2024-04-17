@@ -4,7 +4,6 @@ AWS lambda client to handle lambda service API requests.
 
 from base64 import b64decode
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
-from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.aws_services_entities.ecr_repository import ECRRepository
 from horey.aws_api.aws_services_entities.ecr_image import ECRImage
 from horey.h_logger import get_logger
@@ -24,7 +23,7 @@ class ECRClient(Boto3Client):
         client_name = "ecr"
         super().__init__(client_name)
 
-    def get_authorization_info(self, region=None):
+    def get_authorization_info(self, region):
         """
         Get authorization info to be used by docker client to connect the repo.
 
@@ -32,13 +31,10 @@ class ECRClient(Boto3Client):
         @return:
         """
 
-        if region is not None:
-            AWSAccount.set_aws_region(region)
-
         filters_req = {"registryIds": [self.account_id]}
         lst_ret = list(
             self.execute(
-                self.client.get_authorization_token,
+                self.get_session_client(region=region).get_authorization_token,
                 "authorizationData",
                 filters_req=filters_req,
             )
@@ -48,10 +44,10 @@ class ECRClient(Boto3Client):
             user_name, decoded_token = auth_user_token.split(":")
             dict_src["user_name"] = user_name
             dict_src["decoded_token"] = decoded_token
-            dict_src["proxy_host"] = dict_src["proxyEndpoint"][len("https://") :]
+            dict_src["proxy_host"] = dict_src["proxyEndpoint"][len("https://"):]
         return lst_ret
 
-    def provision_repository(self, repository):
+    def provision_repository_old(self, repository):
         """
         Provision ECR repo.
 
@@ -59,19 +55,121 @@ class ECRClient(Boto3Client):
         @return:
         """
 
-        AWSAccount.set_aws_region(repository.region)
-
         region_repos = self.get_region_repositories(
             repository.region, repository_names=[repository.name], get_tags=False)
         if len(region_repos) == 1:
-            repository.update_from_raw_create(region_repos[0].dict_src)
+            repository.update_from_raw_response(region_repos[0].dict_src)
         else:
-            dict_ret = self.provision_repository_raw(repository.generate_create_request())
-            repository.update_from_raw_create(dict_ret)
+            dict_ret = self.provision_repository_raw(repository.region, repository.generate_create_request())
+            repository.update_from_raw_response(dict_ret)
 
         self.tag_resource(repository, arn_identifier="resourceArn", tags_identifier="tags")
 
-    def provision_repository_raw(self, request_dict):
+    def provision_repository(self, repository: ECRRepository):
+        """
+        Provision ECR repo.
+
+        @param repository:
+        @return:
+        """
+
+        repo_region = ECRRepository({})
+        repo_region.region = repository.region
+        repo_region.name = repository.name
+        if not self.update_repository_information(repo_region, full_information=True):
+            dict_ret = self.provision_repository_raw(repository.region, repository.generate_create_request())
+            repository.update_from_raw_response(dict_ret)
+        else:
+            repository.arn = repo_region.arn
+
+        create_request, delete_request = repo_region.generate_change_repository_policy_requests(repository)
+        if create_request:
+            self.set_repository_policy_raw(repository.region, create_request)
+        if delete_request:
+            self.delete_repository_policy_raw(repository.region, delete_request)
+
+        if repository.tags != repo_region.tags:
+            self.clear_cache(ECRRepository)
+            self.tag_resource(repository, arn_identifier="resourceArn", tags_identifier="tags")
+
+        self.update_repository_information(repository)
+        return repository
+
+    def update_repository_information(self, repository, full_information=True):
+        """
+        Update repo info.
+
+        :param repository:
+        :return:
+        """
+
+        all_repos = list(self.yield_repositories(region=repository.region, filters_req={"repositoryNames": [repository.name]}, full_information=full_information))
+        if not all_repos:
+            return False
+
+        if len(all_repos) > 1:
+            raise RuntimeError(f"{len(all_repos)=} for repo name {repository.name=} ")
+
+        for attr, value in all_repos[0].__dict__.items():
+            setattr(repository, attr, value)
+        return True
+
+    def get_repository_full_information(self, repository: ECRRepository):
+        """
+        Fetch policies.
+
+        :param repository:
+        :return:
+        """
+        ret = self.get_repository_policy_raw(repository.region, {"repositoryName": repository.name})
+        if ret is None:
+            return
+        del ret["ResponseMetadata"]
+        repository.update_from_raw_response(ret)
+
+    def get_repository_policy_raw(self, region, request_dict):
+        """
+        Standard.
+
+        @param request_dict:
+        @return:
+        """
+
+        for response in self.execute(
+                self.get_session_client(region=region).get_repository_policy, None, raw_data=True, filters_req=request_dict,
+                exception_ignore_callback=lambda error: "RepositoryPolicyNotFoundException" in repr(error)
+        ):
+            return response
+
+    def set_repository_policy_raw(self, region, request_dict):
+        """
+        Standard.
+
+        @param request_dict:
+        @return:
+        """
+
+        for response in self.execute(
+                self.get_session_client(region=region).set_repository_policy, None, raw_data=True, filters_req=request_dict
+        ):
+            self.clear_cache(ECRRepository)
+            return response
+
+    def delete_repository_policy_raw(self, region, request_dict):
+        """
+        Standard.
+
+        @param request_dict:
+        @return:
+        """
+
+        for response in self.execute(
+                self.get_session_client(region=region).delete_repository_policy, None, raw_data=True, filters_req=request_dict
+        ):
+            self.clear_cache(ECRRepository)
+            return response
+
+    def provision_repository_raw(self, region, request_dict):
         """
         Provision ECR repo from dict request.
 
@@ -80,8 +178,9 @@ class ECRClient(Boto3Client):
         """
 
         for response in self.execute(
-            self.client.create_repository, "repository", filters_req=request_dict
+                self.get_session_client(region=region).create_repository, "repository", filters_req=request_dict
         ):
+            self.clear_cache(ECRRepository)
             return response
 
     # pylint: disable= too-many-arguments
@@ -92,16 +191,14 @@ class ECRClient(Boto3Client):
         :return:
         """
 
-
         regional_fetcher_generator = self.yield_images_raw
-        for obj in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                  ECRImage,
-                                                  update_info=update_info,
-                                                  regions=[region] if region else None,
-                                                  filters_req=filters_req):
-            yield obj
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                            ECRImage,
+                                                            update_info=update_info,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req)
 
-    def yield_images_raw(self, filters_req=None):
+    def yield_images_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
@@ -109,27 +206,25 @@ class ECRClient(Boto3Client):
         """
 
         if filters_req is None:
-            for repository in self.yield_repositories(region=AWSAccount.get_aws_region()):
+            for repository in self.yield_repositories(region=region):
                 _filters_req = {
                     "repositoryName": repository.name,
                     "filter": {"tagStatus": "ANY"},
                 }
-                for dict_src in self.execute(
-                        self.client.describe_images, "imageDetails",
+                yield from self.execute(
+                        self.get_session_client(region=region).describe_images, "imageDetails",
                         filters_req=_filters_req,
                         exception_ignore_callback=lambda error: "RepositoryNotFoundException"
                                                                 in repr(error)
-                ):
-                    yield dict_src
+                )
             return
 
-        for dict_src in self.execute(
-                self.client.describe_images, "imageDetails",
+        yield from self.execute(
+                self.get_session_client(region=region).describe_images, "imageDetails",
                 filters_req=filters_req,
                 exception_ignore_callback=lambda error: "RepositoryNotFoundException"
-            in repr(error)
-        ):
-            yield dict_src
+                                                        in repr(error)
+        )
 
     def get_all_images(self, region=None, filters_req=None):
         """
@@ -141,7 +236,7 @@ class ECRClient(Boto3Client):
         return list(self.yield_images(region=region, filters_req=filters_req))
 
     # pylint: disable= too-many-arguments
-    def yield_repositories(self, region=None, update_info=False, filters_req=None, get_tags=True):
+    def yield_repositories(self, region=None, update_info=False, filters_req=None, full_information=True, get_tags=True):
         """
         Yield repositories
 
@@ -149,33 +244,32 @@ class ECRClient(Boto3Client):
         """
 
         get_tags_callback = None if not get_tags else \
-            lambda _obj: self.get_tags(_obj, function=self.client.list_tags_for_resource,
-                                                                                 arn_identifier="resourceArn",
-                                                                                 tags_identifier="tags")
+            lambda _obj: self.get_tags(_obj, function=self.get_session_client(region=region).list_tags_for_resource,
+                                       arn_identifier="resourceArn",
+                                       tags_identifier="tags")
 
         regional_fetcher_generator = self.yield_repositories_raw
-        for obj in self.regional_service_entities_generator(regional_fetcher_generator,
-                                                  ECRRepository,
-                                                  update_info=update_info,
-                                                  get_tags_callback= get_tags_callback,
-                                                  regions=[region] if region else None,
-                                                  filters_req=filters_req):
-            yield obj
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                            ECRRepository,
+                                                            update_info=update_info,
+                                                            get_tags_callback=get_tags_callback,
+                                                            full_information_callback=self.get_repository_full_information if full_information else None,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req)
 
-    def yield_repositories_raw(self, filters_req=None):
+    def yield_repositories_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
         :return:
         """
 
-        for dict_src in self.execute(
-                self.client.describe_repositories, "repositories",
+        yield from self.execute(
+                self.get_session_client(region=region).describe_repositories, "repositories",
                 filters_req=filters_req,
                 exception_ignore_callback=lambda error: "RepositoryNotFoundException"
-            in repr(error)
-        ):
-            yield dict_src
+                                                        in repr(error)
+        )
 
     def get_repository_images(self, repository):
         """
@@ -185,15 +279,16 @@ class ECRClient(Boto3Client):
         """
 
         final_result = []
-        AWSAccount.set_aws_region(repository.region)
         filters_req = {
             "repositoryName": repository.name,
             "filter": {"tagStatus": "ANY"},
         }
         for dict_src in self.execute(
-            self.client.describe_images, "imageDetails", filters_req=filters_req
+                self.get_session_client(region=repository.region).describe_images, "imageDetails",
+                filters_req=filters_req
         ):
             obj = ECRImage(dict_src)
+            obj.region = repository.region
             final_result.append(obj)
 
         return final_result
@@ -231,14 +326,12 @@ class ECRClient(Boto3Client):
         @return:
         """
 
-        AWSAccount.set_aws_region(repository.region)
-
-        dict_ret = self.dispose_repository_raw(repository.generate_dispose_request())
+        dict_ret = self.dispose_repository_raw(repository.region, repository.generate_dispose_request())
         if dict_ret:
-            repository.update_from_raw_create(dict_ret)
+            repository.update_from_raw_response(dict_ret)
         return True
 
-    def dispose_repository_raw(self, request_dict):
+    def dispose_repository_raw(self, region, request_dict):
         """
         Standard
 
@@ -247,10 +340,11 @@ class ECRClient(Boto3Client):
         """
 
         for response in self.execute(
-            self.client.delete_repository, "repository", filters_req=request_dict,
-            exception_ignore_callback=lambda error: "RepositoryNotFoundException" in repr(error)
+                self.get_session_client(region=region).delete_repository, "repository", filters_req=request_dict,
+                exception_ignore_callback=lambda error: "RepositoryNotFoundException" in repr(error)
 
         ):
+            self.clear_cache(ECRRepository)
             return response
 
     def tag_image(self, image, new_tags):
@@ -262,12 +356,12 @@ class ECRClient(Boto3Client):
         """
 
         for response in self.execute(
-            self.client.describe_images,
-            "imageDetails",
-            filters_req={
-                "repositoryName": image.repository_name,
-                "imageIds": [{"imageTag": image.image_tags[0]}],
-            },
+                self.get_session_client(region=image.region).describe_images,
+                "imageDetails",
+                filters_req={
+                    "repositoryName": image.repository_name,
+                    "imageIds": [{"imageTag": image.image_tags[0]}],
+                },
         ):
 
             if all(tag in response["imageTags"] for tag in new_tags):
@@ -275,13 +369,13 @@ class ECRClient(Boto3Client):
 
         images = None
         for response in self.execute(
-            self.client.batch_get_image,
-            None,
-            raw_data=True,
-            filters_req={
-                "repositoryName": image.repository_name,
-                "imageIds": [{"imageTag": image.image_tags[0]}],
-            },
+                self.get_session_client(region=image.region).batch_get_image,
+                None,
+                raw_data=True,
+                filters_req={
+                    "repositoryName": image.repository_name,
+                    "imageIds": [{"imageTag": image.image_tags[0]}],
+                },
         ):
             images = response["images"]
             if response.get("failures"):
@@ -293,13 +387,13 @@ class ECRClient(Boto3Client):
         image_manifest = images[0]["imageManifest"]
         for image_new_tag in new_tags:
             for response in self.execute(
-                self.client.put_image,
-                "image",
-                filters_req={
-                    "repositoryName": image.repository_name,
-                    "imageManifest": image_manifest,
-                    "imageTag": image_new_tag,
-                },
+                    self.get_session_client(region=image.region).put_image,
+                    "image",
+                    filters_req={
+                        "repositoryName": image.repository_name,
+                        "imageManifest": image_manifest,
+                        "imageTag": image_new_tag,
+                    },
             ):
                 assert response
 
@@ -319,10 +413,11 @@ class ECRClient(Boto3Client):
         if len(repository_names) > 1:
             raise NotImplementedError(repository_names)
 
-        request_dict = {"repositoryName": images[0].repository_name, "imageIds": [{"imageDigest": image.image_digest} for image in images]}
-        return self.batch_delete_image_raw(request_dict)
+        request_dict = {"repositoryName": images[0].repository_name,
+                        "imageIds": [{"imageDigest": image.image_digest} for image in images]}
+        return self.batch_delete_image_raw(images[0].region, request_dict)
 
-    def batch_delete_image_raw(self, request_dict):
+    def batch_delete_image_raw(self, region, request_dict):
         """
         Standard.
 
@@ -333,7 +428,7 @@ class ECRClient(Boto3Client):
         logger.info(f"Deleting images: {request_dict}")
 
         for response in self.execute(
-            self.client.batch_delete_image, None, raw_data=True, filters_req=request_dict
+                self.get_session_client(region=region).batch_delete_image, None, raw_data=True, filters_req=request_dict
         ):
             if response.get("failures"):
                 raise ValueError(response)

@@ -4,7 +4,6 @@ Module handling S3 buckets
 import json
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 from horey.aws_api.base_entities.region import Region
-import pdb
 
 
 class S3Bucket(AwsObject):
@@ -115,7 +114,6 @@ class S3Bucket(AwsObject):
         if len(lst_src) > 1:
             raise ValueError(lst_src)
         self.location = lst_src[0] if lst_src[0] is not None else "us-east-1"
-        return
 
     def get_dns_records(self):
         """
@@ -160,9 +158,9 @@ class S3Bucket(AwsObject):
         }
 
         if (
-            self.index_document is None
-            and self.error_document is None
-            and self.redirect_all_requests_to is None
+                self.index_document is None
+                and self.error_document is None
+                and self.redirect_all_requests_to is None
         ):
             return []
 
@@ -173,29 +171,35 @@ class S3Bucket(AwsObject):
     def generate_create_request(self):
         """
         ACL='private'|'public-read'|'public-read-write'|'authenticated-read',
-        'LocationConstraint': 'af-south-1'|'ap-east-1'|'ap-northeast-1'|'ap-northeast-2'|'ap-northeast-3'|'ap-south-1'|'ap-southeast-1'|'ap-southeast-2'|'ca-central-1'|'cn-north-1'|'cn-northwest-1'|'EU'|'eu-central-1'|'eu-north-1'|'eu-south-1'|'eu-west-1'|'eu-west-2'|'eu-west-3'|'me-south-1'|'sa-east-1'|'us-east-2'|'us-gov-east-1'|'us-gov-west-1'|'us-west-1'|'us-west-2'
+        'LocationConstraint': 'af-south-1'|'ap-east-1'|'ap-northeast-1'|'ap-northeast-2'|'ap-northeast-3'|'ap-south-1'|
+        'ap-southeast-1'|'ap-southeast-2'|'ca-central-1'|'cn-north-1'|'cn-northwest-1'|'EU'|'eu-central-1'|'eu-north-1'|
+        'eu-south-1'|'eu-west-1'|'eu-west-2'|'eu-west-3'|'me-south-1'|'sa-east-1'|'us-east-2'|'us-gov-east-1'|'us-gov-west-1'|
+        'us-west-1'|'us-west-2'
         }
         """
-        request = dict()
-        request["ACL"] = self.acl
-        request["Bucket"] = self.name
-
-        request["CreateBucketConfiguration"] = {
+        request = {"ACL": self.acl, "Bucket": self.name, "CreateBucketConfiguration": {
             "LocationConstraint": self.region.region_mark
-        }
+        }}
+
         return request
 
     def generate_put_bucket_policy_request(self):
-        request = dict()
-        request["Policy"] = self.policy.generate_put_string()
-        request["Bucket"] = self.name
+        """
+        Standard
+
+        :return:
+        """
+        request = {"Policy": self.policy.generate_put_string(), "Bucket": self.name}
 
         return request
 
     def generate_put_bucket_acl_request(self):
-        request = dict()
-        request["ACL"] = self.acl
-        request["Bucket"] = self.name
+        """
+        Standard
+
+        :return:
+        """
+        request = {"ACL": self.acl, "Bucket": self.name}
 
         return request
 
@@ -220,6 +224,8 @@ class S3Bucket(AwsObject):
         """
 
         def __init__(self, src_, from_cache=False):
+            self.version = None
+            self.statement = None
             if isinstance(src_, str):
                 dict_src = json.loads(src_)
             else:
@@ -257,6 +263,11 @@ class S3Bucket(AwsObject):
                 raise
 
         def generate_put_string(self):
+            """
+            Standard
+
+            :return:
+            """
             request_dict = {"Version": self.version, "Statement": self.statement}
             return json.dumps(request_dict)
 

@@ -1,8 +1,11 @@
 """
 AWS ElasticacheReplicationGroup representation
 """
+from enum import Enum
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
+from horey.common_utils.common_utils import CommonUtils
+
 
 # pylint: disable= too-many-instance-attributes
 class ElasticacheReplicationGroup(AwsObject):
@@ -13,11 +16,11 @@ class ElasticacheReplicationGroup(AwsObject):
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self.security_group_ids = None
-        self.arn = None
         self.description = None
         self.preferred_cache_cluster_azs = None
         self.cache_node_type = None
         self.engine = None
+        self.status = None
         self.engine_version = None
         self.cache_parameter_group_name = None
         self.cache_subnet_group_name = None
@@ -108,3 +111,27 @@ class ElasticacheReplicationGroup(AwsObject):
         if len(self.node_groups) != 1:
             raise NotImplementedError(f"len(self.node_groups) != 1: {self.node_groups}")
         return self.node_groups[0]["PrimaryEndpoint"]["Address"]
+
+    def get_status(self):
+        """
+        For the status_waiter.
+
+        :return:
+        """
+
+        if self.status is None:
+            raise self.UndefinedStatusError("Status")
+
+        return self.Status.__members__[CommonUtils.camel_case_to_snake_case(self.status).upper()]
+
+    class Status(Enum):
+        """
+        Standard
+        """
+
+        CREATING = 0
+        AVAILABLE = 1
+        MODIFYING = 2
+        DELETING = 3
+        CREATE_FAILED = 4
+        SNAPSHOTTING = 5
