@@ -439,6 +439,9 @@ def main():
         return bootstrap(configs)
 
     if configs.get("install"):
+        venv_path = configs.get("venv_dir_path")
+        if venv_path and not os.path.isdir(venv_path):
+            bootstrap(configs)
         return install(configs)
 
     raise ValueError(f"Expecting for 'bootstrap' or 'install' command: {configs}")

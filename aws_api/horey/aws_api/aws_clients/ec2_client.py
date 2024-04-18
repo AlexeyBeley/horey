@@ -359,8 +359,8 @@ class EC2Client(Boto3Client):
         existing_security_group.name = desired_security_group.name
         existing_security_group.vpc_id = desired_security_group.vpc_id
         existing_security_group.region = desired_security_group.region
-
         if not self.update_security_group_information(existing_security_group):
+            # breakpoint()
             group_id = self.provision_security_group_raw(
                 desired_security_group.generate_create_request()
             )
@@ -380,12 +380,15 @@ class EC2Client(Boto3Client):
         )
 
         if add_request:
+            # breakpoint()
             self.authorize_security_group_ingress_raw(desired_security_group.region, add_request)
 
         if revoke_request:
+            # breakpoint()
             self.revoke_security_group_ingress_raw(revoke_request)
 
         if update_description:
+            # breakpoint()
             self.update_security_group_rule_descriptions_ingress_raw(update_description)
 
         self.update_security_group_information(desired_security_group)
@@ -403,6 +406,7 @@ class EC2Client(Boto3Client):
         for group_id in self.execute(
                 self.get_session_client(region=region).create_security_group, "GroupId", filters_req=request_dict
         ):
+            self.clear_cache(EC2SecurityGroup)
             return group_id
 
     def raw_create_security_group(self, request_dict, region=None):
@@ -419,6 +423,7 @@ class EC2Client(Boto3Client):
         for group_id in self.execute(
                 self.get_session_client(region=region).create_security_group, "GroupId", filters_req=request_dict
         ):
+            self.clear_cache(EC2SecurityGroup)
             return group_id
 
     def authorize_security_group_ingress(self, region, request_dict):
@@ -466,7 +471,7 @@ class EC2Client(Boto3Client):
 
             if "UnknownIpPermissions" in response:
                 raise NotImplementedError(response)
-
+            self.clear_cache(EC2SecurityGroup)
             return response
 
     def revoke_security_group_ingress_raw(self, request_dict, region=None):
@@ -508,6 +513,7 @@ class EC2Client(Boto3Client):
                 filters_req=request_dict,
                 raw_data=True,
         ):
+            self.clear_cache(EC2SecurityGroup)
             return response
 
     def create_instance(self, request_dict, region=None):
@@ -522,6 +528,7 @@ class EC2Client(Boto3Client):
         for response in self.execute(
                 self.get_session_client(region=region).run_instances, "Instances", filters_req=request_dict
         ):
+            self.clear_cache(EC2Instance)
             return response
 
     def create_key_pair(self, request_dict, region=None):
@@ -536,6 +543,7 @@ class EC2Client(Boto3Client):
         for response in self.execute(
                 self.get_session_client(region=region).create_key_pair, None, raw_data=True, filters_req=request_dict
         ):
+            self.clear_cache(KeyPair)
             return response
 
     def request_spot_fleet_raw(self, request_dict, region=None):
@@ -552,6 +560,7 @@ class EC2Client(Boto3Client):
                 "SpotFleetRequestId",
                 filters_req=request_dict,
         ):
+            self.clear_cache(EC2SpotFleetRequest)
             return response
 
     def get_all_spot_fleet_requests(self, full_information=False):
@@ -604,6 +613,7 @@ class EC2Client(Boto3Client):
                 self.get_session_client(region=region).cancel_spot_fleet_requests, None, raw_data=True,
                 filters_req=request
         ):
+            self.clear_cache(EC2SpotFleetRequest)
             return response
 
     def get_all_ec2_launch_templates(self, full_information=False, region=None):
@@ -711,6 +721,7 @@ class EC2Client(Boto3Client):
         for response in self.execute(
                 self.get_session_client(region=region).create_managed_prefix_list, "PrefixList", filters_req=request
         ):
+            self.clear_cache(ManagedPrefixList)
             return response
 
     def raw_modify_managed_prefix_list(self, region, request):
@@ -729,6 +740,7 @@ class EC2Client(Boto3Client):
                     "PrefixList",
                     filters_req=request,
             ):
+                self.clear_cache(ManagedPrefixList)
                 return response
         except Exception as exception_instance:
             if "already exists" not in repr(exception_instance):

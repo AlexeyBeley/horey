@@ -175,6 +175,7 @@ class KMSClient(Boto3Client):
         for response in self.execute(
                 self.get_session_client(region=region).tag_resource, None, raw_data=True, filters_req=request_dict
         ):
+            self.clear_cache(KMSKey)
             return response
 
     def deprecate_key(self, key: KMSKey, days=7):
@@ -205,6 +206,7 @@ class KMSClient(Boto3Client):
                 self.get_session_client(region=region).schedule_key_deletion, None, raw_data=True,
                 filters_req=request_dict
         ):
+            self.clear_cache(KMSKey)
             return response
 
     def provision_key_raw(self, region, request_dict):
@@ -219,6 +221,7 @@ class KMSClient(Boto3Client):
         for response in self.execute(
                 self.get_session_client(region=region).create_key, "KeyMetadata", filters_req=request_dict
         ):
+            self.clear_cache(KMSKey)
             return response
 
     def delete_alias_raw(self, region, request_dict):
@@ -232,6 +235,7 @@ class KMSClient(Boto3Client):
         for response in self.execute(
                 self.get_session_client(region=region).delete_alias, None, raw_data=True, filters_req=request_dict
         ):
+            self.clear_cache(KMSKey)
             return response
 
     def create_alias_raw(self, region, request_dict):
@@ -246,6 +250,7 @@ class KMSClient(Boto3Client):
         for response in self.execute(
                 self.get_session_client(region=region).create_alias, None, raw_data=True, filters_req=request_dict
         ):
+            self.clear_cache(KMSKey)
             return response
 
     def create_key(self, name=None):
