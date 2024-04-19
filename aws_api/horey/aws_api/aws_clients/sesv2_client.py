@@ -300,6 +300,7 @@ class SESV2Client(Boto3Client):
         @param configuration_set:
         @return:
         """
+        breakpoint()
 
         region_configuration_sets = self.get_region_configuration_sets(
             configuration_set.region
@@ -434,7 +435,6 @@ class SESV2Client(Boto3Client):
         @param email_identity:
         @return:
         """
-
         self.update_email_identity_information(email_identity)
 
         if email_identity.identity_type is not None:

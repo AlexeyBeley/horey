@@ -2,6 +2,7 @@
 Testing AWS Cleaner
 
 """
+import json
 import os
 import pytest
 
@@ -19,6 +20,7 @@ mock_values_file_path = os.path.abspath(
 )
 mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 
+
 # pylint: disable= missing-function-docstring
 
 @pytest.fixture(name="configuration")
@@ -31,9 +33,9 @@ def fixture_configuration():
 
     _configuration = AWSAccessManagerConfigurationPolicy()
     _configuration.aws_api_accounts = ["test1"]
-    ignore_dir_path = os.path.join( os.path.dirname(os.path.abspath(__file__)),
-            "..", "..", "..",
-            "ignore")
+    ignore_dir_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                   "..", "..", "..",
+                                   "ignore")
     _configuration.managed_accounts_file_path = os.path.abspath(
         os.path.join(
             ignore_dir_path,
@@ -59,12 +61,15 @@ def test_get_iam_role_lambdas(configuration: AWSAccessManagerConfigurationPolicy
         ret = AWSAccessManager(configuration).get_iam_role_lambdas(Region.get_region("us-west-2"), role)
         assert isinstance(ret, list)
 
+
 @pytest.mark.skip
 def test_provision_iam_role_lambdas_assumable_roles(configuration: AWSAccessManagerConfigurationPolicy):
     roles = AWSAccessManager(configuration).get_user_assume_roles(mock_values["get_user_faces_user_name"])
     for role in roles:
-        ret = AWSAccessManager(configuration).provision_iam_role_lambdas_assumable_roles(Region.get_region("us-west-2"), role)
+        ret = AWSAccessManager(configuration).provision_iam_role_lambdas_assumable_roles(Region.get_region("us-west-2"),
+                                                                                         role)
         assert isinstance(ret, list)
+
 
 @pytest.mark.todo
 def test_get_role_assume_roles(configuration: AWSAccessManagerConfigurationPolicy):
@@ -72,6 +77,7 @@ def test_get_role_assume_roles(configuration: AWSAccessManagerConfigurationPolic
     for role in roles:
         ret = AWSAccessManager(configuration).get_role_assume_roles(role)
         assert isinstance(ret, list)
+
 
 @pytest.mark.todo
 def test_generate_user_aws_api_accounts(configuration: AWSAccessManagerConfigurationPolicy):
@@ -91,12 +97,32 @@ def test_generate_user_security_domain_tree(configuration: AWSAccessManagerConfi
     tree.print()
     assert tree is not None
 
+
 @pytest.mark.done
 def test_generate_users_security_domain_tree(configuration: AWSAccessManagerConfigurationPolicy):
     ret = AWSAccessManager(configuration).generate_users_security_domain_tree()
     assert ret is not None
 
-@pytest.mark.wip
+
+@pytest.mark.done
 def test_generate_users_security_domain_graphs(configuration: AWSAccessManagerConfigurationPolicy):
     ret = AWSAccessManager(configuration).generate_users_security_domain_graphs()
     assert ret is not None
+
+
+@pytest.mark.wip
+def test_generate_policy_documents_from_string(configuration: AWSAccessManagerConfigurationPolicy):
+    with open(os.path.abspath(os.path.join(os.path.dirname(__file__), "data", "policies-common.json")), encoding="utf-8") as file_handler:
+        str_src = file_handler.read()
+    ret = AWSAccessManager(configuration).generate_policy_documents_from_string(str_src)
+    assert len(ret) == 1
+
+
+@pytest.mark.wip
+def test_generate_policy_documents_from_string(configuration: AWSAccessManagerConfigurationPolicy):
+    with open(os.path.abspath(os.path.join(os.path.dirname(__file__), "data", "policies-common.json")), encoding="utf-8") as file_handler:
+        lst_src_tmp = json.load(file_handler)
+
+    lst_src = [lst_src_tmp[0] for _ in range(100)]
+    ret = AWSAccessManager(configuration).generate_policy_documents_from_string(json.dumps(lst_src))
+    assert len(ret) > 3

@@ -805,7 +805,7 @@ class Boto3Client:
                                           filters_req=None,
                                           cache_filter_callback=None):
         """
-        Get region log groups.
+        Get region objects.
 
         :param regional_fetcher_generator:
         :param entity_class:

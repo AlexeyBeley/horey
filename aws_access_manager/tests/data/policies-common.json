@@ -1,0 +1,12 @@
+[
+  {
+    "Sid": "todo",
+    "Effect": "Allow",
+    "Action": [
+      "ecs:GetTask"
+    ],
+    "Resource": [
+      "arn:aws:ecs:us-east-1:123456789:task/*"
+    ]
+  }
+]

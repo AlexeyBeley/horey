@@ -345,13 +345,14 @@ class EC2Client(Boto3Client):
         security_group.update_from_raw_response(security_groups[0].dict_src)
         return True
 
-    def provision_security_group(self, desired_security_group, provision_rules=True, force=False):
+    def provision_security_group(self, desired_security_group, provision_rules=True, force=False, declarative=False):
         """
         Create/modify security group.
 
         :param desired_security_group:
         :param provision_rules:
         :param force: Permit all rules deletion.
+        :param declarative: Permit rules deletion. If not declarative - only adding rules permitted.
         :return:
         """
 
@@ -360,7 +361,6 @@ class EC2Client(Boto3Client):
         existing_security_group.vpc_id = desired_security_group.vpc_id
         existing_security_group.region = desired_security_group.region
         if not self.update_security_group_information(existing_security_group):
-            # breakpoint()
             group_id = self.provision_security_group_raw(
                 desired_security_group.generate_create_request()
             )
@@ -380,15 +380,13 @@ class EC2Client(Boto3Client):
         )
 
         if add_request:
-            # breakpoint()
             self.authorize_security_group_ingress_raw(desired_security_group.region, add_request)
 
-        if revoke_request:
-            # breakpoint()
+        if declarative and revoke_request:
+            breakpoint()
             self.revoke_security_group_ingress_raw(revoke_request)
 
         if update_description:
-            # breakpoint()
             self.update_security_group_rule_descriptions_ingress_raw(update_description)
 
         self.update_security_group_information(desired_security_group)
