@@ -239,10 +239,14 @@ class AWSAPI:
             )
         for aws_api_account_name in self.configuration.aws_api_accounts:
             aws_api_account = self.aws_accounts[aws_api_account_name]
+            AWSAccount.set_aws_account(aws_api_account)
             if not aws_api_account.regions:
-                AWSAccount.set_aws_account(aws_api_account)
                 regions = list(self.ec2_client.yield_regions(update_info=True))
-                aws_api_account.regions = {region.region_mark:region for region in regions}
+                aws_api_account.regions = {region.region_mark: region for region in regions}
+
+        AWSAccount.set_aws_account(
+            self.aws_accounts[self.configuration.aws_api_accounts[0]]
+        )
 
     def get_all_managed_accounts(self):
         """

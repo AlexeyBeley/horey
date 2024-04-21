@@ -10,8 +10,6 @@ import os
 import re
 
 from horey.h_logger import get_logger
-from horey.aws_api.aws_api import AWSAPI
-from horey.aws_api.aws_api_configuration_policy import AWSAPIConfigurationPolicy
 from horey.aws_api.aws_services_entities.iam_policy import IamPolicy
 from horey.aws_api.aws_services_entities.iam_role import IamRole
 from horey.aws_api.base_entities.aws_account import AWSAccount
@@ -29,14 +27,10 @@ class AWSAccessManager:
 
     """
 
-    def __init__(self, configuration: AWSAccessManagerConfigurationPolicy):
+    def __init__(self, configuration: AWSAccessManagerConfigurationPolicy, aws_api):
         self.configuration = configuration
 
-        aws_api_configuration = AWSAPIConfigurationPolicy()
-        aws_api_configuration.accounts_file = self.configuration.aws_api_accounts_file
-        aws_api_configuration.aws_api_accounts = self.configuration.aws_api_accounts
-        aws_api_configuration.aws_api_cache_dir = self.configuration.cache_dir
-        self.aws_api = AWSAPI(aws_api_configuration)
+        self.aws_api = aws_api
         self.replacement_engine = ReplacementEngine()
 
     def get_user_assume_roles(self, user_name):
@@ -1116,38 +1110,48 @@ class AWSAccessManager:
                 current_document = copy.deepcopy(base_document)
             current_document["Statement"].append(statement)
 
-        ret_documents.append(json.dumps(current_document))
+        if current_document["Statement"]:
+            ret_documents.append(json.dumps(current_document))
+
         return ret_documents
 
-    def generate_policies_from_template_file(self, template_file_path, dict_replacements):
+    def generate_policy_documents_from_template_file(self, template_file_path, dict_replacements):
         """
         Make all replacements and break to chunks.
 
         :return:
         """
 
-        with open(os.path.dirname(template_file_path), encoding="utf-8") as file_handler:
+        logger.info(f"Provisioning deployer policies from file {template_file_path}")
+        with open(template_file_path, encoding="utf-8") as file_handler:
             str_src = file_handler.read()
 
         str_src = self.replacement_engine.perform_replacements_raw(str_src, dict_replacements)
 
         return self.generate_policy_documents_from_string(str_src)
 
-    def provision_policies_from_template_file(self, template_file_path, dict_replacements, policy_name_template, tags):
+    def provision_policies_from_template_file(self, template_file_path, dict_replacements, template_policy):
         """
         Provision policies from template file
+        !!! template_policy has invalid name with format {} set for counter.
+        !!! template_policy should not have "name" tag.
 
         :return:
         """
-
-        policies = self.generate_policies_from_template_file(template_file_path, dict_replacements)
-        for i, policy in enumerate(policies):
-            policy.name = policy_name_template.format(i)
-            policy.tags = tags
-            policy.tags.append({
+        logger.info(f"Provisioning deployer policies from file {template_file_path}")
+        policy_documents = self.generate_policy_documents_from_template_file(template_file_path, dict_replacements)
+        policies = []
+        for i, policy_document in enumerate(policy_documents):
+            if policy_document is None:
+                continue
+            cached_policy = template_policy.convert_to_dict()
+            cached_policy["document"] = json.loads(policy_document)
+            policy_new = IamPolicy(cached_policy, from_cache=True)
+            policy_new.name = template_policy.name.format(i)
+            policy_new.tags.append({
                 "Key": "name",
-                "Value": policy.name
+                "Value": policy_new.name
             })
-            breakpoint()
-            self.aws_api.iam_client.provision_policy(policy)
+            self.aws_api.iam_client.provision_policy(policy_new)
+            policies.append(policy_new)
         return policies

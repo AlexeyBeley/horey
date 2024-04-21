@@ -44,7 +44,7 @@ class IamClient(Boto3Client):
                                                             global_service=True,
                                                             filters_req=filters_req)
 
-    def yield_users_raw(self, filters_req=None):
+    def yield_users_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
@@ -52,7 +52,7 @@ class IamClient(Boto3Client):
         """
 
         yield from self.execute(
-                self.get_session_client().list_users, "Users", filters_req=filters_req
+                self.get_session_client(region=region).list_users, "Users", filters_req=filters_req
         )
 
     def get_all_users(self, full_information=True):
@@ -193,7 +193,7 @@ class IamClient(Boto3Client):
                                                             global_service=True,
                                                             filters_req=filters_req)
 
-    def yield_roles_raw(self, filters_req=None):
+    def yield_roles_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
@@ -201,7 +201,7 @@ class IamClient(Boto3Client):
         """
 
         yield from self.execute(
-                self.get_session_client().list_roles, "Roles", filters_req=filters_req
+                self.get_session_client(region=region).list_roles, "Roles", filters_req=filters_req
         )
 
     def get_all_roles(self, full_information=True):
@@ -230,7 +230,7 @@ class IamClient(Boto3Client):
                                                             global_service=True,
                                                             filters_req=filters_req)
 
-    def yield_groups_raw(self, filters_req=None):
+    def yield_groups_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
@@ -238,7 +238,7 @@ class IamClient(Boto3Client):
         """
 
         yield from self.execute(
-                self.get_session_client().list_groups, "Groups", filters_req=filters_req
+                self.get_session_client(region=region).list_groups, "Groups", filters_req=filters_req
         )
 
     def get_all_groups(self, full_information=True):
@@ -393,7 +393,7 @@ class IamClient(Boto3Client):
                                                             global_service=True,
                                                             filters_req=filters_req)
 
-    def yield_policies_raw(self, filters_req=None):
+    def yield_policies_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
 
@@ -401,7 +401,7 @@ class IamClient(Boto3Client):
         """
 
         yield from self.execute(
-                self.get_session_client().list_policies, "Policies", filters_req=filters_req
+                self.get_session_client(region=region).list_policies, "Policies", filters_req=filters_req
         )
 
     def get_all_policies(self, full_information=True, filters_req=None):

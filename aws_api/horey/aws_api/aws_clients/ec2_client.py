@@ -383,7 +383,6 @@ class EC2Client(Boto3Client):
             self.authorize_security_group_ingress_raw(desired_security_group.region, add_request)
 
         if declarative and revoke_request:
-            breakpoint()
             self.revoke_security_group_ingress_raw(revoke_request)
 
         if update_description:
@@ -2138,7 +2137,7 @@ class EC2Client(Boto3Client):
             self.clear_cache(RouteTable)
             return response
 
-    def replace_route_raw(self, request_dict, region=None):
+    def replace_route_raw(self, region, request_dict):
         """
         Standard
 

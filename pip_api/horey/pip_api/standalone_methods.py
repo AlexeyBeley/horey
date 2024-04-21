@@ -386,9 +386,14 @@ class StandaloneMethods:
         """
 
         package_root_folder_name = requirement_name[len(prefix):]
-        module_path = os.path.join(path_to_repo, package_root_folder_name, requirement_name.replace(".", "/"), "__init__.py")
+        package_main_folder_path = os.path.join(path_to_repo, package_root_folder_name)
+        if not os.path.exists(package_main_folder_path):
+            raise ValueError(f"Package folder with name '{package_root_folder_name}' does not exist in {path_to_repo}")
+
+        module_path = os.path.abspath(os.path.join(package_main_folder_path, requirement_name.replace(".", "/"), "__init__.py"))
+
         if not os.path.exists(module_path):
-            raise ValueError(module_path)
+            raise ValueError(f"__init__.py module does not exist '{module_path}'")
         with open(module_path, encoding="utf-8") as file_handler:
             lines = file_handler.readlines()
 
