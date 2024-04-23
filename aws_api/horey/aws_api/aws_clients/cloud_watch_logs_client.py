@@ -237,7 +237,9 @@ class CloudWatchLogsClient(Boto3Client):
                 full_info_log_groups = list(
                     self.yield_log_groups(region=log_group.region, update_info=True, filters_req=filters_req,
                                           get_tags=True))
-                if len(full_info_log_groups) != 1:
+                if len(full_info_log_groups) == 0:
+                    return False
+                if len(full_info_log_groups) > 1:
                     raise RuntimeError(f"Found {[x.name for x in full_info_log_groups]} log groups with params: {filters_req}")
                 log_group.update_from_raw_response(full_info_log_groups[0].dict_src)
                 return True
@@ -269,7 +271,8 @@ class CloudWatchLogsClient(Boto3Client):
         else:
             self.provision_log_group_raw(log_group.region, log_group.generate_create_request())
 
-        self.update_log_group_information(log_group)
+        if not self.update_log_group_information(log_group):
+            raise RuntimeError(f"Was not able to find log_group {log_group.name}")
 
     def provision_log_group_raw(self, region, request_dict):
         """

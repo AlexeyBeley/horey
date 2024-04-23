@@ -1743,6 +1743,19 @@ class EC2Client(Boto3Client):
         ):
             return response
 
+    def dispose_elastic_addresses(self, elastic_address):
+        """
+        Standard
+        :param elastic_address:
+        :return:
+        """
+        logger.info(f"Disposing elastic address: {elastic_address.id}")
+        request_dict = {"AllocationId": elastic_address.id}
+        for response in self.execute(
+                self.get_session_client(region=elastic_address.region).release_address, None, filters_req=request_dict, raw_data=True
+        ):
+            return response
+
     def provision_vpc_peering(self, vpc_peering):
         """
         Request peering and accept on the other end.

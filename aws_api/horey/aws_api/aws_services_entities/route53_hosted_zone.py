@@ -85,6 +85,38 @@ class HostedZone(AwsObject):
 
         return request
 
+    def generate_change_tags_request(self, desired_state):
+        """
+        Standard.
+
+        :param desired_state:
+        :return:
+        """
+        request_dict = {"ResourceType": "hostedzone",
+                        "ResourceId": self.id.replace("/hostedzone/", ""),
+                        "AddTags": [],
+                        "RemoveTagKeys": []}
+        self_tags = {tag["Key"]: tag["Value"] for tag in self.tags}
+        desired_tags = {tag["Key"]: tag["Value"] for tag in desired_state.tags}
+
+        for key, value in self_tags.items():
+            if key not in desired_tags:
+                request_dict["RemoveTagKeys"].append(key)
+            elif desired_tags.get(key) != value:
+                request_dict["AddTags"].append({"Key": key, "Value": value})
+
+        for key, value in desired_tags.items():
+            if key not in self_tags:
+                request_dict["AddTags"].append({"Key": key, "Value": value})
+
+        if not request_dict["RemoveTagKeys"]:
+            del request_dict["RemoveTagKeys"]
+
+        if not request_dict["AddTags"]:
+            del request_dict["AddTags"]
+
+        return request_dict if "AddTags" in request_dict or "RemoveTagKeys" in request_dict else None
+
     class Record(AwsObject):
         """
         Class representing AWS hosted zone record
@@ -168,6 +200,7 @@ class HostedZone(AwsObject):
             "LinkedService": self.init_default_attr,
             "VPCs": lambda x, y: self.init_default_attr(x, y, formatted_name="vpc_associations"),
             "DelegationSet": self.init_default_attr,
+            "Tags": self.init_default_attr
         }
 
         self.init_attrs(dict_src, init_options, raise_on_no_option=True)

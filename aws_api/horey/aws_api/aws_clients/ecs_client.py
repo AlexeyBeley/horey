@@ -139,7 +139,7 @@ class ECSClient(Boto3Client):
         }
 
         yield from self.execute(
-                self.get_session_client(region=region).describe_clusters, "clusters", filters_req=filter_req
+            self.get_session_client(region=region).describe_clusters, "clusters", filters_req=filter_req
         )
 
     def get_region_clusters(self, region, cluster_identifiers=None):
@@ -582,8 +582,8 @@ class ECSClient(Boto3Client):
         for arn in arns:
             filters_req = {"taskDefinition": arn, "include": ["TAGS"]}
             yield from self.execute(
-                    self.get_session_client(region=region).describe_task_definition, "taskDefinition",
-                    filters_req=filters_req
+                self.get_session_client(region=region).describe_task_definition, "taskDefinition",
+                filters_req=filters_req
             )
 
         return []
@@ -797,7 +797,8 @@ class ECSClient(Boto3Client):
         logger.info(f"Disposing ECS Service: {request_dict}")
         for response in self.execute(
                 self.get_session_client(region=region).delete_service, "service", filters_req=request_dict,
-                exception_ignore_callback=lambda error: "ServiceNotFoundException" in repr(error)
+                exception_ignore_callback=lambda error: "ServiceNotFoundException" in repr(
+                    error) or "ClusterNotFoundException" in repr(error)
         ):
             return response
 
@@ -843,6 +844,7 @@ class ECSClient(Boto3Client):
                     self.get_session_client(region=region).list_container_instances,
                     "containerInstanceArns",
                     filters_req=filter_req,
+                    exception_ignore_callback=lambda error: "ClusterNotFoundException" in repr(error)
             ):
                 cluster_container_instances_arns.append(container_instance_arn)
 
@@ -892,7 +894,8 @@ class ECSClient(Boto3Client):
 
         logger.info(f"Disposing ECS Cluster: {request_dict}")
         for response in self.execute(
-                self.get_session_client(region=region).delete_cluster, "cluster", filters_req=request_dict
+                self.get_session_client(region=region).delete_cluster, "cluster", filters_req=request_dict,
+                exception_ignore_callback=lambda error: "ClusterNotFoundException" in repr(error)
         ):
             return response
 

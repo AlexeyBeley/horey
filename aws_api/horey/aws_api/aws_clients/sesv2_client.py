@@ -300,7 +300,6 @@ class SESV2Client(Boto3Client):
         @param configuration_set:
         @return:
         """
-        breakpoint()
 
         region_configuration_sets = self.get_region_configuration_sets(
             configuration_set.region

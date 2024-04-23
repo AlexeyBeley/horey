@@ -54,7 +54,6 @@ class Route53Client(Boto3Client):
         """
 
         hosted_zones = list(self.yield_hosted_zones(full_information=full_information))
-
         if name is not None:
             if not name.endswith("."):
                 name += "."
@@ -88,6 +87,16 @@ class Route53Client(Boto3Client):
             del response["HostedZone"]
             hosted_zone.update_from_raw_response(response)
 
+        for response in self.execute(
+                self.get_session_client().list_tags_for_resource,
+                "ResourceTagSet",
+                filters_req={"ResourceType": "hostedzone",
+                             "ResourceId": hosted_zone.id.replace("/hostedzone/", "")},
+        ):
+            del response["ResourceType"]
+            del response["ResourceId"]
+            hosted_zone.update_from_raw_response(response)
+
     def provision_hosted_zone(self, hosted_zone, declarative=False):
         """
         Standard.
@@ -96,7 +105,6 @@ class Route53Client(Boto3Client):
         :param hosted_zone:
         :return:
         """
-
         hosted_zones = self.get_all_hosted_zones(name=hosted_zone.name, full_information=False)
         if len(hosted_zones) > 1:
             raise ValueError(
@@ -104,10 +112,19 @@ class Route53Client(Boto3Client):
             )
 
         if len(hosted_zones) == 0:
+            if not hosted_zone.tags:
+                raise ValueError(f"Provisioning hosted zone without tags is not supported: {hosted_zone.generate_create_request()}")
             request = hosted_zone.generate_create_request()
             response = self.raw_create_hosted_zone(request)
             hosted_zone.id = response["Id"]
             self.associate_hosted_zone(hosted_zone)
+            current_hosted_zone = HostedZone({"tags": [], "id": hosted_zone.id})
+
+            change_tags_request = current_hosted_zone.generate_change_tags_request(hosted_zone)
+            if change_tags_request:
+                self.change_tags_for_resource_raw(change_tags_request)
+            self.get_hosted_zone_full_information(hosted_zone)
+            self.clear_cache(HostedZone)
             return hosted_zone
 
         current_hosted_zone = hosted_zones[0]
@@ -127,8 +144,26 @@ class Route53Client(Boto3Client):
         if disassociate_requests:
             self.disassociate_vpc_from_hosted_zone_raw(disassociate_requests)
 
+        change_tags_request = current_hosted_zone.generate_change_tags_request(hosted_zone)
+        if change_tags_request:
+            self.change_tags_for_resource_raw(change_tags_request)
+
         self.get_hosted_zone_full_information(hosted_zone)
         return hosted_zone
+
+    def change_tags_for_resource_raw(self, request_dict):
+        """
+        Standard
+
+        :param request_dict:
+        :return:
+        """
+
+        for dict_src in self.execute(self.get_session_client().change_tags_for_resource, None, raw_data=True,
+                                     filters_req=request_dict
+                                     ):
+            self.clear_cache(HostedZone)
+            return dict_src
 
     def update(self, hosted_zone):
         """
@@ -185,6 +220,7 @@ class Route53Client(Boto3Client):
                 filters_req=request_dict,
                 exception_ignore_callback=lambda exception: "ConflictingDomainExists" in repr(exception)
         ):
+            self.clear_cache(HostedZone)
             return response
 
     def disassociate_vpc_from_hosted_zone_raw(self, request_dict):
@@ -202,6 +238,7 @@ class Route53Client(Boto3Client):
                 filters_req=request_dict,
                 exception_ignore_callback=lambda exception: "ConflictingDomainExists" in repr(exception)
         ):
+            self.clear_cache(HostedZone)
             return response
 
     def change_resource_record_sets_raw(self, request_dict):
@@ -220,6 +257,7 @@ class Route53Client(Boto3Client):
                 filters_req=request_dict,
                 exception_ignore_callback=lambda error: "InvalidChangeBatch" in repr(error)
         ):
+            self.clear_cache(HostedZone)
             return response
 
         return None
