@@ -70,16 +70,17 @@ class CloudWatchLogsClient(Boto3Client):
 
         return list(self.yield_log_groups())
 
-    def get_region_cloud_watch_log_groups(self, region, get_tags=True):
+    def get_region_cloud_watch_log_groups(self, region, get_tags=True, update_info=False):
         """
         Get region log groups.
 
+        :param update_info:
         :param region:
         :param get_tags:
         :return:
         """
 
-        return list(self.yield_log_groups(region=region, get_tags=get_tags))
+        return list(self.yield_log_groups(region=region, get_tags=get_tags, update_info=update_info))
 
     def yield_log_group_metric_filters(self, region=None, update_info=False, filters_req=None):
         """
@@ -222,7 +223,7 @@ class CloudWatchLogsClient(Boto3Client):
             token = new_token
         return
 
-    def update_log_group_information(self, log_group):
+    def update_log_group_information(self, log_group, update_info=False):
         """
         Standard.
 
@@ -230,7 +231,7 @@ class CloudWatchLogsClient(Boto3Client):
         :return:
         """
 
-        region_log_groups = self.get_region_cloud_watch_log_groups(log_group.region, get_tags=False)
+        region_log_groups = self.get_region_cloud_watch_log_groups(log_group.region, get_tags=False, update_info=update_info)
         for region_log_group in region_log_groups:
             if region_log_group.name == log_group.name:
                 filters_req = {"logGroupNamePattern": log_group.name}
@@ -271,7 +272,12 @@ class CloudWatchLogsClient(Boto3Client):
         else:
             self.provision_log_group_raw(log_group.region, log_group.generate_create_request())
 
-        if not self.update_log_group_information(log_group):
+        for i in range(60):
+            if self.update_log_group_information(log_group, update_info=True):
+                break
+            logger.info(f"Going to sleep after {i} retries")
+            time.sleep(1)
+        else:
             raise RuntimeError(f"Was not able to find log_group {log_group.name}")
 
     def provision_log_group_raw(self, region, request_dict):

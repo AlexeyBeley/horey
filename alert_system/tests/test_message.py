@@ -1,8 +1,11 @@
+"""
+Test message
+
+"""
+import os
 import json
-import pdb
 
 from horey.alert_system.lambda_package.message import Message
-import os
 from horey.common_utils.common_utils import CommonUtils
 
 mock_values_file_path = os.path.abspath(
@@ -13,6 +16,7 @@ mock_values_file_path = os.path.abspath(
 mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 
 
+# pylint: disable= missing-function-docstring
 def test_init_message_receiver():
     assert isinstance(Message({}), Message)
 

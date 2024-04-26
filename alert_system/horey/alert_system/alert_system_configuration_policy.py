@@ -56,7 +56,7 @@ class AlertSystemConfigurationPolicy(ConfigurationPolicy):
     @property
     def horey_repo_path(self):
         if self._horey_repo_path is None:
-            raise RuntimeError()
+            raise self.UndefinedValueError("horey_repo_path")
         return self._horey_repo_path
 
     @horey_repo_path.setter

@@ -28,22 +28,7 @@ class CloudWatchLogGroup(AwsObject):
             self._init_cloud_watch_log_group_from_cache(dict_src)
             return
 
-        init_options = {
-            "logGroupName": lambda x, y: self.init_default_attr(
-                x, y, formatted_name="name"
-            ),
-            "creationTime": self.init_default_attr,
-            "metricFilterCount": self.init_default_attr,
-            "arn": self.init_default_attr,
-            "storedBytes": self.init_default_attr,
-            "retentionInDays": self.init_default_attr,
-            "logGroupClass": self.init_default_attr,
-            "logGroupArn": lambda x, y: self.init_default_attr(
-                x, y, formatted_name="arn"
-            ),
-        }
-
-        self.init_attrs(dict_src, init_options)
+        self.update_from_raw_response(dict_src)
 
     def _init_cloud_watch_log_group_from_cache(self, dict_src):
         """
@@ -102,6 +87,8 @@ class CloudWatchLogGroup(AwsObject):
             "arn": self.init_default_attr,
             "storedBytes": self.init_default_attr,
             "retentionInDays": self.init_default_attr,
+            "logGroupClass": self.init_default_attr,
+            "logGroupArn": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
