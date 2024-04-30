@@ -152,7 +152,7 @@ class Notification:
         @return:
         """
 
-        if value not in Notification.Types:
+        if value not in [self_type.value for self_type in Notification.Types]:
             raise ValueError(value)
         self._type = value
 

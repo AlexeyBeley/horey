@@ -16,6 +16,8 @@ class SESV2EmailIdentity(AwsObject):
         self.tags = None
         self.identity_type = None
         self.verified_for_sending_status = None
+        self.dkim_signing_attributes = None
+        self.configuration_set_name = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -29,6 +31,7 @@ class SESV2EmailIdentity(AwsObject):
         :param dict_src:
         :return:
         """
+
         options = {}
         self._init_from_cache(dict_src, options)
 
@@ -65,6 +68,8 @@ class SESV2EmailIdentity(AwsObject):
         """
 
         request = {"EmailIdentity": self.name}
+        self.extend_request_with_required_parameters(request, ["Tags"])
+        self.extend_request_with_optional_parameters(request, ["DkimSigningAttributes", "ConfigurationSetName"])
 
         return request
 

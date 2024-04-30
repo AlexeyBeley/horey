@@ -266,8 +266,21 @@ class CommonUtils:
     @staticmethod
     def load_object_from_module(module_full_path, callback_function_name):
         """
+        Load object from python module and runs it as function
+        For example 'main()'
+
+        @param module_full_path:
+        @param callback_function_name:
+        @return:
+        """
+
+        return CommonUtils.load_object_from_module_raw(module_full_path, callback_function_name)()
+
+    @staticmethod
+    def load_object_from_module_raw(module_full_path, callback_function_name):
+        """
         Load object from python module using call_back initiation function.
-        For example 'def main()'
+        For example 'class Main'
 
         @param module_full_path:
         @param callback_function_name:
@@ -275,7 +288,7 @@ class CommonUtils:
         """
 
         module = CommonUtils.load_module(module_full_path)
-        return getattr(module, callback_function_name)()
+        return getattr(module, callback_function_name)
 
     @staticmethod
     def load_module(module_full_path):

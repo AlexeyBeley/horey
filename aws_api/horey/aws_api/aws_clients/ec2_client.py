@@ -345,13 +345,14 @@ class EC2Client(Boto3Client):
         security_group.update_from_raw_response(security_groups[0].dict_src)
         return True
 
-    def provision_security_group(self, desired_security_group, provision_rules=True, force=False):
+    def provision_security_group(self, desired_security_group, provision_rules=True, force=False, declarative=False):
         """
         Create/modify security group.
 
         :param desired_security_group:
         :param provision_rules:
         :param force: Permit all rules deletion.
+        :param declarative: Permit rules deletion. If not declarative - only adding rules permitted.
         :return:
         """
 
@@ -360,7 +361,6 @@ class EC2Client(Boto3Client):
         existing_security_group.vpc_id = desired_security_group.vpc_id
         existing_security_group.region = desired_security_group.region
         if not self.update_security_group_information(existing_security_group):
-            # breakpoint()
             group_id = self.provision_security_group_raw(
                 desired_security_group.generate_create_request()
             )
@@ -380,15 +380,12 @@ class EC2Client(Boto3Client):
         )
 
         if add_request:
-            # breakpoint()
             self.authorize_security_group_ingress_raw(desired_security_group.region, add_request)
 
-        if revoke_request:
-            # breakpoint()
+        if declarative and revoke_request:
             self.revoke_security_group_ingress_raw(revoke_request)
 
         if update_description:
-            # breakpoint()
             self.update_security_group_rule_descriptions_ingress_raw(update_description)
 
         self.update_security_group_information(desired_security_group)
@@ -1746,6 +1743,19 @@ class EC2Client(Boto3Client):
         ):
             return response
 
+    def dispose_elastic_addresses(self, elastic_address):
+        """
+        Standard
+        :param elastic_address:
+        :return:
+        """
+        logger.info(f"Disposing elastic address: {elastic_address.id}")
+        request_dict = {"AllocationId": elastic_address.id}
+        for response in self.execute(
+                self.get_session_client(region=elastic_address.region).release_address, None, filters_req=request_dict, raw_data=True
+        ):
+            return response
+
     def provision_vpc_peering(self, vpc_peering):
         """
         Request peering and accept on the other end.
@@ -2140,7 +2150,7 @@ class EC2Client(Boto3Client):
             self.clear_cache(RouteTable)
             return response
 
-    def replace_route_raw(self, request_dict, region=None):
+    def replace_route_raw(self, region, request_dict):
         """
         Standard
 

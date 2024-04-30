@@ -5,6 +5,7 @@ Alert system configuration policy.
 import os
 from horey.configuration_policy.configuration_policy import ConfigurationPolicy
 
+
 # pylint: disable=missing-function-docstring, too-many-instance-attributes
 
 class AWSAccessManagerConfigurationPolicy(ConfigurationPolicy):
@@ -17,16 +18,15 @@ class AWSAccessManagerConfigurationPolicy(ConfigurationPolicy):
         super().__init__()
         self._cache_dir = None
         self._aws_api_accounts = None
-        self._managed_accounts_file_path = None
-
+        self._aws_api_accounts_file = None
 
     @property
-    def managed_accounts_file_path(self):
-        return self._managed_accounts_file_path
+    def aws_api_accounts_file(self):
+        return self._aws_api_accounts_file
 
-    @managed_accounts_file_path.setter
-    def managed_accounts_file_path(self, value):
-        self._managed_accounts_file_path = value
+    @aws_api_accounts_file.setter
+    def aws_api_accounts_file(self, value):
+        self._aws_api_accounts_file = value
 
     @property
     def aws_api_accounts(self):

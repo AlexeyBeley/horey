@@ -100,7 +100,7 @@ class EC2SecurityGroup(AwsObject):
 
         @param target_security_group:
         @return:
-        :param force:
+        :param force: Force deletion of all rules.
         """
         add_request, revoke_request, update_description = [], [], []
         self_permissions_counter = 0

@@ -623,6 +623,16 @@ class Boto3Client:
 
             json.dump(objects_dicts, file_handler, indent=indent)
 
+    @staticmethod
+    def clear_sessions():
+        """
+        Clear all sessions.
+
+        :return:
+        """
+
+        SessionsManager.CONNECTIONS = {}
+
     def clear_cache(self, entity_class, all_cache=False):
         """
         Clear all cache of this entity class
@@ -805,7 +815,7 @@ class Boto3Client:
                                           filters_req=None,
                                           cache_filter_callback=None):
         """
-        Get region log groups.
+        Get region objects.
 
         :param regional_fetcher_generator:
         :param entity_class:

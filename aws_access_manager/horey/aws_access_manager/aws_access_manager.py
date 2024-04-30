@@ -2,6 +2,7 @@
 AWS Access manager.
 
 """
+import copy
 # pylint: disable= too-many-lines
 
 import json
@@ -9,14 +10,13 @@ import os
 import re
 
 from horey.h_logger import get_logger
-from horey.aws_api.aws_api import AWSAPI
-from horey.aws_api.aws_api_configuration_policy import AWSAPIConfigurationPolicy
 from horey.aws_api.aws_services_entities.iam_policy import IamPolicy
 from horey.aws_api.aws_services_entities.iam_role import IamRole
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_access_manager.aws_access_manager_configuration_policy import AWSAccessManagerConfigurationPolicy
 from horey.common_utils.common_utils import CommonUtils
 from horey.aws_access_manager.security_domain_tree import SecurityDomainTree
+from horey.replacement_engine.replacement_engine import ReplacementEngine
 
 logger = get_logger()
 
@@ -27,14 +27,11 @@ class AWSAccessManager:
 
     """
 
-    def __init__(self, configuration: AWSAccessManagerConfigurationPolicy):
+    def __init__(self, configuration: AWSAccessManagerConfigurationPolicy, aws_api):
         self.configuration = configuration
 
-        aws_api_configuration = AWSAPIConfigurationPolicy()
-        aws_api_configuration.accounts_file = self.configuration.managed_accounts_file_path
-        aws_api_configuration.aws_api_accounts = self.configuration.aws_api_accounts
-        aws_api_configuration.aws_api_cache_dir = configuration.cache_dir
-        self.aws_api = AWSAPI(aws_api_configuration)
+        self.aws_api = aws_api
+        self.replacement_engine = ReplacementEngine()
 
     def get_user_assume_roles(self, user_name):
         """
@@ -1089,3 +1086,72 @@ class AWSAccessManager:
                     return True
 
         raise NotImplementedError(statement.condition)
+
+    def generate_policy_documents_from_string(self, str_src):
+        """
+        Split state
+
+        :param str_src:
+        :return:
+        """
+
+        statements = json.loads(str_src)
+        base_document = {
+            "Version": "2012-10-17",
+            "Statement": []
+        }
+
+        ret_documents = []
+        current_document = copy.deepcopy(base_document)
+        while len(statements) > 0:
+            statement = statements.pop(0)
+            if len(json.dumps(current_document, indent=4)) + len(json.dumps(statement, indent=4)) > 6144:
+                ret_documents.append(json.dumps(current_document))
+                current_document = copy.deepcopy(base_document)
+            current_document["Statement"].append(statement)
+
+        if current_document["Statement"]:
+            ret_documents.append(json.dumps(current_document))
+
+        return ret_documents
+
+    def generate_policy_documents_from_template_file(self, template_file_path, dict_replacements):
+        """
+        Make all replacements and break to chunks.
+
+        :return:
+        """
+
+        logger.info(f"Provisioning deployer policies from file {template_file_path}")
+        with open(template_file_path, encoding="utf-8") as file_handler:
+            str_src = file_handler.read()
+
+        str_src = self.replacement_engine.perform_replacements_raw(str_src, dict_replacements)
+
+        return self.generate_policy_documents_from_string(str_src)
+
+    def provision_policies_from_template_file(self, template_file_path, dict_replacements, template_policy):
+        """
+        Provision policies from template file
+        !!! template_policy has invalid name with format {} set for counter.
+        !!! template_policy should not have "name" tag.
+
+        :return:
+        """
+        logger.info(f"Provisioning deployer policies from file {template_file_path}")
+        policy_documents = self.generate_policy_documents_from_template_file(template_file_path, dict_replacements)
+        policies = []
+        for i, policy_document in enumerate(policy_documents):
+            if policy_document is None:
+                continue
+            cached_policy = template_policy.convert_to_dict()
+            cached_policy["document"] = json.loads(policy_document)
+            policy_new = IamPolicy(cached_policy, from_cache=True)
+            policy_new.name = template_policy.name.format(i)
+            policy_new.tags.append({
+                "Key": "name",
+                "Value": policy_new.name
+            })
+            self.aws_api.iam_client.provision_policy(policy_new)
+            policies.append(policy_new)
+        return policies

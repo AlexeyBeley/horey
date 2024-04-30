@@ -42,10 +42,10 @@ class AlertSystem:
 
     """
 
-    def __init__(self, configuration: AlertSystemConfigurationPolicy):
+    def __init__(self, configuration: AlertSystemConfigurationPolicy, aws_api=None):
         self.configuration = configuration
         self.packer = Packer()
-        self.aws_api = AWSAPI()
+        self.aws_api = aws_api or AWSAPI()
         self.region = Region.get_region(self.configuration.region)
         self.tags = None
 
@@ -66,7 +66,7 @@ class AlertSystem:
         """
 
         self.tags = copy.deepcopy(tags)
-        self.provision_sns_topic(tags)
+        self.provision_sns_topic()
         self.provision_lambda(lambda_files)
         self.provision_sns_subscription()
 
@@ -385,7 +385,7 @@ class AlertSystem:
         self.aws_api.provision_aws_lambda(aws_lambda, update_code=True)
         return aws_lambda
 
-    def provision_sns_topic(self, tags):
+    def provision_sns_topic(self):
         """
         Provision the SNS topic receiving alert_system messages.
 
@@ -395,7 +395,7 @@ class AlertSystem:
         topic.region = self.region
         topic.name = self.configuration.sns_topic_name
         topic.attributes = {"DisplayName": topic.name}
-        topic.tags = tags
+        topic.tags =copy.deepcopy(self.tags)
         topic.tags.append({"Key": "Name", "Value": topic.name})
 
         self.aws_api.provision_sns_topic(topic)

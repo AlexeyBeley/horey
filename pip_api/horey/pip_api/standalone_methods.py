@@ -291,11 +291,10 @@ class StandaloneMethods:
                 return this
         raise RuntimeError(f"This should be unreachable: this_min: {this.min_version}, other_min: {other.min_version}")
 
-    def install_source_code_requirement(self, requirement, force_reinstall=False):
+    def install_source_code_requirement(self, requirement):
         """
         Prepare list of requirements to be installed and install those missing.
 
-        :param force_reinstall:
         :param requirement:
         :return:
         """
@@ -307,38 +306,73 @@ class StandaloneMethods:
         requirements_aggregator = {requirement.name: requirement}
         self.compose_requirements_recursive_from_file(requirements_file_path, requirements_aggregator)
         self.logger.info(f"Aggregated: {requirements_aggregator}")
-        self.init_source_code_versions(requirements_aggregator)
+        self.init_source_code_metadata(requirements_aggregator)
         all_reversed = list(reversed(requirements_aggregator.values()))
         for aggregated_requirement in all_reversed[:-1]:
             if aggregated_requirement.multi_package_repo_path:
-                self.install_source_code_requirement_raw(aggregated_requirement, force_reinstall=False)
+                self.install_source_code_requirement_raw(aggregated_requirement)
             else:
-                self.install_requirement_standard(aggregated_requirement, force_reinstall=False)
+                self.install_requirement_standard(aggregated_requirement)
 
-        self.install_source_code_requirement_raw(requirement, force_reinstall=force_reinstall)
+        self.install_source_code_requirement_raw(requirement)
 
         return True
 
-    def init_source_code_versions(self, requirements_aggregator):
+    def init_source_code_metadata(self, requirements_aggregator):
         """
         Init versions from source code.
+        Init per package pip api configuration.
 
         :param requirements_aggregator:
         :return:
         """
 
-        for requirement_name in requirements_aggregator:
+        for requirement_name, requirement in requirements_aggregator.items():
             self.logger.info(f"Looking source version code for {requirement_name}")
             for prefix in self.multi_package_repo_to_prefix_map:
-                self.logger.info(f"Checking {requirement_name} with {prefix}")
                 if requirement_name.startswith(prefix):
                     version = self.init_source_code_version(self.multi_package_repo_to_prefix_map.get(prefix), requirement_name, prefix)
+                    package_pip_api_config = self.init_package_pip_api_configuration(self.multi_package_repo_to_prefix_map.get(prefix), requirement_name)
+                    if package_pip_api_config:
+                        requirement.force = package_pip_api_config.get("force")
 
                     self.logger.info(f"{requirement_name} source code version initialized: {version}")
 
                     if not version:
                         raise ValueError(f"Uninitialized {version=}")
                     StandaloneMethods.SOURCE_CODE_PACKAGE_VERSIONS[requirement_name] = version
+
+    def init_package_pip_api_configuration(self, multi_package_repo_path: str, requirement_name: str):
+        """
+        Init per package configuration.
+
+        :param multi_package_repo_path:
+        :param requirement_name:
+        :return:
+        """
+
+        repo_pip_api_config_file = os.path.join(multi_package_repo_path, "pip_api_configuration.py")
+        module = self.load_module(repo_pip_api_config_file)
+        if not hasattr(module, "main"):
+            raise NotImplementedError(f"No 'main' in {repo_pip_api_config_file}")
+        repo_pip_api_configs = module.main()
+        for prefix in repo_pip_api_configs.multi_package_repositories.keys():
+            if requirement_name.startswith(prefix):
+                break
+        else:
+            raise ValueError(f"Was unable to find proper prefix in multipackage repo pip api configuration file: '{multi_package_repo_path}' ")
+
+        if requirement_name.count(prefix) != 1:
+            raise ValueError(f"{requirement_name=} {requirement_name.count(prefix)=} in {multi_package_repo_path=}")
+
+        package_dir_name = requirement_name.replace(prefix, "").split(".")[0]
+        package_pip_api_config_file = os.path.join(multi_package_repo_path, package_dir_name, "pip_api_package_config.py")
+        if os.path.exists(package_pip_api_config_file):
+            module = self.load_module(package_pip_api_config_file)
+            if hasattr(module, "main"):
+                raise NotImplementedError(f"No 'main' in {package_pip_api_config_file}")
+            return {key: value for key, value in module.__dict__.items() if not key.startswith("_")}
+        return None
 
     @staticmethod
     def init_source_code_version(path_to_repo, requirement_name, prefix):
@@ -352,9 +386,14 @@ class StandaloneMethods:
         """
 
         package_root_folder_name = requirement_name[len(prefix):]
-        module_path = os.path.join(path_to_repo, package_root_folder_name, requirement_name.replace(".", "/"), "__init__.py")
+        package_main_folder_path = os.path.join(path_to_repo, package_root_folder_name)
+        if not os.path.exists(package_main_folder_path):
+            raise ValueError(f"Package folder with name '{package_root_folder_name}' does not exist in {path_to_repo}")
+
+        module_path = os.path.abspath(os.path.join(package_main_folder_path, requirement_name.replace(".", "/"), "__init__.py"))
+
         if not os.path.exists(module_path):
-            raise ValueError(module_path)
+            raise ValueError(f"__init__.py module does not exist '{module_path}'")
         with open(module_path, encoding="utf-8") as file_handler:
             lines = file_handler.readlines()
 
@@ -408,32 +447,30 @@ class StandaloneMethods:
         """
         self.logger.info(f"install_requirement_from_string {src_file_path}, {str_src}")
         requirement = self.init_requirement_from_string(src_file_path, str_src)
-        return self.install_requirement(requirement, force_reinstall=force_reinstall)
+        requirement.force = force_reinstall
+        return self.install_requirement(requirement)
 
-    def install_requirement(self, requirement: Requirement, force_reinstall=False):
+    def install_requirement(self, requirement: Requirement):
         """
         Install single requirement.
 
-        :param force_reinstall:
         :param requirement:
         :return:
         """
 
         if requirement.multi_package_repo_path:
-            return self.install_source_code_requirement(requirement,
-                                              force_reinstall=force_reinstall)
+            return self.install_source_code_requirement(requirement)
 
-        return self.install_requirement_standard(requirement, force_reinstall=force_reinstall)
+        return self.install_requirement_standard(requirement)
 
-    def install_requirement_standard(self, requirement, force_reinstall=False):
+    def install_requirement_standard(self, requirement):
         """
         Default pip install
 
-        :param force_reinstall:
         :param requirement:
         :return:
         """
-        if self.requirement_satisfied(requirement) and not force_reinstall:
+        if self.requirement_satisfied(requirement) and not requirement.force:
             return True
         self.INSTALLED_PACKAGES = None
         requirement_string = requirement.generate_install_string()
@@ -450,35 +487,37 @@ class StandaloneMethods:
             raise ValueError(ret)
         return True
 
-    def install_source_code_requirement_raw(self, requirement, force_reinstall=False):
+    def install_source_code_requirement_raw(self, requirement):
         """
         Build package and install it.
 
-        :param force_reinstall:
         :param requirement:
         :return:
         """
 
-        if force_reinstall or not self.requirement_satisfied(requirement):
-            package_dir_name = requirement.name.split(".")[-1]
-            self.build_and_install_package(requirement.multi_package_repo_path, package_dir_name)
+        if requirement.force or not self.requirement_satisfied(requirement):
+            package_lower_dir_name = requirement.name.split(".")[-1]
+            package_upper_dir_name = requirement.name.split(".")[0]
+            self.build_and_install_package(requirement.multi_package_repo_path, package_upper_dir_name, package_lower_dir_name)
             self.INSTALLED_PACKAGES = None
 
-    def build_and_install_package(self, multi_package_repo_path, package_dir_name):
+    def build_and_install_package(self, multi_package_repo_path, package_upper_dir_name, package_lower_dir_name):
         """
         Build the wheel and install it.
 
         :param multi_package_repo_path:
-        :param package_dir_name:
+        :param package_upper_dir_name: in horey.h_logger is horey
+        :param package_lower_dir_name: in horey.h_logger h_logger
         :return:
         """
-        self.logger.info(f"Building and installing package from source code {multi_package_repo_path} -> {package_dir_name}")
+        self.logger.info(f"Building and installing package from source code {multi_package_repo_path} -> {package_lower_dir_name}")
 
         tmp_build_dir = os.path.join(multi_package_repo_path, "build", "_build")
         os.makedirs(tmp_build_dir, exist_ok=True)
 
-        build_dir_path = os.path.join(tmp_build_dir, package_dir_name)
-        self.create_wheel(os.path.join(multi_package_repo_path, package_dir_name), build_dir_path)
+        build_dir_path = os.path.join(tmp_build_dir, package_lower_dir_name)
+
+        self.create_wheel(os.path.join(multi_package_repo_path, package_lower_dir_name), package_upper_dir_name, build_dir_path)
         wheel_file_name = None
         dist_dir_path = os.path.join(build_dir_path, "dist")
         for wheel_file_name in os.listdir(dist_dir_path):
@@ -490,9 +529,9 @@ class StandaloneMethods:
 
         lines = response["stdout"].split("\n")
         index = -2 if "Leaving directory" in lines[-1] else -1
-        if lines[index] != f"done installing {package_dir_name}" and "Successfully installed " not in lines[index]:
+        if lines[index] != f"done installing {package_upper_dir_name}" and "Successfully installed " not in lines[index]:
             raise RuntimeError(
-                f"Could not install {package_dir_name} from source code:\n {response}"
+                f"Could not install {package_upper_dir_name} from source code:\n {response}"
             )
         self.INSTALLED_PACKAGES = None
         return True
@@ -525,10 +564,11 @@ class StandaloneMethods:
         self.logger.info(f"Was not able to find installed package for requirement '{requirement.name=}'")
         return False
 
-    def create_wheel(self, source_code_path, build_dir_path, branch_name=None):
+    def create_wheel(self, source_code_path, package_upper_dir_name, build_dir_path, branch_name=None):
         """
         Create wheel.
 
+        :param package_upper_dir_name: The dir containing actual source code needed in the package.
         :param source_code_path: Path to the directory with setup.py
         :param build_dir_path: Tmp build dir
         :return:
@@ -544,7 +584,10 @@ class StandaloneMethods:
         if branch_name:
             os.chdir(source_code_path)
             self.checkout_branch(branch_name)
-        shutil.copytree(source_code_path, build_dir_path)
+
+        shutil.copytree(os.path.join(source_code_path, package_upper_dir_name), os.path.join(build_dir_path, package_upper_dir_name))
+        for file_name in ["LICENSE", "README.md", "setup.py"]:
+            shutil.copy(os.path.join(source_code_path, file_name), build_dir_path)
         os.chdir(build_dir_path)
 
         try:

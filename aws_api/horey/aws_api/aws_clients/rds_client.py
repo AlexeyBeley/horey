@@ -1096,3 +1096,31 @@ class RDSClient(Boto3Client):
         self.ENGINE_VERSIONS[region.region_mark][engine_type] = engine_versions[0]
 
         return self.ENGINE_VERSIONS[region.region_mark][engine_type]
+
+    def get_engine_version_raw(self, region, filters_req):
+        """
+        Standard
+
+        :param filters_req:
+        :return:
+        """
+
+        return list(self.execute(
+            self.get_session_client(region=region).describe_db_engine_versions, "DBEngineVersions",
+            filters_req=filters_req))
+
+    def get_engine_max_version(self, region, engine_type):
+        """
+        Standard.
+
+        :param region:
+        :param engine_type:
+        :return:
+        """
+
+        lst_all = self.get_engine_version_raw(region, {"Engine": engine_type, "DefaultOnly": False})
+        max_version = max(float(eng_version["EngineVersion"]) for eng_version in lst_all)
+        max_versions = [eng_version for eng_version in lst_all if float(eng_version["EngineVersion"]) == max_version]
+        if len(max_versions) != 1:
+            raise NotImplementedError(f"{max_versions=}")
+        return max_versions[0]

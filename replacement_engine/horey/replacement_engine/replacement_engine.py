@@ -84,6 +84,25 @@ class ReplacementEngine:
             file_handler.write(new_file_contents)
 
     @staticmethod
+    def perform_replacements_raw(str_src, string_replacements, cartesian_replacements=None):
+        """
+        Perform replacements on a string
+
+        :param cartesian_replacements:
+        :param str_src:
+        :param string_replacements:
+        :return:
+        """
+
+        new_string = ReplacementEngine.perform_raw_string_replacements(
+            str_src, string_replacements, validate=cartesian_replacements is None
+        )
+        if cartesian_replacements:
+            new_string = ReplacementEngine.perform_raw_cartesian_replacements(new_string, cartesian_replacements)
+
+        return new_string
+
+    @staticmethod
     def perform_raw_string_replacements(str_src, string_replacements, validate=True):
         """
         Replace strings in the file.

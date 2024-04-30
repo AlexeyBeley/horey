@@ -1,6 +1,8 @@
 """
 AWS region metadata
 """
+from horey.common_utils.common_utils import CommonUtils
+
 
 class Region:
     """
@@ -127,8 +129,8 @@ class Region:
 
         :return:
         """
-        return {**{key: value for key, value in self.__dict__.items() if not key.startswith("_")},
-                 **{key[1:]: value for key, value in self.__dict__.items() if key.startswith("_")}}
+
+        return CommonUtils.convert_to_dict(self.__dict__)
 
     def init_from_dict(self, dict_src):
         """

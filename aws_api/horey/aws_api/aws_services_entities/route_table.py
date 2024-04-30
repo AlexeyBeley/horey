@@ -78,14 +78,18 @@ class RouteTable(AwsObject):
 
         desired_subnets = []
         for association in desired_route_table.associations:
-            if association.get("AssociationState") is not None:
-                raise NotImplementedError(f"State not supported: {association}")
+            if association.get("Main"):
+                continue
             desired_subnets.append(association["SubnetId"])
 
         self_subnets = []
         for association in self.associations:
             if association.get("AssociationState") != {"State": "associated"}:
                 raise NotImplementedError(f"State not supported: {association}")
+            if not association.get("SubnetId"):
+                if not association.get("Main"):
+                    raise NotImplementedError(f"State not supported: {association}")
+                continue
             self_subnets.append(association["SubnetId"])
 
         for self_subnet in self_subnets:
@@ -146,9 +150,8 @@ class RouteTable(AwsObject):
                 raise ValueError(f"Unsupported route: {self.id} {route}")
 
         for desired_route in desired_route_table.routes:
-            if desired_route.get("State") is not None:
-                raise NotImplementedError(f"Can not handle setting state: {self.id}, {desired_route}")
             destination = desired_route["DestinationCidrBlock"]
+            request = None
             if destination not in self_routes_by_destination:
                 request = copy.deepcopy(desired_route)
                 request["RouteTableId"] = self.id
@@ -167,6 +170,10 @@ class RouteTable(AwsObject):
                     request = copy.deepcopy(desired_route)
                     request["RouteTableId"] = self.id
                     replace_requests.append(request)
+
+            if desired_route.get("State") is not None and request is not None:
+                raise NotImplementedError(f"Can not handle setting state: {self.id}, {desired_route}. "
+                                          f"{request=} means there are route changes. Need to implement state changes.")
 
         return create_requests, replace_requests
 

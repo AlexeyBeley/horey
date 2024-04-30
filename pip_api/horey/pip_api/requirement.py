@@ -19,6 +19,7 @@ class Requirement:
         self.max_version = None
         self.include_min = None
         self.include_max = None
+        self._force = False
         self.multi_package_repo_prefix = None
         self.multi_package_repo_path = None
 
@@ -51,6 +52,28 @@ class Requirement:
             return
 
         self.name = requirement_str
+
+    @property
+    def force(self):
+        """
+        Force reinstall
+
+        :return:
+        """
+        return self._force
+
+    @force.setter
+    def force(self, value):
+        """
+        Force reinstall setter- can be set on a package level to ensure the package is reinstalled.
+
+        :param value:
+        :return:
+        """
+
+        if not isinstance(value, bool):
+            raise ValueError("force must be bool")
+        self._force = value
 
     def generate_install_string(self):
         """

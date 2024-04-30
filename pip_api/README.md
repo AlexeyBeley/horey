@@ -1,16 +1,12 @@
-# Basic utils 
-
-##Concepts:
-* No Horey packages can be used in requirements.txt!
-* Try to make the utils as simple as possible to eliminate the need in logger.
-* If logger is needed (working with IO for example) - must be passed explicitly from outside.
-* This is in order to make use of these utils in development process itself- packaging/building/testing etc.
 
 
-##Action Manager:
-Utils to work with argparse
 
-##Common Utils:
-Searchers: Search for item in iterable
-Conversions: bytes to Mb/Gig/Tr
 
+
+Per package configuration.
+
+File located at the top-most package directory: `pip_api_package_config.py`
+
+force: Means the package should be always rebuilt and reinstalled.
+Useful when you are working on package integration, and you know there are many changes to be done.
+If rebuilt is forced - you do not need to increase the package version.

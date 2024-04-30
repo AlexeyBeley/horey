@@ -434,7 +434,6 @@ class SESV2Client(Boto3Client):
         @param email_identity:
         @return:
         """
-
         self.update_email_identity_information(email_identity)
 
         if email_identity.identity_type is not None:

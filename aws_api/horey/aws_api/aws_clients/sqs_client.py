@@ -44,18 +44,19 @@ class SQSClient(Boto3Client):
         :return:
         """
 
-        for queue_url in self.execute(
-                self.get_session_client(region=region).list_queues, "QueueUrls",
-                filters_req=filters_req,
-                exception_ignore_callback=lambda error: "RepositoryNotFoundException"
-                                                        in repr(error)
+        for response in self.execute(
+                self.get_session_client(region=region).list_queues, None, raw_data=True,
+                filters_req=filters_req
         ):
-            filters_req = {"QueueUrl": queue_url, "AttributeNames": ["All"]}
-            for dict_src in self.execute(
-                    self.get_session_client(region=region).get_queue_attributes, "Attributes", filters_req=filters_req
-            ):
-                dict_src["QueueUrl"] = queue_url
-                yield dict_src
+            if "QueueUrls" not in response:
+                break
+            for queue_url in response["QueueUrls"]:
+                filters_req = {"QueueUrl": queue_url, "AttributeNames": ["All"]}
+                for dict_src in self.execute(
+                        self.get_session_client(region=region).get_queue_attributes, "Attributes", filters_req=filters_req
+                ):
+                    dict_src["QueueUrl"] = queue_url
+                    yield dict_src
 
     def get_all_queues(self, region=None):
         """

@@ -11,8 +11,14 @@ import os
 import traceback
 import urllib.parse
 
-from notification_channel_base import NotificationChannelBase
-from notification import Notification
+try:
+    from notification_channel_base import NotificationChannelBase
+    from notification import Notification
+except ModuleNotFoundError:
+    # pylint: disable= relative-beyond-top-level
+    from .notification_channel_base import NotificationChannelBase
+    from .notification import Notification
+
 
 from horey.common_utils.common_utils import CommonUtils
 from horey.h_logger import get_logger
@@ -65,14 +71,13 @@ class MessageDispatcherBase:
         for attr_name in module_obj.__dict__:
             if attr_name == "NotificationChannelBase":
                 continue
-
             if attr_name.startswith("NotificationChannel"):
                 candidate = getattr(module_obj, attr_name)
-                if issubclass(candidate, NotificationChannelBase):
+                if issubclass(candidate, NotificationChannelBase) or "NotificationChannelBase" in str(candidate.__weakref__):
                     candidates.append(candidate)
 
         if len(candidates) != 1:
-            raise RuntimeError(file_name)
+            raise RuntimeError(f"Found {candidates} in {file_name}")
 
         return candidates[0]
 
@@ -84,20 +89,33 @@ class MessageDispatcherBase:
         @param notification_channel_class:
         @return:
         """
+        try:
+            config_policy_file_name = notification_channel_class.CONFIGURATION_POLICY_FILE_NAME
+            class_name = notification_channel_class.CONFIGURATION_POLICY_CLASS_NAME
+        except AttributeError:
+            config_policy_file_name = notification_channel_class.__module__ + "_configuration_policy"
+            class_name = notification_channel_class.__name__ + "ConfigurationPolicy"
 
-        configuration = CommonUtils.load_object_from_module(
-            os.path.join(
-                os.path.dirname(os.path.abspath(__file__)),
-                notification_channel_class.CONFIGURATION_POLICY_FILE_NAME,
-            ),
-            notification_channel_class.CONFIGURATION_POLICY_CLASS_NAME,
+        config_policy_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            config_policy_file_name
         )
-        configuration.configuration_file_full_path = (
-            configuration.CONFIGURATION_FILE_NAME
-        )
-        configuration.init_from_file()
 
-        return notification_channel_class(configuration)
+        config_policy = CommonUtils.load_object_from_module(
+            config_policy_path,
+            class_name
+        )
+        try:
+            config_values_file_name = config_policy.CONFIGURATION_FILE_NAME
+        except AttributeError:
+            config_values_file_name = notification_channel_class.__module__ + "_configuration_values.py"
+
+        config_policy.configuration_file_full_path = (
+            config_values_file_name
+        )
+        config_policy.init_from_file()
+
+        return notification_channel_class(config_policy)
 
     def dispatch(self, message):
         """

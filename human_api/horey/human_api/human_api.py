@@ -848,6 +848,8 @@ class HumanAPI:
             return True
 
         previous_report_file_path = os.path.join(self.configuration.sprint_dir_path, sorted(digit_names)[-1], self.configuration.work_status_file_name)
+        if not os.path.exists(previous_report_file_path):
+            return True
         with open(previous_report_file_path, encoding="utf-8") as file_handler:
             dict_wobjects = json.load(file_handler)
             previous_wobjects = self.generate_work_objects_from_dicts(dict_wobjects)

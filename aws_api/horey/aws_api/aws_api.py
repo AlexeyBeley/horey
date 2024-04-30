@@ -239,10 +239,14 @@ class AWSAPI:
             )
         for aws_api_account_name in self.configuration.aws_api_accounts:
             aws_api_account = self.aws_accounts[aws_api_account_name]
+            AWSAccount.set_aws_account(aws_api_account)
             if not aws_api_account.regions:
-                AWSAccount.set_aws_account(aws_api_account)
                 regions = list(self.ec2_client.yield_regions(update_info=True))
-                aws_api_account.regions = {region.region_mark:region for region in regions}
+                aws_api_account.regions = {region.region_mark: region for region in regions}
+
+        AWSAccount.set_aws_account(
+            self.aws_accounts[self.configuration.aws_api_accounts[0]]
+        )
 
     def get_all_managed_accounts(self):
         """
@@ -2334,10 +2338,10 @@ class AWSAPI:
         self.route53_client.provision_hosted_zone(hosted_zone)
 
         if master_hosted_zone_name is None:
-            return
+            return True
 
         hzs_master = self.route53_client.get_all_hosted_zones(
-            name=master_hosted_zone_name
+            name=master_hosted_zone_name, full_information=False
         )
         if len(hzs_master) > 1:
             raise NotImplementedError(
@@ -2345,8 +2349,8 @@ class AWSAPI:
             )
 
         master_hosted_zone = hzs_master[0]
+        self.route53_client.get_hosted_zone_full_information(master_hosted_zone)
 
-        record = None
         for record in hosted_zone.records:
             if record.type == "NS" and record.name == hosted_zone.name:
                 break
@@ -2354,6 +2358,12 @@ class AWSAPI:
             raise RuntimeError(
                 f"Can not find NS record for hosted zone '{hosted_zone.name}'"
             )
+        for master_hosted_zone_record in master_hosted_zone.records:
+            if master_hosted_zone_record.name != record.name:
+                continue
+            if master_hosted_zone_record.resource_records != record.resource_records:
+                raise ValueError(f"{master_hosted_zone_record.resource_records=} {record.resource_records=}")
+            return True
 
         changes = [
             {
@@ -2372,6 +2382,7 @@ class AWSAPI:
             "ChangeBatch": {"Changes": changes},
         }
         self.route53_client.change_resource_record_sets_raw(request)
+        return True
 
     def dispose_hosted_zone_resource_record_sets(self, hosted_zone, records):
         """
@@ -3031,8 +3042,6 @@ class AWSAPI:
 
         self.acm_client.provision_certificate(certificate)
 
-        certificate.print_dict_src()
-
         if certificate.status == "ISSUED":
             return
 
@@ -3100,7 +3109,7 @@ class AWSAPI:
             assert len(list({domain_validation_option["ResourceRecord"]["Value"] for domain_validation_option in certificate.domain_validation_options})) == 1
 
         hosted_zones = self.route53_client.get_all_hosted_zones(
-            name=master_hosted_zone_name
+            name=master_hosted_zone_name, full_information=False
         )
 
         if len(hosted_zones) == 0:
@@ -3110,6 +3119,7 @@ class AWSAPI:
                 f"More then one hosted_zones with name '{master_hosted_zone_name}'"
             )
         hosted_zone = hosted_zones[0]
+        self.route53_client.get_hosted_zone_full_information(hosted_zone)
 
         dict_record = {
             "Name": certificate.domain_validation_options[0]["ResourceRecord"]["Name"],

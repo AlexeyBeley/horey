@@ -48,7 +48,8 @@ class IamPolicy(AwsObject):
         :param value:
         :return:
         """
-        self.document = IamPolicy.Document(value, from_cache=True)
+        if value is not None:
+            self.document = IamPolicy.Document(value, from_cache=True)
 
     def init_document(self, _, value):
         """
@@ -66,8 +67,8 @@ class IamPolicy(AwsObject):
 
         :return:
         """
-
-        dict_ret = {"PolicyName": self.name, "PolicyDocument": self.document}
+        document = self.document if isinstance(self.document, str) else self.document.generate_create_request_str()
+        dict_ret = {"PolicyName": self.name, "PolicyDocument": document}
         self.extend_request_with_required_parameters(dict_ret, ["Description", "Path", "Tags"])
         return dict_ret
 
@@ -95,15 +96,19 @@ class IamPolicy(AwsObject):
         :param policy_desired:
         :return:
         """
-        if not isinstance(policy_desired.document, str):
-            raise NotImplementedError(f"policy_desired.document must be a string but in {policy_desired.name} it is "
+        if isinstance(policy_desired.document, str):
+            desired_document_str = policy_desired.document
+        elif isinstance(policy_desired.document, IamPolicy.Document):
+            desired_document_str = policy_desired.document.generate_create_request_str()
+        else:
+            raise NotImplementedError(f"policy_desired.document must be a string or a Document class but in {policy_desired.name} it is "
                                       f"{type(policy_desired.document)}")
 
-        if not isinstance(self.document, self.Document):
+        if not isinstance(self.document, IamPolicy.Document):
             raise NotImplementedError(f"self.document must be a IamPolicy.Document but in {self.name} it is "
                                       f"{type(self.document)}")
 
-        document_desired = json.loads(policy_desired.document)
+        document_desired = json.loads(desired_document_str)
 
         if not self.document.dict_src:
             raise AttributeError(f"policy {self.name} document was not initialized from server")
@@ -169,6 +174,8 @@ class IamPolicy(AwsObject):
 
         def __init__(self, dict_src, from_cache=False):
             self.statements = []
+            self.statement = None
+            self.version = None
 
             super(IamPolicy.Document, self).__init__(dict_src, from_cache=from_cache)
 
@@ -183,6 +190,17 @@ class IamPolicy(AwsObject):
             }
 
             self.init_attrs(dict_src, init_options)
+
+        def generate_create_request_str(self):
+            """
+            Return string to be used in policy creation
+
+            :return:
+            """
+
+            if not isinstance(self.statement, list):
+                raise ValueError(f"{self.statement}")
+            return json.dumps({"Version": self.version, "Statement": self.statement})
 
         def init_document_from_cache(self, dict_src):
             """
