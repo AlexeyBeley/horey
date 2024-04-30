@@ -4,7 +4,9 @@ Docker API - used to communicate with docker service.
 """
 
 import datetime
+import getpass
 import os.path
+import platform
 
 import docker
 from docker.errors import BuildError
@@ -20,7 +22,10 @@ class DockerAPI:
     """
 
     def __init__(self):
-        self.client = docker.from_env(timeout=60*10)
+        if "macos" in platform.platform().lower():
+            self.client = docker.DockerClient(base_url=f'unix:///Users/{getpass.getuser()}/.docker/run/docker.sock')
+        else:
+            self.client = docker.from_env(timeout=60*10)
 
     def login(self, registry, username, password):
         """

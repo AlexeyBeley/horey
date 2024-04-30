@@ -465,6 +465,7 @@ class S3Client(Boto3Client):
                     self.get_session_client().get_bucket_acl,
                     "Grants",
                     filters_req={"Bucket": bucket.name},
+                    instant_raise=True
                 )
             )
             bucket.update_acl(update_info)

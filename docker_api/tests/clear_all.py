@@ -4,21 +4,28 @@ Delete all images.
 """
 
 from horey.docker_api.docker_api import DockerAPI
-import os
-
-import getpass
-USERNAME = getpass.getuser()
-#os.environ["DOCKER_HOST"] = f"unix:///Users/{USERNAME}/.docker/run/docker.sock"
-
 docker_api = DockerAPI()
 
 
 def get_childless_images(all_images):
+    """
+    Get images
+
+    :param all_images:
+    :return:
+    """
+
     parent_ids = [image.attrs["Parent"] for image in all_images if image.attrs["Parent"]]
     return [image for image in all_images if image.attrs["Id"] not in parent_ids]
 
 
 def main():
+    """
+    Main func
+
+    :return:
+    """
+
     all_images = docker_api.get_all_images()
     while all_images:
         print(f"All images: {len(all_images)}")

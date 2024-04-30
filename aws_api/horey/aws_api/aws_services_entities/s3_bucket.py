@@ -76,8 +76,8 @@ class S3Bucket(AwsObject):
         """
         if self.acl is None:
             self.acl = lst_src
-        else:
-            raise NotImplementedError()
+        elif self.acl != lst_src:
+            raise NotImplementedError(f"{self.acl=} {lst_src=}")
 
     def update_policy(self, str_src):
         """
@@ -177,9 +177,15 @@ class S3Bucket(AwsObject):
         'us-west-1'|'us-west-2'
         }
         """
-        request = {"ACL": self.acl, "Bucket": self.name, "CreateBucketConfiguration": {
-            "LocationConstraint": self.region.region_mark
-        }}
+
+        request = {"ACL": self.acl, "Bucket": self.name}
+
+        # AWS bug:
+        # https://stackoverflow.com/questions/51912072/invalidlocationconstraint-error-while-creating-s3-bucket-when-the-used-command-i
+        if self.region.region_mark != "us-east-1":
+            request["CreateBucketConfiguration"] = {
+                "LocationConstraint": self.region.region_mark
+            }
 
         return request
 
