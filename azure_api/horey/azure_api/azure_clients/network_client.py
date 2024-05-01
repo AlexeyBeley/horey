@@ -60,7 +60,13 @@ class NetworkClient(AzureClient):
         public_ip_address.update_after_creation(response)
 
     def raw_create_public_ip_addresses(self, lst_args):
-        logger.info(f"Begin public ip address creation: '{lst_args[0]} {lst_args[1]}'")
+        """
+        Update/create ip address
+
+        :param lst_args:
+        :return:
+        """
+        logger.info(f"Public ip address create/update: '{lst_args[0]} {lst_args[1]}'")
         response = self.client.public_ip_addresses.begin_create_or_update(*lst_args)
         response.wait()
         return response.result()
@@ -106,17 +112,36 @@ class NetworkClient(AzureClient):
         return response.result()
 
     def raw_create_nat_gateway(self, lst_args):
+        """
+        Standard.
+
+        :param lst_args:
+        :return:
+        """
         logger.info(f"Begin nat gateway creation: '{lst_args[0]} {lst_args[1]}'")
         response = self.client.nat_gateways.begin_create_or_update(*lst_args)
         return response.result()
 
     def raw_create_load_balancer(self, lst_args):
+        """
+        Standard.
+
+        :param lst_args:
+        :return:
+        """
         logger.info(f"Begin load balancer creation: '{lst_args[0]} {lst_args[1]}'")
         response = self.client.load_balancers.begin_create_or_update(*lst_args)
         response.wait()
         return response.result()
 
     def raw_delete_load_balancer(self, obj_repr):
+        """
+        Standard.
+
+        :param obj_repr:
+        :return:
+        """
+
         logger.info(
             f"Begin load balancer deletion: '{obj_repr.resource_group_name} {obj_repr.name}'"
         )
@@ -156,12 +181,27 @@ class NetworkClient(AzureClient):
         return response.result()
 
     def get_all_load_balancers(self, resource_group):
+        """
+        Standard
+
+        :param resource_group:
+        :return:
+        """
+
         return [
             LoadBalancer(obj.as_dict())
             for obj in self.client.load_balancers.list(resource_group.name)
         ]
 
     def get_all_nat_gateways(self, resource_group, resource_group_name=None):
+        """
+        Standard
+
+        :param resource_group:
+        :param resource_group_name:
+        :return:
+        """
+
         if resource_group_name is None:
             resource_group_name = resource_group.name
 
@@ -171,18 +211,39 @@ class NetworkClient(AzureClient):
         ]
 
     def get_all_network_interfaces(self, resource_group):
+        """
+        Standard
+
+        :param resource_group:
+        :return:
+        """
+
         return [
             NetworkInterface(obj.as_dict())
             for obj in self.client.network_interfaces.list(resource_group.name)
         ]
 
     def get_all_public_ip_addresses(self, resource_group):
+        """
+        Standard
+
+        :param resource_group:
+        :return:
+        """
+
         return [
             PublicIpAddress(obj.as_dict())
             for obj in self.client.public_ip_addresses.list(resource_group.name)
         ]
 
     def get_all_network_security_groups(self, network_resource_group):
+        """
+        Standard
+
+        :param network_resource_group:
+        :return:
+        """
+
         return [
             NetworkSecurityGroup(obj.as_dict())
             for obj in self.client.network_security_groups.list(
@@ -191,6 +252,12 @@ class NetworkClient(AzureClient):
         ]
 
     def get_all_virtual_networks(self, resource_group):
+        """
+        Standard
+
+        :param resource_group:
+        :return:
+        """
         return [
             VirtualNetwork(obj.as_dict())
             for obj in self.client.virtual_networks.list(resource_group.name)

@@ -159,6 +159,8 @@ class Route53Client(Boto3Client):
         :return:
         """
 
+        logger.info(f"Updating resource tags: {request_dict}")
+
         for dict_src in self.execute(self.get_session_client().change_tags_for_resource, None, raw_data=True,
                                      filters_req=request_dict
                                      ):
