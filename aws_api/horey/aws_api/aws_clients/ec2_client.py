@@ -1756,13 +1756,14 @@ class EC2Client(Boto3Client):
         ):
             return response
 
-    def provision_vpc_peering(self, vpc_peering):
+    def update_vpc_peering_information(self, vpc_peering):
         """
-        Request peering and accept on the other end.
+        Standard.
 
-        @param vpc_peering:
-        @return:
+        :param vpc_peering:
+        :return:
         """
+
         region_vpc_peerings = self.get_region_vpc_peerings(vpc_peering.region)
         for region_vpc_peering in region_vpc_peerings:
             if region_vpc_peering.get_status() in [
@@ -1771,34 +1772,42 @@ class EC2Client(Boto3Client):
             ]:
                 continue
             if (
-                    region_vpc_peering.get_tagname(ignore_missing_tag=True)
-                    != vpc_peering.get_tagname()
+                    region_vpc_peering.vpc_id not in [vpc_peering.vpc_id, vpc_peering.peer_vpc_id]
+            ):
+                continue
+
+            if (
+                    region_vpc_peering.peer_vpc_id not in [vpc_peering.vpc_id, vpc_peering.peer_vpc_id]
             ):
                 continue
 
             vpc_peering.update_from_raw_response(region_vpc_peering.dict_src)
+            return True
 
-            if region_vpc_peering.get_status() in [
-                region_vpc_peering.Status.ACTIVE,
-                region_vpc_peering.Status.PROVISIONING,
-            ]:
-                return
-            break
+        return False
 
-        if vpc_peering.id is None:
-            response = self.provision_vpc_peering_raw(vpc_peering.region,
-                vpc_peering.generate_create_request()
-            )
-            vpc_peering.update_from_raw_response(response)
+    def provision_vpc_peering(self, desired_vpc_peering):
+        """
+        Request peering and accept on the other end.
 
-        if vpc_peering.get_status() in [
-            vpc_peering.Status.INITIATING_REQUEST,
-            vpc_peering.Status.PENDING_ACCEPTANCE,
+        @param desired_vpc_peering:
+        @return:
+        """
+        current_peering = VPCPeering(desired_vpc_peering.convert_to_dict(), from_cache=True)
+        if not self.update_vpc_peering_information(current_peering):
+            response = self.provision_vpc_peering_raw(desired_vpc_peering.region,
+                                                      desired_vpc_peering.generate_create_request()
+                                                      )
+            current_peering.update_from_raw_response(response)
+
+        if current_peering.get_status() in [
+            current_peering.Status.INITIATING_REQUEST,
+            current_peering.Status.PENDING_ACCEPTANCE,
         ]:
             for _ in range(20):
                 try:
-                    self.accept_vpc_peering_connection_raw(vpc_peering.peer_region,
-                        vpc_peering.generate_accept_request()
+                    self.accept_vpc_peering_connection_raw(current_peering.peer_region,
+                        current_peering.generate_accept_request()
                     )
                     break
                 except Exception as exception_inst:
@@ -1806,8 +1815,21 @@ class EC2Client(Boto3Client):
                     if "does not exist" not in repr_exception_inst:
                         raise
                 time.sleep(5)
-        else:
-            raise RuntimeError(vpc_peering.get_status())
+            else:
+                raise TimeoutError("accept_vpc_peering_connection_raw")
+
+        create_tags, delete_tags = self.generate_tags_requests(current_peering, desired_vpc_peering)
+        if delete_tags:
+            self.delete_tags_raw(delete_tags, region=desired_vpc_peering.region)
+        if create_tags:
+            self.create_tags_raw(create_tags, region=desired_vpc_peering.region)
+
+        self.update_vpc_peering_information(desired_vpc_peering)
+        if desired_vpc_peering.get_status() not in [
+            desired_vpc_peering.Status.ACTIVE,
+            desired_vpc_peering.Status.PROVISIONING,
+        ]:
+            raise NotImplementedError(desired_vpc_peering.get_status())
 
     def provision_vpc_peering_raw(self, region, request_dict):
         """

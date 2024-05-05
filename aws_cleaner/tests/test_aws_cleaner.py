@@ -242,7 +242,8 @@ def test_init_cloudwatch_metrics(configuration: AWSCleanerConfigurationPolicy):
     cleaner = AWSCleaner(configuration)
     # from horey.aws_api.aws_services_entities.cloud_watch_metric import CloudWatchMetric
     # cleaner.aws_api.ses_client.clear_cache(CloudWatchMetric)
-    cleaner.init_cloudwatch_metrics()
+    ret = cleaner.init_cloudwatch_metrics()
+    assert ret
     assert len(cleaner.aws_api.cloud_watch_metrics) > 0
 
 

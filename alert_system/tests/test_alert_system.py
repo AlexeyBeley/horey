@@ -67,7 +67,7 @@ def test_provision_sns_topic():
     """
 
     alert_system = AlertSystem(as_configuration)
-    alert_system.provision_sns_topic([])
+    alert_system.provision_sns_topic()
 
 
 @pytest.mark.done
@@ -241,6 +241,7 @@ def test_send_message_to_sns():
     message.data = {"tags": ["alert_system"], "level": "alert"}
     alert_system = AlertSystem(as_configuration)
     alert_system.send_message_to_sns(message)
+
 
 @pytest.mark.done
 def test_trigger_self_monitoring_log_error_alarm():
