@@ -152,8 +152,9 @@ class Notification:
         @return:
         """
 
-        if value not in Notification.Types:
-            raise ValueError(value)
+        notification_types = [notification_type.value for notification_type in Notification.Types]
+        if value.value not in notification_types:
+            raise ValueError(f"Received {value} while expecting one of {notification_types}")
         self._type = value
 
     class Types(Enum):
