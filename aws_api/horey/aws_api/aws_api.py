@@ -2550,7 +2550,7 @@ class AWSAPI:
 
         self.ec2_client.provision_subnets(subnets)
 
-    def provision_security_group(self, security_group, provision_rules=True, force=False):
+    def provision_security_group(self, security_group, provision_rules=True, force=False, declarative=False):
         """
         Self explanatory
 
@@ -2560,7 +2560,7 @@ class AWSAPI:
         :param force:
         """
 
-        self.ec2_client.provision_security_group(security_group, provision_rules=provision_rules, force=force)
+        self.ec2_client.provision_security_group(security_group, provision_rules=provision_rules, force=force, declarative=declarative)
 
     def provision_internet_gateway(self, internet_gateway):
         """

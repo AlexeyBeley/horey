@@ -18,7 +18,7 @@ except ModuleNotFoundError:
     # pylint: disable= relative-beyond-top-level
     from .notification_channel_base import NotificationChannelBase
     from .notification import Notification
-
+from message import Message
 
 from horey.common_utils.common_utils import CommonUtils
 from horey.h_logger import get_logger
@@ -38,7 +38,7 @@ class MessageDispatcherBase:
             "cloudwatch_sqs_visible_alarm": self.cloudwatch_sqs_visible_alarm_message_handler,
             "cloudwatch_metric_lambda_duration": self.handle_cloudwatch_message_default,
             "cloudwatch_default": self.handle_cloudwatch_message_default,
-            "ses_default": self.handle_ses_message_default,
+            Message.Types.SES_DEFAULT.value: self.handle_ses_message_default,
             "sns_raw": self.handle_sns_raw_message,
         }
 
@@ -128,7 +128,7 @@ class MessageDispatcherBase:
         """
 
         try:
-            return self.handler_mapper[message.type](message)
+            return self.handler_mapper[message.type.value](message)
         except Exception as error_inst:
             traceback_str = "".join(traceback.format_tb(error_inst.__traceback__))
             logger.exception(f"{traceback_str}\n{repr(error_inst)}")
@@ -145,7 +145,7 @@ class MessageDispatcherBase:
 
             for notification_channel in self.notification_channels:
                 notification_channel.notify_alert_system_error(notification)
-        return None
+        return True
 
     def handle_cloudwatch_message_default(self, message, notify_on_failure=True):
         """
@@ -382,7 +382,7 @@ class MessageDispatcherBase:
         @param message:
         @return:
         """
-
+        breakpoint()
         bounce = None
         try:
             bounce = message.bounce

@@ -1,6 +1,7 @@
 """
 Testing opensearch API
 """
+import json
 import os
 import pytest
 
@@ -80,7 +81,7 @@ def test_post_document():
     assert response.get("_id") is not None
 
 
-@pytest.mark.done
+@pytest.mark.wip
 def test_init_index_patterns():
     """
     Test dashboard object provisioning
@@ -95,3 +96,41 @@ def test_init_index_patterns():
 def test_put_index_pattern():
     response = opensearch_api.put_index_pattern("test-template", ["veggies"])
     assert response.get("acknowledged")
+
+
+@pytest.mark.wip
+def test_get_notification_channels_raw():
+    """
+    Test dashboard object provisioning
+    @return:
+    """
+
+    ret = opensearch_api.get_notification_channels_raw()
+    with open("notification_channels_raw.json", "w+") as file_handler:
+        json.dump(ret, file_handler)
+    assert len(ret) > 0
+
+
+@pytest.mark.todo
+def test_create_notification_channels_raw():
+    """
+    Test dashboard object provisioning
+    @return:
+    """
+    with open("notification_channels_raw.json") as file_handler:
+        ret = json.load(file_handler)
+    oopensearch_api_new.create_notification_channels_raw(ret)
+    assert len(ret) > 0
+
+
+@pytest.mark.wip
+def test_get_index_template_raw():
+    """
+    Test dashboard object provisioning
+    @return:
+    """
+
+    ret = opensearch_api.get_index_templates_raw()
+    with open("index_templates_raw.json", "w+") as file_handler:
+        json.dump(ret, file_handler)
+    assert len(ret) > 0

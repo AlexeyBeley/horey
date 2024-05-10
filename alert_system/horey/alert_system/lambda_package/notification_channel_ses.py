@@ -1,5 +1,5 @@
 """
-Notification Channel to send slack messages.
+Notification Channel to send SES email.
 
 """
 

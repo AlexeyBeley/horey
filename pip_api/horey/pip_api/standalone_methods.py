@@ -298,17 +298,22 @@ class StandaloneMethods:
         :param requirement:
         :return:
         """
-
         self.logger.info(f"install_source_code_requirement '{requirement.name}'")
 
         requirements_file_path = os.path.join(requirement.multi_package_repo_path, requirement.name[len(requirement.multi_package_repo_prefix):], "requirements.txt")
         self.logger.info(f"Installing requirements from file: '{requirements_file_path}'")
+
         requirements_aggregator = {requirement.name: requirement}
         self.compose_requirements_recursive_from_file(requirements_file_path, requirements_aggregator)
         self.logger.info(f"Aggregated: {requirements_aggregator}")
-        self.init_source_code_metadata(requirements_aggregator)
+
         all_reversed = list(reversed(requirements_aggregator.values()))
-        for aggregated_requirement in all_reversed[:-1]:
+
+        requirement_dependencies = all_reversed[:-1]
+
+        self.init_source_code_metadata(requirement_dependencies)
+
+        for aggregated_requirement in requirement_dependencies:
             if aggregated_requirement.multi_package_repo_path:
                 self.install_source_code_requirement_raw(aggregated_requirement)
             else:
@@ -318,29 +323,31 @@ class StandaloneMethods:
 
         return True
 
-    def init_source_code_metadata(self, requirements_aggregator):
+    def init_source_code_metadata(self, requirements):
         """
         Init versions from source code.
         Init per package pip api configuration.
 
-        :param requirements_aggregator:
+        :param requirements:
         :return:
         """
 
-        for requirement_name, requirement in requirements_aggregator.items():
-            self.logger.info(f"Looking source version code for {requirement_name}")
+        for requirement in requirements:
+            self.logger.info(f"Looking source version code for {requirement.name}")
             for prefix in self.multi_package_repo_to_prefix_map:
-                if requirement_name.startswith(prefix):
-                    version = self.init_source_code_version(self.multi_package_repo_to_prefix_map.get(prefix), requirement_name, prefix)
-                    package_pip_api_config = self.init_package_pip_api_configuration(self.multi_package_repo_to_prefix_map.get(prefix), requirement_name)
+                if requirement.name.startswith(prefix):
+                    version = self.init_source_code_version(self.multi_package_repo_to_prefix_map.get(prefix), requirement.name, prefix)
+                    package_pip_api_config = self.init_package_pip_api_configuration(self.multi_package_repo_to_prefix_map.get(prefix), requirement.name)
                     if package_pip_api_config:
+                        if requirement.force:
+                            raise RuntimeError(f"Requirement {requirement.name} has explicit force set.")
                         requirement.force = package_pip_api_config.get("force")
 
-                    self.logger.info(f"{requirement_name} source code version initialized: {version}")
+                    self.logger.info(f"{requirement.name} source code version initialized: {version}")
 
                     if not version:
                         raise ValueError(f"Uninitialized {version=}")
-                    StandaloneMethods.SOURCE_CODE_PACKAGE_VERSIONS[requirement_name] = version
+                    StandaloneMethods.SOURCE_CODE_PACKAGE_VERSIONS[requirement.name] = version
 
     def init_package_pip_api_configuration(self, multi_package_repo_path: str, requirement_name: str):
         """

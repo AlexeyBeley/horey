@@ -6,75 +6,10 @@ Entry point for the receiver lambda.
 import json
 import traceback
 
-from message import Message
+from event_handler import EventHandler
 
 from horey.h_logger import get_logger
-
-try:
-    from message_dispatcher import MessageDispatcher
-except ModuleNotFoundError:
-    from message_dispatcher_base import MessageDispatcherBase as MessageDispatcher
-
 logger = get_logger()
-
-
-class EventHandler:
-    """
-    Class handling the received events.
-
-    """
-
-    def __init__(self):
-        self.message_dispatcher = MessageDispatcher()
-
-    def handle_event(self, event):
-        """
-        Handle the received event.
-
-        @param event:
-        @return:
-        """
-
-        message = self.extract_message(event)
-        return self.message_dispatcher.dispatch(message)
-
-    def extract_message(self, event):
-        """
-        Build Message object from the event dictionary.
-
-        @param event:
-        @return:
-        """
-
-        if "Records" in event:
-            return self.extract_message_records(event)
-        raise NotImplementedError(event)
-
-    @staticmethod
-    def extract_message_records(event):
-        """
-        For cloudwatch message - convert records to Message objects.
-
-        @param event:
-        @return:
-        """
-
-        if len(event["Records"]) != 1:
-            raise RuntimeError(event)
-
-        record = event["Records"][0]
-        if record["EventSource"] != "aws:sns":
-            raise NotImplementedError(event)
-
-        dict_src = json.loads(record["Sns"]["Message"])
-        message = Message(dic_src=event)
-        try:
-            message.init_from_dict(dict_src)
-        except Exception as error_inst:
-            traceback_str = "".join(traceback.format_tb(error_inst.__traceback__))
-            logger.exception(f"{traceback_str}\n{repr(error_inst)}")
-
-        return message
 
 
 def lambda_handler(event, _):
@@ -106,6 +41,6 @@ def lambda_handler(event, _):
 
     logger.info(f"Handling event: '{logger_string}'")
 
-    event_handler = EventHandler()
+    event_handler = EventHandler(logger)
     event_handler.handle_event(event)
     return {"statusCode": 200, "body": json.dumps("Hello from Lambda!")}

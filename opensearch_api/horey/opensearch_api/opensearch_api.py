@@ -247,3 +247,41 @@ class OpensearchAPI:
         }
 
         return self.put(f"_index_template/{template_name}", request)
+
+    def get_notification_channels_raw(self):
+        ret = self.get(f"_plugins/_notifications/channels")
+        #ret = self.get("_plugins/_notifications/configs")
+
+    def get_index_templates_raw(self):
+        ret = self.get(f"_index_template")
+        breakpoint()
+        ret = self.get("_dashboards/api/index_patterns/cloud-hive*")
+
+        #ret = self.get("_plugins/_notifications/configs")
+
+    def create_notification_channels_raw(self, lst_src):
+        for dict_src in lst_src:
+            self.post("/_plugins/_notifications/configs/", dict_src)
+
+    def login(self):
+        data = {"username":"admin", "password":"S#dh@s0dOt!m"}
+        request_path = "_dashboards/auth/login"
+        #response.raw.headers["set-cookie"]
+        sec_data = "Fe26.2**420eb96cf1bca8c9568f35d97ad0173a3238835008fb65178c17f2efa2bb9372*FfBmGQguwEAQkoq9orGU5w*lBIjQmD57kcGNIhlOqAigduYOjbKq7TxXyphi9dpSIYDXIfVvsSshuL_wssJ7PmvrWBr31VhFZEKVgSCaHmy56R2HMJvl8iowxpOmx7OCYRZ-EPO_aTlCc1iKZCv05dNOpJzzwbasYzPgGLAfrjrp5iE0beG3j-Ut3gXWwDZN2R9XdioGzlSH5LSBiXCu-A70i9ErHUPE-vAw5-xWs5qnca89zN62-j2ozjHsQac_uw**e93f548d230355822228e812794035493052ec04e91608e1cf28a1f0dfe0e3b0*tNf0RQvTHd_id9fTSmfMYt-qFTcVOsDrQY43pduTmCg"
+        cookies = {'security_authentication': sec_data}
+        "opensearch.development.public.management.scoutbees.io"
+        request = self.create_request(request_path)
+        response = requests.post(request, auth=(self.configuration.user, self.configuration.password), data=json.dumps(data), headers=self.headers, timeout=60, cookies=cookies)
+        session = requests.Session()
+        #session.auth = (self.configuration.user, self.configuration.password)
+        session.headers = self.headers
+        request = 'https://opensearch.development.public.management.scoutbees.io/_dashboards/auth/login'
+        ret = session.post(request, json=json.dumps(data))
+
+        # ret = session.get('https://opensearch.development.public.management.scoutbees.io/_dashboards/saved_objects/index-pattern/cloud-hive*')
+
+        # ret = session.get('https://opensearch.development.public.management.scoutbees.io/_dashboards/saved_objects/index-pattern/cloud-hive*')
+        # ret = session.get("https://opensearch.development.public.management.scoutbees.io/api/index_patterns/index_pattern/cloud-hive*")
+        #data = {"type":["index-pattern", "config"]}
+        #ret = session.post("https://opensearch.development.public.management.scoutbees.io/_dashboards/saved_objects/_export", json=json.dumps(data))
+        ret = session.get("https://opensearch.development.public.management.scoutbees.io/api/index_patterns/index_pattern/cloud-hive*")

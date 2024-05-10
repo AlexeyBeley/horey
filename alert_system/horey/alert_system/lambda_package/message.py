@@ -5,6 +5,7 @@ Message being received by the Alert System Lambda.
 
 import uuid
 import json
+from enum import Enum
 from horey.common_utils.common_utils import CommonUtils
 from horey.h_logger import get_logger
 
@@ -17,11 +18,17 @@ class Message:
 
     """
 
-    def __init__(self, dic_src=None):
+    def __init__(self, dic_src):
         self._dict_src = dic_src
         self._uuid = None
         self._data = None
         self._type = None
+        self.records = None
+        try:
+            del dic_src["dict_src"]
+        except KeyError:
+            pass
+        self.init_from_dict()
 
     @property
     def uuid(self):
@@ -81,17 +88,17 @@ class Message:
         return self._type
 
     @type.setter
-    def type(self, value):
+    def type(self, type_value):
         """
         Type setter.
 
-        @param value:
+        @param type_value:
         @return:
         """
 
-        if not isinstance(value, str):
-            raise ValueError(value)
-        self._type = value
+        if type_value.value not in [msg_type.value for msg_type in Message.Types]:
+            raise ValueError(type_value)
+        self._type = type_value
 
     @property
     def dict_src(self):
@@ -123,49 +130,41 @@ class Message:
 
         self.uuid = str(uuid.uuid4())
 
-    def init_from_dict(self, dict_src):
+    def init_from_dict(self):
         """
         Init the message from dictionary.
 
-        @param dict_src:
         @return:
         """
 
-        if "AlarmDescription" in dict_src:
-            self.type = "cloudwatch_default"
+        if len(self.dict_src["Records"]) != 1:
+            raise RuntimeError(self.dict_src)
+
+        record = self.dict_src["Records"][0]
+        if record["EventSource"] != "aws:sns":
+            raise NotImplementedError(self.dict_src)
+
+        dict_message_raw = json.loads(record["Sns"]["Message"])
+        if "AlarmDescription" in dict_message_raw:
+            breakpoint()
+            self.type = Message.Types.CLOUDWATCH_DEFAULT
             try:
-                dict_src = json.loads(dict_src["AlarmDescription"])
+                dict_message = json.loads(dict_message_raw["AlarmDescription"])
             except Exception:
                 logger.warning(
-                    f"Was not able to json load AlarmDescription: {dict_src}"
+                    f"Was not able to json load AlarmDescription: {dict_message_raw}"
                 )
                 return
+        elif "mail" in dict_message_raw:
+            dict_message = dict_message_raw
+            self.type = Message.Types.SES_DEFAULT
+        else:
+            breakpoint()
+            dict_message = {}
+            self.type = Message.Types.UNKNOWN
 
-        try:
-            del dict_src["dict_src"]
-        except KeyError:
-            pass
-
-        for key, value in dict_src.items():
+        for key, value in dict_message.items():
             setattr(self, CommonUtils.camel_case_to_snake_case(key), value)
-
-        self.init_default_type()
-
-    def init_default_type(self):
-        """
-        Init type based on message structure.
-
-        @return:
-        """
-
-        if self.type is not None:
-            return
-
-        if hasattr(self, "bounce"):
-            self.type = "ses_default"
-            return
-
-        raise NotImplementedError(self.dict_src)
 
     def convert_to_dict(self):
         """
@@ -179,3 +178,12 @@ class Message:
             for key, value in self.__dict__.items()
             if key.startswith("_")
         }
+
+    class Types(Enum):
+        """
+        Message types
+        """
+
+        SES_DEFAULT = "ses_default"
+        CLOUDWATCH_DEFAULT = "cloudwatch_default"
+        UNKNOWN = "unknown"
