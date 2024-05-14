@@ -1,0 +1,22 @@
+{
+    "Records": [
+        {
+            "EventSource": "aws:sns",
+            "EventVersion": "1.0",
+            "EventSubscriptionArn": "arn:aws:sns:us-east-1:123456789100:topic-alert_system_zabbix:3eaaab87-a83d-4f17-9eef-aaaaaaaaaaaa",
+            "Sns": {
+                "Type": "Notification",
+                "MessageId": "8bf06503-12aaaaaaaaaaaaaaaa7258",
+                "TopicArn": "arn:aws:sns:us-east-1:123456789100:topic-alert_system_zabbix",
+                "Subject": "zabbix_system_message",
+                "Message": "{\"alert_system_message_class\": \"MessageZabbixDefault\", \"uuid\": \"zabbix_system_message\", \"data\": {\"env_level\": \"development\", \"time\": \"10:30:13\", \"date\": \"2024.05.14\", \"event_name\": \"Load average is too high (per CPU load over 1.5 for 5m)\", \"host\": \"hostname\", \"severity\": \"Average\", \"operational_data\": \"Load averages(1m 5m 15m): (23.119141 16.18457 17.397461), # of CPUs: 2\", \"event_id\": \"97086\", \"url\": \"\", \"event_status\": \"PROBLEM\", \"event_type\": \"problem\"}, \"type\": \"zabbix_system_message\"}",
+                "Timestamp": "2024-05-14T07:30:20.312Z",
+                "SignatureVersion": "1",
+                "Signature": "qFh972g+Vg3nU0hT9aaaaaaaaaaaaaaaaaaaaaaaar6YNNEcUpCPNVLzp/vIOFJP/6JfaYFsujnV3ePxqvB8SqTMW4Z5uABgq5gnH5eei04vi/L/3R5W/+4suFvTyVM/o884phPRTLYDJcATg3Xfpx+U82oTuF0aaaaaaaaaaaaaaaaaaaaaa4hlTFlhSpBNRn9Xv8bpuimM8nBMV00afSvTnoxNb0/aaaaaaaaaaaaaaa+MhgHGVu8pr6ALwTgeC8S7aqyj+aaaaaaaaaaaaa/R198l+qV/aaaaa==",
+                "SigningCertUrl": "https://sns.us-east-1.amazonaws.com/SimpleNotificationService-aaa.pem",
+                "UnsubscribeUrl": "https://sns.us-east-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:us-east-1:123456789100:topic-alert_system_zabbix:3eaaab87-a83d-4f17-9eef-aaa",
+                "MessageAttributes": {}
+            }
+        }
+    ]
+}
