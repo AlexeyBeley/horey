@@ -2,4 +2,4 @@ horey.configuration_policy>=1.0.0
 horey.provision_constructor>=1.0.0
 horey.deployer>=1.0.0
 horey.h_logger>=1.0.0
-requests>=2.28.1
+requests==2.31.0
