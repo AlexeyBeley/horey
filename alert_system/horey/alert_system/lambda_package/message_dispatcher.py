@@ -11,14 +11,9 @@ import os
 import traceback
 import urllib.parse
 
-try:
-    from notification_channel_base import NotificationChannelBase
-    from notification import Notification
-except ModuleNotFoundError:
-    # pylint: disable= relative-beyond-top-level
-    from .notification_channel_base import NotificationChannelBase
-    from .notification import Notification
-from message import Message
+from horey.alert_system.lambda_package.notification_channel_base import NotificationChannelBase
+from horey.alert_system.lambda_package.notification import Notification
+from horey.alert_system.lambda_package.message_base import MessageBase
 
 from horey.common_utils.common_utils import CommonUtils
 from horey.h_logger import get_logger
@@ -26,13 +21,14 @@ from horey.h_logger import get_logger
 logger = get_logger()
 
 
-class MessageDispatcherBase:
+class MessageDispatcher:
     """
     Main class.
 
     """
 
-    def __init__(self):
+    def __init__(self, configuration):
+        self.configuration = configuration
         self.handler_mapper = {
             "cloudwatch_logs_metric_sns_alarm": self.cloudwatch_logs_metric_sns_alarm_message_handler,
             "cloudwatch_sqs_visible_alarm": self.cloudwatch_sqs_visible_alarm_message_handler,
@@ -117,35 +113,45 @@ class MessageDispatcherBase:
 
         return notification_channel_class(config_policy)
 
-    def dispatch(self, message):
+    def dispatch(self, message: MessageBase):
         """
-        Dispatch message - try to use mapped functions.
-        If failed use default cloudwatch handler.
-        If failed - notify alert_system_monitoring authority. CRITICAL
+        Route the message to relevant notification channels.§
 
         @param message:
         @return:
         """
 
         try:
-            return self.handler_mapper[message.type.value](message)
+            notification = message.generate_notification()
+            for notification_channel in self.notification_channels:
+                notification_channel.notify(notification)
         except Exception as error_inst:
-            traceback_str = "".join(traceback.format_tb(error_inst.__traceback__))
-            logger.exception(f"{traceback_str}\n{repr(error_inst)}")
-
-            try:
-                text = json.dumps(message.convert_to_dict())
-            except Exception as internal_exception:
-                text = f"Could not convert message to dict: error: {repr(internal_exception)}, message: {str(message)}"
-
-            notification = Notification()
-            notification.type = Notification.Types.CRITICAL
-            notification.header = "Unhandled message in alert_system"
-            notification.text = text
+            notification = self.generate_alert_system_exception_notification(error_inst, message=message)
 
             for notification_channel in self.notification_channels:
                 notification_channel.notify_alert_system_error(notification)
+
         return True
+
+    def generate_alert_system_exception_notification(self, error_inst, message=None):
+        """
+        Generate notification about alert system exception
+        :return:
+        """
+
+        traceback_str = "".join(traceback.format_tb(error_inst.__traceback__))
+        logger.exception(f"{traceback_str}\n{repr(error_inst)}")
+
+        try:
+            text = json.dumps(message.convert_to_dict())
+        except Exception as internal_exception:
+            text = f"Could not convert message to dict: error: {repr(internal_exception)}, message: {str(message)}"
+
+        notification = Notification()
+        notification.type = Notification.Types.CRITICAL
+        notification.header = "Unhandled message in alert_system"
+        notification.text = text
+        return notification
 
     def handle_cloudwatch_message_default(self, message, notify_on_failure=True):
         """

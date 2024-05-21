@@ -26,6 +26,7 @@ class MessageBase:
         :param dict_src:
         :return:
         """
+
         if "alert_system_message_class" in dict_src:
             return dict_src
 
@@ -47,7 +48,17 @@ class MessageBase:
                 return dict_sns_message
         raise NotImplementedError(dict_src)
 
+    def generate_notification(self):
+        """
+        Generate relevant notification.
+        Will be implemented per message
+
+        :return:
+        """
+        raise NotImplementedError("Implemented in class children.")
+
     class NotAMatchError(ValueError):
         """
-        The dictionary can not be used to initialize the required class.
+        Source dictionary can not be used to initialize the required class.
         """
+

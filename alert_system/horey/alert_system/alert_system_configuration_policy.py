@@ -28,6 +28,7 @@ class AlertSystemConfigurationPolicy(ConfigurationPolicy):
         self._active_deployment_validation = False
         self._lambda_role_name = None
         self._lambda_role_path = None
+        self._tags = None
 
     @property
     def deployment_datetime(self):
@@ -146,3 +147,18 @@ class AlertSystemConfigurationPolicy(ConfigurationPolicy):
     @property
     def self_monitoring_log_timeout_metric_name_raw(self):
         return f"{self.lambda_name}-log-timeout"
+
+    @property
+    def alert_system_ses_configuration_set_name(self):
+        return "conf_set_alert_system_default"
+
+    @property
+    def tags(self):
+        if self._tags is None:
+            raise self.UndefinedValueError("tags")
+
+        return self._tags
+
+    @tags.setter
+    def tags(self, value):
+        self._tags = value

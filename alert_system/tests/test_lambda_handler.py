@@ -1,6 +1,5 @@
 import json
 import os
-import pdb
 
 from horey.alert_system.lambda_package.lambda_handler import lambda_handler
 

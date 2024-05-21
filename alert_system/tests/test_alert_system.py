@@ -30,6 +30,7 @@ as_configuration.horey_repo_path = os.path.abspath(
 as_configuration.region = "us-west-2"
 as_configuration.lambda_name = "alert_system_test_deploy_lambda"
 as_configuration.sns_topic_name = "topic_test_alert_system"
+as_configuration.tags = [{"Key": "env_level", "Value": "development"}]
 
 as_configuration.deployment_dir_path = "/tmp/horey_deployment"
 as_configuration.notification_channel_file_names = "notification_channel_slack.py"
@@ -265,3 +266,50 @@ def test_trigger_self_monitoring_errors_metric_alarm():
 def test_trigger_self_monitoring_duration_alarm():
     alert_system = AlertSystem(as_configuration)
     alert_system.trigger_self_monitoring_duration_alarm()
+
+
+@pytest.mark.todo
+def test_provision_alert_system_ses_configuration_set():
+    """
+    Fix configuration set events destination provision
+    :return:
+    """
+    alert_system = AlertSystem(as_configuration)
+    alert_system.provision_alert_system_ses_configuration_set()
+
+
+@pytest.mark.done
+def test_send_ses_email():
+    alert_system = AlertSystem(as_configuration)
+    request_dict = {}
+    ret = alert_system.aws_api.sesv2_client.get_all_email_identities(alert_system.region)
+    for identity in ret:
+        if identity.identity_type == "DOMAIN":
+            break
+    else:
+        raise ValueError("No domain identity found")
+
+    ret = alert_system.aws_api.ses_client.yield_receipt_rule_sets(region=alert_system.region)
+    for rule_set in ret:
+        for rule in rule_set.rules:
+            if not rule["Enabled"]:
+                continue
+            if not rule.get("Recipients"):
+                continue
+            rule_recipient = rule["Recipients"][0]
+            break
+        else:
+            continue
+        break
+    else:
+        raise ValueError("No Recipients found")
+
+    request_dict["FromEmailAddress"] = f"alert_system_test@{identity.name}"
+    request_dict["Destination"] = {"ToAddresses": [rule_recipient]}
+    request_dict["Content"] = {"Simple": {"Subject": {"Data": "Test alert", "Charset": "UTF-8"}, "Body": {'Text': {
+                    'Data': 'string',
+                    'Charset': "UTF-8"
+                }}}}
+    request_dict["ConfigurationSetName"] = alert_system.configuration.alert_system_ses_configuration_set_name
+
+    alert_system.aws_api.sesv2_client.send_email_raw(alert_system.region, request_dict)

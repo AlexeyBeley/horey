@@ -1,11 +1,16 @@
-import json
-import traceback
-from message import Message
+"""
+Event Handler.
+"""
 
-try:
-    from message_dispatcher import MessageDispatcher
-except ModuleNotFoundError:
-    from message_dispatcher_base import MessageDispatcherBase as MessageDispatcher
+import traceback
+from horey.alert_system.lambda_package.message import Message
+
+from horey.alert_system.lambda_package.message_dispatcher import MessageDispatcher
+from horey.alert_system.lambda_package.message_factory import MessageFactory
+from horey.alert_system.alert_system_configuration_policy import AlertSystemConfigurationPolicy
+
+from horey.h_logger import get_logger
+logger = get_logger()
 
 
 class EventHandler:
@@ -14,9 +19,10 @@ class EventHandler:
 
     """
 
-    def __init__(self, logger):
-        self.logger = logger
-        self.message_dispatcher = MessageDispatcher()
+    def __init__(self):
+        configuration = AlertSystemConfigurationPolicy()
+        self.message_factory = MessageFactory(configuration)
+        self.message_dispatcher = MessageDispatcher(configuration)
 
     def handle_event(self, event):
         """
@@ -54,7 +60,7 @@ class EventHandler:
             message.init_from_dict()
         except Exception as error_inst:
             traceback_str = "".join(traceback.format_tb(error_inst.__traceback__))
-            self.logger.exception(f"{traceback_str}\n{repr(error_inst)}")
+            logger.exception(f"{traceback_str}\n{repr(error_inst)}")
 
         return message
 

@@ -96,3 +96,9 @@ Package usage:
 
 DeliveryDelay notification
 # https://docs.aws.amazon.com/ses/latest/dg/event-publishing-retrieving-sns-contents.html#event-publishing-retrieving-sns-contents-delivery-delay-object
+
+
+# todo:
+* Create send_email function that inserts "{{ses:openTracker}}" at the beginning of the email.
+* Make send_email to use alert_system_config set in case no other used.
+* Make sure all configuration sets have alert system sns_topic destination configured and there are permissions 

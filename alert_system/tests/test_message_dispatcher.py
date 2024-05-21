@@ -38,16 +38,16 @@ def fixture_lambda_package_tmp_dir_message_dispatcher_echo():
 
 @pytest.mark.todo
 def test_init_message_dispatcher_ses_notification_channel(lambda_package_tmp_dir_ses):
-    message_dispatcher_base_file_path = os.path.join(lambda_package_tmp_dir_ses, "message_dispatcher_base.py")
-    message_dispatcher_base = CommonUtils.load_object_from_module_raw(message_dispatcher_base_file_path, "MessageDispatcherBase")
-    assert message_dispatcher_base.__name__ == "MessageDispatcherBase"
+    message_dispatcher_file_path = os.path.join(lambda_package_tmp_dir_ses, "message_dispatcher.py")
+    message_dispatcher = CommonUtils.load_object_from_module_raw(message_dispatcher_file_path, "MessageDispatcher")
+    assert message_dispatcher.__name__ == "MessageDispatcher"
 
 
 @pytest.mark.done
 def test_init_message_dispatcher_echo_notification_channel(lambda_package_tmp_dir_echo):
-    message_dispatcher_base_file_path = os.path.join(lambda_package_tmp_dir_echo, "message_dispatcher_base.py")
-    message_dispatcher_base = CommonUtils.load_object_from_module_raw(message_dispatcher_base_file_path, "MessageDispatcherBase")
-    assert message_dispatcher_base.__name__ == "MessageDispatcherBase"
+    message_dispatcher_file_path = os.path.join(lambda_package_tmp_dir_echo, "message_dispatcher.py")
+    message_dispatcher = CommonUtils.load_object_from_module_raw(message_dispatcher_file_path, "MessageDispatcher")
+    assert message_dispatcher.__name__ == "MessageDispatcher"
 
 ses_events_dir = os.path.join(os.path.dirname(__file__), "ses_messages")
 ses_events = []
@@ -68,21 +68,21 @@ for file_name in os.listdir(cloudwatch_events_dir):
 @pytest.mark.wip
 @pytest.mark.parametrize("ses_event", ses_events)
 def test_init_message_dispatcher_ses_events(lambda_package_tmp_dir_echo, ses_event):
-    message_dispatcher_base_file_path = os.path.join(lambda_package_tmp_dir_echo, "message_dispatcher_base.py")
-    message_dispatcher_base_class = CommonUtils.load_object_from_module_raw(message_dispatcher_base_file_path, "MessageDispatcherBase")
+    message_dispatcher_file_path = os.path.join(lambda_package_tmp_dir_echo, "message_dispatcher.py")
+    message_dispatcher_class = CommonUtils.load_object_from_module_raw(message_dispatcher_file_path, "MessageDispatcher")
     message = Message(ses_event)
     assert message.type == Message.Types.SES_DEFAULT
     os.environ[NotificationChannelBase.NOTIFICATION_CHANNELS_ENVIRONMENT_VARIABLE] = "notification_channel_echo.py"
-    message_dispatcher_base = message_dispatcher_base_class()
+    message_dispatcher = message_dispatcher_class()
 
-    assert message_dispatcher_base.dispatch(message)
+    assert message_dispatcher.dispatch(message)
 
 
 @pytest.mark.todo
 @pytest.mark.parametrize("cloudwatch_event", cloudwatch_events)
 def test_init_message_dispatcher_cloudwatch_events(lambda_package_tmp_dir_echo, cloudwatch_event):
-    message_dispatcher_base_file_path = os.path.join(lambda_package_tmp_dir_echo, "message_dispatcher_base.py")
-    message_dispatcher_base = CommonUtils.load_object_from_module_raw(message_dispatcher_base_file_path, "MessageDispatcherBase")
+    message_dispatcher_file_path = os.path.join(lambda_package_tmp_dir_echo, "message_dispatcher.py")
+    message_dispatcher = CommonUtils.load_object_from_module_raw(message_dispatcher_file_path, "MessageDispatcher")
     message = Message(ses_event)
     assert message.type == Message.Types.SES_DEFAULT
-    assert message_dispatcher_base.dispatch(message)
+    assert message_dispatcher.dispatch(message)

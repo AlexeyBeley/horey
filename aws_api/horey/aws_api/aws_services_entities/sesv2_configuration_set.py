@@ -72,8 +72,10 @@ class SESV2ConfigurationSet(AwsObject):
         :return:
         """
 
-        request = {"ConfigurationSetName": self.name, "Tags": self.tags, "TrackingOptions": self.tracking_options,
+        request = {"ConfigurationSetName": self.name, "Tags": self.tags,
                    "ReputationOptions": self.reputation_options, "SendingOptions": self.sending_options}
+
+        self.extend_request_with_optional_parameters(request, ["TrackingOptions"])
         return request
 
     def generate_create_requests_event_destinations(self):

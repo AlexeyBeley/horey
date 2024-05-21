@@ -56,6 +56,7 @@ class SESV2EmailIdentity(AwsObject):
             "Tags": self.init_default_attr,
             "SendingEnabled": self.init_default_attr,
             "VerificationStatus": self.init_default_attr,
+            "VerificationInfo": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)

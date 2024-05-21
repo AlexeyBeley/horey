@@ -21,6 +21,7 @@ from horey.aws_api.aws_api import AWSAPI
 from horey.aws_api.aws_services_entities.iam_role import IamRole
 from horey.aws_api.aws_services_entities.sns_subscription import SNSSubscription
 from horey.aws_api.aws_services_entities.sns_topic import SNSTopic
+from horey.aws_api.aws_services_entities.sesv2_configuration_set import SESV2ConfigurationSet
 from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlarm
 from horey.aws_api.aws_services_entities.cloud_watch_log_group_metric_filter import (
     CloudWatchLogGroupMetricFilter,
@@ -31,7 +32,6 @@ from horey.alert_system.lambda_package.notification_channel_base import (
     NotificationChannelBase,
 )
 from horey.alert_system.alert_system_configuration_policy import AlertSystemConfigurationPolicy
-
 
 logger = get_logger()
 
@@ -47,9 +47,9 @@ class AlertSystem:
         self.packer = Packer()
         self.aws_api = aws_api or AWSAPI()
         self.region = Region.get_region(self.configuration.region)
-        self.tags = None
+        self.tags = configuration.tags
 
-    def provision(self, tags, lambda_files):
+    def provision(self, lambda_files):
         """
         Full provision of the AlertSystem receiving side components.
         i.e. parts that receive the Alarms and sends the notifications to the User Facing Channels.
@@ -65,7 +65,6 @@ class AlertSystem:
         @return:
         """
 
-        self.tags = copy.deepcopy(tags)
         self.provision_sns_topic()
         self.provision_lambda(lambda_files)
         self.provision_sns_subscription()
@@ -151,7 +150,8 @@ class AlertSystem:
         filter_text = "Task timed out after"
         message_data = {"tags": ["alert_system_monitoring"]}
         self.provision_cloudwatch_logs_alarm(
-            self.configuration.alert_system_lambda_log_group_name, filter_text, self.configuration.self_monitoring_log_timeout_metric_name_raw, message_data
+            self.configuration.alert_system_lambda_log_group_name, filter_text,
+            self.configuration.self_monitoring_log_timeout_metric_name_raw, message_data
         )
 
     def provision_self_monitoring_duration_alarm(self):
@@ -257,7 +257,8 @@ class AlertSystem:
         )
 
         self.validate_lambda_package()
-        logger.info(f"Created lambda package: {self.configuration.deployment_directory_path}/{self.configuration.lambda_zip_file_name}")
+        logger.info(
+            f"Created lambda package: {self.configuration.deployment_directory_path}/{self.configuration.lambda_zip_file_name}")
 
         os.chdir(current_dir)
 
@@ -375,11 +376,11 @@ class AlertSystem:
         }
 
         with open(
-            os.path.join(
-                self.configuration.deployment_directory_path,
-                self.configuration.lambda_zip_file_name,
-            ),
-            "rb",
+                os.path.join(
+                    self.configuration.deployment_directory_path,
+                    self.configuration.lambda_zip_file_name,
+                ),
+                "rb",
         ) as myzip:
             aws_lambda.code = {"ZipFile": myzip.read()}
         self.aws_api.provision_aws_lambda(aws_lambda, update_code=True)
@@ -395,7 +396,7 @@ class AlertSystem:
         topic.region = self.region
         topic.name = self.configuration.sns_topic_name
         topic.attributes = {"DisplayName": topic.name}
-        topic.tags =copy.deepcopy(self.tags)
+        topic.tags = copy.deepcopy(self.tags)
         topic.tags.append({"Key": "Name", "Value": topic.name})
 
         self.aws_api.provision_sns_topic(topic)
@@ -418,7 +419,7 @@ class AlertSystem:
         aws_lambda.region = self.region
 
         if not self.aws_api.lambda_client.update_lambda_information(
-            aws_lambda, full_information=False
+                aws_lambda, full_information=False
         ):
             raise RuntimeError("Could not update aws_lambda information")
 
@@ -449,8 +450,35 @@ class AlertSystem:
         alarm.alarm_actions = [topic.arn]
         self.aws_api.cloud_watch_client.set_cloudwatch_alarm(alarm)
 
+    def provision_alert_system_ses_configuration_set(self):
+        """
+        Provision alert_system ses configuration set.
+
+        @return:
+        """
+        topic = SNSTopic({})
+        topic.name = self.configuration.sns_topic_name
+        topic.region = self.region
+        if not self.aws_api.sns_client.update_topic_information(topic, full_information=False):
+            raise RuntimeError("Could not update topic information")
+
+        configuration_set = SESV2ConfigurationSet({})
+        configuration_set.name = self.configuration.alert_system_ses_configuration_set_name
+        configuration_set.region = self.region
+        configuration_set.reputation_options = {"ReputationMetricsEnabled": True}
+        configuration_set.sending_options = {"SendingEnabled": True}
+        configuration_set.tags = copy.deepcopy(self.tags)
+        configuration_set.tags.append({"Key": "name", "Value": configuration_set.name})
+        configuration_set.event_destinations = [{"Name": "alert_system_default_dst", "Enabled": True,
+                                                 "MatchingEventTypes": ["BOUNCE", "CLICK", "COMPLAINT", "DELIVERY",
+                                                                        "OPEN", "REJECT", "RENDERING_FAILURE", "SEND"],
+                                                 "SnsDestination": {
+                                                     "TopicArn": topic.arn}}]
+        breakpoint()
+        self.aws_api.sesv2_client.provision_configuration_set(configuration_set)
+
     def provision_cloudwatch_logs_alarm(
-        self, log_group_name, filter_text, metric_name_raw, message_data
+            self, log_group_name, filter_text, metric_name_raw, message_data
     ):
         """
         Provision Cloud watch logs based alarm.
@@ -508,7 +536,7 @@ class AlertSystem:
         self.provision_cloudwatch_alarm(alarm)
 
     def provision_cloudwatch_sqs_visible_alarm(
-        self, sqs_queue_name, threshold, message_data
+            self, sqs_queue_name, threshold, message_data
     ):
         """
         Number of SQS visible messages.
@@ -608,10 +636,11 @@ class AlertSystem:
         :return:
         """
         dict_request = {"Namespace": self.configuration.alert_system_lambda_log_group_name,
-                        "MetricData": [{"MetricName": f"metric-{self.configuration.self_monitoring_log_timeout_metric_name_raw}",
-                                        "Timestamp": datetime.datetime.utcnow(),
-                                        "Value": 1
-                                        }]}
+                        "MetricData": [
+                            {"MetricName": f"metric-{self.configuration.self_monitoring_log_timeout_metric_name_raw}",
+                             "Timestamp": datetime.datetime.utcnow(),
+                             "Value": 1
+                             }]}
         self.aws_api.cloud_watch_client.put_metric_data_raw(self.region, dict_request)
 
     def trigger_self_monitoring_errors_metric_alarm(self):
@@ -624,7 +653,7 @@ class AlertSystem:
 
         dict_request = {"AlarmName": f"{self.configuration.lambda_name}-metric-errors",
                         "StateValue": "ALARM",
-                        "StateReason":"Test"}
+                        "StateReason": "Test"}
         self.aws_api.cloud_watch_client.set_alarm_state_raw(self.region, dict_request)
 
     def trigger_self_monitoring_duration_alarm(self):
