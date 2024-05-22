@@ -8,7 +8,9 @@ import shutil
 
 import pytest
 from horey.common_utils.common_utils import CommonUtils
-from horey.alert_system.lambda_package.message import Message
+from horey.alert_system.lambda_package.message_ses_default import MessageSESDefault
+from horey.alert_system.lambda_package.message_dispatcher import MessageDispatcher
+from horey.alert_system.alert_system_configuration_policy import AlertSystemConfigurationPolicy
 from horey.alert_system.lambda_package.notification_channel_base import NotificationChannelBase
 
 # pylint: disable= missing-function-docstring
@@ -34,6 +36,14 @@ def fixture_lambda_package_tmp_dir_message_dispatcher_echo():
     shutil.copy2(os.path.join(os.path.dirname(__file__), "notification_channel_echo_configuration_values.py"), dst_dir)
     yield dst_dir
     shutil.rmtree(dst_dir)
+
+
+@pytest.fixture(name="message_dispatcher")
+def fixture_message_dispatcher():
+    configuration = AlertSystemConfigurationPolicy()
+    configuration.region = "us-west-2"
+    message_dispatcher = MessageDispatcher(configuration)
+    yield message_dispatcher
 
 
 @pytest.mark.todo
@@ -65,7 +75,7 @@ for file_name in os.listdir(cloudwatch_events_dir):
         cloudwatch_events.append(ses_event)
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 @pytest.mark.parametrize("ses_event", ses_events)
 def test_init_message_dispatcher_ses_events(lambda_package_tmp_dir_echo, ses_event):
     message_dispatcher_file_path = os.path.join(lambda_package_tmp_dir_echo, "message_dispatcher.py")
@@ -77,12 +87,23 @@ def test_init_message_dispatcher_ses_events(lambda_package_tmp_dir_echo, ses_eve
 
     assert message_dispatcher.dispatch(message)
 
-
 @pytest.mark.todo
 @pytest.mark.parametrize("cloudwatch_event", cloudwatch_events)
 def test_init_message_dispatcher_cloudwatch_events(lambda_package_tmp_dir_echo, cloudwatch_event):
     message_dispatcher_file_path = os.path.join(lambda_package_tmp_dir_echo, "message_dispatcher.py")
     message_dispatcher = CommonUtils.load_object_from_module_raw(message_dispatcher_file_path, "MessageDispatcher")
-    message = Message(ses_event)
-    assert message.type == Message.Types.SES_DEFAULT
+    message = MessageSESDefault(ses_event)
     assert message_dispatcher.dispatch(message)
+
+
+@pytest.mark.done
+@pytest.mark.parametrize("ses_event", ses_events)
+def test_generate_alert_system_exception_notification(message_dispatcher, ses_event):
+    message = MessageSESDefault(ses_event)
+    try:
+        raise RuntimeError("Test")
+    except Exception as error_inst:
+        notification = message_dispatcher.generate_alert_system_exception_notification(error_inst, message)
+        assert notification.text
+        assert notification.type == notification.Types.CRITICAL
+

@@ -23,6 +23,7 @@ setup(
                  "horey.alert_system.*",
                  "horey.alert_system.lambda_package",
                  "horey.alert_system.lambda_package.*",
+                 "horey.alert_system.lambda_package.**.*",
                  ]
     ),
     zip_safe=False,

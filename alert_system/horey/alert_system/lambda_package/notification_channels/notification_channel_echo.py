@@ -2,8 +2,8 @@
 Notification Channel to print log lines.
 
 """
-from notification_channel_base import NotificationChannelBase
-from notification import Notification
+from horey.alert_system.lambda_package.notification_channels.notification_channel_base import NotificationChannelBase
+from horey.alert_system.lambda_package.notification import Notification
 
 from horey.h_logger import get_logger
 

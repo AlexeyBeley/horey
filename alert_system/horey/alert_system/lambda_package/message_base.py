@@ -62,3 +62,18 @@ class MessageBase:
         Source dictionary can not be used to initialize the required class.
         """
 
+    def convert_to_dict(self):
+        """
+        Convert the message to dict.
+
+        @return:
+        """
+
+        if self._dict_src:
+            return self._dict_src
+
+        return {
+            key[1:]: value
+            for key, value in self.__dict__.items()
+            if key.startswith("_")
+        }

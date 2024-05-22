@@ -166,19 +166,6 @@ class Message:
         for key, value in dict_message.items():
             setattr(self, CommonUtils.camel_case_to_snake_case(key), value)
 
-    def convert_to_dict(self):
-        """
-        Convert the message to dict.
-
-        @return:
-        """
-
-        return {
-            key[1:]: value
-            for key, value in self.__dict__.items()
-            if key.startswith("_")
-        }
-
     class Types(Enum):
         """
         Message types

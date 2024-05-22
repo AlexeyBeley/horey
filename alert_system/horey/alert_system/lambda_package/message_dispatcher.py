@@ -11,7 +11,7 @@ import os
 import traceback
 import urllib.parse
 
-from horey.alert_system.lambda_package.notification_channel_base import NotificationChannelBase
+from horey.alert_system.lambda_package.notification_channels.notification_channel_factory import NotificationChannelFactory
 from horey.alert_system.lambda_package.notification import Notification
 from horey.alert_system.lambda_package.message_base import MessageBase
 
@@ -29,27 +29,20 @@ class MessageDispatcher:
 
     def __init__(self, configuration):
         self.configuration = configuration
-        self.handler_mapper = {
-            "cloudwatch_logs_metric_sns_alarm": self.cloudwatch_logs_metric_sns_alarm_message_handler,
-            "cloudwatch_sqs_visible_alarm": self.cloudwatch_sqs_visible_alarm_message_handler,
-            "cloudwatch_metric_lambda_duration": self.handle_cloudwatch_message_default,
-            "cloudwatch_default": self.handle_cloudwatch_message_default,
-            Message.Types.SES_DEFAULT.value: self.handle_ses_message_default,
-            "sns_raw": self.handle_sns_raw_message,
-        }
-
         self.notification_channels = []
-        self.notification_channel_files = os.environ.get(
-            NotificationChannelBase.NOTIFICATION_CHANNELS_ENVIRONMENT_VARIABLE
-        ).split(",")
-        for notification_channel_file_name in self.notification_channel_files:
-            notification_channel_class = self.load_notification_channel(
-                notification_channel_file_name
-            )
-            notification_channel = self.init_notification_channel(
-                notification_channel_class
-            )
-            self.notification_channels.append(notification_channel)
+        if not self.init_notification_channels():
+            raise RuntimeError("No notification channels configured")
+
+    def init_notification_channels(self):
+        """
+        i
+        :return:
+        """
+
+        for notification_channel_initializer_file in self.configuration.notification_channels:
+            breakpoint()
+        return len(self.notification_channels) > 0 and \
+            len(self.notification_channels) == len(self.configuration.notification_channels)
 
     @staticmethod
     def load_notification_channel(file_name):
@@ -126,14 +119,15 @@ class MessageDispatcher:
             for notification_channel in self.notification_channels:
                 notification_channel.notify(notification)
         except Exception as error_inst:
-            notification = self.generate_alert_system_exception_notification(error_inst, message=message)
+            notification = self.generate_alert_system_exception_notification(error_inst, message)
 
             for notification_channel in self.notification_channels:
                 notification_channel.notify_alert_system_error(notification)
 
         return True
 
-    def generate_alert_system_exception_notification(self, error_inst, message=None):
+    @staticmethod
+    def generate_alert_system_exception_notification(error_inst, message):
         """
         Generate notification about alert system exception
         :return:
@@ -143,7 +137,7 @@ class MessageDispatcher:
         logger.exception(f"{traceback_str}\n{repr(error_inst)}")
 
         try:
-            text = json.dumps(message.convert_to_dict())
+            text = json.dumps(message.convert_to_dict(), indent=4)
         except Exception as internal_exception:
             text = f"Could not convert message to dict: error: {repr(internal_exception)}, message: {str(message)}"
 
