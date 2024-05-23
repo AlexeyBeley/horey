@@ -11,6 +11,7 @@ class Notification:
     Main class.
 
     """
+    ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG = "ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG"
 
     def __init__(self):
         self._type = None

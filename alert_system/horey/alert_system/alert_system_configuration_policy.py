@@ -24,7 +24,7 @@ class AlertSystemConfigurationPolicy(ConfigurationPolicy):
         self._lambda_name = None
         self._sns_topic_name = None
         self._region = None
-        self._notification_channel_file_names = None
+        self._notification_channels = None
         self._active_deployment_validation = False
         self._lambda_role_name = None
         self._lambda_role_path = None
@@ -125,12 +125,12 @@ class AlertSystemConfigurationPolicy(ConfigurationPolicy):
         return 30
 
     @property
-    def notification_channel_file_names(self):
-        return self._notification_channel_file_names
+    def notification_channels(self):
+        return self._notification_channels
 
-    @notification_channel_file_names.setter
-    def notification_channel_file_names(self, value):
-        self._notification_channel_file_names = value
+    @notification_channels.setter
+    def notification_channels(self, value):
+        self._notification_channels = value
 
     @property
     def active_deployment_validation(self):

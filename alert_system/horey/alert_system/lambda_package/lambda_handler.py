@@ -20,6 +20,7 @@ def lambda_handler(event, _):
     :param _: context
     :return:
     """
+
     logger_string = json.dumps(event)
     if "log_group_filter_pattern" in logger_string:
         try:
@@ -41,6 +42,7 @@ def lambda_handler(event, _):
 
     logger.info(f"Handling event: '{logger_string}'")
 
-    event_handler = EventHandler(logger)
+    event_handler = EventHandler()
     event_handler.handle_event(event)
+
     return {"statusCode": 200, "body": json.dumps("Hello from Lambda!")}
