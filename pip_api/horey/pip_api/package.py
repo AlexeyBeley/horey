@@ -35,7 +35,7 @@ class Package:
 
         return self.check_version_min_requirement(
             requirement, self_int_version_lst
-        ) and self.check_version_max_requirement(requirement, self_int_version_lst)
+        ) and self.check_version_max_requirement(requirement)
 
     def check_version_min_requirement(self, requirement, self_int_version_lst):
         """
@@ -68,15 +68,13 @@ class Package:
 
         return True
 
-    def check_version_max_requirement(self, requirement, self_int_version_lst):
+    def check_version_max_requirement(self, requirement):
         """
         Check max req.
 
         :param requirement:
-        :param self_int_version_lst:
         :return:
         """
-        print(self_int_version_lst)
         if requirement.max_version is None:
             return True
 
@@ -84,6 +82,13 @@ class Package:
             if requirement.include_max:
                 return True
             return False
+
+        self_int_version_lst = [int(sub_ver) for sub_ver in self.version.split(".")]
+        required_max = [int(sub_ver) for sub_ver in requirement.max_version.split(".")]
+
+        for i in range(min(len(self_int_version_lst), len(required_max))):
+            if self_int_version_lst[i] > required_max[i]:
+                return False
 
         exception_text = f"todo: requirement.name: {requirement.name}, " \
                          f"self.version: {self.version}, " \
