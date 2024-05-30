@@ -2,6 +2,7 @@
 Message being received by the Alert System Lambda.
 
 """
+import urllib.parse
 
 from horey.h_logger import get_logger
 from horey.alert_system.lambda_package.message_base import MessageBase
@@ -11,7 +12,7 @@ from horey.alert_system.lambda_package.notification import Notification
 logger = get_logger()
 
 
-class MessageSESDefault(MessageBase):
+class MessageCloudwatchDefault(MessageBase):
     """
     Main class.
 
@@ -27,8 +28,50 @@ class MessageSESDefault(MessageBase):
 
         super().__init__(dict_src)
         self.message_dict = MessageBase.extract_message_dict(dict_src)
-        if "mail" not in self.message_dict:
+        if "AlarmArn" not in self.message_dict:
             raise MessageBase.NotAMatchError("Not a match")
+
+    @staticmethod
+    def encode_to_aws_url_format(str_src):
+        """
+        AWS uses nonstandard url formatting.
+        All special characters like '/' and '"' must be encoded.
+
+        Sample:
+        https://us-east-1.console.aws.amazon.com/cloudwatch/home?region=us-east-1#logsV2:log-groups/log-group/$252Fecs$252Fcontainer-name/log-events$3FfilterPattern$3D$2522$255BINFO$255D$2522
+
+        @param str_src:
+        @return:
+        """
+
+        ret = urllib.parse.quote(str_src, safe="")
+        return ret.replace("%", "$25")
+
+    def generate_cloudwatch_log_search_link(
+        self, alarm, log_group_name, log_group_filter_pattern
+    ):
+        """
+        Generate comfort link to relevant search in the cloudwatch logs service.
+
+        @param alarm:
+        @param log_group_name:
+        @param log_group_filter_pattern:
+        @return:
+        """
+
+        log_group_name_encoded = self.encode_to_aws_url_format(log_group_name)
+        log_group_filter_pattern_encoded = self.encode_to_aws_url_format(
+            log_group_filter_pattern
+        )
+
+        search_time_end = alarm.end_time.strftime("%Y-%m-%dT%H:%M:%SZ")
+        search_time_start = alarm.start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        log_group_search_url = (
+            f"https://{alarm.region}.console.aws.amazon.com/cloudwatch/home?region="
+            f"{alarm.region}#logsV2:log-groups/log-group/{log_group_name_encoded}/log-events$3Fend$3D{search_time_end}$26filterPattern$3D{log_group_filter_pattern_encoded}$26start$3D{search_time_start}"
+        )
+        return log_group_search_url
 
     def generate_notification(self):
         """
@@ -36,10 +79,29 @@ class MessageSESDefault(MessageBase):
 
         :return:
         """
+        breakpoint()
         notification = Notification()
         mail = self.message_dict.get("mail") or {}
         timestamp = mail.get("timestamp") or "None"
+        breakpoint()
+        log_group_search_url = self.generate_cloudwatch_log_search_link(
+            alarm,
+            alarm.alert_system_data["log_group_name"],
+            alarm.alert_system_data["log_group_filter_pattern"],
+        )
+        if notification is None:
+            notification = Notification()
 
+        if notification.text is None:
+            notification.text = (
+                f"region: {alarm.region}\n"
+                f'Log group: {alarm.alert_system_data["log_group_name"]}\n'
+                f'Filter pattern: {alarm.alert_system_data["log_group_filter_pattern"]}\n\n'
+                f"{alarm.new_state_reason}"
+            )
+
+        notification.link = log_group_search_url
+        notification.link_href = "View logs in cloudwatch"
         try:
             region = mail.get("sourceArn").split(":")[3]
         except Exception as error_inst:

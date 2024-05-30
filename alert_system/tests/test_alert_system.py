@@ -5,6 +5,9 @@ Testing alert system functions.
 
 import json
 import os
+import shutil
+from unittest.mock import Mock
+
 import pytest
 
 from horey.alert_system.alert_system import AlertSystem
@@ -14,6 +17,10 @@ from horey.alert_system.alert_system_configuration_policy import (
 from horey.alert_system.lambda_package.message import Message
 from horey.common_utils.common_utils import CommonUtils
 from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlarm
+from fixtures import fixture_lambda_package_alert_system_config_file
+from common import ses_events, cloudwatch_events
+
+print(fixture_lambda_package_alert_system_config_file)
 
 mock_values_file_path = os.path.abspath(
     os.path.abspath(os.path.join(
@@ -22,19 +29,30 @@ mock_values_file_path = os.path.abspath(
 )
 mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 
-as_configuration = AlertSystemConfigurationPolicy()
-as_configuration.horey_repo_path = os.path.abspath(
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
-)
 
-as_configuration.region = "us-west-2"
-as_configuration.lambda_name = "alert_system_test_deploy_lambda"
-as_configuration.sns_topic_name = "topic_test_alert_system"
-as_configuration.tags = [{"Key": "env_level", "Value": "development"}]
+@pytest.fixture(name="as_configuration")
+def fixture_as_configuration():
 
-as_configuration.deployment_dir_path = "/tmp/horey_deployment"
-as_configuration.notification_channel_file_names = "notification_channel_slack.py"
-as_configuration.active_deployment_validation = True
+    as_configuration = AlertSystemConfigurationPolicy()
+    as_configuration.horey_repo_path = os.path.abspath(
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
+    )
+
+    as_configuration.region = "us-west-2"
+    as_configuration.lambda_name = "alert_system_test_deploy_lambda"
+    as_configuration.sns_topic_name = "topic_test_alert_system"
+    as_configuration.tags = [{"Key": "env_level", "Value": "development"}]
+
+    as_configuration.deployment_dir_path = "/tmp/horey_deployment_alert_system"
+    as_configuration.notification_channel_file_names = "notification_channel_slack.py"
+    as_configuration.active_deployment_validation = True
+    if os.path.exists(as_configuration.deployment_dir_path):
+        shutil.rmtree(as_configuration.deployment_dir_path)
+    os.makedirs(as_configuration.deployment_dir_path)
+    yield as_configuration
+    shutil.rmtree(as_configuration.deployment_dir_path)
+
+
 notification_channel_slack_configuration_file = os.path.abspath(
     os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
@@ -108,8 +126,8 @@ def test_provision_lambda():
     alert_system.provision_lambda([notification_channel_slack_configuration_file])
 
 
-@pytest.mark.done
-def test_provision():
+@pytest.mark.wip
+def test_provision(as_configuration, lambda_package_alert_system_config_file):
     """
     Test provisioning all the alert_system components.
 
@@ -117,8 +135,7 @@ def test_provision():
     """
 
     alert_system = AlertSystem(as_configuration)
-    tags = [{"Key": "name", "Value": as_configuration.lambda_name}]
-    alert_system.provision(tags, [notification_channel_slack_configuration_file])
+    alert_system.provision([lambda_package_alert_system_config_file])
 
 
 @pytest.mark.done
@@ -148,15 +165,47 @@ def test_provision_and_trigger_locally_lambda_handler_info():
 
 
 @pytest.mark.done
-def test_create_lambda_package():
+def test_create_lambda_package(as_configuration, lambda_package_alert_system_config_file):
     """
     Test local package creation.
 
     @return:
     """
-
     alert_system = AlertSystem(as_configuration)
-    alert_system.create_lambda_package([notification_channel_slack_configuration_file])
+    alert_system.validate_lambda_package = Mock()
+    zip_file_path = alert_system.create_lambda_package([lambda_package_alert_system_config_file])
+    assert os.path.isfile(zip_file_path)
+
+
+@pytest.mark.done
+def test_validate_lambda_package_ses_events(as_configuration, lambda_package_alert_system_config_file):
+    """
+    Test local package creation.
+
+    @return:
+    """
+    alert_system = AlertSystem(as_configuration)
+    alert_system.validate_lambda_package = Mock()
+    zip_file_path = alert_system.create_lambda_package([lambda_package_alert_system_config_file])
+    extraction_dir = alert_system.extract_lambda_package_for_validation(zip_file_path)
+    for ses_event in ses_events:
+        ret = alert_system.trigger_lambda_handler_locally(extraction_dir, ses_event)
+        assert ret.get("statusCode") == 200
+
+
+@pytest.mark.done
+def test_validate_lambda_package_none(as_configuration, lambda_package_alert_system_config_file):
+    """
+    Test local package creation.
+
+    @return:
+    """
+    alert_system = AlertSystem(as_configuration)
+    alert_system.validate_lambda_package = Mock()
+    zip_file_path = alert_system.create_lambda_package([lambda_package_alert_system_config_file])
+    extraction_dir = alert_system.extract_lambda_package_for_validation(zip_file_path)
+    ret = alert_system.trigger_lambda_handler_locally(extraction_dir, None)
+    assert ret.get("statusCode") == 404
 
 
 @pytest.mark.done

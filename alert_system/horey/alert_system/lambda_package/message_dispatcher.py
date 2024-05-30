@@ -13,7 +13,6 @@ import urllib.parse
 
 from horey.alert_system.lambda_package.notification_channels.notification_channel_factory import NotificationChannelFactory
 from horey.alert_system.lambda_package.notification import Notification
-from horey.alert_system.lambda_package.message_base import MessageBase
 
 from horey.common_utils.common_utils import CommonUtils
 from horey.h_logger import get_logger
@@ -38,9 +37,11 @@ class MessageDispatcher:
         i
         :return:
         """
+        if not self.configuration.notification_channels:
+            raise ValueError(f"Notification channels not configured! {self.configuration.notification_channels=}")
 
-        for notification_channel_initializer_file in self.configuration.notification_channels:
-            breakpoint()
+        self.notification_channels = NotificationChannelFactory().load_notification_channels(self.configuration)
+
         return len(self.notification_channels) > 0 and \
             len(self.notification_channels) == len(self.configuration.notification_channels)
 
@@ -106,7 +107,7 @@ class MessageDispatcher:
 
         return notification_channel_class(config_policy)
 
-    def dispatch(self, message: MessageBase):
+    def dispatch(self, message):
         """
         Route the message to relevant notification channels.§
 
@@ -123,6 +124,7 @@ class MessageDispatcher:
 
             for notification_channel in self.notification_channels:
                 notification_channel.notify_alert_system_error(notification)
+            raise RuntimeError("Exception in Message Dispatcher") from error_inst
 
         return True
 

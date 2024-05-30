@@ -1,7 +1,7 @@
 """
 Event Handler.
 """
-
+import os
 import traceback
 from horey.alert_system.lambda_package.message import Message
 
@@ -19,8 +19,13 @@ class EventHandler:
 
     """
 
+    ALERT_SYSTEM_CONFIGURATION_FILE_NAME = "alert_system_configuration.json"
+
     def __init__(self):
         configuration = AlertSystemConfigurationPolicy()
+        configuration.configuration_file_full_path = self.ALERT_SYSTEM_CONFIGURATION_FILE_NAME
+        configuration.init_from_file()
+
         self.message_factory = MessageFactory(configuration)
         self.message_dispatcher = MessageDispatcher(configuration)
 
@@ -32,35 +37,7 @@ class EventHandler:
         @return:
         """
 
-        message = self.extract_message(event)
+        message = self.message_factory.generate_message(event)
         return self.message_dispatcher.dispatch(message)
 
-    def extract_message(self, event):
-        """
-        Build Message object from the event dictionary.
-
-        @param event:
-        @return:
-        """
-
-        if "Records" in event:
-            return self.extract_message_records(event)
-        raise NotImplementedError(event)
-
-    def extract_message_records(self, event):
-        """
-        For cloudwatch message - convert records to Message objects.
-
-        @param event:
-        @return:
-        """
-
-        message = Message(dic_src=event)
-        try:
-            message.init_from_dict()
-        except Exception as error_inst:
-            traceback_str = "".join(traceback.format_tb(error_inst.__traceback__))
-            logger.exception(f"{traceback_str}\n{repr(error_inst)}")
-
-        return message
 

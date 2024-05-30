@@ -6,7 +6,7 @@ Entry point for the receiver lambda.
 import json
 import traceback
 
-from event_handler import EventHandler
+from horey.alert_system.lambda_package.event_handler import EventHandler
 
 from horey.h_logger import get_logger
 logger = get_logger()
@@ -43,6 +43,10 @@ def lambda_handler(event, _):
     logger.info(f"Handling event: '{logger_string}'")
 
     event_handler = EventHandler()
-    event_handler.handle_event(event)
+    try:
+        event_handler.handle_event(event)
+    except Exception as error_inst:
+        traceback_str = "".join(traceback.format_tb(error_inst.__traceback__))
+        return {"statusCode": 404, "body": json.dumps({"repr": repr(error_inst), "traceback": traceback_str})}
 
     return {"statusCode": 200, "body": json.dumps("Hello from Lambda!")}

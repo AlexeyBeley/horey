@@ -10,8 +10,15 @@ import sys
 import shutil
 import platform
 
+current_dir = os.path.abspath(os.path.dirname(__file__))
+sys.path.insert(0, current_dir)
+
 from requirement import Requirement
 from package import Package
+
+if sys.path[0] != current_dir:
+    raise RuntimeError(f"{sys.path[0]=} != {current_dir=}")
+sys.path.pop(0)
 
 
 class StandaloneMethods:
@@ -304,12 +311,25 @@ class StandaloneMethods:
         self.logger.info(f"Installing requirements from file: '{requirements_file_path}'")
 
         requirements_aggregator = {requirement.name: requirement}
+        self.install_source_code_requirement_dependencies(requirements_file_path, requirements_aggregator)
+        self.install_source_code_requirement_raw(requirement)
+
+        return True
+
+    def install_source_code_requirement_dependencies(self, requirements_file_path, requirements_aggregator):
+        """
+        Compose and install source code dependencies.
+
+        :return:
+        """
+        ignore_first = bool(requirements_aggregator)
+
         self.compose_requirements_recursive_from_file(requirements_file_path, requirements_aggregator)
         self.logger.info(f"Aggregated: {requirements_aggregator}")
 
         all_reversed = list(reversed(requirements_aggregator.values()))
 
-        requirement_dependencies = all_reversed[:-1]
+        requirement_dependencies = all_reversed[:-1] if ignore_first else all_reversed
 
         self.init_source_code_metadata(requirement_dependencies)
 
@@ -319,9 +339,7 @@ class StandaloneMethods:
             else:
                 self.install_requirement_standard(aggregated_requirement)
 
-        self.install_source_code_requirement_raw(requirement)
 
-        return True
 
     def init_source_code_metadata(self, requirements):
         """

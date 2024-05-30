@@ -1,20 +1,17 @@
-import json
 import os
 
 from horey.alert_system.lambda_package.lambda_handler import lambda_handler
+import pytest
+from fixtures import fixture_lambda_package_alert_system_config_file
+from common import ses_events
 
-with open("./clowdwatch_messages/event_sns_opensearch.json") as file_handler:
-    event = json.load(file_handler)
 
-os.environ["SLACK_API_CONFIGURATION_FILE"] = os.path.abspath(
-    os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "..",
-        "..",
-        "..",
-        "ignore",
-        "slack_api_configuration_values.py",
-    )
-)
+print(fixture_lambda_package_alert_system_config_file)
 
-lambda_handler(event, None)
+
+@pytest.mark.wip
+@pytest.mark.parametrize("ses_event", ses_events)
+def test_lambda_handler(lambda_package_alert_system_config_file, ses_event):
+    event_handler = lambda_handler(ses_event, None)
+    assert event_handler["statusCode"] == 200
+

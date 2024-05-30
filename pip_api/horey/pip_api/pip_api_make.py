@@ -255,7 +255,7 @@ def install_requests(configs):
     logger.info("Installing requests")
 
     StandaloneMethods = get_standalone_methods(configs)
-    return StandaloneMethods.install_requirement_from_string(os.path.abspath(__file__), "requests")
+    return StandaloneMethods.install_requirement_from_string(os.path.abspath(__file__), "requests==2.31.0")
 
 
 def install_requests_old(configs):
@@ -275,7 +275,7 @@ def install_requests_old(configs):
     if check_package_installed(ret, "requests"):
         return True
 
-    command = f"{sys.executable} -m pip install requests"
+    command = f"{sys.executable} -m pip install requests==2.31.0"
     ret = StandaloneMethods.execute(command)
     if "Successfully installed " not in ret.get("stdout").strip("\r\n").split("\n")[-1]:
         raise ValueError(ret)

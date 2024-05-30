@@ -6,7 +6,7 @@ Notification Channel to send SES email.
 import traceback
 
 from horey.configuration_policy.configuration_policy import ConfigurationPolicy
-from notification import Notification
+from horey.alert_system.lambda_package.notification import Notification
 
 from horey.aws_api.aws_api import AWSAPI
 from horey.aws_api.base_entities.region import Region
@@ -15,14 +15,13 @@ from horey.h_logger import get_logger
 logger = get_logger()
 
 
-class NotificationChannelSES(NotificationChannelBase):
+class NotificationChannelSES:
     """
     Main class.
 
     """
 
     def __init__(self, configuration):
-        super().__init__(configuration)
         self.aws_api = AWSAPI(configuration=None)
 
     def notify(self, notification: Notification):

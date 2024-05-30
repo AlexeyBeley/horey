@@ -14,6 +14,8 @@ from horey.pip_api.package import Package
 from horey.pip_api.pip_api_configuration_policy import PipAPIConfigurationPolicy
 from horey.common_utils.common_utils import CommonUtils
 from horey.common_utils.bash_executor import BashExecutor
+from horey.pip_api.pip_api_make import provision_venv
+from horey.pip_api.standalone_methods import StandaloneMethods
 
 logger = get_logger()
 
@@ -30,7 +32,9 @@ class PipAPI:
         self.packages = None
         self.configuration = configuration
         self.multi_package_repos_prefix_map = {}
+        self.standalone_methods = None
         self.init_configuration()
+        StandaloneMethods.logger = logger
 
     def init_configuration(self):
         """
@@ -42,21 +46,9 @@ class PipAPI:
         if self.configuration is None:
             return
 
-        if self.configuration.multi_package_repositories is not None:
-            for repo_path in self.configuration.multi_package_repositories:
-                self.init_multi_package_repository(repo_path)
-
         if self.configuration.venv_dir_path is not None:
-            if not os.path.exists(
-                os.path.join(self.configuration.venv_dir_path, "bin", "activate")
-            ):
-                self.execute(
-                    f"{sys.executable} -m venv {self.configuration.venv_dir_path} --system-site-packages",
-                    ignore_venv=True,
-                )
-
-                self.execute("python -m pip install --upgrade pip")
-                self.execute("python -m pip install --upgrade setuptools>=45")
+            provision_venv(self.configuration.convert_to_dict())
+        self.standalone_methods = StandaloneMethods(self.configuration.venv_dir_path, {"horey.": os.path.join(self.configuration.horey_parent_dir_path, "horey")})
 
     def init_multi_package_repository(self, repo_path):
         """
@@ -137,6 +129,29 @@ class PipAPI:
         ret = self.run_bash(command)
 
         return ret["stdout"]
+
+    def install_requirements_from_file(self, requirements_file_path):
+        """
+        Install from requirements.txt
+
+        :return:
+        """
+
+        requirements_aggregator = {}
+        self.standalone_methods.install_requirement_from_string(os.path.abspath(__file__), "setuptools")
+        self.standalone_methods.install_requirement_from_string(os.path.abspath(__file__), "wheel")
+        self.standalone_methods.install_source_code_requirement_dependencies(requirements_file_path, requirements_aggregator)
+
+    def install_requirement_from_string(self, src_file_path, str_src):
+        """
+        Install from standard pip notation
+
+        :return:
+        """
+
+        self.standalone_methods.install_requirement_from_string(os.path.abspath(__file__), "setuptools")
+        self.standalone_methods.install_requirement_from_string(os.path.abspath(__file__), "wheel")
+        self.standalone_methods.install_requirement_from_string(src_file_path, str_src)
 
     def install_requirements(
         self, requirements_file_path, update=False, update_from_source=False

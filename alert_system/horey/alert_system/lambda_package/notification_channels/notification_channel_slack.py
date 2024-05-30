@@ -5,11 +5,8 @@ Notification Channel to send slack messages.
 
 import traceback
 
-from notification_channel_base import NotificationChannelBase
-from notification import Notification
-
+from horey.alert_system.lambda_package.notification import Notification
 from horey.slack_api.slack_message import SlackMessage
-from horey.slack_api.slack_api_configuration_policy import SlackAPIConfigurationPolicy
 from horey.slack_api.slack_api import SlackAPI
 from horey.h_logger import get_logger
 
@@ -18,7 +15,7 @@ from horey.slack_api.slack_api_configuration_policy import SlackAPIConfiguration
 logger = get_logger()
 
 
-class NotificationChannelSlack(NotificationChannelBase):
+class NotificationChannelSlack:
     """
     Main class.
 
@@ -30,7 +27,6 @@ class NotificationChannelSlack(NotificationChannelBase):
     CONFIGURATION_POLICY_CLASS_NAME = "NotificationChannelSlackConfigurationPolicy"
 
     def __init__(self, configuration):
-        super().__init__(configuration)
         config = SlackAPIConfigurationPolicy()
         config.init_from_policy(configuration, ignore_undefined=True)
         self.configuration = configuration

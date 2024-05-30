@@ -20,7 +20,6 @@ def send_message_to_sns_parser():
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("--subject", required=True, type=str)
     parser.add_argument("--message_file_path", required=True, type=str)
-    parser.add_argument("--alert_system_configuration_file_path", required=True, type=str)
     return parser
 
 

@@ -9,11 +9,12 @@ import datetime
 import json
 import os
 import shutil
+import sys
 import uuid
 
 # pylint: disable=no-name-in-module
 from horey.h_logger import get_logger
-from horey.common_utils.common_utils import CommonUtils
+from horey.common_utils.bash_executor import BashExecutor
 from horey.serverless.packer.packer import Packer
 from horey.aws_api.aws_services_entities.aws_lambda import AWSLambda
 from horey.aws_api.base_entities.region import Region
@@ -28,10 +29,10 @@ from horey.aws_api.aws_services_entities.cloud_watch_log_group_metric_filter imp
 )
 from horey.aws_api.aws_services_entities.cloud_watch_log_group import CloudWatchLogGroup
 from horey.alert_system.lambda_package.message import Message
-from horey.alert_system.lambda_package.notification_channel_base import (
-    NotificationChannelBase,
-)
 from horey.alert_system.alert_system_configuration_policy import AlertSystemConfigurationPolicy
+from horey.pip_api.pip_api import PipAPI
+from horey.pip_api.pip_api_configuration_policy import PipAPIConfigurationPolicy
+from horey.alert_system.lambda_package.event_handler import EventHandler
 
 logger = get_logger()
 
@@ -48,6 +49,11 @@ class AlertSystem:
         self.aws_api = aws_api or AWSAPI()
         self.region = Region.get_region(self.configuration.region)
         self.tags = configuration.tags
+        pip_api_configuration = PipAPIConfigurationPolicy()
+        pip_api_configuration.multi_package_repositories = {"horey.": configuration.horey_repo_path}
+        pip_api_configuration.horey_parent_dir_path = os.path.dirname(configuration.horey_repo_path)
+        pip_api_configuration.venv_dir_path = configuration.deployment_venv_path
+        self.pip_api = PipAPI(configuration=pip_api_configuration)
 
     def provision(self, lambda_files):
         """
@@ -64,7 +70,8 @@ class AlertSystem:
         @param lambda_files: Files needed by AlertSystemLambda - new dispatcher or SlackAPI configuration.
         @return:
         """
-
+        if EventHandler.ALERT_SYSTEM_CONFIGURATION_FILE_NAME not in [os.path.basename(file) for file in lambda_files]:
+            raise ValueError(f"Configuration file {EventHandler.ALERT_SYSTEM_CONFIGURATION_FILE_NAME} is missing")
         self.provision_sns_topic()
         self.provision_lambda(lambda_files)
         self.provision_sns_subscription()
@@ -99,7 +106,8 @@ class AlertSystem:
         @return:
         """
 
-        self.create_lambda_package(files)
+        zip_file_path = self.create_lambda_package(files)
+        self.validate_lambda_package(zip_file_path)
         return self.deploy_lambda()
 
     def provision_self_monitoring(self):
@@ -224,54 +232,80 @@ class AlertSystem:
 
         :return:
         """
-        self.packer.create_venv(self.configuration.deployment_venv_path)
+
+        for file in files:
+            if "requirements.txt" in file:
+                raise NotImplementedError("Need to implement requirements overwrite in venv using serverless")
+
         current_dir = os.getcwd()
         os.chdir(self.configuration.deployment_directory_path)
-        self.packer.install_horey_requirements(
+        self.pip_api.install_requirements_from_file(
             os.path.join(
                 os.path.dirname(os.path.abspath(__file__)),
                 "lambda_package",
                 "requirements.txt",
-            ),
-            self.configuration.deployment_venv_path,
-            self.configuration.horey_repo_path,
+            )
         )
+
+        self.pip_api.install_requirement_from_string(os.path.abspath(__file__), "horey.alert_system>=2.0.0")
 
         self.packer.zip_venv_site_packages(
             self.configuration.lambda_zip_file_name,
             self.configuration.deployment_venv_path
         )
 
-        external_files = [os.path.basename(file_path) for file_path in files]
-        lambda_package_dir = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "lambda_package"
-        )
-        lambda_package_files = [
-            os.path.join(lambda_package_dir, file_name)
-            for file_name in os.listdir(lambda_package_dir)
-            if file_name not in external_files
-        ]
-        files_paths = lambda_package_files + files
+        lambda_handler_file_path = sys.modules["horey.alert_system.lambda_package.lambda_handler"].__file__
         self.packer.add_files_to_zip(
-            self.configuration.lambda_zip_file_name, files_paths
+            self.configuration.lambda_zip_file_name, files + [lambda_handler_file_path]
         )
-
-        self.validate_lambda_package()
         logger.info(
             f"Created lambda package: {self.configuration.deployment_directory_path}/{self.configuration.lambda_zip_file_name}")
 
         os.chdir(current_dir)
+        return os.path.join(
+                    self.configuration.deployment_directory_path,
+                    self.configuration.lambda_zip_file_name,
+                )
 
-    def validate_lambda_package(self):
+    def validate_lambda_package(self, zip_file_path, event=None):
         """
         Unzip in a temporary dir and init the base dispatcher class.
 
         @return:
         """
+        extraction_dir = self.extract_lambda_package_for_validation(zip_file_path)
+        self.trigger_lambda_handler_locally(extraction_dir, None)
 
-        validation_dir_name = os.path.splitext(self.configuration.lambda_zip_file_name)[
+    def trigger_lambda_handler_locally(self, extraction_dir, event):
+        """
+        Run the lambda handler locally
+
+        :param extraction_dir:
+        :param event:
+        :return:
+        """
+        result_file_path = os.path.join(extraction_dir, "result.json")
+        if os.path.exists(result_file_path):
+            os.remove(result_file_path)
+        shutil.copy2("/Users/alexey.beley/git/horey/alert_system/horey/alert_system/lambda_package/trigger_local.py", extraction_dir)
+        with open(os.path.join(extraction_dir, "event.json"), "w", encoding="utf-8") as file_handler:
+            json.dump(event, file_handler)
+        ret = BashExecutor.run_bash(f"python {extraction_dir}/trigger_local.py")
+        if not os.path.exists(result_file_path):
+            return ret
+        with open(result_file_path, encoding="utf-8") as file_handler:
+            exec_ret = json.load(file_handler)
+        return exec_ret
+
+    def extract_lambda_package_for_validation(self, zip_file_path):
+        """
+        Extract the zip to local tmp dir.
+
+        :return:
+        """
+        validation_dir_name = os.path.splitext(zip_file_path)[
             0
-        ]
+        ] + "_validation"
         try:
             os.makedirs(validation_dir_name)
         except FileExistsError:
@@ -281,21 +315,9 @@ class AlertSystem:
         tmp_zip_path = os.path.join(
             validation_dir_name, self.configuration.lambda_zip_file_name
         )
-        shutil.copyfile(self.configuration.lambda_zip_file_name, tmp_zip_path)
+        shutil.copyfile(zip_file_path, tmp_zip_path)
         self.packer.extract(tmp_zip_path, validation_dir_name)
-
-        os.environ[
-            NotificationChannelBase.NOTIFICATION_CHANNELS_ENVIRONMENT_VARIABLE
-        ] = self.configuration.notification_channel_file_names
-        current_dir = os.getcwd()
-        os.chdir(validation_dir_name)
-
-        message_dispatcher = CommonUtils.load_object_from_module(
-            "message_dispatcher_base.py", "MessageDispatcherBase"
-        )
-        if self.configuration.active_deployment_validation:
-            message_dispatcher.dispatch(None)
-        os.chdir(current_dir)
+        return validation_dir_name
 
     def provision_lambda_role(self):
         """
@@ -347,7 +369,7 @@ class AlertSystem:
         aws_lambda.region = self.region
         aws_lambda.name = self.configuration.lambda_name
         aws_lambda.handler = "lambda_handler.lambda_handler"
-        aws_lambda.runtime = "python3.9"
+        aws_lambda.runtime = "python3.12"
         aws_lambda.role = role.arn
         aws_lambda.timeout = self.configuration.lambda_timeout
         aws_lambda.memory_size = 512
@@ -367,7 +389,7 @@ class AlertSystem:
                 }
             ],
         }
-
+        breakpoint()
         aws_lambda.environment = {
             "Variables": {
                 NotificationChannelBase.NOTIFICATION_CHANNELS_ENVIRONMENT_VARIABLE: self.configuration.notification_channel_file_names,
@@ -577,12 +599,6 @@ class AlertSystem:
     def provision_and_trigger_locally_lambda_handler(self, lambda_files, event_json_file_path):
         """
         Locally test event in the being provisioned infra.
-
-        :param lambda_files:
-        :param event_json_file_path:
-        :return:
-        """
-
         self.create_lambda_package(lambda_files)
 
         validation_dir_name = os.path.splitext(self.configuration.lambda_zip_file_name)[0]
@@ -598,6 +614,12 @@ class AlertSystem:
 
         os.chdir(current_dir)
         return ret
+
+        :param lambda_files:
+        :param event_json_file_path:
+        :return:
+        """
+        raise DeprecationWarning("Use the new trigger_lambda_handler_locally")
 
     def send_message_to_sns(self, message, topic_arn=None):
         """
