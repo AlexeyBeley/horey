@@ -309,13 +309,14 @@ class SESV2Client(Boto3Client):
                 configuration_set.update_from_raw_response(
                     region_configuration_set.dict_src
                 )
+                self.get_configuration_set_full_information(region_configuration_set)
                 break
         else:
+            region_configuration_set = None
             self.provision_configuration_set_raw(configuration_set.region,
                                                  configuration_set.generate_create_request()
                                                  )
-
-        create_requests = configuration_set.generate_create_requests_event_destinations()
+        create_requests = configuration_set.generate_create_requests_event_destinations(region_configuration_set)
         for create_request in create_requests:
             self.create_request_event_destination_raw(configuration_set.region, create_request)
 
@@ -334,6 +335,7 @@ class SESV2Client(Boto3Client):
                 raw_data=True,
                 filters_req=request_dict,
         ):
+            self.clear_cache(SESV2ConfigurationSet)
             return response
 
     def create_request_event_destination_raw(self, region, request_dict):
@@ -342,6 +344,7 @@ class SESV2Client(Boto3Client):
 
         @param request_dict:
         @return:
+        :param region:
         """
 
         logger.info(f"Creating configuration_set event_destination: {request_dict}")
@@ -351,6 +354,7 @@ class SESV2Client(Boto3Client):
                 raw_data=True,
                 filters_req=request_dict,
         ):
+            self.clear_cache(SESV2ConfigurationSet)
             return response
 
     def update_email_template_information(self, email_template: SESV2EmailTemplate):

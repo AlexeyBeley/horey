@@ -17,10 +17,13 @@ from horey.alert_system.alert_system_configuration_policy import (
 from horey.alert_system.lambda_package.message import Message
 from horey.common_utils.common_utils import CommonUtils
 from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlarm
-from fixtures import fixture_lambda_package_alert_system_config_file
-from common import ses_events, cloudwatch_events
+from fixtures import fixture_alert_system_configuration
+from common import ses_events
+from horey.aws_api.base_entities.region import Region
+from horey.aws_api.base_entities.aws_account import AWSAccount
 
-print(fixture_lambda_package_alert_system_config_file)
+
+print(fixture_alert_system_configuration)
 
 mock_values_file_path = os.path.abspath(
     os.path.abspath(os.path.join(
@@ -44,7 +47,6 @@ def fixture_as_configuration():
     as_configuration.tags = [{"Key": "env_level", "Value": "development"}]
 
     as_configuration.deployment_dir_path = "/tmp/horey_deployment_alert_system"
-    as_configuration.notification_channel_file_names = "notification_channel_slack.py"
     as_configuration.active_deployment_validation = True
     if os.path.exists(as_configuration.deployment_dir_path):
         shutil.rmtree(as_configuration.deployment_dir_path)
@@ -126,16 +128,30 @@ def test_provision_lambda():
     alert_system.provision_lambda([notification_channel_slack_configuration_file])
 
 
-@pytest.mark.wip
-def test_provision(as_configuration, lambda_package_alert_system_config_file):
+@pytest.mark.done
+def test_validate_input(alert_system_configuration):
     """
     Test provisioning all the alert_system components.
 
     @return:
     """
+    AWSAccount.set_aws_default_region(Region.get_region("us-west-2"))
+    alert_system = AlertSystem(alert_system_configuration)
+    shutil.copy2(os.path.abspath(os.path.join(os.path.dirname(__file__), "notification_channels", "notification_channel_echo_initializer.py")), alert_system.configuration.deployment_dir_path)
+    alert_system.validate_input([os.path.join(alert_system_configuration.deployment_directory_path, "notification_channel_echo_initializer.py")])
 
-    alert_system = AlertSystem(as_configuration)
-    alert_system.provision([lambda_package_alert_system_config_file])
+
+@pytest.mark.todo
+def test_provision(alert_system_configuration):
+    """
+    Test provisioning all the alert_system components.
+
+    @return:
+    """
+    AWSAccount.set_aws_default_region(Region.get_region("us-west-2"))
+    alert_system = AlertSystem(alert_system_configuration)
+    shutil.copy2(os.path.abspath(os.path.join(os.path.dirname(__file__), "notification_channels", "notification_channel_echo_initializer.py")), alert_system.configuration.deployment_dir_path)
+    alert_system.provision([os.path.join(alert_system_configuration.deployment_directory_path, "notification_channel_echo_initializer.py")])
 
 
 @pytest.mark.done
@@ -177,16 +193,16 @@ def test_create_lambda_package(as_configuration, lambda_package_alert_system_con
     assert os.path.isfile(zip_file_path)
 
 
-@pytest.mark.done
-def test_validate_lambda_package_ses_events(as_configuration, lambda_package_alert_system_config_file):
+@pytest.mark.wip
+def test_validate_lambda_package_ses_events(alert_system_configuration):
     """
     Test local package creation.
 
     @return:
     """
-    alert_system = AlertSystem(as_configuration)
+    alert_system = AlertSystem(alert_system_configuration)
     alert_system.validate_lambda_package = Mock()
-    zip_file_path = alert_system.create_lambda_package([lambda_package_alert_system_config_file])
+    zip_file_path = alert_system.create_lambda_package(([os.path.join(alert_system_configuration.deployment_directory_path, "notification_channel_echo_initializer.py")]))
     extraction_dir = alert_system.extract_lambda_package_for_validation(zip_file_path)
     for ses_event in ses_events:
         ret = alert_system.trigger_lambda_handler_locally(extraction_dir, ses_event)

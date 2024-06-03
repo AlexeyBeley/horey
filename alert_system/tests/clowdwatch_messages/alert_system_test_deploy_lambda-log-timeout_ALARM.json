@@ -1,0 +1,22 @@
+{
+    "Records": [
+        {
+            "EventSource": "aws:sns",
+            "EventVersion": "1.0",
+            "EventSubscriptionArn": "arn:aws:sns:us-west-2:123456789100:topic_test_alert_system:7b",
+            "Sns": {
+                "Type": "Notification",
+                "MessageId": "b894da65-2762-5ec7-93d4-84b14bbfe728",
+                "TopicArn": "arn:aws:sns:us-west-2:123456789100:topic_test_alert_system",
+                "Subject": "ALARM: \"alarm-/aws/lambda/alert_system_test_deploy_lambda-alert_system_test_...\" in US West (Oregon)",
+                "Message": "{\"AlarmName\":\"alarm-/aws/lambda/alert_system_test_deploy_lambda-alert_system_test_deploy_lambda-log-timeout\",\"AlarmDescription\":\"{\\\"routing_tags\\\": [\\\"ALERT_SYSTEM_MONITORING\\\"], \\\"log_group_name\\\": \\\"/aws/lambda/alert_system_test_deploy_lambda\\\", \\\"log_group_filter_pattern\\\": \\\"Task timed out after\\\", \\\"ALERT_SYSTEM_SELF_MONITORING\\\": \\\"ALERT_SYSTEM_SELF_MONITORING\\\"}\",\"AWSAccountId\":\"123456789100\",\"AlarmConfigurationUpdatedTimestamp\":\"2024-05-31T18:58:31.738+0000\",\"NewStateValue\":\"ALARM\",\"NewStateReason\":\"Threshold Crossed: 1 out of the last 1 datapoints [2.0 (01/06/24 00:21:00)] was greater than the threshold (0.0) (minimum 1 datapoint for OK -> ALARM transition).\",\"StateChangeTime\":\"2024-06-01T00:26:05.291+0000\",\"Region\":\"US West (Oregon)\",\"AlarmArn\":\"arn:aws:cloudwatch:us-west-2:123456789100:alarm:alarm-/aws/lambda/alert_system_test_deploy_lambda-alert_system_test_deploy_lambda-log-timeout\",\"OldStateValue\":\"OK\",\"OKActions\":[\"arn:aws:sns:us-west-2:123456789100:topic_test_alert_system\"],\"AlarmActions\":[\"arn:aws:sns:us-west-2:123456789100:topic_test_alert_system\"],\"InsufficientDataActions\":[],\"Trigger\":{\"MetricName\":\"metric-alert_system_test_deploy_lambda-log-timeout\",\"Namespace\":\"/aws/lambda/alert_system_test_deploy_lambda\",\"StatisticType\":\"Statistic\",\"Statistic\":\"SUM\",\"Unit\":null,\"Dimensions\":[],\"Period\":300,\"EvaluationPeriods\":1,\"DatapointsToAlarm\":1,\"ComparisonOperator\":\"GreaterThanThreshold\",\"Threshold\":0.0,\"TreatMissingData\":\"notBreaching\",\"EvaluateLowSampleCountPercentile\":\"\"}}",
+                "Timestamp": "2024-06-01T00:26:05.337Z",
+                "SignatureVersion": "1",
+                "Signature": "Vw==",
+                "SigningCertUrl": "https://sns.us-west-2.amazonaws.com/SimpleNotificationService-35.pem",
+                "UnsubscribeUrl": "https://sns.us-west-2.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:us-west-2:123456789100:topic_test_alert_system:b",
+                "MessageAttributes": {}
+            }
+        }
+    ]
+}

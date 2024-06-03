@@ -2,6 +2,7 @@
 Message being received by the Alert System Lambda.
 
 """
+import json
 import urllib.parse
 
 from horey.h_logger import get_logger
@@ -27,8 +28,8 @@ class MessageCloudwatchDefault(MessageBase):
         """
 
         super().__init__(dict_src)
-        self.message_dict = MessageBase.extract_message_dict(dict_src)
-        if "AlarmArn" not in self.message_dict:
+        alarm_dict = MessageBase.extract_message_dict(self._dict_src)
+        if "AlarmDescription" not in alarm_dict:
             raise MessageBase.NotAMatchError("Not a match")
 
     @staticmethod
@@ -81,13 +82,14 @@ class MessageCloudwatchDefault(MessageBase):
         """
         breakpoint()
         notification = Notification()
-        mail = self.message_dict.get("mail") or {}
-        timestamp = mail.get("timestamp") or "None"
-        breakpoint()
+
+        message_dict = MessageBase.extract_message_dict(self._dict_src)
+        if "AlarmDescription" not in message_dict:
+            raise MessageBase.NotAMatchError("Not a match")
         log_group_search_url = self.generate_cloudwatch_log_search_link(
-            alarm,
-            alarm.alert_system_data["log_group_name"],
-            alarm.alert_system_data["log_group_filter_pattern"],
+            message_dict,
+            message_dict["log_group_name"],
+            message_dict["log_group_filter_pattern"],
         )
         if notification is None:
             notification = Notification()
@@ -148,3 +150,12 @@ class MessageCloudwatchDefault(MessageBase):
         )
 
         return notification
+
+    def generate_alert_description(self):
+        """
+        Generate string to be used by description.
+
+        :return:
+        """
+
+        return json.dumps(self.message_dict)

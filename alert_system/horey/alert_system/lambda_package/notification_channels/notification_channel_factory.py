@@ -14,6 +14,7 @@ class NotificationChannelFactory:
     Main class.
 
     """
+    ALERT_SYSTEM_MONITORING_TAG = "ALERT_SYSTEM_MONITORING"
 
     def load_notification_channels(self, configuration):
         """
@@ -23,7 +24,8 @@ class NotificationChannelFactory:
 
         return [self.load_notification_channel(file_path) for file_path in configuration.notification_channels]
 
-    def load_notification_channel(self, initializer_file_path):
+    @staticmethod
+    def load_notification_channel(initializer_file_path):
         """
         Init notification channel from initializer file path
 

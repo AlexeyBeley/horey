@@ -29,6 +29,7 @@ class AlertSystemConfigurationPolicy(ConfigurationPolicy):
         self._lambda_role_name = None
         self._lambda_role_path = None
         self._tags = None
+        self._ses_configuration_set_name = None
 
     @property
     def deployment_datetime(self):
@@ -149,8 +150,15 @@ class AlertSystemConfigurationPolicy(ConfigurationPolicy):
         return f"{self.lambda_name}-log-timeout"
 
     @property
-    def alert_system_ses_configuration_set_name(self):
-        return "conf_set_alert_system_default"
+    def ses_configuration_set_name(self):
+        if self._ses_configuration_set_name is None:
+            self._ses_configuration_set_name = "conf_set_alert_system_default"
+
+        return self._ses_configuration_set_name
+
+    @ses_configuration_set_name.setter
+    def ses_configuration_set_name(self, value):
+        self._ses_configuration_set_name = value
 
     @property
     def tags(self):

@@ -14,6 +14,8 @@ class MessageBase:
     Main class.
 
     """
+    ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY = "ALERT_SYSTEM_SELF_MONITORING"
+    ALERT_SYSTEM_SELF_MONITORING_TYPE_VALUE = "ALERT_SYSTEM_SELF_MONITORING"
 
     def __init__(self, dic_src):
         self._dict_src = dic_src
@@ -27,7 +29,7 @@ class MessageBase:
         :return:
         """
 
-        if "alert_system_message_class" in dict_src:
+        if MessageBase.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY in dict_src:
             return dict_src
 
         if "Records" in dict_src:

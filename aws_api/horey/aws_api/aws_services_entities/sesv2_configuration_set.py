@@ -78,19 +78,27 @@ class SESV2ConfigurationSet(AwsObject):
         self.extend_request_with_optional_parameters(request, ["TrackingOptions"])
         return request
 
-    def generate_create_requests_event_destinations(self):
+    def generate_create_requests_event_destinations(self, current_configuration_set):
         """
         Generate requests to add event_destinations.
 
         :return:
         """
+        current_configuration_set_event_destinations = {}
+        if current_configuration_set:
+            current_configuration_set_event_destinations = {event_destination["Name"]: event_destination for event_destination in current_configuration_set.event_destinations}
 
         lst_ret = []
-        for event_destination_tmp in self.event_destinations:
-            event_destination = copy.deepcopy(event_destination_tmp)
+        for event_destination_desired in self.event_destinations:
+            current_configuration_set_event_destination = current_configuration_set_event_destinations.get(event_destination_desired["Name"])
+            if current_configuration_set_event_destination:
+                if current_configuration_set_event_destination != event_destination_desired:
+                    raise ValueError(event_destination_desired)
+                continue
+            event_destination = copy.deepcopy(event_destination_desired)
             del event_destination["Name"]
             dict_request = {"ConfigurationSetName": self.name,
-                            "EventDestinationName": event_destination_tmp["Name"],
+                            "EventDestinationName": event_destination_desired["Name"],
                             "EventDestination": event_destination}
             lst_ret.append(dict_request)
 
