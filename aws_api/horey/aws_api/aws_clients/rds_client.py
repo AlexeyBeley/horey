@@ -1097,7 +1097,7 @@ class RDSClient(Boto3Client):
 
         return self.ENGINE_VERSIONS[region.region_mark][engine_type]
 
-    def get_engine_version_raw(self, region, filters_req):
+    def describe_db_engine_versions_raw(self, region, filters_req):
         """
         Standard
 
@@ -1109,7 +1109,7 @@ class RDSClient(Boto3Client):
             self.get_session_client(region=region).describe_db_engine_versions, "DBEngineVersions",
             filters_req=filters_req))
 
-    def get_engine_max_version(self, region, engine_type):
+    def get_engine_max_version(self, region, engine_type, raw=False):
         """
         Standard.
 
@@ -1118,12 +1118,12 @@ class RDSClient(Boto3Client):
         :return:
         """
 
-        lst_all = self.get_engine_version_raw(region, {"Engine": engine_type, "DefaultOnly": False})
-        all_floats = []
+        lst_all = self.describe_db_engine_versions_raw(region, {"Engine": engine_type, "DefaultOnly": False})
+        all_floats = {}
         errors = []
         for eng_version in lst_all:
             try:
-                all_floats.append(float(eng_version["EngineVersion"]))
+                all_floats[float(eng_version["EngineVersion"])] = eng_version
             except ValueError:
                 errors.append(eng_version["EngineVersion"])
 
@@ -1135,4 +1135,6 @@ class RDSClient(Boto3Client):
         max_versions = [eng_version_float for eng_version_float in all_floats if eng_version_float == max_version]
         if len(max_versions) != 1:
             raise NotImplementedError(f"{max_versions=}")
-        return max_versions[0]
+        if not raw:
+            return max_versions[0]
+        return all_floats[max_versions[0]]
