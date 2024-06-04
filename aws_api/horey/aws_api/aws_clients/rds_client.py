@@ -1119,8 +1119,20 @@ class RDSClient(Boto3Client):
         """
 
         lst_all = self.get_engine_version_raw(region, {"Engine": engine_type, "DefaultOnly": False})
-        max_version = max(float(eng_version["EngineVersion"]) for eng_version in lst_all)
-        max_versions = [eng_version for eng_version in lst_all if float(eng_version["EngineVersion"]) == max_version]
+        all_floats = []
+        errors = []
+        for eng_version in lst_all:
+            try:
+                all_floats.append(float(eng_version["EngineVersion"]))
+            except ValueError:
+                errors.append(eng_version["EngineVersion"])
+
+        max_version = max(all_floats)
+        for error_version in errors:
+            if error_version.startswith(str(max_version)):
+                raise ValueError(f"Can not decide which version is the max version: {max_version=}, {errors=}")
+
+        max_versions = [eng_version_float for eng_version_float in all_floats if eng_version_float == max_version]
         if len(max_versions) != 1:
             raise NotImplementedError(f"{max_versions=}")
         return max_versions[0]
