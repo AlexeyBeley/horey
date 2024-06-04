@@ -90,6 +90,9 @@ from horey.common_utils.text_block import TextBlock
 
 from horey.network.dns_map import DNSMap
 from horey.aws_api.base_entities.aws_account import AWSAccount
+from horey.aws_api.aws_services_entities.ses_identity import SESIdentity
+from horey.aws_api.aws_services_entities.ses_identity import SESIdentity
+
 
 logger = get_logger()
 
@@ -3172,21 +3175,26 @@ class AWSAPI:
 
     # endregion
 
-    # region sesv2_domain_email_identity
-    def provision_sesv2_domain_email_identity(
-            self, email_identity, wait_for_validation=True
+    # region ses_domain_email_identity
+    def provision_ses_domain_email_identity(
+            self, desired_email_identity, wait_for_validation=True
     ):
         """
-        Self explanatory
+        Standard.
 
-        @param email_identity:
+        @param desired_email_identity:
         @param wait_for_validation:
         @return:
         """
+        email_identity_current = SESIdentity({})
+        email_identity_current.region = desired_email_identity.region
+        email_identity_current.name = desired_email_identity.name
+        
+        self.ses_client.provision_identity(email_identity_current, desired_email_identity)
+        self.sesv2_client.provision_identity(email_identity_current, desired_email_identity)
+        breakpoint()
 
-        self.sesv2_client.provision_email_identity(email_identity)
-
-        if email_identity.dkim_attributes["Status"] == "SUCCESS":
+        if desired_email_identity.dkim_attributes["Status"] == "SUCCESS":
             return
 
         max_time = 5 * 60
@@ -3195,25 +3203,25 @@ class AWSAPI:
         end_time = start_time + datetime.timedelta(seconds=max_time)
         while datetime.datetime.now() < end_time:
             logger.info(
-                f"Waiting for sesv2 domain validation request. Going to sleep for {sleep_time} seconds: {email_identity.name}"
+                f"Waiting for sesv2 domain validation request. Going to sleep for {sleep_time} seconds: {desired_email_identity.name}"
             )
             time.sleep(sleep_time)
-            self.sesv2_client.update_email_identity_information(email_identity)
+            self.sesv2_client.update_email_identity_information(desired_email_identity)
 
-            if email_identity.dkim_attributes["Status"] != "NOT_STARTED":
+            if desired_email_identity.dkim_attributes["Status"] != "NOT_STARTED":
                 break
         else:
-            raise TimeoutError(f"Reached timeout for {email_identity.name}")
+            raise TimeoutError(f"Reached timeout for {desired_email_identity.name}")
 
-        if email_identity.dkim_attributes["Status"] != "PENDING":
+        if desired_email_identity.dkim_attributes["Status"] != "PENDING":
             raise ValueError(
-                f"Unknown status {email_identity.dkim_attributes['Status']}"
+                f"Unknown status {desired_email_identity.dkim_attributes['Status']}"
             )
 
-        self.validate_sesv2_domain_email_identity(email_identity)
+        self.validate_sesv2_domain_email_identity(desired_email_identity)
 
         if wait_for_validation:
-            self.wait_for_sesv2_domain_email_identity_validation(email_identity)
+            self.wait_for_sesv2_domain_email_identity_validation(desired_email_identity)
 
     def validate_sesv2_domain_email_identity(self, email_identity):
         """

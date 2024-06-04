@@ -22,6 +22,11 @@ class SESIdentity(AwsObject):
         self.policies = None
         self.verification_status = None
         self.verification_token = None
+        self.tags = None
+        self.identity_type = None
+        self.verified_for_sending_status = None
+        self.dkim_signing_attributes = None
+        self.configuration_set_name = None
 
         super().__init__(dict_src)
 
@@ -53,6 +58,9 @@ class SESIdentity(AwsObject):
 
         init_options = {
             "name": self.init_default_attr,
+            "IdentityName": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="name"
+            ),
             "DkimEnabled": self.init_default_attr,
             "DkimVerificationStatus": self.init_default_attr,
             "DkimTokens": self.init_default_attr,
@@ -64,6 +72,27 @@ class SESIdentity(AwsObject):
             "Policies": self.init_default_attr,
             "VerificationStatus": self.init_default_attr,
             "VerificationToken": self.init_default_attr,
+            "IdentityType": self.init_default_attr,
+            "FeedbackForwardingStatus": self.init_default_attr,
+            "VerifiedForSendingStatus": self.init_default_attr,
+            "DkimAttributes": self.init_default_attr,
+            "MailFromAttributes": self.init_default_attr,
+            "Tags": self.init_default_attr,
+            "SendingEnabled": self.init_default_attr,
+            "VerificationInfo": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
+
+    def generate_create_request(self):
+        """
+        Standard.
+
+        :return:
+        """
+
+        request = {"EmailIdentity": self.name}
+        self.extend_request_with_required_parameters(request, ["Tags"])
+        self.extend_request_with_optional_parameters(request, ["DkimSigningAttributes", "ConfigurationSetName"])
+
+        return request

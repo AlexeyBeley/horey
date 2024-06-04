@@ -10,7 +10,7 @@ import pytest
 
 from horey.aws_api.aws_clients.sesv2_client import SESV2Client
 from horey.aws_api.aws_services_entities.sesv2_email_template import SESV2EmailTemplate
-from horey.aws_api.aws_services_entities.sesv2_email_identity import SESV2EmailIdentity
+from horey.aws_api.aws_services_entities.ses_identity import SESIdentity
 from horey.aws_api.aws_services_entities.sesv2_configuration_set import (
     SESV2ConfigurationSet,
 )
@@ -42,7 +42,7 @@ def test_init_sesv2_client():
 @pytest.mark.todo
 def test_provision_email_identity():
     client = SESV2Client()
-    email_identity = SESV2EmailIdentity({})
+    email_identity = SESIdentity({})
     email_identity.name = mock_values["email_identity.name"]
     email_identity.region = Region.get_region("us-west-2")
     email_identity.tags = [{"Key": "name", "Value": "value"}]

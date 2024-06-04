@@ -4,7 +4,7 @@ AWS lambda client to handle lambda service API requests.
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 
 from horey.aws_api.aws_services_entities.sesv2_account import SESV2Account
-from horey.aws_api.aws_services_entities.sesv2_email_identity import SESV2EmailIdentity
+from horey.aws_api.aws_services_entities.ses_identity import SESIdentity
 from horey.aws_api.aws_services_entities.sesv2_email_template import SESV2EmailTemplate
 from horey.aws_api.aws_services_entities.sesv2_configuration_set import (
     SESV2ConfigurationSet,
@@ -64,7 +64,7 @@ class SESV2Client(Boto3Client):
 
         regional_fetcher_generator = self.yield_email_identities_raw
         yield from self.regional_service_entities_generator(regional_fetcher_generator,
-                                                            SESV2EmailIdentity,
+                                                            SESIdentity,
                                                             update_info=update_info,
                                                             regions=[region] if region else None,
                                                             filters_req=filters_req)
@@ -122,7 +122,7 @@ class SESV2Client(Boto3Client):
         logger.info(f"get_region_email_identities: {region.region_mark}")
         return list(self.yield_email_identities(region=region))
 
-    def update_email_identity_information(self, obj: SESV2EmailIdentity):
+    def update_email_identity_information(self, obj: SESIdentity):
         """
         Standard
 
@@ -431,22 +431,30 @@ class SESV2Client(Boto3Client):
             return response
         return True
 
-    def provision_email_identity(self, email_identity: SESV2EmailIdentity):
+    def provision_identity(self, current_email_identity: SESIdentity, desired_email_identity: SESIdentity):
         """
         Standard
 
-        @param email_identity:
+        @param current_email_identity:
+        @param desired_email_identity:
         @return:
         """
-        self.update_email_identity_information(email_identity)
 
-        if email_identity.identity_type is not None:
-            return
+        breakpoint()
+        self.update_email_identity_information(current_email_identity)
 
-        response = self.provision_email_identity_raw(email_identity.region,
-                                                     email_identity.generate_create_request()
+        if current_email_identity.identity_type is None:
+
+            response = self.provision_email_identity_raw(current_email_identity.region,
+                                                     current_email_identity.generate_create_request()
                                                      )
-        email_identity.update_from_raw_response(response)
+            current_email_identity.update_from_raw_response(response)
+        else:
+            if current_email_identity.configuration_set_name != desired_email_identity.configuration_set_name:
+                if isinstance(current_email_identity.configuration_set_name):
+                    breakpoint()
+
+        breakpoint()
 
     def provision_email_identity_raw(self, region, request_dict):
         """
@@ -454,6 +462,7 @@ class SESV2Client(Boto3Client):
 
         @param request_dict:
         @return:
+        :param region:
         """
 
         logger.info(f"Creating email_identity: {request_dict}")

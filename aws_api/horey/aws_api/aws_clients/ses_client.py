@@ -271,3 +271,59 @@ class SESClient(Boto3Client):
             if list(dict_src.keys()) != [obj.name]:
                 raise ValueError(dict_src)
             obj.update_from_raw_response(dict_src[obj.name])
+
+    def provision_identity(self, current_email_identity: SESIdentity, desired_email_identity: SESIdentity):
+        """
+        Standard
+
+        @param current_email_identity:
+        @param desired_email_identity:
+        @return:
+        """
+
+        self.update_identity_full_information(current_email_identity)
+        breakpoint()
+
+        for dict_src in self.execute(
+                self.get_session_client(region=obj.region).get_identity_dkim_attributes, "DkimAttributes",
+                filters_req={"Identities": [obj.name]}
+        ):
+            if list(dict_src.keys()) != [obj.name]:
+                raise ValueError(dict_src)
+            obj.update_from_raw_response(dict_src[obj.name])
+
+        for dict_src in self.execute(
+                self.get_session_client(region=obj.region).get_identity_mail_from_domain_attributes,
+                "MailFromDomainAttributes", filters_req={"Identities": [obj.name]}
+        ):
+            if list(dict_src.keys()) != [obj.name]:
+                raise ValueError(dict_src)
+            obj.update_from_raw_response(dict_src[obj.name])
+
+        for dict_src in self.execute(
+                self.get_session_client(region=obj.region).get_identity_notification_attributes,
+                "NotificationAttributes", filters_req={"Identities": [obj.name]}
+        ):
+            if list(dict_src.keys()) != [obj.name]:
+                raise ValueError(dict_src)
+            obj.update_from_raw_response(dict_src[obj.name])
+
+        policy_names = list(self.execute(
+            self.get_session_client(region=obj.region).list_identity_policies, "PolicyNames",
+            filters_req={"Identity": obj.name}
+        ))
+        if policy_names:
+            dict_policies = {"Policies": list(self.execute(
+                self.get_session_client(region=obj.region).get_identity_policies, "Policies",
+                filters_req={"Identity": obj.name, "PolicyNames": policy_names}))}
+            obj.update_from_raw_response(dict_policies)
+        else:
+            logger.info(f"No identity policies for identity '{obj.name}'")
+
+        for dict_src in self.execute(
+                self.get_session_client(region=obj.region).get_identity_verification_attributes,
+                "VerificationAttributes", filters_req={"Identities": [obj.name]}
+        ):
+            if list(dict_src.keys()) != [obj.name]:
+                raise ValueError(dict_src)
+            obj.update_from_raw_response(dict_src[obj.name])
