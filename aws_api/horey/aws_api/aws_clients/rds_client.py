@@ -152,10 +152,11 @@ class RDSClient(Boto3Client):
         cluster.default_engine_version = self.get_default_engine_version(cluster.region, cluster.engine)
         return cluster
 
-    def provision_db_cluster(self, db_cluster: RDSDBCluster, snapshot_id=None):
+    def provision_db_cluster(self, db_cluster: RDSDBCluster, snapshot_id=None, timeout=60*60):
         """
         Standard.
 
+        :param timeout:
         :param db_cluster:
         :param snapshot_id:
         :return:
@@ -176,8 +177,9 @@ class RDSClient(Boto3Client):
             db_cluster,
             self.update_db_cluster_information,
             [db_cluster.Status.AVAILABLE],
-            [db_cluster.Status.CREATING],
+            [db_cluster.Status.CREATING, db_cluster.Status.MODIFYING],
             [db_cluster.Status.FAILED, db_cluster.Status.DELETING],
+            timeout=timeout
         )
 
     def provision_db_cluster_raw(self, region, request_dict):
@@ -206,21 +208,24 @@ class RDSClient(Boto3Client):
                 break
         else:
             return
-        filters_req = [
+
+        filters_req = {"Filters": [
             {
                 "Name": "db-cluster-id",
                 "Values": [
                     db_cluster.id,
                 ],
             }
-        ]
-        db_instances = self.get_region_db_instances(
-            region=db_cluster.region, filters=filters_req
-        )
-        for db_instance in db_instances:
-            db_instance.region = db_cluster.region
-            db_instance.skip_final_snapshot = db_cluster.skip_final_snapshot
-            self.dispose_db_instance(db_instance)
+        ]}
+
+        if "postgres" not in db_cluster.engine:
+            db_instances = self.get_region_db_instances(
+                region=db_cluster.region, filters=filters_req
+            )
+            for db_instance in db_instances:
+                db_instance.region = db_cluster.region
+                db_instance.skip_final_snapshot = db_cluster.skip_final_snapshot
+                self.dispose_db_instance(db_instance)
 
         response = self.dispose_db_cluster_raw(db_cluster.region, db_cluster.generate_dispose_request())
 

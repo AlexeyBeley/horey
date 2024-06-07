@@ -40,6 +40,7 @@ class RDSDBCluster(AwsObject):
         self.preferred_backup_window = None
         self.preferred_maintenance_window = None
         self.storage_encrypted = None
+        self.storage_type = None
         self.enable_cloudwatch_logs_exports = None
         self.kms_key_id = None
         self.engine_mode = None
@@ -48,6 +49,7 @@ class RDSDBCluster(AwsObject):
         self.status = None
         self.skip_final_snapshot = False
         self.default_engine_version = None
+        self.iops = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -118,6 +120,15 @@ class RDSDBCluster(AwsObject):
             "PendingModifiedValues": self.init_default_attr,
             "AutoMinorVersionUpgrade": self.init_default_attr,
             "NetworkType": self.init_default_attr,
+            "DBClusterInstanceClass": self.init_default_attr,
+            "StorageType": self.init_default_attr,
+            "Iops": self.init_default_attr,
+            "PubliclyAccessible": self.init_default_attr,
+            "MonitoringInterval": self.init_default_attr,
+            "PerformanceInsightsEnabled": self.init_default_attr,
+            "MasterUserSecret": self.init_default_attr,
+            "StorageThroughput": self.init_default_attr,
+            "CertificateDetails": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -148,13 +159,14 @@ class RDSDBCluster(AwsObject):
         request["Port"] = self.port
 
         request["MasterUsername"] = self.master_username
-        request["MasterUserPassword"] = self.master_user_password
         request["PreferredBackupWindow"] = self.preferred_backup_window
         request["PreferredMaintenanceWindow"] = self.preferred_maintenance_window
         request["StorageEncrypted"] = self.storage_encrypted
-
-        if self.allocated_storage:
-            request["AllocatedStorage"] = self.allocated_storage
+        self.extend_request_with_optional_parameters(request, ["MasterUserPassword",
+                                                               "ManageMasterUserPassword",
+                                                               "AllocatedStorage",
+                                                               "StorageType",
+                                                               "Iops"])
 
         if self.db_cluster_instance_class:
             request["DBClusterInstanceClass"] = self.db_cluster_instance_class
