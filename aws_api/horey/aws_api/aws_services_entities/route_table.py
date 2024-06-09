@@ -96,7 +96,7 @@ class RouteTable(AwsObject):
             if self_subnet in desired_subnets:
                 continue
 
-            raise NotImplementedError(f"Route disassociation is not yet implemented: {self_subnet}")
+            raise NotImplementedError(f"Route disassociation is not yet implemented: {self.id=}, {self_subnet=}")
 
         for desired_subnet in desired_subnets:
             if desired_subnet in self_subnets:
