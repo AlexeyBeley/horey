@@ -67,7 +67,8 @@ class SESV2Client(Boto3Client):
                                                             SESIdentity,
                                                             update_info=update_info,
                                                             regions=[region] if region else None,
-                                                            filters_req=filters_req)
+                                                            filters_req=filters_req,
+                                                            )
 
     def yield_email_identities_raw(self, region, filters_req=None):
         """
@@ -440,29 +441,62 @@ class SESV2Client(Boto3Client):
         @return:
         """
 
-        breakpoint()
         self.update_email_identity_information(current_email_identity)
 
         if current_email_identity.identity_type is None:
-
-            response = self.provision_email_identity_raw(current_email_identity.region,
+            response = self.create_email_identity_raw(current_email_identity.region,
                                                      current_email_identity.generate_create_request()
                                                      )
             current_email_identity.update_from_raw_response(response)
         else:
-            if current_email_identity.configuration_set_name != desired_email_identity.configuration_set_name:
-                if isinstance(current_email_identity.configuration_set_name):
-                    breakpoint()
+            request = current_email_identity.generate_put_email_identity_configuration_set_attributes_request(desired_email_identity)
+            if request:
+                self.put_email_identity_configuration_set_attributes_raw(desired_email_identity.region, request)
+            if desired_email_identity.dkim_attributes:
+                raise NotImplementedError(f"{desired_email_identity.dkim_attributes=}")
 
-        breakpoint()
+            if desired_email_identity.dkim_signing_attributes:
+                raise NotImplementedError(f"{desired_email_identity.dkim_signing_attributes=}")
 
-    def provision_email_identity_raw(self, region, request_dict):
+            if current_email_identity.mail_from_attributes.get("BehaviorOnMxFailure") != "USE_DEFAULT_VALUE":
+                raise NotImplementedError(f"{current_email_identity.mail_from_attributes=}")
+
+            if not current_email_identity.feedback_forwarding_status:
+                raise NotImplementedError(f"{current_email_identity.feedback_forwarding_status}")
+
+            if current_email_identity.policies:
+                raise NotImplementedError(f"{current_email_identity.policies}")
+
+            if desired_email_identity.policies:
+                raise NotImplementedError(f"{desired_email_identity.policies}")
+        return True
+
+    def put_email_identity_configuration_set_attributes_raw(self, region, request_dict):
         """
         Standard
 
-        @param request_dict:
-        @return:
         :param region:
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Putting email_identity config set: {request_dict}")
+        for response in self.execute(
+                self.get_session_client(region=region).put_email_identity_configuration_set_attributes,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
+        ):
+            self.clear_cache(SESIdentity)
+            return response
+
+    def create_email_identity_raw(self, region, request_dict):
+        """
+        Standard
+
+        :param region:
+        :param request_dict:
+        :return:
         """
 
         logger.info(f"Creating email_identity: {request_dict}")

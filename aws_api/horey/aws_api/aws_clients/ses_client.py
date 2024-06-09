@@ -220,6 +220,23 @@ class SESClient(Boto3Client):
         ):
             yield {"name": str_src}
 
+    def update_identity_information(self, obj: SESIdentity, full_information=False):
+        """
+        Update from AWS API.
+
+        :param full_information:
+        :param obj:
+        :return:
+        """
+
+        for identity in self.yield_identities():
+            if identity.name == obj.name:
+                if full_information:
+                    self.update_identity_full_information(obj)
+                return True
+
+        return False
+
     def update_identity_full_information(self, obj: SESIdentity):
         """
         Standard.
@@ -271,6 +288,7 @@ class SESClient(Boto3Client):
             if list(dict_src.keys()) != [obj.name]:
                 raise ValueError(dict_src)
             obj.update_from_raw_response(dict_src[obj.name])
+        return False
 
     def provision_identity(self, current_email_identity: SESIdentity, desired_email_identity: SESIdentity):
         """
@@ -281,49 +299,32 @@ class SESClient(Boto3Client):
         @return:
         """
 
-        self.update_identity_full_information(current_email_identity)
-        breakpoint()
+        if not self.update_identity_information(current_email_identity, full_information=True):
+            raise ValueError("Create the identity using sesv2_client")
+        """ 
+                put_identity_policy
+                set_identity_dkim_enabled
+                set_identity_feedback_forwarding_enabled
+                set_identity_headers_in_notifications_enabled
+                set_identity_mail_from_domain
+                set_identity_notification_topic
+        """
 
-        for dict_src in self.execute(
-                self.get_session_client(region=obj.region).get_identity_dkim_attributes, "DkimAttributes",
-                filters_req={"Identities": [obj.name]}
-        ):
-            if list(dict_src.keys()) != [obj.name]:
-                raise ValueError(dict_src)
-            obj.update_from_raw_response(dict_src[obj.name])
+        if desired_email_identity.dkim_attributes:
+            raise NotImplementedError(f"{desired_email_identity.dkim_attributes=}")
 
-        for dict_src in self.execute(
-                self.get_session_client(region=obj.region).get_identity_mail_from_domain_attributes,
-                "MailFromDomainAttributes", filters_req={"Identities": [obj.name]}
-        ):
-            if list(dict_src.keys()) != [obj.name]:
-                raise ValueError(dict_src)
-            obj.update_from_raw_response(dict_src[obj.name])
+        if desired_email_identity.dkim_signing_attributes:
+            raise NotImplementedError(f"{desired_email_identity.dkim_signing_attributes=}")
 
-        for dict_src in self.execute(
-                self.get_session_client(region=obj.region).get_identity_notification_attributes,
-                "NotificationAttributes", filters_req={"Identities": [obj.name]}
-        ):
-            if list(dict_src.keys()) != [obj.name]:
-                raise ValueError(dict_src)
-            obj.update_from_raw_response(dict_src[obj.name])
+        if current_email_identity.mail_from_attributes.get("BehaviorOnMxFailure") != "USE_DEFAULT_VALUE":
+            raise NotImplementedError(f"{current_email_identity.mail_from_attributes=}")
 
-        policy_names = list(self.execute(
-            self.get_session_client(region=obj.region).list_identity_policies, "PolicyNames",
-            filters_req={"Identity": obj.name}
-        ))
-        if policy_names:
-            dict_policies = {"Policies": list(self.execute(
-                self.get_session_client(region=obj.region).get_identity_policies, "Policies",
-                filters_req={"Identity": obj.name, "PolicyNames": policy_names}))}
-            obj.update_from_raw_response(dict_policies)
-        else:
-            logger.info(f"No identity policies for identity '{obj.name}'")
+        if not current_email_identity.feedback_forwarding_status:
+            raise NotImplementedError(f"{current_email_identity.feedback_forwarding_status}")
 
-        for dict_src in self.execute(
-                self.get_session_client(region=obj.region).get_identity_verification_attributes,
-                "VerificationAttributes", filters_req={"Identities": [obj.name]}
-        ):
-            if list(dict_src.keys()) != [obj.name]:
-                raise ValueError(dict_src)
-            obj.update_from_raw_response(dict_src[obj.name])
+        if current_email_identity.policies:
+            raise NotImplementedError(f"{current_email_identity.policies}")
+
+        if desired_email_identity.policies:
+            raise NotImplementedError(f"{desired_email_identity.policies}")
+        return True

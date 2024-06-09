@@ -13,6 +13,8 @@ class SESIdentity(AwsObject):
     def __init__(self, dict_src, from_cache=False):
         self.dkim_enabled = None
         self.dkim_verification_status = None
+        self.dkim_signing_attributes = None
+        self.dkim_attributes = None
         self.dkim_tokens = None
         self.behavior_on_mx_failure = None
         self.forwarding_enabled = None
@@ -25,8 +27,9 @@ class SESIdentity(AwsObject):
         self.tags = None
         self.identity_type = None
         self.verified_for_sending_status = None
-        self.dkim_signing_attributes = None
         self.configuration_set_name = None
+        self.mail_from_attributes = None
+        self.feedback_forwarding_status = None
 
         super().__init__(dict_src)
 
@@ -96,3 +99,19 @@ class SESIdentity(AwsObject):
         self.extend_request_with_optional_parameters(request, ["DkimSigningAttributes", "ConfigurationSetName"])
 
         return request
+
+    def generate_put_email_identity_configuration_set_attributes_request(self, desired_identity):
+        """
+        Standard
+
+        :param desired_identity:
+        :return:
+        """
+
+        if self.configuration_set_name != desired_identity.configuration_set_name:
+            if desired_identity.configuration_set_name is not None:
+                return {"EmailIdentity": self.name,
+                        "ConfigurationSetName": desired_identity.configuration_set_name}
+            else:
+                raise NotImplementedError(
+                    f"Only setting new configuration set is supported: {desired_identity.configuration_set_name}")

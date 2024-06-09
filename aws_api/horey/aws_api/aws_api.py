@@ -3189,9 +3189,9 @@ class AWSAPI:
         email_identity_current = SESIdentity({})
         email_identity_current.region = desired_email_identity.region
         email_identity_current.name = desired_email_identity.name
-        
-        self.ses_client.provision_identity(email_identity_current, desired_email_identity)
+
         self.sesv2_client.provision_identity(email_identity_current, desired_email_identity)
+        self.ses_client.provision_identity(email_identity_current, desired_email_identity)
         breakpoint()
 
         if desired_email_identity.dkim_attributes["Status"] == "SUCCESS":
