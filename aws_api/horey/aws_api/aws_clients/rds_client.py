@@ -1065,7 +1065,7 @@ class RDSClient(Boto3Client):
         """
 
         if per_region := self.ENGINE_VERSIONS.get(region.region_mark):
-            if engine_version := per_region[engine_type]:
+            if engine_version := per_region.get(engine_type):
                 return engine_version
 
         engine_versions = list(self.execute(

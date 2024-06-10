@@ -289,12 +289,12 @@ class ELBV2Client(Boto3Client):
 
         return final_result
 
-    def provision_load_balancer(self, load_balancer):
+    def update_load_balancer_information(self, load_balancer):
         """
-        Standard
+        Standard.
 
-        @param load_balancer:
-        @return:
+        :param load_balancer:
+        :return:
         """
 
         region_load_balancers = self.get_region_load_balancers(
@@ -309,12 +309,31 @@ class ELBV2Client(Boto3Client):
                 continue
             load_balancer.arn = region_load_balancer.arn
             load_balancer.dns_name = region_load_balancer.dns_name
-            return
+            return True
+        return False
+
+    def provision_load_balancer(self, load_balancer):
+        """
+        Standard
+
+        @param load_balancer:
+        @return:
+        """
+
+        current_load_balancer = LoadBalancer({})
+        current_load_balancer.region = load_balancer.region
+        current_load_balancer.name = load_balancer.name
+
+        if self.update_load_balancer_information(current_load_balancer):
+            load_balancer.arn = current_load_balancer.arn
+            load_balancer.dns_name = current_load_balancer.dns_name
+            return True
 
         response = self.provision_load_balancer_raw(load_balancer.region,
                                                     load_balancer.generate_create_request()
                                                     )
         load_balancer.arn = response["LoadBalancerArn"]
+        return True
 
     def provision_load_balancer_raw(self, region, request_dict):
         """
