@@ -3192,7 +3192,8 @@ class AWSAPI:
 
         self.sesv2_client.provision_identity(email_identity_current, desired_email_identity)
         self.ses_client.provision_identity(email_identity_current, desired_email_identity)
-        breakpoint()
+        self.sesv2_client.update_email_identity_information(desired_email_identity)
+        self.ses_client.update_identity_full_information(desired_email_identity)
 
         if desired_email_identity.dkim_attributes["Status"] == "SUCCESS":
             return

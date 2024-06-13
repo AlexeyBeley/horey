@@ -123,9 +123,21 @@ class AlertSystem:
         @return:
         """
 
-        zip_file_path = self.create_lambda_package(files)
-        self.validate_lambda_package(zip_file_path)
+        self.build_and_validate(files)
+
         return self.deploy_lambda()
+
+    def build_and_validate(self, files, event=None):
+        """
+        Build the package locally and validate it
+
+        :param event:
+        :param files:
+        :return:
+        """
+
+        zip_file_path = self.create_lambda_package(files)
+        return self.validate_lambda_package(zip_file_path, event=event)
 
     def provision_self_monitoring(self):
         """
@@ -292,8 +304,9 @@ class AlertSystem:
 
         @return:
         """
+
         extraction_dir = self.extract_lambda_package_for_validation(zip_file_path)
-        self.trigger_lambda_handler_locally(extraction_dir, None)
+        return self.trigger_lambda_handler_locally(extraction_dir, event)
 
     def trigger_lambda_handler_locally(self, extraction_dir, event):
         """
@@ -698,3 +711,26 @@ class AlertSystem:
                         "StateValue": "ALARM",
                         "StateReason": "Test"}
         self.aws_api.cloud_watch_client.set_alarm_state_raw(self.region, dict_request)
+
+    def provision_ses_email_identity(self, email_identity):
+        """
+        Update self monitoring data and provision.
+
+        :param email_identity:
+        :return:
+        """
+
+        topic = SNSTopic({})
+        topic.name = self.configuration.sns_topic_name
+        topic.region = self.region
+        if not self.aws_api.sns_client.update_topic_information(topic, full_information=False):
+            raise RuntimeError("Could not update topic information")
+
+        email_identity.bounce_topic = topic.arn
+        email_identity.complaint_topic = topic.arn
+        email_identity.delivery_topic = topic.arn
+
+        email_identity.headers_in_bounce_notifications_enabled = True
+        email_identity.headers_in_complaint_notifications_enabled = True
+        email_identity.headers_in_delivery_notifications_enabled = True
+        self.aws_api.provision_ses_domain_email_identity(email_identity)

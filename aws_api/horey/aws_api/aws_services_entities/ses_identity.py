@@ -30,6 +30,9 @@ class SESIdentity(AwsObject):
         self.configuration_set_name = None
         self.mail_from_attributes = None
         self.feedback_forwarding_status = None
+        self.bounce_topic = None
+        self.complaint_topic = None
+        self.delivery_topic = None
 
         super().__init__(dict_src)
 
@@ -83,6 +86,9 @@ class SESIdentity(AwsObject):
             "Tags": self.init_default_attr,
             "SendingEnabled": self.init_default_attr,
             "VerificationInfo": self.init_default_attr,
+            "BounceTopic": self.init_default_attr,
+            "ComplaintTopic": self.init_default_attr,
+            "DeliveryTopic": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -115,3 +121,43 @@ class SESIdentity(AwsObject):
             else:
                 raise NotImplementedError(
                     f"Only setting new configuration set is supported: {desired_identity.configuration_set_name}")
+
+    def generate_set_identity_notification_topic_requests(self, desired_identity):
+        """
+        Standard.
+
+        :param desired_identity: 
+        :return: 
+        """
+
+        ret = []
+        types = ["Bounce", "Complaint", "Delivery"]
+        for notification_type in types:
+            attr_name = f"{notification_type.lower()}_topic"
+            if getattr(self, attr_name) != getattr(desired_identity, attr_name):
+                request = {"Identity": self.name,
+                           "NotificationType": notification_type,
+                           "SnsTopic": getattr(desired_identity, attr_name)
+                           }
+                ret.append(request)
+        return ret
+
+    def generate_set_identity_headers_in_notifications_enabled_requests(self, desired_identity):
+        """
+        Standard.
+
+        :param desired_identity: 
+        :return: 
+        """
+
+        ret = []
+        types = ["Bounce", "Complaint", "Delivery"]
+        for notification_type in types:
+            attr_name = f"headers_in_{notification_type.lower()}_notifications_enabled"
+            if getattr(self, attr_name) != getattr(desired_identity, attr_name):
+                request = {"Identity": self.name,
+                           "NotificationType": notification_type,
+                           "Enabled": getattr(desired_identity, attr_name)
+                           }
+                ret.append(request)
+        return ret

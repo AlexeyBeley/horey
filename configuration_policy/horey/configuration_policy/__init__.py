@@ -3,4 +3,4 @@ Logging package. Log formatting and routing.
 """
 
 
-__version__ = "1.0.1"
+__version__ = "1.0.2"

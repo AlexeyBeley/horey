@@ -95,7 +95,10 @@ class ConfigurationPolicy:
             else:
                 log_line = f"Init attribute '{key}' from dictionary"
             logger.info(log_line)
-            self._set_attribute_value(key, value, ignore_undefined=ignore_undefined)
+            try:
+                self._set_attribute_value(key, value, ignore_undefined=ignore_undefined)
+            except self.StaticValueError as error_inst:
+                logger.warning(f"Ignoring static value: {error_inst}")
 
     def init_from_environ(self):
         for key_tmp, value in os.environ.items():
@@ -190,6 +193,13 @@ class ConfigurationPolicy:
             print(f"{key}: {value}")
 
     def generate_configuration_file(self, output_file_name):
+        """
+        Generated JSON configuration file from self properties.
+
+        :param output_file_name:
+        :return:
+        """
+
         dict_values = self.convert_to_dict()
 
         with open(output_file_name, "w+") as file_handler:

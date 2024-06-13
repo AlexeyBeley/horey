@@ -80,12 +80,16 @@ class MessageCloudwatchDefault(MessageBase):
 
         :return:
         """
-        breakpoint()
-        notification = Notification()
 
         message_dict = MessageBase.extract_message_dict(self._dict_src)
         if "AlarmDescription" not in message_dict:
             raise MessageBase.NotAMatchError("Not a match")
+        alarm_description = json.loads(message_dict["AlarmDescription"])
+        if MessageBase.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY in alarm_description:
+            return self.generate_self_monitoring_notification(message_dict)
+
+        raise NotImplementedError("Implement")
+
         log_group_search_url = self.generate_cloudwatch_log_search_link(
             message_dict,
             message_dict["log_group_name"],
@@ -147,6 +151,56 @@ class MessageCloudwatchDefault(MessageBase):
             email_status = "ALERT_SYSTEM_ERROR"
         notification.header = (
                 notification.header or f"Default SES handler: {email_status}"
+        )
+
+        return notification
+
+    def generate_self_monitoring_notification(self, message_dict):
+        """
+        All cloud watch self monitoring metrics handled here
+
+        :param message_dict:
+        :return:
+        """
+
+        notification = Notification()
+        alarm_description = json.loads(message_dict["AlarmDescription"])
+
+        notification.tags = alarm_description["routing_tags"]
+        notification.header = "Alert System self monitoring"
+        alarm_name = message_dict["AlarmName"]
+        region_mark = message_dict["AlarmArn"].split(":")[2]
+        notification.link = f"https://{region_mark}.console.aws.amazon.com/cloudwatch/home?region={region_mark}#alarmsV2:alarm/{alarm_name}"
+
+        if message_dict["NewStateValue"] == "OK":
+            notification.type = Notification.Types.STABLE
+        else:
+            notification.type = Notification.Types.CRITICAL
+
+        if message_dict["Trigger"]["MetricName"] == "Duration":
+            # alarm.threshold = self.configuration.lambda_timeout * 0.6 * 1000
+            threshold_sec = int(message_dict["Trigger"]["Threshold"] // 1000)
+            reason = f"Lambda duration > {threshold_sec} seconds"
+            name_dimensions = list(filter(lambda x: x["name"] == "FunctionName", message_dict["Trigger"]["Dimensions"]))
+            if len(name_dimensions) != 1:
+                raise RuntimeError(name_dimensions)
+            lambda_name = name_dimensions[0]["value"]
+
+        elif "log_group_name" in alarm_description and "log_group_filter_pattern" in alarm_description:
+            pattern = alarm_description.get("log_group_filter_pattern")
+            log_group_name = alarm_description.get("log_group_name")
+            reason = f"Pattern '{pattern}' found in Lambda log group: {log_group_name}"
+            lambda_name = message_dict["Trigger"]["Namespace"].split("/")[-1]
+        else:
+            raise NotImplementedError(f'{message_dict["Trigger"]["MetricName"]=}')
+
+        alarm_time = message_dict["StateChangeTime"]
+
+        notification.text = (
+            f"Region: {region_mark}\n"
+            f'Lambda Name: {lambda_name}\n'
+            f'Reason: {reason}\n'
+            f'Time: {alarm_time}\n'
         )
 
         return notification

@@ -1,9 +1,6 @@
 """
 Event Handler.
 """
-import os
-import traceback
-from horey.alert_system.lambda_package.message import Message
 
 from horey.alert_system.lambda_package.message_dispatcher import MessageDispatcher
 from horey.alert_system.lambda_package.message_factory import MessageFactory

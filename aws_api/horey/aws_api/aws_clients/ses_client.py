@@ -229,7 +229,7 @@ class SESClient(Boto3Client):
         :return:
         """
 
-        for identity in self.yield_identities():
+        for identity in self.yield_identities(region=obj.region, update_info=True, full_information=full_information):
             if identity.name == obj.name:
                 if full_information:
                     self.update_identity_full_information(obj)
@@ -301,14 +301,14 @@ class SESClient(Boto3Client):
 
         if not self.update_identity_information(current_email_identity, full_information=True):
             raise ValueError("Create the identity using sesv2_client")
-        """ 
-                put_identity_policy
-                set_identity_dkim_enabled
-                set_identity_feedback_forwarding_enabled
-                set_identity_headers_in_notifications_enabled
-                set_identity_mail_from_domain
-                set_identity_notification_topic
-        """
+
+        requests = current_email_identity.generate_set_identity_notification_topic_requests(desired_email_identity)
+        for request in requests:
+            self.set_identity_notification_topic_raw(desired_email_identity.region, request)
+
+        requests = current_email_identity.generate_set_identity_headers_in_notifications_enabled_requests(desired_email_identity)
+        for request in requests:
+            self.set_identity_headers_in_notifications_enabled_raw(desired_email_identity.region, request)
 
         if desired_email_identity.dkim_attributes:
             raise NotImplementedError(f"{desired_email_identity.dkim_attributes=}")
@@ -328,3 +328,33 @@ class SESClient(Boto3Client):
         if desired_email_identity.policies:
             raise NotImplementedError(f"{desired_email_identity.policies}")
         return True
+
+    def set_identity_notification_topic_raw(self, region, dict_request):
+        """
+        Standard.
+
+        :return:
+        """
+
+        logger.info(f"Setting identity SNS notification topic {dict_request}")
+
+        for dict_ret in self.execute(
+                self.get_session_client(region=region).set_identity_notification_topic, None, raw_data=True, filters_req=dict_request
+        ):
+            self.clear_cache(SESIdentity)
+            return dict_ret
+
+    def set_identity_headers_in_notifications_enabled_raw(self, region, dict_request):
+        """
+        Standard.
+
+        :return:
+        """
+
+        logger.info(f"Setting identity SNS notification headers {dict_request}")
+
+        for dict_ret in self.execute(
+                self.get_session_client(region=region).set_identity_headers_in_notifications_enabled, None, raw_data=True, filters_req=dict_request
+        ):
+            self.clear_cache(SESIdentity)
+            return dict_ret
