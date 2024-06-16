@@ -177,7 +177,7 @@ class RDSClient(Boto3Client):
             db_cluster,
             self.update_db_cluster_information,
             [db_cluster.Status.AVAILABLE],
-            [db_cluster.Status.CREATING, db_cluster.Status.MODIFYING],
+            [db_cluster.Status.CREATING, db_cluster.Status.MODIFYING, db_cluster.Status.REBOOTING],
             [db_cluster.Status.FAILED, db_cluster.Status.DELETING],
             timeout=timeout
         )
