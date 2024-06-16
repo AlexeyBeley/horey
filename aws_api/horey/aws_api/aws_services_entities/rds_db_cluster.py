@@ -318,6 +318,7 @@ class RDSDBCluster(AwsObject):
         DELETING = "deleting"
         MODIFYING = "modifying"
         REBOOTING = "rebooting"
+        BACKING_UP = "backing-up"
         FAILED = "failed"
         STARTING = "starting"
         STOPPED = "stopped"
