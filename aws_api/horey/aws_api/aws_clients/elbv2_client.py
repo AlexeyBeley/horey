@@ -228,6 +228,25 @@ class ELBV2Client(Boto3Client):
         filters_req = filters_req if filters_req else None
         return list(self.yield_target_groups(region=region, full_information=full_information, filters_req=filters_req))
 
+    def update_listener_info(self, listener):
+        """
+        Standard.
+
+        :param listener:
+        :return:
+        """
+
+        for attr_name in ["load_balancer_arn", "region", "port"]:
+            if not getattr(listener, attr_name):
+                raise ValueError(f"Load balancer listener attribute '{attr_name}' was not set")
+
+        for current_listener in self.get_region_listeners(listener.region, load_balancer_arn=listener.load_balancer_arn):
+            if current_listener.port == listener.port:
+                listener.update_from_raw_response(current_listener.dict_src)
+                return True
+
+        return False
+
     def get_region_listeners(
             self, region, full_information=False, load_balancer_arn=None
     ):
