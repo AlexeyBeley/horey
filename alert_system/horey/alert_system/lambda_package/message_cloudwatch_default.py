@@ -177,7 +177,14 @@ class MessageCloudwatchDefault(MessageBase):
         else:
             notification.type = Notification.Types.CRITICAL
 
-        if message_dict["Trigger"]["MetricName"] == "Duration":
+        if "log_group_name" in alarm_description and "log_group_filter_pattern" in alarm_description:
+            pattern = alarm_description.get("log_group_filter_pattern")
+            pattern_middle = int(len(pattern)//2)
+            pattern = pattern[:pattern_middle] + "_horey_explicit_split_" + pattern[pattern_middle:]
+            log_group_name = alarm_description.get("log_group_name")
+            reason = f"Pattern '{pattern}' found in Lambda log group: {log_group_name}"
+            lambda_name = message_dict["Trigger"]["Namespace"].split("/")[-1]
+        elif message_dict["Trigger"]["MetricName"] == "Duration":
             # alarm.threshold = self.configuration.lambda_timeout * 0.6 * 1000
             threshold_sec = int(message_dict["Trigger"]["Threshold"] // 1000)
             reason = f"Lambda duration > {threshold_sec} seconds"
@@ -185,21 +192,24 @@ class MessageCloudwatchDefault(MessageBase):
             if len(name_dimensions) != 1:
                 raise RuntimeError(name_dimensions)
             lambda_name = name_dimensions[0]["value"]
-
-        elif "log_group_name" in alarm_description and "log_group_filter_pattern" in alarm_description:
-            pattern = alarm_description.get("log_group_filter_pattern")
-            log_group_name = alarm_description.get("log_group_name")
-            reason = f"Pattern '{pattern}' found in Lambda log group: {log_group_name}"
-            lambda_name = message_dict["Trigger"]["Namespace"].split("/")[-1]
+        elif message_dict["Trigger"]["MetricName"] == "Errors":
+            # alarm.threshold = self.configuration.lambda_timeout * 0.6 * 1000
+            threshold_sec = int(message_dict["Trigger"]["Threshold"] // 1000)
+            reason = f"Lambda finished with errors in last {threshold_sec} seconds"
+            name_dimensions = list(filter(lambda x: x["name"] == "FunctionName", message_dict["Trigger"]["Dimensions"]))
+            if len(name_dimensions) != 1:
+                raise RuntimeError(name_dimensions)
+            lambda_name = name_dimensions[0]["value"]
         else:
             raise NotImplementedError(f'{message_dict["Trigger"]["MetricName"]=}')
 
         alarm_time = message_dict["StateChangeTime"]
-
+        new_state_reason = message_dict["NewStateReason"]
         notification.text = (
             f"Region: {region_mark}\n"
             f'Lambda Name: {lambda_name}\n'
-            f'Reason: {reason}\n'
+            f'HR Reason: {reason}\n'
+            f'Raw reason: \'{new_state_reason}\'\n'
             f'Time: {alarm_time}\n'
         )
 

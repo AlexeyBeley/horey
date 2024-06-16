@@ -189,9 +189,6 @@ class NotificationChannelSlackConfigurationPolicy(SlackAPIConfigurationPolicy):
 
     """
 
-    CONFIGURATION_FILE_NAME = "notification_channel_slack_configuration_values.py"
-    ALERT_SYSTEM_MONITORING_ROUTING_TAG = "alert_system_monitoring"
-
     def __init__(self):
         super().__init__()
         self._alert_system_monitoring_destination = None

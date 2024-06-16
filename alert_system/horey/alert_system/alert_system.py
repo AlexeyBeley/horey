@@ -38,7 +38,8 @@ from horey.alert_system.lambda_package.event_handler import EventHandler
 import horey.alert_system.lambda_package.lambda_handler
 
 from horey.alert_system.lambda_package.message_cloudwatch_default import MessageCloudwatchDefault
-from horey.alert_system.lambda_package.notification_channels.notification_channel_factory import NotificationChannelFactory
+from horey.alert_system.lambda_package.notification_channels.notification_channel_factory import \
+    NotificationChannelFactory
 
 logger = get_logger()
 
@@ -97,7 +98,8 @@ class AlertSystem:
             if "/" in notification_channel_initializer_file_name:
                 raise "Notification channel initializer Sub-path is not supported"
             if notification_channel_initializer_file_name not in file_names:
-                raise ValueError(f"Notification channel initializer file '{notification_channel_initializer_file_name}' is not among lambda input files.")
+                raise ValueError(
+                    f"Notification channel initializer file '{notification_channel_initializer_file_name}' is not among lambda input files.")
         return True
 
     def provision_log_group(self):
@@ -169,6 +171,7 @@ class AlertSystem:
 
         @return:
         """
+
         filter_text = '"[ERROR]"'
         metric_name_raw = f"{self.configuration.lambda_name}-log-error"
         message_data = {"routing_tags": [NotificationChannelFactory.ALERT_SYSTEM_MONITORING_TAG],
@@ -176,7 +179,7 @@ class AlertSystem:
                         "log_group_filter_pattern": filter_text,
                         MessageCloudwatchDefault.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY: MessageCloudwatchDefault.ALERT_SYSTEM_SELF_MONITORING_TYPE_VALUE}
         self.provision_cloudwatch_logs_alarm(
-         metric_name_raw, message_data
+            metric_name_raw, message_data
         )
 
     def provision_self_monitoring_log_timeout_alarm(self):
@@ -283,7 +286,8 @@ class AlertSystem:
         )
 
         lambda_handler_file_path = sys.modules["horey.alert_system.lambda_package.lambda_handler"].__file__
-        alert_system_config_file_path = os.path.join(self.configuration.deployment_directory_path, EventHandler.ALERT_SYSTEM_CONFIGURATION_FILE_NAME)
+        alert_system_config_file_path = os.path.join(self.configuration.deployment_directory_path,
+                                                     EventHandler.ALERT_SYSTEM_CONFIGURATION_FILE_NAME)
         self.configuration.generate_configuration_file(alert_system_config_file_path)
 
         self.packer.add_files_to_zip(
@@ -294,9 +298,9 @@ class AlertSystem:
 
         os.chdir(current_dir)
         return os.path.join(
-                    self.configuration.deployment_directory_path,
-                    self.configuration.lambda_zip_file_name,
-                )
+            self.configuration.deployment_directory_path,
+            self.configuration.lambda_zip_file_name,
+        )
 
     def validate_lambda_package(self, zip_file_path, event=None):
         """
@@ -319,7 +323,8 @@ class AlertSystem:
         result_file_path = os.path.join(extraction_dir, "result.json")
         if os.path.exists(result_file_path):
             os.remove(result_file_path)
-        shutil.copy2("/Users/alexey.beley/git/horey/alert_system/horey/alert_system/lambda_package/trigger_local.py", extraction_dir)
+        shutil.copy2("/Users/alexey.beley/git/horey/alert_system/horey/alert_system/lambda_package/trigger_local.py",
+                     extraction_dir)
         with open(os.path.join(extraction_dir, "event.json"), "w", encoding="utf-8") as file_handler:
             json.dump(event, file_handler)
         ret = BashExecutor.run_bash(f"python {extraction_dir}/trigger_local.py")
@@ -336,8 +341,8 @@ class AlertSystem:
         :return:
         """
         validation_dir_name = os.path.splitext(zip_file_path)[
-            0
-        ] + "_validation"
+                                  0
+                              ] + "_validation"
         try:
             os.makedirs(validation_dir_name)
         except FileExistsError:
@@ -497,31 +502,45 @@ class AlertSystem:
         alarm.alarm_actions = [topic.arn]
         self.aws_api.cloud_watch_client.set_cloudwatch_alarm(alarm)
 
-    def provision_ses_configuration_set(self):
+    def provision_ses_configuration_set(self, configuration_set=None, declerative=True):
         """
         Provision alert_system ses configuration set.
 
         @return:
         """
+
         topic = SNSTopic({})
         topic.name = self.configuration.sns_topic_name
         topic.region = self.region
         if not self.aws_api.sns_client.update_topic_information(topic, full_information=False):
             raise RuntimeError("Could not update topic information")
 
-        configuration_set = SESV2ConfigurationSet({})
-        configuration_set.name = self.configuration.ses_configuration_set_name
-        configuration_set.region = self.region
-        configuration_set.reputation_options = {"ReputationMetricsEnabled": True}
-        configuration_set.sending_options = {"SendingEnabled": True}
-        configuration_set.tags = copy.deepcopy(self.tags)
-        configuration_set.tags.append({"Key": "name", "Value": configuration_set.name})
-        configuration_set.event_destinations = [{"Name": "alert_system_default_dst", "Enabled": True,
-                                                 "MatchingEventTypes": ["BOUNCE", "CLICK", "COMPLAINT", "DELIVERY",
-                                                                        "OPEN", "REJECT", "RENDERING_FAILURE", "SEND"],
-                                                 "SnsDestination": {
-                                                     "TopicArn": topic.arn}}]
-        self.aws_api.sesv2_client.provision_configuration_set(configuration_set)
+        if configuration_set is None:
+            if not declerative:
+                raise ValueError(f"Can not create new configuration set in Declerative mode")
+            configuration_set = SESV2ConfigurationSet({})
+            configuration_set.name = self.configuration.ses_configuration_set_name
+            configuration_set.region = self.region
+            configuration_set.reputation_options = {"ReputationMetricsEnabled": True}
+            configuration_set.sending_options = {"SendingEnabled": True}
+            configuration_set.tags = copy.deepcopy(self.tags)
+            configuration_set.tags.append({"Key": "name", "Value": configuration_set.name})
+            configuration_set.event_destinations = []
+
+        for event_destination in configuration_set.event_destinations:
+            if event_destination.get("Name") == "alert_system_default_dst":
+                break
+        else:
+            configuration_set.event_destinations.append({"Name": "alert_system_default_dst",
+                                                         "Enabled": True,
+                                                         "MatchingEventTypes": ["BOUNCE", "CLICK", "COMPLAINT",
+                                                                                "DELIVERY",
+                                                                                "OPEN", "REJECT", "RENDERING_FAILURE",
+                                                                                "SEND"],
+                                                         "SnsDestination": {
+                                                             "TopicArn": topic.arn}})
+
+        self.aws_api.sesv2_client.provision_configuration_set(configuration_set, declerative=declerative)
         return configuration_set
 
     def provision_cloudwatch_logs_alarm(
@@ -564,7 +583,7 @@ class AlertSystem:
 
         alarm = CloudWatchAlarm({})
         alarm.region = self.region
-        alarm.name = f"alarm-{log_group_name}-{metric_raw_name}"
+        alarm.name = f"alarm-{metric_raw_name}"
         alarm.actions_enabled = True
         alarm.alarm_description = json.dumps(message_dict)
         alarm.metric_name = metric_name

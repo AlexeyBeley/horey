@@ -294,12 +294,13 @@ class SESV2Client(Boto3Client):
 
         obj.update_from_raw_response(dict_src)
 
-    def provision_configuration_set(self, configuration_set: SESV2ConfigurationSet):
+    def update_email_configuration_set_information(self, configuration_set, full_information=True):
         """
-        Standard
+        Standard.
 
-        @param configuration_set:
-        @return:
+        :param configuration_set:
+        :param full_information:
+        :return:
         """
 
         region_configuration_sets = self.get_region_configuration_sets(
@@ -310,16 +311,41 @@ class SESV2Client(Boto3Client):
                 configuration_set.update_from_raw_response(
                     region_configuration_set.dict_src
                 )
-                self.get_configuration_set_full_information(region_configuration_set)
-                break
-        else:
-            region_configuration_set = None
+                if full_information:
+                    self.get_configuration_set_full_information(configuration_set)
+                return True
+        return False
+
+    def provision_configuration_set(self, configuration_set: SESV2ConfigurationSet, declerative=True):
+        """
+        Standard
+
+        @param configuration_set:
+        @return:
+        """
+        breakpoint()
+
+        current_configuration_set = SESV2ConfigurationSet({})
+        current_configuration_set.region = configuration_set.region
+        current_configuration_set.name = configuration_set.name
+
+        if not self.update_email_configuration_set_information(current_configuration_set, full_information=True):
             self.provision_configuration_set_raw(configuration_set.region,
                                                  configuration_set.generate_create_request()
                                                  )
-        create_requests = configuration_set.generate_create_requests_event_destinations(region_configuration_set)
+            self.update_email_configuration_set_information(current_configuration_set, full_information=False)
+
+        create_requests, update_requests, delete_requests = current_configuration_set.generate_event_destinations_requests(configuration_set)
         for create_request in create_requests:
-            self.create_request_event_destination_raw(configuration_set.region, create_request)
+            self.create_configuration_set_event_destination_raw(configuration_set.region, create_request)
+
+        if declerative:
+            for update_request in update_requests:
+                self.update_configuration_set_event_destination_raw(configuration_set.region, update_request)
+
+            for delete_request in delete_requests:
+                raise RuntimeError(delete_requests)
+                self.delete_configuration_set_event_destination_raw(configuration_set.region, delete_request)
 
     def provision_configuration_set_raw(self, region, request_dict):
         """
@@ -339,7 +365,7 @@ class SESV2Client(Boto3Client):
             self.clear_cache(SESV2ConfigurationSet)
             return response
 
-    def create_request_event_destination_raw(self, region, request_dict):
+    def create_configuration_set_event_destination_raw(self, region, request_dict):
         """
         Standard
 
@@ -351,6 +377,44 @@ class SESV2Client(Boto3Client):
         logger.info(f"Creating configuration_set event_destination: {request_dict}")
         for response in self.execute(
                 self.get_session_client(region=region).create_configuration_set_event_destination,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
+        ):
+            self.clear_cache(SESV2ConfigurationSet)
+            return response
+
+    def update_configuration_set_event_destination_raw(self, region, request_dict):
+        """
+        Standard
+
+        @param request_dict:
+        @return:
+        :param region:
+        """
+
+        logger.info(f"Updating configuration_set event_destination: {request_dict}")
+        for response in self.execute(
+                self.get_session_client(region=region).update_configuration_set_event_destination,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
+        ):
+            self.clear_cache(SESV2ConfigurationSet)
+            return response
+
+    def delete_configuration_set_event_destination_raw(self, region, request_dict):
+        """
+        Standard
+
+        @param request_dict:
+        @return:
+        :param region:
+        """
+
+        logger.info(f"Delete configuration_set event_destination: {request_dict}")
+        for response in self.execute(
+                self.get_session_client(region=region).delete_configuration_set_event_destination,
                 None,
                 raw_data=True,
                 filters_req=request_dict,

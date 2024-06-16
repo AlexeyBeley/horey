@@ -27,6 +27,10 @@ class MessageSESDefault(MessageBase):
 
         super().__init__(dict_src)
         self.message_dict = MessageBase.extract_message_dict(dict_src)
+
+        if self.message_dict.get("notificationType") == "AmazonSnsSubscriptionSucceeded":
+            return
+
         if "mail" not in self.message_dict:
             raise MessageBase.NotAMatchError("Not a match")
 
@@ -36,6 +40,8 @@ class MessageSESDefault(MessageBase):
 
         :return:
         """
+        if self.message_dict.get("notificationType") == "AmazonSnsSubscriptionSucceeded":
+            return self.generate_notification_amazon_sns_subscription_succeeded()
         notification = Notification()
         mail = self.message_dict.get("mail") or {}
         timestamp = mail.get("timestamp") or "None"
@@ -85,4 +91,18 @@ class MessageSESDefault(MessageBase):
                 notification.header or f"Default SES handler: {email_status}"
         )
 
+        return notification
+
+    def generate_notification_amazon_sns_subscription_succeeded(self):
+        """
+        Unique message - subscription.
+
+        :return:
+        """
+
+        notification = Notification()
+        timestamp = self._dict_src["Records"][0]["Sns"]["Timestamp"]
+        notification.text = f"Timestamp: {timestamp}. " + self.message_dict.get("message")
+        notification.type = Notification.Types.PARTY
+        notification.header = "Amazon Sns Subscription Succeeded to SES events"
         return notification

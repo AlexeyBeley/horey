@@ -43,9 +43,7 @@ class NotificationChannelEcho:
             line = f"{notification.header=}, {notification.text=}, {notification.tags=}"
         except Exception as error_inst:
             line = f"Error formatting log line: {repr(error_inst)}"
-        if notification.type == Notification.Types.CRITICAL:
-            logger.exception(line)
-        elif notification.type == Notification.Types.WARNING:
+        if notification.type in [Notification.Types.CRITICAL, Notification.Types.WARNING]:
             logger.warning(line)
         else:
             logger.info(line)

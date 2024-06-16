@@ -2,7 +2,7 @@
 Entry point for the receiver lambda.
 
 """
-
+import copy
 import json
 import traceback
 
@@ -24,18 +24,16 @@ def lambda_handler(event, _):
     logger_string = json.dumps(event)
     if "log_group_filter_pattern" in logger_string:
         try:
-            filter_string_start_index = logger_string.index("log_group_filter_pattern")
-            filter_string_start_index = (
-                logger_string.index(r": \\\"", filter_string_start_index) + 6
-            )
-            filter_string_end_index = logger_string.index(
-                r"\\\"}, \\\"type\\\":", filter_string_start_index
-            )
-            logger_string = (
-                logger_string[:filter_string_start_index]
-                + "filter_string_removed_to_exclude_recursion"
-                + logger_string[filter_string_end_index:]
-            )
+            dict_message = json.loads(event["Records"][0]["Sns"]["Message"])
+            alarm_description = json.loads(dict_message["AlarmDescription"])
+            pattern = alarm_description["log_group_filter_pattern"]
+            pattern_middle = int(len(pattern) // 2)
+            pattern = pattern[:pattern_middle] + "_horey_explicit_split_" + pattern[pattern_middle:]
+            alarm_description["log_group_filter_pattern"] = pattern
+            dict_message["AlarmDescription"] = json.dumps(alarm_description)
+            event_copy = copy.deepcopy(event)
+            event_copy["Records"][0]["Sns"]["Message"] = json.dumps(dict_message)
+            logger_string = json.dumps(event_copy)
         except Exception as error_inst:
             traceback_str = "".join(traceback.format_tb(error_inst.__traceback__))
             logger.exception(f"{traceback_str}\n{repr(error_inst)}")
