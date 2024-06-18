@@ -2046,6 +2046,31 @@ class EC2Client(Boto3Client):
         ):
             return response
 
+    def update_route_table_information(self, route_table: RouteTable):
+        """
+        Standard.
+
+        :param route_table:
+        :return:
+        """
+
+        filters_req = {"Filters": [
+            {
+                "Name": f"tag:{route_table.get_tag_key('name')}",
+                "Values": [
+                    route_table.get_tagname()
+                ]
+            },
+        ]}
+        region_route_tables = list(self.yield_route_tables(region=route_table.region, update_info=True, filters_req=filters_req))
+        if not region_route_tables:
+            return False
+
+        if len(region_route_tables) > 1:
+            raise ValueError(f"Found > 1 route tables using filter: {filters_req}")
+        route_table.update_from_raw_response(region_route_tables[0].dict_src)
+        return True
+
     def provision_route_table(self, route_table: RouteTable):
         """
         Standard
@@ -2054,23 +2079,15 @@ class EC2Client(Boto3Client):
         @return:
         """
 
-        region_route_tables = self.get_region_route_tables(route_table.region)
-        for region_route_table in region_route_tables:
-            if route_table.id is not None:
-                if route_table.id == region_route_table.id:
-                    break
-            elif (
-                    region_route_table.get_tagname(ignore_missing_tag=True)
-                    == route_table.get_tagname()
-            ):
-                break
-        else:
+        current_route_table = RouteTable({})
+        current_route_table.region = route_table.region
+        current_route_table.tags = route_table.tags
+        if not self.update_route_table_information(current_route_table):
             response = self.provision_route_table_raw(
                 route_table.generate_create_request()
             )
-            region_route_table = RouteTable(response)
-            self.clear_cache(RouteTable)
-        create_tags_request, delete_tags_request = self.generate_tags_requests(region_route_table, route_table)
+            current_route_table.update_from_raw_response(response)
+        create_tags_request, delete_tags_request = self.generate_tags_requests(current_route_table, route_table)
         if create_tags_request:
             self.clear_cache(RouteTable)
             self.create_tags_raw(create_tags_request)
@@ -2078,15 +2095,56 @@ class EC2Client(Boto3Client):
             self.clear_cache(RouteTable)
             self.delete_tags_raw(delete_tags_request)
 
-        request = region_route_table.generate_associate_route_table_request(route_table)
-        if request:
-            self.associate_route_table_raw(request)
-
-        create_requests, replace_requests = region_route_table.generate_change_route_requests(route_table)
+        create_requests, replace_requests = current_route_table.generate_change_route_requests(route_table)
         for create_request in create_requests:
-            self.create_route_raw(region_route_table.region, create_request)
+            self.create_route_raw(current_route_table.region, create_request)
         for replace_request in replace_requests:
-            self.replace_route_raw(region_route_table.region, replace_request)
+            self.replace_route_raw(current_route_table.region, replace_request)
+
+        disassociate, associate = current_route_table.generate_route_table_association_requests(route_table)
+        if disassociate:
+            raise RuntimeError("Route table disassociation without immediate association must be done manually")
+            # self.disassociate_route_table_raw(associate)
+        if associate:
+            # pylint: disable = unsubscriptable-object
+            if not self.replace_route_table_association(current_route_table.region, associate["SubnetId"], associate["RouteTableId"]):
+                self.associate_route_table_raw(associate)
+
+        self.update_route_table_information(route_table)
+
+    def replace_route_table_association(self, region, subnet_id, route_table_id):
+        """
+        Find associated route table and replace the association
+
+        :return:
+        """
+
+        filters_req = {"Filters": [
+            {
+                "Name": "association.subnet-id",
+                "Values": [
+                    subnet_id
+                ]
+            },
+        ]}
+
+        subnet_associated_route_tables = list(
+            self.yield_route_tables(region, filters_req=filters_req))
+
+        if not subnet_associated_route_tables:
+            return False
+
+        if len(subnet_associated_route_tables) > 1:
+            raise ValueError(f"Found more than 1 associated route table for subnet {filters_req}")
+
+        for existing_association in subnet_associated_route_tables[0].associations:
+            if existing_association["SubnetId"] == subnet_id:
+                replace_request = {"AssociationId": existing_association["RouteTableAssociationId"],
+                                   "RouteTableId": route_table_id}
+                self.replace_route_table_association_raw(region, replace_request)
+                return True
+        raise RuntimeError(
+            f"Was mot able to find association in the route table: {subnet_associated_route_tables[0].associations}")
 
     def generate_tags_requests(self, current_object, desired_object):
         """
@@ -2142,6 +2200,7 @@ class EC2Client(Boto3Client):
         for response in self.execute(
                 self.get_session_client(region=region).create_route_table, "RouteTable", filters_req=request_dict
         ):
+            self.clear_cache(RouteTable)
             return response
 
     def associate_route_table_raw(self, request_dict, region=None):
@@ -2155,6 +2214,23 @@ class EC2Client(Boto3Client):
         for response in self.execute(
                 self.get_session_client(region=region).associate_route_table, "AssociationId", filters_req=request_dict
         ):
+            self.clear_cache(RouteTable)
+            return response
+
+    def replace_route_table_association_raw(self, region, request_dict):
+        """
+        Standard
+
+        @param request_dict:
+        @return:
+        """
+
+        logger.info(f"Replace route table association: {request_dict}")
+
+        for response in self.execute(
+                self.get_session_client(region=region).replace_route_table_association, None, raw_data=True, filters_req=request_dict
+        ):
+            self.clear_cache(RouteTable)
             return response
 
     def create_route_raw(self, region, request_dict):
