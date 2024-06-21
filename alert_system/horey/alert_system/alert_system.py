@@ -609,7 +609,7 @@ class AlertSystem:
         """
         dict_request = {"Namespace": self.configuration.alert_system_lambda_log_group_name,
                         "MetricData": [{"MetricName": f"metric-{self.configuration.self_monitoring_log_timeout_metric_name_raw}",
-                                        "Timestamp": datetime.datetime.utcnow(),
+                                        "Timestamp": datetime.datetime.now(datetime.UTC),
                                         "Value": 1
                                         }]}
         self.aws_api.cloud_watch_client.put_metric_data_raw(self.region, dict_request)

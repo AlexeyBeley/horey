@@ -2669,7 +2669,6 @@ class AWSAPI:
         @param nat_gateways:
         @return:
         """
-
         for nat_gateway in nat_gateways:
             self.provision_nat_gateway(nat_gateway)
 
@@ -2711,7 +2710,7 @@ class AWSAPI:
 
     def provision_nat_gateway(self, nat_gateway):
         """
-        Self explanatory
+        Standard
 
         @param nat_gateway:
         @return:

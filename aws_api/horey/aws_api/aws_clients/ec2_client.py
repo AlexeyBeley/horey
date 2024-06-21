@@ -1981,14 +1981,16 @@ class EC2Client(Boto3Client):
         ):
             return response
 
-    def provision_nat_gateway(self, nat_gateway):
+    def update_nat_gateway_information(self, nat_gateway):
         """
-        Standard
+        Standard.
 
-        @param nat_gateway:
-        @return:
+        :param nat_gateway:
+        :return:
         """
+
         region_gateways = self.get_region_nat_gateways(nat_gateway.region)
+
         for region_gateway in region_gateways:
             if region_gateway.get_state() not in [
                 region_gateway.State.AVAILABLE,
@@ -2000,7 +2002,20 @@ class EC2Client(Boto3Client):
                     == nat_gateway.get_tagname()
             ):
                 nat_gateway.update_from_raw_response(region_gateway.dict_src)
-                return
+                return True
+
+        return False
+
+    def provision_nat_gateway(self, nat_gateway):
+        """
+        Standard
+
+        @param nat_gateway:
+        @return:
+        """
+
+        if self.update_nat_gateway_information(nat_gateway):
+            return
 
         try:
             response = self.provision_nat_gateway_raw(
