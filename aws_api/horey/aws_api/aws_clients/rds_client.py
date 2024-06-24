@@ -509,7 +509,7 @@ class RDSClient(Boto3Client):
 
         return list(self.yield_db_cluster_parameter_groups(region=region, full_information=full_information))
 
-    def get_db_cluster_parameters_group_full_information(self, obj):
+    def get_db_cluster_parameters_group_full_information(self, obj: RDSDBClusterParameterGroup):
         """
         Standard.
 
@@ -645,34 +645,49 @@ class RDSClient(Boto3Client):
 
         return final_result
 
-    def provision_db_cluster_parameter_group(self, db_cluster_parameter_group):
+    def update_db_cluster_parameter_group_information(self, db_cluster_parameter_group, full_information=True):
+        """
+        Standard
+
+        :param full_information:
+        :param db_cluster_parameter_group:
+        :return:
+        """
+
+        for region_object in self.yield_db_cluster_parameter_groups(region=db_cluster_parameter_group.region, full_information=False, update_info=True):
+            if (
+                    db_cluster_parameter_group.name
+                    == region_object.name
+            ):
+                if not db_cluster_parameter_group.update_from_attrs(region_object):
+                    raise RuntimeError(f"Updating db_cluster_parameter_group {db_cluster_parameter_group.name} failed")
+                if full_information:
+                    self.get_db_cluster_parameters_group_full_information(db_cluster_parameter_group)
+                return True
+        return False
+
+    def provision_db_cluster_parameter_group(self, db_cluster_parameter_group: RDSDBClusterParameterGroup):
         """
         Standard.
 
         :param db_cluster_parameter_group:
         :return:
         """
-
-        region_db_cluster_parameter_groups = (
-            self.get_region_db_cluster_parameter_groups(
-                db_cluster_parameter_group.region
-            )
-        )
-
-        for region_db_cluster_parameter_group in region_db_cluster_parameter_groups:
-            if (
-                    db_cluster_parameter_group.name
-                    == region_db_cluster_parameter_group.name
-            ):
-                db_cluster_parameter_group.update_from_raw_response(
-                    region_db_cluster_parameter_group.dict_src
-                )
-                return db_cluster_parameter_group
-
-        response = self.provision_db_cluster_parameter_group_raw(db_cluster_parameter_group.region,
+        current_db_cluster_parameter_group = RDSDBClusterParameterGroup({})
+        current_db_cluster_parameter_group.region = db_cluster_parameter_group.region
+        current_db_cluster_parameter_group.name = db_cluster_parameter_group.name
+        if not self.update_db_cluster_parameter_group_information(current_db_cluster_parameter_group):
+            response = self.provision_db_cluster_parameter_group_raw(db_cluster_parameter_group.region,
                                                                  db_cluster_parameter_group.generate_create_request()
                                                                  )
-        db_cluster_parameter_group.update_from_raw_response(response)
+            db_cluster_parameter_group.update_from_raw_response(response)
+
+        request = current_db_cluster_parameter_group.generate_modify_db_cluster_parameter_group_request(db_cluster_parameter_group)
+        if request:
+            self.modify_db_cluster_parameter_group_raw(db_cluster_parameter_group.region, request)
+            self.wait_for_db_cluster_parameter_changes(db_cluster_parameter_group, request)
+
+        self.update_db_cluster_parameter_group_information(db_cluster_parameter_group, full_information=False)
         return db_cluster_parameter_group
 
     def provision_db_cluster_parameter_group_raw(self, region, request_dict):
@@ -687,6 +702,53 @@ class RDSClient(Boto3Client):
         ):
             self.clear_cache(RDSDBClusterParameterGroup)
             return response
+
+    def modify_db_cluster_parameter_group_raw(self, region, request_dict):
+        """
+        Returns raw response
+
+        """
+
+        logger.info(f"Modifying db_cluster_parameter_group: {request_dict}")
+        for response in self.execute(
+                self.get_session_client(region=region).modify_db_cluster_parameter_group,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
+        ):
+            self.clear_cache(RDSDBClusterParameterGroup)
+            return response
+
+    def wait_for_db_cluster_parameter_changes(self, param_group, request):
+        """
+        Wait for real parameters to be same as in the request
+
+        :param param_group:
+        :param request:
+        :return:
+        """
+
+        timeout = datetime.datetime.now() + datetime.timedelta(seconds=360)
+
+        while datetime.datetime.now() < timeout:
+            all_current_parameters_by_name = {response["ParameterName"]: response for response in self.execute(
+                self.get_session_client(region=param_group.region).describe_db_cluster_parameters,
+                "Parameters",
+                filters_req={"DBClusterParameterGroupName": param_group.name, "Source": "user"}
+            )}
+            for desired_parameter in request["Parameters"]:
+                if current_state := all_current_parameters_by_name.get(desired_parameter["ParameterName"]):
+                    if current_state != desired_parameter:
+                        logger.info(f"Parameter {desired_parameter=} != {current_state=}")
+                        break
+                else:
+                    logger.info(f"Parameter '{desired_parameter['ParameterName']}' was not found")
+                    break
+            else:
+                return True
+            logger.info("Waiting for all parameters to modify. Going to sleep.")
+            time.sleep(1)
+        raise TimeoutError(f"DB Cluster parameters did not change: {request}")
 
     def dispose_cluster_parameter_group(self, param_group):
         """

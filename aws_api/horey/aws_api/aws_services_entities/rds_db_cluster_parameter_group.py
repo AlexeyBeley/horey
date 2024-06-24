@@ -15,6 +15,7 @@ class RDSDBClusterParameterGroup(AwsObject):
         self._region = None
         self.db_parameter_group_family = None
         self.description = None
+        self.parameters = []
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -60,6 +61,42 @@ class RDSDBClusterParameterGroup(AwsObject):
         """
         request = {"DBParameterGroupFamily": self.db_parameter_group_family, "DBClusterParameterGroupName": self.name,
                    "Description": self.description, "Tags": self.tags}
+
+        return request
+
+    def generate_modify_db_cluster_parameter_group_request(self, desired_param_group):
+        """
+        Standard.
+
+        :return:
+        """
+        if len(self.parameters) != len({param["ParameterName"] for param in self.parameters}):
+            raise RuntimeError(f"Expect single name in source param list: {self.name}")
+
+        desired_params_by_name = {}
+        for param in desired_param_group.parameters:
+            if param.get("Source") != "user":
+                raise ValueError(f"Only source = User supported: {param} in {self.name}")
+            desired_params_by_name[param["ParameterName"]] = param
+        if len(desired_params_by_name) != len(desired_param_group.parameters):
+            raise RuntimeError(f"Expect single name in desired param list: {self.name}")
+
+        # self.parameters = [] means new deployment, no values yet.
+        desired_changes = [] if self.parameters else desired_param_group.parameters
+
+        for current_param_value in self.parameters:
+            if desired_param_value := desired_params_by_name.get(current_param_value["ParameterName"]):
+                if desired_param_value != current_param_value:
+                    desired_changes.append(desired_param_value)
+
+            elif current_param_value.get("Source") not in ["engine-default", "system"]:
+                raise ValueError(f"Unknown param source {current_param_value}")
+
+        if not desired_changes:
+            return None
+        request = {
+                   "DBClusterParameterGroupName": self.name,
+                   "Parameters": desired_changes}
 
         return request
 
