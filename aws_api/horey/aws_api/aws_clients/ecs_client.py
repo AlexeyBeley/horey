@@ -388,6 +388,9 @@ class ECSClient(Boto3Client):
             filters_req_new = {"services": task_arns[i * 10: (i + 1) * 10], "include": ["TAGS"],
                                "cluster": filters_req["cluster"]}
 
+            if len(filters_req_new["services"]) == 0:
+                break
+
             for dict_src in self.execute(
                     self.get_session_client(region=region).describe_services, "services", filters_req=filters_req_new
             ):
