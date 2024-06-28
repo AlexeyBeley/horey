@@ -766,6 +766,8 @@ class AzureDevopsAPI:
 
         if response.status_code == 404:
             dict_src = {"id": int(work_item_id), "error": response.json()}
+        elif response.status_code == 401:
+            dict_src = {"id": int(work_item_id), "error": {"status_code": response.status_code, "headers": response.headers}}
         else:
             dict_src = response.json()
 
