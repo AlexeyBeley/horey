@@ -2,6 +2,7 @@
 Module to handle cross service interaction
 
 """
+import copy
 # pylint: disable= too-many-lines
 import json
 import os
@@ -4158,3 +4159,53 @@ class AWSAPI:
         Can not find resource.
 
         """
+    def extract_s3_resource_statements_from_identity_policy(self, policy, bucket_name: str):
+        """
+        Extract bucket related policy statemnts.
+
+        :param policy:
+        :param bucket_name:
+        :return:
+        """
+
+        lst_ret = []
+        for statement in policy.document["Statement"]:
+            resources = self.intersect_resources_with_bucket_name(statement["Resource"], bucket_name)
+            if not resources:
+                continue
+
+            new_statement = copy.deepcopy(statement)
+            new_statement["Resource"] = resources
+            lst_ret.append(new_statement)
+
+        return lst_ret
+
+    def intersect_resources_with_bucket_name(self, resource, bucket_name: str):
+        """
+        Find common resources
+
+        :param resource:
+        :param bucket_name:
+        :return:
+        """
+
+        lst_ret = []
+        if isinstance(resource, list):
+            for _resource in resource:
+                lst_ret += self.intersect_resources_with_bucket_name(_resource, bucket_name)
+            return lst_ret
+
+        if not isinstance(resource, str):
+            raise ValueError(resource)
+
+        if resource.count(":") != 5:
+            raise ValueError(resource)
+
+        resource_bucket_name = resource.split(":")[-1].split("/", maxsplit=1)[0]
+        if "*" in resource_bucket_name:
+            raise ValueError(resource)
+
+        if resource_bucket_name == bucket_name:
+            return [resource]
+
+        return []

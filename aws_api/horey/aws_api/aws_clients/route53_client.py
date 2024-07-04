@@ -53,11 +53,15 @@ class Route53Client(Boto3Client):
         :return:
         """
 
-        hosted_zones = list(self.yield_hosted_zones(full_information=full_information))
+        hosted_zones = list(self.yield_hosted_zones(full_information=False))
         if name is not None:
             if not name.endswith("."):
                 name += "."
             hosted_zones = [hz for hz in hosted_zones if hz.name == name]
+
+        if full_information:
+            for hosted_zone in hosted_zones:
+                self.get_hosted_zone_full_information(hosted_zone)
 
         return hosted_zones
 
@@ -256,8 +260,7 @@ class Route53Client(Boto3Client):
         for response in self.execute(
                 self.get_session_client().change_resource_record_sets,
                 "ChangeInfo",
-                filters_req=request_dict,
-                exception_ignore_callback=lambda error: "InvalidChangeBatch" in repr(error)
+                filters_req=request_dict
         ):
             self.clear_cache(HostedZone)
             return response
