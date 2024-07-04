@@ -23,6 +23,7 @@ class PublicIpAddress(AzureObject):
         self.public_ip_address_version = None
         self.ip_address = None
         self.ip_configuration = None
+        self.nat_gateway = None
 
         super().__init__(dict_src, from_cache=from_cache)
 
