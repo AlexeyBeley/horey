@@ -340,6 +340,8 @@ class DockerAPI:
         for image in all_images:
             if image.attrs["Parent"] == image_id:
                 child_ids.append(image.id)
+
+        logger.info(f"{image_id=} {child_ids=}")
         return child_ids
 
     def save(self, image, file_path):
