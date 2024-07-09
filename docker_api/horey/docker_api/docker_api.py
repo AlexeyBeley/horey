@@ -295,6 +295,9 @@ class DockerAPI:
         @return:
         :param childless: Do not look for children - helpful when there are many images.
         """
+
+        logger.info(f"Start removing image: {image_id}")
+
         lst_ret = []
 
         if force:
@@ -333,7 +336,7 @@ class DockerAPI:
         all_images = self.get_all_images()
         candidates = [image for image in all_images if image_id in image.id]
         if len(candidates) != 1:
-            raise RuntimeError(f"Found {len(image_id)=} with {image_id=}")
+            raise RuntimeError(f"Found {len(candidates)=} with {image_id=}")
         for image in all_images:
             if image == candidates[0]:
                 continue
