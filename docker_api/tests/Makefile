@@ -10,26 +10,24 @@ USERNAME := $(shell whoami)
 echo:
 	echo ${USERNAME}
 
-build:
-	source ${VENV_BIN_DIR}/activate &&\
-	cd ${HOREY_DIR_PATH} &&\
-	make raw_install_wheel-docker_api
+build_ng:
+	python ${HOREY_DIR_PATH}/pip_api/horey/pip_api/pip_api_make.py --install horey.docker_api --force_reinstall --pip_api_configuration ${HOREY_DIR_PATH}/pip_api_configuration.py
 
-test: FORCE build
+test: FORCE build_ng
 	source ${VENV_BIN_DIR}/activate &&\
 	python3 -m pytest ${CURRENT_DIR}/ -v
 
-wip_%: FORCE build
+wip_%: FORCE build_ng
 	source ${VENV_BIN_DIR}/activate &&\
 	python3 -m pytest -m wip --full-trace ${CURRENT_DIR}/$(subst wip_,,$@) -v -s
 
-pytest_%: FORCE build
+pytest_%: FORCE build_ng
 	source ${VENV_BIN_DIR}/activate &&\
 	python3 -m pytest --full-trace ${CURRENT_DIR}/$(subst pytest_,,$@) -v -s
 
 # for Mac
-wip: FORCE build
+wip: FORCE build_ng
 	source ${VENV_BIN_DIR}/activate &&\
-	DOCKER_HOST=unix:///Users/${USERNAME}/.docker/run/docker.sock python3 -m pytest -m wip --full-trace ${CURRENT_DIR}/ -v -s
+	python -m pytest -m wip --full-trace ${CURRENT_DIR}/ -v -s
 
 FORCE: ;

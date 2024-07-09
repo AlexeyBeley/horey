@@ -185,7 +185,7 @@ def test_get_child_image_ids():
     assert isinstance(image_ids, list)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_save():
     docker_api = DockerAPI()
     image_tag = "horey-test:latest"
@@ -193,9 +193,17 @@ def test_save():
     assert docker_api.save(image, "tmp.tar")
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_load():
     docker_api = DockerAPI()
     image = docker_api.load("tmp.tar")
     tags = ["horey-test:latest", "horey:file_loaded"]
     assert docker_api.tag_image(image, tags)
+
+
+@pytest.mark.wip
+def test_get_all_ancestors():
+    docker_api = DockerAPI()
+    image_id = "sha256:7455e988e7a35e82819636c8afd59516147c199309ed47aa720283d571a0880e"
+    ret = docker_api.get_all_ancestors(image_id)
+    assert ret

@@ -293,7 +293,7 @@ class DockerAPI:
         @param force:
         @param wait_to_finish:
         @return:
-        :param childless: Do not look for childern - helpfull when there are many images.
+        :param childless: Do not look for children - helpful when there are many images.
         """
 
         if force:
@@ -384,6 +384,25 @@ class DockerAPI:
             raise ValueError(f"Expected list of length 1: {images=}")
 
         return images[0]
+
+    def get_all_ancestors(self, image_id, all_images=None):
+        """
+        Generate list of ancestors.
+
+        :param image_id:
+        :return:
+        """
+
+        if all_images is None:
+            all_images = {image.id: image for image in self.get_all_images()}
+            if not all_images[image_id].attrs["Parent"]:
+                return []
+            return self.get_all_ancestors(all_images[image_id].attrs["Parent"], all_images=all_images)
+
+        if not all_images[image_id].attrs["Parent"]:
+            return [image_id]
+
+        return [image_id] + self.get_all_ancestors(all_images[image_id].attrs["Parent"], all_images=all_images)
 
     class OutputError(RuntimeError):
         """

@@ -53,6 +53,7 @@ class AsyncOrchestrator:
             task.result = task.function()
         except Exception as error_inst:
             task.exception = error_inst
+            logger.error(f"Exception output start {task.id}")
             logger.exception(error_inst)
         finally:
             logger.info(f"Setting task {task.id} as finished")
@@ -106,7 +107,7 @@ class AsyncOrchestrator:
         while datetime.datetime.now() < end_time:
             if task.finished:
                 if task.exception:
-                    raise RuntimeError(f"Task failed: '{task_id}'") from task.exception
+                    raise RuntimeError(f"Task failed: '{task_id}' look for 'Exception output start {task_id}' ") from task.exception
                 return task.result
 
             logger.info(f"Waiting for task '{task_id}' to start and finish. Going to sleep {sleep_time}")
