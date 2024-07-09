@@ -338,12 +338,8 @@ class DockerAPI:
         if len(candidates) != 1:
             raise RuntimeError(f"Found {len(candidates)=} with {image_id=}")
         for image in all_images:
-            if image == candidates[0]:
-                continue
-            for history_element in image.history():
-                if image_id in history_element["Id"]:
-                    child_ids.append(image.id)
-                    break
+            if image.attrs["Parent"] == image_id:
+                child_ids.append(image.id)
         return child_ids
 
     def save(self, image, file_path):
