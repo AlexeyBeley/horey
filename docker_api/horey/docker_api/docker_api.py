@@ -295,17 +295,21 @@ class DockerAPI:
         @return:
         :param childless: Do not look for children - helpful when there are many images.
         """
+        lst_ret = []
 
         if force:
             if not childless:
                 for child_image_id in self.get_child_image_ids(image_id):
-                    self.remove_image(child_image_id, force=True)
+                    lst_ret += self.remove_image(child_image_id, force=True)
 
             for container in self.get_containers_by_image(image_id):
                 self.kill_container(container, remove=True, wait_to_finish=wait_to_finish)
 
         logger.info(f"Removing image: {image_id}.")
         self.client.images.remove(image_id, force=force)
+        lst_ret.append(image_id)
+
+        return lst_ret
 
     def get_all_images(self, repo_name=None):
         """
