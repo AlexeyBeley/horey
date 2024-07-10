@@ -309,6 +309,9 @@ class DockerAPI:
                 self.kill_container(container, remove=True, wait_to_finish=wait_to_finish)
 
         logger.info(f"Removing image: {image_id}.")
+        if lst_ret and (image_id not in [image.id for image in self.get_all_images()]):
+            return lst_ret
+
         self.client.images.remove(image_id, force=force)
         lst_ret.append(image_id)
 
