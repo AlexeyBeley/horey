@@ -299,18 +299,28 @@ class DockerAPI:
         logger.info(f"Start removing image: {image_id}")
 
         lst_ret = []
-
+        image_children = None
         if force:
+            all_images = self.get_all_images()
+            main_image = list(filter(lambda _img: _img.id == image_id, all_images))
+            if len(main_image) != 1:
+                raise ValueError(f"{image_id=}, {len(main_image)=}")
+            main_image = main_image[0]
+
             if not childless:
-                for child_image_id in self.get_child_image_ids(image_id):
+                image_children = self.get_child_image_ids(image_id, all_images)
+                for child_image_id in image_children:
                     lst_ret += self.remove_image(child_image_id, force=True)
 
             for container in self.get_containers_by_image(image_id):
                 self.kill_container(container, remove=True, wait_to_finish=wait_to_finish)
 
+            if image_children and not main_image.tags:
+                logger.info(f"Untagged parent image automatically removed by docker after all children removed: {image_id}.")
+                lst_ret.append(image_id)
+                return lst_ret
+
         logger.info(f"Removing image: {image_id}.")
-        if lst_ret and (image_id not in [image.id for image in self.get_all_images()]):
-            return lst_ret
 
         self.client.images.remove(image_id, force=force)
         lst_ret.append(image_id)
@@ -328,7 +338,7 @@ class DockerAPI:
 
         return self.client.images.list(name=repo_name, all=True)
 
-    def get_child_image_ids(self, image_id):
+    def get_child_image_ids(self, image_id, all_images):
         """
         Return the children of the image.
 
@@ -336,7 +346,6 @@ class DockerAPI:
         """
 
         child_ids = []
-        all_images = self.get_all_images()
         candidates = [image for image in all_images if image_id in image.id]
         if len(candidates) != 1:
             raise RuntimeError(f"Found {len(candidates)=} with {image_id=}")
