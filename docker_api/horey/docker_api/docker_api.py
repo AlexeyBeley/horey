@@ -7,6 +7,7 @@ import datetime
 import getpass
 import os.path
 import platform
+from time import perf_counter
 
 import docker
 from docker.errors import BuildError
@@ -64,6 +65,7 @@ class DockerAPI:
         """
 
         logger.info(f"Starting building image {dockerfile_directory_path}, {tags}")
+
         if not isinstance(tags, list):
             raise ValueError(
                 f"'tags' must be of a type 'list' received {tags}: type: {type(tags)}"
@@ -71,14 +73,16 @@ class DockerAPI:
 
         tag = tags[0] if len(tags) > 0 else "latest"
         try:
+            build_start = perf_counter()
             docker_image, build_log = self.client.images.build(
                 path=dockerfile_directory_path, tag=tag, nocache=nocache
             )
+            build_end = perf_counter()
         except BuildError as exception_instance:
             self.print_log(exception_instance.build_log)
             raise
 
-        logger.info("Finished building image")
+        logger.info(f"Finished building image in {build_end-build_start} seconds")
         self.print_log(build_log)
         self.tag_image(docker_image, tags[1:])
         return docker_image
