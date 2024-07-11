@@ -64,26 +64,25 @@ class DockerAPI:
         @return:
         """
 
-        logger.info(f"Starting building image {dockerfile_directory_path}, {tags}")
-
         if not isinstance(tags, list):
             raise ValueError(
                 f"'tags' must be of a type 'list' received {tags}: type: {type(tags)}"
             )
 
         tag = tags[0] if len(tags) > 0 else "latest"
+        logger.info(f"Starting building image {dockerfile_directory_path}, {tags}")
         try:
             build_start = perf_counter()
             docker_image, build_log = self.client.images.build(
                 path=dockerfile_directory_path, tag=tag, nocache=nocache
             )
             build_end = perf_counter()
-            logger.info(f"Finished building image in {build_end - build_start} seconds")
         except BuildError as exception_instance:
             self.print_log(exception_instance.build_log)
             raise
 
         self.print_log(build_log)
+        logger.info(f"Finished building image in {build_end - build_start} seconds")
         self.tag_image(docker_image, tags[1:])
         return docker_image
 
