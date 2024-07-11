@@ -78,11 +78,11 @@ class DockerAPI:
                 path=dockerfile_directory_path, tag=tag, nocache=nocache
             )
             build_end = perf_counter()
+            logger.info(f"Finished building image in {build_end - build_start} seconds")
         except BuildError as exception_instance:
             self.print_log(exception_instance.build_log)
             raise
 
-        logger.info(f"Finished building image in {build_end-build_start} seconds")
         self.print_log(build_log)
         self.tag_image(docker_image, tags[1:])
         return docker_image
