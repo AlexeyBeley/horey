@@ -413,9 +413,14 @@ class ECRClient(Boto3Client):
         if len(repository_names) > 1:
             raise NotImplementedError(repository_names)
 
-        request_dict = {"repositoryName": images[0].repository_name,
-                        "imageIds": [{"imageDigest": image.image_digest} for image in images]}
-        return self.batch_delete_image_raw(images[0].region, request_dict)
+        buffer_index = 0
+        lst_ret = []
+        while buffer_index <= len(images):
+            request_dict = {"repositoryName": images[0].repository_name,
+                        "imageIds": [{"imageDigest": image.image_digest} for image in images[buffer_index:buffer_index+100]]}
+            lst_ret.append(self.batch_delete_image_raw(images[0].region, request_dict))
+            buffer_index += 100
+        return lst_ret
 
     def batch_delete_image_raw(self, region, request_dict):
         """
