@@ -355,8 +355,12 @@ def provision_venv(configs):
 
     if configs.get("venv_dir_path") is None:
         return True
+    try:
+        install_venv(configs)
+    except Exception as inst_error:
+        logger.error(inst_error)
+        breakpoint()
 
-    install_venv(configs)
     StandaloneMethods = get_standalone_methods(configs)
     venv_path = os.path.abspath(configs.get("venv_dir_path"))
     logger.info(f"Creating new venv in: '{venv_path}'")
