@@ -5,12 +5,10 @@ PIP API module.
 
 import sys
 import os
-import json
 import shutil
 
 from horey.h_logger import get_logger
 from horey.pip_api.requirement import Requirement
-from horey.pip_api.package import Package
 from horey.pip_api.pip_api_configuration_policy import PipAPIConfigurationPolicy
 from horey.common_utils.common_utils import CommonUtils
 from horey.common_utils.bash_executor import BashExecutor
@@ -18,6 +16,7 @@ from horey.pip_api.standalone_methods import StandaloneMethods
 
 logger = get_logger()
 StandaloneMethods.logger = logger
+
 
 class PipAPI:
     """
@@ -79,10 +78,6 @@ class PipAPI:
     def init_packages(self):
         """
         Initialize packages with their repo paths and versions
-
-        :return:
-        """
-
         response = self.execute(f"{self.get_python_interpreter_command()} -m pip list --format json")
 
         lst_packages = json.loads(response)
@@ -97,6 +92,11 @@ class PipAPI:
                     package.multi_package_repo_path = repo_path
 
         self.packages = objects
+        :return:
+        """
+
+        self.packages = self.standalone_methods.get_installed_packages()
+        return self.packages
 
     class BashError(RuntimeError):
         """
@@ -176,6 +176,17 @@ class PipAPI:
         """
         raise DeprecationWarning("Use init")
 
+    def install_requirements_from_file(self, file_path, force_reinstall=False):
+        """
+        File like requirements.txt.
+
+        :param file_path:
+        :param force_reinstall:
+        :return:
+        """
+
+        self.standalone_methods.install_requirements_from_file(file_path, force_reinstall=force_reinstall)
+
     def install_requirement_from_string(self, file_path, str_src, force_reinstall=False):
         """
         Install string from requirements.txt file format.
@@ -238,17 +249,17 @@ class PipAPI:
     def requirement_satisfied(self, requirement: Requirement):
         """
         Check weather the requirement is already installed.
-
-        :param requirement:
-        :return:
-        """
-
         for package in self.packages:
             if package.name.replace("_", "-") != requirement.name.replace("_", "-"):
                 continue
             return package.check_version_requirements(requirement)
 
         return False
+        :param requirement:
+        :return:
+        """
+
+        return self.standalone_methods.requirement_satisfied(requirement)
 
     def compose_requirements_recursive(self, requirements_file_path):
         """
@@ -279,15 +290,9 @@ class PipAPI:
             else:
                 self.REQUIREMENTS[requirement.name] = requirement
 
-    @staticmethod
-    def init_requirements_raw(requirements_file_path):
+    def init_requirements_raw(self, requirements_file_path):
         """
         Init requirements from single file.
-
-        :param requirements_file_path:
-        :return:
-        """
-
         if not os.path.exists(requirements_file_path):
             return []
 
@@ -303,6 +308,11 @@ class PipAPI:
             requirements.append(Requirement(requirements_file_path, line))
 
         return requirements
+        :param requirements_file_path:
+        :return:
+        """
+
+        return self.standalone_methods.init_requirements_raw(requirements_file_path)
 
     @staticmethod
     def get_common_min_requirement(this: Requirement, other: Requirement):

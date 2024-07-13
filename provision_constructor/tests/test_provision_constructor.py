@@ -14,13 +14,13 @@ DEPLOYMENT_DIR = os.path.join(
 )
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_init():
     provision_constructor = ProvisionConstructor()
     assert isinstance(provision_constructor, ProvisionConstructor)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_provision_system_function_horey_package_generic_venv():
     """
     python -m venv ./test_venv

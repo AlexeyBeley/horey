@@ -442,6 +442,21 @@ class StandaloneMethods:
         self.INSTALLED_PACKAGES = objects
         return self.INSTALLED_PACKAGES
 
+    def install_requirements_from_file(self, src_file_path, force_reinstall=False):
+        """
+        For example requirements.txt
+
+        :param src_file_path:
+        :param force_reinstall:
+        :return:
+        """
+
+        with open(src_file_path, encoding="utf-8") as file_handler:
+            lines = file_handler.readlines()
+
+        for line in lines:
+            self.install_requirement_from_string(src_file_path, line.strip("\n"), force_reinstall=force_reinstall)
+
     def install_requirement_from_string(self, src_file_path, str_src, force_reinstall=False):
         """
         Entrypoint.
@@ -501,9 +516,9 @@ class StandaloneMethods:
         :return:
         """
 
-        requirement = Requirement("horey_auto_generated", "setuptools")
-        requirement.force = False
-        self.install_requirement_standard(requirement)
+        requirement_setup_tools = Requirement("horey_auto_generated", "setuptools")
+        requirement_setup_tools.force = False
+        self.install_requirement_standard(requirement_setup_tools)
 
         if requirement.force or not self.requirement_satisfied(requirement):
             package_lower_dir_name = requirement.name.split(".")[-1]

@@ -11,9 +11,9 @@ class ConfigValues:
     """
 
     def __init__(self):
-        self.multi_package_repositories = [
+        self.multi_package_repositories = {"horey.":
             os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../../")
-        ]
+                                           }
         self.venv_dir_path = os.path.join(
             os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "test_venv")
         )

@@ -198,7 +198,7 @@ def test_install_requests_venv_download_horey(provisioned_venv_parent_dir_path):
     assert pip_api_make.install_requests(config)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_provision_pip_api_venv_with_horey_parent_dir_path(provisioned_venv_parent_dir_path):
     config = {"horey_parent_dir_path": provisioned_venv_parent_dir_path,
               "multi_package_repositories": {"horey.": os.path.join(provisioned_venv_parent_dir_path, "horey")},
@@ -210,7 +210,7 @@ def test_provision_pip_api_venv_with_horey_parent_dir_path(provisioned_venv_pare
     assert standalone_methods is not None
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_provision_pip_api_venv_without_horey_parent_dir_path(provisioned_venv_parent_dir_path):
     config = {"horey_parent_dir_path": provisioned_venv_parent_dir_path,
               "multi_package_repositories": {"horey.": os.path.join(provisioned_venv_parent_dir_path, "horey")},
@@ -303,7 +303,7 @@ def test_default_configs_provision_pip_api_venv_with_horey_parent_dir_path(provi
     assert standalone_methods is not None
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_default_configs_provision_pip_api_venv_without_horey_parent_dir_path(provisioned_venv_default_configs):
     pip_api_make.install_wheel(provisioned_venv_default_configs)
     pip_api_make.install_requests(provisioned_venv_default_configs)
