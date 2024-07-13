@@ -14,9 +14,10 @@ from horey.pip_api.package import Package
 from horey.pip_api.pip_api_configuration_policy import PipAPIConfigurationPolicy
 from horey.common_utils.common_utils import CommonUtils
 from horey.common_utils.bash_executor import BashExecutor
+from horey.pip_api.standalone_methods import StandaloneMethods
 
 logger = get_logger()
-
+StandaloneMethods.logger = logger
 
 class PipAPI:
     """
@@ -31,6 +32,7 @@ class PipAPI:
         self.configuration = configuration
         self.multi_package_repos_prefix_map = {}
         self.init_configuration()
+        self.standalone_methods = StandaloneMethods(self.configuration.venv_dir_path, self.configuration.multi_package_repositories)
 
     def init_configuration(self):
         """
@@ -43,7 +45,7 @@ class PipAPI:
             return
 
         if self.configuration.multi_package_repositories is not None:
-            for repo_path in self.configuration.multi_package_repositories:
+            for repo_path in self.configuration.multi_package_repositories.values():
                 self.init_multi_package_repository(repo_path)
 
         if self.configuration.venv_dir_path is not None:
@@ -173,6 +175,18 @@ class PipAPI:
         :return:
         """
         raise DeprecationWarning("Use init")
+
+    def install_requirement_from_string(self, file_path, str_src, force_reinstall=False):
+        """
+        Install string from requirements.txt file format.
+
+        :param file_path:
+        :param str_src:
+        :param force_reinstall:
+        :return:
+        """
+
+        self.standalone_methods.install_requirement_from_string(file_path, str_src, force_reinstall=force_reinstall)
 
     def install_requirement(self, requirement: Requirement):
         """

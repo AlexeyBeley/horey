@@ -9,7 +9,7 @@ from horey.pip_api.requirement import Requirement
 # pylint: disable=missing-function-docstring
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_init():
     dict_src = {"name": "requests",
                  "version": "2.32.2"}
@@ -17,7 +17,7 @@ def test_init():
     assert isinstance(obj, Package)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_check_version_max_requirement():
     dict_src = {"name": "requests",
                  "version": "2.32.2"}

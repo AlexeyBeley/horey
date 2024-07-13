@@ -10,8 +10,14 @@ import sys
 import shutil
 import platform
 
+
+this_dir_name = os.path.abspath(os.path.dirname(__file__))
+sys.path.insert(0, this_dir_name)
 from requirement import Requirement
 from package import Package
+pop_value = sys.path.pop(0)
+if pop_value != this_dir_name:
+    raise ValueError(f"{pop_value} should be {this_dir_name}")
 
 
 class StandaloneMethods:
@@ -494,6 +500,10 @@ class StandaloneMethods:
         :param requirement:
         :return:
         """
+
+        requirement = Requirement("horey_auto_generated", "setuptools")
+        requirement.force = False
+        self.install_requirement_standard(requirement)
 
         if requirement.force or not self.requirement_satisfied(requirement):
             package_lower_dir_name = requirement.name.split(".")[-1]
