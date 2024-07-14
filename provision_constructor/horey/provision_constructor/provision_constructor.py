@@ -78,13 +78,7 @@ class ProvisionConstructor:
     ):
         """
         Provision constructor remote machine bootstrap script.
-
-        @param remote_deployment_dir_path:
-        @param script_path:
-        @return:
-        """
-
-        with open(
+                with open(
             os.path.join(remote_deployment_dir_path, script_path), "w", encoding="utf-8"
         ) as file_handler:
             file_handler.write(
@@ -112,3 +106,16 @@ class ProvisionConstructor:
             )
 
         # download_horey
+
+        @param remote_deployment_dir_path:
+        @param script_path:
+        @return:
+        """
+
+        with open(
+                os.path.join(remote_deployment_dir_path, script_path), "w", encoding="utf-8"
+        ) as file_handler_w:
+            with open(os.path.join(os.path.dirname(__file__), "bootstrap.sh"), encoding="utf-8") as file_handler_r:
+                file_handler_w.write(file_handler_r.read())
+
+        return True
