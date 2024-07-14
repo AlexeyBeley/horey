@@ -1,13 +1,16 @@
+"""
+Provision constructor - run your system provisioning as code.
+"""
 import os
-import pdb
 
 import sys
+from setuptools import setup, find_namespace_packages
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 from horey.provision_constructor import __version__
-from setuptools import setup, find_namespace_packages
 
-with open("README.md") as file_handler:
+
+with open("README.md", encoding="utf-8") as file_handler:
     readme_file = file_handler.read()
 
 setup(
@@ -28,6 +31,7 @@ setup(
     ),
     package_data={
         "": [
+            "bootstrap.sh",
             "bash_tools/*.sh",
             "system_functions/**/*.sh",
             "system_functions/**/*.txt",
