@@ -120,7 +120,7 @@ class Packer:
             )
 
         configuration = PipAPIConfigurationPolicy()
-        configuration.multi_package_repositories = [horey_repo_path]
+        configuration.multi_package_repositories = {"horey.": horey_repo_path}
         configuration.venv_dir_path = venv_path
         pip_api = PipAPI(configuration=configuration)
         pip_api.install_requirements(requirements_file_path)
