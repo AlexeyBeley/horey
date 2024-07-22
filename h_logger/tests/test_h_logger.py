@@ -1,23 +1,29 @@
 """
-sudo mount -t nfs4 -o  nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport  172.31.14.49:/ /home/ubuntu/efs
+sudo mount -t nfs4 -o  nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport  ipaddr:/ /home/ubuntu/efs
 """
-import pdb
 import traceback
 import pytest
-import os
-from horey.h_logger import get_logger
+from horey.h_logger import get_logger, get_raw_logger
 
 logger = get_logger()
 
+# pylint: disable= missing-function-docstring
 
-# region done
 @pytest.mark.skip(reason="")
 def test_log_multiline():
     try:
         raise RuntimeError("test")
-    except Exception as e:
+    except Exception:
         logger.exception(traceback.format_exc(8))
 
 
-if __name__ == "__main__":
-    test_log_multiline()
+@pytest.mark.wip
+def test_get_raw_logger():
+    assert get_raw_logger("test") is get_raw_logger("test")
+
+
+@pytest.mark.wip
+def test_logger_raw_output(caplog):
+    raw_logger = get_raw_logger("test")
+    raw_logger.info("testing output raw logger")
+    assert "testing output raw logger" in caplog.text

@@ -17,6 +17,8 @@ _logger.addHandler(handler)
 
 logger_initialized = False
 
+raw_loggers = {}
+
 
 def get_logger(configuration_values_file_full_path=None):
     """
@@ -44,3 +46,24 @@ def get_logger(configuration_values_file_full_path=None):
 
             _inited = True
     return _logger
+
+
+def get_raw_logger(name):
+    """
+    Reuse logger
+    :return:
+    """
+    try:
+        return raw_loggers[name]
+    except KeyError:
+        handler_tmp = logging.StreamHandler()
+        formatter_tmp = logging.Formatter(
+        "%(message)s"
+        )
+        handler_tmp.setFormatter(formatter_tmp)
+        logger_tmp = logging.getLogger(name)
+        logger_tmp.setLevel("INFO")
+        logger_tmp.addHandler(handler_tmp)
+        raw_loggers[name] = logger_tmp
+
+    return raw_loggers[name]
