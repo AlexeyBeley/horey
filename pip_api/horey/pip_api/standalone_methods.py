@@ -340,7 +340,7 @@ class StandaloneMethods:
                     version = self.init_source_code_version(self.multi_package_repo_to_prefix_map.get(prefix), requirement_name, prefix)
                     package_pip_api_config = self.init_package_pip_api_configuration(self.multi_package_repo_to_prefix_map.get(prefix), requirement_name)
                     if package_pip_api_config:
-                        requirement.force = package_pip_api_config.get("force")
+                        requirement.force = package_pip_api_config.get("force") or requirement.force
 
                     self.logger.info(f"{requirement_name} source code version initialized: {version}")
 

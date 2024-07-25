@@ -54,7 +54,7 @@ class DockerAPI:
         docker_image = self.client.images.get(name)
         return docker_image
 
-    def build(self, dockerfile_directory_path, tags, nocache=True):
+    def build(self, dockerfile_directory_path, tags, nocache=True, remove_intermediate_containers=True):
         """
         Build image.
 
@@ -62,6 +62,7 @@ class DockerAPI:
         @param tags:
         @param nocache:
         @return:
+        :param remove_intermediate_containers: CLI default value is True. Python docker client default is False.
         """
 
         if not isinstance(tags, list):
@@ -74,7 +75,7 @@ class DockerAPI:
         try:
             build_start = perf_counter()
             docker_image, build_log = self.client.images.build(
-                path=dockerfile_directory_path, tag=tag, nocache=nocache
+                path=dockerfile_directory_path, tag=tag, nocache=nocache, rm=remove_intermediate_containers, forcerm=remove_intermediate_containers,
             )
             build_end = perf_counter()
         except BuildError as exception_instance:
