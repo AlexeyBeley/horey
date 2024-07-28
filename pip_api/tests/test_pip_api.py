@@ -5,15 +5,9 @@ Pip API tests
 
 import os
 import pytest
-from horey.common_utils.common_utils import CommonUtils
 from horey.pip_api.pip_api import PipAPI, Requirement
 from horey.pip_api.pip_api_configuration_policy import PipAPIConfigurationPolicy
 
-
-mock_values_file_path = os.path.abspath(
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "ignore", "mock_values.py")
-)
-mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 
 # pylint: disable=missing-function-docstring
 
@@ -22,10 +16,11 @@ horey_root_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(_
 pip_api_configuration_file_path = os.path.abspath(
     os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
-        "ignore",
-        "pip_api_configuration.py",
+        "pip_api_configs",
+        "pip_api_configuration_main.py",
     )
 )
+
 
 @pytest.mark.todo
 def test_init():
@@ -150,7 +145,7 @@ def test_create_wheel():
     pip_api.create_wheel(setup_dir_path, build_dir_path)
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_create_wheel_from_branch():
     configuration = PipAPIConfigurationPolicy()
     configuration.configuration_file_full_path = pip_api_configuration_file_path
@@ -159,3 +154,12 @@ def test_create_wheel_from_branch():
     setup_dir_path = os.path.join(horey_root_path, "pip_api")
     build_dir_path = os.path.join(horey_root_path, "build", "_build", "pip_api")
     pip_api.create_wheel(setup_dir_path, build_dir_path, branch_name="pip_api_enhance")
+
+
+@pytest.mark.done
+def test_provision_constructor_logic():
+    configuration = PipAPIConfigurationPolicy()
+    configuration.configuration_file_full_path = pip_api_configuration_file_path
+    configuration.init_from_file()
+    pip_api = PipAPI(configuration=configuration)
+    pip_api.install_requirement_from_string(None, "horey.alert_system>=1.0.0")

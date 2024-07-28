@@ -106,9 +106,13 @@ class SESClient(Boto3Client):
         """
 
         for dict_ret in self.execute(
-                self.get_session_client(region=region).describe_active_receipt_rule_set, "Metadata"
+                self.get_session_client(region=region).describe_active_receipt_rule_set, None, raw_data=True
         ):
-            return dict_ret["Name"]
+            if metadata := dict_ret.get("Metadata"):
+                return metadata["Name"]
+            return None
+
+        raise RuntimeError("No response from server")
 
     def update_rule_set_information(self, rule_set):
         """

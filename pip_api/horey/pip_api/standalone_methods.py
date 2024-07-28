@@ -10,15 +10,14 @@ import sys
 import shutil
 import platform
 
-current_dir = os.path.abspath(os.path.dirname(__file__))
-sys.path.insert(0, current_dir)
 
+this_dir_name = os.path.abspath(os.path.dirname(__file__))
+sys.path.insert(0, this_dir_name)
 from requirement import Requirement
 from package import Package
-
-if sys.path[0] != current_dir:
-    raise RuntimeError(f"{sys.path[0]=} != {current_dir=}")
-sys.path.pop(0)
+pop_value = sys.path.pop(0)
+if pop_value != this_dir_name:
+    raise ValueError(f"{pop_value} should be {this_dir_name}")
 
 
 class StandaloneMethods:
@@ -305,67 +304,49 @@ class StandaloneMethods:
         :param requirement:
         :return:
         """
+
         self.logger.info(f"install_source_code_requirement '{requirement.name}'")
 
         requirements_file_path = os.path.join(requirement.multi_package_repo_path, requirement.name[len(requirement.multi_package_repo_prefix):], "requirements.txt")
         self.logger.info(f"Installing requirements from file: '{requirements_file_path}'")
-
         requirements_aggregator = {requirement.name: requirement}
-        self.install_source_code_requirement_dependencies(requirements_file_path, requirements_aggregator)
-        self.install_source_code_requirement_raw(requirement)
-
-        return True
-
-    def install_source_code_requirement_dependencies(self, requirements_file_path, requirements_aggregator):
-        """
-        Compose and install source code dependencies.
-
-        :return:
-        """
-        ignore_first = bool(requirements_aggregator)
-
         self.compose_requirements_recursive_from_file(requirements_file_path, requirements_aggregator)
         self.logger.info(f"Aggregated: {requirements_aggregator}")
-
+        self.init_source_code_metadata(requirements_aggregator)
         all_reversed = list(reversed(requirements_aggregator.values()))
-
-        requirement_dependencies = all_reversed[:-1] if ignore_first else all_reversed
-
-        self.init_source_code_metadata(requirement_dependencies)
-
-        for aggregated_requirement in requirement_dependencies:
+        for aggregated_requirement in all_reversed[:-1]:
             if aggregated_requirement.multi_package_repo_path:
                 self.install_source_code_requirement_raw(aggregated_requirement)
             else:
                 self.install_requirement_standard(aggregated_requirement)
 
+        self.install_source_code_requirement_raw(requirement)
 
+        return True
 
-    def init_source_code_metadata(self, requirements):
+    def init_source_code_metadata(self, requirements_aggregator):
         """
         Init versions from source code.
         Init per package pip api configuration.
 
-        :param requirements:
+        :param requirements_aggregator:
         :return:
         """
 
-        for requirement in requirements:
-            self.logger.info(f"Looking source version code for {requirement.name}")
+        for requirement_name, requirement in requirements_aggregator.items():
+            self.logger.info(f"Looking source version code for {requirement_name}")
             for prefix in self.multi_package_repo_to_prefix_map:
-                if requirement.name.startswith(prefix):
-                    version = self.init_source_code_version(self.multi_package_repo_to_prefix_map.get(prefix), requirement.name, prefix)
-                    package_pip_api_config = self.init_package_pip_api_configuration(self.multi_package_repo_to_prefix_map.get(prefix), requirement.name)
+                if requirement_name.startswith(prefix):
+                    version = self.init_source_code_version(self.multi_package_repo_to_prefix_map.get(prefix), requirement_name, prefix)
+                    package_pip_api_config = self.init_package_pip_api_configuration(self.multi_package_repo_to_prefix_map.get(prefix), requirement_name)
                     if package_pip_api_config:
-                        if requirement.force:
-                            raise RuntimeError(f"Requirement {requirement.name} has explicit force set.")
-                        requirement.force = package_pip_api_config.get("force")
+                        requirement.force = package_pip_api_config.get("force") or requirement.force
 
-                    self.logger.info(f"{requirement.name} source code version initialized: {version}")
+                    self.logger.info(f"{requirement_name} source code version initialized: {version}")
 
                     if not version:
                         raise ValueError(f"Uninitialized {version=}")
-                    StandaloneMethods.SOURCE_CODE_PACKAGE_VERSIONS[requirement.name] = version
+                    StandaloneMethods.SOURCE_CODE_PACKAGE_VERSIONS[requirement_name] = version
 
     def init_package_pip_api_configuration(self, multi_package_repo_path: str, requirement_name: str):
         """
@@ -461,6 +442,21 @@ class StandaloneMethods:
         self.INSTALLED_PACKAGES = objects
         return self.INSTALLED_PACKAGES
 
+    def install_requirements_from_file(self, src_file_path, force_reinstall=False):
+        """
+        For example requirements.txt
+
+        :param src_file_path:
+        :param force_reinstall:
+        :return:
+        """
+
+        with open(src_file_path, encoding="utf-8") as file_handler:
+            lines = file_handler.readlines()
+
+        for line in lines:
+            self.install_requirement_from_string(src_file_path, line.strip("\n"), force_reinstall=force_reinstall)
+
     def install_requirement_from_string(self, src_file_path, str_src, force_reinstall=False):
         """
         Entrypoint.
@@ -519,6 +515,10 @@ class StandaloneMethods:
         :param requirement:
         :return:
         """
+
+        requirement_setup_tools = Requirement("horey_auto_generated", "setuptools")
+        requirement_setup_tools.force = False
+        self.install_requirement_standard(requirement_setup_tools)
 
         if requirement.force or not self.requirement_satisfied(requirement):
             package_lower_dir_name = requirement.name.split(".")[-1]

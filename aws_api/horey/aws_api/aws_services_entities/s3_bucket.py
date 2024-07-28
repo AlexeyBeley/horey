@@ -232,6 +232,7 @@ class S3Bucket(AwsObject):
         def __init__(self, src_, from_cache=False):
             self.version = None
             self.statement = None
+
             if isinstance(src_, str):
                 dict_src = json.loads(src_)
             else:

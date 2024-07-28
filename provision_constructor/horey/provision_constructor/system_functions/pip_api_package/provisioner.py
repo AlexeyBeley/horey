@@ -48,7 +48,7 @@ class Provisioner(SystemFunctionCommon):
         @return:
         """
 
-        self.pip_api.install_requirements(self.requirements_file_path, update=self.force)
+        self.pip_api.install_requirements_from_file(self.requirements_file_path, force_reinstall=self.force)
 
     def test_provisioned(self):
         """
@@ -56,7 +56,6 @@ class Provisioner(SystemFunctionCommon):
 
         :return:
         """
-        self.pip_api.init_packages()
         requirements = self.pip_api.init_requirements_raw(self.requirements_file_path)
 
         str_ret = ""

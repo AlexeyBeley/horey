@@ -249,6 +249,7 @@ class ECSClient(Boto3Client):
                 "capacityProvider",
                 filters_req=request_dict,
         ):
+            self.clear_cache(ECSCapacityProvider)
             return response
 
     def dispose_capacity_provider_raw(self, region, request_dict):
@@ -265,6 +266,7 @@ class ECSClient(Boto3Client):
                 "capacityProvider",
                 filters_req=request_dict,
         ):
+            self.clear_cache(ECSCapacityProvider)
             return response
 
     def provision_cluster(self, cluster: ECSCluster):
@@ -312,6 +314,7 @@ class ECSClient(Boto3Client):
         for response in self.execute(
                 self.get_session_client(region=region).create_cluster, "cluster", filters_req=request_dict
         ):
+            self.clear_cache(ECSCluster)
             return response
 
     def get_all_services(self, cluster=None, region=None):
@@ -384,6 +387,9 @@ class ECSClient(Boto3Client):
         for i in range(len(task_arns) // 10 + 1):
             filters_req_new = {"services": task_arns[i * 10: (i + 1) * 10], "include": ["TAGS"],
                                "cluster": filters_req["cluster"]}
+
+            if len(filters_req_new["services"]) == 0:
+                break
 
             for dict_src in self.execute(
                     self.get_session_client(region=region).describe_services, "services", filters_req=filters_req_new
@@ -637,6 +643,7 @@ class ECSClient(Boto3Client):
                 "taskDefinition",
                 filters_req=request_dict,
         ):
+            self.clear_cache(ECSTaskDefinition)
             return response
 
     @staticmethod
@@ -759,6 +766,7 @@ class ECSClient(Boto3Client):
         for response in self.execute(
                 self.get_session_client(region=region).create_service, "service", filters_req=request_dict
         ):
+            self.clear_cache(ECSService)
             return response
 
     def update_service_raw(self, region, request_dict):
@@ -773,6 +781,7 @@ class ECSClient(Boto3Client):
         for response in self.execute(
                 self.get_session_client(region=region).update_service, "service", filters_req=request_dict
         ):
+            self.clear_cache(ECSService)
             return response
 
     def dispose_service(self, cluster, service: ECSService):
@@ -800,6 +809,7 @@ class ECSClient(Boto3Client):
                 exception_ignore_callback=lambda error: "ServiceNotFoundException" in repr(
                     error) or "ClusterNotFoundException" in repr(error)
         ):
+            self.clear_cache(ECSService)
             return response
 
     def dispose_task_definition(self, task_definition):
@@ -897,6 +907,7 @@ class ECSClient(Boto3Client):
                 self.get_session_client(region=region).delete_cluster, "cluster", filters_req=request_dict,
                 exception_ignore_callback=lambda error: "ClusterNotFoundException" in repr(error)
         ):
+            self.clear_cache(ECSCluster)
             return response
 
     def dispose_container_instances(self, container_instances, cluster):
@@ -926,6 +937,7 @@ class ECSClient(Boto3Client):
                 "containerInstance",
                 filters_req=request_dict,
         ):
+            self.clear_cache(ECSContainerInstance)
             return response
 
     def dispose_tasks(self, tasks, cluster_name):
@@ -978,6 +990,8 @@ class ECSClient(Boto3Client):
                 "cluster",
                 filters_req=request_dict,
         ):
+            self.clear_cache(ECSCapacityProvider)
+            self.clear_cache(ECSCluster)
             return response
 
     def update_cluster_information(self, cluster: ECSCluster):

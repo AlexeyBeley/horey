@@ -152,10 +152,11 @@ class RDSClient(Boto3Client):
         cluster.default_engine_version = self.get_default_engine_version(cluster.region, cluster.engine)
         return cluster
 
-    def provision_db_cluster(self, db_cluster: RDSDBCluster, snapshot_id=None):
+    def provision_db_cluster(self, db_cluster: RDSDBCluster, snapshot_id=None, timeout=60*60):
         """
         Standard.
 
+        :param timeout:
         :param db_cluster:
         :param snapshot_id:
         :return:
@@ -176,8 +177,13 @@ class RDSClient(Boto3Client):
             db_cluster,
             self.update_db_cluster_information,
             [db_cluster.Status.AVAILABLE],
-            [db_cluster.Status.CREATING],
+            [db_cluster.Status.CREATING,
+             db_cluster.Status.MODIFYING,
+             db_cluster.Status.REBOOTING,
+             db_cluster.Status.BACKING_UP,
+             ],
             [db_cluster.Status.FAILED, db_cluster.Status.DELETING],
+            timeout=timeout
         )
 
     def provision_db_cluster_raw(self, region, request_dict):
@@ -206,21 +212,24 @@ class RDSClient(Boto3Client):
                 break
         else:
             return
-        filters_req = [
+
+        filters_req = {"Filters": [
             {
                 "Name": "db-cluster-id",
                 "Values": [
                     db_cluster.id,
                 ],
             }
-        ]
-        db_instances = self.get_region_db_instances(
-            region=db_cluster.region, filters=filters_req
-        )
-        for db_instance in db_instances:
-            db_instance.region = db_cluster.region
-            db_instance.skip_final_snapshot = db_cluster.skip_final_snapshot
-            self.dispose_db_instance(db_instance)
+        ]}
+
+        if "postgres" not in db_cluster.engine:
+            db_instances = self.get_region_db_instances(
+                region=db_cluster.region, filters=filters_req
+            )
+            for db_instance in db_instances:
+                db_instance.region = db_cluster.region
+                db_instance.skip_final_snapshot = db_cluster.skip_final_snapshot
+                self.dispose_db_instance(db_instance)
 
         response = self.dispose_db_cluster_raw(db_cluster.region, db_cluster.generate_dispose_request())
 
@@ -500,7 +509,7 @@ class RDSClient(Boto3Client):
 
         return list(self.yield_db_cluster_parameter_groups(region=region, full_information=full_information))
 
-    def get_db_cluster_parameters_group_full_information(self, obj):
+    def get_db_cluster_parameters_group_full_information(self, obj: RDSDBClusterParameterGroup):
         """
         Standard.
 
@@ -636,34 +645,49 @@ class RDSClient(Boto3Client):
 
         return final_result
 
-    def provision_db_cluster_parameter_group(self, db_cluster_parameter_group):
+    def update_db_cluster_parameter_group_information(self, db_cluster_parameter_group, full_information=True):
+        """
+        Standard
+
+        :param full_information:
+        :param db_cluster_parameter_group:
+        :return:
+        """
+
+        for region_object in self.yield_db_cluster_parameter_groups(region=db_cluster_parameter_group.region, full_information=False, update_info=True):
+            if (
+                    db_cluster_parameter_group.name
+                    == region_object.name
+            ):
+                if not db_cluster_parameter_group.update_from_attrs(region_object):
+                    raise RuntimeError(f"Updating db_cluster_parameter_group {db_cluster_parameter_group.name} failed")
+                if full_information:
+                    self.get_db_cluster_parameters_group_full_information(db_cluster_parameter_group)
+                return True
+        return False
+
+    def provision_db_cluster_parameter_group(self, db_cluster_parameter_group: RDSDBClusterParameterGroup):
         """
         Standard.
 
         :param db_cluster_parameter_group:
         :return:
         """
-
-        region_db_cluster_parameter_groups = (
-            self.get_region_db_cluster_parameter_groups(
-                db_cluster_parameter_group.region
-            )
-        )
-
-        for region_db_cluster_parameter_group in region_db_cluster_parameter_groups:
-            if (
-                    db_cluster_parameter_group.name
-                    == region_db_cluster_parameter_group.name
-            ):
-                db_cluster_parameter_group.update_from_raw_response(
-                    region_db_cluster_parameter_group.dict_src
-                )
-                return db_cluster_parameter_group
-
-        response = self.provision_db_cluster_parameter_group_raw(db_cluster_parameter_group.region,
+        current_db_cluster_parameter_group = RDSDBClusterParameterGroup({})
+        current_db_cluster_parameter_group.region = db_cluster_parameter_group.region
+        current_db_cluster_parameter_group.name = db_cluster_parameter_group.name
+        if not self.update_db_cluster_parameter_group_information(current_db_cluster_parameter_group):
+            response = self.provision_db_cluster_parameter_group_raw(db_cluster_parameter_group.region,
                                                                  db_cluster_parameter_group.generate_create_request()
                                                                  )
-        db_cluster_parameter_group.update_from_raw_response(response)
+            db_cluster_parameter_group.update_from_raw_response(response)
+
+        request = current_db_cluster_parameter_group.generate_modify_db_cluster_parameter_group_request(db_cluster_parameter_group)
+        if request:
+            self.modify_db_cluster_parameter_group_raw(db_cluster_parameter_group.region, request)
+            self.wait_for_db_cluster_parameter_changes(db_cluster_parameter_group, request)
+
+        self.update_db_cluster_parameter_group_information(db_cluster_parameter_group, full_information=False)
         return db_cluster_parameter_group
 
     def provision_db_cluster_parameter_group_raw(self, region, request_dict):
@@ -678,6 +702,53 @@ class RDSClient(Boto3Client):
         ):
             self.clear_cache(RDSDBClusterParameterGroup)
             return response
+
+    def modify_db_cluster_parameter_group_raw(self, region, request_dict):
+        """
+        Returns raw response
+
+        """
+
+        logger.info(f"Modifying db_cluster_parameter_group: {request_dict}")
+        for response in self.execute(
+                self.get_session_client(region=region).modify_db_cluster_parameter_group,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
+        ):
+            self.clear_cache(RDSDBClusterParameterGroup)
+            return response
+
+    def wait_for_db_cluster_parameter_changes(self, param_group, request):
+        """
+        Wait for real parameters to be same as in the request
+
+        :param param_group:
+        :param request:
+        :return:
+        """
+
+        timeout = datetime.datetime.now() + datetime.timedelta(seconds=360)
+
+        while datetime.datetime.now() < timeout:
+            all_current_parameters_by_name = {response["ParameterName"]: response for response in self.execute(
+                self.get_session_client(region=param_group.region).describe_db_cluster_parameters,
+                "Parameters",
+                filters_req={"DBClusterParameterGroupName": param_group.name, "Source": "user"}
+            )}
+            for desired_parameter in request["Parameters"]:
+                if current_state := all_current_parameters_by_name.get(desired_parameter["ParameterName"]):
+                    if current_state != desired_parameter:
+                        logger.info(f"Parameter {desired_parameter=} != {current_state=}")
+                        break
+                else:
+                    logger.info(f"Parameter '{desired_parameter['ParameterName']}' was not found")
+                    break
+            else:
+                return True
+            logger.info("Waiting for all parameters to modify. Going to sleep.")
+            time.sleep(1)
+        raise TimeoutError(f"DB Cluster parameters did not change: {request}")
 
     def dispose_cluster_parameter_group(self, param_group):
         """
@@ -1060,7 +1131,7 @@ class RDSClient(Boto3Client):
         """
 
         if per_region := self.ENGINE_VERSIONS.get(region.region_mark):
-            if engine_version := per_region[engine_type]:
+            if engine_version := per_region.get(engine_type):
                 return engine_version
 
         engine_versions = list(self.execute(
@@ -1097,7 +1168,7 @@ class RDSClient(Boto3Client):
 
         return self.ENGINE_VERSIONS[region.region_mark][engine_type]
 
-    def get_engine_version_raw(self, region, filters_req):
+    def describe_db_engine_versions_raw(self, region, filters_req):
         """
         Standard
 
@@ -1109,7 +1180,7 @@ class RDSClient(Boto3Client):
             self.get_session_client(region=region).describe_db_engine_versions, "DBEngineVersions",
             filters_req=filters_req))
 
-    def get_engine_max_version(self, region, engine_type):
+    def get_engine_max_version(self, region, engine_type, raw=False):
         """
         Standard.
 
@@ -1118,9 +1189,23 @@ class RDSClient(Boto3Client):
         :return:
         """
 
-        lst_all = self.get_engine_version_raw(region, {"Engine": engine_type, "DefaultOnly": False})
-        max_version = max(float(eng_version["EngineVersion"]) for eng_version in lst_all)
-        max_versions = [eng_version for eng_version in lst_all if float(eng_version["EngineVersion"]) == max_version]
+        lst_all = self.describe_db_engine_versions_raw(region, {"Engine": engine_type, "DefaultOnly": False})
+        all_floats = {}
+        errors = []
+        for eng_version in lst_all:
+            try:
+                all_floats[float(eng_version["EngineVersion"])] = eng_version
+            except ValueError:
+                errors.append(eng_version["EngineVersion"])
+
+        max_version = max(all_floats)
+        for error_version in errors:
+            if error_version.startswith(str(max_version)):
+                raise ValueError(f"Can not decide which version is the max version: {max_version=}, {errors=}")
+
+        max_versions = [eng_version_float for eng_version_float in all_floats if eng_version_float == max_version]
         if len(max_versions) != 1:
             raise NotImplementedError(f"{max_versions=}")
-        return max_versions[0]
+        if not raw:
+            return max_versions[0]
+        return all_floats[max_versions[0]]

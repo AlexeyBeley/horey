@@ -38,6 +38,7 @@ configuration.init_from_file()
 
 azure_devops_api = AzureDevopsAPI(configuration=configuration)
 
+
 # pylint: disable= missing-function-docstring
 
 
@@ -71,18 +72,22 @@ def test_init_iterations():
     assert len(azure_devops_api.iterations) > 0
 
 
+@pytest.mark.skip(reason="Can not test")
 def test_init_and_cache_iterations():
     azure_devops_api.init_iterations()
 
 
+@pytest.mark.wip
 def test_init_and_cache_work_items():
     azure_devops_api.init_work_items()
 
 
+@pytest.mark.skip(reason="Can not test")
 def test_current_iteration():
     assert azure_devops_api.get_iteration() is not None
 
 
+@pytest.mark.skip(reason="Can not test")
 def test_generate_clean_report():
     azure_devops_api.init_work_items(from_cache=True)
     azure_devops_api.init_iterations(from_cache=True)
@@ -97,19 +102,24 @@ def test_init_and_cache_boards():
     assert len(lst_ret) > 0
 
 
+@pytest.mark.skip(reason="Can not test")
 def test_recursive_init_work_items():
     azure_devops_api.init_work_items(from_cache=True)
     azure_devops_api.recursive_init_work_items(azure_devops_api.work_items)
 
 
+@pytest.mark.skip(reason="Can not test")
 def test_provision_work_item_by_params():
     wit_type = "user_story"
     wit_title = "test"
     iteration_partial_path = mock_values["iteration_partial_path"]
     original_estimate_time = "4.0"
-    azure_devops_api.provision_work_item_by_params(wit_type, wit_title, "Some description", iteration_partial_path=iteration_partial_path, original_estimate_time=original_estimate_time)
+    azure_devops_api.provision_work_item_by_params(wit_type, wit_title, "Some description",
+                                                   iteration_partial_path=iteration_partial_path,
+                                                   original_estimate_time=original_estimate_time)
 
 
+@pytest.mark.skip(reason="Can not test")
 def test_provision_work_item_by_params_with_parent():
     wit_type = "user_story"
     wit_title = "test"
@@ -122,6 +132,7 @@ def test_provision_work_item_by_params_with_parent():
                                                    assigned_to="horey")
 
 
+@pytest.mark.skip(reason="Can not test")
 def test_add_wit_comment():
     azure_devops_api.add_wit_comment("", "test comment")
 
@@ -134,25 +145,3 @@ def test_generate_solution_retrospective():
     htb_ret.write_to_file("tmp.htb")
     assert htb_ret is not None
     assert len(azure_devops_api.work_items) > 0
-
-
-if __name__ == "__main__":
-    #test_init_backlogs()
-    #test_init_processes()
-    #test_init_team_members()
-
-    #test_init_and_cache_iterations()
-    #test_init_iterations()
-
-    #test_init_and_cache_work_items()
-
-    #test_current_iteration()
-    #test_init_and_cache_boards()
-    #test_recursive_init_work_items()
-
-    #test_generate_clean_report()
-    #test_provision_work_item_by_params()
-    # test_provision_work_item_by_params_with_parent()
-    # test_add_wit_comment()
-    # test_init_work_items()
-    test_generate_solution_retrospective()

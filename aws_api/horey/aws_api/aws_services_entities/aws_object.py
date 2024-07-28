@@ -380,6 +380,45 @@ class AwsObject:
         Can't parse the object while initializing.
         """
 
+    def get_tag_key(
+            self,
+            key,
+            ignore_missing_tag=False,
+            tag_key_specifier="Key",
+            tags=None
+    ):
+        """
+        Somtimes the key can be upper case, sometimes lowercase.
+        Request filters are case-sensitive.
+
+        :return:
+        """
+
+        if not tags:
+            tags = self.tags
+
+        if tags is None:
+            if ignore_missing_tag:
+                return None
+            raise RuntimeError("No tags associated")
+
+        # pylint: disable= not-an-iterable
+        for tag in tags:
+            tag_key_value = tag.get(tag_key_specifier)
+            tag_key_value = (
+                tag_key_value
+                if tag_key_value is not None
+                else tag.get(tag_key_specifier.lower())
+            )
+
+            if tag_key_value.lower() == key:
+                return tag_key_value
+
+        if ignore_missing_tag:
+            return None
+
+        raise RuntimeError(f"No tag '{key}' associated")
+
     # pylint: disable= too-many-arguments
     def get_tag(
             self,

@@ -242,6 +242,16 @@ class LoadBalancer(AwsObject):
                 self._init_object_from_cache(dict_src)
                 return
 
+            self.update_from_raw_response(dict_src)
+
+        def update_from_raw_response(self, dict_src):
+            """
+            Standard
+
+            @param dict_src:
+            @return:
+            """
+
             init_options = {
                 "ListenerArn": lambda x, y: self.init_default_attr(
                     x, y, formatted_name="arn"
@@ -252,6 +262,7 @@ class LoadBalancer(AwsObject):
                 "Certificates": self.init_default_attr,
                 "SslPolicy": self.init_default_attr,
                 "DefaultActions": self.init_default_attr,
+                "MutualAuthentication": self.init_default_attr,
             }
 
             self.init_attrs(dict_src, init_options)

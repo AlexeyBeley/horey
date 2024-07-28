@@ -16,11 +16,9 @@ class EventHandler:
 
     """
 
-    ALERT_SYSTEM_CONFIGURATION_FILE_NAME = "alert_system_configuration.json"
-
     def __init__(self):
         configuration = AlertSystemConfigurationPolicy()
-        configuration.configuration_file_full_path = self.ALERT_SYSTEM_CONFIGURATION_FILE_NAME
+        configuration.configuration_file_full_path = AlertSystemConfigurationPolicy.ALERT_SYSTEM_CONFIGURATION_FILE_NAME
         configuration.init_from_file()
 
         self.message_factory = MessageFactory(configuration)

@@ -13,7 +13,7 @@ echo:
 build:
 	source ${VENV_BIN_DIR}/activate &&\
 	cd ${HOREY_DIR_PATH} &&\
-	make raw_install_wheel-async_orchestrator
+	make raw_install_wheel-pip_api
 
 test: FORCE build
 	source ${VENV_BIN_DIR}/activate &&\

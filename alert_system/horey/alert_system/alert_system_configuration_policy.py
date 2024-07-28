@@ -16,6 +16,8 @@ class AlertSystemConfigurationPolicy(ConfigurationPolicy):
 
     """
 
+    ALERT_SYSTEM_CONFIGURATION_FILE_NAME = "alert_system_configuration.json"
+
     def __init__(self):
         super().__init__()
         self._deployment_datetime = None

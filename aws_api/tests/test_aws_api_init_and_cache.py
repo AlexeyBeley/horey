@@ -30,7 +30,7 @@ configuration.configuration_file_full_path = os.path.abspath(
         "..",
         "..",
         "ignore",
-        "aws_api_configuration_values_all_access.py",
+        "aws_api_configuration_s3_access_testing.py",
     )
 )
 configuration.init_from_file()
@@ -505,19 +505,12 @@ def test_init_and_cache_ec2_launch_templates():
 def test_init_and_cache_ec2_launch_template_versions():
     aws_api.init_ec2_launch_templates()
     aws_api.init_ec2_launch_template_versions()
-    aws_api.cache_objects(
-        aws_api.ec2_launch_template_versions,
-        configuration.aws_api_ec2_launch_template_versions_cache_file,
-    )
     assert isinstance(aws_api.ec2_launch_template_versions, list)
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_event_bridge_rules():
     aws_api.init_event_bridge_rules()
-    aws_api.cache_objects(
-        aws_api.event_bridge_rules, configuration.aws_api_event_bridge_rules_cache_file
-    )
     assert isinstance(aws_api.event_bridge_rules, list)
 
 
@@ -530,40 +523,24 @@ def test_init_secrets_manager_secrets():
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_servicediscovery_services():
     aws_api.init_servicediscovery_services()
-    aws_api.cache_objects(
-        aws_api.servicediscovery_services,
-        configuration.aws_api_servicediscovery_services_cache_file,
-    )
     assert isinstance(aws_api.servicediscovery_services, list)
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_servicediscovery_namespaces():
     aws_api.init_servicediscovery_namespaces()
-    aws_api.cache_objects(
-        aws_api.servicediscovery_namespaces,
-        configuration.aws_api_servicediscovery_namespaces_cache_file,
-    )
     assert isinstance(aws_api.servicediscovery_namespaces, list)
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_elasticsearch_domains():
     aws_api.init_elasticsearch_domains()
-    aws_api.cache_objects(
-        aws_api.elasticsearch_domains,
-        configuration.aws_api_elasticsearch_domains_cache_file,
-    )
     assert isinstance(aws_api.elasticsearch_domains, list)
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_managed_prefix_lists():
     aws_api.init_managed_prefix_lists()
-    aws_api.cache_objects(
-        aws_api.managed_prefix_lists,
-        configuration.aws_api_managed_prefix_lists_cache_file,
-    )
     assert isinstance(aws_api.managed_prefix_lists, list)
 
 
@@ -571,7 +548,6 @@ def test_init_and_cache_managed_prefix_lists():
 def test_init_and_cache_vpcs():
     all_regions = list(aws_api.aws_accounts.values())[0].regions
     aws_api.init_vpcs(region=all_regions)
-    aws_api.cache_objects(aws_api.vpcs, configuration.aws_api_vpcs_cache_file)
     assert isinstance(aws_api.vpcs, list)
 
 
@@ -579,7 +555,6 @@ def test_init_and_cache_vpcs():
 def test_init_and_cache_subnets():
     all_regions = list(list(aws_api.aws_accounts.values())[0].regions.values())
     aws_api.init_subnets(region=all_regions)
-    aws_api.cache_objects(aws_api.subnets, configuration.aws_api_subnets_cache_file)
     assert isinstance(aws_api.subnets, list)
 
 
@@ -587,9 +562,6 @@ def test_init_and_cache_subnets():
 def test_init_and_cache_glue_tables():
     all_regions = list(list(aws_api.aws_accounts.values())[0].regions.values())
     aws_api.init_glue_tables(region=all_regions)
-    aws_api.cache_objects(
-        aws_api.glue_tables, configuration.aws_api_glue_tables_cache_file
-    )
     assert isinstance(aws_api.glue_tables, list)
 
 
@@ -597,77 +569,54 @@ def test_init_and_cache_glue_tables():
 def test_init_and_cache_glue_databases():
     all_regions = list(list(aws_api.aws_accounts.values())[0].regions.values())
     aws_api.init_glue_databases(region=all_regions)
-    aws_api.cache_objects(
-        aws_api.glue_databases, configuration.aws_api_glue_databases_cache_file
-    )
     assert isinstance(aws_api.glue_databases, list)
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_availability_zones():
     aws_api.init_availability_zones()
-    aws_api.cache_objects(
-        aws_api.availability_zones, configuration.aws_api_availability_zones_cache_file
-    )
     assert isinstance(aws_api.availability_zones, list)
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_amis():
     aws_api.init_amis()
-    aws_api.cache_objects(aws_api.amis, configuration.aws_api_amis_cache_file)
     assert isinstance(aws_api.amis, list)
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_key_pairs():
     aws_api.init_key_pairs()
-    aws_api.cache_objects(aws_api.key_pairs, configuration.aws_api_key_pairs_cache_file)
     assert isinstance(aws_api.key_pairs, list)
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_internet_gateways():
     aws_api.init_internet_gateways()
-    aws_api.cache_objects(
-        aws_api.internet_gateways, configuration.aws_api_internet_gateways_cache_file
-    )
     assert isinstance(aws_api.internet_gateways, list)
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_vpc_peerings():
     aws_api.init_vpc_peerings()
-    aws_api.cache_objects(
-        aws_api.vpc_peerings, configuration.aws_api_vpc_peerings_cache_file
-    )
     assert isinstance(aws_api.vpc_peerings, list)
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_route_tables():
     aws_api.init_route_tables()
-    aws_api.cache_objects(
-        aws_api.route_tables, configuration.aws_api_route_tables_cache_file
-    )
     assert isinstance(aws_api.route_tables, list)
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_elastic_addresses():
     aws_api.init_elastic_addresses()
-    aws_api.cache_objects(
-        aws_api.elastic_addresses, configuration.aws_api_elastic_addresses_cache_file
-    )
     assert isinstance(aws_api.elastic_addresses, list)
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_nat_gateways():
     aws_api.init_nat_gateways()
-    aws_api.cache_objects(
-        aws_api.nat_gateways, configuration.aws_api_nat_gateways_cache_file
-    )
     assert isinstance(aws_api.nat_gateways, list)
 
 
@@ -675,18 +624,12 @@ def test_init_and_cache_nat_gateways():
 def test_init_and_cache_ecr_images():
     aws_api.init_ecr_repositories()
     aws_api.init_ecr_images()
-    aws_api.cache_objects(
-        aws_api.ecr_images, configuration.aws_api_ecr_images_cache_file
-    )
     assert isinstance(aws_api.ecr_images, list)
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_ecr_repositories():
     aws_api.init_ecr_repositories()
-    aws_api.cache_objects(
-        aws_api.ecr_repositories, configuration.aws_api_ecr_repositories_cache_file
-    )
     assert isinstance(aws_api.ecr_repositories, list)
 
 
@@ -696,27 +639,18 @@ def test_init_and_cache_ecr_repositories():
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_ecs_clusters():
     aws_api.init_ecs_clusters()
-    aws_api.cache_objects(
-        aws_api.ecs_clusters, configuration.aws_api_ecs_clusters_cache_file
-    )
     assert isinstance(aws_api.ecs_clusters, list)
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_ec2_volumes():
     aws_api.init_ec2_volumes()
-    aws_api.cache_objects(
-        aws_api.ec2_volumes, configuration.aws_api_ec2_volumes_cache_file
-    )
     assert isinstance(aws_api.ec2_volumes, list)
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_stepfunctions_state_machines():
     ret = aws_api.stepfunctions_client.get_all_state_machines()
-    aws_api.cache_objects(
-        ret, configuration.aws_api_stepfunctions_state_machines_cache_file
-    )
     assert isinstance(ret, list)
 
 
@@ -728,7 +662,7 @@ def test_init_eks_addons():
 
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_eks_addons_from_cache():
-    ret = aws_api.init_eks_addons(from_cache=True)
+    ret = aws_api.init_eks_addons()
     assert isinstance(ret, list)
 
 
@@ -740,57 +674,37 @@ def test_init_eks_clusters():
 
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_eks_clusters_from_cache():
-    ret = aws_api.init_eks_clusters(from_cache=True)
+    ret = aws_api.init_eks_clusters()
     assert isinstance(ret, list)
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_auto_scaling_groups():
     aws_api.init_auto_scaling_groups()
-    aws_api.cache_objects(
-        aws_api.auto_scaling_groups,
-        configuration.aws_api_auto_scaling_groups_cache_file,
-    )
     assert isinstance(aws_api.auto_scaling_groups, list)
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_auto_scaling_policies():
     aws_api.init_auto_scaling_policies()
-    aws_api.cache_objects(
-        aws_api.auto_scaling_policies,
-        configuration.aws_api_auto_scaling_policies_cache_file,
-    )
     assert isinstance(aws_api.auto_scaling_policies, list)
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_application_auto_scaling_policies():
     aws_api.init_application_auto_scaling_policies()
-    aws_api.cache_objects(
-        aws_api.application_auto_scaling_policies,
-        configuration.aws_api_application_auto_scaling_policies_cache_file,
-    )
     assert isinstance(aws_api.application_auto_scaling_policies, list)
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_application_auto_scaling_scalable_targets():
     aws_api.init_application_auto_scaling_scalable_targets()
-    aws_api.cache_objects(
-        aws_api.application_auto_scaling_scalable_targets,
-        configuration.aws_api_application_auto_scaling_scalable_targets_cache_file,
-    )
     assert isinstance(aws_api.application_auto_scaling_scalable_targets, list)
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_ecs_capacity_providers():
     aws_api.init_ecs_capacity_providers()
-    aws_api.cache_objects(
-        aws_api.ecs_capacity_providers,
-        configuration.aws_api_ecs_capacity_providers_cache_file,
-    )
     assert isinstance(aws_api.ecs_capacity_providers, list)
 
 
@@ -798,35 +712,24 @@ def test_init_and_cache_ecs_capacity_providers():
 def test_init_and_cache_ecs_services():
     aws_api.init_ecs_clusters()
     aws_api.init_ecs_services()
-    aws_api.cache_objects(
-        aws_api.ecs_services, configuration.aws_api_ecs_services_cache_file
-    )
     assert isinstance(aws_api.ecs_services, list)
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_ecs_task_definitions():
     aws_api.init_ecs_task_definitions()
-    aws_api.cache_objects(
-        aws_api.ecs_task_definitions,
-        configuration.aws_api_ecs_task_definitions_cache_file,
-    )
     assert isinstance(aws_api.ecs_task_definitions, list)
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_ecs_tasks():
     aws_api.init_ecs_tasks()
-    aws_api.cache_objects(aws_api.ecs_tasks, configuration.aws_api_ecs_tasks_cache_file)
     assert isinstance(aws_api.ecs_tasks, list)
 
 
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_sqs_queues():
     aws_api.init_sqs_queues()
-    aws_api.cache_objects(
-        aws_api.sqs_queues, configuration.aws_api_sqs_queues_cache_file
-    )
     print(f"len(sqs_queues) = {len(aws_api.sqs_queues)}")
     assert isinstance(aws_api.sqs_queues, list)
 
@@ -834,10 +737,6 @@ def test_init_and_cache_sqs_queues():
 @pytest.mark.skip(reason="No way of currently testing this")
 def test_init_and_cache_lambda_event_source_mappings():
     aws_api.init_lambda_event_source_mappings()
-    aws_api.cache_objects(
-        aws_api.lambda_event_source_mappings,
-        configuration.aws_api_lambda_event_source_mappings_cache_file,
-    )
     print(
         f"len(lambda_event_source_mappings) = {len(aws_api.lambda_event_source_mappings)}"
     )
@@ -912,74 +811,17 @@ def test_init_and_cache_kms_keys():
     assert isinstance(aws_api.kms_keys, list)
 
 
-if __name__ == "__main__":
-    #test_add_managed_region()
+@pytest.mark.wip
+def test_init_and_cache_all_s3_bucket_objects():
+    aws_api.s3_client.clear_sessions()
+    _aws_api = AWSAPI(configuration=configuration)
+    for x in _aws_api.s3_client.yield_bucket_objects(None, bucket_name="files.scoutbees.dev-dex.us-west-2"):
+        breakpoint()
 
-    #test_init_and_cache_amis()
-    #test_init_and_cache_key_pairs()
-    #test_init_and_cache_internet_gateways()
-    #test_init_and_cache_vpc_peerings()
-    #test_init_and_cache_route_tables()
-    #test_init_and_cache_elastic_addresses()
-    #test_init_and_cache_nat_gateways()
-    #test_init_and_cache_ecr_repositories()
-    #test_init_and_cache_ecs_clusters()
-    #test_init_and_cache_ecs_services()
-    #test_init_and_cache_ecs_capacity_providers()
-    # todo: fix test_init_and_cache_ec2_launch_template_versions()
-    # test_init_and_cache_ecs_task_definitions()
-    # todo: fix test_init_and_cache_ecs_tasks()
-    #test_init_and_cache_load_balancers()
-    #test_init_and_cache_target_groups()
-    # test_init_and_cache_acm_certificates()
-    #test_init_and_cache_rds_db_instances()
-    #test_init_and_cache_rds_db_clusters()
-    #test_init_and_cache_rds_db_cluster_snapshots()
-    #test_init_and_cache_kms_keys()
-    #test_init_and_cache_rds_db_subnet_groups()
-    #test_init_and_cache_rds_db_cluster_parameter_groups()
-    #test_init_and_cache_rds_db_parameter_groups()
-    #test_init_and_cache_s3_buckets()
-    #test_init_and_cache_cloudfront_origin_access_identities()
-    # test_init_and_cache_cloudfront_distributions()
-    #test_init_and_cache_elasticache_clusters()
-    #test_init_and_cache_elasticache_cache_parameter_groups()
-    #test_init_and_cache_elasticache_cache_subnet_groups()
-    #test_init_and_cache_elasticache_replication_groups()
-    #todo: fix test_init_and_cache_elasticache_cache_security_groups()
-    #test_init_and_cache_sqs_queues()
-    #test_init_and_cache_lambda_event_source_mappings()
-    #test_init_and_cache_event_bridge_rules()
-    #test_init_and_cache_lambdas()
-    #test_init_and_cache_lambda_event_source_mappings()
-    #test_init_and_cache_servicediscovery_namespaces()
-    # todo: fix test_init_and_cache_vpcs()
-    test_init_and_cache_security_regions_groups()
-    #test_init_and_cache_subnets()
-    # todo: fix test_init_and_cache_glue_tables()
-    # todo: fix test_init_and_cache_glue_databases()
-    #test_init_and_cache_iam_instance_profiles()
-    #test_init_and_cache_iam_groups()
-    #test_init_and_cache_iam_users()
-    #test_init_and_cache_iam_policies()
-    #test_init_and_cache_dynamodb_tables()
-    #test_init_and_cache_dynamodb_endpoints()
-    #test_init_and_cache_sesv2_email_identities()
-    #test_init_and_cache_sesv2_email_templates()
-    #test_init_and_cache_sesv2_configuration_sets()
-    #test_init_and_cache_sns_topics()
-    #test_init_and_cache_sns_subscriptions()
-    #test_init_and_cache_auto_scaling_groups()
-    #test_init_and_cache_auto_scaling_policies()
-    #test_init_and_cache_cloudwatch_alarms()
-    #test_init_and_cache_application_auto_scaling_policies()
-    #test_init_and_cache_application_auto_scaling_scalable_targets()
-    #test_init_and_cache_spot_fleet_requests()
-    # test_init_and_cache_ec2_instances()
-    # test_init_and_cache_ec2_volumes()
-    # test_init_and_cache_stepfunctions_state_machines()
-    # test_init_eks_addons()
-    # test_init_eks_addons_from_cache()
-    # test_init_eks_clusters()
-    # test_init_eks_clusters_from_cache()
-    # test_init_and_cache_hosted_zones()
+    breakpoint()
+    _aws_api.init_and_cache_all_s3_bucket_objects(
+        configuration.aws_api_s3_bucket_objects_cache_dir
+    )
+    print(f"len(s3_buckets) = {len(_aws_api.s3_buckets)}")
+    assert isinstance(_aws_api.s3_buckets, list)
+

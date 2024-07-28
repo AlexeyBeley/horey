@@ -287,7 +287,7 @@ class AlertSystem:
 
         lambda_handler_file_path = sys.modules["horey.alert_system.lambda_package.lambda_handler"].__file__
         alert_system_config_file_path = os.path.join(self.configuration.deployment_directory_path,
-                                                     EventHandler.ALERT_SYSTEM_CONFIGURATION_FILE_NAME)
+                                                      AlertSystemConfigurationPolicy.ALERT_SYSTEM_CONFIGURATION_FILE_NAME)
         self.configuration.generate_configuration_file(alert_system_config_file_path)
 
         self.packer.add_files_to_zip(
@@ -694,6 +694,7 @@ class AlertSystem:
     def trigger_self_monitoring_log_timeout_alarm(self):
         """
         Test
+        # todo: datetime.datetime.now(datetime.UTC)
 
         :return:
         """

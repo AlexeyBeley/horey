@@ -67,14 +67,14 @@ class RouteTable(AwsObject):
 
         return request
 
-    def generate_associate_route_table_request(self, desired_route_table):
+    def generate_route_table_association_requests(self, desired_route_table):
         """
         Standard.
 
         :return:
         """
 
-        create_associations = []
+        associate, disassociate = [], []
 
         desired_subnets = []
         for association in desired_route_table.associations:
@@ -95,8 +95,8 @@ class RouteTable(AwsObject):
         for self_subnet in self_subnets:
             if self_subnet in desired_subnets:
                 continue
-
-            raise NotImplementedError(f"Route disassociation is not yet implemented: {self_subnet}")
+            # disassociate.append({"AssociationId": })
+            raise NotImplementedError(f"Route disassociation is not yet implemented: {self.id=}, {self_subnet=}")
 
         for desired_subnet in desired_subnets:
             if desired_subnet in self_subnets:
@@ -105,12 +105,15 @@ class RouteTable(AwsObject):
             request = {"RouteTableId": self.id,
                        "SubnetId": desired_subnet
                        }
-            create_associations.append(request)
+            associate.append(request)
 
-        if len(create_associations) > 1:
-            raise NotImplementedError(create_associations)
+        if len(associate) > 1:
+            raise NotImplementedError(associate)
 
-        return create_associations[0] if create_associations else None
+        if len(disassociate) > 1:
+            raise NotImplementedError(disassociate)
+
+        return (disassociate[0] if disassociate else None), (associate[0] if associate else None)
 
     # pylint: disable = too-many-branches
     def generate_change_route_requests(self, desired_route_table, declarative=True):

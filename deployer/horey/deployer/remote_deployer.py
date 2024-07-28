@@ -801,7 +801,7 @@ class RemoteDeployer:
 
         key_type_lower = str(key_type).lower()
         if key_type_lower not in DeploymentTarget.SupportedSSHKeys:
-            raise ValueError(f"Only {DeploymentTarget.SupportedSSHKeys} are supported")
+            raise ValueError(f"Only {DeploymentTarget.SupportedSSHKeys} are supported, received: {key_type_lower}")
 
         if key_type_lower == "ed25519key":
             return paramiko.Ed25519Key.from_private_key_file(file_path)

@@ -7,6 +7,7 @@ import datetime
 import getpass
 import os.path
 import platform
+from time import perf_counter
 
 import docker
 from docker.errors import BuildError
@@ -53,7 +54,7 @@ class DockerAPI:
         docker_image = self.client.images.get(name)
         return docker_image
 
-    def build(self, dockerfile_directory_path, tags, nocache=True):
+    def build(self, dockerfile_directory_path, tags, nocache=True, remove_intermediate_containers=True):
         """
         Build image.
 
@@ -61,25 +62,28 @@ class DockerAPI:
         @param tags:
         @param nocache:
         @return:
+        :param remove_intermediate_containers: CLI default value is True. Python docker client default is False.
         """
 
-        logger.info(f"Starting building image {dockerfile_directory_path}, {tags}")
         if not isinstance(tags, list):
             raise ValueError(
                 f"'tags' must be of a type 'list' received {tags}: type: {type(tags)}"
             )
 
         tag = tags[0] if len(tags) > 0 else "latest"
+        logger.info(f"Starting building image {dockerfile_directory_path}, {tags}")
         try:
+            build_start = perf_counter()
             docker_image, build_log = self.client.images.build(
-                path=dockerfile_directory_path, tag=tag, nocache=nocache
+                path=dockerfile_directory_path, tag=tag, nocache=nocache, rm=remove_intermediate_containers, forcerm=remove_intermediate_containers,
             )
+            build_end = perf_counter()
         except BuildError as exception_instance:
             self.print_log(exception_instance.build_log)
             raise
 
-        logger.info("Finished building image")
         self.print_log(build_log)
+        logger.info(f"Finished building image in {build_end - build_start} seconds")
         self.tag_image(docker_image, tags[1:])
         return docker_image
 
@@ -293,19 +297,39 @@ class DockerAPI:
         @param force:
         @param wait_to_finish:
         @return:
-        :param childless: Do not look for childern - helpfull when there are many images.
+        :param childless: Do not look for children - helpful when there are many images.
         """
 
+        logger.info(f"Start removing image: {image_id}")
+
+        lst_ret = []
+        image_children = None
         if force:
+            all_images = self.get_all_images()
+            main_image = list(filter(lambda _img: _img.id == image_id, all_images))
+            if len(main_image) != 1:
+                raise ValueError(f"{image_id=}, {len(main_image)=}")
+            main_image = main_image[0]
+
             if not childless:
-                for child_image_id in self.get_child_image_ids(image_id):
-                    self.remove_image(child_image_id, force=True)
+                image_children = self.get_child_image_ids(image_id, all_images)
+                for child_image_id in image_children:
+                    lst_ret += self.remove_image(child_image_id, force=True)
 
             for container in self.get_containers_by_image(image_id):
                 self.kill_container(container, remove=True, wait_to_finish=wait_to_finish)
 
+            if image_children and not main_image.tags:
+                logger.info(f"Untagged parent image automatically removed by docker after all children removed: {image_id}.")
+                lst_ret.append(image_id)
+                return lst_ret
+
         logger.info(f"Removing image: {image_id}.")
+
         self.client.images.remove(image_id, force=force)
+        lst_ret.append(image_id)
+
+        return lst_ret
 
     def get_all_images(self, repo_name=None):
         """
@@ -318,7 +342,7 @@ class DockerAPI:
 
         return self.client.images.list(name=repo_name, all=True)
 
-    def get_child_image_ids(self, image_id):
+    def get_child_image_ids(self, image_id, all_images):
         """
         Return the children of the image.
 
@@ -326,17 +350,14 @@ class DockerAPI:
         """
 
         child_ids = []
-        all_images = self.get_all_images()
         candidates = [image for image in all_images if image_id in image.id]
         if len(candidates) != 1:
-            raise RuntimeError(f"Found {len(image_id)=} with {image_id=}")
+            raise RuntimeError(f"Found {len(candidates)=} with {image_id=}")
         for image in all_images:
-            if image == candidates[0]:
-                continue
-            for history_element in image.history():
-                if image_id in history_element["Id"]:
-                    child_ids.append(image.id)
-                    break
+            if image.attrs["Parent"] == image_id:
+                child_ids.append(image.id)
+
+        logger.info(f"{image_id=} {child_ids=}")
         return child_ids
 
     def save(self, image, file_path):
@@ -384,6 +405,25 @@ class DockerAPI:
             raise ValueError(f"Expected list of length 1: {images=}")
 
         return images[0]
+
+    def get_all_ancestors(self, image_id, all_images=None):
+        """
+        Generate list of ancestors.
+
+        :param image_id:
+        :return:
+        """
+
+        if all_images is None:
+            all_images = {image.id: image for image in self.get_all_images()}
+            if not all_images[image_id].attrs["Parent"]:
+                return []
+            return self.get_all_ancestors(all_images[image_id].attrs["Parent"], all_images=all_images)
+
+        if not all_images[image_id].attrs["Parent"]:
+            return [image_id]
+
+        return [image_id] + self.get_all_ancestors(all_images[image_id].attrs["Parent"], all_images=all_images)
 
     class OutputError(RuntimeError):
         """

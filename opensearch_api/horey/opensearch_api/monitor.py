@@ -28,6 +28,9 @@ class Monitor(OpensearchObject):
         self.last_update_time = None
         self.data_sources = None
         self.owner = None
+        self.is_child = None
+        self.shards = None
+        self.is_distributed = None
         super().__init__(dict_src)
 
     def generate_create_request(self):

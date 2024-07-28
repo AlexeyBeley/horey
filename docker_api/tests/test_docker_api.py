@@ -181,11 +181,11 @@ def test_get_all_images():
 def test_get_child_image_ids():
     docker_api = DockerAPI()
     image_id = mock_values["image_with_children_id"]
-    image_ids = docker_api.get_child_image_ids(image_id)
+    image_ids = docker_api.get_child_image_ids(image_id, None)
     assert isinstance(image_ids, list)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_save():
     docker_api = DockerAPI()
     image_tag = "horey-test:latest"
@@ -193,9 +193,26 @@ def test_save():
     assert docker_api.save(image, "tmp.tar")
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_load():
     docker_api = DockerAPI()
     image = docker_api.load("tmp.tar")
     tags = ["horey-test:latest", "horey:file_loaded"]
     assert docker_api.tag_image(image, tags)
+
+
+@pytest.mark.done
+def test_get_all_ancestors():
+    docker_api = DockerAPI()
+    image_id = "sha256:"
+    ret = docker_api.get_all_ancestors(image_id)
+    assert ret
+
+
+@pytest.mark.done
+def test_build_rm_false():
+    docker_api = DockerAPI()
+    image = docker_api.build(
+        os.path.dirname(os.path.abspath(__file__)), ["horey-test:latest"],
+    remove_intermediate_containers=False)
+    assert image is not None

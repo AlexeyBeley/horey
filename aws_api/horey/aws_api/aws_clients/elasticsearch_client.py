@@ -67,6 +67,8 @@ class ElasticsearchClient(Boto3Client):
         :return:
         """
 
+        logger.info(f"Updating Elasticsearch Domain: {request}")
+
         for response in self.execute(
                 self.get_session_client(region=region).update_elasticsearch_domain_config,
                 "DomainConfig",
