@@ -217,11 +217,11 @@ class HostedZone(AwsObject):
 
         changes = []
         for record in desired_state.records:
-            if not record.dict_src["Name"].endswith("."):
-                dict_record = copy.deepcopy(record.dict_src)
-                dict_record["Name"] += "."
-            else:
-                dict_record = record.dict_src
+            dict_record = copy.deepcopy(record.dict_src)
+            dict_record["Name"] += "" if dict_record["Name"].endswith(".") else "."
+            if alias_target := dict_record.get("AliasTarget"):
+                if "DNSName" in alias_target:
+                    alias_target["DNSName"] += "" if alias_target.get("DNSName").endswith(".") else "."
 
             if dict_record in self_records:
                 continue

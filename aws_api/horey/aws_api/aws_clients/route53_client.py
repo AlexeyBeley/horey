@@ -109,13 +109,11 @@ class Route53Client(Boto3Client):
         :param hosted_zone:
         :return:
         """
-        hosted_zones = self.get_all_hosted_zones(name=hosted_zone.name, full_information=False)
-        if len(hosted_zones) > 1:
-            raise ValueError(
-                f"More then 1 '{hosted_zone.name}' hosted_zone found: {len(hosted_zones)}"
-            )
 
-        if len(hosted_zones) == 0:
+        current_hosted_zone = HostedZone({})
+        current_hosted_zone.name = hosted_zone.name
+        current_hosted_zone.id = hosted_zone.id
+        if not self.update_hosted_zone_information(current_hosted_zone, full_information=True):
             if not hosted_zone.tags:
                 raise ValueError(f"Provisioning hosted zone without tags is not supported: {hosted_zone.generate_create_request()}")
             request = hosted_zone.generate_create_request()
@@ -130,9 +128,6 @@ class Route53Client(Boto3Client):
             self.get_hosted_zone_full_information(hosted_zone)
             self.clear_cache(HostedZone)
             return hosted_zone
-
-        current_hosted_zone = hosted_zones[0]
-        self.get_hosted_zone_full_information(current_hosted_zone)
 
         hosted_zone.id = current_hosted_zone.id
         request = current_hosted_zone.generate_change_resource_record_sets_request(hosted_zone)
@@ -278,18 +273,19 @@ class Route53Client(Boto3Client):
 
         hosted_zone_name = hosted_zone.name.strip(".")
         filters_req = {"DNSName": hosted_zone_name}
-        for response in self.execute(
-                self.get_session_client().list_hosted_zones_by_name,
-                "HostedZones",
-                filters_req=filters_req,
-        ):
-            if response["Name"].strip(".") == hosted_zone_name:
-                hosted_zone.update_from_raw_response(response)
-                break
-        else:
-            raise RuntimeError(
-                f"Can not find hosted_zone by name: '{hosted_zone.name}'"
-            )
+        if hosted_zone.id is None:
+            for response in self.execute(
+                    self.get_session_client().list_hosted_zones_by_name,
+                    "HostedZones",
+                    filters_req=filters_req,
+            ):
+                if response["Name"].strip(".") == hosted_zone_name:
+                    hosted_zone.update_from_raw_response(response)
+                    break
+            else:
+                return False
 
         if full_information:
             self.get_hosted_zone_full_information(hosted_zone)
+
+        return True

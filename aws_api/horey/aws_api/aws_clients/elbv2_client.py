@@ -15,6 +15,14 @@ class ELBV2Client(Boto3Client):
     """
     Client to handle specific aws service API calls.
     """
+    # https://docs.aws.amazon.com/general/latest/gr/elb.html
+    HOSTED_ZONES = {
+                    "eu-central-1": "Z215JYRZR1TBD5",
+                    "us-east-1": "Z35SXDOTRQ7X7K",
+                    "us-west-2": "Z1H1FL5HABSF5",
+                    "us-west-1": "Z368ELLRRE2KJ0",
+                    "us-east-2": "Z3AADJGX6KTTL2"
+                    }
 
     def __init__(self):
         client_name = "elbv2"
