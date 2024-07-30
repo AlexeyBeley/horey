@@ -16,9 +16,9 @@ class EventHandler:
 
     """
 
-    def __init__(self):
+    def __init__(self, configuration_file_full_path):
         configuration = AlertSystemConfigurationPolicy()
-        configuration.configuration_file_full_path = AlertSystemConfigurationPolicy.ALERT_SYSTEM_CONFIGURATION_FILE_NAME
+        configuration.configuration_file_full_path = configuration_file_full_path
         configuration.init_from_file()
 
         self.message_factory = MessageFactory(configuration)

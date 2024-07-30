@@ -83,12 +83,14 @@ class MessageCloudwatchDefault(MessageBase):
 
         message_dict = MessageBase.extract_message_dict(self._dict_src)
         if "AlarmDescription" not in message_dict:
-            raise MessageBase.NotAMatchError("Not a match")
+            raise MessageBase.NotAMatchError("AlarmDescription missing")
         alarm_description = json.loads(message_dict["AlarmDescription"])
         if MessageBase.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY in alarm_description:
             return self.generate_self_monitoring_notification(message_dict)
 
-        raise NotImplementedError("Implement")
+        breakpoint()
+        if "log_group_name" in message_dict:
+            breakpoint()
 
         log_group_search_url = self.generate_cloudwatch_log_search_link(
             message_dict,

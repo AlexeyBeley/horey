@@ -7,6 +7,7 @@ import json
 import traceback
 
 from horey.alert_system.lambda_package.event_handler import EventHandler
+from horey.alert_system.alert_system_configuration_policy import AlertSystemConfigurationPolicy
 
 from horey.h_logger import get_logger
 logger = get_logger()
@@ -40,7 +41,7 @@ def lambda_handler(event, _):
 
     logger.info(f"Handling event: '{logger_string}'")
 
-    event_handler = EventHandler()
+    event_handler = EventHandler(AlertSystemConfigurationPolicy.ALERT_SYSTEM_CONFIGURATION_FILE_NAME)
     try:
         event_handler.handle_event(event)
     except Exception as error_inst:

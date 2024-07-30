@@ -10,6 +10,7 @@ import shutil
 import pytest
 from horey.alert_system.lambda_package.event_handler import EventHandler
 from horey.alert_system.lambda_package.notification_channels.notification_channel_echo import NotificationChannelEcho
+from horey.alert_system.alert_system_configuration_policy import AlertSystemConfigurationPolicy
 
 # pylint: disable= missing-function-docstring
 
@@ -22,7 +23,7 @@ def fixture_lambda_package_alert_system_config_file():
     os.makedirs(dst_dir)
     dict_config = {"region": "us-west-2",
                    "notification_channels": [sys.modules[NotificationChannelEcho.__module__].__file__]}
-    alert_system_config_file_path = os.path.join(dst_dir, EventHandler.ALERT_SYSTEM_CONFIGURATION_FILE_NAME)
+    alert_system_config_file_path = os.path.join(dst_dir, AlertSystemConfigurationPolicy.ALERT_SYSTEM_CONFIGURATION_FILE_NAME)
     with open(alert_system_config_file_path, "w") as file_handler:
         json.dump(dict_config, file_handler)
 
@@ -32,6 +33,15 @@ def fixture_lambda_package_alert_system_config_file():
 
 @pytest.mark.wip
 def test_init_event_handler(lambda_package_alert_system_config_file):
-    event_handler = EventHandler()
+    event_handler = EventHandler(lambda_package_alert_system_config_file)
     assert event_handler
 
+
+@pytest.mark.wip
+def test_handle_event(lambda_package_alert_system_config_file):
+    event_handler = EventHandler(lambda_package_alert_system_config_file)
+    dir_name = os.path.join(os.path.dirname(__file__), "cloudwatch_messages")
+    file_path = os.path.join(dir_name, "alert_system_self_alert_event.json")
+    with open(file_path, encoding="utf-8") as file_handler:
+        event = json.load(file_handler)
+    assert event_handler.handle_event(event)
