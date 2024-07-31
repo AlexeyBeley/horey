@@ -193,10 +193,11 @@ def test_dispose_vpc():
     aws_api.ec2_client.dispose_vpc(vpc)
     assert vpc.id is not None
 
+
 @pytest.mark.done
 def test_find_route_table_by_subnet():
     region = Region.get_region("us-west-2")
     aws_api.init_subnets(region=region)
     subnet = aws_api.subnets[0]
-    ret = aws_api.find_route_table_by_subnet(None, subnet)
+    ret = aws_api.find_route_table_by_subnet(subnet)
     assert ret is not None

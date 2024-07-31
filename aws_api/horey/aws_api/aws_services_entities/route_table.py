@@ -116,31 +116,35 @@ class RouteTable(AwsObject):
         return (disassociate[0] if disassociate else None), (associate[0] if associate else None)
 
     # pylint: disable = too-many-branches
-    def generate_change_route_requests(self, desired_route_table, declarative=True):
+    def generate_change_route_requests(self, desired_route_table):
         """
         Create or change route rules.
 
         :param desired_route_table:
-        :param declarative: Desired state should be implemented as is. Not declarative: only add desired routes.
         :return: create_requests, replace_requests
         """
 
         create_requests, replace_requests = [], []
         desired_routes_by_destination = {route["DestinationCidrBlock"]: route for route in desired_route_table.routes}
 
-        del_routes_errors = []
+        delete_requests = []
         inactive_routes_errors = []
         for self_route in self.routes:
             if self_route.get("GatewayId") == "local":
                 continue
             if self_route["State"] != "active":
                 inactive_routes_errors.append(self_route)
-            if declarative and self_route["DestinationCidrBlock"] not in desired_routes_by_destination:
-                del_routes_errors.append(self_route)
+            if self_route["DestinationCidrBlock"] not in desired_routes_by_destination:
+                request = {"RouteTableId": self.id}
+                for destination in ["DestinationCidrBlock", "DestinationIpv6CidrBlock", "DestinationPrefixListId"]:
+                    try:
+                        request[destination] = self_route[destination]
+                    except KeyError:
+                        pass
+                delete_requests.append(request)
 
-        if del_routes_errors or inactive_routes_errors:
+        if inactive_routes_errors:
             raise NotImplementedError(
-                f"Erasing routes not implemented: {desired_route_table.region.region_mark}, {self.id}, {del_routes_errors}."
                 f" Inactive routes: {inactive_routes_errors}")
 
         self_routes_by_destination = {}
@@ -159,26 +163,24 @@ class RouteTable(AwsObject):
                 request = copy.deepcopy(desired_route)
                 request["RouteTableId"] = self.id
                 create_requests.append(request)
-            else:
-                if desired_route.get("GatewayId") is None and \
-                        self_routes_by_destination[destination].get("GatewayId") is None and \
-                        desired_route.get("NatGatewayId") is None and \
-                        self_routes_by_destination[destination].get("NatGatewayId"):
-                    raise NotImplementedError(f"Other gateways not implemented: {self.id}, {desired_route}")
-                if desired_route.get("GatewayId") != self_routes_by_destination[destination].get("GatewayId") or \
-                        desired_route.get("NatGatewayId") != self_routes_by_destination[destination].get(
-                    "NatGatewayId"):
-                    if not declarative:
-                        raise RuntimeError("Destructive changes should be declarative.")
-                    request = copy.deepcopy(desired_route)
-                    request["RouteTableId"] = self.id
-                    replace_requests.append(request)
+                continue
+            if desired_route.get("GatewayId") is None and \
+                    self_routes_by_destination[destination].get("GatewayId") is None and \
+                    desired_route.get("NatGatewayId") is None and \
+                    self_routes_by_destination[destination].get("NatGatewayId"):
+                raise NotImplementedError(f"Other gateways not implemented: {self.id}, {desired_route}")
+            if desired_route.get("GatewayId") != self_routes_by_destination[destination].get("GatewayId") or \
+                    desired_route.get("NatGatewayId") != self_routes_by_destination[destination].get(
+                "NatGatewayId"):
+                request = copy.deepcopy(desired_route)
+                request["RouteTableId"] = self.id
+                replace_requests.append(request)
 
             if desired_route.get("State") is not None and request is not None:
                 raise NotImplementedError(f"Can not handle setting state: {self.id}, {desired_route}. "
                                           f"{request=} means there are route changes. Need to implement state changes.")
 
-        return create_requests, replace_requests
+        return create_requests, replace_requests, delete_requests
 
     def check_subnet_associated(self, subnet_id):
         """

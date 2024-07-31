@@ -1765,7 +1765,7 @@ class AWSCleaner:
         for dict_subnet in subnet_group.subnets:
             subnet_id = dict_subnet['SubnetIdentifier']
             subnet = CommonUtils.find_objects_by_values(self.aws_api.subnets, {"id": subnet_id}, max_count=1)[0]
-            route_table = self.aws_api.find_route_table_by_subnet(cluster.region, subnet)
+            route_table = self.aws_api.find_route_table_by_subnet(subnet)
 
             default_route = route_table.get_default_route()
             if not default_route:
@@ -2097,7 +2097,7 @@ class AWSCleaner:
             for availability_zone in load_balancer.availability_zones:
                 subnet_id = availability_zone["SubnetId"]
                 subnet = CommonUtils.find_objects_by_values(self.aws_api.subnets, {"id": subnet_id}, max_count=1)[0]
-                route_table = self.aws_api.find_route_table_by_subnet(load_balancer.region, subnet)
+                route_table = self.aws_api.find_route_table_by_subnet(subnet)
 
                 default_route = route_table.get_default_route()
                 if not default_route:

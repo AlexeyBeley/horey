@@ -2086,12 +2086,13 @@ class EC2Client(Boto3Client):
         route_table.update_from_raw_response(region_route_tables[0].dict_src)
         return True
 
-    def provision_route_table(self, route_table: RouteTable):
+    def provision_route_table(self, route_table: RouteTable, declarative=False):
         """
         Standard
 
-        @param route_table:
-        @return:
+        :param route_table:
+        :param declarative:
+        :return:
         """
 
         current_route_table = RouteTable({})
@@ -2106,15 +2107,18 @@ class EC2Client(Boto3Client):
         if create_tags_request:
             self.clear_cache(RouteTable)
             self.create_tags_raw(create_tags_request)
-        if delete_tags_request:
+        if declarative and delete_tags_request:
             self.clear_cache(RouteTable)
             self.delete_tags_raw(delete_tags_request)
 
-        create_requests, replace_requests = current_route_table.generate_change_route_requests(route_table)
+        create_requests, replace_requests, delete_requests = current_route_table.generate_change_route_requests(route_table)
         for create_request in create_requests:
             self.create_route_raw(current_route_table.region, create_request)
-        for replace_request in replace_requests:
-            self.replace_route_raw(current_route_table.region, replace_request)
+        if declarative:
+            for replace_request in replace_requests:
+                self.replace_route_raw(current_route_table.region, replace_request)
+            for delete_request in delete_requests:
+                self.delete_route_raw(current_route_table.region, delete_request)
 
         disassociate, associate = current_route_table.generate_route_table_association_requests(route_table)
         if disassociate:
@@ -2201,17 +2205,19 @@ class EC2Client(Boto3Client):
         else:
             raise RuntimeError(f"Can not find route table: {route_table.get_tagname()}")
 
-        requests, _ = region_route_table.generate_change_route_requests(route_table, declarative=False)
+        requests, _, _ = region_route_table.generate_change_route_requests(route_table)
         for request in requests:
             self.create_route_raw(route_table.region, request)
 
     def provision_route_table_raw(self, request_dict, region=None):
         """
-        Standard
+        Standard.
 
-        @param request_dict:
-        @return:
+        :param request_dict:
+        :param region:
+        :return:
         """
+
         for response in self.execute(
                 self.get_session_client(region=region).create_route_table, "RouteTable", filters_req=request_dict
         ):
@@ -2250,11 +2256,13 @@ class EC2Client(Boto3Client):
 
     def create_route_raw(self, region, request_dict):
         """
-        Standard
+        Standard.
 
-        @param request_dict:
-        @return:
+        :param region:
+        :param request_dict:
+        :return:
         """
+
         logger.info(f"Creating route {request_dict}")
         for response in self.execute(
                 self.get_session_client(region=region).create_route, "Return", filters_req=request_dict,
@@ -2265,14 +2273,32 @@ class EC2Client(Boto3Client):
 
     def replace_route_raw(self, region, request_dict):
         """
-        Standard
+        Standard.
 
-        @param request_dict:
-        @return:
+        :param region:
+        :param request_dict:
+        :return:
         """
+
         logger.info(f"Replacing route {request_dict}")
         for response in self.execute(
                 self.get_session_client(region=region).replace_route, None, filters_req=request_dict, raw_data=True
+        ):
+            self.clear_cache(RouteTable)
+            return response
+
+    def delete_route_raw(self, region, request_dict):
+        """
+        Standard.
+
+        :param region:
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Deleting route {request_dict}")
+        for response in self.execute(
+                self.get_session_client(region=region).delete_route, None, filters_req=request_dict, raw_data=True
         ):
             self.clear_cache(RouteTable)
             return response
