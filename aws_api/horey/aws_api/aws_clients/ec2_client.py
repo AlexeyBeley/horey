@@ -368,13 +368,21 @@ class EC2Client(Boto3Client):
 
         desired_security_group.id = existing_security_group.id
 
+        create_tags, delete_tags = self.generate_tags_requests(existing_security_group, desired_security_group)
+
+        if create_tags:
+            self.create_tags_raw(create_tags, region=desired_security_group.region)
+
+        if delete_tags and declarative:
+            self.delete_tags_raw(delete_tags, region=desired_security_group.region)
+
         if not provision_rules:
             return
 
         (
             add_request,
             revoke_request,
-            update_description,
+            update_rules_description,
         ) = existing_security_group.generate_modify_ip_permissions_requests(
             desired_security_group, force=force
         )
@@ -385,8 +393,8 @@ class EC2Client(Boto3Client):
         if declarative and revoke_request:
             self.revoke_security_group_ingress_raw(revoke_request)
 
-        if update_description:
-            self.update_security_group_rule_descriptions_ingress_raw(update_description)
+        if update_rules_description:
+            self.update_security_group_rule_descriptions_ingress_raw(update_rules_description)
 
         self.update_security_group_information(desired_security_group)
 
