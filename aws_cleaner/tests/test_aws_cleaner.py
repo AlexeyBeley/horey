@@ -232,7 +232,7 @@ def test_cleanup_report_ecr_images(configuration):
     assert os.path.exists(configuration.ec2_security_groups_report_file_path)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_init_cloudwatch_metrics(configuration: AWSCleanerConfigurationPolicy):
     """
 
@@ -364,12 +364,18 @@ def test_init_ses_permissions_only(configuration: AWSCleanerConfigurationPolicy)
 
 @pytest.mark.done
 def test_generate_permissions_cloud_watch_log_groups(configuration: AWSCleanerConfigurationPolicy):
+    """
+    print(json.dumps(ret, indent=4))
+
+    :param configuration:
+    :return:
+    """
+
     cleaner = AWSCleaner(configuration)
     ret = cleaner.init_cloud_watch_log_groups(permissions_only=True)
     for statement in ret:
         if "arn" in str(statement["Resource"]):
             del statement["Resource"]
-
     assert json.loads(json.dumps(ret)) == [
         {"Sid": "CloudwatchLogs", "Effect": "Allow", "Action": ["logs:DescribeLogGroups", "logs:ListTagsForResource"],
          "Resource": "*"},
@@ -681,7 +687,7 @@ def test_cleanup_report_elasticache(configuration):
     assert os.path.exists(cleaner.configuration.elasticache_report_file_path)
 
 
-@pytest.mark.done
+@pytest.mark.wip
 def test_cleanup_report_cloudwatch(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.cleanup_report_cloudwatch()

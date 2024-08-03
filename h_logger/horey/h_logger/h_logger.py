@@ -2,6 +2,7 @@
 logging handler
 """
 import logging
+
 from horey.h_logger.formatter import MultilineFormatter
 from horey.common_utils.common_utils import CommonUtils
 from horey.h_logger.h_logger_configuration_policy import (
@@ -23,11 +24,12 @@ class StaticData:
     logger = None
     raw_loggers = {}
     formatter = MultilineFormatter()
+    configuration_file_full_path = None
 
 
 def init_logger_from_configuration(configuration_file_full_path):
     """
-    File with config calues in .py format.
+    File with config values in .py format.
 
     :param configuration_file_full_path:
     :return:
@@ -50,21 +52,30 @@ def init_logger_from_configuration(configuration_file_full_path):
         StaticData.logger.addHandler(file_handler)
 
 
-def get_logger(configuration_file_full_path=None):
+def get_logger(configuration_file_full_path=None, name="horey"):
     """
     Reuse logger
     :return:
     """
 
     if StaticData.logger is None:
-        StaticData.logger = logging.getLogger("main")
+        StaticData.logger = logging.getLogger(name)
+        if StaticData.logger.hasHandlers():
+            if bool(StaticData.logger.handlers):
+                raise RuntimeError(f"There are handlers registered in this logger. Looks like you are redefining same logger: {name=}")
         StaticData.logger.setLevel("INFO")
         handler = logging.StreamHandler()
         handler.setFormatter(StaticData.formatter)
         StaticData.logger.addHandler(handler)
 
-        if configuration_file_full_path is not None:
+    if configuration_file_full_path is not None:
+        if StaticData.configuration_file_full_path is None:
             init_logger_from_configuration(configuration_file_full_path)
+            StaticData.configuration_file_full_path = configuration_file_full_path
+        elif StaticData.configuration_file_full_path != configuration_file_full_path:
+            raise ValueError(
+                f"Reconfiguring logger is not supported: Previous: {StaticData.configuration_file_full_path}, "
+                f"received: {configuration_file_full_path}")
 
     return StaticData.logger
 
