@@ -77,7 +77,7 @@ def test_init_and_cache_iterations():
     azure_devops_api.init_iterations()
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_init_and_cache_work_items():
     azure_devops_api.init_work_items()
 
@@ -137,11 +137,21 @@ def test_add_wit_comment():
     azure_devops_api.add_wit_comment("", "test comment")
 
 
-@pytest.mark.skip(reason="Can not test")
+@pytest.mark.skip
 def test_generate_solution_retrospective():
     azure_devops_api.init_work_items(from_cache=True)
     search_strings = mock_values["search_strings"]
     htb_ret = azure_devops_api.generate_solution_retrospective(search_strings)
     htb_ret.write_to_file("tmp.htb")
+    assert htb_ret is not None
+    assert len(azure_devops_api.work_items) > 0
+
+
+@pytest.mark.wip
+def test_generate_retrospective_times():
+    azure_devops_api.init_work_items(from_cache=True)
+    search_strings = mock_values["search_strings"]
+    htb_ret = azure_devops_api.generate_retrospective_times(search_strings)
+    htb_ret.write_to_file("tmp_times.htb")
     assert htb_ret is not None
     assert len(azure_devops_api.work_items) > 0

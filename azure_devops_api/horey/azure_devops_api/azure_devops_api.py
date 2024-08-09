@@ -1365,6 +1365,32 @@ class AzureDevopsAPI:
         self.patch(url, request_data)
         return wit_id
 
+    def generate_retrospective_times(self, search_strings, ignore_wobject_ids=None):
+        """
+        Search for work items with these strings inside
+
+        :param ignore_wobject_ids:
+        :param search_strings:
+        :return:
+        """
+        wits_match = []
+        htb_all_wips = TextBlock("Found wips")
+        for wit in self.work_items:
+            if ignore_wobject_ids and (wit.id in ignore_wobject_ids or wit.parent_id in ignore_wobject_ids):
+                continue
+
+            for search_string in [search_string.lower().strip() for search_string in search_strings]:
+                if search_string in wit.title.lower():
+                    wits_match.append(wit)
+                    htb_all_wips.lines.append(f"{wit.work_item_type}, {wit.id}, {wit.title}")
+                    break
+
+        recursively_found = self.recursive_init_work_items(wits_match, forward_only=True)
+        recursively_found = sorted(recursively_found, key=lambda _wit: _wit.strptime(_wit.fields["Microsoft.VSTS.Common.StateChangeDate"]))
+        for wit in recursively_found:
+            print(f'{wit.strptime(wit.fields["Microsoft.VSTS.Common.StateChangeDate"]).strftime("%d.%m.%Y")} {wit.title}')
+            #wit.activated_date.strftime("%d.%m.%Y")
+
     def generate_solution_retrospective(self, search_strings, ignore_wobject_ids=None):
         """
         Search for work items with these strings inside
