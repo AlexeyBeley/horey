@@ -5,6 +5,8 @@ Deployment target machine.
 
 import os.path
 from enum import Enum
+from horey.deployer.deployment_step import DeploymentStep
+from horey.deployer.deployment_step_configuration_policy import DeploymentStepConfigurationPolicy
 
 
 # pylint: disable=too-many-instance-attributes
@@ -43,6 +45,20 @@ class DeploymentTarget:
         self.status_code = None
         self.status = None
 
+    def print(self):
+        """
+        Pretty print.
+
+        :return:
+        """
+
+        str_ret = f"hostname: {self.hostname}\n" \
+                  f"deployment_target_address: {self.deployment_target_address}\n" \
+                  f"deployment_target_ssh_key_type: {self.deployment_target_ssh_key_type}\n" \
+                  f"deployment_target_ssh_key_path: {self.deployment_target_ssh_key_path}"
+        print(str_ret)
+        return str_ret
+
     @property
     def local_deployment_data_dir_path(self):
         """
@@ -65,6 +81,23 @@ class DeploymentTarget:
         """
 
         self.steps.append(step)
+
+    def append_raw_step(self, script_name):
+        """
+
+
+        :param script_name:
+        :return:
+        """
+
+        step_configuration = DeploymentStepConfigurationPolicy(script_name)
+        step_configuration.deployment_dir_path = self.remote_deployment_dir_path
+        step_configuration.script_name = script_name
+        os.makedirs(self.local_deployment_data_dir_path, exist_ok=True)
+        step_configuration.generate_configuration_file(os.path.join(self.local_deployment_data_dir_path,
+                                                                    step_configuration.script_configuration_file_name))
+        step = DeploymentStep(step_configuration)
+        self.add_step(step)
 
     class StatusCode(Enum):
         """

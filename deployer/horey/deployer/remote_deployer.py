@@ -1137,6 +1137,15 @@ class RemoteDeployer:
         :return:
         """
 
+        errors = []
+        for target in targets:
+            if target.bastion_ssh_key_path is not None and not os.path.exists(target.bastion_ssh_key_path):
+                errors.append(f"Target {target.hostname} bastion SSH key file is missing at {target.bastion_ssh_key_path}")
+            if not os.path.exists(target.deployment_target_ssh_key_path):
+                errors.append(f"Target {target.hostname} SSH key file is missing at {target.deployment_target_ssh_key_path}")
+        if errors:
+            raise ValueError("\n".join(errors))
+
         for target in targets:
             self.deploy_target(target, asynchronous=asynchronous)
             time.sleep(10)
