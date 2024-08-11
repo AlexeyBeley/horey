@@ -21,6 +21,8 @@ class NotificationChannelSlack:
 
     """
 
+    ALERT_SYSTEM_MONITORING_ROUTING_TAG =
+
     CONFIGURATION_POLICY_FILE_NAME = (
         "notification_channel_slack_configuration_policy.py"
     )

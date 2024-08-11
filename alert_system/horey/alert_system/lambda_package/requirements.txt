@@ -1,3 +1,4 @@
 horey.h_logger>=1.0.0
 horey.slack_api>=1.0.0
 horey.configuration_policy>=1.0.0
+horey.alert_system>=1.0.0

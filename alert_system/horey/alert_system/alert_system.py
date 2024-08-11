@@ -287,7 +287,7 @@ class AlertSystem:
 
         lambda_handler_file_path = sys.modules["horey.alert_system.lambda_package.lambda_handler"].__file__
         alert_system_config_file_path = os.path.join(self.configuration.deployment_directory_path,
-                                                      AlertSystemConfigurationPolicy.ALERT_SYSTEM_CONFIGURATION_FILE_NAME)
+                                                      AlertSystemConfigurationPolicy.ALERT_SYSTEM_CONFIGURATION_FILE_PATH)
         self.configuration.generate_configuration_file(alert_system_config_file_path)
 
         self.packer.add_files_to_zip(
@@ -639,7 +639,6 @@ class AlertSystem:
     def provision_and_trigger_locally_lambda_handler(self, lambda_files, event_json_file_path):
         """
         Locally test event in the being provisioned infra.
-        self.create_lambda_package(lambda_files)
 
         validation_dir_name = os.path.splitext(self.configuration.lambda_zip_file_name)[0]
         validation_dir_path = os.path.join(self.configuration.deployment_directory_path, validation_dir_name)

@@ -1,19 +1,13 @@
-import json
 import os
 import shutil
-import sys
 
 import pytest
-from horey.alert_system.lambda_package.notification_channels.notification_channel_echo import NotificationChannelEcho
-from horey.alert_system.lambda_package.event_handler import EventHandler
 from horey.alert_system.alert_system_configuration_policy import AlertSystemConfigurationPolicy
+from horey.alert_system.alert_system import AlertSystem
 
 
 @pytest.fixture(name="alert_system_configuration")
 def fixture_alert_system_configuration():
-    #dict_config = {"region": "us-west-2",
-    #               "notification_channels": ["notification_channel_echo_initializer.py"]}
-
     as_configuration = AlertSystemConfigurationPolicy()
     as_configuration.horey_repo_path = os.path.abspath(
         os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")

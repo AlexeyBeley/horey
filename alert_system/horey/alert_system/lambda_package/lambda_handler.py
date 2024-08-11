@@ -2,6 +2,7 @@
 Entry point for the receiver lambda.
 
 """
+
 import copy
 import json
 import traceback
@@ -41,7 +42,7 @@ def lambda_handler(event, _):
 
     logger.info(f"Handling event: '{logger_string}'")
 
-    event_handler = EventHandler(AlertSystemConfigurationPolicy.ALERT_SYSTEM_CONFIGURATION_FILE_NAME)
+    event_handler = EventHandler(AlertSystemConfigurationPolicy.ALERT_SYSTEM_CONFIGURATION_FILE_PATH)
     try:
         event_handler.handle_event(event)
     except Exception as error_inst:
