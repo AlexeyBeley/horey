@@ -2339,6 +2339,7 @@ class AWSAPI:
         @param master_hosted_zone_name:
         @return:
         """
+
         self.route53_client.provision_hosted_zone(hosted_zone)
 
         if master_hosted_zone_name is None:
@@ -2903,12 +2904,11 @@ class AWSAPI:
         request = {"AllocationId": elastic_address.id, "InstanceId": ec2_instance.id}
         self.ec2_client.associate_elastic_address_raw(request)
 
-    def find_route_table_by_subnet(self, _, subnet):
+    def find_route_table_by_subnet(self, subnet):
         """
         Find route table attached to subnet.
 
         @param subnet:
-        @param _: was region before
         @return:
         """
 
@@ -2937,7 +2937,7 @@ class AWSAPI:
         @return:
         """
 
-        route_table = self.find_route_table_by_subnet(subnet.region, subnet)
+        route_table = self.find_route_table_by_subnet(subnet)
         for route in route_table.routes:
             if route.get("State") is None:
                 logger.warning(f"Route has no State: route table: {route_table.region.region_mark} `{route_table.id}, `{route}")
@@ -2979,7 +2979,7 @@ class AWSAPI:
         @return:
         """
 
-        route_table = self.find_route_table_by_subnet(subnet.region, subnet)
+        route_table = self.find_route_table_by_subnet(subnet)
         for route in route_table.routes:
             if route.get("State") is None:
                 logger.warning(f"Route has no State: route table: {route_table.region.region_mark} `{route_table.id}, `{route}")
@@ -3368,6 +3368,24 @@ class AWSAPI:
             raise RuntimeError(f"Can not find subnet '{name}' in vpc {vpc.id}")
 
         return subnets[0]
+
+    def get_subnets_by_vpc(self, vpc):
+        """
+        Find subnet in a vpc by its name tag.
+
+        @param vpc:
+        @return:
+        """
+
+        filters_req = {"Filters": [
+            {"Name": "vpc-id", "Values": [vpc.id]}
+        ]}
+
+        subnets = self.ec2_client.get_region_subnets(vpc.region, filters_req=filters_req)
+        if not subnets:
+            raise RuntimeError(f"Can not find subnets by vpc {vpc.id}")
+
+        return subnets
 
     def provision_db_cluster_parameter_group(self, db_cluster_parameter_group):
         """

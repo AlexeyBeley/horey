@@ -18,13 +18,16 @@ from horey.aws_api.aws_services_entities.lambda_event_source_mapping import (
 )
 from horey.common_utils.common_utils import CommonUtils
 from horey.aws_api.aws_services_entities.ecs_cluster import ECSCluster
+from horey.aws_api.aws_services_entities.ec2_instance import EC2Instance
+from horey.aws_api.aws_services_entities.auto_scaling_group import AutoScalingGroup
+
 
 configuration_values_file_full_path = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "h_logger_configuration_values.py"
 )
 
 logger = get_logger(
-    configuration_values_file_full_path=configuration_values_file_full_path
+    configuration_file_full_path=configuration_values_file_full_path
 )
 
 configuration = AWSAPIConfigurationPolicy()
@@ -193,10 +196,32 @@ def test_dispose_vpc():
     aws_api.ec2_client.dispose_vpc(vpc)
     assert vpc.id is not None
 
+
 @pytest.mark.done
 def test_find_route_table_by_subnet():
     region = Region.get_region("us-west-2")
     aws_api.init_subnets(region=region)
     subnet = aws_api.subnets[0]
-    ret = aws_api.find_route_table_by_subnet(None, subnet)
+    ret = aws_api.find_route_table_by_subnet(subnet)
     assert ret is not None
+
+
+@pytest.mark.wip
+def test_detach_and_delete_ecs_container_instances():
+    current_ec2_instance_ids = []
+    region = Region.get_region("us-east-1")
+    auto_scaling_group_arn = ""
+
+    auto_scaling_group = AutoScalingGroup({})
+    auto_scaling_group.region = region
+    auto_scaling_group.arn = auto_scaling_group_arn
+    aws_api.autoscaling_client.update_auto_scaling_group_information(auto_scaling_group)
+
+    aws_api.autoscaling_client.detach_instances(auto_scaling_group, current_ec2_instance_ids, decrement=True)
+
+    # terminate old instances
+    for current_ec2_instance_id in current_ec2_instance_ids:
+        ec2_instance = EC2Instance({})
+        ec2_instance.region = region
+        ec2_instance.id = current_ec2_instance_id
+        aws_api.ec2_client.dispose_instance(ec2_instance)

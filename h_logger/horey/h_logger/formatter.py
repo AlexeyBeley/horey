@@ -1,5 +1,4 @@
 import logging
-import pdb
 import datetime
 
 formatter = logging.Formatter(

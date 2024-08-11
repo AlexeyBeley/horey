@@ -10,7 +10,7 @@ from collections import defaultdict
 
 import os
 from horey.h_logger import get_logger
-from horey.h_logger.h_logger import formatter
+from horey.h_logger.formatter import formatter
 from horey.human_api.human_api_configuration_policy import (
     HumanAPIConfigurationPolicy,
 )

@@ -1765,7 +1765,7 @@ class AWSCleaner:
         for dict_subnet in subnet_group.subnets:
             subnet_id = dict_subnet['SubnetIdentifier']
             subnet = CommonUtils.find_objects_by_values(self.aws_api.subnets, {"id": subnet_id}, max_count=1)[0]
-            route_table = self.aws_api.find_route_table_by_subnet(cluster.region, subnet)
+            route_table = self.aws_api.find_route_table_by_subnet(subnet)
 
             default_route = route_table.get_default_route()
             if not default_route:
@@ -1882,13 +1882,18 @@ class AWSCleaner:
                 if metric_filter.filter_pattern:
                     metric_filters_patterns[metric_filter.filter_pattern].append(metric_filter)
             tb_ret_tmp.lines = [
-                                   f"Same filter pattern '{filter_pattern}' appears in  multiple metric filters: {[metric.name for metric in _metric_filters]}"
+                                   f"Same filter pattern '{filter_pattern}' appears in multiple metric filters: {[metric.name for metric in _metric_filters]}"
                                    for filter_pattern, _metric_filters in metric_filters_patterns.items() if
                                    len(_metric_filters) > 1] + tb_ret_tmp.lines
 
             if tb_ret_tmp.lines or tb_ret_tmp.blocks:
                 tb_ret.blocks.append(tb_ret_tmp)
+
         tb_ret.lines = no_retention + no_metrics
+        largest_log_groups = [f"Group {group.name} size: {CommonUtils.bytes_to_str(group.stored_bytes)}" for group in
+                              sorted(self.aws_api.cloud_watch_log_groups, key=lambda _group: _group.stored_bytes, reverse=True)[:20]]
+        if largest_log_groups:
+            tb_ret.lines += ["Largest 20 Log groups"] + largest_log_groups
 
         if len(all_metric_filters) != len(self.aws_api.cloud_watch_log_groups_metric_filters):
             tb_ret.lines.append(
@@ -2097,7 +2102,7 @@ class AWSCleaner:
             for availability_zone in load_balancer.availability_zones:
                 subnet_id = availability_zone["SubnetId"]
                 subnet = CommonUtils.find_objects_by_values(self.aws_api.subnets, {"id": subnet_id}, max_count=1)[0]
-                route_table = self.aws_api.find_route_table_by_subnet(load_balancer.region, subnet)
+                route_table = self.aws_api.find_route_table_by_subnet(subnet)
 
                 default_route = route_table.get_default_route()
                 if not default_route:
