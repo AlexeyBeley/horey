@@ -21,13 +21,6 @@ class NotificationChannelSlack:
 
     """
 
-    ALERT_SYSTEM_MONITORING_ROUTING_TAG =
-
-    CONFIGURATION_POLICY_FILE_NAME = (
-        "notification_channel_slack_configuration_policy.py"
-    )
-    CONFIGURATION_POLICY_CLASS_NAME = "NotificationChannelSlackConfigurationPolicy"
-
     def __init__(self, configuration):
         config = SlackAPIConfigurationPolicy()
         config.init_from_policy(configuration, ignore_undefined=True)
@@ -41,7 +34,6 @@ class NotificationChannelSlack:
         @param notification:
         @return:
         """
-
         if notification.type not in Notification.Types:
             notification.text = (
                 f"Error in notification type. Auto set to CRITICAL: "
@@ -49,6 +41,9 @@ class NotificationChannelSlack:
                 f"Original message {notification.text}"
             )
             notification.type = Notification.Types.CRITICAL
+        elif notification.type == Notification.Types.DEBUG:
+            logger.info(f"Notification channel slack ignoring debug type notification: {notification.header}")
+            return True
 
         base_text = notification.text
         if not notification.tags:
@@ -83,6 +78,8 @@ class NotificationChannelSlack:
                     dst_channel,
                 )
                 self.send(slack_message)
+
+        return True
 
     def map_routing_tag_to_channels(self, tag):
         """
@@ -191,21 +188,15 @@ class NotificationChannelSlackConfigurationPolicy(SlackAPIConfigurationPolicy):
 
     """
 
+    ALERT_SYSTEM_MONITORING_ROUTING_TAG = "ALERT_SYSTEM_MONITORING_ROUTING_TAG"
+
     def __init__(self):
         super().__init__()
-        self._alert_system_monitoring_destination = None
         self._tag_to_channel_mapping = None
 
     @property
     def alert_system_monitoring_destination(self):
         return self.tag_to_channel_mapping.get(self.ALERT_SYSTEM_MONITORING_ROUTING_TAG)
-
-    @alert_system_monitoring_destination.setter
-    def alert_system_monitoring_destination(self, value):
-        if not isinstance(value, str):
-            raise ValueError(value)
-
-        self._alert_system_monitoring_destination = value
 
     @property
     def tag_to_channel_mapping(self):

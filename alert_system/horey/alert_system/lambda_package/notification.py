@@ -21,6 +21,22 @@ class Notification:
         self._link_href = None
         self._tags = None
 
+    def print(self):
+        """
+        Pretty print.
+
+        :return:
+        """
+
+        str_ret = "\n".join([f"{attr_name}: {getattr(self, attr_name)}" for attr_name in ["type",
+                                                                                       "header",
+                                                                                       "tags",
+                                                                                       "link_href",
+                                                                                       "link",
+                                                                                       "text"]])
+        print(str_ret)
+        return str_ret
+
     @property
     def tags(self):
         """
@@ -164,6 +180,7 @@ class Notification:
 
         """
 
+        DEBUG = "DEBUG"
         INFO = "INFO"
         STABLE = "STABLE"
         WARNING = "WARNING"

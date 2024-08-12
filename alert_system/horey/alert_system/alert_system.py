@@ -172,7 +172,7 @@ class AlertSystem:
         @return:
         """
 
-        filter_text = '"[ERROR]"'
+        filter_text = f'"{AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_LOG_FILTER_PATTERN}"'
         metric_name_raw = f"{self.configuration.lambda_name}-log-error"
         message_data = {"routing_tags": [NotificationChannelFactory.ALERT_SYSTEM_MONITORING_TAG],
                         "log_group_name": self.configuration.alert_system_lambda_log_group_name,
@@ -688,7 +688,7 @@ class AlertSystem:
         log_group.region = self.region
         log_group.name = self.configuration.alert_system_lambda_log_group_name
 
-        self.aws_api.cloud_watch_logs_client.put_log_lines(log_group, ["[ERROR]: Neo, the Horey has you!"])
+        self.aws_api.cloud_watch_logs_client.put_log_lines(log_group, [f"{AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_LOG_FILTER_PATTERN}: Neo, the Horey has you!"])
 
     def trigger_self_monitoring_log_timeout_alarm(self):
         """

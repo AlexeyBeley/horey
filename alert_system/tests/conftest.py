@@ -26,7 +26,7 @@ def fixture_alert_system_configuration_file_path():
     yield config_file_path
 
 
-@pytest.fixture(name="alert_system_configuration_file_path")
+@pytest.fixture(name="alert_system_configuration_file_path_with_slack")
 def fixture_alert_system_configuration_file_path_with_slack():
     as_configuration = AlertSystemConfigurationPolicy()
     as_configuration.horey_repo_path = os.path.abspath(

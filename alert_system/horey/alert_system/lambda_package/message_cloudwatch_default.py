@@ -2,12 +2,14 @@
 Message being received by the Alert System Lambda.
 
 """
+import datetime
 import json
 import urllib.parse
 
 from horey.h_logger import get_logger
 from horey.alert_system.lambda_package.message_base import MessageBase
 from horey.alert_system.lambda_package.notification import Notification
+from horey.alert_system.alert_system_configuration_policy import AlertSystemConfigurationPolicy
 
 
 logger = get_logger()
@@ -28,9 +30,54 @@ class MessageCloudwatchDefault(MessageBase):
         """
 
         super().__init__(dict_src)
-        alarm_dict = MessageBase.extract_message_dict(self._dict_src)
-        if "AlarmDescription" not in alarm_dict:
+        self._message_dict = None
+        self._trigger = None
+        self._region = None
+        self._alarm_description = None
+        if "AlarmDescription" not in self.message_dict:
             raise MessageBase.NotAMatchError("Not a match")
+
+    @property
+    def message_dict(self):
+        """
+        Extract and save.
+
+        :return:
+        """
+
+        if self._message_dict is None:
+            self._message_dict = MessageBase.extract_message_dict(self._dict_src)
+        return self._message_dict
+
+    @property
+    def trigger(self):
+        """
+        Extract and save
+
+        :return:
+        """
+
+        if self._trigger is None:
+            self._trigger = self.message_dict.get("Trigger")
+        return self._trigger
+
+    @property
+    def region(self):
+        if self._region is None:
+            self._region = self.message_dict["AlarmArn"].split(":")[3]
+        return self._region
+    
+    @property
+    def alarm_description(self):
+        """
+        Extract and save
+
+        :return:
+        """
+
+        if self._alarm_description is None:
+            self._alarm_description = json.loads(self.message_dict.get("AlarmDescription"))
+        return self._alarm_description
 
     @staticmethod
     def encode_to_aws_url_format(str_src):
@@ -49,12 +96,11 @@ class MessageCloudwatchDefault(MessageBase):
         return ret.replace("%", "$25")
 
     def generate_cloudwatch_log_search_link(
-        self, alarm, log_group_name, log_group_filter_pattern
+        self, log_group_name, log_group_filter_pattern
     ):
         """
         Generate comfort link to relevant search in the cloudwatch logs service.
 
-        @param alarm:
         @param log_group_name:
         @param log_group_filter_pattern:
         @return:
@@ -64,9 +110,11 @@ class MessageCloudwatchDefault(MessageBase):
         log_group_filter_pattern_encoded = self.encode_to_aws_url_format(
             log_group_filter_pattern
         )
-
-        search_time_end = alarm.end_time.strftime("%Y-%m-%dT%H:%M:%SZ")
-        search_time_start = alarm.start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
+        breakpoint()
+        time_end  = self.message_dict["StateChangeTime"]
+        time_start = time_end - datetime.timedelta(seconds=self.trigger.get("Period", 600))
+        search_time_end = time_end.strftime("%Y-%m-%dT%H:%M:%SZ")
+        search_time_start = time_start.strftime("%Y-%m-%dT%H:%M:%SZ")
 
         log_group_search_url = (
             f"https://{alarm.region}.console.aws.amazon.com/cloudwatch/home?region="
@@ -81,24 +129,21 @@ class MessageCloudwatchDefault(MessageBase):
         :return:
         """
 
-        message_dict = MessageBase.extract_message_dict(self._dict_src)
-        if "AlarmDescription" not in message_dict:
+        if "AlarmDescription" not in self.message_dict:
             raise MessageBase.NotAMatchError("AlarmDescription missing")
-        alarm_description = json.loads(message_dict["AlarmDescription"])
-        if MessageBase.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY in alarm_description:
-            return self.generate_self_monitoring_notification(message_dict)
 
+        if not self.trigger:
+            raise MessageBase.NotAMatchError("Trigger is missing")
+
+        if MessageBase.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY in self.alarm_description:
+            return self.generate_self_monitoring_notification()
+
+        if self.trigger.get("MetricName") == "Duration" and self.trigger.get("Namespace") == "AWS/Lambda":
+            return self.generate_notification_lambda_duration()
+
+        if "log_group_filter_pattern" in self.alarm_description:
+            return self.generate_notification_log_group_filter_pattern()
         breakpoint()
-        if "log_group_name" in message_dict:
-            breakpoint()
-
-        log_group_search_url = self.generate_cloudwatch_log_search_link(
-            message_dict,
-            message_dict["log_group_name"],
-            message_dict["log_group_filter_pattern"],
-        )
-        if notification is None:
-            notification = Notification()
 
         if notification.text is None:
             notification.text = (
@@ -108,120 +153,136 @@ class MessageCloudwatchDefault(MessageBase):
                 f"{alarm.new_state_reason}"
             )
 
-        notification.link = log_group_search_url
-        notification.link_href = "View logs in cloudwatch"
-        try:
-            region = mail.get("sourceArn").split(":")[3]
-        except Exception as error_inst:
-            region = repr(error_inst)
-        try:
-            message_id = mail.get("messageId")
-        except Exception as error_inst:
-            message_id = repr(error_inst)
-        try:
-            destination = mail.get("destination")
-        except Exception as error_inst:
-            destination = repr(error_inst)
-
-        event_type = self.message_dict.get("notificationType") or self.message_dict.get("eventType")
-        if not event_type:
-            notification.type = Notification.Types.CRITICAL
-            data = self._dict_src or self.message_dict
-            notification.text = f"Was not able to find delivery type: {data}"
-            email_status = "Missing both 'notificationType' and 'eventType'"
-        elif event_type == "Delivery":
-            notification.type = Notification.Types.STABLE
-            notification.text = f"Delivery. Region: {region}. Timestamp: {timestamp}."
-            email_status = "Delivery"
-        elif event_type == "DeliveryDelay":
-            notification.type = Notification.Types.WARNING
-            info = self.message_dict.get("deliveryDelay") or destination
-            notification.text = f"DeliveryDelay. Region: {region}. Timestamp: {timestamp}. messageId: {message_id}. Info: {info}"
-            email_status = "DeliveryDelay"
-        elif event_type == "Bounce":
-            notification.type = Notification.Types.WARNING
-            info = self.message_dict.get("bounce") or destination
-            notification.text = f"DeliveryDelay. Region: {region}. Timestamp: {timestamp}. messageId: {message_id}. Info: {info}"
-            email_status = "DeliveryDelay"
-        elif event_type == "Send":
-            notification.type = Notification.Types.INFO
-            notification.text = f"DeliveryDelay. Region: {region}. Timestamp: {timestamp}. messageId: {message_id}. Destination: {destination}"
-            email_status = "DeliveryDelay"
-        else:
-            notification.type = Notification.Types.CRITICAL
-            notification.text = f"Event Type: {event_type}. Event: {self._dict_src}"
-            email_status = "ALERT_SYSTEM_ERROR"
-        notification.header = (
-                notification.header or f"Default SES handler: {email_status}"
-        )
-
-        return notification
-
-    def generate_self_monitoring_notification(self, message_dict):
+    def get_dimension(self, name):
         """
-        All cloud watch self monitoring metrics handled here
+        Find dimension value by name
 
-        :param message_dict:
+        :param name:
         :return:
         """
 
+        for dimension in self.trigger["Dimensions"]:
+            if dimension.get("name") == name:
+                return dimension["value"]
+        return None
+
+    def generate_notification_lambda_duration(self):
+        """
+        Generate lambda duration message
+
+        :return:
+        """
+
+        threshold_sec = int(self.message_dict["Trigger"]["Threshold"] // 1000)
+        reason = f"Lambda duration > {threshold_sec} seconds"
+        new_state_reason = self.message_dict["NewStateReason"]
+        alarm_time = self.message_dict["StateChangeTime"]
+        lambda_name = self.get_dimension("FunctionName")
+
         notification = Notification()
-        alarm_description = json.loads(message_dict["AlarmDescription"])
-
-        notification.tags = alarm_description["routing_tags"]
-        notification.header = "Alert System self monitoring"
-        alarm_name = message_dict["AlarmName"]
-        region_mark = message_dict["AlarmArn"].split(":")[2]
-        notification.link = f"https://{region_mark}.console.aws.amazon.com/cloudwatch/home?region={region_mark}#alarmsV2:alarm/{alarm_name}"
-
-        if message_dict["NewStateValue"] == "OK":
-            notification.type = Notification.Types.STABLE
-        else:
-            notification.type = Notification.Types.CRITICAL
-
-        if "log_group_name" in alarm_description and "log_group_filter_pattern" in alarm_description:
-            pattern = alarm_description.get("log_group_filter_pattern")
-            pattern_middle = int(len(pattern)//2)
-            pattern = pattern[:pattern_middle] + "_horey_explicit_split_" + pattern[pattern_middle:]
-            log_group_name = alarm_description.get("log_group_name")
-            reason = f"Pattern '{pattern}' found in Lambda log group: {log_group_name}"
-            lambda_name = message_dict["Trigger"]["Namespace"].split("/")[-1]
-        elif message_dict["Trigger"]["MetricName"] == "Duration":
-            # alarm.threshold = self.configuration.lambda_timeout * 0.6 * 1000
-            threshold_sec = int(message_dict["Trigger"]["Threshold"] // 1000)
-            reason = f"Lambda duration > {threshold_sec} seconds"
-            name_dimensions = list(filter(lambda x: x["name"] == "FunctionName", message_dict["Trigger"]["Dimensions"]))
-            if len(name_dimensions) != 1:
-                raise RuntimeError(name_dimensions)
-            lambda_name = name_dimensions[0]["value"]
-        elif message_dict["Trigger"]["MetricName"] == "Errors":
-            # alarm.threshold = self.configuration.lambda_timeout * 0.6 * 1000
-            threshold_sec = int(message_dict["Trigger"]["Threshold"] // 1000)
-            reason = f"Lambda finished with errors in last {threshold_sec} seconds"
-            name_dimensions = list(filter(lambda x: x["name"] == "FunctionName", message_dict["Trigger"]["Dimensions"]))
-            if len(name_dimensions) != 1:
-                raise RuntimeError(name_dimensions)
-            lambda_name = name_dimensions[0]["value"]
-        else:
-            raise NotImplementedError(f'{message_dict["Trigger"]["MetricName"]=}')
-
-        alarm_time = message_dict["StateChangeTime"]
-        new_state_reason = message_dict["NewStateReason"]
+        notification.type = Notification.Types.STABLE if self.message_dict["NewStateValue"] == "OK" else Notification.Types.CRITICAL
+        notification.header = f"Lambda '{lambda_name}' duration error"
         notification.text = (
-            f"Region: {region_mark}\n"
+            f"Region: {self.region}\n"
             f'Lambda Name: {lambda_name}\n'
             f'HR Reason: {reason}\n'
             f'Raw reason: \'{new_state_reason}\'\n'
             f'Time: {alarm_time}\n'
         )
 
+        notification.link = f"https://{self.region}.console.aws.amazon.com/lambda/home?region={self.region}#/functions/{lambda_name}?tab=monitoring"
+        notification.link_href = "Lambda Link"
+        return notification
+
+    def generate_self_monitoring_notification(self):
+        """
+        All cloud watch self monitoring metrics handled here
+
+        :return:
+        """
+
+        notification = Notification()
+
+        notification.tags = self.alarm_description["routing_tags"]
+        notification.header = "Alert System self monitoring"
+        alarm_name = self.message_dict["AlarmName"]
+        region_mark = self.message_dict["AlarmArn"].split(":")[2]
+        notification.link = f"https://{region_mark}.console.aws.amazon.com/cloudwatch/home?region={region_mark}#alarmsV2:alarm/{alarm_name}"
+        if self.message_dict["NewStateValue"] == "OK":
+            notification.type = Notification.Types.STABLE
+        else:
+            notification.type = Notification.Types.CRITICAL
+
+        if "log_group_name" in self.alarm_description and "log_group_filter_pattern" in self.alarm_description:
+            notification = self.generate_notification_log_group_filter_pattern()
+            breakpoint()
+        elif self.message_dict["Trigger"]["MetricName"] == "Duration":
+            # alarm.threshold = self.configuration.lambda_timeout * 0.6 * 1000
+            threshold_sec = int(self.message_dict["Trigger"]["Threshold"] // 1000)
+            reason = f"Lambda duration > {threshold_sec} seconds"
+            name_dimensions = list(filter(lambda x: x["name"] == "FunctionName", self.message_dict["Trigger"]["Dimensions"]))
+            if len(name_dimensions) != 1:
+                raise RuntimeError(name_dimensions)
+            lambda_name = name_dimensions[0]["value"]
+        elif self.message_dict["Trigger"]["MetricName"] == "Errors":
+            # alarm.threshold = self.configuration.lambda_timeout * 0.6 * 1000
+            threshold_sec = int(self.message_dict["Trigger"]["Threshold"] // 1000)
+            reason = f"Lambda finished with errors in last {threshold_sec} seconds"
+            name_dimensions = list(filter(lambda x: x["name"] == "FunctionName", self.message_dict["Trigger"]["Dimensions"]))
+            if len(name_dimensions) != 1:
+                raise RuntimeError(name_dimensions)
+            lambda_name = name_dimensions[0]["value"]
+        else:
+            raise NotImplementedError(f'{self.message_dict["Trigger"]["MetricName"]=}')
+
+        alarm_time = self.message_dict["StateChangeTime"]
+        new_state_reason = self.message_dict["NewStateReason"]
+        notification.text = f"Region: {self.region}\n" \
+                            f"Lambda Name: {lambda_name}\n" \
+                            f"Reason: {reason}\n" \
+                            f"Time: {alarm_time}\n" \
+                            f"Raw reason: \'{new_state_reason}\'\n'"
+
+        return notification
+
+    def generate_notification_log_group_filter_pattern(self):
+        """
+        Generate notification pointing the log group.
+
+        :return:
+        """
+
+        pattern = self.alarm_description.get("log_group_filter_pattern")
+        log_group_name = self.alarm_description.get("log_group_name")
+        new_state_reason = self.message_dict["NewStateReason"]
+        alarm_time = self.message_dict["StateChangeTime"]
+
+        pattern_log = pattern if AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_LOG_FILTER_PATTERN not in pattern \
+            else "ALERT_SYSTEM_SELF_MONITORING_LOG_FILTER_PATTERN"
+
+        logger.info(f"Found {pattern_log} in {log_group_name}")
+
+        reason = f"Pattern '{pattern}' found in log group: {log_group_name}"
+
+        notification = Notification()
+        notification.type = Notification.Types.STABLE if self.message_dict["NewStateValue"] == "OK" else Notification.Types.CRITICAL
+        notification.header = "Log filter pattern pattern found"
+
+        notification.text = f"Region: {self.region}\n" \
+                            f"Reason: {reason}\n" \
+                            f"Time: {alarm_time}\n" \
+                            f"Raw reason: \'{new_state_reason}\'\n'"
+
+        notification.link = self.generate_cloudwatch_log_search_link(log_group_name, pattern)
+
+        notification.link_href = "Log group"
         return notification
 
     def generate_alert_description(self):
         """
         Generate string to be used by description.
 
+        return json.dumps(self.message_dict)
         :return:
         """
-
-        return json.dumps(self.message_dict)
+        raise NotImplementedError("What is this code?")
