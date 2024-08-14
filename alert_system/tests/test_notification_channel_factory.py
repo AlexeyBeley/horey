@@ -5,29 +5,25 @@ import json
 import os.path
 import sys
 import pytest
-from horey.common_utils.common_utils import CommonUtils
 from horey.aws_api.aws_api import AWSAPI
 from horey.aws_api.base_entities.region import Region
 from horey.alert_system.lambda_package.notification_channels.notification_channel_factory import \
     NotificationChannelFactory
 from horey.alert_system.lambda_package.notification_channels.notification_channel_echo import NotificationChannelEcho
-from horey.alert_system.lambda_package.notification_channels.notification_channel_ses import NotificationChannelSES
 from horey.alert_system.alert_system_configuration_policy import AlertSystemConfigurationPolicy
-from horey.alert_system.lambda_package.notification_channels.notification_channel_slack import NotificationChannelSlack
-import fixtures
 
 
 # pylint: disable= missing-function-docstring
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_load_notification_channel_echo():
     factory = NotificationChannelFactory()
     notification_channel = factory.load_notification_channel(sys.modules[NotificationChannelEcho.__module__].__file__)
     assert notification_channel
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_create_ses_configs_file():
     aws_api = AWSAPI()
     region = Region.get_region("us-west-2")
@@ -60,7 +56,7 @@ def test_create_ses_configs_file():
 
     test_notification_channels_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "notification_channels"))
     with open(os.path.join(test_notification_channels_dir, "notification_channel_ses_config.json"),
-              "w") as file_handler:
+              "w", encoding="utf-8") as file_handler:
         json.dump(config_dict, file_handler, indent=4)
 
 

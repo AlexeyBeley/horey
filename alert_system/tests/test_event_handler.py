@@ -24,7 +24,7 @@ def fixture_lambda_package_alert_system_config_file():
     dict_config = {"region": "us-west-2",
                    "notification_channels": [sys.modules[NotificationChannelEcho.__module__].__file__]}
     alert_system_config_file_path = os.path.join(dst_dir, AlertSystemConfigurationPolicy.ALERT_SYSTEM_CONFIGURATION_FILE_PATH)
-    with open(alert_system_config_file_path, "w") as file_handler:
+    with open(alert_system_config_file_path, "w", encoding="utf-8") as file_handler:
         json.dump(dict_config, file_handler)
 
     yield alert_system_config_file_path

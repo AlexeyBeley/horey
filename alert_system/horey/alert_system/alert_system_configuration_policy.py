@@ -17,7 +17,8 @@ class AlertSystemConfigurationPolicy(ConfigurationPolicy):
     """
 
     ALERT_SYSTEM_CONFIGURATION_FILE_PATH = "alert_system_configuration.json"
-    ALERT_SYSTEM_SELF_MONITORING_LOG_FILTER_PATTERN = "[ERROR]"
+    ALERT_SYSTEM_SELF_MONITORING_LOG_ERROR_FILTER_PATTERN = "[ERROR]"
+    ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN = "Task timed out after"
 
     def __init__(self):
         super().__init__()

@@ -101,4 +101,6 @@ DeliveryDelay notification
 # todo:
 * Create send_email function that inserts "{{ses:openTracker}}" at the beginning of the email.
 * Make send_email to use alert_system_config set in case no other used.
-* Make sure all configuration sets have alert system sns_topic destination configured and there are permissions 
+* Make sure all configuration sets have alert system sns_topic destination configured and there are permissions
+* Make the alarm recurrent. Messy option to dot it: https://aws.amazon.com/blogs/mt/how-to-enable-amazon-cloudwatch-alarms-to-send-repeated-notifications/
+  Better approach to use EFS and reset the alarm to OK.

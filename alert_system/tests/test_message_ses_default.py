@@ -3,7 +3,7 @@ Test message factory
 
 """
 import pytest
-from common import ses_events, zabbix_events
+from common import ses_events
 from horey.alert_system.lambda_package.message_ses_default import MessageSESDefault
 # pylint: disable= missing-function-docstring
 

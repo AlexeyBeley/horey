@@ -1,0 +1,22 @@
+{
+    "Records": [
+        {
+            "EventSource": "aws:sns",
+            "EventVersion": "1.0",
+            "EventSubscriptionArn": "arn:aws:sns:us-west-2:123456789100:topic_test_alert_system:aaaaaaaa-54ba-4895-b0f4-528bd4f89e7b",
+            "Sns": {
+                "Type": "Notification",
+                "MessageId": "aaaaaaaa-29b7-502a-9ca1-0f16994634e0",
+                "TopicArn": "arn:aws:sns:us-west-2:123456789100:topic_test_alert_system",
+                "Subject": "ALARM: \"alert_system_test_deploy_lambda-metric-duration\" in US West (Oregon)",
+                "Message": "{\"AlarmName\":\"alert_system_test_deploy_lambda-metric-duration\",\"AlarmDescription\":\"{\\\"routing_tags\\\": [\\\"ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG\\\"], \\\"lambda_name\\\": \\\"alert_system_test_deploy_lambda\\\", \\\"ALERT_SYSTEM_SELF_MONITORING\\\": \\\"ALERT_SYSTEM_SELF_MONITORING\\\"}\",\"AWSAccountId\":\"123456789100\",\"AlarmConfigurationUpdatedTimestamp\":\"2024-08-13T19:06:17.619+0000\",\"NewStateValue\":\"ALARM\",\"NewStateReason\":\"Test\",\"StateChangeTime\":\"2024-08-13T19:06:25.507+0000\",\"Region\":\"US West (Oregon)\",\"AlarmArn\":\"arn:aws:cloudwatch:us-west-2:123456789100:alarm:alert_system_test_deploy_lambda-metric-duration\",\"OldStateValue\":\"OK\",\"OKActions\":[\"arn:aws:sns:us-west-2:123456789100:topic_test_alert_system\"],\"AlarmActions\":[\"arn:aws:sns:us-west-2:123456789100:topic_test_alert_system\"],\"InsufficientDataActions\":[],\"Trigger\":{\"MetricName\":\"Duration\",\"Namespace\":\"AWS/Lambda\",\"StatisticType\":\"Statistic\",\"Statistic\":\"AVERAGE\",\"Unit\":null,\"Dimensions\":[{\"value\":\"alert_system_test_deploy_lambda\",\"name\":\"FunctionName\"}],\"Period\":300,\"EvaluationPeriods\":1,\"DatapointsToAlarm\":1,\"ComparisonOperator\":\"GreaterThanThreshold\",\"Threshold\":18000.0,\"TreatMissingData\":\"notBreaching\",\"EvaluateLowSampleCountPercentile\":\"\"}}",
+                "Timestamp": "2024-08-13T19:06:25.547Z",
+                "SignatureVersion": "1",
+                "Signature": "aaaaaaaa/aaaaaaaa/aaaaaaaa/aaaaaaaa/aaaaaaaa/aaaaaaaa//D+aaaaaaaa+aaaaaaaa+aaaaaaaa/aaaaaaaa+aaaaaaaa==",
+                "SigningCertUrl": "https://sns.us-west-2.amazonaws.com/SimpleNotificationService-aaaaaaaa.pem",
+                "UnsubscribeUrl": "https://sns.us-west-2.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:us-west-2:123456789100:topic_test_alert_system:aaaaaaaa-54ba-4895-b0f4-aaaaaaaa",
+                "MessageAttributes": {}
+            }
+        }
+    ]
+}

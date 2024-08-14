@@ -148,5 +148,4 @@ class CloudWatchClient(Boto3Client):
                 raw_data=True,
                 filters_req=request_dict,
         ):
-            del response["ResponseMetadata"]
             return response

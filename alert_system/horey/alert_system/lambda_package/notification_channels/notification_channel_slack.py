@@ -46,19 +46,19 @@ class NotificationChannelSlack:
             return True
 
         base_text = notification.text
-        if not notification.tags:
-            notification.tags = [self.configuration.ALERT_SYSTEM_MONITORING_ROUTING_TAG]
+        if not notification.routing_tags:
+            notification.routing_tags = [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG]
             notification.text = (
                 "Warning: Routing tags were not set. Using system monitoring.\n"
                 + base_text
             )
 
-        for routing_tag in notification.tags:
+        for routing_tag in notification.routing_tags:
             try:
                 dst_channels = self.map_routing_tag_to_channels(routing_tag)
             except self.UnknownTagError:
                 dst_channels = self.map_routing_tag_to_channels(
-                    self.configuration.ALERT_SYSTEM_MONITORING_ROUTING_TAG
+                    Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG
                 )
                 notification.text = (
                     f"!!!WARNING!!!:\n Routing tag '{routing_tag}' has no mapping.\n"
@@ -188,15 +188,13 @@ class NotificationChannelSlackConfigurationPolicy(SlackAPIConfigurationPolicy):
 
     """
 
-    ALERT_SYSTEM_MONITORING_ROUTING_TAG = "ALERT_SYSTEM_MONITORING_ROUTING_TAG"
-
     def __init__(self):
         super().__init__()
         self._tag_to_channel_mapping = None
 
     @property
     def alert_system_monitoring_destination(self):
-        return self.tag_to_channel_mapping.get(self.ALERT_SYSTEM_MONITORING_ROUTING_TAG)
+        return self.tag_to_channel_mapping.get(Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG)
 
     @property
     def tag_to_channel_mapping(self):
@@ -207,8 +205,8 @@ class NotificationChannelSlackConfigurationPolicy(SlackAPIConfigurationPolicy):
         if not isinstance(value, dict):
             raise ValueError(value)
 
-        if not isinstance(value.get(self.ALERT_SYSTEM_MONITORING_ROUTING_TAG), str):
+        if not isinstance(value.get(Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG), str):
             raise ValueError(
-                f"Key {self.ALERT_SYSTEM_MONITORING_ROUTING_TAG} is incorrect in mappings: {value}"
+                f"Key {Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG} is incorrect in mappings: {value}"
             )
         self._tag_to_channel_mapping = value

@@ -19,7 +19,7 @@ class Notification:
         self._header = None
         self._link = None
         self._link_href = None
-        self._tags = None
+        self._routing_tags = None
 
     def print(self):
         """
@@ -30,7 +30,7 @@ class Notification:
 
         str_ret = "\n".join([f"{attr_name}: {getattr(self, attr_name)}" for attr_name in ["type",
                                                                                        "header",
-                                                                                       "tags",
+                                                                                       "routing_tags",
                                                                                        "link_href",
                                                                                        "link",
                                                                                        "text"]])
@@ -38,30 +38,30 @@ class Notification:
         return str_ret
 
     @property
-    def tags(self):
+    def routing_tags(self):
         """
-        Routing tags - notification destinations decision based on these tags.
+        Routing routing_tags - notification destinations decision based on these routing_tags.
 
         @return:
         """
-        return self._tags
+        return self._routing_tags
 
-    @tags.setter
-    def tags(self, value):
+    @routing_tags.setter
+    def routing_tags(self, value):
         """
-        Route tags setter.
+        Route routing_tags setter.
 
         @param value:
         @return:
         """
 
-        self._tags = value
+        self._routing_tags = value
 
     @property
     def link_href(self):
         """
         If you want explicit link added to the notification, you use HREF
-        to make it user friendly.
+        to make it user-friendly.
 
         @return:
         """

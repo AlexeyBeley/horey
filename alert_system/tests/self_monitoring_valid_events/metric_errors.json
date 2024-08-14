@@ -1,0 +1,22 @@
+{
+    "Records": [
+        {
+            "EventSource": "aws:sns",
+            "EventVersion": "1.0",
+            "EventSubscriptionArn": "arn:aws:sns:us-west-2:123456789100:topic_test_alert_system:aaaaaaaa-54ba-4895-b0f4-528bd4f89e7b",
+            "Sns": {
+                "Type": "Notification",
+                "MessageId": "aaaaaaaa-d6dd-52ab-9ab0-7ecf663b93e1",
+                "TopicArn": "arn:aws:sns:us-west-2:123456789100:topic_test_alert_system",
+                "Subject": "OK: \"alert_system_test_deploy_lambda-metric-errors\" in US West (Oregon)",
+                "Message": "{\"AlarmName\":\"alert_system_test_deploy_lambda-metric-errors\",\"AlarmDescription\":\"{\\\"routing_tags\\\": [\\\"ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG\\\"], \\\"lambda_name\\\": \\\"alert_system_test_deploy_lambda\\\", \\\"ALERT_SYSTEM_SELF_MONITORING\\\": \\\"ALERT_SYSTEM_SELF_MONITORING\\\"}\",\"AWSAccountId\":\"123456789100\",\"AlarmConfigurationUpdatedTimestamp\":\"2024-08-13T18:13:28.991+0000\",\"NewStateValue\":\"OK\",\"NewStateReason\":\"Threshold Crossed: 1 out of the last 1 datapoints [0.0 (13/08/24 19:01:00)] was not greater than the threshold (1.0) (minimum 1 datapoint for ALARM -> OK transition).\",\"StateChangeTime\":\"2024-08-13T19:06:14.498+0000\",\"Region\":\"US West (Oregon)\",\"AlarmArn\":\"arn:aws:cloudwatch:us-west-2:123456789100:alarm:alert_system_test_deploy_lambda-metric-errors\",\"OldStateValue\":\"ALARM\",\"OKActions\":[\"arn:aws:sns:us-west-2:123456789100:topic_test_alert_system\"],\"AlarmActions\":[\"arn:aws:sns:us-west-2:123456789100:topic_test_alert_system\"],\"InsufficientDataActions\":[],\"Trigger\":{\"MetricName\":\"Errors\",\"Namespace\":\"AWS/Lambda\",\"StatisticType\":\"Statistic\",\"Statistic\":\"AVERAGE\",\"Unit\":null,\"Dimensions\":[{\"value\":\"alert_system_test_deploy_lambda\",\"name\":\"FunctionName\"}],\"Period\":300,\"EvaluationPeriods\":1,\"DatapointsToAlarm\":1,\"ComparisonOperator\":\"GreaterThanThreshold\",\"Threshold\":1.0,\"TreatMissingData\":\"notBreaching\",\"EvaluateLowSampleCountPercentile\":\"\"}}",
+                "Timestamp": "2024-08-13T19:06:14.536Z",
+                "SignatureVersion": "1",
+                "Signature": "aaaaaaaaaaaaaaaaaaa/aaaaaaaaaaaaaaaaaaa+aaaaaaaaaaaaaaaaaaa/aaaaaaaaaaaaaaaaaaa+aaaaaaaaaaaaaaaaaaa/aaaaaaaaaaaaaaaaaaa/aaaaaaaaaaaaaaaaaaa/aaaaaaaaaaaaaaaaaaa/aaaaaaaaaaaaaaaaaaa+aaaaaaaaaaaaaaaaaaa==",
+                "SigningCertUrl": "https://sns.us-west-2.amazonaws.com/SimpleNotificationService-a.pem",
+                "UnsubscribeUrl": "https://sns.us-west-2.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:us-west-2:123456789100:topic_test_alert_system:aaaa-54ba-4895-b0f4-aaaaaa",
+                "MessageAttributes": {}
+            }
+        }
+    ]
+}

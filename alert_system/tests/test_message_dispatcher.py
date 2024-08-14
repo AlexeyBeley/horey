@@ -49,7 +49,7 @@ def fixture_message_dispatcher():
     yield message_dispatcher
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_message_dispatcher_raises_notification_channels_not_set():
     configuration = AlertSystemConfigurationPolicy()
     configuration.region = "us-west-2"
@@ -74,20 +74,20 @@ def test_init_message_dispatcher_echo_notification_channel(lambda_package_tmp_di
 ses_events_dir = os.path.join(os.path.dirname(__file__), "ses_messages")
 ses_events = []
 for file_name in os.listdir(ses_events_dir):
-    with open(os.path.join(ses_events_dir, file_name)) as fh:
-        ses_event = json.load(fh)
-        ses_events.append(ses_event)
+    with open(os.path.join(ses_events_dir, file_name), encoding="utf-8") as fh:
+        _ses_event = json.load(fh)
+        ses_events.append(_ses_event)
 
 
 cloudwatch_events_dir = os.path.join(os.path.dirname(__file__), "raw_messages")
 cloudwatch_events = []
 for file_name in os.listdir(cloudwatch_events_dir):
-    with open(os.path.join(cloudwatch_events_dir, file_name)) as fh:
-        ses_event = json.load(fh)
-        cloudwatch_events.append(ses_event)
+    with open(os.path.join(cloudwatch_events_dir, file_name), encoding="utf-8") as fh:
+        _ses_event = json.load(fh)
+        cloudwatch_events.append(_ses_event)
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 @pytest.mark.parametrize("ses_event", ses_events)
 def test_init_message_dispatcher_ses_events(message_dispatcher, ses_event):
     message = MessageSESDefault(ses_event)
@@ -99,7 +99,7 @@ def test_init_message_dispatcher_ses_events(message_dispatcher, ses_event):
 def test_init_message_dispatcher_cloudwatch_events(lambda_package_tmp_dir_echo, cloudwatch_event):
     message_dispatcher_file_path = os.path.join(lambda_package_tmp_dir_echo, "message_dispatcher.py")
     message_dispatcher = CommonUtils.load_object_from_module_raw(message_dispatcher_file_path, "MessageDispatcher")
-    message = MessageSESDefault(ses_event)
+    message = MessageSESDefault(cloudwatch_event)
     assert message_dispatcher.dispatch(message)
 
 
@@ -113,4 +113,3 @@ def test_generate_alert_system_exception_notification(message_dispatcher, ses_ev
         notification = message_dispatcher.generate_alert_system_exception_notification(error_inst, message)
         assert notification.text
         assert notification.type == notification.Types.CRITICAL
-

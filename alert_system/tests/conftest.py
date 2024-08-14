@@ -1,11 +1,18 @@
+"""
+Module used by pytest to configure environment.
+
+"""
+
 import os
 
 import pytest
 from horey.alert_system.alert_system_configuration_policy import AlertSystemConfigurationPolicy
 
+# pylint: disable=missing-function-docstring
 
-@pytest.fixture(name="alert_system_configuration_file_path")
-def fixture_alert_system_configuration_file_path():
+
+@pytest.fixture(name="alert_system_configuration")
+def fixture_alert_system_configuration():
     as_configuration = AlertSystemConfigurationPolicy()
     as_configuration.horey_repo_path = os.path.abspath(
         os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
@@ -21,8 +28,13 @@ def fixture_alert_system_configuration_file_path():
     as_configuration.active_deployment_validation = False
 
     os.makedirs(as_configuration.deployment_directory_path, exist_ok=True)
-    config_file_path = os.path.join(as_configuration.deployment_directory_path, "as_config.json")
-    as_configuration.generate_configuration_file(config_file_path)
+    yield as_configuration
+
+
+@pytest.fixture(name="alert_system_configuration_file_path_with_echo")
+def fixture_alert_system_configuration_file_path_with_echo(alert_system_configuration):
+    config_file_path = os.path.join(alert_system_configuration.deployment_directory_path, "as_config.json")
+    alert_system_configuration.generate_configuration_file(config_file_path)
     yield config_file_path
 
 

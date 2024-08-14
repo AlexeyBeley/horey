@@ -23,6 +23,7 @@ class NotificationChannelSES:
 
     def __init__(self, configuration):
         self.aws_api = AWSAPI(configuration=None)
+        self.configuration = configuration
 
     def notify(self, notification: Notification):
         """
@@ -41,19 +42,19 @@ class NotificationChannelSES:
             notification.type = Notification.Types.CRITICAL.value
 
         base_text = notification.text
-        if not notification.tags:
-            notification.tags = [self.configuration.ALERT_SYSTEM_MONITORING_ROUTING_TAG]
+        if not notification.routing_tags:
+            notification.routing_tags = [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG]
             notification.text = (
                     "Warning: Routing tags were not set. Using system monitoring.\n"
                     + base_text
             )
 
-        for routing_tag in notification.tags:
+        for routing_tag in notification.routing_tags:
             try:
                 dst_emails = self.map_routing_tag_to_destinations(routing_tag)
             except self.UnknownTagError:
                 dst_emails = self.map_routing_tag_to_destinations(
-                    self.configuration.ALERT_SYSTEM_MONITORING_ROUTING_TAG
+                    Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG
                 )
                 notification.text = (
                         f"!!!WARNING!!!:\n Routing tag '{routing_tag}' has no mapping.\n"

@@ -26,3 +26,18 @@ for file_name in os.listdir(cloudwatch_events_dir):
     with open(os.path.join(cloudwatch_events_dir, file_name), encoding="utf-8") as fh:
         ses_event = json.load(fh)
         cloudwatch_events.append(ses_event)
+
+cloudwatch_events_dir = os.path.join(os.path.dirname(__file__), "malformed_cloudwatch_messages")
+malformed_cloudwatch_events = []
+for file_name in os.listdir(cloudwatch_events_dir):
+    with open(os.path.join(cloudwatch_events_dir, file_name), encoding="utf-8") as fh:
+        ses_event = json.load(fh)
+        malformed_cloudwatch_events.append(ses_event)
+
+
+events_dir = os.path.join(os.path.dirname(__file__), "self_monitoring_valid_events")
+self_monitoring_valid_events = []
+for file_name in os.listdir(events_dir):
+    with open(os.path.join(events_dir, file_name), encoding="utf-8") as fh:
+        ses_event = json.load(fh)
+        self_monitoring_valid_events.append(ses_event)
