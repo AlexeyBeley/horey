@@ -2,7 +2,7 @@
 Testing alert system functions.
 
 """
-
+import datetime
 import json
 import os
 import shutil
@@ -10,6 +10,7 @@ from unittest.mock import Mock
 
 import pytest
 from common import ses_events
+import email.utils
 
 from horey.alert_system.alert_system import AlertSystem
 from horey.alert_system.alert_system_configuration_policy import (
@@ -19,6 +20,8 @@ from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlar
 from horey.aws_api.base_entities.region import Region
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.alert_system.lambda_package.notification import Notification
+from horey.aws_api.aws_services_entities.cloud_watch_log_group import CloudWatchLogGroup
+from horey.common_utils.common_utils import CommonUtils
 
 # pylint: disable=missing-function-docstring
 
@@ -339,9 +342,52 @@ def test_provision_cloudwatch_logs_alarm(alert_system_configuration):
     message_dict = {"log_group_name": alert_system_configuration.alert_system_lambda_log_group_name,
                     "routing_tags": [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG],
                     "log_group_filter_pattern": "[ERROR]"}
-    alert_system.provision_cloudwatch_logs_alarm(
+    alarm = alert_system.provision_cloudwatch_logs_alarm(
         "test-alarm-creation", message_dict
     )
+    assert alarm
+
+
+@pytest.mark.wip
+def test_provision_cloudwatch_logs_json_log_format_alarm(alert_system_configuration):
+    """
+    Test provisioning cloudwatch logs alarm
+
+    @return:
+    """
+
+    alert_system = AlertSystem(alert_system_configuration)
+
+    message_dict = {"log_group_name": alert_system_configuration.alert_system_lambda_log_group_name,
+                    "routing_tags": [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG],
+                    "log_group_filter_pattern": json.dumps('"level": "error"')}
+    alarm = alert_system.provision_cloudwatch_logs_alarm(
+        "json_format_test_alarm", message_dict
+    )
+    log_group = CloudWatchLogGroup({})
+    log_group.region = alert_system.region
+    log_group.name = alert_system_configuration.alert_system_lambda_log_group_name
+    line = json.dumps({"level": "error", "line": "Neo, the Horey has you!"})
+    response = alert_system.aws_api.cloud_watch_logs_client.put_log_lines(log_group, [line])
+    log_line_written_time = email.utils.parsedate_to_datetime(response["ResponseMetadata"]["HTTPHeaders"]["date"])
+    request_dict = {"logGroupName": alert_system_configuration.alert_system_lambda_log_group_name,
+                    "orderBy": "LastEventTime",
+                    "descending": True}
+
+    limit_time = datetime.datetime.now() + datetime.timedelta(minutes=5)
+    while datetime.datetime.now() < limit_time:
+        for stream in alert_system.aws_api.cloud_watch_logs_client.yield_log_group_streams_raw(alert_system.region, request_dict):
+            last_event_timestamp = CommonUtils.timestamp_to_datetime(stream.last_event_timestamp / 1000)
+            if last_event_timestamp < log_line_written_time:
+                break
+            for event in alert_system.aws_api.cloud_watch_logs_client.yield_log_events(log_group, stream):
+                if event["message"] == line:
+                    continue
+                breakpoint()
+
+            print("start analyzing")
+
+    raise RuntimeError("Reached timeout")
 
 
 @pytest.mark.done

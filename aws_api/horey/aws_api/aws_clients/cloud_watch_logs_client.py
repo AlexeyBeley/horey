@@ -126,19 +126,6 @@ class CloudWatchLogsClient(Boto3Client):
 
         return list(self.yield_log_group_metric_filters(region=region))
 
-    def yield_log_group_streams_raw(self, log_group):
-        """
-        Yields streams - made to handle large log groups, in order to prevent the OOM collapse.
-        :param log_group:
-        :return:
-        """
-
-        yield from self.execute(
-                self.get_session_client(region=log_group.region).describe_log_streams,
-                "logStreams",
-                filters_req={"logGroupName": log_group.name},
-        )
-
     def yield_log_group_streams(self, log_group):
         """
         Yields streams - made to handle large log groups, in order to prevent the OOM collapse.
@@ -150,6 +137,22 @@ class CloudWatchLogsClient(Boto3Client):
                 self.get_session_client(region=log_group.region).describe_log_streams,
                 "logStreams",
                 filters_req={"logGroupName": log_group.name},
+        ):
+            yield CloudWatchLogStream(response)
+
+    def yield_log_group_streams_raw(self, region, request_dict):
+        """
+        Yields streams - made to handle large log groups, in order to prevent the OOM collapse.
+
+        :param region:
+        :param request_dict:
+        :return:
+        """
+
+        for response in self.execute(
+                self.get_session_client(region=region).describe_log_streams,
+                "logStreams",
+                filters_req=request_dict,
         ):
             yield CloudWatchLogStream(response)
 
@@ -218,7 +221,7 @@ class CloudWatchLogsClient(Boto3Client):
                     return
                 logger.info(f"Extracted {len(response['events'])} events")
                 yield from response["events"]
-                time.sleep(10)
+                # todo: Understand why did I do this sleep before? time.sleep(10)
 
             token = new_token
         return
