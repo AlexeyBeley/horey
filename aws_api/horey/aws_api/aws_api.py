@@ -3360,6 +3360,24 @@ class AWSAPI:
 
         return subnets[0]
 
+    def get_subnets_by_vpc(self, vpc):
+        """
+        Find subnet in a vpc by its name tag.
+
+        @param vpc:
+        @return:
+        """
+
+        filters_req = {"Filters": [
+            {"Name": "vpc-id", "Values": [vpc.id]}
+        ]}
+
+        subnets = self.ec2_client.get_region_subnets(vpc.region, filters_req=filters_req)
+        if not subnets:
+            raise RuntimeError(f"Can not find subnets by vpc {vpc.id}")
+
+        return subnets
+
     def provision_db_cluster_parameter_group(self, db_cluster_parameter_group):
         """
         Standard.

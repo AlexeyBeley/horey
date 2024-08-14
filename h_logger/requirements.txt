@@ -1,1 +1,1 @@
-horey.configuration_policy>=1.0.0
+horey.common_utils>=1.0.0
