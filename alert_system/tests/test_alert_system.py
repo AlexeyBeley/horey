@@ -133,7 +133,7 @@ def test_trigger_self_monitoring_log_error_alarm(alert_system_configuration):
     assert alert_system.trigger_self_monitoring_log_error_alarm()
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_init_alert_system(alert_system_configuration):
     """
     Test initiation.
@@ -144,7 +144,7 @@ def test_init_alert_system(alert_system_configuration):
     assert isinstance(AlertSystem(alert_system_configuration), AlertSystem)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_provision_sns_topic(alert_system_configuration):
     """
     Test provisioning alert_system sns topic
@@ -156,7 +156,7 @@ def test_provision_sns_topic(alert_system_configuration):
     alert_system.provision_sns_topic()
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_provision_sns_subscription(alert_system_configuration):
     """
     Test provisioning alert_system sns topic subscription
@@ -169,7 +169,7 @@ def test_provision_sns_subscription(alert_system_configuration):
     alert_system.provision_sns_subscription()
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_provision_lambda_role(alert_system_configuration):
     """
     Test provisioning alert_system lambda role.
@@ -287,7 +287,7 @@ def test_validate_lambda_package_none(as_configuration, lambda_package_alert_sys
     assert ret.get("statusCode") == 404
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_provision_self_monitoring(alert_system_configuration):
     """
     Test provisioning self monitoring
@@ -299,7 +299,7 @@ def test_provision_self_monitoring(alert_system_configuration):
     alert_system.provision_self_monitoring()
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_provision_cloudwatch_alarm(alert_system_configuration):
     """
     Test provisioning cloudwatch generic alarm
@@ -326,7 +326,7 @@ def test_provision_cloudwatch_alarm(alert_system_configuration):
     alert_system.provision_cloudwatch_alarm(alarm)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_provision_cloudwatch_logs_alarm(alert_system_configuration):
     """
     Test provisioning cloudwatch logs alarm
@@ -337,14 +337,14 @@ def test_provision_cloudwatch_logs_alarm(alert_system_configuration):
     alert_system = AlertSystem(alert_system_configuration)
 
     message_dict = {"log_group_name": alert_system_configuration.alert_system_lambda_log_group_name,
-                    "routing_tags": Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG,
+                    "routing_tags": [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG],
                     "log_group_filter_pattern": "[ERROR]"}
     alert_system.provision_cloudwatch_logs_alarm(
         "test-alarm-creation", message_dict
     )
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_provision_cloudwatch_sqs_visible_alarm(alert_system_configuration):
     """
     Provision cloudwatch sqs visible alarm.
@@ -359,7 +359,7 @@ def test_provision_cloudwatch_sqs_visible_alarm(alert_system_configuration):
     )
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_send_message_to_sns(alert_system_configuration):
     alert_system = AlertSystem(alert_system_configuration)
     alert_system.send_message_to_sns({"bla": "bla"})

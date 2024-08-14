@@ -667,15 +667,20 @@ class AlertSystem:
         """
         raise DeprecationWarning("Use the new trigger_lambda_handler_locally")
 
-    def send_message_to_sns(self, dict_message, topic_arn=None, subject="Default SNS Message Subject"):
+    def send_message_to_sns(self, message, topic_arn=None, subject="Default SNS Message Subject"):
         """
         Send message to self sns_topic.
 
         :param subject:
         :param topic_arn:
-        :param dict_message:
+        :param message:
         :return:
         """
+
+        if isinstance(message, dict):
+            message = json.dumps(message)
+        if not isinstance(message, str):
+            raise RuntimeError(f"Message should be either dict or str: {type(message)}, {message}")
 
         if topic_arn is None:
             topic = SNSTopic({})
@@ -683,7 +688,8 @@ class AlertSystem:
             topic.region = self.region
             self.aws_api.sns_client.update_topic_information(topic, full_information=False)
             topic_arn = topic.arn
-        self.aws_api.sns_client.raw_publish(topic_arn, subject, dict_message)
+
+        self.aws_api.sns_client.raw_publish(topic_arn, subject, message)
 
     def trigger_self_monitoring_log_error_alarm(self):
         """

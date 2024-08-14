@@ -31,13 +31,13 @@ def fixture_lambda_package_alert_system_config_file():
     shutil.rmtree(dst_dir)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_init_event_handler(lambda_package_alert_system_config_file):
     event_handler = EventHandler(lambda_package_alert_system_config_file)
     assert event_handler
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_handle_event(lambda_package_alert_system_config_file):
     event_handler = EventHandler(lambda_package_alert_system_config_file)
     dir_name = os.path.join(os.path.dirname(__file__), "cloudwatch_messages")
