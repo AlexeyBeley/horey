@@ -12,6 +12,7 @@ from time import perf_counter
 import docker
 from docker.errors import BuildError
 from horey.h_logger import get_logger
+from horey.common_utils.bash_executor import BashExecutor
 
 logger = get_logger()
 
@@ -41,6 +42,19 @@ class DockerAPI:
         ret = self.client.login(registry=registry, username=username, password=password)
         logger.info(ret)
         return ret
+
+    @staticmethod
+    def logout(registry):
+        """
+        Logout
+
+        @param registry:
+        @return:
+        """
+
+        return_dict = BashExecutor.run_bash(f"docker logout {registry}")
+        logger.info(return_dict)
+        return return_dict
 
     def get_image(self, name):
         """
