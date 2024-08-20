@@ -57,3 +57,12 @@ def test_lambda_handler_self_monitoring_valid_events_slack(cloudwatch_event, ale
     AlertSystemConfigurationPolicy.ALERT_SYSTEM_CONFIGURATION_FILE_PATH = alert_system_configuration_file_path_with_slack
     event_handler = lambda_handler(cloudwatch_event, None)
     assert event_handler["statusCode"] == 200
+
+
+@pytest.mark.done
+@pytest.mark.parametrize("cloudwatch_event", cloudwatch_events)
+def test_lambda_handler_cloudwatch_message_message_override_notify_echo(cloudwatch_event,
+                                                                        alert_system_configuration_file_path_message_override_notify_echo):
+    AlertSystemConfigurationPolicy.ALERT_SYSTEM_CONFIGURATION_FILE_PATH = alert_system_configuration_file_path_message_override_notify_echo
+    event_handler = lambda_handler(cloudwatch_event, None)
+    assert event_handler["statusCode"] == 200

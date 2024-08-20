@@ -6,13 +6,17 @@ SNS, Cloudwatch Log Filter, Cloudwatch Alarms and AlertSystemLambda.
 """
 
 import copy
+import datetime
 import json
 import os
 import shutil
+from time import perf_counter
+import email.utils
 
 # pylint: disable=no-name-in-module
 from horey.h_logger import get_logger
 from horey.common_utils.bash_executor import BashExecutor
+from horey.common_utils.common_utils import CommonUtils
 from horey.serverless.packer.packer import Packer
 from horey.aws_api.aws_services_entities.aws_lambda import AWSLambda
 from horey.aws_api.base_entities.aws_account import AWSAccount
@@ -87,14 +91,10 @@ class AlertSystem:
         :return:
         """
 
-        file_names = [os.path.basename(file) for file in lambda_files]
+        for file_path in lambda_files:
+            if not os.path.exists(file_path):
+                raise ValueError(f"File does not exist: {file_path}")
 
-        for notification_channel_initializer_file_name in self.configuration.notification_channels:
-            if "/" in notification_channel_initializer_file_name:
-                raise ValueError(f"Notification channel initializer Sub-path is not supported: {notification_channel_initializer_file_name}")
-            if notification_channel_initializer_file_name not in file_names:
-                raise ValueError(
-                    f"Notification channel initializer file '{notification_channel_initializer_file_name}' is not among lambda input files.")
         return True
 
     def provision_log_group(self):
@@ -284,19 +284,25 @@ class AlertSystem:
         # old: lambda_handler_file_path = sys.modules["horey.alert_system.lambda_package.lambda_handler"].__file__
         lambda_handler_file_path = os.path.join(os.path.dirname(__file__), "lambda_package", "lambda_handler.py")
 
-        notification_channels_deployment_file_paths = self.configuration.notification_channels[:]
+        notification_channels_and_message_classes_file_paths = self.configuration.notification_channels[:]
         alert_system_config_file_path = os.path.join(self.configuration.deployment_directory_path,
                                                       AlertSystemConfigurationPolicy.ALERT_SYSTEM_CONFIGURATION_FILE_PATH)
 
         lambda_package_configuration = AlertSystemConfigurationPolicy()
         lambda_package_configuration.init_from_policy(self.configuration)
+        # todo: cd to parent(alert_system_config_file_path) and add os.file.exists in alert system configuration policy on notification channels
         lambda_package_configuration.notification_channels = [os.path.basename(notification_channel_file_path) for notification_channel_file_path in
                                                               lambda_package_configuration.notification_channels]
+        if self.configuration.message_classes:
+            notification_channels_and_message_classes_file_paths += self.configuration.message_classes[:]
+            lambda_package_configuration.message_classes = [os.path.basename(message_class_file_path) for
+                                                              message_class_file_path in
+                                                              lambda_package_configuration.message_classes]
 
         lambda_package_configuration.generate_configuration_file(alert_system_config_file_path)
 
         self.packer.add_files_to_zip(
-            self.configuration.lambda_zip_file_name, files + [lambda_handler_file_path, alert_system_config_file_path] + notification_channels_deployment_file_paths
+            self.configuration.lambda_zip_file_name, files + [lambda_handler_file_path, alert_system_config_file_path] + notification_channels_and_message_classes_file_paths
         )
         logger.info(
             f"Created lambda package: {self.configuration.deployment_directory_path}/{self.configuration.lambda_zip_file_name}")
@@ -317,7 +323,8 @@ class AlertSystem:
         extraction_dir = self.extract_lambda_package_for_validation(zip_file_path)
         return self.trigger_lambda_handler_locally(extraction_dir, event)
 
-    def trigger_lambda_handler_locally(self, extraction_dir, event):
+    @staticmethod
+    def trigger_lambda_handler_locally(extraction_dir, event):
         """
         Run the lambda handler locally
 
@@ -571,6 +578,34 @@ class AlertSystem:
         if len(routing_tags) == 0:
             raise ValueError(f"No routing tags: received: '{message_dict}'")
 
+        metric_filter = self.provision_log_group_metric_filter(log_group_name, metric_raw_name, filter_text)
+
+        alarm = CloudWatchAlarm({})
+        alarm.region = self.region
+        alarm.name = f"has2-alarm-{metric_raw_name}"
+        alarm.actions_enabled = True
+        alarm.alarm_description = json.dumps(message_dict)
+        alarm.metric_name = metric_filter.metric_transformations[0]["metricName"]
+        alarm.namespace = log_group_name
+        alarm.statistic = "Sum"
+        alarm.period = 300
+        alarm.evaluation_periods = 1
+        alarm.datapoints_to_alarm = 1
+        alarm.threshold = 0.0
+        alarm.comparison_operator = "GreaterThanThreshold"
+        alarm.treat_missing_data = "notBreaching"
+        self.provision_cloudwatch_alarm(alarm)
+        return alarm
+
+    def provision_log_group_metric_filter(self, log_group_name, metric_raw_name, filter_text):
+        """
+        Create/Update filter
+
+        :param filter_text:
+        :param log_group_name:
+        :param metric_raw_name:
+        :return:
+        """
         metric_name = f"metric-{metric_raw_name}"
 
         metric_filter = CloudWatchLogGroupMetricFilter({})
@@ -586,23 +621,7 @@ class AlertSystem:
         ]
         metric_filter.region = self.region
         self.aws_api.cloud_watch_logs_client.provision_metric_filter(metric_filter)
-
-        alarm = CloudWatchAlarm({})
-        alarm.region = self.region
-        alarm.name = f"alarm-{metric_raw_name}"
-        alarm.actions_enabled = True
-        alarm.alarm_description = json.dumps(message_dict)
-        alarm.metric_name = metric_name
-        alarm.namespace = log_group_name
-        alarm.statistic = "Sum"
-        alarm.period = 300
-        alarm.evaluation_periods = 1
-        alarm.datapoints_to_alarm = 1
-        alarm.threshold = 0.0
-        alarm.comparison_operator = "GreaterThanThreshold"
-        alarm.treat_missing_data = "notBreaching"
-        self.provision_cloudwatch_alarm(alarm)
-        return alarm
+        return metric_filter
 
     def provision_cloudwatch_sqs_visible_alarm(
             self, sqs_queue_name, threshold, message_data
@@ -619,7 +638,7 @@ class AlertSystem:
         alarm = CloudWatchAlarm({})
         alarm.region = self.region
         alarm.name = (
-            f"alert_system_alarm-{sqs_queue_name}-ApproximateNumberOfMessagesVisible"
+            f"has2_alarm-{sqs_queue_name}-ApproximateNumberOfMessagesVisible"
         )
         alarm.actions_enabled = True
         if "queue_name" not in message_data:
@@ -787,3 +806,58 @@ class AlertSystem:
                         "StateReason": "Explicitly changed state to OK"}
 
         return self.aws_api.cloud_watch_client.set_alarm_state_raw(self.region, dict_request)
+
+    def test_end_to_end_log_pattern_alert(self, log_group_name, line, alarm):
+        """
+        Check the
+
+        :return:
+        """
+        log_group = CloudWatchLogGroup({})
+        log_group.region = self.region
+        log_group.name = log_group_name
+
+        response = self.aws_api.cloud_watch_logs_client.put_log_lines(log_group, [line])
+        log_line_written_time = email.utils.parsedate_to_datetime(response["ResponseMetadata"]["HTTPHeaders"]["date"])
+        stream_last_event_max_limit = log_line_written_time - datetime.timedelta(hours=1)
+
+        yield_log_group_streams_request = {"logGroupName": log_group_name,
+                        "orderBy": "LastEventTime",
+                        "descending": True}
+        limit_time = datetime.datetime.now() + datetime.timedelta(seconds=alarm.period+5)
+        start_waiting = perf_counter()
+
+        while datetime.datetime.now() < limit_time:
+            analized_streams_counter = 0
+            for stream in self.aws_api.cloud_watch_logs_client.yield_log_group_streams_raw(self.region,
+                                                                                                   yield_log_group_streams_request):
+                analized_streams_counter += 1
+                last_event_timestamp = CommonUtils.timestamp_to_datetime(stream.last_event_timestamp / 1000)
+                if last_event_timestamp < stream_last_event_max_limit:
+                    logger.info(f"Analyzed {analized_streams_counter} streams, reached time limit")
+                    break
+
+                # AWS has a delay in this param change so this filter can not work.
+                # if last_event_timestamp < log_line_written_time:
+                #     continue
+
+                for event in self.aws_api.cloud_watch_logs_client.yield_log_events(log_group, stream, filters_req={"startFromHead": False}):
+                    if event["message"] == line:
+                        continue
+
+                    if "Handling event" not in event["message"]:
+                        continue
+
+                    if alarm.arn not in event["message"]:
+                        continue
+
+                    event_ingestion_time = CommonUtils.timestamp_to_datetime(event["ingestionTime"]/1000)
+                    if event_ingestion_time < log_line_written_time:
+                        continue
+
+                    end_waiting = perf_counter()
+                    total_time = end_waiting - start_waiting
+                    logger.info(f"Total time since publish to handle: {total_time}")
+                    return total_time
+        raise RuntimeError("Reached timeout")
+

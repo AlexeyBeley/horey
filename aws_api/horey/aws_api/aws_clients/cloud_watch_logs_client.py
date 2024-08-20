@@ -175,7 +175,25 @@ class CloudWatchLogsClient(Boto3Client):
             if response["HTTPStatusCode"] != 200:
                 raise RuntimeError(f"{response}")
 
-    def yield_log_events(self, log_group: CloudWatchLogGroup, stream):
+    def dispose_metric_filter(self, metric_filter: CloudWatchLogGroupMetricFilter):
+        """
+        Standard.
+
+        :param metric_filter:
+        :return:
+        """
+
+        request_dict = metric_filter.generate_dispose_request()
+        logger.info(
+            f"Disposing cloudwatch log group metric filter in region '{metric_filter.region}': {request_dict}"
+        )
+        for response in self.execute(
+                self.get_session_client(region=metric_filter.region).delete_metric_filter, None, raw_data=True,
+                filters_req=request_dict
+        ):
+            return response
+
+    def yield_log_events(self, log_group: CloudWatchLogGroup, stream, filters_req=None):
         """
 
         # todo: refactor
@@ -192,6 +210,8 @@ class CloudWatchLogsClient(Boto3Client):
             if token != response["nextForwardToken"]:
                 raise ValueError()
 
+        :param stream:
+        :param filters_req:
         :param log_group:
         :return:
         """
@@ -200,20 +220,25 @@ class CloudWatchLogsClient(Boto3Client):
         token = None
         new_token = None
         stop = False
+
+        filters_req_consolidated = {
+            "logGroupName": log_group.name,
+            "logStreamName": stream.name,
+            "startFromHead": True,
+        }
+
+        if filters_req:
+            filters_req_consolidated.update(filters_req)
+
         while not stop:
-            filters_req = {
-                "logGroupName": log_group.name,
-                "logStreamName": stream.name,
-                "startFromHead": True,
-            }
             if token is not None:
-                filters_req["nextToken"] = token
+                filters_req_consolidated["nextToken"] = token
 
             for response in self.execute(
                     self.get_session_client(region=log_group.region).get_log_events,
                     "events",
                     raw_data=True,
-                    filters_req=filters_req,
+                    filters_req=filters_req_consolidated,
             ):
                 new_token = response["nextForwardToken"]
                 logger.info(f"old token: {token} new token: {new_token}")

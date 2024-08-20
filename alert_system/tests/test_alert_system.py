@@ -6,11 +6,12 @@ import datetime
 import json
 import os
 import shutil
+import time
 from unittest.mock import Mock
+from time import perf_counter
 
 import pytest
 from common import ses_events
-import email.utils
 
 from horey.alert_system.alert_system import AlertSystem
 from horey.alert_system.alert_system_configuration_policy import (
@@ -348,7 +349,7 @@ def test_provision_cloudwatch_logs_alarm(alert_system_configuration):
     assert alarm
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_provision_cloudwatch_logs_json_log_format_alarm(alert_system_configuration):
     """
     Test provisioning cloudwatch logs alarm
@@ -357,37 +358,29 @@ def test_provision_cloudwatch_logs_json_log_format_alarm(alert_system_configurat
     """
 
     alert_system = AlertSystem(alert_system_configuration)
-
+    filter_text = json.dumps('"level": "error"')
     message_dict = {"log_group_name": alert_system_configuration.alert_system_lambda_log_group_name,
                     "routing_tags": [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG],
-                    "log_group_filter_pattern": json.dumps('"level": "error"')}
+                    "log_group_filter_pattern": filter_text}
+    metric_raw_name = "json_format_test_alarm"
     alarm = alert_system.provision_cloudwatch_logs_alarm(
-        "json_format_test_alarm", message_dict
+        metric_raw_name, message_dict
     )
-    log_group = CloudWatchLogGroup({})
-    log_group.region = alert_system.region
-    log_group.name = alert_system_configuration.alert_system_lambda_log_group_name
+    alert_system.set_alarm_ok(alarm)
+
     line = json.dumps({"level": "error", "line": "Neo, the Horey has you!"})
-    response = alert_system.aws_api.cloud_watch_logs_client.put_log_lines(log_group, [line])
-    log_line_written_time = email.utils.parsedate_to_datetime(response["ResponseMetadata"]["HTTPHeaders"]["date"])
-    request_dict = {"logGroupName": alert_system_configuration.alert_system_lambda_log_group_name,
-                    "orderBy": "LastEventTime",
-                    "descending": True}
+    log_group_name = alert_system.configuration.alert_system_lambda_log_group_name
 
-    limit_time = datetime.datetime.now() + datetime.timedelta(minutes=5)
-    while datetime.datetime.now() < limit_time:
-        for stream in alert_system.aws_api.cloud_watch_logs_client.yield_log_group_streams_raw(alert_system.region, request_dict):
-            last_event_timestamp = CommonUtils.timestamp_to_datetime(stream.last_event_timestamp / 1000)
-            if last_event_timestamp < log_line_written_time:
-                break
-            for event in alert_system.aws_api.cloud_watch_logs_client.yield_log_events(log_group, stream):
-                if event["message"] == line:
-                    continue
-                breakpoint()
-
-            print("start analyzing")
-
-    raise RuntimeError("Reached timeout")
+    lst_ret = []
+    for i in range(1000):
+        try:
+            test_time = alert_system.test_end_to_end_log_pattern_alert(log_group_name, line, alarm)
+            lst_ret.append(test_time)
+            time.sleep(301)
+            alert_system.set_alarm_ok(alarm)
+        except Exception:
+            lst_ret.append(-1)
+    breakpoint()
 
 
 @pytest.mark.done

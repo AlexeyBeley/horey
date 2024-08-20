@@ -11,6 +11,7 @@ from horey.aws_cleaner.aws_cleaner_configuration_policy import (
     AWSCleanerConfigurationPolicy,
 )
 from horey.aws_api.base_entities.region import Region
+from horey.aws_api.aws_services_entities.cloud_watch_log_group import CloudWatchLogGroup
 
 
 @pytest.fixture(name="configuration")
@@ -687,7 +688,7 @@ def test_cleanup_report_elasticache(configuration):
     assert os.path.exists(cleaner.configuration.elasticache_report_file_path)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_cleanup_report_cloudwatch(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.cleanup_report_cloudwatch()

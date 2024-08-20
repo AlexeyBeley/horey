@@ -73,7 +73,7 @@ class CloudWatchClient(Boto3Client):
                 raise NotImplementedError("CompositeAlarms")
             yield from dict_src["MetricAlarms"]
 
-    def set_cloudwatch_alarm(self, alarm):
+    def set_cloudwatch_alarm(self, alarm: CloudWatchAlarm):
         """
         Provision alarm.
 
@@ -91,6 +91,12 @@ class CloudWatchClient(Boto3Client):
         ):
             if response["HTTPStatusCode"] != 200:
                 raise RuntimeError(f"{response}")
+
+        alarms_by_name = list(self.regional_fetcher_generator_alarms(alarm.region, filters_req={"AlarmNames": [alarm.name]}))
+        if len(alarms_by_name) != 1:
+            raise RuntimeError(f"Was not able to find single alarm by name '{alarm.name}' in region '{alarm.region.region_mark}'")
+
+        alarm.update_from_raw_response(alarms_by_name[0])
 
     def put_metric_data_raw(self, region, request_dict):
         """

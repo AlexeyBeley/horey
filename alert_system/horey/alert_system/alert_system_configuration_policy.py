@@ -28,6 +28,7 @@ class AlertSystemConfigurationPolicy(ConfigurationPolicy):
         self._sns_topic_name = None
         self._region = None
         self._notification_channels = None
+        self._message_classes = None
         self._active_deployment_validation = False
         self._lambda_role_name = None
         self._lambda_role_path = None
@@ -136,6 +137,14 @@ class AlertSystemConfigurationPolicy(ConfigurationPolicy):
     @notification_channels.setter
     def notification_channels(self, value):
         self._notification_channels = value
+
+    @property
+    def message_classes(self):
+        return self._message_classes
+
+    @message_classes.setter
+    def message_classes(self, value):
+        self._message_classes = value
 
     @property
     def active_deployment_validation(self):

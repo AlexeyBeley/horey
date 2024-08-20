@@ -4,6 +4,7 @@ Module used by pytest to configure environment.
 """
 
 import os
+from pathlib import Path
 
 import pytest
 from horey.alert_system.alert_system_configuration_policy import AlertSystemConfigurationPolicy
@@ -33,6 +34,14 @@ def fixture_alert_system_configuration():
 
 @pytest.fixture(name="alert_system_configuration_file_path_with_echo")
 def fixture_alert_system_configuration_file_path_with_echo(alert_system_configuration):
+    config_file_path = os.path.join(alert_system_configuration.deployment_directory_path, "as_config.json")
+    alert_system_configuration.generate_configuration_file(config_file_path)
+    yield config_file_path
+
+
+@pytest.fixture(name="alert_system_configuration_file_path_message_override_notify_echo")
+def fixture_alert_system_configuration_file_path_message_override_notify_echo(alert_system_configuration):
+    alert_system_configuration.message_classes = [str(Path(".").parent.joinpath("message_override.py"))]
     config_file_path = os.path.join(alert_system_configuration.deployment_directory_path, "as_config.json")
     alert_system_configuration.generate_configuration_file(config_file_path)
     yield config_file_path
