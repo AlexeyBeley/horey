@@ -159,10 +159,6 @@ class AlertSystemConfigurationPolicy(ConfigurationPolicy):
         return f"/aws/lambda/{self.lambda_name}"
 
     @property
-    def self_monitoring_log_timeout_metric_name_raw(self):
-        return f"{self.lambda_name}-log-timeout"
-
-    @property
     def ses_configuration_set_name(self):
         if self._ses_configuration_set_name is None:
             self._ses_configuration_set_name = "conf_set_alert_system_default"

@@ -4,7 +4,6 @@ Message being received by the Alert System Lambda.
 """
 import datetime
 import json
-import urllib.parse
 
 from horey.h_logger import get_logger
 from horey.alert_system.lambda_package.message_base import MessageBase
@@ -21,7 +20,7 @@ class MessageCloudwatchDefault(MessageBase):
 
     """
 
-    def __init__(self, dict_src):
+    def __init__(self, dict_src, configuration):
         """
         Try to init from dict
 
@@ -29,10 +28,9 @@ class MessageCloudwatchDefault(MessageBase):
         :return:
         """
 
-        super().__init__(dict_src)
+        super().__init__(dict_src, configuration)
         self._message_dict = None
         self._trigger = None
-        self._region = None
         self._alarm_description = None
         self._end_time = None
         if "AlarmDescription" not in self.message_dict:
@@ -88,18 +86,6 @@ class MessageCloudwatchDefault(MessageBase):
         return self._trigger
 
     @property
-    def region(self):
-        """
-        AWS Region extracted from the message data.
-
-        :return:
-        """
-
-        if self._region is None:
-            self._region = self.message_dict["AlarmArn"].split(":")[3]
-        return self._region
-
-    @property
     def alarm_description(self):
         """
         Extract and save
@@ -111,22 +97,6 @@ class MessageCloudwatchDefault(MessageBase):
             self._alarm_description = json.loads(self.message_dict.get("AlarmDescription"))
         return self._alarm_description
 
-    @staticmethod
-    def encode_to_aws_url_format(str_src):
-        """
-        AWS uses nonstandard url formatting.
-        All special characters like '/' and '"' must be encoded.
-
-        Sample:
-        https://us-east-1.console.aws.amazon.com/cloudwatch/home?region=us-east-1#logsV2:log-groups/log-group/$252Fecs$252Fcontainer-name/log-events$3FfilterPattern$3D$2522$255BINFO$255D$2522
-
-        @param str_src:
-        @return:
-        """
-
-        ret = urllib.parse.quote(str_src, safe="")
-        return ret.replace("%", "$25")
-
     def generate_cloudwatch_alarm_link(self):
         """
         Generate comfort link to relevant search in the cloudwatch logs service.
@@ -135,7 +105,7 @@ class MessageCloudwatchDefault(MessageBase):
         """
 
         alarm_name = self.message_dict["AlarmName"].replace("/", "$2F")
-        return f"https://{self.region}.console.aws.amazon.com/cloudwatch/home?region={self.region}#alarmsV2:alarm/{alarm_name}"
+        return f"https://{self.configuration.region}.console.aws.amazon.com/cloudwatch/home?region={self.configuration.region}#alarmsV2:alarm/{alarm_name}"
 
     def generate_alert_system_lambda_link(self):
         """
@@ -146,31 +116,7 @@ class MessageCloudwatchDefault(MessageBase):
 
         lambda_name = self.get_dimension("FunctionName")
 
-        return f"https://{self.region}.console.aws.amazon.com/lambda/home?region={self.region}#/functions/{lambda_name}?tab=monitoring"
-
-    def generate_cloudwatch_log_search_link(
-        self, log_group_name, log_group_filter_pattern
-    ):
-        """
-        Generate comfort link to relevant search in the cloudwatch logs service.
-
-        @param log_group_name:
-        @param log_group_filter_pattern:
-        @return:
-        """
-
-        log_group_name_encoded = self.encode_to_aws_url_format(log_group_name)
-        log_group_filter_pattern_encoded = self.encode_to_aws_url_format(
-            log_group_filter_pattern
-        )
-        search_time_end = self.end_time.strftime("%Y-%m-%dT%H:%M:%SZ")
-        search_time_start = self.start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
-
-        log_group_search_url = (
-            f"https://{self.region}.console.aws.amazon.com/cloudwatch/home?region="
-            f"{self.region}#logsV2:log-groups/log-group/{log_group_name_encoded}/log-events$3Fend$3D{search_time_end}$26filterPattern$3D{log_group_filter_pattern_encoded}$26start$3D{search_time_start}"
-        )
-        return log_group_search_url
+        return f"https://{self.configuration.region}.console.aws.amazon.com/lambda/home?region={self.configuration.region}#/functions/{lambda_name}?tab=monitoring"
 
     def generate_notification(self):
         """
@@ -219,24 +165,20 @@ class MessageCloudwatchDefault(MessageBase):
         """
 
         threshold_sec = int(self.message_dict["Trigger"]["Threshold"] // 1000)
-        reason = f"Lambda duration > {threshold_sec} seconds"
-        new_state_reason = self.message_dict["NewStateReason"]
-        alarm_time = self.message_dict["StateChangeTime"]
         lambda_name = self.get_dimension("FunctionName")
+        reason = f"Lambda '{lambda_name}' duration > {threshold_sec} seconds"
 
         notification = Notification()
         notification.type = Notification.Types.STABLE if self.message_dict["NewStateValue"] == "OK" else Notification.Types.CRITICAL
-        notification.header = f"Lambda '{lambda_name}' duration error"
+        notification.header = f"Lambda duration error"
         notification.text = (
-            f"Region: {self.region}\n"
-            f'Lambda Name: {lambda_name}\n'
-            f'HR Reason: {reason}\n'
-            f'Raw reason: \'{new_state_reason}\'\n'
-            f'Time: {alarm_time}\n'
+            f"Region: {self.configuration.region}\n"
+            f'Reason: {reason}\n'
+            f'Time: {self.end_time.strftime("%Y:%m:%d %H:%M:%S")}\n'
         )
 
         notification.link = self.generate_alert_system_lambda_link()
-        notification.link_href = "Lambda Link"
+        notification.link_href = "View Lambda Monitoring"
         notification.routing_tags = self.alarm_description.get("routing_tags")
         if not notification.routing_tags:
             notification.routing_tags = [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG]
@@ -256,7 +198,7 @@ class MessageCloudwatchDefault(MessageBase):
         elif self.trigger["MetricName"] == "Duration":
             notification = self.generate_notification_default()
             notification.link = self.generate_alert_system_lambda_link()
-            notification.link_href = "AlertSystem Lambda Link"
+            notification.link_href = "View AlertSystem Lambda"
         elif self.trigger["MetricName"] == "Errors":
             if self.message_dict["Trigger"]["Threshold"] > 1000:
                 threshold_sec = int(self.message_dict["Trigger"]["Threshold"] // 1000)
@@ -265,7 +207,7 @@ class MessageCloudwatchDefault(MessageBase):
             reason = f"Lambda finished with errors in last {threshold_sec} seconds"
             notification = self.generate_notification_default(reason=reason)
             notification.link = self.generate_alert_system_lambda_link()
-            notification.link_href = "AlertSystem Lambda Link"
+            notification.link_href = "View AlertSystem Lambda"
         else:
             raise NotImplementedError(f'{self.message_dict["Trigger"]["MetricName"]=}')
 
@@ -286,8 +228,6 @@ class MessageCloudwatchDefault(MessageBase):
 
         pattern = self.alarm_description.get("log_group_filter_pattern")
         log_group_name = self.alarm_description.get("log_group_name")
-        new_state_reason = self.message_dict["NewStateReason"]
-        alarm_time = self.message_dict["StateChangeTime"]
 
         pattern_log = pattern.replace(AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_LOG_ERROR_FILTER_PATTERN,
                                       "ALERT_SYSTEM_SELF_MONITORING_LOG_ERROR_FILTER_PATTERN")
@@ -301,16 +241,19 @@ class MessageCloudwatchDefault(MessageBase):
 
         notification = Notification()
         notification.type = Notification.Types.STABLE if self.message_dict["NewStateValue"] == "OK" else Notification.Types.CRITICAL
-        notification.header = "Log filter pattern pattern found"
+        notification.header = "Log text filter found"
 
-        notification.text = f"Region: {self.region}\n" \
+        notification.text = f"Region: {self.configuration.region}\n" \
                             f"Reason: {reason}\n" \
-                            f"Time: {alarm_time}\n" \
-                            f"Raw reason: \'{new_state_reason}\'\n'"
+                            f'Time: {self.end_time.strftime("%Y:%m:%d %H:%M:%S")}\n'
 
-        notification.link = self.generate_cloudwatch_log_search_link(log_group_name, pattern)
+        notification.link = self.generate_cloudwatch_log_search_link(log_group_name,
+                                                                     pattern,
+                                                                     self.start_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                                                                     self.end_time.strftime("%Y-%m-%dT%H:%M:%SZ")
+                                                                     )
 
-        notification.link_href = "Log group"
+        notification.link_href = "View Cloudwatch Logs"
         notification.routing_tags = self.alarm_description.get("routing_tags")
         if not notification.routing_tags:
             notification.routing_tags = [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG]
@@ -331,9 +274,9 @@ class MessageCloudwatchDefault(MessageBase):
         notification.header = f"Alarm {self.message_dict['AlarmName']}"
         reason = f"Reason: Metric {self.trigger['MetricName']}\n" if reason is None else (reason.strip("\n") + "\n")
         notification.text = (
-            f"Region: {self.region}\n"
-            f"Raw reason: '{new_state_reason}'\n"
-            f"{reason}"
+            f"Region: {self.configuration.region}\n"
+            f"Raw reason: {new_state_reason}\n"
+            f"{reason}\n"
             f'Time: {alarm_time}\n'
         )
 
@@ -342,7 +285,7 @@ class MessageCloudwatchDefault(MessageBase):
             notification.routing_tags = [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG]
 
         notification.link = self.generate_cloudwatch_alarm_link()
-        notification.link_href = "Goto Alarm"
+        notification.link_href = "View Cloudwatch Alarm"
         return notification
 
     def generate_alert_description(self):

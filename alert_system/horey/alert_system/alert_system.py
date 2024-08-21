@@ -163,14 +163,14 @@ class AlertSystem:
         """
 
         filter_text = f'"{AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_LOG_ERROR_FILTER_PATTERN}"'
-        metric_name_raw = f"{self.configuration.lambda_name}-log-error"
-        message_data = {"routing_tags": [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG],
+        alarm_description = {
                         "lambda_name": self.configuration.lambda_name,
-                        "log_group_name": self.configuration.alert_system_lambda_log_group_name,
-                        "log_group_filter_pattern": filter_text,
                         MessageCloudwatchDefault.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY: MessageCloudwatchDefault.ALERT_SYSTEM_SELF_MONITORING_TYPE_VALUE}
-        return self.provision_cloudwatch_logs_alarm(
-            metric_name_raw, message_data
+        return self.provision_cloudwatch_logs_alarm(self.configuration.alert_system_lambda_log_group_name,
+                                                    filter_text,
+                                                    "error",
+                                                    [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG],
+                                                    alarm_description=alarm_description,
         )
 
     def provision_self_monitoring_log_timeout_alarm(self):
@@ -181,13 +181,13 @@ class AlertSystem:
         """
 
         filter_text = AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN
-        alarm_description = {"routing_tags": [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG],
-                        "log_group_name": self.configuration.alert_system_lambda_log_group_name,
-                        "lambda_name": self.configuration.lambda_name,
-                        "log_group_filter_pattern": filter_text,
+        alarm_description = {"lambda_name": self.configuration.lambda_name,
                         MessageCloudwatchDefault.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY: MessageCloudwatchDefault.ALERT_SYSTEM_SELF_MONITORING_TYPE_VALUE}
-        return self.provision_cloudwatch_logs_alarm(
-            self.configuration.self_monitoring_log_timeout_metric_name_raw, alarm_description
+        return self.provision_cloudwatch_logs_alarm(self.configuration.alert_system_lambda_log_group_name,
+                                                    filter_text,
+                                                    "timeout",
+                                                    [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG],
+                                                    alarm_description=alarm_description
         )
 
     def provision_self_monitoring_errors_metric_alarm(self):
@@ -555,37 +555,42 @@ class AlertSystem:
         self.aws_api.sesv2_client.provision_configuration_set(configuration_set, declerative=declerative)
         return configuration_set
 
-    def provision_cloudwatch_logs_alarm(
-            self, metric_raw_name, message_dict
+    def provision_cloudwatch_logs_alarm(self, log_group_name, filter_text, metric_uid, routing_tags, alarm_description=None
     ):
         """
         Provision Cloud watch logs based alarm.
 
-        @param message_dict: Message Alert information
-        @param metric_raw_name:
         @return:
+        :param routing_tags:
+        :param metric_uid:
+        :param filter_text:
+        :param message_dict: extensive data to be stored in alert description
+        :param log_group_name:
         """
 
-        log_group_name = message_dict["log_group_name"]
-        routing_tags = message_dict["routing_tags"]
-        filter_text = message_dict["log_group_filter_pattern"]
+        if not alarm_description:
+            alarm_description = {}
+        alarm_description["log_group_name"] = log_group_name
+        alarm_description["log_group_filter_pattern"] = filter_text
+        alarm_description["routing_tags"] = routing_tags
         if not log_group_name or not isinstance(log_group_name, str):
             raise ValueError(f"{log_group_name=}")
         if not isinstance(routing_tags, list):
             raise ValueError(
-                f"Routing tags must be a list, received: '{message_dict}'"
+                f"Routing tags must be a list, received: '{alarm_description}'"
             )
         if len(routing_tags) == 0:
-            raise ValueError(f"No routing tags: received: '{message_dict}'")
+            raise ValueError(f"No routing tags: received: '{alarm_description}'")
 
-        metric_filter = self.provision_log_group_metric_filter(log_group_name, metric_raw_name, filter_text)
+        metric_filter = self.provision_log_group_metric_filter(log_group_name, metric_uid, filter_text)
 
         alarm = CloudWatchAlarm({})
         alarm.region = self.region
-        alarm.name = f"has2-alarm-{metric_raw_name}"
+        alarm.name = f"has2-alarm-{log_group_name}-{metric_uid}"
         alarm.actions_enabled = True
-        alarm.alarm_description = json.dumps(message_dict)
-        alarm.metric_name = metric_filter.metric_transformations[0]["metricName"]
+        alarm.alarm_description = json.dumps(alarm_description)
+        alarm.metric_name = metric_filter.name
+        # todo: remove after test: alarm.metric_name = metric_filter.metric_transformations[0]["metricName"]
         alarm.namespace = log_group_name
         alarm.statistic = "Sum"
         alarm.period = 300
@@ -595,26 +600,27 @@ class AlertSystem:
         alarm.comparison_operator = "GreaterThanThreshold"
         alarm.treat_missing_data = "notBreaching"
         self.provision_cloudwatch_alarm(alarm)
+        self.trigger_log_filter_text_alarm(log_group_name, [f"{filter_text}: Neo, the Horey has you!"])
+        # todo: self.test_end_to_end_log_pattern_alert()
         return alarm
 
-    def provision_log_group_metric_filter(self, log_group_name, metric_raw_name, filter_text):
+    def provision_log_group_metric_filter(self, log_group_name, metric_uid, filter_text):
         """
         Create/Update filter
 
         :param filter_text:
         :param log_group_name:
-        :param metric_raw_name:
+        :param metric_uid:
         :return:
         """
-        metric_name = f"metric-{metric_raw_name}"
 
         metric_filter = CloudWatchLogGroupMetricFilter({})
         metric_filter.log_group_name = log_group_name
-        metric_filter.name = f"metric-filter-{log_group_name}-{metric_raw_name}"
+        metric_filter.name = f"has2-metric-filter-{log_group_name}-{metric_uid}"
         metric_filter.filter_pattern = filter_text
         metric_filter.metric_transformations = [
             {
-                "metricName": metric_name,
+                "metricName": metric_filter.name,
                 "metricNamespace": log_group_name,
                 "metricValue": "1",
             }
@@ -737,12 +743,22 @@ class AlertSystem:
         self.aws_api.cloud_watch_client.put_metric_data_raw(self.region, dict_request)
         :return:
         """
+        return self.trigger_log_filter_text_alarm(self.configuration.alert_system_lambda_log_group_name,
+                                                  [f"{AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN}: Neo, the Horey has you!"])
+
+    def trigger_log_filter_text_alarm(self, log_group_name, lines):
+        """
+        Write log lines to log group to trigger self lambda.
+
+        :param log_group_name:
+        :param lines:
+        :return:
+        """
 
         log_group = CloudWatchLogGroup({})
         log_group.region = self.region
-        log_group.name = self.configuration.alert_system_lambda_log_group_name
-
-        return self.aws_api.cloud_watch_logs_client.put_log_lines(log_group, [f"{AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN}: Neo, the Horey has you!"])
+        log_group.name = log_group_name
+        return self.aws_api.cloud_watch_logs_client.put_log_lines(log_group, lines)
 
     def trigger_self_monitoring_errors_metric_alarm(self):
         """

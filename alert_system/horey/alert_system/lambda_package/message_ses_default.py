@@ -2,6 +2,7 @@
 Message being received by the Alert System Lambda.
 
 """
+import datetime
 
 from horey.h_logger import get_logger
 from horey.alert_system.lambda_package.message_base import MessageBase
@@ -17,7 +18,7 @@ class MessageSESDefault(MessageBase):
 
     """
 
-    def __init__(self, dict_src):
+    def __init__(self, dict_src, configuration):
         """
         Try to init from dict
 
@@ -25,7 +26,7 @@ class MessageSESDefault(MessageBase):
         :return:
         """
 
-        super().__init__(dict_src)
+        super().__init__(dict_src, configuration)
         self.message_dict = MessageBase.extract_message_dict(dict_src)
 
         if self.message_dict.get("notificationType") == "AmazonSnsSubscriptionSucceeded":
@@ -44,7 +45,22 @@ class MessageSESDefault(MessageBase):
             return self.generate_notification_amazon_sns_subscription_succeeded()
         notification = Notification()
         mail = self.message_dict.get("mail") or {}
-        timestamp = mail.get("timestamp") or "None"
+        time_string = None
+
+        end_time = None
+        start_time = None
+        try:
+            time_string = f'Alarm time: {self._dict_src["Records"][0]["Sns"]["Timestamp"]}'
+            end_time = datetime.datetime.strptime(
+                self._dict_src["Records"][0]["Sns"]["Timestamp"], "%Y-%m-%dT%H:%M:%S.%f%z"
+            )
+            start_time = end_time - datetime.timedelta(minutes=5)
+            end_time += datetime.timedelta(minutes=1)
+        except Exception as inst_error:
+            logger.info(repr(inst_error))
+
+        if not time_string:
+            time_string = f'Email time: {mail.get("timestamp")}'
 
         try:
             region = mail.get("sourceArn").split(":")[3]
@@ -67,30 +83,38 @@ class MessageSESDefault(MessageBase):
             email_status = "Missing both 'notificationType' and 'eventType'"
         elif event_type == "Delivery":
             notification.type = Notification.Types.DEBUG
-            notification.text = f"Delivery. Region: {region}. Timestamp: {timestamp}."
+            notification.text = f"Delivery. Region: {region}. {time_string}."
             email_status = "Delivery"
         elif event_type == "DeliveryDelay":
             notification.type = Notification.Types.WARNING
             info = self.message_dict.get("deliveryDelay") or destination
-            notification.text = f"DeliveryDelay. Region: {region}. Timestamp: {timestamp}. messageId: {message_id}. Info: {info}"
+            notification.text = f"DeliveryDelay. Region: {region}. {time_string}. messageId: {message_id}. Info: {info}"
             email_status = "DeliveryDelay"
         elif event_type == "Bounce":
             notification.type = Notification.Types.WARNING
-            info = self.message_dict.get("bounce") or destination
-            notification.text = f"Bounce. Region: {region}. Timestamp: {timestamp}. messageId: {message_id}. Info: {info}"
+            notification.text = f"Region: {region}\n" \
+                                f"{time_string}\n" \
+                                f"MessageId: {message_id}\n" \
+                                f"Destination {destination}"
             email_status = "Bounce"
         elif event_type == "Send":
             notification.type = Notification.Types.DEBUG
-            notification.text = f"Send. Region: {region}. Timestamp: {timestamp}. messageId: {message_id}. Destination: {destination}"
+            notification.text = f"Send. Region: {region}. {time_string}. messageId: {message_id}. Destination: {destination}"
             email_status = "Send"
         else:
             notification.type = Notification.Types.CRITICAL
             notification.text = f"Event Type: {event_type}. Event: {self._dict_src}"
             email_status = "ALERT_SYSTEM_ERROR"
         notification.header = (
-                notification.header or f"Default SES handler: {email_status}"
+                notification.header or f"SES {email_status}"
         )
 
+        notification.link = self.generate_cloudwatch_log_search_link(self.configuration.alert_system_lambda_log_group_name,
+                                                                     message_id,
+                                                                     start_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                                                                     end_time.strftime("%Y-%m-%dT%H:%M:%SZ")
+                                                                     )
+        notification.link_href = "View Cloudwatch Logs"
         return notification
 
     def generate_notification_amazon_sns_subscription_succeeded(self):

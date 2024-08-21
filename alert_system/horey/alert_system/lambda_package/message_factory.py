@@ -21,16 +21,18 @@ class MessageFactory:
     """
 
     def __init__(self, configuration: AlertSystemConfigurationPolicy):
-        self.message_classes = self.load_message_classes(configuration) + [MessageCloudwatchDefault, MessageSESDefault, MessageZabbixDefault]
+        self.configuration = configuration
+        self.message_classes = self.load_message_classes() + [MessageCloudwatchDefault, MessageSESDefault, MessageZabbixDefault]
     
-    def load_message_classes(self, configuration):
+    def load_message_classes(self):
         """
+        Load explicitly set message classes from files provided in configuration.
 
         :return:
         """
 
-        if configuration.message_classes:
-            return [self.load_message_class(file_path) for file_path in configuration.message_classes]
+        if self.configuration.message_classes:
+            return [self.load_message_class(file_path) for file_path in self.configuration.message_classes]
 
         return []
 
@@ -56,7 +58,7 @@ class MessageFactory:
 
         for message_class in self.message_classes:
             try:
-                return message_class(dict_event)
+                return message_class(dict_event, self.configuration)
             except MessageBase.NotAMatchError:
                 pass
         raise ValueError(f"Can not find message generator for event: {dict_event}")
