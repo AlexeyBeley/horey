@@ -37,6 +37,8 @@ class RDSDBInstance(AwsObject):
         self.db_instance_status = None
         self.engine = None
         self.vpc_security_group_ids = None
+        self.max_allocated_storage = None
+        self.allocated_storage = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)

@@ -49,6 +49,8 @@ class RDSDBCluster(AwsObject):
         self.status = None
         self.skip_final_snapshot = False
         self.default_engine_version = None
+        self.serverless_v2_scaling_configuration = None
+        self.auto_minor_version_upgrade = None
         self.iops = None
 
         if from_cache:
@@ -129,6 +131,9 @@ class RDSDBCluster(AwsObject):
             "MasterUserSecret": self.init_default_attr,
             "StorageThroughput": self.init_default_attr,
             "CertificateDetails": self.init_default_attr,
+            "PerformanceInsightsKMSKeyId": self.init_default_attr,
+            "PerformanceInsightsRetentionPeriod": self.init_default_attr,
+            "ServerlessV2ScalingConfiguration": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -139,16 +144,6 @@ class RDSDBCluster(AwsObject):
 
         """
         request = {}
-        if self.availability_zones:
-            request["AvailabilityZones"] = self.availability_zones
-
-        if self.db_subnet_group_name:
-            request["DBSubnetGroupName"] = self.db_subnet_group_name
-
-        if self.db_cluster_parameter_group_name:
-            request[
-                "DBClusterParameterGroupName"
-            ] = self.db_cluster_parameter_group_name
 
         request["BackupRetentionPeriod"] = self.backup_retention_period
         request["DatabaseName"] = self.database_name
@@ -163,18 +158,19 @@ class RDSDBCluster(AwsObject):
         request["PreferredMaintenanceWindow"] = self.preferred_maintenance_window
         request["StorageEncrypted"] = self.storage_encrypted
         self.extend_request_with_optional_parameters(request, ["MasterUserPassword",
+                                                               "AvailabilityZones",
                                                                "ManageMasterUserPassword",
                                                                "AllocatedStorage",
                                                                "StorageType",
-                                                               "Iops"])
-
-        if self.db_cluster_instance_class:
-            request["DBClusterInstanceClass"] = self.db_cluster_instance_class
+                                                               "DBSubnetGroupName",
+                                                               "Iops",
+                                                               "DBClusterInstanceClass",
+                                                               "KmsKeyId",
+                                                               "DBClusterParameterGroupName",
+                                                               "ServerlessV2ScalingConfiguration",
+                                                               "AutoMinorVersionUpgrade"])
 
         request["EnableCloudwatchLogsExports"] = self.enable_cloudwatch_logs_exports
-
-        if self.kms_key_id:
-            request["KmsKeyId"] = self.kms_key_id
 
         request["EngineMode"] = self.engine_mode
 
