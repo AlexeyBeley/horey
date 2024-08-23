@@ -217,30 +217,25 @@ class AwsObject:
         @param raise_on_no_option: If key not set explicitly raise exception.
         :return:
         """
+
+        composed_errors = []
         for key_src, value in dict_src.items():
             try:
                 dict_options[key_src](key_src, value)
-            except KeyError as caught_exception:
-                if not raise_on_no_option:
-                    line_to_add = f'"{key_src}":  self.init_default_attr,'
-                    logger.warning(f"{self.__class__.__name__}: {line_to_add}")
-                    self.init_default_attr(key_src, value)
-                    continue
+            except KeyError:
+                line_to_add = f'"{key_src}":  self.init_default_attr,'
+                composed_errors.append(line_to_add)
+                logger.warning(f"{self.__class__.__name__}: {line_to_add}")
+                self.init_default_attr(key_src, value)
+                continue
 
-                composed_errors = []
-                keys = []
-                for key_src_ in dict_src:
-                    if key_src_ not in dict_options:
-                        line_to_add = f'"{key_src_}":  self.init_default_attr,'
-                        composed_errors.append(line_to_add)
-                        keys.append(key_src_)
+        if composed_errors and raise_on_no_option:
+            print("\n".join(composed_errors))
 
-                self.print_init_nones_from_dict(keys)
-                print("\n".join(composed_errors))
+            raise self.UnknownKeyError(
+                    "\n".join(composed_errors))
 
-                raise self.UnknownKeyError(
-                    "\n".join(composed_errors)
-                ) from caught_exception
+        return not bool(composed_errors)
 
     @staticmethod
     def print_init_nones_from_dict(keys):
@@ -612,3 +607,41 @@ class AwsObject:
         for attr_name, attr_value in other_object.__dict__.items():
             setattr(self, attr_name, attr_value)
         return True
+
+    def generate_request(self, required_request_keys, optional=None, request_key_to_attribute_mapping=None):
+        """
+        Generate generic request.
+
+        :param required_request_keys: Required keys
+        :param optional: Optional keys. Set in request if key attribute is not None.
+        :param request_key_to_attribute_mapping: Transform attribute "id" to "InstanceID" in request
+
+        :return:
+        """
+        if optional is None:
+            optional = []
+        elif not isinstance(optional, list):
+            raise ValueError(f"'optional' should be list, received: {optional}, {type(optional)=}")
+
+        if request_key_to_attribute_mapping is None:
+            request_key_to_attribute_mapping = {}
+
+        dict_request = {}
+        for request_key in required_request_keys:
+            try:
+                attr_name = request_key_to_attribute_mapping[request_key]
+            except KeyError:
+                attr_name = self.format_attr_name(request_key)
+            dict_request[request_key] = getattr(self, attr_name)
+
+        for request_key in optional:
+            try:
+                attr_name = request_key_to_attribute_mapping[request_key]
+            except KeyError:
+                attr_name = self.format_attr_name(request_key)
+
+            value = getattr(self, attr_name)
+            if value is not None:
+                dict_request[request_key] = value
+
+        return dict_request
