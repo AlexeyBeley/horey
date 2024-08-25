@@ -421,11 +421,13 @@ class AwsObject:
             ignore_missing_tag=False,
             tag_key_specifier="Key",
             tag_value_specifier="Value",
-            tags=None
+            tags=None,
+            casesensitive=False
     ):
         """
         Get tag value by name
 
+        :param casesensitive:
         :param key:
         :param ignore_missing_tag:
         :param tag_key_specifier:
@@ -442,7 +444,6 @@ class AwsObject:
                 return None
             raise RuntimeError("No tags associated")
 
-        # pylint: disable= not-an-iterable
         for tag in tags:
             tag_key_value = tag.get(tag_key_specifier)
             tag_key_value = (
@@ -451,7 +452,7 @@ class AwsObject:
                 else tag.get(tag_key_specifier.lower())
             )
 
-            if tag_key_value.lower() == key:
+            if (tag_key_value == key) or (not casesensitive and tag_key_value.lower() == key):
                 tag_value_value = tag.get(tag_value_specifier)
                 return (
                     tag_value_value

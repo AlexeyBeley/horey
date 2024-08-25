@@ -28,74 +28,64 @@ class EFSClient(Boto3Client):
         @param file_system:
         @return:
         """
-        raise NotImplementedError()
-        repo_region = ECRfile_system({})
-        repo_region.region = file_system.region
-        repo_region.name = file_system.name
-        if not self.update_file_system_information(repo_region, full_information=True):
-            dict_ret = self.provision_file_system_raw(file_system.region, file_system.generate_create_request())
-            file_system.update_from_raw_response(dict_ret)
-        else:
-            file_system.arn = repo_region.arn
 
-        create_request, delete_request = repo_region.generate_change_file_system_policy_requests(file_system)
-        if create_request:
-            self.set_file_system_policy_raw(file_system.region, create_request)
-        if delete_request:
-            self.delete_file_system_policy_raw(file_system.region, delete_request)
+        logger.info("Provisioning file system: " + file_system.get_tag("Name", casesensitive=True))
+        current_file_system = EFSFileSystem({})
+        current_file_system.region = file_system.region
+        current_file_system.tags = file_system.tags
+        if not self.update_file_system_information(current_file_system):
+            response = self.provision_file_system_raw(file_system.region, file_system.generate_create_request())
+            breakpoint()
+            self.update_file_system_information(file_system)
+            return
+        breakpoint()
 
-        if file_system.tags != repo_region.tags:
-            self.clear_cache(ECRfile_system)
-            self.tag_resource(file_system, arn_identifier="resourceArn", tags_identifier="tags")
-
-        self.update_file_system_information(file_system)
-        return file_system
-
-    def update_file_system_information(self, file_system: EFSFileSystem, full_information=True):
+    def update_file_system_information(self, file_system: EFSFileSystem):
         """
         Update repo info.
 
         :param file_system:
         :return:
         """
-        breakpoint()
-        all_repos = list(self.yield_file_systems(region=file_system.region, filters_req={"file_systemNames": [file_system.name]}, full_information=full_information))
-        if not all_repos:
+
+        lst_ret = []
+        for region_file_system in self.yield_file_systems(region=file_system.region):
+            if region_file_system.get_tagname() == file_system.get_tagname():
+                lst_ret.append(region_file_system)
+
+        if len(lst_ret) > 1:
+            raise RuntimeError(f"Found {len(lst_ret)} file systems with tag {file_system.get_tagname()} in region {file_system.region.region_mark}")
+
+        if not lst_ret:
             return False
 
-        if len(all_repos) > 1:
-            raise RuntimeError(f"{len(all_repos)=} for repo name {file_system.name=} ")
-
-        for attr, value in all_repos[0].__dict__.items():
-            setattr(file_system, attr, value)
-        return True
+        return file_system.update_from_raw_response(lst_ret[0].dict_src)
 
     def provision_file_system_raw(self, region, request_dict):
         """
-        Standard.
+        Standard
 
-        @param request_dict:
-        @return:
         :param region:
+        :param request_dict:
+        :return:
         """
-        breakpoint()
+
         for response in self.execute(
-                self.get_session_client(region=region).create_file_system, "file_system", filters_req=request_dict
+                self.get_session_client(region=region).create_file_system, None, raw_data=True, filters_req=request_dict
         ):
-            self.clear_cache(ECRfile_system)
+            self.clear_cache(EFSFileSystem)
             return response
 
-    # pylint: disable= too-many-arguments
     def yield_file_systems(self, region=None, update_info=False, filters_req=None):
         """
-        Yield images
+        Yield objects
 
         :return:
         """
-        breakpoint()
-        regional_fetcher_generator = self.yield_images_raw
+
+        regional_fetcher_generator = self.yield_file_systems_raw
         yield from self.regional_service_entities_generator(regional_fetcher_generator,
-                                                            ECRImage,
+                                                            EFSFileSystem,
                                                             update_info=update_info,
                                                             regions=[region] if region else None,
                                                             filters_req=filters_req)
@@ -106,36 +96,11 @@ class EFSClient(Boto3Client):
 
         :return:
         """
-        breakpoint()
-        if filters_req is None:
-            for file_system in self.yield_file_systems(region=region):
-                _filters_req = {
-                    "file_systemName": file_system.name,
-                    "filter": {"tagStatus": "ANY"},
-                }
-                yield from self.execute(
-                        self.get_session_client(region=region).describe_images, "imageDetails",
-                        filters_req=_filters_req,
-                        exception_ignore_callback=lambda error: "file_systemNotFoundException"
-                                                                in repr(error)
-                )
-            return
 
         yield from self.execute(
-                self.get_session_client(region=region).describe_images, "imageDetails",
-                filters_req=filters_req,
-                exception_ignore_callback=lambda error: "file_systemNotFoundException"
-                                                        in repr(error)
+            self.get_session_client(region=region).describe_file_systems, "FileSystems",
+            filters_req=filters_req
         )
-
-    def get_all_file_systems(self, region=None, filters_req=None):
-        """
-        Get all images in all regions.
-
-        :return:
-        """
-        breakpoint()
-        return list(self.yield_images(region=region, filters_req=filters_req))
 
     def dispose_file_system(self, file_system: EFSFileSystem):
         """
@@ -144,10 +109,10 @@ class EFSClient(Boto3Client):
         @param file_system:
         @return:
         """
-        breakpoint()
-        dict_ret = self.dispose_file_system_raw(file_system.region, file_system.generate_dispose_request())
-        if dict_ret:
-            file_system.update_from_raw_response(dict_ret)
+        raise NotImplementedError("Test")
+        if not self.update_file_system_information(file_system):
+            return True
+        self.dispose_file_system_raw(file_system.region, file_system.generate_dispose_request())
         return True
 
     def dispose_file_system_raw(self, region, request_dict):
@@ -159,9 +124,8 @@ class EFSClient(Boto3Client):
         :param region:
         """
 
-        breakpoint()
         for response in self.execute(
-                self.get_session_client(region=region).create_file_system, "file_system", filters_req=request_dict
+                self.get_session_client(region=region).delete_file_system, None, raw_data=True, filters_req=request_dict
         ):
             self.clear_cache(EFSFileSystem)
             return response

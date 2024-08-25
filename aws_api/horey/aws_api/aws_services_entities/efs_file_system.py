@@ -61,6 +61,20 @@ class EFSFileSystem(AwsObject):
     def generate_create_request(self):
         """
         Standard.
+        CreationToken='string',
+    PerformanceMode='generalPurpose'|'maxIO',
+    Encrypted=True|False,
+    KmsKeyId='string',
+    ThroughputMode='bursting'|'provisioned'|'elastic',
+    ProvisionedThroughputInMibps=123.0,
+    AvailabilityZoneName='string',
+    Backup=True|False,
+    Tags=[
+        {
+            'Key': 'string',
+            'Value': 'string'
+        },
+    ]
 
         :return:
         """
@@ -104,3 +118,15 @@ class EFSFileSystem(AwsObject):
                 request[key] = desired_state_request[key]
 
         return None if len(request) == len(required) else request
+
+    def get_tagname(self, ignore_missing_tag=False):
+        """
+        Name tag.
+
+        :return:
+        """
+
+        if ignore_missing_tag:
+            raise ValueError(f"Should not set {ignore_missing_tag=}")
+
+        return self.get_tag("Name", casesensitive=True)

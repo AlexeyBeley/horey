@@ -27,8 +27,8 @@ def activate_account():
         )
     )
     accounts = CommonUtils.load_object_from_module(accounts_file_full_path, "main")
-    #AWSAccount.set_aws_account(accounts["admin"])
-    #AWSAccount.set_aws_region(accounts["admin"].regions["us-west-2"])
+    AWSAccount.set_aws_account(accounts["admin"])
+    AWSAccount.set_aws_region(accounts["admin"].regions["us-west-2"])
 
     #AWSAccount.set_aws_account(accounts["full_ro_access"])
     #AWSAccount.set_aws_region(accounts["full_ro_access"].regions["us-west-2"])
@@ -39,5 +39,17 @@ def activate_account():
     #AWSAccount.set_aws_account(accounts["main"])
     #AWSAccount.set_aws_region(accounts["main"].regions["us-east-1"])
 
-    AWSAccount.set_aws_account(accounts["iam_manager"])
-    AWSAccount.set_aws_region(accounts["iam_manager"].regions["us-east-1"])
+    # AWSAccount.set_aws_account(accounts["iam_manager"])
+    #AWSAccount.set_aws_region(accounts["iam_manager"].regions["us-east-1"])
+
+
+@pytest.fixture(scope="session", autouse=True)
+def main_cache_dir_path():
+    return os.path.abspath(
+    os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "..", "..", "..",
+        "ignore",
+        "cache"
+    )
+)

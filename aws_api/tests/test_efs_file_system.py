@@ -104,3 +104,43 @@ def test_generate_update_request_with_change(dict_src):
     other = EFSFileSystem(dict_src)
     request = self.generate_update_request(other)
     assert request == {"FileSystemId": "id:mock", "ThroughputMode": "provisioned"}
+
+
+@pytest.mark.wip
+def test_get_tag_casesensitive_true_little():
+    dict_src = {"Tags": [
+                    {
+                        "Key": "horey",
+                        "Value": "string1"
+                    },
+                ]}
+    self = EFSFileSystem(dict_src)
+    assert self.get_tag("horey", casesensitive=True)
+
+
+@pytest.mark.wip
+def test_get_tag_casesensitive_true_little_raises():
+    dict_src = {"Tags": [
+        {
+            "Key": "Horey",
+            "Value": "string1"
+        },
+    ]}
+
+    self = EFSFileSystem(dict_src)
+    with pytest.raises(RuntimeError, match=".*No tag 'horey' associated.*"):
+        self.get_tag("horey", casesensitive=True)
+
+
+@pytest.mark.wip
+def test_get_tag_raises_no_tags():
+    self = EFSFileSystem({})
+    with pytest.raises(RuntimeError, match=".*No tag 'horey' associated.*"):
+        self.get_tag("horey")
+
+
+@pytest.mark.wip
+def test_get_tagname_raises_ignore_missing_tag():
+    self = EFSFileSystem({})
+    with pytest.raises(ValueError, match=".*Should not set.*"):
+        self.get_tagname(ignore_missing_tag=True)
