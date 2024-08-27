@@ -18,6 +18,8 @@ from horey.aws_api.aws_clients.ec2_client import EC2Client
 from horey.aws_api.aws_services_entities.ec2_instance import EC2Instance
 from horey.aws_api.aws_clients.glue_client import GlueClient
 
+from horey.aws_api.aws_clients.efs_client import EFSClient
+
 from horey.aws_api.aws_clients.ecs_client import ECSClient
 from horey.aws_api.aws_clients.pricing_client import PricingClient
 from horey.aws_api.aws_clients.auto_scaling_client import AutoScalingClient
@@ -106,6 +108,7 @@ class AWSAPI:
 
     # pylint: disable= too-many-statements
     def __init__(self, configuration=None):
+        self.efs_client = EFSClient()
         self.glue_client = GlueClient()
         self.ec2_client = EC2Client()
         self.lambda_client = LambdaClient()

@@ -179,3 +179,7 @@ class AlertSystemConfigurationPolicy(ConfigurationPolicy):
     @tags.setter
     def tags(self, value):
         self._tags = value
+
+    @property
+    def efs_file_system_name(self):
+        return "fs_"+self.lambda_name

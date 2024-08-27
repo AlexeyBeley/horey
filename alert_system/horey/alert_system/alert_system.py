@@ -25,6 +25,7 @@ from horey.aws_api.aws_api import AWSAPI
 from horey.aws_api.aws_services_entities.iam_role import IamRole
 from horey.aws_api.aws_services_entities.sns_subscription import SNSSubscription
 from horey.aws_api.aws_services_entities.sns_topic import SNSTopic
+from horey.aws_api.aws_services_entities.efs_file_system import EFSFileSystem
 from horey.aws_api.aws_services_entities.sesv2_configuration_set import SESV2ConfigurationSet
 from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlarm
 from horey.aws_api.aws_services_entities.cloud_watch_log_group_metric_filter import (
@@ -77,6 +78,7 @@ class AlertSystem:
         """
         self.validate_input(lambda_files)
         self.provision_sns_topic()
+        self.provision_efs()
         self.provision_lambda(lambda_files)
         self.provision_sns_subscription()
 
@@ -465,6 +467,20 @@ class AlertSystem:
 
         self.aws_api.provision_sns_topic(topic)
 
+    def provision_efs(self):
+        """
+        Provision the SNS topic receiving alert_system messages.
+
+        @return:
+        """
+        file_system = EFSFileSystem({})
+        file_system.region = self.region
+        file_system.encrypted = True
+        file_system.tags = copy.deepcopy(self.tags)
+        file_system.tags.append({"Key": "Name", "Value": self.configuration.efs_file_system_name})
+
+        self.aws_api.efs_client.provision_file_system(file_system)
+
     def provision_sns_subscription(self):
         """
         Subscribe the receiving lambda to the SNS topic.
@@ -555,6 +571,7 @@ class AlertSystem:
         self.aws_api.sesv2_client.provision_configuration_set(configuration_set, declerative=declerative)
         return configuration_set
 
+    # pylint: disable = too-many-arguments
     def provision_cloudwatch_logs_alarm(self, log_group_name, filter_text, metric_uid, routing_tags, alarm_description=None
     ):
         """
@@ -876,4 +893,3 @@ class AlertSystem:
                     logger.info(f"Total time since publish to handle: {total_time}")
                     return total_time
         raise RuntimeError("Reached timeout")
-

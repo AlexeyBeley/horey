@@ -28,6 +28,17 @@ from horey.common_utils.common_utils import CommonUtils
 
 
 @pytest.mark.done
+def test_provision_efs(alert_system_configuration):
+    """
+    Test provisioning alert_system lambda.
+
+    @return:
+    """
+    alert_system = AlertSystem(alert_system_configuration)
+    alert_system.provision_efs()
+
+
+@pytest.mark.done
 def test_provision_lambda(alert_system_configuration):
     """
     Test provisioning alert_system lambda.
