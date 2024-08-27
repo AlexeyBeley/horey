@@ -4,6 +4,7 @@ AWS client to handle service API requests.
 
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.efs_file_system import EFSFileSystem
+from horey.aws_api.aws_services_entities.efs_access_point import EFSAccessPoint
 from horey.h_logger import get_logger
 
 logger = get_logger()
@@ -193,3 +194,143 @@ class EFSClient(Boto3Client):
         ):
             self.clear_cache(EFSFileSystem)
             return response
+
+    def provision_access_point_raw(self, region, request_dict):
+        """
+        Standard
+
+        :param region:
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Creating efs access point: {request_dict}")
+
+        for response in self.execute(
+                self.get_session_client(region=region).create_access_point, None, raw_data=True, filters_req=request_dict
+        ):
+            self.clear_cache(EFSAccessPoint)
+            return response
+
+    def dispose_access_point_raw(self, region, request_dict):
+        """
+        Standard.
+
+        :param region:
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Deleting efs access point: {request_dict}")
+
+        for response in self.execute(
+                self.get_session_client(region=region).delete_access_point, None, raw_data=True, filters_req=request_dict
+        ):
+            self.clear_cache(EFSAccessPoint)
+            return response
+
+    def dispose_access_point(self, access_point: EFSFileSystem):
+        """
+        Standard.
+
+        @param access_point:
+        @return:
+        """
+
+        current_access_point = EFSAccessPoint({})
+        current_access_point.region = access_point.region
+        current_access_point.tags = access_point.tags
+
+        if not self.update_access_point_information(current_access_point):
+            access_point.life_cycle_state = access_point.State.DELETED.value
+            return True
+
+        self.dispose_access_point_raw(access_point.region, current_access_point.generate_dispose_request())
+        self.wait_for_status(current_access_point, self.update_access_point_information,
+                             [access_point.State.DELETED],
+                             [access_point.State.DELETING,
+                              access_point.State.AVAILABLE],
+                             [access_point.State.ERROR,
+                             access_point.State.CREATING,
+                              access_point.State.UPDATING], timeout=600)
+
+        self.clear_cache(EFSFileSystem)
+        access_point.life_cycle_state = access_point.State.DELETED.value
+        return True
+
+    def yield_access_points(self, region=None, update_info=False, filters_req=None):
+        """
+        Yield objects
+
+        :return:
+        """
+
+        regional_fetcher_generator = self.yield_access_points_raw
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                            EFSAccessPoint,
+                                                            update_info=update_info,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req)
+
+    def yield_access_points_raw(self, region, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        yield from self.execute(
+            self.get_session_client(region=region).describe_access_points, "AccessPoints",
+            filters_req=filters_req
+        )
+
+    def provision_access_point(self, access_point: EFSAccessPoint):
+        """
+        Standard
+
+        @param access_point:
+        @return:
+        """
+
+        logger.info("Provisioning file system: " + access_point.get_tag("Name", casesensitive=True))
+        current_access_point = EFSAccessPoint({})
+        current_access_point.region = access_point.region
+        current_access_point.tags = access_point.tags
+
+        if not self.update_access_point_information(current_access_point):
+            response = self.provision_access_point_raw(access_point.region, access_point.generate_create_request())
+            del response["ResponseMetadata"]
+            access_point.update_from_raw_response(response)
+            self.wait_for_status(access_point, self.update_access_point_information,
+                                 [access_point.State.AVAILABLE],
+                                 [access_point.State.CREATING,
+                                  access_point.State.UPDATING],
+                                 [access_point.State.ERROR,
+                                  access_point.State.DELETED,
+                                  access_point.State.DELETING])
+        return True
+
+    def update_access_point_information(self, access_point: EFSAccessPoint, update_info=True):
+        """
+        Update repo info.
+
+        :param update_info:
+        :param access_point:
+        :return:
+        """
+
+        access_point_tagname = access_point.get_tagname()
+
+        lst_ret = []
+        for region_access_point in self.yield_access_points(region=access_point.region, update_info=update_info):
+            if region_access_point.get_tagname() == access_point_tagname:
+                lst_ret.append(region_access_point)
+
+        if len(lst_ret) > 1:
+            raise RuntimeError(f"Found {len(lst_ret)} access points with tag {access_point.get_tagname()} in region {access_point.region.region_mark}")
+
+        if not lst_ret:
+            access_point.life_cycle_state = access_point.State.DELETED.value
+            return False
+
+        return access_point.update_from_raw_response(lst_ret[0].dict_src)
