@@ -1,6 +1,7 @@
 """
 AWS Lambda representation
 """
+from enum import Enum
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 
@@ -16,6 +17,8 @@ class EFSFileSystem(AwsObject):
         self.throughput_mode = None
         self.provisioned_throughput_in_mibps = None
         self.file_system_protection = None
+        self.life_cycle_state = None
+        self.encrypted = None
 
         if from_cache:
             self._init_from_cache(dict_src, {})
@@ -36,7 +39,7 @@ class EFSFileSystem(AwsObject):
                         "FileSystemId": lambda x, y: self.init_default_attr(
                             x, y, formatted_name="id"
                         ),
-                        "ProvisionedThroughputInMibps": self.init_default_attr,
+                        "ProvisionedThroughputInMibps": lambda x, y: self.init_default_attr(x, float(y)),
                         "OwnerId": self.init_default_attr,
                         "CreationToken": self.init_default_attr,
                         "FileSystemArn": lambda x, y: self.init_default_attr(
@@ -61,26 +64,15 @@ class EFSFileSystem(AwsObject):
     def generate_create_request(self):
         """
         Standard.
-        CreationToken='string',
-    PerformanceMode='generalPurpose'|'maxIO',
-    Encrypted=True|False,
-    KmsKeyId='string',
-    ThroughputMode='bursting'|'provisioned'|'elastic',
-    ProvisionedThroughputInMibps=123.0,
-    AvailabilityZoneName='string',
-    Backup=True|False,
-    Tags=[
-        {
-            'Key': 'string',
-            'Value': 'string'
-        },
-    ]
 
         :return:
         """
 
-        return self.generate_request(["FileSystemId"],
-                                     optional=["ThroughputMode", "ProvisionedThroughputInMibps"],
+        if not self.get_tagname():
+            raise RuntimeError("Tag Name was not set")
+
+        return self.generate_request([],
+                                     optional=["ThroughputMode", "ProvisionedThroughputInMibps", "Encrypted", "Tags"],
                                      request_key_to_attribute_mapping=self.request_key_to_attribute_mapping)
 
     def generate_dispose_request(self):
@@ -130,3 +122,29 @@ class EFSFileSystem(AwsObject):
             raise ValueError(f"Should not set {ignore_missing_tag=}")
 
         return self.get_tag("Name", casesensitive=True)
+
+    def get_status(self):
+        """
+        Standard.
+
+        :return:
+        """
+        if self.life_cycle_state is None:
+            raise self.UndefinedStatusError("life_cycle_state was not set")
+        for enum_value in self.State.__members__.values():
+            if enum_value.value == self.life_cycle_state:
+                return enum_value
+        raise KeyError(f"Has no state configured for value: '{self.life_cycle_state=}'")
+
+    class State(Enum):
+        """
+        Standard
+
+        """
+
+        CREATING = "creating"
+        AVAILABLE = "available"
+        UPDATING = "updating"
+        DELETING = "deleting"
+        DELETED = "deleted"
+        ERROR = "error"

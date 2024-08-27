@@ -2,6 +2,7 @@
 Test AWS client.
 
 """
+import datetime
 
 import pytest
 
@@ -9,9 +10,10 @@ import pytest
 
 from horey.aws_api.aws_clients.efs_client import EFSClient
 from horey.aws_api.aws_services_entities.efs_file_system import EFSFileSystem
-from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.base_entities.region import Region
-from horey.common_utils.common_utils import CommonUtils
+from horey.h_logger import get_logger
+
+logger = get_logger()
 
 
 @pytest.fixture(name="efs_client")
@@ -90,17 +92,65 @@ def test_update_file_system_information(efs_client, file_system_src):
     assert file_system_src.region
 
 
+def delete_file_system(efs_client, file_system_src):
+    """
+    Use raw methods to delete file system.
+
+    :param efs_client:
+    :param file_system_src:
+    :return:
+    """
+
+    efs_client.dispose_file_system_raw(file_system_src.region, {"FileSystemId": file_system_src.id})
+    datetime_limit = datetime.datetime.now() + datetime.timedelta(minutes=10)
+    while datetime.datetime.now() < datetime_limit:
+        logger.info(f"Tests: updating status for efs {file_system_src.id}")
+        for response in efs_client.yield_file_systems_raw(file_system_src.region):
+            if response["FileSystemId"] == file_system_src.id:
+                break
+        else:
+            efs_client.clear_cache(EFSFileSystem)
+            return True
+    raise TimeoutError(f"Tests: updating status for efs {file_system_src.id}")
+
+
 @pytest.mark.done
 def test_update_file_system_information_raises_no_tags_in_regional_file_system(efs_client, file_system_src):
     response_create = efs_client.provision_file_system_raw(file_system_src.region, {})
+    file_system_src.id = response_create["FileSystemId"]
+
     with pytest.raises(RuntimeError, match=".*No tag 'Name' associated.*"):
         efs_client.update_file_system_information(file_system_src)
-    response_dispose = efs_client.dispose_file_system_raw(file_system_src.region, {"FileSystemId": response_create["FileSystemId"]})
-    assert response_dispose
+    delete_file_system(efs_client, file_system_src)
 
 
-@pytest.mark.wip
-def test_provision_file_system(efs_client, file_system_src):
+@pytest.mark.done
+def test_provision_file_system_new_or_update(efs_client, file_system_src):
     assert efs_client.provision_file_system(file_system_src)
 
 
+@pytest.mark.done
+def test_dispose_file_system(efs_client, file_system_src):
+    assert efs_client.dispose_file_system(file_system_src)
+
+
+@pytest.mark.done
+def test_provision_file_system_new(efs_client, file_system_src):
+    efs_client.dispose_file_system(file_system_src)
+    assert efs_client.provision_file_system(file_system_src)
+
+
+@pytest.mark.done
+def test_provision_file_system_update(efs_client, file_system_src: EFSFileSystem):
+    efs_client.dispose_file_system(file_system_src)
+    efs_client.provision_file_system(file_system_src)
+    assert file_system_src.throughput_mode != "provisioned"
+    assert file_system_src.provisioned_throughput_in_mibps != 10.0
+
+    file_system_src.provisioned_throughput_in_mibps = 10.0
+    file_system_src.throughput_mode = "provisioned"
+
+    assert efs_client.provision_file_system(file_system_src)
+    assert file_system_src.throughput_mode == "provisioned"
+    assert file_system_src.provisioned_throughput_in_mibps == 10.0
+    efs_client.dispose_file_system(file_system_src)
