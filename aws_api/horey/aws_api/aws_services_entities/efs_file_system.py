@@ -71,8 +71,8 @@ class EFSFileSystem(AwsObject):
         if not self.get_tagname():
             raise RuntimeError("Tag Name was not set")
 
-        return self.generate_request([],
-                                     optional=["ThroughputMode", "ProvisionedThroughputInMibps", "Encrypted", "Tags"],
+        return self.generate_request(["Tags"],
+                                     optional=["ThroughputMode", "ProvisionedThroughputInMibps", "Encrypted"],
                                      request_key_to_attribute_mapping=self.request_key_to_attribute_mapping)
 
     def generate_dispose_request(self):
