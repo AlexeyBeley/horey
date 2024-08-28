@@ -25,7 +25,7 @@ from horey.aws_api.aws_api import AWSAPI
 from horey.aws_api.aws_services_entities.iam_role import IamRole
 from horey.aws_api.aws_services_entities.sns_subscription import SNSSubscription
 from horey.aws_api.aws_services_entities.sns_topic import SNSTopic
-from horey.aws_api.aws_services_entities.efs_file_system import EFSFileSystem
+from horey.aws_api.aws_services_entities.dynamodb_table import DynamoDBTable
 from horey.aws_api.aws_services_entities.sesv2_configuration_set import SESV2ConfigurationSet
 from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlarm
 from horey.aws_api.aws_services_entities.cloud_watch_log_group_metric_filter import (
@@ -78,7 +78,7 @@ class AlertSystem:
         """
         self.validate_input(lambda_files)
         self.provision_sns_topic()
-        self.provision_efs()
+        self.provision_dynamodb()
         self.provision_lambda(lambda_files)
         self.provision_sns_subscription()
 
@@ -411,6 +411,7 @@ class AlertSystem:
         topic = SNSTopic({})
         topic.name = self.configuration.sns_topic_name
         topic.region = self.region
+
         if not self.aws_api.sns_client.update_topic_information(topic, full_information=False):
             raise RuntimeError("Could not update topic information")
 
@@ -421,6 +422,7 @@ class AlertSystem:
         aws_lambda.name = self.configuration.lambda_name
         aws_lambda.handler = "lambda_handler.lambda_handler"
         aws_lambda.runtime = "python3.12"
+
         aws_lambda.role = role.arn
         aws_lambda.timeout = self.configuration.lambda_timeout
         aws_lambda.memory_size = 512
@@ -467,19 +469,37 @@ class AlertSystem:
 
         self.aws_api.provision_sns_topic(topic)
 
-    def provision_efs(self):
+    def provision_dynamodb(self):
         """
-        Provision the SNS topic receiving alert_system messages.
+        Used for alert status storing.
 
-        @return:
+        :return:
         """
-        file_system = EFSFileSystem({})
-        file_system.region = self.region
-        file_system.encrypted = True
-        file_system.tags = copy.deepcopy(self.tags)
-        file_system.tags.append({"Key": "Name", "Value": self.configuration.efs_file_system_name})
 
-        self.aws_api.efs_client.provision_file_system(file_system)
+        table = DynamoDBTable({})
+        table.name = self.configuration.dynamodb_table_name
+        table.region = self.region
+        table.billing_mode = "PAY_PER_REQUEST"
+        table.attribute_definitions = [
+            {
+                "AttributeName": "sensor_uid",
+                "AttributeType": "S"
+            }
+        ]
+
+        table.key_schema = [
+            {
+                "AttributeName": "sensor_uid",
+                "KeyType": "HASH"
+            }
+        ]
+
+        table.tags = copy.deepcopy(self.tags)
+        table.tags.append({
+            "Key": "Name",
+            "Value": table.name
+        })
+        self.aws_api.dynamodb_client.provision_table(table)
 
     def provision_sns_subscription(self):
         """

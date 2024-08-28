@@ -2,13 +2,11 @@
 Testing alert system functions.
 
 """
-import datetime
 import json
 import os
 import shutil
 import time
 from unittest.mock import Mock
-from time import perf_counter
 
 import pytest
 from common import ses_events
@@ -21,24 +19,22 @@ from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlar
 from horey.aws_api.base_entities.region import Region
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.alert_system.lambda_package.notification import Notification
-from horey.aws_api.aws_services_entities.cloud_watch_log_group import CloudWatchLogGroup
-from horey.common_utils.common_utils import CommonUtils
 
 # pylint: disable=missing-function-docstring
 
 
 @pytest.mark.done
-def test_provision_efs(alert_system_configuration):
+def test_provision_dynamodb(alert_system_configuration):
     """
     Test provisioning alert_system lambda.
 
     @return:
     """
     alert_system = AlertSystem(alert_system_configuration)
-    alert_system.provision_efs()
+    alert_system.provision_dynamodb()
 
 
-@pytest.mark.done
+@pytest.mark.wip
 def test_provision_lambda(alert_system_configuration):
     """
     Test provisioning alert_system lambda.

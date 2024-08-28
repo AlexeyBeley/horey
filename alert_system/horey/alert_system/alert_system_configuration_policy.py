@@ -181,5 +181,5 @@ class AlertSystemConfigurationPolicy(ConfigurationPolicy):
         self._tags = value
 
     @property
-    def efs_file_system_name(self):
-        return "fs_"+self.lambda_name
+    def dynamodb_table_name(self):
+        return "has2_"+self.lambda_name

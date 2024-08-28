@@ -36,6 +36,8 @@ class AWSLambda(AwsObject):
         self.state = None
         self.reserved_concurrent_executions = None
         self.package_type = None
+        self.file_system_configs = None
+        self.request_key_to_attribute_mapping = {"FunctionArn": "arn", "FunctionName": "name"}
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -247,6 +249,16 @@ class AWSLambda(AwsObject):
         @return:
         """
 
+        if self.code.get("ImageUri") is None:
+            if self.runtime is None or self.handler is None:
+                raise RuntimeError("Either image or zip should be used")
+        elif self.runtime is not None or self.handler is not None:
+            raise RuntimeError("Either image or zip should be used")
+
+        return self.generate_request(["Code", "FunctionName", "Role", "Tags"],
+                                     optional=["Tags", "Runtime", "Handler", "PackageType", "Timeout",
+                                               "MemorySize", "EphemeralStorage", "VpcConfig", "Environment", "FileSystemConfigs"],
+                                     request_key_to_attribute_mapping=self.request_key_to_attribute_mapping)
         request = {
             "Code": self.code,
             "FunctionName": self.name,
