@@ -292,7 +292,7 @@ class EFSClient(Boto3Client):
         @return:
         """
 
-        logger.info("Provisioning file system: " + access_point.get_tag("Name", casesensitive=True))
+        logger.info("Provisioning access point: " + access_point.get_tag("Name", casesensitive=True))
         current_access_point = EFSAccessPoint({})
         current_access_point.region = access_point.region
         current_access_point.tags = access_point.tags
@@ -312,7 +312,7 @@ class EFSClient(Boto3Client):
 
     def update_access_point_information(self, access_point: EFSAccessPoint, update_info=True):
         """
-        Update repo info.
+        Update object info from aws api.
 
         :param update_info:
         :param access_point:
