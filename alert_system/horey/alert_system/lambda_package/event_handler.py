@@ -5,6 +5,8 @@ Event Handler.
 from horey.alert_system.lambda_package.message_dispatcher import MessageDispatcher
 from horey.alert_system.lambda_package.message_factory import MessageFactory
 from horey.alert_system.alert_system_configuration_policy import AlertSystemConfigurationPolicy
+from horey.alert_system.lambda_package.message_event_bridge_default import MessageEventBridgeDefault
+
 
 from horey.h_logger import get_logger
 logger = get_logger()
@@ -32,7 +34,14 @@ class EventHandler:
         @return:
         """
 
-        message = self.message_factory.generate_message(event)
+        message = None
+
+        try:
+            message = self.message_factory.generate_message(event)
+            if isinstance(message, MessageEventBridgeDefault):
+                return self.message_dispatcher.run_dynamodb_update_routine()
+        except Exception as inst_error:
+            data = message if message is not None else event
+            self.message_dispatcher.handle_exception(inst_error, data)
+
         return self.message_dispatcher.dispatch(message)
-
-

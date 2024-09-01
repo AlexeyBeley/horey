@@ -45,3 +45,11 @@ def test_handle_event(lambda_package_alert_system_config_file):
     with open(file_path, encoding="utf-8") as file_handler:
         event = json.load(file_handler)
     assert event_handler.handle_event(event)
+
+
+@pytest.mark.done
+def test_handle_event_bridge_event(alert_system_configuration_file_path_with_echo, event_bridge_events):
+    event_handler = EventHandler(alert_system_configuration_file_path_with_echo)
+    for event in event_bridge_events:
+        with pytest.raises(Exception, match=r".*ResourceNotFound.*"):
+            event_handler.handle_event(event)

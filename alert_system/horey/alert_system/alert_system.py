@@ -31,6 +31,8 @@ from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlar
 from horey.aws_api.aws_services_entities.cloud_watch_log_group_metric_filter import (
     CloudWatchLogGroupMetricFilter,
 )
+from horey.aws_api.aws_services_entities.event_bridge_target import EventBridgeTarget
+from horey.aws_api.aws_services_entities.event_bridge_rule import EventBridgeRule
 from horey.aws_api.aws_services_entities.cloud_watch_log_group import CloudWatchLogGroup
 from horey.alert_system.alert_system_configuration_policy import AlertSystemConfigurationPolicy
 from horey.pip_api.pip_api import PipAPI
@@ -79,7 +81,9 @@ class AlertSystem:
         self.validate_input(lambda_files)
         self.provision_sns_topic()
         self.provision_dynamodb()
-        self.provision_lambda(lambda_files)
+        self.provision_event_bridge_rule()
+        aws_lambda = self.provision_lambda(lambda_files)
+        self.provision_event_bridge_rule(aws_lambda=aws_lambda)
         self.provision_sns_subscription()
 
         self.provision_log_group()
@@ -408,6 +412,11 @@ class AlertSystem:
         @return:
         """
 
+        events_rule = EventBridgeRule({})
+        events_rule.name = self.configuration.event_bridge_rule_name
+        events_rule.region = self.region
+        self.aws_api.events_client.update_rule_information(events_rule)
+
         topic = SNSTopic({})
         topic.name = self.configuration.sns_topic_name
         topic.region = self.region
@@ -439,7 +448,14 @@ class AlertSystem:
                     "Action": "lambda:InvokeFunction",
                     "Resource": None,
                     "Condition": {"ArnLike": {"AWS:SourceArn": topic.arn}},
-                }
+                },
+                {"Sid": f"trigger_{self.configuration.lambda_name}",
+                 "Effect": "Allow",
+                 "Principal": {"Service": "events.amazonaws.com"},
+                 "Action": "lambda:InvokeFunction",
+                 "Resource": None,
+                 "Condition": {"ArnLike": {
+                     "AWS:SourceArn": events_rule.arn}}}
             ],
         }
 
@@ -472,6 +488,8 @@ class AlertSystem:
     def provision_dynamodb(self):
         """
         Used for alert status storing.
+        {'sensor_uid': {'S': 'test_manual'}, 'alarm_state': {'M': {'cooldown_time': {'N': '300'}, 'epoch_triggered': {'N': '11111111111111'}}}}
+        {'sensor_uid': {'S': 'test_manual2'}}
 
         :return:
         """
@@ -482,14 +500,14 @@ class AlertSystem:
         table.billing_mode = "PAY_PER_REQUEST"
         table.attribute_definitions = [
             {
-                "AttributeName": "sensor_uid",
+                "AttributeName": "alarm_name",
                 "AttributeType": "S"
             }
         ]
 
         table.key_schema = [
             {
-                "AttributeName": "sensor_uid",
+                "AttributeName": "alarm_name",
                 "KeyType": "HASH"
             }
         ]
@@ -846,20 +864,6 @@ class AlertSystem:
         email_identity.headers_in_delivery_notifications_enabled = True
         self.aws_api.provision_ses_domain_email_identity(email_identity)
 
-    def set_alarm_ok(self, alarm):
-        """
-        Change the alarm state.
-
-        :param alarm:
-        :return:
-        """
-
-        dict_request = {"AlarmName": alarm.name,
-                        "StateValue": "OK",
-                        "StateReason": "Explicitly changed state to OK"}
-
-        return self.aws_api.cloud_watch_client.set_alarm_state_raw(self.region, dict_request)
-
     def test_end_to_end_log_pattern_alert(self, log_group_name, line, alarm):
         """
         Check the
@@ -913,3 +917,32 @@ class AlertSystem:
                     logger.info(f"Total time since publish to handle: {total_time}")
                     return total_time
         raise RuntimeError("Reached timeout")
+
+    def provision_event_bridge_rule(self, aws_lambda=None):
+        """
+        Event bridge rule - the trigger used to trigger the lambda each minute.
+
+        :return:
+        """
+
+        rule = EventBridgeRule({})
+        rule.name = self.configuration.event_bridge_rule_name
+        rule.description = "Triggering rule for alert system lambda"
+        rule.region = self.region
+        rule.schedule_expression = "rate(1 minute)"
+        rule.event_bus_name = "default"
+        rule.state = "ENABLED"
+        rule.tags = copy.deepcopy(self.tags)
+        rule.tags.append({
+            "Key": "name",
+            "Value": rule.name
+        })
+
+        if aws_lambda is not None:
+            target = EventBridgeTarget({})
+            target.id = f"target-{self.configuration.lambda_name}"
+            target.arn = aws_lambda.arn
+            rule.targets.append(target)
+
+        self.aws_api.provision_events_rule(rule)
+        return rule

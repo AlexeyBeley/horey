@@ -183,3 +183,7 @@ class AlertSystemConfigurationPolicy(ConfigurationPolicy):
     @property
     def dynamodb_table_name(self):
         return "has2_"+self.lambda_name
+
+    @property
+    def event_bridge_rule_name(self):
+        return f"event-bridge-rule-{self.lambda_name}"

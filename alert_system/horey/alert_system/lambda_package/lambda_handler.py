@@ -22,12 +22,6 @@ def lambda_handler(event, _):
     :return:
     """
 
-    try:
-        with open("/mnt/data/tmp", "w", encoding="utf-8") as file_handler:
-            file_handler.write("x"*1024*100)
-    except Exception as inst_error:
-        logger.info(f"{repr(inst_error)}, {str(inst_error)}")
-
     logger_string = json.dumps(event).replace(AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_LOG_ERROR_FILTER_PATTERN,
                                           "ALERT_SYSTEM_SELF_MONITORING_LOG_ERROR_FILTER_PATTERN")
     logger_string = logger_string.replace(

@@ -257,37 +257,9 @@ class AWSLambda(AwsObject):
 
         return self.generate_request(["Code", "FunctionName", "Role", "Tags"],
                                      optional=["Tags", "Runtime", "Handler", "PackageType", "Timeout",
-                                               "MemorySize", "EphemeralStorage", "VpcConfig", "Environment", "FileSystemConfigs"],
+                                               "MemorySize", "EphemeralStorage", "VpcConfig", "Environment",
+                                               "FileSystemConfigs"],
                                      request_key_to_attribute_mapping=self.request_key_to_attribute_mapping)
-        request = {
-            "Code": self.code,
-            "FunctionName": self.name,
-            "Role": self.role,
-            "Tags": self.tags,
-        }
-
-        if self.code.get("ImageUri") is None:
-            request["Runtime"] = self.runtime
-            request["Handler"] = self.handler
-        else:
-            request["PackageType"] = "Image"
-
-        if self.timeout is not None:
-            request["Timeout"] = self.timeout
-
-        if self.memory_size is not None:
-            request["MemorySize"] = self.memory_size
-
-        if self.ephemeral_storage is not None:
-            request["EphemeralStorage"] = self.ephemeral_storage
-
-        if self.vpc_config is not None:
-            request["VpcConfig"] = self.vpc_config
-
-        if self.environment is not None:
-            request["Environment"] = self.environment
-
-        return request
 
     def generate_update_function_configuration_request(self, desired_lambda):
         """
@@ -411,10 +383,8 @@ class AWSLambda(AwsObject):
         if desired_aws_lambda.policy is None:
             return [], []
 
-        if len(desired_aws_lambda.policy["Statement"]) != 1:
-            raise NotImplementedError(desired_aws_lambda.policy["Statement"])
-
-        desired_aws_lambda.policy["Statement"][0]["Resource"] = self.arn
+        for statement in desired_aws_lambda.policy["Statement"]:
+            statement["Resource"] = self.arn
 
         if self.policy is None:
             requests = []
@@ -439,6 +409,15 @@ class AWSLambda(AwsObject):
         for self_statement in self_policy["Statement"]:
             for desired_statement in desired_aws_lambda.policy["Statement"]:
                 if desired_statement["Sid"] == self_statement["Sid"]:
+                    if desired_statement != self_statement:
+                        request = {
+                            "FunctionName": self.name,
+                            "StatementId": desired_statement["Sid"],
+                            "Action": desired_statement["Action"],
+                            "Principal": desired_statement["Principal"]["Service"],
+                            "SourceArn": desired_statement["Condition"]["ArnLike"]["AWS:SourceArn"],
+                        }
+                        add_permissions.append(request)
                     break
             else:
                 request = {
@@ -446,26 +425,20 @@ class AWSLambda(AwsObject):
                     "StatementId": self_statement["Sid"],
                 }
                 remove_permissions.append(request)
-                continue
-
-            for key, desired_value in desired_statement.items():
-                if desired_value != self_statement[key]:
-                    logger.info(
-                        f"Found difference in key: {key}, current value: {self_statement[key]}, desired: {desired_value}"
-                    )
+        for desired_statement in desired_aws_lambda.policy["Statement"]:
+            for self_statement in self_policy["Statement"]:
+                if desired_statement["Sid"] == self_statement["Sid"]:
                     break
             else:
-                continue
+                request = {
+                    "FunctionName": self.name,
+                    "StatementId": desired_statement["Sid"],
+                    "Action": desired_statement["Action"],
+                    "Principal": desired_statement["Principal"]["Service"],
+                    "SourceArn": desired_statement["Condition"]["ArnLike"]["AWS:SourceArn"],
+                }
 
-            request = {
-                "FunctionName": self.name,
-                "StatementId": desired_statement["Sid"],
-                "Action": desired_statement["Action"],
-                "Principal": desired_statement["Principal"]["Service"],
-                "SourceArn": desired_statement["Condition"]["ArnLike"]["AWS:SourceArn"],
-            }
-
-            add_permissions.append(request)
+                add_permissions.append(request)
         return add_permissions, remove_permissions
 
     def generate_add_permissions_requests(self):

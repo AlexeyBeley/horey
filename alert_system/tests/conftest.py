@@ -2,7 +2,7 @@
 Module used by pytest to configure environment.
 
 """
-
+import json
 import os
 from pathlib import Path
 
@@ -67,3 +67,14 @@ def fixture_alert_system_configuration_file_path_with_slack():
     config_file_path = os.path.join(as_configuration.deployment_directory_path, "as_config.json")
     as_configuration.generate_configuration_file(config_file_path)
     yield config_file_path
+
+
+@pytest.fixture(name="event_bridge_events")
+def fixture_event_bridge_events():
+    cloudwatch_events_dir = Path(__file__).parent.joinpath("event_rule_messages")
+    events = []
+    for file_name in os.listdir(cloudwatch_events_dir):
+        with open(cloudwatch_events_dir.joinpath(file_name), encoding="utf-8") as fh:
+            ses_event = json.load(fh)
+            events.append(ses_event)
+    return events

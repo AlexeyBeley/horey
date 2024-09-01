@@ -33,8 +33,15 @@ class MessageCloudwatchDefault(MessageBase):
         self._trigger = None
         self._alarm_description = None
         self._end_time = None
+
+        try:
+            assert self.message_dict
+        except Exception as inst_error:
+            raise MessageBase.NotAMatchError(f"Not a match {repr(inst_error)}")
+
         if "AlarmDescription" not in self.message_dict:
             raise MessageBase.NotAMatchError("Not a match")
+
         logger.info("MessageCloudwatchDefault initialized")
 
     @property
@@ -170,7 +177,7 @@ class MessageCloudwatchDefault(MessageBase):
 
         notification = Notification()
         notification.type = Notification.Types.STABLE if self.message_dict["NewStateValue"] == "OK" else Notification.Types.CRITICAL
-        notification.header = f"Lambda duration error"
+        notification.header = "Lambda duration error"
         notification.text = (
             f"Region: {self.configuration.region}\n"
             f'Reason: {reason}\n'

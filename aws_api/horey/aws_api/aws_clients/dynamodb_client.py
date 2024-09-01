@@ -54,10 +54,9 @@ class DynamoDBClient(Boto3Client):
                 exception_ignore_callback=lambda error: "RepositoryNotFoundException"
                                                         in repr(error)
         ):
-
             yield from self.execute(self.get_session_client(region=region).describe_table, "Table",
-                                         filters_req={"TableName": str_name},
-                                         exception_ignore_callback=lambda x: "ResourceNotFoundException" in repr(x))
+                                    filters_req={"TableName": str_name},
+                                    exception_ignore_callback=lambda x: "ResourceNotFoundException" in repr(x))
 
     def get_all_tables(self, region=None, full_information=False):
         """
@@ -229,13 +228,14 @@ class DynamoDBClient(Boto3Client):
 
         return {key: convert_from_dynamodbish_subroutine(value) for key, value in obj_src.items()}
 
-    def update_table_information(self, table: DynamoDBTable, get_tags=True):
+    def update_table_information(self, table: DynamoDBTable, get_tags=True, raise_if_not_found=False):
         """
         Standard.
 
-        @param get_tags:
-        @param table:
-        @return:
+        :param table:
+        :param get_tags:
+        :param raise_if_not_found:
+        :return:
         """
 
         for response in self.execute(self.get_session_client(region=table.region).describe_table, "Table",
@@ -245,7 +245,11 @@ class DynamoDBClient(Boto3Client):
             if get_tags:
                 table.tags = self.get_tags(table,
                                            function=self.get_session_client(region=table.region).list_tags_of_resource)
-                return True
+            return True
+
+        if raise_if_not_found:
+            raise RuntimeError(
+                f"Was not able to find DynamoDB Table '{table.name}' in region {table.region.region_mark}")
 
         return False
 
@@ -311,3 +315,16 @@ class DynamoDBClient(Boto3Client):
         for response in self.execute(self.get_session_client(region=table.region).get_item, "Item",
                                      filters_req=filters_req, instant_raise=True):
             return self.convert_from_dynamodbish(response)
+
+    def scan(self, table: DynamoDBTable):
+        """
+        Standard.
+
+        :param table:
+        :return:
+        """
+
+        for response in self.execute(self.get_session_client(region=table.region).scan, "Items",
+                                     filters_req={"TableName": table.name},
+                                     ):
+            yield self.convert_from_dynamodbish(response)

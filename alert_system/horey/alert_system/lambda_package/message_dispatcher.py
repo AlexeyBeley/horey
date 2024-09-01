@@ -4,18 +4,20 @@ Checks message type to invoke relevant handler.
 Sends the notification to the channels.
 
 """
-
 import datetime
 import json
-import os
 import traceback
-import urllib.parse
 
-from horey.alert_system.lambda_package.notification_channels.notification_channel_factory import NotificationChannelFactory
+from horey.alert_system.lambda_package.notification_channels.notification_channel_factory import \
+    NotificationChannelFactory
 from horey.alert_system.lambda_package.notification import Notification
 
-from horey.common_utils.common_utils import CommonUtils
 from horey.h_logger import get_logger
+from horey.aws_api.aws_clients.dynamodb_client import DynamoDBClient
+from horey.aws_api.aws_services_entities.dynamodb_table import DynamoDBTable
+from horey.aws_api.aws_clients.cloud_watch_client import CloudWatchClient
+from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlarm
+from horey.aws_api.base_entities.region import Region
 
 logger = get_logger()
 
@@ -29,6 +31,7 @@ class MessageDispatcher:
     def __init__(self, configuration):
         self.configuration = configuration
         self.notification_channels = []
+        self.region = Region.get_region(self.configuration.region)
         if not self.init_notification_channels():
             raise RuntimeError("No notification channels configured")
 
@@ -45,68 +48,6 @@ class MessageDispatcher:
         return len(self.notification_channels) > 0 and \
             len(self.notification_channels) == len(self.configuration.notification_channels)
 
-    @staticmethod
-    def load_notification_channel(file_name):
-        """
-        Load notification channel class from python module.
-
-        @param file_name:
-        @return:
-        """
-
-        module_obj = CommonUtils.load_module(
-            os.path.join(os.path.dirname(os.path.abspath(__file__)), file_name)
-        )
-        candidates = []
-        for attr_name in module_obj.__dict__:
-            if attr_name == "NotificationChannelBase":
-                continue
-            if attr_name.startswith("NotificationChannel"):
-                candidate = getattr(module_obj, attr_name)
-                if issubclass(candidate, NotificationChannelBase) or "NotificationChannelBase" in str(candidate.__weakref__):
-                    candidates.append(candidate)
-
-        if len(candidates) != 1:
-            raise RuntimeError(f"Found {candidates} in {file_name}")
-
-        return candidates[0]
-
-    @staticmethod
-    def init_notification_channel(notification_channel_class):
-        """
-        Load configuration file and init notification channel with configuration file.
-
-        @param notification_channel_class:
-        @return:
-        """
-        try:
-            config_policy_file_name = notification_channel_class.CONFIGURATION_POLICY_FILE_NAME
-            class_name = notification_channel_class.CONFIGURATION_POLICY_CLASS_NAME
-        except AttributeError:
-            config_policy_file_name = notification_channel_class.__module__ + "_configuration_policy"
-            class_name = notification_channel_class.__name__ + "ConfigurationPolicy"
-
-        config_policy_path = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),
-            config_policy_file_name
-        )
-
-        config_policy = CommonUtils.load_object_from_module(
-            config_policy_path,
-            class_name
-        )
-        try:
-            config_values_file_name = config_policy.CONFIGURATION_FILE_NAME
-        except AttributeError:
-            config_values_file_name = notification_channel_class.__module__ + "_configuration_values.py"
-
-        config_policy.configuration_file_full_path = (
-            config_values_file_name
-        )
-        config_policy.init_from_file()
-
-        return notification_channel_class(config_policy)
-
     def dispatch(self, message):
         """
         Route the message to relevant notification channels.§
@@ -120,31 +61,97 @@ class MessageDispatcher:
             for notification_channel in self.notification_channels:
                 notification_channel.notify(notification)
         except Exception as error_inst:
-            notification = self.generate_alert_system_exception_notification(error_inst, message)
-
-            for notification_channel in self.notification_channels:
-                notification_channel.notify_alert_system_error(notification)
-            raise RuntimeError("Exception in Message Dispatcher") from error_inst
-
+            self.handle_exception(error_inst, message)
         return True
 
+    def handle_exception(self, error_inst, data):
+        """
+        Generate and send error notification
+
+        :param error_inst:
+        :param data:
+        :return:
+        """
+
+        notification = self.generate_alert_system_exception_notification(error_inst, data)
+
+        for notification_channel in self.notification_channels:
+            notification_channel.notify_alert_system_error(notification)
+        raise RuntimeError(f"Exception in Message Dispatcher: {repr(error_inst)}") from error_inst
+
     @staticmethod
-    def generate_alert_system_exception_notification(error_inst, message):
+    def generate_alert_system_exception_notification(error_inst, data):
         """
         Generate notification about alert system exception
         :return:
         """
-
+        if not isinstance(data, dict):
+            try:
+                data = data.convert_to_dict()
+            except Exception as internal_inst_error:
+                data = {"error": f"{repr(internal_inst_error)=}, {data=}"}
         traceback_str = "".join(traceback.format_tb(error_inst.__traceback__))
         logger.exception(f"{traceback_str}\n{repr(error_inst)}")
 
-        try:
-            text = json.dumps(message.convert_to_dict(), indent=4)
-        except Exception as internal_exception:
-            text = f"Could not convert message to dict: error: {repr(internal_exception)}, message: {str(message)}"
+        text = json.dumps(data, indent=4)
 
         notification = Notification()
         notification.type = Notification.Types.CRITICAL
         notification.header = "Unhandled message in alert_system"
         notification.text = text
         return notification
+
+    def yield_dynamodb_items(self):
+        """
+        Fetch alert data from dynamo
+
+        :return:
+        """
+
+        dynamodb_client = DynamoDBClient()
+        table = DynamoDBTable({})
+        table.name = self.configuration.dynamodb_table_name
+        table.region = Region.get_region(self.configuration.region)
+        dynamodb_client.update_table_information(table, raise_if_not_found=True)
+        for item in dynamodb_client.scan(table):
+            item["alarm_state"]["epoch_triggered"] = float(item["alarm_state"]["epoch_triggered"])
+            yield item
+
+    def update_dynamodb_alarm_time(self, alarm_name: str, alarm_epoch_utc: float):
+        """
+        Put alarm time in db.
+
+        :param alarm_name:
+        :param alarm_epoch_utc: float epoch
+        :return:
+        """
+
+        dynamodb_client = DynamoDBClient()
+        table = DynamoDBTable({})
+        table.name = self.configuration.dynamodb_table_name
+        table.region = self.region
+        dynamodb_client.update_table_information(table, raise_if_not_found=True)
+        dict_key = {"alarm_name": alarm_name,
+                    "alarm_state":
+                        {"cooldown_time": 300,
+                         "epoch_triggered": str(alarm_epoch_utc)}}
+
+        return dynamodb_client.put_item(table, dict_key)
+
+    def run_dynamodb_update_routine(self):
+        """
+
+        :return:
+        """
+
+        time_now = datetime.datetime.now(datetime.timezone.utc)
+        timestamp_now = time_now.timestamp()
+        for item in self.yield_dynamodb_items():
+            if item["alarm_state"]["epoch_triggered"] + item["alarm_state"]["cooldown_time"] >= timestamp_now:
+                continue
+
+            alarm = CloudWatchAlarm({"AlarmName": item["alarm_name"]})
+            alarm.region = self.region
+            CloudWatchClient().set_alarm_ok(alarm)
+            self.update_dynamodb_alarm_time(item["alarm_name"], 0.0)
+        return True

@@ -27,7 +27,10 @@ class MessageSESDefault(MessageBase):
         """
 
         super().__init__(dict_src, configuration)
-        self.message_dict = MessageBase.extract_message_dict(dict_src)
+        try:
+            self.message_dict = MessageBase.extract_message_dict(dict_src)
+        except Exception as inst_error:
+            raise MessageBase.NotAMatchError(f"Not a match {repr(inst_error)}")
 
         if self.message_dict.get("notificationType") == "AmazonSnsSubscriptionSucceeded":
             return
@@ -35,6 +38,7 @@ class MessageSESDefault(MessageBase):
         if "mail" not in self.message_dict:
             raise MessageBase.NotAMatchError("Not a match")
 
+    # pylint: disable = too-many-statements
     def generate_notification(self):
         """
         Generate notification from message.

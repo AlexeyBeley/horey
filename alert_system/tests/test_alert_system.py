@@ -16,6 +16,7 @@ from horey.alert_system.alert_system_configuration_policy import (
     AlertSystemConfigurationPolicy,
 )
 from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlarm
+from horey.aws_api.aws_services_entities.aws_lambda import AWSLambda
 from horey.aws_api.base_entities.region import Region
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.alert_system.lambda_package.notification import Notification
@@ -34,7 +35,7 @@ def test_provision_dynamodb(alert_system_configuration):
     alert_system.provision_dynamodb()
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_provision_lambda(alert_system_configuration):
     """
     Test provisioning alert_system lambda.
@@ -59,7 +60,7 @@ def test_provision_self_monitoring_duration_alarm(alert_system_configuration):
 def test_set_self_monitoring_duration_alarm_ok(alert_system_configuration):
     alert_system = AlertSystem(alert_system_configuration)
     alarm = alert_system.provision_self_monitoring_duration_alarm()
-    assert alert_system.set_alarm_ok(alarm)
+    assert alert_system.aws_api.cloud_watch_client.set_alarm_ok(alarm)
 
 
 @pytest.mark.done
@@ -83,7 +84,7 @@ def test_provision_self_monitoring_errors_metric_alarm(alert_system_configuratio
 def test_set_self_monitoring_errors_metric_alarm_ok(alert_system_configuration):
     alert_system = AlertSystem(alert_system_configuration)
     alarm = alert_system.provision_self_monitoring_errors_metric_alarm()
-    assert alert_system.set_alarm_ok(alarm)
+    assert alert_system.aws_api.cloud_watch_client.set_alarm_ok(alarm)
 
 
 @pytest.mark.done
@@ -109,7 +110,7 @@ def test_provision_self_monitoring_log_timeout_alarm(alert_system_configuration)
 def test_set_self_monitoring_log_timeout_alarm_ok(alert_system_configuration):
     alert_system = AlertSystem(alert_system_configuration)
     alarm = alert_system.provision_self_monitoring_log_timeout_alarm()
-    assert alert_system.set_alarm_ok(alarm)
+    assert alert_system.aws_api.cloud_watch_client.set_alarm_ok(alarm)
 
 
 @pytest.mark.done
@@ -135,7 +136,7 @@ def test_provision_self_monitoring_log_error_alarm(alert_system_configuration):
 def test_set_self_monitoring_log_error_alarm_ok(alert_system_configuration):
     alert_system = AlertSystem(alert_system_configuration)
     alarm = alert_system.provision_self_monitoring_log_error_alarm()
-    assert alert_system.set_alarm_ok(alarm)
+    assert alert_system.aws_api.cloud_watch_client.set_alarm_ok(alarm)
 
 
 @pytest.mark.done
@@ -347,11 +348,8 @@ def test_provision_cloudwatch_logs_alarm(alert_system_configuration):
 
     alert_system = AlertSystem(alert_system_configuration)
 
-    message_dict = {"log_group_name": alert_system_configuration.alert_system_lambda_log_group_name,
-                    "routing_tags": [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG],
-                    "log_group_filter_pattern": "[ERROR]"}
     alarm = alert_system.provision_cloudwatch_logs_alarm(
-        "test-alarm-creation", message_dict
+        alert_system_configuration.alert_system_lambda_log_group_name, "[ERROR]", "test-alarm-creation", [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG],
     )
     assert alarm
 
@@ -366,28 +364,24 @@ def test_provision_cloudwatch_logs_json_log_format_alarm(alert_system_configurat
 
     alert_system = AlertSystem(alert_system_configuration)
     filter_text = json.dumps('"level": "error"')
-    message_dict = {"log_group_name": alert_system_configuration.alert_system_lambda_log_group_name,
-                    "routing_tags": [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG],
-                    "log_group_filter_pattern": filter_text}
-    metric_raw_name = "json_format_test_alarm"
+    metric_uid = "json_format_test_alarm"
     alarm = alert_system.provision_cloudwatch_logs_alarm(
-        metric_raw_name, message_dict
+        alert_system_configuration.alert_system_lambda_log_group_name, filter_text, metric_uid, [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG]
     )
-    alert_system.set_alarm_ok(alarm)
+    alert_system.aws_api.cloud_watch_client.set_alarm_ok(alarm)
 
     line = json.dumps({"level": "error", "line": "Neo, the Horey has you!"})
     log_group_name = alert_system.configuration.alert_system_lambda_log_group_name
 
     lst_ret = []
-    for i in range(1000):
+    for _ in range(1000):
         try:
             test_time = alert_system.test_end_to_end_log_pattern_alert(log_group_name, line, alarm)
             lst_ret.append(test_time)
             time.sleep(301)
-            alert_system.set_alarm_ok(alarm)
+            alert_system.aws_api.cloud_watch_client.set_alarm_ok(alarm)
         except Exception:
             lst_ret.append(-1)
-    breakpoint()
 
 
 @pytest.mark.done
@@ -456,3 +450,12 @@ def test_send_ses_email(alert_system_configuration):
     request_dict["ConfigurationSetName"] = alert_system.configuration.alert_system_ses_configuration_set_name
 
     alert_system.aws_api.sesv2_client.send_email_raw(alert_system.region, request_dict)
+
+
+@pytest.mark.done
+def test_provision_event_bridge_rule(alert_system_configuration):
+    alert_system = AlertSystem(alert_system_configuration)
+    aws_lambda = AWSLambda({"FunctionName": alert_system.configuration.lambda_name})
+    aws_lambda.region = alert_system.region
+    alert_system.aws_api.lambda_client.update_lambda_information(aws_lambda, full_information=False)
+    alert_system.provision_event_bridge_rule(aws_lambda=aws_lambda)

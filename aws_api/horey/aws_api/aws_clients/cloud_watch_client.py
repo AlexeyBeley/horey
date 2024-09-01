@@ -142,6 +142,7 @@ class CloudWatchClient(Boto3Client):
           StateValue='OK'|'ALARM'|'INSUFFICIENT_DATA',
           StateReason='string',
 
+        :param region:
         :param request_dict:
         :return:
         """
@@ -153,5 +154,20 @@ class CloudWatchClient(Boto3Client):
                 None,
                 raw_data=True,
                 filters_req=request_dict,
+                instant_raise=True
         ):
             return response
+
+    def set_alarm_ok(self, alarm):
+        """
+        Change the alarm state.
+
+        :param alarm:
+        :return:
+        """
+
+        dict_request = {"AlarmName": alarm.name,
+                        "StateValue": "OK",
+                        "StateReason": "Explicitly changed state to OK"}
+
+        return self.set_alarm_state_raw(alarm.region, dict_request)

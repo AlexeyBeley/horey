@@ -32,9 +32,6 @@ class MessageBase:
         :return:
         """
 
-        if MessageBase.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY in dict_src:
-            return dict_src
-
         if "Records" in dict_src:
             if list(dict_src) != ["Records"]:
                 raise ValueError(f"Records is not the single field: {dict_src}")
@@ -51,7 +48,8 @@ class MessageBase:
                 str_sns_message = sns_record["Message"]
                 dict_sns_message = json.loads(str_sns_message)
                 return dict_sns_message
-        raise NotImplementedError(dict_src)
+
+        return dict_src
 
     def generate_notification(self):
         """
