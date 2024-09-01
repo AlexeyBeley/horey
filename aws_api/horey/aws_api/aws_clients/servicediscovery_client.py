@@ -145,6 +145,7 @@ class ServicediscoveryClient(Boto3Client):
         :param service:
         :return:
         """
+
         if service.namespace_id is None:
             raise RuntimeError(
                 f"Can not find service without namespace_id been set: {service.name}"
@@ -163,7 +164,7 @@ class ServicediscoveryClient(Boto3Client):
         )
         for region_service in region_services:
             if region_service.name == service.name:
-                service.update_from_raw_response(region_services[0].dict_src)
+                service.update_from_raw_response(region_service.dict_src)
                 return True
 
         return False

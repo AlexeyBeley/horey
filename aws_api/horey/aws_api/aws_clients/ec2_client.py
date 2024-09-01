@@ -2164,8 +2164,16 @@ class EC2Client(Boto3Client):
         if len(subnet_associated_route_tables) > 1:
             raise ValueError(f"Found more than 1 associated route table for subnet {filters_req}")
 
+        if subnet_associated_route_tables[0].id == route_table_id:
+            raise NotImplementedError("todo: Need to check if return")
+
         for existing_association in subnet_associated_route_tables[0].associations:
-            if existing_association["SubnetId"] == subnet_id:
+            existing_association_subnet_id = existing_association.get("SubnetId")
+            if existing_association_subnet_id is None:
+                if existing_association.get("Main") is not True:
+                    raise RuntimeError(f"Unknown association state: {existing_association}")
+
+            if existing_association_subnet_id == subnet_id:
                 replace_request = {"AssociationId": existing_association["RouteTableAssociationId"],
                                    "RouteTableId": route_table_id}
                 self.replace_route_table_association_raw(region, replace_request)
