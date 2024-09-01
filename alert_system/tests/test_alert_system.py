@@ -35,7 +35,7 @@ def test_provision_dynamodb(alert_system_configuration):
     alert_system.provision_dynamodb()
 
 
-@pytest.mark.done
+@pytest.mark.wip
 def test_provision_lambda(alert_system_configuration):
     """
     Test provisioning alert_system lambda.
