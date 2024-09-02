@@ -328,3 +328,21 @@ class DynamoDBClient(Boto3Client):
                                      filters_req={"TableName": table.name},
                                      ):
             yield self.convert_from_dynamodbish(response)
+
+    def delete_item(self, table: DynamoDBTable, item):
+        """
+        Put item- a normal dict. Automatically converted to dynamodbish.
+
+        :param table:
+        :param item:
+        :return:
+        """
+
+        dynamodbish_item = self.convert_to_dynamodbish(item)
+        filters_req = {"TableName": table.name,
+                       "Key": dynamodbish_item}
+
+        logger.info(f"Deleting dynamoDB item: '{filters_req}'")
+        for response in self.execute(self.get_session_client(region=table.region).delete_item, None, raw_data=True,
+                                     filters_req=filters_req, instant_raise=True):
+            return response

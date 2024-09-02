@@ -6,6 +6,7 @@ from horey.alert_system.lambda_package.message_dispatcher import MessageDispatch
 from horey.alert_system.lambda_package.message_factory import MessageFactory
 from horey.alert_system.alert_system_configuration_policy import AlertSystemConfigurationPolicy
 from horey.alert_system.lambda_package.message_event_bridge_default import MessageEventBridgeDefault
+from horey.alert_system.lambda_package.message_cloudwatch_default import MessageCloudwatchDefault
 
 
 from horey.h_logger import get_logger
@@ -40,6 +41,11 @@ class EventHandler:
             message = self.message_factory.generate_message(event)
             if isinstance(message, MessageEventBridgeDefault):
                 return self.message_dispatcher.run_dynamodb_update_routine()
+            try:
+                alarm_name, alarm_epoch_utc = message.generate_cooldown_name_and_epoch()
+                self.message_dispatcher.update_dynamodb_alarm_time(alarm_name, alarm_epoch_utc)
+            except NotImplementedError:
+                pass
         except Exception as inst_error:
             data = message if message is not None else event
             self.message_dispatcher.handle_exception(inst_error, data)

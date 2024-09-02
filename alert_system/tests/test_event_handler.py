@@ -2,12 +2,13 @@
 Message dispatcher tests.
 
 """
+import datetime
 import json
 import os
 import sys
 import shutil
-
 import pytest
+from unittest.mock import Mock
 from horey.alert_system.lambda_package.event_handler import EventHandler
 from horey.alert_system.lambda_package.notification_channels.notification_channel_echo import NotificationChannelEcho
 from horey.alert_system.alert_system_configuration_policy import AlertSystemConfigurationPolicy
@@ -48,8 +49,20 @@ def test_handle_event(lambda_package_alert_system_config_file):
 
 
 @pytest.mark.done
+def test_handle_event_bridge_event_raise_alert_not_found(alert_system_configuration_file_path_with_echo, event_bridge_events):
+    event_handler = EventHandler(alert_system_configuration_file_path_with_echo)
+    time_now = datetime.datetime.now(datetime.timezone.utc)
+    timestamp_now = time_now.timestamp()
+    event_handler.message_dispatcher.update_dynamodb_alarm_time("test_alarm_name_1", timestamp_now-301)
+    event_handler.message_dispatcher.delete_dynamodb_alarm = Mock()
+
+    for event in event_bridge_events:
+        event_handler.handle_event(event)
+        event_handler.message_dispatcher.delete_dynamodb_alarm.assert_called()
+
+
+@pytest.mark.todo
 def test_handle_event_bridge_event(alert_system_configuration_file_path_with_echo, event_bridge_events):
     event_handler = EventHandler(alert_system_configuration_file_path_with_echo)
     for event in event_bridge_events:
-        with pytest.raises(Exception, match=r".*ResourceNotFound.*"):
-            event_handler.handle_event(event)
+        assert event_handler.handle_event(event)

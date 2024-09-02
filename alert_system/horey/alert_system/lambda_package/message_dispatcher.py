@@ -138,6 +138,22 @@ class MessageDispatcher:
 
         return dynamodb_client.put_item(table, dict_key)
 
+    def delete_dynamodb_alarm(self, alarm_name: str):
+        """
+        Delete alarm from db
+
+        :param alarm_name:
+        :return:
+        """
+
+        dynamodb_client = DynamoDBClient()
+        table = DynamoDBTable({})
+        table.name = self.configuration.dynamodb_table_name
+        table.region = self.region
+        dynamodb_client.update_table_information(table, raise_if_not_found=True)
+        dict_key = {"alarm_name": alarm_name}
+        return dynamodb_client.delete_item(table, dict_key)
+
     def run_dynamodb_update_routine(self):
         """
 
@@ -152,6 +168,12 @@ class MessageDispatcher:
 
             alarm = CloudWatchAlarm({"AlarmName": item["alarm_name"]})
             alarm.region = self.region
-            CloudWatchClient().set_alarm_ok(alarm)
+            try:
+                CloudWatchClient().set_alarm_ok(alarm)
+            except Exception as inst_error:
+                if "ResourceNotFound" not in repr(inst_error):
+                    raise
+                self.delete_dynamodb_alarm(item["alarm_name"])
+                continue
             self.update_dynamodb_alarm_time(item["alarm_name"], 0.0)
         return True

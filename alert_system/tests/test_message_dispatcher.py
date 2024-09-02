@@ -126,6 +126,12 @@ def test_update_dynamodb_alarm_time(alert_system_configuration):
 
 
 @pytest.mark.done
+def test_delete_dynamodb_alarm(alert_system_configuration):
+    message_dispatcher = MessageDispatcher(alert_system_configuration)
+    assert message_dispatcher.delete_dynamodb_alarm("test_alarm_name_1")
+
+
+@pytest.mark.done
 def test_yield_dynamodb_items(alert_system_configuration):
     message_dispatcher = MessageDispatcher(alert_system_configuration)
     for item in message_dispatcher.yield_dynamodb_items():

@@ -120,3 +120,12 @@ class MessageBase:
             f"{self.configuration.region}#logsV2:log-groups/log-group/{log_group_name_encoded}/log-events$3Fend$3D{search_time_end}$26filterPattern$3D{search_text_encoded}$26start$3D{search_time_start}"
         )
         return log_group_search_url
+
+    def generate_cooldown_trigger_name_and_epoch_timestamp(self):
+        """
+        Implemented per message class when cool down is needed.
+
+        :return:
+        """
+
+        raise NotImplementedError("Implement per class")

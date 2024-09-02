@@ -303,3 +303,12 @@ class MessageCloudwatchDefault(MessageBase):
         :return:
         """
         raise NotImplementedError("What is this code?")
+
+    def generate_cooldown_trigger_name_and_epoch_timestamp(self):
+        """
+        Alarm name is used as uid.
+
+        :return:
+        """
+
+        breakpoint()

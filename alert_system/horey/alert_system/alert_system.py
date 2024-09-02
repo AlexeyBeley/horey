@@ -23,6 +23,7 @@ from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.base_entities.region import Region
 from horey.aws_api.aws_api import AWSAPI
 from horey.aws_api.aws_services_entities.iam_role import IamRole
+from horey.aws_api.aws_services_entities.iam_policy import IamPolicy
 from horey.aws_api.aws_services_entities.sns_subscription import SNSSubscription
 from horey.aws_api.aws_services_entities.sns_topic import SNSTopic
 from horey.aws_api.aws_services_entities.dynamodb_table import DynamoDBTable
@@ -40,7 +41,6 @@ from horey.pip_api.pip_api_configuration_policy import PipAPIConfigurationPolicy
 
 from horey.alert_system.lambda_package.message_cloudwatch_default import MessageCloudwatchDefault
 from horey.alert_system.lambda_package.notification import Notification
-
 
 logger = get_logger()
 
@@ -170,14 +170,14 @@ class AlertSystem:
 
         filter_text = f'"{AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_LOG_ERROR_FILTER_PATTERN}"'
         alarm_description = {
-                        "lambda_name": self.configuration.lambda_name,
-                        MessageCloudwatchDefault.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY: MessageCloudwatchDefault.ALERT_SYSTEM_SELF_MONITORING_TYPE_VALUE}
+            "lambda_name": self.configuration.lambda_name,
+            MessageCloudwatchDefault.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY: MessageCloudwatchDefault.ALERT_SYSTEM_SELF_MONITORING_TYPE_VALUE}
         return self.provision_cloudwatch_logs_alarm(self.configuration.alert_system_lambda_log_group_name,
                                                     filter_text,
                                                     "error",
                                                     [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG],
                                                     alarm_description=alarm_description,
-        )
+                                                    )
 
     def provision_self_monitoring_log_timeout_alarm(self):
         """
@@ -188,13 +188,13 @@ class AlertSystem:
 
         filter_text = AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN
         alarm_description = {"lambda_name": self.configuration.lambda_name,
-                        MessageCloudwatchDefault.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY: MessageCloudwatchDefault.ALERT_SYSTEM_SELF_MONITORING_TYPE_VALUE}
+                             MessageCloudwatchDefault.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY: MessageCloudwatchDefault.ALERT_SYSTEM_SELF_MONITORING_TYPE_VALUE}
         return self.provision_cloudwatch_logs_alarm(self.configuration.alert_system_lambda_log_group_name,
                                                     filter_text,
                                                     "timeout",
                                                     [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG],
                                                     alarm_description=alarm_description
-        )
+                                                    )
 
     def provision_self_monitoring_errors_metric_alarm(self):
         """
@@ -222,8 +222,8 @@ class AlertSystem:
         alarm.treat_missing_data = "notBreaching"
 
         alarm_description = {"routing_tags": [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG],
-                        "lambda_name": self.configuration.lambda_name,
-                        MessageCloudwatchDefault.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY: MessageCloudwatchDefault.ALERT_SYSTEM_SELF_MONITORING_TYPE_VALUE}
+                             "lambda_name": self.configuration.lambda_name,
+                             MessageCloudwatchDefault.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY: MessageCloudwatchDefault.ALERT_SYSTEM_SELF_MONITORING_TYPE_VALUE}
         alarm.alarm_description = json.dumps(alarm_description)
 
         self.provision_cloudwatch_alarm(alarm)
@@ -253,8 +253,8 @@ class AlertSystem:
         alarm.comparison_operator = "GreaterThanThreshold"
         alarm.treat_missing_data = "notBreaching"
         alarm_description = {"routing_tags": [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG],
-                        "lambda_name": self.configuration.lambda_name,
-                        MessageCloudwatchDefault.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY: MessageCloudwatchDefault.ALERT_SYSTEM_SELF_MONITORING_TYPE_VALUE}
+                             "lambda_name": self.configuration.lambda_name,
+                             MessageCloudwatchDefault.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY: MessageCloudwatchDefault.ALERT_SYSTEM_SELF_MONITORING_TYPE_VALUE}
         alarm.alarm_description = json.dumps(alarm_description)
 
         self.provision_cloudwatch_alarm(alarm)
@@ -292,23 +292,25 @@ class AlertSystem:
 
         notification_channels_and_message_classes_file_paths = self.configuration.notification_channels[:]
         alert_system_config_file_path = os.path.join(self.configuration.deployment_directory_path,
-                                                      AlertSystemConfigurationPolicy.ALERT_SYSTEM_CONFIGURATION_FILE_PATH)
+                                                     AlertSystemConfigurationPolicy.ALERT_SYSTEM_CONFIGURATION_FILE_PATH)
 
         lambda_package_configuration = AlertSystemConfigurationPolicy()
         lambda_package_configuration.init_from_policy(self.configuration)
         # todo: cd to parent(alert_system_config_file_path) and add os.file.exists in alert system configuration policy on notification channels
-        lambda_package_configuration.notification_channels = [os.path.basename(notification_channel_file_path) for notification_channel_file_path in
+        lambda_package_configuration.notification_channels = [os.path.basename(notification_channel_file_path) for
+                                                              notification_channel_file_path in
                                                               lambda_package_configuration.notification_channels]
         if self.configuration.message_classes:
             notification_channels_and_message_classes_file_paths += self.configuration.message_classes[:]
             lambda_package_configuration.message_classes = [os.path.basename(message_class_file_path) for
-                                                              message_class_file_path in
-                                                              lambda_package_configuration.message_classes]
+                                                            message_class_file_path in
+                                                            lambda_package_configuration.message_classes]
 
         lambda_package_configuration.generate_configuration_file(alert_system_config_file_path)
 
         self.packer.add_files_to_zip(
-            self.configuration.lambda_zip_file_name, files + [lambda_handler_file_path, alert_system_config_file_path] + notification_channels_and_message_classes_file_paths
+            self.configuration.lambda_zip_file_name, files + [lambda_handler_file_path,
+                                                              alert_system_config_file_path] + notification_channels_and_message_classes_file_paths
         )
         logger.info(
             f"Created lambda package: {self.configuration.deployment_directory_path}/{self.configuration.lambda_zip_file_name}")
@@ -399,11 +401,80 @@ class AlertSystem:
           ]
         }"""
         iam_role.managed_policies_arns = ["arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"]
+        iam_role.inline_policies = [self.generate_inline_dynamodb_policy(), self.generate_inline_cloudwatch_policy()]
         tags = copy.deepcopy(self.tags)
         tags.append({"Key": "name", "Value": iam_role.name})
         iam_role.tags = tags
         self.aws_api.provision_iam_role(iam_role)
         return iam_role
+
+    def generate_inline_dynamodb_policy(self):
+        """
+        DynamoDB access
+
+        :return:
+        """
+        policy = IamPolicy({})
+        policy.document = {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Action": [
+                        "dynamodb:PutItem",
+                        "dynamodb:UpdateItem",
+                        "dynamodb:GetItem",
+                        "dynamodb:Scan",
+                        "dynamodb:DescribeTable",
+                        "dynamodb:ListTagsOfResource",
+                        "dynamodb:DeleteItem"
+                    ],
+                    "Resource": [
+                        f"arn:aws:dynamodb:{self.configuration.region}:{self.aws_api.dynamodb_client.account_id}:table/{self.configuration.dynamodb_table_name}",
+                        f"arn:aws:dynamodb:{self.configuration.region}:{self.aws_api.dynamodb_client.account_id}:table/{self.configuration.dynamodb_table_name}//index/*"
+                    ],
+                    "Effect": "Allow"
+                }
+            ]
+        }
+        policy.name = "inline_dynamodb"
+        policy.description = "DynamoDB access policy"
+        policy.tags = copy.deepcopy(self.tags)
+        policy.tags.append({
+            "Key": "Name",
+            "Value": policy.name
+        })
+        return policy
+
+    def generate_inline_cloudwatch_policy(self):
+        """
+        Cloudwatch access
+
+        :return:
+        """
+
+        policy = IamPolicy({})
+        policy.document = {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Action": [
+                        "cloudwatch:SetAlarmState"
+                    ],
+                    "Resource": [
+                        f"arn:aws:cloudwatch:{self.configuration.region}:{self.aws_api.dynamodb_client.account_id}:alarm:*"
+                    ],
+                    "Effect": "Allow"
+                }
+            ]
+        }
+        policy.name = "inline_cloudwatch"
+        policy.description = "Cloudwatch access policy"
+        policy.tags = copy.deepcopy(self.tags)
+        policy.tags.append({
+            "Key": "Name",
+            "Value": policy.name
+        })
+        return policy
 
     def deploy_lambda(self):
         """
@@ -610,8 +681,9 @@ class AlertSystem:
         return configuration_set
 
     # pylint: disable = too-many-arguments
-    def provision_cloudwatch_logs_alarm(self, log_group_name, filter_text, metric_uid, routing_tags, alarm_description=None
-    ):
+    def provision_cloudwatch_logs_alarm(self, log_group_name, filter_text, metric_uid, routing_tags,
+                                        alarm_description=None
+                                        ):
         """
         Provision Cloud watch logs based alarm.
 
@@ -782,7 +854,8 @@ class AlertSystem:
         log_group.region = self.region
         log_group.name = self.configuration.alert_system_lambda_log_group_name
 
-        return self.aws_api.cloud_watch_logs_client.put_log_lines(log_group, [f"{AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_LOG_ERROR_FILTER_PATTERN}: Neo, the Horey has you!"])
+        return self.aws_api.cloud_watch_logs_client.put_log_lines(log_group, [
+            f"{AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_LOG_ERROR_FILTER_PATTERN}: Neo, the Horey has you!"])
 
     def trigger_self_monitoring_log_timeout_alarm(self):
         """
@@ -799,7 +872,8 @@ class AlertSystem:
         :return:
         """
         return self.trigger_log_filter_text_alarm(self.configuration.alert_system_lambda_log_group_name,
-                                                  [f"{AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN}: Neo, the Horey has you!"])
+                                                  [
+                                                      f"{AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN}: Neo, the Horey has you!"])
 
     def trigger_log_filter_text_alarm(self, log_group_name, lines):
         """
@@ -879,15 +953,15 @@ class AlertSystem:
         stream_last_event_max_limit = log_line_written_time - datetime.timedelta(hours=1)
 
         yield_log_group_streams_request = {"logGroupName": log_group_name,
-                        "orderBy": "LastEventTime",
-                        "descending": True}
-        limit_time = datetime.datetime.now() + datetime.timedelta(seconds=alarm.period+5)
+                                           "orderBy": "LastEventTime",
+                                           "descending": True}
+        limit_time = datetime.datetime.now() + datetime.timedelta(seconds=alarm.period + 5)
         start_waiting = perf_counter()
 
         while datetime.datetime.now() < limit_time:
             analized_streams_counter = 0
             for stream in self.aws_api.cloud_watch_logs_client.yield_log_group_streams_raw(self.region,
-                                                                                                   yield_log_group_streams_request):
+                                                                                           yield_log_group_streams_request):
                 analized_streams_counter += 1
                 last_event_timestamp = CommonUtils.timestamp_to_datetime(stream.last_event_timestamp / 1000)
                 if last_event_timestamp < stream_last_event_max_limit:
@@ -898,7 +972,8 @@ class AlertSystem:
                 # if last_event_timestamp < log_line_written_time:
                 #     continue
 
-                for event in self.aws_api.cloud_watch_logs_client.yield_log_events(log_group, stream, filters_req={"startFromHead": False}):
+                for event in self.aws_api.cloud_watch_logs_client.yield_log_events(log_group, stream, filters_req={
+                    "startFromHead": False}):
                     if event["message"] == line:
                         continue
 
@@ -908,7 +983,7 @@ class AlertSystem:
                     if alarm.arn not in event["message"]:
                         continue
 
-                    event_ingestion_time = CommonUtils.timestamp_to_datetime(event["ingestionTime"]/1000)
+                    event_ingestion_time = CommonUtils.timestamp_to_datetime(event["ingestionTime"] / 1000)
                     if event_ingestion_time < log_line_written_time:
                         continue
 
