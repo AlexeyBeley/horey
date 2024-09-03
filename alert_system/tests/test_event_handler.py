@@ -9,9 +9,11 @@ import sys
 import shutil
 import pytest
 from unittest.mock import Mock
+from common import cloudwatch_events
 from horey.alert_system.lambda_package.event_handler import EventHandler
 from horey.alert_system.lambda_package.notification_channels.notification_channel_echo import NotificationChannelEcho
 from horey.alert_system.alert_system_configuration_policy import AlertSystemConfigurationPolicy
+
 
 # pylint: disable= missing-function-docstring
 
@@ -61,8 +63,15 @@ def test_handle_event_bridge_event_raise_alert_not_found(alert_system_configurat
         event_handler.message_dispatcher.delete_dynamodb_alarm.assert_called()
 
 
-@pytest.mark.todo
+@pytest.mark.done
 def test_handle_event_bridge_event(alert_system_configuration_file_path_with_echo, event_bridge_events):
     event_handler = EventHandler(alert_system_configuration_file_path_with_echo)
     for event in event_bridge_events:
         assert event_handler.handle_event(event)
+
+
+@pytest.mark.done
+@pytest.mark.parametrize("event", cloudwatch_events)
+def test_handle_cloudwatch_event(alert_system_configuration_file_path_with_echo, event):
+    event_handler = EventHandler(alert_system_configuration_file_path_with_echo)
+    assert event_handler.handle_event(event)

@@ -136,6 +136,7 @@ class MessageDispatcher:
                         {"cooldown_time": 300,
                          "epoch_triggered": str(alarm_epoch_utc)}}
 
+        logger.info(f"Updating time triggered time: {alarm_name=} {alarm_epoch_utc=}")
         return dynamodb_client.put_item(table, dict_key)
 
     def delete_dynamodb_alarm(self, alarm_name: str):
@@ -163,6 +164,9 @@ class MessageDispatcher:
         time_now = datetime.datetime.now(datetime.timezone.utc)
         timestamp_now = time_now.timestamp()
         for item in self.yield_dynamodb_items():
+            if item["alarm_state"]["epoch_triggered"] == 0.0:
+                continue
+
             if item["alarm_state"]["epoch_triggered"] + item["alarm_state"]["cooldown_time"] >= timestamp_now:
                 continue
 

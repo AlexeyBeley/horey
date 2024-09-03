@@ -146,6 +146,14 @@ def test_trigger_self_monitoring_log_error_alarm(alert_system_configuration):
 
 
 @pytest.mark.done
+def test_trigger_self_monitoring_log_error_alarm_loop(alert_system_configuration):
+    alert_system = AlertSystem(alert_system_configuration)
+    for i in range(60):
+        assert alert_system.trigger_self_monitoring_log_error_alarm()
+        time.sleep(60)
+
+
+@pytest.mark.done
 def test_init_alert_system(alert_system_configuration):
     """
     Test initiation.
@@ -459,3 +467,47 @@ def test_provision_event_bridge_rule(alert_system_configuration):
     aws_lambda.region = alert_system.region
     alert_system.aws_api.lambda_client.update_lambda_information(aws_lambda, full_information=False)
     alert_system.provision_event_bridge_rule(aws_lambda=aws_lambda)
+
+
+@pytest.mark.wip
+def test_init_cloudwatch_metrics(alert_system_configuration):
+    alert_system = AlertSystem(alert_system_configuration)
+    metrics = list(alert_system.aws_api.cloud_watch_client.yield_client_metrics(region=alert_system.region))
+    breakpoint()
+    metrics_events = [x for x in metrics if x["Namespace"] == "AWS/Events"]
+    metrics_dynamodb = [x for x in metrics if x["Namespace"] == "AWS/DynamoDB"]
+
+    metric_names_events = {x["MetricName"] for x in metrics_events}
+    response = {'InvocationAttempts',
+                'MatchedEvents',
+                'FailedInvocations',
+                'InvocationsCreated',
+                'SuccessfulInvocationAttempts',
+                'IngestionToInvocationStartLatency',
+                'IngestionToInvocationCompleteLatency',
+                'Invocations',
+                'TriggeredRules'}
+    metric_names_dynamodb = {x["MetricName"] for x in metrics_dynamodb}
+    response = {'ConsumedReadCapacityUnits',
+                'ProvisionedReadCapacityUnits',
+                'TimeToLiveDeletedItemCount',
+                'ProvisionedWriteCapacityUnits',
+                'AccountProvisionedWriteCapacityUtilization',
+                'MaxProvisionedTableReadCapacityUtilization',
+                'MaxProvisionedTableWriteCapacityUtilization',
+                'AccountMaxTableLevelWrites',
+                'AccountMaxWrites',
+                'UserErrors',
+                'AccountMaxReads',
+                'SuccessfulRequestLatency',
+                'ConsumedWriteCapacityUnits',
+                'AccountProvisionedReadCapacityUtilization',
+                'AccountMaxTableLevelReads',
+                'ReturnedItemCount'}
+    """
+    event-bridge-rule-alert_system_test_deploy_lambd Invocations == 5
+
+    Events -> Across all rules -> FailedInvocations
+
+
+    """

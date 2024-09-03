@@ -311,4 +311,7 @@ class MessageCloudwatchDefault(MessageBase):
         :return:
         """
 
-        breakpoint()
+        if self.message_dict["NewStateValue"] == "OK":
+            raise self.NoCooldown("OK Status should not cooldown")
+
+        return self.message_dict['AlarmName'], self.end_time.timestamp()

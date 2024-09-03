@@ -128,4 +128,9 @@ class MessageBase:
         :return:
         """
 
-        raise NotImplementedError("Implement per class")
+        raise self.NoCooldown("Implement per class")
+
+    class NoCooldown(RuntimeError):
+        """
+        Do not cooldown the alarm
+        """
