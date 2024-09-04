@@ -116,11 +116,18 @@ def main():
         time.sleep(sleep_timeout)
 
 def book_the_test(selenium_api):
+    with open("./stop.txt") as file_handler:
+        ret = file_handler.read()
+    if ret == "stop":
+        breakpoint()
     return False
     breakpoint()
     str_id = "appointment-table"
     table = selenium_api.get_by_id(str_id)
-    rows = table.find_element(By.CLASS_NAME, "odd")
+    rows = table.find_elements(By.TAG_NAME, "tr")
+    for row in rows:
+        if "Start Time" in row.text:
+            continue
     rows_even = table.find_element(By.CLASS_NAME, "even")
 
 
