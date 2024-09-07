@@ -161,6 +161,9 @@ class AlertSystem:
         self.provision_self_monitoring_duration_alarm()
         self.trigger_self_monitoring_duration_alarm()
 
+        alarm = self.provision_self_monitoring_event_bridge_successful_invocations_alarm()
+        self.aws_api.cloud_watch_client.set_alarm_state(alarm, "ALARM")
+
     def provision_self_monitoring_log_error_alarm(self):
         """
         Find [ERROR] log messages in self log.
@@ -219,6 +222,39 @@ class AlertSystem:
         alarm.datapoints_to_alarm = 1
         alarm.threshold = 1.0
         alarm.comparison_operator = "GreaterThanThreshold"
+        alarm.treat_missing_data = "notBreaching"
+
+        alarm_description = {"routing_tags": [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG],
+                             "lambda_name": self.configuration.lambda_name,
+                             MessageCloudwatchDefault.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY: MessageCloudwatchDefault.ALERT_SYSTEM_SELF_MONITORING_TYPE_VALUE}
+        alarm.alarm_description = json.dumps(alarm_description)
+
+        self.provision_cloudwatch_alarm(alarm)
+        return alarm
+
+    def provision_self_monitoring_event_bridge_successful_invocations_alarm(self):
+        """
+        Provision cloudwatch metric EventBridge Successful Invocations
+        It should be equal to 5 in 5 minutes.
+
+        @return:
+        """
+
+        alarm = CloudWatchAlarm({})
+        alarm.name = f"has2-{self.configuration.lambda_name}-eventbridge-successful-invocations"
+        alarm.actions_enabled = True
+        alarm.insufficient_data_actions = []
+        alarm.metric_name = "Invocations"
+        alarm.namespace = "AWS/Events"
+        alarm.statistic = "Sum"
+        alarm.dimensions = [
+            {"Name": "RuleName", "Value": self.configuration.event_bridge_rule_name}
+        ]
+        alarm.period = 300
+        alarm.evaluation_periods = 1
+        alarm.datapoints_to_alarm = 1
+        alarm.threshold = 5.0
+        alarm.comparison_operator = "LessThanThreshold"
         alarm.treat_missing_data = "notBreaching"
 
         alarm_description = {"routing_tags": [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG],

@@ -21,6 +21,7 @@ from horey.aws_api.base_entities.region import Region
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.alert_system.lambda_package.notification import Notification
 
+
 # pylint: disable=missing-function-docstring
 
 
@@ -331,7 +332,7 @@ def test_provision_cloudwatch_alarm(alert_system_configuration):
     alarm = CloudWatchAlarm({})
     alarm.name = "test-alarm"
     alarm.actions_enabled = True
-    alarm.alarm_description = json.dumps({"bla":"bla"})
+    alarm.alarm_description = json.dumps({"bla": "bla"})
     alarm.insufficient_data_actions = []
     alarm.metric_name = "Duration"
     alarm.namespace = "AWS/Lambda"
@@ -357,7 +358,8 @@ def test_provision_cloudwatch_logs_alarm(alert_system_configuration):
     alert_system = AlertSystem(alert_system_configuration)
 
     alarm = alert_system.provision_cloudwatch_logs_alarm(
-        alert_system_configuration.alert_system_lambda_log_group_name, "[ERROR]", "test-alarm-creation", [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG],
+        alert_system_configuration.alert_system_lambda_log_group_name, "[ERROR]", "test-alarm-creation",
+        [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG],
     )
     assert alarm
 
@@ -374,7 +376,8 @@ def test_provision_cloudwatch_logs_json_log_format_alarm(alert_system_configurat
     filter_text = json.dumps('"level": "error"')
     metric_uid = "json_format_test_alarm"
     alarm = alert_system.provision_cloudwatch_logs_alarm(
-        alert_system_configuration.alert_system_lambda_log_group_name, filter_text, metric_uid, [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG]
+        alert_system_configuration.alert_system_lambda_log_group_name, filter_text, metric_uid,
+        [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG]
     )
     alert_system.aws_api.cloud_watch_client.set_alarm_ok(alarm)
 
@@ -469,45 +472,79 @@ def test_provision_event_bridge_rule(alert_system_configuration):
     alert_system.provision_event_bridge_rule(aws_lambda=aws_lambda)
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_init_cloudwatch_metrics(alert_system_configuration):
     alert_system = AlertSystem(alert_system_configuration)
     metrics = list(alert_system.aws_api.cloud_watch_client.yield_client_metrics(region=alert_system.region))
-    breakpoint()
+    all_namespaces = {x["Namespace"] for x in metrics}
     metrics_events = [x for x in metrics if x["Namespace"] == "AWS/Events"]
-    metrics_dynamodb = [x for x in metrics if x["Namespace"] == "AWS/DynamoDB"]
+    metrics_dynamodb = [x for x in metrics if x["Namespace"] == "aws/dynamodb"]
+    metrics_rds = [x for x in metrics if x["Namespace"] == "AWS/RDS"]
+
+    postgres_metrics = [x for x in metrics_rds if "postgres" in str(x)]
+    postgres_metrics_metric_names = {x["MetricName"] for x in postgres_metrics}
+    assert postgres_metrics_metric_names == {'ServerlessDatabaseCapacity', 'BufferCacheHitRatio', 'DiskQueueDepth',
+                                             'DBLoadNonCPU', 'ReadIOPSLocalStorage', 'ReplicationSlotDiskUsage',
+                                             'VolumeBytesUsed', 'EngineUptime', 'EBSByteBalance%',
+                                             'NetworkReceiveThroughput', 'StorageNetworkThroughput', 'ReplicaLag',
+                                             'FreeStorageSpace', 'VolumeReadIOPs', 'Deadlocks', 'ReadThroughput',
+                                             'ReadIOPS', 'NetworkThroughput', 'DBLoadCPU', 'ReadLatency',
+                                             'RDSToAuroraPostgreSQLReplicaLag', 'CheckpointLag', 'EBSIOBalance%',
+                                             'ACUUtilization', 'WriteIOPS', 'MaximumUsedTransactionIDs',
+                                             'FreeableMemory', 'WriteLatency', 'CommitThroughput',
+                                             'OldestReplicationSlotLag', 'ReadLatencyLocalStorage',
+                                             'DatabaseConnections', 'BackupRetentionPeriodStorageUsed',
+                                             'NetworkTransmitThroughput', 'WriteThroughputLocalStorage', 'DBLoad',
+                                             'ReadThroughputLocalStorage', 'VolumeWriteIOPs',
+                                             'TransactionLogsDiskUsage', 'DBLoadRelativeToNumVCPUs', 'CommitLatency',
+                                             'TempStorageIOPS', 'WriteLatencyLocalStorage',
+                                             'StorageNetworkReceiveThroughput', 'StorageNetworkTransmitThroughput',
+                                             'TempStorageThroughput', 'WriteThroughput', 'TransactionLogsGeneration',
+                                             'SwapUsage', 'TotalBackupStorageBilled', 'CPUUtilization',
+                                             'WriteIOPSLocalStorage', 'FreeLocalStorage'}
+
+    success_invocations = [x for x in metrics_events if x["MetricName"] == "SuccessfulInvocationAttempts"]
+    failed_invocations = [x for x in metrics_events if x["MetricName"] == "FailedInvocations"]
+
+    breakpoint()
 
     metric_names_events = {x["MetricName"] for x in metrics_events}
-    response = {'InvocationAttempts',
-                'MatchedEvents',
-                'FailedInvocations',
-                'InvocationsCreated',
-                'SuccessfulInvocationAttempts',
-                'IngestionToInvocationStartLatency',
-                'IngestionToInvocationCompleteLatency',
-                'Invocations',
-                'TriggeredRules'}
+    assert metric_names_events == {'InvocationAttempts',
+                                   'MatchedEvents',
+                                   'FailedInvocations',
+                                   'InvocationsCreated',
+                                   'SuccessfulInvocationAttempts',
+                                   'IngestionToInvocationStartLatency',
+                                   'IngestionToInvocationCompleteLatency',
+                                   'Invocations',
+                                   'TriggeredRules'}
+
     metric_names_dynamodb = {x["MetricName"] for x in metrics_dynamodb}
-    response = {'ConsumedReadCapacityUnits',
-                'ProvisionedReadCapacityUnits',
-                'TimeToLiveDeletedItemCount',
-                'ProvisionedWriteCapacityUnits',
-                'AccountProvisionedWriteCapacityUtilization',
-                'MaxProvisionedTableReadCapacityUtilization',
-                'MaxProvisionedTableWriteCapacityUtilization',
-                'AccountMaxTableLevelWrites',
-                'AccountMaxWrites',
-                'UserErrors',
-                'AccountMaxReads',
-                'SuccessfulRequestLatency',
-                'ConsumedWriteCapacityUnits',
-                'AccountProvisionedReadCapacityUtilization',
-                'AccountMaxTableLevelReads',
-                'ReturnedItemCount'}
-    """
-    event-bridge-rule-alert_system_test_deploy_lambd Invocations == 5
+    assert metric_names_dynamodb == {'ConsumedReadCapacityUnits',
+                                     'ProvisionedReadCapacityUnits',
+                                     'TimeToLiveDeletedItemCount',
+                                     'ProvisionedWriteCapacityUnits',
+                                     'AccountProvisionedWriteCapacityUtilization',
+                                     'MaxProvisionedTableReadCapacityUtilization',
+                                     'MaxProvisionedTableWriteCapacityUtilization',
+                                     'AccountMaxTableLevelWrites',
+                                     'AccountMaxWrites',
+                                     'UserErrors',
+                                     'AccountMaxReads',
+                                     'SuccessfulRequestLatency',
+                                     'ConsumedWriteCapacityUnits',
+                                     'AccountProvisionedReadCapacityUtilization',
+                                     'AccountMaxTableLevelReads',
+                                     'ReturnedItemCount'}
 
-    Events -> Across all rules -> FailedInvocations
+    breakpoint()
 
 
-    """
+@pytest.mark.done
+def test_provision_self_monitoring_event_bridge_successful_invocations_alarm(alert_system_configuration):
+    alert_system = AlertSystem(alert_system_configuration)
+    alarm = alert_system.provision_self_monitoring_event_bridge_successful_invocations_alarm()
+    alarm_description = json.loads(alarm.alarm_description)
+    assert alarm_description == {"routing_tags": [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG],
+                                 "lambda_name": "alert_system_test_deploy_lambda",
+                                 "ALERT_SYSTEM_SELF_MONITORING": "ALERT_SYSTEM_SELF_MONITORING"}

@@ -215,6 +215,11 @@ class MessageCloudwatchDefault(MessageBase):
             notification = self.generate_notification_default(reason=reason)
             notification.link = self.generate_alert_system_lambda_link()
             notification.link_href = "View AlertSystem Lambda"
+        elif self.trigger["MetricName"] == "Invocations":
+            reason = "Lambda was not triggered as expected by EventBridge"
+            notification = self.generate_notification_default(reason=reason)
+            notification.link = self.generate_alert_system_lambda_link()
+            notification.link_href = "View AlertSystem Lambda"
         else:
             raise NotImplementedError(f'{self.message_dict["Trigger"]["MetricName"]=}')
 

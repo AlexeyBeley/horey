@@ -160,7 +160,7 @@ class CloudWatchClient(Boto3Client):
 
     def set_alarm_ok(self, alarm):
         """
-        Change the alarm state.
+        Change the alarm state to OK
 
         :param alarm:
         :return:
@@ -169,5 +169,23 @@ class CloudWatchClient(Boto3Client):
         dict_request = {"AlarmName": alarm.name,
                         "StateValue": "OK",
                         "StateReason": "Explicitly changed state to OK"}
+
+        return self.set_alarm_state_raw(alarm.region, dict_request)
+
+    def set_alarm_state(self, alarm, state):
+        """
+        Change the alarm state
+
+        :param state:
+        :param alarm:
+        :return:
+        """
+
+        if state not in ["OK", "ALARM"]:
+            raise ValueError(state)
+
+        dict_request = {"AlarmName": alarm.name,
+                        "StateValue": state,
+                        "StateReason": f"Explicitly changed state to {state}"}
 
         return self.set_alarm_state_raw(alarm.region, dict_request)
