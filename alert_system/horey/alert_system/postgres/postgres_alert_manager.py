@@ -1,11 +1,14 @@
 """
 Monitor postgres like a boss!
 """
-from horey.common_utils.common_utils import CommonUtils
+import json
+
 from horey.alert_system.postgres.postgres_alert_manager_configuration_policy import \
     PostgresAlertManagerConfigurationPolicy
+from horey.alert_system.postgres.postgres_cluster_writer_monitoring_configuration_policy import PostgresClusterWriterMonitoringConfigurationPolicy
 from horey.alert_system.alert_system import AlertSystem
 from horey.aws_api.aws_services_entities.rds_db_cluster import RDSDBCluster
+from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlarm
 
 
 class PostgresAlertManager:
@@ -13,9 +16,11 @@ class PostgresAlertManager:
     Provision
     """
 
-    def __init__(self, alert_system: AlertSystem, configuration: PostgresAlertManagerConfigurationPolicy):
+    def __init__(self, alert_system: AlertSystem, configuration: PostgresAlertManagerConfigurationPolicy,
+                 cluster_writer_configuration: PostgresClusterWriterMonitoringConfigurationPolicy = None):
         self.alert_system = alert_system
         self.configuration = configuration
+        self.cluster_writer_configuration = cluster_writer_configuration
         self.camel_case_to_snake_case = {"ServerlessDatabaseCapacity": "serverless_database_capacity",
                                          "BufferCacheHitRatio": "buffer_cache_hit_ratio",
                                          "DiskQueueDepth": "disk_queue_depth",
@@ -41,7 +46,7 @@ class PostgresAlertManager:
                                          "EBSIOBalance%": "ebsio_balance_percent",
                                          "ACUUtilization": "acu_utilization",
                                          "WriteIOPS": "write_iops",
-                                         "MaximumUsedTransactionIDs": "maximum_used_transaction_i_ds",
+                                         "MaximumUsedTransactionIDs": "maximum_used_transaction_ids",
                                          "FreeableMemory": "freeable_memory",
                                          "WriteLatency": "write_latency",
                                          "CommitThroughput": "commit_throughput",
@@ -55,7 +60,7 @@ class PostgresAlertManager:
                                          "ReadThroughputLocalStorage": "read_throughput_local_storage",
                                          "VolumeWriteIOPs": "volume_write_io_ps",
                                          "TransactionLogsDiskUsage": "transaction_logs_disk_usage",
-                                         "DBLoadRelativeToNumVCPUs": "db_load_relative_to_num_vcp_us",
+                                         "DBLoadRelativeToNumVCPUs": "db_load_relative_to_num_vcpus",
                                          "CommitLatency": "commit_latency",
                                          "TempStorageIOPS": "temp_storage_iops",
                                          "WriteLatencyLocalStorage": "write_latency_local_storage",
@@ -71,21 +76,44 @@ class PostgresAlertManager:
                                          "FreeLocalStorage": "free_local_storage",
                                          }
 
-        self.cluster_metric_names_with_role_writer_dimension = ["VolumeReadIOPs", "NetworkThroughput", "VolumeBytesUsed", "ReadIOPS", "ReadThroughput", "ServerlessDatabaseCapacity", "MaximumUsedTransactionIDs", "EBSIOBalance%", "TempStorageIOPS", "Deadlocks", "ReadLatency", "StorageNetworkTransmitThroughput", "StorageNetworkReceiveThroughput", "CPUUtilization", "DiskQueueDepth", "NetworkReceiveThroughput", "CommitLatency", "SwapUsage", "StorageNetworkThroughput", "WriteLatency", "VolumeWriteIOPs", "ACUUtilization", "WriteIOPS", "WriteThroughput", "TransactionLogsDiskUsage", "OldestReplicationSlotLag", "DatabaseConnections", "RDSToAuroraPostgreSQLReplicaLag", "BufferCacheHitRatio", "EngineUptime", "CommitThroughput", "EBSByteBalance%", "TempStorageThroughput", "NetworkTransmitThroughput", "FreeableMemory", "ReplicationSlotDiskUsage"]
-        self.cluster_metric_names_single_dimension = ['ReadLatency', 'RDSToAuroraPostgreSQLReplicaLag', 'DiskQueueDepth',
-                                             'Deadlocks', 'VolumeWriteIOPs', 'EBSByteBalance%', 'FreeableMemory',
-                                             'EngineUptime', 'SwapUsage', 'TotalBackupStorageBilled', 'VolumeBytesUsed',
-                                             'ReadThroughput', 'CommitLatency', 'EBSIOBalance%', 'ReadIOPS',
-                                             'CommitThroughput', 'WriteThroughput', 'TempStorageIOPS',
-                                             'BackupRetentionPeriodStorageUsed', 'TempStorageThroughput',
-                                             'CPUUtilization', 'DatabaseConnections',
-                                             'StorageNetworkTransmitThroughput', 'OldestReplicationSlotLag',
-                                             'ServerlessDatabaseCapacity', 'WriteLatency', 'WriteIOPS',
-                                             'NetworkTransmitThroughput', 'StorageNetworkThroughput',
-                                             'TransactionLogsDiskUsage', 'BufferCacheHitRatio', 'VolumeReadIOPs',
-                                             'NetworkReceiveThroughput', 'ACUUtilization', 'MaximumUsedTransactionIDs',
-                                             'StorageNetworkReceiveThroughput', 'ReplicationSlotDiskUsage',
-                                             'NetworkThroughput']
+        self.cluster_metric_names_with_role_writer_dimension = ["NetworkThroughput",
+                                                                "ReadIOPS", "ReadThroughput",
+                                                                "ServerlessDatabaseCapacity",
+                                                                "MaximumUsedTransactionIDs", "EBSIOBalance%",
+                                                                "TempStorageIOPS", "Deadlocks", "ReadLatency",
+                                                                "StorageNetworkTransmitThroughput",
+                                                                "StorageNetworkReceiveThroughput", "CPUUtilization",
+                                                                "DiskQueueDepth", "NetworkReceiveThroughput",
+                                                                "CommitLatency", "SwapUsage",
+                                                                "StorageNetworkThroughput", "WriteLatency",
+                                                                "ACUUtilization", "WriteIOPS",
+                                                                "WriteThroughput", "TransactionLogsDiskUsage",
+                                                                "OldestReplicationSlotLag", "DatabaseConnections",
+                                                                "RDSToAuroraPostgreSQLReplicaLag",
+                                                                "BufferCacheHitRatio", "EngineUptime",
+                                                                "CommitThroughput", "EBSByteBalance%",
+                                                                "TempStorageThroughput", "NetworkTransmitThroughput",
+                                                                "FreeableMemory", "ReplicationSlotDiskUsage"]
+        self.cluster_metric_names_single_dimension = ["ReadLatency", "RDSToAuroraPostgreSQLReplicaLag",
+                                                      "DiskQueueDepth",
+                                                      "Deadlocks", "VolumeWriteIOPs", "EBSByteBalance%",
+                                                      "FreeableMemory",
+                                                      "EngineUptime", "SwapUsage", "TotalBackupStorageBilled",
+                                                      "VolumeBytesUsed",
+                                                      "ReadThroughput", "CommitLatency", "EBSIOBalance%", "ReadIOPS",
+                                                      "CommitThroughput", "WriteThroughput", "TempStorageIOPS",
+                                                      "BackupRetentionPeriodStorageUsed", "TempStorageThroughput",
+                                                      "CPUUtilization", "DatabaseConnections",
+                                                      "StorageNetworkTransmitThroughput", "OldestReplicationSlotLag",
+                                                      "ServerlessDatabaseCapacity", "WriteLatency", "WriteIOPS",
+                                                      "NetworkTransmitThroughput", "StorageNetworkThroughput",
+                                                      "TransactionLogsDiskUsage", "BufferCacheHitRatio",
+                                                      "VolumeReadIOPs",
+                                                      "NetworkReceiveThroughput", "ACUUtilization",
+                                                      "MaximumUsedTransactionIDs",
+                                                      "StorageNetworkReceiveThroughput", "ReplicationSlotDiskUsage",
+                                                      "NetworkThroughput"]
+        self.instance_metric_names = ['ReadThroughputLocalStorage', 'FreeLocalStorage', 'TransactionLogsGeneration', 'ReadIOPSLocalStorage', 'WriteThroughputLocalStorage', 'CheckpointLag', 'DBLoadCPU', 'ReplicaLag', 'FreeStorageSpace', 'DBLoad', 'WriteIOPSLocalStorage', 'DBLoadNonCPU', 'DBLoadRelativeToNumVCPUs', 'ReadLatencyLocalStorage', 'WriteLatencyLocalStorage']
 
     def convert_api_keys_to_snake_case(self):
         """
@@ -116,49 +144,20 @@ class PostgresAlertManager:
 
         str_ret = "{"
         for api_key_name in input_keys:
-            snake_case = self.convert_camel_case_to_snake_case(api_key_name)
+            snake_case = self.camel_case_to_snake_case[api_key_name]
             str_ret += f'"{api_key_name}": "{snake_case}",\n'
         str_ret += "}"
         return str_ret
 
-    @staticmethod
-    def convert_camel_case_to_snake_case(str_src):
-        """
-        Transform camel case to snake case and remove all extra chars
-
-        :return:
-        """
-
-        return CommonUtils.camel_case_to_snake_case(str_src).replace("%", "_percent")
-
-    def convert_api_keys_to_properties(self):
+    def convert_api_keys_to_properties(self, camel_case_keys):
         """
         Convert from api to configuration
 
         :return:
         """
 
-        input_keys = ["ServerlessDatabaseCapacity", "BufferCacheHitRatio", "DiskQueueDepth",
-                      "DBLoadNonCPU", "ReadIOPSLocalStorage", "ReplicationSlotDiskUsage",
-                      "VolumeBytesUsed", "EngineUptime", "EBSByteBalance%",
-                      "NetworkReceiveThroughput", "StorageNetworkThroughput", "ReplicaLag",
-                      "FreeStorageSpace", "VolumeReadIOPs", "Deadlocks", "ReadThroughput",
-                      "ReadIOPS", "NetworkThroughput", "DBLoadCPU", "ReadLatency",
-                      "RDSToAuroraPostgreSQLReplicaLag", "CheckpointLag", "EBSIOBalance%",
-                      "ACUUtilization", "WriteIOPS", "MaximumUsedTransactionIDs",
-                      "FreeableMemory", "WriteLatency", "CommitThroughput",
-                      "OldestReplicationSlotLag", "ReadLatencyLocalStorage",
-                      "DatabaseConnections", "BackupRetentionPeriodStorageUsed",
-                      "NetworkTransmitThroughput", "WriteThroughputLocalStorage", "DBLoad",
-                      "ReadThroughputLocalStorage", "VolumeWriteIOPs",
-                      "TransactionLogsDiskUsage", "DBLoadRelativeToNumVCPUs", "CommitLatency",
-                      "TempStorageIOPS", "WriteLatencyLocalStorage",
-                      "StorageNetworkReceiveThroughput", "StorageNetworkTransmitThroughput",
-                      "TempStorageThroughput", "WriteThroughput", "TransactionLogsGeneration",
-                      "SwapUsage", "TotalBackupStorageBilled", "CPUUtilization",
-                      "WriteIOPSLocalStorage", "FreeLocalStorage"]
-
-        str_ret = ""
+        str_ret_attributes = ""
+        str_ret_properties = ""
         template = \
             "\n    @property\n" \
             "    def replace_me(self):\n" \
@@ -170,15 +169,13 @@ class PostgresAlertManager:
             "    def replace_me(self, value):\n" \
             "        self._replace_me = value\n"
 
-        for api_key_name in input_keys:
-            snake_case = self.convert_camel_case_to_snake_case(api_key_name)
-            str_ret += f'        self._{snake_case} = None\n'
+        for api_key_name in camel_case_keys:
+            snake_case = self.camel_case_to_snake_case[api_key_name]
 
-        for api_key_name in input_keys:
-            snake_case = self.convert_camel_case_to_snake_case(api_key_name)
-            str_ret += template.replace("replace_me", snake_case)
+            str_ret_attributes += f'        self._{snake_case} = None\n'
+            str_ret_properties += template.replace("replace_me", snake_case)
 
-        return str_ret
+        return str_ret_attributes + str_ret_properties
 
     def provision(self):
         """
@@ -193,31 +190,43 @@ class PostgresAlertManager:
             cluster.region = self.alert_system.region
             if not self.alert_system.aws_api.rds_client.update_db_cluster_information(cluster):
                 raise RuntimeError(f"Cluster {cluster.id} can not be found in region {cluster.region.region_mark}")
-            if not self.alert_system.aws_api.rds_client.update_cluster_full_information(cluster):
-                raise RuntimeError(f"Cluster {cluster.id} can not be found in region {cluster.region.region_mark}")
-            self.provision_cluster_writer_alarms(cluster)
-        instance_metric_names = ['WriteThroughput', 'ReadIOPS', 'ReadLatency', 'NetworkTransmitThroughput',
-                                 'ReadThroughput', 'StorageNetworkReceiveThroughput', 'EBSIOBalance%',
-                                 'TransactionLogsDiskUsage', 'CommitThroughput', 'ACUUtilization', 'EngineUptime',
-                                 'NetworkReceiveThroughput', 'FreeableMemory', 'ServerlessDatabaseCapacity',
-                                 'MaximumUsedTransactionIDs', 'WriteIOPS', 'EBSByteBalance%', 'DatabaseConnections',
-                                 'StorageNetworkThroughput', 'WriteLatency', 'SwapUsage', 'NetworkThroughput',
-                                 'ReplicationSlotDiskUsage', 'TempStorageIOPS', 'OldestReplicationSlotLag',
-                                 'CommitLatency', 'RDSToAuroraPostgreSQLReplicaLag', 'TempStorageThroughput',
-                                 'Deadlocks', 'DiskQueueDepth', 'CPUUtilization', 'BufferCacheHitRatio',
-                                 'StorageNetworkTransmitThroughput']
-
+            self.provision_cluster_writer_alarms()
 
         return True
 
-    def provision_cluster_writer_alarms(self, cluster):
-        breakpoint()
-        for camel_case, snake_case in self.camel_case_to_snake_case.items():
-            snake_case += "_cluster_writer"
-            if camel_case not in cluster_metric_names_with_role_writer_dimension:
+    def provision_cluster_writer_alarms(self):
+        """
+        Generate and provision alarms based on configuration
+
+        :return:
+        """
+
+        for camel_case in self.cluster_metric_names_with_role_writer_dimension:
+            snake_case = self.camel_case_to_snake_case[camel_case]
+            metric_config = getattr(self.cluster_writer_configuration, snake_case)
+            if metric_config is None:
                 continue
-            if getattr(self.configuration, snake_case) is not None:
-                breakpoint()
+            alarm = CloudWatchAlarm({})
+            alarm.name = f"{self.alert_system.configuration.lambda_name}-{snake_case}_cluster_writer"
+            alarm.actions_enabled = True
+            alarm.insufficient_data_actions = []
+            alarm.metric_name = camel_case
+            alarm.namespace = "AWS/RDS"
+            alarm.statistic = "Average"
+            alarm.dimensions = [
+                {"Name": "DBClusterIdentifier", "Value": self.configuration.cluster},
+                {"Name": "Role", "Value": "WRITER"},
+            ]
+            alarm.period = 300
+            alarm.evaluation_periods = 1
+            alarm.datapoints_to_alarm = 1
+            alarm.threshold = metric_config["value"]
+            alarm.comparison_operator = metric_config["comparison_operator"]
+            alarm.treat_missing_data = "notBreaching"
+
+            alarm_description = {"routing_tags": [self.configuration.routing_tags]}
+            alarm.alarm_description = json.dumps(alarm_description)
+            self.alert_system.provision_cloudwatch_alarm(alarm)
 
     def provision_cluster_alarms(self, cluster):
         breakpoint()
