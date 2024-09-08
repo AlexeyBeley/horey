@@ -15,6 +15,7 @@ from horey.alert_system.lambda_package.notification import Notification
 
 # pylint: disable=missing-function-docstring
 
+test_cluster_name = ""
 
 @pytest.mark.done
 def test_convert_api_keys_to_snake_case():
@@ -75,7 +76,7 @@ def test_provision_cpuload(alert_system_configuration):
     @return:
     """
     configuration = PostgresAlertManagerConfigurationPolicy()
-    configuration.cluster = "cluster-aurora-postgres-demo-us-serverless"
+    configuration.cluster = test_cluster_name
     alert_system = AlertSystem(alert_system_configuration)
     alerts_manager = PostgresAlertManager(alert_system, configuration)
     assert alerts_manager.provision()
@@ -90,7 +91,7 @@ def test_provision_cluster_writer_cpu_utilization(alert_system_configuration):
     """
 
     configuration = PostgresAlertManagerConfigurationPolicy()
-    configuration.cluster = "cluster-aurora-postgres-demo-us-serverless"
+    configuration.cluster = test_cluster_name
     configuration.routing_tags = [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG]
     cluster_writer_config = PostgresClusterWriterMonitoringConfigurationPolicy()
     cluster_writer_config.cpu_utilization = {"value": 80, "comparison_operator": "GreaterThanThreshold"}
