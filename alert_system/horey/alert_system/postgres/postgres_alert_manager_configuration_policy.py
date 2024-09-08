@@ -68,6 +68,15 @@ class PostgresAlertManagerConfigurationPolicy(ConfigurationPolicy):
         self._cpu_utilization = None
         self._write_iops_local_storage = None
         self._free_local_storage = None
+        self._cluster = None
+
+    @property
+    def cluster(self):
+        return self._cluster
+
+    @cluster.setter
+    def cluster(self, value):
+        self._cluster = value
 
     @property
     def serverless_database_capacity(self):
