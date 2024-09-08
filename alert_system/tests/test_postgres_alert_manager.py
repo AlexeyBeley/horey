@@ -14,7 +14,7 @@ from horey.alert_system.lambda_package.notification import Notification
 
 # pylint: disable=missing-function-docstring
 
-test_cluster_name = "cluster-aurora-postgres-demo-us-serverless"
+test_cluster_name = ""
 
 
 @pytest.mark.done
