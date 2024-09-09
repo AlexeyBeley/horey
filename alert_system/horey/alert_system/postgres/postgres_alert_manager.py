@@ -217,9 +217,9 @@ class PostgresAlertManager:
                 {"Name": "DBClusterIdentifier", "Value": self.configuration.cluster},
                 {"Name": "Role", "Value": "WRITER"},
             ]
-            alarm.period = 300
-            alarm.evaluation_periods = 1
-            alarm.datapoints_to_alarm = 1
+            alarm.period = 60
+            alarm.evaluation_periods = 3
+            alarm.datapoints_to_alarm = 3
             alarm.threshold = metric_config["value"]
             alarm.comparison_operator = metric_config["comparison_operator"]
             alarm.treat_missing_data = "notBreaching"

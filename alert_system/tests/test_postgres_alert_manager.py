@@ -98,6 +98,7 @@ def test_provision_cluster_writer_cpu_utilization(alert_system_configuration):
     cluster_writer_config.acu_utilization = {"value": 80, "comparison_operator": "GreaterThanThreshold"}
     cluster_writer_config.ebs_byte_balance_percent = {"value": 50, "comparison_operator": "LessThanThreshold"}
     cluster_writer_config.storage_network_receive_throughput = {"value": 4000, "comparison_operator": "GreaterThanThreshold"}
+    cluster_writer_config.storage_network_transmit_throughput = {"value": 20000, "comparison_operator": "GreaterThanThreshold"}
     cluster_writer_config.network_throughput = {"value": 2000, "comparison_operator": "GreaterThanThreshold"}
     cluster_writer_config.read_iops = {"value": 1, "comparison_operator": "GreaterThanThreshold"}
 
@@ -111,14 +112,13 @@ def test_provision_cluster_writer_cpu_utilization(alert_system_configuration):
 
     cluster_writer_config.deadlocks = {"value": 0, "comparison_operator": "GreaterThanThreshold"}
     cluster_writer_config.read_latency = {"value": 0.01, "comparison_operator": "GreaterThanThreshold"}
-    cluster_writer_config.storage_network_transmit_throughput = {"value": 20000, "comparison_operator": "GreaterThanThreshold"}
     cluster_writer_config.disk_queue_depth = {"value": 0, "comparison_operator": "GreaterThanThreshold"}
 
     cluster_writer_config.network_receive_throughput = {"value": 5000, "comparison_operator": "GreaterThanThreshold"}
     cluster_writer_config.commit_latency = {"value": 30, "comparison_operator": "GreaterThanThreshold"}
-    cluster_writer_config.swap_usage = {"value": 300000000, "comparison_operator": "GreaterThanThreshold"}
+    cluster_writer_config.swap_usage = {"value": 400000000, "comparison_operator": "GreaterThanThreshold"}
 
-    cluster_writer_config.storage_network_throughput = {"value": 20000, "comparison_operator": "GreaterThanThreshold"}
+    cluster_writer_config.storage_network_throughput = {"value": 25000, "comparison_operator": "GreaterThanThreshold"}
     cluster_writer_config.write_latency = {"value": 0.021, "comparison_operator": "GreaterThanThreshold"}
     cluster_writer_config.write_iops = {"value": 6.0, "comparison_operator": "GreaterThanThreshold"}
 
@@ -134,7 +134,7 @@ def test_provision_cluster_writer_cpu_utilization(alert_system_configuration):
     cluster_writer_config.buffer_cache_hit_ratio = {"value": 50, "comparison_operator": "LessThanThreshold"}
     cluster_writer_config.engine_uptime = {"value": 1500000, "comparison_operator": "GreaterThanThreshold"}
 
-    cluster_writer_config.commit_throughput= {"value": 4, "comparison_operator": "GreaterThanThreshold"}
+    cluster_writer_config.commit_throughput = {"value": 4, "comparison_operator": "GreaterThanThreshold"}
 
     cluster_writer_config.temp_storage_throughput = {"value": 1000000, "comparison_operator": "GreaterThanThreshold"}
     cluster_writer_config.network_transmit_throughput = {"value": 1000, "comparison_operator": "GreaterThanThreshold"}
