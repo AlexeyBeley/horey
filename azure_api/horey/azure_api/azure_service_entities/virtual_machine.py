@@ -22,12 +22,23 @@ class VirtualMachine(AzureObject):
         self.storage_profile = None
         self.os_profile = None
         self.network_profile = {}
+        self.provisioning_state = None
 
         super().__init__(dict_src, from_cache=from_cache)
 
         if from_cache:
             self.init_virtual_machine_from_cache(dict_src)
             return
+
+        self.update_from_raw_response(dict_src)
+
+    def update_from_raw_response(self, dict_src):
+        """
+        Update attributes from API response source data
+
+        :param dict_src:
+        :return:
+        """
 
         init_options = {
             "id": self.init_default_attr,

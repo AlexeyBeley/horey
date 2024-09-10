@@ -3,10 +3,11 @@ sudo mount -t nfs4 -o  nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,re
 """
 
 import os
+import pytest
 from horey.azure_api.azure_clients.compute_client import ComputeClient
+from horey.azure_api.azure_service_entities.virtual_machine import VirtualMachine
 from horey.azure_api.base_entities.azure_account import AzureAccount
 from horey.azure_api.base_entities.region import Region
-from horey.h_logger import get_logger
 from horey.azure_api.azure_api_configuration_policy import AzureAPIConfigurationPolicy
 from horey.common_utils.common_utils import CommonUtils
 
@@ -17,14 +18,6 @@ mock_values_file_path = os.path.abspath(
     )
 )
 mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
-
-
-# Uncomment next line to save error lines to /tmp/error.log
-# configuration_values_file_full_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), "h_logger_configuration_values.py")
-configuration_values_file_full_path = None
-logger = get_logger(
-    configuration_values_file_full_path=configuration_values_file_full_path
-)
 
 configuration = AzureAPIConfigurationPolicy()
 configuration.configuration_file_full_path = os.path.abspath(
@@ -48,16 +41,28 @@ region = Region.get_region("uaenorth")
 # pylint: disable= missing-function-docstring
 
 
+@pytest.mark.done
 def test_get_available_vm_sizes():
     ret = compute_client.get_available_vm_sizes(region)
     assert ret is not None
 
 
+@pytest.mark.done
 def test_get_available_images():
     ret = compute_client.get_available_images(region)
     assert ret is not None
 
 
-if __name__ == "__main__":
-    #test_get_available_vm_sizes()
-    test_get_available_images()
+@pytest.mark.done
+def test_get_all_virtual_machines():
+    ret = compute_client.get_all_virtual_machines(mock_values["resource_group_name"])
+    assert len(ret) > 0
+
+
+@pytest.mark.done
+def test_update_virtual_machine_information():
+    vm = VirtualMachine({})
+    vm.name = mock_values["compute_client_vm_name"]
+    vm.resource_group_name = mock_values["resource_group_name"]
+    assert compute_client.update_virtual_machine_information(vm)
+    assert vm.provisioning_state == "Succeeded"
