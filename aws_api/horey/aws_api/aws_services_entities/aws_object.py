@@ -635,14 +635,25 @@ class AwsObject:
                 attr_name = self.format_attr_name(request_key)
             dict_request[request_key] = getattr(self, attr_name)
 
+        errors = []
         for request_key in optional:
             try:
                 attr_name = request_key_to_attribute_mapping[request_key]
             except KeyError:
                 attr_name = self.format_attr_name(request_key)
 
-            value = getattr(self, attr_name)
+            try:
+                value = getattr(self, attr_name)
+            except AttributeError:
+                errors.append(f"self.{attr_name} = None")
+                continue
+
             if value is not None:
                 dict_request[request_key] = value
+
+        if errors:
+            for line in errors:
+                print(line)
+            raise RuntimeError("\n".join(errors))
 
         return dict_request
