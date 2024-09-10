@@ -1,4 +1,6 @@
-import pdb
+"""
+Azure API CLient
+"""
 
 from azure.mgmt.network import NetworkManagementClient
 from horey.azure_api.azure_clients.azure_client import AzureClient
@@ -17,10 +19,11 @@ logger = get_logger()
 
 
 class NetworkClient(AzureClient):
-    CLIENT_CLASS = NetworkManagementClient
+    """
+    Main class
+    """
 
-    def __init__(self):
-        super().__init__()
+    CLIENT_CLASS = NetworkManagementClient
 
     def raw_create_virtual_networks(self, lst_args):
         """
@@ -43,6 +46,7 @@ class NetworkClient(AzureClient):
         { "address_prefix": "10.0.0.0/24" }
         """
         logger.info(f"Begin subnet creation: '{lst_args[0]} {lst_args[1]}'")
+        # pylint: disable = no-member
         response = self.client.subnet.begin_create_or_update(*lst_args)
         return response
 
@@ -210,30 +214,37 @@ class NetworkClient(AzureClient):
             for obj in self.client.nat_gateways.list(resource_group_name)
         ]
 
-    def get_all_network_interfaces(self, resource_group):
+    def get_all_network_interfaces(self, resource_group, resource_group_name=None):
         """
         Standard
 
         :param resource_group:
+        :param resource_group_name:
         :return:
         """
+
+        if resource_group_name is None:
+            resource_group_name = resource_group.name
 
         return [
             NetworkInterface(obj.as_dict())
-            for obj in self.client.network_interfaces.list(resource_group.name)
+            for obj in self.client.network_interfaces.list(resource_group_name)
         ]
 
-    def get_all_public_ip_addresses(self, resource_group):
+    def get_all_public_ip_addresses(self, resource_group, resource_group_name=None):
         """
         Standard
 
+        :param resource_group_name:
         :param resource_group:
         :return:
         """
 
+        resource_group_name = resource_group_name or resource_group.name
+
         return [
             PublicIpAddress(obj.as_dict())
-            for obj in self.client.public_ip_addresses.list(resource_group.name)
+            for obj in self.client.public_ip_addresses.list(resource_group_name)
         ]
 
     def get_all_network_security_groups(self, network_resource_group):

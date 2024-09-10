@@ -55,6 +55,7 @@ class VirtualMachine(AzureObject):
             "tags": self.init_default_attr,
             "zones": self.init_default_attr,
             "time_created": self.init_default_attr,
+            "etag": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
