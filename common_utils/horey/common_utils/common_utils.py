@@ -326,3 +326,16 @@ class CommonUtils:
 
         command = f'ssh-keygen -t ed25519 -C "{owner_email}" -f {output_file_path} -q -N ""'
         BashExecutor.run_bash(command)
+
+    @staticmethod
+    def generate_rsa_key(owner_email, output_file_path):
+        """
+        Generate key using bash and ssh-keygen
+
+        :param owner_email:
+        :param output_file_path:
+        :return:
+        """
+
+        command = f'ssh-keygen -t rsa -C "{owner_email}" -f {output_file_path} -q -N ""'
+        BashExecutor.run_bash(command)
