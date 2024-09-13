@@ -232,7 +232,7 @@ class OpensearchAPI:
 
         return self.post(f"{index_name}/_doc", data)
 
-    def put_index_pattern(self, template_name, index_patterns):
+    def put_index_template(self, template_name, index_patterns):
         """
 
         :param template_name:
@@ -247,3 +247,26 @@ class OpensearchAPI:
         }
 
         return self.put(f"_index_template/{template_name}", request)
+
+    def put_index_pattern(self, pattern_name):
+        """
+
+        :param pattern_name:
+        :return:
+        """
+
+        request = {
+            "index_pattern": {
+            "title": pattern_name,
+            "timeFieldName": "@timestamp"}
+        }
+
+        return self.put(f"_index_patterns/{pattern_name}", request)
+
+    def get_all_index_patterns(self):
+        """
+
+        :return:
+        """
+
+        return self.get("_index_patterns")

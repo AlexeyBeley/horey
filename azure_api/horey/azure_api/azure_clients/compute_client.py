@@ -38,13 +38,14 @@ class ComputeClient(AzureClient):
                 return True
         return False
 
-    def provision_virtual_machine(self, virtual_machine: VirtualMachine, tags_only=False):
+    def provision_virtual_machine(self, virtual_machine: VirtualMachine, tags_only=False, asynchronous=False):
         """
         Provision VM.
 
         @param virtual_machine:
         @param tags_only: only change the tags
         @return:
+        :param asynchronous:
         """
         all_machines = self.get_all_virtual_machines(
             virtual_machine.resource_group_name
@@ -58,7 +59,7 @@ class ComputeClient(AzureClient):
 
         try:
             return self.raw_create_virtual_machines(
-            virtual_machine.generate_create_request(tags_only=tags_only)
+            virtual_machine.generate_create_request(tags_only=tags_only), asynchronous=asynchronous
             )
         except Exception as inst_error:
             if "did not start in the allotted time" not in repr(inst_error):
@@ -128,17 +129,19 @@ class ComputeClient(AzureClient):
         response.wait()
         return response.result()
 
-    def raw_create_virtual_machines(self, lst_args):
+    def raw_create_virtual_machines(self, lst_args, asynchronous=False):
         """
         Create a vm.
 
         @param lst_args:
         @return:
+        :param asynchronous:
         """
 
         logger.info(f"Begin virtual machine creation: '{lst_args[1]}'")
         response = self.client.virtual_machines.begin_create_or_update(*lst_args)
-        response.wait()
+        if not asynchronous:
+            response.wait()
         return response.result()
 
     def raw_create_ssh_key(self, lst_args):
