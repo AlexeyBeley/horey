@@ -2811,7 +2811,7 @@ class AWSAPI:
         return response
 
     def provision_generated_ssh_key(
-            self, output_file_path, owner_email, region
+            self, output_file_path, owner_email, region, key_type="ed25519"
     ):
         """
         Self explanatory
@@ -2843,7 +2843,7 @@ class AWSAPI:
 
             return
 
-        CommonUtils.generate_ed25519_key(owner_email, output_file_path)
+        CommonUtils.generate_ssh_key(owner_email, output_file_path, key_type=key_type)
 
         logger.info(f"Generated {key_name} and {key_name_public}. Uploading to secrets")
         self.put_secret_file(key_name, output_file_path, region=region)
