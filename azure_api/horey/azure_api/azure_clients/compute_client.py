@@ -3,6 +3,7 @@ Compute service API.
 
 """
 import datetime
+import time
 
 from azure.mgmt.compute import ComputeManagementClient
 from horey.azure_api.azure_clients.azure_client import AzureClient
@@ -21,13 +22,30 @@ class ComputeClient(AzureClient):
 
     CLIENT_CLASS = ComputeManagementClient
 
-    def provision_virtual_machine(self, virtual_machine, tags_only=False):
+    def update_virtual_machine_information(self, virtual_machine: VirtualMachine):
+        """
+        Update the current information of the VM
+        :param virtual_machine:
+        :return:
+        """
+
+        all_machines = self.get_all_virtual_machines(
+            virtual_machine.resource_group_name
+        )
+        for existing_machine in all_machines:
+            if existing_machine.name == virtual_machine.name:
+                virtual_machine.update_from_raw_response(existing_machine.dict_src)
+                return True
+        return False
+
+    def provision_virtual_machine(self, virtual_machine: VirtualMachine, tags_only=False, asynchronous=False):
         """
         Provision VM.
 
         @param virtual_machine:
         @param tags_only: only change the tags
         @return:
+        :param asynchronous:
         """
         all_machines = self.get_all_virtual_machines(
             virtual_machine.resource_group_name
@@ -39,9 +57,19 @@ class ComputeClient(AzureClient):
                     virtual_machine.update_after_creation(existing_machine)
                     return virtual_machine
 
-        return self.raw_create_virtual_machines(
-            virtual_machine.generate_create_request(tags_only=tags_only)
-        )
+        try:
+            return self.raw_create_virtual_machines(
+            virtual_machine.generate_create_request(tags_only=tags_only), asynchronous=asynchronous
+            )
+        except Exception as inst_error:
+            if "did not start in the allotted time" not in repr(inst_error):
+                raise
+            for _ in range(10):
+                self.update_virtual_machine_information(virtual_machine)
+                if virtual_machine.provisioning_state == "Succeeded":
+                    return True
+                time.sleep(60)
+        raise TimeoutError(f"Was not able to start vm: {virtual_machine.name} in {virtual_machine.resource_group_name}")
 
     def provision_virtual_machine_tags(self, virtual_machine):
         """
@@ -101,17 +129,19 @@ class ComputeClient(AzureClient):
         response.wait()
         return response.result()
 
-    def raw_create_virtual_machines(self, lst_args):
+    def raw_create_virtual_machines(self, lst_args, asynchronous=False):
         """
         Create a vm.
 
         @param lst_args:
         @return:
+        :param asynchronous:
         """
 
         logger.info(f"Begin virtual machine creation: '{lst_args[1]}'")
         response = self.client.virtual_machines.begin_create_or_update(*lst_args)
-        response.wait()
+        if not asynchronous:
+            response.wait()
         return response.result()
 
     def raw_create_ssh_key(self, lst_args):

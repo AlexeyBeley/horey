@@ -6,6 +6,7 @@ import json
 from horey.alert_system.postgres.postgres_alert_manager_configuration_policy import \
     PostgresAlertManagerConfigurationPolicy
 from horey.alert_system.postgres.postgres_cluster_writer_monitoring_configuration_policy import PostgresClusterWriterMonitoringConfigurationPolicy
+from horey.alert_system.postgres.postgres_cluster_monitoring_configuration_policy import PostgresClusterMonitoringConfigurationPolicy
 from horey.alert_system.alert_system import AlertSystem
 from horey.aws_api.aws_services_entities.rds_db_cluster import RDSDBCluster
 from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlarm
@@ -17,10 +18,12 @@ class PostgresAlertManager:
     """
 
     def __init__(self, alert_system: AlertSystem, configuration: PostgresAlertManagerConfigurationPolicy,
-                 cluster_writer_configuration: PostgresClusterWriterMonitoringConfigurationPolicy = None):
+                 cluster_writer_configuration: PostgresClusterWriterMonitoringConfigurationPolicy = None,
+                 cluster_configuration: PostgresClusterMonitoringConfigurationPolicy = None):
         self.alert_system = alert_system
         self.configuration = configuration
         self.cluster_writer_configuration = cluster_writer_configuration
+        self.cluster_configuration = cluster_configuration
         self.camel_case_to_snake_case = {"ServerlessDatabaseCapacity": "serverless_database_capacity",
                                          "BufferCacheHitRatio": "buffer_cache_hit_ratio",
                                          "DiskQueueDepth": "disk_queue_depth",
@@ -34,7 +37,7 @@ class PostgresAlertManager:
                                          "StorageNetworkThroughput": "storage_network_throughput",
                                          "ReplicaLag": "replica_lag",
                                          "FreeStorageSpace": "free_storage_space",
-                                         "VolumeReadIOPs": "volume_read_io_ps",
+                                         "VolumeReadIOPs": "volume_read_iops",
                                          "Deadlocks": "deadlocks",
                                          "ReadThroughput": "read_throughput",
                                          "ReadIOPS": "read_iops",
@@ -43,7 +46,7 @@ class PostgresAlertManager:
                                          "ReadLatency": "read_latency",
                                          "RDSToAuroraPostgreSQLReplicaLag": "rds_to_aurora_postgre_sql_replica_lag",
                                          "CheckpointLag": "checkpoint_lag",
-                                         "EBSIOBalance%": "ebsio_balance_percent",
+                                         "EBSIOBalance%": "ebs_io_balance_percent",
                                          "ACUUtilization": "acu_utilization",
                                          "WriteIOPS": "write_iops",
                                          "MaximumUsedTransactionIDs": "maximum_used_transaction_ids",
@@ -58,7 +61,7 @@ class PostgresAlertManager:
                                          "WriteThroughputLocalStorage": "write_throughput_local_storage",
                                          "DBLoad": "db_load",
                                          "ReadThroughputLocalStorage": "read_throughput_local_storage",
-                                         "VolumeWriteIOPs": "volume_write_io_ps",
+                                         "VolumeWriteIOPs": "volume_write_iops",
                                          "TransactionLogsDiskUsage": "transaction_logs_disk_usage",
                                          "DBLoadRelativeToNumVCPUs": "db_load_relative_to_num_vcpus",
                                          "CommitLatency": "commit_latency",
@@ -94,25 +97,45 @@ class PostgresAlertManager:
                                                                 "CommitThroughput", "EBSByteBalance%",
                                                                 "TempStorageThroughput", "NetworkTransmitThroughput",
                                                                 "FreeableMemory", "ReplicationSlotDiskUsage"]
-        self.cluster_metric_names_single_dimension = ["ReadLatency", "RDSToAuroraPostgreSQLReplicaLag",
+        self.cluster_metric_names_single_dimension = ["ReadLatency",
+                                                      "RDSToAuroraPostgreSQLReplicaLag",
                                                       "DiskQueueDepth",
-                                                      "Deadlocks", "VolumeWriteIOPs", "EBSByteBalance%",
+                                                      "Deadlocks",
+                                                      "VolumeWriteIOPs",
+                                                      "EBSByteBalance%",
                                                       "FreeableMemory",
-                                                      "EngineUptime", "SwapUsage", "TotalBackupStorageBilled",
+                                                      "EngineUptime",
+                                                      "SwapUsage",
+                                                      "TotalBackupStorageBilled",
                                                       "VolumeBytesUsed",
-                                                      "ReadThroughput", "CommitLatency", "EBSIOBalance%", "ReadIOPS",
-                                                      "CommitThroughput", "WriteThroughput", "TempStorageIOPS",
-                                                      "BackupRetentionPeriodStorageUsed", "TempStorageThroughput",
-                                                      "CPUUtilization", "DatabaseConnections",
-                                                      "StorageNetworkTransmitThroughput", "OldestReplicationSlotLag",
-                                                      "ServerlessDatabaseCapacity", "WriteLatency", "WriteIOPS",
-                                                      "NetworkTransmitThroughput", "StorageNetworkThroughput",
-                                                      "TransactionLogsDiskUsage", "BufferCacheHitRatio",
+                                                      "ReadThroughput",
+                                                      "CommitLatency",
+                                                      "EBSIOBalance%",
+                                                      "ReadIOPS",
+                                                      "CommitThroughput",
+                                                      "WriteThroughput",
+                                                      "TempStorageIOPS",
+                                                      "BackupRetentionPeriodStorageUsed",
+                                                      "TempStorageThroughput",
+                                                      "CPUUtilization",
+                                                      "DatabaseConnections",
+                                                      "StorageNetworkTransmitThroughput",
+                                                      "OldestReplicationSlotLag",
+                                                      "ServerlessDatabaseCapacity",
+                                                      "WriteLatency",
+                                                      "WriteIOPS",
+                                                      "NetworkTransmitThroughput",
+                                                      "StorageNetworkThroughput",
+                                                      "TransactionLogsDiskUsage",
+                                                      "BufferCacheHitRatio",
                                                       "VolumeReadIOPs",
-                                                      "NetworkReceiveThroughput", "ACUUtilization",
+                                                      "NetworkReceiveThroughput",
+                                                      "ACUUtilization",
                                                       "MaximumUsedTransactionIDs",
-                                                      "StorageNetworkReceiveThroughput", "ReplicationSlotDiskUsage",
+                                                      "StorageNetworkReceiveThroughput",
+                                                      "ReplicationSlotDiskUsage",
                                                       "NetworkThroughput"]
+
         self.instance_metric_names = ['ReadThroughputLocalStorage', 'FreeLocalStorage', 'TransactionLogsGeneration', 'ReadIOPSLocalStorage', 'WriteThroughputLocalStorage', 'CheckpointLag', 'DBLoadCPU', 'ReplicaLag', 'FreeStorageSpace', 'DBLoad', 'WriteIOPSLocalStorage', 'DBLoadNonCPU', 'DBLoadRelativeToNumVCPUs', 'ReadLatencyLocalStorage', 'WriteLatencyLocalStorage']
 
     def convert_api_keys_to_snake_case(self):
@@ -191,6 +214,7 @@ class PostgresAlertManager:
             if not self.alert_system.aws_api.rds_client.update_db_cluster_information(cluster):
                 raise RuntimeError(f"Cluster {cluster.id} can not be found in region {cluster.region.region_mark}")
             self.provision_cluster_writer_alarms()
+            self.provision_cluster_alarms()
 
         return True
 
@@ -200,6 +224,9 @@ class PostgresAlertManager:
 
         :return:
         """
+
+        if self.cluster_writer_configuration is None:
+            return True
 
         for camel_case in self.cluster_metric_names_with_role_writer_dimension:
             snake_case = self.camel_case_to_snake_case[camel_case]
@@ -228,5 +255,35 @@ class PostgresAlertManager:
             alarm.alarm_description = json.dumps(alarm_description)
             self.alert_system.provision_cloudwatch_alarm(alarm)
 
-    def provision_cluster_alarms(self, cluster):
-        breakpoint()
+    def provision_cluster_alarms(self):
+        """
+        Generate and provision alarms based on configuration
+
+        :return:
+        """
+
+        for camel_case in self.cluster_metric_names_with_role_writer_dimension:
+            snake_case = self.camel_case_to_snake_case[camel_case]
+            metric_config = getattr(self.cluster_configuration, snake_case)
+            if metric_config is None:
+                continue
+            alarm = CloudWatchAlarm({})
+            alarm.name = f"{self.alert_system.configuration.lambda_name}-{snake_case}_cluster"
+            alarm.actions_enabled = True
+            alarm.insufficient_data_actions = []
+            alarm.metric_name = camel_case
+            alarm.namespace = "AWS/RDS"
+            alarm.statistic = "Average"
+            alarm.dimensions = [
+                {"Name": "DBClusterIdentifier", "Value": self.configuration.cluster},
+            ]
+            alarm.period = 60
+            alarm.evaluation_periods = 3
+            alarm.datapoints_to_alarm = 3
+            alarm.threshold = metric_config["value"]
+            alarm.comparison_operator = metric_config["comparison_operator"]
+            alarm.treat_missing_data = "notBreaching"
+
+            alarm_description = {"routing_tags": [self.configuration.routing_tags]}
+            alarm.alarm_description = json.dumps(alarm_description)
+            self.alert_system.provision_cloudwatch_alarm(alarm)

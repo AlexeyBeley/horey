@@ -4,8 +4,7 @@ sudo mount -t nfs4 -o  nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,re
 
 import os
 import pytest
-from horey.azure_api.azure_clients.compute_client import ComputeClient
-from horey.azure_api.azure_service_entities.virtual_machine import VirtualMachine
+from horey.azure_api.azure_clients.network_client import NetworkClient
 from horey.azure_api.base_entities.azure_account import AzureAccount
 from horey.azure_api.base_entities.region import Region
 from horey.azure_api.azure_api_configuration_policy import AzureAPIConfigurationPolicy
@@ -32,37 +31,28 @@ configuration.configuration_file_full_path = os.path.abspath(
 )
 configuration.init_from_file()
 
-compute_client = ComputeClient()
+network_client = NetworkClient()
 accounts = CommonUtils.load_object_from_module(
             configuration.accounts_file, "main"
         )
 AzureAccount.set_azure_account(accounts[configuration.azure_account])
-region = Region.get_region("uaenorth")
+region = Region.get_region("centralus")
 # pylint: disable= missing-function-docstring
 
 
 @pytest.mark.done
-def test_get_available_vm_sizes():
-    ret = compute_client.get_available_vm_sizes(region)
-    assert ret is not None
-
-
-@pytest.mark.done
-def test_get_available_images():
-    ret = compute_client.get_available_images(region)
-    assert ret is not None
-
-
-@pytest.mark.done
 def test_get_all_virtual_machines():
-    ret = compute_client.get_all_virtual_machines(mock_values["resource_group_name"])
+    ret = network_client.get_all_nat_gateways(None, resource_group_name=mock_values["network_client_resource_group_name"])
     assert len(ret) > 0
 
 
 @pytest.mark.done
-def test_update_virtual_machine_information():
-    vm = VirtualMachine({})
-    vm.name = mock_values["compute_client_vm_name"]
-    vm.resource_group_name = mock_values["resource_group_name"]
-    assert compute_client.update_virtual_machine_information(vm)
-    assert vm.provisioning_state == "Succeeded"
+def test_get_all_public_ip_addresses():
+    ret = network_client.get_all_public_ip_addresses(None, resource_group_name=mock_values["network_client_resource_group_name"])
+    assert len(ret) > 0
+
+
+@pytest.mark.done
+def test_get_all_network_interfaces():
+    ret = network_client.get_all_network_interfaces(None, resource_group_name=mock_values["network_client_resource_group_name"])
+    assert len(ret) > 0

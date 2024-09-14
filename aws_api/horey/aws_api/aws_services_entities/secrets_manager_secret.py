@@ -1,5 +1,5 @@
 """
-AWS Lambda representation
+AWS specific object representation
 """
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject

@@ -2284,7 +2284,7 @@ class AWSAPI:
         return dst_file_path
 
     def copy_secrets_manager_secret_to_region(
-            self, secret_name, region_src, region_dst
+            self, secret_name, region_src, region_dst, dst_name=None
     ):
         """
         Copy secrets manager secret from one region to another region.
@@ -2293,11 +2293,15 @@ class AWSAPI:
         @param region_src:
         @param region_dst:
         @return:
+        :param dst_name:
         """
-
-        secret = self.secretsmanager_client.get_secret(Region.get_region(region_src),
+        src_region = Region.get_region(region_src) if isinstance(region_src, str) else region_src
+        dst_region = Region.get_region(region_dst) if isinstance(region_dst, str) else region_dst
+        secret = self.secretsmanager_client.get_secret(src_region,
             secret_name)
-        secret.region = Region.get_region(region_dst)
+        secret.region = dst_region
+        if dst_name:
+            secret.name = dst_name
         self.secretsmanager_client.put_secret(secret)
 
     def provision_managed_prefix_list(self, managed_prefix_list, declarative=False):
@@ -2817,7 +2821,7 @@ class AWSAPI:
         return response
 
     def provision_generated_ssh_key(
-            self, output_file_path, owner_email, region
+            self, output_file_path, owner_email, region, key_type="ed25519"
     ):
         """
         Self explanatory
@@ -2849,7 +2853,7 @@ class AWSAPI:
 
             return
 
-        CommonUtils.generate_ed25519_key(owner_email, output_file_path)
+        CommonUtils.generate_ssh_key(owner_email, output_file_path, key_type=key_type)
 
         logger.info(f"Generated {key_name} and {key_name_public}. Uploading to secrets")
         self.put_secret_file(key_name, output_file_path, region=region)

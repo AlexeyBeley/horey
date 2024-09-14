@@ -18,13 +18,6 @@ mock_values_file_path = os.path.abspath(
 mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 
 
-# Uncomment next line to save error lines to /tmp/error.log
-# configuration_values_file_full_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), "h_logger_configuration_values.py")
-configuration_values_file_full_path = None
-logger = get_logger(
-    configuration_values_file_full_path=configuration_values_file_full_path
-)
-
 configuration = AzureAPIConfigurationPolicy()
 configuration.configuration_file_full_path = os.path.abspath(
     os.path.join(

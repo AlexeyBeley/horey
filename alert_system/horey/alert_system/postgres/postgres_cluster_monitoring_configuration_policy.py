@@ -19,7 +19,7 @@ class PostgresClusterMonitoringConfigurationPolicy(ConfigurationPolicy):
         self._rds_to_aurora_postgre_sql_replica_lag = None
         self._disk_queue_depth = None
         self._deadlocks = None
-        self._volume_write_io_ps = None
+        self._volume_write_iops = None
         self._ebs_byte_balance_percent = None
         self._freeable_memory = None
         self._engine_uptime = None
@@ -28,7 +28,7 @@ class PostgresClusterMonitoringConfigurationPolicy(ConfigurationPolicy):
         self._volume_bytes_used = None
         self._read_throughput = None
         self._commit_latency = None
-        self._ebsio_balance_percent = None
+        self._ebs_io_balance_percent = None
         self._read_iops = None
         self._commit_throughput = None
         self._write_throughput = None
@@ -46,7 +46,7 @@ class PostgresClusterMonitoringConfigurationPolicy(ConfigurationPolicy):
         self._storage_network_throughput = None
         self._transaction_logs_disk_usage = None
         self._buffer_cache_hit_ratio = None
-        self._volume_read_io_ps = None
+        self._volume_read_iops = None
         self._network_receive_throughput = None
         self._acu_utilization = None
         self._maximum_used_transaction_ids = None
@@ -95,14 +95,14 @@ class PostgresClusterMonitoringConfigurationPolicy(ConfigurationPolicy):
         self._deadlocks = value
 
     @property
-    def volume_write_io_ps(self):
-        if self._volume_write_io_ps is None:
-            self._volume_write_io_ps = None
-        return self._volume_write_io_ps
+    def volume_write_iops(self):
+        if self._volume_write_iops is None:
+            self._volume_write_iops = None
+        return self._volume_write_iops
 
-    @volume_write_io_ps.setter
-    def volume_write_io_ps(self, value):
-        self._volume_write_io_ps = value
+    @volume_write_iops.setter
+    def volume_write_iops(self, value):
+        self._volume_write_iops = value
 
     @property
     def ebs_byte_balance_percent(self):
@@ -185,14 +185,14 @@ class PostgresClusterMonitoringConfigurationPolicy(ConfigurationPolicy):
         self._commit_latency = value
 
     @property
-    def ebsio_balance_percent(self):
-        if self._ebsio_balance_percent is None:
-            self._ebsio_balance_percent = None
-        return self._ebsio_balance_percent
+    def ebs_io_balance_percent(self):
+        if self._ebs_io_balance_percent is None:
+            self._ebs_io_balance_percent = None
+        return self._ebs_io_balance_percent
 
-    @ebsio_balance_percent.setter
-    def ebsio_balance_percent(self, value):
-        self._ebsio_balance_percent = value
+    @ebs_io_balance_percent.setter
+    def ebs_io_balance_percent(self, value):
+        self._ebs_io_balance_percent = value
 
     @property
     def read_iops(self):
@@ -365,14 +365,14 @@ class PostgresClusterMonitoringConfigurationPolicy(ConfigurationPolicy):
         self._buffer_cache_hit_ratio = value
 
     @property
-    def volume_read_io_ps(self):
-        if self._volume_read_io_ps is None:
-            self._volume_read_io_ps = None
-        return self._volume_read_io_ps
+    def volume_read_iops(self):
+        if self._volume_read_iops is None:
+            self._volume_read_iops = None
+        return self._volume_read_iops
 
-    @volume_read_io_ps.setter
-    def volume_read_io_ps(self, value):
-        self._volume_read_io_ps = value
+    @volume_read_iops.setter
+    def volume_read_iops(self, value):
+        self._volume_read_iops = value
 
     @property
     def network_receive_throughput(self):
