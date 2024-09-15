@@ -5,7 +5,7 @@ Postgres Alert Manager configuration policy.
 
 from horey.configuration_policy.configuration_policy import ConfigurationPolicy
 
-# pylint: disable=missing-function-docstring
+# pylint: disable=missing-function-docstring, too-many-instance-attributes
 
 
 class PostgresClusterMonitoringConfigurationPolicy(ConfigurationPolicy):

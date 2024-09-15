@@ -5,7 +5,7 @@ Postgres Alert Manager configuration policy.
 
 from horey.configuration_policy.configuration_policy import ConfigurationPolicy
 
-# pylint: disable=missing-function-docstring
+# pylint: disable=missing-function-docstring, too-many-instance-attributes
 
 
 class PostgresClusterWriterMonitoringConfigurationPolicy(ConfigurationPolicy):
@@ -20,7 +20,7 @@ class PostgresClusterWriterMonitoringConfigurationPolicy(ConfigurationPolicy):
         self._read_throughput = None
         self._serverless_database_capacity = None
         self._maximum_used_transaction_i_ds = None
-        self._ebsio_balance_percent = None
+        self._ebs_io_balance_percent = None
         self._temp_storage_iops = None
         self._deadlocks = None
         self._read_latency = None
@@ -100,14 +100,14 @@ class PostgresClusterWriterMonitoringConfigurationPolicy(ConfigurationPolicy):
         self._maximum_used_transaction_i_ds = value
 
     @property
-    def ebsio_balance_percent(self):
-        if self._ebsio_balance_percent is None:
-            self._ebsio_balance_percent = None
-        return self._ebsio_balance_percent
+    def ebs_io_balance_percent(self):
+        if self._ebs_io_balance_percent is None:
+            self._ebs_io_balance_percent = None
+        return self._ebs_io_balance_percent
 
-    @ebsio_balance_percent.setter
-    def ebsio_balance_percent(self, value):
-        self._ebsio_balance_percent = value
+    @ebs_io_balance_percent.setter
+    def ebs_io_balance_percent(self, value):
+        self._ebs_io_balance_percent = value
 
     @property
     def temp_storage_iops(self):

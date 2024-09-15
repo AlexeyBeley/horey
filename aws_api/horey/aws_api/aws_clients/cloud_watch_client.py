@@ -32,6 +32,7 @@ class CloudWatchClient(Boto3Client):
         """
         Generator for standard region fetcher
 
+        :param region:
         :param filters_req:
         :return:
         """

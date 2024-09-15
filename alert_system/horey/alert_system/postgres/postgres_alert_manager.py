@@ -5,11 +5,18 @@ import json
 
 from horey.alert_system.postgres.postgres_alert_manager_configuration_policy import \
     PostgresAlertManagerConfigurationPolicy
-from horey.alert_system.postgres.postgres_cluster_writer_monitoring_configuration_policy import PostgresClusterWriterMonitoringConfigurationPolicy
-from horey.alert_system.postgres.postgres_cluster_monitoring_configuration_policy import PostgresClusterMonitoringConfigurationPolicy
+from horey.alert_system.postgres.postgres_cluster_writer_monitoring_configuration_policy import \
+    PostgresClusterWriterMonitoringConfigurationPolicy
+from horey.alert_system.postgres.postgres_cluster_monitoring_configuration_policy import \
+    PostgresClusterMonitoringConfigurationPolicy
+from horey.alert_system.postgres.postgres_instance_monitoring_configuration_policy import \
+    PostgresInstanceMonitoringConfigurationPolicy
 from horey.alert_system.alert_system import AlertSystem
 from horey.aws_api.aws_services_entities.rds_db_cluster import RDSDBCluster
 from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlarm
+from horey.h_logger import get_logger
+
+logger = get_logger()
 
 
 class PostgresAlertManager:
@@ -17,13 +24,16 @@ class PostgresAlertManager:
     Provision
     """
 
+    # pylint: disable = too-many-arguments
     def __init__(self, alert_system: AlertSystem, configuration: PostgresAlertManagerConfigurationPolicy,
                  cluster_writer_configuration: PostgresClusterWriterMonitoringConfigurationPolicy = None,
-                 cluster_configuration: PostgresClusterMonitoringConfigurationPolicy = None):
+                 cluster_configuration: PostgresClusterMonitoringConfigurationPolicy = None,
+                 instance_configuration: PostgresInstanceMonitoringConfigurationPolicy = None):
         self.alert_system = alert_system
         self.configuration = configuration
         self.cluster_writer_configuration = cluster_writer_configuration
         self.cluster_configuration = cluster_configuration
+        self.instance_configuration = instance_configuration
         self.camel_case_to_snake_case = {"ServerlessDatabaseCapacity": "serverless_database_capacity",
                                          "BufferCacheHitRatio": "buffer_cache_hit_ratio",
                                          "DiskQueueDepth": "disk_queue_depth",
@@ -136,7 +146,17 @@ class PostgresAlertManager:
                                                       "ReplicationSlotDiskUsage",
                                                       "NetworkThroughput"]
 
-        self.instance_metric_names = ['ReadThroughputLocalStorage', 'FreeLocalStorage', 'TransactionLogsGeneration', 'ReadIOPSLocalStorage', 'WriteThroughputLocalStorage', 'CheckpointLag', 'DBLoadCPU', 'ReplicaLag', 'FreeStorageSpace', 'DBLoad', 'WriteIOPSLocalStorage', 'DBLoadNonCPU', 'DBLoadRelativeToNumVCPUs', 'ReadLatencyLocalStorage', 'WriteLatencyLocalStorage']
+        self.instance_metric_names = ["ReadIOPS", "FreeableMemory", "SwapUsage", "WriteIOPS",
+                                      "ServerlessDatabaseCapacity", "DatabaseConnections", "CommitLatency",
+                                      "EBSByteBalance%", "NetworkReceiveThroughput", "ReplicationSlotDiskUsage",
+                                      "CommitThroughput", "ACUUtilization", "StorageNetworkReceiveThroughput",
+                                      "TempStorageThroughput", "MaximumUsedTransactionIDs", "WriteLatency",
+                                      "StorageNetworkThroughput", "EngineUptime", "OldestReplicationSlotLag",
+                                      "StorageNetworkTransmitThroughput", "NetworkThroughput", "ReadLatency",
+                                      "TempStorageIOPS", "CPUUtilization", "RDSToAuroraPostgreSQLReplicaLag",
+                                      "Deadlocks", "ReadThroughput", "WriteThroughput", "DiskQueueDepth",
+                                      "BufferCacheHitRatio", "NetworkTransmitThroughput", "EBSIOBalance%",
+                                      "TransactionLogsDiskUsage"]
 
     def convert_api_keys_to_snake_case(self):
         """
@@ -215,7 +235,7 @@ class PostgresAlertManager:
                 raise RuntimeError(f"Cluster {cluster.id} can not be found in region {cluster.region.region_mark}")
             self.provision_cluster_writer_alarms()
             self.provision_cluster_alarms()
-
+            self.provision_instance_alarms()
         return True
 
     def provision_cluster_writer_alarms(self):
@@ -228,6 +248,7 @@ class PostgresAlertManager:
         if self.cluster_writer_configuration is None:
             return True
 
+        alarms_counter = 0
         for camel_case in self.cluster_metric_names_with_role_writer_dimension:
             snake_case = self.camel_case_to_snake_case[camel_case]
             metric_config = getattr(self.cluster_writer_configuration, snake_case)
@@ -254,6 +275,9 @@ class PostgresAlertManager:
             alarm_description = {"routing_tags": [self.configuration.routing_tags]}
             alarm.alarm_description = json.dumps(alarm_description)
             self.alert_system.provision_cloudwatch_alarm(alarm)
+            alarms_counter += 1
+        logger.info(f"Provisioned {alarms_counter} cluster alarms")
+        return True
 
     def provision_cluster_alarms(self):
         """
@@ -262,7 +286,11 @@ class PostgresAlertManager:
         :return:
         """
 
-        for camel_case in self.cluster_metric_names_with_role_writer_dimension:
+        if self.cluster_configuration is None:
+            return True
+
+        alarms_counter = 0
+        for camel_case in self.cluster_metric_names_single_dimension:
             snake_case = self.camel_case_to_snake_case[camel_case]
             metric_config = getattr(self.cluster_configuration, snake_case)
             if metric_config is None:
@@ -287,3 +315,55 @@ class PostgresAlertManager:
             alarm_description = {"routing_tags": [self.configuration.routing_tags]}
             alarm.alarm_description = json.dumps(alarm_description)
             self.alert_system.provision_cloudwatch_alarm(alarm)
+            alarms_counter += 1
+        logger.info(f"Provisioned {alarms_counter} cluster alarms")
+
+        return True
+
+    def provision_instance_alarms(self):
+        """
+        Generate and provision alarms based on configuration
+
+        :return:
+        """
+
+        if self.instance_configuration is None:
+            return True
+
+        filters_req = {"Filters": [{"Name": "db-cluster-id", "Values": [self.configuration.cluster]}]}
+        instances = list(self.alert_system.aws_api.rds_client.yield_db_instances(region=self.alert_system.region,
+                                                                                 filters_req=filters_req))
+        if len(instances) != 1:
+            raise NotImplementedError(f"{filters_req=}, {self.alert_system.region=}, {len(instances)=}!=1")
+        instance_id = instances[0].id
+        alarms_counter = 0
+        for camel_case in self.instance_metric_names:
+            snake_case = self.camel_case_to_snake_case[camel_case]
+            metric_config = getattr(self.instance_configuration, snake_case)
+            if metric_config is None:
+                continue
+            alarm = CloudWatchAlarm({})
+            alarm.name = f"{self.alert_system.configuration.lambda_name}-{snake_case}_instance"
+            alarm.actions_enabled = True
+            alarm.insufficient_data_actions = []
+            alarm.metric_name = camel_case
+            alarm.namespace = "AWS/RDS"
+            alarm.statistic = "Average"
+            alarm.dimensions = [
+                {"Name": "DBInstanceIdentifier", "Value": instance_id}
+            ]
+            alarm.period = 60
+            alarm.evaluation_periods = 3
+            alarm.datapoints_to_alarm = 3
+            alarm.threshold = metric_config["value"]
+            alarm.comparison_operator = metric_config["comparison_operator"]
+            alarm.treat_missing_data = "notBreaching"
+
+            alarm_description = {"routing_tags": [self.configuration.routing_tags]}
+            alarm.alarm_description = json.dumps(alarm_description)
+            self.alert_system.provision_cloudwatch_alarm(alarm)
+            alarms_counter += 1
+
+        logger.info(f"Provisioned {alarms_counter} instance alarms")
+
+        return True
