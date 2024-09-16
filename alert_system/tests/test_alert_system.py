@@ -548,3 +548,9 @@ def test_provision_self_monitoring_event_bridge_successful_invocations_alarm(ale
     assert alarm_description == {"routing_tags": [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG],
                                  "lambda_name": "alert_system_test_deploy_lambda",
                                  "ALERT_SYSTEM_SELF_MONITORING": "ALERT_SYSTEM_SELF_MONITORING"}
+
+
+@pytest.mark.wip
+def test_trigger_lambda_with_raw_event(alert_system_configuration):
+    alert_system = AlertSystem(alert_system_configuration)
+    assert alert_system.trigger_lambda_with_raw_event({})

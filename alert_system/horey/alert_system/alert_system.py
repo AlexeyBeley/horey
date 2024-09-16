@@ -1057,3 +1057,32 @@ class AlertSystem:
 
         self.aws_api.provision_events_rule(rule)
         return rule
+
+    def trigger_lambda_with_raw_event(self, event_dict):
+        """
+        Trigger the deployed lambda.
+
+        :param event_dict:
+        :return:
+        """
+
+        errors = []
+        mandatory = {
+            "routing_tags": list,
+            "type": list,
+            "text": str,
+            "header": str,
+        }
+        optional = {"link": str,
+                    "link_href": str}
+
+        for key in mandatory:
+            if key not in event_dict:
+                errors.append(f"Mandatory key {key} is not present in {event_dict}")
+
+        if errors:
+            raise ValueError("\n".join(errors))
+
+        breakpoint()
+        request = {"": ""}
+        ret = self.aws_api.lambda_client.invoke_raw(self.region, request)

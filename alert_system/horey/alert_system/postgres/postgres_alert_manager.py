@@ -145,7 +145,6 @@ class PostgresAlertManager:
                                                       "StorageNetworkReceiveThroughput",
                                                       "ReplicationSlotDiskUsage",
                                                       "NetworkThroughput"]
-
         self.instance_metric_names = ["ReadIOPS", "FreeableMemory", "SwapUsage", "WriteIOPS",
                                       "ServerlessDatabaseCapacity", "DatabaseConnections", "CommitLatency",
                                       "EBSByteBalance%", "NetworkReceiveThroughput", "ReplicationSlotDiskUsage",
