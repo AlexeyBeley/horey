@@ -3178,14 +3178,15 @@ class AWSAPI:
 
     # region sesv2_domain_email_identity
     def provision_sesv2_domain_email_identity(
-            self, email_identity, wait_for_validation=True
+            self, email_identity, wait_for_validation=True, hosted_zone_name=None
     ):
         """
-        Self explanatory
+        Standard
 
         @param email_identity:
         @param wait_for_validation:
         @return:
+        :param hosted_zone_name:
         """
 
         self.sesv2_client.provision_email_identity(email_identity)
@@ -3214,29 +3215,31 @@ class AWSAPI:
                 f"Unknown status {email_identity.dkim_attributes['Status']}"
             )
 
-        self.validate_sesv2_domain_email_identity(email_identity)
+        self.validate_sesv2_domain_email_identity(email_identity, hosted_zone_name=hosted_zone_name)
 
         if wait_for_validation:
             self.wait_for_sesv2_domain_email_identity_validation(email_identity)
 
-    def validate_sesv2_domain_email_identity(self, email_identity):
+    def validate_sesv2_domain_email_identity(self, email_identity, hosted_zone_name=None):
         """
         Validate SESv3 domain email identity.
 
         @param email_identity:
         @return:
+        :param hosted_zone_name:
         """
 
+        hosted_zone_name = hosted_zone_name or email_identity.name
         hosted_zones = self.route53_client.get_all_hosted_zones(
-            name=email_identity.name
+            name=hosted_zone_name
         )
 
         if len(hosted_zones) == 0:
-            raise ValueError(f"Can not find hosted zone: '{email_identity.name}'")
+            raise ValueError(f"Can not find hosted zone: '{hosted_zone_name}'")
 
         if len(hosted_zones) > 1:
             raise ValueError(
-                f"More then one hosted_zones with name '{email_identity.name}'"
+                f"More then one hosted_zones with name '{hosted_zone_name}'"
             )
 
         hosted_zone = hosted_zones[0]
@@ -3251,7 +3254,7 @@ class AWSAPI:
             record = HostedZone.Record(dict_record)
             hosted_zone.records.append(record)
 
-        self.provision_hosted_zone(hosted_zone)
+        self.route53_client.change_resource_record_sets(hosted_zone)
 
     def wait_for_sesv2_domain_email_identity_validation(self, email_identity):
         """
