@@ -463,7 +463,7 @@ class AwsObject:
         if ignore_missing_tag:
             return None
 
-        raise RuntimeError(f"No tag '{key}' associated")
+        raise RuntimeError(f"No tag '{key}' associated: {self.dict_src=}")
 
     def get_tagname(self, ignore_missing_tag=False):
         """
