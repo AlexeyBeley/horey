@@ -2340,7 +2340,7 @@ class AWSAPI:
         @param master_hosted_zone_name:
         @return:
         """
-
+        logger.info(f"Provisioning {hosted_zone.name=} with master hosted zone: {master_hosted_zone_name=}")
         self.route53_client.provision_hosted_zone(hosted_zone)
 
         if master_hosted_zone_name is None:
@@ -2364,11 +2364,13 @@ class AWSAPI:
             raise RuntimeError(
                 f"Can not find NS record for hosted zone '{hosted_zone.name}'"
             )
+
         for master_hosted_zone_record in master_hosted_zone.records:
             if master_hosted_zone_record.name != record.name:
                 continue
-            if master_hosted_zone_record.resource_records != record.resource_records:
-                raise ValueError(f"{master_hosted_zone_record.resource_records=} {record.resource_records=}")
+            if [resource_record["Value"].strip(".") for resource_record in master_hosted_zone_record.resource_records] != \
+                    [resource_record["Value"].strip(".") for resource_record in record.resource_records]:
+                raise ValueError(f"Name server record found but differs from expected: {master_hosted_zone_record.name=} {master_hosted_zone_record.resource_records=} {record.resource_records=}")
             return True
 
         changes = [
