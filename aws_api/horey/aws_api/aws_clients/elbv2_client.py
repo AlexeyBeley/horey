@@ -448,6 +448,9 @@ class ELBV2Client(Boto3Client):
         for region_listener in region_listeners:
             if region_listener.port == listener.port:
                 listener.arn = region_listener.arn
+                request = region_listener.generate_modify_request(listener)
+                if request:
+                    self.modify_listener_raw(listener.region, request)
                 return
 
         response = self.provision_load_balancer_listener_raw(listener.region,
@@ -469,6 +472,23 @@ class ELBV2Client(Boto3Client):
 
         for response in self.execute(
                 self.get_session_client(region=region).create_listener, "Listeners", filters_req=request_dict
+        ):
+            self.clear_cache(LoadBalancer.Listener)
+            return response
+
+    def modify_listener_raw(self, region, request_dict):
+        """
+        Standard.
+
+        :param region:
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Modifying loadbalancer's listener: {request_dict}")
+
+        for response in self.execute(
+                self.get_session_client(region=region).modify_listener, "Listeners", filters_req=request_dict
         ):
             self.clear_cache(LoadBalancer.Listener)
             return response
