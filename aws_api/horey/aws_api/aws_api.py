@@ -2867,7 +2867,7 @@ class AWSAPI:
 
     def provision_load_balancer_target_group(self, load_balancer):
         """
-        Self explanatory
+        Standard
 
         @param load_balancer:
         @return:
@@ -2877,7 +2877,7 @@ class AWSAPI:
 
     def provision_load_balancer_listener(self, listener):
         """
-        Self explanatory
+        Standard
 
         @param listener:
         @return:

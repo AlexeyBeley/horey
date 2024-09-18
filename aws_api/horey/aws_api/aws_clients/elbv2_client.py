@@ -375,7 +375,7 @@ class ELBV2Client(Boto3Client):
         ):
             return response
 
-    def provision_load_balancer_target_group(self, target_group):
+    def provision_load_balancer_target_group(self, target_group: ELBV2TargetGroup):
         """
         Standard
 
@@ -388,10 +388,15 @@ class ELBV2Client(Boto3Client):
         )
         for region_target_group in region_target_groups:
             if (
-                    region_target_group.get_tagname(ignore_missing_tag=True)
-                    == target_group.get_tagname()
+                    region_target_group.name
+                    == target_group.name
             ):
+                if target_group.protocol != region_target_group.protocol:
+                    raise ValueError(f"{target_group.protocol=} {region_target_group.protocol=}")
                 target_group.arn = region_target_group.arn
+                request = region_target_group.generate_modify_request(target_group)
+                if request:
+                    self.modify_target_group_raw(target_group.region, request)
                 break
         else:
             response = self.provision_load_balancer_target_group_raw(target_group.region,
@@ -491,6 +496,23 @@ class ELBV2Client(Boto3Client):
                 self.get_session_client(region=region).modify_listener, "Listeners", filters_req=request_dict
         ):
             self.clear_cache(LoadBalancer.Listener)
+            return response
+
+    def modify_target_group_raw(self, region, request_dict):
+        """
+        Standard.
+
+        :param region:
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Modifying loadbalancer's targetgroup: {request_dict}")
+
+        for response in self.execute(
+                self.get_session_client(region=region).modify_target_group, "TargetGroups", filters_req=request_dict
+        ):
+            self.clear_cache(ELBV2TargetGroup)
             return response
 
     def add_listener_certificates_raw(self, region, request_dict):
