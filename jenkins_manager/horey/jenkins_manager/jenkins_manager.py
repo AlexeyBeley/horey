@@ -234,9 +234,11 @@ class JenkinsManager:
         start_time = datetime.datetime.now()
         while (
             any([job.build_status is None for job in jobs])
-            and (datetime.datetime.now() - start_time).seconds
-            < self.JOBS_FINISH_TIMEOUT
         ):
+            passed_time = (datetime.datetime.now() - start_time).seconds
+            if passed_time >= self.JOBS_FINISH_TIMEOUT:
+                break
+
             try:
                 self.update_builds_statuses(jobs)
             except jenkins.JenkinsException as jenkins_error:
@@ -254,7 +256,7 @@ class JenkinsManager:
                 break
 
             logger.info(
-                f"wait_for_builds_to_finish_execution going to sleep for: {self.SLEEP_TIME}"
+                f"wait_for_builds_to_finish_execution going to sleep for: {self.SLEEP_TIME} sec, {passed_time}/{self.JOBS_FINISH_TIMEOUT}"
             )
 
             time.sleep(self.SLEEP_TIME)
