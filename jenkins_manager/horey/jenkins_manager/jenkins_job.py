@@ -3,7 +3,7 @@ Module handling jenkins job.
 All steps - from being triggered to the final result.
 """
 import uuid
-
+from enum import Enum
 
 class JenkinsJob:
     """
@@ -48,3 +48,12 @@ class JenkinsJob:
     def init_from_cache_dict(self, dict_src):
         for key in self.CACHE_VALUES:
             setattr(self, key, dict_src[key])
+
+    @property
+    def status(self):
+        if self.build_status == "SUCCESS":
+            return self.Status.SUCCESS
+        raise NotImplementedError(self.build_status)
+
+    class Status(Enum):
+        SUCCESS = "SUCCESS"
