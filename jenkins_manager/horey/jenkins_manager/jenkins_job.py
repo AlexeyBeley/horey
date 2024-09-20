@@ -53,7 +53,10 @@ class JenkinsJob:
     def status(self):
         if self.build_status == "SUCCESS":
             return self.Status.SUCCESS
+        if self.build_status == "FAILURE":
+            return self.Status.FAILURE
         raise NotImplementedError(self.build_status)
 
     class Status(Enum):
         SUCCESS = "SUCCESS"
+        FAILURE = "FAILURE"
