@@ -2346,7 +2346,7 @@ class AWSAPI:
         @param master_hosted_zone_name:
         @return:
         """
-
+        logger.info(f"Provisioning {hosted_zone.name=} with master hosted zone: {master_hosted_zone_name=}")
         self.route53_client.provision_hosted_zone(hosted_zone)
 
         if master_hosted_zone_name is None:
@@ -2370,11 +2370,13 @@ class AWSAPI:
             raise RuntimeError(
                 f"Can not find NS record for hosted zone '{hosted_zone.name}'"
             )
+
         for master_hosted_zone_record in master_hosted_zone.records:
             if master_hosted_zone_record.name != record.name:
                 continue
-            if master_hosted_zone_record.resource_records != record.resource_records:
-                raise ValueError(f"{master_hosted_zone_record.resource_records=} {record.resource_records=}")
+            if [resource_record["Value"].strip(".") for resource_record in master_hosted_zone_record.resource_records] != \
+                    [resource_record["Value"].strip(".") for resource_record in record.resource_records]:
+                raise ValueError(f"Name server record found but differs from expected: {master_hosted_zone_record.name=} {master_hosted_zone_record.resource_records=} {record.resource_records=}")
             return True
 
         changes = [
@@ -2871,7 +2873,7 @@ class AWSAPI:
 
     def provision_load_balancer_target_group(self, load_balancer):
         """
-        Self explanatory
+        Standard
 
         @param load_balancer:
         @return:
@@ -2881,7 +2883,7 @@ class AWSAPI:
 
     def provision_load_balancer_listener(self, listener):
         """
-        Self explanatory
+        Standard
 
         @param listener:
         @return:
@@ -3184,7 +3186,7 @@ class AWSAPI:
 
     # region ses_domain_email_identity
     def provision_ses_domain_email_identity(
-            self, desired_email_identity, wait_for_validation=True
+            self, desired_email_identity, wait_for_validation=True, hosted_zone_name=None
     ):
         """
         Standard.
@@ -3192,6 +3194,7 @@ class AWSAPI:
         @param desired_email_identity:
         @param wait_for_validation:
         @return:
+        :param hosted_zone_name:
         """
         email_identity_current = SESIdentity({})
         email_identity_current.region = desired_email_identity.region
@@ -3226,29 +3229,31 @@ class AWSAPI:
                 f"Unknown status {desired_email_identity.dkim_attributes['Status']}"
             )
 
-        self.validate_sesv2_domain_email_identity(desired_email_identity)
+        self.validate_sesv2_domain_email_identity(desired_email_identity, hosted_zone_name=hosted_zone_name)
 
         if wait_for_validation:
             self.wait_for_sesv2_domain_email_identity_validation(desired_email_identity)
 
-    def validate_sesv2_domain_email_identity(self, email_identity):
+    def validate_sesv2_domain_email_identity(self, email_identity, hosted_zone_name=None):
         """
         Validate SESv3 domain email identity.
 
         @param email_identity:
         @return:
+        :param hosted_zone_name:
         """
 
+        hosted_zone_name = hosted_zone_name or email_identity.name
         hosted_zones = self.route53_client.get_all_hosted_zones(
-            name=email_identity.name
+            name=hosted_zone_name
         )
 
         if len(hosted_zones) == 0:
-            raise ValueError(f"Can not find hosted zone: '{email_identity.name}'")
+            raise ValueError(f"Can not find hosted zone: '{hosted_zone_name}'")
 
         if len(hosted_zones) > 1:
             raise ValueError(
-                f"More then one hosted_zones with name '{email_identity.name}'"
+                f"More then one hosted_zones with name '{hosted_zone_name}'"
             )
 
         hosted_zone = hosted_zones[0]
@@ -3263,7 +3268,7 @@ class AWSAPI:
             record = HostedZone.Record(dict_record)
             hosted_zone.records.append(record)
 
-        self.provision_hosted_zone(hosted_zone)
+        self.route53_client.change_resource_record_sets(hosted_zone)
 
     def wait_for_sesv2_domain_email_identity_validation(self, email_identity):
         """

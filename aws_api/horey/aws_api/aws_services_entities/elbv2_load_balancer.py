@@ -235,8 +235,11 @@ class LoadBalancer(AwsObject):
             self.protocol = None
             self.port = None
             self.load_balancer_arn = None
+            self.alpn_policy = None
+            self.mutual_authentication = None
             self.default_actions = None
             self.rules = []
+            self.request_key_to_attribute_mapping = {"ListenerArn": "arn"}
 
             if from_cache:
                 self._init_object_from_cache(dict_src)
@@ -295,6 +298,19 @@ class LoadBalancer(AwsObject):
             request["LoadBalancerArn"] = self.load_balancer_arn
             request["DefaultActions"] = self.default_actions
             return request
+
+        def generate_modify_request(self, desired_state):
+            """
+            Standard.
+
+            :param desired_state:
+            :return:
+            """
+
+            return self.generate_request_aws_object_modify(desired_state, ["ListenerArn"],
+                                             optional=["DefaultActions", "Protocol", "SslPolicy", "Certificates",
+                                              "DefaultActions", "AlpnPolicy", "MutualAuthentication"],
+                                             request_key_to_attribute_mapping=self.request_key_to_attribute_mapping)
 
         def generate_add_certificate_requests(self):
             """

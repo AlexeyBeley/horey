@@ -234,9 +234,11 @@ class JenkinsManager:
         start_time = datetime.datetime.now()
         while (
             any([job.build_status is None for job in jobs])
-            and (datetime.datetime.now() - start_time).seconds
-            < self.JOBS_FINISH_TIMEOUT
         ):
+            passed_time = (datetime.datetime.now() - start_time).seconds
+            if passed_time >= self.JOBS_FINISH_TIMEOUT:
+                raise TimeoutError(f"Reached timeout while waiting for jobs completion: {[job.build_status for job in jobs]}")
+
             try:
                 self.update_builds_statuses(jobs)
             except jenkins.JenkinsException as jenkins_error:
@@ -254,7 +256,7 @@ class JenkinsManager:
                 break
 
             logger.info(
-                f"wait_for_builds_to_finish_execution going to sleep for: {self.SLEEP_TIME}"
+                f"Waitig for builds to finish execution. Going to sleep for: {self.SLEEP_TIME} sec, {passed_time}/{self.JOBS_FINISH_TIMEOUT}"
             )
 
             time.sleep(self.SLEEP_TIME)
@@ -564,7 +566,7 @@ class JenkinsManager:
         job_dicts = self.server.get_all_jobs()
         return job_dicts
 
-    def get_build_console_output(self, build, start_offset=0):
+    def get_build_console_output(self, job, start_offset=0):
         """
         Many thanks to:
         https://github.com/arangamani/jenkins_api_client
@@ -576,12 +578,12 @@ class JenkinsManager:
         url =  self.server._build_url(request_sub_url)
         response = self.server.jenkins_open(requests.Request("GET", url))
 
-        :param build:
+        :param job:
         :return:
         """
 
-        logger.info(f"Fetching console output for {build.name=}, {build.number=}")
-        request_sub_url = f"job/{build.name}/{build.number}/logText/progressiveText?start={start_offset}"
+        logger.info(f"Fetching console output for {job.name=}, {job.build_id=}")
+        request_sub_url = f"job/{job.name}/{job.build_id}/logText/progressiveText?start={start_offset}"
         return self.get(request_sub_url)
 
     @retry_on_errors((requests.exceptions.ConnectionError, jenkins.TimeoutException), count=12, timeout=5)

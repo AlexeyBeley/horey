@@ -226,6 +226,15 @@ class HostedZone(AwsObject):
             if dict_record in self_records:
                 continue
 
+            # I do not know why AWS does this shit, but some of the MX records appear with dot and some are not.
+            # Even if you manually set it with/without dot it uses the format it wants.
+            if dict_record["Type"] == "MX":
+                if len(dict_record["ResourceRecords"]) != 1:
+                    raise NotImplementedError(dict_record)
+                dict_record["ResourceRecords"][0]["Value"] = dict_record["ResourceRecords"][0]["Value"] + "."
+                if dict_record in self_records:
+                    continue
+
             change = {
                 "Action": "UPSERT",
                 "ResourceRecordSet": {

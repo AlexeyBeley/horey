@@ -13,9 +13,6 @@ class ELBV2TargetGroup(AwsObject):
 
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
-        if from_cache:
-            self._init_object_from_cache(dict_src)
-            return
 
         self.health_check_path = None
         self.target_health = None
@@ -34,6 +31,22 @@ class ELBV2TargetGroup(AwsObject):
         self.healthy_threshold_count = None
         self.unhealthy_threshold_count = None
         self.target_type = None
+        self.matcher = None
+        self.request_key_to_attribute_mapping = {"TargetGroupArn": "arn", "TargetGroupName": "name"}
+
+        if from_cache:
+            self._init_object_from_cache(dict_src)
+            return
+
+        self.update_from_raw_response(dict_src)
+
+    def update_from_raw_response(self, dict_src):
+        """
+        Standard.
+
+        :param dict_src:
+        :return:
+        """
 
         init_options = {
             "TargetGroupArn": lambda x, y: self.init_default_attr(
@@ -117,6 +130,26 @@ class ELBV2TargetGroup(AwsObject):
         request["Tags"] = self.tags
 
         return request
+
+    def generate_modify_request(self, desired_state):
+        """
+        Standard.
+
+        :param desired_state:
+        :return:
+        """
+
+        return self.generate_request_aws_object_modify(desired_state, ["TargetGroupArn"],
+                                                       optional=["HealthCheckProtocol",
+                                                                 "HealthCheckPort",
+                                                                 "HealthCheckPath",
+                                                                 "HealthCheckEnabled",
+                                                                 "HealthCheckIntervalSeconds",
+                                                                 "HealthCheckTimeoutSeconds",
+                                                                 "HealthyThresholdCount",
+                                                                 "UnhealthyThresholdCount",
+                                                                 "Matcher"],
+                                                       request_key_to_attribute_mapping=self.request_key_to_attribute_mapping)
 
     def generate_register_targets_request(self):
         """
