@@ -2566,7 +2566,7 @@ class AWSAPI:
 
     def provision_security_group(self, security_group, provision_rules=True, force=False, declarative=False):
         """
-        Self explanatory
+        Standard
 
         @param security_group:
         @param provision_rules:
