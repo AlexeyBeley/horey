@@ -17,12 +17,12 @@ class ELBV2Client(Boto3Client):
     """
     # https://docs.aws.amazon.com/general/latest/gr/elb.html
     HOSTED_ZONES = {
-                    "eu-central-1": "Z215JYRZR1TBD5",
-                    "us-east-1": "Z35SXDOTRQ7X7K",
-                    "us-west-2": "Z1H1FL5HABSF5",
-                    "us-west-1": "Z368ELLRRE2KJ0",
-                    "us-east-2": "Z3AADJGX6KTTL2"
-                    }
+        "eu-central-1": "Z215JYRZR1TBD5",
+        "us-east-1": "Z35SXDOTRQ7X7K",
+        "us-west-2": "Z1H1FL5HABSF5",
+        "us-west-1": "Z368ELLRRE2KJ0",
+        "us-east-2": "Z3AADJGX6KTTL2"
+    }
 
     def __init__(self):
         client_name = "elbv2"
@@ -70,9 +70,9 @@ class ELBV2Client(Boto3Client):
         """
 
         yield from self.execute(
-                self.get_session_client(region=region).describe_load_balancers, "LoadBalancers",
-                filters_req=filters_req,
-                exception_ignore_callback=lambda error: "LoadBalancerNotFoundException" in repr(error)
+            self.get_session_client(region=region).describe_load_balancers, "LoadBalancers",
+            filters_req=filters_req,
+            exception_ignore_callback=lambda error: "LoadBalancerNotFoundException" in repr(error)
         )
 
     # pylint: disable= too-many-arguments
@@ -182,11 +182,11 @@ class ELBV2Client(Boto3Client):
 
         regional_fetcher_generator = self.yield_target_groups_raw
         yield from self.regional_service_entities_generator(regional_fetcher_generator,
-                                                                    ELBV2TargetGroup,
-                                                                    update_info=update_info,
-                                                                    full_information_callback=full_information_callback,
-                                                                    regions=[region] if region else None,
-                                                                    filters_req=filters_req)
+                                                            ELBV2TargetGroup,
+                                                            update_info=update_info,
+                                                            full_information_callback=full_information_callback,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req)
 
     def yield_target_groups_raw(self, region, filters_req=None):
         """
@@ -196,7 +196,7 @@ class ELBV2Client(Boto3Client):
         """
 
         yield from self.execute(
-                self.get_session_client(region=region).describe_target_groups, "TargetGroups", filters_req=filters_req
+            self.get_session_client(region=region).describe_target_groups, "TargetGroups", filters_req=filters_req
         )
 
     def get_all_target_groups(self, full_information=True, update_info=False):
@@ -248,7 +248,8 @@ class ELBV2Client(Boto3Client):
             if not getattr(listener, attr_name):
                 raise ValueError(f"Load balancer listener attribute '{attr_name}' was not set")
 
-        for current_listener in self.get_region_listeners(listener.region, load_balancer_arn=listener.load_balancer_arn):
+        for current_listener in self.get_region_listeners(listener.region,
+                                                          load_balancer_arn=listener.load_balancer_arn):
             if current_listener.port == listener.port:
                 listener.update_from_raw_response(current_listener.dict_src)
                 return True
@@ -438,6 +439,23 @@ class ELBV2Client(Boto3Client):
             self.clear_cache(ELBV2TargetGroup)
             return response
 
+    def update_listener_information(self, listener):
+        """
+        Standard.
+
+        :param listener:
+        :return:
+        """
+
+        for regional_listener in self.get_region_listeners(
+                listener.region,
+                full_information=False,
+                load_balancer_arn=listener.load_balancer_arn):
+            if regional_listener.port == listener.port:
+                listener.arn = regional_listener.arn
+                return True
+        return False
+
     def provision_load_balancer_listener(self, listener: LoadBalancer.Listener):
         """
         Standard
@@ -445,18 +463,20 @@ class ELBV2Client(Boto3Client):
         @param listener:
         @return:
         """
-        region_listeners = self.get_region_listeners(
-            listener.region,
-            full_information=False,
-            load_balancer_arn=listener.load_balancer_arn,
-        )
-        for region_listener in region_listeners:
-            if region_listener.port == listener.port:
-                listener.arn = region_listener.arn
-                request = region_listener.generate_modify_request(listener)
-                if request:
-                    self.modify_listener_raw(listener.region, request)
-                return
+        region_listener = LoadBalancer.Listener({})
+        region_listener.region = listener.region
+        region_listener.load_balancer_arn = listener.load_balancer_arn
+        region_listener.port = region_listener.port
+
+        if self.update_listener_information(region_listener):
+            listener.arn = region_listener.arn
+            request = region_listener.generate_modify_request(listener)
+            if request:
+                certificates = request.get("Certificates")
+                if certificates and len(certificates) > 1:
+                    raise NotImplementedError(f"{len(certificates)=}")
+                self.modify_listener_raw(listener.region, request)
+            return
 
         response = self.provision_load_balancer_listener_raw(listener.region,
                                                              listener.generate_create_request()
