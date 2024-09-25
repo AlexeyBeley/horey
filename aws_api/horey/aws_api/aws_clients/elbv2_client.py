@@ -552,6 +552,25 @@ class ELBV2Client(Boto3Client):
             self.clear_cache(LoadBalancer.Listener)
             return response
 
+    def update_rule_information(self, rule: LoadBalancer.Rule):
+        """
+        Standard.
+
+        :param rule:
+        :return:
+        """
+
+        region_rules = self.get_region_rules(
+            rule.region, full_information=False, listener_arn=rule.listener_arn
+        )
+
+        for region_rule in region_rules:
+            if region_rule.get_tagname() == rule.get_tagname():
+                rule.update_from_raw_response(region_rule.dict_src)
+                return True
+
+        return False
+
     def provision_load_balancer_rule(self, rule: LoadBalancer.Rule):
         """
         Standard
@@ -559,29 +578,70 @@ class ELBV2Client(Boto3Client):
         @param rule:
         @return:
         """
-        region_rules = self.get_region_rules(
-            rule.region, full_information=False, listener_arn=rule.listener_arn
-        )
-        for region_rule in region_rules:
-            if region_rule.get_tagname(ignore_missing_tag=True) == rule.get_tagname():
-                rule.arn = region_rule.arn
-                return
 
-        response = self.provision_load_balancer_rule_raw(rule.region, rule.generate_create_request())
+        current_rule = LoadBalancer.Rule({})
+        current_rule.listener_arn = rule.listener_arn
+        if current_rule.tags is None:
+            raise ValueError(f"Tags were not set: {rule.listener_arn=}")
+        current_rule.tags = rule.tags
+
+        if self.update_rule_information(current_rule):
+            rule.arn = current_rule.arn
+            modify_request = current_rule.generate_modify_request(rule)
+            if modify_request:
+                self.modify_rule_raw(rule.region, modify_request)
+
+            return self.update_rule_information(rule)
+
+        response = self.create_rule_raw(rule.region, rule.generate_create_request())
         rule.update_from_raw_response(response)
+        return True
 
-    def provision_load_balancer_rule_raw(self, region, request_dict):
+    def create_rule_raw(self, region, request_dict):
         """
-        Standard
+        Standard.
 
-        @param request_dict:
-        @return:
+        :param region:
+        :param request_dict:
+        :return:
         """
 
         logger.info(f"Provisioning load balancer listener's rule: {request_dict}")
 
         for response in self.execute(
                 self.get_session_client(region=region).create_rule, "Rules", filters_req=request_dict
+        ):
+            return response
+
+    def modify_rule_raw(self, region, request_dict):
+        """
+        Standard.
+
+        :param region:
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Modifying load balancer listener's rule: {request_dict}")
+
+        for response in self.execute(
+                self.get_session_client(region=region).modify_rule, "Rules", filters_req=request_dict
+        ):
+            return response
+
+    def delete_rule_raw(self, region, request_dict):
+        """
+        Standard.
+
+        :param region:
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Deleting load balancer listener's rule: {request_dict}")
+
+        for response in self.execute(
+                self.get_session_client(region=region).delete_rule, None, raw_data=True, filters_req=request_dict
         ):
             return response
 

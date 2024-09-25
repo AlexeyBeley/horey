@@ -350,17 +350,9 @@ class LoadBalancer(AwsObject):
                 self._init_object_from_cache(dict_src)
                 return
 
-            init_options = {
-                "RuleArn": lambda x, y: self.init_default_attr(
-                    x, y, formatted_name="arn"
-                ),
-                "Priority": self.init_default_attr,
-                "Conditions": self.init_default_attr,
-                "Actions": self.init_default_attr,
-                "IsDefault": self.init_default_attr,
-            }
+            self.request_key_to_attribute_mapping = {"RuleArn": "arn"}
 
-            self.init_attrs(dict_src, init_options)
+            self.update_from_raw_response(dict_src)
 
         def _init_object_from_cache(self, dict_src):
             """
@@ -370,6 +362,19 @@ class LoadBalancer(AwsObject):
             """
             options = {}
             self._init_from_cache(dict_src, options)
+
+        def generate_modify_request(self, desired_state):
+            """
+            Standard.
+
+            :param desired_state:
+            :return:
+            """
+
+            return self.generate_request_aws_object_modify(desired_state, ["RuleArn"],
+                                                           optional=["Conditions",
+                                                                     "Actions"],
+                                                           request_key_to_attribute_mapping=self.request_key_to_attribute_mapping)
 
         def generate_create_request(self):
             """
