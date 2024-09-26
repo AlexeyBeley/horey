@@ -466,7 +466,7 @@ class ELBV2Client(Boto3Client):
         region_listener = LoadBalancer.Listener({})
         region_listener.region = listener.region
         region_listener.load_balancer_arn = listener.load_balancer_arn
-        region_listener.port = region_listener.port
+        region_listener.port = listener.port
 
         if self.update_listener_information(region_listener):
             listener.arn = region_listener.arn
