@@ -349,11 +349,18 @@ class LoadBalancer(AwsObject):
                     if certificate.get(key) is None:
                         raise ValueError(f"Missing {key=} in {certificate}")
                 if certificate.get("IsDefault"):
-                    raise ValueError(f"Can not modify default certificate. Can be assigned only during creation: {certificate}")
+                    continue
 
                 request = copy.deepcopy(base_request)
-                request["Certificates"] = [certificate]
+                new_certificate = copy.deepcopy(certificate)
+                del new_certificate["IsDefault"]
+                request["Certificates"] = [new_certificate]
                 requests.append(request)
+
+            if base_request.get("Certificates") and not requests:
+                raise ValueError(
+                    "Can not modify default certificate. Can be assigned only during creation: "
+                    f"{base_request.get('Certificates')}")
 
             return requests or [base_request]
 
