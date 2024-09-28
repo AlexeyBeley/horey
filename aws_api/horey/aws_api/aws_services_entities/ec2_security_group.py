@@ -149,7 +149,7 @@ class EC2SecurityGroup(AwsObject):
 
         if not force and self_permissions_counter and len(revoke_request) == self_permissions_counter and not add_request:
             raise ValueError(
-                f"Can not automatically delete all rules in security group '{self.get_tagname(ignore_missing_tag=True)}' {target_security_group.id=}. "
+                f"Can not automatically delete all rules in security group region: '{self.region.region_mark}', name: '{self.get_tagname(ignore_missing_tag=True)}', id: '{target_security_group.id}'"
                 f"You can do it only manually!")
 
         add_request = (

@@ -439,10 +439,11 @@ class ELBV2Client(Boto3Client):
             self.clear_cache(ELBV2TargetGroup)
             return response
 
-    def update_listener_information(self, listener):
+    def update_listener_information(self, listener, full_information=False):
         """
         Standard.
 
+        :param full_information:
         :param listener:
         :return:
         """
@@ -452,7 +453,11 @@ class ELBV2Client(Boto3Client):
                 full_information=False,
                 load_balancer_arn=listener.load_balancer_arn):
             if regional_listener.port == listener.port:
-                listener.arn = regional_listener.arn
+                listener.update_from_raw_response(regional_listener.dict_src)
+                if full_information:
+                    if regional_listener.protocol == "HTTPS":
+                        request = {"ListenerArn": listener.arn}
+                        listener.certificates = list(self.execute(self.get_session_client(region=listener.region).describe_listener_certificates, "Certificates", filters_req=request))
                 return True
         return False
 
@@ -468,13 +473,10 @@ class ELBV2Client(Boto3Client):
         region_listener.load_balancer_arn = listener.load_balancer_arn
         region_listener.port = listener.port
 
-        if self.update_listener_information(region_listener):
+        if self.update_listener_information(region_listener, full_information=True):
             listener.arn = region_listener.arn
-            request = region_listener.generate_modify_request(listener)
-            if request:
-                certificates = request.get("Certificates")
-                if certificates and len(certificates) > 1:
-                    raise NotImplementedError(f"{len(certificates)=}")
+            requests = region_listener.generate_modify_requests(listener)
+            for request in requests:
                 self.modify_listener_raw(listener.region, request)
             return
 

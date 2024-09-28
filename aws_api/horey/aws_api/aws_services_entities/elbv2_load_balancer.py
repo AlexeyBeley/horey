@@ -1,6 +1,7 @@
 """
 AWS ELB V2 handling
 """
+import copy
 from enum import Enum
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 
@@ -290,8 +291,12 @@ class LoadBalancer(AwsObject):
             if self.ssl_policy is not None:
                 request["SslPolicy"] = self.ssl_policy
 
-            if self.certificates:
-                request["Certificates"] = self.certificates[:1]
+            for certificate in self.certificates:
+                for key in ["CertificateArn", "IsDefault"]:
+                    if certificate.get(key) is None:
+                        raise ValueError(f"Missing {key=} in {certificate}")
+                if certificate.get("IsDefault"):
+                    request["Certificates"] = certificate
 
             request["Protocol"] = self.protocol
             request["Port"] = self.port
@@ -299,7 +304,7 @@ class LoadBalancer(AwsObject):
             request["DefaultActions"] = self.default_actions
             return request
 
-        def generate_modify_request(self, desired_state):
+        def generate_modify_requests(self, desired_state):
             """
             Standard.
 
@@ -307,10 +312,50 @@ class LoadBalancer(AwsObject):
             :return:
             """
 
-            return self.generate_request_aws_object_modify(desired_state, ["ListenerArn"],
-                                             optional=["DefaultActions", "Protocol", "SslPolicy", "Certificates",
-                                              "DefaultActions", "AlpnPolicy", "MutualAuthentication"],
-                                             request_key_to_attribute_mapping=self.request_key_to_attribute_mapping)
+            def certificates_compare(self_certificates, other_certificates):
+                """
+                Compare certificates.
+
+                :param self_certificates:
+                :param other_certificates:
+                :return:
+                """
+                if self_certificates and not other_certificates:
+                    return False
+                if other_certificates and not other_certificates:
+                    return False
+
+                return all(cert_this in other_certificates for cert_this in self_certificates) and \
+                    all(cert_other in self_certificates for cert_other in other_certificates)
+
+            requests = []
+            base_request = self.generate_request_aws_object_modify(desired_state, ["ListenerArn"],
+                                                                   optional=["DefaultActions",
+                                                                             "Protocol",
+                                                                             "SslPolicy",
+                                                                             "Certificates",
+                                                                             "DefaultActions",
+                                                                             "AlpnPolicy",
+                                                                             "MutualAuthentication"],
+                                                                   request_key_to_attribute_mapping=self.request_key_to_attribute_mapping,
+                                                                   explicit_comparison_callbacks={"Certificates": certificates_compare})
+
+            if base_request is None:
+                return []
+
+            request_certificates = base_request.get("Certificates") or []
+            for certificate in request_certificates:
+                for key in ["CertificateArn", "IsDefault"]:
+                    if certificate.get(key) is None:
+                        raise ValueError(f"Missing {key=} in {certificate}")
+                if certificate.get("IsDefault"):
+                    raise ValueError(f"Can not modify default certificate. Can be assigned only during creation: {certificate}")
+
+                request = copy.deepcopy(base_request)
+                request["Certificates"] = [certificate]
+                requests.append(request)
+
+            return requests or [base_request]
 
         def generate_add_certificate_requests(self):
             """
