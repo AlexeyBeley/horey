@@ -304,7 +304,47 @@ class LoadBalancer(AwsObject):
             request["DefaultActions"] = self.default_actions
             return request
 
-        def generate_modify_requests(self, desired_state):
+        @staticmethod
+        def certificates_callback(self_certificates, desired_certificates, request):
+            """
+            Compare certificates.
+
+            :param request:
+            :param self_certificates:
+            :param desired_certificates:
+            :return:
+            """
+
+            if not self_certificates and not desired_certificates:
+                return True
+
+            if (self_certificates and not desired_certificates) or \
+                    (desired_certificates and not self_certificates):
+                raise ValueError(f"{self_certificates=} {desired_certificates=}")
+
+            for certificate in self_certificates + desired_certificates:
+                for key in ["CertificateArn", "IsDefault"]:
+                    if certificate.get(key) is None:
+                        raise ValueError(f"Missing {key=} in {certificate}, {self_certificates=}"
+                                         f" {desired_certificates=}")
+
+            request_certificates_param = []
+            for desired_certificate in desired_certificates:
+                if desired_certificate.get("IsDefault") is not True:
+                    continue
+                if desired_certificate not in self_certificates:
+                    request_certificates_param.append(copy.deepcopy(desired_certificate))
+                    del request_certificates_param[0]["IsDefault"]
+
+            if not request_certificates_param:
+                return True
+
+            if len(request_certificates_param) != 1:
+                raise ValueError(f"{self_certificates=}, {desired_certificates=}, {request_certificates_param=}")
+            request["Certificates"] = request_certificates_param
+            return True
+
+        def generate_modify_request(self, desired_state):
             """
             Standard.
 
@@ -312,24 +352,7 @@ class LoadBalancer(AwsObject):
             :return:
             """
 
-            def certificates_compare(self_certificates, other_certificates):
-                """
-                Compare certificates.
-
-                :param self_certificates:
-                :param other_certificates:
-                :return:
-                """
-                if self_certificates and not other_certificates:
-                    return False
-                if other_certificates and not other_certificates:
-                    return False
-
-                return all(cert_this in other_certificates for cert_this in self_certificates) and \
-                    all(cert_other in self_certificates for cert_other in other_certificates)
-
-            requests = []
-            base_request = self.generate_request_aws_object_modify(desired_state, ["ListenerArn"],
+            return self.generate_request_aws_object_modify(desired_state, ["ListenerArn"],
                                                                    optional=["DefaultActions",
                                                                              "Protocol",
                                                                              "SslPolicy",
@@ -338,42 +361,52 @@ class LoadBalancer(AwsObject):
                                                                              "AlpnPolicy",
                                                                              "MutualAuthentication"],
                                                                    request_key_to_attribute_mapping=self.request_key_to_attribute_mapping,
-                                                                   explicit_comparison_callbacks={"Certificates": certificates_compare})
+                                                                   optional_key_callbacks={"Certificates": LoadBalancer.Listener.certificates_callback})
 
-            if base_request is None:
-                return []
-
-            request_certificates = base_request.get("Certificates") or []
-            for certificate in request_certificates:
-                for key in ["CertificateArn", "IsDefault"]:
-                    if certificate.get(key) is None:
-                        raise ValueError(f"Missing {key=} in {certificate}")
-                if certificate.get("IsDefault"):
-                    continue
-
-                request = copy.deepcopy(base_request)
-                new_certificate = copy.deepcopy(certificate)
-                del new_certificate["IsDefault"]
-                request["Certificates"] = [new_certificate]
-                requests.append(request)
-
-            if base_request.get("Certificates") and not requests:
-                raise ValueError(
-                    "Can not modify default certificate. Can be assigned only during creation: "
-                    f"{base_request.get('Certificates')}")
-
-            return requests or [base_request]
-
-        def generate_add_certificate_requests(self):
+        def generate_modify_certificates_requests(self, desired_state):
             """
             Only one certificate can be added per request.
 
             :return:
             """
 
-            return [{"ListenerArn": self.arn,
-                     "Certificates": [cert
-                                      ]} for cert in self.certificates[1:]]
+            if not self.certificates and not desired_state.certificates:
+                return [], []
+
+            if (self.certificates and not desired_state.certificates) or \
+                    (desired_state.certificates and not self.certificates):
+                raise ValueError(f"{self.certificates=} {desired_state.certificates=}")
+
+            for certificate in self.certificates + desired_state.certificates:
+                for key in ["CertificateArn", "IsDefault"]:
+                    if certificate.get(key) is None:
+                        raise ValueError(f"Missing {key=} in {certificate}, {self.certificates=}"
+                                         f" {desired_state.certificates=}")
+
+            add_certs = []
+            remove_certs = []
+            base_request = {"ListenerArn": self.arn, "Certificates": []}
+            for certificate in self.certificates:
+                if certificate["IsDefault"] is True:
+                    continue
+                if certificate in desired_state.certificates:
+                    continue
+
+                new_request = copy.deepcopy(base_request)
+                new_request["Certificates"].append({"CertificateArn": certificate["CertificateArn"]})
+                remove_certs.append(new_request)
+
+            for certificate in desired_state.certificates:
+                if certificate["IsDefault"] is True:
+                    continue
+                if certificate in self.certificates:
+                    continue
+
+                new_request = copy.deepcopy(base_request)
+                new_request["Certificates"].append({"CertificateArn": certificate["CertificateArn"]})
+                add_certs.append(new_request)
+
+            return add_certs, remove_certs
 
         def generate_dispose_request(self):
             """

@@ -661,7 +661,7 @@ class AwsObject:
     def generate_request_aws_object_modify(self, desired, required_request_keys,
                                            optional=None,
                                            request_key_to_attribute_mapping=None,
-                                           explicit_comparison_callbacks=None
+                                           optional_key_callbacks=None
                                            ):
         """
         Generate modify
@@ -670,12 +670,12 @@ class AwsObject:
         :param required_request_keys:
         :param optional:
         :param request_key_to_attribute_mapping:
-        :param explicit_comparison_callbacks:
+        :param optional_key_callbacks:
         :return:
         """
 
-        if explicit_comparison_callbacks is None:
-            explicit_comparison_callbacks = {}
+        if optional_key_callbacks is None:
+            optional_key_callbacks = {}
 
         self_request = self.generate_request(required_request_keys, optional=optional, request_key_to_attribute_mapping=request_key_to_attribute_mapping)
         desired_request = desired.generate_request(required_request_keys, optional=optional, request_key_to_attribute_mapping=request_key_to_attribute_mapping)
@@ -689,8 +689,10 @@ class AwsObject:
             request[required_key] = self_request.get(required_key)
 
         for optional_key in optional:
-            if explicit_comparison_callbacks and (optional_key in explicit_comparison_callbacks) and \
-                    explicit_comparison_callbacks.get(optional_key)(self_request.get(optional_key), desired_request.get(optional_key)):
+            if optional_key in optional_key_callbacks:
+                optional_key_callbacks.get(optional_key)(self_request.get(optional_key),
+                                                         desired_request.get(optional_key),
+                                                         request)
                 continue
 
             if self_request.get(optional_key) == desired_request.get(optional_key):

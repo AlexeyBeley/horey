@@ -118,15 +118,23 @@ class ConfigurationPolicy:
         )
 
     def init_from_dictionary(
-        self, dict_src, custom_source_log=None, ignore_undefined=False
+        self, dict_src, custom_source_log=None, ignore_undefined=False, seed_params=None
     ):
         """
 
+        :param seed_params: Basic parameters used to compose other parameters.
         :param dict_src:
         :param custom_source_log: Because everything is a dict we will path custom log line to indicate what is the real source of the value.
         :return:
         """
-        for key, value in dict_src.items():
+
+        if seed_params is None:
+            seed_params = []
+
+        sorted_key_value_pairs = [(param, dict_src[param]) for param in seed_params] + \
+                                 [(key, value) for key, value in dict_src.items() if key not in seed_params]
+
+        for key, value in sorted_key_value_pairs:
             if custom_source_log is not None:
                 log_line = custom_source_log.format(key)
             else:

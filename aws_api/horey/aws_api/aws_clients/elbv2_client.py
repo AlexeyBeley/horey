@@ -468,6 +468,7 @@ class ELBV2Client(Boto3Client):
         @param listener:
         @return:
         """
+
         region_listener = LoadBalancer.Listener({})
         region_listener.region = listener.region
         region_listener.load_balancer_arn = listener.load_balancer_arn
@@ -475,18 +476,20 @@ class ELBV2Client(Boto3Client):
 
         if self.update_listener_information(region_listener, full_information=True):
             listener.arn = region_listener.arn
-            requests = region_listener.generate_modify_requests(listener)
-            for request in requests:
+            request = region_listener.generate_modify_request(listener)
+            if request:
                 self.modify_listener_raw(listener.region, request)
-            return
+            add_requests, remove_requests = region_listener.generate_modify_certificates_requests(listener)
+            for add_request in add_requests:
+                self.add_listener_certificates_raw(listener.region, add_request)
+            for remove_request in remove_requests:
+                self.remove_listener_certificates_raw(listener.region, remove_request)
+            return True
 
-        response = self.provision_load_balancer_listener_raw(listener.region,
+        self.provision_load_balancer_listener_raw(listener.region,
                                                              listener.generate_create_request()
                                                              )
-        listener.arn = response["ListenerArn"]
-
-        for request in listener.generate_add_certificate_requests():
-            self.add_listener_certificates_raw(listener.region, request)
+        return self.update_listener_information(listener)
 
     def provision_load_balancer_listener_raw(self, region, request_dict):
         """
@@ -549,6 +552,23 @@ class ELBV2Client(Boto3Client):
 
         for response in self.execute(
                 self.get_session_client(region=region).add_listener_certificates, "Certificates",
+                filters_req=request_dict
+        ):
+            self.clear_cache(LoadBalancer.Listener)
+            return response
+
+    def remove_listener_certificates_raw(self, region, request_dict):
+        """
+        Standard
+
+        @param request_dict:
+        @return:
+        """
+
+        logger.info(f"Removing load balancer listener's certificate: {request_dict}")
+
+        for response in self.execute(
+                self.get_session_client(region=region).remove_listener_certificates, "Certificates",
                 filters_req=request_dict
         ):
             self.clear_cache(LoadBalancer.Listener)
