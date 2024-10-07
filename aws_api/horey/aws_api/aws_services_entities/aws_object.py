@@ -43,6 +43,7 @@ class AwsObject:
         self.tags = []
         self._region = None
         self._arn = None
+        self.account_id = None
 
     def _init_from_cache(self, dict_src, dict_options):
         """

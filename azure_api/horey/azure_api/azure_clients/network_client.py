@@ -110,7 +110,7 @@ class NetworkClient(AzureClient):
         :return:
         """
 
-        logger.info(f"Begin network interface creation: '{lst_args[0]} {lst_args[1]}'")
+        logger.info(f"Network interface create/update: '{lst_args[0]} {lst_args[1]}'")
         response = self.client.network_interfaces.begin_create_or_update(*lst_args)
         response.wait()
         return response.result()

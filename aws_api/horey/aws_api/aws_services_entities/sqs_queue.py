@@ -222,3 +222,32 @@ class SQSQueue(AwsObject):
             if ignore_missing_tag:
                 return None
             raise RuntimeError(f"No tag '{key}' associated") from inst
+
+    @property
+    def arn(self):
+        """
+        Getter or generator
+
+        :return:
+        """
+        if not self._arn:
+            if not self.account_id:
+                raise ValueError("In order to generate arn automatically the account_id must be set")
+            if not self.name:
+                raise ValueError("In order to generate arn automatically the name must be set")
+            self._arn = f"arn:aws:sqs:{self.region.region_mark}:{self.account_id}:{self.name}"
+        return self._arn
+
+    @arn.setter
+    def arn(self, value):
+        """
+        Setter.
+
+        :param value:
+        :return:
+        """
+
+        if not isinstance(value, str):
+            raise ValueError(f"ARN must be string: {value}")
+
+        self._arn = value

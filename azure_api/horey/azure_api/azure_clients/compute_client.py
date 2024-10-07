@@ -138,7 +138,7 @@ class ComputeClient(AzureClient):
         :param asynchronous:
         """
 
-        logger.info(f"Begin virtual machine creation: '{lst_args[1]}'")
+        logger.info(f"Virtual machine create/update: '{lst_args[1]}'")
         response = self.client.virtual_machines.begin_create_or_update(*lst_args)
         if not asynchronous:
             response.wait()
