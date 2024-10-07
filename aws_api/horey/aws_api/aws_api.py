@@ -62,6 +62,7 @@ from horey.aws_api.aws_clients.cloudfront_client import CloudfrontClient
 from horey.aws_api.aws_clients.events_client import EventsClient
 
 from horey.aws_api.aws_clients.sts_client import STSClient
+from horey.aws_api.aws_clients.efs_client import EFSClient
 
 from horey.aws_api.aws_clients.secrets_manager_client import SecretsManagerClient
 
@@ -135,6 +136,7 @@ class AWSAPI:
         self.elasticache_client = ElasticacheClient()
         self.sqs_client = SQSClient()
         self.sts_client = STSClient()
+        self.efs_client = EFSClient()
 
         self.network_interfaces = []
         self.iam_policies = []
