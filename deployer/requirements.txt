@@ -5,3 +5,4 @@ sshtunnel>=0.4.0
 dnspython>=2.1.0
 requests==2.31.0
 horey.common_utils>=1.0.0
+horey.network>=1.0.0

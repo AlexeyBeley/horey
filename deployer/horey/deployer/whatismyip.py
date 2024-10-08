@@ -2,6 +2,7 @@
 Ip locator.
 
 """
+from horey.network.ip import IP
 
 try:
     import dns
@@ -33,7 +34,9 @@ def fetch_ip_from_google():
 
         resp_two = resolver.resolve(query_address, "TXT", tcp=True)
 
+    str_ip = resp_two[0].to_text().replace('"', "")
+    if "subnet" in str_ip:
+        str_ip = str_ip.split(" ")[1]
+        IP(str_ip)
 
-    ip = resp_two[0].to_text()
-    ip = ip.replace('"', "")
-    return ip
+    return str_ip
