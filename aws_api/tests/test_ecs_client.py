@@ -33,9 +33,7 @@ from horey.aws_api.aws_clients.iam_client import IamClient
 configuration_values_file_full_path = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "h_logger_configuration_values.py"
 )
-logger = get_logger(
-    configuration_values_file_full_path=configuration_values_file_full_path
-)
+logger = get_logger()
 
 accounts_file_full_path = os.path.abspath(
     os.path.join(
@@ -143,7 +141,7 @@ def test_register_task_definition():
     return td
 
 
-@pytest.mark.skip
+@pytest.mark.wip
 def test_run_task():
     ALLOWED_SUBNETS = []
     SECURITY_GROUPS = []
@@ -159,7 +157,8 @@ def test_run_task():
             }
         },
     }
-    client.run_task(region, dict_run_task_request)
+    ret = client.run_task(region, dict_run_task_request)
+    assert ret
 
 
 @pytest.mark.skip
@@ -417,7 +416,7 @@ def test_dispose_cluster():
     assert True
 
 
-@pytest.mark.wip
+@pytest.mark.skip
 def test_yield_task_definitions_raw():
     ret = []
     for x in client.yield_task_definitions_raw(region=Region.get_region("us-west-2")):

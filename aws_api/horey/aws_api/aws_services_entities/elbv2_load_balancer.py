@@ -296,7 +296,9 @@ class LoadBalancer(AwsObject):
                     if certificate.get(key) is None:
                         raise ValueError(f"Missing {key=} in {certificate}")
                 if certificate.get("IsDefault"):
-                    request["Certificates"] = certificate
+                    certificate_request = copy.deepcopy(certificate)
+                    del certificate_request["IsDefault"]
+                    request["Certificates"] = [certificate_request]
 
             request["Protocol"] = self.protocol
             request["Port"] = self.port
