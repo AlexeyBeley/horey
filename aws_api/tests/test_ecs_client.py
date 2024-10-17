@@ -143,6 +143,15 @@ def test_register_task_definition():
 
 @pytest.mark.wip
 def test_run_task():
+    """
+    aws ecs run-task \
+    --cluster test-cluster \
+    --task-definition task-definition-family
+    --launch-type FARGATE
+
+    :return:
+    """
+
     ALLOWED_SUBNETS = []
     SECURITY_GROUPS = []
     dict_run_task_request = {
