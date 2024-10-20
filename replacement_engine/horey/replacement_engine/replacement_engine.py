@@ -72,7 +72,7 @@ class ReplacementEngine:
 
         new_filename = filename[len("template_") :]
         try:
-            ReplacementEngine.perform_raw_string_replacements(
+            new_filename = ReplacementEngine.perform_raw_string_replacements(
                 new_filename, string_replacements
             )
         except ReplacementEngine.UnresolvedReplacementsError as exception_instance:
