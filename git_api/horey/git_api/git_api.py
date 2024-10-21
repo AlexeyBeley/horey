@@ -30,7 +30,7 @@ class GitAPI:
 
         :return:
         """
-
+        breakpoint()
         base = f'GIT_SSH_COMMAND="ssh -i {self.configuration.ssh_key_file_path} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"'
 
         os.chdir(Path(self.configuration.directory_path).resolve().parent)

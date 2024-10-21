@@ -14,10 +14,10 @@ from horey.common_utils.actions_manager import ActionsManager
 action_manager = ActionsManager()
 
 
-# region install
-def install_parser():
+# region clone
+def clone_parser():
     """
-    install parser.
+    clone parser.
 
     @return:
     """
@@ -31,7 +31,7 @@ def install_parser():
     return parser
 
 
-def install(arguments) -> None:
+def clone(arguments) -> None:
     """
     Install request
 
@@ -40,18 +40,14 @@ def install(arguments) -> None:
     """
 
     configuration = GitAPIConfigurationPolicy()
-    configuration.configuration_file_full_path = arguments.git_api_configuration
-    configuration.init_from_file()
-    update = arguments.update.lower() == "true"
-    update_from_source = arguments.update_from_source.lower() == "true"
-    GitAPI(configuration=configuration).install_requirements(
-        arguments.requirements_file_path,
-        update=update,
-        update_from_source=update_from_source,
-    )
+    configuration.remote = arguments.remote
+    configuration.directory_path = arguments.directory_path
+    configuration.ssh_key_file_path = arguments.ssh_key_file_path
+
+    GitAPI(configuration=configuration).clone()
 
 
-action_manager.register_action("install", install_parser, install)
+action_manager.register_action("clone", clone_parser, clone)
 # endregion
 
 if __name__ == "__main__":
