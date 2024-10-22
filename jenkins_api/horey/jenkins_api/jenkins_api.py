@@ -1,7 +1,7 @@
 """
 Module to handle jenkins server.
 """
-
+import copy
 import json
 import os
 import datetime
@@ -14,6 +14,12 @@ from horey.jenkins_api.node import Node
 from horey.jenkins_api.jenkins_job import JenkinsJob
 from horey.jenkins_api.build import Build
 from horey.h_logger import get_logger
+from horey.aws_api.base_entities.region import Region
+from horey.aws_api.aws_services_entities.vpc import VPC
+from horey.aws_api.aws_services_entities.ec2_security_group import EC2SecurityGroup
+from horey.aws_api.aws_services_entities.ec2_launch_template import EC2LaunchTemplate
+from horey.aws_api.aws_services_entities.auto_scaling_group import AutoScalingGroup
+from horey.aws_api.aws_services_entities.ecs_capacity_provider import ECSCapacityProvider
 
 logger = get_logger()
 
@@ -71,16 +77,17 @@ class JenkinsAPI:
     SLEEP_TIME = 5
     BUILDS_PER_JOB = defaultdict(lambda: defaultdict(lambda: None))
 
-    def __init__(self, configuration):
+    def __init__(self, configuration, aws_api=None):
         self.configuration = configuration
-        timeout = configuration.jenkins_timeout
 
         self.server = jenkins.Jenkins(
             configuration.host,
             username=configuration.username,
             password=configuration.token,
-            timeout=timeout,
+            timeout=configuration.timeout,
         )
+        self.aws_api = aws_api
+        self._vpc = None
 
     @property
     def hostname(self):
@@ -765,3 +772,367 @@ class JenkinsAPI:
                 lst_ret.append(executor)
 
         return lst_ret
+
+    @property
+    def region(self):
+        """
+        Object getter
+
+        :return:
+        """
+
+        return Region.get_region(self.configuration.region)
+
+    @property
+    def vpc(self):
+        """
+        Object getter
+
+        :return:
+        """
+        if self._vpc is None:
+            filters = [{
+                "Name": "tag:Name",
+                "Values": [
+                    self.configuration.vpc_name
+                ]
+            }]
+
+            vpcs = self.aws_api.ec2_client.get_region_vpcs(self.region, filters=filters)
+            if len(vpcs) > 1:
+                raise RuntimeError(f"Found more then 1 vpc by filters {filters}")
+
+            if len(vpcs) == 1:
+                self._vpc = vpcs[0]
+            else:
+                raise RuntimeError(f"Was not able to find VPC: {filters}")
+
+        return self._vpc
+
+    @vpc.setter
+    def vpc(self, value):
+        """
+        Object getter
+
+        :return:
+        """
+
+        self._vpc = value
+
+    def provision_ecs_infra(self):
+        """
+        AWS infra.
+
+        :return:
+        """
+
+        self.provision_vpc()
+        self.provision_container_instance_security_group()
+        launch_template = self.provision_hagent_launch_template()
+        auto_scaling_group = self.provision_hagent_auto_scaling_group(launch_template)
+        ecs_cluster = self.provision_hagent_ecs_cluster()
+        self.provision_hagent_ecs_capacity_provider(auto_scaling_group)
+
+        self.attach_hagent_capacity_provider_to_ecs_cluster(ecs_cluster)
+        self.update_hagent_auto_scaling_group_desired_count(auto_scaling_group)
+
+    def provision_vpc(self):
+        """
+        Provision VPC
+
+        :return:
+        """
+
+        filters = [{
+            "Name": "tag:Name",
+            "Values": [
+                self.configuration.vpc_name
+            ]
+        }]
+
+        vpcs = self.aws_api.ec2_client.get_region_vpcs(self.region, filters=filters)
+        if len(vpcs) > 1:
+            raise RuntimeError(f"Found more then 1 vpc by filters {filters}")
+        if len(vpcs) == 1:
+            self.vpc = vpcs[0]
+            return self.vpc
+        raise NotImplementedError("Todo:")
+        self.vpc = VPC({})
+        self.vpc.region = self.region
+        self.vpc.cidr_block = self.configuration.vpc_primary_subnet
+
+        self.vpc.tags = copy.deepcopy(self.tags)
+        self.vpc.tags.append({
+            "Key": "Name",
+            "Value": self.configuration.vpc_name
+        })
+
+        self.aws_api.provision_vpc(self.vpc)
+        return self.vpc
+
+    def provision_container_instance_security_group(self):
+        """
+        Provision the container instance security group.
+
+        :return:
+        """
+
+        security_group = EC2SecurityGroup({})
+        security_group.vpc_id = self.vpc.id
+        security_group.name = self.configuration.container_instance_security_group_name
+        security_group.description = "Access to hagent container instance"
+        security_group.region = self.region
+        security_group.tags = copy.deepcopy(self.tags)
+        security_group.tags.append({
+            "Key": "Name",
+            "Value": security_group.name
+        })
+
+        security_group.ip_permissions = [
+            {"IpProtocol": "-1",
+             "IpRanges": [
+                 {
+                     "CidrIp": cidr_block_ip.str_address_slash_short_mask(),
+                     "Description": "Management VPC access"
+                 } for cidr_block_ip in self.vpc.get_associated_cidr_ips()
+             ]
+             }
+        ]
+
+        self.aws_api.provision_security_group(security_group)
+
+        return security_group
+    
+    def provision_hagent_launch_template(self):
+        """
+        Provision conainer instance launch template.
+
+        :return:
+        """
+
+        container_instance_security_group = self.aws_api.get_security_group_by_vpc_and_name(self.vpc,
+                                                                                            self.configuration.container_instance_security_group_name)
+
+        client = SSMClient()
+        param = client.get_region_parameter(self.configuration.region,
+                                            "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended")
+
+        filter_request = {"ImageIds": [json.loads(param.value)["image_id"]]}
+        amis = self.aws_api.ec2_client.get_region_amis(self.configuration.region, custom_filters=filter_request)
+        if len(amis) > 1:
+            raise RuntimeError(f"Can not find single AMI using filter: {filter_request['Filters']}")
+
+        ami = amis[0]
+        user_data = self.generate_hagent_user_data()
+        launch_template = EC2LaunchTemplate({})
+        launch_template.name = self.configuration.container_instance_hagent_launch_template_name
+        launch_template.tags = copy.deepcopy(self.tags)
+        launch_template.region = self.region
+        launch_template.tags.append({
+            "Key": "Name",
+            "Value": launch_template.name
+        })
+        launch_template.launch_template_data = {"EbsOptimized": False,
+                                                "IamInstanceProfile": {
+                                                    "Arn": "arn:aws:iam::211921183446:instance-profile/ecsInstanceRole"
+                                                },
+                                                "BlockDeviceMappings": [
+                                                    {
+                                                        "DeviceName": "/dev/xvda",
+                                                        "Ebs": {
+                                                            "VolumeSize": 200,
+                                                            "VolumeType": "gp3"
+                                                        }
+                                                    }
+                                                ],
+                                                "ImageId": ami.id,
+                                                "InstanceType": "c5.large",
+                                                "KeyName": self.configuration.container_instance_ssh_key_pair_name,
+                                                "Monitoring": {
+                                                    "Enabled": False
+                                                },
+                                                "NetworkInterfaces": [
+                                                    {
+                                                        "AssociatePublicIpAddress": True,
+                                                        "DeleteOnTermination": True,
+                                                        "DeviceIndex": 0,
+                                                        "Groups": [
+                                                            container_instance_security_group.id,
+                                                        ]
+                                                    },
+                                                ],
+                                                "UserData": user_data
+                                                }
+        self.aws_api.provision_launch_template(launch_template)
+        return launch_template
+    
+    def get_hagent_subnet_ids(self):
+        """
+        Find private subnets in the VPC
+
+        :return: 
+        """
+
+        if self.configuration.hagent_subnets_ids:
+            return self.configuration.hagent_subnets_ids
+
+        filters = [{"Name": "vpc-id", "Values": [self.vpc.id]}]
+        subnets = self.aws_api.ec2_client.get_region_subnets(self.region, filters=filters)
+        if len(subnets) == 0:
+            raise ValueError(f"Can not find subnets in region '{self.region.region_mark}' by filter {filters}")
+
+        return [subnet for subnet in subnets if
+                    "private" in subnet.get_tagname() and not subnet.get_tagname().endswith("old")]
+
+    def provision_hagent_auto_scaling_group(self, launch_template):
+        """
+        Provision the container instance auto scaling group.
+
+        :param launch_template:
+        :return:
+        """
+
+        as_group = AutoScalingGroup({})
+        as_group.name = self.configuration.container_instance_hagent_auto_scaling_group_name
+        as_group.region = self.region
+        region_objects = self.aws_api.autoscaling_client.get_region_auto_scaling_groups(as_group.region,
+                                                                                        names=[as_group.name])
+
+        if len(region_objects) > 1:
+            raise RuntimeError(f"more there one as_group '{as_group.name}'")
+
+        if region_objects and region_objects[0].get_status() == region_objects[0].Status.ACTIVE:
+            as_group.desired_capacity = self.configuration.container_instance_hagent_auto_scaling_group_desired_capacity
+            as_group.min_size = self.configuration.container_instance_hagent_auto_scaling_group_desired_capacity
+        else:
+            as_group.min_size = 0
+            as_group.desired_capacity = 0
+
+        as_group.tags = copy.deepcopy(self.tags)
+        as_group.tags.append({
+            "Key": "Name",
+            "Value": as_group.name
+        })
+        as_group.launch_template = {
+            "LaunchTemplateId": launch_template.id,
+            "Version": "$Default"
+        }
+        as_group.max_size = self.configuration.container_instance_hagent_auto_scaling_group_desired_capacity
+        as_group.default_cooldown = 300
+
+        as_group.health_check_type = "EC2"
+        as_group.health_check_grace_period = 300
+        as_group.vpc_zone_identifier = ",".join([subnet.id for subnet in self.get_hagent_subnet_ids()])
+        as_group.termination_policies = [
+            "Default"
+        ]
+        as_group.new_instances_protected_from_scale_in = False
+        as_group.service_linked_role_arn = "arn:aws:iam::211921183446:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling"
+        self.aws_api.provision_auto_scaling_group(as_group)
+        return as_group
+
+    def provision_hagent_ecs_cluster(self):
+        """
+        Provision the ECS cluster for this env.
+
+        :return:
+        """
+
+        cluster = ECSCluster({})
+        cluster.settings = [
+            {
+                "name": "containerInsights",
+                "value": "enabled"
+            }
+        ]
+        cluster.name = self.configuration.ecs_cluster_hagent_name
+        cluster.region = self.region
+        cluster.tags = [{key.lower(): value for key, value in dict_tag.items()} for dict_tag in self.tags]
+        cluster.tags.append({
+            "key": "Name",
+            "value": cluster.name
+        })
+        cluster.configuration = {}
+
+        self.aws_api.provision_ecs_cluster(cluster)
+        return cluster
+
+    def provision_hagent_ecs_capacity_provider(self, auto_scaling_group):
+        """
+        Create capacity provider from provision instances.
+
+        :param auto_scaling_group:
+        :return:
+        """
+        capacity_provider = ECSCapacityProvider({})
+        capacity_provider.name = self.configuration.container_instance_hagent_capacity_provider_name
+        capacity_provider.tags = [{key.lower(): value for key, value in dict_tag.items()} for dict_tag in self.tags]
+        capacity_provider.region = self.region
+        capacity_provider.tags.append({
+            "key": "Name",
+            "value": capacity_provider.name
+        })
+
+        capacity_provider.auto_scaling_group_provider = {
+            "autoScalingGroupArn": auto_scaling_group.arn,
+            "managedScaling": {
+                "status": "DISABLED",
+                "targetCapacity": 70,
+                "minimumScalingStepSize": 1,
+                "maximumScalingStepSize": 10000,
+                "instanceWarmupPeriod": 300
+            },
+            "managedTerminationProtection": "DISABLED"
+        }
+
+        self.aws_api.provision_ecs_capacity_provider(capacity_provider)
+
+        return capacity_provider
+
+    def attach_hagent_capacity_provider_to_ecs_cluster(self, ecs_cluster):
+        """
+        Attach provisioned instances to this cluster.
+
+        :param ecs_cluster:
+        :return:
+        """
+
+        default_capacity_provider_strategy = [
+            {
+                "capacityProvider": self.configuration.container_instance_hagent_capacity_provider_name,
+                "weight": 1,
+                "base": 0
+            }
+        ]
+        self.aws_api.attach_capacity_providers_to_ecs_cluster(ecs_cluster, [
+            self.configuration.container_instance_hagent_capacity_provider_name], default_capacity_provider_strategy)
+
+    def update_hagent_auto_scaling_group_desired_count(self, auto_scaling_group):
+        """
+        EC2 instances auto scaling group for the ECS cluster.
+
+        :param auto_scaling_group:
+        :return:
+        """
+
+        auto_scaling_group.desired_capacity = self.configuration.container_instance_hagent_auto_scaling_group_desired_capacity
+        self.aws_api.provision_auto_scaling_group(auto_scaling_group)
+
+    def generate_hagent_user_data(self):
+        """
+        EC2 container instance user data to run on ec2 start.
+
+        :return:
+        """
+
+        target_deployment_local_dir_path = self.configuration.local_target_deployment_directory_path_template.format(
+            HOSTNAME=self.configuration.ecs_cluster_hagent_name)
+
+        user_data_deployment_local_dir_path = os.path.join(target_deployment_local_dir_path, "user_data")
+        string_replacements = {
+            "STRING_REPLACEMENT_ECS_CLUSTER_NAME": self.configuration.ecs_cluster_hagent_name}
+
+        self.replacement_engine.perform_recursive_replacements(user_data_deployment_local_dir_path, string_replacements)
+        user_data = self.aws_api.ec2_client.generate_user_data_from_file(
+            os.path.join(user_data_deployment_local_dir_path, "container_instance_hagent_user_data.sh"))
+        return user_data

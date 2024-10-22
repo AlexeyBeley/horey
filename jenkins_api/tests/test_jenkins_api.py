@@ -10,20 +10,24 @@ from horey.jenkins_api.jenkins_api import JenkinsAPI
 from horey.jenkins_api.jenkins_job import JenkinsJob
 from horey.jenkins_api.jenkins_api_configuration_policy import JenkinsAPIConfigurationPolicy
 from horey.jenkins_api.build import Build
+from horey.aws_api.aws_api import AWSAPI
 
 ignore_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore")
 configuration = JenkinsAPIConfigurationPolicy()
 configuration.configuration_file_full_path = os.path.join(ignore_dir, "jenkins_api_configuration.py")
+configuration.region = "us-east-1"
+configuration.vpc_name = ""
+
 configuration.init_from_file()
 jenkins_api = JenkinsAPI(
-    configuration
+    configuration, aws_api=AWSAPI()
 )
 
 
 # pylint: disable= missing-function-docstring
 
 
-@pytest.mark.skip
+@pytest.mark.done
 def test_cleanup():
     """
     Run the cleanup function and save the output to file.
@@ -166,6 +170,26 @@ def test_yield_build_logs():
         pass
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_get_running_builds():
     assert isinstance(jenkins_api.get_running_builds(), list)
+
+
+@pytest.mark.done
+def test_provision_vpc():
+    vpc = jenkins_api.provision_vpc()
+    assert vpc.id
+
+
+@pytest.mark.done
+def test_get_hagent_subnet_ids():
+    jenkins_api.configuration.hagent_subnets_ids = []
+    subnets = jenkins_api.get_hagent_subnet_ids()
+    assert subnets
+
+
+@pytest.mark.wip
+def test_provision_container_instance_security_group():
+    jenkins_api.configuration.hagent_subnets_ids = []
+    sg = jenkins_api.provision_container_instance_security_group()
+    assert sg.id

@@ -18,6 +18,33 @@ class JenkinsAPIConfigurationPolicy(ConfigurationPolicy):
         self._token = None
         self._timeout = None
         self._cache_dir_path = None
+        self._region = "us-west-2"
+        self._vpc_name = "horey_jenkins"
+        self._vpc_primary_subnet = "192.168.0.0/24"
+
+    @property
+    def vpc_primary_subnet(self):
+        return self._vpc_primary_subnet
+
+    @vpc_primary_subnet.setter
+    def vpc_primary_subnet(self, value):
+        self._vpc_primary_subnet = value
+
+    @property
+    def vpc_name(self):
+        return self._vpc_name
+
+    @vpc_name.setter
+    def vpc_name(self, value):
+        self._vpc_name = value
+
+    @property
+    def region(self):
+        return self._region
+
+    @region.setter
+    def region(self, value):
+        self._region = value
 
     @property
     def host(self):
