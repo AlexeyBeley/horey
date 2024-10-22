@@ -188,8 +188,37 @@ def test_get_hagent_subnet_ids():
     assert subnets
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_provision_container_instance_security_group():
     jenkins_api.configuration.hagent_subnets_ids = []
     sg = jenkins_api.provision_container_instance_security_group()
+    assert sg.id
+
+
+@pytest.mark.done
+def test_generate_hagent_user_data():
+    jenkins_api.configuration.hagent_subnets_ids = []
+    user_data = jenkins_api.generate_hagent_user_data()
+    assert user_data
+
+
+@pytest.mark.done
+def test_provision_container_instance_iam_profile():
+    jenkins_api.configuration.hagent_subnets_ids = []
+    profile = jenkins_api.provision_container_instance_iam_profile()
+    assert profile.arn
+
+
+@pytest.mark.wip
+def test_provision_hagent_container_instance_ssh_key():
+    jenkins_api.configuration.hagent_subnets_ids = []
+    key_pair = jenkins_api.provision_hagent_container_instance_ssh_key()
+    breakpoint()
+    assert key_pair.arn
+
+
+@pytest.mark.todo
+def test_provision_hagent_launch_template():
+    jenkins_api.configuration.hagent_subnets_ids = []
+    sg = jenkins_api.provision_hagent_launch_template()
     assert sg.id

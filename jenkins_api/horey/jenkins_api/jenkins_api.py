@@ -15,11 +15,14 @@ from horey.jenkins_api.jenkins_job import JenkinsJob
 from horey.jenkins_api.build import Build
 from horey.h_logger import get_logger
 from horey.aws_api.base_entities.region import Region
+from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.aws_services_entities.vpc import VPC
 from horey.aws_api.aws_services_entities.ec2_security_group import EC2SecurityGroup
 from horey.aws_api.aws_services_entities.ec2_launch_template import EC2LaunchTemplate
 from horey.aws_api.aws_services_entities.auto_scaling_group import AutoScalingGroup
 from horey.aws_api.aws_services_entities.ecs_capacity_provider import ECSCapacityProvider
+from horey.aws_api.aws_services_entities.iam_instance_profile import IamInstanceProfile
+from horey.aws_api.aws_services_entities.iam_role import IamRole
 
 logger = get_logger()
 
@@ -87,6 +90,8 @@ class JenkinsAPI:
             timeout=configuration.timeout,
         )
         self.aws_api = aws_api
+        if self.aws_api:
+            AWSAccount.set_aws_region(self.region)
         self._vpc = None
 
     @property
@@ -828,6 +833,7 @@ class JenkinsAPI:
 
         self.provision_vpc()
         self.provision_container_instance_security_group()
+        self.provision_hagent_container_instance_ssh_key()
         launch_template = self.provision_hagent_launch_template()
         auto_scaling_group = self.provision_hagent_auto_scaling_group(launch_template)
         ecs_cluster = self.provision_hagent_ecs_cluster()
@@ -879,42 +885,38 @@ class JenkinsAPI:
 
         security_group = EC2SecurityGroup({})
         security_group.vpc_id = self.vpc.id
-        security_group.name = self.configuration.container_instance_security_group_name
-        security_group.description = "Access to hagent container instance"
+        security_group.name = self.configuration.hagent_security_group_name
+        security_group.description = "Hagent container instance"
         security_group.region = self.region
-        security_group.tags = copy.deepcopy(self.tags)
+        security_group.tags = self.configuration.tags
         security_group.tags.append({
             "Key": "Name",
             "Value": security_group.name
         })
 
-        security_group.ip_permissions = [
-            {"IpProtocol": "-1",
-             "IpRanges": [
-                 {
-                     "CidrIp": cidr_block_ip.str_address_slash_short_mask(),
-                     "Description": "Management VPC access"
-                 } for cidr_block_ip in self.vpc.get_associated_cidr_ips()
-             ]
-             }
-        ]
-
-        self.aws_api.provision_security_group(security_group)
+        self.aws_api.provision_security_group(security_group, provision_rules=False)
 
         return security_group
-    
+
+    def provision_hagent_container_instance_ssh_key(self):
+        """
+        Standard.
+
+        :return:
+        """
+        breakpoint()
+
     def provision_hagent_launch_template(self):
         """
-        Provision conainer instance launch template.
+        Provision hagent container instance launch template.
 
         :return:
         """
 
-        container_instance_security_group = self.aws_api.get_security_group_by_vpc_and_name(self.vpc,
-                                                                                            self.configuration.container_instance_security_group_name)
+        security_group = self.aws_api.get_security_group_by_vpc_and_name(self.vpc,
+                                                                                            self.configuration.hagent_security_group_name)
 
-        client = SSMClient()
-        param = client.get_region_parameter(self.configuration.region,
+        param = self.aws_api.ssm_client.client.get_region_parameter(self.configuration.region,
                                             "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended")
 
         filter_request = {"ImageIds": [json.loads(param.value)["image_id"]]}
@@ -924,17 +926,18 @@ class JenkinsAPI:
 
         ami = amis[0]
         user_data = self.generate_hagent_user_data()
+
         launch_template = EC2LaunchTemplate({})
-        launch_template.name = self.configuration.container_instance_hagent_launch_template_name
-        launch_template.tags = copy.deepcopy(self.tags)
+        launch_template.name = self.configuration.hagent_launch_template_name
         launch_template.region = self.region
+        launch_template.tags = self.configuration.tags
         launch_template.tags.append({
             "Key": "Name",
             "Value": launch_template.name
         })
         launch_template.launch_template_data = {"EbsOptimized": False,
                                                 "IamInstanceProfile": {
-                                                    "Arn": "arn:aws:iam::211921183446:instance-profile/ecsInstanceRole"
+                                                    self.provision_container_instance_iam_profile().arn
                                                 },
                                                 "BlockDeviceMappings": [
                                                     {
@@ -947,7 +950,7 @@ class JenkinsAPI:
                                                 ],
                                                 "ImageId": ami.id,
                                                 "InstanceType": "c5.large",
-                                                "KeyName": self.configuration.container_instance_ssh_key_pair_name,
+                                                "KeyName": self.configuration.hagent_ssh_key_pair_name,
                                                 "Monitoring": {
                                                     "Enabled": False
                                                 },
@@ -957,7 +960,7 @@ class JenkinsAPI:
                                                         "DeleteOnTermination": True,
                                                         "DeviceIndex": 0,
                                                         "Groups": [
-                                                            container_instance_security_group.id,
+                                                            security_group.id,
                                                         ]
                                                     },
                                                 ],
@@ -1125,14 +1128,53 @@ class JenkinsAPI:
         :return:
         """
 
-        target_deployment_local_dir_path = self.configuration.local_target_deployment_directory_path_template.format(
-            HOSTNAME=self.configuration.ecs_cluster_hagent_name)
+        str_user_data = "#!/bin/bash\n" +\
+        f'echo "{self.configuration.hagent_cluster_name}" >> /etc/ecs/ecs.config'
 
-        user_data_deployment_local_dir_path = os.path.join(target_deployment_local_dir_path, "user_data")
-        string_replacements = {
-            "STRING_REPLACEMENT_ECS_CLUSTER_NAME": self.configuration.ecs_cluster_hagent_name}
-
-        self.replacement_engine.perform_recursive_replacements(user_data_deployment_local_dir_path, string_replacements)
-        user_data = self.aws_api.ec2_client.generate_user_data_from_file(
-            os.path.join(user_data_deployment_local_dir_path, "container_instance_hagent_user_data.sh"))
+        user_data = self.aws_api.ec2_client.generate_user_data(str_user_data)
         return user_data
+
+    def provision_container_instance_iam_profile(self):
+        """
+        Standard.
+
+        :return:
+        """
+
+        assume_role_policy = """{
+                "Version": "2012-10-17",
+                "Statement": [
+                {
+                "Effect": "Allow",
+                "Principal": {
+                "Service": "ec2.amazonaws.com"
+                },
+                "Action": "sts:AssumeRole"
+                }
+                ]
+                }"""
+
+        iam_role = IamRole({})
+        iam_role.name = self.configuration.hagent_container_instance_role_name
+        iam_role.assume_role_policy_document = assume_role_policy
+        iam_role.description = self.configuration.hagent_container_instance_role_name
+        iam_role.max_session_duration = 3600
+        iam_role.tags = [{
+            "Key": "Name",
+            "Value": iam_role.name
+        }]
+
+        iam_role.path = self.configuration.iam_path
+        self.aws_api.iam_client.provision_role(iam_role)
+
+        iam_instance_profile = IamInstanceProfile({})
+        iam_instance_profile.name = self.configuration.hagent_container_instance_profile_name
+        iam_instance_profile.path = self.configuration.iam_path
+        iam_instance_profile.tags = [{
+            "Key": "Name",
+            "Value": iam_instance_profile.name
+        }]
+        iam_instance_profile.roles = [{"RoleName": iam_role.name}]
+        self.aws_api.iam_client.provision_instance_profile(iam_instance_profile)
+        return iam_instance_profile
+

@@ -361,7 +361,7 @@ class EC2Client(Boto3Client):
         existing_security_group.vpc_id = desired_security_group.vpc_id
         existing_security_group.region = desired_security_group.region
         if not self.update_security_group_information(existing_security_group):
-            group_id = self.provision_security_group_raw(
+            group_id = self.provision_security_group_raw(desired_security_group.region,
                 desired_security_group.generate_create_request()
             )
             existing_security_group.id = group_id
@@ -398,13 +398,13 @@ class EC2Client(Boto3Client):
 
         self.update_security_group_information(desired_security_group)
 
-    def provision_security_group_raw(self, request_dict, region=None):
+    def provision_security_group_raw(self, region, request_dict):
         """
-        Self explanatory.
+        Standard.
 
-        @param request_dict:
-        @return:
         :param region:
+        :param request_dict:
+        :return:
         """
 
         logger.info(f"Creating security group {request_dict}")
@@ -2489,6 +2489,16 @@ class EC2Client(Boto3Client):
                 self.get_session_client(region=region).associate_address, None, filters_req=request_dict, raw_data=True
         ):
             return response
+
+    @staticmethod
+    def generate_user_data(user_data):
+        """
+        Standard
+
+        @param user_data:
+        @return:
+        """
+        return base64.b64encode(user_data.encode()).decode("ascii")
 
     @staticmethod
     def generate_user_data_from_file(file_path):
