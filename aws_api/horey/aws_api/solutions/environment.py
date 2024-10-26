@@ -354,7 +354,6 @@ class Environment:
         self.aws_api.ec2_client.dispose_vpc(self.vpc)
         return True
 
-
     def provision_ecs_infra(self):
         """
         AWS infra.
@@ -366,9 +365,8 @@ class Environment:
         self.provision_container_instance_ssh_key()
         launch_template = self.provision_container_instance_launch_template()
         ecs_cluster = self.provision_ecs_cluster()
-        auto_scaling_group = self.provision_hagent_auto_scaling_group(launch_template)
-        self.provision_hagent_ecs_capacity_provider(auto_scaling_group)
-
+        auto_scaling_group = self.provision_container_instance_auto_scaling_group(launch_template)
+        self.provision_ecs_capacity_provider(auto_scaling_group)
         self.attach_hagent_capacity_provider_to_ecs_cluster(ecs_cluster)
         return True
 
@@ -562,6 +560,114 @@ class Environment:
 
         self.aws_api.provision_ecs_cluster(cluster)
         return cluster
+    
+    def provision_container_instance_auto_scaling_group(self, launch_template):
+        """
+        Provision the container instance auto-scaling group.
+
+        :param launch_template:
+        :return:
+        """
+
+        as_group = AutoScalingGroup({})
+        as_group.name = self.configuration.hagent_container_instance_auto_scaling_group_name
+        as_group.region = self.region
+        region_objects = self.aws_api.autoscaling_client.get_region_auto_scaling_groups(as_group.region,
+                                                                                        names=[as_group.name])
+
+        if len(region_objects) > 1:
+            raise RuntimeError(f"more there one as_group '{as_group.name}'")
+
+        if region_objects and region_objects[0].get_status() == region_objects[0].Status.ACTIVE:
+            as_group.desired_capacity = 1
+            as_group.min_size = 1
+        else:
+            # was 0
+            as_group.min_size = 1
+            as_group.desired_capacity = 1
+
+        as_group.tags = self.configuration.tags
+        as_group.tags.append({
+            "Key": "Name",
+            "Value": as_group.name
+        })
+        as_group.launch_template = {
+            "LaunchTemplateId": launch_template.id,
+            "Version": "$Default"
+        }
+        as_group.max_size = self.configuration.hagent_container_instance_auto_scaling_group_max_size
+        as_group.default_cooldown = 300
+
+        as_group.health_check_type = "EC2"
+        as_group.health_check_grace_period = 300
+        as_group.vpc_zone_identifier = ",".join([subnet.id for subnet in self.get_hagent_subnet_ids()])
+        as_group.termination_policies = [
+            "Default"
+        ]
+        as_group.new_instances_protected_from_scale_in = False
+        as_group.service_linked_role_arn = f"arn:aws:iam::{self.aws_api.ec2_client.account_id}:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling"
+        self.aws_api.provision_auto_scaling_group(as_group)
+        return as_group
+
+    def provision_ecs_capacity_provider(self, auto_scaling_group):
+        """
+        Create capacity provider from provision instances.
+
+        :param auto_scaling_group:
+        :return:
+        """
+        capacity_provider = ECSCapacityProvider({})
+        capacity_provider.name = self.configuration.hagent_container_instance_capacity_provider_name
+        capacity_provider.tags = [{key.lower(): value for key, value in dict_tag.items()} for dict_tag in self.configuration.tags]
+        capacity_provider.region = self.region
+        capacity_provider.tags.append({
+            "key": "Name",
+            "value": capacity_provider.name
+        })
+
+        capacity_provider.auto_scaling_group_provider = {
+            "autoScalingGroupArn": auto_scaling_group.arn,
+            "managedScaling": {
+                "status": "DISABLED",
+                "targetCapacity": 70,
+                "minimumScalingStepSize": 1,
+                "maximumScalingStepSize": 10000,
+                "instanceWarmupPeriod": 300
+            },
+            "managedTerminationProtection": "DISABLED"
+        }
+
+        self.aws_api.provision_ecs_capacity_provider(capacity_provider)
+
+        return capacity_provider
+
+    def attach_hagent_capacity_provider_to_ecs_cluster(self, ecs_cluster):
+        """
+        Attach provisioned instances to this cluster.
+
+        :param ecs_cluster:
+        :return:
+        """
+
+        default_capacity_provider_strategy = [
+            {
+                "capacityProvider": self.configuration.hagent_container_instance_capacity_provider_name,
+                "weight": 1,
+                "base": 0
+            }
+        ]
+        self.aws_api.attach_capacity_providers_to_ecs_cluster(ecs_cluster, [
+            self.configuration.hagent_container_instance_capacity_provider_name], default_capacity_provider_strategy)
+
+        return True
+
+    #todo: detach capacity_provider_from_ecs_cluster?
+
+    def dispose_container_instance_auto_scaling_group(self):
+        breakpoint()
+    
+    def dispose_ecs_capacity_provider(self):
+        breakpoint()
 
     def dispose_ecs_cluster(self):
         """
