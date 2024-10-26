@@ -53,6 +53,15 @@ def fixture_configuration():
     _configuration.subnet_name_template = "subnet-{type}-{id}"
     _configuration.route_table_name_template = "rt-{subnet}"
     _configuration.internet_gateway_name = f"igw-{_configuration.vpc_name}"
+    _configuration.container_instance_security_group_name = f"sg_container_instance_{_configuration.vpc_name}"
+    _configuration.secrets_manager_region = _configuration.region
+    _configuration.container_instance_ssh_key_pair_name = f"container_instance_{_configuration.vpc_name}"
+    _configuration.container_instance_launch_template_name = f"lt_container_instance_{_configuration.vpc_name}"
+    _configuration.ecs_cluster_name = f"cluster_{_configuration.vpc_name}"
+    _configuration.container_instance_role_name = f"role_container_instance_{_configuration.vpc_name}"
+    _configuration.iam_path = f"/{_configuration.vpc_name}/"
+    _configuration.container_instance_profile_name = f"instance_profile_container_instance_{_configuration.vpc_name}"
+
     yield _configuration
 
 
@@ -61,20 +70,20 @@ def test_init_environment(configuration):
     assert Environment(configuration, aws_api)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_provision_vpc(configuration):
     env = Environment(configuration, aws_api)
     env.provision_vpc()
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_provision_subnets(configuration):
     env = Environment(configuration, aws_api)
     env.aws_api.ec2_client.clear_cache(None, all_cache=True)
     env.provision_subnets()
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_provision_internet_gateway(configuration):
     env = Environment(configuration, aws_api)
     env.aws_api.ec2_client.clear_cache(None, all_cache=True)
@@ -82,7 +91,7 @@ def test_provision_internet_gateway(configuration):
     assert inet_gwy.id
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_provision_public_route_tables(configuration):
     env = Environment(configuration, aws_api)
     env.aws_api.ec2_client.clear_cache(None, all_cache=True)
@@ -117,3 +126,65 @@ def test_dispose_vpc(configuration):
     env = Environment(configuration, aws_api)
     env.aws_api.ec2_client.clear_cache(None, all_cache=True)
     env.dispose_vpc()
+
+
+# ECS
+
+@pytest.mark.done
+def test_provision_container_instance_security_group(configuration):
+    env = Environment(configuration, aws_api)
+    env.aws_api.ec2_client.clear_cache(None, all_cache=True)
+    sg = env.provision_container_instance_security_group()
+    assert sg.id
+
+
+@pytest.mark.done
+def test_provision_container_instance_ssh_key(configuration):
+    env = Environment(configuration, aws_api)
+    env.aws_api.ec2_client.clear_cache(None, all_cache=True)
+    key_pair = env.provision_container_instance_ssh_key()
+    assert key_pair.id
+
+
+@pytest.mark.done
+def test_provision_container_instance_launch_template(configuration):
+    env = Environment(configuration, aws_api)
+    env.aws_api.ec2_client.clear_cache(None, all_cache=True)
+    lt = env.provision_container_instance_launch_template()
+    assert lt.id
+
+
+@pytest.mark.wip
+def test_provision_ecs_cluster(configuration):
+    env = Environment(configuration, aws_api)
+    env.aws_api.ec2_client.clear_cache(None, all_cache=True)
+    ecs_cluster = env.provision_ecs_cluster()
+    assert ecs_cluster.arn
+
+
+@pytest.mark.done
+def test_dispose_ecs_cluster(configuration):
+    env = Environment(configuration, aws_api)
+    env.aws_api.ec2_client.clear_cache(None, all_cache=True)
+    assert env.dispose_ecs_cluster()
+
+
+@pytest.mark.done
+def test_dispose_container_instance_launch_template(configuration):
+    env = Environment(configuration, aws_api)
+    env.aws_api.ec2_client.clear_cache(None, all_cache=True)
+    assert env.dispose_container_instance_launch_template()
+
+
+@pytest.mark.done
+def test_dispose_container_instance_ssh_key(configuration):
+    """
+    Please read the docstring in the function!!!
+
+    :param configuration:
+    :return:
+    """
+    env = Environment(configuration, aws_api)
+    env.aws_api.ec2_client.clear_cache(None, all_cache=True)
+    assert env.dispose_container_instance_ssh_key()
+

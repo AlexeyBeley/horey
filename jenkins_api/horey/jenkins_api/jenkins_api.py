@@ -835,9 +835,6 @@ class JenkinsAPI:
         self.environment.provision()
         breakpoint()
 
-        self.provision_vpc()
-        self.provision_subnets()
-        self.provision_routing()
         self.provision_ecr_repositories()
         self.provision_container_instance_security_group()
         self.provision_hagent_container_instance_ssh_key()

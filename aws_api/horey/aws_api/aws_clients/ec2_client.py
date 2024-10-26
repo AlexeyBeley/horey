@@ -1366,6 +1366,22 @@ class EC2Client(Boto3Client):
 
         return final_result
 
+    def dispose_key_pairs(self, key_pairs):
+        """
+        Standard
+
+        @param key_pairs:
+        @return:
+        """
+
+        for key_pair in key_pairs:
+            logger.info(f"Deleting key_pair in {key_pair.region.region_mark} {key_pair.id=}")
+            for response in self.execute(self.get_session_client(region=key_pair.region).delete_key_pair, None, raw_data=True,
+                                         filters_req={"KeyPairId": key_pair.id}):
+                logger.info(response)
+
+        return True
+
     def get_all_internet_gateways(self, full_information=True, region=None):
         """
         Standard
@@ -2452,6 +2468,21 @@ class EC2Client(Boto3Client):
         ):
             return response
 
+    def update_key_pair_information(self, key_pair: KeyPair):
+        """
+        Standard.
+
+        :param key_pair:
+        :return:
+        """
+
+        region_key_pairs = self.get_region_key_pairs(key_pair.region)
+        for region_key_pair in region_key_pairs:
+            if region_key_pair.name == key_pair.name:
+                key_pair.update_from_raw_response(region_key_pair.dict_src)
+                return True
+        return False
+
     def provision_key_pair(self, key_pair: KeyPair):
         """
         Standard
@@ -2527,12 +2558,13 @@ class EC2Client(Boto3Client):
 
         self.dispose_launch_template_raw(launch_template.region, launch_template.generate_dispose_request())
 
-    def dispose_launch_template_raw(self, request_dict, region=None):
+    def dispose_launch_template_raw(self, region, request_dict):
         """
         Standard
 
         @param request_dict:
         @return:
+        :param region:
         """
 
         for response in self.execute(

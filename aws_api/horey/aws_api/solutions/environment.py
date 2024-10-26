@@ -2,6 +2,8 @@
 Standard environment maintainer.
 
 """
+import json
+
 from horey.aws_api.solutions.environment_configuration_policy import EnvironmentConfigurationPolicy
 from horey.aws_api.aws_api import AWSAPI
 from horey.aws_api.base_entities.region import Region
@@ -351,6 +353,277 @@ class Environment:
 
         self.aws_api.ec2_client.dispose_vpc(self.vpc)
         return True
+
+
+    def provision_ecs_infra(self):
+        """
+        AWS infra.
+
+        :return:
+        """
+
+        self.provision_container_instance_security_group()
+        self.provision_container_instance_ssh_key()
+        launch_template = self.provision_container_instance_launch_template()
+        ecs_cluster = self.provision_ecs_cluster()
+        auto_scaling_group = self.provision_hagent_auto_scaling_group(launch_template)
+        self.provision_hagent_ecs_capacity_provider(auto_scaling_group)
+
+        self.attach_hagent_capacity_provider_to_ecs_cluster(ecs_cluster)
+        return True
+
+    def provision_container_instance_security_group(self):
+        """
+        Provision the container instance security group.
+
+        :return:
+        """
+
+        security_group = EC2SecurityGroup({})
+        security_group.vpc_id = self.vpc.id
+        security_group.name = self.configuration.container_instance_security_group_name
+        security_group.description = self.configuration.container_instance_security_group_name
+        security_group.region = self.region
+        security_group.tags = self.configuration.tags
+        security_group.tags.append({
+            "Key": "Name",
+            "Value": security_group.name
+        })
+
+        self.aws_api.provision_security_group(security_group, provision_rules=False)
+
+        return security_group
+    
+    def provision_container_instance_ssh_key(self):
+        """
+        Standard.
+
+        :return:
+        """
+
+        key_pair = KeyPair({})
+        key_pair.name = self.configuration.container_instance_ssh_key_pair_name
+        key_pair.key_type = "ed25519"
+        key_pair.region = self.region
+        key_pair.tags = self.configuration.tags 
+        key_pair.tags.append({
+            "Key": "Name",
+            "Value": key_pair.name
+        })
+
+        self.aws_api.provision_key_pair(key_pair, save_to_secrets_manager=True,
+                                        secrets_manager_region=Region.get_region(self.configuration.secrets_manager_region))
+
+        return key_pair
+    
+    def provision_container_instance_launch_template(self):
+        """
+        Provision container instance launch template.
+
+        :return:
+        """
+
+        security_group = self.aws_api.get_security_group_by_vpc_and_name(self.vpc,
+                                                                            self.configuration.container_instance_security_group_name)
+
+        param = self.aws_api.ssm_client.get_region_parameter(self.region,
+                                            "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended")
+
+        filter_request = {"ImageIds": [json.loads(param.value)["image_id"]]}
+        amis = self.aws_api.ec2_client.get_region_amis(self.region, custom_filters=filter_request)
+        if len(amis) > 1:
+            raise RuntimeError(f"Can not find single AMI using filter: {filter_request['Filters']}")
+
+        ami = amis[0]
+        user_data = self.generate_hagent_user_data()
+
+        launch_template = EC2LaunchTemplate({})
+        launch_template.name = self.configuration.container_instance_launch_template_name
+        launch_template.region = self.region
+        launch_template.tags = self.configuration.tags
+        launch_template.tags.append({
+            "Key": "Name",
+            "Value": launch_template.name
+        })
+        launch_template.launch_template_data = {"EbsOptimized": False,
+                                                "IamInstanceProfile": {
+                                                    "Arn": self.provision_container_instance_iam_profile().arn
+                                                },
+                                                "BlockDeviceMappings": [
+                                                    {
+                                                        "DeviceName": "/dev/xvda",
+                                                        "Ebs": {
+                                                            "VolumeSize": 30,
+                                                            "VolumeType": "gp3"
+                                                        }
+                                                    }
+                                                ],
+                                                "ImageId": ami.id,
+                                                "InstanceType": "c5.large",
+                                                "KeyName": self.configuration.container_instance_ssh_key_pair_name,
+                                                "Monitoring": {
+                                                    "Enabled": False
+                                                },
+                                                "NetworkInterfaces": [
+                                                    {
+                                                        "AssociatePublicIpAddress": False,
+                                                        "DeleteOnTermination": True,
+                                                        "DeviceIndex": 0,
+                                                        "Groups": [
+                                                            security_group.id,
+                                                        ]
+                                                    },
+                                                ],
+                                                "UserData": user_data
+                                                }
+        self.aws_api.provision_launch_template(launch_template)
+        return launch_template
+
+    def generate_hagent_user_data(self):
+        """
+        EC2 container instance user data to run on ec2 start.
+
+        :return:
+        """
+
+        str_user_data = "#!/bin/bash\n" +\
+        f'echo "ECS_CLUSTER={self.configuration.ecs_cluster_name}" >> /etc/ecs/ecs.config'
+
+        user_data = self.aws_api.ec2_client.generate_user_data(str_user_data)
+        return user_data
+
+    def provision_container_instance_iam_profile(self):
+        """
+        Standard.
+
+        :return:
+        """
+
+        assume_role_policy = """{
+                "Version": "2012-10-17",
+                "Statement": [
+                {
+                "Effect": "Allow",
+                "Principal": {
+                "Service": "ec2.amazonaws.com"
+                },
+                "Action": "sts:AssumeRole"
+                }
+                ]
+                }"""
+
+        iam_role = IamRole({})
+        iam_role.name = self.configuration.container_instance_role_name
+        iam_role.assume_role_policy_document = assume_role_policy
+        iam_role.description = self.configuration.container_instance_role_name
+        iam_role.max_session_duration = 3600
+        iam_role.tags = [{
+            "Key": "Name",
+            "Value": iam_role.name
+        }]
+
+        iam_role.path = self.configuration.iam_path
+        iam_role.managed_policies_arns = ["arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"]
+        self.aws_api.iam_client.provision_role(iam_role)
+
+        iam_instance_profile = IamInstanceProfile({})
+        iam_instance_profile.name = self.configuration.container_instance_profile_name
+        iam_instance_profile.path = self.configuration.iam_path
+        iam_instance_profile.tags = [{
+            "Key": "Name",
+            "Value": iam_instance_profile.name
+        }]
+        iam_instance_profile.roles = [{"RoleName": iam_role.name}]
+        self.aws_api.iam_client.provision_instance_profile(iam_instance_profile)
+        return iam_instance_profile
+
+    def provision_ecs_cluster(self):
+        """
+        Provision the ECS cluster for this env.
+
+        :return:
+        """
+
+        cluster = ECSCluster({})
+        cluster.settings = [
+            {
+                "name": "containerInsights",
+                "value": "enabled"
+            }
+        ]
+        cluster.name = self.configuration.ecs_cluster_name
+        cluster.region = self.region
+        cluster.tags = [{key.lower(): value for key, value in dict_tag.items()} for dict_tag in self.configuration.tags]
+        cluster.tags.append({
+            "key": "Name",
+            "value": cluster.name
+        })
+        cluster.configuration = {}
+
+        self.aws_api.provision_ecs_cluster(cluster)
+        return cluster
+
+    def dispose_ecs_cluster(self):
+        """
+        Dispose the ecs cluster.
+
+        :return:
+        """
+
+        cluster = ECSCluster({"name": self.configuration.ecs_cluster_name})
+        cluster.region = self.region
+        if not self.aws_api.ecs_client.update_cluster_information(cluster):
+            return True
+
+        self.aws_api.ecs_client.dispose_cluster(cluster)
+        return True
+
+    def dispose_container_instance_launch_template(self):
+        """
+        Delete launch template
+
+        :return:
+        """
+
+        custom_filters = {"LaunchTemplateNames": [self.configuration.container_instance_launch_template_name]}
+        lts = self.aws_api.ec2_client.get_region_launch_templates(self.region, custom_filters=custom_filters)
+        if not lts:
+            return True
+
+        if len(lts) > 1:
+            raise ValueError(f"More then 1 Launch Template was not found: {self.configuration.container_instance_launch_template_name}")
+
+        self.aws_api.ec2_client.dispose_launch_template(lts[0])
+        return True
+
+    def dispose_container_instance_security_group(self):
+        """
+        Delete security group.
+
+        :return:
+        """
+
+        security_group = self.aws_api.get_security_group_by_vpc_and_name(self.vpc, self.configuration.container_instance_security_group_name)
+        self.aws_api.ec2_client.dispose_security_groups([security_group])
+        return True
+
+    def dispose_container_instance_ssh_key(self):
+        """
+        After deleting you must change the key name as it is marked for deletion and can not be reused in secrets
+        manager.
+
+        :return:
+        """
+        key_pair = KeyPair({})
+        key_pair.name = self.configuration.container_instance_ssh_key_pair_name
+        key_pair.region = self.region
+        if not self.aws_api.ec2_client.update_key_pair_information(key_pair):
+            return True
+
+        self.aws_api.ec2_client.dispose_key_pairs([key_pair])
+        self.aws_api.secretsmanager_client.dispose_secret(f"{key_pair.name}.key", Region.get_region(self.configuration.secrets_manager_region))
+
+        return key_pair
 
     class OwnerError(RuntimeError):
         """

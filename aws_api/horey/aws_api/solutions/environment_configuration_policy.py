@@ -26,6 +26,94 @@ class EnvironmentConfigurationPolicy(ConfigurationPolicy):
         self._subnet_name_template = None
         self._internet_gateway_name = None
         self._route_table_name_template = None
+        self._container_instance_security_group_name = None
+        self._container_instance_ssh_key_pair_name = None
+        self._secrets_manager_region = None
+        self._container_instance_launch_template_name = None
+        self._ecs_cluster_name = None
+        self._container_instance_role_name = None
+        self._iam_path = None
+        self._container_instance_profile_name = None
+
+    @property
+    def container_instance_profile_name(self):
+        if self._container_instance_profile_name is None:
+            raise self.UndefinedValueError("container_instance_profile_name")
+        return self._container_instance_profile_name
+
+    @container_instance_profile_name.setter
+    def container_instance_profile_name(self, value):
+        self._container_instance_profile_name = value
+
+    @property
+    def iam_path(self):
+        if self._iam_path is None:
+            raise self.UndefinedValueError("iam_path")
+        return self._iam_path
+
+    @iam_path.setter
+    def iam_path(self, value):
+        self._iam_path = value
+
+    @property
+    def container_instance_role_name(self):
+        if self._container_instance_role_name is None:
+            raise self.UndefinedValueError("container_instance_role_name")
+        return self._container_instance_role_name
+
+    @container_instance_role_name.setter
+    def container_instance_role_name(self, value):
+        self._container_instance_role_name = value
+
+    @property
+    def ecs_cluster_name(self):
+        if self._ecs_cluster_name is None:
+            raise self.UndefinedValueError("ecs_cluster_name")
+        return self._ecs_cluster_name
+
+    @ecs_cluster_name.setter
+    def ecs_cluster_name(self, value):
+        self._ecs_cluster_name = value
+
+    @property
+    def container_instance_launch_template_name(self):
+        if self._container_instance_launch_template_name is None:
+            raise self.UndefinedValueError("container_instance_launch_template_name")
+        return self._container_instance_launch_template_name
+
+    @container_instance_launch_template_name.setter
+    def container_instance_launch_template_name(self, value):
+        self._container_instance_launch_template_name = value
+
+    @property
+    def secrets_manager_region(self):
+        if self._secrets_manager_region is None:
+            raise self.UndefinedValueError("secrets_manager_region")
+        return self._secrets_manager_region
+
+    @secrets_manager_region.setter
+    def secrets_manager_region(self, value):
+        self._secrets_manager_region = value
+
+    @property
+    def container_instance_ssh_key_pair_name(self):
+        if self._container_instance_ssh_key_pair_name is None:
+            raise self.UndefinedValueError("container_instance_ssh_key_pair_name")
+        return self._container_instance_ssh_key_pair_name
+
+    @container_instance_ssh_key_pair_name.setter
+    def container_instance_ssh_key_pair_name(self, value):
+        self._container_instance_ssh_key_pair_name = value
+
+    @property
+    def container_instance_security_group_name(self):
+        if self._container_instance_security_group_name is None:
+            raise self.UndefinedValueError("container_instance_security_group_name")
+        return self._container_instance_security_group_name
+
+    @container_instance_security_group_name.setter
+    def container_instance_security_group_name(self, value):
+        self._container_instance_security_group_name = value
 
     @property
     def route_table_name_template(self):
