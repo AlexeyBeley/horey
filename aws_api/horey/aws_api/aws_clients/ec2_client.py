@@ -999,6 +999,10 @@ class EC2Client(Boto3Client):
         @param subnets:
         @return:
         """
+
+        if not subnets:
+            return True
+
         for subnet in subnets[1:]:
             if subnet.region.region_mark != subnets[0].region.region_mark:
                 raise RuntimeError("All subnets should be in one region")
@@ -1404,6 +1408,7 @@ class EC2Client(Boto3Client):
                 filters_req=filters_req,
         ):
             obj = InternetGateway(response)
+            obj.region = region
             if full_information is True:
                 pass
 

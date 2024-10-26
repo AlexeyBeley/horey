@@ -94,7 +94,7 @@ class SessionsManager:
         aws_account = AWSAccount.get_aws_account()
         aws_account_id = "default_account" if aws_account is None else aws_account.id
 
-        aws_region = region or AWSAccount.get_aws_region()
+        aws_region = region or AWSAccount.get_default_region()
         region_mark = aws_region.region_mark if aws_region is not None else ""
         return f"{aws_account_id}/{region_mark}"
 
@@ -248,6 +248,9 @@ class SessionsManager:
         :param client_name:
         :return:
         """
+
+        if region is None:
+            region = AWSAccount.get_default_region()
 
         connection = SessionsManager.get_connection(region=region)
         return connection.get_client(client_name, region)

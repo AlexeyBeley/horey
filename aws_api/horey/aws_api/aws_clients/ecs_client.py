@@ -47,12 +47,27 @@ class ECSClient(Boto3Client):
         """
         Standard
 
+        :param region:
         :param request_dict:
         :return:
         """
 
         for response in self.execute(
                 self.get_session_client(region=region).run_task, "tasks", filters_req=request_dict
+        ):
+            return response
+
+    def start_task(self, region, request_dict):
+        """
+        Standard
+
+        :param region:
+        :param request_dict:
+        :return:
+        """
+
+        for response in self.execute(
+                self.get_session_client(region=region).start_task, "tasks", filters_req=request_dict
         ):
             return response
 

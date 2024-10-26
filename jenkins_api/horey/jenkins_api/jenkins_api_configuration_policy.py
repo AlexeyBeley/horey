@@ -22,7 +22,7 @@ class JenkinsAPIConfigurationPolicy(ConfigurationPolicy):
         self._cache_dir_path = None
         self._region = "us-west-2"
         self._vpc_name = "vpc_jenkins"
-        self._vpc_primary_subnet = "192.168.0.0/24"
+        self._vpc_primary_subnet = "192.168.0.0/16"
         self._hagent_security_group_name = "sg_jenkins_hagent"
         self._tags = [{
             "Key": "Owner",
@@ -32,6 +32,60 @@ class JenkinsAPIConfigurationPolicy(ConfigurationPolicy):
         self._iam_path = "/jenkins/"
         self._hagent_container_instance_role_name = "role_jenkins_hagent_container_instance"
         self._hagent_container_instance_profile_name = "instance_profile_jenkins_hagent_container_instance"
+        self._hagent_container_instance_ssh_key_pair_name = "hagent_container_instance"
+        self._secrets_manager_region = self.region
+        self._hagent_container_instance_launch_template_name = "lt_hagent_container_instance"
+        self._hagent_container_instance_capacity_provider_name = "ec2_hagents"
+        self._hagent_container_instance_auto_scaling_group_name = "asg_jenkins_hagents"
+        self._hagent_container_instance_auto_scaling_group_max_size = 5
+
+    @property
+    def hagent_container_instance_auto_scaling_group_max_size(self):
+        return self._hagent_container_instance_auto_scaling_group_max_size
+
+    @hagent_container_instance_auto_scaling_group_max_size.setter
+    def hagent_container_instance_auto_scaling_group_max_size(self, value):
+        self._hagent_container_instance_auto_scaling_group_max_size = value
+
+    @property
+    def hagent_container_instance_auto_scaling_group_name(self):
+        return self._hagent_container_instance_auto_scaling_group_name
+
+    @hagent_container_instance_auto_scaling_group_name.setter
+    def hagent_container_instance_auto_scaling_group_name(self, value):
+        self._hagent_container_instance_auto_scaling_group_name = value
+
+    @property
+    def hagent_container_instance_capacity_provider_name(self):
+        return self._hagent_container_instance_capacity_provider_name
+
+    @hagent_container_instance_capacity_provider_name.setter
+    def hagent_container_instance_capacity_provider_name(self, value):
+        self._hagent_container_instance_capacity_provider_name = value
+
+    @property
+    def hagent_container_instance_launch_template_name(self):
+        return self._hagent_container_instance_launch_template_name
+
+    @hagent_container_instance_launch_template_name.setter
+    def hagent_container_instance_launch_template_name(self, value):
+        self._hagent_container_instance_launch_template_name = value
+
+    @property
+    def secrets_manager_region(self):
+        return self._secrets_manager_region
+
+    @secrets_manager_region.setter
+    def secrets_manager_region(self, value):
+        self._secrets_manager_region = value
+
+    @property
+    def hagent_container_instance_ssh_key_pair_name(self):
+        return self._hagent_container_instance_ssh_key_pair_name
+
+    @hagent_container_instance_ssh_key_pair_name.setter
+    def hagent_container_instance_ssh_key_pair_name(self, value):
+        self._hagent_container_instance_ssh_key_pair_name = value
 
     @property
     def hagent_container_instance_profile_name(self):

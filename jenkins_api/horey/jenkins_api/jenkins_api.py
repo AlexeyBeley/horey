@@ -23,6 +23,8 @@ from horey.aws_api.aws_services_entities.auto_scaling_group import AutoScalingGr
 from horey.aws_api.aws_services_entities.ecs_capacity_provider import ECSCapacityProvider
 from horey.aws_api.aws_services_entities.iam_instance_profile import IamInstanceProfile
 from horey.aws_api.aws_services_entities.iam_role import IamRole
+from horey.aws_api.aws_services_entities.key_pair import KeyPair
+from horey.aws_api.aws_services_entities.ecs_cluster import ECSCluster
 
 logger = get_logger()
 
@@ -91,7 +93,7 @@ class JenkinsAPI:
         )
         self.aws_api = aws_api
         if self.aws_api:
-            AWSAccount.set_aws_region(self.region)
+            AWSAccount.set_aws_default_region(self.region)
         self._vpc = None
 
     @property
@@ -830,51 +832,111 @@ class JenkinsAPI:
 
         :return:
         """
+        self.environment.provision()
+        breakpoint()
 
         self.provision_vpc()
+        self.provision_subnets()
+        self.provision_routing()
+        self.provision_ecr_repositories()
         self.provision_container_instance_security_group()
         self.provision_hagent_container_instance_ssh_key()
         launch_template = self.provision_hagent_launch_template()
-        auto_scaling_group = self.provision_hagent_auto_scaling_group(launch_template)
         ecs_cluster = self.provision_hagent_ecs_cluster()
+        auto_scaling_group = self.provision_hagent_auto_scaling_group(launch_template)
         self.provision_hagent_ecs_capacity_provider(auto_scaling_group)
 
         self.attach_hagent_capacity_provider_to_ecs_cluster(ecs_cluster)
-        self.update_hagent_auto_scaling_group_desired_count(auto_scaling_group)
+        return True
+        # self.update_hagent_auto_scaling_group_desired_count(auto_scaling_group)
 
-    def provision_vpc(self):
+
+    def provision_ecr_repositories(self):
         """
-        Provision VPC
+        All ECR repos used in the project.
 
         :return:
         """
+        breakpoint()
+        for name in [self.configuration.ecr_repository_backend_name,
+                     self.configuration.ecr_repository_adminer_name,
+                     self.configuration.ecr_repository_grafana_name]:
+            self.provision_ecr_repository(name)
+        return True
 
-        filters = [{
-            "Name": "tag:Name",
-            "Values": [
-                self.configuration.vpc_name
-            ]
-        }]
+    def provision_ecr_repository(self, repo_name):
+        """
+        Create or update the ECR repo
 
-        vpcs = self.aws_api.ec2_client.get_region_vpcs(self.region, filters=filters)
-        if len(vpcs) > 1:
-            raise RuntimeError(f"Found more then 1 vpc by filters {filters}")
-        if len(vpcs) == 1:
-            self.vpc = vpcs[0]
-            return self.vpc
-        raise NotImplementedError("Todo:")
-        self.vpc = VPC({})
-        self.vpc.region = self.region
-        self.vpc.cidr_block = self.configuration.vpc_primary_subnet
-
-        self.vpc.tags = copy.deepcopy(self.tags)
-        self.vpc.tags.append({
+        :return:
+        """
+        breakpoint()
+        repo = ECRRepository({})
+        repo.region = self.region
+        repo.name = repo_name
+        repo.tags = copy.deepcopy(self.tags)
+        repo.tags.append({
             "Key": "Name",
-            "Value": self.configuration.vpc_name
+            "Value": repo.name
         })
 
-        self.aws_api.provision_vpc(self.vpc)
-        return self.vpc
+        repo.tags.append({
+            "Key": self.configuration.infrastructure_last_update_time_tag,
+            "Value": datetime.datetime.now().strftime('%Y_%m_%d_%H_%M')
+        })
+        self.aws_api.provision_ecr_repository(repo)
+        return repo
+
+    def provision_internet_gateway(self):
+        """
+        Provision the main public router - gateway to the internet.
+
+        :return:
+        """
+        breakpoint()
+        inet_gateway = InternetGateway({})
+        inet_gateway.attachments = [{"VpcId": self.vpc.id}]
+        inet_gateway.region = self.region
+        inet_gateway.tags = copy.deepcopy(self.tags)
+        inet_gateway.tags.append({
+            "Key": "Name",
+            "Value": self.configuration.internet_gateway_name
+        })
+
+        self.aws_api.provision_internet_gateway(inet_gateway)
+
+        return inet_gateway
+
+    def provision_public_route_tables(self, internet_gateway):
+        """
+        Public subnets route tables.
+
+        :param internet_gateway:
+        :return:
+        """
+        breakpoint()
+        public_subnets = [subnet for subnet in self.subnets if "public" in subnet.get_tagname()]
+        # public
+        for public_subnet in public_subnets:
+            route_table = RouteTable({})
+            route_table.region = self.region
+            route_table.vpc_id = self.vpc.id
+            route_table.associations = [{
+                "SubnetId": public_subnet.id
+            }]
+
+            route_table.routes = [{
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "GatewayId": internet_gateway.id
+            }]
+
+            route_table.tags = copy.deepcopy(self.tags)
+            route_table.tags.append({
+                "Key": "Name",
+                "Value": self.configuration.route_table_template.format(public_subnet.get_tagname())
+            })
+
+            self.aws_api.provision_route_table(route_table)
 
     def provision_container_instance_security_group(self):
         """
@@ -904,7 +966,21 @@ class JenkinsAPI:
 
         :return:
         """
-        breakpoint()
+
+        key_pair = KeyPair({})
+        key_pair.name = self.configuration.hagent_container_instance_ssh_key_pair_name
+        key_pair.key_type = "ed25519"
+        key_pair.region = self.region
+        key_pair.tags = self.configuration.tags 
+        key_pair.tags.append({
+            "Key": "Name",
+            "Value": key_pair.name
+        })
+
+        self.aws_api.provision_key_pair(key_pair, save_to_secrets_manager=True,
+                                        secrets_manager_region=Region.get_region(self.configuration.secrets_manager_region))
+
+        return key_pair
 
     def provision_hagent_launch_template(self):
         """
@@ -916,11 +992,11 @@ class JenkinsAPI:
         security_group = self.aws_api.get_security_group_by_vpc_and_name(self.vpc,
                                                                                             self.configuration.hagent_security_group_name)
 
-        param = self.aws_api.ssm_client.client.get_region_parameter(self.configuration.region,
+        param = self.aws_api.ssm_client.get_region_parameter(self.region,
                                             "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended")
 
         filter_request = {"ImageIds": [json.loads(param.value)["image_id"]]}
-        amis = self.aws_api.ec2_client.get_region_amis(self.configuration.region, custom_filters=filter_request)
+        amis = self.aws_api.ec2_client.get_region_amis(self.region, custom_filters=filter_request)
         if len(amis) > 1:
             raise RuntimeError(f"Can not find single AMI using filter: {filter_request['Filters']}")
 
@@ -928,7 +1004,7 @@ class JenkinsAPI:
         user_data = self.generate_hagent_user_data()
 
         launch_template = EC2LaunchTemplate({})
-        launch_template.name = self.configuration.hagent_launch_template_name
+        launch_template.name = self.configuration.hagent_container_instance_launch_template_name
         launch_template.region = self.region
         launch_template.tags = self.configuration.tags
         launch_template.tags.append({
@@ -937,26 +1013,26 @@ class JenkinsAPI:
         })
         launch_template.launch_template_data = {"EbsOptimized": False,
                                                 "IamInstanceProfile": {
-                                                    self.provision_container_instance_iam_profile().arn
+                                                    "Arn": self.provision_container_instance_iam_profile().arn
                                                 },
                                                 "BlockDeviceMappings": [
                                                     {
                                                         "DeviceName": "/dev/xvda",
                                                         "Ebs": {
-                                                            "VolumeSize": 200,
+                                                            "VolumeSize": 30,
                                                             "VolumeType": "gp3"
                                                         }
                                                     }
                                                 ],
                                                 "ImageId": ami.id,
                                                 "InstanceType": "c5.large",
-                                                "KeyName": self.configuration.hagent_ssh_key_pair_name,
+                                                "KeyName": self.configuration.hagent_container_instance_ssh_key_pair_name,
                                                 "Monitoring": {
                                                     "Enabled": False
                                                 },
                                                 "NetworkInterfaces": [
                                                     {
-                                                        "AssociatePublicIpAddress": True,
+                                                        "AssociatePublicIpAddress": False,
                                                         "DeleteOnTermination": True,
                                                         "DeviceIndex": 0,
                                                         "Groups": [
@@ -985,18 +1061,18 @@ class JenkinsAPI:
             raise ValueError(f"Can not find subnets in region '{self.region.region_mark}' by filter {filters}")
 
         return [subnet for subnet in subnets if
-                    "private" in subnet.get_tagname() and not subnet.get_tagname().endswith("old")]
+                    "private" in subnet.get_tagname()]
 
     def provision_hagent_auto_scaling_group(self, launch_template):
         """
-        Provision the container instance auto scaling group.
+        Provision the container instance auto-scaling group.
 
         :param launch_template:
         :return:
         """
 
         as_group = AutoScalingGroup({})
-        as_group.name = self.configuration.container_instance_hagent_auto_scaling_group_name
+        as_group.name = self.configuration.hagent_container_instance_auto_scaling_group_name
         as_group.region = self.region
         region_objects = self.aws_api.autoscaling_client.get_region_auto_scaling_groups(as_group.region,
                                                                                         names=[as_group.name])
@@ -1005,13 +1081,14 @@ class JenkinsAPI:
             raise RuntimeError(f"more there one as_group '{as_group.name}'")
 
         if region_objects and region_objects[0].get_status() == region_objects[0].Status.ACTIVE:
-            as_group.desired_capacity = self.configuration.container_instance_hagent_auto_scaling_group_desired_capacity
-            as_group.min_size = self.configuration.container_instance_hagent_auto_scaling_group_desired_capacity
+            as_group.desired_capacity = 1
+            as_group.min_size = 1
         else:
-            as_group.min_size = 0
-            as_group.desired_capacity = 0
+            # was 0
+            as_group.min_size = 1
+            as_group.desired_capacity = 1
 
-        as_group.tags = copy.deepcopy(self.tags)
+        as_group.tags = self.configuration.tags
         as_group.tags.append({
             "Key": "Name",
             "Value": as_group.name
@@ -1020,7 +1097,7 @@ class JenkinsAPI:
             "LaunchTemplateId": launch_template.id,
             "Version": "$Default"
         }
-        as_group.max_size = self.configuration.container_instance_hagent_auto_scaling_group_desired_capacity
+        as_group.max_size = self.configuration.hagent_container_instance_auto_scaling_group_max_size
         as_group.default_cooldown = 300
 
         as_group.health_check_type = "EC2"
@@ -1030,7 +1107,7 @@ class JenkinsAPI:
             "Default"
         ]
         as_group.new_instances_protected_from_scale_in = False
-        as_group.service_linked_role_arn = "arn:aws:iam::211921183446:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling"
+        as_group.service_linked_role_arn = f"arn:aws:iam::{self.aws_api.ec2_client.account_id}:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling"
         self.aws_api.provision_auto_scaling_group(as_group)
         return as_group
 
@@ -1048,9 +1125,9 @@ class JenkinsAPI:
                 "value": "enabled"
             }
         ]
-        cluster.name = self.configuration.ecs_cluster_hagent_name
+        cluster.name = self.configuration.hagent_cluster_name
         cluster.region = self.region
-        cluster.tags = [{key.lower(): value for key, value in dict_tag.items()} for dict_tag in self.tags]
+        cluster.tags = [{key.lower(): value for key, value in dict_tag.items()} for dict_tag in self.configuration.tags]
         cluster.tags.append({
             "key": "Name",
             "value": cluster.name
@@ -1068,8 +1145,8 @@ class JenkinsAPI:
         :return:
         """
         capacity_provider = ECSCapacityProvider({})
-        capacity_provider.name = self.configuration.container_instance_hagent_capacity_provider_name
-        capacity_provider.tags = [{key.lower(): value for key, value in dict_tag.items()} for dict_tag in self.tags]
+        capacity_provider.name = self.configuration.hagent_container_instance_capacity_provider_name
+        capacity_provider.tags = [{key.lower(): value for key, value in dict_tag.items()} for dict_tag in self.configuration.tags]
         capacity_provider.region = self.region
         capacity_provider.tags.append({
             "key": "Name",
@@ -1102,13 +1179,15 @@ class JenkinsAPI:
 
         default_capacity_provider_strategy = [
             {
-                "capacityProvider": self.configuration.container_instance_hagent_capacity_provider_name,
+                "capacityProvider": self.configuration.hagent_container_instance_capacity_provider_name,
                 "weight": 1,
                 "base": 0
             }
         ]
         self.aws_api.attach_capacity_providers_to_ecs_cluster(ecs_cluster, [
-            self.configuration.container_instance_hagent_capacity_provider_name], default_capacity_provider_strategy)
+            self.configuration.hagent_container_instance_capacity_provider_name], default_capacity_provider_strategy)
+
+        return True
 
     def update_hagent_auto_scaling_group_desired_count(self, auto_scaling_group):
         """
@@ -1129,7 +1208,7 @@ class JenkinsAPI:
         """
 
         str_user_data = "#!/bin/bash\n" +\
-        f'echo "{self.configuration.hagent_cluster_name}" >> /etc/ecs/ecs.config'
+        f'echo "ECS_CLUSTER={self.configuration.hagent_cluster_name}" >> /etc/ecs/ecs.config'
 
         user_data = self.aws_api.ec2_client.generate_user_data(str_user_data)
         return user_data
@@ -1165,6 +1244,7 @@ class JenkinsAPI:
         }]
 
         iam_role.path = self.configuration.iam_path
+        iam_role.managed_policies_arns = ["arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"]
         self.aws_api.iam_client.provision_role(iam_role)
 
         iam_instance_profile = IamInstanceProfile({})

@@ -15,8 +15,7 @@ from horey.aws_api.aws_api import AWSAPI
 ignore_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore")
 configuration = JenkinsAPIConfigurationPolicy()
 configuration.configuration_file_full_path = os.path.join(ignore_dir, "jenkins_api_configuration.py")
-configuration.region = "us-east-1"
-configuration.vpc_name = ""
+configuration.region = "il-central-1"
 
 configuration.init_from_file()
 jenkins_api = JenkinsAPI(
@@ -175,7 +174,7 @@ def test_get_running_builds():
     assert isinstance(jenkins_api.get_running_builds(), list)
 
 
-@pytest.mark.done
+@pytest.mark.wip
 def test_provision_vpc():
     vpc = jenkins_api.provision_vpc()
     assert vpc.id
@@ -209,16 +208,52 @@ def test_provision_container_instance_iam_profile():
     assert profile.arn
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_provision_hagent_container_instance_ssh_key():
     jenkins_api.configuration.hagent_subnets_ids = []
     key_pair = jenkins_api.provision_hagent_container_instance_ssh_key()
-    breakpoint()
-    assert key_pair.arn
+    assert key_pair.id
 
 
-@pytest.mark.todo
+@pytest.mark.done
 def test_provision_hagent_launch_template():
     jenkins_api.configuration.hagent_subnets_ids = []
-    sg = jenkins_api.provision_hagent_launch_template()
-    assert sg.id
+    lt = jenkins_api.provision_hagent_launch_template()
+    assert lt.id
+
+
+@pytest.mark.done
+def test_provision_hagent_ecs_cluster():
+    jenkins_api.configuration.hagent_subnets_ids = []
+    cluster = jenkins_api.provision_hagent_ecs_cluster()
+    assert cluster.arn
+
+
+@pytest.mark.done
+def test_provision_hagent_auto_scaling_group():
+    jenkins_api.configuration.hagent_subnets_ids = []
+    launch_template = jenkins_api.provision_hagent_launch_template()
+    asg = jenkins_api.provision_hagent_auto_scaling_group(launch_template)
+    assert asg.arn
+
+
+@pytest.mark.done
+def test_provision_hagent_ecs_capacity_provider():
+    jenkins_api.configuration.hagent_subnets_ids = []
+    launch_template = jenkins_api.provision_hagent_launch_template()
+    auto_scaling_group = jenkins_api.provision_hagent_auto_scaling_group(launch_template)
+    capacity_provider = jenkins_api.provision_hagent_ecs_capacity_provider(auto_scaling_group)
+    assert capacity_provider.arn
+
+
+@pytest.mark.done
+def test_attach_hagent_capacity_provider_to_ecs_cluster():
+    jenkins_api.configuration.hagent_subnets_ids = []
+    cluster = jenkins_api.provision_hagent_ecs_cluster()
+    assert jenkins_api.attach_hagent_capacity_provider_to_ecs_cluster(cluster)
+
+
+@pytest.mark.done
+def test_provision_ecs_infra():
+    jenkins_api.configuration.hagent_subnets_ids = []
+    assert jenkins_api.provision_ecs_infra()

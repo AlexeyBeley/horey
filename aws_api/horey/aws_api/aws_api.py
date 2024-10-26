@@ -92,6 +92,7 @@ from horey.common_utils.text_block import TextBlock
 
 from horey.network.dns_map import DNSMap
 from horey.aws_api.base_entities.aws_account import AWSAccount
+from horey.aws_api.aws_clients.ssm_client import SSMClient
 
 logger = get_logger()
 
@@ -104,6 +105,7 @@ class AWSAPI:
 
     # pylint: disable= too-many-statements
     def __init__(self, configuration=None):
+        self.ssm_client = SSMClient()
         self.glue_client = GlueClient()
         self.ec2_client = EC2Client()
         self.lambda_client = LambdaClient()

@@ -347,6 +347,7 @@ class Boto3Client:
         retry_counter = 0
         while retry_counter < self.EXECUTION_RETRY_COUNT:
             Boto3Client.EXEC_COUNT += 1
+
             try:
                 logger.info(
                     f"Executing: '{func_command.__name__}'"
