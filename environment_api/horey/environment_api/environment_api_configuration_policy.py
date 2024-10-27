@@ -1,5 +1,5 @@
 """
-AWS Environment config
+AWS EnvironmentAPI config
 
 """
 from copy import deepcopy
@@ -9,15 +9,16 @@ from horey.configuration_policy.configuration_policy import ConfigurationPolicy
 # pylint: disable= missing-function-docstring
 
 
-class EnvironmentConfigurationPolicy(ConfigurationPolicy):
+class EnvironmentAPIConfigurationPolicy(ConfigurationPolicy):
     """
     Main class
 
     """
-    
+
     def __init__(self):
         super().__init__()
         self._region = None
+        self._project_name = None
         self._vpc_name = None
         self._tags = None
         self._vpc_primary_subnet = None
@@ -34,6 +35,61 @@ class EnvironmentConfigurationPolicy(ConfigurationPolicy):
         self._container_instance_role_name = None
         self._iam_path = None
         self._container_instance_profile_name = None
+        self._container_instance_auto_scaling_group_name = None
+        self._container_instance_auto_scaling_group_min_size = None
+        self._container_instance_auto_scaling_group_max_size = None
+        self._container_instance_capacity_provider_name = None
+        self._data_directory_path = None
+
+    @property
+    def data_directory_path(self):
+        if self._data_directory_path is None:
+            raise self.UndefinedValueError("data_directory_path")
+        return self._data_directory_path
+
+    @data_directory_path.setter
+    def data_directory_path(self, value):
+        self._data_directory_path = value
+
+    @property
+    def container_instance_capacity_provider_name(self):
+        if self._container_instance_capacity_provider_name is None:
+            raise self.UndefinedValueError("container_instance_capacity_provider_name")
+        return self._container_instance_capacity_provider_name
+
+    @container_instance_capacity_provider_name.setter
+    def container_instance_capacity_provider_name(self, value):
+        self._container_instance_capacity_provider_name = value
+
+    @property
+    def container_instance_auto_scaling_group_max_size(self):
+        if self._container_instance_auto_scaling_group_max_size is None:
+            raise self.UndefinedValueError("container_instance_auto_scaling_group_max_size")
+        return self._container_instance_auto_scaling_group_max_size
+
+    @container_instance_auto_scaling_group_max_size.setter
+    def container_instance_auto_scaling_group_max_size(self, value):
+        self._container_instance_auto_scaling_group_max_size = value
+
+    @property
+    def container_instance_auto_scaling_group_min_size(self):
+        if self._container_instance_auto_scaling_group_min_size is None:
+            raise self.UndefinedValueError("container_instance_auto_scaling_group_min_size")
+        return self._container_instance_auto_scaling_group_min_size
+
+    @container_instance_auto_scaling_group_min_size.setter
+    def container_instance_auto_scaling_group_min_size(self, value):
+        self._container_instance_auto_scaling_group_min_size = value
+
+    @property
+    def container_instance_auto_scaling_group_name(self):
+        if self._container_instance_auto_scaling_group_name is None:
+            raise self.UndefinedValueError("container_instance_auto_scaling_group_name")
+        return self._container_instance_auto_scaling_group_name
+
+    @container_instance_auto_scaling_group_name.setter
+    def container_instance_auto_scaling_group_name(self, value):
+        self._container_instance_auto_scaling_group_name = value
 
     @property
     def container_instance_profile_name(self):
@@ -194,7 +250,7 @@ class EnvironmentConfigurationPolicy(ConfigurationPolicy):
     @vpc_name.setter
     def vpc_name(self, value):
         self._vpc_name = value
-    
+
     @property
     def region(self):
         if self._region is None:
@@ -204,3 +260,13 @@ class EnvironmentConfigurationPolicy(ConfigurationPolicy):
     @region.setter
     def region(self, value):
         self._region = value
+
+    @property
+    def project_name(self):
+        if self._project_name is None:
+            raise self.UndefinedValueError("project_name")
+        return self._project_name
+
+    @project_name.setter
+    def project_name(self, value):
+        self._project_name = value

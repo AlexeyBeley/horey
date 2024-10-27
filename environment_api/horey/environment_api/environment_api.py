@@ -4,10 +4,9 @@ Standard environment maintainer.
 """
 import json
 
-from horey.aws_api.solutions.environment_configuration_policy import EnvironmentConfigurationPolicy
+from horey.environment_api.environment_api_configuration_policy import EnvironmentAPIConfigurationPolicy
 from horey.aws_api.aws_api import AWSAPI
 from horey.aws_api.base_entities.region import Region
-from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.aws_services_entities.vpc import VPC
 from horey.aws_api.aws_services_entities.subnet import Subnet
 from horey.aws_api.aws_services_entities.ec2_security_group import EC2SecurityGroup
@@ -24,8 +23,8 @@ from horey.aws_api.aws_services_entities.route_table import RouteTable
 from horey.network.ip import IP
 
 
-class Environment:
-    def __init__(self, configuration: EnvironmentConfigurationPolicy, aws_api: AWSAPI):
+class EnvironmentAPI:
+    def __init__(self, configuration: EnvironmentAPIConfigurationPolicy, aws_api: AWSAPI):
         self.aws_api = aws_api
         self.configuration = configuration
         self._vpc = None
@@ -76,7 +75,7 @@ class Environment:
         """
 
         self._vpc = value
-    
+
     @property
     def subnets(self):
         """
@@ -120,6 +119,27 @@ class Environment:
         for subnet in self.subnets:
             if "public" in subnet.get_tagname("Name"):
                 generated_name = self.configuration.subnet_name_template.format(type="public", id=subnet.availability_zone_id)
+                if subnet.get_tagname("Name") != generated_name:
+                    raise ValueError(f"Subnet {subnet.id} tag Name expected: {generated_name}, configured {subnet.get_tagname('Name')}")
+                subnets.append(subnet)
+        if len(subnets) != self.configuration.availability_zones_count:
+            raise RuntimeError(f"Expected to find {self.configuration.availability_zones_count=} subnets, found: {len(subnets)}")
+
+        return subnets
+
+    @property
+    def private_subnets(self):
+        """
+        Get the public subnets.
+
+        :return:
+        """
+
+        subnets = []
+
+        for subnet in self.subnets:
+            if "private" in subnet.get_tagname("Name"):
+                generated_name = self.configuration.subnet_name_template.format(type="private", id=subnet.availability_zone_id)
                 if subnet.get_tagname("Name") != generated_name:
                     raise ValueError(f"Subnet {subnet.id} tag Name expected: {generated_name}, configured {subnet.get_tagname('Name')}")
                 subnets.append(subnet)
@@ -215,6 +235,13 @@ class Environment:
         self.aws_api.provision_subnets(subnets)
         return subnets
 
+    def provision_bastion(self):
+        """
+        Create/update bastion server.
+
+        :return:
+        """
+
     def provision_routing(self):
         """
         Provision routing tables and gateways.
@@ -237,7 +264,7 @@ class Environment:
         inet_gateway = InternetGateway({})
         inet_gateway.attachments = [{"VpcId": self.vpc.id}]
         inet_gateway.region = self.region
-        inet_gateway.tags = self.configuration.tags 
+        inet_gateway.tags = self.configuration.tags
         inet_gateway.tags.append({
             "Key": "Name",
             "Value": self.configuration.internet_gateway_name
@@ -269,7 +296,7 @@ class Environment:
                 "GatewayId": internet_gateway.id
             }]
 
-            route_table.tags = self.configuration.tags 
+            route_table.tags = self.configuration.tags
             route_table.tags.append({
                 "Key": "Name",
                 "Value": self.configuration.route_table_name_template.format(subnet=public_subnet.get_tagname())
@@ -279,6 +306,13 @@ class Environment:
             route_tables.append(route_table)
 
         return route_tables
+
+    def dispose_bastion(self):
+        """
+        Create/update bastion server.
+
+        :return:
+        """
 
     def dispose_route_tables(self):
         """
@@ -367,7 +401,7 @@ class Environment:
         ecs_cluster = self.provision_ecs_cluster()
         auto_scaling_group = self.provision_container_instance_auto_scaling_group(launch_template)
         self.provision_ecs_capacity_provider(auto_scaling_group)
-        self.attach_hagent_capacity_provider_to_ecs_cluster(ecs_cluster)
+        self.attach_capacity_provider_to_ecs_cluster(ecs_cluster)
         return True
 
     def provision_container_instance_security_group(self):
@@ -377,10 +411,20 @@ class Environment:
         :return:
         """
 
+        self.provision_security_group(self.configuration.container_instance_security_group_name)
+
+    def provision_security_group(self, name):
+        """
+        Provision security group.
+
+        :param name:
+        :return:
+        """
+
         security_group = EC2SecurityGroup({})
         security_group.vpc_id = self.vpc.id
-        security_group.name = self.configuration.container_instance_security_group_name
-        security_group.description = self.configuration.container_instance_security_group_name
+        security_group.name = name
+        security_group.description = name
         security_group.region = self.region
         security_group.tags = self.configuration.tags
         security_group.tags.append({
@@ -391,7 +435,7 @@ class Environment:
         self.aws_api.provision_security_group(security_group, provision_rules=False)
 
         return security_group
-    
+
     def provision_container_instance_ssh_key(self):
         """
         Standard.
@@ -399,11 +443,20 @@ class Environment:
         :return:
         """
 
+        self.provision_ssh_key(self.configuration.container_instance_ssh_key_pair_name)
+
+    def provision_ssh_key(self, name):
+        """
+        Standard.
+
+        :return:
+        """
+
         key_pair = KeyPair({})
-        key_pair.name = self.configuration.container_instance_ssh_key_pair_name
+        key_pair.name = name
         key_pair.key_type = "ed25519"
         key_pair.region = self.region
-        key_pair.tags = self.configuration.tags 
+        key_pair.tags = self.configuration.tags
         key_pair.tags.append({
             "Key": "Name",
             "Value": key_pair.name
@@ -413,7 +466,7 @@ class Environment:
                                         secrets_manager_region=Region.get_region(self.configuration.secrets_manager_region))
 
         return key_pair
-    
+
     def provision_container_instance_launch_template(self):
         """
         Provision container instance launch template.
@@ -496,7 +549,10 @@ class Environment:
 
         :return:
         """
+        self.provision_instance_profile(self.configuration.container_instance_role_name,
+                                        self.configuration.container_instance_profile_name)
 
+    def provision_instance_profile(self, role_name, profile_name):
         assume_role_policy = """{
                 "Version": "2012-10-17",
                 "Statement": [
@@ -511,9 +567,9 @@ class Environment:
                 }"""
 
         iam_role = IamRole({})
-        iam_role.name = self.configuration.container_instance_role_name
+        iam_role.name = role_name
         iam_role.assume_role_policy_document = assume_role_policy
-        iam_role.description = self.configuration.container_instance_role_name
+        iam_role.description = iam_role.name
         iam_role.max_session_duration = 3600
         iam_role.tags = [{
             "Key": "Name",
@@ -525,7 +581,7 @@ class Environment:
         self.aws_api.iam_client.provision_role(iam_role)
 
         iam_instance_profile = IamInstanceProfile({})
-        iam_instance_profile.name = self.configuration.container_instance_profile_name
+        iam_instance_profile.name = profile_name
         iam_instance_profile.path = self.configuration.iam_path
         iam_instance_profile.tags = [{
             "Key": "Name",
@@ -560,7 +616,7 @@ class Environment:
 
         self.aws_api.provision_ecs_cluster(cluster)
         return cluster
-    
+
     def provision_container_instance_auto_scaling_group(self, launch_template):
         """
         Provision the container instance auto-scaling group.
@@ -570,7 +626,7 @@ class Environment:
         """
 
         as_group = AutoScalingGroup({})
-        as_group.name = self.configuration.hagent_container_instance_auto_scaling_group_name
+        as_group.name = self.configuration.container_instance_auto_scaling_group_name
         as_group.region = self.region
         region_objects = self.aws_api.autoscaling_client.get_region_auto_scaling_groups(as_group.region,
                                                                                         names=[as_group.name])
@@ -583,8 +639,8 @@ class Environment:
             as_group.min_size = 1
         else:
             # was 0
-            as_group.min_size = 1
-            as_group.desired_capacity = 1
+            as_group.min_size = self.configuration.container_instance_auto_scaling_group_min_size
+            as_group.desired_capacity = self.configuration.container_instance_auto_scaling_group_min_size
 
         as_group.tags = self.configuration.tags
         as_group.tags.append({
@@ -595,12 +651,12 @@ class Environment:
             "LaunchTemplateId": launch_template.id,
             "Version": "$Default"
         }
-        as_group.max_size = self.configuration.hagent_container_instance_auto_scaling_group_max_size
+        as_group.max_size = self.configuration.container_instance_auto_scaling_group_max_size
         as_group.default_cooldown = 300
 
         as_group.health_check_type = "EC2"
         as_group.health_check_grace_period = 300
-        as_group.vpc_zone_identifier = ",".join([subnet.id for subnet in self.get_hagent_subnet_ids()])
+        as_group.vpc_zone_identifier = ",".join([subnet.id for subnet in self.private_subnets])
         as_group.termination_policies = [
             "Default"
         ]
@@ -617,7 +673,7 @@ class Environment:
         :return:
         """
         capacity_provider = ECSCapacityProvider({})
-        capacity_provider.name = self.configuration.hagent_container_instance_capacity_provider_name
+        capacity_provider.name = self.configuration.container_instance_capacity_provider_name
         capacity_provider.tags = [{key.lower(): value for key, value in dict_tag.items()} for dict_tag in self.configuration.tags]
         capacity_provider.region = self.region
         capacity_provider.tags.append({
@@ -641,7 +697,7 @@ class Environment:
 
         return capacity_provider
 
-    def attach_hagent_capacity_provider_to_ecs_cluster(self, ecs_cluster):
+    def attach_capacity_provider_to_ecs_cluster(self, ecs_cluster):
         """
         Attach provisioned instances to this cluster.
 
@@ -651,23 +707,42 @@ class Environment:
 
         default_capacity_provider_strategy = [
             {
-                "capacityProvider": self.configuration.hagent_container_instance_capacity_provider_name,
+                "capacityProvider": self.configuration.container_instance_capacity_provider_name,
                 "weight": 1,
                 "base": 0
             }
         ]
         self.aws_api.attach_capacity_providers_to_ecs_cluster(ecs_cluster, [
-            self.configuration.hagent_container_instance_capacity_provider_name], default_capacity_provider_strategy)
+            self.configuration.container_instance_capacity_provider_name], default_capacity_provider_strategy)
 
         return True
 
-    #todo: detach capacity_provider_from_ecs_cluster?
+    def dispose_ecs_cluster_capacity_provider(self):
+        """
+        Dispose capacitu
+        :return:
+        """
+        capacity_provider = ECSCapacityProvider({})
+        capacity_provider.region = self.region
+        capacity_provider.name = self.configuration.container_instance_capacity_provider_name
+        self.aws_api.ecs_client.dispose_capacity_provider(capacity_provider)
+        return True
 
     def dispose_container_instance_auto_scaling_group(self):
-        breakpoint()
-    
-    def dispose_ecs_capacity_provider(self):
-        breakpoint()
+        """
+        Dispose auto scaling group.
+
+        :return:
+        """
+
+        as_group = AutoScalingGroup({})
+        as_group.name = self.configuration.container_instance_auto_scaling_group_name
+        as_group.region = self.region
+        if not self.aws_api.autoscaling_client.update_auto_scaling_group_information(as_group):
+            return True
+        self.aws_api.autoscaling_client.dispose_auto_scaling_group(as_group)
+
+        return True
 
     def dispose_ecs_cluster(self):
         """
@@ -720,16 +795,43 @@ class Environment:
 
         :return:
         """
+        self.dispose_ssh_key(self.configuration.container_instance_ssh_key_pair_name)
+
+    def dispose_ssh_key(self, name):
+        """
+        Dispose the key and its private keys.
+
+        :param name:
+        :return:
+        """
+
         key_pair = KeyPair({})
-        key_pair.name = self.configuration.container_instance_ssh_key_pair_name
+        key_pair.name = name
         key_pair.region = self.region
         if not self.aws_api.ec2_client.update_key_pair_information(key_pair):
             return True
 
         self.aws_api.ec2_client.dispose_key_pairs([key_pair])
-        self.aws_api.secretsmanager_client.dispose_secret(f"{key_pair.name}.key", Region.get_region(self.configuration.secrets_manager_region))
+        self.aws_api.secretsmanager_client.dispose_secret(f"{name}.key", Region.get_region(self.configuration.secrets_manager_region))
 
         return key_pair
+
+    def get_ubuntu22_image(self):
+        """
+        Get latest Ubuntu22 image in this region.
+
+        :return:
+        """
+
+        param = self.aws_api.ssm_client.get_region_parameter(self.region,
+                                            "/aws/service/canonical/ubuntu/server/22.04/stable/current/amd64/hvm/ebs-gp2/ami-id")
+
+        filter_request = {"ImageIds": [param.value]}
+        amis = self.aws_api.ec2_client.get_region_amis(self.region, custom_filters=filter_request)
+        if len(amis) != 1:
+            raise RuntimeError(f"Can not find single AMI using filter: {filter_request['Filters']}")
+
+        return amis[0]
 
     class OwnerError(RuntimeError):
         """
