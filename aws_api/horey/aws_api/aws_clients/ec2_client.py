@@ -73,7 +73,7 @@ class EC2Client(Boto3Client):
         """
 
         yield from self.execute(
-                self.get_session_client(region=region).describe_subnets, "Subnets", filters_req=filters_req
+            self.get_session_client(region=region).describe_subnets, "Subnets", filters_req=filters_req
         )
 
     def get_all_subnets(self, region=None, filters_req=None, update_info=False):
@@ -195,10 +195,10 @@ class EC2Client(Boto3Client):
 
         regional_fetcher_generator = self.yield_network_interfaces_raw
         yield from self.regional_service_entities_generator(regional_fetcher_generator,
-                                                                 NetworkInterface,
-                                                                 update_info=update_info,
-                                                                 regions=[region] if region else None,
-                                                                 filters_req=filters_req)
+                                                            NetworkInterface,
+                                                            update_info=update_info,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req)
 
     def yield_network_interfaces_raw(self, region, filters_req=None):
         """
@@ -208,8 +208,8 @@ class EC2Client(Boto3Client):
         """
 
         yield from self.execute(
-                self.get_session_client(region=region).describe_network_interfaces, "NetworkInterfaces",
-                filters_req=filters_req
+            self.get_session_client(region=region).describe_network_interfaces, "NetworkInterfaces",
+            filters_req=filters_req
         )
 
     def get_all_interfaces(self, region=None, update_info=False):
@@ -230,10 +230,10 @@ class EC2Client(Boto3Client):
 
         regional_fetcher_generator = self.yield_instances_raw
         yield from self.regional_service_entities_generator(regional_fetcher_generator,
-                                                                 EC2Instance,
-                                                                 update_info=update_info,
-                                                                 regions=[region] if region else None,
-                                                                 filters_req=filters_req)
+                                                            EC2Instance,
+                                                            update_info=update_info,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req)
 
     def yield_instances_raw(self, region, filters_req=None):
         """
@@ -276,10 +276,10 @@ class EC2Client(Boto3Client):
 
         regional_fetcher_generator = self.yield_security_groups_raw
         yield from self.regional_service_entities_generator(regional_fetcher_generator,
-                                                                 EC2SecurityGroup,
-                                                                 update_info=update_info,
-                                                                 regions=[region] if region else None,
-                                                                 filters_req=filters_req)
+                                                            EC2SecurityGroup,
+                                                            update_info=update_info,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req)
 
     def yield_security_groups_raw(self, region, filters_req=None):
         """
@@ -289,8 +289,8 @@ class EC2Client(Boto3Client):
         """
 
         yield from self.execute(
-                self.get_session_client(region=region).describe_security_groups, "SecurityGroups",
-                filters_req=filters_req
+            self.get_session_client(region=region).describe_security_groups, "SecurityGroups",
+            filters_req=filters_req
         )
 
     def get_all_security_groups(self):
@@ -362,8 +362,8 @@ class EC2Client(Boto3Client):
         existing_security_group.region = desired_security_group.region
         if not self.update_security_group_information(existing_security_group):
             group_id = self.provision_security_group_raw(desired_security_group.region,
-                desired_security_group.generate_create_request()
-            )
+                                                         desired_security_group.generate_create_request()
+                                                         )
             existing_security_group.id = group_id
 
         desired_security_group.id = existing_security_group.id
@@ -1026,6 +1026,8 @@ class EC2Client(Boto3Client):
 
             self.delete_subnet_raw({"SubnetId": subnet.id})
 
+        return True
+
     def delete_subnet_raw(self, request, region=None):
         """
         Standard.
@@ -1185,8 +1187,8 @@ class EC2Client(Boto3Client):
 
         if raw_region_pl is None:
             response = self.raw_create_managed_prefix_list(managed_prefix_list.region,
-                managed_prefix_list.generate_create_request()
-            )
+                                                           managed_prefix_list.generate_create_request()
+                                                           )
             self.clear_cache(ManagedPrefixList)
             return managed_prefix_list.update_from_raw_create(response)
 
@@ -1228,7 +1230,7 @@ class EC2Client(Boto3Client):
         """
 
         yield from self.execute(
-                self.get_session_client(region=region).describe_images, "Images", filters_req=filters_req
+            self.get_session_client(region=region).describe_images, "Images", filters_req=filters_req
         )
 
     def get_all_amis(self, region=None):
@@ -1376,7 +1378,8 @@ class EC2Client(Boto3Client):
 
         for key_pair in key_pairs:
             logger.info(f"Deleting key_pair in {key_pair.region.region_mark} {key_pair.id=}")
-            for response in self.execute(self.get_session_client(region=key_pair.region).delete_key_pair, None, raw_data=True,
+            for response in self.execute(self.get_session_client(region=key_pair.region).delete_key_pair, None,
+                                         raw_data=True,
                                          filters_req={"KeyPairId": key_pair.id}):
                 logger.info(response)
 
@@ -1500,10 +1503,10 @@ class EC2Client(Boto3Client):
 
         regional_fetcher_generator = self.yield_route_tables_raw
         yield from self.regional_service_entities_generator(regional_fetcher_generator,
-                                                                    RouteTable,
-                                                                    update_info=update_info,
-                                                                    regions=[region] if region else None,
-                                                                    filters_req=filters_req)
+                                                            RouteTable,
+                                                            update_info=update_info,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req)
 
     def yield_route_tables_raw(self, region, filters_req=None):
         """
@@ -1513,7 +1516,7 @@ class EC2Client(Boto3Client):
         """
 
         yield from self.execute(
-                self.get_session_client(region=region).describe_route_tables, "RouteTables", filters_req=filters_req
+            self.get_session_client(region=region).describe_route_tables, "RouteTables", filters_req=filters_req
         )
 
     def get_all_route_tables(self, region=None):
@@ -1557,17 +1560,20 @@ class EC2Client(Boto3Client):
             )
         return final_result
 
-    def get_region_elastic_addresses(self, region, full_information=True):
+    def get_region_elastic_addresses(self, region, full_information=True, filters_req=None):
         """
-        Standard
+        Standard.
 
-        @param region:
-        @param full_information:
-        @return:
+        :param region:
+        :param full_information:
+        :param filters_req:
+        :return:
         """
+
         final_result = []
 
-        for response in self.execute(self.get_session_client(region=region).describe_addresses, "Addresses"):
+        for response in self.execute(self.get_session_client(region=region).describe_addresses, "Addresses",
+                                     filters_req=filters_req):
             obj = ElasticAddress(response)
             if full_information is True:
                 pass
@@ -1600,7 +1606,7 @@ class EC2Client(Boto3Client):
             self,
             region,
             full_information=True,
-            custom_filters=None,
+            filters_req=None,
     ):
         """
         Standard
@@ -1611,12 +1617,12 @@ class EC2Client(Boto3Client):
         @return:
         """
         final_result = []
-        filters_req = None if custom_filters is None else {"Filters": custom_filters}
 
         for response in self.execute(
                 self.get_session_client(region=region).describe_nat_gateways, "NatGateways", filters_req=filters_req
         ):
             obj = NatGateway(response)
+            obj.region = region
             if full_information is True:
                 pass
 
@@ -1735,6 +1741,7 @@ class EC2Client(Boto3Client):
         @param elastic_address:
         @return:
         """
+
         region_elastic_addresses = self.get_region_elastic_addresses(
             elastic_address.region
         )
@@ -1749,9 +1756,9 @@ class EC2Client(Boto3Client):
                 return
 
         try:
-            response = self.provision_elastic_address_raw(
-                elastic_address.generate_create_request()
-            )
+            response = self.provision_elastic_address_raw(elastic_address.region,
+                                                          elastic_address.generate_create_request()
+                                                          )
             del response["ResponseMetadata"]
             elastic_address.update_from_raw_response(response)
         except Exception as exception_inst:
@@ -1759,14 +1766,15 @@ class EC2Client(Boto3Client):
             logger.warning(repr_exception_inst)
             raise
 
-    def provision_elastic_address_raw(self, request_dict, region=None):
+    def provision_elastic_address_raw(self, region, request_dict):
         """
-        Standard
+        Standard.
 
-        @param request_dict:
-        @return:
         :param region:
+        :param request_dict:
+        :return:
         """
+
         for response in self.execute(
                 self.get_session_client(region=region).allocate_address, "", filters_req=request_dict, raw_data=True
         ):
@@ -1781,7 +1789,8 @@ class EC2Client(Boto3Client):
         logger.info(f"Disposing elastic address: {elastic_address.id}")
         request_dict = {"AllocationId": elastic_address.id}
         for response in self.execute(
-                self.get_session_client(region=elastic_address.region).release_address, None, filters_req=request_dict, raw_data=True
+                self.get_session_client(region=elastic_address.region).release_address, None, filters_req=request_dict,
+                raw_data=True
         ):
             return response
 
@@ -1836,8 +1845,8 @@ class EC2Client(Boto3Client):
             for _ in range(20):
                 try:
                     self.accept_vpc_peering_connection_raw(current_peering.peer_region,
-                        current_peering.generate_accept_request()
-                    )
+                                                           current_peering.generate_accept_request()
+                                                           )
                     break
                 except Exception as exception_inst:
                     repr_exception_inst = repr(exception_inst)
@@ -2047,7 +2056,7 @@ class EC2Client(Boto3Client):
             return
 
         try:
-            response = self.provision_nat_gateway_raw(
+            response = self.provision_nat_gateway_raw(nat_gateway.region,
                 nat_gateway.generate_create_request()
             )
             nat_gateway.update_from_raw_response(response)
@@ -2055,13 +2064,15 @@ class EC2Client(Boto3Client):
             logger.warning(repr(exception_inst))
             raise
 
-    def provision_nat_gateway_raw(self, request_dict, region=None):
+    def provision_nat_gateway_raw(self, region, request_dict):
         """
-        Standard
+        Standard.
 
-        @param request_dict:
-        @return:
+        :param region:
+        :param request_dict:
+        :return:
         """
+
         for response in self.execute(
                 self.get_session_client(region=region).create_nat_gateway, "NatGateway", filters_req=request_dict
         ):
@@ -2076,9 +2087,9 @@ class EC2Client(Boto3Client):
         @return:
         """
 
-        return self.dispose_nat_gateway_raw(nat_gateway.generate_dispose_request(dry_run=dry_run))
+        return self.dispose_nat_gateway_raw(nat_gateway.region, nat_gateway.generate_dispose_request(dry_run=dry_run))
 
-    def dispose_nat_gateway_raw(self, request_dict, region=None):
+    def dispose_nat_gateway_raw(self, region, request_dict):
         """
         Standard
 
@@ -2106,7 +2117,8 @@ class EC2Client(Boto3Client):
                 ]
             },
         ]}
-        region_route_tables = list(self.yield_route_tables(region=route_table.region, update_info=True, filters_req=filters_req))
+        region_route_tables = list(
+            self.yield_route_tables(region=route_table.region, update_info=True, filters_req=filters_req))
         if not region_route_tables:
             return False
 
@@ -2128,7 +2140,7 @@ class EC2Client(Boto3Client):
         current_route_table.region = route_table.region
         current_route_table.tags = route_table.tags
         if not self.update_route_table_information(current_route_table):
-            response = self.provision_route_table_raw(
+            response = self.provision_route_table_raw(route_table.region,
                 route_table.generate_create_request()
             )
             current_route_table.update_from_raw_response(response)
@@ -2140,7 +2152,8 @@ class EC2Client(Boto3Client):
             self.clear_cache(RouteTable)
             self.delete_tags_raw(delete_tags_request)
 
-        create_requests, replace_requests, delete_requests = current_route_table.generate_change_route_requests(route_table)
+        create_requests, replace_requests, delete_requests = current_route_table.generate_change_route_requests(
+            route_table)
         for create_request in create_requests:
             self.create_route_raw(current_route_table.region, create_request)
         if declarative:
@@ -2152,11 +2165,11 @@ class EC2Client(Boto3Client):
         disassociate, associate = current_route_table.generate_route_table_association_requests(route_table)
         if disassociate:
             raise RuntimeError("Route table disassociation without immediate association must be done manually")
-            # self.disassociate_route_table_raw(associate)
         if associate:
             # pylint: disable = unsubscriptable-object
-            if not self.replace_route_table_association(current_route_table.region, associate["SubnetId"], associate["RouteTableId"]):
-                self.associate_route_table_raw(associate)
+            if not self.replace_route_table_association(current_route_table.region, associate["SubnetId"],
+                                                        associate["RouteTableId"]):
+                self.associate_route_table_raw(current_route_table.region, associate)
 
         self.update_route_table_information(route_table)
 
@@ -2246,7 +2259,7 @@ class EC2Client(Boto3Client):
         for request in requests:
             self.create_route_raw(route_table.region, request)
 
-    def provision_route_table_raw(self, request_dict, region=None):
+    def provision_route_table_raw(self, region, request_dict):
         """
         Standard.
 
@@ -2261,14 +2274,16 @@ class EC2Client(Boto3Client):
             self.clear_cache(RouteTable)
             return response
 
-    def associate_route_table_raw(self, request_dict, region=None):
+    def associate_route_table_raw(self, region, request_dict):
         """
         Standard
 
         @param request_dict:
         @return:
         """
+
         logger.info(f"Associating route table: {request_dict}")
+
         for response in self.execute(
                 self.get_session_client(region=region).associate_route_table, "AssociationId", filters_req=request_dict
         ):
@@ -2286,7 +2301,8 @@ class EC2Client(Boto3Client):
         logger.info(f"Replace route table association: {request_dict}")
 
         for response in self.execute(
-                self.get_session_client(region=region).replace_route_table_association, None, raw_data=True, filters_req=request_dict
+                self.get_session_client(region=region).replace_route_table_association, None, raw_data=True,
+                filters_req=request_dict
         ):
             self.clear_cache(RouteTable)
             return response
@@ -2888,10 +2904,10 @@ class EC2Client(Boto3Client):
 
         regional_fetcher_generator = self.yield_instance_types_raw
         yield from self.regional_service_entities_generator(regional_fetcher_generator,
-                                                                    EC2InstanceType,
-                                                                    update_info=update_info,
-                                                                    regions=[region] if region else None,
-                                                                    filters_req=filters_req)
+                                                            EC2InstanceType,
+                                                            update_info=update_info,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req)
 
     def yield_instance_types_raw(self, region, filters_req=None):
         """
@@ -2901,7 +2917,7 @@ class EC2Client(Boto3Client):
         """
 
         yield from self.execute(
-                self.get_session_client(region=region).describe_instance_types, "InstanceTypes", filters_req=filters_req
+            self.get_session_client(region=region).describe_instance_types, "InstanceTypes", filters_req=filters_req
         )
 
     def yield_volumes(self, region=None, update_info=False, filters_req=None):
@@ -2913,10 +2929,10 @@ class EC2Client(Boto3Client):
 
         regional_fetcher_generator = self.yield_volumes_raw
         yield from self.regional_service_entities_generator(regional_fetcher_generator,
-                                                                    EC2Volume,
-                                                                    update_info=update_info,
-                                                                    regions=[region] if region else None,
-                                                                    filters_req=filters_req)
+                                                            EC2Volume,
+                                                            update_info=update_info,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req)
 
     def yield_volumes_raw(self, region, filters_req=None):
         """
@@ -2926,7 +2942,7 @@ class EC2Client(Boto3Client):
         """
 
         yield from self.execute(
-                self.get_session_client(region=region).describe_volumes, "Volumes", filters_req=filters_req
+            self.get_session_client(region=region).describe_volumes, "Volumes", filters_req=filters_req
         )
 
     def get_all_volumes(self, region=None, update_info=False, filters_req=None):
@@ -3038,5 +3054,5 @@ class EC2Client(Boto3Client):
         """
 
         yield from self.execute(
-                self.get_session_client(region=region).describe_regions, "Regions", filters_req=filters_req
+            self.get_session_client(region=region).describe_regions, "Regions", filters_req=filters_req
         )

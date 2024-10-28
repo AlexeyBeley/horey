@@ -78,7 +78,7 @@ def test_provision_ssh_key_pair(configuration, bastion_name):
     assert bastion.provision_ssh_key_pair()
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_provision_security_group(configuration, bastion_name):
     env = EnvironmentAPI(configuration, aws_api)
     env.aws_api.ec2_client.clear_cache(None, all_cache=True)
@@ -97,20 +97,18 @@ def test_provision_instance(configuration, bastion_name):
 
 
 @pytest.mark.done
-def test_provision_instance(configuration, bastion_name):
+def test_provision_ssh_config(configuration, bastion_name):
     env = EnvironmentAPI(configuration, aws_api)
     env.aws_api.ec2_client.clear_cache(None, all_cache=True)
     bastion = BastionAPI(env, bastion_name)
-    command = bastion.provision_ssh_config()
-    print(command)
-    assert command == f"ssh {bastion.name}"
+    assert bastion.provision_ssh_config()
 
 
 @pytest.mark.todo
 def test_provision(configuration, bastion_name):
     env = EnvironmentAPI(configuration, aws_api)
     env.aws_api.ec2_client.clear_cache(None, all_cache=True)
-    bastion = BastionAPI(env)
+    bastion = BastionAPI(env, bastion_name)
     bastion.provision()
 
 
@@ -118,5 +116,5 @@ def test_provision(configuration, bastion_name):
 def test_dispose(configuration, bastion_name):
     env = EnvironmentAPI(configuration, aws_api)
     env.aws_api.ec2_client.clear_cache(None, all_cache=True)
-    bastion = BastionAPI(env)
+    bastion = BastionAPI(env, bastion_name)
     bastion.dispose()

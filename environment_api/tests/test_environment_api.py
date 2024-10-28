@@ -9,7 +9,6 @@ from horey.h_logger import get_logger
 from horey.environment_api.environment_api import EnvironmentAPI
 from horey.environment_api.environment_api_configuration_policy import EnvironmentAPIConfigurationPolicy
 
-
 # Uncomment next line to save error lines to /tmp/error.log
 logger = get_logger()
 
@@ -26,9 +25,9 @@ def fixture_configuration():
     _configuration.region = "us-west-2"
     _configuration.vpc_primary_subnet = "192.168.0.0/16"
     _configuration.tags = [{
-            "Key": "Owner",
-            "Value": "Horey"
-        }]
+        "Key": "Owner",
+        "Value": "Horey"
+    }]
     _configuration.vpc_name = "henvironment"
     _configuration.availability_zones_count = 3
     _configuration.subnet_mask_length = 24
@@ -47,6 +46,9 @@ def fixture_configuration():
     _configuration.container_instance_auto_scaling_group_min_size = 1
     _configuration.container_instance_auto_scaling_group_max_size = 5
     _configuration.container_instance_capacity_provider_name = f"cp_ci_{_configuration.project_name}"
+    _configuration.nat_gateways_count = 1
+    _configuration.nat_gateway_elastic_address_name_template = f"ea_nat_{_configuration.project_name}" + "_{id}"
+    _configuration.nat_gateway_name_template = f"nat_gw_{_configuration.project_name}" + "_{subnet}"
 
     yield _configuration
 
@@ -91,6 +93,47 @@ def test_provision_public_route_tables(configuration):
     inet_gwy = env.provision_internet_gateway()
     route_tables = env.provision_public_route_tables(inet_gwy)
     assert route_tables
+
+
+@pytest.mark.done
+def test_provision_elastic_addresses(configuration):
+    env = EnvironmentAPI(configuration, aws_api)
+    env.aws_api.ec2_client.clear_cache(None, all_cache=True)
+    elastic_addresses = env.provision_elastic_addresses()
+    assert elastic_addresses
+
+
+@pytest.mark.done
+def test_provision_nat_gateways(configuration):
+    env = EnvironmentAPI(configuration, aws_api)
+    env.aws_api.ec2_client.clear_cache(None, all_cache=True)
+    elastic_addresses = env.provision_elastic_addresses()
+    nat_gateways = env.provision_nat_gateways(elastic_addresses)
+    assert nat_gateways
+
+
+@pytest.mark.done
+def test_provision_private_route_tables(configuration):
+    env = EnvironmentAPI(configuration, aws_api)
+    env.aws_api.ec2_client.clear_cache(None, all_cache=True)
+    elastic_addresses = env.provision_elastic_addresses()
+    nat_gateways = env.provision_nat_gateways(elastic_addresses)
+    route_tables = env.provision_private_route_tables(nat_gateways)
+    assert route_tables
+
+
+@pytest.mark.done
+def test_dispose_nat_gateways(configuration):
+    env = EnvironmentAPI(configuration, aws_api)
+    env.aws_api.ec2_client.clear_cache(None, all_cache=True)
+    assert env.dispose_nat_gateways()
+
+
+@pytest.mark.done
+def test_dispose_elastic_addresses(configuration):
+    env = EnvironmentAPI(configuration, aws_api)
+    env.aws_api.ec2_client.clear_cache(None, all_cache=True)
+    env.dispose_elastic_addresses()
 
 
 @pytest.mark.todo
@@ -228,4 +271,3 @@ def test_dispose_container_instance_ssh_key(configuration):
     env = EnvironmentAPI(configuration, aws_api)
     env.aws_api.ec2_client.clear_cache(None, all_cache=True)
     assert env.dispose_container_instance_ssh_key()
-

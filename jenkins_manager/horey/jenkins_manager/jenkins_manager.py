@@ -566,7 +566,7 @@ class JenkinsManager:
         job_dicts = self.server.get_all_jobs()
         return job_dicts
 
-    def get_build_console_output(self, job, start_offset=0):
+    def get_build_console_output(self, build, start_offset=0):
         """
         Many thanks to:
         https://github.com/arangamani/jenkins_api_client
@@ -578,12 +578,12 @@ class JenkinsManager:
         url =  self.server._build_url(request_sub_url)
         response = self.server.jenkins_open(requests.Request("GET", url))
 
-        :param job:
+        :param build:
         :return:
         """
 
-        logger.info(f"Fetching console output for {job.name=}, {job.build_id=}")
-        request_sub_url = f"job/{job.name}/{job.build_id}/logText/progressiveText?start={start_offset}"
+        logger.info(f"Fetching console output for {build.name=}, {build.id=}")
+        request_sub_url = f"job/{build.name}/{build.id}/logText/progressiveText?start={start_offset}"
         return self.get(request_sub_url)
 
     @retry_on_errors((requests.exceptions.ConnectionError, jenkins.TimeoutException), count=12, timeout=5)

@@ -6,7 +6,7 @@ from copy import deepcopy
 
 from horey.configuration_policy.configuration_policy import ConfigurationPolicy
 
-# pylint: disable= missing-function-docstring
+# pylint: disable= missing-function-docstring, too-many-instance-attributes
 
 
 class EnvironmentAPIConfigurationPolicy(ConfigurationPolicy):
@@ -40,6 +40,39 @@ class EnvironmentAPIConfigurationPolicy(ConfigurationPolicy):
         self._container_instance_auto_scaling_group_max_size = None
         self._container_instance_capacity_provider_name = None
         self._data_directory_path = None
+        self._nat_gateways_count = None
+        self._nat_gateway_elastic_address_name_template = None
+        self._nat_gateway_name_template = None
+
+    @property
+    def nat_gateway_name_template(self):
+        if self._nat_gateway_name_template is None:
+            raise self.UndefinedValueError("nat_gateway_name_template")
+        return self._nat_gateway_name_template
+
+    @nat_gateway_name_template.setter
+    def nat_gateway_name_template(self, value):
+        self._nat_gateway_name_template = value
+
+    @property
+    def nat_gateway_elastic_address_name_template(self):
+        if self._nat_gateway_elastic_address_name_template is None:
+            raise self.UndefinedValueError("nat_gateway_elastic_address_name_template")
+        return self._nat_gateway_elastic_address_name_template
+
+    @nat_gateway_elastic_address_name_template.setter
+    def nat_gateway_elastic_address_name_template(self, value):
+        self._nat_gateway_elastic_address_name_template = value
+
+    @property
+    def nat_gateways_count(self):
+        if self._nat_gateways_count is None:
+            raise self.UndefinedValueError("nat_gateways_count")
+        return self._nat_gateways_count
+
+    @nat_gateways_count.setter
+    def nat_gateways_count(self, value):
+        self._nat_gateways_count = value
 
     @property
     def data_directory_path(self):

@@ -1,3 +1,4 @@
+# pylint: disable = too-many-lines
 """
 Standard environment maintainer.
 
@@ -19,11 +20,18 @@ from horey.aws_api.aws_services_entities.key_pair import KeyPair
 from horey.aws_api.aws_services_entities.ecs_cluster import ECSCluster
 from horey.aws_api.aws_services_entities.internet_gateway import InternetGateway
 from horey.aws_api.aws_services_entities.route_table import RouteTable
+from horey.aws_api.aws_services_entities.elastic_address import ElasticAddress
+from horey.aws_api.aws_services_entities.nat_gateway import NatGateway
 
 from horey.network.ip import IP
 
 
 class EnvironmentAPI:
+    """
+    AWS VPC environment
+
+    """
+
     def __init__(self, configuration: EnvironmentAPIConfigurationPolicy, aws_api: AWSAPI):
         self.aws_api = aws_api
         self.configuration = configuration
@@ -89,7 +97,8 @@ class EnvironmentAPI:
                 {"Name": "vpc-id", "Values": [self.vpc.id]},
             ]}
             self._subnets = []
-            for subnet in self.aws_api.ec2_client.yield_subnets(region=self.region, filters_req=filters_req, update_info=True):
+            for subnet in self.aws_api.ec2_client.yield_subnets(region=self.region, filters_req=filters_req,
+                                                                update_info=True):
                 if subnet.get_tag("Owner") != "Horey":
                     raise self.OwnerError(f"{subnet.id}")
                 self._subnets.append(subnet)
@@ -118,12 +127,15 @@ class EnvironmentAPI:
 
         for subnet in self.subnets:
             if "public" in subnet.get_tagname("Name"):
-                generated_name = self.configuration.subnet_name_template.format(type="public", id=subnet.availability_zone_id)
+                generated_name = self.configuration.subnet_name_template.format(type="public",
+                                                                                id=subnet.availability_zone_id)
                 if subnet.get_tagname("Name") != generated_name:
-                    raise ValueError(f"Subnet {subnet.id} tag Name expected: {generated_name}, configured {subnet.get_tagname('Name')}")
+                    raise ValueError(
+                        f"Subnet {subnet.id} tag Name expected: {generated_name}, configured {subnet.get_tagname('Name')}")
                 subnets.append(subnet)
         if len(subnets) != self.configuration.availability_zones_count:
-            raise RuntimeError(f"Expected to find {self.configuration.availability_zones_count=} subnets, found: {len(subnets)}")
+            raise RuntimeError(
+                f"Expected to find {self.configuration.availability_zones_count=} subnets, found: {len(subnets)}")
 
         return subnets
 
@@ -139,12 +151,15 @@ class EnvironmentAPI:
 
         for subnet in self.subnets:
             if "private" in subnet.get_tagname("Name"):
-                generated_name = self.configuration.subnet_name_template.format(type="private", id=subnet.availability_zone_id)
+                generated_name = self.configuration.subnet_name_template.format(type="private",
+                                                                                id=subnet.availability_zone_id)
                 if subnet.get_tagname("Name") != generated_name:
-                    raise ValueError(f"Subnet {subnet.id} tag Name expected: {generated_name}, configured {subnet.get_tagname('Name')}")
+                    raise ValueError(
+                        f"Subnet {subnet.id} tag Name expected: {generated_name}, configured {subnet.get_tagname('Name')}")
                 subnets.append(subnet)
         if len(subnets) != self.configuration.availability_zones_count:
-            raise RuntimeError(f"Expected to find {self.configuration.availability_zones_count=} subnets, found: {len(subnets)}")
+            raise RuntimeError(
+                f"Expected to find {self.configuration.availability_zones_count=} subnets, found: {len(subnets)}")
 
         return subnets
 
@@ -214,7 +229,8 @@ class EnvironmentAPI:
             private_subnet_az.tags = self.configuration.tags
             private_subnet_az.tags.append({
                 "Key": "Name",
-                "Value": self.configuration.subnet_name_template.format(type="private", id=private_subnet_az.availability_zone_id)
+                "Value": self.configuration.subnet_name_template.format(type="private",
+                                                                        id=private_subnet_az.availability_zone_id)
             })
             subnets.append(private_subnet_az)
 
@@ -228,7 +244,8 @@ class EnvironmentAPI:
             public_subnet_az.tags = self.configuration.tags
             public_subnet_az.tags.append({
                 "Key": "Name",
-                "Value": self.configuration.subnet_name_template.format(type="public", id=public_subnet_az.availability_zone_id)
+                "Value": self.configuration.subnet_name_template.format(type="public",
+                                                                        id=public_subnet_az.availability_zone_id)
             })
             subnets.append(public_subnet_az)
 
@@ -250,8 +267,11 @@ class EnvironmentAPI:
         """
 
         internet_gateway = self.provision_internet_gateway()
-
         self.provision_public_route_tables(internet_gateway)
+
+        elastic_addresses = self.provision_elastic_addresses()
+        nat_gateways = self.provision_nat_gateways(elastic_addresses)
+        self.provision_private_route_tables(nat_gateways)
         return True
 
     def provision_internet_gateway(self):
@@ -307,6 +327,132 @@ class EnvironmentAPI:
 
         return route_tables
 
+    def provision_elastic_addresses(self):
+        """
+        Provision the public ip addresses to be used in the VPC.
+
+        :return:
+        """
+
+        elastic_addresses = []
+        for counter in range(self.configuration.nat_gateways_count):
+            elastic_address = ElasticAddress({})
+            elastic_address.region = self.region
+            elastic_address.tags = self.configuration.tags
+            elastic_address.tags.append({
+                "Key": "Name",
+                "Value": self.configuration.nat_gateway_elastic_address_name_template.format(id=counter)
+            })
+
+            elastic_addresses.append(elastic_address)
+
+            self.aws_api.provision_elastic_address(elastic_address)
+
+        return elastic_addresses
+
+    def provision_nat_gateways(self, elastic_addresses):
+        """
+        Must occur after public route tables, because of the error:
+        Network vpc-xxxx has no Internet gateway attached
+
+        :param elastic_addresses
+        :return:
+        """
+
+        nat_gateways = []
+        elastic_addresses_names = [self.configuration.nat_gateway_elastic_address_name_template.format(id=counter) for
+                                   counter in range(self.configuration.nat_gateways_count)]
+
+        nat_elastic_addresses = [elastic_address for elastic_address in elastic_addresses if
+                                 elastic_address.get_tagname() in elastic_addresses_names]
+
+        for counter, subnet in enumerate(self.public_subnets[:self.configuration.nat_gateways_count]):
+            nat_gateway = NatGateway({})
+            nat_gateway.subnet_id = subnet.id
+            nat_gateway.region = self.region
+            nat_gateway.connectivity_type = "public"
+            nat_gateway.allocation_id = nat_elastic_addresses[counter].id
+            nat_gateway.tags = self.configuration.tags
+            nat_gateway.tags.append({
+                "Key": "Name",
+                "Value": self.configuration.nat_gateway_name_template.format(subnet=subnet.get_tagname())
+            })
+            nat_gateways.append(nat_gateway)
+
+        self.aws_api.provision_nat_gateways(nat_gateways)
+        return nat_gateways
+
+    def provision_private_route_tables(self, nat_gateways):
+        """
+        Public subnets route tables.
+
+        :param nat_gateways:
+        :return:
+        """
+
+        nat_gateways_count = len(nat_gateways)
+        for i, private_subnet in enumerate(self.private_subnets):
+            route_table = RouteTable({})
+            route_table.region = self.region
+            route_table.vpc_id = self.vpc.id
+            route_table.associations = [{
+                "SubnetId": private_subnet.id
+            }]
+
+            route_table.routes = [{
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "NatGatewayId": nat_gateways[i // nat_gateways_count].id
+            }]
+
+            route_table.tags = self.configuration.tags
+            route_table.tags.append({
+                "Key": "Name",
+                "Value": self.configuration.route_table_name_template.format(subnet=private_subnet.get_tagname())
+            })
+
+            self.aws_api.provision_route_table(route_table)
+        return True
+
+    def dispose_nat_gateways(self):
+        """
+        Delete all nat gateways.
+
+        :return:
+        """
+
+        filters_req = {"Filters": [{
+            "Name": "tag:Owner",
+            "Values": [
+                "Horey"
+            ]
+        },
+            {"Name": "vpc-id", "Values": [self.vpc.id]}]}
+
+        for nat_gateway in self.aws_api.ec2_client.get_region_nat_gateways(self.region, filters_req=filters_req):
+            self.aws_api.ec2_client.dispose_nat_gateway(nat_gateway)
+        return True
+
+    def dispose_elastic_addresses(self):
+        """
+        Delete all elastic addresses.
+
+        :return:
+        """
+
+        filters_req = {"Filters": [{
+            "Name": "tag:Owner",
+            "Values": [
+                "Horey"
+            ]
+        }]}
+
+        for elastic_address in self.aws_api.ec2_client.get_region_elastic_addresses(self.region,
+                                                                                    filters_req=filters_req):
+            if elastic_address.association_id is None:
+                self.aws_api.ec2_client.dispose_elastic_addresses(elastic_address)
+            else:
+                raise ValueError(f"Unexpected elastic address association: {elastic_address.association_id}")
+
     def dispose_bastion(self):
         """
         Create/update bastion server.
@@ -324,7 +470,8 @@ class EnvironmentAPI:
         filters_req = {"Filters": [
             {"Name": "vpc-id", "Values": [self.vpc.id]},
         ]}
-        route_tables = list(self.aws_api.ec2_client.yield_route_tables(region=self.region, update_info=True, filters_req=filters_req))
+        route_tables = list(
+            self.aws_api.ec2_client.yield_route_tables(region=self.region, update_info=True, filters_req=filters_req))
         objects = []
         for obj in route_tables:
             try:
@@ -354,7 +501,8 @@ class EnvironmentAPI:
             {"Name": "attachment.vpc-id", "Values": [self.vpc.id]},
         ]}
 
-        igws = list(self.aws_api.ec2_client.get_region_internet_gateways(self.region, full_information=True, filters_req=filters_req))
+        igws = list(self.aws_api.ec2_client.get_region_internet_gateways(self.region, full_information=True,
+                                                                         filters_req=filters_req))
 
         if not igws:
             return True
@@ -411,12 +559,13 @@ class EnvironmentAPI:
         :return:
         """
 
-        self.provision_security_group(self.configuration.container_instance_security_group_name)
+        return self.provision_security_group(self.configuration.container_instance_security_group_name)
 
-    def provision_security_group(self, name):
+    def provision_security_group(self, name, ip_permissions=None):
         """
         Provision security group.
 
+        :param ip_permissions:
         :param name:
         :return:
         """
@@ -432,7 +581,10 @@ class EnvironmentAPI:
             "Value": security_group.name
         })
 
-        self.aws_api.provision_security_group(security_group, provision_rules=False)
+        if ip_permissions is not None:
+            security_group.ip_permissions = ip_permissions
+
+        self.aws_api.provision_security_group(security_group, provision_rules=bool(ip_permissions))
 
         return security_group
 
@@ -443,7 +595,7 @@ class EnvironmentAPI:
         :return:
         """
 
-        self.provision_ssh_key(self.configuration.container_instance_ssh_key_pair_name)
+        return self.provision_ssh_key(self.configuration.container_instance_ssh_key_pair_name)
 
     def provision_ssh_key(self, name):
         """
@@ -463,7 +615,8 @@ class EnvironmentAPI:
         })
 
         self.aws_api.provision_key_pair(key_pair, save_to_secrets_manager=True,
-                                        secrets_manager_region=Region.get_region(self.configuration.secrets_manager_region))
+                                        secrets_manager_region=Region.get_region(
+                                            self.configuration.secrets_manager_region))
 
         return key_pair
 
@@ -475,10 +628,10 @@ class EnvironmentAPI:
         """
 
         security_group = self.aws_api.get_security_group_by_vpc_and_name(self.vpc,
-                                                                            self.configuration.container_instance_security_group_name)
+                                                                         self.configuration.container_instance_security_group_name)
 
         param = self.aws_api.ssm_client.get_region_parameter(self.region,
-                                            "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended")
+                                                             "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended")
 
         filter_request = {"ImageIds": [json.loads(param.value)["image_id"]]}
         amis = self.aws_api.ec2_client.get_region_amis(self.region, custom_filters=filter_request)
@@ -537,8 +690,8 @@ class EnvironmentAPI:
         :return:
         """
 
-        str_user_data = "#!/bin/bash\n" +\
-        f'echo "ECS_CLUSTER={self.configuration.ecs_cluster_name}" >> /etc/ecs/ecs.config'
+        str_user_data = "#!/bin/bash\n" + \
+                        f'echo "ECS_CLUSTER={self.configuration.ecs_cluster_name}" >> /etc/ecs/ecs.config'
 
         user_data = self.aws_api.ec2_client.generate_user_data(str_user_data)
         return user_data
@@ -553,6 +706,14 @@ class EnvironmentAPI:
                                         self.configuration.container_instance_profile_name)
 
     def provision_instance_profile(self, role_name, profile_name):
+        """
+        Provision EC2 instance role and profile.
+
+        :param role_name:
+        :param profile_name:
+        :return:
+        """
+
         assume_role_policy = """{
                 "Version": "2012-10-17",
                 "Statement": [
@@ -674,7 +835,8 @@ class EnvironmentAPI:
         """
         capacity_provider = ECSCapacityProvider({})
         capacity_provider.name = self.configuration.container_instance_capacity_provider_name
-        capacity_provider.tags = [{key.lower(): value for key, value in dict_tag.items()} for dict_tag in self.configuration.tags]
+        capacity_provider.tags = [{key.lower(): value for key, value in dict_tag.items()} for dict_tag in
+                                  self.configuration.tags]
         capacity_provider.region = self.region
         capacity_provider.tags.append({
             "key": "Name",
@@ -772,7 +934,8 @@ class EnvironmentAPI:
             return True
 
         if len(lts) > 1:
-            raise ValueError(f"More then 1 Launch Template was not found: {self.configuration.container_instance_launch_template_name}")
+            raise ValueError(
+                f"More then 1 Launch Template was not found: {self.configuration.container_instance_launch_template_name}")
 
         self.aws_api.ec2_client.dispose_launch_template(lts[0])
         return True
@@ -784,7 +947,8 @@ class EnvironmentAPI:
         :return:
         """
 
-        security_group = self.aws_api.get_security_group_by_vpc_and_name(self.vpc, self.configuration.container_instance_security_group_name)
+        security_group = self.aws_api.get_security_group_by_vpc_and_name(self.vpc,
+                                                                         self.configuration.container_instance_security_group_name)
         self.aws_api.ec2_client.dispose_security_groups([security_group])
         return True
 
@@ -812,7 +976,8 @@ class EnvironmentAPI:
             return True
 
         self.aws_api.ec2_client.dispose_key_pairs([key_pair])
-        self.aws_api.secretsmanager_client.dispose_secret(f"{name}.key", Region.get_region(self.configuration.secrets_manager_region))
+        self.aws_api.secretsmanager_client.dispose_secret(f"{name}.key",
+                                                          Region.get_region(self.configuration.secrets_manager_region))
 
         return key_pair
 
@@ -824,7 +989,7 @@ class EnvironmentAPI:
         """
 
         param = self.aws_api.ssm_client.get_region_parameter(self.region,
-                                            "/aws/service/canonical/ubuntu/server/22.04/stable/current/amd64/hvm/ebs-gp2/ami-id")
+                                                             "/aws/service/canonical/ubuntu/server/22.04/stable/current/amd64/hvm/ebs-gp2/ami-id")
 
         filter_request = {"ImageIds": [param.value]}
         amis = self.aws_api.ec2_client.get_region_amis(self.region, custom_filters=filter_request)

@@ -2956,11 +2956,11 @@ class AWSAPI:
 
             nat_gateway_id = route.get("NatGatewayId")
             if nat_gateway_id is not None:
-                custom_filters = [
+                filters_req = {"Filters": [
                     {"Name": "nat-gateway-id", "Values": [nat_gateway_id]}
-                ]
+                ]}
                 nat_gateways = self.ec2_client.get_region_nat_gateways(
-                    region=subnet.region, custom_filters=custom_filters
+                    region=subnet.region, filters_req=filters_req
                 )
                 if len(nat_gateways) != 1:
                     raise RuntimeError(f"len(nat_gateways) = {len(nat_gateways)}")
@@ -3005,11 +3005,11 @@ class AWSAPI:
 
             nat_gateway_id = route.get("NatGatewayId")
             if nat_gateway_id is not None:
-                custom_filters = [
+                filters_req = {"Filters": [
                     {"Name": "nat-gateway-id", "Values": [nat_gateway_id]}
-                ]
+                ]}
                 nat_gateways = self.ec2_client.get_region_nat_gateways(
-                    region=subnet.region, custom_filters=custom_filters
+                    region=subnet.region, filters_req=filters_req
                 )
                 if len(nat_gateways) != 1:
                     raise RuntimeError(f"len(nat_gateways) = {len(nat_gateways)}")

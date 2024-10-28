@@ -2,6 +2,7 @@
 Standard bastion maintainer.
 
 """
+import os
 
 from horey.environment_api.environment_api import EnvironmentAPI
 from horey.aws_api.aws_services_entities.ec2_instance import EC2Instance
@@ -10,6 +11,11 @@ from horey.deployer.whatismyip import fetch_ip_from_google
 
 
 class BastionAPI:
+    """
+    Manage bastion.
+
+    """
+
     def __init__(self, environment: EnvironmentAPI, name):
         self.environment = environment
         self.name = name
@@ -58,8 +64,19 @@ class BastionAPI:
         :return:
         """
         address = fetch_ip_from_google()
-        breakpoint()
-        return self.environment.provision_security_group(self.security_group_name, [(address, 22, "address->bastion:22")])
+
+        ip_permissions = [
+            {"FromPort": 22,
+             "ToPort": 22,
+             "IpProtocol": "tcp",
+             "IpRanges": [
+                 {
+                     "CidrIp": f"{address}/32",
+                     "Description": "[self] to [bastion]:22"
+                 }]
+             }]
+
+        return self.environment.provision_security_group(self.security_group_name, ip_permissions=ip_permissions)
 
     def provision_instance(self, iam_instance_profile):
         """
@@ -138,8 +155,9 @@ class BastionAPI:
 
         :return:
         """
-        file_name = f"{self.ssh_key_pair_name}.key"
-        self.environment.aws_api.get_secret_file(file_name,
+
+        key_file_name = f"{self.ssh_key_pair_name}.key"
+        self.environment.aws_api.get_secret_file(key_file_name,
                                                  str(self.environment.configuration.data_directory_path),
                                                  region=Region.get_region(
                                                      self.environment.configuration.secrets_manager_region))
@@ -154,12 +172,17 @@ class BastionAPI:
                   "    AddKeysToAgent yes\n" \
                   f"    Hostname {ec2_instance.public_ip_address}\n" \
                   "    User ubuntu\n" \
-                  f"    IdentityFile {str(self.environment.configuration.data_directory_path / file_name)}\n"
+                  f"    IdentityFile {str(self.environment.configuration.data_directory_path / key_file_name)}\n" \
+                  f"# ssh -F {self.environment.configuration.data_directory_path / self.name} {self.name}\n"
 
-        with open(self.environment.configuration.data_directory_path / self.name, "w",
+        config_file_path = self.environment.configuration.data_directory_path / self.name
+        key_file_path = self.environment.configuration.data_directory_path / key_file_name
+        with open(config_file_path, "w",
                   encoding="utf-8") as file_handler:
             file_handler.write(str_ret)
-        return f"ssh -F {self.environment.configuration.data_directory_path / self.name} {self.name}"
+        os.chmod(key_file_path, 0o600)
+
+        return True
 
     def dispose(self):
         """
