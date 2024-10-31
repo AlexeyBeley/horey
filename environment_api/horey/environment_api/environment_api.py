@@ -24,6 +24,8 @@ from horey.aws_api.aws_services_entities.elastic_address import ElasticAddress
 from horey.aws_api.aws_services_entities.nat_gateway import NatGateway
 
 from horey.network.ip import IP
+from horey.jenkins_api.jenkins_api import JenkinsAPI
+from horey.jenkins_api.jenkins_api_configuration_policy import JenkinsAPIConfigurationPolicy
 
 
 class EnvironmentAPI:
@@ -37,6 +39,7 @@ class EnvironmentAPI:
         self.configuration = configuration
         self._vpc = None
         self._subnets = None
+        self.jenkins_api = None
 
     @property
     def region(self):
@@ -997,6 +1000,56 @@ class EnvironmentAPI:
             raise RuntimeError(f"Can not find single AMI using filter: {filter_request['Filters']}")
 
         return amis[0]
+
+    def provision_jenkins_api(self):
+        """
+        Provision Jenkins AO
+        :return:
+        """
+
+        self.provision_jenkins_api_infrastructure()
+        configuration = JenkinsAPIConfigurationPolicy()
+
+        self.jenkins_api = JenkinsAPI(configuration)
+        jenkins_build_directory_path = self.jenkins_api.prepare_master_build_directory(self.configuration.data_directory_path)
+
+        self.provision_fargate_service("jenkins", jenkins_build_directory_path, service_port=8080, load_balancer_port=8080)
+
+    def provision_fargate_service(self, service_name, build_dir, service_port=None, load_balancer_port=None):
+        """
+        Service provision.
+
+        :param service_name:
+        :param build_dir:
+        :param service_port:
+        :param load_balancer_port:
+        :return:
+        """
+        self.docker_api.build(jenkins_master_deployment_dir, [tag], nocache=False)
+        self.login_to_ecr_repository(self.region)
+        self.docker_api.upload_images([tag])
+
+    def provision_jenkins_api_infrastructure(self):
+        self.provision_jenkins_load_balancer_components()
+
+        self.configuration.generate_configuration_file(os.path.join(jenkins_master_deployment_dir, "jenkins_manager_configuration.json"))
+        self.provision_cloudwatch_log_group()
+        self.provision_ecs_task_execution_role()
+        self.provision_ecs_task_role()
+        self.provision_ecr_repository("master")
+        self.provision_ecr_repository("hagent")
+        sg_jenkins_lb = self.provision_security_group(f"sg_public_jenkins_load_balancer_{1}", ip_permissions=["self.address->8080"])
+        self.provision_security_group(f"sg_jenkins_service_{1}", ip_permissions=["sg_jenkins_lb.id->8080"])
+
+        self.provision_efs()
+
+        ecs_task_definition = self.provision_ecs_task_definition(tag)
+        ecs_cluster = self.provision_ecs_cluster()
+
+
+    def provision_jenkins_load_balancer_components(self):
+
+        self.provision_alb_target_group(self.configuration.load_balancer_target_group_name)
 
     class OwnerError(RuntimeError):
         """
