@@ -4,7 +4,7 @@ Standard bastion maintainer.
 """
 import os
 
-from horey.environment_api.environment_api import EnvironmentAPI
+from horey.infrastructure_api.environment_api import EnvironmentAPI
 from horey.aws_api.aws_services_entities.ec2_instance import EC2Instance
 from horey.aws_api.base_entities.region import Region
 from horey.deployer.whatismyip import fetch_ip_from_google

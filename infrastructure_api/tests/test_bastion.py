@@ -8,9 +8,9 @@ from pathlib import Path
 import pytest
 from horey.aws_api.aws_api import AWSAPI
 from horey.h_logger import get_logger
-from horey.environment_api.environment_api import EnvironmentAPI
-from horey.environment_api.environment_api_configuration_policy import EnvironmentAPIConfigurationPolicy
-from horey.environment_api.bastion_api import BastionAPI
+from horey.infrastructure_api.environment_api import EnvironmentAPI
+from horey.infrastructure_api.environment_api_configuration_policy import EnvironmentAPIConfigurationPolicy
+from horey.infrastructure_api.bastion_api import BastionAPI
 
 
 # Uncomment next line to save error lines to /tmp/error.log

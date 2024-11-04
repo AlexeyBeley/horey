@@ -5,9 +5,10 @@ Standard environment maintainer.
 """
 import json
 
-from horey.environment_api.environment_api_configuration_policy import EnvironmentAPIConfigurationPolicy
+from horey.infrastructure_api.environment_api_configuration_policy import EnvironmentAPIConfigurationPolicy
 from horey.aws_api.aws_api import AWSAPI
 from horey.aws_api.base_entities.region import Region
+from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.aws_services_entities.vpc import VPC
 from horey.aws_api.aws_services_entities.subnet import Subnet
 from horey.aws_api.aws_services_entities.ec2_security_group import EC2SecurityGroup
@@ -22,6 +23,7 @@ from horey.aws_api.aws_services_entities.internet_gateway import InternetGateway
 from horey.aws_api.aws_services_entities.route_table import RouteTable
 from horey.aws_api.aws_services_entities.elastic_address import ElasticAddress
 from horey.aws_api.aws_services_entities.nat_gateway import NatGateway
+from horey.aws_api.aws_services_entities.s3_bucket import S3Bucket
 
 from horey.network.ip import IP
 from horey.jenkins_api.jenkins_api import JenkinsAPI
@@ -1056,3 +1058,34 @@ class EnvironmentAPI:
         Raised when resource owner is not Horey.
 
         """
+
+    def provision_s3_bucket(self, bucket_name, statements: list):
+        """
+        Provision bucket.
+
+        :return:
+        """
+
+        breakpoint()
+        statements += self.generate_s3_deployer_statements()
+        s3_bucket = S3Bucket({})
+        s3_bucket.region = self.region
+        s3_bucket.name = bucket_name
+        s3_bucket.acl = "private"
+        self.aws_api.provision_s3_bucket(s3_bucket)
+
+        if s3_bucket.policy.upsert_statement(statements):
+            self.aws_api.provision_s3_bucket(s3_bucket)
+
+        return s3_bucket
+
+    def generate_s3_deployer_statements(self):
+        """
+        Generate statement permitting self put operation.
+
+        :return:
+        """
+        breakpoint()
+        self.aws_api.sts_client.get_session_client()
+        current = AWSAccount.get_aws_account()
+        current.connection_steps[-1].role_arn
