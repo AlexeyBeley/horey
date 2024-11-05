@@ -43,6 +43,28 @@ class EnvironmentAPIConfigurationPolicy(ConfigurationPolicy):
         self._nat_gateways_count = None
         self._nat_gateway_elastic_address_name_template = None
         self._nat_gateway_name_template = None
+        self._public_hosted_zone_domain_name = None
+        self._response_headers_policy_name = None
+
+    @property
+    def response_headers_policy_name(self):
+        if self._response_headers_policy_name is None:
+            raise self.UndefinedValueError("response_headers_policy_name")
+        return self._response_headers_policy_name
+
+    @response_headers_policy_name.setter
+    def response_headers_policy_name(self, value):
+        self._response_headers_policy_name = value
+
+    @property
+    def public_hosted_zone_domain_name(self):
+        if self._public_hosted_zone_domain_name is None:
+            raise self.UndefinedValueError("public_hosted_zone_domain_name")
+        return self._public_hosted_zone_domain_name
+
+    @public_hosted_zone_domain_name.setter
+    def public_hosted_zone_domain_name(self, value):
+        self._public_hosted_zone_domain_name = value
 
     @property
     def nat_gateway_name_template(self):

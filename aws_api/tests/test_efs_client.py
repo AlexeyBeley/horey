@@ -262,6 +262,7 @@ def test_provision_access_point_new_or_update(efs_client, access_point_src):
 def test_provision_access_point_new(efs_client, access_point_src):
     efs_client.dispose_access_point(access_point_src)
     assert efs_client.provision_access_point(access_point_src)
+    assert access_point_src.id
 
 
 @pytest.mark.done

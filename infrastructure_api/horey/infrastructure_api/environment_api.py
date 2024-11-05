@@ -8,7 +8,6 @@ import json
 from horey.infrastructure_api.environment_api_configuration_policy import EnvironmentAPIConfigurationPolicy
 from horey.aws_api.aws_api import AWSAPI
 from horey.aws_api.base_entities.region import Region
-from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.aws_services_entities.vpc import VPC
 from horey.aws_api.aws_services_entities.subnet import Subnet
 from horey.aws_api.aws_services_entities.ec2_security_group import EC2SecurityGroup
@@ -24,6 +23,11 @@ from horey.aws_api.aws_services_entities.route_table import RouteTable
 from horey.aws_api.aws_services_entities.elastic_address import ElasticAddress
 from horey.aws_api.aws_services_entities.nat_gateway import NatGateway
 from horey.aws_api.aws_services_entities.s3_bucket import S3Bucket
+from horey.aws_api.aws_services_entities.cloudfront_origin_access_identity import CloudfrontOriginAccessIdentity
+from horey.aws_api.aws_services_entities.acm_certificate import ACMCertificate
+from horey.aws_api.aws_services_entities.cloudfront_response_headers_policy import CloudfrontResponseHeadersPolicy
+from horey.aws_api.aws_services_entities.cloudfront_distribution import CloudfrontDistribution
+from horey.aws_api.aws_services_entities.route53_hosted_zone import HostedZone
 
 from horey.network.ip import IP
 from horey.jenkins_api.jenkins_api import JenkinsAPI
@@ -1063,29 +1067,295 @@ class EnvironmentAPI:
         """
         Provision bucket.
 
+        "s3:CreateBucket",
+        "s3:PutBucketAcl",
+        "s3:GetBucketWebsite",
+        "s3:GetBucketPolicy",
+        "s3:HeadBucket",
+        "s3:ListBucket"
+        "s3:PutBucketPolicy"
+        "s3:GetBucketAcl"
+
+
         :return:
         """
 
-        breakpoint()
-        statements += self.generate_s3_deployer_statements()
         s3_bucket = S3Bucket({})
         s3_bucket.region = self.region
         s3_bucket.name = bucket_name
-        s3_bucket.acl = "private"
+        # s3_bucket.acl = "private"
         self.aws_api.provision_s3_bucket(s3_bucket)
 
-        if s3_bucket.policy.upsert_statement(statements):
+        if s3_bucket.upsert_statements(statements):
             self.aws_api.provision_s3_bucket(s3_bucket)
 
         return s3_bucket
 
-    def generate_s3_deployer_statements(self):
+    def provision_cloudfront_origin_access_identity(self, origin_access_identity_name):
         """
-        Generate statement permitting self put operation.
+        Used to authenticate cloud-front with S3 bucket.
+
+        "cloudfront:CreateCloudFrontOriginAccessIdentity"
 
         :return:
         """
+
+        cloudfront_origin_access_identity = CloudfrontOriginAccessIdentity({})
+        cloudfront_origin_access_identity.comment = origin_access_identity_name
+        self.aws_api.provision_cloudfront_origin_access_identity(cloudfront_origin_access_identity)
+        return cloudfront_origin_access_identity
+
+    def provision_acm_certificate(self):
+        """
+        Provision certificate.
+
+        :return:
+        """
+
+        cert = ACMCertificate({})
+        cert.region = self.region
+        cert.domain_name = f"*.{self.configuration.public_hosted_zone_domain_name}"
+        cert.validation_method = "DNS"
+        cert.tags = self.configuration.tags
+        cert.tags.append({
+            "Key": "name",
+            "Value": cert.domain_name.replace("*", "star")
+        })
+
+        hosted_zone_name = self.configuration.public_hosted_zone_domain_name
+        self.aws_api.provision_acm_certificate(cert, hosted_zone_name)
+        return cert
+
+    def provision_response_headers_policy(self):
+        """
+        Create headers policy.
+        cloudfront:CreateResponseHeadersPolicy
+
+        :return:
+        """
+
+        policy_config = {"Comment": "Response headers policy",
+                         "Name": "",
+                         "SecurityHeadersConfig": {
+                             "XSSProtection": {
+                                 "Override": True,
+                                 "Protection": True,
+                                 "ModeBlock": True,
+                             },
+                             "FrameOptions": {
+                                 "Override": True,
+                                 "FrameOption": "DENY"
+                             },
+                             "ReferrerPolicy": {
+                                 "Override": True,
+                                 "ReferrerPolicy": "same-origin"
+                             },
+                             "ContentTypeOptions": {
+                                 "Override": True
+                             },
+                             "StrictTransportSecurity": {
+                                 "Override": True,
+                                 "IncludeSubdomains": True,
+                                 "Preload": False,
+                                 "AccessControlMaxAgeSec": 31536000
+                             }
+                         },
+                         "ServerTimingHeadersConfig": {
+                             "Enabled": False,
+                         },
+                         "RemoveHeadersConfig": {
+                             "Quantity": 0,
+                             "Items": []
+                         }
+                         }
+
+        policy = CloudfrontResponseHeadersPolicy({})
+        policy.name = self.configuration.response_headers_policy_name
+        policy_config["Name"] = policy.name
+        policy.response_headers_policy_config = policy_config
+        self.aws_api.cloudfront_client.provision_response_headers_policy(policy)
+        return policy
+
+    def provision_cloudfront_distribution(self, aliases, cloudfront_origin_access_identity,
+                                          cloudfront_certificate,
+                                          s3_bucket, response_headers_policy, origin_path):
+        """
+        Distribution with compiled NPM packages.
+
+        "wafv2:GetWebACL",
+        "wafv2:GetWebACLForResource",
+        "wafv2:AssociateWebACL"
+
+        :param origin_path:
+        :param aliases:
+        :param cloudfront_origin_access_identity:
+        :param cloudfront_certificate:
+        :param s3_bucket:
+        :param response_headers_policy:
+        :return:
+        """
+
+        comment = ", ".join(aliases)
+        cloudfront_distribution = CloudfrontDistribution({})
+        cloudfront_distribution.comment = comment
+        cloudfront_distribution.tags = self.configuration.tags
+        cloudfront_distribution.tags.append({
+            "Key": "Name",
+            "Value": aliases[0]
+        })
+        s3_bucket_origin_id = f"s3-bucket-{s3_bucket.name}"
+        cloudfront_distribution.distribution_config = {
+            "Aliases": {
+                "Quantity": 1,
+                "Items": aliases
+            },
+            "DefaultRootObject": "",
+            "Origins": {
+                "Quantity": 1,
+                "Items": [
+                    {
+                        "Id": s3_bucket_origin_id,
+                        "DomainName": f"{s3_bucket.name}.s3.amazonaws.com",
+                        "OriginPath": origin_path,
+                        "S3OriginConfig": {
+                            "OriginAccessIdentity": f"origin-access-identity/cloudfront/{cloudfront_origin_access_identity.id}"
+                        },
+                        "ConnectionAttempts": 3,
+                        "ConnectionTimeout": 10,
+                        "OriginShield": {
+                            "Enabled": False
+                        }
+                    }
+                ]
+            },
+            "DefaultCacheBehavior": {
+                "TargetOriginId": s3_bucket_origin_id,
+                "TrustedSigners": {
+                    "Enabled": False,
+                    "Quantity": 0
+                },
+                "TrustedKeyGroups": {
+                    "Enabled": False,
+                    "Quantity": 0
+                },
+                "ViewerProtocolPolicy": "redirect-to-https",
+                "AllowedMethods": {
+                    "Quantity": 3,
+                    "Items": [
+                        "HEAD",
+                        "GET",
+                        "OPTIONS"
+                    ],
+                    "CachedMethods": {
+                        "Quantity": 3,
+                        "Items": [
+                            "HEAD",
+                            "GET",
+                            "OPTIONS"
+                        ]
+                    }
+                },
+                "SmoothStreaming": False,
+                "Compress": True,
+                "LambdaFunctionAssociations": {
+                    "Quantity": 0,
+                },
+                "FunctionAssociations": {
+                    "Quantity": 0
+                },
+                "FieldLevelEncryptionId": "",
+                "ResponseHeadersPolicyId": response_headers_policy.id,
+                "ForwardedValues": {
+                    "QueryString": False,
+                    "Cookies": {
+                        "Forward": "none"
+                    },
+                    "Headers": {
+                        "Quantity": 0
+                    },
+                    "QueryStringCacheKeys": {
+                        "Quantity": 0
+                    }
+                },
+                "MinTTL": 0,
+                "DefaultTTL": 86400,
+                "MaxTTL": 31536000
+            },
+            "CacheBehaviors": {
+                "Quantity": 0
+            },
+            "CustomErrorResponses": {
+                "Quantity": 2,
+                "Items": [
+                    {
+                        "ErrorCode": 403,
+                        "ResponsePagePath": f"{origin_path}index.html",
+                        "ResponseCode": "200",
+                        "ErrorCachingMinTTL": 300
+                    },
+                    {
+                        "ErrorCode": 404,
+                        "ResponsePagePath": f"{origin_path}index.html",
+                        "ResponseCode": "200",
+                        "ErrorCachingMinTTL": 300
+                    }
+                ]
+            },
+            "Comment": f"{cloudfront_distribution.comment}",
+            "Logging": {
+                "Enabled": False,
+                "IncludeCookies": False,
+                "Bucket": "",
+                "Prefix": ""
+            },
+            "PriceClass": "PriceClass_All",
+            "Enabled": True,
+            "ViewerCertificate": {
+                "ACMCertificateArn": cloudfront_certificate.arn,
+                "SSLSupportMethod": "sni-only",
+                "MinimumProtocolVersion": "TLSv1.2_2021",
+                "Certificate": cloudfront_certificate.arn,
+                "CertificateSource": "acm"
+            },
+            "Restrictions": {
+                "GeoRestriction": {
+                    "RestrictionType": "none",
+                    "Quantity": 0
+                }
+            },
+            "WebACLId": "",
+            "HttpVersion": "http2",
+            "IsIPV6Enabled": True,
+        }
+
+        self.aws_api.provision_cloudfront_distribution(cloudfront_distribution)
+        return cloudfront_distribution
+
+    def provision_public_dns_address(self, dns_address, record_address):
+        """
+        Provision record.
+
+        :param dns_address:
+        :param record_address:
+        :return:
+        """
+
+        hosted_zone = HostedZone({})
+        hosted_zone.name = self.configuration.public_hosted_zone_domain_name
+
+        dict_record = {
+            "Name": dns_address,
+            "Type": "CNAME",
+            "TTL": 300,
+            "ResourceRecords": [
+                {
+                    "Value": record_address
+                }
+            ]}
+
+        record = HostedZone.Record(dict_record)
+        hosted_zone.records.append(record)
+
         breakpoint()
-        self.aws_api.sts_client.get_session_client()
-        current = AWSAccount.get_aws_account()
-        current.connection_steps[-1].role_arn
+        self.aws_api.route53_client.provision_hosted_zone(hosted_zone, declarative=False)
+        return hosted_zone

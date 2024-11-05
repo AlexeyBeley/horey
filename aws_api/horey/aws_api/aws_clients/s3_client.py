@@ -459,6 +459,22 @@ class S3Client(Boto3Client):
         @return:
         """
 
+        current_bucket_information = list(
+                self.execute(
+                    self.get_session_client().head_bucket,
+                    None,
+                    raw_data=True,
+                    filters_req={"Bucket": bucket.name},
+                    exception_ignore_callback= lambda x: ": Not Found" in repr(x)
+                )
+            )
+        if not current_bucket_information:
+            return False
+        if len(current_bucket_information) > 1:
+            raise RuntimeError(f"Was not able to find single bucket: {bucket.name}")
+        current_bucket_information = current_bucket_information[0]
+        bucket.update_from_raw_response(current_bucket_information)
+
         try:
             update_info = list(
                 self.execute(
@@ -1144,6 +1160,8 @@ class S3Client(Boto3Client):
 
         if current_bucket.acl is None and bucket.acl is not None:
             self.put_bucket_acl_raw(bucket.generate_put_bucket_acl_request())
+
+        self.update_bucket_information(bucket)
 
     def provision_bucket_raw(self, region, request_dict):
         """

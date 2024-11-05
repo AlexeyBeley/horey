@@ -32,6 +32,23 @@ class S3Bucket(AwsObject):
 
         self.init_attrs(dict_src, init_options)
 
+    def update_from_raw_response(self, dict_src):
+        """
+        Update from dict received from AWS API.
+
+        :param dict_src:
+        :return:
+        """
+
+        init_options = {
+            "Name": lambda x, y: self.init_default_attr(x, y, formatted_name="name"),
+            "CreationDate": self.init_default_attr,
+            "BucketRegion": lambda x, y: self.init_default_attr(x, y, formatted_name="location"),
+            "AccessPointAlias": self.init_default_attr
+        }
+
+        return self.init_attrs(dict_src, init_options)
+
     def _init_bucket_from_cache(self, dict_src):
         """
         Init the object from saved cache dict
@@ -209,6 +226,27 @@ class S3Bucket(AwsObject):
 
         return request
 
+    def upsert_statements(self, statements):
+        """
+        Insert statements if not exist.
+
+        :param statements:
+        :return:
+        """
+
+        if self.policy is None:
+            self.policy = self.Policy({"Version": "2012-10-17", "Statement": statements})
+            return True
+
+        for statement in statements:
+            for policy_statement in self.policy.statement:
+                if statement == policy_statement:
+                    break
+            else:
+                raise NotImplementedError(f"Implement {statement}")
+
+        return False
+
     @property
     def region(self):
         if self._region is None:
@@ -277,6 +315,19 @@ class S3Bucket(AwsObject):
             """
             request_dict = {"Version": self.version, "Statement": self.statement}
             return json.dumps(request_dict)
+
+        def upsert_statements(self, statements):
+            """
+            Insert statements if not exist.
+
+            :param statements:
+            :return:
+            """
+
+            for statement in statements:
+                raise NotImplementedError(f"Implement {statement}")
+
+            return False
 
     class BucketObject(AwsObject):
         """

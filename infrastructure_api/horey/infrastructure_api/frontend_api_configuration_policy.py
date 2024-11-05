@@ -17,6 +17,28 @@ class FrontendAPIConfigurationPolicy(ConfigurationPolicy):
     def __init__(self):
         super().__init__()
         self._bucket_name = None
+        self._cloudfront_distribution_name = None
+        self._dns_address = None
+
+    @property
+    def dns_address(self):
+        if self._dns_address is None:
+            raise self.UndefinedValueError("dns_address")
+        return self._dns_address
+
+    @dns_address.setter
+    def dns_address(self, value):
+        self._dns_address = value
+
+    @property
+    def cloudfront_distribution_name(self):
+        if self._cloudfront_distribution_name is None:
+            raise self.UndefinedValueError("cloudfront_distribution_name")
+        return self._cloudfront_distribution_name
+
+    @cloudfront_distribution_name.setter
+    def cloudfront_distribution_name(self, value):
+        self._cloudfront_distribution_name = value
 
     @property
     def bucket_name(self):
