@@ -2,7 +2,6 @@
 Test AWS client.
 
 """
-import datetime
 
 import pytest
 
@@ -98,12 +97,12 @@ def test_update_ip_set_information_with_id(wafv2_client, ip_set_src: WAFV2IPSet)
     assert wafv2_client.update_ip_set_information(ip_set_src)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_provision_ip_set(wafv2_client, ip_set_src):
     assert wafv2_client.provision_ip_set(ip_set_src)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_update_ip_set_raw(wafv2_client, ip_set_src):
     ip_set_current = WAFV2IPSet({"Name": ip_set_src.name, "Scope": ip_set_src.scope})
     ip_set_current.region = ip_set_src.region
@@ -123,6 +122,14 @@ def test_update_ip_set_raw(wafv2_client, ip_set_src):
     assert ip_set_current.addresses == ip_set_src.addresses
 
 
-@pytest.mark.todo
+@pytest.mark.done
+def test_dispose_ip_set_raw(wafv2_client, ip_set_src):
+    wafv2_client.update_ip_set_information(ip_set_src)
+    request = ip_set_src.generate_dispose_request()
+    response_dispose = wafv2_client.dispose_ip_set_raw(ip_set_src.region, request)
+    assert response_dispose
+
+
+@pytest.mark.done
 def test_dispose_ip_set(wafv2_client, ip_set_src):
     assert wafv2_client.dispose_ip_set(ip_set_src)

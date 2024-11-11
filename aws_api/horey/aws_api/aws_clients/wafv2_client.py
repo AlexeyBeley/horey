@@ -35,16 +35,14 @@ class WAFV2Client(Boto3Client):
         current_ip_set.scope = ip_set.scope
 
         if not self.update_ip_set_information(current_ip_set):
-            breakpoint()
             response = self.provision_ip_set_raw(ip_set.region, ip_set.generate_create_request())
-            del response["ResponseMetadata"]
-            return ip_set.update_from_raw_response(response)
+            dict_src = response["Summary"]
+            return ip_set.update_from_raw_response(dict_src)
 
         ip_set.id = current_ip_set.id
         ip_set.lock_token = current_ip_set.lock_token
         request = current_ip_set.generate_update_request(ip_set)
         if request:
-            breakpoint()
             response = self.update_ip_set_raw(ip_set.region, request)
             assert response.get("NextLockToken")
 
@@ -161,25 +159,11 @@ class WAFV2Client(Boto3Client):
         @return:
         """
 
-        current_ip_set = WAFV2IPSet({})
-        current_ip_set.region = ip_set.region
-        current_ip_set.tags = ip_set.tags
-
-        if not self.update_ip_set_information(current_ip_set):
-            ip_set.life_cycle_state = ip_set.State.DELETED.value
+        if not self.update_ip_set_information(ip_set):
             return True
 
-        self.dispose_ip_set_raw(ip_set.region, current_ip_set.generate_dispose_request())
-        self.wait_for_status(current_ip_set, self.update_ip_set_information,
-                             [ip_set.State.DELETED],
-                             [ip_set.State.DELETING,
-                              ip_set.State.AVAILABLE],
-                             [ip_set.State.ERROR,
-                              ip_set.State.CREATING,
-                              ip_set.State.UPDATING], timeout=600)
-
+        self.dispose_ip_set_raw(ip_set.region, ip_set.generate_dispose_request())
         self.clear_cache(WAFV2IPSet)
-        ip_set.life_cycle_state = ip_set.State.DELETED.value
         return True
 
     def dispose_ip_set_raw(self, region, request_dict):
