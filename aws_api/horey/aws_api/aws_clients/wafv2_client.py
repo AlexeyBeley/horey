@@ -286,3 +286,47 @@ class WAFV2Client(Boto3Client):
         ):
             self.clear_cache(WAFV2WebACL)
             return response
+
+    def provision_web_acl(self, web_acl:WAFV2WebACL):
+        """
+        Standard
+
+        @param web_acl:
+        @return:
+        """
+        logger.info("Provisioning ip set: " + web_acl.get_tag("Name", casesensitive=True))
+        current_web_acl = WAFV2WebACL({})
+        current_web_acl.region = web_acl.region
+        current_web_acl.name = web_acl.name
+        current_web_acl.scope = web_acl.scope
+
+        if not self.update_web_acl_information(current_web_acl):
+            response = self.provision_web_acl_raw(web_acl.region, web_acl.generate_create_request())
+            dict_src = response["Summary"]
+            return web_acl.update_from_raw_response(dict_src)
+
+        web_acl.id = current_web_acl.id
+        web_acl.lock_token = current_web_acl.lock_token
+        request = current_web_acl.generate_update_request(web_acl)
+        if request:
+            response = self.update_web_acl_raw(web_acl.region, request)
+            assert response.get("NextLockToken")
+
+        return self.update_web_acl_information(web_acl)
+
+    def update_web_acl_raw(self, region, request_dict):
+        """
+        Standard
+
+        :param region:
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Updating web acl: {request_dict}")
+
+        for response in self.execute(
+                self.get_session_client(region=region).update_web_acl, None, raw_data=True, filters_req=request_dict
+        ):
+            self.clear_cache(WAFV2WebACL)
+            return response

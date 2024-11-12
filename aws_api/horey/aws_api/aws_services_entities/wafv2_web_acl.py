@@ -83,12 +83,13 @@ class WAFV2WebACL(AwsObject):
 
         :return:
         """
+
         required = ["DefaultAction", "LockToken", "Id", "Scope", "Name", "VisibilityConfig"]
         self_request = self.generate_request(required,
-                                             optional=["Description"],
+                                             optional=["Description", "Rules"],
                                              request_key_to_attribute_mapping=self.request_key_to_attribute_mapping)
         desired_state_request = desired_state.generate_request(required,
-                                                               optional=["Description"],
+                                                               optional=["Description", "Rules"],
                                                                request_key_to_attribute_mapping=self.request_key_to_attribute_mapping)
 
         request = {}

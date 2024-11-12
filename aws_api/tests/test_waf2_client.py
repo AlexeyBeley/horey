@@ -38,10 +38,10 @@ def fixture_ip_set_src():
 @pytest.fixture(name="web_acl")
 def fixture_web_acl():
     web_acl = WAFV2WebACL({"Name": "test_cicd",
-                         "Scope": "CLOUDFRONT",
-                         "Description": "Testing waf acl cicd",
-                         "DefaultAction": {'Block': {}}
-                         })
+                           "Scope": "CLOUDFRONT",
+                           "Description": "Testing waf acl cicd",
+                           "DefaultAction": {'Block': {}}
+                           })
     web_acl.region = Region.get_region("us-east-1")
     web_acl.tags = [{"Key": "Name", "Value": web_acl.name}]
     return web_acl
@@ -54,16 +54,17 @@ def fixture_web_acl_full(wafv2_client, ip_set_src):
 
     visibility_metric_name = "test-cicd-waf-acl-visibility"
     web_acl_full = WAFV2WebACL({"Name": "test_cicd",
-                         "Scope": "CLOUDFRONT",
-                         "Description": "Testing waf acl cicd",
-                         "DefaultAction": {'Block': {}},
-                         "Rules": [{'Name': 'test', 'Priority': 0, 'Statement': {'IPSetReferenceStatement': {
-                             'ARN': ip_set_src.arn}},
-                                    'Action': {'Allow': {}}, 'VisibilityConfig': {'SampledRequestsEnabled': True,
-                                                                                  'CloudWatchMetricsEnabled': True,
-                                                                                  'MetricName': 'test'}}],
-                         "VisibilityConfig": {'SampledRequestsEnabled': True, 'CloudWatchMetricsEnabled': True, 'MetricName': visibility_metric_name},
-                         })
+                                "Scope": "CLOUDFRONT",
+                                "Description": "Testing waf acl cicd",
+                                "DefaultAction": {'Block': {}},
+                                "Rules": [{'Name': 'test', 'Priority': 0, 'Statement': {'IPSetReferenceStatement': {
+                                    'ARN': ip_set_src.arn}},
+                                           'Action': {'Allow': {}}, 'VisibilityConfig': {'SampledRequestsEnabled': True,
+                                                                                         'CloudWatchMetricsEnabled': True,
+                                                                                         'MetricName': 'test'}}],
+                                "VisibilityConfig": {'SampledRequestsEnabled': True, 'CloudWatchMetricsEnabled': True,
+                                                     'MetricName': visibility_metric_name},
+                                })
     web_acl_full.region = Region.get_region("us-east-1")
     web_acl_full.tags = [{"Key": "Name", "Value": web_acl_full.name}]
     return web_acl_full
@@ -201,3 +202,40 @@ def test_dispose_web_acl_raw(wafv2_client, web_acl):
     request = web_acl.generate_dispose_request()
     response_dispose = wafv2_client.dispose_web_acl_raw(web_acl.region, request)
     assert response_dispose
+
+
+@pytest.mark.done
+def test_update_web_acl_raw(wafv2_client, web_acl_full):
+    request = web_acl_full.generate_create_request()
+    wafv2_client.provision_web_acl_raw(web_acl_full.region, request)
+    wafv2_client.update_web_acl_information(web_acl_full)
+
+    web_acl_new = WAFV2WebACL({"Name": web_acl_full.name})
+    web_acl_new.region = web_acl_full.region
+    web_acl_new.scope = web_acl_full.scope
+    if not wafv2_client.update_web_acl_information(web_acl_new):
+        raise RuntimeError("Creation failed")
+
+    web_acl_new.description = "New description for update cicd test"
+    web_acl_new.rules = []
+    request_update = web_acl_full.generate_update_request(web_acl_new)
+    response_update = wafv2_client.update_web_acl_raw(web_acl_full.region, request_update)
+    wafv2_client.update_web_acl_information(web_acl_new)
+    assert response_update
+    assert web_acl_new.description == "New description for update cicd test"
+    assert not web_acl_new.rules
+
+
+@pytest.mark.done
+def test_provision_web_acl(wafv2_client, web_acl_full):
+    response_create = wafv2_client.provision_web_acl(web_acl_full)
+    assert response_create
+
+
+@pytest.mark.done
+def test_provision_web_acl_update(wafv2_client, web_acl_full):
+    web_acl_full.description = "New description for update cicd test"
+    web_acl_full.rules = []
+    assert wafv2_client.provision_web_acl(web_acl_full)
+    assert web_acl_full.description == "New description for update cicd test"
+    assert not web_acl_full.rules
