@@ -9,6 +9,7 @@ import pytest
 
 from horey.aws_api.aws_clients.wafv2_client import WAFV2Client
 from horey.aws_api.aws_services_entities.wafv2_ip_set import WAFV2IPSet
+from horey.aws_api.aws_services_entities.wafv2_web_acl import WAFV2WebACL
 from horey.aws_api.base_entities.region import Region
 from horey.h_logger import get_logger
 
@@ -32,6 +33,40 @@ def fixture_ip_set_src():
     ip_set.region = Region.get_region("us-east-1")
     ip_set.tags = [{"Key": "Name", "Value": ip_set.name}]
     return ip_set
+
+
+@pytest.fixture(name="web_acl")
+def fixture_web_acl():
+    web_acl = WAFV2WebACL({"Name": "test_cicd",
+                         "Scope": "CLOUDFRONT",
+                         "Description": "Testing waf acl cicd",
+                         "DefaultAction": {'Block': {}}
+                         })
+    web_acl.region = Region.get_region("us-east-1")
+    web_acl.tags = [{"Key": "Name", "Value": web_acl.name}]
+    return web_acl
+
+
+@pytest.fixture(name="web_acl_full")
+def fixture_web_acl_full(wafv2_client, ip_set_src):
+    if not wafv2_client.update_ip_set_information(ip_set_src):
+        raise RuntimeError(f"You must first provision IP SET {ip_set_src.name}")
+
+    visibility_metric_name = "test-cicd-waf-acl-visibility"
+    web_acl_full = WAFV2WebACL({"Name": "test_cicd",
+                         "Scope": "CLOUDFRONT",
+                         "Description": "Testing waf acl cicd",
+                         "DefaultAction": {'Block': {}},
+                         "Rules": [{'Name': 'test', 'Priority': 0, 'Statement': {'IPSetReferenceStatement': {
+                             'ARN': ip_set_src.arn}},
+                                    'Action': {'Allow': {}}, 'VisibilityConfig': {'SampledRequestsEnabled': True,
+                                                                                  'CloudWatchMetricsEnabled': True,
+                                                                                  'MetricName': 'test'}}],
+                         "VisibilityConfig": {'SampledRequestsEnabled': True, 'CloudWatchMetricsEnabled': True, 'MetricName': visibility_metric_name},
+                         })
+    web_acl_full.region = Region.get_region("us-east-1")
+    web_acl_full.tags = [{"Key": "Name", "Value": web_acl_full.name}]
+    return web_acl_full
 
 
 @pytest.mark.done
@@ -133,3 +168,36 @@ def test_dispose_ip_set_raw(wafv2_client, ip_set_src):
 @pytest.mark.done
 def test_dispose_ip_set(wafv2_client, ip_set_src):
     assert wafv2_client.dispose_ip_set(ip_set_src)
+
+
+@pytest.mark.done
+def test_yield_web_acls_raw(wafv2_client, web_acl):
+    for x in wafv2_client.yield_web_acls_raw(web_acl.region):
+        assert x
+
+
+@pytest.mark.done
+def test_yield_web_acls(wafv2_client, web_acl):
+    for x in wafv2_client.yield_web_acls(web_acl.region):
+        assert x.id
+
+
+@pytest.mark.done
+def test_update_web_acl_information(wafv2_client, web_acl):
+    for x in wafv2_client.yield_web_acls(web_acl.region):
+        assert wafv2_client.update_web_acl_information(x)
+
+
+@pytest.mark.done
+def test_provision_web_acl_raw(wafv2_client, web_acl_full):
+    request = web_acl_full.generate_create_request()
+    response_create = wafv2_client.provision_web_acl_raw(web_acl_full.region, request)
+    assert response_create
+
+
+@pytest.mark.done
+def test_dispose_web_acl_raw(wafv2_client, web_acl):
+    wafv2_client.update_web_acl_information(web_acl)
+    request = web_acl.generate_dispose_request()
+    response_dispose = wafv2_client.dispose_web_acl_raw(web_acl.region, request)
+    assert response_dispose

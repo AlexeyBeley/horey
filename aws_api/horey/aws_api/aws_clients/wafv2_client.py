@@ -4,6 +4,7 @@ AWS client to handle service API requests.
 
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.wafv2_ip_set import WAFV2IPSet
+from horey.aws_api.aws_services_entities.wafv2_web_acl import WAFV2WebACL
 from horey.h_logger import get_logger
 
 logger = get_logger()
@@ -50,7 +51,7 @@ class WAFV2Client(Boto3Client):
 
     def update_ip_set_information(self, ip_set: WAFV2IPSet):
         """
-        Update repo info.
+        Update info.
 
         :param ip_set:
         :return:
@@ -86,7 +87,7 @@ class WAFV2Client(Boto3Client):
         :return:
         """
 
-        logger.info(f"Creating efs ip set: {request_dict}")
+        logger.info(f"Creating ip set: {request_dict}")
 
         for response in self.execute(
                 self.get_session_client(region=region).create_ip_set, None, raw_data=True, filters_req=request_dict
@@ -175,10 +176,113 @@ class WAFV2Client(Boto3Client):
         :return:
         """
 
-        logger.info(f"Deleting efs ip set: {request_dict}")
+        logger.info(f"Deleting ip set: {request_dict}")
 
         for response in self.execute(
                 self.get_session_client(region=region).delete_ip_set, None, raw_data=True, filters_req=request_dict
         ):
             self.clear_cache(WAFV2IPSet)
+            return response
+
+    def yield_web_acls(self, region=None, update_info=False, filters_req=None):
+        """
+        Yield objects
+
+        :return:
+        """
+
+        regional_fetcher_generator = self.yield_web_acls_raw
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                            WAFV2WebACL,
+                                                            update_info=update_info,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req)
+
+    def yield_web_acls_raw(self, region, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        if filters_req is None:
+            filters_req = {}
+
+        if "Scope" in filters_req:
+            scopes = [filters_req["Scope"]]
+        else:
+            scopes = ["REGIONAL"]
+            if region.region_mark == "us-east-1":
+                scopes.append("CLOUDFRONT")
+
+        for scope in scopes:
+            filters_req["Scope"] = scope
+            for response in self.execute(
+                    self.get_session_client(region=region).list_web_acls, "WebACLs",
+                    filters_req=filters_req
+            ):
+                response["Scope"] = filters_req["Scope"]
+                yield response
+
+    def provision_web_acl_raw(self, region, request_dict):
+        """
+        Standard
+
+        :param region:
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Creating web acl: {request_dict}")
+
+        for response in self.execute(
+                self.get_session_client(region=region).create_web_acl, None, raw_data=True, filters_req=request_dict
+        ):
+            self.clear_cache(WAFV2WebACL)
+            return response
+
+    def update_web_acl_information(self, web_acl: WAFV2WebACL):
+        """
+        Update info.
+
+        :param web_acl:
+        :return:
+        """
+
+        if not web_acl.id:
+            filters_req = {"Scope": web_acl.scope}
+            for current_web_acl in self.yield_web_acls(web_acl.region, filters_req=filters_req):
+                if web_acl.name == current_web_acl.name:
+                    if not web_acl.update_from_attrs(current_web_acl):
+                        raise RuntimeError(f"Can not update ip set with name: {web_acl.name}")
+                    break
+            else:
+                return False
+
+        filters_req = {"Scope": web_acl.scope, "Name": web_acl.name, "Id": web_acl.id}
+        for response in self.execute(
+                self.get_session_client(region=web_acl.region).get_web_acl, None, raw_data=True,
+                filters_req=filters_req
+            ):
+            dict_src = response["WebACL"]
+            dict_src["Scope"] = filters_req["Scope"]
+            dict_src["LockToken"] = response["LockToken"]
+            return web_acl.update_from_raw_response(dict_src)
+        return False
+
+    def dispose_web_acl_raw(self, region, request_dict):
+        """
+        Standard.
+
+        :param region:
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Deleting web acl: {request_dict}")
+
+        for response in self.execute(
+                self.get_session_client(region=region).delete_web_acl, None, raw_data=True, filters_req=request_dict
+        ):
+            self.clear_cache(WAFV2WebACL)
             return response

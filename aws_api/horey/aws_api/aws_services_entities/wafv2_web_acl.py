@@ -5,7 +5,7 @@ AWS object representation.
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 
 
-class WAFV2IPSet(AwsObject):
+class WAFV2WebACL(AwsObject):
     """
     AWS VPC class
     """
@@ -13,9 +13,6 @@ class WAFV2IPSet(AwsObject):
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
         self.name = None
-        self.ip_address_version = None
-        self.description = None
-        self.addresses = None
         self.lock_token = None
         self.scope = None
 
@@ -38,10 +35,20 @@ class WAFV2IPSet(AwsObject):
                         "Id": self.init_default_attr,
                         "ARN": self.init_default_attr,
                         "Description": self.init_default_attr,
-                        "IPAddressVersion": self.init_default_attr,
-                        "Addresses": self.init_default_attr,
+                        "DefaultAction": self.init_default_attr,
+                        "Rules": self.init_default_attr,
+                        "VisibilityConfig": self.init_default_attr,
+                        "Tags": self.init_default_attr,
+                        "CustomResponseBodies": self.init_default_attr,
+                        "CaptchaConfig": self.init_default_attr,
+                        "ChallengeConfig": self.init_default_attr,
+                        "TokenDomains": self.init_default_attr,
+                        "AssociationConfig": self.init_default_attr,
                         "LockToken": self.init_default_attr,
                         "Scope": self.init_default_attr,
+                        "Capacity": self.init_default_attr,
+                        "ManagedByFirewallManager": self.init_default_attr,
+                        "LabelNamespace": self.init_default_attr,
                         }
 
         return self.init_attrs(dict_src, init_options)
@@ -56,8 +63,8 @@ class WAFV2IPSet(AwsObject):
         if not self.get_tagname():
             raise RuntimeError("Tag Name was not set")
 
-        return self.generate_request(["Name", "Scope", "IPAddressVersion", "Addresses", "Tags"],
-                                     optional=["Description"],
+        return self.generate_request(["DefaultAction", "Name", "Scope", "VisibilityConfig", "Tags"],
+                                     optional=["Description", "Rules"],
                                      request_key_to_attribute_mapping=self.request_key_to_attribute_mapping)
 
     def generate_dispose_request(self):
@@ -76,12 +83,12 @@ class WAFV2IPSet(AwsObject):
 
         :return:
         """
-        required = ["LockToken", "Id", "Scope", "Name"]
+        required = ["DefaultAction", "LockToken", "Id", "Scope", "Name", "VisibilityConfig"]
         self_request = self.generate_request(required,
-                                             optional=["Description", "Addresses"],
+                                             optional=["Description"],
                                              request_key_to_attribute_mapping=self.request_key_to_attribute_mapping)
         desired_state_request = desired_state.generate_request(required,
-                                                               optional=["Description", "Addresses"],
+                                                               optional=["Description"],
                                                                request_key_to_attribute_mapping=self.request_key_to_attribute_mapping)
 
         request = {}
