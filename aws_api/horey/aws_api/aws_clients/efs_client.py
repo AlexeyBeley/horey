@@ -1,10 +1,12 @@
 """
 AWS client to handle service API requests.
 """
+import copy
 
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.efs_file_system import EFSFileSystem
 from horey.aws_api.aws_services_entities.efs_access_point import EFSAccessPoint
+from horey.aws_api.aws_services_entities.efs_mount_target import EFSMountTarget
 from horey.h_logger import get_logger
 
 logger = get_logger()
@@ -54,12 +56,12 @@ class EFSClient(Boto3Client):
             file_system.update_from_raw_response(response)
 
             self.wait_for_status(file_system, self.update_file_system_information,
-                             [file_system.State.AVAILABLE],
-                             [file_system.State.UPDATING],
-                             [file_system.State.ERROR,
-                              file_system.State.DELETED,
-                              file_system.State.DELETING,
-                              file_system.State.CREATING])
+                                 [file_system.State.AVAILABLE],
+                                 [file_system.State.UPDATING],
+                                 [file_system.State.ERROR,
+                                  file_system.State.DELETED,
+                                  file_system.State.DELETING,
+                                  file_system.State.CREATING])
             return True
 
         return self.update_file_system_information(file_system)
@@ -81,7 +83,8 @@ class EFSClient(Boto3Client):
                 lst_ret.append(region_file_system)
 
         if len(lst_ret) > 1:
-            raise RuntimeError(f"Found {len(lst_ret)} file systems with tag {file_system.get_tagname()} in region {file_system.region.region_mark}")
+            raise RuntimeError(
+                f"Found {len(lst_ret)} file systems with tag {file_system.get_tagname()} in region {file_system.region.region_mark}")
 
         if not lst_ret:
             file_system.life_cycle_state = file_system.State.DELETED.value
@@ -171,7 +174,7 @@ class EFSClient(Boto3Client):
                              [file_system.State.DELETING,
                               file_system.State.AVAILABLE],
                              [file_system.State.ERROR,
-                             file_system.State.CREATING,
+                              file_system.State.CREATING,
                               file_system.State.UPDATING], timeout=600)
 
         self.clear_cache(EFSFileSystem)
@@ -207,7 +210,8 @@ class EFSClient(Boto3Client):
         logger.info(f"Creating efs access point: {request_dict}")
 
         for response in self.execute(
-                self.get_session_client(region=region).create_access_point, None, raw_data=True, filters_req=request_dict
+                self.get_session_client(region=region).create_access_point, None, raw_data=True,
+                filters_req=request_dict
         ):
             self.clear_cache(EFSAccessPoint)
             return response
@@ -224,7 +228,8 @@ class EFSClient(Boto3Client):
         logger.info(f"Deleting efs access point: {request_dict}")
 
         for response in self.execute(
-                self.get_session_client(region=region).delete_access_point, None, raw_data=True, filters_req=request_dict
+                self.get_session_client(region=region).delete_access_point, None, raw_data=True,
+                filters_req=request_dict
         ):
             self.clear_cache(EFSAccessPoint)
             return response
@@ -251,7 +256,7 @@ class EFSClient(Boto3Client):
                              [access_point.State.DELETING,
                               access_point.State.AVAILABLE],
                              [access_point.State.ERROR,
-                             access_point.State.CREATING,
+                              access_point.State.CREATING,
                               access_point.State.UPDATING], timeout=600)
 
         self.clear_cache(EFSFileSystem)
@@ -327,10 +332,190 @@ class EFSClient(Boto3Client):
                 lst_ret.append(region_access_point)
 
         if len(lst_ret) > 1:
-            raise RuntimeError(f"Found {len(lst_ret)} access points with tag {access_point.get_tagname()} in region {access_point.region.region_mark}")
+            raise RuntimeError(
+                f"Found {len(lst_ret)} access points with tag {access_point.get_tagname()} in region {access_point.region.region_mark}")
 
         if not lst_ret:
             access_point.life_cycle_state = access_point.State.DELETED.value
             return False
 
         return access_point.update_from_raw_response(lst_ret[0].dict_src)
+
+    def yield_mount_targets(self, region=None, update_info=False, filters_req=None, full_information=True):
+        """
+        Yield objects
+
+        :return:
+        """
+
+        if filters_req is None:
+            filters_req = {}
+        if "FileSystemId" in filters_req or "MountTargetId" in filters_req or "AccessPointId" in filters_req:
+            filters = [filters_req]
+        else:
+            filters = []
+            for file_system in self.yield_file_systems(region=region):
+                _filters_req = copy.deepcopy(filters_req)
+                _filters_req["FileSystemId"] = file_system.id
+                filters.append(_filters_req)
+
+        regional_fetcher_generator = self.yield_mount_targets_raw
+        for _filters_req in filters:
+            for mount_target in self.regional_service_entities_generator(regional_fetcher_generator,
+                                                                EFSMountTarget,
+                                                                update_info=update_info,
+                                                                regions=[region] if region else None,
+                                                                filters_req=_filters_req):
+                if full_information:
+                    for response in self.execute(
+                        self.get_session_client(region=region).describe_mount_target_security_groups, None, raw_data=True,
+                        filters_req={"MountTargetId": mount_target.id}
+                    ):
+                        del response["ResponseMetadata"]
+                        if not mount_target.update_from_raw_response(response):
+                            raise RuntimeError(f"Was not able to update {mount_target.id} with {response=}")
+
+                yield mount_target
+
+    def yield_mount_targets_raw(self, region, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        yield from self.execute(
+            self.get_session_client(region=region).describe_mount_targets, "MountTargets",
+            filters_req=filters_req
+        )
+
+    def provision_mount_target_raw(self, region, request_dict):
+        """
+        Standard
+
+        :param region:
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Creating efs mount target: {request_dict}")
+
+        for response in self.execute(
+                self.get_session_client(region=region).create_mount_target, None, raw_data=True, filters_req=request_dict
+        ):
+            self.clear_cache(EFSMountTarget)
+            return response
+
+    def dispose_mount_target_raw(self, region, request_dict):
+        """
+        Standard
+
+        :param region:
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Deleting efs mount target: {request_dict}")
+
+        for response in self.execute(
+                self.get_session_client(region=region).delete_mount_target, None, raw_data=True, filters_req=request_dict
+        ):
+            self.clear_cache(EFSMountTarget)
+            return response
+
+    def update_mount_target_information(self, mount_target: EFSMountTarget, update_info=True):
+        """
+        Update repo info.
+
+        :param update_info:
+        :param mount_target:
+        :return:
+        """
+
+        lst_ret = []
+        if not mount_target.file_system_id:
+            raise ValueError("mount_target.file_system_id was not set")
+        if not mount_target.subnet_id:
+            raise ValueError("mount_target.subnet_id was not set")
+        if not mount_target.region:
+            raise ValueError("mount_target.region was not set")
+
+        filters_req = {"FileSystemId": mount_target.file_system_id}
+        for region_mount_target in self.yield_mount_targets(region=mount_target.region, update_info=update_info,
+                                                            filters_req=filters_req):
+            if region_mount_target.subnet_id != mount_target.subnet_id:
+                continue
+            lst_ret.append(region_mount_target)
+
+        if len(lst_ret) > 1:
+            raise RuntimeError(
+                f"Found {len(lst_ret)} mount targets with tag {mount_target.file_system_id=} and {mount_target.subnet_id=}"
+                f" in region {mount_target.region.region_mark}")
+
+        if not lst_ret:
+            mount_target.life_cycle_state = mount_target.State.DELETED.value
+            return False
+
+        return mount_target.update_from_attrs(lst_ret[0])
+
+    def provision_mount_target(self, mount_target: EFSMountTarget):
+        """
+        Standard
+
+        @param mount_target:
+        @return:
+        """
+
+        logger.info("Provisioning mount target")
+        current_mount_target = EFSMountTarget({})
+        current_mount_target.region = mount_target.region
+        current_mount_target.file_system_id = mount_target.file_system_id
+        current_mount_target.subnet_id = mount_target.subnet_id
+
+        if not self.update_mount_target_information(current_mount_target):
+            response = self.provision_mount_target_raw(mount_target.region, mount_target.generate_create_request())
+            del response["ResponseMetadata"]
+            mount_target.update_from_raw_response(response)
+            self.wait_for_status(mount_target, self.update_mount_target_information,
+                                 [mount_target.State.AVAILABLE],
+                                 [mount_target.State.CREATING,
+                                  mount_target.State.UPDATING],
+                                 [mount_target.State.ERROR,
+                                  mount_target.State.DELETED,
+                                  mount_target.State.DELETING])
+            return True
+
+        mount_target.id = current_mount_target.id
+        request = current_mount_target.generate_modify_mount_target_security_groups_request(mount_target)
+        if request:
+            response = self.modify_mount_target_security_groups_raw(mount_target.region, request)
+            del response["ResponseMetadata"]
+            mount_target.update_from_raw_response(response)
+
+            self.wait_for_status(mount_target, self.update_mount_target_information,
+                                 [mount_target.State.AVAILABLE],
+                                 [mount_target.State.UPDATING],
+                                 [mount_target.State.ERROR,
+                                  mount_target.State.DELETED,
+                                  mount_target.State.DELETING,
+                                  mount_target.State.CREATING])
+            return True
+
+        return self.update_mount_target_information(mount_target)
+
+    def modify_mount_target_security_groups_raw(self, region, request_dict):
+        """
+        Standard
+
+        :param region:
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Updating efs mount target security groups: {request_dict}")
+
+        for response in self.execute(
+                self.get_session_client(region=region).modify_mount_target_security_groups, None, raw_data=True, filters_req=request_dict
+        ):
+            self.clear_cache(EFSMountTarget)
+            return response

@@ -11,10 +11,13 @@ import pytest
 from horey.aws_api.aws_clients.efs_client import EFSClient
 from horey.aws_api.aws_services_entities.efs_file_system import EFSFileSystem
 from horey.aws_api.aws_services_entities.efs_access_point import EFSAccessPoint
+from horey.aws_api.aws_services_entities.efs_mount_target import EFSMountTarget
 from horey.aws_api.base_entities.region import Region
 from horey.h_logger import get_logger
 
 logger = get_logger()
+
+test_region = Region.get_region("us-west-2")
 
 
 @pytest.fixture(name="efs_client")
@@ -40,6 +43,23 @@ def fixture_access_point_src(file_system_src, efs_client):
     access_point.region = file_system_src.region
     access_point.tags = [{"Key": "Name", "Value": "test"}]
     return access_point
+
+
+@pytest.fixture(name="mount_target_src")
+def fixture_mount_target_src(file_system_src, efs_client):
+    efs_client.update_file_system_information(file_system_src)
+    for mount_target in efs_client.yield_mount_targets(test_region, full_information=True):
+        if file_system_src.id == mount_target.file_system_id:
+            continue
+
+        _mount_target_src = EFSMountTarget({})
+        _mount_target_src.file_system_id = file_system_src.id
+        _mount_target_src.subnet_id = mount_target.subnet_id
+        _mount_target_src.security_groups = mount_target.security_groups
+        _mount_target_src.region = mount_target.region
+
+        yield _mount_target_src
+        return
 
 
 @pytest.mark.done
@@ -273,3 +293,49 @@ def test_dispose_access_point(efs_client, access_point_src):
 @pytest.mark.done
 def test_dispose_file_system(efs_client, file_system_src):
     assert efs_client.dispose_file_system(file_system_src)
+
+
+@pytest.mark.done
+def test_yield_mount_targets_raw(efs_client, file_system_src):
+    efs_client.update_file_system_information(file_system_src)
+    for mount_target_dict in efs_client.yield_mount_targets_raw(test_region, filters_req={"FileSystemId": file_system_src.id}):
+        assert mount_target_dict
+
+
+@pytest.mark.done
+def test_yield_mount_targets(efs_client):
+    for mount_target in efs_client.yield_mount_targets(region=test_region):
+        assert mount_target.id
+
+
+@pytest.mark.done
+def test_provision_mount_target_raw(efs_client, mount_target_src):
+    request = mount_target_src.generate_create_request()
+    response_create = efs_client.provision_mount_target_raw(mount_target_src.region, request)
+    assert response_create
+
+
+@pytest.mark.done
+def test_update_mount_target_information(efs_client, mount_target_src):
+    assert efs_client.update_mount_target_information(mount_target_src)
+
+
+@pytest.mark.done
+def test_dispose_mount_target_raw(efs_client, mount_target_src):
+    efs_client.update_mount_target_information(mount_target_src)
+    request = mount_target_src.generate_dispose_request()
+    response = efs_client.dispose_mount_target_raw(mount_target_src.region, request)
+    assert response
+
+
+@pytest.mark.done
+def test_provision_mount_target(efs_client, mount_target_src):
+    response_create = efs_client.provision_mount_target(mount_target_src)
+    assert response_create
+
+
+@pytest.mark.skip(reason="Add sec groups for tests, empty list is not supported at least 1 group must present")
+def test_provision_mount_target_update(efs_client, mount_target_src):
+    mount_target_src.security_groups = []
+    efs_client.provision_mount_target(mount_target_src)
+    assert not mount_target_src.security_groups
