@@ -106,6 +106,7 @@ class CloudfrontDistribution(AwsObject):
                               "CustomErrorResponses", "ViewerCertificate", "Restrictions"]:
             if required_attr not in request["DistributionConfig"]:
                 request["DistributionConfig"][required_attr] = self.distribution_config[required_attr]
+
         return request
 
     def update_from_raw_create(self, dict_src):

@@ -4,7 +4,9 @@ Standard environment maintainer.
 
 """
 import json
+import os
 
+# pylint: disable= no-name-in-module
 from horey.infrastructure_api.environment_api_configuration_policy import EnvironmentAPIConfigurationPolicy
 from horey.aws_api.aws_api import AWSAPI
 from horey.aws_api.base_entities.region import Region
@@ -28,10 +30,10 @@ from horey.aws_api.aws_services_entities.acm_certificate import ACMCertificate
 from horey.aws_api.aws_services_entities.cloudfront_response_headers_policy import CloudfrontResponseHeadersPolicy
 from horey.aws_api.aws_services_entities.cloudfront_distribution import CloudfrontDistribution
 from horey.aws_api.aws_services_entities.route53_hosted_zone import HostedZone
+from horey.aws_api.aws_services_entities.wafv2_ip_set import WAFV2IPSet
+from horey.aws_api.aws_services_entities.wafv2_web_acl import WAFV2WebACL
 
 from horey.network.ip import IP
-from horey.jenkins_api.jenkins_api import JenkinsAPI
-from horey.jenkins_api.jenkins_api_configuration_policy import JenkinsAPIConfigurationPolicy
 
 
 class EnvironmentAPI:
@@ -1007,56 +1009,6 @@ class EnvironmentAPI:
 
         return amis[0]
 
-    def provision_jenkins_api(self):
-        """
-        Provision Jenkins AO
-        :return:
-        """
-
-        self.provision_jenkins_api_infrastructure()
-        configuration = JenkinsAPIConfigurationPolicy()
-
-        self.jenkins_api = JenkinsAPI(configuration)
-        jenkins_build_directory_path = self.jenkins_api.prepare_master_build_directory(self.configuration.data_directory_path)
-
-        self.provision_fargate_service("jenkins", jenkins_build_directory_path, service_port=8080, load_balancer_port=8080)
-
-    def provision_fargate_service(self, service_name, build_dir, service_port=None, load_balancer_port=None):
-        """
-        Service provision.
-
-        :param service_name:
-        :param build_dir:
-        :param service_port:
-        :param load_balancer_port:
-        :return:
-        """
-        self.docker_api.build(jenkins_master_deployment_dir, [tag], nocache=False)
-        self.login_to_ecr_repository(self.region)
-        self.docker_api.upload_images([tag])
-
-    def provision_jenkins_api_infrastructure(self):
-        self.provision_jenkins_load_balancer_components()
-
-        self.configuration.generate_configuration_file(os.path.join(jenkins_master_deployment_dir, "jenkins_manager_configuration.json"))
-        self.provision_cloudwatch_log_group()
-        self.provision_ecs_task_execution_role()
-        self.provision_ecs_task_role()
-        self.provision_ecr_repository("master")
-        self.provision_ecr_repository("hagent")
-        sg_jenkins_lb = self.provision_security_group(f"sg_public_jenkins_load_balancer_{1}", ip_permissions=["self.address->8080"])
-        self.provision_security_group(f"sg_jenkins_service_{1}", ip_permissions=["sg_jenkins_lb.id->8080"])
-
-        self.provision_efs()
-
-        ecs_task_definition = self.provision_ecs_task_definition(tag)
-        ecs_cluster = self.provision_ecs_cluster()
-
-
-    def provision_jenkins_load_balancer_components(self):
-
-        self.provision_alb_target_group(self.configuration.load_balancer_target_group_name)
-
     class OwnerError(RuntimeError):
         """
         Raised when resource owner is not Horey.
@@ -1079,6 +1031,9 @@ class EnvironmentAPI:
 
         :return:
         """
+
+        if self.configuration.s3_bucket_policy_statements:
+            statements.extend(self.configuration.s3_bucket_policy_statements)
 
         s3_bucket = S3Bucket({})
         s3_bucket.region = self.region
@@ -1176,9 +1131,10 @@ class EnvironmentAPI:
         self.aws_api.cloudfront_client.provision_response_headers_policy(policy)
         return policy
 
-    def provision_cloudfront_distribution(self, aliases, cloudfront_origin_access_identity,
+    # pylint: disable = (too-many-arguments
+    def provision_cloudfront_distribution(self, name, aliases, cloudfront_origin_access_identity,
                                           cloudfront_certificate,
-                                          s3_bucket, response_headers_policy, origin_path):
+                                          s3_bucket, response_headers_policy, origin_path, web_acl=None):
         """
         Distribution with compiled NPM packages.
 
@@ -1186,6 +1142,7 @@ class EnvironmentAPI:
         "wafv2:GetWebACLForResource",
         "wafv2:AssociateWebACL"
 
+        :param name:
         :param origin_path:
         :param aliases:
         :param cloudfront_origin_access_identity:
@@ -1195,13 +1152,13 @@ class EnvironmentAPI:
         :return:
         """
 
-        comment = ", ".join(aliases)
+        comment = name
         cloudfront_distribution = CloudfrontDistribution({})
         cloudfront_distribution.comment = comment
         cloudfront_distribution.tags = self.configuration.tags
         cloudfront_distribution.tags.append({
             "Key": "Name",
-            "Value": aliases[0]
+            "Value": name
         })
         s3_bucket_origin_id = f"s3-bucket-{s3_bucket.name}"
         cloudfront_distribution.distribution_config = {
@@ -1220,6 +1177,7 @@ class EnvironmentAPI:
                         "S3OriginConfig": {
                             "OriginAccessIdentity": f"origin-access-identity/cloudfront/{cloudfront_origin_access_identity.id}"
                         },
+                        'CustomHeaders': {'Quantity': 0},
                         "ConnectionAttempts": 3,
                         "ConnectionTimeout": 10,
                         "OriginShield": {
@@ -1323,7 +1281,7 @@ class EnvironmentAPI:
                     "Quantity": 0
                 }
             },
-            "WebACLId": "",
+            "WebACLId": web_acl.arn if web_acl else None,
             "HttpVersion": "http2",
             "IsIPV6Enabled": True,
         }
@@ -1356,6 +1314,144 @@ class EnvironmentAPI:
         record = HostedZone.Record(dict_record)
         hosted_zone.records.append(record)
 
-        breakpoint()
         self.aws_api.route53_client.provision_hosted_zone(hosted_zone, declarative=False)
         return hosted_zone
+
+    def provision_wafv2_web_acl(self, ip_set_name, permitted_addresses, web_acl_name):
+        """
+        Provision ip set and WAFv2 web acl
+        :return:
+        """
+
+        ip_set = WAFV2IPSet({"Name": ip_set_name,
+                             "Scope": "CLOUDFRONT",
+                             "Description": ip_set_name,
+                             "IPAddressVersion": "IPV4",
+                             "Addresses": permitted_addresses})
+        ip_set.region = self.region
+        ip_set.tags = self.configuration.tags
+        ip_set.tags.append({"Key": "Name", "Value": ip_set.name})
+        self.aws_api.wafv2_client.provision_ip_set(ip_set)
+
+        web_acl = WAFV2WebACL({"Name": web_acl_name,
+                               "Scope": "CLOUDFRONT",
+                               "Description": web_acl_name,
+                               "DefaultAction": {'Block': {}},
+                               "Rules": [{'Name': 'test', 'Priority': 0, 'Statement': {'IPSetReferenceStatement': {
+                                   'ARN': ip_set.arn}},
+                                          'Action': {'Allow': {}},
+                                          'VisibilityConfig': {'SampledRequestsEnabled': True,
+                                                               'CloudWatchMetricsEnabled': True,
+                                                               'MetricName': 'test'}}],
+                               "VisibilityConfig": {'SampledRequestsEnabled': True,
+                                                    'CloudWatchMetricsEnabled': True,
+                                                    'MetricName': web_acl_name},
+                               })
+        web_acl.region = self.region
+        web_acl.tags = self.configuration.tags
+        web_acl.tags.append({"Key": "Name", "Value": web_acl.name})
+        self.aws_api.wafv2_client.provision_web_acl(web_acl)
+        return web_acl
+
+    def get_prefix_list(self, pl_name):
+        """
+        Find managed prefix list in this environment by name.
+
+        :param pl_name:
+        :return:
+        """
+
+        return self.aws_api.ec2_client.get_managed_prefix_list(self.region, name=pl_name)
+
+    # pylint: disable = (too-many-arguments
+    def upload_to_s3(self, directory_path, bucket_name, key_path, tag_objects=True, keep_src_object_name=True):
+        """
+        Upload to S3.
+
+        :param directory_path:
+        :param bucket_name:
+        :param tag_objects:
+        :param keep_src_object_name:
+        :return:
+        """
+
+        def metadata_callback_func(file_path):
+            """
+            Add metadata according to file name.
+
+            :param file_path:
+            :return:
+            """
+
+            extensions_mapping = {"js": {"ContentType": "application/javascript"},
+                                  "json": {"ContentType": "application/json"},
+                                  "svg": {"ContentType": "image/svg+xml"},
+                                  "woff": {"ContentType": "font/woff"},
+                                  "woff2": {"ContentType": "font/woff2"},
+                                  "ttf": {"ContentType": "font/ttf"},
+                                  "html": {"ContentType": "text/html"},
+                                  "ico": {"ContentType": "image/vnd.microsoft.icon"},
+                                  "css": {"ContentType": "text/css"},
+                                  "eot": {"ContentType": "application/vnd.ms-fontobject"},
+                                  "png": {"ContentType": "image/png"},
+                                  "txt": {"ContentType": "text/plain"},
+                                  "exe": {"ContentType": "application/x-msdownload"}
+                                  }
+
+            _, extension_string = os.path.splitext(file_path)
+
+            try:
+                return extensions_mapping[extension_string.strip(".")]
+            except KeyError:
+                return {"ContentType": "text/plain"}
+
+        extra_args = {"CacheControl": "no-cache, no-store, must-revalidate",
+                      "Expires": "0"
+                      }
+        if tag_objects:
+            extra_args["Tagging"] = self.generate_artifact_tags()
+
+        return self.aws_api.s3_client.upload(bucket_name, directory_path, key_path,
+                                      keep_src_object_name=keep_src_object_name, extra_args=extra_args,
+                                      metadata_callback=metadata_callback_func)
+
+    def generate_artifact_tags(self):
+        """
+        Generate artifact tags.
+
+        :return:
+        """
+
+        return "&".join(
+            f'{tag["Key"]}={tag["Value"]}' for tag in self.configuration.tags) + f"&build={self.configuration.build_id}"
+
+    def create_invalidation(self, distribution_name, paths):
+        """
+        Create distribution invalidations.
+
+        :param distribution_name:
+        :param paths:
+        :return:
+        """
+
+        distribution = CloudfrontDistribution({})
+        distribution.comment = distribution_name
+        distribution.region = self.region
+        distribution.tags = [{
+            "Key": "Name",
+            "Value": distribution_name
+        }]
+
+        if not self.aws_api.cloudfront_client.update_distribution_information(distribution):
+            raise ValueError(f"Was not able to find distribution by comment: {distribution_name}")
+
+        return self.aws_api.cloudfront_client.create_invalidation(distribution, paths)
+
+    def clear_cache(self):
+        """
+        Clear all cache.
+
+        :return:
+        """
+
+        self.aws_api.ec2_client.clear_cache(None, all_cache=True)

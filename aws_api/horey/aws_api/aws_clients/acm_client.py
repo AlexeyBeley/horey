@@ -123,33 +123,37 @@ class ACMClient(Boto3Client):
 
         return obj
 
-    def provision_certificate(self, certificate):
+    def provision_certificate(self, certificate: ACMCertificate, force=False):
         """
         Provision certificate.
 
+        :param force: Ignore existing certificates
         :param certificate:
         :return:
         """
+
         if not certificate.tags:
             raise ValueError(
                 "Can not provision certificates without unique tags set. Look at certificate.generate_name_tag")
-        try:
-            current_certificate = self.get_certificate_by_tags(certificate.region,
-                                                               {"name": tag["Value"] for tag in certificate.tags if
-                                                                tag["Key"] == "name"}, ignore_missing_tag=True)
-            if current_certificate.domain_name == certificate.domain_name:
-                certificate.update_from_raw_response(current_certificate.dict_src)
-                return certificate.arn
-        except Exception as inst_error:
-            if "ResourceNotFoundError" not in repr(inst_error):
-                raise
+
+        if not force:
+            try:
+                current_certificate = ACMCertificate({})
+                current_certificate.update_from_attrs(certificate)
+                if self.update_certificate_information(current_certificate):
+                    certificate.update_from_attrs(current_certificate)
+                    return certificate.arn
+            except Exception as inst_error:
+                if "ResourceNotFoundError" not in repr(inst_error):
+                    raise
 
         response_arn = self.provision_certificate_raw(certificate.region,
                                                       certificate.generate_create_request()
                                                       )
         certificate.arn = response_arn
 
-        self.clear_cache(ACMCertificate)
+        if not self.update_certificate_information(certificate, update_info=True):
+            raise RuntimeError(f"Was not able to update certificate after creation: {certificate.arn}")
 
         return response_arn
 
@@ -157,10 +161,12 @@ class ACMClient(Boto3Client):
         """
         Returns ARN
         """
+
         logger.info(f"Creating certificate: {request_dict}")
         for response in self.execute(
                 self.get_session_client(region=region).request_certificate, "CertificateArn", filters_req=request_dict
         ):
+            self.clear_cache(ACMCertificate)
             return response
 
     def get_certificate_by_tags(self, region, dict_tags, ignore_missing_tag=False, update_info=False):
@@ -173,6 +179,7 @@ class ACMClient(Boto3Client):
         :param update_info:
         :return:
         """
+
         ret = []
         for cert in self.yield_certificates(region, update_info=update_info):
             for tag_key, tag_value in dict_tags.items():
@@ -195,6 +202,43 @@ class ACMClient(Boto3Client):
             raise self.ResourceNotFoundError(
                 f"No certificates found in region '{str(region)}' with tags: {dict_tags}"
             ) from error_instance
+
+    def update_certificate_information(self, certificate: ACMCertificate,
+                                       filter_expired=True,
+                                       ignore_missing_tag=False,
+                                       update_info=False):
+        """
+        Standard
+
+        :return:
+        """
+
+        if certificate.arn:
+            filters_req = {"CertificateArn": certificate.arn}
+
+            for response in self.execute(
+                    self.get_session_client(region=certificate.region).describe_certificate, "Certificate", filters_req=filters_req):
+                certificate.update_from_raw_response(response)
+                return True
+
+        ret = []
+        for current_certificate in self.yield_certificates(certificate.region, update_info=update_info):
+            if filter_expired and current_certificate.status == "EXPIRED":
+                continue
+
+            if current_certificate.domain_name != certificate.domain_name:
+                continue
+
+            if certificate.get_tagname() == current_certificate.get_tagname(ignore_missing_tag=ignore_missing_tag):
+                ret.append(current_certificate)
+
+        if len(ret) == 0:
+            return False
+
+        if len(ret) > 1:
+            raise RuntimeError(f"Found more then 1 certificate by: {certificate.tags=}, {certificate.domain_name=} ")
+
+        return certificate.update_from_attrs(ret[0])
 
     def dispose_certificate(self, certificate):
         """

@@ -45,6 +45,26 @@ class EnvironmentAPIConfigurationPolicy(ConfigurationPolicy):
         self._nat_gateway_name_template = None
         self._public_hosted_zone_domain_name = None
         self._response_headers_policy_name = None
+        self._s3_bucket_policy_statements = []
+        self._build_id = []
+
+    @property
+    def build_id(self):
+        if self._build_id is None:
+            raise self.UndefinedValueError("build_id")
+        return self._build_id
+
+    @build_id.setter
+    def build_id(self, value):
+        self._build_id = value
+
+    @property
+    def s3_bucket_policy_statements(self):
+        return self._s3_bucket_policy_statements
+
+    @s3_bucket_policy_statements.setter
+    def s3_bucket_policy_statements(self, value):
+        self._s3_bucket_policy_statements = value
 
     @property
     def response_headers_policy_name(self):

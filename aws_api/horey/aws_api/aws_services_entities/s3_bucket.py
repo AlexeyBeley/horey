@@ -105,7 +105,7 @@ class S3Bucket(AwsObject):
         if self.policy is None:
             self.policy = S3Bucket.Policy(str_src)
         else:
-            raise NotImplementedError()
+            raise NotImplementedError(f"Policy already set: {self.policy}")
 
     def update_website(self, dict_src):
         """
@@ -269,7 +269,7 @@ class S3Bucket(AwsObject):
 
         def __init__(self, src_, from_cache=False):
             self.version = None
-            self.statement = None
+            self.statement = []
 
             if isinstance(src_, str):
                 dict_src = json.loads(src_)

@@ -19,6 +19,28 @@ class FrontendAPIConfigurationPolicy(ConfigurationPolicy):
         self._bucket_name = None
         self._cloudfront_distribution_name = None
         self._dns_address = None
+        self._ip_set_name = None
+        self._web_acl_name = None
+
+    @property
+    def web_acl_name(self):
+        if self._web_acl_name is None:
+            raise self.UndefinedValueError("web_acl_name")
+        return self._web_acl_name
+
+    @web_acl_name.setter
+    def web_acl_name(self, value):
+        self._web_acl_name = value
+
+    @property
+    def ip_set_name(self):
+        if self._ip_set_name is None:
+            raise self.UndefinedValueError("ip_set_name")
+        return self._ip_set_name
+
+    @ip_set_name.setter
+    def ip_set_name(self, value):
+        self._ip_set_name = value
 
     @property
     def dns_address(self):

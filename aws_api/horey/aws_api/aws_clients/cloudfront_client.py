@@ -61,10 +61,23 @@ class CloudfrontClient(Boto3Client):
                 obj = CloudfrontDistribution(item)
 
                 if full_information:
-                    for response_tags in self.execute(self.get_session_client().list_tags_for_resource, "Tags",
-                                                      filters_req={"Resource": obj.arn}):
-                        obj.tags = response_tags["Items"]
+                    self.update_distribution_full_information(obj)
+
                 yield obj
+
+    def update_distribution_full_information(self, distribution):
+        """
+        Get tags
+
+        :param distribution:
+        :return:
+        """
+
+        for response_tags in self.execute(self.get_session_client().list_tags_for_resource, "Tags",
+                                          filters_req={"Resource": distribution.arn}):
+            distribution.tags = response_tags["Items"]
+            return True
+        return False
 
     def provision_distribution(self, desired_distribution: CloudfrontDistribution):
         """
@@ -139,6 +152,7 @@ class CloudfrontClient(Boto3Client):
             self.clear_cache(CloudfrontDistribution)
             return response
 
+    # pylint: disable= too-many-branches
     def update_distribution_information(self, distribution: CloudfrontDistribution):
         """
         Get full information.
@@ -152,9 +166,13 @@ class CloudfrontClient(Boto3Client):
             except KeyError:
                 distribution_aliases = []
 
-            for existing_distribution in self.yield_all_distributions():
-                if existing_distribution.comment == distribution.comment:
-                    break
+            for existing_distribution in self.yield_all_distributions(full_information=False):
+                if existing_distribution.comment:
+                    if existing_distribution.comment == distribution.comment:
+                        break
+                    continue
+
+                self.update_distribution_full_information(existing_distribution)
                 if existing_distribution.get_tagname(ignore_missing_tag=True) == distribution.get_tagname():
                     break
 
@@ -165,7 +183,7 @@ class CloudfrontClient(Boto3Client):
                     continue
                 break
             else:
-                return
+                return False
 
             update_info = existing_distribution.dict_src
         else:
@@ -173,12 +191,13 @@ class CloudfrontClient(Boto3Client):
                                             filters_req={"Id": distribution.id}):
                 break
             else:
-                raise RuntimeError(f"Could not find cloudfront distribution: {distribution.id}")
+                return False
 
         distribution.update_from_raw_response(update_info)
         response = self.get_distribution_config_raw({"Id": distribution.id})
         del response["ResponseMetadata"]
         distribution.update_from_raw_response(response)
+        return True
 
     def provision_distribution_raw(self, request_dict):
         """
@@ -280,7 +299,7 @@ class CloudfrontClient(Boto3Client):
         :return:
         """
 
-        self.create_invalidation_raw(distribution.generate_create_invalidation(paths))
+        return self.create_invalidation_raw(distribution.generate_create_invalidation(paths))
 
     def create_invalidation_raw(self, request):
         """

@@ -93,6 +93,7 @@ from horey.common_utils.text_block import TextBlock
 from horey.network.dns_map import DNSMap
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.aws_clients.ssm_client import SSMClient
+from horey.aws_api.aws_clients.wafv2_client import WAFV2Client
 
 logger = get_logger()
 
@@ -139,6 +140,7 @@ class AWSAPI:
         self.sqs_client = SQSClient()
         self.sts_client = STSClient()
         self.efs_client = EFSClient()
+        self.wafv2_client = WAFV2Client()
 
         self.network_interfaces = []
         self.iam_policies = []
@@ -3043,7 +3045,7 @@ class AWSAPI:
     # region acm certificate
     def provision_acm_certificate(self, certificate, master_hosted_zone_name):
         """
-        Self explanatory
+        Provision and register certificate using DNS method.
 
         @param certificate:
         @param master_hosted_zone_name:
@@ -3065,26 +3067,6 @@ class AWSAPI:
 
         new_certificate = self.wait_for_certificate_validation(certificate)
         certificate.update_from_raw_response(new_certificate.dict_src)
-
-    def provision_sns_topic(self, topic):
-        """
-        Self explanatory
-
-        @param topic:
-        @return:
-        """
-
-        self.sns_client.provision_topic(topic)
-
-    def provision_sns_subscription(self, subscription):
-        """
-        Self explanatory
-
-        @param subscription:
-        @return:
-        """
-
-        self.sns_client.provision_subscription(subscription)
 
     def validate_certificate(self, certificate, master_hosted_zone_name):
         """
@@ -3181,6 +3163,25 @@ class AWSAPI:
         )
 
     # endregion
+    def provision_sns_topic(self, topic):
+        """
+        Standard
+
+        @param topic:
+        @return:
+        """
+
+        self.sns_client.provision_topic(topic)
+
+    def provision_sns_subscription(self, subscription):
+        """
+        Standard
+
+        @param subscription:
+        @return:
+        """
+
+        self.sns_client.provision_subscription(subscription)
 
     # region sesv2_domain_email_identity
     def provision_sesv2_domain_email_identity(

@@ -4,11 +4,6 @@ Standard frontend maintainer.
 """
 import os
 
-from horey.infrastructure_api.environment_api import EnvironmentAPI
-from horey.aws_api.aws_services_entities.ec2_instance import EC2Instance
-from horey.aws_api.base_entities.region import Region
-from horey.deployer.whatismyip import fetch_ip_from_google
-
 
 class FrontendAPI:
     """
@@ -26,15 +21,18 @@ class FrontendAPI:
         :return:
         """
 
+        self.environment_api.clear_cache()
+
         cloudfront_origin_access_identity = self.provision_cloudfront_origin_access_identity()
         s3_bucket = self.provision_s3_bucket(cloudfront_origin_access_identity)
         certificate = self.provision_cloudfront_acm_certificate()
         response_headers_policy = self.provision_response_headers_policy()
+        wafv2_web_acl = self.provision_wafv2_web_acl()
         cloudfront_distribution = self.provision_cloudfront_distribution(cloudfront_origin_access_identity,
                                                    certificate,
-                                                   s3_bucket, response_headers_policy)
+                                                   s3_bucket, response_headers_policy, wafv2_web_acl)
 
-        self.environment_api.provision_public_dns_address(self.configuration.dns_address, cloudfront_distribution.domain_name)
+        return self.environment_api.provision_public_dns_address(self.configuration.dns_address, cloudfront_distribution.domain_name)
 
     def update(self):
         """
@@ -42,21 +40,10 @@ class FrontendAPI:
         :return:
         """
 
-        breakpoint()
-        self.upload_to_s3(self.src_directory_path, self.configuration.bucket_name, self.root_key_path, self.configuration.tag_objects, self.configuration.keep_src_object_name)
-        self.aws_api.cloudfront_client.create_invalidation(self.configuration.distribution_name, ["/" + self.configuration.root_key_path])
-
-    def upload_to_s3(self, src_dir_path, bucket_name, key):
-        """
-        Upload the directory contents to bucket.
-
-        :param src_dir_path:
-        :param bucket:
-        :param key:
-        :return:
-        """
-
-        breakpoint()
+        self.environment_api.upload_to_s3(self.configuration.build_directory_path, self.configuration.bucket_name, self.configuration.s3_key_path, tag_objects=True, keep_src_object_name=True)
+        root_path = self.configuration.s3_key_path.rstrip("/")
+        paths = [f"{root_path}/{os.path.basename(self.configuration.build_directory_path)}/*"]
+        return self.environment_api.create_invalidation(self.configuration.dns_address, paths)
 
     def provision_s3_bucket(self, cloudfront_origin_access_identity):
         """
@@ -98,18 +85,36 @@ class FrontendAPI:
 
     def provision_response_headers_policy(self):
         """
-        creates 2 security headers policies for:
+        Response security headers policy.
+
         :return:
         """
 
         return self.environment_api.provision_response_headers_policy()
 
+    def provision_wafv2_web_acl(self):
+        """
+        Provision WAFv2 Web ACL to restrict access to the frontend distribution.
+
+        :return:
+        """
+
+        if not self.configuration.access_from_prefix_list:
+            raise NotImplementedError("access_from_prefix_list is not set")
+        prefix_list = self.environment_api.get_prefix_list(self.configuration.access_from_prefix_list)
+        permitted_addresses = [entry.cidr for entry in prefix_list.entries]
+
+        return self.environment_api.provision_wafv2_web_acl(self.configuration.ip_set_name, permitted_addresses, self.configuration.web_acl_name)
+
+    # pylint: disable = (too-many-arguments
     def provision_cloudfront_distribution(self, cloudfront_origin_access_identity,
                                                    cloudfront_certificate,
-                                                   s3_bucket, response_headers_policy):
+                                                   s3_bucket, response_headers_policy,
+                                          web_acl):
         """
         Distribution with S3 origin.
 
+        :param web_acl:
         :param cloudfront_origin_access_identity:
         :param cloudfront_certificate:
         :param s3_bucket:
@@ -118,6 +123,6 @@ class FrontendAPI:
         """
 
         aliases = [self.configuration.dns_address]
-        return self.environment_api.provision_cloudfront_distribution(aliases, cloudfront_origin_access_identity,
+        return self.environment_api.provision_cloudfront_distribution(aliases[0], aliases, cloudfront_origin_access_identity,
                                                    cloudfront_certificate,
-                                                   s3_bucket, response_headers_policy, "/public")
+                                                   s3_bucket, response_headers_policy, "/public", web_acl=web_acl)
