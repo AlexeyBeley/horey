@@ -23,10 +23,11 @@ class WAFV2WebACL(AwsObject):
         self.request_key_to_attribute_mapping = {}
         self.update_from_raw_response(dict_src)
 
-    def update_from_raw_response(self, dict_src):
+    def update_from_raw_response(self, dict_src, raise_on_no_option=False):
         """
         Standard.
 
+        :param raise_on_no_option:
         :param dict_src:
         :return:
         """
@@ -51,7 +52,7 @@ class WAFV2WebACL(AwsObject):
                         "LabelNamespace": self.init_default_attr,
                         }
 
-        return self.init_attrs(dict_src, init_options)
+        return self.init_attrs(dict_src, init_options, raise_on_no_option=raise_on_no_option)
 
     def generate_create_request(self):
         """

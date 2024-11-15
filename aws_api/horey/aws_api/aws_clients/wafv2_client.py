@@ -267,7 +267,7 @@ class WAFV2Client(Boto3Client):
             dict_src = response["WebACL"]
             dict_src["Scope"] = filters_req["Scope"]
             dict_src["LockToken"] = response["LockToken"]
-            return web_acl.update_from_raw_response(dict_src)
+            return web_acl.update_from_raw_response(dict_src, raise_on_no_option=True)
         return False
 
     def dispose_web_acl_raw(self, region, request_dict):
