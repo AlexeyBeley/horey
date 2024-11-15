@@ -50,6 +50,7 @@ class WAFV2WebACL(AwsObject):
                         "Capacity": self.init_default_attr,
                         "ManagedByFirewallManager": self.init_default_attr,
                         "LabelNamespace": self.init_default_attr,
+                        "RetrofittedByFirewallManager": self.init_default_attr,
                         }
 
         return self.init_attrs(dict_src, init_options, raise_on_no_option=raise_on_no_option)
