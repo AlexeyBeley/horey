@@ -1,5 +1,5 @@
 """
-AWS EnvironmentAPI config
+AWS Frontend config
 
 """
 

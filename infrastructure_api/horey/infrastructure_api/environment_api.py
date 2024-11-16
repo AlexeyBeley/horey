@@ -32,6 +32,8 @@ from horey.aws_api.aws_services_entities.cloudfront_distribution import Cloudfro
 from horey.aws_api.aws_services_entities.route53_hosted_zone import HostedZone
 from horey.aws_api.aws_services_entities.wafv2_ip_set import WAFV2IPSet
 from horey.aws_api.aws_services_entities.wafv2_web_acl import WAFV2WebACL
+from horey.aws_api.aws_services_entities.ecs_task_definition import ECSTaskDefinition
+from horey.aws_api.aws_services_entities.ecs_service import ECSService
 
 from horey.network.ip import IP
 
@@ -1455,3 +1457,102 @@ class EnvironmentAPI:
         """
 
         self.aws_api.ec2_client.clear_cache(None, all_cache=True)
+
+    def provision_ecs_fargate_task_definition(self, task_definition_family,
+                                      service_name,
+                                      ecr_image_id,
+                                      port_mappings,
+                                      cloudwatch_log_group_name,
+                                      entry_point,
+                                      environ_values,
+                                      requires_compatibilities,
+                                      network_mode,
+                                      volumes,
+                                      mount_points,
+                                      ecs_task_definition_cpu_reservation,
+                                      ecs_task_definition_memory_reservation,
+                                      ecs_task_role_name,
+                                      ecs_task_execution_role_name,
+                                      task_definition_cpu_architecture
+    ):
+        """
+        Provision task definition.
+
+        :return:
+        """
+
+        ecs_task_definition = ECSTaskDefinition({})
+        ecs_task_definition.region = self.region
+        ecs_task_definition.family = task_definition_family 
+
+        # ecs_task_definition.tags = [{key.lower(): value for key, value in dict_tag.items()} for dict_tag in self.configuration.tags]
+        ecs_task_definition.tags = self.configuration.tags 
+        ecs_task_definition.tags.append({
+            "key": "Name",
+            "value": ecs_task_definition.family
+        })
+
+        ecs_task_definition.container_definitions = [{
+            "name": service_name, 
+            "portMappings": port_mappings,
+            "essential": True,
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": cloudwatch_log_group_name,
+                    "awslogs-region": self.configuration.region,
+                    "awslogs-stream-prefix": "ecs"
+                }
+            }
+
+        }
+        ]
+
+        ecs_task_definition.container_definitions[0]["mountPoints"] = mount_points
+
+        ecs_task_definition.container_definitions[0]["cpu"] = ecs_task_definition_cpu_reservation
+
+        ecs_task_definition.container_definitions[0][
+                "memoryReservation"] = ecs_task_definition_memory_reservation
+
+        ecs_task_definition.volumes = volumes
+
+        ecs_task_definition.requires_compatibilities = requires_compatibilities
+
+        ecs_task_definition.network_mode = network_mode
+
+        ecs_task_definition.container_definitions[0]["entryPoint"] = entry_point
+        
+        ecs_task_definition.task_role_arn = self.get_iam_role(ecs_task_role_name).arn
+        ecs_task_definition.execution_role_arn = self.get_iam_role(ecs_task_execution_role_name).arn
+
+        ecs_task_definition.cpu = str(ecs_task_definition_cpu_reservation)
+
+        ecs_task_definition.memory = str(ecs_task_definition_memory_reservation)
+
+        ecs_task_definition.container_definitions[0]["environment"] = environ_values
+        ecs_task_definition.container_definitions[0]["image"] = ecr_image_id
+
+        ecs_task_definition.runtime_platform = {
+            "cpuArchitecture": task_definition_cpu_architecture,
+            "operatingSystemFamily": "LINUX"
+        }
+
+        self.aws_api.provision_ecs_task_definition(ecs_task_definition)
+
+        return ecs_task_definition
+
+    def get_iam_role(self, ecs_task_role_name):
+        """
+        Find role by name and path.
+
+        :param ecs_task_role_name: 
+        :return: 
+        """
+
+        ecs_task_role = IamRole({})
+        ecs_task_role.name = ecs_task_role_name
+        ecs_task_role.path = f"/{self.configuration.iam_path}/"
+        if not self.aws_api.iam_client.update_role_information(ecs_task_role):
+            raise ValueError(f"Was not able to find role: {ecs_task_role_name} with path {self.configuration.iam_path}")
+        return ecs_task_role
