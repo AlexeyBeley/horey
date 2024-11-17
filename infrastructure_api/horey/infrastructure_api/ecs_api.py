@@ -32,24 +32,9 @@ class ECSAPI:
         :return:
         """
 
-
         ecs_task_definition = self.provision_ecs_task_definition()
-        breakpoint()
 
-        security_group = self.aws_api.get_security_group_by_vpc_and_name(self.vpc,
-                                                                 self.scoutbees_aws_configuration.service_image_anomaly_detection_security_group_name)
-
-        self.provision_ecs_service(ecs_task_definition,
-                                   td_desired_count=2,
-                                   launch_type="FARGATE",
-                                   network_configuration={
-                                       "awsvpcConfiguration": {
-                                           "subnets": [subnet.id for subnet in self.select_subnets("private")],
-                                           "securityGroups": [security_group.id],
-                                           "assignPublicIp": "DISABLED"
-                                       }
-                                   }
-                                   )
+        self.provision_ecs_service(ecs_task_definition)
 
     def provision_ecs_task_definition(self):
         """
@@ -57,104 +42,46 @@ class ECSAPI:
 
         :return:
         """
-        breakpoint()
-        self.environment_api.provision_ecs_fargate_task_definition()
 
-    def _provision_ecs_service(self, ecs_task_definition, service_registries_arn=None,
-                               service_registries_container_port=None,
-                               service_target_group_arn=None,
-                               load_balancer_container_port=None,
-                               role_arn=None, td_desired_count=1,
-                               ecs_cluster=None,
-                               service_name=None,
-                               container_name=None,
-                               launch_type="EC2",
-                               network_configuration=None,
-                               deployment_maximum_percent=200):
+        self.environment_api.provision_ecs_fargate_task_definition(task_definition_family=self.configuration.family,
+                                                                   service_name=self.configuration.service_name,
+                                                                   ecr_image_id=self.configuration.ecr_image_id,
+                                                                   port_mappings=None,
+                                                                   cloudwatch_log_group_name=self.configuration.cloudwatch_log_group_name,
+                                                                   entry_point=None,
+                                                                   environ_values=self.configuration.environ_values,
+                                                                   requires_compatibilities=self.configuration.requires_compatibilities,
+                                                                   network_mode=self.configuration.network_mode,
+                                                                   volumes=None,
+                                                                   mount_points=None,
+                                                                   ecs_task_definition_cpu_reservation=self.configuration.ecs_task_definition_cpu_reservation,
+                                                                   ecs_task_definition_memory_reservation=self.configuration.ecs_task_definition_memory_reservation,
+                                                                   ecs_task_role_name=self.configuration.ecs_task_role_name,
+                                                                   ecs_task_execution_role_name=self.configuration.ecs_task_execution_role_name,
+                                                                   task_definition_cpu_architecture=self.configuration.task_definition_cpu_architecture)
+
+    def provision_ecs_service(self, ecs_task_definition):
         """
         Provision component's ECS service.
 
-        :param service_registries_container_port:
-        :param load_balancer_container_port:
-        :param ecs_task_definition:
-        :param service_registries_arn:
-        :param service_target_group_arn:
-        :param role_arn:
-        :param td_desired_count:
         :return:
         """
 
-        container_name = container_name or self.NAME
-
-        if ecs_cluster is None:
-            ecs_cluster = self.find_ecs_cluster()
-
-        ecs_service = ECSService({})
-        ecs_service.name = service_name or self.configuration.ecs_service_name
-        ecs_service.region = self.region
-
-        ecs_service.network_configuration = network_configuration
-
-        ecs_service.tags = [{key.lower(): value for key, value in dict_tag.items()} for dict_tag in self.tags]
-        ecs_service.tags.append({
-            "key": "Name",
-            "value": ecs_service.name
-        })
-
-        ecs_service.cluster_arn = ecs_cluster.arn
-        ecs_service.task_definition = ecs_task_definition.arn
-
-        if service_target_group_arn is not None:
-            if load_balancer_container_port is None:
-                raise ValueError("load_balancer_container_port was not set while using service_target_group_arn")
-
-            ecs_service.load_balancers = [{
-                "targetGroupArn": service_target_group_arn,
-                "containerName": container_name,
-                "containerPort": load_balancer_container_port
-            }]
-
-        if service_registries_arn is not None:
-            if service_registries_container_port is None:
-                raise ValueError("service_registries_container_port was not set while using service_registries_arn")
-
-            ecs_service.service_registries = [{
-                "registryArn": service_registries_arn,
-                "containerName": container_name,
-                "containerPort": service_registries_container_port
-            }]
-
-        ecs_service.desired_count = td_desired_count
-
-        ecs_service.launch_type = launch_type
-
-        if role_arn is not None:
-            ecs_service.role_arn = role_arn
-
-        ecs_service.deployment_configuration = {
-            "deploymentCircuitBreaker": {
-                "enable": False,
-                "rollback": False
-            },
-            "maximumPercent": deployment_maximum_percent,
-            "minimumHealthyPercent": 100
-        }
-        if launch_type != "FARGATE":
-            ecs_service.placement_strategy = [
-                {
-                    "type": "spread",
-                    "field": "attribute:ecs.availability-zone"
-                },
-                {
-                    "type": "spread",
-                    "field": "instanceId"
-                }
-            ]
-        ecs_service.health_check_grace_period_seconds = 10
-        ecs_service.scheduling_strategy = "REPLICA"
-        ecs_service.enable_ecs_managed_tags = False
-        ecs_service.enable_execute_command = True
-
-        wait_timeout = 10 * 60 if self.configuration.brutal_deployment else 20 * 60
-        logger.info(f"Starting ECS service deployment with {wait_timeout=}")
-        self.aws_api.provision_ecs_service(ecs_service, wait_timeout=wait_timeout)
+        security_groups = self.environment_api.get_security_groups(self.configuration.security_groups)
+        self.environment_api.provision_ecs_service(self.configuration.cluster_name,
+                                                   ecs_task_definition,
+                                                   td_desired_count=self.configuration.task_desired_count,
+                                                   launch_type=self.configuration.launch_type,
+                                                   network_configuration={
+                                                       "awsvpcConfiguration": {
+                                                           "subnets": [subnet.id for subnet in
+                                                                       self.environment_api.private_subnets],
+                                                           "securityGroups": [security_group.id for security_group in
+                                                                              security_groups],
+                                                           "assignPublicIp": "DISABLED"
+                                                       }
+                                                   },
+                                                   service_name=self.configuration.service_name,
+                                                   container_name=self.configuration.service_name,
+                                                   kill_old_containers=self.configuration.kill_old_containers
+                                                   )
