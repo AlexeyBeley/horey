@@ -94,7 +94,7 @@ class S3Bucket(AwsObject):
         if self.acl is None:
             self.acl = lst_src
         elif self.acl != lst_src:
-            raise NotImplementedError(f"{self.acl=} {lst_src=}")
+            raise NotImplementedError(f"{self.name} {self.acl=} {lst_src=}")
 
     def update_policy(self, str_src):
         """
