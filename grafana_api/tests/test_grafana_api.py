@@ -29,12 +29,19 @@ configuration.configuration_file_full_path = os.path.abspath(
 )
 configuration.init_from_file()
 
-grafana_api = GrafanaAPI(configuration=configuration)
 
 # pylint: disable= missing-function-docstring
+@pytest.fixture(name="grafana_api")
+def fixture_grafana_api():
+    """
+    Test Grafana API initiation
+    @return:
+    """
+    _grafana_api = GrafanaAPI(configuration=configuration)
+    yield _grafana_api
 
 
-@pytest.mark.skip(reason="Can not test")
+@pytest.mark.wip
 def test_init_grafana_api():
     """
     Test Grafana API initiation
@@ -45,7 +52,7 @@ def test_init_grafana_api():
 
 
 @pytest.mark.skip(reason="Can not test")
-def test_provision_dashboard():
+def test_provision_dashboard(grafana_api):
     """
     Test dashboard object provisioning
     @return:
@@ -90,7 +97,7 @@ def generate_influx_monitoring_panel(measurement_name, panel_name):
 
 
 @pytest.mark.skip(reason="Can not test")
-def test_create_influxdb_monitor_dashboard():
+def test_create_influxdb_monitor_dashboard(grafana_api):
     """
     mkdir ./telegraf_structure
     influx -database telegraf -execute 'show measurements' >> ./telegraf_structure/measurements
@@ -125,7 +132,7 @@ def test_create_influxdb_monitor_dashboard():
 
 
 @pytest.mark.skip(reason="Can not test")
-def test_create_dashboard_raw():
+def test_create_dashboard_raw(grafana_api):
     """
     Test dashboard creation from raw dict
     @return:
@@ -154,7 +161,7 @@ def test_create_dashboard_raw():
 
 
 @pytest.mark.skip(reason="Can not test")
-def test_create_rule_raw():
+def test_create_rule_raw(grafana_api):
     request = {}
     #with open(os.path.join(cache_dir, "dashboards.json"), encoding="utf-8") as file_handler:
     #    pass
@@ -164,7 +171,7 @@ def test_create_rule_raw():
 
 
 @pytest.mark.skip(reason="Can not test")
-def test_create_dashboard_generated_raw():
+def test_create_dashboard_generated_raw(grafana_api):
     """
     Test dashboard creation from generated parts.
     @return:
@@ -230,7 +237,7 @@ def test_create_dashboard_generated_raw():
 
 
 @pytest.mark.skip(reason="Can not test")
-def test_init_folders_and_dashboards():
+def test_init_folders_and_dashboards(grafana_api):
     """
     Test folders and dashboards initiation
     @return:
@@ -243,7 +250,7 @@ def test_init_folders_and_dashboards():
 
 
 @pytest.mark.skip(reason="Can not test")
-def test_init_datasources():
+def test_init_datasources(grafana_api):
     """
     Datasource initiation.
     @return:
@@ -257,7 +264,7 @@ def test_init_datasources():
 
 
 @pytest.mark.skip(reason="Can not test")
-def test_provision_datasource():
+def test_provision_datasource(grafana_api):
     """
     Provision datasource
     @return:
@@ -268,7 +275,7 @@ def test_provision_datasource():
 
 
 @pytest.mark.skip(reason="Can not test")
-def test_init_rule_namespaces():
+def test_init_rule_namespaces(grafana_api):
     """
     Namespace and rules initiation
     @return:
@@ -279,7 +286,7 @@ def test_init_rule_namespaces():
 
 
 @pytest.mark.skip(reason="Can not test")
-def test_init_folders():
+def test_init_folders(grafana_api):
     """
     Dashboard folders initiation
     @return:
@@ -287,15 +294,10 @@ def test_init_folders():
     grafana_api.init_folders()
 
 
-if __name__ == "__main__":
-    # test_init_grafana_api()
-    # test_provision_dashboard()
-    # test_init_folders_and_dashboards()
-    # test_provision_datasource()
-    # test_create_dashboard_raw()
-    # test_create_dashboard_generated_raw()
-    # test_init_rule_namespaces()
-    # test_init_folders()
-    # test_init_datasources()
-    #test_create_rule_raw()
-    test_create_influxdb_monitor_dashboard()
+@pytest.mark.skip(reason="Can not test")
+def test_generate_token(grafana_api):
+    """
+    Dashboard folders initiation
+    @return:
+    """
+    pass
