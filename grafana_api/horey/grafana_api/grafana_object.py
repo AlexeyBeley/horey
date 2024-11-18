@@ -27,14 +27,14 @@ class GrafanaObject:
         for key, value in dict_src.items():
             self.dict_src[key] = value
             if key not in options:
-                logger.warninng(f"{key} is not in options, using self.init_default")
+                logger.warning(f"{key} is not in options, using self.init_default")
                 self.init_default(key, value)
                 bugs.append(key)
                 continue
             options[key](key, value)
         if bugs:
             str_error = "\n".join([f'"{key}": self.init_default,' for key in bugs])
-            logger.warninng(str_error)
+            logger.warning(str_error)
 
     def generate_create_request(self):
         """
