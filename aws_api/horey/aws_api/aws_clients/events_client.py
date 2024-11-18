@@ -46,6 +46,7 @@ class EventsClient(Boto3Client):
         :param custom_filter:
         :return:
         """
+
         final_result = []
         for dict_src in self.execute(
                 self.get_session_client(region=region).list_rules, "Rules", filters_req=custom_filter
@@ -111,6 +112,7 @@ class EventsClient(Boto3Client):
         :param rule:
         :return:
         """
+
         self.update_rule_information(rule)
 
         if rule.arn is None:

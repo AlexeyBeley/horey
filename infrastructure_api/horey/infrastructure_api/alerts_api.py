@@ -22,15 +22,8 @@ class FrontendAPI:
         """
 
         self.environment_api.clear_cache()
+        self.provision_ses_identity()
 
-        cloudfront_origin_access_identity = self.provision_cloudfront_origin_access_identity()
-        s3_bucket = self.provision_s3_bucket(cloudfront_origin_access_identity)
-        certificate = self.provision_cloudfront_acm_certificate()
-        response_headers_policy = self.provision_response_headers_policy()
-        wafv2_web_acl = self.provision_wafv2_web_acl()
-        cloudfront_distribution = self.provision_cloudfront_distribution(cloudfront_origin_access_identity,
-                                                   certificate,
-                                                   s3_bucket, response_headers_policy, wafv2_web_acl)
 
         return self.environment_api.provision_public_dns_address(self.configuration.dns_address, cloudfront_distribution.domain_name)
 

@@ -1,21 +1,68 @@
-import json
-import os
-import pdb
+"""
+Test lambda handler functionality.
 
+"""
+
+import pytest
+from common import ses_events, cloudwatch_events, malformed_cloudwatch_events, self_monitoring_valid_events
 from horey.alert_system.lambda_package.lambda_handler import lambda_handler
+from horey.alert_system.alert_system_configuration_policy import AlertSystemConfigurationPolicy
 
-with open("./clowdwatch_messages/event_sns_opensearch.json") as file_handler:
-    event = json.load(file_handler)
+# pylint: disable= missing-function-docstring
 
-os.environ["SLACK_API_CONFIGURATION_FILE"] = os.path.abspath(
-    os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "..",
-        "..",
-        "..",
-        "ignore",
-        "slack_api_configuration_values.py",
-    )
-)
 
-lambda_handler(event, None)
+@pytest.mark.done
+@pytest.mark.parametrize("ses_event", ses_events)
+def test_lambda_handler(ses_event, alert_system_configuration_file_path_with_echo):
+    AlertSystemConfigurationPolicy.ALERT_SYSTEM_CONFIGURATION_FILE_PATH = alert_system_configuration_file_path_with_echo
+    event_handler = lambda_handler(ses_event, None)
+    assert event_handler["statusCode"] == 200
+
+
+@pytest.mark.done
+@pytest.mark.parametrize("ses_event", ses_events)
+def test_lambda_handler_slack_notification(ses_event, alert_system_configuration_file_path_with_slack):
+    AlertSystemConfigurationPolicy.ALERT_SYSTEM_CONFIGURATION_FILE_PATH = alert_system_configuration_file_path_with_slack
+    event_handler = lambda_handler(ses_event, None)
+    assert event_handler["statusCode"] == 200
+
+
+@pytest.mark.done
+@pytest.mark.parametrize("cloudwatch_event", cloudwatch_events)
+def test_lambda_handler_cloudwatch_events_echo(cloudwatch_event, alert_system_configuration_file_path_with_echo):
+    AlertSystemConfigurationPolicy.ALERT_SYSTEM_CONFIGURATION_FILE_PATH = alert_system_configuration_file_path_with_echo
+    event_handler = lambda_handler(cloudwatch_event, None)
+    assert event_handler["statusCode"] == 200
+
+
+@pytest.mark.done
+@pytest.mark.parametrize("cloudwatch_event", malformed_cloudwatch_events)
+def test_lambda_handler_malformed_cloudwatch_events_echo(cloudwatch_event, alert_system_configuration_file_path_with_echo):
+    AlertSystemConfigurationPolicy.ALERT_SYSTEM_CONFIGURATION_FILE_PATH = alert_system_configuration_file_path_with_echo
+    event_handler = lambda_handler(cloudwatch_event, None)
+    assert event_handler["statusCode"] == 404
+
+
+@pytest.mark.done
+@pytest.mark.parametrize("cloudwatch_event", self_monitoring_valid_events)
+def test_lambda_handler_self_monitoring_valid_events_echo(cloudwatch_event, alert_system_configuration_file_path_with_echo):
+    AlertSystemConfigurationPolicy.ALERT_SYSTEM_CONFIGURATION_FILE_PATH = alert_system_configuration_file_path_with_echo
+    event_handler = lambda_handler(cloudwatch_event, None)
+    assert event_handler["statusCode"] == 200
+
+
+@pytest.mark.done
+@pytest.mark.parametrize("cloudwatch_event", self_monitoring_valid_events)
+def test_lambda_handler_self_monitoring_valid_events_slack(cloudwatch_event, alert_system_configuration_file_path_with_slack):
+    AlertSystemConfigurationPolicy.ALERT_SYSTEM_CONFIGURATION_FILE_PATH = alert_system_configuration_file_path_with_slack
+    event_handler = lambda_handler(cloudwatch_event, None)
+    assert event_handler["statusCode"] == 200
+
+
+@pytest.mark.done
+@pytest.mark.parametrize("cloudwatch_event", cloudwatch_events)
+def test_lambda_handler_cloudwatch_message_message_override_notify_echo(cloudwatch_event,
+                                                                        alert_system_configuration_file_path_message_override_notify_echo):
+    AlertSystemConfigurationPolicy.ALERT_SYSTEM_CONFIGURATION_FILE_PATH = alert_system_configuration_file_path_message_override_notify_echo
+    event_handler = lambda_handler(cloudwatch_event, None)
+    assert event_handler["statusCode"] == 200

@@ -42,6 +42,16 @@ class CloudWatchAlarm(AwsObject):
             self._init_cloud_watch_alarm_from_cache(dict_src)
             return
 
+        self.update_from_raw_response(dict_src)
+
+    def update_from_raw_response(self, dict_src):
+        """
+        Init from raw API response.
+
+        :param dict_src:
+        :return:
+        """
+
         init_options = {
             "AlarmName": lambda x, y: self.init_default_attr(
                 x, y, formatted_name="name"

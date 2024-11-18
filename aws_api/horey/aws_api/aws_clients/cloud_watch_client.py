@@ -32,6 +32,7 @@ class CloudWatchClient(Boto3Client):
         """
         Generator for standard region fetcher
 
+        :param region:
         :param filters_req:
         :return:
         """
@@ -73,7 +74,7 @@ class CloudWatchClient(Boto3Client):
                 raise NotImplementedError("CompositeAlarms")
             yield from dict_src["MetricAlarms"]
 
-    def set_cloudwatch_alarm(self, alarm):
+    def set_cloudwatch_alarm(self, alarm: CloudWatchAlarm):
         """
         Provision alarm.
 
@@ -91,6 +92,12 @@ class CloudWatchClient(Boto3Client):
         ):
             if response["HTTPStatusCode"] != 200:
                 raise RuntimeError(f"{response}")
+
+        alarms_by_name = list(self.regional_fetcher_generator_alarms(alarm.region, filters_req={"AlarmNames": [alarm.name]}))
+        if len(alarms_by_name) != 1:
+            raise RuntimeError(f"Was not able to find single alarm by name '{alarm.name}' in region '{alarm.region.region_mark}'")
+
+        alarm.update_from_raw_response(alarms_by_name[0])
 
     def put_metric_data_raw(self, region, request_dict):
         """
@@ -136,6 +143,7 @@ class CloudWatchClient(Boto3Client):
           StateValue='OK'|'ALARM'|'INSUFFICIENT_DATA',
           StateReason='string',
 
+        :param region:
         :param request_dict:
         :return:
         """
@@ -147,6 +155,38 @@ class CloudWatchClient(Boto3Client):
                 None,
                 raw_data=True,
                 filters_req=request_dict,
+                instant_raise=True
         ):
-            del response["ResponseMetadata"]
             return response
+
+    def set_alarm_ok(self, alarm):
+        """
+        Change the alarm state to OK
+
+        :param alarm:
+        :return:
+        """
+
+        dict_request = {"AlarmName": alarm.name,
+                        "StateValue": "OK",
+                        "StateReason": "Explicitly changed state to OK"}
+
+        return self.set_alarm_state_raw(alarm.region, dict_request)
+
+    def set_alarm_state(self, alarm, state):
+        """
+        Change the alarm state
+
+        :param state:
+        :param alarm:
+        :return:
+        """
+
+        if state not in ["OK", "ALARM"]:
+            raise ValueError(state)
+
+        dict_request = {"AlarmName": alarm.name,
+                        "StateValue": state,
+                        "StateReason": f"Explicitly changed state to {state}"}
+
+        return self.set_alarm_state_raw(alarm.region, dict_request)

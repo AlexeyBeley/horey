@@ -20,7 +20,6 @@ def send_message_to_sns_parser():
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("--subject", required=True, type=str)
     parser.add_argument("--message_file_path", required=True, type=str)
-    parser.add_argument("--alert_system_configuration_file_path", required=True, type=str)
     return parser
 
 
@@ -30,9 +29,9 @@ def send_message_to_sns(arguments, _) -> None:
     configuration.init_from_file()
     alert_system = AlertSystem(configuration)
     with open(arguments.message_file_path, encoding="utf-8") as file_handler:
-        message = json.load(file_handler)
+        dict_message = json.load(file_handler)
 
-    alert_system.send_message_to_sns(message)
+    alert_system.send_message_to_sns(dict_message)
 
 
 action_manager.register_action("send_message_to_sns", send_message_to_sns_parser, send_message_to_sns)

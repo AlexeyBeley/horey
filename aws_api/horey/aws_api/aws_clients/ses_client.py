@@ -224,6 +224,23 @@ class SESClient(Boto3Client):
         ):
             yield {"name": str_src}
 
+    def update_identity_information(self, obj: SESIdentity, full_information=False):
+        """
+        Update from AWS API.
+
+        :param full_information:
+        :param obj:
+        :return:
+        """
+
+        for identity in self.yield_identities(region=obj.region, update_info=True, full_information=full_information):
+            if identity.name == obj.name:
+                if full_information:
+                    self.update_identity_full_information(obj)
+                return True
+
+        return False
+
     def update_identity_full_information(self, obj: SESIdentity):
         """
         Standard.
@@ -275,3 +292,73 @@ class SESClient(Boto3Client):
             if list(dict_src.keys()) != [obj.name]:
                 raise ValueError(dict_src)
             obj.update_from_raw_response(dict_src[obj.name])
+        return False
+
+    def provision_identity(self, current_email_identity: SESIdentity, desired_email_identity: SESIdentity):
+        """
+        Standard
+
+        @param current_email_identity:
+        @param desired_email_identity:
+        @return:
+        """
+
+        if not self.update_identity_information(current_email_identity, full_information=True):
+            raise ValueError("Create the identity using sesv2_client")
+
+        requests = current_email_identity.generate_set_identity_notification_topic_requests(desired_email_identity)
+        for request in requests:
+            self.set_identity_notification_topic_raw(desired_email_identity.region, request)
+
+        requests = current_email_identity.generate_set_identity_headers_in_notifications_enabled_requests(desired_email_identity)
+        for request in requests:
+            self.set_identity_headers_in_notifications_enabled_raw(desired_email_identity.region, request)
+
+        if desired_email_identity.dkim_attributes:
+            raise NotImplementedError(f"{desired_email_identity.dkim_attributes=}")
+
+        if desired_email_identity.dkim_signing_attributes:
+            raise NotImplementedError(f"{desired_email_identity.dkim_signing_attributes=}")
+
+        if current_email_identity.mail_from_attributes.get("BehaviorOnMxFailure") != "USE_DEFAULT_VALUE":
+            raise NotImplementedError(f"{current_email_identity.mail_from_attributes=}")
+
+        if not current_email_identity.feedback_forwarding_status:
+            raise NotImplementedError(f"{current_email_identity.feedback_forwarding_status}")
+
+        if current_email_identity.policies:
+            raise NotImplementedError(f"{current_email_identity.policies}")
+
+        if desired_email_identity.policies:
+            raise NotImplementedError(f"{desired_email_identity.policies}")
+        return True
+
+    def set_identity_notification_topic_raw(self, region, dict_request):
+        """
+        Standard.
+
+        :return:
+        """
+
+        logger.info(f"Setting identity SNS notification topic {dict_request}")
+
+        for dict_ret in self.execute(
+                self.get_session_client(region=region).set_identity_notification_topic, None, raw_data=True, filters_req=dict_request
+        ):
+            self.clear_cache(SESIdentity)
+            return dict_ret
+
+    def set_identity_headers_in_notifications_enabled_raw(self, region, dict_request):
+        """
+        Standard.
+
+        :return:
+        """
+
+        logger.info(f"Setting identity SNS notification headers {dict_request}")
+
+        for dict_ret in self.execute(
+                self.get_session_client(region=region).set_identity_headers_in_notifications_enabled, None, raw_data=True, filters_req=dict_request
+        ):
+            self.clear_cache(SESIdentity)
+            return dict_ret

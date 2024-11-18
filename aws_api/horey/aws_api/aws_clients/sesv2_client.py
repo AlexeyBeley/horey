@@ -4,7 +4,7 @@ AWS lambda client to handle lambda service API requests.
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 
 from horey.aws_api.aws_services_entities.sesv2_account import SESV2Account
-from horey.aws_api.aws_services_entities.sesv2_email_identity import SESV2EmailIdentity
+from horey.aws_api.aws_services_entities.ses_identity import SESIdentity
 from horey.aws_api.aws_services_entities.sesv2_email_template import SESV2EmailTemplate
 from horey.aws_api.aws_services_entities.sesv2_configuration_set import (
     SESV2ConfigurationSet,
@@ -64,10 +64,11 @@ class SESV2Client(Boto3Client):
 
         regional_fetcher_generator = self.yield_email_identities_raw
         yield from self.regional_service_entities_generator(regional_fetcher_generator,
-                                                            SESV2EmailIdentity,
+                                                            SESIdentity,
                                                             update_info=update_info,
                                                             regions=[region] if region else None,
-                                                            filters_req=filters_req)
+                                                            filters_req=filters_req,
+                                                            )
 
     def yield_email_identities_raw(self, region, filters_req=None):
         """
@@ -122,7 +123,7 @@ class SESV2Client(Boto3Client):
         logger.info(f"get_region_email_identities: {region.region_mark}")
         return list(self.yield_email_identities(region=region))
 
-    def update_email_identity_information(self, obj: SESV2EmailIdentity):
+    def update_email_identity_information(self, obj: SESIdentity):
         """
         Standard
 
@@ -293,12 +294,13 @@ class SESV2Client(Boto3Client):
 
         obj.update_from_raw_response(dict_src)
 
-    def provision_configuration_set(self, configuration_set: SESV2ConfigurationSet):
+    def update_email_configuration_set_information(self, configuration_set, full_information=True):
         """
-        Standard
+        Standard.
 
-        @param configuration_set:
-        @return:
+        :param configuration_set:
+        :param full_information:
+        :return:
         """
 
         region_configuration_sets = self.get_region_configuration_sets(
@@ -309,15 +311,41 @@ class SESV2Client(Boto3Client):
                 configuration_set.update_from_raw_response(
                     region_configuration_set.dict_src
                 )
-                break
-        else:
+                if full_information:
+                    self.get_configuration_set_full_information(configuration_set)
+                return True
+        return False
+
+    def provision_configuration_set(self, configuration_set: SESV2ConfigurationSet, declerative=True):
+        """
+        Standard
+
+        @param configuration_set:
+        @return:
+        """
+        breakpoint()
+
+        current_configuration_set = SESV2ConfigurationSet({})
+        current_configuration_set.region = configuration_set.region
+        current_configuration_set.name = configuration_set.name
+
+        if not self.update_email_configuration_set_information(current_configuration_set, full_information=True):
             self.provision_configuration_set_raw(configuration_set.region,
                                                  configuration_set.generate_create_request()
                                                  )
+            self.update_email_configuration_set_information(current_configuration_set, full_information=False)
 
-        create_requests = configuration_set.generate_create_requests_event_destinations()
+        create_requests, update_requests, delete_requests = current_configuration_set.generate_event_destinations_requests(configuration_set)
         for create_request in create_requests:
-            self.create_request_event_destination_raw(configuration_set.region, create_request)
+            self.create_configuration_set_event_destination_raw(configuration_set.region, create_request)
+
+        if declerative:
+            for update_request in update_requests:
+                self.update_configuration_set_event_destination_raw(configuration_set.region, update_request)
+
+            for delete_request in delete_requests:
+                raise RuntimeError(delete_requests)
+                self.delete_configuration_set_event_destination_raw(configuration_set.region, delete_request)
 
     def provision_configuration_set_raw(self, region, request_dict):
         """
@@ -334,14 +362,16 @@ class SESV2Client(Boto3Client):
                 raw_data=True,
                 filters_req=request_dict,
         ):
+            self.clear_cache(SESV2ConfigurationSet)
             return response
 
-    def create_request_event_destination_raw(self, region, request_dict):
+    def create_configuration_set_event_destination_raw(self, region, request_dict):
         """
         Standard
 
         @param request_dict:
         @return:
+        :param region:
         """
 
         logger.info(f"Creating configuration_set event_destination: {request_dict}")
@@ -351,6 +381,45 @@ class SESV2Client(Boto3Client):
                 raw_data=True,
                 filters_req=request_dict,
         ):
+            self.clear_cache(SESV2ConfigurationSet)
+            return response
+
+    def update_configuration_set_event_destination_raw(self, region, request_dict):
+        """
+        Standard
+
+        @param request_dict:
+        @return:
+        :param region:
+        """
+
+        logger.info(f"Updating configuration_set event_destination: {request_dict}")
+        for response in self.execute(
+                self.get_session_client(region=region).update_configuration_set_event_destination,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
+        ):
+            self.clear_cache(SESV2ConfigurationSet)
+            return response
+
+    def delete_configuration_set_event_destination_raw(self, region, request_dict):
+        """
+        Standard
+
+        @param request_dict:
+        @return:
+        :param region:
+        """
+
+        logger.info(f"Delete configuration_set event_destination: {request_dict}")
+        for response in self.execute(
+                self.get_session_client(region=region).delete_configuration_set_event_destination,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
+        ):
+            self.clear_cache(SESV2ConfigurationSet)
             return response
 
     def update_email_template_information(self, email_template: SESV2EmailTemplate):
@@ -427,29 +496,71 @@ class SESV2Client(Boto3Client):
             return response
         return True
 
-    def provision_email_identity(self, email_identity: SESV2EmailIdentity):
+    def provision_identity(self, current_email_identity: SESIdentity, desired_email_identity: SESIdentity):
         """
         Standard
 
-        @param email_identity:
+        @param current_email_identity:
+        @param desired_email_identity:
         @return:
         """
-        self.update_email_identity_information(email_identity)
 
-        if email_identity.identity_type is not None:
-            return
+        self.update_email_identity_information(current_email_identity)
 
-        response = self.provision_email_identity_raw(email_identity.region,
-                                                     email_identity.generate_create_request()
+        if current_email_identity.identity_type is None:
+            response = self.create_email_identity_raw(current_email_identity.region,
+                                                     current_email_identity.generate_create_request()
                                                      )
-        email_identity.update_from_raw_response(response)
+            current_email_identity.update_from_raw_response(response)
+        else:
+            request = current_email_identity.generate_put_email_identity_configuration_set_attributes_request(desired_email_identity)
+            if request:
+                self.put_email_identity_configuration_set_attributes_raw(desired_email_identity.region, request)
+            if desired_email_identity.dkim_attributes:
+                raise NotImplementedError(f"{desired_email_identity.dkim_attributes=}")
 
-    def provision_email_identity_raw(self, region, request_dict):
+            if desired_email_identity.dkim_signing_attributes:
+                raise NotImplementedError(f"{desired_email_identity.dkim_signing_attributes=}")
+
+            if current_email_identity.mail_from_attributes.get("BehaviorOnMxFailure") != "USE_DEFAULT_VALUE":
+                raise NotImplementedError(f"{current_email_identity.mail_from_attributes=}")
+
+            if not current_email_identity.feedback_forwarding_status:
+                raise NotImplementedError(f"{current_email_identity.feedback_forwarding_status}")
+
+            if current_email_identity.policies:
+                raise NotImplementedError(f"{current_email_identity.policies}")
+
+            if desired_email_identity.policies:
+                raise NotImplementedError(f"{desired_email_identity.policies}")
+        return True
+
+    def put_email_identity_configuration_set_attributes_raw(self, region, request_dict):
         """
         Standard
 
-        @param request_dict:
-        @return:
+        :param region:
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Putting email_identity config set: {request_dict}")
+        for response in self.execute(
+                self.get_session_client(region=region).put_email_identity_configuration_set_attributes,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
+        ):
+            self.clear_cache(SESIdentity)
+            return response
+
+    def create_email_identity_raw(self, region, request_dict):
+        """
+        Standard
+
+        :param region:
+        :param request_dict:
+        :return:
         """
 
         logger.info(f"Creating email_identity: {request_dict}")

@@ -990,6 +990,7 @@ class RDSClient(Boto3Client):
             raise RuntimeError(region_db_clusters)
 
         db_cluster.update_from_raw_response(region_db_clusters[0].dict_src)
+        return True
 
     def update_db_instance_information(self, db_instance):
         """

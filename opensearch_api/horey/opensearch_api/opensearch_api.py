@@ -270,3 +270,18 @@ class OpensearchAPI:
         """
 
         return self.get("_index_patterns")
+
+    def get_notification_channels_raw(self):
+        ret = self.get(f"_plugins/_notifications/channels")
+        #ret = self.get("_plugins/_notifications/configs")
+
+    def get_index_templates_raw(self):
+        ret = self.get(f"_index_template")
+        breakpoint()
+        ret = self.get("_dashboards/api/index_patterns/cloud-hive*")
+
+        #ret = self.get("_plugins/_notifications/configs")
+
+    def create_notification_channels_raw(self, lst_src):
+        for dict_src in lst_src:
+            self.post("/_plugins/_notifications/configs/", dict_src)

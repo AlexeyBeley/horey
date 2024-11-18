@@ -8,6 +8,7 @@ import datetime
 # pylint: disable=no-name-in-module, too-many-lines
 from collections import defaultdict
 import requests
+from time import perf_counter
 
 from horey.h_logger import get_logger
 from horey.aws_api.aws_api import AWSAPI
@@ -1875,6 +1876,7 @@ class AWSCleaner:
             if not metric_filters:
                 no_metrics.append(f"{group.name}: No metric filters")
 
+            # metrics
             tb_ret_tmp = self.sub_cleanup_report_cloudwatch_logs_metrics(metric_filters)
             tb_ret_tmp.header = f"Group: {group.name}. {tb_ret_tmp.header}"
             metric_filters_patterns = defaultdict(list)

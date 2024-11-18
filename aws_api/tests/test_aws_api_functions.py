@@ -9,7 +9,7 @@ from horey.h_logger import get_logger
 from horey.aws_api.aws_api_configuration_policy import AWSAPIConfigurationPolicy
 from horey.aws_api.base_entities.region import Region
 from horey.aws_api.aws_services_entities.acm_certificate import ACMCertificate
-from horey.aws_api.aws_services_entities.sesv2_email_identity import SESV2EmailIdentity
+from horey.aws_api.aws_services_entities.ses_identity import SESIdentity
 from horey.aws_api.aws_services_entities.aws_lambda import AWSLambda
 from horey.aws_api.aws_services_entities.key_pair import KeyPair
 from horey.aws_api.aws_services_entities.vpc import VPC
@@ -81,7 +81,7 @@ def test_provision_certificate():
 
 @pytest.mark.todo
 def test_provision_sesv2_domain_email_identity():
-    email_identity = SESV2EmailIdentity({})
+    email_identity = SESIdentity({})
     email_identity.name = mock_values["email_identity.name"]
     email_identity.region = Region.get_region("us-west-2")
     email_identity.tags = [{"Key": "name", "Value": "value"}]

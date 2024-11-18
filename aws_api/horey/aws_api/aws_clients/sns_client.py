@@ -168,16 +168,17 @@ class SNSClient(Boto3Client):
 
         return list(self.yield_topics(region=region, full_information=full_information))
 
-    def get_region_topics(self, region, full_information=True):
+    def get_region_topics(self, region, full_information=True, get_tags=True):
         """
         Standard.
 
+        :param get_tags:
         :param region:
         :param full_information:
         :return:
         """
 
-        return list(self.yield_topics(region=region, full_information=full_information))
+        return list(self.yield_topics(region=region, full_information=full_information, get_tags=get_tags))
 
     def get_topic_full_information(self, topic):
         """
@@ -213,7 +214,7 @@ class SNSClient(Boto3Client):
         """
 
         if topic.arn is None:
-            for _topic in self.get_region_topics(topic.region, full_information=False):
+            for _topic in self.get_region_topics(topic.region, full_information=False, get_tags=False):
                 if _topic.name == topic.name:
                     topic.arn = _topic.arn
                     break

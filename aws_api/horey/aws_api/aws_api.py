@@ -18,6 +18,8 @@ from horey.aws_api.aws_clients.ec2_client import EC2Client
 from horey.aws_api.aws_services_entities.ec2_instance import EC2Instance
 from horey.aws_api.aws_clients.glue_client import GlueClient
 
+from horey.aws_api.aws_clients.efs_client import EFSClient
+
 from horey.aws_api.aws_clients.ecs_client import ECSClient
 from horey.aws_api.aws_clients.pricing_client import PricingClient
 from horey.aws_api.aws_clients.auto_scaling_client import AutoScalingClient
@@ -92,6 +94,9 @@ from horey.common_utils.text_block import TextBlock
 
 from horey.network.dns_map import DNSMap
 from horey.aws_api.base_entities.aws_account import AWSAccount
+from horey.aws_api.aws_services_entities.ses_identity import SESIdentity
+from horey.aws_api.aws_services_entities.ses_identity import SESIdentity
+
 from horey.aws_api.aws_clients.ssm_client import SSMClient
 from horey.aws_api.aws_clients.wafv2_client import WAFV2Client
 
@@ -106,6 +111,7 @@ class AWSAPI:
 
     # pylint: disable= too-many-statements
     def __init__(self, configuration=None):
+        self.efs_client = EFSClient()
         self.ssm_client = SSMClient()
         self.glue_client = GlueClient()
         self.ec2_client = EC2Client()
@@ -1007,7 +1013,7 @@ class AWSAPI:
             os.makedirs(sub_dir, exist_ok=True)
             logger.info(f"Begin collecting from stream: {sub_dir}")
 
-            stream_generator = self.cloud_watch_logs_client.yield_log_group_streams_raw(
+            stream_generator = self.cloud_watch_logs_client.yield_log_group_streams(
                 log_group
             )
             self.cache_objects_from_generator(stream_generator, sub_dir)
@@ -2566,7 +2572,7 @@ class AWSAPI:
 
     def provision_security_group(self, security_group, provision_rules=True, force=False, declarative=False):
         """
-        Self explanatory
+        Standard
 
         @param security_group:
         @param provision_rules:
@@ -3183,22 +3189,28 @@ class AWSAPI:
 
         self.sns_client.provision_subscription(subscription)
 
-    # region sesv2_domain_email_identity
-    def provision_sesv2_domain_email_identity(
-            self, email_identity, wait_for_validation=True, hosted_zone_name=None
+    # region ses_domain_email_identity
+    def provision_ses_domain_email_identity(
+            self, desired_email_identity, wait_for_validation=True, hosted_zone_name=None
     ):
         """
-        Standard
+        Standard.
 
-        @param email_identity:
+        @param desired_email_identity:
         @param wait_for_validation:
         @return:
         :param hosted_zone_name:
         """
+        email_identity_current = SESIdentity({})
+        email_identity_current.region = desired_email_identity.region
+        email_identity_current.name = desired_email_identity.name
 
-        self.sesv2_client.provision_email_identity(email_identity)
+        self.sesv2_client.provision_identity(email_identity_current, desired_email_identity)
+        self.ses_client.provision_identity(email_identity_current, desired_email_identity)
+        self.sesv2_client.update_email_identity_information(desired_email_identity)
+        self.ses_client.update_identity_full_information(desired_email_identity)
 
-        if email_identity.dkim_attributes["Status"] == "SUCCESS":
+        if desired_email_identity.dkim_attributes["Status"] == "SUCCESS":
             return
 
         max_time = 5 * 60
@@ -3207,25 +3219,25 @@ class AWSAPI:
         end_time = start_time + datetime.timedelta(seconds=max_time)
         while datetime.datetime.now() < end_time:
             logger.info(
-                f"Waiting for sesv2 domain validation request. Going to sleep for {sleep_time} seconds: {email_identity.name}"
+                f"Waiting for sesv2 domain validation request. Going to sleep for {sleep_time} seconds: {desired_email_identity.name}"
             )
             time.sleep(sleep_time)
-            self.sesv2_client.update_email_identity_information(email_identity)
+            self.sesv2_client.update_email_identity_information(desired_email_identity)
 
-            if email_identity.dkim_attributes["Status"] != "NOT_STARTED":
+            if desired_email_identity.dkim_attributes["Status"] != "NOT_STARTED":
                 break
         else:
-            raise TimeoutError(f"Reached timeout for {email_identity.name}")
+            raise TimeoutError(f"Reached timeout for {desired_email_identity.name}")
 
-        if email_identity.dkim_attributes["Status"] != "PENDING":
+        if desired_email_identity.dkim_attributes["Status"] != "PENDING":
             raise ValueError(
-                f"Unknown status {email_identity.dkim_attributes['Status']}"
+                f"Unknown status {desired_email_identity.dkim_attributes['Status']}"
             )
 
-        self.validate_sesv2_domain_email_identity(email_identity, hosted_zone_name=hosted_zone_name)
+        self.validate_sesv2_domain_email_identity(desired_email_identity, hosted_zone_name=hosted_zone_name)
 
         if wait_for_validation:
-            self.wait_for_sesv2_domain_email_identity_validation(email_identity)
+            self.wait_for_sesv2_domain_email_identity_validation(desired_email_identity)
 
     def validate_sesv2_domain_email_identity(self, email_identity, hosted_zone_name=None):
         """

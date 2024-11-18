@@ -468,6 +468,7 @@ class LambdaClient(Boto3Client):
 
         @param request_dict:
         @return:
+        :param region:
         """
 
         logger.info(f"Invoking lambda: {request_dict}")

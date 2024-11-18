@@ -19,7 +19,12 @@ setup(
     include_package_data=True,
     package_data={"": ["lambda_package/*.txt"]},
     packages=find_namespace_packages(
-        include=["horey.alert_system", "horey.alert_system.*"]
+        include=["horey.alert_system",
+                 "horey.alert_system.*",
+                 "horey.alert_system.lambda_package",
+                 "horey.alert_system.lambda_package.*",
+                 "horey.alert_system.lambda_package.**.*",
+                 ]
     ),
     zip_safe=False,
     install_requires=[],
