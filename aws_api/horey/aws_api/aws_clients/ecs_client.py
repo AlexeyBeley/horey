@@ -648,6 +648,7 @@ class ECSClient(Boto3Client):
         """
         Standard
 
+        :param region:
         :param request_dict:
         :return:
         """
@@ -710,11 +711,16 @@ class ECSClient(Boto3Client):
         """
 
         cluster = self.get_cluster_from_arn(service.cluster_arn)
+        self.clear_cache(ECSService)
         region_objects = self.get_all_services(cluster=cluster)
         for region_object in region_objects:
             if region_object.name == service.name:
-                response = self.update_service_raw(service.region, service.generate_update_request())
-                service.update_from_raw_response(response)
+                request = region_object.generate_update_request(service)
+                if request:
+                    response = self.update_service_raw(service.region, request)
+                    service.update_from_raw_response(response)
+                else:
+                    self.update_service_information(service)
                 break
         else:
             response = self.create_service_raw(service.region, service.generate_create_request())

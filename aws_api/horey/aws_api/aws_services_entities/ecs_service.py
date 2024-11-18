@@ -28,12 +28,19 @@ class ECSService(AwsObject):
         self.enable_execute_command = None
         self.status = None
         self.desired_count = None
+        self.capacity_provider_strategy = None
+        self.force_new_deployment = None
+        self.service_connect_configuration = None
+        self.volume_configurations = None
+        self.placement_constraints = None
+        self.platform_version = None
 
         self.launch_type = None
         self.scheduling_strategy = None
         self.enable_ecs_managed_tags = None
         self.deployments = []
         self.network_configuration = None
+        self.request_key_to_attribute_mapping = {"cluster": "cluster_arn", "service": "name"}
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -145,13 +152,9 @@ class ECSService(AwsObject):
         request = {"service": self.name, "cluster": cluster.name, "force": True}
         return request
 
-    def generate_update_request(self):
+    def generate_update_request(self, desired_state):
         """
         Standard.
-
-        :return:
-        """
-
         request = {"service": self.name, "cluster": self.cluster_arn, "taskDefinition": self.task_definition,
                    "desiredCount": self.desired_count}
         if self.load_balancers is not None:
@@ -164,6 +167,46 @@ class ECSService(AwsObject):
                                                       "serviceRegistries", "deploymentConfiguration"])
 
         return request
+        :return:
+        """
+
+        required = ["service", "cluster"]
+        optional = ["taskDefinition",
+                    "desiredCount",
+                    "taskDefinition",
+                    "healthCheckGracePeriodSeconds",
+                    "placementStrategy",
+                    "propagateTags",
+                    "networkConfiguration",
+                    "serviceRegistries",
+                    "deploymentConfiguration",
+                    "capacityProviderStrategy",
+                    "placementConstraints",
+                    "platformVersion",
+                    "forceNewDeployment",
+                    "enableExecuteCommand",
+                    "enableECSManagedTags",
+                    "loadBalancers",
+                    "serviceConnectConfiguration",
+                    "volumeConfigurations"]
+
+        self_request = self.generate_request(required,
+                                             optional=optional,
+                                             request_key_to_attribute_mapping=self.request_key_to_attribute_mapping)
+        desired_state_request = desired_state.generate_request(required,
+                                                               optional=optional,
+                                                               request_key_to_attribute_mapping=self.request_key_to_attribute_mapping)
+
+        request = {}
+        for key in required:
+            if self_request[key] != desired_state_request[key]:
+                raise ValueError(f"Required key must be same: {key}")
+            request[key] = desired_state_request[key]
+
+        for key, desired_value in desired_state_request.items():
+            if self_request.get(key) != desired_value:
+                request[key] = desired_state_request[key]
+        return None if len(request) == len(required) else request
 
     def get_status(self):
         """

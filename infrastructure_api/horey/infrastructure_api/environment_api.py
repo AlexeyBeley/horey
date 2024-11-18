@@ -140,7 +140,9 @@ class EnvironmentAPI:
 
         for subnet in self.subnets:
             if self.configuration.public_subnets:
-                breakpoint()
+                if subnet.id in self.configuration.public_subnets:
+                    subnets.append(subnet)
+                continue
             if "public" in subnet.get_tagname("Name"):
                 generated_name = self.configuration.subnet_name_template.format(type="public",
                                                                                 id=subnet.availability_zone_id)
@@ -166,7 +168,10 @@ class EnvironmentAPI:
 
         for subnet in self.subnets:
             if self.configuration.private_subnets:
-                breakpoint()
+                if subnet.id in self.configuration.private_subnets:
+                    subnets.append(subnet)
+                continue
+
             if "private" in subnet.get_tagname("Name"):
                 generated_name = self.configuration.subnet_name_template.format(type="private",
                                                                                 id=subnet.availability_zone_id)
@@ -1462,8 +1467,9 @@ class EnvironmentAPI:
 
         self.aws_api.ec2_client.clear_cache(None, all_cache=True)
 
+    # pylint: disable=too-many-locals
     def provision_ecs_fargate_task_definition(self, task_definition_family=None,
-                                      service_name=None,
+                                      contaner_name=None,
                                       ecr_image_id=None,
                                       port_mappings=None,
                                       cloudwatch_log_group_name=None,
@@ -1490,7 +1496,7 @@ class EnvironmentAPI:
 
         ecs_task_definition = ECSTaskDefinition({})
         ecs_task_definition.region = self.region
-        ecs_task_definition.family = task_definition_family 
+        ecs_task_definition.family = task_definition_family
 
         # Why? Because AWS! `Unknown parameter in tags[0]: "Key", must be one of: key, value`
         ecs_task_definition.tags = [{key.lower(): value for key, value in dict_tag.items()} for dict_tag in self.configuration.tags]
@@ -1500,7 +1506,7 @@ class EnvironmentAPI:
         })
 
         ecs_task_definition.container_definitions = [{
-            "name": service_name, 
+            "name": contaner_name,
             "portMappings": port_mappings,
             "essential": True,
             "logConfiguration": {
@@ -1532,7 +1538,7 @@ class EnvironmentAPI:
 
         if entry_point is not None:
             ecs_task_definition.container_definitions[0]["entryPoint"] = entry_point
-        
+
         ecs_task_definition.task_role_arn = self.get_iam_role(ecs_task_role_name).arn
         ecs_task_definition.execution_role_arn = self.get_iam_role(ecs_task_execution_role_name).arn
 
@@ -1556,8 +1562,8 @@ class EnvironmentAPI:
         """
         Find role by name and path.
 
-        :param ecs_task_role_name: 
-        :return: 
+        :param ecs_task_role_name:
+        :return:
         """
 
         ecs_task_role = IamRole({})
@@ -1567,6 +1573,7 @@ class EnvironmentAPI:
             raise ValueError(f"Was not able to find role: {ecs_task_role_name} with path {self.configuration.iam_path}")
         return ecs_task_role
 
+    # pylint: disable=too-many-locals
     def provision_ecs_service(self, cluster_name, ecs_task_definition, service_registries_arn=None,
                                service_registries_container_port=None,
                                service_target_group_arn=None,
@@ -1592,10 +1599,7 @@ class EnvironmentAPI:
         :return:
         """
 
-        if kill_old_containers:
-            old_tasks = self.get_ecs_service_tasks(cluster_name, ecs_task_definition)
-
-        container_name = container_name
+        old_tasks = self.get_ecs_service_tasks(cluster_name, ecs_task_definition) if kill_old_containers else []
 
         ecs_cluster = self.find_ecs_cluster(cluster_name)
 
@@ -1605,7 +1609,7 @@ class EnvironmentAPI:
 
         ecs_service.network_configuration = network_configuration
 
-        ecs_service.tags = [{key.lower(): value for key, value in dict_tag.items()} for dict_tag in self.tags]
+        ecs_service.tags = [{key.lower(): value for key, value in dict_tag.items()} for dict_tag in self.configuration.tags]
         ecs_service.tags.append({
             "key": "Name",
             "value": ecs_service.name
@@ -1669,6 +1673,7 @@ class EnvironmentAPI:
 
         if kill_old_containers:
             self.kill_old_task(cluster_name, old_tasks)
+        return ecs_service
 
     def find_ecs_cluster(self, cluster_name):
         """
@@ -1692,12 +1697,11 @@ class EnvironmentAPI:
 
         :return:
         """
-        breakpoint()
-        task_definition.name
-        custom_list_filters = {"family": self.configuration.task_definition_name}
+        custom_list_filters = {"family": task_definition.family}
         return self.aws_api.ecs_client.get_region_tasks(self.region,
                                                         cluster_name=cluster_name,
                                                         custom_list_filters=custom_list_filters)
+
     def kill_old_task(self, cluster_name, tasks):
         """
         Brutally kill the old task running in ECS Service.
@@ -1721,5 +1725,4 @@ class EnvironmentAPI:
         lst_ret = []
         for security_group_name in security_group_names:
             lst_ret.append(self.aws_api.get_security_group_by_vpc_and_name(self.vpc, security_group_name))
-
         return lst_ret
