@@ -3,14 +3,14 @@ Horey infra knowledge as a code.
 
 """
 
+# pylint: disable= import-outside-toplevel, no-name-in-module
+
 
 class InfrastructureAPI:
     """
     Manage Knowledge.
 
     """
-    def __init__(self):
-        pass
 
     def get_environment_api(self, configuration, aws_api=None):
         """
