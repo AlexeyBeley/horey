@@ -47,6 +47,28 @@ class EnvironmentAPIConfigurationPolicy(ConfigurationPolicy):
         self._response_headers_policy_name = None
         self._s3_bucket_policy_statements = []
         self._build_id = []
+        self._private_subnets = []
+        self._public_subnets = []
+
+    @property
+    def public_subnets(self):
+        if self._public_subnets is None:
+            raise self.UndefinedValueError("public_subnets")
+        return self._public_subnets
+
+    @public_subnets.setter
+    def public_subnets(self, value):
+        self._public_subnets = value
+
+    @property
+    def private_subnets(self):
+        if self._private_subnets is None:
+            raise self.UndefinedValueError("private_subnets")
+        return self._private_subnets
+
+    @private_subnets.setter
+    def private_subnets(self, value):
+        self._private_subnets = value
 
     @property
     def build_id(self):

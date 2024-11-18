@@ -32,6 +32,8 @@ from horey.aws_api.aws_services_entities.cloudfront_distribution import Cloudfro
 from horey.aws_api.aws_services_entities.route53_hosted_zone import HostedZone
 from horey.aws_api.aws_services_entities.wafv2_ip_set import WAFV2IPSet
 from horey.aws_api.aws_services_entities.wafv2_web_acl import WAFV2WebACL
+from horey.aws_api.aws_services_entities.ecs_task_definition import ECSTaskDefinition
+from horey.aws_api.aws_services_entities.ecs_service import ECSService
 
 from horey.network.ip import IP
 
@@ -110,8 +112,8 @@ class EnvironmentAPI:
             self._subnets = []
             for subnet in self.aws_api.ec2_client.yield_subnets(region=self.region, filters_req=filters_req,
                                                                 update_info=True):
-                if subnet.get_tag("Owner") != "Horey":
-                    raise self.OwnerError(f"{subnet.id}")
+                #if subnet.get_tag("Owner") != "Horey":
+                #    raise self.OwnerError(f"{subnet.id}")
                 self._subnets.append(subnet)
 
         return self._subnets
@@ -137,6 +139,10 @@ class EnvironmentAPI:
         subnets = []
 
         for subnet in self.subnets:
+            if self.configuration.public_subnets:
+                if subnet.id in self.configuration.public_subnets:
+                    subnets.append(subnet)
+                continue
             if "public" in subnet.get_tagname("Name"):
                 generated_name = self.configuration.subnet_name_template.format(type="public",
                                                                                 id=subnet.availability_zone_id)
@@ -161,6 +167,11 @@ class EnvironmentAPI:
         subnets = []
 
         for subnet in self.subnets:
+            if self.configuration.private_subnets:
+                if subnet.id in self.configuration.private_subnets:
+                    subnets.append(subnet)
+                continue
+
             if "private" in subnet.get_tagname("Name"):
                 generated_name = self.configuration.subnet_name_template.format(type="private",
                                                                                 id=subnet.availability_zone_id)
@@ -1455,3 +1466,263 @@ class EnvironmentAPI:
         """
 
         self.aws_api.ec2_client.clear_cache(None, all_cache=True)
+
+    # pylint: disable=too-many-locals
+    def provision_ecs_fargate_task_definition(self, task_definition_family=None,
+                                      contaner_name=None,
+                                      ecr_image_id=None,
+                                      port_mappings=None,
+                                      cloudwatch_log_group_name=None,
+                                      entry_point=None,
+                                      environ_values=None,
+                                      requires_compatibilities=None,
+                                      network_mode=None,
+                                      volumes=None,
+                                      mount_points=None,
+                                      ecs_task_definition_cpu_reservation=None,
+                                      ecs_task_definition_memory_reservation=None,
+                                      ecs_task_role_name=None,
+                                      ecs_task_execution_role_name=None,
+                                      task_definition_cpu_architecture=None
+    ):
+        """
+        Provision task definition.
+
+        :return:
+        """
+
+        if port_mappings is None:
+            port_mappings = []
+
+        ecs_task_definition = ECSTaskDefinition({})
+        ecs_task_definition.region = self.region
+        ecs_task_definition.family = task_definition_family
+
+        # Why? Because AWS! `Unknown parameter in tags[0]: "Key", must be one of: key, value`
+        ecs_task_definition.tags = [{key.lower(): value for key, value in dict_tag.items()} for dict_tag in self.configuration.tags]
+        ecs_task_definition.tags.append({
+            "key": "Name",
+            "value": ecs_task_definition.family
+        })
+
+        ecs_task_definition.container_definitions = [{
+            "name": contaner_name,
+            "portMappings": port_mappings,
+            "essential": True,
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": cloudwatch_log_group_name,
+                    "awslogs-region": self.configuration.region,
+                    "awslogs-stream-prefix": "ecs"
+                }
+            }
+
+        }
+        ]
+
+        if mount_points is not None:
+            ecs_task_definition.container_definitions[0]["mountPoints"] = mount_points
+
+        ecs_task_definition.container_definitions[0]["cpu"] = ecs_task_definition_cpu_reservation
+
+        ecs_task_definition.container_definitions[0][
+                "memoryReservation"] = ecs_task_definition_memory_reservation
+
+        if volumes is not None:
+            ecs_task_definition.volumes = volumes
+
+        ecs_task_definition.requires_compatibilities = requires_compatibilities
+
+        ecs_task_definition.network_mode = network_mode
+
+        if entry_point is not None:
+            ecs_task_definition.container_definitions[0]["entryPoint"] = entry_point
+
+        ecs_task_definition.task_role_arn = self.get_iam_role(ecs_task_role_name).arn
+        ecs_task_definition.execution_role_arn = self.get_iam_role(ecs_task_execution_role_name).arn
+
+        ecs_task_definition.cpu = str(ecs_task_definition_cpu_reservation)
+
+        ecs_task_definition.memory = str(ecs_task_definition_memory_reservation)
+
+        ecs_task_definition.container_definitions[0]["environment"] = environ_values
+        ecs_task_definition.container_definitions[0]["image"] = ecr_image_id
+
+        ecs_task_definition.runtime_platform = {
+            "cpuArchitecture": task_definition_cpu_architecture,
+            "operatingSystemFamily": "LINUX"
+        }
+
+        self.aws_api.provision_ecs_task_definition(ecs_task_definition)
+
+        return ecs_task_definition
+
+    def get_iam_role(self, ecs_task_role_name):
+        """
+        Find role by name and path.
+
+        :param ecs_task_role_name:
+        :return:
+        """
+
+        ecs_task_role = IamRole({})
+        ecs_task_role.name = ecs_task_role_name
+        ecs_task_role.path = f"/{self.configuration.iam_path}/"
+        if not self.aws_api.iam_client.update_role_information(ecs_task_role):
+            raise ValueError(f"Was not able to find role: {ecs_task_role_name} with path {self.configuration.iam_path}")
+        return ecs_task_role
+
+    # pylint: disable=too-many-locals
+    def provision_ecs_service(self, cluster_name, ecs_task_definition, service_registries_arn=None,
+                               service_registries_container_port=None,
+                               service_target_group_arn=None,
+                               load_balancer_container_port=None,
+                               role_arn=None, td_desired_count=1,
+                               service_name=None,
+                               container_name=None,
+                               launch_type="EC2",
+                               network_configuration=None,
+                               deployment_maximum_percent=200,
+                               wait_timeout=20*60,
+                               kill_old_containers=False):
+        """
+        Provision component's ECS service.
+
+        :param service_registries_container_port:
+        :param load_balancer_container_port:
+        :param ecs_task_definition:
+        :param service_registries_arn:
+        :param service_target_group_arn:
+        :param role_arn:
+        :param td_desired_count:
+        :return:
+        """
+
+        old_tasks = self.get_ecs_service_tasks(cluster_name, ecs_task_definition) if kill_old_containers else []
+
+        ecs_cluster = self.find_ecs_cluster(cluster_name)
+
+        ecs_service = ECSService({})
+        ecs_service.name = service_name
+        ecs_service.region = self.region
+
+        ecs_service.network_configuration = network_configuration
+
+        ecs_service.tags = [{key.lower(): value for key, value in dict_tag.items()} for dict_tag in self.configuration.tags]
+        ecs_service.tags.append({
+            "key": "Name",
+            "value": ecs_service.name
+        })
+
+        ecs_service.cluster_arn = ecs_cluster.arn
+        ecs_service.task_definition = ecs_task_definition.arn
+
+        if service_target_group_arn is not None:
+            if load_balancer_container_port is None:
+                raise ValueError("load_balancer_container_port was not set while using service_target_group_arn")
+
+            ecs_service.load_balancers = [{
+                "targetGroupArn": service_target_group_arn,
+                "containerName": container_name,
+                "containerPort": load_balancer_container_port
+            }]
+
+        if service_registries_arn is not None:
+            if service_registries_container_port is None:
+                raise ValueError("service_registries_container_port was not set while using service_registries_arn")
+
+            ecs_service.service_registries = [{
+                "registryArn": service_registries_arn,
+                "containerName": container_name,
+                "containerPort": service_registries_container_port
+            }]
+
+        ecs_service.desired_count = td_desired_count
+
+        ecs_service.launch_type = launch_type
+
+        if role_arn is not None:
+            ecs_service.role_arn = role_arn
+
+        ecs_service.deployment_configuration = {
+            "deploymentCircuitBreaker": {
+                "enable": False,
+                "rollback": False
+            },
+            "maximumPercent": deployment_maximum_percent,
+            "minimumHealthyPercent": 100
+        }
+        if launch_type != "FARGATE":
+            ecs_service.placement_strategy = [
+                {
+                    "type": "spread",
+                    "field": "attribute:ecs.availability-zone"
+                },
+                {
+                    "type": "spread",
+                    "field": "instanceId"
+                }
+            ]
+        ecs_service.health_check_grace_period_seconds = 10
+        ecs_service.scheduling_strategy = "REPLICA"
+        ecs_service.enable_ecs_managed_tags = False
+        ecs_service.enable_execute_command = True
+
+        self.aws_api.provision_ecs_service(ecs_service, wait_timeout=wait_timeout)
+
+        if kill_old_containers:
+            self.kill_old_task(cluster_name, old_tasks)
+        return ecs_service
+
+    def find_ecs_cluster(self, cluster_name):
+        """
+        Standard.
+
+        :param cluster_name:
+        :return:
+        """
+
+        clusters = self.aws_api.ecs_client.get_region_clusters(self.region, cluster_identifiers=[
+            cluster_name])
+        if len(clusters) != 1:
+            raise RuntimeError(f"Can not find ecs cluster "
+                               f"{cluster_name} "
+                               f"found: {len(clusters)}")
+        return clusters[0]
+
+    def get_ecs_service_tasks(self, cluster_name, task_definition):
+        """
+        Get ECS service currently running tasks.
+
+        :return:
+        """
+        custom_list_filters = {"family": task_definition.family}
+        return self.aws_api.ecs_client.get_region_tasks(self.region,
+                                                        cluster_name=cluster_name,
+                                                        custom_list_filters=custom_list_filters)
+
+    def kill_old_task(self, cluster_name, tasks):
+        """
+        Brutally kill the old task running in ECS Service.
+
+        :return:
+        """
+        if len(tasks) == 0:
+            return
+
+        print("Brutally killing old tasks!")
+        self.aws_api.ecs_client.dispose_tasks(tasks, cluster_name)
+
+    def get_security_groups(self, security_group_names):
+        """
+        Get security groups by names.
+
+        :param security_group_names:
+        :return:
+        """
+
+        lst_ret = []
+        for security_group_name in security_group_names:
+            lst_ret.append(self.aws_api.get_security_group_by_vpc_and_name(self.vpc, security_group_name))
+        return lst_ret
