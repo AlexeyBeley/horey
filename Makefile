@@ -33,7 +33,7 @@ init_venv_dir: create_build_env
 	source ${VENV_DIR}/bin/activate &&\
 	python -m pip install --upgrade pip &&\
 	python -m pip install -U setuptools\>=54.1.2 &&\
-	python -m pip install -U packaging\>=24.22
+	python -m pip install -U packaging\>=24.2
 
 prepare_package_wheel-%: init_venv_dir
 	${BUILD_DIR}/create_wheel.sh $(subst prepare_package_wheel-,,$@)
