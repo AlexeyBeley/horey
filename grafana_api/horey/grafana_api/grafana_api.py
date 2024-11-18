@@ -159,17 +159,19 @@ class GrafanaAPI:
         self.base_address = self.base_address.replace(
             "//", f"//{configuration.user}:{configuration.password}@"
         )
-
+        return
         org_id = "1"
         response = self.post(f"/user/using/{org_id}", {})
         logger.info(response)
         token_name = "org_1"
         response = self.get("/auth/keys")
 
+        breakpoint()
         for key in response:
             if key["name"] == token_name:
                 self.delete(f"/auth/keys/{key['id']}")
-
+        response = self.get(f"/serviceaccounts/search?perpage=10&page=1&query={token_name}")
+        #create: response = self.post("/serviceaccounts", {"name": token_name, "role": "Admin"})
         response = self.post("/auth/keys", {"name": token_name, "role": "Admin"})
         logger.info(response)
 
