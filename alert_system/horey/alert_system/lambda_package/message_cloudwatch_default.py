@@ -138,7 +138,7 @@ class MessageCloudwatchDefault(MessageBase):
         if not self.trigger:
             raise MessageBase.NotAMatchError("Trigger is missing")
 
-        if MessageBase.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY in self.alarm_description:
+        if AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY in self.alarm_description:
             return self.generate_self_monitoring_notification()
 
         if self.trigger.get("MetricName") == "Duration" and self.trigger.get("Namespace") == "AWS/Lambda":

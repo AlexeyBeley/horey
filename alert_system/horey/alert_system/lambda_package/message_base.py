@@ -16,8 +16,6 @@ class MessageBase:
     Main class.
 
     """
-    ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY = "ALERT_SYSTEM_SELF_MONITORING"
-    ALERT_SYSTEM_SELF_MONITORING_TYPE_VALUE = "ALERT_SYSTEM_SELF_MONITORING"
 
     def __init__(self, dic_src, configuration: AlertSystemConfigurationPolicy):
         self._dict_src = dic_src

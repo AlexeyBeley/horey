@@ -19,6 +19,9 @@ class AlertSystemConfigurationPolicy(ConfigurationPolicy):
     ALERT_SYSTEM_CONFIGURATION_FILE_PATH = "alert_system_configuration.json"
     ALERT_SYSTEM_SELF_MONITORING_LOG_ERROR_FILTER_PATTERN = "[ERROR]"
     ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN = "Task timed out after"
+    # These key and value are added in the message dict to indicate the received message is self monitoring
+    ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY = "ALERT_SYSTEM_SELF_MONITORING"
+    ALERT_SYSTEM_SELF_MONITORING_TYPE_VALUE = "ALERT_SYSTEM_SELF_MONITORING"
 
     def __init__(self):
         super().__init__()
@@ -34,6 +37,7 @@ class AlertSystemConfigurationPolicy(ConfigurationPolicy):
         self._lambda_role_path = None
         self._tags = None
         self._ses_configuration_set_name = None
+        self._dynamodb_table_name = None
 
     @property
     def deployment_datetime(self):
@@ -182,7 +186,13 @@ class AlertSystemConfigurationPolicy(ConfigurationPolicy):
 
     @property
     def dynamodb_table_name(self):
-        return "has2_"+self.lambda_name
+        if self._dynamodb_table_name is None:
+            raise self.UndefinedValueError("dynamodb_table_name")
+        return self._dynamodb_table_name
+
+    @dynamodb_table_name.setter
+    def dynamodb_table_name(self, value):
+        self._dynamodb_table_name = value
 
     @property
     def event_bridge_rule_name(self):

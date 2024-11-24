@@ -95,15 +95,19 @@ class EventsClient(Boto3Client):
         :param rule:
         :return:
         """
+
         region_rules = self.get_region_rules(
             rule.region, custom_filter={"NamePrefix": rule.name}
         )
+
         if len(region_rules) == 1:
             rule.update_from_raw_response(region_rules[0].dict_src)
-            return
+            return True
 
         if len(region_rules) > 1:
             raise RuntimeError(region_rules)
+
+        return False
 
     def provision_rule(self, rule: EventBridgeRule):
         """

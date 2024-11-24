@@ -17,6 +17,7 @@ from horey.aws_api.aws_services_entities.ec2_launch_template import EC2LaunchTem
 from horey.aws_api.aws_services_entities.auto_scaling_group import AutoScalingGroup
 from horey.aws_api.aws_services_entities.ecs_capacity_provider import ECSCapacityProvider
 from horey.aws_api.aws_services_entities.iam_instance_profile import IamInstanceProfile
+from horey.aws_api.aws_services_entities.iam_policy import IamPolicy
 from horey.aws_api.aws_services_entities.iam_role import IamRole
 from horey.aws_api.aws_services_entities.key_pair import KeyPair
 from horey.aws_api.aws_services_entities.ecs_cluster import ECSCluster
@@ -34,6 +35,15 @@ from horey.aws_api.aws_services_entities.wafv2_ip_set import WAFV2IPSet
 from horey.aws_api.aws_services_entities.wafv2_web_acl import WAFV2WebACL
 from horey.aws_api.aws_services_entities.ecs_task_definition import ECSTaskDefinition
 from horey.aws_api.aws_services_entities.ecs_service import ECSService
+from horey.aws_api.aws_services_entities.sns_topic import SNSTopic
+from horey.aws_api.aws_services_entities.sns_subscription import SNSSubscription
+from horey.aws_api.aws_services_entities.dynamodb_table import DynamoDBTable
+from horey.aws_api.aws_services_entities.aws_lambda import AWSLambda
+from horey.aws_api.aws_services_entities.cloud_watch_log_group import CloudWatchLogGroup
+from horey.aws_api.aws_services_entities.cloud_watch_log_group_metric_filter import CloudWatchLogGroupMetricFilter
+from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlarm
+from horey.aws_api.aws_services_entities.event_bridge_rule import EventBridgeRule
+from horey.aws_api.aws_services_entities.event_bridge_target import EventBridgeTarget
 
 from horey.network.ip import IP
 
@@ -112,7 +122,7 @@ class EnvironmentAPI:
             self._subnets = []
             for subnet in self.aws_api.ec2_client.yield_subnets(region=self.region, filters_req=filters_req,
                                                                 update_info=True):
-                #if subnet.get_tag("Owner") != "Horey":
+                # if subnet.get_tag("Owner") != "Horey":
                 #    raise self.OwnerError(f"{subnet.id}")
                 self._subnets.append(subnet)
 
@@ -1423,8 +1433,8 @@ class EnvironmentAPI:
             extra_args["Tagging"] = self.generate_artifact_tags()
 
         return self.aws_api.s3_client.upload(bucket_name, directory_path, key_path,
-                                      keep_src_object_name=keep_src_object_name, extra_args=extra_args,
-                                      metadata_callback=metadata_callback_func)
+                                             keep_src_object_name=keep_src_object_name, extra_args=extra_args,
+                                             metadata_callback=metadata_callback_func)
 
     def generate_artifact_tags(self):
         """
@@ -1469,22 +1479,22 @@ class EnvironmentAPI:
 
     # pylint: disable=too-many-locals
     def provision_ecs_fargate_task_definition(self, task_definition_family=None,
-                                      contaner_name=None,
-                                      ecr_image_id=None,
-                                      port_mappings=None,
-                                      cloudwatch_log_group_name=None,
-                                      entry_point=None,
-                                      environ_values=None,
-                                      requires_compatibilities=None,
-                                      network_mode=None,
-                                      volumes=None,
-                                      mount_points=None,
-                                      ecs_task_definition_cpu_reservation=None,
-                                      ecs_task_definition_memory_reservation=None,
-                                      ecs_task_role_name=None,
-                                      ecs_task_execution_role_name=None,
-                                      task_definition_cpu_architecture=None
-    ):
+                                              contaner_name=None,
+                                              ecr_image_id=None,
+                                              port_mappings=None,
+                                              cloudwatch_log_group_name=None,
+                                              entry_point=None,
+                                              environ_values=None,
+                                              requires_compatibilities=None,
+                                              network_mode=None,
+                                              volumes=None,
+                                              mount_points=None,
+                                              ecs_task_definition_cpu_reservation=None,
+                                              ecs_task_definition_memory_reservation=None,
+                                              ecs_task_role_name=None,
+                                              ecs_task_execution_role_name=None,
+                                              task_definition_cpu_architecture=None
+                                              ):
         """
         Provision task definition.
 
@@ -1499,7 +1509,8 @@ class EnvironmentAPI:
         ecs_task_definition.family = task_definition_family
 
         # Why? Because AWS! `Unknown parameter in tags[0]: "Key", must be one of: key, value`
-        ecs_task_definition.tags = [{key.lower(): value for key, value in dict_tag.items()} for dict_tag in self.configuration.tags]
+        ecs_task_definition.tags = [{key.lower(): value for key, value in dict_tag.items()} for dict_tag in
+                                    self.configuration.tags]
         ecs_task_definition.tags.append({
             "key": "Name",
             "value": ecs_task_definition.family
@@ -1527,7 +1538,7 @@ class EnvironmentAPI:
         ecs_task_definition.container_definitions[0]["cpu"] = ecs_task_definition_cpu_reservation
 
         ecs_task_definition.container_definitions[0][
-                "memoryReservation"] = ecs_task_definition_memory_reservation
+            "memoryReservation"] = ecs_task_definition_memory_reservation
 
         if volumes is not None:
             ecs_task_definition.volumes = volumes
@@ -1575,17 +1586,17 @@ class EnvironmentAPI:
 
     # pylint: disable=too-many-locals
     def provision_ecs_service(self, cluster_name, ecs_task_definition, service_registries_arn=None,
-                               service_registries_container_port=None,
-                               service_target_group_arn=None,
-                               load_balancer_container_port=None,
-                               role_arn=None, td_desired_count=1,
-                               service_name=None,
-                               container_name=None,
-                               launch_type="EC2",
-                               network_configuration=None,
-                               deployment_maximum_percent=200,
-                               wait_timeout=20*60,
-                               kill_old_containers=False):
+                              service_registries_container_port=None,
+                              service_target_group_arn=None,
+                              load_balancer_container_port=None,
+                              role_arn=None, td_desired_count=1,
+                              service_name=None,
+                              container_name=None,
+                              launch_type="EC2",
+                              network_configuration=None,
+                              deployment_maximum_percent=200,
+                              wait_timeout=20 * 60,
+                              kill_old_containers=False):
         """
         Provision component's ECS service.
 
@@ -1609,7 +1620,8 @@ class EnvironmentAPI:
 
         ecs_service.network_configuration = network_configuration
 
-        ecs_service.tags = [{key.lower(): value for key, value in dict_tag.items()} for dict_tag in self.configuration.tags]
+        ecs_service.tags = [{key.lower(): value for key, value in dict_tag.items()} for dict_tag in
+                            self.configuration.tags]
         ecs_service.tags.append({
             "key": "Name",
             "value": ecs_service.name
@@ -1726,3 +1738,361 @@ class EnvironmentAPI:
         for security_group_name in security_group_names:
             lst_ret.append(self.aws_api.get_security_group_by_vpc_and_name(self.vpc, security_group_name))
         return lst_ret
+
+    def provision_sns_topic(self, sns_topic_name=None):
+        """
+        Provision the SNS topic
+
+        @return:
+        """
+
+        topic = SNSTopic({})
+        topic.region = self.region
+        topic.name = sns_topic_name
+        topic.attributes = {"DisplayName": topic.name}
+        topic.tags = self.configuration.tags
+        topic.tags.append({"Key": "Name", "Value": topic.name})
+
+        self.aws_api.provision_sns_topic(topic)
+
+    def provision_dynamodb(self, dynamodb_table_name=None, attribute_definitions=None, key_schema=None):
+        """
+        :return:
+        """
+
+        table = DynamoDBTable({})
+        table.name = dynamodb_table_name
+        table.region = self.region
+        table.billing_mode = "PAY_PER_REQUEST"
+        table.attribute_definitions = attribute_definitions
+
+        table.key_schema = key_schema
+
+        table.tags = self.configuration.tags
+        table.tags.append({
+            "Key": "Name",
+            "Value": table.name
+        })
+        self.aws_api.dynamodb_client.provision_table(table)
+
+    def provision_sns_subscription(self, sns_topic_name=None, subscription_name=None, lambda_name=None):
+        """
+        Subscribe the receiving lambda to the SNS topic.
+
+        @return:
+        """
+
+        topic = SNSTopic({})
+        topic.name = sns_topic_name
+        topic.region = self.region
+        if not self.aws_api.sns_client.update_topic_information(topic, full_information=False):
+            raise RuntimeError("Could not update topic information")
+
+        aws_lambda = AWSLambda({})
+        aws_lambda.name = lambda_name
+        aws_lambda.region = self.region
+
+        if not self.aws_api.lambda_client.update_lambda_information(
+                aws_lambda, full_information=False
+        ):
+            raise RuntimeError("Could not update aws_lambda information")
+
+        subscription = SNSSubscription({})
+        subscription.region = self.region
+        subscription.name = subscription_name
+        subscription.protocol = "lambda"
+        subscription.topic_arn = topic.arn
+        subscription.endpoint = aws_lambda.arn
+        self.aws_api.provision_sns_subscription(subscription)
+
+    def provision_event_bridge_rule(self, aws_lambda=None, event_bridge_rule_name=None, description=None):
+        """
+        Event bridge rule - the trigger used to trigger the lambda each minute.
+
+        :return:
+        """
+
+        rule = EventBridgeRule({})
+        rule.name = event_bridge_rule_name
+        rule.description = description
+        rule.region = self.region
+        rule.schedule_expression = "rate(1 minute)"
+        rule.event_bus_name = "default"
+        rule.state = "ENABLED"
+        rule.tags = self.configuration.tags
+        rule.tags.append({
+            "Key": "name",
+            "Value": rule.name
+        })
+
+        if aws_lambda is not None:
+            target = EventBridgeTarget({})
+            target.id = f"target-{aws_lambda.name}"
+            target.arn = aws_lambda.arn
+            rule.targets.append(target)
+
+        self.aws_api.provision_events_rule(rule)
+        return rule
+
+    def provision_log_group(self, log_group_name=None):
+        """
+        Provision log group
+
+        @return:
+        """
+
+        log_group = CloudWatchLogGroup({})
+        log_group.region = self.region
+        log_group.name = log_group_name
+        log_group.tags = {tag["Key"]: tag["Value"] for tag in self.configuration.tags}
+        log_group.tags["name"] = log_group.name
+        self.aws_api.provision_cloudwatch_log_group(log_group)
+
+    def deploy_lambda(self, lambda_name=None, handler=None, timeout=None, memory_size=None, policy=None, role_name=None,
+                      zip_file_path=None):
+        """
+        Deploy the lambda object into AWS service.
+
+        @return:
+        """
+
+        role = self.get_iam_role(role_name)
+
+        aws_lambda = AWSLambda({})
+        aws_lambda.region = self.region
+        aws_lambda.name = lambda_name
+        aws_lambda.handler = handler
+        aws_lambda.runtime = "python3.12"
+
+        aws_lambda.role = role.arn
+        aws_lambda.timeout = timeout
+        aws_lambda.memory_size = memory_size
+        aws_lambda.tags = {tag["Key"]: tag["Value"] for tag in self.configuration.tags}
+        aws_lambda.tags["Name"] = aws_lambda.name
+
+        aws_lambda.policy = policy
+
+        with open(zip_file_path, "rb") as myzip:
+            aws_lambda.code = {"ZipFile": myzip.read()}
+        self.aws_api.provision_aws_lambda(aws_lambda, update_code=True)
+
+        return aws_lambda
+
+    def get_cloudwatch_log_group(self, log_group_name=None):
+        """
+        Provision log group
+
+        @return:
+        """
+
+        log_group = CloudWatchLogGroup({})
+        log_group.region = self.region
+        log_group.name = log_group_name
+        if not self.aws_api.cloud_watch_logs_client.update_log_group_information(log_group):
+            raise RuntimeError("Could not update log group information")
+        return log_group
+
+    def get_event_bridge_rule(self, name):
+        """
+        Find event bridge rule.
+
+        :param name:
+        :return:
+        """
+        events_rule = EventBridgeRule({})
+        events_rule.name = name
+        events_rule.region = self.region
+
+        if not self.aws_api.events_client.update_rule_information(events_rule):
+            raise RuntimeError("Could not update event bridge rule information")
+
+        return events_rule
+
+    def get_sns_topic(self, name):
+        """
+        Find sns topic
+
+        :param name:
+        :return:
+        """
+
+        topic = SNSTopic({})
+        topic.name = name
+        topic.region = self.region
+
+        if not self.aws_api.sns_client.update_topic_information(topic, full_information=False):
+            raise RuntimeError("Could not update topic information")
+        return topic
+
+    def provision_iam_role(self, name=None,
+                           description=None,
+                           assume_role_policy_document=None,
+                           managed_policies_arns=None,
+                           inline_policies=None):
+        """
+        Provision the IAM Role.
+
+        @return:
+        """
+
+        iam_role = IamRole({})
+        iam_role.description = description
+        iam_role.name = name
+        iam_role.path = self.configuration.iam_path
+        iam_role.max_session_duration = 12 * 60 * 60
+        iam_role.assume_role_policy_document = assume_role_policy_document
+        iam_role.managed_policies_arns = managed_policies_arns
+        iam_role.inline_policies = inline_policies
+        tags = self.configuration.tags
+        tags.append({"Key": "name", "Value": iam_role.name})
+        iam_role.tags = tags
+        self.aws_api.provision_iam_role(iam_role)
+        return iam_role
+
+    def get_dynamodb(self, name):
+        """
+        :return:
+        """
+
+        table = DynamoDBTable({})
+        table.name = name
+        table.region = self.region
+        if not self.aws_api.dynamodb_client.update_table_information(table):
+            raise RuntimeError("Could not update DynamoDBTable information")
+        return table
+
+    def generate_inline_policy(self, name=None, description=None, statements=None):
+        """
+        Generate iam inline policy.
+
+        :param name:
+        :param description:
+        :param statements:
+        :return:
+        """
+
+        policy = IamPolicy({})
+        policy.document = {
+            "Version": "2012-10-17",
+            "Statement": statements
+        }
+        policy.name = name
+        policy.description = description
+        policy.tags = self.configuration.tags
+        policy.tags.append({
+            "Key": "Name",
+            "Value": policy.name
+        })
+        return policy
+
+    # pylint: disable = too-many-arguments
+    def provision_cloudwatch_alarm(self, name=None,
+                                   insufficient_data_actions=None,
+                                   metric_name=None,
+                                   namespace=None,
+                                   statistic=None,
+                                   dimensions=None,
+                                   period=None,
+                                   evaluation_periods=None,
+                                   datapoints_to_alarm=None,
+                                   threshold=None,
+                                   comparison_operator=None,
+                                   treat_missing_data=None,
+                                   alarm_description=None,
+                                   alarm_actions=None,
+                                   ok_actions=None
+                                   ):
+        """
+        Provision cloudwatch metric Lambda errors.
+        Lambda service metric shows the count of failed Lambda executions.
+
+        :param name:
+        :param insufficient_data_actions:
+        :param metric_name:
+        :param namespace:
+        :param statistic:
+        :param dimensions:
+        :param period:
+        :param evaluation_periods:
+        :param datapoints_to_alarm:
+        :param threshold:
+        :param comparison_operator:
+        :param treat_missing_data:
+        :param alarm_description:
+        :param alarm_actions:
+        :param ok_actions:
+        :return:
+        """
+
+        alarm = CloudWatchAlarm({})
+        alarm.region = self.region
+        alarm.name = name
+        alarm.actions_enabled = True
+        alarm.insufficient_data_actions = insufficient_data_actions
+        alarm.metric_name = metric_name
+        alarm.namespace = namespace
+        alarm.statistic = statistic
+        alarm.dimensions = dimensions
+        alarm.period = period
+        alarm.evaluation_periods = evaluation_periods
+        alarm.datapoints_to_alarm = datapoints_to_alarm
+        alarm.threshold = threshold
+        alarm.comparison_operator = comparison_operator
+        alarm.treat_missing_data = treat_missing_data
+        alarm.alarm_description = alarm_description
+        alarm.ok_actions = ok_actions
+        alarm.alarm_actions = alarm_actions
+
+        self.aws_api.cloud_watch_client.set_cloudwatch_alarm(alarm)
+        return alarm
+
+    def provision_log_group_metric_filter(self, name=None, log_group_name=None, filter_text=None):
+        """
+        Create/Update filter
+
+        :param filter_text:
+        :param log_group_name:
+        :param name:
+        :return:
+        """
+
+        metric_filter = CloudWatchLogGroupMetricFilter({})
+        metric_filter.log_group_name = log_group_name
+        metric_filter.name = name
+        metric_filter.filter_pattern = filter_text
+        metric_filter.metric_transformations = [
+            {
+                "metricName": metric_filter.name,
+                "metricNamespace": log_group_name,
+                "metricValue": "1",
+            }
+        ]
+        metric_filter.region = self.region
+        self.aws_api.cloud_watch_logs_client.provision_metric_filter(metric_filter)
+        return metric_filter
+
+    def put_cloudwatch_log_lines(self, log_group_name, lines):
+        """
+        Make sure the group exist and put the log lines in it.
+
+        :param log_group_name:
+        :param lines:
+        :return:
+        """
+
+        log_group = self.get_cloudwatch_log_group(log_group_name)
+
+        return self.aws_api.cloud_watch_logs_client.put_log_lines(log_group, lines)
+
+    def trigger_cloudwatch_alarm(self, alarm, reason):
+        """
+        These are built in metrics. So we can not change the metric itself and must move
+        one step further - set alarm state manually.
+
+        :return:
+        """
+
+        dict_request = {"AlarmName": alarm.name,
+                        "StateValue": "ALARM",
+                        "StateReason": reason}
+        return self.aws_api.cloud_watch_client.set_alarm_state_raw(self.region, dict_request)

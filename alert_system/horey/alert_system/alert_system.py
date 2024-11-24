@@ -9,6 +9,7 @@ import copy
 import datetime
 import json
 import os
+import pathlib
 import shutil
 from time import perf_counter
 import email.utils
@@ -55,14 +56,24 @@ class AlertSystem:
         self.configuration = configuration
         self.packer = Packer()
         self.aws_api = aws_api or AWSAPI()
-        self.region = Region.get_region(self.configuration.region)
-        self.tags = configuration.tags
+        try:
+            self.region = Region.get_region(self.configuration.region)
+            AWSAccount.set_aws_default_region(self.region)
+        except configuration.UndefinedValueError:
+            pass
+        try:
+            self.tags = configuration.tags
+        except configuration.UndefinedValueError:
+            pass
+
         pip_api_configuration = PipAPIConfigurationPolicy()
-        pip_api_configuration.multi_package_repositories = {"horey.": configuration.horey_repo_path}
-        pip_api_configuration.horey_parent_dir_path = os.path.dirname(configuration.horey_repo_path)
+        try:
+            pip_api_configuration.multi_package_repositories = {"horey.": configuration.horey_repo_path}
+            pip_api_configuration.horey_parent_dir_path = os.path.dirname(configuration.horey_repo_path)
+        except configuration.UndefinedValueError:
+            pass
         pip_api_configuration.venv_dir_path = configuration.deployment_venv_path
         self.pip_api = PipAPI(configuration=pip_api_configuration)
-        AWSAccount.set_aws_default_region(self.region)
 
     def provision(self, lambda_files):
         """
@@ -140,7 +151,8 @@ class AlertSystem:
         """
 
         zip_file_path = self.create_lambda_package(files)
-        return self.validate_lambda_package(zip_file_path, event=event)
+        self.validate_lambda_package(zip_file_path, event=event)
+        return zip_file_path
 
     def provision_self_monitoring(self):
         """
@@ -174,7 +186,7 @@ class AlertSystem:
         filter_text = f'"{AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_LOG_ERROR_FILTER_PATTERN}"'
         alarm_description = {
             "lambda_name": self.configuration.lambda_name,
-            MessageCloudwatchDefault.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY: MessageCloudwatchDefault.ALERT_SYSTEM_SELF_MONITORING_TYPE_VALUE}
+            AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY: AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_VALUE}
         return self.provision_cloudwatch_logs_alarm(self.configuration.alert_system_lambda_log_group_name,
                                                     filter_text,
                                                     "error",
@@ -191,7 +203,7 @@ class AlertSystem:
 
         filter_text = AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN
         alarm_description = {"lambda_name": self.configuration.lambda_name,
-                             MessageCloudwatchDefault.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY: MessageCloudwatchDefault.ALERT_SYSTEM_SELF_MONITORING_TYPE_VALUE}
+                             AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY: AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_VALUE}
         return self.provision_cloudwatch_logs_alarm(self.configuration.alert_system_lambda_log_group_name,
                                                     filter_text,
                                                     "timeout",
@@ -226,7 +238,7 @@ class AlertSystem:
 
         alarm_description = {"routing_tags": [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG],
                              "lambda_name": self.configuration.lambda_name,
-                             MessageCloudwatchDefault.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY: MessageCloudwatchDefault.ALERT_SYSTEM_SELF_MONITORING_TYPE_VALUE}
+                             AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY: AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_VALUE}
         alarm.alarm_description = json.dumps(alarm_description)
 
         self.provision_cloudwatch_alarm(alarm)
@@ -259,7 +271,7 @@ class AlertSystem:
 
         alarm_description = {"routing_tags": [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG],
                              "lambda_name": self.configuration.lambda_name,
-                             MessageCloudwatchDefault.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY: MessageCloudwatchDefault.ALERT_SYSTEM_SELF_MONITORING_TYPE_VALUE}
+                             AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY: AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_VALUE}
         alarm.alarm_description = json.dumps(alarm_description)
 
         self.provision_cloudwatch_alarm(alarm)
@@ -290,7 +302,7 @@ class AlertSystem:
         alarm.treat_missing_data = "notBreaching"
         alarm_description = {"routing_tags": [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG],
                              "lambda_name": self.configuration.lambda_name,
-                             MessageCloudwatchDefault.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY: MessageCloudwatchDefault.ALERT_SYSTEM_SELF_MONITORING_TYPE_VALUE}
+                             AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY: AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_VALUE}
         alarm.alarm_description = json.dumps(alarm_description)
 
         self.provision_cloudwatch_alarm(alarm)
@@ -365,10 +377,30 @@ class AlertSystem:
         """
 
         extraction_dir = self.extract_lambda_package_for_validation(zip_file_path)
-        return self.trigger_lambda_handler_locally(extraction_dir, event)
+        return self.trigger_lambda_handler_locally_python(extraction_dir, event)
 
     @staticmethod
-    def trigger_lambda_handler_locally(extraction_dir, event):
+    def trigger_lambda_handler_locally_python(extraction_dir, event):
+        """
+        Run the lambda handler locally
+
+        :param extraction_dir:
+        :param event:
+        :return:
+        """
+
+        shutil.copy2(os.path.join(os.path.dirname(__file__), "tests", "trigger_local.py"),
+                     extraction_dir)
+        curdir = pathlib.Path(".").resolve()
+        os.chdir(extraction_dir)
+        try:
+            main_function = CommonUtils.load_object_from_module_raw(extraction_dir/"trigger_local.py", "main")
+            return main_function(event)
+        finally:
+            os.chdir(curdir)
+
+    @staticmethod
+    def trigger_lambda_handler_locally_bash(extraction_dir, event):
         """
         Run the lambda handler locally
 
@@ -396,21 +428,21 @@ class AlertSystem:
 
         :return:
         """
-        validation_dir_name = os.path.splitext(zip_file_path)[
+        validation_dir_path = os.path.splitext(zip_file_path)[
                                   0
                               ] + "_validation"
         try:
-            os.makedirs(validation_dir_name)
+            os.makedirs(validation_dir_path)
         except FileExistsError:
-            shutil.rmtree(validation_dir_name)
-            os.makedirs(validation_dir_name)
+            shutil.rmtree(validation_dir_path)
+            os.makedirs(validation_dir_path)
 
         tmp_zip_path = os.path.join(
-            validation_dir_name, self.configuration.lambda_zip_file_name
+            validation_dir_path, self.configuration.lambda_zip_file_name
         )
         shutil.copyfile(zip_file_path, tmp_zip_path)
-        self.packer.extract(tmp_zip_path, validation_dir_name)
-        return validation_dir_name
+        self.packer.extract(tmp_zip_path, validation_dir_path)
+        return pathlib.Path(validation_dir_path)
 
     def provision_lambda_role(self):
         """

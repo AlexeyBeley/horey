@@ -20,6 +20,7 @@ class NotificationChannelSlack:
     Main class.
 
     """
+    CONFIGURATION_FILE_NAME = "notification_channel_slack_configs.json"
 
     def __init__(self, configuration):
         config = SlackAPIConfigurationPolicy()
@@ -210,3 +211,17 @@ class NotificationChannelSlackConfigurationPolicy(SlackAPIConfigurationPolicy):
                 f"Key {Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG} is incorrect in mappings: {value}"
             )
         self._tag_to_channel_mapping = value
+
+
+def main():
+    """
+    Entrypoint used by NotificationChannels Factory to generate notification channels.
+
+    :return:
+    """
+
+    config = NotificationChannelSlackConfigurationPolicy()
+    config.configuration_file_full_path = NotificationChannelSlack.CONFIGURATION_FILE_NAME
+    config.init_from_file()
+
+    return NotificationChannelSlack(config)
