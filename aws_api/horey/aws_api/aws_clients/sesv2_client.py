@@ -323,8 +323,6 @@ class SESV2Client(Boto3Client):
         @param configuration_set:
         @return:
         """
-        breakpoint()
-
         current_configuration_set = SESV2ConfigurationSet({})
         current_configuration_set.region = configuration_set.region
         current_configuration_set.name = configuration_set.name
@@ -344,8 +342,9 @@ class SESV2Client(Boto3Client):
                 self.update_configuration_set_event_destination_raw(configuration_set.region, update_request)
 
             for delete_request in delete_requests:
-                raise RuntimeError(delete_requests)
-                self.delete_configuration_set_event_destination_raw(configuration_set.region, delete_request)
+                raise RuntimeError(f"self.delete_configuration_set_event_destination_raw(configuration_set.region, {delete_request})")
+
+        return True
 
     def provision_configuration_set_raw(self, region, request_dict):
         """

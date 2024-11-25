@@ -44,6 +44,8 @@ from horey.aws_api.aws_services_entities.cloud_watch_log_group_metric_filter imp
 from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlarm
 from horey.aws_api.aws_services_entities.event_bridge_rule import EventBridgeRule
 from horey.aws_api.aws_services_entities.event_bridge_target import EventBridgeTarget
+from horey.aws_api.aws_services_entities.sesv2_configuration_set import SESV2ConfigurationSet
+from horey.aws_api.aws_services_entities.ses_identity import SESIdentity
 
 from horey.network.ip import IP
 
@@ -1951,6 +1953,8 @@ class EnvironmentAPI:
 
     def get_dynamodb(self, name):
         """
+        Get dynamodb table.
+
         :return:
         """
 
@@ -1960,6 +1964,22 @@ class EnvironmentAPI:
         if not self.aws_api.dynamodb_client.update_table_information(table):
             raise RuntimeError("Could not update DynamoDBTable information")
         return table
+
+    def get_ses_configuration_set(self, name):
+        """
+        Get ses config set
+
+        :return:
+        """
+
+        config_set = SESV2ConfigurationSet({})
+        config_set.name = name
+        config_set.region = self.region
+
+        if not self.aws_api.sesv2_client.update_email_configuration_set_information(config_set):
+            raise RuntimeError("Could not update ses config set information")
+
+        return config_set
 
     def generate_inline_policy(self, name=None, description=None, statements=None):
         """
@@ -2096,3 +2116,67 @@ class EnvironmentAPI:
                         "StateValue": "ALARM",
                         "StateReason": reason}
         return self.aws_api.cloud_watch_client.set_alarm_state_raw(self.region, dict_request)
+
+    def provision_ses_domain_email_identity(self, name=None, hosted_zone_name=None, configuration_set_name=None):
+        """
+        Provision and validate the identity to send emails from.
+
+        :return:
+        """
+
+        email_identity = SESIdentity({})
+        email_identity.name = name
+        email_identity.region = self.region
+        email_identity.configuration_set_name = configuration_set_name
+        email_identity.tags = self.configuration.tags
+        email_identity.tags.append({
+            "Key": "Name",
+            "Value": email_identity.name
+        })
+        configuration_set = self.get_ses_configuration_set(configuration_set_name)
+
+        if len(configuration_set.event_destinations) > 1:
+            raise NotImplementedError(f"Can not handle multiple destinations: {configuration_set.event_destinations}")
+        for event_destination in configuration_set.event_destinations:
+            if "BOUNCE" in event_destination["MatchingEventTypes"]:
+                email_identity.bounce_topic = event_destination["SnsDestination"]["TopicArn"]
+                email_identity.headers_in_bounce_notifications_enabled = True
+            if "DELIVERY" in event_destination["MatchingEventTypes"]:
+                email_identity.delivery_topic = event_destination["SnsDestination"]["TopicArn"]
+                email_identity.headers_in_delivery_notifications_enabled = True
+            if "COMPLAINT" in event_destination["MatchingEventTypes"]:
+                email_identity.complaint_topic = event_destination["SnsDestination"]["TopicArn"]
+                email_identity.headers_in_complaint_notifications_enabled = True
+
+        self.aws_api.provision_ses_domain_email_identity(email_identity,
+                                                           hosted_zone_name=hosted_zone_name)
+        return True
+
+    def provision_sesv2_configuration_set(self, name=None,
+                                          configuration_set_tracking_options=None,
+                                          reputation_options=None,
+                                          sending_options=None,
+                                          event_destinations=None):
+        """
+        Provision SES V2 config set.
+
+        :param name:
+        :param configuration_set_tracking_options:
+        :param reputation_options:
+        :param sending_options:
+        :return:
+        """
+
+        configuration_set = SESV2ConfigurationSet({})
+        configuration_set.name = name
+        configuration_set.region = self.region
+        configuration_set.tracking_options = configuration_set_tracking_options
+        configuration_set.reputation_options = reputation_options
+        configuration_set.sending_options = sending_options
+        configuration_set.event_destinations = event_destinations
+        configuration_set.tags = self.configuration.tags
+        configuration_set.tags.append({
+            "Key": "Name",
+            "Value": configuration_set.name
+        })
+        return self.aws_api.sesv2_client.provision_configuration_set(configuration_set, declerative=True)

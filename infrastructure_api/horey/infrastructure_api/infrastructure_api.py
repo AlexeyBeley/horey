@@ -58,7 +58,7 @@ class InfrastructureAPI:
 
     def get_alerts_api(self, configuration, environment_api):
         """
-        Get frontend API
+        Get alerts API
 
         :param configuration:
         :param environment_api:
@@ -71,3 +71,19 @@ class InfrastructureAPI:
             raise ValueError(f"{environment_api} not instance of EnvironmentAPI")
 
         return AlertsAPI(configuration, environment_api)
+
+    def get_email_api(self, configuration, environment_api):
+        """
+        Get email API
+
+        :param configuration:
+        :param environment_api:
+        :return:
+        """
+
+        from horey.infrastructure_api.email_api import EmailAPI
+        from horey.infrastructure_api.environment_api import EnvironmentAPI
+        if not isinstance(environment_api, EnvironmentAPI):
+            raise ValueError(f"{environment_api} not instance of EnvironmentAPI")
+
+        return EmailAPI(configuration, environment_api)

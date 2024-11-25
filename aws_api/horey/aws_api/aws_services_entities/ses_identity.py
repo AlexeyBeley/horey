@@ -4,7 +4,7 @@ AWS SESIdentity representation
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 
-
+# pylint: disable= too-many-instance-attributes
 class SESIdentity(AwsObject):
     """
     AWS SESIdentity class
@@ -118,9 +118,9 @@ class SESIdentity(AwsObject):
             if desired_identity.configuration_set_name is not None:
                 return {"EmailIdentity": self.name,
                         "ConfigurationSetName": desired_identity.configuration_set_name}
-            else:
-                raise NotImplementedError(
-                    f"Only setting new configuration set is supported: {desired_identity.configuration_set_name}")
+            raise NotImplementedError(
+                    f"Only setting new configuration set is supported: {self.configuration_set_name=}, {desired_identity.configuration_set_name=}")
+        return None
 
     def generate_set_identity_notification_topic_requests(self, desired_identity):
         """
