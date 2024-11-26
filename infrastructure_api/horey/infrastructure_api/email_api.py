@@ -25,6 +25,7 @@ class EmailAPI:
         ret_config_set = self.provision_ses_configuration_set()
         if not ret_identity and not ret_config_set:
             raise RuntimeError("Empty provision")
+        return True
 
     def provision_ses_email_identity(self):
         """

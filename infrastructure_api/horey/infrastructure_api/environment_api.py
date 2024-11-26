@@ -2173,7 +2173,8 @@ class EnvironmentAPI:
         configuration_set.tracking_options = configuration_set_tracking_options
         configuration_set.reputation_options = reputation_options
         configuration_set.sending_options = sending_options
-        configuration_set.event_destinations = event_destinations
+        if event_destinations is not None:
+            configuration_set.event_destinations = event_destinations
         configuration_set.tags = self.configuration.tags
         configuration_set.tags.append({
             "Key": "Name",
