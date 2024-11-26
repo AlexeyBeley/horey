@@ -93,6 +93,36 @@ def test_build():
 
 
 @pytest.mark.done
+def test_build_with_args():
+    """
+    Test building image.
+
+    @return:
+    """
+
+    docker_api = DockerAPI()
+    image = docker_api.build(
+        os.path.dirname(os.path.abspath(__file__)), ["horey-test:latest"], buildargs={"test_arg_name":"test_arg_value"}
+    )
+    assert image is not None
+
+
+@pytest.mark.done
+def test_build_with_wrong_kwarg():
+    """
+    Test building image.
+
+    @return:
+    """
+
+    docker_api = DockerAPI()
+    with pytest.raises(TypeError, match=r".*got an unexpected keyword argument.*"):
+        docker_api.build(
+        os.path.dirname(os.path.abspath(__file__)), ["horey-test:latest"], buildargs_error_value={"test_arg_name":"test_arg_value"}
+        )
+
+
+@pytest.mark.done
 def test_get_image():
     """
     Self explanatory.

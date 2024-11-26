@@ -68,9 +68,18 @@ class DockerAPI:
         docker_image = self.client.images.get(name)
         return docker_image
 
-    def build(self, dockerfile_directory_path, tags, nocache=True, remove_intermediate_containers=True):
+    def build(self, dockerfile_directory_path, tags, nocache=True, remove_intermediate_containers=True, **kwargs):
         """
         Build image.
+        current kwargs:
+        path=None, tag=None, quiet=False, fileobj=None,
+        nocache=False, rm=False, timeout=None,
+        custom_context=False, encoding=None, pull=False,
+        forcerm=False, dockerfile=None, container_limits=None,
+        decode=False, buildargs=None, gzip=False, shmsize=None,
+        labels=None, cache_from=None, target=None, network_mode=None,
+        squash=None, extra_hosts=None, platform=None, isolation=None,
+        use_config_proxy=True
 
         @param dockerfile_directory_path:
         @param tags:
@@ -90,7 +99,7 @@ class DockerAPI:
             build_start = perf_counter()
             docker_image, build_log = self.client.images.build(
                 path=dockerfile_directory_path, tag=tag, nocache=nocache, rm=remove_intermediate_containers, forcerm=remove_intermediate_containers,
-            )
+            **kwargs)
             build_end = perf_counter()
         except BuildError as exception_instance:
             self.print_log(exception_instance.build_log)
