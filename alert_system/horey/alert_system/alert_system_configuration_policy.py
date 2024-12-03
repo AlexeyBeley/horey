@@ -38,6 +38,15 @@ class AlertSystemConfigurationPolicy(ConfigurationPolicy):
         self._tags = None
         self._ses_configuration_set_name = None
         self._dynamodb_table_name = None
+        self._do_not_send_ses_suppressed_bounce_notifications = False
+
+    @property
+    def do_not_send_ses_suppressed_bounce_notifications(self):
+        return self._do_not_send_ses_suppressed_bounce_notifications
+
+    @do_not_send_ses_suppressed_bounce_notifications.setter
+    def do_not_send_ses_suppressed_bounce_notifications(self, value):
+        self._do_not_send_ses_suppressed_bounce_notifications = value
 
     @property
     def deployment_datetime(self):

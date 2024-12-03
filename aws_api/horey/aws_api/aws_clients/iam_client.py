@@ -620,7 +620,6 @@ class IamClient(Boto3Client):
         """
 
         logger.warning(f"Creating iam role: {request_dict}")
-
         for response in self.execute(
                 self.get_session_client().create_role, "Role", filters_req=request_dict
         ):

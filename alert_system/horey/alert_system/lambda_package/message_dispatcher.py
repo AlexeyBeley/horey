@@ -91,7 +91,7 @@ class MessageDispatcher:
             except Exception as internal_inst_error:
                 data = {"error": f"{repr(internal_inst_error)=}, {data=}"}
         traceback_str = "".join(traceback.format_tb(error_inst.__traceback__))
-        logger.exception(f"{traceback_str}\n{repr(error_inst)}")
+        logger.exception(f"Unhandled message:\n{traceback_str}\n{repr(error_inst)}")
 
         text = json.dumps(data, indent=4)
 

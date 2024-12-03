@@ -24,6 +24,35 @@ class AlertsAPIConfigurationPolicy(ConfigurationPolicy):
         self._horey_repo_path = None
         self._route_tags_to_slack_channels_mapping = None
         self._self_monitoring_slack_channel = None
+        self._bearer_token = None
+        self._ses_alert_slack_channel = None
+        self._do_not_send_ses_suppressed_bounce_notifications = False
+
+    @property
+    def do_not_send_ses_suppressed_bounce_notifications(self):
+        return self._do_not_send_ses_suppressed_bounce_notifications
+
+    @do_not_send_ses_suppressed_bounce_notifications.setter
+    def do_not_send_ses_suppressed_bounce_notifications(self, value):
+        self._do_not_send_ses_suppressed_bounce_notifications = value
+
+    @property
+    def ses_alert_slack_channel(self):
+        return self._ses_alert_slack_channel
+
+    @ses_alert_slack_channel.setter
+    def ses_alert_slack_channel(self, value):
+        self._ses_alert_slack_channel = value
+
+    @property
+    def bearer_token(self):
+        if self._bearer_token is None:
+            raise self.UndefinedValueError("bearer_token")
+        return self._bearer_token
+
+    @bearer_token.setter
+    def bearer_token(self, value):
+        self._bearer_token = value
 
     @property
     def self_monitoring_slack_channel(self):

@@ -11,6 +11,7 @@ from horey.alert_system.alert_system_configuration_policy import AlertSystemConf
 from horey.alert_system.lambda_package.notification_channels.notification_channel_slack import NotificationChannelSlack, \
     NotificationChannelSlackConfigurationPolicy
 from horey.alert_system.lambda_package.notification import Notification
+from horey.alert_system.lambda_package.message_ses_default import MessageSESDefault
 
 
 class AlertsAPI:
@@ -24,6 +25,7 @@ class AlertsAPI:
         self.environment_api = environment_api
         has2_config = AlertSystemConfigurationPolicy()
         has2_config.horey_repo_path = self.configuration.horey_repo_path
+        has2_config.do_not_send_ses_suppressed_bounce_notifications = self.configuration.do_not_send_ses_suppressed_bounce_notifications
         self.alert_system = AlertSystem(has2_config)
         self.generate_notification_channels_configuration()
 
@@ -38,6 +40,11 @@ class AlertsAPI:
         dict_mappings = self.configuration.route_tags_to_slack_channels_mapping
         dict_mappings.update(
             {Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG: self.configuration.self_monitoring_slack_channel})
+        if self.configuration.ses_alert_slack_channel:
+            dict_mappings.update(
+                {
+                    MessageSESDefault.ROUTING_TAG: self.configuration.ses_alert_slack_channel})
+
         configuration.tag_to_channel_mapping = dict_mappings
         configuration.bearer_token = self.configuration.bearer_token
 
@@ -543,3 +550,14 @@ class AlertsAPI:
 
         return self.environment_api.put_cloudwatch_log_lines(self.configuration.alert_system_lambda_log_group_name, [
             f"{AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN}: Neo, the Horey has you!"])
+
+    def build_and_validate(self, event):
+        """
+        Build and run on event.
+
+        :param event:
+        :return:
+        """
+
+        zip_file_path = self.alert_system.build_and_validate(self.configuration.files, event)
+        breakpoint()

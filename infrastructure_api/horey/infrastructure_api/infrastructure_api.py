@@ -12,7 +12,7 @@ class InfrastructureAPI:
 
     """
 
-    def get_environment_api(self, configuration, aws_api=None):
+    def get_environment_api(self, configuration, aws_api):
         """
         Get EnvironmentAPI
 
@@ -22,7 +22,7 @@ class InfrastructureAPI:
         """
 
         from horey.infrastructure_api.environment_api import EnvironmentAPI
-        return EnvironmentAPI(configuration, aws_api=aws_api)
+        return EnvironmentAPI(configuration, aws_api)
 
     def get_frontend_api(self, configuration, environment_api):
         """
