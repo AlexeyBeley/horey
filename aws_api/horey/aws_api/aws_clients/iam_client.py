@@ -766,13 +766,13 @@ class IamClient(Boto3Client):
             else:
                 dict_src = self.provision_policy_raw(policy_desired.generate_create_request())
                 policy_desired.update_from_raw_response(dict_src)
-                return
+                return True
 
         create_version_request = existing_policy.generate_create_policy_version_request(policy_desired)
         if create_version_request is None:
             policy_desired.arn = existing_policy.arn
             self.update_policy_information(policy_desired, full_information=True)
-            return
+            return True
 
         delete_version_request = existing_policy.generate_delete_policy_version_request()
         if delete_version_request is not None:
@@ -788,6 +788,7 @@ class IamClient(Boto3Client):
         ):
             policy_desired.arn = existing_policy.arn
             self.update_policy_information(policy_desired, full_information=True)
+        return True
 
     def provision_policy_raw(self, request_dict):
         """
