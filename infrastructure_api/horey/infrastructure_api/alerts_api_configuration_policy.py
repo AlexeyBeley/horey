@@ -27,6 +27,15 @@ class AlertsAPIConfigurationPolicy(ConfigurationPolicy):
         self._bearer_token = None
         self._ses_alert_slack_channel = None
         self._do_not_send_ses_suppressed_bounce_notifications = False
+        self._postgres_cluster_identifier = False
+
+    @property
+    def postgres_cluster_identifier(self):
+        return self._postgres_cluster_identifier
+
+    @postgres_cluster_identifier.setter
+    def postgres_cluster_identifier(self, value):
+        self._postgres_cluster_identifier = value
 
     @property
     def do_not_send_ses_suppressed_bounce_notifications(self):

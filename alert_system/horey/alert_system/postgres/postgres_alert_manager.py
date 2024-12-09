@@ -271,7 +271,7 @@ class PostgresAlertManager:
             alarm.comparison_operator = metric_config["comparison_operator"]
             alarm.treat_missing_data = "notBreaching"
 
-            alarm_description = {"routing_tags": [self.configuration.routing_tags]}
+            alarm_description = {"routing_tags": self.configuration.routing_tags}
             alarm.alarm_description = json.dumps(alarm_description)
             self.alert_system.provision_cloudwatch_alarm(alarm)
             alarms_counter += 1
@@ -311,7 +311,7 @@ class PostgresAlertManager:
             alarm.comparison_operator = metric_config["comparison_operator"]
             alarm.treat_missing_data = "notBreaching"
 
-            alarm_description = {"routing_tags": [self.configuration.routing_tags]}
+            alarm_description = {"routing_tags": self.configuration.routing_tags}
             alarm.alarm_description = json.dumps(alarm_description)
             self.alert_system.provision_cloudwatch_alarm(alarm)
             alarms_counter += 1
@@ -358,7 +358,7 @@ class PostgresAlertManager:
             alarm.comparison_operator = metric_config["comparison_operator"]
             alarm.treat_missing_data = "notBreaching"
 
-            alarm_description = {"routing_tags": [self.configuration.routing_tags]}
+            alarm_description = {"routing_tags": self.configuration.routing_tags}
             alarm.alarm_description = json.dumps(alarm_description)
             self.alert_system.provision_cloudwatch_alarm(alarm)
             alarms_counter += 1

@@ -12,6 +12,12 @@ from horey.alert_system.lambda_package.notification_channels.notification_channe
     NotificationChannelSlackConfigurationPolicy
 from horey.alert_system.lambda_package.notification import Notification
 from horey.alert_system.lambda_package.message_ses_default import MessageSESDefault
+from horey.alert_system.postgres.postgres_cluster_monitoring_configuration_policy import PostgresClusterMonitoringConfigurationPolicy
+from horey.alert_system.postgres.postgres_cluster_writer_monitoring_configuration_policy import PostgresClusterWriterMonitoringConfigurationPolicy
+from horey.alert_system.postgres.postgres_alert_manager_configuration_policy import \
+    PostgresAlertManagerConfigurationPolicy
+from horey.alert_system.postgres.postgres_alert_manager import \
+    PostgresAlertManager
 
 
 class AlertsAPI:
@@ -23,9 +29,13 @@ class AlertsAPI:
     def __init__(self, configuration, environment_api):
         self.configuration = configuration
         self.environment_api = environment_api
+
         has2_config = AlertSystemConfigurationPolicy()
         has2_config.horey_repo_path = self.configuration.horey_repo_path
         has2_config.do_not_send_ses_suppressed_bounce_notifications = self.configuration.do_not_send_ses_suppressed_bounce_notifications
+        has2_config.sns_topic_name = self.configuration.sns_topic_name
+
+        has2_config.region = self.environment_api.configuration.region
         self.alert_system = AlertSystem(has2_config)
         self.generate_notification_channels_configuration()
 
@@ -65,7 +75,7 @@ class AlertsAPI:
 
         self.configuration.files = [slack_channel_configuration_file_path, alert_system_configuration_file_path]
 
-    def provision(self):
+    def provision(self, resource_alerts_configuration=None):
         """
         Provision frontend.
 
@@ -82,7 +92,36 @@ class AlertsAPI:
         self.provision_sns_subscription()
         self.provision_log_group()
         self.provision_self_monitoring()
+        self.provision_resource_alerts(resource_alerts_configuration)
         return True
+
+    def provision_resource_alerts(self, resource_alarms_configuration):
+        """
+        Provision alarm
+
+        :param resource_alarms_configuration:
+        :return:
+        """
+        if resource_alarms_configuration is None:
+            return True
+
+        if isinstance(resource_alarms_configuration, PostgresClusterMonitoringConfigurationPolicy):
+            configuration = PostgresAlertManagerConfigurationPolicy()
+            configuration.cluster = self.configuration.postgres_cluster_identifier
+            configuration.routing_tags = [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG]
+
+            alerts_manager = PostgresAlertManager(self.alert_system, configuration, cluster_configuration=resource_alarms_configuration)
+            return alerts_manager.provision()
+        elif isinstance(resource_alarms_configuration, PostgresClusterWriterMonitoringConfigurationPolicy):
+            configuration = PostgresAlertManagerConfigurationPolicy()
+            configuration.cluster = self.configuration.postgres_cluster_identifier
+            configuration.routing_tags = [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG]
+
+            alerts_manager = PostgresAlertManager(self.alert_system, configuration, cluster_writer_configuration=resource_alarms_configuration)
+            return alerts_manager.provision()
+        else:
+            raise NotImplementedError(resource_alarms_configuration)
+
 
     def update(self):
         """

@@ -1598,7 +1598,8 @@ class EnvironmentAPI:
                               network_configuration=None,
                               deployment_maximum_percent=200,
                               wait_timeout=20 * 60,
-                              kill_old_containers=False):
+                              kill_old_containers=False,
+                              load_balancers=None):
         """
         Provision component's ECS service.
 
@@ -1682,7 +1683,7 @@ class EnvironmentAPI:
         ecs_service.scheduling_strategy = "REPLICA"
         ecs_service.enable_ecs_managed_tags = False
         ecs_service.enable_execute_command = True
-
+        ecs_service.load_balancers = load_balancers
         self.aws_api.provision_ecs_service(ecs_service, wait_timeout=wait_timeout)
 
         if kill_old_containers:

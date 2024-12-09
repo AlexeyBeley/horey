@@ -16,14 +16,25 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
 
     def __init__(self):
         super().__init__()
-        self._bucket_name = None
+        self._load_balancer_target_group_arn = None
+        self._container_ports = None
 
     @property
-    def bucket_name(self):
-        if self._bucket_name is None:
-            raise self.UndefinedValueError("bucket_name")
-        return self._bucket_name
+    def container_ports(self):
+        if self._container_ports is None:
+            raise self.UndefinedValueError("container_ports")
+        return self._container_ports
 
-    @bucket_name.setter
-    def bucket_name(self, value):
-        self._bucket_name = value
+    @container_ports.setter
+    def container_ports(self, value):
+        self._container_ports = value
+
+    @property
+    def load_balancer_target_group_arn(self):
+        if self._load_balancer_target_group_arn is None:
+            raise self.UndefinedValueError("load_balancer_target_group_arn")
+        return self._load_balancer_target_group_arn
+
+    @load_balancer_target_group_arn.setter
+    def load_balancer_target_group_arn(self, value):
+        self._load_balancer_target_group_arn = value

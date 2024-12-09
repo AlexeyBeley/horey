@@ -2,6 +2,7 @@
 Standard ECS maintainer.
 
 """
+
 from horey.h_logger import get_logger
 
 logger = get_logger()
@@ -42,11 +43,12 @@ class ECSAPI:
 
         :return:
         """
+
         task_definition = self.environment_api.provision_ecs_fargate_task_definition(
             task_definition_family=self.configuration.family,
             contaner_name=self.configuration.container_name,
             ecr_image_id=self.configuration.ecr_image_id,
-            port_mappings=None,
+            port_mappings=self.configuration.container_definition_port_mappings,
             cloudwatch_log_group_name=self.configuration.cloudwatch_log_group_name,
             entry_point=None,
             environ_values=self.configuration.environ_values,
@@ -58,7 +60,8 @@ class ECSAPI:
             ecs_task_definition_memory_reservation=self.configuration.ecs_task_definition_memory_reservation,
             ecs_task_role_name=self.configuration.ecs_task_role_name,
             ecs_task_execution_role_name=self.configuration.ecs_task_execution_role_name,
-            task_definition_cpu_architecture=self.configuration.task_definition_cpu_architecture)
+            task_definition_cpu_architecture=self.configuration.task_definition_cpu_architecture
+            )
         return task_definition
 
     def provision_ecs_service(self, ecs_task_definition):
@@ -85,5 +88,6 @@ class ECSAPI:
                                                           },
                                                           service_name=self.configuration.service_name,
                                                           container_name=self.configuration.container_name,
-                                                          kill_old_containers=self.configuration.kill_old_containers
+                                                          kill_old_containers=self.configuration.kill_old_containers,
+                                                          load_balancers=self.configuration.service_load_balancers
                                                           )
