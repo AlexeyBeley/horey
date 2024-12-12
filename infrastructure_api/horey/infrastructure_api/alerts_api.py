@@ -2,9 +2,11 @@
 Alerts maintainer.
 
 """
+import datetime
 import json
 import os.path
 import sys
+
 
 from horey.alert_system.alert_system import AlertSystem
 from horey.alert_system.alert_system_configuration_policy import AlertSystemConfigurationPolicy
@@ -12,12 +14,14 @@ from horey.alert_system.lambda_package.notification_channels.notification_channe
     NotificationChannelSlackConfigurationPolicy
 from horey.alert_system.lambda_package.notification import Notification
 from horey.alert_system.lambda_package.message_ses_default import MessageSESDefault
-from horey.alert_system.postgres.postgres_cluster_monitoring_configuration_policy import PostgresClusterMonitoringConfigurationPolicy
-from horey.alert_system.postgres.postgres_cluster_writer_monitoring_configuration_policy import PostgresClusterWriterMonitoringConfigurationPolicy
+from horey.alert_system.postgres.postgres_cluster_monitoring_configuration_policy import \
+    PostgresClusterMonitoringConfigurationPolicy
+from horey.alert_system.postgres.postgres_cluster_writer_monitoring_configuration_policy import \
+    PostgresClusterWriterMonitoringConfigurationPolicy
 from horey.alert_system.postgres.postgres_alert_manager_configuration_policy import \
     PostgresAlertManagerConfigurationPolicy
-from horey.alert_system.postgres.postgres_alert_manager import \
-    PostgresAlertManager
+from horey.alert_system.postgres.postgres_alert_builder import \
+    PostgresAlertBuilder
 
 
 class AlertsAPI:
@@ -75,7 +79,7 @@ class AlertsAPI:
 
         self.configuration.files = [slack_channel_configuration_file_path, alert_system_configuration_file_path]
 
-    def provision(self, resource_alerts_configuration=None):
+    def provision(self):
         """
         Provision frontend.
 
@@ -92,42 +96,38 @@ class AlertsAPI:
         self.provision_sns_subscription()
         self.provision_log_group()
         self.provision_self_monitoring()
-        self.provision_resource_alerts(resource_alerts_configuration)
         return True
 
-    def provision_resource_alerts(self, resource_alarms_configuration):
+    def generate_postgres_cluster_alarms(self, cluster_id):
         """
-        Provision alarm
+        Generate alerts per resource: RDS Postgres Cluster
 
-        :param resource_alarms_configuration:
+        :param cluster_id:
         :return:
         """
-        if resource_alarms_configuration is None:
-            return True
 
-        if isinstance(resource_alarms_configuration, PostgresClusterMonitoringConfigurationPolicy):
-            configuration = PostgresAlertManagerConfigurationPolicy()
-            configuration.cluster = self.configuration.postgres_cluster_identifier
-            configuration.routing_tags = [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG]
+        cluster = self.environment_api.get_rds_cluster(cluster_id)
+        alerts_builder = PostgresAlertBuilder(cluster=cluster)
+        return self.alert_system.generate_resource_alarms(alerts_builder)
 
-            alerts_manager = PostgresAlertManager(self.alert_system, configuration, cluster_configuration=resource_alarms_configuration)
-            return alerts_manager.provision()
-        elif isinstance(resource_alarms_configuration, PostgresClusterWriterMonitoringConfigurationPolicy):
-            configuration = PostgresAlertManagerConfigurationPolicy()
-            configuration.cluster = self.configuration.postgres_cluster_identifier
-            configuration.routing_tags = [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG]
-
-            alerts_manager = PostgresAlertManager(self.alert_system, configuration, cluster_writer_configuration=resource_alarms_configuration)
-            return alerts_manager.provision()
-        else:
-            raise NotImplementedError(resource_alarms_configuration)
-
-
-    def update(self):
+    def update(self, resource_alarms=None):
         """
 
         :return:
         """
+        # todo: remove
+        # self.provision_lambda()
+        if resource_alarms:
+            self.provision_resource_alarms(resource_alarms)
+
+    def provision_resource_alarms(self, resource_alarms):
+        """
+        Provision generated alarms.
+
+        :param resource_alarms:
+        :return:
+        """
+
         breakpoint()
 
     def provision_sns_topic(self):
@@ -506,7 +506,7 @@ class AlertsAPI:
             dimensions=[
                 {"Name": "FunctionName", "Value": self.configuration.lambda_name}
             ]
-            )
+        )
 
         return alarm
 
@@ -536,7 +536,7 @@ class AlertsAPI:
             dimensions=[
                 {"Name": "FunctionName", "Value": self.configuration.lambda_name}
             ]
-            )
+        )
 
         return alarm
 
@@ -565,9 +565,9 @@ class AlertsAPI:
             comparison_operator="LessThanThreshold",
             treat_missing_data="notBreaching",
             dimensions=[
-            {"Name": "RuleName", "Value": self.configuration.event_bridge_rule_name}
+                {"Name": "RuleName", "Value": self.configuration.event_bridge_rule_name}
             ]
-            )
+        )
 
         return alarm
 
@@ -600,3 +600,7 @@ class AlertsAPI:
 
         zip_file_path = self.alert_system.build_and_validate(self.configuration.files, event)
         breakpoint()
+
+    def get_all_metrics(self, namespace):
+        breakpoint()
+        ret = list(self.environment_api.aws_api.cloud_watch_client.yield_client_metrics(self.environment_api.region, {"Namespace": namespace}))

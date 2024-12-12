@@ -84,7 +84,7 @@ class CloudWatchClient(Boto3Client):
 
         request_dict = alarm.generate_create_request()
         logger.info(
-            f"Creating cloudwatch alarm '{alarm.name}' in region '{alarm.region}'"
+            f"Creating cloudwatch alarm '{alarm.name}' in region '{alarm.region}: {request_dict}'"
         )
         for response in self.execute(
                 self.get_session_client(region=alarm.region).put_metric_alarm, "ResponseMetadata",
@@ -124,6 +124,7 @@ class CloudWatchClient(Boto3Client):
         """
         Fetch metric data.
 
+        :param region:
         :param request_dict:
         :return:
         """
@@ -133,6 +134,24 @@ class CloudWatchClient(Boto3Client):
         return list(self.execute(
             self.get_session_client(region=region).get_metric_data,
             "MetricDataResults",
+            raw_data=True,
+            filters_req=request_dict,
+        ))
+
+    def get_metric_statistics_raw(self, region, request_dict):
+        """
+        Fetch metric data.
+
+        :param region:
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Getting metric statistics: {request_dict}")
+
+        return list(self.execute(
+            self.get_session_client(region=region).get_metric_statistics,
+            None,
             raw_data=True,
             filters_req=request_dict,
         ))

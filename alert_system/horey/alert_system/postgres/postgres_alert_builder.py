@@ -3,37 +3,23 @@ Monitor postgres like a boss!
 """
 import json
 
-from horey.alert_system.postgres.postgres_alert_manager_configuration_policy import \
-    PostgresAlertManagerConfigurationPolicy
-from horey.alert_system.postgres.postgres_cluster_writer_monitoring_configuration_policy import \
-    PostgresClusterWriterMonitoringConfigurationPolicy
-from horey.alert_system.postgres.postgres_cluster_monitoring_configuration_policy import \
-    PostgresClusterMonitoringConfigurationPolicy
-from horey.alert_system.postgres.postgres_instance_monitoring_configuration_policy import \
-    PostgresInstanceMonitoringConfigurationPolicy
-from horey.alert_system.alert_system import AlertSystem
+
 from horey.aws_api.aws_services_entities.rds_db_cluster import RDSDBCluster
 from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlarm
 from horey.h_logger import get_logger
+from statistics import median, mean
 
 logger = get_logger()
 
 
-class PostgresAlertManager:
+class PostgresAlertBuilder:
     """
     Provision
     """
 
     # pylint: disable = too-many-arguments
-    def __init__(self, alert_system: AlertSystem, configuration: PostgresAlertManagerConfigurationPolicy,
-                 cluster_writer_configuration: PostgresClusterWriterMonitoringConfigurationPolicy = None,
-                 cluster_configuration: PostgresClusterMonitoringConfigurationPolicy = None,
-                 instance_configuration: PostgresInstanceMonitoringConfigurationPolicy = None):
-        self.alert_system = alert_system
-        self.configuration = configuration
-        self.cluster_writer_configuration = cluster_writer_configuration
-        self.cluster_configuration = cluster_configuration
-        self.instance_configuration = instance_configuration
+    def __init__(self, cluster=None):
+        self.cluster = cluster
         self.camel_case_to_snake_case = {"ServerlessDatabaseCapacity": "serverless_database_capacity",
                                          "BufferCacheHitRatio": "buffer_cache_hit_ratio",
                                          "DiskQueueDepth": "disk_queue_depth",
@@ -366,3 +352,142 @@ class PostgresAlertManager:
         logger.info(f"Provisioned {alarms_counter} instance alarms")
 
         return True
+
+    def generate_cluster_metric_filters(self):
+        """
+        Metrics used to monitor the cluster.
+
+        :param cluster:
+        :return:
+        """
+
+        ret = []
+
+        dimensions = [
+            {"Name": "DBClusterIdentifier", "Value": self.cluster.id},
+        ]
+
+        ret.append(
+            {"Namespace": "AWS/RDS",
+             "Dimensions": dimensions})
+
+        dimensions = [
+            {"Name": "DBClusterIdentifier", "Value": self.cluster.id},
+            {"Name": "Role", "Value": "WRITER"},
+        ]
+
+        ret.append(
+            {"Namespace": "AWS/RDS",
+             "Dimensions": dimensions})
+
+        dimensions = [
+            {"Name": "DBClusterIdentifier", "Value": self.cluster.id},
+            {"Name": "Role", "Value": "READER"},
+        ]
+
+        ret.append(
+            {"Namespace": "AWS/RDS",
+             "Dimensions": dimensions})
+
+        for instance in self.cluster.db_cluster_members:
+            ret.append(
+                {"Namespace": "AWS/RDS",
+                 "Dimensions": [
+                     {"Name": "DBInstanceIdentifier", "Value": instance["DBInstanceIdentifier"]}
+                 ]})
+        return ret
+
+    def generate_metric_alarm_limits(self, metric_raw, statistics_data):
+        """
+        Generate alarm value min and max.
+
+        :param statistics_data:
+        :param metric_raw:
+        :return:
+        """
+
+        median_max = median(x["Maximum"] for x in statistics_data)
+        mean_max = mean(x["Maximum"] for x in statistics_data)
+        absolute_max_value = max(x["Maximum"] for x in statistics_data)
+
+        median_min = median(x["Minimum"] for x in statistics_data)
+        mean_min = mean(x["Minimum"] for x in statistics_data)
+        absolute_min_value = min(x["Minimum"] for x in statistics_data)
+
+        median_average = median(x["Average"] for x in statistics_data)
+        mean_average = mean(x["Average"] for x in statistics_data)
+        absolute_min_average = min(x["Average"] for x in statistics_data)
+
+        if metric_raw["MetricName"] == "DiskQueueDepth":
+            return None, absolute_max_value
+
+        if metric_raw["MetricName"] == "VolumeWriteIOPs":
+            return absolute_min_value, min(mean_max * 1.2, absolute_max_value)
+
+        if metric_raw["MetricName"] in ["StorageNetworkThroughput"]:
+            ret_min = min(mean_min, median_min)*0.8
+            ret_max = max(mean_max, median_max)*1.2
+            return ret_min, ret_max
+
+        if metric_raw["MetricName"] in ["NetworkThroughput"]:
+            ret_min = min(mean_average, median_average)*0.8
+            ret_max = max(mean_max, median_max)*1.2
+            return ret_min, ret_max
+
+        if metric_raw["MetricName"] in ["ReplicationSlotDiskUsage"]:
+            if absolute_min_value != -1.0:
+                raise NotImplementedError(f"{absolute_min_value=}")
+            if absolute_max_value != -1.0:
+                raise NotImplementedError(f"{absolute_max_value=}")
+            return None, None
+
+        if metric_raw["MetricName"] in ["Deadlocks"]:
+            return None, 0.0
+
+        if metric_raw["MetricName"] in ["BackupRetentionPeriodStorageUsed"]:
+            ret_min = min([x for x in [median_min, mean_min, absolute_min_value] if x])*0.8
+            ret_max = max(median_max, mean_max, absolute_max_value)*1.2
+            return ret_min, ret_max
+
+        if metric_raw["MetricName"] in ["DiskQueueDepth"]:
+            breakpoint()
+            ret_min = min([x for x in [median_min, mean_min, absolute_min_value] if x])*0.8
+            ret_max = max(median_max, mean_max, absolute_max_value)*1.2
+            return ret_min, ret_max
+
+        if metric_raw["MetricName"] in ["VolumeReadIOPs"]:
+            breakpoint()
+            ret_min = min([x for x in [median_min, mean_min, absolute_min_value] if x])*0.8
+            ret_max = max(median_max, mean_max, absolute_max_value)*1.2
+            return ret_min, ret_max
+
+        breakpoint()
+        median_max, mean_max, absolute_max_value
+        median_min, mean_min, absolute_min_value 
+        return absolute_min_value, absolute_max_value
+        if median_max <= mean_min:
+            # The value is constantly low but sometimes jumps: for example queue size
+            ret_min = None
+        else:
+            breakpoint()
+            ret_min = median_min * 0.8
+
+        if median_min >= mean_max:
+            # The value is constantly growing: for example storage
+            breakpoint()
+            ret_max = None
+        else:
+            breakpoint()
+            ret_max = median_max*1.2
+
+        return ret_min, ret_max
+
+    def generate_metric_alarm_slug(self, metric_raw):
+        """
+        camel_case_to_snake_case
+
+        :param metric_raw:
+        :return:
+        """
+
+        return self.camel_case_to_snake_case[metric_raw["MetricName"]]

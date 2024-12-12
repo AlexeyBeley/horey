@@ -40,7 +40,6 @@ from horey.alert_system.alert_system_configuration_policy import AlertSystemConf
 from horey.pip_api.pip_api import PipAPI
 from horey.pip_api.pip_api_configuration_policy import PipAPIConfigurationPolicy
 
-from horey.alert_system.lambda_package.message_cloudwatch_default import MessageCloudwatchDefault
 from horey.alert_system.lambda_package.notification import Notification
 
 logger = get_logger()
@@ -1118,3 +1117,81 @@ class AlertSystem:
         breakpoint()
         request = {"": ""}
         ret = self.aws_api.lambda_client.invoke_raw(self.region, request)
+
+    def generate_resource_alarms(self, resource_alarms_builder):
+        metric_filters = resource_alarms_builder.generate_cluster_metric_filters()
+
+        all_metrics = []
+        for filters_req in metric_filters:
+            found_metrics = list(
+                self.aws_api.cloud_watch_client.yield_client_metrics(self.region,
+                                                                                  filters_req=filters_req))
+            filter_dimensions = {dim["Name"]: dim["Value"] for dim in filters_req["Dimensions"]}
+            dimension_metrics = [result for result in found_metrics if
+                                 {dim["Name"]: dim["Value"] for dim in result["Dimensions"]} == filter_dimensions]
+            if not dimension_metrics:
+                raise RuntimeError(f"Was not able to find metrics: {filters_req}")
+            all_metrics += dimension_metrics
+            # todo: remove the break
+            break
+
+        for metric_raw in all_metrics:
+            all_metric_values = self.get_metric_statistics(metric_raw)
+            min_value, max_value = resource_alarms_builder.generate_metric_alarm_limits(metric_raw, all_metric_values)
+            slug = resource_alarms_builder.generate_metric_alarm_slug(metric_raw)
+            # todo: generate alarm
+
+    def get_metric_statistics(self, metric_raw):
+        """
+        Find proper value
+        Start time between 3 hours and 15 days ago - Use a multiple of 60 seconds (1 minute).
+        Start time between 15 and 63 days ago - Use a multiple of 300 seconds (5 minutes).
+        Start time greater than 63 days ago - Use a multiple of 3600 seconds (1 hour).
+
+        :return:
+        """
+
+        statistics = ["SampleCount", "Average", "Sum", "Minimum", "Maximum"]
+        now = datetime.datetime.now()
+
+        period = 60
+        seconds = 15 * 24 * 60 * 60
+
+        all_metric_values = self.get_metric_statistics_helper(metric_raw, statistics, now, seconds, period)
+
+        return all_metric_values
+
+
+    def get_metric_statistics_helper(self, metric_raw, statistics, end_time, seconds, period):
+        """
+        Loop over metric statistics:
+        'You have requested up to 10800 datapoints, which exceeds the limit of 1440. You may reduce the datapoints requested by increasing Period, or decreasing the time range.'
+
+        :param metric_raw:
+        :param statistics:
+        :param end_time:
+        :param seconds:
+        :param period:
+        :return:
+        """
+
+        ret = []
+        while seconds > 0:
+            seconds_delta = period * 1440
+            start_time = end_time - datetime.timedelta(seconds=seconds_delta)
+            request_dict = {"Namespace": metric_raw["Namespace"],
+                            "MetricName": metric_raw["MetricName"],
+                            "Statistics": statistics,
+                            "StartTime": start_time,
+                            "EndTime": end_time,
+                            "Dimensions": metric_raw["Dimensions"],
+                            "Period": period
+                            }
+            for response in self.aws_api.cloud_watch_client.get_metric_statistics_raw(
+                self.region, request_dict):
+                ret += response["Datapoints"]
+
+            seconds -= seconds_delta
+            end_time = start_time
+
+        return ret

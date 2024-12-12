@@ -1881,6 +1881,20 @@ class EnvironmentAPI:
 
         return aws_lambda
 
+    def get_rds_cluster(self, cluster_id):
+        """
+        Provision log group
+
+        @return:
+        """
+
+        for cluster in self.aws_api.rds_client.yield_db_clusters(self.region,
+                                                                 full_information=True,
+                                                                 filters_req={"DBClusterIdentifier": cluster_id}):
+            return cluster
+
+        raise RuntimeError(f"Could not find cluster '{cluster_id}' in region: '{self.configuration.region}'")
+
     def get_cloudwatch_log_group(self, log_group_name=None):
         """
         Provision log group
