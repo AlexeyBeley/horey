@@ -36,6 +36,7 @@ class AlertSystemConfigurationPolicy(ConfigurationPolicy):
         self._lambda_role_name = None
         self._lambda_role_path = None
         self._tags = None
+        self._routing_tags = None
         self._ses_configuration_set_name = None
         self._dynamodb_table_name = None
         self._do_not_send_ses_suppressed_bounce_notifications = False
@@ -192,6 +193,14 @@ class AlertSystemConfigurationPolicy(ConfigurationPolicy):
     @tags.setter
     def tags(self, value):
         self._tags = value
+
+    @property
+    def routing_tags(self):
+        return self._routing_tags
+
+    @routing_tags.setter
+    def routing_tags(self, value):
+        self._routing_tags = value
 
     @property
     def dynamodb_table_name(self):

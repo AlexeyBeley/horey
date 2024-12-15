@@ -6,6 +6,7 @@ import json
 import os
 import shutil
 import time
+from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
@@ -553,4 +554,8 @@ def test_provision_self_monitoring_event_bridge_successful_invocations_alarm(ale
 @pytest.mark.wip
 def test_trigger_lambda_with_raw_event(alert_system_configuration):
     alert_system = AlertSystem(alert_system_configuration)
-    assert alert_system.trigger_lambda_with_raw_event({})
+    this = Path(__file__).parent
+    with open(this / "posgres_alerts_direct_lambda" / "instance_commit_latency.json", "r") as file_handler:
+        event = json.load(file_handler)
+    event = {}
+    assert alert_system.trigger_lambda_with_raw_event(event)

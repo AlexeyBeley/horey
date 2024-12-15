@@ -2060,7 +2060,6 @@ class EnvironmentAPI:
         """
 
         alarm = CloudWatchAlarm({})
-        alarm.region = self.region
         alarm.name = name
         alarm.actions_enabled = True
         alarm.insufficient_data_actions = insufficient_data_actions
@@ -2077,7 +2076,17 @@ class EnvironmentAPI:
         alarm.alarm_description = alarm_description
         alarm.ok_actions = ok_actions
         alarm.alarm_actions = alarm_actions
+        return self.provision_cloudwatch_alarm_object(alarm)
 
+    def provision_cloudwatch_alarm_object(self, alarm):
+        """
+        Provision the AWS object.
+
+        :param alarm:
+        :return:
+        """
+
+        alarm.region = self.region
         self.aws_api.cloud_watch_client.set_cloudwatch_alarm(alarm)
         return alarm
 

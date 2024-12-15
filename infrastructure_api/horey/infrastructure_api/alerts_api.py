@@ -7,7 +7,6 @@ import json
 import os.path
 import sys
 
-
 from horey.alert_system.alert_system import AlertSystem
 from horey.alert_system.alert_system_configuration_policy import AlertSystemConfigurationPolicy
 from horey.alert_system.lambda_package.notification_channels.notification_channel_slack import NotificationChannelSlack, \
@@ -115,10 +114,12 @@ class AlertsAPI:
 
         :return:
         """
-        # todo: remove
-        # self.provision_lambda()
+
+        self.provision_lambda()
+
         if resource_alarms:
             self.provision_resource_alarms(resource_alarms)
+        return True
 
     def provision_resource_alarms(self, resource_alarms):
         """
@@ -128,7 +129,9 @@ class AlertsAPI:
         :return:
         """
 
-        breakpoint()
+        for alarm in resource_alarms:
+            self.environment_api.provision_cloudwatch_alarm_object(alarm)
+        return True
 
     def provision_sns_topic(self):
         """
@@ -194,8 +197,22 @@ class AlertsAPI:
                  "Action": "lambda:InvokeFunction",
                  "Resource": None,
                  "Condition": {"ArnLike": {
-                     "AWS:SourceArn": events_rule.arn}}}
-            ],
+                     "AWS:SourceArn": events_rule.arn}}},
+                {
+                    "Sid": "AlarmAction",
+                    "Effect": "Allow",
+                    "Principal": {
+                        "Service": "lambda.alarms.cloudwatch.amazonaws.com"
+                    },
+                    "Action": "lambda:InvokeFunction",
+                    "Resource": None,
+                    "Condition": {
+                        "StringEquals": {
+                            "AWS:SourceAccount": self.environment_api.aws_api.cloud_watch_client.account_id
+                        }
+                    }
+                }
+            ]
         }
 
         return self.environment_api.deploy_lambda(lambda_name=self.configuration.lambda_name,
@@ -603,4 +620,5 @@ class AlertsAPI:
 
     def get_all_metrics(self, namespace):
         breakpoint()
-        ret = list(self.environment_api.aws_api.cloud_watch_client.yield_client_metrics(self.environment_api.region, {"Namespace": namespace}))
+        ret = list(self.environment_api.aws_api.cloud_watch_client.yield_client_metrics(self.environment_api.region,
+                                                                                        {"Namespace": namespace}))

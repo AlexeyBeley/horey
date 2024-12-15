@@ -47,6 +47,9 @@ class MessageBase:
                 dict_sns_message = json.loads(str_sns_message)
                 return dict_sns_message
 
+        if dict_src.get("source") == "aws.cloudwatch":
+            return dict_src["alarmData"]
+
         return dict_src
 
     def generate_notification(self):

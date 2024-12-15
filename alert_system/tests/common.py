@@ -41,3 +41,19 @@ for file_name in os.listdir(events_dir):
     with open(os.path.join(events_dir, file_name), encoding="utf-8") as fh:
         ses_event = json.load(fh)
         self_monitoring_valid_events.append(ses_event)
+
+
+cloudwatch_direct_alarm_eventss_dir = os.path.join(os.path.dirname(__file__), "cloudwatch_messages")
+cloudwatch_direct_alarm_eventss = []
+for file_name in os.listdir(cloudwatch_direct_alarm_eventss_dir):
+    with open(os.path.join(cloudwatch_direct_alarm_eventss_dir, file_name), encoding="utf-8") as fh:
+        ses_event = json.load(fh)
+        cloudwatch_direct_alarm_eventss.append(ses_event)
+
+cloudwatch_direct_alarm_events_dir = os.path.join(os.path.dirname(__file__), "postgres_direct_lambda_alarm_events")
+cloudwatch_direct_alarm_events = []
+for file_name in os.listdir(cloudwatch_direct_alarm_events_dir):
+    with open(os.path.join(cloudwatch_direct_alarm_events_dir, file_name), encoding="utf-8") as fh:
+        ses_event = json.load(fh)
+        cloudwatch_direct_alarm_events.append(ses_event)
+

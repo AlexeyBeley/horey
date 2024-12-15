@@ -33,14 +33,18 @@ class MessageCloudwatchDefault(MessageBase):
         self._trigger = None
         self._alarm_description = None
         self._end_time = None
+        self._metric_name = None
+        self._namespace = None
+        self._new_state_reason = None
+        self._state_change_time = None
+        self._new_state_value = None
+        self._alarm_name = None
 
         try:
             assert self.message_dict
+            assert self.alarm_description
         except Exception as inst_error:
             raise MessageBase.NotAMatchError(f"Not a match {repr(inst_error)}")
-
-        if "AlarmDescription" not in self.message_dict:
-            raise MessageBase.NotAMatchError("Not a match")
 
         logger.info("MessageCloudwatchDefault initialized")
 
@@ -101,8 +105,92 @@ class MessageCloudwatchDefault(MessageBase):
         """
 
         if self._alarm_description is None:
-            self._alarm_description = json.loads(self.message_dict.get("AlarmDescription"))
+            str_description = self.message_dict.get("AlarmDescription") or self.message_dict["configuration"]["description"]
+            self._alarm_description = json.loads(str_description)
+
         return self._alarm_description
+
+    @property
+    def metric_name(self):
+        """
+        Extract and save
+
+        :return:
+        """
+
+        if self._metric_name is None:
+            if self.trigger:
+                self._metric_name = self.trigger.get("MetricName")
+            else:
+                if len(self.message_dict["configuration"]["metrics"]) != 1:
+                    raise ValueError(f'Expected 1 metric but found: {self.message_dict["configuration"]["metrics"]}')
+                self._metric_name = self.message_dict["configuration"]["metrics"][0]["metricStat"]["metric"]["name"]
+        return self._metric_name
+
+    @property
+    def namespace(self):
+        """
+        Extract and save
+
+        :return:
+        """
+
+        if self._namespace is None:
+            if self.trigger:
+                self._namespace = self.trigger.get("Namespace")
+            else:
+                if len(self.message_dict["configuration"]["metrics"]) != 1:
+                    raise ValueError(f'Expected 1 metric but found: {self.message_dict["configuration"]["metrics"]}')
+                self._namespace = self.message_dict["configuration"]["metrics"][0]["metricStat"]["metric"]["namespace"]
+        return self._namespace
+    
+    @property
+    def new_state_reason(self):
+        """
+        Extract and save
+
+        :return:
+        """
+
+        if self._new_state_reason is None:
+            self._new_state_reason = self.message_dict.get("NewStateReason") or self.message_dict.get("state").get("reason")
+        return self._new_state_reason
+    
+    @property
+    def state_change_time(self):
+        """
+        Extract and save
+
+        :return:
+        """
+
+        if self._state_change_time is None:
+            self._state_change_time = self.message_dict.get("StateChangeTime") or self.message_dict.get("state").get("timestamp")
+        return self._state_change_time
+    
+    @property
+    def new_state_value(self):
+        """
+        Extract and save
+
+        :return:
+        """
+
+        if self._new_state_value is None:
+            self._new_state_value = self.message_dict.get("NewStateValue") or self.message_dict.get("state").get("value")
+        return self._new_state_value
+
+    @property
+    def alarm_name(self):
+        """
+        Extract and save
+
+        :return:
+        """
+
+        if self._alarm_name is None:
+            self._alarm_name = self.message_dict.get("AlarmName") or self.message_dict.get("alarmName")
+        return self._alarm_name
 
     def generate_cloudwatch_alarm_link(self):
         """
@@ -111,7 +199,7 @@ class MessageCloudwatchDefault(MessageBase):
         @return:
         """
 
-        alarm_name = self.message_dict["AlarmName"].replace("/", "$2F")
+        alarm_name = self.alarm_name.replace("/", "$2F")
         return f"https://{self.configuration.region}.console.aws.amazon.com/cloudwatch/home?region={self.configuration.region}#alarmsV2:alarm/{alarm_name}"
 
     def generate_alert_system_lambda_link(self):
@@ -135,13 +223,13 @@ class MessageCloudwatchDefault(MessageBase):
         if not self.alarm_description:
             raise MessageBase.NotAMatchError("AlarmDescription missing")
 
-        if not self.trigger:
+        if not self.metric_name:
             raise MessageBase.NotAMatchError("Trigger is missing")
 
         if AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY in self.alarm_description:
             return self.generate_self_monitoring_notification()
 
-        if self.trigger.get("MetricName") == "Duration" and self.trigger.get("Namespace") == "AWS/Lambda":
+        if self.metric_name == "Duration" and self.namespace == "AWS/Lambda":
             return self.generate_notification_lambda_duration()
 
         if "log_group_filter_pattern" in self.alarm_description:
@@ -278,13 +366,13 @@ class MessageCloudwatchDefault(MessageBase):
         :return:
         """
 
-        new_state_reason = self.message_dict["NewStateReason"]
-        alarm_time = self.message_dict["StateChangeTime"]
+        new_state_reason = self.new_state_reason
+        alarm_time = self.state_change_time
 
         notification = Notification()
-        notification.type = Notification.Types.STABLE if self.message_dict["NewStateValue"] == "OK" else Notification.Types.CRITICAL
-        notification.header = f"Alarm {self.message_dict['AlarmName']}"
-        reason = f"Reason: Metric {self.trigger['MetricName']}\n" if reason is None else (reason.strip("\n") + "\n")
+        notification.type = Notification.Types.STABLE if self.new_state_value == "OK" else Notification.Types.CRITICAL
+        notification.header = f"Alarm {self.alarm_name}"
+        reason = f"Reason: Metric {self.metric_name}\n" if reason is None else (reason.strip("\n") + "\n")
         notification.text = (
             f"Region: {self.configuration.region}\n"
             f"Raw reason: {new_state_reason}\n"

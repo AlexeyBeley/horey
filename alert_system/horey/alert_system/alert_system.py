@@ -72,7 +72,25 @@ class AlertSystem:
         except configuration.UndefinedValueError:
             pass
         pip_api_configuration.venv_dir_path = configuration.deployment_venv_path
+        self._lambda_arn = None
         self.pip_api = PipAPI(configuration=pip_api_configuration)
+        if self.configuration.routing_tags is None:
+            self.configuration.routing_tags = [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG]
+
+    @property
+    def lambda_arn(self):
+        if self._lambda_arn is None:
+            aws_lambda = AWSLambda({})
+            aws_lambda.name = self.configuration.lambda_name
+            aws_lambda.region = self.region
+
+            if not self.aws_api.lambda_client.update_lambda_information(
+                    aws_lambda, full_information=False
+            ):
+                raise RuntimeError("Could not update aws_lambda information")
+
+            self._lambda_arn = aws_lambda.arn
+        return self._lambda_arn
 
     def provision(self, lambda_files):
         """
@@ -1119,6 +1137,12 @@ class AlertSystem:
         ret = self.aws_api.lambda_client.invoke_raw(self.region, request)
 
     def generate_resource_alarms(self, resource_alarms_builder):
+        """
+        Generate alarms based on 2 weeks data
+
+        :param resource_alarms_builder:
+        :return:
+        """
         metric_filters = resource_alarms_builder.generate_cluster_metric_filters()
 
         all_metrics = []
@@ -1126,20 +1150,62 @@ class AlertSystem:
             found_metrics = list(
                 self.aws_api.cloud_watch_client.yield_client_metrics(self.region,
                                                                                   filters_req=filters_req))
+            if not found_metrics:
+                logger.warning(f"Was not able to find metrics by filter {filters_req}")
+                continue
+
             filter_dimensions = {dim["Name"]: dim["Value"] for dim in filters_req["Dimensions"]}
             dimension_metrics = [result for result in found_metrics if
                                  {dim["Name"]: dim["Value"] for dim in result["Dimensions"]} == filter_dimensions]
             if not dimension_metrics:
+                breakpoint()
                 raise RuntimeError(f"Was not able to find metrics: {filters_req}")
             all_metrics += dimension_metrics
-            # todo: remove the break
-            break
 
+        lst_ret = []
         for metric_raw in all_metrics:
             all_metric_values = self.get_metric_statistics(metric_raw)
             min_value, max_value = resource_alarms_builder.generate_metric_alarm_limits(metric_raw, all_metric_values)
             slug = resource_alarms_builder.generate_metric_alarm_slug(metric_raw)
-            # todo: generate alarm
+            if min_value is not None:
+                alarm = self.get_base_alarm(f"{self.configuration.lambda_name}-{slug}", metric_raw, min_value, "LessThanThreshold")
+                lst_ret.append(alarm)
+            if max_value is not None:
+                alarm = self.get_base_alarm(f"{self.configuration.lambda_name}-{slug}", metric_raw, max_value, "GreaterThanThreshold")
+                lst_ret.append(alarm)
+        return lst_ret
+
+    def get_base_alarm(self, name, metric_raw, threshold, comparison_operator):
+        """
+        Generate template alarm.
+
+        :return:
+        """
+
+        if len(name) > 255:
+            raise ValueError(f"Alarm name can be up to 255 chars: {len(name)=} {name=}")
+
+        alarm = CloudWatchAlarm({})
+        alarm.name = name
+        alarm.actions_enabled = True
+        alarm.insufficient_data_actions = []
+        alarm.metric_name = metric_raw["MetricName"]
+        alarm.namespace = "AWS/RDS"
+        alarm.statistic = "Average"
+        alarm.dimensions = metric_raw["Dimensions"]
+        alarm.period = 60
+        alarm.evaluation_periods = 3
+        alarm.datapoints_to_alarm = 3
+        alarm.threshold = threshold
+        alarm.comparison_operator = comparison_operator
+        alarm.treat_missing_data = "notBreaching"
+
+        alarm_description = {"routing_tags": self.configuration.routing_tags}
+        alarm.alarm_description = json.dumps(alarm_description)
+        alarm.region = self.region
+        alarm.ok_actions = [self.lambda_arn]
+        alarm.alarm_actions = [self.lambda_arn]
+        return alarm
 
     def get_metric_statistics(self, metric_raw):
         """
@@ -1160,7 +1226,6 @@ class AlertSystem:
         all_metric_values = self.get_metric_statistics_helper(metric_raw, statistics, now, seconds, period)
 
         return all_metric_values
-
 
     def get_metric_statistics_helper(self, metric_raw, statistics, end_time, seconds, period):
         """

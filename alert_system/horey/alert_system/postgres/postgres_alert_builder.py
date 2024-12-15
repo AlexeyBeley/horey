@@ -73,6 +73,9 @@ class PostgresAlertBuilder:
                                          "CPUUtilization": "cpu_utilization",
                                          "WriteIOPSLocalStorage": "write_iops_local_storage",
                                          "FreeLocalStorage": "free_local_storage",
+                                         "AuroraReplicaLagMinimum": "aurora_replica_lag_minimum",
+                                         "AuroraReplicaLag": "aurora_replica_lag",
+                                         "AuroraReplicaLagMaximum": "aurora_replica_lag_maximum"
                                          }
 
         self.cluster_metric_names_with_role_writer_dimension = ["NetworkThroughput",
@@ -456,31 +459,222 @@ class PostgresAlertBuilder:
             return ret_min, ret_max
 
         if metric_raw["MetricName"] in ["VolumeReadIOPs"]:
-            breakpoint()
-            ret_min = min([x for x in [median_min, mean_min, absolute_min_value] if x])*0.8
-            ret_max = max(median_max, mean_max, absolute_max_value)*1.2
+            ret_min = ret_max = None
+            if (median_max, mean_max, absolute_max_value) != (0.0, 0.0, 0.0):
+                ret_max = max(median_max, mean_max)*1.2
+            if (median_min, mean_min, absolute_min_value) != (0.0, 0.0, 0.0):
+                ret_min = min([x for x in [median_min, mean_min, absolute_min_value] if x]) * 0.8
+            return ret_min, ret_max
+
+        if metric_raw["MetricName"] in ["ReadIOPS"]:
+            ret_max = None
+            ret_min = None
+            if (median_max, mean_max, absolute_max_value) != (0.0, 0.0, 0.0):
+                ret_max = max(mean_max, median_max)*1.2
+            if median_min != 0.0:
+                ret_min = min(mean_min, median_min)*0.8
+            return ret_min, ret_max
+
+        if metric_raw["MetricName"] in ["ACUUtilization"]:
+            return 30, 80
+
+        if metric_raw["MetricName"] in ["TempStorageIOPS"]:
+            ret_min = min(median_min, mean_min) * 0.8
+            ret_max = max(median_max, mean_max) * 1.2
+            return ret_min, ret_max
+
+        if metric_raw["MetricName"] in ["ServerlessDatabaseCapacity"]:
+            return float(self.cluster.serverless_v2_scaling_configuration["MinCapacity"])*1.2, \
+                float(self.cluster.serverless_v2_scaling_configuration["MaxCapacity"])*0.8
+
+        if metric_raw["MetricName"] in ["RDSToAuroraPostgreSQLReplicaLag"]:
+            if (median_max, mean_max, absolute_max_value) != (-1.0, -1.0, -1.0):
+                raise NotImplementedError(median_max, mean_max, absolute_max_value)
+            if (median_min, mean_min, absolute_min_value) != (-1.0, -1.0, -1.0):
+                raise NotImplementedError(median_min, mean_min, absolute_min_value)
+            return None, None
+
+        if metric_raw["MetricName"] in ["StorageNetworkTransmitThroughput"]:
+            ret_min = min(median_min, mean_min) * 0.8
+            ret_max = max(median_max, mean_max) * 1.2
+            return ret_min, ret_max
+
+        if metric_raw["MetricName"] in ["CPUUtilization"]:
+            return 5, 90
+
+        if metric_raw["MetricName"] in ["AuroraReplicaLagMinimum"]:
+            ret_min = min(median_min, mean_min) * 0.8
+            ret_max = max(median_max, mean_max) * 1.2
+            return ret_min, ret_max
+
+        if metric_raw["MetricName"] in ["WriteThroughput"]:
+            ret_min = min(mean_min, median_min)*0.8
+            ret_max = max(mean_max, median_max)*1.2
+            return ret_min, ret_max
+
+        if metric_raw["MetricName"] in ["WriteLatency"]:
+            ret_min = min(mean_average, median_average)*0.8
+            ret_max = max(mean_max, median_max)*1.2
+            return ret_min, ret_max
+
+        if metric_raw["MetricName"] in ["CommitThroughput"]:
+            ret_min = min(mean_min, median_min)*0.8
+            ret_max = max(mean_max, median_max)*1.2
+            return ret_min, ret_max
+
+        if metric_raw["MetricName"] in ["NetworkTransmitThroughput"]:
+            ret_min = min(mean_average, median_average)*0.8
+            ret_max = max(mean_max, median_max)*1.2
+            return ret_min, ret_max
+
+        if metric_raw["MetricName"] in ["MaximumUsedTransactionIDs"]:
+            ret_min = min(mean_min, median_min)*0.8
+            ret_max = max(mean_max, median_max)*1.2
+            return ret_min, ret_max
+
+        if metric_raw["MetricName"] in ["EngineUptime"]:
+            ret_min = 60.0
+            ret_max = 60.0*60*24*30*12
+            return ret_min, ret_max
+
+        if metric_raw["MetricName"] in ["EBSByteBalance%"]:
+            ret_min = 80.0
+            return ret_min, None
+
+        if metric_raw["MetricName"] in ["WriteIOPS"]:
+            ret_min = min(mean_min, median_min)*0.8
+            ret_max = max(mean_max, median_max)*1.2
+            return ret_min, ret_max
+
+        if metric_raw["MetricName"] in ["CommitLatency"]:
+            ret_min = min(mean_min, median_min)*0.8
+            ret_max = max(mean_max, median_max)*1.2
+            return ret_min, ret_max
+
+        if metric_raw["MetricName"] in ["FreeableMemory"]:
+            ret_min = min(mean_min, median_min)*0.8
+            ret_max = max(mean_max, median_max)*1.2
+            return ret_min, ret_max
+
+        if metric_raw["MetricName"] in ["TempStorageThroughput"]:
+            ret_min = min(mean_min, median_min)*0.8
+            ret_max = max(mean_max, median_max)*1.2
+            return ret_min, ret_max
+
+        if metric_raw["MetricName"] in ["EBSIOBalance%"]:
+            ret_min = 80.0
+            return ret_min, None
+
+        if metric_raw["MetricName"] in ["SwapUsage"]:
+            ret_min = min(mean_min, median_min)*0.8
+            ret_max = max(mean_max, median_max)*1.2
+            return ret_min, ret_max
+
+        if metric_raw["MetricName"] in ["DatabaseConnections"]:
+            ret_min = min(mean_min, median_min)*0.8
+            ret_max = max(mean_max, median_max)*1.2
+            return ret_min, ret_max
+
+        if metric_raw["MetricName"] in ["TransactionLogsDiskUsage"]:
+            if (median_max, mean_max, absolute_max_value) != (-1.0, -1.0, -1.0):
+                raise NotImplementedError(median_max, mean_max, absolute_max_value)
+            if (median_min, mean_min, absolute_min_value) != (-1.0, -1.0, -1.0):
+                raise NotImplementedError(median_min, mean_min, absolute_min_value)
+            return None, None
+
+        if metric_raw["MetricName"] in ["BufferCacheHitRatio"]:
+            return 80, None
+
+        if metric_raw["MetricName"] in ["VolumeBytesUsed"]:
+            ret_min = min(mean_min, median_min)*0.8
+            ret_max = max(mean_max, median_max)*1.2
+            return ret_min, ret_max
+
+        if metric_raw["MetricName"] in ["ReadThroughput"]:
+            ret_max = None
+            ret_min = None
+            if (median_max, mean_max, absolute_max_value) != (0.0, 0.0, 0.0):
+                ret_max = max(mean_max, median_max)*1.2
+            if median_min != 0.0:
+                ret_min = min(mean_min, median_min)*0.8
+            return ret_min, ret_max
+
+        if metric_raw["MetricName"] in ["OldestReplicationSlotLag"]:
+            if (median_max, mean_max, absolute_max_value) != (0.0, 0.0, 0.0):
+                raise NotImplementedError(median_max, mean_max, absolute_max_value)
+            if (median_min, mean_min, absolute_min_value) != (0.0, 0.0, 0.0):
+                raise NotImplementedError(median_min, mean_min, absolute_min_value)
+            return None, None
+
+        if metric_raw["MetricName"] in ["TotalBackupStorageBilled"]:
+            ret_min = min(mean_min, median_min)*0.8
+            ret_max = max(mean_max, median_max)*1.2
+            return ret_min, ret_max
+
+        if metric_raw["MetricName"] in ["ReadLatency"]:
+            ret_max = None
+            ret_min = None
+            if (median_max, mean_max, absolute_max_value) != (0.0, 0.0, 0.0):
+                ret_max = max(mean_max, median_max)*1.2
+            if median_min != 0.0:
+                ret_min = min(mean_min, median_min)*0.8
+            return ret_min, ret_max
+
+        if metric_raw["MetricName"] in ["StorageNetworkReceiveThroughput"]:
+            ret_min = min(mean_min, median_min)*0.8
+            ret_max = max(mean_max, median_max)*1.2
+            return ret_min, ret_max
+
+        if metric_raw["MetricName"] in ["NetworkReceiveThroughput"]:
+            # min is 0.0, 0.0, 0.0
+            ret_min = min(mean_average, median_average)*0.8
+            ret_max = max(mean_max, median_max)*1.2
+            return ret_min, ret_max
+
+        if metric_raw["MetricName"] in ["AuroraReplicaLag"]:
+            ret_min = min(mean_average, median_average)*0.8
+            ret_max = max(mean_max, median_max)*1.2
+            return ret_min, ret_max
+
+        if metric_raw["MetricName"] in ["AuroraReplicaLagMaximum"]:
+            ret_min = min(mean_min, median_min)*0.8
+            ret_max = max(mean_max, median_max)*1.2
+            return ret_min, ret_max
+
+        if metric_raw["MetricName"] in ["DBLoadNonCPU"]:
+            if (median_max, mean_max, absolute_max_value) != (0.0, 0.0, 0.0):
+                raise NotImplementedError(median_max, mean_max, absolute_max_value)
+            if (median_min, mean_min, absolute_min_value) != (0.0, 0.0, 0.0):
+                raise NotImplementedError(median_min, mean_min, absolute_min_value)
+            return None, None
+
+        if metric_raw["MetricName"] in ["DBLoad"]:
+            ret_min = None
+            ret_max = max(mean_max, median_max) * 1.2
+            if median_min != 0.0:
+                raise NotImplementedError(median_min, mean_min, absolute_min_value)
+            return ret_min, ret_max
+
+        if metric_raw["MetricName"] in ["DBLoadRelativeToNumVCPUs"]:
+            ret_min = None
+            ret_max = max(mean_max, median_max) * 1.2
+            if median_min != 0.0:
+                raise NotImplementedError(median_min, mean_min, absolute_min_value)
+            return ret_min, ret_max
+
+        if metric_raw["MetricName"] in ["DBLoadCPU"]:
+            ret_min = None
+            ret_max = max(mean_max, median_max) * 1.2
+            if median_min != 0.0:
+                raise NotImplementedError(median_min, mean_min, absolute_min_value)
             return ret_min, ret_max
 
         breakpoint()
-        median_max, mean_max, absolute_max_value
-        median_min, mean_min, absolute_min_value 
         return absolute_min_value, absolute_max_value
-        if median_max <= mean_min:
-            # The value is constantly low but sometimes jumps: for example queue size
-            ret_min = None
-        else:
-            breakpoint()
-            ret_min = median_min * 0.8
 
-        if median_min >= mean_max:
-            # The value is constantly growing: for example storage
-            breakpoint()
-            ret_max = None
-        else:
-            breakpoint()
-            ret_max = median_max*1.2
-
-        return ret_min, ret_max
+        median_max, mean_max, absolute_max_value
+        median_min, mean_min, absolute_min_value
+        median_average, mean_average, absolute_min_average
 
     def generate_metric_alarm_slug(self, metric_raw):
         """
@@ -490,4 +684,18 @@ class PostgresAlertBuilder:
         :return:
         """
 
-        return self.camel_case_to_snake_case[metric_raw["MetricName"]]
+        dimension_names_to_values = {x["Name"]: x["Value"] for x in metric_raw["Dimensions"]}
+        prefix = ""
+
+        for key in ["DBClusterIdentifier", "Role", "DBInstanceIdentifier"]:
+            if key in dimension_names_to_values:
+                prefix += dimension_names_to_values[key] + "_"
+                del dimension_names_to_values[key]
+
+        if dimension_names_to_values:
+            raise NotImplementedError(f"Not all dimensions handled: {metric_raw=}, {dimension_names_to_values=}")
+
+        if not prefix:
+            raise NotImplementedError(f"Can not generate unique slug for metric: {metric_raw}")
+
+        return prefix + self.camel_case_to_snake_case[metric_raw["MetricName"]]

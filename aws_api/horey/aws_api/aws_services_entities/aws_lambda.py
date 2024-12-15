@@ -430,13 +430,22 @@ class AWSLambda(AwsObject):
                 if desired_statement["Sid"] == self_statement["Sid"]:
                     break
             else:
-                request = {
+                if "ArnLike" in desired_statement["Condition"]:
+                    request = {
                     "FunctionName": self.name,
                     "StatementId": desired_statement["Sid"],
                     "Action": desired_statement["Action"],
                     "Principal": desired_statement["Principal"]["Service"],
-                    "SourceArn": desired_statement["Condition"]["ArnLike"]["AWS:SourceArn"],
-                }
+                    "SourceArn": desired_statement["Condition"]["ArnLike"]["AWS:SourceArn"]
+                    }
+                elif "StringEquals" in desired_statement["Condition"]:
+                    request = {
+                        "FunctionName": self.name,
+                        "StatementId": desired_statement["Sid"],
+                        "Action": desired_statement["Action"],
+                        "Principal": desired_statement["Principal"]["Service"],
+                        "SourceAccount": desired_statement["Condition"]["StringEquals"]["AWS:SourceAccount"]
+                    }
 
                 add_permissions.append(request)
         return add_permissions, remove_permissions
