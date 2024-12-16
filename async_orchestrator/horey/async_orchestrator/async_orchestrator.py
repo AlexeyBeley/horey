@@ -113,6 +113,15 @@ class AsyncOrchestrator:
                 if task.exception:
                     raise RuntimeError(f"Task failed: '{task_id}' look for 'Exception output start {task_id}' ") from task.exception
                 if task.exit_code != 0:
+                    if task.exit_code is None:
+                        raise RuntimeError(f"Task exit code was not set: '{task_id}' exit code is None")
+
+                    if task.exit_code == 1:
+                        time.sleep(1)
+
+                    if task.exit_code == 0:
+                        continue
+
                     if silent_exit:
                         sys.exit(task.exit_code)
                     raise RuntimeError(f"Task failed: '{task_id}' with exit code != 0")
