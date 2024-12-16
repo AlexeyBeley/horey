@@ -52,8 +52,10 @@ class AsyncOrchestrator:
             task.started = True
             logger.info(f"Setting task {task.id} as started")
             task.exit_code = 1
+            logger.info(f"Task '{task.id}' Set exit code = {task.exit_code}")
             task.result = task.function()
             task.exit_code = 0
+            logger.info(f"Task '{task.id}' Set exit code = {task.exit_code}")
         except Exception as error_inst:
             task.exception = error_inst
             logger.error(f"Exception output start {task.id}")
@@ -113,6 +115,7 @@ class AsyncOrchestrator:
                 if task.exception:
                     raise RuntimeError(f"Task failed: '{task_id}' look for 'Exception output start {task_id}' ") from task.exception
                 if task.exit_code != 0:
+                    logger.info(f"Task '{task_id}' exit code = {task.exit_code}")
                     if task.exit_code is None:
                         raise RuntimeError(f"Task exit code was not set: '{task_id}' exit code is None")
 
