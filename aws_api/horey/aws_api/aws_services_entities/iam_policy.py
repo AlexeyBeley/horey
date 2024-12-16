@@ -67,7 +67,12 @@ class IamPolicy(AwsObject):
 
         :return:
         """
-        document = self.document if isinstance(self.document, str) else self.document.generate_create_request_str()
+        if isinstance(self.document, str):
+            document = self.document
+        elif isinstance(self.document, dict):
+            document = json.dumps(self.document)
+        else:
+            document = self.document.generate_create_request_str()
         dict_ret = {"PolicyName": self.name, "PolicyDocument": document}
         self.extend_request_with_required_parameters(dict_ret, ["Description", "Path", "Tags"])
         return dict_ret
@@ -96,8 +101,11 @@ class IamPolicy(AwsObject):
         :param policy_desired:
         :return:
         """
+
         if isinstance(policy_desired.document, str):
             desired_document_str = policy_desired.document
+        elif isinstance(policy_desired.document, dict):
+            desired_document_str = json.dumps(policy_desired.document)
         elif isinstance(policy_desired.document, IamPolicy.Document):
             desired_document_str = policy_desired.document.generate_create_request_str()
         else:
