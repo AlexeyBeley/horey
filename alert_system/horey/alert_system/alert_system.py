@@ -344,7 +344,8 @@ class AlertSystem:
                 os.path.dirname(os.path.abspath(__file__)),
                 "lambda_package",
                 "requirements.txt",
-            )
+            ),
+            force_reinstall=True
         )
 
         self.packer.zip_venv_site_packages(
