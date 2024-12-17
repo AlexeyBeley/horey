@@ -74,6 +74,9 @@ class MessageDispatcher:
         """
 
         notification = self.generate_alert_system_exception_notification(error_inst, data)
+        if not notification.link_href or not notification.link:
+            notification.link_href = "HAS2 lambda"
+            notification.link = f"https://{self.configuration.region}.console.aws.amazon.com/lambda/home?region={self.configuration.region}#/functions/{self.configuration.lambda_name}?tab=monitoring"
 
         for notification_channel in self.notification_channels:
             notification_channel.notify_alert_system_error(notification)
