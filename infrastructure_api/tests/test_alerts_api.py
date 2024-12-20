@@ -39,8 +39,7 @@ def fixture_alerts_api():
     yield alerts_api
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_build_and_validate(alerts_api):
-    breakpoint()
     ret = alerts_api.build_and_validate(None)
     assert ret

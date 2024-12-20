@@ -97,17 +97,24 @@ class AlertsAPI:
         self.provision_self_monitoring()
         return True
 
-    def generate_postgres_cluster_alarms(self, cluster_id):
+    def generate_postgres_cluster_alarms(self, cluster_id, metric_data_start_time=None, metric_data_end_time=None,
+                                         metric_name=None):
         """
         Generate alerts per resource: RDS Postgres Cluster
 
+        :param metric_name:
+        :param metric_data_end_time:
+        :param metric_data_start_time:
         :param cluster_id:
         :return:
         """
 
         cluster = self.environment_api.get_rds_cluster(cluster_id)
         alerts_builder = PostgresAlertBuilder(cluster=cluster)
-        return self.alert_system.generate_resource_alarms(alerts_builder)
+        return self.alert_system.generate_resource_alarms(alerts_builder,
+                                                          metric_data_start_time=metric_data_start_time,
+                                                          metric_data_end_time=metric_data_end_time,
+                                                          metric_name=metric_name)
 
     def update(self, resource_alarms=None):
         """

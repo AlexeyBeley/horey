@@ -50,7 +50,7 @@ class CloudWatchClient(Boto3Client):
         return list(self.regional_service_entities_generator(regional_fetcher_generator, CloudWatchMetric,
                                                              update_info=update_info))
 
-    def get_all_alarms(self, update_info=False):
+    def get_all_alarms(self, update_info=False, region=None):
         """
         Get all alarms in all regions.
 
@@ -58,8 +58,10 @@ class CloudWatchClient(Boto3Client):
         """
 
         regional_fetcher_generator = self.regional_fetcher_generator_alarms
+        regions = [region] if region else None
         return list(self.regional_service_entities_generator(regional_fetcher_generator, CloudWatchAlarm,
-                                                             update_info=update_info))
+                                                             update_info=update_info,
+                                                             regions=regions))
 
     def regional_fetcher_generator_alarms(self, region, filters_req=None):
         """
@@ -209,3 +211,30 @@ class CloudWatchClient(Boto3Client):
                         "StateReason": f"Explicitly changed state to {state}"}
 
         return self.set_alarm_state_raw(alarm.region, dict_request)
+
+    def dispose_alarms(self, alarms):
+        """
+        Dispose alarms.
+        Request size 109447 exceeded 40960 bytes
+        :param alarms:
+        :return:
+        """
+
+        if not alarms:
+            return True
+
+        alarms_offset = 0
+
+        while alarms_offset < len(alarms):
+            alarms_to_del = alarms[alarms_offset: alarms_offset + 100]
+            dict_request = {"AlarmNames": [alarm.name for alarm in alarms_to_del]}
+
+            for _ in self.execute(
+                self.get_session_client(region=alarms[0].region).delete_alarms,
+                None,
+                raw_data=True,
+                filters_req=dict_request,
+            ):
+                pass
+            alarms_offset += 100
+        return True

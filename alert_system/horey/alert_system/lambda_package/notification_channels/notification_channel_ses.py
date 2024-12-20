@@ -137,7 +137,7 @@ class NotificationChannelSES:
             notification = Notification()
             notification.type = Notification.Types.CRITICAL.value
             notification.header = (
-                "Alert system was not able to proceed the slack message"
+                "Alert system was not able to proceed the SES message"
             )
             notification.text = "See logs for more information"
             self.notify_alert_system_error(notification)

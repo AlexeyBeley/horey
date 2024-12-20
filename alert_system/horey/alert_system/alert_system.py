@@ -1137,42 +1137,56 @@ class AlertSystem:
         request = {"": ""}
         ret = self.aws_api.lambda_client.invoke_raw(self.region, request)
 
-    def generate_resource_alarms(self, resource_alarms_builder):
+    def generate_resource_alarms(self, resource_alarms_builder,
+                                 metric_data_start_time=None,
+                                 metric_data_end_time=None,
+                                 metric_name=None):
         """
         Generate alarms based on 2 weeks data
 
+        :param metric_name:
+        :param metric_data_end_time:
+        :param metric_data_start_time:
         :param resource_alarms_builder:
         :return:
         """
+
         metric_filters = resource_alarms_builder.generate_cluster_metric_filters()
 
         all_metrics = []
         for filters_req in metric_filters:
-            found_metrics = list(
+            metrics_fetched_from_aws = list(
                 self.aws_api.cloud_watch_client.yield_client_metrics(self.region,
                                                                                   filters_req=filters_req))
-            if not found_metrics:
+            if not metrics_fetched_from_aws:
                 logger.warning(f"Was not able to find metrics by filter {filters_req}")
                 continue
 
             filter_dimensions = {dim["Name"]: dim["Value"] for dim in filters_req["Dimensions"]}
-            dimension_metrics = [result for result in found_metrics if
+            metrics_fetched_from_aws_filtered_by_request_dimensions = [result for result in metrics_fetched_from_aws if
                                  {dim["Name"]: dim["Value"] for dim in result["Dimensions"]} == filter_dimensions]
-            if not dimension_metrics:
-                breakpoint()
+            if not metrics_fetched_from_aws_filtered_by_request_dimensions:
                 raise RuntimeError(f"Was not able to find metrics: {filters_req}")
-            all_metrics += dimension_metrics
+
+            if metric_name:
+                metrics_fetched_from_aws_filtered_by_request_dimensions = [metric_raw for metric_raw in metrics_fetched_from_aws_filtered_by_request_dimensions \
+                                                                           if metric_raw["MetricName"] == metric_name]
+
+            all_metrics += metrics_fetched_from_aws_filtered_by_request_dimensions
 
         lst_ret = []
-        for metric_raw in all_metrics:
-            all_metric_values = self.get_metric_statistics(metric_raw)
+        for i, metric_raw in enumerate(all_metrics):
+            logger.info(f"Generated alarms for {i}/{len(all_metrics)} metrics")
+
+            all_metric_values = self.get_metric_statistics(metric_raw, start_time=metric_data_start_time, end_time=metric_data_end_time)
             min_value, max_value = resource_alarms_builder.generate_metric_alarm_limits(metric_raw, all_metric_values)
             slug = resource_alarms_builder.generate_metric_alarm_slug(metric_raw)
+
             if min_value is not None:
-                alarm = self.get_base_alarm(f"{self.configuration.lambda_name}-{slug}", metric_raw, min_value, "LessThanThreshold")
+                alarm = self.get_base_alarm(f"{self.configuration.lambda_name}-{slug}_min", metric_raw, min_value, "LessThanThreshold")
                 lst_ret.append(alarm)
             if max_value is not None:
-                alarm = self.get_base_alarm(f"{self.configuration.lambda_name}-{slug}", metric_raw, max_value, "GreaterThanThreshold")
+                alarm = self.get_base_alarm(f"{self.configuration.lambda_name}-{slug}_max", metric_raw, max_value, "GreaterThanThreshold")
                 lst_ret.append(alarm)
         return lst_ret
 
@@ -1208,7 +1222,7 @@ class AlertSystem:
         alarm.alarm_actions = [self.lambda_arn]
         return alarm
 
-    def get_metric_statistics(self, metric_raw):
+    def get_metric_statistics(self, metric_raw, start_time=None, end_time=None):
         """
         Find proper value
         Start time between 3 hours and 15 days ago - Use a multiple of 60 seconds (1 minute).
@@ -1218,13 +1232,25 @@ class AlertSystem:
         :return:
         """
 
-        statistics = ["SampleCount", "Average", "Sum", "Minimum", "Maximum"]
         now = datetime.datetime.now()
+        if end_time and end_time > now:
+            raise ValueError("Maximal end time can be now or less")
+        end_time = end_time or now
 
+        # about 8 seconds to the end of 15 days
+        minimal_possible_time = now - datetime.timedelta(seconds=int(14.9999 * 24 * 60 * 60))
+        if start_time and start_time < minimal_possible_time:
+            raise ValueError("Minimal start time must be greater then 15 days from now")
+        if end_time < minimal_possible_time:
+            raise ValueError("Maximal end time must be greater then 15 days from now")
+
+        start_time = start_time or minimal_possible_time
+        seconds = int((end_time - start_time).total_seconds())
+
+        statistics = ["SampleCount", "Average", "Sum", "Minimum", "Maximum"]
         period = 60
-        seconds = 15 * 24 * 60 * 60
 
-        all_metric_values = self.get_metric_statistics_helper(metric_raw, statistics, now, seconds, period)
+        all_metric_values = self.get_metric_statistics_helper(metric_raw, statistics, end_time, seconds, period)
 
         return all_metric_values
 

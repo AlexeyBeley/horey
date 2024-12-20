@@ -110,7 +110,7 @@ class AWSAPI:
     """
 
     # pylint: disable= too-many-statements
-    def __init__(self, configuration=None):
+    def __init__(self, configuration=None, init_configuration=True):
         self.efs_client = EFSClient()
         self.ssm_client = SSMClient()
         self.glue_client = GlueClient()
@@ -230,7 +230,8 @@ class AWSAPI:
 
         self.configuration = configuration
         self.aws_accounts = None
-        self.init_configuration()
+        if init_configuration:
+            self.init_configuration()
 
     def init_configuration(self):
         """

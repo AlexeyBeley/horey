@@ -58,7 +58,7 @@ class MessageCloudwatchDefault(MessageBase):
 
         if self._end_time is None:
             self._end_time = datetime.datetime.strptime(
-                self.message_dict["StateChangeTime"], "%Y-%m-%dT%H:%M:%S.%f%z"
+                self.state_change_time, "%Y-%m-%dT%H:%M:%S.%f%z"
             )
         return self._end_time
 
@@ -404,7 +404,7 @@ class MessageCloudwatchDefault(MessageBase):
         :return:
         """
 
-        if self.message_dict["NewStateValue"] == "OK":
+        if self.new_state_value == "OK":
             raise self.NoCooldown("OK Status should not cooldown")
 
-        return self.message_dict['AlarmName'], self.end_time.timestamp()
+        return self.alarm_name, self.end_time.timestamp()

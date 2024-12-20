@@ -175,7 +175,7 @@ def test_run_dynamodb_update_routine(alert_system_configuration):
         assert mock_set_alarm_ok.mock_calls[1].args[0].name == "alarm_name_expired_3600"
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_handle_exception(alert_system_configuration):
     message_dispatcher = MessageDispatcher(alert_system_configuration)
     with pytest.raises(RuntimeError, match=r".Exception in Message Dispatcher.*"):

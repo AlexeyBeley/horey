@@ -5,6 +5,7 @@ Standard environment maintainer.
 """
 import json
 import os
+from pathlib import Path
 
 # pylint: disable= no-name-in-module
 from horey.infrastructure_api.environment_api_configuration_policy import EnvironmentAPIConfigurationPolicy
@@ -46,6 +47,8 @@ from horey.aws_api.aws_services_entities.event_bridge_rule import EventBridgeRul
 from horey.aws_api.aws_services_entities.event_bridge_target import EventBridgeTarget
 from horey.aws_api.aws_services_entities.sesv2_configuration_set import SESV2ConfigurationSet
 from horey.aws_api.aws_services_entities.ses_identity import SESIdentity
+from horey.aws_cleaner.aws_cleaner import AWSCleaner
+from horey.aws_cleaner.aws_cleaner_configuration_policy import AWSCleanerConfigurationPolicy
 
 from horey.network.ip import IP
 
@@ -57,8 +60,12 @@ class EnvironmentAPI:
     """
 
     def __init__(self, configuration: EnvironmentAPIConfigurationPolicy, aws_api: AWSAPI):
-        self.aws_api = aws_api
         self.configuration = configuration
+        self.aws_api = aws_api
+        self.aws_api.sts_client.main_cache_dir_path = os.path.join(self.configuration.data_directory_path, "cache")
+        if self.aws_api.configuration:
+            self.aws_api.configuration.aws_api_cache_dir = self.aws_api.sts_client.main_cache_dir_path
+        self.aws_api.init_configuration()
         self._vpc = None
         self._subnets = None
         self.jenkins_api = None
@@ -2141,6 +2148,15 @@ class EnvironmentAPI:
                         "StateReason": reason}
         return self.aws_api.cloud_watch_client.set_alarm_state_raw(self.region, dict_request)
 
+    def get_cloudwatch_alarms(self):
+        """
+        Get all alarms in the environemnt.
+
+        :return:
+        """
+
+        return self.aws_api.cloud_watch_client.get_all_alarms(region=self.region)
+
     def provision_ses_domain_email_identity(self, name=None, hosted_zone_name=None, configuration_set_name=None):
         """
         Provision and validate the identity to send emails from.
@@ -2205,3 +2221,17 @@ class EnvironmentAPI:
             "Value": configuration_set.name
         })
         return self.aws_api.sesv2_client.provision_configuration_set(configuration_set, declerative=True)
+
+    def generate_cleanup_report(self):
+        """
+        Generate cleanup report
+
+        :return:
+        """
+
+        config = AWSCleanerConfigurationPolicy()
+        config.cache_dir = os.path.join(self.configuration.data_directory_path, "cache")
+        config.reports_dir = os.path.join(self.configuration.data_directory_path, "reports")
+        aws_cleaner = AWSCleaner(config, aws_api=self.aws_api)
+        #ret = aws_cleaner.cleanup_report_lambdas()
+        return aws_cleaner.cleanup_report_cloudwatch()

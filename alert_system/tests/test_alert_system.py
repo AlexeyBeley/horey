@@ -2,6 +2,7 @@
 Testing alert system functions.
 
 """
+import datetime
 import json
 import os
 import shutil
@@ -551,11 +552,41 @@ def test_provision_self_monitoring_event_bridge_successful_invocations_alarm(ale
                                  "ALERT_SYSTEM_SELF_MONITORING": "ALERT_SYSTEM_SELF_MONITORING"}
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_trigger_lambda_with_raw_event(alert_system_configuration):
     alert_system = AlertSystem(alert_system_configuration)
-    this = Path(__file__).parent
-    with open(this / "posgres_alerts_direct_lambda" / "instance_commit_latency.json", "r") as file_handler:
-        event = json.load(file_handler)
     event = {}
     assert alert_system.trigger_lambda_with_raw_event(event)
+
+
+@pytest.mark.done
+def test_get_metric_statistics_no_start(alert_system_configuration):
+    alert_system = AlertSystem(alert_system_configuration)
+    alert_system.get_metric_statistics_helper = Mock()
+    now = datetime.datetime.now()
+    alert_system.get_metric_statistics(None, start_time=None, end_time=now)
+    seconds = alert_system.get_metric_statistics_helper.mock_calls[0].args[-2]
+    assert seconds > 14.99 * 24 * 60 * 60
+    assert seconds < 15 * 24 * 60 * 60
+
+
+@pytest.mark.done
+def test_get_metric_statistics_static_5_min(alert_system_configuration):
+    alert_system = AlertSystem(alert_system_configuration)
+    alert_system.get_metric_statistics_helper = Mock()
+    now = datetime.datetime.now()
+    alert_system.get_metric_statistics(None, start_time=now-datetime.timedelta(minutes=5), end_time=now)
+    seconds = alert_system.get_metric_statistics_helper.mock_calls[0].args[-2]
+    assert seconds == 5 * 60
+
+
+@pytest.mark.wip
+def test_get_metric_statistics_around_last_5_min(alert_system_configuration):
+    alert_system = AlertSystem(alert_system_configuration)
+    alert_system.get_metric_statistics_helper = Mock()
+    now = datetime.datetime.now()
+    time.sleep(2)
+    alert_system.get_metric_statistics(None, start_time=now-datetime.timedelta(minutes=5), end_time=None)
+    seconds = alert_system.get_metric_statistics_helper.mock_calls[0].args[-2]
+    assert seconds > 300
+    assert seconds < 304

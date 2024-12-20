@@ -397,7 +397,13 @@ class AWSLambda(AwsObject):
                 }
 
                 if "Condition" in desired_statement:
-                    request["SourceArn"] = desired_statement["Condition"]["ArnLike"]["AWS:SourceArn"]
+                    if "ArnLike" in desired_statement["Condition"]:
+                        request["SourceArn"] = desired_statement["Condition"]["ArnLike"]["AWS:SourceArn"]
+                    elif "StringEquals" in desired_statement["Condition"]:
+                        request["SourceAccount"] = desired_statement["Condition"]["StringEquals"][
+                            "AWS:SourceAccount"]
+                    else:
+                        raise NotImplementedError(desired_statement["Condition"])
 
                 requests.append(request)
             return requests, []
@@ -446,6 +452,8 @@ class AWSLambda(AwsObject):
                         "Principal": desired_statement["Principal"]["Service"],
                         "SourceAccount": desired_statement["Condition"]["StringEquals"]["AWS:SourceAccount"]
                     }
+                else:
+                    raise NotImplementedError(desired_statement["Condition"])
 
                 add_permissions.append(request)
         return add_permissions, remove_permissions
@@ -466,7 +474,12 @@ class AWSLambda(AwsObject):
                 "Principal": desired_statement["Principal"]["Service"]
             }
             if "Condition" in desired_statement:
-                request["SourceArn"] = desired_statement["Condition"]["ArnLike"]["AWS:SourceArn"]
+                if "ArnLike" in desired_statement["Condition"]:
+                    request["SourceArn"] = desired_statement["Condition"]["ArnLike"]["AWS:SourceArn"]
+                elif "StringEquals" in desired_statement["Condition"]:
+                    request["SourceAccount"] = desired_statement["Condition"]["StringEquals"]["AWS:SourceAccount"]
+                else:
+                    raise NotImplementedError(desired_statement["Condition"])
 
             ret.append(request)
         return ret

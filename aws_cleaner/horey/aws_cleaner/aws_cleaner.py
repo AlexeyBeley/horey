@@ -30,14 +30,16 @@ class AWSCleaner:
 
     """
 
-    def __init__(self, configuration: AWSCleanerConfigurationPolicy):
+    def __init__(self, configuration: AWSCleanerConfigurationPolicy, aws_api=None):
         self.configuration = configuration
 
-        aws_api_configuration = AWSAPIConfigurationPolicy()
-        aws_api_configuration.accounts_file = self.configuration.managed_accounts_file_path
-        aws_api_configuration.aws_api_account = self.configuration.aws_api_account_name
-        aws_api_configuration.aws_api_cache_dir = configuration.cache_dir
-        self.aws_api = AWSAPI(aws_api_configuration)
+        if aws_api is None:
+            aws_api_configuration = AWSAPIConfigurationPolicy()
+            aws_api_configuration.accounts_file = self.configuration.managed_accounts_file_path
+            aws_api_configuration.aws_api_account = self.configuration.aws_api_account_name
+            aws_api_configuration.aws_api_cache_dir = configuration.cache_dir
+            aws_api = AWSAPI(aws_api_configuration)
+        self.aws_api = aws_api
 
     # pylint: disable= too-many-statements
     def cleanup_report_todo(self):
@@ -251,6 +253,25 @@ class AWSCleaner:
             "Sid": "cloudwatchMetrics",
             "Effect": "Allow",
             "Action": "cloudwatch:ListMetrics",
+            "Resource": "*"
+        }
+        ]
+
+    def init_autoscaling(self, permissions_only=False):
+        """
+        Init autoscaling policies
+
+        :return:
+        """
+
+        if not permissions_only and (not self.aws_api.application_auto_scaling_policies or not self.aws_api.application_auto_scaling_scalable_targets):
+            self.aws_api.init_application_auto_scaling_policies()
+            self.aws_api.init_application_auto_scaling_scalable_targets()
+
+        return [{
+            "Sid": "ApplicationAutoscaling",
+            "Effect": "Allow",
+            "Action": ["application-autoscaling:DescribeScalingPolicies", "application-autoscaling:DescribeScalableTargets"],
             "Resource": "*"
         }
         ]
@@ -1242,7 +1263,7 @@ class AWSCleaner:
         dict_ret = {}
         tables = self.extract_text_chunks(response_text, "<table", "</table")
         for table in tables:
-            if "Supported Runtimes" in table:
+            if "Block function create" in table and "Python 3.13" in table:
                 break
         else:
             raise RuntimeError("Can not find Supported Runtimes table")
@@ -1901,12 +1922,102 @@ class AWSCleaner:
             tb_ret.lines.append(
                 f"Something went wrong Checked metric filters count {len(all_metric_filters)} != fetched via AWS API {len(self.aws_api.cloud_watch_log_groups_metric_filters)}")
 
+        tb_ret_tmp = self.sub_cleanup_report_cloudwatch_alarms(permissions_only=permissions_only)
+        tb_ret.blocks.append(tb_ret_tmp)
         with open(self.configuration.cloud_watch_report_file_path, "w+",
                   encoding="utf-8") as file_handler:
             file_handler.write(tb_ret.format_pprint())
 
         logger.info(f"Output in: {self.configuration.cloud_watch_report_file_path}")
         return tb_ret
+
+    def sub_cleanup_report_cloudwatch_alarms(self, permissions_only=False):
+        """
+
+
+        :param permissions_only:
+        :return:
+        """
+
+        permissions = self.init_cloud_watch_log_groups(permissions_only=permissions_only)
+        permissions += self.init_sns(permissions_only=permissions_only)
+        permissions += self.init_autoscaling(permissions_only=permissions_only)
+        permissions += self.init_lambdas(permissions_only=permissions_only)
+        permissions += self.init_cloudwatch_metrics(permissions_only=permissions_only)
+        permissions += self.init_ecs_clusters(permissions_only=permissions_only)
+        permissions += self.init_ecs_capacity_providers(permissions_only=permissions_only)
+
+        if permissions_only:
+            return permissions
+
+        htb_ret = TextBlock("Cloudwatch Alarms report")
+        for alarm in self.aws_api.cloud_watch_alarms:
+            lines = self.sub_cleanup_report_cloudwatch_alarm(alarm)
+            htb_ret.lines += lines
+
+        return htb_ret
+
+    def sub_cleanup_report_cloudwatch_alarm(self, alarm):
+        """
+        Single alarm actions analysis.
+
+        :param alarm:
+        :return:
+        """
+
+        ret = []
+        for action in alarm.alarm_actions + alarm.ok_actions:
+            if "arn:aws:autoscaling" in action:
+                found_policies = CommonUtils.find_objects_by_values(self.aws_api.application_auto_scaling_policies, {"arn": action})
+                if not found_policies:
+                    ret.append(f"Alarm's '{alarm.name}' action application-autoscaling target does not exist: {action}")
+                continue
+
+            if "arn:aws:sns" in action:
+                found_topics = CommonUtils.find_objects_by_values(self.aws_api.sns_topics, {"arn": action})
+                if not found_topics:
+                    ret.append(f"Alarm's '{alarm.name}' action sns-topic target does not exist: {action}")
+                    continue
+
+                subscriptions = CommonUtils.find_objects_by_values(self.aws_api.sns_subscriptions, {"topic_arn": found_topics[0].arn})
+                if not subscriptions:
+                    ret.append(f"Alarm's '{alarm.name}' action sns-topic has no subscriptions: {action}")
+                    continue
+
+                for subscription in subscriptions:
+                    if subscription.protocol == "lambda":
+                        lambdas = CommonUtils.find_objects_by_values(self.aws_api.lambdas, {"arn": subscription.endpoint})
+                        if not lambdas:
+                            ret.append(f"Alarm's '{alarm.name}' action sns-topic lambda does not exist: {action}, {subscription.endpoint}")
+                            continue
+                    else:
+                        raise NotImplementedError("Todo")
+                continue
+
+            if "arn:aws:lambda" in action:
+                lambdas = CommonUtils.find_objects_by_values(self.aws_api.lambdas, {"arn": action})
+                if not lambdas:
+                    ret.append(f"Alarm's '{alarm.name}' action lambda does not exist: {action}")
+                continue
+
+            breakpoint()
+        for metric in self.aws_api.cloud_watch_metrics:
+            if metric.namespace != alarm.namespace:
+                continue
+            if metric.name != alarm.metric_name:
+                continue
+            metric_dimensions_dict = {dim["Name"]: dim["Value"] for dim in metric.dimensions}
+            alarm_dimensions_dict = {dim["Name"]: dim["Value"] for dim in alarm.dimensions}
+            if alarm_dimensions_dict != metric_dimensions_dict:
+                continue
+            breakpoint()
+        else:
+            breakpoint()
+            ret.append(f"Alarm {alarm.name} Metrics with same name {metric.name} and dimensions {alarm.dimensions} do not exist")
+
+        breakpoint()
+
+        return ret
 
     def sub_cleanup_report_cloudwatch_logs_metrics(self, metrics):
         """
@@ -2582,6 +2693,11 @@ class AWSCleaner:
             return permissions
 
         tb_ret = TextBlock("SNS Cleanup")
+
+        tb_ret_tmp = self.sub_cleanup_report_sns_topics_without_subscriptions()
+        if tb_ret_tmp:
+            tb_ret.blocks.append(tb_ret_tmp)
+
         tb_ret_tmp = self.sub_cleanup_report_sns_topics_recommended_configs()
         if tb_ret_tmp:
             tb_ret.blocks.append(tb_ret_tmp)
@@ -2599,6 +2715,23 @@ class AWSCleaner:
         logger.info(f"Output in: {self.configuration.sns_report_file_path}")
 
         return tb_ret
+
+    def sub_cleanup_report_sns_topics_without_subscriptions(self):
+        """
+        Topic with no subscriptions
+
+        :return:
+        """
+
+        all_subsriptions_topic_arns = [subscription.topic_arn for subscription in self.aws_api.sns_subscriptions]
+
+        tb_ret = TextBlock("SNS topics without subscriptions")
+        for topic in self.aws_api.sns_topics:
+            if topic.arn not in all_subsriptions_topic_arns:
+                tb_ret.lines.append(
+                    f"Topic: {topic.arn} has no subscriptions")
+        breakpoint()
+        return tb_ret if tb_ret.lines or tb_ret.blocks else None
 
     def sub_cleanup_report_sns_topics_recommended_configs(self):
         """
