@@ -1181,7 +1181,7 @@ class RDSClient(Boto3Client):
             self.get_session_client(region=region).describe_db_engine_versions, "DBEngineVersions",
             filters_req=filters_req))
 
-    def get_engine_max_version(self, region, engine_type, raw=False):
+    def get_engine_max_version(self, region, engine_type, raw=False, ignore_limitless=True):
         """
         Standard.
 
@@ -1195,6 +1195,8 @@ class RDSClient(Boto3Client):
         errors = []
         for eng_version in lst_all:
             try:
+                if ignore_limitless and "limitless" in eng_version["EngineVersion"]:
+                    continue
                 all_floats[float(eng_version["EngineVersion"])] = eng_version
             except ValueError:
                 errors.append(eng_version["EngineVersion"])
