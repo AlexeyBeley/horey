@@ -117,7 +117,8 @@ class AWSCleaner:
         tb_ret.blocks.append(tb_ret_tmp)
 
         tb_ret_tmp = TextBlock("IAM")
-        tb_ret_tmp.lines.append("Mention of deleted user/role in policies ARNs- for example explicit mention of a specific user.")
+        tb_ret_tmp.lines.append(
+            "Mention of deleted user/role in policies ARNs- for example explicit mention of a specific user.")
         tb_ret_tmp.lines.append(
             "Action per service: for example * action on  ECR:* and S3:* - bad idea, you must manage at least per service")
         tb_ret_tmp.lines.append(
@@ -264,14 +265,16 @@ class AWSCleaner:
         :return:
         """
 
-        if not permissions_only and (not self.aws_api.application_auto_scaling_policies or not self.aws_api.application_auto_scaling_scalable_targets):
+        if not permissions_only and (
+                not self.aws_api.application_auto_scaling_policies or not self.aws_api.application_auto_scaling_scalable_targets):
             self.aws_api.init_application_auto_scaling_policies()
             self.aws_api.init_application_auto_scaling_scalable_targets()
 
         return [{
             "Sid": "ApplicationAutoscaling",
             "Effect": "Allow",
-            "Action": ["application-autoscaling:DescribeScalingPolicies", "application-autoscaling:DescribeScalableTargets"],
+            "Action": ["application-autoscaling:DescribeScalingPolicies",
+                       "application-autoscaling:DescribeScalableTargets"],
             "Resource": "*"
         }
         ]
@@ -716,6 +719,78 @@ class AWSCleaner:
                 "Resource": f"arn:aws:sqs:{region.region_mark}:{self.aws_api.acm_client.account_id}:*"
             } for region in AWSAccount.get_aws_account().regions.values()]]
 
+    def init_ecs_clusters(self, permissions_only=False):
+        """
+        Init cloudwatch metrics.
+
+        :return:
+        """
+
+        if not permissions_only and not self.aws_api.ecs_clusters:
+            self.aws_api.init_ecs_clusters()
+
+        return [{
+            "Sid": "ecsClusters",
+            "Effect": "Allow",
+            "Action": ["ecs:ListClusters", "ecs:DescribeClusters"],
+            "Resource": "*"
+        }
+        ]
+
+    def init_ecs_task_definitions(self, permissions_only=False):
+        """
+        Init cloudwatch metrics.
+
+        :return:
+        """
+
+        if not permissions_only and not self.aws_api.ecs_task_definitions:
+            self.aws_api.init_ecs_task_definitions()
+
+        return [{
+            "Sid": "ecsTaskDefinitions",
+            "Effect": "Allow",
+            "Action": ["ecs:ListTaskDefinitions", "ecs:DescribeTaskDefinition"],
+            "Resource": "*"
+        }
+        ]
+
+    def init_ecs_capacity_providers(self, permissions_only=False):
+        """
+        Init cloudwatch metrics.
+
+        :return:
+        """
+
+        if not permissions_only and not self.aws_api.ecs_capacity_providers:
+            self.aws_api.init_ecs_capacity_providers()
+
+        return [{
+            "Sid": "ecsListDescribeCapacityProviders",
+            "Effect": "Allow",
+            "Action": "ecs:DescribeCapacityProviders",
+            "Resource": "*"
+        }
+        ]
+
+    def init_ecs_services(self, permissions_only=False):
+        """
+        Init cloudwatch metrics.
+
+        :return:
+        """
+
+        if not permissions_only and not self.aws_api.ecs_services:
+            self.aws_api.init_ecs_services()
+
+        return [{
+            "Sid": "ecsServices",
+            "Effect": "Allow",
+            "Action": ["ecs:ListServices", "ecs:DescribeServices"],
+            "Resource": "*"
+        }
+        ]
+
     def get_active_cleanups(self):
         """
         Return All active clean up functions.
@@ -953,11 +1028,15 @@ class AWSCleaner:
 
         if permissions_only:
             permissions = self.sub_cleanup_report_acm_unused(permissions_only=permissions_only)
+            permissions += self.sub_cleanup_report_acm_failed(permissions_only=permissions_only)
             permissions += self.sub_cleanup_report_acm_ineligible(permissions_only=permissions_only)
             permissions += self.sub_cleanup_report_acm_expiration(permissions_only=permissions_only)
             return permissions
 
         tb_ret = TextBlock("ACM Report")
+
+        tb_ret_tmp = self.sub_cleanup_report_acm_failed()
+        tb_ret.blocks.append(tb_ret_tmp)
 
         tb_ret_tmp = self.sub_cleanup_report_acm_unused()
         tb_ret.blocks.append(tb_ret_tmp)
@@ -989,6 +1068,30 @@ class AWSCleaner:
         unused = [certificate for certificate in self.aws_api.acm_certificates if not certificate.in_use_by]
         for certificate in unused:
             tb_ret.lines.append(f"[{certificate.domain_name}] {certificate.arn}")
+        return tb_ret
+
+    def sub_cleanup_report_acm_failed(self, permissions_only=False):
+        """
+        ACM ineligible renewal Certificates
+
+        :return:
+        """
+
+        permissions = self.init_acm_certificates(permissions_only=permissions_only)
+        if permissions_only:
+            return permissions
+
+        tb_ret = TextBlock("Failed to validate certificates")
+
+        for certificate in self.aws_api.acm_certificates:
+            if certificate.status == "FAILED":
+                tb_ret.lines.append(
+                    f"[{certificate.domain_name}] {certificate.arn}, Reason: {certificate.failure_reason}")
+            for domain_validation_option in certificate.domain_validation_options:
+                if domain_validation_option.get("ValidationStatus") == "FAILED":
+                    tb_ret.lines.append(
+                        f"Validation Domain: '{domain_validation_option.get('ValidationDomain')}' certificate domain: '{certificate.domain_name}' ARN: '{certificate.arn}'")
+
         return tb_ret
 
     def sub_cleanup_report_acm_ineligible(self, permissions_only=False):
@@ -1025,6 +1128,8 @@ class AWSCleaner:
 
         tb_ret = TextBlock("Expired/Expiring Certificates")
         for certificate in self.aws_api.acm_certificates:
+            if certificate.not_after is None:
+                continue
             now = datetime.datetime.now(tz=certificate.not_after.tzinfo)
             if certificate.not_after < now:
                 tb_ret.lines.append(f"Expired: [{certificate.domain_name}] {certificate.arn}")
@@ -1531,13 +1636,14 @@ class AWSCleaner:
         tb_ret = TextBlock("EC2 half a year and older AMIs.")
         half_year_date = datetime.datetime.now() - datetime.timedelta(days=6 * 30)
         for inst in self.aws_api.ec2_instances:
+            name = inst.name or inst.id
             amis = CommonUtils.find_objects_by_values(self.aws_api.amis, {"id": inst.image_id}, max_count=1)
             if not amis:
-                tb_ret.lines.append(f"{inst.name} Can not find AMI, looks like it was either deleted or made private.")
+                tb_ret.lines.append(f"{name} Can not find AMI, looks like it was either deleted or made private.")
                 continue
             ami = amis[0]
             if ami.creation_date < half_year_date:
-                tb_ret.lines.append(f"{inst.name} AMI created at: {ami.creation_date}")
+                tb_ret.lines.append(f"{name} AMI created at: {ami.creation_date}")
         with open(self.configuration.ec2_instances_report_file_path, "w+", encoding="utf-8") as file_handler:
             file_handler.write(tb_ret.format_pprint())
 
@@ -1851,13 +1957,35 @@ class AWSCleaner:
         :return:
         """
 
+        tb_ret = TextBlock("Elasticache cleanup")
         permissions = self.init_elasticache_clusters(permissions_only=permissions_only)
+
+        for group in self.aws_api.elasticache_replication_groups:
+            if not group.log_delivery_configurations:
+                tb_ret.lines.append(f"{group.name} log_delivery_configuration not set")
+                breakpoint()
+            if group.multi_az == "disabled":
+                tb_ret.lines.append(f"{group.name} multi_az disabled")
+                breakpoint()
+        """
+        
+            "CacheClusterIds":[
+                'string',
+            ],
+        """
+        from horey.aws_api.base_entities.region import Region
+        filters_req = {"ReplicationGroupIds": ["demo-us-redis-shared"], "ServiceUpdateName":'elasticache-20241111-arm'}
+        ret = list(self.aws_api.elasticache_client.execute(self.aws_api.elasticache_client.get_session_client(Region.get_region("us-west-2")).batch_apply_update_action, None, raw_data=True, filters_req=filters_req))
+        ret = list(self.aws_api.elasticache_client.execute(self.aws_api.elasticache_client.get_session_client(Region.get_region("us-west-2")).describe_service_updates, None, raw_data=True))
+        ret = list(self.aws_api.elasticache_client.execute(self.aws_api.elasticache_client.get_session_client(Region.get_region("us-west-2")).describe_update_actions, None, raw_data=True))
+
 
         if permissions_only:
             return permissions
 
-        tb_ret = TextBlock("EC2 half a year and older AMIs.")
-        for table in self.aws_api.elasticache_clusters:
+        self.aws_api.elasticache_replication_groups
+        for cluster in self.aws_api.elasticache_clusters:
+            breakpoint()
             tb_ret.lines.append(f"{table.name} ike it was either deleted or made private.")
 
         with open(self.configuration.elasticache_report_file_path, "w+", encoding="utf-8") as file_handler:
@@ -1914,7 +2042,8 @@ class AWSCleaner:
 
         tb_ret.lines = no_retention + no_metrics
         largest_log_groups = [f"Group {group.name} size: {CommonUtils.bytes_to_str(group.stored_bytes)}" for group in
-                              sorted(self.aws_api.cloud_watch_log_groups, key=lambda _group: _group.stored_bytes, reverse=True)[:20]]
+                              sorted(self.aws_api.cloud_watch_log_groups, key=lambda _group: _group.stored_bytes,
+                                     reverse=True)[:20]]
         if largest_log_groups:
             tb_ret.lines += ["Largest 20 Log groups"] + largest_log_groups
 
@@ -1946,15 +2075,22 @@ class AWSCleaner:
         permissions += self.init_cloudwatch_metrics(permissions_only=permissions_only)
         permissions += self.init_ecs_clusters(permissions_only=permissions_only)
         permissions += self.init_ecs_capacity_providers(permissions_only=permissions_only)
+        permissions += self.init_ecs_services(permissions_only=permissions_only)
+        permissions += self.init_dynamodb_tables(permissions_only=permissions_only)
+        permissions += self.init_sqs_queues(permissions_only=permissions_only)
+        permissions += self.init_rds(permissions_only=permissions_only)
 
         if permissions_only:
             return permissions
-
+        warnings, errors = [], []
         htb_ret = TextBlock("Cloudwatch Alarms report")
         for alarm in self.aws_api.cloud_watch_alarms:
-            lines = self.sub_cleanup_report_cloudwatch_alarm(alarm)
-            htb_ret.lines += lines
+            warnings_tmp, errors_tmp = self.sub_cleanup_report_cloudwatch_alarm(alarm)
+            warnings += warnings_tmp
+            errors += errors_tmp
 
+        htb_ret.lines += [f"WARNING: {line}" for line in warnings]
+        htb_ret.lines += [f"ERROR: {line}" for line in errors]
         return htb_ret
 
     def sub_cleanup_report_cloudwatch_alarm(self, alarm):
@@ -1965,30 +2101,35 @@ class AWSCleaner:
         :return:
         """
 
-        ret = []
+        warnings, errors = [], []
         for action in alarm.alarm_actions + alarm.ok_actions:
             if "arn:aws:autoscaling" in action:
-                found_policies = CommonUtils.find_objects_by_values(self.aws_api.application_auto_scaling_policies, {"arn": action})
+                found_policies = CommonUtils.find_objects_by_values(self.aws_api.application_auto_scaling_policies,
+                                                                    {"arn": action})
                 if not found_policies:
-                    ret.append(f"Alarm's '{alarm.name}' action application-autoscaling target does not exist: {action}")
+                    errors.append(
+                        f"Alarm's action application-autoscaling target does not exist: '{alarm.name=}' '{action=}'")
                 continue
 
             if "arn:aws:sns" in action:
                 found_topics = CommonUtils.find_objects_by_values(self.aws_api.sns_topics, {"arn": action})
                 if not found_topics:
-                    ret.append(f"Alarm's '{alarm.name}' action sns-topic target does not exist: {action}")
+                    errors.append(f"Alarm's '{alarm.name}' action sns-topic target does not exist: {action}")
                     continue
 
-                subscriptions = CommonUtils.find_objects_by_values(self.aws_api.sns_subscriptions, {"topic_arn": found_topics[0].arn})
+                subscriptions = CommonUtils.find_objects_by_values(self.aws_api.sns_subscriptions,
+                                                                   {"topic_arn": found_topics[0].arn})
                 if not subscriptions:
-                    ret.append(f"Alarm's '{alarm.name}' action sns-topic has no subscriptions: {action}")
+                    errors.append(f"Alarm's '{alarm.name}' action sns-topic has no subscriptions: {action}")
                     continue
 
                 for subscription in subscriptions:
                     if subscription.protocol == "lambda":
-                        lambdas = CommonUtils.find_objects_by_values(self.aws_api.lambdas, {"arn": subscription.endpoint})
+                        lambdas = CommonUtils.find_objects_by_values(self.aws_api.lambdas,
+                                                                     {"arn": subscription.endpoint})
                         if not lambdas:
-                            ret.append(f"Alarm's '{alarm.name}' action sns-topic lambda does not exist: {action}, {subscription.endpoint}")
+                            errors.append(
+                                f"Alarm's '{alarm.name}' action sns-topic lambda does not exist: {action}, {subscription.endpoint}")
                             continue
                     else:
                         raise NotImplementedError("Todo")
@@ -1997,10 +2138,15 @@ class AWSCleaner:
             if "arn:aws:lambda" in action:
                 lambdas = CommonUtils.find_objects_by_values(self.aws_api.lambdas, {"arn": action})
                 if not lambdas:
-                    ret.append(f"Alarm's '{alarm.name}' action lambda does not exist: {action}")
+                    errors.append(f"Alarm's '{alarm.name}' action lambda does not exist: {action}")
                 continue
 
-            breakpoint()
+            warnings.append(f"AWS Cleaner: Alarm {alarm.name} unknown action: {action}")
+
+        warnings_tmp, errors_tmp = self.sub_cleanup_report_cloudwatch_alarm_dimensions(alarm)
+        warnings += warnings_tmp
+        errors += errors_tmp
+
         for metric in self.aws_api.cloud_watch_metrics:
             if metric.namespace != alarm.namespace:
                 continue
@@ -2010,14 +2156,87 @@ class AWSCleaner:
             alarm_dimensions_dict = {dim["Name"]: dim["Value"] for dim in alarm.dimensions}
             if alarm_dimensions_dict != metric_dimensions_dict:
                 continue
-            breakpoint()
+            break
         else:
-            breakpoint()
-            ret.append(f"Alarm {alarm.name} Metrics with same name {metric.name} and dimensions {alarm.dimensions} do not exist")
+            warnings.append(
+                f"Alarm {alarm.name} Metrics with same name {alarm.metric_name} and dimensions {alarm.dimensions} do not exist")
 
-        breakpoint()
+        return warnings, errors
 
-        return ret
+    def sub_cleanup_report_cloudwatch_alarm_dimensions(self, alarm):
+        """
+        Generate alarm dimensions report
+
+        :param alarm:
+        :return:
+        """
+
+        warnings, errors = [], []
+
+        for dimension in alarm.dimensions:
+            match dimension["Name"]:
+                case "ClusterName":
+                    if not CommonUtils.find_objects_by_values(self.aws_api.ecs_clusters, {"name": dimension["Value"]}):
+                        errors.append(
+                            f"Alarm '{alarm.name}' dimension '{dimension['Value']}' does not exist")
+                case "CapacityProviderName":
+                    if not CommonUtils.find_objects_by_values(self.aws_api.ecs_capacity_providers,
+                                                              {"name": dimension["Value"]}):
+                        errors.append(
+                            f"Alarm '{alarm.name}' dimension '{dimension['Value']}' does not exist")
+                case "ServiceName":
+                    if not CommonUtils.find_objects_by_values(self.aws_api.ecs_services,
+                                                              {"name": dimension["Value"]}):
+                        errors.append(
+                            f"Alarm '{alarm.name}' dimension '{dimension['Value']}' does not exist")
+                case "TableName":
+                    if alarm.namespace != "AWS/DynamoDB":
+                        raise NotImplementedError(
+                            f"Alarm dimensions in namespace {alarm.namespace} not yet implemented ")
+                    if not CommonUtils.find_objects_by_values(self.aws_api.dynamodb_tables,
+                                                              {"name": dimension["Value"]}):
+                        errors.append(
+                            f"Alarm '{alarm.name}' dimension '{dimension['Value']}' does not exist")
+                case "FunctionName":
+                    if alarm.namespace != "AWS/Lambda":
+                        raise NotImplementedError(
+                            f"Alarm dimensions in namespace {alarm.namespace} not yet implemented ")
+                    if not CommonUtils.find_objects_by_values(self.aws_api.lambdas,
+                                                              {"name": dimension["Value"]}):
+                        errors.append(
+                            f"Alarm '{alarm.name}' dimension '{dimension['Value']}' does not exist")
+                case "QueueName":
+                    if alarm.namespace != "AWS/SQS":
+                        raise NotImplementedError(
+                            f"Alarm dimensions in namespace {alarm.namespace} not yet implemented ")
+                    if not CommonUtils.find_objects_by_values(self.aws_api.sqs_queues,
+                                                              {"name": dimension["Value"]}):
+                        errors.append(
+                            f"Alarm '{alarm.name}' dimension '{dimension['Value']}' does not exist")
+                case "DBClusterIdentifier":
+                    if alarm.namespace != "AWS/RDS":
+                        raise NotImplementedError(
+                            f"Alarm dimensions in namespace {alarm.namespace} not yet implemented ")
+                    if not CommonUtils.find_objects_by_values(self.aws_api.rds_db_clusters,
+                                                              {"id": dimension["Value"]}):
+                        errors.append(
+                            f"Alarm '{alarm.name}' dimension '{dimension['Value']}' does not exist")
+                case "Role":
+                    if alarm.namespace != "AWS/RDS":
+                        raise NotImplementedError(
+                            f"Alarm dimensions in namespace {alarm.namespace} not yet implemented ")
+                case "DBInstanceIdentifier":
+                    if alarm.namespace != "AWS/RDS":
+                        raise NotImplementedError(
+                            f"Alarm dimensions in namespace {alarm.namespace} not yet implemented ")
+                    if not CommonUtils.find_objects_by_values(self.aws_api.rds_db_instances,
+                                                              {"id": dimension["Value"]}):
+                        errors.append(
+                            f"Alarm '{alarm.name}' dimension '{dimension['Value']}' does not exist")
+                case _:
+                    warnings.append(f"Unknown dimension: {dimension['Name']}")
+
+        return warnings, errors
 
     def sub_cleanup_report_cloudwatch_logs_metrics(self, metrics):
         """
@@ -2730,7 +2949,6 @@ class AWSCleaner:
             if topic.arn not in all_subsriptions_topic_arns:
                 tb_ret.lines.append(
                     f"Topic: {topic.arn} has no subscriptions")
-        breakpoint()
         return tb_ret if tb_ret.lines or tb_ret.blocks else None
 
     def sub_cleanup_report_sns_topics_recommended_configs(self):
@@ -2885,7 +3103,7 @@ class AWSCleaner:
                 "Effect": "Allow",
                 "Action": "ec2:DescribeInstanceTypes",
                 "Resource": "*"
-                },
+            },
                 {
                     "Sid": "Pricing",
                     "Effect": "Allow",
@@ -3010,7 +3228,8 @@ class AWSCleaner:
         :return:
         """
         seen_types = {}
-        tb_ret = TextBlock(f"Instance types sorted by single core price [not gravitron, {tenancy=}, {capacitystatus=}, {min_cores=}, {max_cores=}]")
+        tb_ret = TextBlock(
+            f"Instance types sorted by single core price [not gravitron, {tenancy=}, {capacitystatus=}, {min_cores=}, {max_cores=}]")
         products_by_cpu_cost = defaultdict(list)
         for product in region_products:
             if product.cpu > max_cores or product.cpu < min_cores:
@@ -3029,7 +3248,7 @@ class AWSCleaner:
             if price == 0:
                 continue
 
-            products_by_cpu_cost[price/product.cpu].append(product)
+            products_by_cpu_cost[price / product.cpu].append(product)
 
         for price in sorted(products_by_cpu_cost):
             price_products = products_by_cpu_cost[price]
@@ -3038,7 +3257,7 @@ class AWSCleaner:
                     report_line = f"{price}$: {product.instance_type} [{product.cpu} Cores/ {product.ram} RAM]"
                     for attr_name, attr_value in product.attributes.items():
                         if seen_types[product.instance_type].attributes[attr_name] != attr_value:
-                            report_line += " {"+f"{attr_name}: '{seen_types[product.instance_type].attributes[attr_name]}'/'{attr_value}'" +"}"
+                            report_line += " {" + f"{attr_name}: '{seen_types[product.instance_type].attributes[attr_name]}'/'{attr_value}'" + "}"
                 else:
                     seen_types[product.instance_type] = product
                     report_line = f"{price}$: {product.instance_type} [{product.cpu} Cores/ {product.ram} RAM]"
@@ -3101,7 +3320,8 @@ class AWSCleaner:
                     return float(price_dimension["pricePerUnit"]["USD"])
 
             if range_point is None:
-                raise self.ServiceUsageRangePointMissingError(f"Range point should be set if there are multiple ranges: {sku_value['priceDimensions']}")
+                raise self.ServiceUsageRangePointMissingError(
+                    f"Range point should be set if there are multiple ranges: {sku_value['priceDimensions']}")
 
             for price_dimension in sku_value["priceDimensions"].values():
                 if float(price_dimension["beginRange"]) <= range_point <= float(price_dimension["endRange"]):
@@ -3137,7 +3357,8 @@ class AWSCleaner:
         tb_ret = TextBlock(str(region))
         blocks_by_cluster_size = defaultdict(list)
         for cluster in self.ecs_client.get_region_clusters(region):
-            current_container_instances = self.ecs_client.get_region_container_instances(region, cluster_identifier=cluster.arn)
+            current_container_instances = self.ecs_client.get_region_container_instances(region,
+                                                                                         cluster_identifier=cluster.arn)
             cpu_reserved = 0
             cpu_free = 0
             memory_reserved = 0
@@ -3145,18 +3366,18 @@ class AWSCleaner:
             for container_instance in current_container_instances:
                 for resource in container_instance.remaining_resources:
                     if resource["name"] == "CPU":
-                        cpu_free += resource["integerValue"]/1024
+                        cpu_free += resource["integerValue"] / 1024
                     elif resource["name"] == "MEMORY":
-                        memory_free += resource["integerValue"]/1024
+                        memory_free += resource["integerValue"] / 1024
 
                 for resource in container_instance.registered_resources:
                     if resource["name"] == "CPU":
-                        cpu_reserved += resource["integerValue"]/1024
+                        cpu_reserved += resource["integerValue"] / 1024
                     elif resource["name"] == "MEMORY":
-                        memory_reserved += resource["integerValue"]/1024
+                        memory_reserved += resource["integerValue"] / 1024
 
-            memory_gb_used = round(memory_reserved-memory_free, 2)
-            cpu_count_used = cpu_reserved-cpu_free
+            memory_gb_used = round(memory_reserved - memory_free, 2)
+            cpu_count_used = cpu_reserved - cpu_free
             memory_reserved = round(memory_reserved, 2)
             memory_free = round(memory_free, 2)
 
@@ -3169,18 +3390,19 @@ class AWSCleaner:
 
             if memory_reserved > 0:
                 tb_ret_tmp.lines.append(f"MEMORY: In use {memory_gb_used}GB Free {memory_free}GB")
-                cpu_usage = f"CPU: {round((cpu_count_used/cpu_reserved) * 100, 2)}%"
-                memory_usage = f"Memory: {round((memory_gb_used/memory_reserved) * 100, 2)}%"
+                cpu_usage = f"CPU: {round((cpu_count_used / cpu_reserved) * 100, 2)}%"
+                memory_usage = f"Memory: {round((memory_gb_used / memory_reserved) * 100, 2)}%"
                 if memory_reserved - memory_free > 0:
-                    str_ratio = str(round((cpu_count_used/memory_gb_used), 1))
+                    str_ratio = str(round((cpu_count_used / memory_gb_used), 1))
                 else:
                     str_ratio = f"{cpu_count_used} / {memory_gb_used}"
                 tb_ret_tmp.lines.append(f"Usage: {cpu_usage}, {memory_usage}, ratio: {str_ratio}")
             else:
                 tb_ret_tmp.lines.append("No Memory Registered")
-            blocks_by_cluster_size[cpu_reserved+memory_reserved].append(tb_ret_tmp)
+            blocks_by_cluster_size[cpu_reserved + memory_reserved].append(tb_ret_tmp)
 
-        tb_ret.blocks = [block for key in sorted(blocks_by_cluster_size, reverse=True) for block in blocks_by_cluster_size[key]]
+        tb_ret.blocks = [block for key in sorted(blocks_by_cluster_size, reverse=True) for block in
+                         blocks_by_cluster_size[key]]
 
         output_file_path = self.configuration.aws_api_cleanups_ecs_report_file_template.format(
             region_mark=region.region_mark)

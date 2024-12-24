@@ -2,7 +2,7 @@
 Alerts maintainer.
 
 """
-import datetime
+
 import json
 import os.path
 import sys
@@ -13,14 +13,9 @@ from horey.alert_system.lambda_package.notification_channels.notification_channe
     NotificationChannelSlackConfigurationPolicy
 from horey.alert_system.lambda_package.notification import Notification
 from horey.alert_system.lambda_package.message_ses_default import MessageSESDefault
-from horey.alert_system.postgres.postgres_cluster_monitoring_configuration_policy import \
-    PostgresClusterMonitoringConfigurationPolicy
-from horey.alert_system.postgres.postgres_cluster_writer_monitoring_configuration_policy import \
-    PostgresClusterWriterMonitoringConfigurationPolicy
-from horey.alert_system.postgres.postgres_alert_manager_configuration_policy import \
-    PostgresAlertManagerConfigurationPolicy
 from horey.alert_system.postgres.postgres_alert_builder import \
     PostgresAlertBuilder
+from horey.alert_system.elb_alert_builder import ELBAlertBuilder
 
 
 class AlertsAPI:
@@ -116,6 +111,35 @@ class AlertsAPI:
                                                           metric_data_end_time=metric_data_end_time,
                                                           metric_name=metric_name)
 
+    def generate_alb_alarms(self, alb_name, metric_data_start_time=None, metric_data_end_time=None,
+                                         metric_name=None):
+        """
+        Generate alerts per resource: Elastic load balancer
+
+        :param metric_name:
+        :param metric_data_end_time:
+        :param metric_data_start_time:
+        :param alb_name:
+        :return:
+        """
+
+        all_metrics = self.environment_api.get_cloudwatch_metrics()
+        alerts_builder = ELBAlertBuilder(load_balancer_name=alb_name)
+        return self.alert_system.generate_builder_filtered_resource_alarms(alerts_builder, all_metrics)
+
+    def get_all_dimensions(self, str_find):
+        """
+        Get all dimensions
+
+        :return:
+        """
+
+        ret = self.environment_api.get_cloudwatch_metrics()
+        ret = [x for x in ret if str_find in str(x)]
+        dimensions = {dimension["Name"] for x in ret for dimension in x["Dimensions"]}
+        return dimensions
+        breakpoint()
+
     def update(self, resource_alarms=None):
         """
 
@@ -127,6 +151,16 @@ class AlertsAPI:
         if resource_alarms:
             self.provision_resource_alarms(resource_alarms)
         return True
+
+    def dispose_alarms(self, alarms):
+        """
+        Delete alarms
+
+        :param alarms:
+        :return:
+        """
+
+        self.environment_api.dispose_alarm_objects(alarms)
 
     def provision_resource_alarms(self, resource_alarms):
         """

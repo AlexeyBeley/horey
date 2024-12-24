@@ -49,6 +49,7 @@ from horey.aws_api.aws_services_entities.sesv2_configuration_set import SESV2Con
 from horey.aws_api.aws_services_entities.ses_identity import SESIdentity
 from horey.aws_cleaner.aws_cleaner import AWSCleaner
 from horey.aws_cleaner.aws_cleaner_configuration_policy import AWSCleanerConfigurationPolicy
+from horey.aws_api.aws_services_entities.elbv2_load_balancer import LoadBalancer
 
 from horey.network.ip import IP
 
@@ -2003,6 +2004,47 @@ class EnvironmentAPI:
 
         return config_set
 
+    def get_load_balancer(self, name, full_information=False):
+        """
+        Get ses config set
+
+        :return:
+        """
+
+        load_balancer = LoadBalancer({})
+        load_balancer.name = name
+        load_balancer.region = self.region
+
+        if not self.aws_api.elbv2_client.update_load_balancer_information(load_balancer):
+            raise RuntimeError("Could not update load balancer information")
+        if full_information:
+            self.aws_api.elbv2_client.get_load_balancer_full_information(load_balancer)
+
+        return load_balancer
+
+    def get_load_balancers_target_groups(self, load_balancer_name, full_information=False):
+        """
+        Get ses config set
+
+        :return:
+        """
+
+        load_balancer = self.get_load_balancer(load_balancer_name)
+        target_groups = self.aws_api.elbv2_client.get_region_target_groups(self.region, load_balancer_arn=load_balancer.arn)
+        if full_information:
+            for target_group in target_groups:
+                self.aws_api.elbv2_client.get_target_group_full_information(target_group)
+        return target_groups
+
+    def get_cloudwatch_metrics(self):
+        """
+        Get all metrics
+
+        :return:
+        """
+
+        return list(self.aws_api.cloud_watch_client.yield_client_metrics(self.region))
+
     def generate_inline_policy(self, name=None, description=None, statements=None):
         """
         Generate iam inline policy.
@@ -2096,6 +2138,20 @@ class EnvironmentAPI:
         alarm.region = self.region
         self.aws_api.cloud_watch_client.set_cloudwatch_alarm(alarm)
         return alarm
+
+    def dispose_alarm_objects(self, alarms):
+        """
+        Provision the AWS object.
+
+        :param alarms:
+        :return:
+        """
+
+        for alarm in alarms:
+            alarm.region = self.region
+
+        self.aws_api.cloud_watch_client.dispose_alarms(alarms)
+        return alarms
 
     def provision_log_group_metric_filter(self, name=None, log_group_name=None, filter_text=None):
         """
@@ -2233,5 +2289,22 @@ class EnvironmentAPI:
         config.cache_dir = os.path.join(self.configuration.data_directory_path, "cache")
         config.reports_dir = os.path.join(self.configuration.data_directory_path, "reports")
         aws_cleaner = AWSCleaner(config, aws_api=self.aws_api)
-        #ret = aws_cleaner.cleanup_report_lambdas()
+        aws_cleaner.cleanup_report_elasticache()
+
+        aws_cleaner.cleanup_report_lambdas()
+        aws_cleaner.cleanup_report_sns()
+        aws_cleaner.cleanup_report_ec2_pricing([self.region])
+        # todo: aws_cleaner.cleanup_report_lambda_pricing([self.region])
+        aws_cleaner.cleanup_report_ses()
+        aws_cleaner.cleanup_report_security_groups()
+        aws_cleaner.cleanup_report_load_balancers()
+        aws_cleaner.cleanup_report_sqs()
+        aws_cleaner.cleanup_report_rds()
+        aws_cleaner.cleanup_report_dynamodb()
+        aws_cleaner.cleanup_report_ec2_instances()
+        aws_cleaner.cleanup_report_ecr_images()
+        aws_cleaner.cleanup_report_network_interfaces()
+        aws_cleaner.cleanup_report_acm_certificate()
+        aws_cleaner.cleanup_report_route_53_service()
+        aws_cleaner.cleanup_report_ebs_volumes()
         return aws_cleaner.cleanup_report_cloudwatch()

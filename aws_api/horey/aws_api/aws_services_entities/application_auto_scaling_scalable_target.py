@@ -27,6 +27,8 @@ class ApplicationAutoScalingScalableTarget(AwsObject):
 
         init_options = {
             "MinCapacity": self.init_default_attr,
+            "ScalableTargetARN": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"),
             "MaxCapacity": self.init_default_attr,
             "RoleARN": self.init_default_attr,
             "SuspendedState": self.init_default_attr,

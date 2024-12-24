@@ -412,7 +412,7 @@ class AlertSystem:
         curdir = pathlib.Path(".").resolve()
         os.chdir(extraction_dir)
         try:
-            main_function = CommonUtils.load_object_from_module_raw(extraction_dir/"trigger_local.py", "main")
+            main_function = CommonUtils.load_object_from_module_raw(extraction_dir / "trigger_local.py", "main")
             return main_function(event)
         finally:
             os.chdir(curdir)
@@ -1157,38 +1157,85 @@ class AlertSystem:
         for filters_req in metric_filters:
             metrics_fetched_from_aws = list(
                 self.aws_api.cloud_watch_client.yield_client_metrics(self.region,
-                                                                                  filters_req=filters_req))
+                                                                     filters_req=filters_req))
             if not metrics_fetched_from_aws:
                 logger.warning(f"Was not able to find metrics by filter {filters_req}")
                 continue
 
             filter_dimensions = {dim["Name"]: dim["Value"] for dim in filters_req["Dimensions"]}
             metrics_fetched_from_aws_filtered_by_request_dimensions = [result for result in metrics_fetched_from_aws if
-                                 {dim["Name"]: dim["Value"] for dim in result["Dimensions"]} == filter_dimensions]
+                                                                       {dim["Name"]: dim["Value"] for dim in
+                                                                        result["Dimensions"]} == filter_dimensions]
             if not metrics_fetched_from_aws_filtered_by_request_dimensions:
                 raise RuntimeError(f"Was not able to find metrics: {filters_req}")
 
             if metric_name:
-                metrics_fetched_from_aws_filtered_by_request_dimensions = [metric_raw for metric_raw in metrics_fetched_from_aws_filtered_by_request_dimensions \
+                metrics_fetched_from_aws_filtered_by_request_dimensions = [metric_raw for metric_raw in
+                                                                           metrics_fetched_from_aws_filtered_by_request_dimensions \
                                                                            if metric_raw["MetricName"] == metric_name]
 
             all_metrics += metrics_fetched_from_aws_filtered_by_request_dimensions
 
-        lst_ret = []
-        for i, metric_raw in enumerate(all_metrics):
-            logger.info(f"Generated alarms for {i}/{len(all_metrics)} metrics")
+        return self.generate_alarms_from_metrics(resource_alarms_builder, all_metrics,
+                                                 metric_data_start_time=metric_data_start_time,
+                                                 metric_data_end_time=metric_data_end_time)
 
-            all_metric_values = self.get_metric_statistics(metric_raw, start_time=metric_data_start_time, end_time=metric_data_end_time)
+    def generate_alarms_from_metrics(self, resource_alarms_builder, metrics, metric_data_start_time=None,
+                                     metric_data_end_time=None):
+        """
+        Filtered resource metrics transformed into alarms.
+
+        :param metric_data_start_time:
+        :param metric_data_end_time:
+        :param resource_alarms_builder:
+        :param metrics:
+        :return:
+        """
+
+        lst_ret = []
+        lst_del = []
+
+        for i, metric_raw in enumerate(metrics):
+            logger.info(f"Generated alarms for {i}/{len(metrics)} metrics")
+
+            all_metric_values = self.get_metric_statistics(metric_raw, start_time=metric_data_start_time,
+                                                           end_time=metric_data_end_time)
+
             min_value, max_value = resource_alarms_builder.generate_metric_alarm_limits(metric_raw, all_metric_values)
             slug = resource_alarms_builder.generate_metric_alarm_slug(metric_raw)
 
+            alarm = self.get_base_alarm(f"{self.configuration.lambda_name}-{slug}_min", metric_raw, min_value,
+                                        "LessThanThreshold")
             if min_value is not None:
-                alarm = self.get_base_alarm(f"{self.configuration.lambda_name}-{slug}_min", metric_raw, min_value, "LessThanThreshold")
                 lst_ret.append(alarm)
+            else:
+                lst_del.append(alarm)
+
+            alarm = self.get_base_alarm(f"{self.configuration.lambda_name}-{slug}_max", metric_raw, max_value,
+                                        "GreaterThanThreshold")
             if max_value is not None:
-                alarm = self.get_base_alarm(f"{self.configuration.lambda_name}-{slug}_max", metric_raw, max_value, "GreaterThanThreshold")
+
                 lst_ret.append(alarm)
-        return lst_ret
+            else:
+                lst_del.append(alarm)
+
+        return lst_ret, lst_del
+
+    def generate_builder_filtered_resource_alarms(self, resource_alarms_builder, metrics,
+                                                  metric_data_start_time=None,
+                                                  metric_data_end_time=None):
+        """
+        Let the builder filter alarms itself.
+
+        :param resource_alarms_builder:
+        :param metrics:
+        :return:
+        """
+
+        all_metrics = resource_alarms_builder.filter_metrics(metrics)
+        return self.generate_alarms_from_metrics(resource_alarms_builder, all_metrics,
+                                                 metric_data_start_time=metric_data_start_time,
+                                                 metric_data_end_time=metric_data_end_time)
 
     def get_base_alarm(self, name, metric_raw, threshold, comparison_operator):
         """
@@ -1249,7 +1296,6 @@ class AlertSystem:
 
         statistics = ["SampleCount", "Average", "Sum", "Minimum", "Maximum"]
         period = 60
-
         all_metric_values = self.get_metric_statistics_helper(metric_raw, statistics, end_time, seconds, period)
 
         return all_metric_values
@@ -1280,10 +1326,39 @@ class AlertSystem:
                             "Period": period
                             }
             for response in self.aws_api.cloud_watch_client.get_metric_statistics_raw(
-                self.region, request_dict):
+                    self.region, request_dict):
                 ret += response["Datapoints"]
 
             seconds -= seconds_delta
             end_time = start_time
 
         return ret
+
+    def analyze_metric(self, metric_raw):
+        """
+        Graphical show results
+
+        :param metric_raw:
+        :return:
+        """
+        delta = datetime.timedelta(seconds=60*60*24*14)
+        filters_req = {"MetricDataQueries": [{"Id": "max", "MetricStat": {"Metric": metric_raw,
+                                                                           "Period": 60,
+                                                                           "Stat": "Maximum"
+                                                                           }},
+                                             {"Id": "minimum", "MetricStat": {"Metric": metric_raw,
+                                                                           "Period": 60,
+                                                                           "Stat": "Minimum"
+                                                                           }}
+                                             ],
+                       "StartTime": datetime.datetime.now() - delta,
+                       "EndTime": datetime.datetime.now()}
+
+        ret = self.aws_api.cloud_watch_client.get_metric_data_raw(self.region, filters_req)
+        max_values = ret[0]["MetricDataResults"][0]["Values"]
+        import matplotlib.pyplot as plt
+        values_range = max(max_values) - min(max_values)
+        bins = [min(max_values) + (i * values_range) / 10000 for i in range(10000)]
+        ret, bins, patches = plt.hist(max_values, bins=bins)
+        plt.show()
+

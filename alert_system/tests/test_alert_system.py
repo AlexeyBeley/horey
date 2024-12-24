@@ -580,7 +580,7 @@ def test_get_metric_statistics_static_5_min(alert_system_configuration):
     assert seconds == 5 * 60
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_get_metric_statistics_around_last_5_min(alert_system_configuration):
     alert_system = AlertSystem(alert_system_configuration)
     alert_system.get_metric_statistics_helper = Mock()
@@ -590,3 +590,17 @@ def test_get_metric_statistics_around_last_5_min(alert_system_configuration):
     seconds = alert_system.get_metric_statistics_helper.mock_calls[0].args[-2]
     assert seconds > 300
     assert seconds < 304
+
+
+@pytest.mark.done
+def test_analyze_metric(alert_system_configuration):
+    alert_system_configuration.region = "us-east-1"
+    alert_system = AlertSystem(alert_system_configuration)
+    metric_raw = {'Namespace': 'AWS/RDS',
+                  'MetricName': 'CommitLatency',
+                  'Dimensions': [{'Name': 'DBClusterIdentifier', 'Value': 'c'}]}
+    metric_raw = {'Namespace': 'AWS/RDS',
+                  'MetricName': 'ReadLatency',
+                  'Dimensions': [{'Name': 'DBClusterIdentifier', 'Value': 'ds'},
+                                 {'Name': 'Role', 'Value': 'WRITER'}]}
+    assert alert_system.analyze_metric(metric_raw)

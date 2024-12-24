@@ -49,6 +49,17 @@ class EnvironmentAPIConfigurationPolicy(ConfigurationPolicy):
         self._build_id = []
         self._private_subnets = []
         self._public_subnets = []
+        self._availability_zones = None
+
+    @property
+    def availability_zones(self):
+        if self._availability_zones is None:
+            raise self.UndefinedValueError("availability_zones")
+        return self._availability_zones
+
+    @availability_zones.setter
+    def availability_zones(self, value):
+        self._availability_zones = value
 
     @property
     def public_subnets(self):

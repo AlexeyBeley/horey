@@ -407,8 +407,8 @@ class PostgresAlertBuilder:
         :return:
         """
 
-        min_multiplier = 0.2
-        max_multiplier = 2.0
+        min_multiplier = 0.01
+        max_multiplier = 10.0
 
         median_max = median(x["Maximum"] for x in statistics_data)
         mean_max = mean(x["Maximum"] for x in statistics_data)

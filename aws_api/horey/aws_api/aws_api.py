@@ -4179,7 +4179,11 @@ class AWSAPI:
                              "EffectiveDate": datetime.datetime.now(),
                              "RegionCode": region.region_mark,
                              "CurrencyCode": "USD"}
-        price_lists = list(self.pricing_client.yield_price_lists(region=region, filters_req=filters_req))
+        if region.region_mark == "us-west-2":
+            connect_region = Region.get_region("us-east-1")
+        else:
+            connect_region = region
+        price_lists = list(self.pricing_client.yield_price_lists(region=connect_region, filters_req=filters_req))
         return price_lists[0]
 
     def find_user_by_name(self, user_name):
