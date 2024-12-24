@@ -378,7 +378,7 @@ class AlertsAPI:
                                                            statements=statements)
 
     # pylint: disable = too-many-arguments
-    def provision_cloudwatch_logs_alarm(self, log_group_name, filter_text, metric_uid, routing_tags, dimensions=None,
+    def provision_cloudwatch_logs_alarm(self, log_group_name, filter_text, metric_uid, routing_tags, metric_name=None, dimensions=None,
                                         alarm_description=None
                                         ):
         """
@@ -391,6 +391,9 @@ class AlertsAPI:
         :param message_dict: extensive data to be stored in alert description
         :param log_group_name:
         """
+        if metric_name is None:
+            breakpoint()
+            metric_name = f"has2-metric-filter-{log_group_name}-{metric_uid}"
 
         if not alarm_description:
             alarm_description = {}
@@ -407,7 +410,7 @@ class AlertsAPI:
             raise ValueError(f"No routing tags: received: '{alarm_description}'")
 
         metric_filter = self.environment_api.provision_log_group_metric_filter(
-            name=f"has2-metric-filter-lambda-{self.configuration.lambda_name}-{metric_uid}",
+            name=metric_name,
             log_group_name=log_group_name, filter_text=filter_text)
         if len(metric_filter.metric_transformations) != 1:
             raise NotImplementedError(
@@ -517,6 +520,7 @@ class AlertsAPI:
                                                     filter_text,
                                                     "error",
                                                     [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG],
+                                                    metric_name=f"has2-metric-filter-lambda-{self.configuration.lambda_name}-error",
                                                     alarm_description=alarm_description,
                                                     )
 
@@ -535,6 +539,7 @@ class AlertsAPI:
                                                     filter_text,
                                                     "timeout",
                                                     [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG],
+                                                    metric_name=f"has2-metric-filter-lambda-{self.configuration.lambda_name}-timeout",
                                                     alarm_description=alarm_description
                                                     )
 
