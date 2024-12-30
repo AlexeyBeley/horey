@@ -138,7 +138,6 @@ class AlertsAPI:
         ret = [x for x in ret if str_find in str(x)]
         dimensions = {dimension["Name"] for x in ret for dimension in x["Dimensions"]}
         return dimensions
-        breakpoint()
 
     def update(self, resource_alarms=None):
         """
@@ -391,8 +390,8 @@ class AlertsAPI:
         :param message_dict: extensive data to be stored in alert description
         :param log_group_name:
         """
+
         if metric_name is None:
-            breakpoint()
             metric_name = f"has2-metric-filter-{log_group_name}-{metric_uid}"
 
         if not alarm_description:
@@ -668,3 +667,17 @@ class AlertsAPI:
         breakpoint()
         ret = list(self.environment_api.aws_api.cloud_watch_client.yield_client_metrics(self.environment_api.region,
                                                                                         {"Namespace": namespace}))
+
+    def generate_raw_message_dict(self, notification_type):
+        """
+        Generate dictionary which can be used to trigger raw message lambda
+
+        :return:
+        """
+
+        if Notification.Types.__members__.get(notification_type) is None:
+            raise ValueError(f"Notification type received '{notification_type}' is not one of:"
+                             f" {[x for x in Notification.Types.__members__.keys()]}")
+
+        return {AlertSystemConfigurationPolicy.ALERT_SYSTEM_RAW_MESSAGE_KEY: "",
+                "type": notification_type}

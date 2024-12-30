@@ -22,6 +22,7 @@ class AlertSystemConfigurationPolicy(ConfigurationPolicy):
     # These key and value are added in the message dict to indicate the received message is self monitoring
     ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY = "ALERT_SYSTEM_SELF_MONITORING"
     ALERT_SYSTEM_SELF_MONITORING_TYPE_VALUE = "ALERT_SYSTEM_SELF_MONITORING"
+    ALERT_SYSTEM_RAW_MESSAGE_KEY = "ALERT_SYSTEM_RAW_MESSAGE_KEY"
 
     def __init__(self):
         super().__init__()

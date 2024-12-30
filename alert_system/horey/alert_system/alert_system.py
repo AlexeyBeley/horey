@@ -57,7 +57,8 @@ class AlertSystem:
         self.aws_api = aws_api or AWSAPI()
         try:
             self.region = Region.get_region(self.configuration.region)
-            AWSAccount.set_aws_default_region(self.region)
+            if AWSAccount.get_default_region() is None:
+                AWSAccount.set_aws_default_region(self.region)
         except configuration.UndefinedValueError:
             pass
         try:
@@ -1279,7 +1280,7 @@ class AlertSystem:
         :return:
         """
 
-        now = datetime.datetime.now()
+        now = datetime.datetime.now(datetime.timezone.utc)
         if end_time and end_time > now:
             raise ValueError("Maximal end time can be now or less")
         end_time = end_time or now
@@ -1315,7 +1316,7 @@ class AlertSystem:
 
         ret = []
         while seconds > 0:
-            seconds_delta = period * 1440
+            seconds_delta = min(period * 1440, seconds)
             start_time = end_time - datetime.timedelta(seconds=seconds_delta)
             request_dict = {"Namespace": metric_raw["Namespace"],
                             "MetricName": metric_raw["MetricName"],

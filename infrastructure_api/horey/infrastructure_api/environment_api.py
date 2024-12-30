@@ -1966,8 +1966,10 @@ class EnvironmentAPI:
         iam_role.path = self.configuration.iam_path
         iam_role.max_session_duration = 12 * 60 * 60
         iam_role.assume_role_policy_document = assume_role_policy_document
-        iam_role.managed_policies_arns = managed_policies_arns
-        iam_role.inline_policies = inline_policies
+        if managed_policies_arns:
+            iam_role.managed_policies_arns = managed_policies_arns
+        if inline_policies:
+            iam_role.inline_policies = inline_policies
         tags = self.configuration.tags
         tags.append({"Key": "name", "Value": iam_role.name})
         iam_role.tags = tags

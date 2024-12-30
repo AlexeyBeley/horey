@@ -314,7 +314,7 @@ class MessageCloudwatchDefault(MessageBase):
         if Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG not in notification.routing_tags:
             notification.routing_tags.append(Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG)
 
-        notification.header = "Alert System Self Monitoring"
+        notification.header = "Testing HAS2 Self Monitoring"
         notification.text += f"\nLambda Name: {lambda_name}"
 
         return notification

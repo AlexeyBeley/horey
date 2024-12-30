@@ -571,8 +571,11 @@ class PostgresAlertBuilder:
             return ret_min, ret_max
 
         if metric_raw["MetricName"] in ["DatabaseConnections"]:
-            ret_min = min(mean_min, median_min) * min_multiplier
-            ret_max = max(mean_max, median_max) * max_multiplier
+            ret_min, ret_max = None, None
+            if mean_min != 0.0:
+                ret_min = min(mean_min, median_min) * min_multiplier
+            if mean_max != 0.0:
+                ret_max = max(mean_max, median_max) * max_multiplier
             return ret_min, ret_max
 
         if metric_raw["MetricName"] in ["TransactionLogsDiskUsage"]:

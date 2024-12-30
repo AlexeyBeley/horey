@@ -57,3 +57,10 @@ for file_name in os.listdir(cloudwatch_direct_alarm_events_dir):
         ses_event = json.load(fh)
         cloudwatch_direct_alarm_events.append(ses_event)
 
+
+raw_sns_events_dir = os.path.join(os.path.dirname(__file__), "raw_sns_events")
+raw_sns_events = []
+for file_name in os.listdir(raw_sns_events_dir):
+    with open(os.path.join(raw_sns_events_dir, file_name), encoding="utf-8") as fh:
+        event = json.load(fh)
+        raw_sns_events.append(event)

@@ -35,7 +35,23 @@ def test_init_opensearch_api():
     assert isinstance(_opensearch_api, OpensearchAPI)
 
 
-@pytest.mark.done
+@pytest.mark.wip
+def test_provision_notification_channel():
+    data = {
+        "config_id": "sample-id",
+        "name": "sample-name",
+        "config": {
+            "name": "Sample Slack Channel",
+            "description": "This is a Slack channel",
+            "config_type": "sns",
+            "is_enabled": True,
+            'sns': {}
+        }
+    }
+    assert opensearch_api.provision_notification_channel(data)
+
+
+@pytest.mark.wip
 def test_init_monitors():
     ret = opensearch_api.init_monitors()
     assert len(ret) > 0
@@ -73,11 +89,11 @@ def test_dispose_monitor():
 @pytest.mark.skip
 def test_post_document():
     response = opensearch_api.post_document("veggies",
-                                 {
-                                     "name": "beet",
-                                     "color": "red",
-                                     "classification": "root"
-                                 })
+                                            {
+                                                "name": "beet",
+                                                "color": "red",
+                                                "classification": "root"
+                                            })
     assert response.get("_id") is not None
 
 
@@ -96,31 +112,6 @@ def test_init_index_patterns():
 def test_put_index_pattern():
     response = opensearch_api.put_index_pattern("test-template", ["veggies"])
     assert response.get("acknowledged")
-
-
-@pytest.mark.wip
-def test_get_notification_channels_raw():
-    """
-    Test dashboard object provisioning
-    @return:
-    """
-
-    ret = opensearch_api.get_notification_channels_raw()
-    with open("notification_channels_raw.json", "w+") as file_handler:
-        json.dump(ret, file_handler)
-    assert len(ret) > 0
-
-
-@pytest.mark.todo
-def test_create_notification_channels_raw():
-    """
-    Test dashboard object provisioning
-    @return:
-    """
-    with open("notification_channels_raw.json") as file_handler:
-        ret = json.load(file_handler)
-    oopensearch_api_new.create_notification_channels_raw(ret)
-    assert len(ret) > 0
 
 
 @pytest.mark.wip
