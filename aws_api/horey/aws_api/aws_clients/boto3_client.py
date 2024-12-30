@@ -384,6 +384,9 @@ class Boto3Client:
                 if "AccessDenied" in repr(exception_instance):
                     raise
 
+                if "An error occurred (403)" in repr(exception_instance):
+                    raise
+
                 if "An error occurred (DryRunOperation) when calling the" in repr(exception_instance):
                     raise
 
