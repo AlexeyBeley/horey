@@ -91,10 +91,8 @@ class S3Bucket(AwsObject):
         :param lst_src:
         :return:
         """
-        if self.acl is None:
-            self.acl = lst_src
-        elif self.acl != lst_src:
-            raise NotImplementedError(f"{self.name} {self.acl=} {lst_src=}")
+
+        self.acl = lst_src
 
     def update_policy(self, str_src):
         """
@@ -102,10 +100,8 @@ class S3Bucket(AwsObject):
         :param str_src:
         :return:
         """
-        if self.policy is None:
-            self.policy = S3Bucket.Policy(str_src)
-        else:
-            raise NotImplementedError(f"Policy already set: {self.policy}")
+
+        self.policy = S3Bucket.Policy(str_src)
 
     def update_website(self, dict_src):
         """
