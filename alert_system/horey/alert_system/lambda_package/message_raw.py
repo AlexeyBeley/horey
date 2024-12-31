@@ -48,8 +48,7 @@ class MessageRaw(MessageBase):
 
         notification = Notification()
 
-        notification.type = Notification.Types.CRITICAL
-        breakpoint()
+        notification.type = Notification.Types.__members__.get(self.message_dict["type"])
         notification.text = self.message_dict["text"]
         notification.header = self.message_dict["header"]
         notification.link = self.message_dict["link"]

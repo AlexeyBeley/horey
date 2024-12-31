@@ -35,7 +35,7 @@ def test_init_opensearch_api():
     assert isinstance(_opensearch_api, OpensearchAPI)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_provision_notification_channel():
     data = {
         "config_id": "sample-id",

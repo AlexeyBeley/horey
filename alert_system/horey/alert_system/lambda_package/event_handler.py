@@ -6,7 +6,6 @@ from horey.alert_system.lambda_package.message_dispatcher import MessageDispatch
 from horey.alert_system.lambda_package.message_factory import MessageFactory
 from horey.alert_system.alert_system_configuration_policy import AlertSystemConfigurationPolicy
 from horey.alert_system.lambda_package.message_event_bridge_default import MessageEventBridgeDefault
-from horey.alert_system.lambda_package.message_cloudwatch_default import MessageCloudwatchDefault
 
 
 from horey.h_logger import get_logger

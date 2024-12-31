@@ -8,6 +8,7 @@ from horey.alert_system.lambda_package.message_cloudwatch_default import Message
 from horey.alert_system.lambda_package.message_ses_default import MessageSESDefault
 from horey.alert_system.lambda_package.message_event_bridge_default import MessageEventBridgeDefault
 from horey.alert_system.lambda_package.message_base import MessageBase
+from horey.alert_system.lambda_package.message_raw import MessageRaw
 from horey.alert_system.alert_system_configuration_policy import AlertSystemConfigurationPolicy
 from horey.common_utils.common_utils import CommonUtils
 
@@ -22,7 +23,7 @@ class MessageFactory:
 
     def __init__(self, configuration: AlertSystemConfigurationPolicy):
         self.configuration = configuration
-        self.message_classes = self.load_message_classes() + [MessageEventBridgeDefault,  MessageCloudwatchDefault, MessageSESDefault]
+        self.message_classes = self.load_message_classes() + [MessageEventBridgeDefault,  MessageCloudwatchDefault, MessageSESDefault, MessageRaw]
 
     def load_message_classes(self):
         """

@@ -279,8 +279,6 @@ class OpensearchAPI:
 
     def get_notification_channels(self):
         not_configs = self.get("_plugins/_notifications/configs")
-        breakpoint()
-        not_configs = self.get("_plugins/_notifications/configs")
         return not_configs["config_list"]
 
     def provision_notification_channel(self, data):
