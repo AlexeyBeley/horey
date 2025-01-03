@@ -1219,7 +1219,7 @@ class AlertSystem:
                 lst_ret.append(alarm)
             else:
                 lst_del.append(alarm)
-
+        logger.info(f"Generated alarms from metrics. To add: {len(lst_ret)}, to delete: {len(lst_del)}")
         return lst_ret, lst_del
 
     def generate_builder_filtered_resource_alarms(self, resource_alarms_builder, metrics,
@@ -1228,6 +1228,8 @@ class AlertSystem:
         """
         Let the builder filter alarms itself.
 
+        :param metric_data_end_time:
+        :param metric_data_start_time:
         :param resource_alarms_builder:
         :param metrics:
         :return:

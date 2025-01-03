@@ -215,6 +215,10 @@ class ELBAlertBuilder:
         if metric_raw["MetricName"] == "LambdaUserError":
             return self.generate_standard_limits(median_min, mean_min, median_max, mean_max, min_multiplier,
                                                  max_multiplier)
+
+        if metric_raw["MetricName"] == "TargetTLSNegotiationErrorCount":
+            return self.generate_standard_limits(median_min, mean_min, median_max, mean_max, min_multiplier,
+                                                 max_multiplier)
         breakpoint()
         return absolute_min_value, absolute_max_value
 

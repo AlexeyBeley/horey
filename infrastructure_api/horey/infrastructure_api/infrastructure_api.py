@@ -12,7 +12,8 @@ class InfrastructureAPI:
 
     """
 
-    def get_environment_api(self, configuration, aws_api):
+    @staticmethod
+    def get_environment_api(configuration, aws_api):
         """
         Get EnvironmentAPI
 
@@ -24,7 +25,8 @@ class InfrastructureAPI:
         from horey.infrastructure_api.environment_api import EnvironmentAPI
         return EnvironmentAPI(configuration, aws_api)
 
-    def get_frontend_api(self, configuration, environment_api):
+    @staticmethod
+    def get_frontend_api(configuration, environment_api):
         """
         Get frontend API
 
@@ -40,7 +42,8 @@ class InfrastructureAPI:
 
         return FrontendAPI(configuration, environment_api)
 
-    def get_ecs_api(self, configuration, environment_api):
+    @staticmethod
+    def get_ecs_api(configuration, environment_api):
         """
         Get frontend API
 
@@ -56,7 +59,8 @@ class InfrastructureAPI:
 
         return ECSAPI(configuration, environment_api)
 
-    def get_alerts_api(self, configuration, environment_api):
+    @staticmethod
+    def get_alerts_api(configuration, environment_api):
         """
         Get alerts API
 
@@ -72,7 +76,8 @@ class InfrastructureAPI:
 
         return AlertsAPI(configuration, environment_api)
 
-    def get_email_api(self, configuration, environment_api):
+    @staticmethod
+    def get_email_api(configuration, environment_api):
         """
         Get email API
 
@@ -87,3 +92,37 @@ class InfrastructureAPI:
             raise ValueError(f"{environment_api} not instance of EnvironmentAPI")
 
         return EmailAPI(configuration, environment_api)
+
+    @staticmethod
+    def get_aws_lambda_api(configuration, environment_api):
+        """
+        Get AWS Lambda API
+
+        :param configuration:
+        :param environment_api:
+        :return:
+        """
+
+        from horey.infrastructure_api.aws_lambda_api import AWSLambdaAPI
+        from horey.infrastructure_api.environment_api import EnvironmentAPI
+        if not isinstance(environment_api, EnvironmentAPI):
+            raise ValueError(f"{environment_api} not instance of EnvironmentAPI")
+
+        return AWSLambdaAPI(configuration, environment_api)
+
+    @staticmethod
+    def get_cloudwatch_api(configuration, environment_api):
+        """
+        Get Cloudwatch API
+
+        :param configuration:
+        :param environment_api:
+        :return:
+        """
+
+        from horey.infrastructure_api.cloudwatch_api import CloudwatchAPI
+        from horey.infrastructure_api.environment_api import EnvironmentAPI
+        if not isinstance(environment_api, EnvironmentAPI):
+            raise ValueError(f"{environment_api} not instance of EnvironmentAPI")
+
+        return CloudwatchAPI(configuration, environment_api)
