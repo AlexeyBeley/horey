@@ -177,7 +177,7 @@ class DockerAPI:
         @return:
         """
 
-        errors_detected = False
+        errors_detected = []
         logger.info(f"Uploading image to repository {repo_tags}")
         for repository in repo_tags:
             logger.info(f"Uploading {repository} to repository")
@@ -188,11 +188,11 @@ class DockerAPI:
                 try:
                     self.print_log_line(log_line)
                 except DockerAPI.OutputError:
-                    errors_detected = True
+                    errors_detected.append(log_line)
 
             time_end = datetime.datetime.now()
             if errors_detected:
-                raise RuntimeError(f"Failed to upload {repository} took {time_end-time_start} time.")
+                raise RuntimeError(f"Failed to upload {repository} took {time_end-time_start} time. {errors_detected}")
 
             logger.info(
                 f"Uploading repository {repository} took {time_end-time_start} time."

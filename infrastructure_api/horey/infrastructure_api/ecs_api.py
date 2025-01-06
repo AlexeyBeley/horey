@@ -2,8 +2,15 @@
 Standard ECS maintainer.
 
 """
+import copy
+import json
+from datetime import datetime
 
 from horey.h_logger import get_logger
+
+from horey.aws_api.aws_services_entities.ecr_image import ECRImage
+from horey.aws_api.aws_services_entities.ecr_repository import ECRRepository
+from horey.aws_api.base_entities.region import Region
 
 logger = get_logger()
 
@@ -17,6 +24,28 @@ class ECSAPI:
     def __init__(self, configuration, environment_api):
         self.configuration = configuration
         self.environment_api = environment_api
+        self._ecr_repository= None
+        self._ecr_images = None
+
+    @property
+    def ecr_repository(self):
+        if self._ecr_repository is None:
+            self.environment_api.aws_api.ecr_client.clear_cache(ECRRepository)
+            src_ecr_repositories = self.environment_api.aws_api.ecr_client.get_region_repositories(
+                region=Region.get_region(self.configuration.ecr_repository_region),
+                repository_names=[
+                    self.configuration.ecr_repository_name])
+            if len(src_ecr_repositories) != 1:
+                raise RuntimeError(f"Can not find repository {self.configuration.ecr_repository_name}")
+            self._ecr_repository = src_ecr_repositories[0]
+        return self._ecr_repository
+
+    @property
+    def ecr_images(self):
+        if self._ecr_images is None:
+            self.environment_api.aws_api.ecr_client.clear_cache(ECRImage)
+            self._ecr_images = self.environment_api.aws_api.ecr_client.get_repository_images(self.ecr_repository)
+        return self._ecr_images
 
     def provision(self):
         """
@@ -24,8 +53,9 @@ class ECSAPI:
 
         :return:
         """
-
-        return
+        
+        self.provision_ecr_repository()
+        return True
 
     def update(self):
         """
@@ -91,3 +121,28 @@ class ECSAPI:
                                                           kill_old_containers=self.configuration.kill_old_containers,
                                                           load_balancers=self.configuration.service_load_balancers
                                                           )
+
+    def provision_ecr_repository(self):
+        """
+        Create or update the ECR repo
+
+        :return:
+        """
+
+        repo = ECRRepository({})
+        repo.region = Region.get_region(self.configuration.ecr_repository_region)
+        repo.name = self.configuration.ecr_repository_name
+        repo.policy_text = self.configuration.ecr_repository_policy_text
+        repo.tags = copy.deepcopy(self.environment_api.configuration.tags)
+        repo.tags.append({
+            "Key": "Name",
+            "Value": repo.name
+        })
+
+        repo.tags.append({
+            "Key": self.configuration.infrastructure_update_time_tag,
+            "Value": datetime.now().strftime("%Y_%m_%d_%H_%M")
+        })
+
+        self.environment_api.aws_api.provision_ecr_repository(repo)
+        return repo

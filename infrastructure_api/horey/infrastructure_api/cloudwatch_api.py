@@ -39,7 +39,7 @@ class CloudwatchAPI:
         log_group.region = self.environment_api.region
         log_group.name = self.configuration.log_group_name
         log_group.retention_in_days = self.configuration.retention_in_days
-        log_group.tags = {tag["Key"]: tag["Value"] for tag in self.environment_api.tags}
+        log_group.tags = {tag["Key"]: tag["Value"] for tag in self.environment_api.configuration.tags}
         log_group.tags["name"] = log_group.name
         self.environment_api.aws_api.cloud_watch_logs_client.provision_log_group(log_group)
         return log_group

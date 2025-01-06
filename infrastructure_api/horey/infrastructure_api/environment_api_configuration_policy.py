@@ -50,6 +50,17 @@ class EnvironmentAPIConfigurationPolicy(ConfigurationPolicy):
         self._private_subnets = []
         self._public_subnets = []
         self._availability_zones = None
+        self._environment_level = None
+
+    @property
+    def environment_level(self):
+        if self._environment_level is None:
+            raise self.UndefinedValueError("environment_level")
+        return self._environment_level
+
+    @environment_level.setter
+    def environment_level(self, value):
+        self._environment_level = value
 
     @property
     def availability_zones(self):

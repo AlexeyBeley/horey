@@ -14,16 +14,17 @@ class GitAPIConfigurationPolicy(ConfigurationPolicy):
     def __init__(self):
         super().__init__()
         self._remote = None
-        self._directory_path = None
         self._ssh_key_file_path = None
+        self._directory_path = None
+        self._git_directory_path = None
 
     @property
-    def remote(self):
-        return self._remote
+    def git_directory_path(self):
+        return self._git_directory_path
 
-    @remote.setter
-    def remote(self, value):
-        self._remote = value
+    @git_directory_path.setter
+    def git_directory_path(self, value):
+        self._git_directory_path = value
 
     @property
     def directory_path(self):
@@ -32,6 +33,14 @@ class GitAPIConfigurationPolicy(ConfigurationPolicy):
     @directory_path.setter
     def directory_path(self, value):
         self._directory_path = value
+
+    @property
+    def remote(self):
+        return self._remote
+
+    @remote.setter
+    def remote(self, value):
+        self._remote = value
 
     @property
     def ssh_key_file_path(self):

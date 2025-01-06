@@ -815,7 +815,7 @@ def test_init_and_cache_kms_keys():
 def test_init_and_cache_all_s3_bucket_objects():
     aws_api.s3_client.clear_sessions()
     _aws_api = AWSAPI(configuration=configuration)
-    for x in _aws_api.s3_client.yield_bucket_objects(None, bucket_name="files.scoutbees.dev-dex.us-west-2"):
+    for x in _aws_api.s3_client.yield_bucket_objects(None, bucket_name=""):
         breakpoint()
 
     breakpoint()

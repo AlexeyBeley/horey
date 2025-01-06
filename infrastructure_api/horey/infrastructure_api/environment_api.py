@@ -5,6 +5,7 @@ Standard environment maintainer.
 """
 import json
 import os
+from datetime import time
 from pathlib import Path
 
 # pylint: disable= no-name-in-module
@@ -50,8 +51,12 @@ from horey.aws_api.aws_services_entities.ses_identity import SESIdentity
 from horey.aws_cleaner.aws_cleaner import AWSCleaner
 from horey.aws_cleaner.aws_cleaner_configuration_policy import AWSCleanerConfigurationPolicy
 from horey.aws_api.aws_services_entities.elbv2_load_balancer import LoadBalancer
+from horey.docker_api.docker_api import DockerAPI
 
 from horey.network.ip import IP
+from horey.h_logger import get_logger
+
+logger = get_logger()
 
 
 class EnvironmentAPI:
@@ -60,9 +65,11 @@ class EnvironmentAPI:
 
     """
 
-    def __init__(self, configuration: EnvironmentAPIConfigurationPolicy, aws_api: AWSAPI):
+    def __init__(self, configuration: EnvironmentAPIConfigurationPolicy, aws_api: AWSAPI, git_api=None):
         self.configuration = configuration
         self.aws_api = aws_api
+        self.git_api = git_api
+        self.docker_api = DockerAPI()
         self.aws_api.sts_client.main_cache_dir_path = os.path.join(self.configuration.data_directory_path, "cache")
         if self.aws_api.configuration:
             self.aws_api.configuration.aws_api_cache_dir = self.aws_api.sts_client.main_cache_dir_path
@@ -2032,7 +2039,8 @@ class EnvironmentAPI:
         """
 
         load_balancer = self.get_load_balancer(load_balancer_name)
-        target_groups = self.aws_api.elbv2_client.get_region_target_groups(self.region, load_balancer_arn=load_balancer.arn)
+        target_groups = self.aws_api.elbv2_client.get_region_target_groups(self.region,
+                                                                           load_balancer_arn=load_balancer.arn)
         if full_information:
             for target_group in target_groups:
                 self.aws_api.elbv2_client.get_target_group_full_information(target_group)
@@ -2247,7 +2255,7 @@ class EnvironmentAPI:
                 email_identity.headers_in_complaint_notifications_enabled = True
 
         self.aws_api.provision_ses_domain_email_identity(email_identity,
-                                                           hosted_zone_name=hosted_zone_name)
+                                                         hosted_zone_name=hosted_zone_name)
         return True
 
     def provision_sesv2_configuration_set(self, name=None,
@@ -2310,3 +2318,69 @@ class EnvironmentAPI:
         aws_cleaner.cleanup_report_route_53_service()
         aws_cleaner.cleanup_report_ebs_volumes()
         return aws_cleaner.cleanup_report_cloudwatch()
+
+    def build_and_upload_ecr_image(self, dir_path, tags, nocache):
+        """
+        Build and upload.
+
+        :param dir_path:
+        :param tags:
+        :param nocache:
+        :return:
+        """
+
+        image = self.build_ecr_image(dir_path, tags, nocache)
+        try:
+            self.docker_api.upload_images(image.tags)
+        except Exception as inst_error:
+            if "no basic auth credentials" in repr(inst_error):
+                ecr_repository_region = tags[0].split(".")[3]
+                self.login_to_ecr_repository(Region.get_region(ecr_repository_region))
+                self.docker_api.upload_images(image.tags)
+            else:
+                raise
+        return image
+
+    def build_ecr_image(self, dir_path, tags, nocache):
+        """
+        Image building fails for different reasons, this function aggregates the reasons and handles them.
+
+        :param dir_path:
+        :param tags:
+        :param nocache:
+        :return:
+        """
+
+        for _ in range(120):
+            try:
+                return self.docker_api.build(dir_path, tags, nocache=nocache)
+            except Exception as error_inst:
+                repr_error_inst = repr(error_inst)
+                if "authorization token has expired" in repr_error_inst:
+                    ecr_repository_region = tags[0].split(".")[3]
+                    registry, _, _ = self.login_to_ecr_repository(region=Region.get_region(ecr_repository_region), logout=True)
+                    return self.docker_api.build(dir_path, tags, nocache=nocache)
+                raise
+
+        raise TimeoutError("Was not able to build and image")
+
+    def login_to_ecr_repository(self, region, logout=False):
+        """
+        Login or relogin
+
+        :param region:
+        :return:
+        """
+
+        logger.info(f"Login to AWS Docker Repo (ECR) in region: {region.region_mark}")
+        credentials = self.aws_api.get_ecr_authorization_info(region=region)
+
+        if len(credentials) != 1:
+            raise ValueError("len(credentials) != 1")
+        credentials = credentials[0]
+
+        registry, username, password = credentials["proxy_host"], credentials["user_name"], credentials["decoded_token"]
+        if logout:
+            self.docker_api.logout(registry)
+        self.docker_api.login(registry, username, password)
+        return registry, username, password

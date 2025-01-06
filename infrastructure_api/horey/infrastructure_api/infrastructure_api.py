@@ -13,17 +13,18 @@ class InfrastructureAPI:
     """
 
     @staticmethod
-    def get_environment_api(configuration, aws_api):
+    def get_environment_api(configuration, aws_api, git_api=None):
         """
         Get EnvironmentAPI
 
+        :param git_api:
         :param configuration:
         :param aws_api:
         :return:
         """
 
         from horey.infrastructure_api.environment_api import EnvironmentAPI
-        return EnvironmentAPI(configuration, aws_api)
+        return EnvironmentAPI(configuration, aws_api, git_api=git_api)
 
     @staticmethod
     def get_frontend_api(configuration, environment_api):
@@ -126,3 +127,20 @@ class InfrastructureAPI:
             raise ValueError(f"{environment_api} not instance of EnvironmentAPI")
 
         return CloudwatchAPI(configuration, environment_api)
+
+    @staticmethod
+    def get_aws_iam_api(configuration, environment_api):
+        """
+        Get AWS iam API
+
+        :param configuration:
+        :param environment_api:
+        :return:
+        """
+
+        from horey.infrastructure_api.aws_iam_api import AWSIAMAPI
+        from horey.infrastructure_api.environment_api import EnvironmentAPI
+        if not isinstance(environment_api, EnvironmentAPI):
+            raise ValueError(f"{environment_api} not instance of EnvironmentAPI")
+
+        return AWSIAMAPI(configuration, environment_api)
