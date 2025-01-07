@@ -45,7 +45,7 @@ class GitAPI:
         :param branch_name:
         :return:
         """
-        if oct(os.stat(self.configuration.ssh_key_file_path).st_mode)[-3:] != "644":
+        if oct(os.stat(self.configuration.ssh_key_file_path).st_mode)[-3:] != "400":
             path_ssh_key_file = Path(self.configuration.ssh_key_file_path)
             path_ssh_key_file.chmod(0o400)
 
