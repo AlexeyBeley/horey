@@ -16,6 +16,7 @@ from horey.common_utils.bash_executor import BashExecutor
 from horey.h_logger import get_logger
 
 logger = get_logger()
+BashExecutor.set_logger(logger, override=False)
 
 
 @SystemFunctionFactory.register

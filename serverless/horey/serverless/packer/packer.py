@@ -12,6 +12,7 @@ from horey.pip_api.pip_api_configuration_policy import PipAPIConfigurationPolicy
 from horey.common_utils.bash_executor import BashExecutor
 
 logger = get_logger()
+BashExecutor.set_logger(logger, override=False)
 
 
 def get_local_python_major_version():

@@ -15,6 +15,7 @@ from horey.h_logger import get_logger
 from horey.common_utils.bash_executor import BashExecutor
 
 logger = get_logger()
+BashExecutor.set_logger(logger, override=False)
 
 
 class DockerAPI:

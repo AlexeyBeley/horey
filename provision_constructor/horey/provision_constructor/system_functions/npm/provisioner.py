@@ -11,7 +11,7 @@ from horey.provision_constructor.system_functions.system_function_common import 
 from horey.h_logger import get_logger
 
 logger = get_logger()
-
+BashExecutor.set_logger(logger, override=False)
 
 @SystemFunctionFactory.register
 class Provisioner(SystemFunctionCommon):

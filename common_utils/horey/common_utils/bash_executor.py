@@ -30,6 +30,23 @@ class BashExecutor:
     """
     Main class.
     """
+    _logger = None
+
+    @staticmethod
+    def set_logger(logger, override=False):
+        """
+        Set static logger.
+
+        :param override:
+        :param logger:
+        :return:
+        """
+
+        if BashExecutor._logger is not None and not override:
+            return True
+
+        BashExecutor._logger = logger
+        return True
 
     @staticmethod
     def run_bash(command, ignore_on_error_callback=None, timeout=60 * 10, debug=True, logger=None):
@@ -46,7 +63,8 @@ class BashExecutor:
         @return:
         """
 
-        logger = logger if logger is not None else get_logger()
+        if not logger:
+            logger = BashExecutor._logger or get_logger()
 
         logger.info(f"run_bash: {command}")
 

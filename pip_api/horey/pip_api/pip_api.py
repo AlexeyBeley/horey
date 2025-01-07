@@ -16,6 +16,7 @@ from horey.pip_api.standalone_methods import StandaloneMethods
 
 logger = get_logger()
 StandaloneMethods.logger = logger
+BashExecutor.set_logger(logger, override=False)
 
 
 class PipAPI:

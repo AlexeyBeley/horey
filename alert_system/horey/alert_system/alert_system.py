@@ -43,6 +43,7 @@ from horey.pip_api.pip_api_configuration_policy import PipAPIConfigurationPolicy
 from horey.alert_system.lambda_package.notification import Notification
 
 logger = get_logger()
+BashExecutor.set_logger(logger, override=False)
 
 
 class AlertSystem:

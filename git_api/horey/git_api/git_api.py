@@ -23,6 +23,7 @@ class GitAPI:
     def __init__(self, configuration: GitAPIConfigurationPolicy = None):
         self.configuration = configuration
         self.bash_executor = BashExecutor()
+        self.bash_executor.set_logger(logger, override=False)
 
     def clone(self):
         """
@@ -45,17 +46,52 @@ class GitAPI:
         :param branch_name:
         :return:
         """
+
         if oct(os.stat(self.configuration.ssh_key_file_path).st_mode)[-3:] != "400":
             path_ssh_key_file = Path(self.configuration.ssh_key_file_path)
             path_ssh_key_file.chmod(0o400)
 
-        base = f'GIT_SSH_COMMAND="ssh -i {self.configuration.ssh_key_file_path} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"'
+        # old: ssh_base_command = f'GIT_SSH_COMMAND="ssh -i {self.configuration.ssh_key_file_path} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"'
+        ssh_base_command = 'GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"'
+        int_agent_pid = None
+        # todo: remove not
+        if os.environ.get("SSH_AUTH_SOCK") is not None:
+            command = "ssh-agent -s"
+            ret = self.bash_executor.run_bash(command)
+            lines = ret["stdout"].split("\n")
+            for line in lines:
+                if "SSH_AGENT_PID" in line:
+                    lst_line = line.split("=")
+                    int_agent_pid = int((lst_line[lst_line.index("SSH_AGENT_PID")+1]).split(";")[0])
+                if "SSH_AUTH_SOCK" in line:
+                    ssh_base_command = f"{line} {ssh_base_command}"
+            ssh_base_command += f" ssh-add {self.configuration.ssh_key_file_path};"
+        try:
+            self.checkout_remote_branch_helper(git_remote_url, branch_name, ssh_base_command)
+        finally:
+            if int_agent_pid:
+                command = f"kill {int_agent_pid}"
+                ret = self.bash_executor.run_bash(command)
+                if ret.get("stdout") or ret.get("stdout"):
+                    raise NotImplementedError(ret)
+        return True
+
+    def checkout_remote_branch_helper(self, git_remote_url, branch_name, ssh_base_command):
+        """
+        Run the git logic.
+
+        :param git_remote_url:
+        :param branch_name:
+        :param ssh_base_command:
+        :return:
+        """
+
         current_working_directory = os.getcwd()
         if current_working_directory != self.configuration.git_directory_path:
             os.chdir(self.configuration.git_directory_path)
         self.configuration.directory_path = str(Path(self.configuration.git_directory_path) / git_remote_url.split("/")[-1])
         if not os.path.exists(self.configuration.directory_path):
-            command = f"{base} git clone -b {branch_name} --single-branch {git_remote_url}"
+            command = f"{ssh_base_command} git clone -b {branch_name} --single-branch {git_remote_url}"
             self.bash_executor.run_bash(command)
             os.chdir(self.configuration.directory_path)
             return True
@@ -79,7 +115,7 @@ class GitAPI:
         else:
             raise RuntimeError(f"Was not able to find remote with address {git_remote_url}")
 
-        command = f"{base} git fetch {remote_name} {branch_name}"
+        command = f"{ssh_base_command} git fetch {remote_name} {branch_name}"
         ret = self.bash_executor.run_bash(command)
         stdout = ret.get("stdout")
         if stdout:
