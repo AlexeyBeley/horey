@@ -255,11 +255,15 @@ class AWSLambda(AwsObject):
         elif self.runtime is not None or self.handler is not None:
             raise RuntimeError("Either image or zip should be used")
 
-        return self.generate_request(["Code", "FunctionName", "Role", "Tags"],
+        request = self.generate_request(["Code", "FunctionName", "Role", "Tags"],
                                      optional=["Tags", "Runtime", "Handler", "PackageType", "Timeout",
                                                "MemorySize", "EphemeralStorage", "VpcConfig", "Environment",
                                                "FileSystemConfigs"],
                                      request_key_to_attribute_mapping=self.request_key_to_attribute_mapping)
+
+        if self.code.get("ImageUri") is not None:
+            request["PackageType"] = "Image"
+        return request
 
     def generate_update_function_configuration_request(self, desired_lambda):
         """

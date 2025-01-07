@@ -139,7 +139,7 @@ class AWSLambdaAPI:
                         ]
                     })
 
-    def provision(self):
+    def provision(self, branch_name=None):
         """
         Provision ECS infrastructure.
 
@@ -153,11 +153,28 @@ class AWSLambdaAPI:
 
         self.cloudwatch_api.provision()
         self.ecs_api.provision()
-        self.aws_iam_api.provision()
+        if self.configuration.security_groups:
+            managed_policies_arns = ["arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"]
+        else:
+            managed_policies_arns = []
+
+        assume_role_policy = {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        }
+        self.aws_iam_api.provision_role(assume_role_policy=json.dumps(assume_role_policy), managed_policies_arns=managed_policies_arns)
 
         # todo: self.provision_events_rule()
         # todo: self.provision_alert_system([])
-        self.update()
+        self.update(branch_name=branch_name)
 
     def update(self, branch_name=None):
         """
@@ -175,6 +192,7 @@ class AWSLambdaAPI:
         tags = [f"{repo_uri}:build_{build_number + 1}-commit_{commit_id}"]
         image = self.environment_api.build_and_upload_ecr_image(self.environment_api.git_api.configuration.directory_path, tags, False)
         self.deploy_lambda(image)
+        return True
 
     def get_latest_build_number(self):
         """
@@ -185,7 +203,8 @@ class AWSLambdaAPI:
 
         build_numer = -1
         for image in self.ecs_api.ecr_images:
-            breakpoint()
+            build_numbers = [int(build_subtag.split("_")[1]) for str_image_tag in image.image_tags for build_subtag in str_image_tag.split("-") if build_subtag.startswith("build_")]
+            build_numer = max(max(build_numbers), build_numer)
         return build_numer
 
     def deploy_lambda(self, image):
@@ -208,7 +227,7 @@ class AWSLambdaAPI:
         aws_lambda.name = self.configuration.lambda_name
         aws_lambda.role = iam_role.arn
 
-        aws_lambda.tags = {tag["Key"]: tag["Value"] for tag in self.environment_api.tags}
+        aws_lambda.tags = {tag["Key"]: tag["Value"] for tag in self.environment_api.configuration.tags}
         aws_lambda.tags["Name"] = aws_lambda.name
 
         aws_lambda.vpc_config = {
@@ -235,6 +254,5 @@ class AWSLambdaAPI:
         #                              "AWS:SourceArn": events_rule.arn}}}]}
 
         aws_lambda.code = {"ImageUri": image.tags[-1]}
-        breakpoint()
         self.environment_api.aws_api.provision_aws_lambda(aws_lambda, force=True)
         return aws_lambda

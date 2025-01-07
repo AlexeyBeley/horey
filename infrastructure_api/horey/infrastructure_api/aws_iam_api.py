@@ -28,21 +28,22 @@ class AWSIAMAPI:
         :return:
         """
 
-        self.provision_role(policies=role_policies)
-
-    def provision_role(self, policies=None):
+    def provision_role(self, policies=None, assume_role_policy=None, managed_policies_arns=None):
         """
         Provision role
 
         :return:
         """
+
         policies = policies or []
+        managed_policies_arns = managed_policies_arns or []
+
         iam_role = IamRole({})
         iam_role.name = self.configuration.role_name
         iam_role.description = self.configuration.role_name
         iam_role.path = self.environment_api.configuration.iam_path
         iam_role.max_session_duration = 12 * 60 * 60
-        iam_role.assume_role_policy_document = self.configuration.assume_role_policy_document
+        iam_role.assume_role_policy_document = assume_role_policy
 
         iam_role.tags = copy.deepcopy(self.environment_api.configuration.tags)
         iam_role.tags.append({
@@ -51,6 +52,7 @@ class AWSIAMAPI:
         })
 
         iam_role.inline_policies = policies
+        iam_role.managed_policies_arns = managed_policies_arns
         self.environment_api.aws_api.provision_iam_role(iam_role)
         return iam_role
 
@@ -64,11 +66,14 @@ class AWSIAMAPI:
 
     def get_role(self):
         """
-        Update roe info.
+        Update role info.
 
         :return:
         """
 
+        iam_role = IamRole({})
         iam_role.name = self.configuration.role_name
-        iam_role.description = self.configuration.role_name
         iam_role.path = self.environment_api.configuration.iam_path
+        if not self.environment_api.aws_api.iam_client.update_role_information(iam_role):
+            raise ValueError(f"Was not able to find role: {iam_role} with path {iam_role.path}")
+        return iam_role
