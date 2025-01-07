@@ -54,7 +54,9 @@ class GitAPI:
         # old: ssh_base_command = f'GIT_SSH_COMMAND="ssh -i {self.configuration.ssh_key_file_path} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"'
         ssh_base_command = 'GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"'
         int_agent_pid = None
-        if os.environ.get("SSH_AUTH_SOCK") is None:
+        # todo: remove not
+        if os.environ.get("SSH_AUTH_SOCK") is not None:
+            ssh_base_command = f"ssh-add {self.configuration.ssh_key_file_path};" + ssh_base_command
             command = "ssh-agent -s"
             ret = self.bash_executor.run_bash(command)
             lines = ret["stdout"].split("\n")
@@ -64,7 +66,6 @@ class GitAPI:
                     int_agent_pid = int((lst_line[lst_line.index("SSH_AGENT_PID")+1]).split(";")[0])
                 if "SSH_AUTH_SOCK" in line:
                     ssh_base_command = f"{line} {ssh_base_command}"
-            ssh_base_command += f" ssh-add {self.configuration.ssh_key_file_path};"
         try:
             self.checkout_remote_branch_helper(git_remote_url, branch_name, ssh_base_command)
         finally:
