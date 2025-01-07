@@ -54,8 +54,7 @@ class GitAPI:
         # old: ssh_base_command = f'GIT_SSH_COMMAND="ssh -i {self.configuration.ssh_key_file_path} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"'
         ssh_base_command = 'GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"'
         int_agent_pid = None
-        # todo: remove not
-        if os.environ.get("SSH_AUTH_SOCK") is not None:
+        if os.environ.get("SSH_AUTH_SOCK") is None:
             command = "ssh-agent -s"
             ret = self.bash_executor.run_bash(command)
             lines = ret["stdout"].split("\n")
