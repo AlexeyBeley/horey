@@ -47,7 +47,7 @@ class GitAPI:
         """
         if oct(os.stat(self.configuration.ssh_key_file_path).st_mode)[-3:] != "644":
             path_ssh_key_file = Path(self.configuration.ssh_key_file_path)
-            path_ssh_key_file.chmod(0o644)
+            path_ssh_key_file.chmod(0o400)
 
         base = f'GIT_SSH_COMMAND="ssh -i {self.configuration.ssh_key_file_path} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"'
         current_working_directory = os.getcwd()
