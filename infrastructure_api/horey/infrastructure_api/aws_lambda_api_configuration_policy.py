@@ -22,6 +22,15 @@ class AWSLambdaAPIConfigurationPolicy(ConfigurationPolicy):
         self._git_remote_url = None
         self._environment_variables = None
         self._security_groups = None
+        self._schedule_expression = None
+
+    @property
+    def schedule_expression(self):
+        return self._schedule_expression
+
+    @schedule_expression.setter
+    def schedule_expression(self, value):
+        self._schedule_expression = value
 
     @property
     def security_groups(self):

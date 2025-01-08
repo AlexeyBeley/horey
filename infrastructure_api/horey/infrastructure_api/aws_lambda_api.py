@@ -7,6 +7,8 @@ import json
 from horey.h_logger import get_logger
 
 from horey.aws_api.aws_services_entities.aws_lambda import AWSLambda
+from horey.aws_api.aws_services_entities.event_bridge_rule import EventBridgeRule
+from horey.aws_api.aws_services_entities.event_bridge_target import EventBridgeTarget
 from horey.infrastructure_api.ecs_api_configuration_policy import ECSAPIConfigurationPolicy
 from horey.infrastructure_api.ecs_api import ECSAPI
 from horey.infrastructure_api.aws_iam_api_configuration_policy import AWSIAMAPIConfigurationPolicy
@@ -172,9 +174,13 @@ class AWSLambdaAPI:
         }
         self.aws_iam_api.provision_role(assume_role_policy=json.dumps(assume_role_policy), managed_policies_arns=managed_policies_arns)
 
-        # todo: self.provision_events_rule()
+        events_rule = self.provision_events_rule() if self.configuration.schedule_expression is not None else None
+
+        aws_lambda = self.update(branch_name=branch_name)
+        if events_rule is not None:
+            self.provision_events_rule_targets(events_rule, aws_lambda)
+
         # todo: self.provision_alert_system([])
-        self.update(branch_name=branch_name)
 
     def update(self, branch_name=None):
         """
@@ -191,8 +197,7 @@ class AWSLambdaAPI:
 
         tags = [f"{repo_uri}:build_{build_number + 1}-commit_{commit_id}"]
         image = self.environment_api.build_and_upload_ecr_image(self.environment_api.git_api.configuration.directory_path, tags, False)
-        self.deploy_lambda(image)
-        return True
+        return self.deploy_lambda(image)
 
     def get_latest_build_number(self):
         """
@@ -207,7 +212,7 @@ class AWSLambdaAPI:
             build_numer = max(max(build_numbers), build_numer)
         return build_numer
 
-    def deploy_lambda(self, image):
+    def deploy_lambda(self, image, events_rule=None):
         """
         Deploy the code.
 
@@ -215,10 +220,12 @@ class AWSLambdaAPI:
         """
         iam_role = self.aws_iam_api.get_role()
 
-        #events_rule = EventBridgeRule({})
-        #events_rule.name = self.configuration.event_bridge_rule_name
-        #events_rule.region = self.region
-        #self.aws_api.events_client.update_rule_information(events_rule)
+        if self.configuration.schedule_expression and events_rule is None:
+            events_rule = EventBridgeRule({})
+            events_rule.name = self.configuration.event_bridge_rule_name
+            events_rule.region = self.environment_api.region
+            if not self.environment_api.aws_api.events_client.update_rule_information(events_rule):
+                raise RuntimeError(f"Was not able to find event rule {self.configuration.event_bridge_rule_name}")
 
         security_groups = self.environment_api.get_security_groups(self.configuration.security_groups)
 
@@ -242,17 +249,57 @@ class AWSLambdaAPI:
 
         aws_lambda.environment = self.environment_variables_callback()
 
-        #aws_lambda.policy = {"Version": "2012-10-17",
-        #                     "Id": "default",
-        #                     "Statement": [
-        #                         {"Sid": f"trigger_{self.configuration.event_bridge_rule_name}",
-        #                          "Effect": "Allow",
-        #                          "Principal": {"Service": "events.amazonaws.com"},
-        #                          "Action": "lambda:InvokeFunction",
-        #                          "Resource": None,
-        #                          "Condition": {"ArnLike": {
-        #                              "AWS:SourceArn": events_rule.arn}}}]}
+        if self.configuration.schedule_expression:
+            aws_lambda.policy = {"Version": "2012-10-17",
+                             "Id": "default",
+                             "Statement": [
+                                 {"Sid": f"trigger_{self.configuration.event_bridge_rule_name}",
+                                  "Effect": "Allow",
+                                  "Principal": {"Service": "events.amazonaws.com"},
+                                  "Action": "lambda:InvokeFunction",
+                                  "Resource": None,
+                                  "Condition": {"ArnLike": {
+                                      "AWS:SourceArn": events_rule.arn}}}]}
 
         aws_lambda.code = {"ImageUri": image.tags[-1]}
         self.environment_api.aws_api.provision_aws_lambda(aws_lambda, force=True)
         return aws_lambda
+
+    def provision_events_rule(self):
+        """
+        Event bridge rule - the trigger used to trigger the lambda each minute.
+
+        :return:
+        """
+
+        rule = EventBridgeRule({})
+        rule.name = self.configuration.event_bridge_rule_name
+        rule.description = f"{self.configuration.lambda_name} triggering rule"
+        rule.region = self.environment_api.region
+        rule.schedule_expression = self.configuration.schedule_expression
+        rule.event_bus_name = "default"
+        rule.state = "ENABLED"
+        rule.tags = self.environment_api.configuration.tags
+        rule.tags.append({
+            "Key": "Name",
+            "Value": rule.name
+        })
+
+        self.environment_api.aws_api.provision_events_rule(rule)
+        return rule
+
+    def provision_events_rule_targets(self, events_rule, aws_lambda):
+        """
+        Event rule - triggering salesforce.
+
+        :param events_rule:
+        :param aws_lambda:
+        :return:
+        """
+
+        target = EventBridgeTarget({})
+        target.id = f"target-{self.configuration.lambda_name}"
+        target.arn = aws_lambda.arn
+
+        events_rule.targets = [target]
+        self.environment_api.aws_api.provision_events_rule(events_rule)
