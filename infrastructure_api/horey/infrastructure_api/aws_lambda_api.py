@@ -275,6 +275,7 @@ class AWSLambdaAPI:
         if branch_name is not None:
             if not self.environment_api.git_api.checkout_remote_branch(self.configuration.git_remote_url, branch_name):
                 raise RuntimeError(f"Was not able to checkout branch: {branch_name}")
+
             commit_id = self.environment_api.git_api.get_commit_id()
 
             tags = [f"{repo_uri}:build_{build_number + 1}-commit_{commit_id}"]

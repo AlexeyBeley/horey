@@ -151,7 +151,8 @@ class GitAPI:
         else:
             raise RuntimeError("Was not able to find line corresponding to fetched branch")
 
-        command = f"git reset --hard {remote_name}/{branch_name}"
+        # old: command = f"git reset --hard {remote_name}/{branch_name}"
+        command = f"git reset --hard {branch_name}"
         ret = self.bash_executor.run_bash(command)
         stdout = ret["stdout"]
         if "HEAD is now at" not in stdout:
@@ -161,6 +162,11 @@ class GitAPI:
         ret = self.bash_executor.run_bash(command)
         if ret["stdout"] not in [f"Your branch is up to date with '{remote_name}/{branch_name}'.",
                                  f"branch '{branch_name}' set up to track '{remote_name}/{branch_name}'."]:
+            raise RuntimeError(ret)
+
+        command = "git merge FETCH_HEAD"
+        ret = self.bash_executor.run_bash(command)
+        if ret["stderr"]:
             raise RuntimeError(ret)
         return True
 
