@@ -302,7 +302,7 @@ class AWSLambdaAPI:
         try:
             return max(self.ecs_api.ecr_images, key=lambda _image: _image.build_number)
         except ValueError as inst_error:
-            if "iterable argument is empty" not in repr(inst_error):
+            if "iterable argument is empty" not in repr(inst_error) and "arg is an empty sequence" not in repr(inst_error):
                 raise
 
         return None
