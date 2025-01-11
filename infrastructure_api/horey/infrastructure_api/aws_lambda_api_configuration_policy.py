@@ -31,7 +31,6 @@ class AWSLambdaAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def event_bridge_rule_name(self):
         if self._event_bridge_rule_name is None:
-            breakpoint()
             if "rate" not in self.schedule_expression:
                 raise NotImplementedError(f"Can not create event_bridge_rule_name slug from {self.schedule_expression}")
             slug = self.schedule_expression.replace("(", "_").replace(")", "_").replace(" ", "_").strip("_")
