@@ -31,12 +31,16 @@ class GitAPI:
 
         :return:
         """
-        breakpoint()
+        raise NotImplementedError(
+            """
+            
         base = f'GIT_SSH_COMMAND="ssh -i {self.configuration.ssh_key_file_path} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"'
 
         os.chdir(Path(self.configuration.directory_path).resolve().parent)
         ret = self.bash_executor.run_bash(f"{base} git clone {self.configuration.remote}")
         return ret
+            """
+        )
 
     def checkout_remote_branch(self, git_remote_url, branch_name):
         """
@@ -62,7 +66,7 @@ class GitAPI:
             for line in lines:
                 if "SSH_AGENT_PID" in line:
                     lst_line = line.split("=")
-                    int_agent_pid = int((lst_line[lst_line.index("SSH_AGENT_PID")+1]).split(";")[0])
+                    int_agent_pid = int((lst_line[lst_line.index("SSH_AGENT_PID") + 1]).split(";")[0])
                 if "SSH_AUTH_SOCK" in line:
                     ssh_base_command = f"{line} {ssh_base_command}"
         try:
@@ -88,13 +92,16 @@ class GitAPI:
         current_working_directory = os.getcwd()
         if current_working_directory != self.configuration.git_directory_path:
             os.chdir(self.configuration.git_directory_path)
-        self.configuration.directory_path = str(Path(self.configuration.git_directory_path) / git_remote_url.split("/")[-1])
+        self.configuration.directory_path = str(
+            Path(self.configuration.git_directory_path) / git_remote_url.split("/")[-1])
+
         if not os.path.exists(self.configuration.directory_path):
             command = f"{ssh_base_command} git clone -b {branch_name} --single-branch {git_remote_url}"
             self.bash_executor.run_bash(command)
             os.chdir(self.configuration.directory_path)
             return True
 
+        logger.info(f"Changing directory to source code directory: {self.configuration.directory_path}")
         os.chdir(self.configuration.directory_path)
 
         command = "git remote -v"
@@ -152,11 +159,18 @@ class GitAPI:
 
         command = f"git checkout {branch_name}"
         ret = self.bash_executor.run_bash(command)
-        if ret["stdout"] not in [f"Your branch is up to date with '{remote_name}/{branch_name}'.", f"branch '{branch_name}' set up to track '{remote_name}/{branch_name}'."]:
+        if ret["stdout"] not in [f"Your branch is up to date with '{remote_name}/{branch_name}'.",
+                                 f"branch '{branch_name}' set up to track '{remote_name}/{branch_name}'."]:
             raise RuntimeError(ret)
         return True
 
     def get_commit_id(self):
+        """
+        Fetch current commit short id
+
+        :return:
+        """
+
         command = "git rev-parse --short HEAD"
         ret = self.bash_executor.run_bash(command)
         stdout = ret["stdout"]
