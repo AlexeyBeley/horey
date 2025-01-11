@@ -68,7 +68,7 @@ class EnvironmentAPI:
         self.configuration = configuration
         self.aws_api = aws_api
         self.git_api = git_api
-        self.docker_api = DockerAPI()
+        self._docker_api = None
         self.aws_api.sts_client.main_cache_dir_path = os.path.join(self.configuration.data_directory_path, "cache")
         if self.aws_api.configuration:
             self.aws_api.configuration.aws_api_cache_dir = self.aws_api.sts_client.main_cache_dir_path
@@ -76,6 +76,17 @@ class EnvironmentAPI:
         self._vpc = None
         self._subnets = None
         self.jenkins_api = None
+
+    @property
+    def docker_api(self):
+        """
+        Object getter
+
+        :return:
+        """
+        if self._docker_api is None:
+            self._docker_api = DockerAPI()
+        return self._docker_api
 
     @property
     def region(self):

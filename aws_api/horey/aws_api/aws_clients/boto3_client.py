@@ -852,6 +852,7 @@ class Boto3Client:
         final_result = []
         for result in regional_fetcher_generator(region, filters_req=filters_req):
             obj = entity_class(result)
+            obj.account_id = self.account_id
 
             obj.region = region
             if full_information_callback:

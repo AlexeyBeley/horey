@@ -105,8 +105,35 @@ class LambdaEventSourceMapping(AwsObject):
         :return:
         """
 
-        breakpoint()
         if self._arn is None:
-            self._arn = self.uuid
+            if not self.account_id:
+                raise RuntimeError("Can not generate arn, account_id was not set")
+            self._arn = f"arn:aws:lambda:{self.region.region_mark}:{self.account_id}:event-source-mapping:{self.uuid}"
 
         return self._arn
+
+    @arn.setter
+    def arn(self, value):
+        self._arn = value
+
+    def generate_modify_tags_requests(self, desired_state):
+        """
+        Add tags, delete tags.
+
+        :param desired_state:
+        :return:
+        """
+
+        tag_keys, untag_keys = {}, []
+
+        for key, value in self.tags.items():
+            if key not in desired_state.tags:
+                untag_keys.append(key)
+
+        for key, value in desired_state.tags.items():
+            if self.tags.get(key) != value:
+                tag_keys[key] = value
+
+        tag_resource_request = {"Resource": self.arn, "Tags": tag_keys} if tag_keys else None
+        untag_resource_request = {"Resource": self.arn, "TagKeys": untag_keys} if untag_keys else None
+        return tag_resource_request, untag_resource_request

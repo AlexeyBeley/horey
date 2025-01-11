@@ -448,13 +448,15 @@ class LambdaClient(Boto3Client):
                                                                )
             del response["ResponseMetadata"]
             event_source_mapping.update_from_raw_response(response)
-        breakpoint()
+
         tag_resource_request, untag_resource_request = region_event_source_mapping.generate_modify_tags_requests(event_source_mapping)
         if tag_resource_request:
-            self.tag_resource(region_event_source_mapping, arn_identifier="Resource", tags_identifier="Tags")
+            self.tag_resource_raw(event_source_mapping.region, tag_resource_request)
         if untag_resource_request:
             self.clear_cache(LambdaEventSourceMapping)
             self.untag_resource_raw(event_source_mapping.region, untag_resource_request)
+
+        return True
 
     def update_event_source_mapping_information(self, event_source_mapping: LambdaEventSourceMapping, get_tags=True):
         """
@@ -477,7 +479,12 @@ class LambdaClient(Boto3Client):
             event_source_mapping.update_from_attrs(region_event_source_mapping)
 
             if get_tags:
-                event_source_mapping.tags = self.get_tags(event_source_mapping, function=self.get_session_client(event_source_mapping.region).list_tags, arn_identifier="Resource")
+                for response in self.execute(
+                        self.get_session_client(region=event_source_mapping.region).list_tags,
+                        "Tags",
+                        filters_req={"Resource": event_source_mapping.arn},
+                ):
+                    event_source_mapping.tags = response
             return True
         return False
 
@@ -547,4 +554,27 @@ class LambdaClient(Boto3Client):
                 raw_data=True,
                 filters_req=request_dict,
         ):
+            self.clear_cache(AWSLambda)
+            self.clear_cache(LambdaEventSourceMapping)
+            return response
+
+    def tag_resource_raw(self, region, request_dict):
+        """
+        Standard.
+
+        :param region:
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Tagging resource: {request_dict}")
+
+        for response in self.execute(
+                self.get_session_client(region=region).tag_resource,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
+        ):
+            self.clear_cache(AWSLambda)
+            self.clear_cache(LambdaEventSourceMapping)
             return response
