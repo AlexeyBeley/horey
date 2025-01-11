@@ -77,3 +77,33 @@ class AWSIAMAPI:
         if not self.environment_api.aws_api.iam_client.update_role_information(iam_role):
             raise ValueError(f"Was not able to find role: {iam_role} with path {iam_role.path}")
         return iam_role
+
+    def generate_inline_policy(self, name, resources, actions):
+        """
+        Generate role inline policy
+
+        :param name:
+        :param resources:
+        :param actions:
+        :return:
+        """
+
+        policy = IamPolicy({})
+        policy.document = {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Action": actions,
+                    "Resource": resources
+                }
+            ]
+        }
+        policy.name = name
+        policy.description = name
+        policy.tags = self.environment_api.configuration.tags
+        policy.tags.append({
+            "Key": "Name",
+            "Value": policy.name
+        })
+        return policy

@@ -108,36 +108,6 @@ class LambdaClient(Boto3Client):
         ):
             obj.reserved_concurrent_executions = response.get("ReservedConcurrentExecutions")
 
-    def get_all_event_source_mappings(self, region=None):
-        """
-        Get all event_source_mapping in all regions
-        :return:
-        """
-
-        if region is not None:
-            return self.get_region_event_source_mappings(region)
-
-        final_result = []
-        for _region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_event_source_mappings(_region)
-
-        return final_result
-
-    def get_region_event_source_mappings(self, region):
-        """
-        Standard
-
-        @param region:
-        @return:
-        """
-        final_result = []
-        for response in self.execute(
-                self.get_session_client(region=region).list_event_source_mappings, "EventSourceMappings"
-        ):
-            obj = LambdaEventSourceMapping(response)
-            final_result.append(obj)
-        return final_result
-
     def update_lambda_information(self, aws_lambda, full_information=True):
         """
         Update lambda info if exists.
@@ -411,56 +381,6 @@ class LambdaClient(Boto3Client):
         ):
             return response
 
-    def provision_event_source_mapping(
-            self, event_source_mapping: LambdaEventSourceMapping
-    ):
-        """
-        Standard
-
-        @param event_source_mapping:
-        @return:
-        """
-        region_event_source_mappings = self.get_all_event_source_mappings(
-            region=event_source_mapping.region
-        )
-        for region_event_source_mapping in region_event_source_mappings:
-            if not region_event_source_mapping.function_arn.endswith(
-                    event_source_mapping.function_identification
-            ):
-                continue
-            if (
-                    region_event_source_mapping.event_source_arn
-                    != event_source_mapping.event_source_arn
-            ):
-                continue
-
-            event_source_mapping.update_from_raw_response(
-                region_event_source_mapping.dict_src
-            )
-            return
-
-        response = self.provision_event_source_mapping_raw(event_source_mapping.region,
-                                                           event_source_mapping.generate_create_request()
-                                                           )
-        del response["ResponseMetadata"]
-        event_source_mapping.update_from_raw_response(response)
-
-    def provision_event_source_mapping_raw(self, region, request_dict):
-        """
-        Standard
-
-        @param request_dict:
-        @return:
-        """
-        logger.info(f"Creating lambda event_source_mapping: {request_dict}")
-        for response in self.execute(
-                self.get_session_client(region=region).create_event_source_mapping,
-                None,
-                raw_data=True,
-                filters_req=request_dict,
-        ):
-            return response
-
     def invoke_raw(self, region, request_dict):
         """
         Standard
@@ -475,5 +395,165 @@ class LambdaClient(Boto3Client):
 
         for response in self.execute(
                 self.get_session_client(region=region).invoke, None, raw_data=True, filters_req=request_dict
+        ):
+            return response
+
+    # pylint: disable= too-many-arguments
+    def yield_event_source_mappings(self, region=None, update_info=False, filters_req=None):
+        """
+        Yield event_source_mappings
+
+        :return:
+        """
+
+        regional_fetcher_generator = self.yield_event_source_mappings_raw
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                            LambdaEventSourceMapping,
+                                                            update_info=update_info,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req)
+
+    def yield_event_source_mappings_raw(self, region, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        yield from self.execute(
+                self.get_session_client(region=region).list_event_source_mappings, "EventSourceMappings", filters_req=filters_req
+        )
+
+    def provision_event_source_mapping(
+            self, event_source_mapping: LambdaEventSourceMapping
+    ):
+        """
+        Standard
+
+        @param event_source_mapping:
+        @return:
+        """
+
+        if not event_source_mapping.tags:
+            raise ValueError("Provisioning event source without tags is not permitted. "
+                             f"Put valuable information here and thank me later. {event_source_mapping.function_arn}")
+
+        region_event_source_mapping = LambdaEventSourceMapping({})
+        region_event_source_mapping.region = event_source_mapping.region
+        region_event_source_mapping.function_arn = event_source_mapping.function_arn
+        region_event_source_mapping.event_source_arn = event_source_mapping.event_source_arn
+        if not self.update_event_source_mapping_information(region_event_source_mapping, get_tags=True):
+            response = self.provision_event_source_mapping_raw(event_source_mapping.region,
+                                                               event_source_mapping.generate_create_request()
+                                                               )
+            del response["ResponseMetadata"]
+            event_source_mapping.update_from_raw_response(response)
+        breakpoint()
+        tag_resource_request, untag_resource_request = region_event_source_mapping.generate_modify_tags_requests(event_source_mapping)
+        if tag_resource_request:
+            self.tag_resource(region_event_source_mapping, arn_identifier="Resource", tags_identifier="Tags")
+        if untag_resource_request:
+            self.clear_cache(LambdaEventSourceMapping)
+            self.untag_resource_raw(event_source_mapping.region, untag_resource_request)
+
+    def update_event_source_mapping_information(self, event_source_mapping, get_tags=True):
+        """
+        Standard.
+
+        :param get_tags:
+        :param event_source_mapping:
+        :return:
+        """
+
+        for region_event_source_mapping in self.yield_event_source_mappings(region=event_source_mapping.region):
+            if region_event_source_mapping.function_arn != event_source_mapping.function_arn:
+                continue
+            if (
+                    region_event_source_mapping.event_source_arn
+                    != event_source_mapping.event_source_arn
+            ):
+                continue
+
+            request_dict = {"UUID": region_event_source_mapping.uuid}
+            for response in self.execute(
+                    self.get_session_client(region=event_source_mapping.region).get_event_source_mapping,
+                    None,
+                    raw_data=True,
+                    filters_req=request_dict,
+            ):
+                event_source_mapping.update_from_raw_response(response)
+                breakpoint()
+
+            if get_tags:
+                breakpoint()
+                event_source_mapping.tags = self.get_tags(event_source_mapping, function=self.get_session_client(event_source_mapping.region).list_tags, arn_identifier="Resource")
+            return True
+        return False
+
+    def provision_event_source_mapping_raw(self, region, request_dict):
+        """
+        Standard.
+
+        :param region:
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Creating lambda event_source_mapping: {request_dict}")
+        for response in self.execute(
+                self.get_session_client(region=region).create_event_source_mapping,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
+        ):
+            self.clear_cache(LambdaEventSourceMapping)
+            return response
+
+    def get_all_event_source_mappings(self, region=None):
+        """
+        Get all event_source_mapping in all regions
+        :return:
+        """
+
+        if region is not None:
+            return self.get_region_event_source_mappings(region)
+
+        final_result = []
+        for _region in AWSAccount.get_aws_account().regions.values():
+            final_result += self.get_region_event_source_mappings(_region)
+
+        return final_result
+
+    def get_region_event_source_mappings(self, region):
+        """
+        Standard
+
+        @param region:
+        @return:
+        """
+        final_result = []
+        for response in self.execute(
+                self.get_session_client(region=region).list_event_source_mappings, "EventSourceMappings"
+        ):
+            obj = LambdaEventSourceMapping(response)
+            final_result.append(obj)
+        return final_result
+
+    def untag_resource_raw(self, region, request_dict):
+        """
+        Standard.
+
+        :param region:
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Untagging resource: {request_dict}")
+
+        for response in self.execute(
+                self.get_session_client(region=region).untag_resource,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
         ):
             return response

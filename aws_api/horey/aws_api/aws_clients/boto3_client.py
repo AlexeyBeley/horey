@@ -576,6 +576,7 @@ class Boto3Client:
                 filters_req={arn_identifier: obj.arn, tags_identifier: obj.tags},
                 raw_data=True,
         ):
+            self.clear_cache(obj.__class__)
             return response
 
     class NoReturnStringError(Exception):

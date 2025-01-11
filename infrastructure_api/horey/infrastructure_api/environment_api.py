@@ -46,7 +46,6 @@ from horey.aws_api.aws_services_entities.cloud_watch_log_group_metric_filter imp
 from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlarm
 from horey.aws_api.aws_services_entities.event_bridge_rule import EventBridgeRule
 from horey.aws_api.aws_services_entities.event_bridge_target import EventBridgeTarget
-from horey.aws_api.aws_services_entities.sesv2_configuration_set import SESV2ConfigurationSet
 from horey.aws_api.aws_services_entities.ses_identity import SESIdentity
 from horey.aws_cleaner.aws_cleaner import AWSCleaner
 from horey.aws_cleaner.aws_cleaner_configuration_policy import AWSCleanerConfigurationPolicy
@@ -1953,7 +1952,7 @@ class EnvironmentAPI:
         topic.region = self.region
 
         if not self.aws_api.sns_client.update_topic_information(topic, full_information=False):
-            raise RuntimeError("Could not update topic information")
+            raise RuntimeError(f"Could not update topic '{name}' information")
         return topic
 
     def provision_iam_role(self, name=None,
@@ -2257,36 +2256,6 @@ class EnvironmentAPI:
         self.aws_api.provision_ses_domain_email_identity(email_identity,
                                                          hosted_zone_name=hosted_zone_name)
         return True
-
-    def provision_sesv2_configuration_set(self, name=None,
-                                          configuration_set_tracking_options=None,
-                                          reputation_options=None,
-                                          sending_options=None,
-                                          event_destinations=None):
-        """
-        Provision SES V2 config set.
-
-        :param name:
-        :param configuration_set_tracking_options:
-        :param reputation_options:
-        :param sending_options:
-        :return:
-        """
-
-        configuration_set = SESV2ConfigurationSet({})
-        configuration_set.name = name
-        configuration_set.region = self.region
-        configuration_set.tracking_options = configuration_set_tracking_options
-        configuration_set.reputation_options = reputation_options
-        configuration_set.sending_options = sending_options
-        if event_destinations is not None:
-            configuration_set.event_destinations = event_destinations
-        configuration_set.tags = self.configuration.tags
-        configuration_set.tags.append({
-            "Key": "Name",
-            "Value": configuration_set.name
-        })
-        return self.aws_api.sesv2_client.provision_configuration_set(configuration_set, declerative=True)
 
     def generate_cleanup_report(self):
         """

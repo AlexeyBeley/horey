@@ -23,6 +23,40 @@ class AWSLambdaAPIConfigurationPolicy(ConfigurationPolicy):
         self._environment_variables = None
         self._security_groups = None
         self._schedule_expression = None
+        self._provision_sns_topic = None
+        self._sns_topic_name = None
+        self._event_source_mapping_dynamodb_name = None
+
+    @property
+    def event_source_mapping_dynamodb_name(self):
+        return self._event_source_mapping_dynamodb_name
+
+    @event_source_mapping_dynamodb_name.setter
+    def event_source_mapping_dynamodb_name(self, value):
+        self._event_source_mapping_dynamodb_name = value
+
+
+    @property
+    def sns_topic_name(self):
+        if self._sns_topic_name is None:
+            self._sns_topic_name = f"topic_{self.lambda_name}"
+
+        return self._sns_topic_name
+
+    @sns_topic_name.setter
+    def sns_topic_name(self, value):
+        self._sns_topic_name = value
+
+    @property
+    def provision_sns_topic(self):
+        return self._provision_sns_topic
+
+    @provision_sns_topic.setter
+    def provision_sns_topic(self, value):
+        if not isinstance(value, bool):
+            raise ValueError(f"{value} must be bool")
+
+        self._provision_sns_topic = value
 
     @property
     def schedule_expression(self):

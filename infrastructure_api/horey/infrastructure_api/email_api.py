@@ -3,6 +3,7 @@ Emails maintainer.
 
 """
 from horey.h_logger import get_logger
+from horey.aws_api.aws_services_entities.sesv2_configuration_set import SESV2ConfigurationSet
 
 logger = get_logger()
 
@@ -54,15 +55,24 @@ class EmailAPI:
         if self.configuration.configuration_set_name is None:
             return False
 
-        return self.environment_api.provision_sesv2_configuration_set(name=self.configuration.configuration_set_name,
-                                                                      configuration_set_tracking_options=self.configuration.configuration_set_tracking_options,
-                                                                      reputation_options={
+        configuration_set = SESV2ConfigurationSet({})
+        configuration_set.name = self.configuration.configuration_set_name
+        configuration_set.region = self.environment_api.region
+        configuration_set.tracking_options = self.configuration.configuration_set_tracking_options
+        configuration_set.reputation_options = {
                                                                           "ReputationMetricsEnabled": self.configuration.configuration_set_reputation_metrics_enabled
-                                                                      },
-                                                                      sending_options={
+                                                                      }
+        configuration_set.sending_options = {
                                                                           "SendingEnabled": self.configuration.configuration_set_sending_enabled
-                                                                      },
-                                                                      event_destinations=self.configuration.configuration_set_event_destinations)
+                                                                      }
+        if self.configuration.configuration_set_event_destinations is not None:
+            configuration_set.event_destinations = self.configuration.configuration_set_event_destinations
+        configuration_set.tags = self.configuration.tags
+        configuration_set.tags.append({
+            "Key": "Name",
+            "Value": configuration_set.name
+        })
+        return self.environment_api.aws_api.sesv2_client.provision_configuration_set(configuration_set, declerative=True)
 
     def send_email(self, dst_address):
         """

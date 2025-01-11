@@ -253,7 +253,7 @@ class SNSClient(Boto3Client):
             if update_tags:
                 self.clear_cache(SNSTopic)
                 self.tag_resource_raw(topic.region, update_tags)
-            topic.update_from_raw_response(region_topic.dict_src)
+            topic.update_from_attrs(region_topic)
         else:
             response = self.provision_topic_raw(topic.region, topic.generate_create_request())
             topic.update_from_raw_response(response)
