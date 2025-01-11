@@ -26,6 +26,21 @@ class AWSLambdaAPIConfigurationPolicy(ConfigurationPolicy):
         self._provision_sns_topic = None
         self._sns_topic_name = None
         self._event_source_mapping_dynamodb_name = None
+        self._event_bridge_rule_name = None
+
+    @property
+    def event_bridge_rule_name(self):
+        if self._event_bridge_rule_name is None:
+            breakpoint()
+            if "rate" not in self.schedule_expression:
+                raise NotImplementedError(f"Can not create event_bridge_rule_name slug from {self.schedule_expression}")
+            slug = self.schedule_expression.replace("(", "_").replace(")", "_").replace(" ", "_").strip("_")
+            self._event_bridge_rule_name = f"event_{self.lambda_name}_{slug}"
+        return self._event_bridge_rule_name
+
+    @event_bridge_rule_name.setter
+    def event_bridge_rule_name(self, value):
+        self._event_bridge_rule_name = value
 
     @property
     def event_source_mapping_dynamodb_name(self):
@@ -34,7 +49,6 @@ class AWSLambdaAPIConfigurationPolicy(ConfigurationPolicy):
     @event_source_mapping_dynamodb_name.setter
     def event_source_mapping_dynamodb_name(self, value):
         self._event_source_mapping_dynamodb_name = value
-
 
     @property
     def sns_topic_name(self):

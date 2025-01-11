@@ -22,6 +22,7 @@ class LambdaEventSourceMapping(AwsObject):
         self.event_source_arn = None
         self.function_arn = None
         self.enabled = None
+        self.uuid = None
 
         super().__init__(dict_src)
 
@@ -97,31 +98,15 @@ class LambdaEventSourceMapping(AwsObject):
         return self.generate_request(["EventSourceArn", "FunctionName", "Enabled"], optional=["StartingPosition", "BatchSize"])
 
     @property
-    def region(self):
+    def arn(self):
         """
-        Self region.
+        Self arn.
 
         :return:
         """
 
-        if self._region is not None:
-            return self._region
+        breakpoint()
+        if self._arn is None:
+            self._arn = self.uuid
 
-        if self.arn is not None:
-            self._region = Region.get_region(self.arn.split(":")[3])
-
-        return self._region
-
-    @region.setter
-    def region(self, value):
-        """
-        Region setter.
-
-        :param value:
-        :return:
-        """
-
-        if not isinstance(value, Region):
-            raise ValueError(value)
-
-        self._region = value
+        return self._arn

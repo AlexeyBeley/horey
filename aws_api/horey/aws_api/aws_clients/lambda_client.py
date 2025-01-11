@@ -456,7 +456,7 @@ class LambdaClient(Boto3Client):
             self.clear_cache(LambdaEventSourceMapping)
             self.untag_resource_raw(event_source_mapping.region, untag_resource_request)
 
-    def update_event_source_mapping_information(self, event_source_mapping, get_tags=True):
+    def update_event_source_mapping_information(self, event_source_mapping: LambdaEventSourceMapping, get_tags=True):
         """
         Standard.
 
@@ -474,18 +474,9 @@ class LambdaClient(Boto3Client):
             ):
                 continue
 
-            request_dict = {"UUID": region_event_source_mapping.uuid}
-            for response in self.execute(
-                    self.get_session_client(region=event_source_mapping.region).get_event_source_mapping,
-                    None,
-                    raw_data=True,
-                    filters_req=request_dict,
-            ):
-                event_source_mapping.update_from_raw_response(response)
-                breakpoint()
+            event_source_mapping.update_from_attrs(region_event_source_mapping)
 
             if get_tags:
-                breakpoint()
                 event_source_mapping.tags = self.get_tags(event_source_mapping, function=self.get_session_client(event_source_mapping.region).list_tags, arn_identifier="Resource")
             return True
         return False
