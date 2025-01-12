@@ -19,8 +19,6 @@ from horey.infrastructure_api.aws_iam_api import AWSIAMAPI
 from horey.infrastructure_api.cloudwatch_api_configuration_policy import CloudwatchAPIConfigurationPolicy
 from horey.infrastructure_api.cloudwatch_api import CloudwatchAPI
 
-
-
 logger = get_logger()
 
 
@@ -40,6 +38,12 @@ class AWSLambdaAPI:
 
     @property
     def environment_variables_callback(self):
+        """
+        Standard
+
+        :return:
+        """
+
         if self._environment_variables_callback is None:
             self._environment_variables_callback = lambda: self.configuration.environment_variables
         return self._environment_variables_callback
@@ -50,6 +54,12 @@ class AWSLambdaAPI:
 
     @property
     def aws_iam_api(self):
+        """
+        Standard
+
+        :return:
+        """
+
         if self._aws_iam_api is None:
             config = AWSIAMAPIConfigurationPolicy()
             aws_iam_api = AWSIAMAPI(configuration=config, environment_api=self.environment_api)
@@ -58,10 +68,22 @@ class AWSLambdaAPI:
 
     @aws_iam_api.setter
     def aws_iam_api(self, value):
+        """
+        Standard
+
+        :return:
+        """
+
         self._aws_iam_api = value
 
     @property
     def ecs_api(self):
+        """
+        Standard
+
+        :return:
+        """
+
         if self._ecs_api is None:
             config = ECSAPIConfigurationPolicy()
             ecs_api = ECSAPI(configuration=config, environment_api=self.environment_api)
@@ -151,6 +173,7 @@ class AWSLambdaAPI:
 
         :return:
         """
+        self.environment_api.aws_api.lambda_client.clear_cache(None, all_cache=True)
 
         if self.cloudwatch_api is None:
             config = CloudwatchAPIConfigurationPolicy()
@@ -165,16 +188,16 @@ class AWSLambdaAPI:
             managed_policies_arns = []
 
         assume_role_policy = {
-          "Version": "2012-10-17",
-          "Statement": [
-            {
-              "Effect": "Allow",
-              "Principal": {
-                "Service": "lambda.amazonaws.com"
-              },
-              "Action": "sts:AssumeRole"
-            }
-          ]
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {
+                        "Service": "lambda.amazonaws.com"
+                    },
+                    "Action": "sts:AssumeRole"
+                }
+            ]
         }
 
         inline_policies = []
@@ -185,15 +208,16 @@ class AWSLambdaAPI:
 
             policy = self.aws_iam_api.generate_inline_policy(name, [
                 table.latest_stream_arn
-                ], [
-                    "dynamodb:GetRecords",
-                    "dynamodb:GetShardIterator",
-                    "dynamodb:DescribeStream",
-                    "dynamodb:ListStreams"
-                ])
+            ], [
+                                                                 "dynamodb:GetRecords",
+                                                                 "dynamodb:GetShardIterator",
+                                                                 "dynamodb:DescribeStream",
+                                                                 "dynamodb:ListStreams"
+                                                             ])
             inline_policies.append(policy)
 
-        self.aws_iam_api.provision_role(assume_role_policy=json.dumps(assume_role_policy), managed_policies_arns=managed_policies_arns, policies=inline_policies)
+        self.aws_iam_api.provision_role(assume_role_policy=json.dumps(assume_role_policy),
+                                        managed_policies_arns=managed_policies_arns, policies=inline_policies)
 
         events_rule = self.provision_events_rule() if self.configuration.schedule_expression is not None else None
 
@@ -279,7 +303,8 @@ class AWSLambdaAPI:
             commit_id = self.environment_api.git_api.get_commit_id()
 
             tags = [f"{repo_uri}:build_{build_number + 1}-commit_{commit_id}"]
-            image = self.environment_api.build_and_upload_ecr_image(self.environment_api.git_api.configuration.directory_path, tags, False)
+            image = self.environment_api.build_and_upload_ecr_image(
+                self.environment_api.git_api.configuration.directory_path, tags, False)
             image_tag = image.tags[-1]
         elif ecr_image is None:
             raise RuntimeError(f"Images store '{repo_uri}' is empty yet, use branch_name to build and image")
@@ -296,13 +321,15 @@ class AWSLambdaAPI:
         """
 
         for image in self.ecs_api.ecr_images:
-            build_numbers = [int(build_subtag.split("_")[1]) for str_image_tag in image.image_tags for build_subtag in str_image_tag.split("-") if build_subtag.startswith("build_")]
+            build_numbers = [int(build_subtag.split("_")[1]) for str_image_tag in image.image_tags for build_subtag in
+                             str_image_tag.split("-") if build_subtag.startswith("build_")]
             image.build_number = max(build_numbers)
 
         try:
             return max(self.ecs_api.ecr_images, key=lambda _image: _image.build_number)
         except ValueError as inst_error:
-            if "iterable argument is empty" not in repr(inst_error) and "arg is an empty sequence" not in repr(inst_error):
+            if "iterable argument is empty" not in repr(inst_error) and "arg is an empty sequence" not in repr(
+                    inst_error):
                 raise
 
         return None
@@ -349,28 +376,28 @@ class AWSLambdaAPI:
 
         if self.configuration.schedule_expression:
             aws_lambda.policy = {"Version": "2012-10-17",
-                             "Id": "default",
-                             "Statement": [
-                                 {"Sid": f"trigger_{self.configuration.event_bridge_rule_name}",
-                                  "Effect": "Allow",
-                                  "Principal": {"Service": "events.amazonaws.com"},
-                                  "Action": "lambda:InvokeFunction",
-                                  "Resource": None,
-                                  "Condition": {"ArnLike": {
-                                      "AWS:SourceArn": events_rule.arn}}}]}
+                                 "Id": "default",
+                                 "Statement": [
+                                     {"Sid": f"trigger_{self.configuration.event_bridge_rule_name}",
+                                      "Effect": "Allow",
+                                      "Principal": {"Service": "events.amazonaws.com"},
+                                      "Action": "lambda:InvokeFunction",
+                                      "Resource": None,
+                                      "Condition": {"ArnLike": {
+                                          "AWS:SourceArn": events_rule.arn}}}]}
         if sns_topic:
             if not aws_lambda.policy:
                 aws_lambda.policy = {"Version": "2012-10-17",
-                             "Id": "default",
-                             "Statement": []}
+                                     "Id": "default",
+                                     "Statement": []}
             statement = {
-                    "Sid": f"trigger_from_topic_{sns_topic.name}",
-                    "Effect": "Allow",
-                    "Principal": {"Service": "sns.amazonaws.com"},
-                    "Action": "lambda:InvokeFunction",
-                    "Resource": None,
-                    "Condition": {"ArnLike": {"AWS:SourceArn": sns_topic.arn}},
-                }
+                "Sid": f"trigger_from_topic_{sns_topic.name}",
+                "Effect": "Allow",
+                "Principal": {"Service": "sns.amazonaws.com"},
+                "Action": "lambda:InvokeFunction",
+                "Resource": None,
+                "Condition": {"ArnLike": {"AWS:SourceArn": sns_topic.arn}},
+            }
             aws_lambda.policy["Statement"].append(statement)
 
         aws_lambda.code = {"ImageUri": image_tag}
