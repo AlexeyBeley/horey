@@ -167,7 +167,7 @@ class AWSLambdaAPI:
                         ]
                     })
 
-    def provision(self, branch_name=None):
+    def provision(self, branch_name=None, inline_policies=None):
         """
         Provision ECS infrastructure.
 
@@ -200,7 +200,7 @@ class AWSLambdaAPI:
             ]
         }
 
-        inline_policies = []
+        inline_policies = inline_policies or []
         if self.configuration.event_source_mapping_dynamodb_name:
             # todo: generate cleanup report to find lambdas with no permissions
             name = f"inline_event_source_{self.configuration.event_source_mapping_dynamodb_name}"
