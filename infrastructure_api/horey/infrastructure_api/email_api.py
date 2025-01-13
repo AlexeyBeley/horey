@@ -4,6 +4,8 @@ Emails maintainer.
 """
 from horey.h_logger import get_logger
 from horey.aws_api.aws_services_entities.sesv2_configuration_set import SESV2ConfigurationSet
+from horey.aws_api.aws_services_entities.ses_identity import SESIdentity
+from horey.aws_api.aws_services_entities.sesv2_email_template import SESV2EmailTemplate
 
 logger = get_logger()
 
@@ -102,3 +104,48 @@ class EmailAPI:
         response = self.environment_api.aws_api.sesv2_client.send_email_raw(self.environment_api.region, request_dict=dict_request)
         logger.info(f"Sent email to {dst_address}, message_id: {response}")
         return response
+
+    def get_template(self, template_name):
+        """
+        Standard.
+
+        :param template_name:
+        :return:
+        """
+        template = SESV2EmailTemplate({})
+        template.name = template_name
+        template.region = self.environment_api.region
+
+        if not self.environment_api.aws_api.sesv2_client.update_email_template_information(template):
+            return None
+
+        return template
+
+    def get_identity(self, identity_name):
+        """
+        Standard.
+
+        :param identity_name:
+        :return:
+        """
+
+        identity = SESIdentity({})
+        identity.name = identity_name
+        identity.region = self.environment_api.region
+        if not self.environment_api.aws_api.sesv2_client.update_identity_information(identity):
+            return None
+        return identity
+
+    def get_configuration_set(self, configuration_set_name):
+        """
+        Standard.
+
+        :param configuration_set_name:
+        :return:
+        """
+
+        for region_config_set in self.environment_api.aws_api.sesv2_client.yield_configuration_sets(region=self.environment_api.region):
+            if region_config_set.name == configuration_set_name:
+                return region_config_set
+
+        return None

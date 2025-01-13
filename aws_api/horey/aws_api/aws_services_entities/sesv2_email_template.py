@@ -75,3 +75,12 @@ class SESV2EmailTemplate(AwsObject):
             None
 
         return request
+
+    @property
+    def arn(self):
+        """
+        Standard.
+
+        :return:
+        """
+        return f"arn:aws:ses:{self.region.region_mark}:{self.account_id}:template/{self.name}"

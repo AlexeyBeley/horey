@@ -4,6 +4,7 @@ AWS SESIdentity representation
 
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 
+
 # pylint: disable= too-many-instance-attributes
 class SESIdentity(AwsObject):
     """
@@ -89,6 +90,7 @@ class SESIdentity(AwsObject):
             "BounceTopic": self.init_default_attr,
             "ComplaintTopic": self.init_default_attr,
             "DeliveryTopic": self.init_default_attr,
+            "ConfigurationSetName": self.init_default_attr
         }
 
         self.init_attrs(dict_src, init_options)
@@ -161,3 +163,12 @@ class SESIdentity(AwsObject):
                            }
                 ret.append(request)
         return ret
+
+    @property
+    def arn(self):
+        """
+        Standard.
+
+        :return:
+        """
+        return f"arn:aws:ses:{self.region.region_mark}:{self.account_id}:identity/{self.name}"

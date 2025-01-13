@@ -123,7 +123,7 @@ class SESV2Client(Boto3Client):
         logger.info(f"get_region_email_identities: {region.region_mark}")
         return list(self.yield_email_identities(region=region))
 
-    def update_email_identity_information(self, obj: SESIdentity):
+    def update_identity_information(self, obj: SESIdentity):
         """
         Standard
 
@@ -131,25 +131,12 @@ class SESV2Client(Boto3Client):
         @return:
         """
 
-        response = list(
-            self.execute(
-                self.get_session_client(region=obj.region).get_email_identity,
-                None,
-                raw_data=True,
-                filters_req={"EmailIdentity": obj.name},
-                exception_ignore_callback=lambda x: "NotFoundException" in repr(x),
-            )
-        )
-        if len(response) == 0:
-            return
-
-        if len(response) > 1:
-            raise RuntimeError(f"Expected to find <= 1 but found {len(response)}")
-
-        dict_src = response[0]
-        del dict_src["ResponseMetadata"]
-
-        obj.update_from_raw_response(dict_src)
+        for region_identity in self.yield_email_identities(region=obj.region):
+            if obj.name != region_identity.name:
+                continue
+            obj.update_from_attrs(region_identity)
+            return True
+        return False
 
     # pylint: disable= too-many-arguments
     def yield_configuration_sets(self, region=None, update_info=False, full_information=True, filters_req=None):

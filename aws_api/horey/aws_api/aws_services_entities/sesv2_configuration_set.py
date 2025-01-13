@@ -125,3 +125,12 @@ class SESV2ConfigurationSet(AwsObject):
             raise ValueError(value)
 
         self._region = value
+
+    @property
+    def arn(self):
+        """
+        Standard.
+
+        :return:
+        """
+        return f"arn:aws:ses:{self.region.region_mark}:{self.account_id}:configuration-set/{self.name}"
