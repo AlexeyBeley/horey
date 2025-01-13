@@ -151,12 +151,15 @@ class GitAPI:
         else:
             raise RuntimeError("Was not able to find line corresponding to fetched branch")
 
-        # old: command = f"git reset --hard {remote_name}/{branch_name}"
-        command = f"git reset --hard {branch_name}"
-        ret = self.bash_executor.run_bash(command)
-        stdout = ret["stdout"]
-        if "HEAD is now at" not in stdout:
-            raise RuntimeError(stdout)
+        command = f"git rev-parse --verify {branch_name}"
+        ret = self.bash_executor.run_bash(command,
+                                          ignore_on_error_callback=lambda dict_response: "Needed a single revision" in dict_response.get("stderr"))
+        if ret["code"] == 0:
+            command = f"git reset --hard {branch_name}"
+            ret = self.bash_executor.run_bash(command)
+            stdout = ret["stdout"]
+            if "HEAD is now at" not in stdout:
+                raise RuntimeError(stdout)
 
         command = f"git checkout {branch_name}"
         ret = self.bash_executor.run_bash(command)
