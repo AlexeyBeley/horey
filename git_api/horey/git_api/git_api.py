@@ -161,12 +161,19 @@ class GitAPI:
             if "HEAD is now at" not in stdout:
                 raise RuntimeError(stdout)
 
-        command = f"git checkout {branch_name}"
-        ret = self.bash_executor.run_bash(command)
-        if ret["stdout"] not in [f"Your branch is up to date with '{remote_name}/{branch_name}'.",
-                                 f"branch '{branch_name}' set up to track '{remote_name}/{branch_name}'."]:
-            if ret["stderr"] != f"Already on '{branch_name}'":
-                raise RuntimeError(ret)
+            command = f"git checkout {branch_name}"
+            ret = self.bash_executor.run_bash(command)
+            if ret["stdout"] not in [f"Your branch is up to date with '{remote_name}/{branch_name}'.",
+                                     f"branch '{branch_name}' set up to track '{remote_name}/{branch_name}'."]:
+                if ret["stderr"] != f"Already on '{branch_name}'":
+                    raise RuntimeError(ret)
+        else:
+            command = f"git checkout -b {branch_name}"
+            ret = self.bash_executor.run_bash(command)
+            if ret["stdout"] not in [f"Your branch is up to date with '{remote_name}/{branch_name}'.",
+                                     f"branch '{branch_name}' set up to track '{remote_name}/{branch_name}'."]:
+                if ret["stderr"] != f"Already on '{branch_name}'":
+                    raise RuntimeError(ret)
 
         command = "git merge FETCH_HEAD"
         ret = self.bash_executor.run_bash(command)
