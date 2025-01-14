@@ -7,6 +7,8 @@ import datetime
 import sys
 import time
 import threading
+import traceback
+
 from horey.h_logger import get_logger
 
 logger = get_logger()
@@ -31,6 +33,10 @@ class AsyncOrchestrator:
 
         logger.info(f"Starting task '{task.id}' at {time.strftime('%X')}")
         if task.id in self.tasks:
+            ret = traceback.extract_stack()
+            logger.error(f"Task with id {task.id} already in tasks")
+            for line in ret:
+                logger.error(line)
             raise RuntimeError(f"Task with id {task.id} already in tasks: {self.tasks}")
         self.tasks[task.id] = task
 
