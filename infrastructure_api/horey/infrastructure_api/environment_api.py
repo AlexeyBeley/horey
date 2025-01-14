@@ -2299,17 +2299,18 @@ class EnvironmentAPI:
         aws_cleaner.cleanup_report_ebs_volumes()
         return aws_cleaner.cleanup_report_cloudwatch()
 
-    def build_and_upload_ecr_image(self, dir_path, tags, nocache):
+    def build_and_upload_ecr_image(self, dir_path, tags, nocache, buildargs=None):
         """
         Build and upload.
 
+        :param buildargs:
         :param dir_path:
         :param tags:
         :param nocache:
         :return:
         """
 
-        image = self.build_ecr_image(dir_path, tags, nocache)
+        image = self.build_ecr_image(dir_path, tags, nocache, buildargs=buildargs)
         try:
             self.docker_api.upload_images(image.tags)
         except Exception as inst_error:
@@ -2321,10 +2322,11 @@ class EnvironmentAPI:
                 raise
         return image
 
-    def build_ecr_image(self, dir_path, tags, nocache):
+    def build_ecr_image(self, dir_path, tags, nocache, buildargs=None):
         """
         Image building fails for different reasons, this function aggregates the reasons and handles them.
 
+        :param buildargs:
         :param dir_path:
         :param tags:
         :param nocache:
@@ -2333,13 +2335,14 @@ class EnvironmentAPI:
 
         for _ in range(120):
             try:
-                return self.docker_api.build(dir_path, tags, nocache=nocache)
+                breakpoint()
+                return self.docker_api.build(dir_path, tags, nocache=nocache, buildargs=buildargs)
             except Exception as error_inst:
                 repr_error_inst = repr(error_inst)
                 if "authorization token has expired" in repr_error_inst:
                     ecr_repository_region = tags[0].split(".")[3]
                     registry, _, _ = self.login_to_ecr_repository(region=Region.get_region(ecr_repository_region), logout=True)
-                    return self.docker_api.build(dir_path, tags, nocache=nocache)
+                    return self.docker_api.build(dir_path, tags, nocache=nocache, buildargs=buildargs)
                 raise
 
         raise TimeoutError("Was not able to build and image")

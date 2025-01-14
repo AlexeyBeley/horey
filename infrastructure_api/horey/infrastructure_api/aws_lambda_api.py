@@ -294,7 +294,6 @@ class AWSLambdaAPI:
         """
         ecr_image = self.get_latest_build()
         build_number = ecr_image.build_number if ecr_image is not None else -1
-
         repo_uri = f"{self.environment_api.aws_api.ecs_client.account_id}.dkr.ecr.{self.ecs_api.configuration.ecr_repository_region}.amazonaws.com/{self.ecs_api.configuration.ecr_repository_name}"
         if branch_name is not None:
             if not self.environment_api.git_api.checkout_remote_branch(self.configuration.git_remote_url, branch_name):
@@ -304,7 +303,7 @@ class AWSLambdaAPI:
 
             tags = [f"{repo_uri}:build_{build_number + 1}-commit_{commit_id}"]
             image = self.environment_api.build_and_upload_ecr_image(
-                self.environment_api.git_api.configuration.directory_path, tags, False)
+                self.environment_api.git_api.configuration.directory_path, tags, False, buildargs=self.configuration.buildargs)
             image_tag = image.tags[-1]
         elif ecr_image is None:
             raise RuntimeError(f"Images store '{repo_uri}' is empty yet, use branch_name to build and image")

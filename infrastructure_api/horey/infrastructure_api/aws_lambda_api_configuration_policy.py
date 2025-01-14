@@ -27,6 +27,15 @@ class AWSLambdaAPIConfigurationPolicy(ConfigurationPolicy):
         self._sns_topic_name = None
         self._event_source_mapping_dynamodb_name = None
         self._event_bridge_rule_name = None
+        self._buildargs = None
+
+    @property
+    def buildargs(self):
+        return self._buildargs
+
+    @buildargs.setter
+    def buildargs(self, value):
+        self._buildargs = value
 
     @property
     def event_bridge_rule_name(self):
