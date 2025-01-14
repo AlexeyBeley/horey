@@ -163,9 +163,10 @@ class GitAPI:
 
             command = f"git checkout {branch_name}"
             ret = self.bash_executor.run_bash(command)
+            #todo: 'Your branch is behind \'origin/master\' by 4 commits, and can be fast-forwarded.\n  (use "git pull" to update your local branch)'
             if ret["stdout"] not in [f"Your branch is up to date with '{remote_name}/{branch_name}'.",
                                      f"branch '{branch_name}' set up to track '{remote_name}/{branch_name}'."]:
-                if ret["stderr"] != f"Already on '{branch_name}'":
+                if ret["stderr"] not in [f"Already on '{branch_name}'", f"Switched to branch '{branch_name}'"]:
                     raise RuntimeError(ret)
         else:
             command = f"git checkout -b {branch_name}"

@@ -32,12 +32,14 @@ class AlertsAPI:
         has2_config.horey_repo_path = self.configuration.horey_repo_path
         has2_config.do_not_send_ses_suppressed_bounce_notifications = self.configuration.do_not_send_ses_suppressed_bounce_notifications
         has2_config.sns_topic_name = self.configuration.sns_topic_name
-
+        has2_config.lambda_name = self.configuration.lambda_name
+        has2_config.dynamodb_table_name = self.configuration.dynamodb_table_name
         has2_config.region = self.environment_api.configuration.region
+        has2_config.tags = self.environment_api.configuration.tags
         self.alert_system = AlertSystem(has2_config)
-        self.generate_notification_channels_configuration()
+        # self.generate_notification_channels_configuration()
 
-    def generate_notification_channels_configuration(self):
+    def generate_lambda_package_configuration_files(self):
         """
         Generate slack api files.
 
@@ -45,7 +47,7 @@ class AlertsAPI:
         """
 
         configuration = NotificationChannelSlackConfigurationPolicy()
-        dict_mappings = self.configuration.route_tags_to_slack_channels_mapping
+        dict_mappings = self.configuration.routing_tags_to_slack_channels_mapping
         dict_mappings.update(
             {Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG: self.configuration.self_monitoring_slack_channel})
         if self.configuration.ses_alert_slack_channel:
@@ -58,10 +60,6 @@ class AlertsAPI:
 
         self.alert_system.configuration.notification_channels = [
             sys.modules[NotificationChannelSlack.__module__].__file__]
-        self.alert_system.configuration.lambda_name = self.configuration.lambda_name
-        self.alert_system.configuration.dynamodb_table_name = self.configuration.dynamodb_table_name
-        self.alert_system.configuration.region = self.environment_api.configuration.region
-        self.alert_system.configuration.tags = self.environment_api.configuration.tags
 
         slack_channel_configuration_file_path = os.path.join(self.alert_system.configuration.deployment_directory_path,
                                                              NotificationChannelSlack.CONFIGURATION_FILE_NAME)
@@ -72,6 +70,7 @@ class AlertsAPI:
         self.alert_system.configuration.generate_configuration_file(alert_system_configuration_file_path)
 
         self.configuration.files = [slack_channel_configuration_file_path, alert_system_configuration_file_path]
+        return self.configuration.files
 
     def provision(self):
         """
@@ -218,7 +217,7 @@ class AlertsAPI:
         topic = self.environment_api.get_sns_topic(self.configuration.sns_topic_name)
         events_rule = self.environment_api.get_event_bridge_rule(self.configuration.event_bridge_rule_name)
 
-        zip_file_path = self.alert_system.build_and_validate(self.configuration.files)
+        zip_file_path = self.alert_system.build_and_validate(self.generate_lambda_package_configuration_files())
         policy = {
             "Version": "2012-10-17",
             "Id": "default",
