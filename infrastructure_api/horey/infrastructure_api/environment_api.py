@@ -2335,7 +2335,6 @@ class EnvironmentAPI:
 
         for _ in range(120):
             try:
-                breakpoint()
                 return self.docker_api.build(dir_path, tags, nocache=nocache, buildargs=buildargs)
             except Exception as error_inst:
                 repr_error_inst = repr(error_inst)
