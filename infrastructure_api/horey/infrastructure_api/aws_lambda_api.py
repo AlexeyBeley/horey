@@ -3,6 +3,7 @@ Standard ECS maintainer.
 
 """
 import json
+import os
 
 from horey.h_logger import get_logger
 
@@ -18,6 +19,8 @@ from horey.infrastructure_api.aws_iam_api_configuration_policy import AWSIAMAPIC
 from horey.infrastructure_api.aws_iam_api import AWSIAMAPI
 from horey.infrastructure_api.cloudwatch_api_configuration_policy import CloudwatchAPIConfigurationPolicy
 from horey.infrastructure_api.cloudwatch_api import CloudwatchAPI
+from horey.infrastructure_api.alerts_api import AlertsAPI
+from horey.infrastructure_api.alerts_api_configuration_policy import AlertsAPIConfigurationPolicy
 
 logger = get_logger()
 
@@ -35,6 +38,28 @@ class AWSLambdaAPI:
         self._ecs_api = None
         self._aws_iam_api = None
         self._environment_variables_callback = None
+        self._alerts_api = None
+
+    @property
+    def alerts_api(self):
+        """
+        Alerts api
+
+        :return:
+        """
+        if self._alerts_api is None:
+            alerts_api_configuration = AlertsAPIConfigurationPolicy()
+            alerts_api_configuration.sns_topic_name = f"topic-has2-{self.configuration.lambda_name}"
+            alerts_api_configuration.dynamodb_table_name = f"has2-{self.configuration.lambda_name}"
+            alerts_api_configuration.event_bridge_rule_name = f"rule-has2-{self.configuration.lambda_name}"
+            alerts_api_configuration.lambda_role_name = f"role_{self.environment_api.configuration.environment_level}-has2-{self.configuration.lambda_name}"
+            alerts_api_configuration.lambda_name = f"has2-{self.configuration.lambda_name}"
+            alerts_api_configuration.horey_repo_path = os.path.join(self.environment_api.git_api.configuration.git_directory_path, "horey")
+
+            alerts_api_configuration.sns_subscription_name = f"has2-{self.configuration.lambda_name}"
+            alerts_api_configuration.log_group_name = f"has2-{self.configuration.lambda_name}"
+            self._alerts_api = AlertsAPI(alerts_api_configuration, self.environment_api)
+        return self._alerts_api
 
     @property
     def environment_variables_callback(self):
@@ -232,7 +257,9 @@ class AWSLambdaAPI:
         if self.configuration.event_source_mapping_dynamodb_name:
             self.provision_event_source_mapping_dynamodb(aws_lambda)
 
-        # todo: self.provision_alert_system([])
+        self.alerts_api.provision()
+        self.alerts_api.provision_cloudwatch_logs_alarm(self.cloudwatch_api.configuration.log_group_name, '"[ERROR]"', "error", None, dimensions=None,
+                                        alarm_description=None)
         return True
 
     def provision_event_source_mapping_dynamodb(self, aws_lambda):

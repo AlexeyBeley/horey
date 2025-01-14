@@ -391,6 +391,9 @@ class AlertsAPI:
         :param log_group_name:
         """
 
+        if routing_tags is None:
+            routing_tags = self.configuration.routing_tags
+
         if metric_name is None:
             metric_name = f"has2-metric-filter-{log_group_name}-{metric_uid}"
 

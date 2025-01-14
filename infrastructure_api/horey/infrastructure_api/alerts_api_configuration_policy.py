@@ -22,12 +22,23 @@ class AlertsAPIConfigurationPolicy(ConfigurationPolicy):
         self._lambda_role_name = None
         self._lambda_name = None
         self._horey_repo_path = None
-        self._route_tags_to_slack_channels_mapping = None
+        self._routing_tags_to_slack_channels_mapping = None
         self._self_monitoring_slack_channel = None
         self._bearer_token = None
         self._ses_alert_slack_channel = None
         self._do_not_send_ses_suppressed_bounce_notifications = False
         self._postgres_cluster_identifier = False
+        self._routing_tags = False
+
+    @property
+    def routing_tags(self):
+        if self._bearer_token is None:
+            raise self.UndefinedValueError("routing_tags")
+        return self._routing_tags
+
+    @routing_tags.setter
+    def routing_tags(self, value):
+        self._routing_tags = value
 
     @property
     def postgres_cluster_identifier(self):
@@ -74,14 +85,14 @@ class AlertsAPIConfigurationPolicy(ConfigurationPolicy):
         self._self_monitoring_slack_channel = value
 
     @property
-    def route_tags_to_slack_channels_mapping(self):
-        if self._route_tags_to_slack_channels_mapping is None:
-            raise self.UndefinedValueError("route_tags_to_slack_channels_mapping")
-        return self._route_tags_to_slack_channels_mapping
+    def routing_tags_to_slack_channels_mapping(self):
+        if self._routing_tags_to_slack_channels_mapping is None:
+            raise self.UndefinedValueError("routing_tags_to_slack_channels_mapping")
+        return self._routing_tags_to_slack_channels_mapping
 
-    @route_tags_to_slack_channels_mapping.setter
-    def route_tags_to_slack_channels_mapping(self, value):
-        self._route_tags_to_slack_channels_mapping = value
+    @routing_tags_to_slack_channels_mapping.setter
+    def routing_tags_to_slack_channels_mapping(self, value):
+        self._routing_tags_to_slack_channels_mapping = value
 
     @property
     def horey_repo_path(self):
