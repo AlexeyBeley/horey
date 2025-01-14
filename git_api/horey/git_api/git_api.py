@@ -171,7 +171,7 @@ class GitAPI:
         else:
             command = f"git checkout -b {branch_name}"
             ret = self.bash_executor.run_bash(command)
-            if ret["stdout"] not in [f"Switched to a new branch '{branch_name}'"]:
+            if ret["stderr"] not in [f"Switched to a new branch '{branch_name}'"]:
                 raise RuntimeError(ret)
 
         command = "git merge FETCH_HEAD"
