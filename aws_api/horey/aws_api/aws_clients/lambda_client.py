@@ -450,8 +450,8 @@ class LambdaClient(Boto3Client):
                                                                )
             del response["ResponseMetadata"]
             event_source_mapping.update_from_raw_response(response)
-            if not self.update_event_source_mapping_information(region_event_source_mapping, get_tags=True):
-                raise RuntimeError("event_source_mapping was not created")
+            event_source_mapping.account_id = self.account_id
+            region_event_source_mapping.account_id = self.account_id
 
         tag_resource_request, untag_resource_request = region_event_source_mapping.generate_modify_tags_requests(event_source_mapping)
         if tag_resource_request:
