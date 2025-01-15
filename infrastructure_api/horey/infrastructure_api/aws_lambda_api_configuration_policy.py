@@ -28,6 +28,19 @@ class AWSLambdaAPIConfigurationPolicy(ConfigurationPolicy):
         self._event_source_mapping_dynamodb_name = None
         self._event_bridge_rule_name = None
         self._buildargs = None
+        self._policy = None
+
+    @property
+    def policy(self):
+        if self._policy is None:
+            self._policy = {"Version": "2012-10-17",
+                            "Id": "default",
+                            "Statement": []}
+        return self._policy
+
+    @policy.setter
+    def policy(self, value):
+        self._policy = value
 
     @property
     def buildargs(self):
