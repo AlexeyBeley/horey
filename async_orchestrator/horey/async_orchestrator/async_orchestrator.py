@@ -33,8 +33,11 @@ class AsyncOrchestrator:
 
         logger.info(f"Starting task '{task.id}' at {time.strftime('%X')}")
         if task.id in self.tasks:
-            # ret = traceback.extract_stack()
-            logger.error(f"Task with id {task.id} already in tasks")
+            logger.error(f"Task with id {task.id} already in tasks: current traceback:")
+            ret = traceback.extract_stack()
+            for line in ret:
+                logger.error(line)
+            logger.error(f"Task with id {task.id} already in task: existing task traceback:")
             for line in self.tasks[task.id].traceback:
                 logger.error(line)
             raise RuntimeError(f"Task with id {task.id} already in tasks: {self.tasks}")
