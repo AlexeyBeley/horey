@@ -442,6 +442,8 @@ class LambdaClient(Boto3Client):
         region_event_source_mapping.region = event_source_mapping.region
         region_event_source_mapping.function_arn = event_source_mapping.function_arn
         region_event_source_mapping.event_source_arn = event_source_mapping.event_source_arn
+        region_event_source_mapping.tags = {}
+
         if not self.update_event_source_mapping_information(region_event_source_mapping, get_tags=True):
             response = self.provision_event_source_mapping_raw(event_source_mapping.region,
                                                                event_source_mapping.generate_create_request()
