@@ -5,6 +5,7 @@ AWS IAM config
 
 from horey.configuration_policy.configuration_policy import ConfigurationPolicy
 
+
 # pylint: disable= missing-function-docstring, too-many-instance-attributes
 
 
@@ -18,6 +19,19 @@ class AWSIAMAPIConfigurationPolicy(ConfigurationPolicy):
         super().__init__()
         self._role_name = None
         self._assume_role_policy_document = None
+        self._policy = None
+
+    @property
+    def policy(self):
+        if self._policy is None:
+            self._policy = {"Version": "2012-10-17",
+                            "Id": "default",
+                            "Statement": []}
+        return self._policy
+
+    @policy.setter
+    def policy(self, value):
+        self._policy = value
 
     @property
     def assume_role_policy_document(self):

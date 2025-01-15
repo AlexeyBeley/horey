@@ -400,22 +400,20 @@ class AWSLambdaAPI:
 
         aws_lambda.environment = self.environment_variables_callback()
 
+        aws_lambda.policy = self.configuration.policy
+
         if self.configuration.schedule_expression:
-            aws_lambda.policy = {"Version": "2012-10-17",
-                                 "Id": "default",
-                                 "Statement": [
-                                     {"Sid": f"trigger_{self.configuration.event_bridge_rule_name}",
+            statement = {"Sid": f"trigger_{self.configuration.event_bridge_rule_name}",
                                       "Effect": "Allow",
                                       "Principal": {"Service": "events.amazonaws.com"},
                                       "Action": "lambda:InvokeFunction",
                                       "Resource": None,
                                       "Condition": {"ArnLike": {
-                                          "AWS:SourceArn": events_rule.arn}}}]}
+                                          "AWS:SourceArn": events_rule.arn}}}
+
+            aws_lambda.policy["Statement"].append(statement)
+
         if sns_topic:
-            if not aws_lambda.policy:
-                aws_lambda.policy = {"Version": "2012-10-17",
-                                     "Id": "default",
-                                     "Statement": []}
             statement = {
                 "Sid": f"trigger_from_topic_{sns_topic.name}",
                 "Effect": "Allow",
