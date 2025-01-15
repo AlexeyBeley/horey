@@ -69,7 +69,7 @@ class EmailAPI:
                                                                       }
         if self.configuration.configuration_set_event_destinations is not None:
             configuration_set.event_destinations = self.configuration.configuration_set_event_destinations
-        configuration_set.tags = self.configuration.tags
+        configuration_set.tags = self.environment_api.configuration.tags
         configuration_set.tags.append({
             "Key": "Name",
             "Value": configuration_set.name
