@@ -452,6 +452,7 @@ class LambdaClient(Boto3Client):
             event_source_mapping.update_from_raw_response(response)
             event_source_mapping.account_id = self.account_id
             region_event_source_mapping.account_id = self.account_id
+            region_event_source_mapping.uuid = event_source_mapping.uuid
 
         tag_resource_request, untag_resource_request = region_event_source_mapping.generate_modify_tags_requests(event_source_mapping)
         if tag_resource_request:
