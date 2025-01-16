@@ -57,7 +57,7 @@ class PipAPI:
                     ignore_venv=True,
                 )
 
-                self.execute("python -m pip install --upgrade pip")
+                self.execute("python -m pip install --upgrade pip", ignore_on_error_callback=lambda dict_ret: "Requirement already satisfied" in dict_ret["stdout"])
                 self.execute("python -m pip install --upgrade setuptools>=45")
 
     def init_multi_package_repository(self, repo_path):
@@ -121,10 +121,11 @@ class PipAPI:
         return BashExecutor.run_bash(command, ignore_on_error_callback=ignore_on_error_callback, timeout=timeout, debug=debug,
                               logger=logger)
 
-    def execute(self, command, ignore_venv=False):
+    def execute(self, command, ignore_venv=False, ignore_on_error_callback=None):
         """
         Execute bash command.
 
+        :param ignore_on_error_callback:
         :param command:
         :param ignore_venv: do not run in venv
         :return:
@@ -137,7 +138,7 @@ class PipAPI:
             and self.configuration.venv_dir_path is not None
         ):
             command = f"source {os.path.join(self.configuration.venv_dir_path, 'bin/activate')} && {command}"
-        ret = self.run_bash(command)
+        ret = self.run_bash(command, ignore_on_error_callback=ignore_on_error_callback)
 
         return ret["stdout"]
 
