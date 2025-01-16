@@ -2312,12 +2312,12 @@ class EnvironmentAPI:
 
         image = self.build_ecr_image(dir_path, tags, nocache, buildargs=buildargs)
         try:
-            self.docker_api.upload_images(image.tags)
+            self.docker_api.upload_images(tags)
         except Exception as inst_error:
             if "no basic auth credentials" in repr(inst_error):
                 ecr_repository_region = tags[0].split(".")[3]
                 self.login_to_ecr_repository(Region.get_region(ecr_repository_region))
-                self.docker_api.upload_images(image.tags)
+                self.docker_api.upload_images(tags)
             else:
                 raise
         return image
