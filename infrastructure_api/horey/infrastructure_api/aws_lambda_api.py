@@ -331,7 +331,7 @@ class AWSLambdaAPI:
             tags = [f"{repo_uri}:build_{build_number + 1}-commit_{commit_id}"]
             image = self.environment_api.build_and_upload_ecr_image(
                 self.environment_api.git_api.configuration.directory_path, tags, False, buildargs=self.configuration.buildargs)
-            assert tags[0] in image.image_tags
+            assert tags[0] in image.tags
             image_tag = tags[0]
         elif ecr_image is None:
             raise RuntimeError(f"Images store '{repo_uri}' is empty yet, use branch_name to build and image")
