@@ -397,9 +397,8 @@ class AWSLambda(AwsObject):
                     "FunctionName": self.name,
                     "StatementId": desired_statement["Sid"],
                     "Action": desired_statement["Action"],
+                    "Principal": desired_statement["Principal"]["Service"]
                 }
-                if "Principal" in desired_statement:
-                    request["Principal"] = desired_statement["Principal"]["Service"]
 
                 if "Condition" in desired_statement:
                     if "ArnLike" in desired_statement["Condition"]:
@@ -476,10 +475,8 @@ class AWSLambda(AwsObject):
                 "FunctionName": self.name,
                 "StatementId": desired_statement["Sid"],
                 "Action": desired_statement["Action"],
+                "Principal": desired_statement["Principal"]["Service"]
             }
-            if "Principal" in desired_statement:
-                request["Principal"] = desired_statement["Principal"]["Service"]
-
             if "Condition" in desired_statement:
                 if "ArnLike" in desired_statement["Condition"]:
                     request["SourceArn"] = desired_statement["Condition"]["ArnLike"]["AWS:SourceArn"]
