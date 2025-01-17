@@ -74,6 +74,7 @@ class AlertSystem:
         except configuration.UndefinedValueError:
             pass
         pip_api_configuration.venv_dir_path = configuration.deployment_venv_path
+        pip_api_configuration.system_site_packages = False
         self._lambda_arn = None
         self.pip_api = PipAPI(configuration=pip_api_configuration)
         if self.configuration.routing_tags is None:
@@ -341,11 +342,16 @@ class AlertSystem:
 
         current_dir = os.getcwd()
         os.chdir(self.configuration.deployment_directory_path)
+        lambda_package_dir = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)),
+                "lambda_package")
+        if not os.path.exists(lambda_package_dir):
+            raise RuntimeError(f"Missing lambda package dir: {lambda_package_dir}")
+
         self.pip_api.install_requirements_from_file(
             os.path.join(
-                os.path.dirname(os.path.abspath(__file__)),
-                "lambda_package",
-                "requirements.txt",
+                lambda_package_dir,
+                "requirements.txt"
             ),
             force_reinstall=True
         )

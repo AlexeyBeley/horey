@@ -52,8 +52,12 @@ class PipAPI:
             if not os.path.exists(
                 os.path.join(self.configuration.venv_dir_path, "bin", "activate")
             ):
+                options = ""
+                if self.configuration.system_site_packages:
+                    options += " --system-site-packages"
+
                 self.execute(
-                    f"{sys.executable} -m venv {self.configuration.venv_dir_path} --system-site-packages",
+                    f"{sys.executable} -m venv {self.configuration.venv_dir_path}{options}",
                     ignore_venv=True,
                 )
 

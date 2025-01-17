@@ -198,6 +198,7 @@ class AWSLambdaAPI:
 
         :return:
         """
+
         self.environment_api.aws_api.lambda_client.clear_cache(None, all_cache=True)
 
         if self.cloudwatch_api is None:

@@ -17,6 +17,7 @@ class PipAPIConfigurationPolicy(ConfigurationPolicy):
         self._venv_dir_path = None
         self._git_ssh_key_file_path = None
         self._horey_parent_dir_path = None
+        self._system_site_packages = True
 
     @property
     def multi_package_repositories(self):
@@ -73,3 +74,11 @@ class PipAPIConfigurationPolicy(ConfigurationPolicy):
     @horey_parent_dir_path.setter
     def horey_parent_dir_path(self, value):
         self._horey_parent_dir_path = value
+
+    @property
+    def system_site_packages(self):
+        return self._system_site_packages
+
+    @system_site_packages.setter
+    def system_site_packages(self, value):
+        self._system_site_packages = value
