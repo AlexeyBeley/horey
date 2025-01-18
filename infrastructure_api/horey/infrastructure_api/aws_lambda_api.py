@@ -207,6 +207,7 @@ class AWSLambdaAPI:
             self.set_apis(cloudwatch_api=cloudwatch_api)
 
         self.cloudwatch_api.provision()
+
         self.ecs_api.provision()
         if self.configuration.security_groups:
             managed_policies_arns = ["arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"]
@@ -261,6 +262,7 @@ class AWSLambdaAPI:
         self.alerts_api.provision()
         self.alerts_api.provision_cloudwatch_logs_alarm(self.cloudwatch_api.configuration.log_group_name, '"[ERROR]"', "error", None, dimensions=None,
                                         alarm_description=None)
+
         return True
 
     def provision_event_source_mapping_dynamodb(self, aws_lambda):

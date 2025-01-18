@@ -431,7 +431,7 @@ class AlertsAPI:
                                                 comparison_operator="GreaterThanThreshold",
                                                 treat_missing_data="notBreaching"
                                                 )
-
+        self.environment_api.aws_api.cloud_watch_client.set_alarm_ok(alarm)
         return alarm
 
     # pylint: disable = too-many-arguments
