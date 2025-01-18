@@ -42,7 +42,7 @@ class EventHandler:
                 return self.message_dispatcher.run_dynamodb_update_routine()
             try:
                 alarm_name, alarm_epoch_utc = message.generate_cooldown_trigger_name_and_epoch_timestamp()
-                self.message_dispatcher.update_dynamodb_alarm_time(alarm_name, alarm_epoch_utc)
+                self.message_dispatcher.update_dynamodb_alarm(alarm_name, alarm_epoch_utc)
             except message.NoCooldown:
                 pass
         except Exception as inst_error:
