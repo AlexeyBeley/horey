@@ -35,6 +35,9 @@ class CloudWatchAlarm(AwsObject):
         self.comparison_operator = None
         self.treat_missing_data = None
         self._dict_dimensions = None
+        self.state_value = None
+        self.state_updated_timestamp = None
+        self.state_transitioned_timestamp = None
 
         super().__init__(dict_src, from_cache=from_cache)
 

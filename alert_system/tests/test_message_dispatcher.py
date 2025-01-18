@@ -164,7 +164,7 @@ def yield_dynamodb_items_mock():
     yield from lst_ret
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_run_dynamodb_update_routine(alert_system_configuration):
     message_dispatcher = MessageDispatcher(alert_system_configuration)
     message_dispatcher.yield_dynamodb_items = yield_dynamodb_items_mock

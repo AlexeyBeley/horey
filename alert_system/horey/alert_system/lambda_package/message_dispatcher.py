@@ -120,7 +120,7 @@ class MessageDispatcher:
             item["alarm_state"]["epoch_triggered"] = float(item["alarm_state"]["epoch_triggered"])
             yield item
 
-    def update_dynamodb_alarm_time(self, alarm_name: str, alarm_epoch_utc: float):
+    def update_dynamodb_alarm(self, alarm_name: str, alarm_epoch_utc: float):
         """
         Put alarm time in db.
 
@@ -163,24 +163,33 @@ class MessageDispatcher:
 
         :return:
         """
-
+        client = CloudWatchClient()
         time_now = datetime.datetime.now(datetime.timezone.utc)
         timestamp_now = time_now.timestamp()
         for item in self.yield_dynamodb_items():
-            if item["alarm_state"]["epoch_triggered"] == 0.0:
-                continue
-
-            if item["alarm_state"]["epoch_triggered"] + item["alarm_state"]["cooldown_time"] >= timestamp_now:
-                continue
 
             alarm = CloudWatchAlarm({"AlarmName": item["alarm_name"]})
             alarm.region = self.region
+
+            if not client.update_alarm_information(alarm):
+                self.delete_dynamodb_alarm(item["alarm_name"])
+                continue
+            if alarm.state_value != "ALARM":
+                continue
+            # todo: check if too old: cleanup report
+            # todo: cleanup report check alarm state never changed, check if alarm needed/tested
+            # if alarm.state_updated_timestamp < time_now - 300:
+            #    logger.warning(f"Unhandled state for alarm {alarm.name}: {alarm.state_updated_timestamp=} {alarm.state_transitioned_timestamp=}")
+            if timestamp_now - alarm.state_transitioned_timestamp.timestamp() < item["alarm_state"]["cooldown_time"]:
+                continue
+
             try:
-                CloudWatchClient().set_alarm_ok(alarm)
+                client.set_alarm_ok(alarm)
             except Exception as inst_error:
                 if "ResourceNotFound" not in repr(inst_error):
                     raise
                 self.delete_dynamodb_alarm(item["alarm_name"])
                 continue
-            self.update_dynamodb_alarm_time(item["alarm_name"], 0.0)
+
+            self.update_dynamodb_alarm(item["alarm_name"], alarm.state_transitioned_timestamp.timestamp())
         return True

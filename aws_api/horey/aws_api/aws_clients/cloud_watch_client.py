@@ -76,6 +76,21 @@ class CloudWatchClient(Boto3Client):
                 raise NotImplementedError("CompositeAlarms")
             yield from dict_src["MetricAlarms"]
 
+    def update_alarm_information(self, alarm:CloudWatchAlarm):
+        """
+        Standard.
+
+        :param alarm:
+        :return:
+        """
+        responses = list(self.regional_fetcher_generator_alarms(alarm.region, filters_req={"AlarmNames": [alarm.name]}))
+        if len(responses) > 1:
+            raise RuntimeError(f"Found more then 1 alarm with name '{alarm.name}' in region: {alarm.region.region_mark}")
+        if not responses:
+            return False
+        alarm.update_from_raw_response(responses[0])
+        return True
+
     def set_cloudwatch_alarm(self, alarm: CloudWatchAlarm):
         """
         Provision alarm.
