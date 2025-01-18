@@ -362,7 +362,8 @@ class AlertsAPI:
         statements = [
             {
                 "Action": [
-                    "cloudwatch:SetAlarmState"
+                    "cloudwatch:SetAlarmState",
+                    "cloudwatch:DescribeAlarms"
                 ],
                 "Resource": [
                     f"arn:aws:cloudwatch:{self.environment_api.configuration.region}:{self.environment_api.aws_api.dynamodb_client.account_id}:alarm:*"
