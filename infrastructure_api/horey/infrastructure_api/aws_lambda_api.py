@@ -198,6 +198,10 @@ class AWSLambdaAPI:
 
         :return:
         """
+        ## todo: remove
+        #self.alerts_api.provision()
+        #breakpoint()
+        # todo: remove
 
         self.environment_api.aws_api.lambda_client.clear_cache(None, all_cache=True)
 

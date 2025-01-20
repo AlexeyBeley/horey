@@ -55,11 +55,11 @@ class GitAPI:
             path_ssh_key_file = Path(self.configuration.ssh_key_file_path)
             path_ssh_key_file.chmod(0o400)
 
-        # old: ssh_base_command = f'GIT_SSH_COMMAND="ssh -i {self.configuration.ssh_key_file_path} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"'
-        ssh_base_command = 'GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"'
+        options = "-o User=git " if "github" in git_remote_url else ""
+
+        ssh_base_command = f'GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o IdentitiesOnly=yes {options}-i {self.configuration.ssh_key_file_path}"'
         int_agent_pid = None
         if os.environ.get("SSH_AUTH_SOCK") is None:
-            ssh_base_command = f"ssh-add {self.configuration.ssh_key_file_path}; " + ssh_base_command
             command = "ssh-agent -s"
             ret = self.bash_executor.run_bash(command)
             lines = ret["stdout"].split("\n")
@@ -88,18 +88,17 @@ class GitAPI:
         :param ssh_base_command:
         :return:
         """
-
         current_working_directory = os.getcwd()
         if current_working_directory != self.configuration.git_directory_path:
             os.chdir(self.configuration.git_directory_path)
         self.configuration.directory_path = str(
-            Path(self.configuration.git_directory_path) / git_remote_url.split("/")[-1])
+            Path(self.configuration.git_directory_path) / git_remote_url.split("/")[-1]).strip(".git")
 
         if not os.path.exists(self.configuration.directory_path):
-            command = f"{ssh_base_command} git clone -b {branch_name} --single-branch {git_remote_url}"
-            self.bash_executor.run_bash(command)
-            os.chdir(self.configuration.directory_path)
-            return True
+            command = f"{ssh_base_command} git clone {git_remote_url}"
+            ret = self.bash_executor.run_bash(command)
+            if f"Cloning into '{os.path.basename(self.configuration.directory_path)}'" not in ret["stdout"]:
+                raise ValueError(ret)
 
         logger.info(f"Changing directory to source code directory: {self.configuration.directory_path}")
         os.chdir(self.configuration.directory_path)
@@ -120,7 +119,7 @@ class GitAPI:
             break
         else:
             raise RuntimeError(f"Was not able to find remote with address {git_remote_url}")
-
+        breakpoint()
         command = f"{ssh_base_command} git fetch {remote_name} {branch_name}"
         ret = self.bash_executor.run_bash(command)
         stdout = ret.get("stdout")
@@ -151,6 +150,21 @@ class GitAPI:
         else:
             raise RuntimeError("Was not able to find line corresponding to fetched branch")
 
+        self.checkout(branch_name, remote_name)
+
+        command = "git merge FETCH_HEAD"
+        ret = self.bash_executor.run_bash(command)
+        if ret["stderr"]:
+            raise RuntimeError(ret)
+        return True
+
+    def checkout(self, branch_name, remote_name):
+        """
+        Checkout new or existing
+        :param branch_name:
+        :return:
+        """
+        breakpoint()
         command = f"git rev-parse --verify {branch_name}"
         ret = self.bash_executor.run_bash(command,
                                           ignore_on_error_callback=lambda dict_response: "Needed a single revision" in dict_response.get("stderr"))
@@ -173,12 +187,6 @@ class GitAPI:
             ret = self.bash_executor.run_bash(command)
             if ret["stderr"] not in [f"Switched to a new branch '{branch_name}'"]:
                 raise RuntimeError(ret)
-
-        command = "git merge FETCH_HEAD"
-        ret = self.bash_executor.run_bash(command)
-        if ret["stderr"]:
-            raise RuntimeError(ret)
-        return True
 
     def get_commit_id(self):
         """
