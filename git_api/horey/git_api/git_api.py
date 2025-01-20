@@ -119,7 +119,7 @@ class GitAPI:
             break
         else:
             raise RuntimeError(f"Was not able to find remote with address {git_remote_url}")
-        breakpoint()
+
         command = f"{ssh_base_command} git fetch {remote_name} {branch_name}"
         ret = self.bash_executor.run_bash(command)
         stdout = ret.get("stdout")
@@ -164,7 +164,7 @@ class GitAPI:
         :param branch_name:
         :return:
         """
-        breakpoint()
+
         command = f"git rev-parse --verify {branch_name}"
         ret = self.bash_executor.run_bash(command,
                                           ignore_on_error_callback=lambda dict_response: "Needed a single revision" in dict_response.get("stderr"))
