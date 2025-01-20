@@ -43,42 +43,7 @@ class AWSLambda(AwsObject):
             self._init_object_from_cache(dict_src)
             return
 
-        init_options = {
-            "FunctionName": lambda x, y: self.init_default_attr(
-                x, y, formatted_name="name"
-            ),
-            "FunctionArn": lambda x, y: self.init_default_attr(
-                x, y, formatted_name="arn"
-            ),
-            "Runtime": self.init_default_attr,
-            "Role": self.init_default_attr,
-            "Handler": self.init_default_attr,
-            "CodeSize": self.init_default_attr,
-            "Description": self.init_default_attr,
-            "Timeout": self.init_default_attr,
-            "MemorySize": self.init_default_attr,
-            "LastModified": lambda attr_name, value: self.init_date_attr_from_formatted_string(
-                attr_name, self.format_last_modified_time(value)
-            ),
-            "CodeSha256": self.init_default_attr,
-            "Version": self.init_default_attr,
-            "VpcConfig": self.init_default_attr,
-            "Environment": self.init_default_attr,
-            "TracingConfig": self.init_default_attr,
-            "RevisionId": self.init_default_attr,
-            "Layers": self.init_default_attr,
-            "DeadLetterConfig": self.init_default_attr,
-            "KMSKeyArn": self.init_default_attr,
-            "PackageType": self.init_default_attr,
-            "Architectures": self.init_default_attr,
-            "LastUpdateStatusReason": self.init_default_attr,
-            "LastUpdateStatusReasonCode": self.init_default_attr,
-            "EphemeralStorage": self.init_default_attr,
-            "SnapStart": self.init_default_attr,
-            "RuntimeVersionConfig": self.init_default_attr,
-        }
-
-        self.init_attrs(dict_src, init_options)
+        self.update_from_raw_response(dict_src)
 
     @property
     def arn(self):
@@ -216,6 +181,7 @@ class AWSLambda(AwsObject):
             "EphemeralStorage": self.init_default_attr,
             "SnapStart": self.init_default_attr,
             "RuntimeVersionConfig": self.init_default_attr,
+            "LoggingConfig": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
