@@ -34,7 +34,7 @@ class AWSLambdaAPI:
     def __init__(self, configuration, environment_api):
         self.configuration = configuration
         self.environment_api = environment_api
-        self.cloudwatch_api = None
+        self._cloudwatch_api = None
         self._ecs_api = None
         self._aws_iam_api = None
         self._environment_variables_callback = None
@@ -60,6 +60,28 @@ class AWSLambdaAPI:
             alerts_api_configuration.log_group_name = f"has2-{self.configuration.lambda_name}"
             self._alerts_api = AlertsAPI(alerts_api_configuration, self.environment_api)
         return self._alerts_api
+
+    @alerts_api.setter
+    def alerts_api(self, value):
+        """
+        Alerts api
+
+        :return:
+        """
+        self._alerts_api = value
+
+    @property
+    def cloudwatch_api(self):
+        """
+        Standard.
+
+        :return:
+        """
+        if self._cloudwatch_api is None:
+            config = CloudwatchAPIConfigurationPolicy()
+            cloudwatch_api = CloudwatchAPI(configuration=config, environment_api=self.environment_api)
+            self.set_apis(cloudwatch_api=cloudwatch_api)
+        return self._cloudwatch_api
 
     @property
     def environment_variables_callback(self):
@@ -130,11 +152,11 @@ class AWSLambdaAPI:
         """
 
         if cloudwatch_api:
-            self.cloudwatch_api = cloudwatch_api
+            self._cloudwatch_api = cloudwatch_api
             try:
-                self.cloudwatch_api.configuration.log_group_name
-            except self.cloudwatch_api.configuration.UndefinedValueError:
-                self.cloudwatch_api.configuration.log_group_name = f"/aws/lambda/{self.configuration.lambda_name}"
+                self._cloudwatch_api.configuration.log_group_name
+            except self._cloudwatch_api.configuration.UndefinedValueError:
+                self._cloudwatch_api.configuration.log_group_name = self.configuration.lambda_log_group
 
         if ecs_api:
             self.ecs_api = ecs_api
@@ -198,18 +220,8 @@ class AWSLambdaAPI:
 
         :return:
         """
-        ## todo: remove
-        #self.alerts_api.provision()
-        #breakpoint()
-        # todo: remove
 
         self.environment_api.aws_api.lambda_client.clear_cache(None, all_cache=True)
-
-        if self.cloudwatch_api is None:
-            config = CloudwatchAPIConfigurationPolicy()
-            cloudwatch_api = CloudwatchAPI(configuration=config, environment_api=self.environment_api)
-            self.set_apis(cloudwatch_api=cloudwatch_api)
-
         self.cloudwatch_api.provision()
 
         self.ecs_api.provision()
@@ -263,10 +275,23 @@ class AWSLambdaAPI:
         if self.configuration.event_source_mapping_dynamodb_name:
             self.provision_event_source_mapping_dynamodb(aws_lambda)
 
+        self.provision_monitoring()
+        return True
+
+    def provision_monitoring(self):
+        """
+        Provision alert system and alerts.
+
+        :return:
+        """
+
         self.alerts_api.provision()
         self.alerts_api.provision_cloudwatch_logs_alarm(self.cloudwatch_api.configuration.log_group_name, '"[ERROR]"', "error", None, dimensions=None,
                                         alarm_description=None)
-
+        self.alerts_api.provision_cloudwatch_logs_alarm(self.cloudwatch_api.configuration.log_group_name, '"Runtime exited with error"', "runtime_exited", None, dimensions=None,
+                                        alarm_description=None)
+        self.alerts_api.provision_cloudwatch_logs_alarm(self.cloudwatch_api.configuration.log_group_name, f'"{self.alerts_api.alert_system.configuration.ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN}"', "timeout", None, dimensions=None,
+                                        alarm_description=None)
         return True
 
     def provision_event_source_mapping_dynamodb(self, aws_lambda):

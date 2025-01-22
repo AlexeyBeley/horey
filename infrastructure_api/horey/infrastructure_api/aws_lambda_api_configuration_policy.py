@@ -29,6 +29,7 @@ class AWSLambdaAPIConfigurationPolicy(ConfigurationPolicy):
         self._event_bridge_rule_name = None
         self._buildargs = None
         self._policy = None
+        self._lambda_log_group = None
 
     @property
     def policy(self):
@@ -160,3 +161,13 @@ class AWSLambdaAPIConfigurationPolicy(ConfigurationPolicy):
     @lambda_name.setter
     def lambda_name(self, value):
         self._lambda_name = value
+
+    @property
+    def lambda_log_group(self):
+        if self._lambda_log_group is None:
+            self._lambda_log_group = f"/aws/lambda/{self.lambda_name}"
+        return self._lambda_log_group
+
+    @lambda_log_group.setter
+    def lambda_log_group(self, value):
+        self._lambda_log_group = value

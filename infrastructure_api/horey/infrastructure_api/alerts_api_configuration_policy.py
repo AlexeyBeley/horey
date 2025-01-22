@@ -32,7 +32,7 @@ class AlertsAPIConfigurationPolicy(ConfigurationPolicy):
 
     @property
     def routing_tags(self):
-        if self._bearer_token is None:
+        if self._routing_tags is None:
             raise self.UndefinedValueError("routing_tags")
         return self._routing_tags
 
