@@ -1085,7 +1085,8 @@ class EnvironmentAPI:
         s3_bucket = S3Bucket({})
         s3_bucket.region = self.region
         s3_bucket.name = bucket_name
-        s3_bucket.acl = "private"
+
+        # s3_bucket.acl = "private" AccessControlListNotSupported
         self.aws_api.provision_s3_bucket(s3_bucket)
 
         if s3_bucket.upsert_statements(statements):

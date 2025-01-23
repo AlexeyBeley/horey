@@ -191,7 +191,9 @@ class S3Bucket(AwsObject):
         }
         """
 
-        request = {"ACL": self.acl, "Bucket": self.name}
+        request = {"Bucket": self.name}
+        if self.acl is not None:
+            request["ACL"] = self.acl
 
         # AWS bug:
         # https://stackoverflow.com/questions/51912072/invalidlocationconstraint-error-while-creating-s3-bucket-when-the-used-command-i
