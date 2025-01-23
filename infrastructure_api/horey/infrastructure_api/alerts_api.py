@@ -376,6 +376,17 @@ class AlertsAPI:
                                                            description="Cloudwatch access policy",
                                                            statements=statements)
 
+    def trigger_cloudwatch_logs_alarm(self, cloudwatch_log_group_name, log_line):
+        """
+        Write a line to cloudwatch log stream.
+
+        :param cloudwatch_log_group_name:
+        :param log_line:
+        :return:
+        """
+
+        return self.environment_api.put_cloudwatch_log_lines(cloudwatch_log_group_name, [log_line])
+
     # pylint: disable = too-many-arguments
     def provision_cloudwatch_logs_alarm(self, log_group_name, filter_text, metric_uid, routing_tags, metric_name=None, dimensions=None,
                                         alarm_description=None
