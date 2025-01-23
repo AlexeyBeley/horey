@@ -465,7 +465,7 @@ class S3Client(Boto3Client):
                     None,
                     raw_data=True,
                     filters_req={"Bucket": bucket.name},
-                    exception_ignore_callback= lambda x: ": Not Found" in repr(x)
+                    exception_ignore_callback=lambda x: ": Not Found" in repr(x)
                 )
             )
         if not current_bucket_information:
@@ -852,14 +852,20 @@ class S3Client(Boto3Client):
 
         try:
             for response in self.execute(
-                    self.get_session_client().put_object, None, filters_req=filters_req, raw_data=True
+                    self.get_session_client().put_object, None, filters_req=filters_req, raw_data=True,
+                exception_ignore_callback=lambda error_inst: "NoSuchBucket" in repr(error_inst)
             ):
                 task.raw_response = response
-            task.succeed = True
+                task.succeed = True
+                break
+            else:
+                error_str = f"Failed to upload {task.key_name} to {task.bucket_name}"
+                logger.error(error_str)
+                raise RuntimeError(f"Was not able to upload, look in the logs for '{error_str}'")
         except Exception as exception_inst:
             exception_repr = repr(exception_inst)
             logger.warning(
-                f"Failed to upload to s3 {filters_req} with exception {exception_repr if 'Body' not in exception_repr else 'To large exception'}"
+                f"Failed to upload to s3 {filters_req} with exception {exception_repr if 'Body' not in exception_repr else 'Too large exception'}"
             )
             task.attempts.append(exception_repr)
             task.succeed = False
