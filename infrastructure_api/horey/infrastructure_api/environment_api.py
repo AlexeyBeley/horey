@@ -5,8 +5,6 @@ Standard environment maintainer.
 """
 import json
 import os
-from datetime import time
-from pathlib import Path
 
 # pylint: disable= no-name-in-module
 from horey.infrastructure_api.environment_api_configuration_policy import EnvironmentAPIConfigurationPolicy
@@ -50,6 +48,7 @@ from horey.aws_api.aws_services_entities.ses_identity import SESIdentity
 from horey.aws_cleaner.aws_cleaner import AWSCleaner
 from horey.aws_cleaner.aws_cleaner_configuration_policy import AWSCleanerConfigurationPolicy
 from horey.aws_api.aws_services_entities.elbv2_load_balancer import LoadBalancer
+from horey.aws_api.aws_services_entities.sesv2_configuration_set import SESV2ConfigurationSet
 from horey.docker_api.docker_api import DockerAPI
 
 from horey.network.ip import IP
@@ -1086,7 +1085,7 @@ class EnvironmentAPI:
         s3_bucket = S3Bucket({})
         s3_bucket.region = self.region
         s3_bucket.name = bucket_name
-        # s3_bucket.acl = "private"
+        s3_bucket.acl = "private"
         self.aws_api.provision_s3_bucket(s3_bucket)
 
         if s3_bucket.upsert_statements(statements):
@@ -2340,7 +2339,7 @@ class EnvironmentAPI:
                 repr_error_inst = repr(error_inst)
                 if "authorization token has expired" in repr_error_inst:
                     ecr_repository_region = tags[0].split(".")[3]
-                    registry, _, _ = self.login_to_ecr_repository(region=Region.get_region(ecr_repository_region), logout=True)
+                    _, _, _ = self.login_to_ecr_repository(region=Region.get_region(ecr_repository_region), logout=True)
                     return self.docker_api.build(dir_path, tags, nocache=nocache, buildargs=buildargs)
                 raise
 
