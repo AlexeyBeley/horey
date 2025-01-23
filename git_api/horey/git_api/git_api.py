@@ -97,7 +97,8 @@ class GitAPI:
         if not os.path.exists(self.configuration.directory_path):
             command = f"{ssh_base_command} git clone {git_remote_url}"
             ret = self.bash_executor.run_bash(command)
-            if f"Cloning into '{os.path.basename(self.configuration.directory_path)}'" not in ret["stdout"]:
+            expected_output = f"Cloning into '{os.path.basename(self.configuration.directory_path)}'"
+            if expected_output not in ret["stdout"] and expected_output not in ret["stderr"]:
                 raise ValueError(ret)
 
         logger.info(f"Changing directory to source code directory: {self.configuration.directory_path}")
