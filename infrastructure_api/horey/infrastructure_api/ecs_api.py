@@ -3,7 +3,6 @@ Standard ECS maintainer.
 
 """
 import copy
-import json
 from datetime import datetime
 
 from horey.h_logger import get_logger
@@ -29,6 +28,12 @@ class ECSAPI:
 
     @property
     def ecr_repository(self):
+        """
+        Find once
+
+        :return:
+        """
+
         if self._ecr_repository is None:
             self.environment_api.aws_api.ecr_client.clear_cache(ECRRepository)
             src_ecr_repositories = self.environment_api.aws_api.ecr_client.get_region_repositories(
@@ -42,6 +47,11 @@ class ECSAPI:
 
     @property
     def ecr_images(self):
+        """
+        Init once
+
+        :return:
+        """
         if self._ecr_images is None:
             self.environment_api.aws_api.ecr_client.clear_cache(ECRImage)
             self._ecr_images = self.environment_api.aws_api.ecr_client.get_repository_images(self.ecr_repository)
@@ -53,7 +63,7 @@ class ECSAPI:
 
         :return:
         """
-        
+
         self.provision_ecr_repository()
         return True
 
@@ -191,7 +201,6 @@ class ECSAPI:
         """
 
         for image in self.ecr_images:
-            breakpoint()
             build_numbers = [int(build_subtag.split("_")[1]) for str_image_tag in image.image_tags for build_subtag in
                              str_image_tag.split("-") if build_subtag.startswith("build_")]
             image.build_number = max(build_numbers)
