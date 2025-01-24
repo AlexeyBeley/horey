@@ -22,11 +22,32 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
         self._ecr_repository_region = None
         self._infrastructure_update_time_tag = None
         self._ecr_repository_policy_text = None
+        self._service_name = None
+        self._cluster_name = None
+
+    @property
+    def cluster_name(self):
+        if self._cluster_name is None:
+            raise self.UndefinedValueError("cluster_name")
+        return self._cluster_name
+
+    @cluster_name.setter
+    def cluster_name(self, value):
+        self._cluster_name = value
+
+    @property
+    def service_name(self):
+        if self._service_name is None:
+            raise self.UndefinedValueError("service_name")
+        return self._service_name
+
+    @service_name.setter
+    def service_name(self, value):
+        self._service_name = value
 
     @property
     def ecr_repository_policy_text(self):
-        if self._ecr_repository_policy_text is None:
-            raise self.UndefinedValueError("ecr_repository_policy_text")
+        # todo: cleanup report It is recommended to use resource policy on ecr repos.
         return self._ecr_repository_policy_text
 
     @ecr_repository_policy_text.setter
@@ -56,7 +77,7 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def ecr_repository_name(self):
         if self._ecr_repository_name is None:
-            raise self.UndefinedValueError("ecr_repository_name")
+            self._ecr_repository_name = f"repo_{self.cluster_name}_{self.service_name}"
         return self._ecr_repository_name
 
     @ecr_repository_name.setter

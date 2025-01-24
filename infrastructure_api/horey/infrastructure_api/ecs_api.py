@@ -132,7 +132,9 @@ class ECSAPI:
         repo = ECRRepository({})
         repo.region = Region.get_region(self.configuration.ecr_repository_region)
         repo.name = self.configuration.ecr_repository_name
-        repo.policy_text = self.configuration.ecr_repository_policy_text
+        if self.configuration.ecr_repository_policy_text:
+            # todo: generate policy to permit only access from relevant services: AWS Lambda / ECS / EKS etc
+            repo.policy_text = self.configuration.ecr_repository_policy_text
         repo.tags = copy.deepcopy(self.environment_api.configuration.tags)
         repo.tags.append({
             "Key": "Name",
@@ -146,3 +148,59 @@ class ECSAPI:
 
         self.environment_api.aws_api.provision_ecr_repository(repo)
         return repo
+
+    def get_ecr_image(self, prepare_build_directory_callback, nocache=False, buildargs=None):
+        """
+        Build if needed.
+        Upload if needed.
+        Download if needed.
+
+        :param prepare_build_directory_callback:
+        :param nocache:
+        :param buildargs:
+        :return:
+        """
+
+        ecr_image = self.get_latest_build()
+        build_number = ecr_image.build_number if ecr_image is not None else -1
+        repo_uri = f"{self.environment_api.aws_api.ecs_client.account_id}.dkr.ecr.{self.configuration.ecr_repository_region}.amazonaws.com/{self.configuration.ecr_repository_name}"
+        if self.environment_api.git_api.configuration.branch_name is not None:
+            if not self.environment_api.git_api.checkout_remote_branch():
+                raise RuntimeError(f"Was not able to checkout branch: {self.environment_api.git_api.configuration.branch_name}")
+
+            commit_id = self.environment_api.git_api.get_commit_id()
+
+            tags = [f"{repo_uri}:build_{build_number + 1}-commit_{commit_id}"]
+            image = self.environment_api.build_and_upload_ecr_image(
+                prepare_build_directory_callback(self.environment_api.git_api.configuration.directory_path), tags, nocache, buildargs=buildargs)
+            assert tags[0] in image.tags
+            image_tag = tags[0]
+        elif ecr_image is None:
+            raise RuntimeError(f"Images store '{repo_uri}' is empty yet, use branch_name to build an image")
+        else:
+            image_tag_raw = ecr_image.image_tags[-1]
+            image_tag = f"{repo_uri}:{image_tag_raw}"
+
+        return image_tag
+
+    def get_latest_build(self):
+        """
+        Latest build number from ecr repo
+
+        :return:
+        """
+
+        for image in self.ecr_images:
+            breakpoint()
+            build_numbers = [int(build_subtag.split("_")[1]) for str_image_tag in image.image_tags for build_subtag in
+                             str_image_tag.split("-") if build_subtag.startswith("build_")]
+            image.build_number = max(build_numbers)
+
+        try:
+            return max(self.ecr_images, key=lambda _image: _image.build_number)
+        except ValueError as inst_error:
+            if "iterable argument is empty" not in repr(inst_error) and "arg is an empty sequence" not in repr(
+                    inst_error):
+                raise
+
+        return None

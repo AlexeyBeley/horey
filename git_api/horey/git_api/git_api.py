@@ -4,6 +4,7 @@ GIT API module.
 """
 import os
 from pathlib import Path
+from time import perf_counter
 
 from horey.h_logger import get_logger
 from horey.git_api.git_api_configuration_policy import GitAPIConfigurationPolicy
@@ -42,7 +43,7 @@ class GitAPI:
             """
         )
 
-    def checkout_remote_branch(self, git_remote_url, branch_name):
+    def checkout_remote_branch(self, git_remote_url=None, branch_name=None):
         """
         Pull latest changes.
 
@@ -50,6 +51,10 @@ class GitAPI:
         :param branch_name:
         :return:
         """
+
+        start_time = perf_counter()
+        git_remote_url = git_remote_url or self.configuration.remote
+        branch_name = branch_name or self.configuration.branch_name
 
         if oct(os.stat(self.configuration.ssh_key_file_path).st_mode)[-3:] != "400":
             path_ssh_key_file = Path(self.configuration.ssh_key_file_path)
@@ -69,6 +74,8 @@ class GitAPI:
                     int_agent_pid = int((lst_line[lst_line.index("SSH_AGENT_PID") + 1]).split(";")[0])
                 if "SSH_AUTH_SOCK" in line:
                     ssh_base_command = f"{line} {ssh_base_command}"
+
+            logger.info(f"Time to start SSH Agent: {perf_counter() - start_time}")
         try:
             self.checkout_remote_branch_helper(git_remote_url, branch_name, ssh_base_command)
         finally:
@@ -77,6 +84,9 @@ class GitAPI:
                 ret = self.bash_executor.run_bash(command)
                 if ret.get("stdout") or ret.get("stdout"):
                     raise NotImplementedError(ret)
+
+        logger.info(f"Time to git checkout remote branch: {perf_counter() - start_time}")
+
         return True
 
     def checkout_remote_branch_helper(self, git_remote_url, branch_name, ssh_base_command):

@@ -2,6 +2,7 @@
 Git API config.
 
 """
+
 from horey.configuration_policy.configuration_policy import ConfigurationPolicy
 
 # pylint: disable = missing-function-docstring
@@ -17,6 +18,15 @@ class GitAPIConfigurationPolicy(ConfigurationPolicy):
         self._ssh_key_file_path = None
         self._directory_path = None
         self._git_directory_path = None
+        self._branch_name = None
+
+    @property
+    def branch_name(self):
+        return self._branch_name
+
+    @branch_name.setter
+    def branch_name(self, value):
+        self._branch_name = value
 
     @property
     def git_directory_path(self):
