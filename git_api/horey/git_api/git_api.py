@@ -89,6 +89,7 @@ class GitAPI:
 
         return True
 
+    # pylint: disable = too-many-locals, too-many-branches, too-many-statements
     def checkout_remote_branch_helper(self, git_remote_url, branch_name, ssh_base_command):
         """
         Run the git logic.
@@ -98,6 +99,7 @@ class GitAPI:
         :param ssh_base_command:
         :return:
         """
+
         current_working_directory = os.getcwd()
         if current_working_directory != self.configuration.git_directory_path:
             os.chdir(self.configuration.git_directory_path)
@@ -110,6 +112,14 @@ class GitAPI:
             expected_output = f"Cloning into '{os.path.basename(self.configuration.directory_path)}'"
             if expected_output not in ret["stdout"] and expected_output not in ret["stderr"]:
                 raise ValueError(ret)
+
+            if os.path.exists(os.path.join(self.configuration.directory_path, ".gitmodules")):
+                os.chdir(self.configuration.directory_path)
+                command = "git submodule init"
+                ret = self.bash_executor.run_bash(command)
+                expected_output = "registered for path"
+                if expected_output not in ret["stderr"]:
+                    raise ValueError(ret)
 
         logger.info(f"Changing directory to source code directory: {self.configuration.directory_path}")
         os.chdir(self.configuration.directory_path)
@@ -161,15 +171,22 @@ class GitAPI:
         else:
             raise RuntimeError("Was not able to find line corresponding to fetched branch")
 
-        self.checkout(branch_name, remote_name)
+        self.checkout_fetched_remote(branch_name, remote_name)
 
-        command = "git merge FETCH_HEAD"
-        ret = self.bash_executor.run_bash(command)
-        if ret["stderr"]:
-            raise RuntimeError(ret)
+        #command = "git merge FETCH_HEAD"
+        #ret = self.bash_executor.run_bash(command)
+        #if ret["stderr"]:
+        #    raise RuntimeError(ret)
+
+        if os.path.exists(os.path.join(self.configuration.directory_path, ".gitmodules")):
+            command = "git submodule update"
+            ret = self.bash_executor.run_bash(command)
+            if ret["stdout"] or ret["stderr"]:
+                raise ValueError(ret)
+
         return True
 
-    def checkout(self, branch_name, remote_name):
+    def checkout_fetched_remote(self, branch_name, remote_name):
         """
         Checkout new or existing
         :param branch_name:
@@ -188,11 +205,17 @@ class GitAPI:
 
             command = f"git checkout {branch_name}"
             ret = self.bash_executor.run_bash(command)
-            #todo: 'Your branch is behind \'origin/master\' by 4 commits, and can be fast-forwarded.\n  (use "git pull" to update your local branch)'
+            # todo: 'Your branch is behind \'origin/master\' by 4 commits, and can be fast-forwarded.\n  (use "git pull" to update your local branch)'
             if ret["stdout"] not in [f"Your branch is up to date with '{remote_name}/{branch_name}'.",
                                      f"branch '{branch_name}' set up to track '{remote_name}/{branch_name}'."]:
                 if ret["stderr"] not in [f"Already on '{branch_name}'", f"Switched to branch '{branch_name}'"]:
                     raise RuntimeError(ret)
+
+            command = f"git reset --hard {remote_name}/{branch_name}"
+            ret = self.bash_executor.run_bash(command)
+            stdout = ret["stdout"]
+            if "HEAD is now at" not in stdout:
+                raise RuntimeError(stdout)
         else:
             command = f"git checkout -b {branch_name}"
             ret = self.bash_executor.run_bash(command)
