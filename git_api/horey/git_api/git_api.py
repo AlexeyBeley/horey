@@ -179,7 +179,7 @@ class GitAPI:
         #    raise RuntimeError(ret)
 
         if os.path.exists(os.path.join(self.configuration.directory_path, ".gitmodules")):
-            command = "git submodule update"
+            command = f"{ssh_base_command} git submodule update"
             ret = self.bash_executor.run_bash(command)
             if ret["stdout"] or ret["stderr"]:
                 raise ValueError(ret)
