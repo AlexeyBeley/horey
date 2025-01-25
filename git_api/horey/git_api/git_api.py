@@ -182,7 +182,8 @@ class GitAPI:
             command = f"{ssh_base_command} git submodule update"
             ret = self.bash_executor.run_bash(command)
             if ret["stdout"] or ret["stderr"]:
-                raise ValueError(ret)
+                if "checked out" not in ret["stdout"] or "Cloning into" not in ret["stderr"]:
+                    raise ValueError(ret)
 
         return True
 
