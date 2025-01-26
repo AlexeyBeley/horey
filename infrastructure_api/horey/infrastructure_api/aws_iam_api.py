@@ -28,7 +28,7 @@ class AWSIAMAPI:
         :return:
         """
 
-    def provision_role(self, policies=None, assume_role_policy=None, managed_policies_arns=None):
+    def provision_role(self, policies=None, assume_role_policy=None, managed_policies_arns=None, role_name=None, description=None):
         """
         Provision role
 
@@ -39,8 +39,8 @@ class AWSIAMAPI:
         managed_policies_arns = managed_policies_arns or []
 
         iam_role = IamRole({})
-        iam_role.name = self.configuration.role_name
-        iam_role.description = self.configuration.role_name
+        iam_role.name = role_name or self.configuration.role_name
+        iam_role.description = description or iam_role.name
         iam_role.path = self.environment_api.configuration.iam_path
         iam_role.max_session_duration = 12 * 60 * 60
         iam_role.assume_role_policy_document = assume_role_policy

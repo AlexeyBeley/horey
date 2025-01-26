@@ -3,6 +3,8 @@ Standard ECS maintainer.
 
 """
 import copy
+import json
+import os
 from datetime import datetime
 
 from horey.h_logger import get_logger
@@ -10,6 +12,13 @@ from horey.h_logger import get_logger
 from horey.aws_api.aws_services_entities.ecr_image import ECRImage
 from horey.aws_api.aws_services_entities.ecr_repository import ECRRepository
 from horey.aws_api.base_entities.region import Region
+from horey.infrastructure_api.alerts_api import AlertsAPI
+from horey.infrastructure_api.alerts_api_configuration_policy import AlertsAPIConfigurationPolicy
+from horey.infrastructure_api.cloudwatch_api_configuration_policy import CloudwatchAPIConfigurationPolicy
+from horey.infrastructure_api.aws_iam_api_configuration_policy import AWSIAMAPIConfigurationPolicy
+from horey.infrastructure_api.aws_iam_api import AWSIAMAPI
+from horey.infrastructure_api.cloudwatch_api import CloudwatchAPI
+
 
 logger = get_logger()
 
@@ -23,8 +32,13 @@ class ECSAPI:
     def __init__(self, configuration, environment_api):
         self.configuration = configuration
         self.environment_api = environment_api
-        self._ecr_repository= None
+        self._ecr_repository = None
         self._ecr_images = None
+        self._alerts_api = None
+        self._cloudwatch_api = None
+        self._aws_iam_api = None
+        self.loadbalancer_api = None
+        self.dns_api = None
 
     @property
     def ecr_repository(self):
@@ -57,6 +71,24 @@ class ECSAPI:
             self._ecr_images = self.environment_api.aws_api.ecr_client.get_repository_images(self.ecr_repository)
         return self._ecr_images
 
+    def set_api(self, loadbalancer_api=None, dns_api=None):
+        """
+        Standard.
+
+        :param loadbalancer_api:
+        :param dns_api:
+        :return:
+        """
+
+        if loadbalancer_api:
+            self.loadbalancer_api = loadbalancer_api
+            try:
+                self.loadbalancer_api.configuration.target_group_name
+            except self.loadbalancer_api.configuration.UndefinedValueError:
+                self.loadbalancer_api.configuration.target_group_name = f"tg_{self.configuration.cluster_name.replace('cluster_', '')}_{self.configuration.service_name}"
+        if dns_api:
+            self.dns_api = dns_api
+
     def provision(self):
         """
         Provision ECS infrastructure.
@@ -64,8 +96,46 @@ class ECSAPI:
         :return:
         """
 
+        self.loadbalancer_api.provision()
+        self.dns_api.provision()
+        breakpoint()
+
+        self.environment_api.aws_api.lambda_client.clear_cache(None, all_cache=True)
         self.provision_ecr_repository()
+        self.cloudwatch_api.provision()
+        self.provision_monitoring()
+        self.provision_task_role()
+        self.provision_execution_role()
+
         return True
+
+    def environment_variables_callback(self):
+        """
+        Made for async generation.
+
+        :return:
+        """
+
+        return []
+
+    def role_inline_policies_callback(self):
+        """
+        Made for async generation.
+
+        :return:
+        """
+
+        return []
+
+    def prepare_container_build_directory_callback(self, source_code_dir):
+        """
+        Echo.
+
+        :param source_code_dir:
+        :return:
+        """
+
+        return source_code_dir
 
     def update(self):
         """
@@ -73,6 +143,7 @@ class ECSAPI:
         :return:
         """
 
+        self.configuration.ecr_image_id = self.get_ecr_image()
         ecs_task_definition = self.provision_ecs_task_definition()
 
         return self.provision_ecs_service(ecs_task_definition)
@@ -83,19 +154,19 @@ class ECSAPI:
 
         :return:
         """
-
+        breakpoint()
         task_definition = self.environment_api.provision_ecs_fargate_task_definition(
             task_definition_family=self.configuration.family,
             contaner_name=self.configuration.container_name,
             ecr_image_id=self.configuration.ecr_image_id,
             port_mappings=self.configuration.container_definition_port_mappings,
             cloudwatch_log_group_name=self.configuration.cloudwatch_log_group_name,
-            entry_point=None,
-            environ_values=self.configuration.environ_values,
+            entry_point=self.configuration.task_definition_entry_point,
+            environ_values=self.environment_variables_callback(),
             requires_compatibilities=self.configuration.requires_compatibilities,
             network_mode=self.configuration.network_mode,
-            volumes=None,
-            mount_points=None,
+            volumes=self.configuration.task_definition_volumes,
+            mount_points=self.configuration.task_definition_mount_points,
             ecs_task_definition_cpu_reservation=self.configuration.ecs_task_definition_cpu_reservation,
             ecs_task_definition_memory_reservation=self.configuration.ecs_task_definition_memory_reservation,
             ecs_task_role_name=self.configuration.ecs_task_role_name,
@@ -159,15 +230,24 @@ class ECSAPI:
         self.environment_api.aws_api.provision_ecr_repository(repo)
         return repo
 
-    def get_ecr_image(self, prepare_build_directory_callback, nocache=False, buildargs=None):
+    @staticmethod
+    def tiny_dockerfile(container_build_dir_path):
+        """
+        700K docker image.
+
+        :return:
+        """
+        os.makedirs(container_build_dir_path, exist_ok=True)
+        with open(os.path.join(container_build_dir_path, "Dockerfile"), "w", encoding="utf-8") as fh:
+            fh.writelines(["FROM k8s.gcr.io/pause\n"])
+
+    def get_ecr_image(self, nocache=False):
         """
         Build if needed.
         Upload if needed.
         Download if needed.
 
-        :param prepare_build_directory_callback:
         :param nocache:
-        :param buildargs:
         :return:
         """
 
@@ -182,7 +262,7 @@ class ECSAPI:
 
             tags = [f"{repo_uri}:build_{build_number + 1}-commit_{commit_id}"]
             image = self.environment_api.build_and_upload_ecr_image(
-                prepare_build_directory_callback(self.environment_api.git_api.configuration.directory_path), tags, nocache, buildargs=buildargs)
+                self.prepare_container_build_directory_callback(self.environment_api.git_api.configuration.directory_path), tags, nocache, buildargs=self.configuration.buildargs)
             assert tags[0] in image.tags
             image_tag = tags[0]
         elif ecr_image is None:
@@ -213,3 +293,123 @@ class ECSAPI:
                 raise
 
         return None
+
+    @property
+    def alerts_api(self):
+        """
+        Alerts api
+
+        :return:
+        """
+
+        if self._alerts_api is None:
+            breakpoint()
+            alerts_api_configuration = AlertsAPIConfigurationPolicy()
+            alerts_api_configuration.sns_topic_name = f"topic-has2-{self.configuration.lambda_name}"
+            alerts_api_configuration.dynamodb_table_name = f"has2-{self.configuration.lambda_name}"
+            alerts_api_configuration.event_bridge_rule_name = f"rule-has2-{self.configuration.lambda_name}"
+            alerts_api_configuration.lambda_role_name = f"role_{self.environment_api.configuration.environment_level}-has2-{self.configuration.lambda_name}"
+            alerts_api_configuration.lambda_name = f"has2-{self.configuration.lambda_name}"
+            alerts_api_configuration.horey_repo_path = os.path.join(self.environment_api.git_api.configuration.git_directory_path, "horey")
+
+            alerts_api_configuration.sns_subscription_name = f"has2-{self.configuration.lambda_name}"
+            alerts_api_configuration.log_group_name = f"has2-{self.configuration.lambda_name}"
+            self._alerts_api = AlertsAPI(alerts_api_configuration, self.environment_api)
+        return self._alerts_api
+
+    @property
+    def cloudwatch_api(self):
+        """
+        Standard.
+
+        :return:
+        """
+        if self._cloudwatch_api is None:
+            config = CloudwatchAPIConfigurationPolicy()
+            config.log_group_name = self.configuration.cloudwatch_log_group_name
+            self._cloudwatch_api = CloudwatchAPI(configuration=config, environment_api=self.environment_api)
+
+        return self._cloudwatch_api
+
+    @property
+    def aws_iam_api(self):
+        """
+        Standard
+
+        :return:
+        """
+
+        if self._aws_iam_api is None:
+            config = AWSIAMAPIConfigurationPolicy()
+            self._aws_iam_api = AWSIAMAPI(configuration=config, environment_api=self.environment_api)
+        return self._aws_iam_api
+
+    def provision_monitoring(self):
+        """
+        Provision alert system and alerts.
+
+        :return:
+        """
+
+        self.alerts_api.provision()
+        self.alerts_api.provision_cloudwatch_logs_alarm(self.cloudwatch_api.configuration.log_group_name, '"[ERROR]"', "error", None, dimensions=None,
+                                        alarm_description=None)
+        self.alerts_api.provision_cloudwatch_logs_alarm(self.cloudwatch_api.configuration.log_group_name, '"Runtime exited with error"', "runtime_exited", None, dimensions=None,
+                                        alarm_description=None)
+        self.alerts_api.provision_cloudwatch_logs_alarm(self.cloudwatch_api.configuration.log_group_name, f'"{self.alerts_api.alert_system.configuration.ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN}"', "timeout", None, dimensions=None,
+                                        alarm_description=None)
+        return True
+
+    def provision_task_role(self):
+        """
+        Provision role used by the task.
+
+        :return:
+        """
+
+        policies = self.role_inline_policies_callback()
+        assume_role_policy_document = json.dumps({
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Sid": "",
+                    "Effect": "Allow",
+                    "Principal": {
+                        "Service": "ecs-tasks.amazonaws.com"
+                    },
+                    "Action": "sts:AssumeRole"
+                }
+            ]
+        })
+        return self.aws_iam_api.provision_role(policies=policies, role_name=self.configuration.ecs_task_role_name, assume_role_policy=assume_role_policy_document)
+
+    def provision_execution_role(self):
+        """
+        Role used by ECS service task running on the container instance to manage containers.
+
+        :return:
+        """
+
+        assume_role_policy_document = json.dumps({
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {
+                        "Service": "ecs-tasks.amazonaws.com"
+                    },
+                    "Action": "sts:AssumeRole",
+                    "Condition": {
+                        "ArnLike": {
+                            "aws:SourceArn": f"arn:aws:ecs:{self.configuration.region}:{self.environment_api.aws_api.ecs_client.account_id}:*"
+                        },
+                        "StringEquals": {
+                            "aws:SourceAccount": self.environment_api.aws_api.ecs_client.account_id
+                        }
+                    }
+                }
+            ]
+        })
+
+        managed_policies_arns = ["arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"]
+        return self.aws_iam_api.provision_role(managed_policies_arns=managed_policies_arns, role_name=self.configuration.ecs_task_execution_role_name, assume_role_policy=assume_role_policy_document, description = "ECS task role used to control containers lifecycle")

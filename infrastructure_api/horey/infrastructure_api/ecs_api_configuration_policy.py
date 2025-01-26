@@ -24,6 +24,227 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
         self._ecr_repository_policy_text = None
         self._service_name = None
         self._cluster_name = None
+        self._buildargs = None
+        self._family = None
+        self._container_name = None
+        self._ecr_image_id = None
+        self._container_definition_port_mappings = None
+        self._cloudwatch_log_group_name = None
+        self._requires_compatibilities = None
+        self._network_mode = None
+        self._ecs_task_definition_cpu_reservation = None
+        self._ecs_task_definition_memory_reservation = None
+        self._ecs_task_role_name = None
+        self._ecs_task_execution_role_name = None
+        self._task_definition_cpu_architecture = None
+        self._task_definition_volumes = None
+        self._task_definition_mount_points = None
+        self._task_definition_entry_point = None
+        self._task_definition_desired_count = None
+        self._launch_type = None
+        self._security_groups = None
+        self._kill_old_containers = None
+        self._service_load_balancers = None
+
+    @property
+    def service_load_balancers(self):
+        if self._service_load_balancers is None:
+            raise self.UndefinedValueError("service_load_balancers")
+        return self._service_load_balancers
+
+    @service_load_balancers.setter
+    def service_load_balancers(self, value):
+        self._service_load_balancers = value
+
+    @property
+    def kill_old_containers(self):
+        if self._kill_old_containers is None:
+            raise self.UndefinedValueError("kill_old_containers")
+        return self._kill_old_containers
+
+    @kill_old_containers.setter
+    def kill_old_containers(self, value):
+        self._kill_old_containers = value
+
+    @property
+    def security_groups(self):
+        if self._security_groups is None:
+            raise self.UndefinedValueError("security_groups")
+        return self._security_groups
+
+    @security_groups.setter
+    def security_groups(self, value):
+        self._security_groups = value
+
+    @property
+    def launch_type(self):
+        if self._launch_type is None:
+            raise self.UndefinedValueError("launch_type")
+        return self._launch_type
+
+    @launch_type.setter
+    def launch_type(self, value):
+        self._launch_type = value
+
+    @property
+    def task_definition_desired_count(self):
+        if self._task_definition_desired_count is None:
+            raise self.UndefinedValueError("task_definition_desired_count")
+        return self._task_definition_desired_count
+
+    @task_definition_desired_count.setter
+    def task_definition_desired_count(self, value):
+        self._task_definition_desired_count = value
+
+    @property
+    def task_definition_entry_point(self):
+        return self._task_definition_entry_point
+
+    @task_definition_entry_point.setter
+    def task_definition_entry_point(self, value):
+        self._task_definition_entry_point = value
+
+    @property
+    def task_definition_mount_points(self):
+        return self._task_definition_mount_points
+
+    @task_definition_mount_points.setter
+    def task_definition_mount_points(self, value):
+        self._task_definition_mount_points = value
+
+    @property
+    def task_definition_volumes(self):
+        return self._task_definition_volumes
+
+    @task_definition_volumes.setter
+    def task_definition_volumes(self, value):
+        self._task_definition_volumes = value
+
+    @property
+    def task_definition_cpu_architecture(self):
+        if self._task_definition_cpu_architecture is None:
+            raise self.UndefinedValueError("task_definition_cpu_architecture")
+        return self._task_definition_cpu_architecture
+
+    @task_definition_cpu_architecture.setter
+    def task_definition_cpu_architecture(self, value):
+        self._task_definition_cpu_architecture = value
+
+    @property
+    def ecs_task_execution_role_name(self):
+        if self._ecs_task_execution_role_name is None:
+            raise self.UndefinedValueError("ecs_task_execution_role_name")
+        return self._ecs_task_execution_role_name
+
+    @ecs_task_execution_role_name.setter
+    def ecs_task_execution_role_name(self, value):
+        self._ecs_task_execution_role_name = value
+
+    @property
+    def ecs_task_role_name(self):
+        if self._ecs_task_role_name is None:
+            raise self.UndefinedValueError("ecs_task_role_name")
+        return self._ecs_task_role_name
+
+    @ecs_task_role_name.setter
+    def ecs_task_role_name(self, value):
+        self._ecs_task_role_name = value
+
+    @property
+    def ecs_task_definition_memory_reservation(self):
+        if self._ecs_task_definition_memory_reservation is None:
+            raise self.UndefinedValueError("ecs_task_definition_memory_reservation")
+        return self._ecs_task_definition_memory_reservation
+
+    @ecs_task_definition_memory_reservation.setter
+    def ecs_task_definition_memory_reservation(self, value):
+        self._ecs_task_definition_memory_reservation = value
+
+    @property
+    def ecs_task_definition_cpu_reservation(self):
+        if self._ecs_task_definition_cpu_reservation is None:
+            raise self.UndefinedValueError("ecs_task_definition_cpu_reservation")
+        return self._ecs_task_definition_cpu_reservation
+
+    @ecs_task_definition_cpu_reservation.setter
+    def ecs_task_definition_cpu_reservation(self, value):
+        self._ecs_task_definition_cpu_reservation = value
+
+    @property
+    def network_mode(self):
+        if self._network_mode is None:
+            raise self.UndefinedValueError("network_mode")
+        return self._network_mode
+
+    @network_mode.setter
+    def network_mode(self, value):
+        self._network_mode = value
+
+    @property
+    def requires_compatibilities(self):
+        if self._requires_compatibilities is None:
+            raise self.UndefinedValueError("requires_compatibilities")
+        return self._requires_compatibilities
+
+    @requires_compatibilities.setter
+    def requires_compatibilities(self, value):
+        self._requires_compatibilities = value
+
+    @property
+    def cloudwatch_log_group_name(self):
+        if self._cloudwatch_log_group_name is None:
+            breakpoint()
+        return self._cloudwatch_log_group_name
+
+    @cloudwatch_log_group_name.setter
+    def cloudwatch_log_group_name(self, value):
+        self._cloudwatch_log_group_name = value
+
+    @property
+    def container_definition_port_mappings(self):
+        return self._container_definition_port_mappings
+
+    @container_definition_port_mappings.setter
+    def container_definition_port_mappings(self, value):
+        self._container_definition_port_mappings = value
+
+    @property
+    def ecr_image_id(self):
+        if self._ecr_image_id is None:
+            raise self.UndefinedValueError("ecr_image_id")
+        return self._ecr_image_id
+
+    @ecr_image_id.setter
+    def ecr_image_id(self, value):
+        self._ecr_image_id = value
+
+    @property
+    def container_name(self):
+        if self._container_name is None:
+            breakpoint()
+        return self._container_name
+
+    @container_name.setter
+    def container_name(self, value):
+        self._container_name = value
+
+    @property
+    def family(self):
+        if self._family is None:
+            breakpoint()
+        return self._family
+
+    @family.setter
+    def family(self, value):
+        self._family = value
+
+    @property
+    def buildargs(self):
+        return self._buildargs
+
+    @buildargs.setter
+    def buildargs(self, value):
+        self._buildargs = value
 
     @property
     def cluster_name(self):

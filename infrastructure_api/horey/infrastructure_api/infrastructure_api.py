@@ -144,3 +144,37 @@ class InfrastructureAPI:
             raise ValueError(f"{environment_api} not instance of EnvironmentAPI")
 
         return AWSIAMAPI(configuration, environment_api)
+
+    @staticmethod
+    def get_loadbalancer_api(configuration, environment_api):
+        """
+        Get Cloudwatch API
+
+        :param configuration:
+        :param environment_api:
+        :return:
+        """
+
+        from horey.infrastructure_api.loadbalancer_api import LoadbalancerAPI
+        from horey.infrastructure_api.environment_api import EnvironmentAPI
+        if not isinstance(environment_api, EnvironmentAPI):
+            raise ValueError(f"{environment_api} not instance of EnvironmentAPI")
+
+        return LoadbalancerAPI(configuration, environment_api)
+
+    @staticmethod
+    def get_dns_api(configuration, environment_api):
+        """
+        Get Cloudwatch API
+
+        :param configuration:
+        :param environment_api:
+        :return:
+        """
+
+        from horey.infrastructure_api.dns_api import DNSAPI
+        from horey.infrastructure_api.environment_api import EnvironmentAPI
+        if not isinstance(environment_api, EnvironmentAPI):
+            raise ValueError(f"{environment_api} not instance of EnvironmentAPI")
+
+        return DNSAPI(configuration, environment_api)

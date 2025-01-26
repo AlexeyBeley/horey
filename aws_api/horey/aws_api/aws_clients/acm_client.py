@@ -203,6 +203,39 @@ class ACMClient(Boto3Client):
                 f"No certificates found in region '{str(region)}' with tags: {dict_tags}"
             ) from error_instance
 
+    def get_certificate_by_domain_name(self, region, domain_name, update_info=False):
+        """
+        Find certificate by domain_name
+
+        :param region:
+        :param domain_name:
+        :param update_info:
+        :return:
+        """
+
+        ret = []
+        for cert in self.yield_certificates(region, update_info=update_info):
+            if cert.domain_name == domain_name:
+                ret.append(cert)
+            breakpoint()
+            if cert.domain_name.startswith("*.") and cert.domain_name[2:] == domain_name.split(".", maxsplit=1)[1]:
+                ret.append(cert)
+
+        breakpoint()
+        if len(ret) > 1:
+            raise NotImplementedError(
+                f"Found more then 1 certificate in region '{str(region)}' with domain name : {domain_name}: {[cert.arn for cert in ret]}"
+            )
+
+        try:
+            return ret[0]
+        except IndexError as error_instance:
+            raise self.ResourceNotFoundError(
+                f"No certificates found in region '{str(region)}' with domain name: {domain_name}"
+            ) from error_instance
+
+
+
     def update_certificate_information(self, certificate: ACMCertificate,
                                        filter_expired=True,
                                        ignore_missing_tag=False,
