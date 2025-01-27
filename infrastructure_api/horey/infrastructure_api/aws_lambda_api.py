@@ -54,7 +54,8 @@ class AWSLambdaAPI:
             alerts_api_configuration.event_bridge_rule_name = f"rule-has2-{self.configuration.lambda_name}"
             alerts_api_configuration.lambda_role_name = f"role_{self.environment_api.configuration.environment_level}-has2-{self.configuration.lambda_name}"
             alerts_api_configuration.lambda_name = f"has2-{self.configuration.lambda_name}"
-            alerts_api_configuration.horey_repo_path = os.path.join(self.environment_api.git_api.configuration.git_directory_path, "horey")
+            alerts_api_configuration.horey_repo_path = os.path.join(
+                self.environment_api.git_api.configuration.git_directory_path, "horey")
 
             alerts_api_configuration.sns_subscription_name = f"has2-{self.configuration.lambda_name}"
             alerts_api_configuration.log_group_name = f"has2-{self.configuration.lambda_name}"
@@ -80,7 +81,7 @@ class AWSLambdaAPI:
         if self._cloudwatch_api is None:
             config = CloudwatchAPIConfigurationPolicy()
             cloudwatch_api = CloudwatchAPI(configuration=config, environment_api=self.environment_api)
-            self.set_apis(cloudwatch_api=cloudwatch_api)
+            self.set_api(cloudwatch_api=cloudwatch_api)
         return self._cloudwatch_api
 
     @property
@@ -110,7 +111,7 @@ class AWSLambdaAPI:
         if self._aws_iam_api is None:
             config = AWSIAMAPIConfigurationPolicy()
             aws_iam_api = AWSIAMAPI(configuration=config, environment_api=self.environment_api)
-            self.set_apis(aws_iam_api=aws_iam_api)
+            self.set_api(aws_iam_api=aws_iam_api)
         return self._aws_iam_api
 
     @aws_iam_api.setter
@@ -134,14 +135,14 @@ class AWSLambdaAPI:
         if self._ecs_api is None:
             config = ECSAPIConfigurationPolicy()
             ecs_api = ECSAPI(configuration=config, environment_api=self.environment_api)
-            self.set_apis(ecs_api=ecs_api)
+            self.set_api(ecs_api=ecs_api)
         return self._ecs_api
 
     @ecs_api.setter
     def ecs_api(self, value):
         self._ecs_api = value
 
-    def set_apis(self, ecs_api=None, cloudwatch_api=None, aws_iam_api=None):
+    def set_api(self, ecs_api=None, cloudwatch_api=None, aws_iam_api=None):
         """
         Set api to manage ecs tasks.
 
@@ -157,6 +158,7 @@ class AWSLambdaAPI:
                 self._cloudwatch_api.configuration.log_group_name
             except self._cloudwatch_api.configuration.UndefinedValueError:
                 self._cloudwatch_api.configuration.log_group_name = self.configuration.lambda_log_group
+            self.ecs_api.set_api(cloudwatch_api=self._cloudwatch_api)
 
         if ecs_api:
             self.ecs_api = ecs_api
@@ -166,25 +168,28 @@ class AWSLambdaAPI:
                 self.ecs_api.configuration.ecr_repository_name = f"repo_{self.configuration.lambda_name}"
 
             try:
-                self.ecs_api.configuration.ecr_repository_region
+                if self.ecs_api.configuration.ecr_repository_region != self.environment_api.configuration.region:
+                    raise RuntimeError(
+                        f"{self.ecs_api.configuration.ecr_repository_region} != {self.environment_api.configuration.region=}")
             except self.ecs_api.configuration.UndefinedValueError:
-                self.ecs_api.configuration.ecr_repository_region = self.configuration.ecr_repository_region
+                self.ecs_api.configuration.ecr_repository_region = self.environment_api.configuration.region
 
-            try:
-                raise RuntimeError(self.ecs_api.configuration.ecr_repository_policy_text)
-            except self.ecs_api.configuration.UndefinedValueError:
-                dict_policy = {"Version": "2008-10-17",
-                               "Statement": [
-                                   {"Sid": "LambdaECRImageRetrievalPolicy",
-                                    "Effect": "Allow",
-                                    "Principal": {"Service": "lambda.amazonaws.com"},
-                                    "Action": ["ecr:BatchGetImage",
-                                               "ecr:GetDownloadUrlForLayer",
-                                               "ecr:GetRepositoryPolicy"],
-                                    "Condition": {"StringLike": {
-                                        "aws:sourceArn": f"arn:aws:lambda:{self.environment_api.configuration.region}:{self.environment_api.aws_api.ecs_client.account_id}:function:{self.configuration.lambda_name}"}}}]}
+            if self.ecs_api.configuration.ecr_repository_policy_text:
+                raise NotImplementedError(
+                    f"Update policy document: {self.ecs_api.configuration.ecr_repository_policy_text}")
+            dict_policy = {"Version": "2008-10-17",
+                           "Statement": [
+                               {"Sid": "LambdaECRImageRetrievalPolicy",
+                                "Effect": "Allow",
+                                "Principal": {"Service": "lambda.amazonaws.com"},
+                                "Action": ["ecr:BatchGetImage",
+                                           "ecr:GetDownloadUrlForLayer",
+                                           "ecr:GetRepositoryPolicy"],
+                                "Condition": {"StringLike": {
+                                    "aws:sourceArn": f"arn:aws:lambda:{self.environment_api.configuration.region}:{self.environment_api.aws_api.ecs_client.account_id}:function:{self.configuration.lambda_name}"}}}]}
 
-                self.ecs_api.configuration.ecr_repository_policy_text = json.dumps(dict_policy)
+            self.ecs_api.configuration.ecr_repository_policy_text = json.dumps(dict_policy)
+            self.ecs_api.set_api(cloudwatch_api=self.cloudwatch_api)
 
         if aws_iam_api:
             self.aws_iam_api = aws_iam_api
@@ -214,7 +219,7 @@ class AWSLambdaAPI:
                         ]
                     })
 
-    def provision(self, branch_name=None, inline_policies=None):
+    def provision(self):
         """
         Provision ECS infrastructure.
 
@@ -243,7 +248,7 @@ class AWSLambdaAPI:
             ]
         }
 
-        inline_policies = inline_policies or []
+        inline_policies = self.role_inline_policies_callback()
         if self.configuration.event_source_mapping_dynamodb_name:
             # todo: generate cleanup report to find lambdas with no permissions
             name = f"inline_event_source_{self.configuration.event_source_mapping_dynamodb_name}"
@@ -266,7 +271,7 @@ class AWSLambdaAPI:
 
         sns_topic = self.provision_sns_topic() if self.configuration.provision_sns_topic else None
 
-        aws_lambda = self.update(branch_name=branch_name, events_rule=events_rule, sns_topic=sns_topic)
+        aws_lambda = self.update(events_rule=events_rule, sns_topic=sns_topic)
         if events_rule is not None:
             self.provision_events_rule_targets(events_rule, aws_lambda)
         if sns_topic:
@@ -286,12 +291,17 @@ class AWSLambdaAPI:
         """
 
         self.alerts_api.provision()
-        self.alerts_api.provision_cloudwatch_logs_alarm(self.cloudwatch_api.configuration.log_group_name, '"[ERROR]"', "error", None, dimensions=None,
-                                        alarm_description=None)
-        self.alerts_api.provision_cloudwatch_logs_alarm(self.cloudwatch_api.configuration.log_group_name, '"Runtime exited with error"', "runtime_exited", None, dimensions=None,
-                                        alarm_description=None)
-        self.alerts_api.provision_cloudwatch_logs_alarm(self.cloudwatch_api.configuration.log_group_name, f'"{self.alerts_api.alert_system.configuration.ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN}"', "timeout", None, dimensions=None,
-                                        alarm_description=None)
+        self.alerts_api.provision_cloudwatch_logs_alarm(self.cloudwatch_api.configuration.log_group_name, '"[ERROR]"',
+                                                        "error", None, dimensions=None,
+                                                        alarm_description=None)
+        self.alerts_api.provision_cloudwatch_logs_alarm(self.cloudwatch_api.configuration.log_group_name,
+                                                        '"Runtime exited with error"', "runtime_exited", None,
+                                                        dimensions=None,
+                                                        alarm_description=None)
+        self.alerts_api.provision_cloudwatch_logs_alarm(self.cloudwatch_api.configuration.log_group_name,
+                                                        f'"{self.alerts_api.alert_system.configuration.ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN}"',
+                                                        "timeout", None, dimensions=None,
+                                                        alarm_description=None)
         return True
 
     def provision_event_source_mapping_dynamodb(self, aws_lambda):
@@ -346,30 +356,13 @@ class AWSLambdaAPI:
         self.environment_api.aws_api.provision_sns_subscription(subscription)
         return subscription
 
-    def update(self, branch_name=None, events_rule=None, sns_topic=None):
+    def update(self, events_rule=None, sns_topic=None):
         """
 
         :return:
         """
-        ecr_image = self.get_latest_build()
-        build_number = ecr_image.build_number if ecr_image is not None else -1
-        repo_uri = f"{self.environment_api.aws_api.ecs_client.account_id}.dkr.ecr.{self.ecs_api.configuration.ecr_repository_region}.amazonaws.com/{self.ecs_api.configuration.ecr_repository_name}"
-        if branch_name is not None:
-            if not self.environment_api.git_api.checkout_remote_branch(self.configuration.git_remote_url, branch_name):
-                raise RuntimeError(f"Was not able to checkout branch: {branch_name}")
 
-            commit_id = self.environment_api.git_api.get_commit_id()
-
-            tags = [f"{repo_uri}:build_{build_number + 1}-commit_{commit_id}"]
-            image = self.environment_api.build_and_upload_ecr_image(
-                self.environment_api.git_api.configuration.directory_path, tags, False, buildargs=self.configuration.buildargs)
-            assert tags[0] in image.tags
-            image_tag = tags[0]
-        elif ecr_image is None:
-            raise RuntimeError(f"Images store '{repo_uri}' is empty yet, use branch_name to build and image")
-        else:
-            image_tag_raw = ecr_image.image_tags[-1]
-            image_tag = f"{repo_uri}:{image_tag_raw}"
+        image_tag = self.ecs_api.get_ecr_image()
         return self.deploy_lambda(image_tag, events_rule=events_rule, sns_topic=sns_topic)
 
     def get_latest_build(self):
@@ -427,8 +420,8 @@ class AWSLambdaAPI:
                 security_group.id for security_group in security_groups
             ]
         }
-        aws_lambda.timeout = 600
-        aws_lambda.memory_size = 192
+        aws_lambda.timeout = self.configuration.lambda_timeout
+        aws_lambda.memory_size = self.configuration.lambda_memory_size
         aws_lambda.reserved_concurrent_executions = 1
 
         aws_lambda.environment = self.environment_variables_callback()
@@ -437,12 +430,12 @@ class AWSLambdaAPI:
 
         if self.configuration.schedule_expression:
             statement = {"Sid": f"trigger_{self.configuration.event_bridge_rule_name}",
-                                      "Effect": "Allow",
-                                      "Principal": {"Service": "events.amazonaws.com"},
-                                      "Action": "lambda:InvokeFunction",
-                                      "Resource": None,
-                                      "Condition": {"ArnLike": {
-                                          "AWS:SourceArn": events_rule.arn}}}
+                         "Effect": "Allow",
+                         "Principal": {"Service": "events.amazonaws.com"},
+                         "Action": "lambda:InvokeFunction",
+                         "Resource": None,
+                         "Condition": {"ArnLike": {
+                             "AWS:SourceArn": events_rule.arn}}}
 
             aws_lambda.policy["Statement"].append(statement)
 
@@ -513,3 +506,12 @@ class AWSLambdaAPI:
         if not self.environment_api.aws_api.lambda_client.update_lambda_information(aws_lambda):
             raise RuntimeError(f"Lambda '{aws_lambda.name}' not found in {self.environment_api.configuration.region}")
         return aws_lambda
+
+    def role_inline_policies_callback(self):
+        """
+        Made for async generation.
+
+        :return:
+        """
+
+        return []

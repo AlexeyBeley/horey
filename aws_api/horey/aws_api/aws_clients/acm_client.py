@@ -215,13 +215,16 @@ class ACMClient(Boto3Client):
 
         ret = []
         for cert in self.yield_certificates(region, update_info=update_info):
+            if cert.status == "EXPIRED":
+                continue
+
             if cert.domain_name == domain_name:
                 ret.append(cert)
-            breakpoint()
+                continue
+
             if cert.domain_name.startswith("*.") and cert.domain_name[2:] == domain_name.split(".", maxsplit=1)[1]:
                 ret.append(cert)
 
-        breakpoint()
         if len(ret) > 1:
             raise NotImplementedError(
                 f"Found more then 1 certificate in region '{str(region)}' with domain name : {domain_name}: {[cert.arn for cert in ret]}"
@@ -233,8 +236,6 @@ class ACMClient(Boto3Client):
             raise self.ResourceNotFoundError(
                 f"No certificates found in region '{str(region)}' with domain name: {domain_name}"
             ) from error_instance
-
-
 
     def update_certificate_information(self, certificate: ACMCertificate,
                                        filter_expired=True,

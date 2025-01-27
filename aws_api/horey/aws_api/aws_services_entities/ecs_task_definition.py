@@ -48,6 +48,8 @@ class ECSTaskDefinition(AwsObject):
             "registeredBy": self.init_default_attr,
             "status": self.init_default_attr,
             "networkMode": self.init_default_attr,
+            "runtimePlatform": self.init_default_attr,
+            "enableFaultInjection": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)

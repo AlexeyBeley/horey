@@ -469,6 +469,8 @@ class ELBV2Client(Boto3Client):
         @return:
         """
 
+        if not listener.tags:
+            raise ValueError(f"Can not provision lb listener without tags")
         region_listener = LoadBalancer.Listener({})
         region_listener.region = listener.region
         region_listener.load_balancer_arn = listener.load_balancer_arn
@@ -486,10 +488,22 @@ class ELBV2Client(Boto3Client):
                 self.remove_listener_certificates_raw(listener.region, remove_request)
             return True
 
-        self.provision_load_balancer_listener_raw(listener.region,
+        response = self.provision_load_balancer_listener_raw(listener.region,
                                                              listener.generate_create_request()
                                                              )
-        return self.update_listener_information(listener)
+        listener.update_from_raw_response(response)
+        rules = self.get_region_rules(listener.region, listener_arn=listener.arn)
+        if len(rules) != 1:
+            raise RuntimeError(f"Expected to find only default rule, but found {rules}")
+
+        request_dict = {"ResourceArns": [rules[0].arn], "Tags": listener.tags}
+
+        for _ in self.execute(
+                self.get_session_client(region=listener.region).add_tags, None, raw_data=True, filters_req=request_dict
+        ):
+            break
+
+        return True
 
     def provision_load_balancer_listener_raw(self, region, request_dict):
         """
@@ -574,15 +588,16 @@ class ELBV2Client(Boto3Client):
             self.clear_cache(LoadBalancer.Listener)
             return response
 
-    def update_rule_information(self, rule: LoadBalancer.Rule):
+    def update_rule_information(self, rule: LoadBalancer.Rule, region_rules=None):
         """
         Standard.
 
+        :param region_rules:
         :param rule:
         :return:
         """
 
-        region_rules = self.get_region_rules(
+        region_rules = region_rules or self.get_region_rules(
             rule.region, full_information=False, listener_arn=rule.listener_arn
         )
 

@@ -21,6 +21,18 @@ class LoadbalancerAPIConfigurationPolicy(ConfigurationPolicy):
         self._security_groups = None
         self._target_group_name = None
         self._public_domain_names = None
+        self._unmanaged_public_domain_names = []
+
+    @property
+    def unmanaged_public_domain_names(self):
+        return self._unmanaged_public_domain_names
+
+    @unmanaged_public_domain_names.setter
+    def unmanaged_public_domain_names(self, value):
+        if not isinstance(value, list):
+            raise ValueError(value)
+
+        self._unmanaged_public_domain_names = value
 
     @property
     def public_domain_names(self):

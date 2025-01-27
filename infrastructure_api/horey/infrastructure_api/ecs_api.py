@@ -71,7 +71,7 @@ class ECSAPI:
             self._ecr_images = self.environment_api.aws_api.ecr_client.get_repository_images(self.ecr_repository)
         return self._ecr_images
 
-    def set_api(self, loadbalancer_api=None, dns_api=None):
+    def set_api(self, loadbalancer_api=None, dns_api=None, cloudwatch_api=None):
         """
         Standard.
 
@@ -85,9 +85,20 @@ class ECSAPI:
             try:
                 self.loadbalancer_api.configuration.target_group_name
             except self.loadbalancer_api.configuration.UndefinedValueError:
-                self.loadbalancer_api.configuration.target_group_name = f"tg_{self.configuration.cluster_name.replace('cluster_', '')}_{self.configuration.service_name}"
+                self.loadbalancer_api.configuration.target_group_name = f"tg-{self.configuration.cluster_name.replace('cluster_', '')}-{self.configuration.service_name}".replace("_", "-")
+
+            try:
+                self.loadbalancer_api.configuration.load_balancer_name
+            except self.loadbalancer_api.configuration.UndefinedValueError:
+                self.loadbalancer_api.configuration.load_balancer_name = f"lb-{self.configuration.cluster_name.replace('cluster_', '')}".replace("_", "-")
+
         if dns_api:
             self.dns_api = dns_api
+
+        if cloudwatch_api:
+            if not cloudwatch_api.configuration.log_group_name:
+                raise ValueError("Log group name not set")
+            self.cloudwatch_api = cloudwatch_api
 
     def provision(self):
         """
@@ -96,16 +107,24 @@ class ECSAPI:
         :return:
         """
 
-        self.loadbalancer_api.provision()
-        self.dns_api.provision()
-        breakpoint()
-
         self.environment_api.aws_api.lambda_client.clear_cache(None, all_cache=True)
         self.provision_ecr_repository()
-        self.cloudwatch_api.provision()
-        self.provision_monitoring()
-        self.provision_task_role()
-        self.provision_execution_role()
+
+        try:
+            assert self.configuration.service_name is not None
+            self.cloudwatch_api.provision()
+            self.provision_monitoring()
+            self.provision_task_role()
+            self.provision_execution_role()
+        except self.configuration.UndefinedValueError as error_inst:
+            if "service_name" not in repr(error_inst):
+                raise
+
+        if self.loadbalancer_api:
+            self.loadbalancer_api.provision()
+
+        if self.dns_api:
+            self.dns_api.provision()
 
         return True
 
@@ -331,6 +350,12 @@ class ECSAPI:
 
         return self._cloudwatch_api
 
+    @cloudwatch_api.setter
+    def cloudwatch_api(self, value):
+        if not isinstance(value, CloudwatchAPI):
+            raise ValueError(value)
+        self._cloudwatch_api = value
+
     @property
     def aws_iam_api(self):
         """
@@ -367,6 +392,9 @@ class ECSAPI:
         :return:
         """
 
+        if not self.configuration.service_name:
+            return True
+
         policies = self.role_inline_policies_callback()
         assume_role_policy_document = json.dumps({
             "Version": "2012-10-17",
@@ -389,6 +417,9 @@ class ECSAPI:
 
         :return:
         """
+
+        if not self.configuration.service_name:
+            return True
 
         assume_role_policy_document = json.dumps({
             "Version": "2012-10-17",

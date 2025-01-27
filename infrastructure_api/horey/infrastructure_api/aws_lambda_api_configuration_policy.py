@@ -28,8 +28,39 @@ class AWSLambdaAPIConfigurationPolicy(ConfigurationPolicy):
         self._event_source_mapping_dynamodb_name = None
         self._event_bridge_rule_name = None
         self._buildargs = None
-        self._policy = None
         self._lambda_log_group = None
+        self._policy = None
+        self._lambda_memory_size = None
+        self._lambda_timeout = None
+        self._managed_policies_arns = []
+
+    @property
+    def managed_policies_arns(self):
+        return self._managed_policies_arns
+
+    @managed_policies_arns.setter
+    def managed_policies_arns(self, value):
+        self._managed_policies_arns = value
+
+    @property
+    def lambda_timeout(self):
+        if self._lambda_timeout is None:
+            raise self.UndefinedValueError("lambda_timeout")
+        return self._lambda_timeout
+
+    @lambda_timeout.setter
+    def lambda_timeout(self, value):
+        self._lambda_timeout = value
+
+    @property
+    def lambda_memory_size(self):
+        if self._lambda_memory_size is None:
+            raise self.UndefinedValueError("lambda_memory_size")
+        return self._lambda_memory_size
+
+    @lambda_memory_size.setter
+    def lambda_memory_size(self, value):
+        self._lambda_memory_size = value
 
     @property
     def policy(self):

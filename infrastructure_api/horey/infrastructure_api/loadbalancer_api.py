@@ -70,7 +70,6 @@ class LoadbalancerAPI:
 
         :return:
         """
-        breakpoint()
         target_group = ELBV2TargetGroup({})
         target_group.region = self.environment_api.region
         target_group.name = self.configuration.target_group_name
@@ -108,12 +107,12 @@ class LoadbalancerAPI:
         """
 
         # listener 443
-        certificates = [self.environment_api.aws_api.acm_client.get_certificate_by_domain_name(dns) for dns in self.configuration.public_domain_names]
+        certificates = [self.environment_api.aws_api.acm_client.get_certificate_by_domain_name(self.environment_api.region, dns) for dns in self.configuration.public_domain_names + self.configuration.unmanaged_public_domain_names]
         listener = LoadBalancer.Listener({})
         listener.protocol = "HTTPS"
         listener.ssl_policy = "ELBSecurityPolicy-TLS13-1-2-2021-06"
         listener.mutual_authentication = {"Mode": "off"}
-        breakpoint()
+
         listener.certificates = [
             {
                 "CertificateArn": cert.arn,
@@ -132,8 +131,13 @@ class LoadbalancerAPI:
 
         listener.load_balancer_arn = load_balancer.arn
         listener.region = self.environment_api.region
+        listener.tags = self.environment_api.configuration.tags
+        listener.tags.append({
+            "Key": "Name",
+            "Value": f"{load_balancer.name}_{listener.port}"
+        })
 
-        self.environment_api.aws_api.provision_load_balancer_listener(listener)
+        self.environment_api.aws_api.elbv2_client.provision_load_balancer_listener(listener)
 
         # listener 80
         listener = LoadBalancer.Listener({})
@@ -160,12 +164,12 @@ class LoadbalancerAPI:
         listener.tags = self.environment_api.configuration.tags
         listener.tags.append({
             "Key": "Name",
-            "Value": load_balancer.name
+            "Value": f"{load_balancer.name}_{listener.port}"
         })
 
-        self.environment_api.aws_api.provision_load_balancer_listener(listener)
+        self.environment_api.aws_api.elbv2_client.provision_load_balancer_listener(listener)
 
-        return load_balancer
+        return listener
 
     def provision_listener_rule(self, listener, target_group):
         """
@@ -175,21 +179,40 @@ class LoadbalancerAPI:
         """
         # todo: cleanup report reorder rules by usage
         # todo: cleanup report host rule without certificate
+
+        current_rules = self.environment_api.aws_api.elbv2_client.get_region_rules(listener.region, listener_arn=listener.arn)
+
         rule = LoadBalancer.Rule({})
         rule.listener_arn = listener.arn
         rule.region = self.environment_api.region
+        rule.tags = self.environment_api.configuration.tags
+        rule.tags.append({
+            "Key": "Name",
+            "Value": self.configuration.target_group_name
+        })
+        if self.environment_api.aws_api.elbv2_client.update_rule_information(rule, region_rules=current_rules):
+            rule_priority = rule.priority
+            breakpoint()
+        else:
+            rule_priority = 10
+
+        rule = LoadBalancer.Rule({})
+        rule.listener_arn = listener.arn
+        rule.region = self.environment_api.region
+        rule.tags = self.environment_api.configuration.tags
+        rule.tags.append({
+            "Key": "Name",
+            "Value": self.configuration.target_group_name
+        })
 
         rule.conditions = [
             {
                 "Field": "host-header",
                 "HostHeaderConfig": {
-                    "Values": [
-                        self.configuration.public_domain_names
-                    ]
+                    "Values": self.configuration.public_domain_names + self.configuration.unmanaged_public_domain_names
                 }
             }
         ]
-        breakpoint()
         rule.priority = rule_priority
 
         rule.actions = [
@@ -216,7 +239,6 @@ class LoadbalancerAPI:
             "Key": "Name",
             "Value": self.configuration.target_group_name
         })
-
         self.environment_api.aws_api.provision_load_balancer_rule(rule)
 
     def update(self):
