@@ -66,6 +66,7 @@ class BashExecutor:
         if not logger:
             logger = BashExecutor._logger or get_logger()
 
+        logger.info(f"### Command Start ###")
         logger.info(f"run_bash: {command}")
 
         file_name = f"tmp-{str(uuid.uuid4())}.sh"
@@ -95,15 +96,21 @@ class BashExecutor:
             logger.info(f"return_code:{return_dict['code']}")
 
             stdout_log = "stdout:\n" + str(return_dict["stdout"])
+
+            if stdout_log:
+                stdout_log = stdout_log.strip("\n")
+
             for line in stdout_log.split("\n"):
                 logger.info(line)
 
             error_str = str(return_dict["stderr"])
             if error_str:
+                error_str = error_str.strip("\n")
                 stderr_log = "stderr:\n" + error_str
                 for line in stderr_log.split("\n"):
                     logger.info(line)
 
+        logger.info(f"### Command End ###")
         if ret.returncode != 0:
             if ignore_on_error_callback is None:
                 raise BashExecutor.BashError(json.dumps(return_dict))

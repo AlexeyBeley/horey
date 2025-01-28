@@ -322,17 +322,19 @@ class ECSAPI:
         """
 
         if self._alerts_api is None:
-            breakpoint()
             alerts_api_configuration = AlertsAPIConfigurationPolicy()
-            alerts_api_configuration.sns_topic_name = f"topic-has2-{self.configuration.lambda_name}"
-            alerts_api_configuration.dynamodb_table_name = f"has2-{self.configuration.lambda_name}"
-            alerts_api_configuration.event_bridge_rule_name = f"rule-has2-{self.configuration.lambda_name}"
-            alerts_api_configuration.lambda_role_name = f"role_{self.environment_api.configuration.environment_level}-has2-{self.configuration.lambda_name}"
-            alerts_api_configuration.lambda_name = f"has2-{self.configuration.lambda_name}"
+            if "ecs_task" in self.configuration.ecs_task_role_name or "ecs-task" in self.configuration.ecs_task_role_name:
+                alerts_api_configuration.lambda_role_name = self.configuration.ecs_task_role_name.\
+                    replace("ecs_task", "has2").\
+                    replace("ecs-task", "has2")
+                if alerts_api_configuration.lambda_role_name.count("has2") != 1:
+                    raise ValueError(f"Expected single 'has2' in '{alerts_api_configuration.lambda_role_name}'")
+            else:
+                alerts_api_configuration.lambda_role_name = self.configuration.ecs_task_role_name + "-has2"
+
+            alerts_api_configuration.lambda_name = f"has2-{self.configuration.slug}"
             alerts_api_configuration.horey_repo_path = os.path.join(self.environment_api.git_api.configuration.git_directory_path, "horey")
 
-            alerts_api_configuration.sns_subscription_name = f"has2-{self.configuration.lambda_name}"
-            alerts_api_configuration.log_group_name = f"has2-{self.configuration.lambda_name}"
             self._alerts_api = AlertsAPI(alerts_api_configuration, self.environment_api)
         return self._alerts_api
 
@@ -432,7 +434,7 @@ class ECSAPI:
                     "Action": "sts:AssumeRole",
                     "Condition": {
                         "ArnLike": {
-                            "aws:SourceArn": f"arn:aws:ecs:{self.configuration.region}:{self.environment_api.aws_api.ecs_client.account_id}:*"
+                            "aws:SourceArn": f"arn:aws:ecs:{self.environment_api.configuration.region}:{self.environment_api.aws_api.ecs_client.account_id}:*"
                         },
                         "StringEquals": {
                             "aws:SourceAccount": self.environment_api.aws_api.ecs_client.account_id

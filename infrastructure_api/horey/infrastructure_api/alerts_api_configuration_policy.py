@@ -27,8 +27,31 @@ class AlertsAPIConfigurationPolicy(ConfigurationPolicy):
         self._bearer_token = None
         self._ses_alert_slack_channel = None
         self._do_not_send_ses_suppressed_bounce_notifications = False
-        self._postgres_cluster_identifier = False
-        self._routing_tags = False
+        self._postgres_cluster_identifier = None
+        self._routing_tags = None
+        self._sns_subscription_name = None
+        self._sns_topic_name = None
+        self._slug = None
+
+    @property
+    def sns_topic_name(self):
+        if self._sns_topic_name is None:
+            self._sns_topic_name = f"topic-has2-{self.slug}"
+        return self._sns_topic_name
+
+    @sns_topic_name.setter
+    def sns_topic_name(self, value):
+        self._sns_topic_name = value
+
+    @property
+    def sns_subscription_name(self):
+        if self._sns_subscription_name is None:
+            self._sns_subscription_name = f"subscription-has2-{self.slug}"
+        return self._sns_subscription_name
+
+    @sns_subscription_name.setter
+    def sns_subscription_name(self, value):
+        self._sns_subscription_name = value
 
     @property
     def routing_tags(self):
@@ -107,7 +130,9 @@ class AlertsAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def lambda_name(self):
         if self._lambda_name is None:
-            raise self.UndefinedValueError("lambda_name")
+            if self._slug is None:
+                raise self.UndefinedValueError("lambda_name")
+            self._lambda_name = f"has2-{self.slug}"
         return self._lambda_name
 
     @lambda_name.setter
@@ -127,7 +152,7 @@ class AlertsAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def event_bridge_rule_name(self):
         if self._event_bridge_rule_name is None:
-            raise self.UndefinedValueError("event_bridge_rule_name")
+            self._event_bridge_rule_name = f"rule-has2-{self.slug}"
         return self._event_bridge_rule_name
 
     @event_bridge_rule_name.setter
@@ -137,22 +162,12 @@ class AlertsAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def dynamodb_table_name(self):
         if self._dynamodb_table_name is None:
-            raise self.UndefinedValueError("dynamodb_table_name")
+            self._dynamodb_table_name = f"has2-{self.slug}"
         return self._dynamodb_table_name
 
     @dynamodb_table_name.setter
     def dynamodb_table_name(self, value):
         self._dynamodb_table_name = value
-
-    @property
-    def sns_topic_name(self):
-        if self._sns_topic_name is None:
-            raise self.UndefinedValueError("sns_topic_name")
-        return self._sns_topic_name
-
-    @sns_topic_name.setter
-    def sns_topic_name(self, value):
-        self._sns_topic_name = value
 
     @property
     def alert_system_lambda_log_group_name(self):
@@ -161,3 +176,9 @@ class AlertsAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def lambda_timeout(self):
         return 300
+
+    @property
+    def slug(self):
+        if self._slug is None:
+            self._slug = self.lambda_name.replace('has2-', '').replace('has2_', '')
+        return self._slug

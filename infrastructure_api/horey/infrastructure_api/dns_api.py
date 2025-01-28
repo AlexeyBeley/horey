@@ -26,6 +26,7 @@ class DNSAPI:
 
         :return:
         """
+        breakpoint()
         dict_record = {
             "Name": self,
             "Type": "A",

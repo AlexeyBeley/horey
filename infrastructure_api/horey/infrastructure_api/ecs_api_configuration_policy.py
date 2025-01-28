@@ -45,6 +45,13 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
         self._security_groups = None
         self._kill_old_containers = None
         self._service_load_balancers = None
+        self._slug = None
+
+    @property
+    def slug(self):
+        if self._slug is None:
+            self._slug = f"{self.cluster_name.replace('cluster_', '')}-{self.service_name.replace('service_', '')}"
+        return self._slug
 
     @property
     def service_load_balancers(self):
@@ -193,7 +200,7 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def cloudwatch_log_group_name(self):
         if self._cloudwatch_log_group_name is None:
-            breakpoint()
+            self._cloudwatch_log_group_name = f"/ecs/{self.cluster_name}/{self.service_name}"
         return self._cloudwatch_log_group_name
 
     @cloudwatch_log_group_name.setter

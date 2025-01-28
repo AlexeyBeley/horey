@@ -218,7 +218,7 @@ class GitAPI:
             if "HEAD is now at" not in stdout:
                 raise RuntimeError(stdout)
         else:
-            command = f"git checkout -b {branch_name}"
+            command = f"git checkout --track {remote_name}/{branch_name}"
             ret = self.bash_executor.run_bash(command)
             if ret["stderr"] not in [f"Switched to a new branch '{branch_name}'"]:
                 raise RuntimeError(ret)

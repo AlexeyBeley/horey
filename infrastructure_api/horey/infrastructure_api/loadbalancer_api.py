@@ -183,20 +183,23 @@ class LoadbalancerAPI:
         current_rules = self.environment_api.aws_api.elbv2_client.get_region_rules(listener.region, listener_arn=listener.arn)
 
         rule = LoadBalancer.Rule({})
-        rule.listener_arn = listener.arn
-        rule.region = self.environment_api.region
-        rule.tags = self.environment_api.configuration.tags
-        rule.tags.append({
+
+        current_rule = LoadBalancer.Rule({})
+        current_rule.listener_arn = listener.arn
+        current_rule.region = self.environment_api.region
+        current_rule.tags = self.environment_api.configuration.tags
+        current_rule.tags.append({
             "Key": "Name",
             "Value": self.configuration.target_group_name
         })
-        if self.environment_api.aws_api.elbv2_client.update_rule_information(rule, region_rules=current_rules):
-            rule_priority = rule.priority
-            breakpoint()
-        else:
-            rule_priority = 10
 
-        rule = LoadBalancer.Rule({})
+        if self.environment_api.aws_api.elbv2_client.update_rule_information(current_rule, region_rules=current_rules):
+            rule.priority = current_rule.priority
+            rule.priority = current_rule.arn
+        else:
+            priorities = [int(_rule.priority) for _rule in current_rules if _rule.priority != "default"]
+            rule.priority = 10 if not priorities else max(priorities) + 10
+
         rule.listener_arn = listener.arn
         rule.region = self.environment_api.region
         rule.tags = self.environment_api.configuration.tags
@@ -213,7 +216,6 @@ class LoadbalancerAPI:
                 }
             }
         ]
-        rule.priority = rule_priority
 
         rule.actions = [
             {
