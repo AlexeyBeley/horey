@@ -26,34 +26,66 @@ class DNSAPI:
 
         :return:
         """
+
+        if self.configuration.hosted_zone_name:
+            hosted_zone = self.get_hosted_zone(self.configuration.hosted_zone_name)
+        else:
+            hosted_zone = self.find_appropriate_hosted_zone()
+
+        if "elb.amazonaws.com" in self.configuration.dns_target:
+            if hosted_zone.config["PrivateZone"]:
+                raise NotImplementedError(hosted_zone.config["PrivateZone"], self.configuration.dns_target)
+            dict_record = {
+                "Name": self.configuration.dns_address,
+                "Type": "A",
+                "AliasTarget":
+                    {"HostedZoneId": self.environment_api.aws_api.elbv2_client.HOSTED_ZONES[self.environment_api.configuration.region],
+                     "DNSName": f"dualstack.{self.configuration.dns_target}",
+                     "EvaluateTargetHealth": False
+                     }
+            }
+        else:
+            raise RuntimeError(self.configuration.dns_target)
+
         breakpoint()
-        dict_record = {
-            "Name": self,
-            "Type": "A",
-            "AliasTarget":
-                {"HostedZoneId": self.aws_api.elbv2_client.HOSTED_ZONES[self.configuration.region],
-                 "DNSName": f"dualstack.{load_balancer.dns_name}",
-                 "EvaluateTargetHealth": False
-                 }
-        }
-        try:
-            self.dns_api.configuration.hosted_zone_name
-        except self.dns_api.configuration.UndefinedValueError:
-            self.dns_api.find_appropriate_hosted_zone()
+        record = HostedZone.Record(dict_record)
+        hosted_zone.records.append(record)
+        self.environment_api.aws_api.route53_client.upsert_resource_record_sets(hosted_zone)
+
         return True
 
+    def get_hosted_zone(self, hz_name):
+        """
+        Standard.
+
+        :param hz_name:
+        :return:
+        """
+
+        hosted_zone = HostedZone({})
+        hosted_zone.name = hz_name
+        if not self.environment_api.aws_api.route53_client.update_hosted_zone_information(hosted_zone):
+            raise RuntimeError(f"Was not able to find hosted zone: '{hz_name}'")
+
+        return hosted_zone
+
     def find_appropriate_hosted_zone(self):
+        """
+        Analyze the hosted zones and find the best matching.
 
-            # todo: move to dns_api
-            breakpoint()
-            lst_dns = self.dns_api.configuration.service_address.split(".")
-            for i in range(0, len(lst_dns)):
-                hosted_zone = HostedZone({})
-                hosted_zone.name = lst_dns[i:].join(".")
-                if self.environment_api.aws_api.route53_client.update_hosted_zone_information(self, hosted_zone):
-                    lst_ret.append(hosted_zone)
+        :return:
+        """
 
-            self.dns_api.configuration.hosted_zone_name = ""
+        lst_ret = []
+        lst_dns = self.configuration.dns_address.split(".")
+        for i in range(0, len(lst_dns)):
+            hosted_zone = HostedZone({})
+            hosted_zone.name = ".".join(lst_dns[i:])
+            if self.environment_api.aws_api.route53_client.update_hosted_zone_information(hosted_zone):
+                lst_ret.append(hosted_zone)
+
+        logger.info(f"Found following hosted zones: {[_hz.name for _hz in lst_ret]}")
+        return lst_ret[0]
 
     def update(self):
         """

@@ -17,22 +17,31 @@ class DNSAPIConfigurationPolicy(ConfigurationPolicy):
     def __init__(self):
         super().__init__()
         self._hosted_zone_name = None
-        self._service_address = None
+        self._dns_address = None
+        self._dns_target = None
 
     @property
-    def service_address(self):
-        if self._service_address is None:
-            raise self.UndefinedValueError("service_address")
-        return self._service_address
+    def dns_target(self):
+        if self._dns_target is None:
+            raise self.UndefinedValueError("dns_target")
+        return self._dns_target
 
-    @service_address.setter
-    def service_address(self, value):
-        self._service_address = value
+    @dns_target.setter
+    def dns_target(self, value):
+        self._dns_target = value
+
+    @property
+    def dns_address(self):
+        if self._dns_address is None:
+            raise self.UndefinedValueError("dns_address")
+        return self._dns_address
+
+    @dns_address.setter
+    def dns_address(self, value):
+        self._dns_address = value
 
     @property
     def hosted_zone_name(self):
-        if self._hosted_zone_name is None:
-            raise self.UndefinedValueError("hosted_zone_name")
         return self._hosted_zone_name
 
     @hosted_zone_name.setter

@@ -376,6 +376,22 @@ class ELBV2Client(Boto3Client):
         ):
             return response
 
+    def update_target_group_information(self, target_group, full_information=True, update_info=False):
+        """
+        Standard.
+
+        :return:
+        """
+
+        for region_target_group in list(self.yield_target_groups(region=target_group.region, update_info=update_info, full_information=False)):
+            if region_target_group.name == target_group.name:
+                if not target_group.update_from_attrs(region_target_group):
+                    raise RuntimeError(region_target_group.dict_src)
+                if full_information:
+                    self.get_target_group_full_information(target_group)
+                return True
+        return False
+
     def provision_load_balancer_target_group(self, target_group: ELBV2TargetGroup):
         """
         Standard

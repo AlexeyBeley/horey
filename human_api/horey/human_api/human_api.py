@@ -22,6 +22,7 @@ from horey.human_api.feature import Feature
 from horey.human_api.user_story import UserStory
 from horey.human_api.issue import Issue
 from horey.human_api.sprint import Sprint
+from horey.human_api.generic import Generic
 
 from horey.azure_devops_api.azure_devops_api import AzureDevopsAPI
 from horey.azure_devops_api.azure_devops_api_configuration_policy import AzureDevopsAPIConfigurationPolicy
@@ -222,6 +223,7 @@ class HumanAPI:
         self.bugs = {}
         self.tasks = {}
         self.issues = {}
+        self.generics = {}
         self.provisioned_new_parents_map = {}
         self.configuration = configuration
         if configuration is not None:
@@ -288,7 +290,9 @@ class HumanAPI:
                     raise ValueError(f"Task id {obj.id} is already in use")
                 self.tasks[obj.id] = obj
             else:
-                raise ValueError(f"Unknown work object type: {obj.type}")
+                if obj.id in self.generics:
+                    raise ValueError(f"Generic Wobject id {obj.id} is already in use")
+                self.generics[obj.id] = obj
 
     @staticmethod
     def generate_work_objects_from_dicts(work_objects_dicts):
@@ -325,8 +329,12 @@ class HumanAPI:
                 task = Task()
                 task.init_from_dict(work_item)
                 lst_ret.append(task)
+            elif work_item["type"] in ["DevOpsSupport", "Initiative", "EscapedBug", "DevOPSTicket", "CustomerSupport", "TestCase"]:
+                gpow = Generic()
+                gpow.init_from_dict(work_item)
+                lst_ret.append(gpow)
             else:
-                raise ValueError(f"Unknown work item type: {work_item.work_item_type}")
+                raise ValueError(f"Unknown work item type: {work_item['type']}")
 
         return lst_ret
 
@@ -1361,6 +1369,7 @@ class HumanAPI:
 
         for work_object_dict in hapi_uids_map.values():
             status_comment = "human_api_json_encoded_current_status:\n" + json.dumps(work_object_dict, indent=4)
+            status_comment = f"<pre><code><div>{status_comment}</div></code></pre>"
             self.azure_devops_api.add_wit_comment(work_object_dict["id"], status_comment)
             children_hapi_uids = work_object_dict.get("child_hapi_uids")
             if children_hapi_uids:

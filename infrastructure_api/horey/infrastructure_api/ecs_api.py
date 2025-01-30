@@ -19,7 +19,6 @@ from horey.infrastructure_api.aws_iam_api_configuration_policy import AWSIAMAPIC
 from horey.infrastructure_api.aws_iam_api import AWSIAMAPI
 from horey.infrastructure_api.cloudwatch_api import CloudwatchAPI
 
-
 logger = get_logger()
 
 
@@ -85,12 +84,14 @@ class ECSAPI:
             try:
                 self.loadbalancer_api.configuration.target_group_name
             except self.loadbalancer_api.configuration.UndefinedValueError:
-                self.loadbalancer_api.configuration.target_group_name = f"tg-{self.configuration.cluster_name.replace('cluster_', '')}-{self.configuration.service_name}".replace("_", "-")
+                self.loadbalancer_api.configuration.target_group_name = f"tg-{self.configuration.cluster_name.replace('cluster_', '')}-{self.configuration.service_name}".replace(
+                    "_", "-")
 
             try:
                 self.loadbalancer_api.configuration.load_balancer_name
             except self.loadbalancer_api.configuration.UndefinedValueError:
-                self.loadbalancer_api.configuration.load_balancer_name = f"lb-{self.configuration.cluster_name.replace('cluster_', '')}".replace("_", "-")
+                self.loadbalancer_api.configuration.load_balancer_name = f"lb-{self.configuration.cluster_name.replace('cluster_', '')}".replace(
+                    "_", "-")
 
         if dns_api:
             self.dns_api = dns_api
@@ -123,7 +124,10 @@ class ECSAPI:
         if self.loadbalancer_api:
             self.loadbalancer_api.provision()
 
+        self.update()
+
         if self.dns_api:
+            self.dns_api.configuration.dns_target = self.loadbalancer_api.get_loadbalancer().dns_name
             self.dns_api.provision()
 
         return True
@@ -173,7 +177,7 @@ class ECSAPI:
 
         :return:
         """
-        breakpoint()
+
         task_definition = self.environment_api.provision_ecs_fargate_task_definition(
             task_definition_family=self.configuration.family,
             contaner_name=self.configuration.container_name,
@@ -191,7 +195,7 @@ class ECSAPI:
             ecs_task_role_name=self.configuration.ecs_task_role_name,
             ecs_task_execution_role_name=self.configuration.ecs_task_execution_role_name,
             task_definition_cpu_architecture=self.configuration.task_definition_cpu_architecture
-            )
+        )
         return task_definition
 
     def provision_ecs_service(self, ecs_task_definition):
@@ -202,6 +206,17 @@ class ECSAPI:
         """
 
         security_groups = self.environment_api.get_security_groups(self.configuration.security_groups)
+        target_group = self.loadbalancer_api.get_targetgroup()
+        # todo: remove
+        self.configuration.service_name += "_test5"
+
+        load_blanacer_dicts = [{
+            "targetGroupArn": target_group.arn,
+            "containerName": self.configuration.container_name,
+            "containerPort": self.configuration.container_definition_port_mappings[0]["containerPort"]
+        }
+        ]
+
         return self.environment_api.provision_ecs_service(self.configuration.cluster_name,
                                                           ecs_task_definition,
                                                           td_desired_count=self.configuration.task_definition_desired_count,
@@ -219,7 +234,7 @@ class ECSAPI:
                                                           service_name=self.configuration.service_name,
                                                           container_name=self.configuration.container_name,
                                                           kill_old_containers=self.configuration.kill_old_containers,
-                                                          load_balancers=self.configuration.service_load_balancers
+                                                          load_blanacer_dicts=load_blanacer_dicts
                                                           )
 
     def provision_ecr_repository(self):
@@ -275,13 +290,16 @@ class ECSAPI:
         repo_uri = f"{self.environment_api.aws_api.ecs_client.account_id}.dkr.ecr.{self.configuration.ecr_repository_region}.amazonaws.com/{self.configuration.ecr_repository_name}"
         if self.environment_api.git_api.configuration.branch_name is not None:
             if not self.environment_api.git_api.checkout_remote_branch():
-                raise RuntimeError(f"Was not able to checkout branch: {self.environment_api.git_api.configuration.branch_name}")
+                raise RuntimeError(
+                    f"Was not able to checkout branch: {self.environment_api.git_api.configuration.branch_name}")
 
             commit_id = self.environment_api.git_api.get_commit_id()
 
             tags = [f"{repo_uri}:build_{build_number + 1}-commit_{commit_id}"]
             image = self.environment_api.build_and_upload_ecr_image(
-                self.prepare_container_build_directory_callback(self.environment_api.git_api.configuration.directory_path), tags, nocache, buildargs=self.configuration.buildargs)
+                self.prepare_container_build_directory_callback(
+                    self.environment_api.git_api.configuration.directory_path), tags, nocache,
+                buildargs=self.configuration.buildargs)
             assert tags[0] in image.tags
             image_tag = tags[0]
         elif ecr_image is None:
@@ -324,8 +342,8 @@ class ECSAPI:
         if self._alerts_api is None:
             alerts_api_configuration = AlertsAPIConfigurationPolicy()
             if "ecs_task" in self.configuration.ecs_task_role_name or "ecs-task" in self.configuration.ecs_task_role_name:
-                alerts_api_configuration.lambda_role_name = self.configuration.ecs_task_role_name.\
-                    replace("ecs_task", "has2").\
+                alerts_api_configuration.lambda_role_name = self.configuration.ecs_task_role_name. \
+                    replace("ecs_task", "has2"). \
                     replace("ecs-task", "has2")
                 if alerts_api_configuration.lambda_role_name.count("has2") != 1:
                     raise ValueError(f"Expected single 'has2' in '{alerts_api_configuration.lambda_role_name}'")
@@ -333,7 +351,8 @@ class ECSAPI:
                 alerts_api_configuration.lambda_role_name = self.configuration.ecs_task_role_name + "-has2"
 
             alerts_api_configuration.lambda_name = f"has2-{self.configuration.slug}"
-            alerts_api_configuration.horey_repo_path = os.path.join(self.environment_api.git_api.configuration.git_directory_path, "horey")
+            alerts_api_configuration.horey_repo_path = os.path.join(
+                self.environment_api.git_api.configuration.git_directory_path, "horey")
 
             self._alerts_api = AlertsAPI(alerts_api_configuration, self.environment_api)
         return self._alerts_api
@@ -379,12 +398,17 @@ class ECSAPI:
         """
 
         self.alerts_api.provision()
-        self.alerts_api.provision_cloudwatch_logs_alarm(self.cloudwatch_api.configuration.log_group_name, '"[ERROR]"', "error", None, dimensions=None,
-                                        alarm_description=None)
-        self.alerts_api.provision_cloudwatch_logs_alarm(self.cloudwatch_api.configuration.log_group_name, '"Runtime exited with error"', "runtime_exited", None, dimensions=None,
-                                        alarm_description=None)
-        self.alerts_api.provision_cloudwatch_logs_alarm(self.cloudwatch_api.configuration.log_group_name, f'"{self.alerts_api.alert_system.configuration.ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN}"', "timeout", None, dimensions=None,
-                                        alarm_description=None)
+        self.alerts_api.provision_cloudwatch_logs_alarm(self.cloudwatch_api.configuration.log_group_name, '"[ERROR]"',
+                                                        "error", None, dimensions=None,
+                                                        alarm_description=None)
+        self.alerts_api.provision_cloudwatch_logs_alarm(self.cloudwatch_api.configuration.log_group_name,
+                                                        '"Runtime exited with error"', "runtime_exited", None,
+                                                        dimensions=None,
+                                                        alarm_description=None)
+        self.alerts_api.provision_cloudwatch_logs_alarm(self.cloudwatch_api.configuration.log_group_name,
+                                                        f'"{self.alerts_api.alert_system.configuration.ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN}"',
+                                                        "timeout", None, dimensions=None,
+                                                        alarm_description=None)
         return True
 
     def provision_task_role(self):
@@ -411,7 +435,8 @@ class ECSAPI:
                 }
             ]
         })
-        return self.aws_iam_api.provision_role(policies=policies, role_name=self.configuration.ecs_task_role_name, assume_role_policy=assume_role_policy_document)
+        return self.aws_iam_api.provision_role(policies=policies, role_name=self.configuration.ecs_task_role_name,
+                                               assume_role_policy=assume_role_policy_document)
 
     def provision_execution_role(self):
         """
@@ -445,4 +470,7 @@ class ECSAPI:
         })
 
         managed_policies_arns = ["arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"]
-        return self.aws_iam_api.provision_role(managed_policies_arns=managed_policies_arns, role_name=self.configuration.ecs_task_execution_role_name, assume_role_policy=assume_role_policy_document, description = "ECS task role used to control containers lifecycle")
+        return self.aws_iam_api.provision_role(managed_policies_arns=managed_policies_arns,
+                                               role_name=self.configuration.ecs_task_execution_role_name,
+                                               assume_role_policy=assume_role_policy_document,
+                                               description="ECS task role used to control containers lifecycle")

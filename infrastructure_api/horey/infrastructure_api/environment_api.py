@@ -1624,7 +1624,7 @@ class EnvironmentAPI:
                               deployment_maximum_percent=200,
                               wait_timeout=20 * 60,
                               kill_old_containers=False,
-                              load_balancers=None):
+                              load_blanacer_dicts=None):
         """
         Provision component's ECS service.
 
@@ -1637,7 +1637,6 @@ class EnvironmentAPI:
         :param td_desired_count:
         :return:
         """
-
         old_tasks = self.get_ecs_service_tasks(cluster_name, ecs_task_definition) if kill_old_containers else []
 
         ecs_cluster = self.find_ecs_cluster(cluster_name)
@@ -1708,7 +1707,7 @@ class EnvironmentAPI:
         ecs_service.scheduling_strategy = "REPLICA"
         ecs_service.enable_ecs_managed_tags = False
         ecs_service.enable_execute_command = True
-        ecs_service.load_balancers = load_balancers
+        ecs_service.load_balancers = load_blanacer_dicts
         self.aws_api.provision_ecs_service(ecs_service, wait_timeout=wait_timeout)
 
         if kill_old_containers:

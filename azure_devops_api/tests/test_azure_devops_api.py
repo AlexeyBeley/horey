@@ -42,19 +42,19 @@ azure_devops_api = AzureDevopsAPI(configuration=configuration)
 # pylint: disable= missing-function-docstring
 
 
-@pytest.mark.skip(reason="Can not test")
+@pytest.mark.done
 def test_init_backlogs():
     azure_devops_api.init_backlogs()
     assert len(azure_devops_api.backlogs) > 0
 
 
-@pytest.mark.skip(reason="Can not test")
+@pytest.mark.done
 def test_init_work_items():
     azure_devops_api.init_work_items()
     assert len(azure_devops_api.work_items) > 0
 
 
-@pytest.mark.skip(reason="Can not test")
+@pytest.mark.done
 def test_init_team_members():
     azure_devops_api.init_team_members()
     assert len(azure_devops_api.team_members) > 0
@@ -66,7 +66,7 @@ def test_init_processes():
     assert len(azure_devops_api.processes) > 0
 
 
-@pytest.mark.skip(reason="Can not test")
+@pytest.mark.done
 def test_init_iterations():
     azure_devops_api.init_iterations(from_cache=True)
     assert len(azure_devops_api.iterations) > 0
@@ -82,7 +82,7 @@ def test_init_and_cache_work_items():
     azure_devops_api.init_work_items()
 
 
-@pytest.mark.skip(reason="Can not test")
+@pytest.mark.done
 def test_current_iteration():
     assert azure_devops_api.get_iteration() is not None
 
@@ -137,6 +137,11 @@ def test_add_wit_comment():
     azure_devops_api.add_wit_comment("", "test comment")
 
 
+@pytest.mark.unit
+def test_get_wit_comment():
+    azure_devops_api.get_wit_comments("")
+
+
 @pytest.mark.skip
 def test_generate_solution_retrospective():
     azure_devops_api.init_work_items(from_cache=True)
@@ -147,7 +152,7 @@ def test_generate_solution_retrospective():
     assert len(azure_devops_api.work_items) > 0
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_generate_retrospective_times():
     azure_devops_api.init_work_items(from_cache=True)
     search_strings = mock_values["search_strings"]
@@ -155,3 +160,8 @@ def test_generate_retrospective_times():
     htb_ret.write_to_file("tmp_times.htb")
     assert htb_ret is not None
     assert len(azure_devops_api.work_items) > 0
+
+
+@pytest.mark.unit
+def test_add_hours_to_work_item():
+    azure_devops_api.add_hours_to_work_item("", 0.0)

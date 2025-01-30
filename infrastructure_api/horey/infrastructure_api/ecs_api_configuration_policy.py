@@ -86,7 +86,7 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def launch_type(self):
         if self._launch_type is None:
-            raise self.UndefinedValueError("launch_type")
+            self._launch_type = "FARGATE"
         return self._launch_type
 
     @launch_type.setter
@@ -180,7 +180,7 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def network_mode(self):
         if self._network_mode is None:
-            raise self.UndefinedValueError("network_mode")
+            self._network_mode = "awsvpc"
         return self._network_mode
 
     @network_mode.setter
@@ -190,7 +190,11 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def requires_compatibilities(self):
         if self._requires_compatibilities is None:
-            raise self.UndefinedValueError("requires_compatibilities")
+            if self.launch_type == "FARGATE":
+                self._requires_compatibilities = ["FARGATE"]
+            else:
+                raise self.UndefinedValueError("requires_compatibilities")
+
         return self._requires_compatibilities
 
     @requires_compatibilities.setter
@@ -228,7 +232,7 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def container_name(self):
         if self._container_name is None:
-            breakpoint()
+            self._container_name = self.service_name
         return self._container_name
 
     @container_name.setter
@@ -238,7 +242,7 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def family(self):
         if self._family is None:
-            breakpoint()
+            self._family = self.service_name
         return self._family
 
     @family.setter

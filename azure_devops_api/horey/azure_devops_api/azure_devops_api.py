@@ -32,6 +32,7 @@ class AzureDevopsObject:
         self._start_date = None
         self._finish_date = None
         self._created_date = None
+        self.known_types = ["Task", "Bug", "UserStory", "Feature", "Epic", "Issue", "DevOpsSupport", "Initiative", "EscapedBug", "DevOPSTicket", "CustomerSupport", "TestCase"]
 
     @classmethod
     def get_cache_file_name(cls):
@@ -327,15 +328,19 @@ class WorkItem(AzureDevopsObject):
                 ret["child_ids"].append(str(int(relation["url"].split("/")[-1])))
             elif relation["attributes"]["name"] == "Parent":
                 ret["parent_ids"].append(str(int(relation["url"].split("/")[-1])))
-            elif relation["attributes"]["name"] in ["Related", "Duplicate Of", "Duplicate", "Successor", "Predecessor"]:
+            elif relation["attributes"]["name"] in ["Related", "Duplicate Of", "Duplicate", "Successor", "Predecessor", "Tested By"]:
                 related.append(relation)
             else:
-                raise ValueError(f"Unknown relation name in: '{relation}': '{relation['attributes']['name']}'")
+                print(f"Unknown relation name in: '{relation}': '{relation['attributes']['name']}'")
+                breakpoint()
+                related.append(relation)
+                # raise ValueError(f"Unknown relation name in: '{relation}': '{relation['attributes']['name']}'")
         if related:
             logger.info(f"Unhandled related: {related}")
 
-        if ret["type"] not in ["Task", "Bug", "UserStory", "Feature", "Epic", "Issue"]:
-            raise ValueError(ret["type"])
+        if ret["type"] not in self.known_types:
+            breakpoint()
+            #raise ValueError(ret["type"])
 
         return ret
 
@@ -350,13 +355,14 @@ class WorkItem(AzureDevopsObject):
         if value in ["New", "Active"]:
             return value.upper()
 
-        if value in ["On Hold", "Pending Deployment", "PM Review", "Merge Request", "In Testing"]:
+        if value in ["On Hold", "Pending Deployment", "PM Review", "Merge Request", "In Testing", "Ready for PI", "Ready", "Selected to Next PI", "Pending Release", "Elaboration", "Pending QA", "Not a Bug", "Waiting PR", "Design"]:
             return "BLOCKED"
 
         if value in ["Resolved", "Closed", "Removed"]:
             return "CLOSED"
-
-        raise ValueError(f"Status unknown: {value}")
+        breakpoint()
+        return "BLOCKED"
+        #raise ValueError(f"Status unknown: {value}")
 
     def convert_to_dict_closed_date(self):
         """
@@ -465,10 +471,20 @@ class AzureDevopsAPI:
         self.configuration = configuration
         self.work_items = []
         self.nit_ = []
-        self.iterations = []
+        self._iterations = None
         self.backlogs = []
         self.processes = []
         self.team_members = []
+
+    @property
+    def iterations(self):
+        if self._iterations is None:
+            self.init_iterations()
+        return self._iterations
+
+    @iterations.setter
+    def iterations(self, value):
+        self._iterations = value
 
     def get_iterations(self, date_find=None, from_cache=False, iteration_pathes=None):
         """
@@ -955,6 +971,27 @@ class AzureDevopsAPI:
             ret_dict[work_item.assigned_to["displayName"]].append(work_item)
         return ret_dict
 
+    def get(self, url):
+        """
+        Get request.
+
+        :param url:
+        :return:
+        """
+
+        self.session.headers.update(
+            {
+                "Content-Type": "application/json",
+                "User-Agent": "python/horey",
+            })
+
+        response = self.session.get(url)
+
+        if response.status_code != 200:
+            raise ValueError(f"{response.status_code=}")
+
+        return response.json()
+
     def post(self, url, data):
         """
         Perform post request.
@@ -963,6 +1000,7 @@ class AzureDevopsAPI:
         :param data:
         :return:
         """
+
         response = self.session.post(url, data=json.dumps(data))
         if response.status_code != 200:
             raise RuntimeError(
@@ -1011,7 +1049,10 @@ class AzureDevopsAPI:
                 "path": "/fields/Microsoft.VSTS.Scheduling.CompletedWork",
                 "value": str(completed_work_hours + float_hours)
             }]
+        # request_data = [{"op": "add", "path": "/fields/Microsoft.VSTS.Scheduling.RemainingWork", "value": "0" }]
+
         url = f"https://dev.azure.com/{self.org_name}/_apis/wit/workitems/{wit_id}?api-version=7.0"
+
         return self.patch(url, request_data)
 
     def change_iteration(self, wit_id, iteration_name):
@@ -1023,6 +1064,7 @@ class AzureDevopsAPI:
         :return:
         """
         logger.info(f"WIT:{wit_id} changing iteration to '{iteration_name}'")
+        raise ValueError("Check if needed to add get_iteration_path")
         request_data = \
             [{
                 "op": "add",
@@ -1127,6 +1169,24 @@ class AzureDevopsAPI:
             })
         return self.post(url, request_data)
 
+    def get_wit_comments(self, wit_id):
+        """
+        Add a comment.
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/comments/add?view=azure-devops-rest-7.0&tabs=HTTP
+
+        :param wit_id:
+        :param comment:
+        :return:
+        """
+
+        logger.info(f"WIT:{wit_id} getting comments")
+
+        url = f"https://dev.azure.com/{self.org_name}/{self.project_name}/_apis/wit/workitems/{wit_id}/comments?api-version=7.1-preview.4"
+        response = self.get(url)
+        if response["totalCount"] != response["count"]:
+            raise NotImplementedError(response["totalCount"],  response["count"])
+        return response["comments"]
+
     # pylint:disable= too-many-arguments
     def provision_work_item_by_params(self, wit_type, wit_title, wit_description, iteration_partial_path=None,
                                       original_estimate_time=None, assigned_to=None, parent_id=None):
@@ -1157,6 +1217,11 @@ class AzureDevopsAPI:
         url = f"https://dev.azure.com/{self.org_name}/{self.project_name}/_apis/wit/workitems/{wit_url_type}?api-version=7.0"
         request_data = \
             [
+                {
+                    "op": "add",
+                    "path": "/fields/System.AreaPath",
+                    "value": self.configuration.area_path
+                },
                 {
                     "op": "add",
                     "path": "/fields/System.Title",
@@ -1202,6 +1267,19 @@ class AzureDevopsAPI:
 
         return wit_id
 
+    def get_iteration_path(self, iteration_name):
+        """
+        Find the path.
+
+        :param iteration_name:
+        :return:
+        """
+
+        iterations = [iteration for iteration in self.iterations if iteration.name == iteration_name]
+        if len(iterations) != 1:
+            raise ValueError(f"{iterations=} found by name {iteration_name}")
+        return iterations[0].path
+
     # pylint: disable= too-many-branches, too-many-statements, too-many-locals
     def provision_work_item_from_dict(self, dict_src):
         """
@@ -1212,6 +1290,7 @@ class AzureDevopsAPI:
 
         :return:
         """
+
         if "id" in dict_src:
             return self.update_work_item_from_dict(dict_src)
 
@@ -1236,6 +1315,11 @@ class AzureDevopsAPI:
         left_attributes.remove("description")
         request_data = \
             [
+                {
+                    "op": "add",
+                    "path": "/fields/System.AreaPath",
+                    "value": self.configuration.area_path
+                },
                 {
                     "op": "add",
                     "path": "/fields/System.Title",
@@ -1264,7 +1348,7 @@ class AzureDevopsAPI:
             request_data.append({
                     "op": "add",
                     "path": "/fields/System.IterationPath",
-                    "value": f"{self.project_name}\\\\{dict_src['sprint_name']}"
+                    "value": self.get_iteration_path(dict_src["sprint_name"])
                 })
             left_attributes.remove("sprint_name")
 
@@ -1340,7 +1424,7 @@ class AzureDevopsAPI:
             request_data.append({
                 "op": "add",
                 "path": "/fields/System.IterationPath",
-                "value": f"{self.project_name}\\\\{dict_src.pop('sprint_name')}"
+                "value": self.get_iteration_path(dict_src.pop("sprint_name"))
             })
 
         if "completed_time" in dict_src:

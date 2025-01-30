@@ -250,3 +250,32 @@ class LoadbalancerAPI:
         """
 
         breakpoint()
+
+    def get_loadbalancer(self):
+        """
+        Get the object.
+
+        :return:
+        """
+
+        load_balancer = LoadBalancer({})
+        load_balancer.name = self.configuration.load_balancer_name
+        load_balancer.region = self.environment_api.region
+        if not self.environment_api.aws_api.elbv2_client.update_load_balancer_information(load_balancer):
+            raise RuntimeError(f"Was not able to find loadbalancer '{load_balancer.name }' in region '{load_balancer.region}'")
+        return load_balancer
+
+    def get_targetgroup(self):
+        """
+        Get the object.
+
+        :return:
+        """
+
+        target_group = ELBV2TargetGroup({})
+        target_group.region = self.environment_api.region
+        target_group.name = self.configuration.target_group_name
+
+        if not self.environment_api.aws_api.elbv2_client.update_target_group_information(target_group):
+            raise RuntimeError(f"Was not able to find target group '{target_group.name }' in region '{target_group.region}'")
+        return target_group
