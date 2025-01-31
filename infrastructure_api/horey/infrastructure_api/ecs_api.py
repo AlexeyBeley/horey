@@ -112,19 +112,23 @@ class ECSAPI:
         self.provision_ecr_repository()
 
         try:
-            assert self.configuration.service_name is not None
+            provision_service = self.configuration.service_name is not None
+        except self.configuration.UndefinedValueError as error_inst:
+            if "service_name" not in repr(error_inst):
+                raise
+            provision_service = False
+
+        if provision_service:
             self.cloudwatch_api.provision()
             self.provision_monitoring()
             self.provision_task_role()
             self.provision_execution_role()
-        except self.configuration.UndefinedValueError as error_inst:
-            if "service_name" not in repr(error_inst):
-                raise
 
         if self.loadbalancer_api:
             self.loadbalancer_api.provision()
 
-        self.update()
+        if provision_service:
+            self.update()
 
         if self.dns_api:
             self.dns_api.configuration.dns_target = self.loadbalancer_api.get_loadbalancer().dns_name
