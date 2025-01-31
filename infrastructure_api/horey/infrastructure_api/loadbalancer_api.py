@@ -31,7 +31,7 @@ class LoadbalancerAPI:
         loadbalancer = self.provision_load_balancer()
         target_group = self.provision_load_balancer_target_group()
         listener = self.provision_load_balancer_listener(loadbalancer)
-        self.provision_listener_rule(listener, target_group)
+        self.provision_listener_rules(listener, target_group)
         return True
 
     def provision_load_balancer(self):
@@ -106,6 +106,36 @@ class LoadbalancerAPI:
         :return:
         """
 
+        # listener 80
+        listener_80 = LoadBalancer.Listener({})
+        listener_80.protocol = "HTTP"
+
+        listener_80.port = 80
+        listener_80.default_actions = [
+            {
+                "Type": "redirect",
+                "Order": 1,
+                "RedirectConfig": {
+                    "Protocol": "HTTPS",
+                    "Port": "443",
+                    "Host": "#{host}",
+                    "Path": "/#{path}",
+                    "Query": "#{query}",
+                    "StatusCode": "HTTP_301"
+                }
+            }
+        ]
+        listener_80.load_balancer_arn = load_balancer.arn
+        listener_80.region = self.environment_api.region
+
+        listener_80.tags = self.environment_api.configuration.tags
+        listener_80.tags.append({
+            "Key": "Name",
+            "Value": f"{load_balancer.name}_{listener_80.port}"
+        })
+
+        self.environment_api.aws_api.elbv2_client.provision_load_balancer_listener(listener_80)
+
         # listener 443
         certificates = [self.environment_api.aws_api.acm_client.get_certificate_by_domain_name(self.environment_api.region, dns) for dns in self.configuration.public_domain_names + self.configuration.unmanaged_public_domain_names]
         listener = LoadBalancer.Listener({})
@@ -139,39 +169,9 @@ class LoadbalancerAPI:
 
         self.environment_api.aws_api.elbv2_client.provision_load_balancer_listener(listener)
 
-        # listener 80
-        listener = LoadBalancer.Listener({})
-        listener.protocol = "HTTP"
-
-        listener.port = 80
-        listener.default_actions = [
-            {
-                "Type": "redirect",
-                "Order": 1,
-                "RedirectConfig": {
-                    "Protocol": "HTTPS",
-                    "Port": "443",
-                    "Host": "#{host}",
-                    "Path": "/#{path}",
-                    "Query": "#{query}",
-                    "StatusCode": "HTTP_301"
-                }
-            }
-        ]
-        listener.load_balancer_arn = load_balancer.arn
-        listener.region = self.environment_api.region
-
-        listener.tags = self.environment_api.configuration.tags
-        listener.tags.append({
-            "Key": "Name",
-            "Value": f"{load_balancer.name}_{listener.port}"
-        })
-
-        self.environment_api.aws_api.elbv2_client.provision_load_balancer_listener(listener)
-
         return listener
 
-    def provision_listener_rule(self, listener, target_group):
+    def provision_listener_rules(self, listener, target_group):
         """
         Provision rule for specific service.
 
@@ -242,14 +242,6 @@ class LoadbalancerAPI:
             "Value": self.configuration.target_group_name
         })
         self.environment_api.aws_api.provision_load_balancer_rule(rule)
-
-    def update(self):
-        """
-
-        :return:
-        """
-
-        breakpoint()
 
     def get_loadbalancer(self):
         """

@@ -27,7 +27,6 @@ class AWSLambdaAPIConfigurationPolicy(ConfigurationPolicy):
         self._sns_topic_name = None
         self._event_source_mapping_dynamodb_name = None
         self._event_bridge_rule_name = None
-        self._buildargs = None
         self._lambda_log_group = None
         self._policy = None
         self._lambda_memory_size = None
@@ -73,14 +72,6 @@ class AWSLambdaAPIConfigurationPolicy(ConfigurationPolicy):
     @policy.setter
     def policy(self, value):
         self._policy = value
-
-    @property
-    def buildargs(self):
-        return self._buildargs
-
-    @buildargs.setter
-    def buildargs(self, value):
-        self._buildargs = value
 
     @property
     def event_bridge_rule_name(self):

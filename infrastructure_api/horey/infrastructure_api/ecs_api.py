@@ -282,7 +282,6 @@ class ECSAPI:
         :param nocache:
         :return:
         """
-
         ecr_image = self.get_latest_build()
         build_number = ecr_image.build_number if ecr_image is not None else -1
         repo_uri = f"{self.environment_api.aws_api.ecs_client.account_id}.dkr.ecr.{self.configuration.ecr_repository_region}.amazonaws.com/{self.configuration.ecr_repository_name}"
