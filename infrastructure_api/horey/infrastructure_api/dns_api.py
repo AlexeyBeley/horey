@@ -47,7 +47,6 @@ class DNSAPI:
         else:
             raise RuntimeError(self.configuration.dns_target)
 
-        breakpoint()
         record = HostedZone.Record(dict_record)
         hosted_zone.records.append(record)
         self.environment_api.aws_api.route53_client.upsert_resource_record_sets(hosted_zone)

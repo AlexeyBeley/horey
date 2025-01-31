@@ -207,8 +207,6 @@ class ECSAPI:
 
         security_groups = self.environment_api.get_security_groups(self.configuration.security_groups)
         target_group = self.loadbalancer_api.get_targetgroup()
-        # todo: remove
-        self.configuration.service_name += "_test5"
 
         load_blanacer_dicts = [{
             "targetGroupArn": target_group.arn,
