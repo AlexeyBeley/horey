@@ -142,7 +142,7 @@ class AWSLambdaAPI:
     def ecs_api(self, value):
         self._ecs_api = value
 
-    def set_api(self, ecs_api=None, cloudwatch_api=None, aws_iam_api=None):
+    def set_api(self, ecs_api=None, cloudwatch_api=None, aws_iam_api=None, loadbalancer_api=None):
         """
         Set api to manage ecs tasks.
 
@@ -219,6 +219,10 @@ class AWSLambdaAPI:
                         ]
                     })
 
+        if loadbalancer_api:
+            self.loadbalancer_api = loadbalancer_api
+            self.loadbalancer_api.configuration.target_type = "lambda"
+
     def provision(self):
         """
         Provision ECS infrastructure.
@@ -279,6 +283,11 @@ class AWSLambdaAPI:
 
         if self.configuration.event_source_mapping_dynamodb_name:
             self.provision_event_source_mapping_dynamodb(aws_lambda)
+
+        if self.loadbalancer_api:
+            self.loadbalancer_api.configuration.target_group_targets = [{"Id": aws_lambda.arn}]
+            breakpoint()
+            self.environment_api.aws_api.lambda_client.provision_lambda_permissions(current_lambda, aws_lambda)
 
         self.provision_monitoring()
         return True
@@ -449,10 +458,34 @@ class AWSLambdaAPI:
                 "Condition": {"ArnLike": {"AWS:SourceArn": sns_topic.arn}},
             }
             aws_lambda.policy["Statement"].append(statement)
-
+        
+        if self.loadbalancer_api:
+            breakpoint()
+            if target_group := self.loadbalancer_api.get_targetgroup():
+                statement = self.generate_target_group_statement(target_group)
+                aws_lambda.policy["Statement"].append(statement)
+            
         aws_lambda.code = {"ImageUri": image_tag}
         self.environment_api.aws_api.provision_aws_lambda(aws_lambda, force=True)
         return aws_lambda
+
+    def generate_target_group_statement(self, target_group):
+        """
+        Permissions statement.
+
+        :param self:
+        :param target_group:
+        :return:
+        """
+
+        return {
+            "Sid": f"trigger_from_{self.loadbalancer_api.configuration.target_group_name}",
+            "Effect": "Allow",
+            "Principal": {"Service": "elasticloadbalancing.amazonaws.com"},
+            "Action": "lambda:InvokeFunction",
+            "Resource": None,
+            "Condition": {"ArnLike": {"AWS:SourceArn": target_group.arn}},
+        }
 
     def provision_events_rule(self):
         """
@@ -493,7 +526,7 @@ class AWSLambdaAPI:
         events_rule.targets = [target]
         self.environment_api.aws_api.provision_events_rule(events_rule)
 
-    def get_lamda(self):
+    def get_lambda(self):
         """
         Get lambda object.
 

@@ -24,6 +24,17 @@ class LoadbalancerAPIConfigurationPolicy(ConfigurationPolicy):
         self._unmanaged_public_domain_names = []
         self._rule_priority = None
         self._rule_conditions = None
+        self._target_types = None
+
+    @property
+    def target_types(self):
+        if self._target_types is None:
+            self._target_types = "ip"
+        return self._target_types
+
+    @target_types.setter
+    def target_types(self, value):
+        self._target_types = value
 
     @property
     def rule_conditions(self):

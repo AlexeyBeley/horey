@@ -155,17 +155,7 @@ class LambdaClient(Boto3Client):
         if current_lambda.arn is None:
             self.provision_lambda_raw(desired_aws_lambda.region, desired_aws_lambda.generate_create_request())
             if desired_aws_lambda.policy is not None:
-                for (
-                        add_permission_request
-                ) in desired_aws_lambda.generate_add_permissions_requests():
-                    self.add_permission_raw(desired_aws_lambda.region, add_permission_request)
-                    self.wait_for_status(
-                        current_lambda,
-                        self.update_lambda_information,
-                        [current_lambda.Status.SUCCESSFUL],
-                        [current_lambda.Status.INPROGRESS],
-                        [current_lambda.Status.FAILED],
-                    )
+                self.provision_lambda_permissions(current_lambda, desired_aws_lambda)
 
         update_function_configuration_request = (
             current_lambda.generate_update_function_configuration_request(
@@ -235,7 +225,29 @@ class LambdaClient(Boto3Client):
                 [current_lambda.Status.FAILED],
             )
 
-        # permissions:
+        self.provision_lambda_permissions(current_lambda, desired_aws_lambda)
+
+        if not update_code:
+            self.update_lambda_information(desired_aws_lambda, full_information=False)
+            return
+
+        update_code_request = current_lambda.generate_update_function_code_request(
+            desired_aws_lambda
+        )
+        if update_code_request is not None:
+            self.update_function_code_raw(desired_aws_lambda.region, update_code_request)
+
+        self.update_lambda_information(desired_aws_lambda, full_information=True)
+
+    def provision_lambda_permissions(self, current_lambda, desired_aws_lambda):
+        """
+        Provision permissions.
+
+        :param current_lambda:
+        :param desired_aws_lambda:
+        :return:
+        """
+
         (
             add_permission_requests,
             remove_permission_requests,
@@ -260,18 +272,6 @@ class LambdaClient(Boto3Client):
                 [current_lambda.Status.INPROGRESS],
                 [current_lambda.Status.FAILED],
             )
-
-        if not update_code:
-            self.update_lambda_information(desired_aws_lambda, full_information=False)
-            return
-
-        update_code_request = current_lambda.generate_update_function_code_request(
-            desired_aws_lambda
-        )
-        if update_code_request is not None:
-            self.update_function_code_raw(desired_aws_lambda.region, update_code_request)
-
-        self.update_lambda_information(desired_aws_lambda, full_information=True)
 
     def put_function_concurrency_raw(self, region, request_dict):
         """

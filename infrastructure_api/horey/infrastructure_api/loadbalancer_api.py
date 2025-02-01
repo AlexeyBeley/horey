@@ -87,7 +87,11 @@ class LoadbalancerAPI:
         target_group.unhealthy_threshold_count = 2
 
         target_group.health_check_path = "/health-check"
-        target_group.target_type = "ip"
+        target_group.target_type = self.configuration.target_type
+
+        if self.configuration.target_group_targets:
+            target_group.targets = self.configuration.target_group_targets
+
         target_group.matcher = {"HttpCode": "200"}
         target_group.tags = self.environment_api.configuration.tags
         target_group.tags.append({
