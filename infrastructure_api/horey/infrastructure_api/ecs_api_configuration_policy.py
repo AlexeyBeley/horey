@@ -242,7 +242,7 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def family(self):
         if self._family is None:
-            self._family = self.service_name
+            self._family = f"td_{self.cluster_name}_{self.service_name}"
         return self._family
 
     @family.setter

@@ -22,6 +22,24 @@ class LoadbalancerAPIConfigurationPolicy(ConfigurationPolicy):
         self._target_group_name = None
         self._public_domain_names = None
         self._unmanaged_public_domain_names = []
+        self._rule_priority = None
+        self._rule_conditions = None
+
+    @property
+    def rule_conditions(self):
+        return self._rule_conditions
+
+    @rule_conditions.setter
+    def rule_conditions(self, value):
+        self._rule_conditions = value
+
+    @property
+    def rule_priority(self):
+        return self._rule_priority
+
+    @rule_priority.setter
+    def rule_priority(self, value):
+        self._rule_priority = value
 
     @property
     def unmanaged_public_domain_names(self):

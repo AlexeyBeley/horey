@@ -195,7 +195,7 @@ class LoadbalancerAPI:
 
         if self.environment_api.aws_api.elbv2_client.update_rule_information(current_rule, region_rules=current_rules):
             rule.priority = current_rule.priority
-            rule.priority = current_rule.arn
+            rule.arn = current_rule.arn
         else:
             priorities = [int(_rule.priority) for _rule in current_rules if _rule.priority != "default"]
             rule.priority = 10 if not priorities else max(priorities) + 10
@@ -208,7 +208,8 @@ class LoadbalancerAPI:
             "Value": self.configuration.target_group_name
         })
 
-        rule.conditions = [
+        rule.priority = self.configuration.rule_priority or rule.priority
+        rule.conditions = self.configuration.rule_conditions or [
             {
                 "Field": "host-header",
                 "HostHeaderConfig": {

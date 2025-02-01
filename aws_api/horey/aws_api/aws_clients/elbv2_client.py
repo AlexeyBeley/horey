@@ -409,7 +409,7 @@ class ELBV2Client(Boto3Client):
                     == target_group.name
             ):
                 if target_group.protocol != region_target_group.protocol:
-                    raise ValueError(f"{target_group.protocol=} {region_target_group.protocol=}")
+                    raise ValueError(f"{target_group.name=} {target_group.protocol=} {region_target_group.protocol=}")
                 target_group.arn = region_target_group.arn
                 request = region_target_group.generate_modify_request(target_group)
                 if request:
@@ -486,7 +486,7 @@ class ELBV2Client(Boto3Client):
         """
 
         if not listener.tags:
-            raise ValueError(f"Can not provision lb listener without tags")
+            raise ValueError("Can not provision lb listener without tags")
         region_listener = LoadBalancer.Listener({})
         region_listener.region = listener.region
         region_listener.load_balancer_arn = listener.load_balancer_arn
