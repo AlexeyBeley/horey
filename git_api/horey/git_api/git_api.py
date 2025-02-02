@@ -113,14 +113,6 @@ class GitAPI:
             if expected_output not in ret["stdout"] and expected_output not in ret["stderr"]:
                 raise ValueError(ret)
 
-            if os.path.exists(os.path.join(self.configuration.directory_path, ".gitmodules")):
-                os.chdir(self.configuration.directory_path)
-                command = "git submodule init"
-                ret = self.bash_executor.run_bash(command)
-                expected_output = "registered for path"
-                if expected_output not in ret["stderr"]:
-                    raise ValueError(ret)
-
         logger.info(f"Changing directory to source code directory: {self.configuration.directory_path}")
         os.chdir(self.configuration.directory_path)
 
@@ -173,18 +165,7 @@ class GitAPI:
 
         self.checkout_fetched_remote(branch_name, remote_name)
 
-        #command = "git merge FETCH_HEAD"
-        #ret = self.bash_executor.run_bash(command)
-        #if ret["stderr"]:
-        #    raise RuntimeError(ret)
-
-        if os.path.exists(os.path.join(self.configuration.directory_path, ".gitmodules")):
-            command = f"{ssh_base_command} git submodule update"
-            ret = self.bash_executor.run_bash(command)
-            if ret["stdout"] or ret["stderr"]:
-                if "checked out" not in ret["stdout"] or "Cloning into" not in ret["stderr"]:
-                    raise ValueError(ret)
-
+        self.update_submodules(ssh_base_command)
         return True
 
     def checkout_fetched_remote(self, branch_name, remote_name):
@@ -206,7 +187,6 @@ class GitAPI:
 
             command = f"git checkout {branch_name}"
             ret = self.bash_executor.run_bash(command)
-            # todo: 'Your branch is behind \'origin/master\' by 4 commits, and can be fast-forwarded.\n  (use "git pull" to update your local branch)'
             if ret["stdout"] not in [f"Your branch is up to date with '{remote_name}/{branch_name}'.",
                                      f"branch '{branch_name}' set up to track '{remote_name}/{branch_name}'."]:
                 if ret["stderr"] not in [f"Already on '{branch_name}'", f"Switched to branch '{branch_name}'"]:
@@ -222,6 +202,30 @@ class GitAPI:
             ret = self.bash_executor.run_bash(command)
             if ret["stderr"] not in [f"Switched to a new branch '{branch_name}'"]:
                 raise RuntimeError(ret)
+
+    def update_submodules(self, ssh_base_command):
+        """
+        Init and update.
+
+        :return:
+        """
+
+        if not os.path.exists(os.path.join(self.configuration.directory_path, ".gitmodules")):
+            return True
+        os.chdir(self.configuration.directory_path)
+        command = "git submodule init"
+        ret = self.bash_executor.run_bash(command)
+        if ret["stdout"]:
+            raise ValueError(ret)
+        if ret["stderr"] and "registered for path" not in ret["stderr"]:
+            raise ValueError(ret)
+
+        command = f"{ssh_base_command} git submodule update"
+        ret = self.bash_executor.run_bash(command)
+        if ret["stdout"] or ret["stderr"]:
+            if "checked out" not in ret["stdout"] or "Cloning into" not in ret["stderr"]:
+                raise ValueError(ret)
+        return True
 
     def get_commit_id(self):
         """
