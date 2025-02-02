@@ -73,21 +73,21 @@ class LoadbalancerAPI:
         target_group = ELBV2TargetGroup({})
         target_group.region = self.environment_api.region
         target_group.name = self.configuration.target_group_name
-        target_group.protocol = "HTTPS"
-        target_group.port = 443
-        target_group.vpc_id = self.environment_api.vpc.id
-
-        target_group.health_check_protocol = "HTTPS"
-        target_group.health_check_port = "traffic-port"
-
+        target_group.target_type = self.configuration.target_type
+        if target_group.target_type != "lambda":
+            target_group.port = 443
+            target_group.protocol = "HTTPS"
+            target_group.vpc_id = self.environment_api.vpc.id
+            target_group.health_check_port = "traffic-port"
+            target_group.health_check_protocol = "HTTPS"
         target_group.health_check_enabled = True
+
         target_group.health_check_interval_seconds = 30
         target_group.health_check_timeout_seconds = 5
         target_group.healthy_threshold_count = 2
         target_group.unhealthy_threshold_count = 2
 
         target_group.health_check_path = "/health-check"
-        target_group.target_type = self.configuration.target_type
 
         if self.configuration.target_group_targets:
             target_group.targets = self.configuration.target_group_targets
@@ -98,7 +98,6 @@ class LoadbalancerAPI:
             "Key": "Name",
             "Value": target_group.name
         })
-
         self.environment_api.aws_api.provision_load_balancer_target_group(target_group)
         return target_group
 

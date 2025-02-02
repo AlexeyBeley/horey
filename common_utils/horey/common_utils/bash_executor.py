@@ -6,6 +6,7 @@ import json
 import subprocess
 import logging
 import uuid
+from time import perf_counter
 
 
 def get_logger():
@@ -68,6 +69,7 @@ class BashExecutor:
 
         logger.info(f"### Command Start ###")
         logger.info(f"run_bash: {command}")
+        perf_counter_start = perf_counter()
 
         file_name = f"tmp-{str(uuid.uuid4())}.sh"
         with open(file_name, "w", encoding="utf-8") as file_handler:
@@ -110,7 +112,7 @@ class BashExecutor:
                 for line in stderr_log.split("\n"):
                     logger.info(line)
 
-        logger.info(f"### Command End ###")
+        logger.info(f"### Command End {perf_counter() - perf_counter_start}###")
         if ret.returncode != 0:
             if ignore_on_error_callback is None:
                 raise BashExecutor.BashError(json.dumps(return_dict))

@@ -248,6 +248,12 @@ class LambdaClient(Boto3Client):
         :return:
         """
 
+        if current_lambda is None:
+            current_lambda = AWSLambda({})
+            current_lambda.name = desired_aws_lambda.name
+            current_lambda.region = desired_aws_lambda.region
+            self.update_lambda_information(current_lambda, full_information=True)
+
         (
             add_permission_requests,
             remove_permission_requests,

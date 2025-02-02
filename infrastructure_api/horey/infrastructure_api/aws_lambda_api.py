@@ -286,8 +286,15 @@ class AWSLambdaAPI:
 
         if self.loadbalancer_api:
             self.loadbalancer_api.configuration.target_group_targets = [{"Id": aws_lambda.arn}]
-            breakpoint()
-            self.environment_api.aws_api.lambda_client.provision_lambda_permissions(current_lambda, aws_lambda)
+            self.loadbalancer_api.provision()
+            statement = self.generate_target_group_statement()
+            dict_policy = json.loads(aws_lambda.policy)
+            statement_ids = [statement["Sid"] for statement in dict_policy["Statement"]]
+            if statement["Sid"] not in statement_ids:
+                aws_lambda.policy["Statement"].append(statement)
+                if "tmp" not in statement_ids:
+                    raise RuntimeError("tmp policy expected to be in the lambda policy")
+                self.environment_api.aws_api.lambda_client.provision_lambda_permissions(None, aws_lambda)
 
         self.provision_monitoring()
         return True
@@ -460,24 +467,34 @@ class AWSLambdaAPI:
             aws_lambda.policy["Statement"].append(statement)
         
         if self.loadbalancer_api:
-            breakpoint()
-            if target_group := self.loadbalancer_api.get_targetgroup():
-                statement = self.generate_target_group_statement(target_group)
+            try:
+                statement = self.generate_target_group_statement()
                 aws_lambda.policy["Statement"].append(statement)
+            except RuntimeError as inst_error:
+                statement = {
+            "Sid": "tmp",
+            "Effect": "Allow",
+            "Principal": {"Service": "elasticloadbalancing.amazonaws.com"},
+            "Action": "lambda:InvokeFunction",
+            "Resource": None
+            }
+                aws_lambda.policy["Statement"].append(statement)
+                if "Was not able to find target group" not in repr(inst_error):
+                    raise
             
         aws_lambda.code = {"ImageUri": image_tag}
         self.environment_api.aws_api.provision_aws_lambda(aws_lambda, force=True)
         return aws_lambda
 
-    def generate_target_group_statement(self, target_group):
+    def generate_target_group_statement(self):
         """
         Permissions statement.
 
         :param self:
-        :param target_group:
         :return:
         """
 
+        target_group = self.loadbalancer_api.get_targetgroup()
         return {
             "Sid": f"trigger_from_{self.loadbalancer_api.configuration.target_group_name}",
             "Effect": "Allow",
