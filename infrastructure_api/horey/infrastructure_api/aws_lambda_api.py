@@ -283,7 +283,6 @@ class AWSLambdaAPI:
 
         if self.configuration.event_source_mapping_dynamodb_name:
             self.provision_event_source_mapping_dynamodb(aws_lambda)
-
         if self.loadbalancer_api:
             self.loadbalancer_api.configuration.target_group_targets = [{"Id": aws_lambda.arn}]
             self.loadbalancer_api.provision()
@@ -291,7 +290,8 @@ class AWSLambdaAPI:
             dict_policy = json.loads(aws_lambda.policy)
             statement_ids = [statement["Sid"] for statement in dict_policy["Statement"]]
             if statement["Sid"] not in statement_ids:
-                aws_lambda.policy["Statement"].append(statement)
+                dict_policy["Statement"].append(statement)
+                aws_lambda.policy = dict_policy
                 if "tmp" not in statement_ids:
                     raise RuntimeError("tmp policy expected to be in the lambda policy")
                 self.environment_api.aws_api.lambda_client.provision_lambda_permissions(None, aws_lambda)
