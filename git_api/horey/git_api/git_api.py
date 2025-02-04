@@ -104,7 +104,10 @@ class GitAPI:
         if current_working_directory != self.configuration.git_directory_path:
             os.chdir(self.configuration.git_directory_path)
         self.configuration.directory_path = str(
-            Path(self.configuration.git_directory_path) / git_remote_url.split("/")[-1]).strip(".git")
+            Path(self.configuration.git_directory_path) / git_remote_url.split("/")[-1])
+
+        if self.configuration.directory_path.endswith(".git"):
+            self.configuration.directory_path = self.configuration.directory_path[:-len(".git")]
 
         if not os.path.exists(self.configuration.directory_path):
             command = f"{ssh_base_command} git clone {git_remote_url}"

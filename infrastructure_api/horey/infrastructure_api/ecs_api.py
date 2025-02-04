@@ -38,6 +38,7 @@ class ECSAPI:
         self._aws_iam_api = None
         self.loadbalancer_api = None
         self.dns_api = None
+        self.loadbalancer_dns_api_pairs =None
 
     @property
     def ecr_repository(self):
@@ -70,7 +71,7 @@ class ECSAPI:
             self._ecr_images = self.environment_api.aws_api.ecr_client.get_repository_images(self.ecr_repository)
         return self._ecr_images
 
-    def set_api(self, loadbalancer_api=None, dns_api=None, cloudwatch_api=None):
+    def set_api(self, loadbalancer_api=None, dns_api=None, cloudwatch_api=None, loadbalancer_dns_api_pairs=None):
         """
         Standard.
 
@@ -78,6 +79,14 @@ class ECSAPI:
         :param dns_api:
         :return:
         """
+        if loadbalancer_dns_api_pairs:
+            if loadbalancer_api or dns_api:
+                raise NotImplementedError(f"You can not both declare loadbalancer_dns_apis_pairs and either lb_api or dns_api")
+            for loadbalancer_api, dns_api in loadbalancer_dns_api_pairs:
+                assert self.loadbalancer_api.configuration.load_balancer_name
+                assert self.loadbalancer_api.configuration.target_group_name
+
+            self.loadbalancer_dns_api_pairs = loadbalancer_dns_api_pairs
 
         if loadbalancer_api:
             self.loadbalancer_api = loadbalancer_api
@@ -133,6 +142,10 @@ class ECSAPI:
         if self.dns_api:
             self.dns_api.configuration.dns_target = self.loadbalancer_api.get_loadbalancer().dns_name
             self.dns_api.provision()
+        elif self.loadbalancer_dns_api_pairs:
+            for loadbalancer_api, dns_api in self.loadbalancer_dns_api_pairs:
+                dns_api.configuration.dns_target = loadbalancer_api.get_loadbalancer().dns_name
+                dns_api.provision()
 
         return True
 
@@ -210,13 +223,18 @@ class ECSAPI:
         """
 
         security_groups = self.environment_api.get_security_groups(self.configuration.security_groups)
-        target_group = self.loadbalancer_api.get_targetgroup()
+        if self.loadbalancer_api:
+            target_groups = [self.loadbalancer_api.get_targetgroup()]
+        elif self.loadbalancer_dns_api_pairs:
+            target_groups = [loadbalancer_api.get_targetgroup() for loadbalancer_api in self.loadbalancer_dns_api_pairs]
+        else:
+            target_groups = []
 
         load_blanacer_dicts = [{
             "targetGroupArn": target_group.arn,
             "containerName": self.configuration.container_name,
             "containerPort": self.configuration.container_definition_port_mappings[0]["containerPort"]
-        }
+        } for target_group in target_groups
         ]
 
         return self.environment_api.provision_ecs_service(self.configuration.cluster_name,
