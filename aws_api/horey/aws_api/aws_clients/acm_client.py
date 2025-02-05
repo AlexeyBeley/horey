@@ -218,9 +218,10 @@ class ACMClient(Boto3Client):
             if cert.status == "EXPIRED":
                 continue
 
-            if cert.domain_name == domain_name:
-                ret.append(cert)
-                continue
+            # todo: remove comment
+            #if cert.domain_name == domain_name:
+            #    ret.append(cert)
+            #    continue
 
             if cert.domain_name.startswith("*.") and cert.domain_name[2:] == domain_name.split(".", maxsplit=1)[1]:
                 ret.append(cert)
