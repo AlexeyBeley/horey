@@ -29,10 +29,10 @@ blocked: [{"parent": (type, id, title), "child": (type, item.id, item.title)}],
 closed: [{"parent": (type, id, title), "child": (type, item.id, item.title)}]
 */
 WorkerID string `json:"worker_id"`
-New []WorkerDailyReport `json:"new"`
-Active []WorkerDailyReport `json:"active"`
-Blocked []WorkerDailyReport `json:"blocked"`
-Closed []WorkerDailyReport `json:"closed"`
+New []WorkerWobjReport `json:"new"`
+Active []WorkerWobjReport `json:"active"`
+Blocked []WorkerWobjReport `json:"blocked"`
+Closed []WorkerWobjReport `json:"closed"`
 
 }
 
