@@ -79,6 +79,9 @@ class ApplicationAutoScalingScalableTarget(AwsObject):
         if self.suspended_state is not None:
             request["SuspendedState"] = self.suspended_state
 
+        if self.tags is not None:
+            request["Tags"] = self.tags
+
         return request
 
     def generate_dispose_request(self):

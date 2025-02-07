@@ -18,6 +18,9 @@ from horey.infrastructure_api.cloudwatch_api_configuration_policy import Cloudwa
 from horey.infrastructure_api.aws_iam_api_configuration_policy import AWSIAMAPIConfigurationPolicy
 from horey.infrastructure_api.aws_iam_api import AWSIAMAPI
 from horey.infrastructure_api.cloudwatch_api import CloudwatchAPI
+from horey.aws_api.aws_services_entities.application_auto_scaling_scalable_target import \
+    ApplicationAutoScalingScalableTarget
+from horey.aws_api.aws_services_entities.application_auto_scaling_policy import ApplicationAutoScalingPolicy
 
 logger = get_logger()
 
@@ -39,6 +42,7 @@ class ECSAPI:
         self.loadbalancer_api = None
         self.dns_api = None
         self.loadbalancer_dns_api_pairs =None
+        self.auto_scaling_resource_id = f"service/{self.configuration.cluster_name}/{self.configuration.service_name}"
 
     @property
     def ecr_repository(self):
@@ -147,7 +151,95 @@ class ECSAPI:
                 dns_api.configuration.dns_target = loadbalancer_api.get_loadbalancer().dns_name
                 dns_api.provision()
 
+        self.provision_autoscaling()
         return True
+
+    def provision_autoscaling(self):
+        """
+        Provision application-autoscaling services' elements.
+
+        :return:
+        """
+
+        self.provision_application_autoscaling_scalable_target()
+        self.provision_application_autoscaling_policies()
+        return True
+
+    def provision_application_autoscaling_scalable_target(self):
+        """
+        Target is the application-autoscaling element representing ecs service to be monitored.
+
+        :return:
+        """
+
+        # todo: cleanup report dead deregister dead scalable targets.
+
+        target = ApplicationAutoScalingScalableTarget({})
+        target.service_namespace = "ecs"
+        target.region = self.environment_api.region
+        target.resource_id = self.auto_scaling_resource_id
+        target.scalable_dimension = "ecs:service:DesiredCount"
+        target.min_capacity = self.configuration.autoscaling_min_capacity
+        target.max_capacity = self.configuration.autoscaling_max_capacity
+        target.role_arn = f"arn:aws:iam::{self.environment_api.aws_api.ecs_client.account_id}:role/aws-service-role/ecs.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_ECSService"
+        target.suspended_state = {
+            "DynamicScalingInSuspended": False,
+            "DynamicScalingOutSuspended": False,
+            "ScheduledScalingSuspended": False
+        }
+        target.tags = {tag["Key"]: tag["Value"] for tag in self.environment_api.configuration.tags}
+        target.tags["Name"] = f"{target.resource_id}/{target.scalable_dimension}" 
+        self.environment_api.aws_api.provision_application_auto_scaling_scalable_target(target)
+
+    def provision_application_autoscaling_policies(self):
+        """
+        Policy is the application-autoscaling element responsible for scaling management.
+        It implicitly creates cloudwatch alarm, thus there are ugly alarms.
+        You can see the policy in ecs/service/autoscaling tab.
+
+        :return:
+        """
+        # todo: cleanup report dead deregister dead scalable targets policies
+
+        self.provision_application_autoscaling_policy(self.configuration.autoscaling_ram_policy_name,
+                                                      self.configuration.autoscaling_ram_target_value,
+                                                      predefind_metric_type="ECSServiceAverageMemoryUtilization")
+        self.provision_application_autoscaling_policy(self.configuration.autoscaling_cpu_policy_name,
+                                                         self.configuration.autoscaling_cpu_target_value,
+                                                      predefind_metric_type="ECSServiceAverageCPUUtilization"
+                                                          )
+
+    def provision_application_autoscaling_policy(self, policy_name, target_value, predefind_metric_type=None, customized_metric_specificationis=None):
+        """
+        Scales ecs-service's count based ram monitoring
+
+        :return:
+        """
+
+        policy = ApplicationAutoScalingPolicy({})
+        policy.region = self.environment_api.region
+        policy.service_namespace = "ecs"
+        policy.name = policy_name
+        policy.resource_id = self.auto_scaling_resource_id
+        policy.scalable_dimension = "ecs:service:DesiredCount"
+        policy.policy_type = "TargetTrackingScaling"
+
+        policy.target_tracking_scaling_policy_configuration = {
+            "TargetValue": target_value,
+            "ScaleOutCooldown": 60,
+            "ScaleInCooldown": 300,
+            "DisableScaleIn": False
+        }
+
+        if predefind_metric_type is not None:
+            policy.target_tracking_scaling_policy_configuration["PredefinedMetricSpecification"] = {
+                "PredefinedMetricType": predefind_metric_type
+            }
+        elif customized_metric_specificationis is not None:
+             policy.target_tracking_scaling_policy_configuration["CustomizedMetricSpecification"] = \
+                 customized_metric_specificationis
+
+        self.environment_api.aws_api.provision_application_auto_scaling_policy(policy)
 
     def environment_variables_callback(self):
         """
@@ -270,7 +362,7 @@ class ECSAPI:
         if self.configuration.ecr_repository_policy_text:
             # todo: generate policy to permit only access from relevant services: AWS Lambda / ECS / EKS etc
             repo.policy_text = self.configuration.ecr_repository_policy_text
-        repo.tags = copy.deepcopy(self.environment_api.configuration.tags)
+        repo.tags = self.environment_api.configuration.tags
         repo.tags.append({
             "Key": "Name",
             "Value": repo.name

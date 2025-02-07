@@ -44,8 +44,86 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
         self._launch_type = None
         self._security_groups = None
         self._kill_old_containers = None
-        self._service_load_balancers = None
         self._slug = None
+
+        self._service_load_balancers = None
+
+        self._autoscaling_cpu_policy_name = None
+        self._autoscaling_cpu_target_value = None
+        self._autoscaling_ram_policy_name = None
+        self._autoscaling_ram_target_value = None
+        self._autoscaling_min_capacity = None
+        self._autoscaling_max_capacity = None
+
+    @property
+    def autoscaling_max_capacity(self):
+        if self._autoscaling_max_capacity is None:
+            raise self.UndefinedValueError("autoscaling_max_capacity")
+        return self._autoscaling_max_capacity
+
+    @autoscaling_max_capacity.setter
+    def autoscaling_max_capacity(self, value):
+        self._autoscaling_max_capacity = value
+
+    @property
+    def autoscaling_min_capacity(self):
+        if self._autoscaling_min_capacity is None:
+            raise self.UndefinedValueError("autoscaling_min_capacity")
+        return self._autoscaling_min_capacity
+
+    @autoscaling_min_capacity.setter
+    def autoscaling_min_capacity(self, value):
+        self._autoscaling_min_capacity = value
+
+    @property
+    def autoscaling_ram_target_value(self):
+        if self._autoscaling_ram_target_value is None:
+            self._autoscaling_ram_target_value = 80.0
+        return self._autoscaling_ram_target_value
+
+    @autoscaling_ram_target_value.setter
+    def autoscaling_ram_target_value(self, value):
+        self._autoscaling_ram_target_value = value
+
+    @property
+    def autoscaling_ram_policy_name(self):
+        if self._autoscaling_ram_policy_name is None:
+            self._autoscaling_ram_policy_name = f"aap-ram-{self.cluster_name}-{self.service_name}"
+        return self._autoscaling_ram_policy_name
+
+    @autoscaling_ram_policy_name.setter
+    def autoscaling_ram_policy_name(self, value):
+        self._autoscaling_ram_policy_name = value
+
+    @property
+    def autoscaling_cpu_target_value(self):
+        if self._autoscaling_cpu_target_value is None:
+            self._autoscaling_cpu_target_value = 80.0
+        return self._autoscaling_cpu_target_value
+
+    @autoscaling_cpu_target_value.setter
+    def autoscaling_cpu_target_value(self, value):
+        self._autoscaling_cpu_target_value = value
+
+    @property
+    def autoscaling_cpu_policy_name(self):
+        if self._autoscaling_cpu_policy_name is None:
+            self._autoscaling_cpu_policy_name = f"aap-cpu-{self.cluster_name}-{self.service_name}"
+        return self._autoscaling_cpu_policy_name
+
+    @autoscaling_cpu_policy_name.setter
+    def autoscaling_cpu_policy_name(self, value):
+        self._autoscaling_cpu_policy_name = value
+
+    @property
+    def service_load_balancers(self):
+        if self._service_load_balancers is None:
+            raise self.UndefinedValueError("service_load_balancers")
+        return self._service_load_balancers
+
+    @service_load_balancers.setter
+    def service_load_balancers(self, value):
+        self._service_load_balancers = value
 
     @property
     def slug(self):

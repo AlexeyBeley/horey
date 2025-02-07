@@ -244,6 +244,7 @@ class ApplicationAutoScalingClient(Boto3Client):
         """
 
         logger.info(f"Registering Auto Scaling scalable target: {request_dict}")
+
         for response in self.execute(
                 self.get_session_client(region=region).register_scalable_target,
                 None,
