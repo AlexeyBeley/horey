@@ -108,3 +108,12 @@ class DeploymentTarget:
         SUCCESS = 0
         FAILURE = 1
         ERROR = 2
+
+    class SSHKeyTypes(Enum):
+        """
+        Possible SSH Keys
+
+        """
+
+        RSA = "rsa"
+        ED25519 = "ed25519key"
