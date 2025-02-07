@@ -1,7 +1,7 @@
 /*
 go build -gcflags="all=-N -l" daily_handler.go
 dlv exec daily_handler -- --action daily_json_to_hr --src "/Users/alexey.beley/git/horey/human_api/horey/human_api/go/daily_report_sample.json" --dst "dst_file_path"
-go run . --action daily_json_to_hr --src "/Users/alexey.beley/git/horey/human_api/horey/human_api/go/daily_report_sample.json" --dst "dst_file_path"
+go run . --action daily_json_to_hr --src "/Users/alexey.beley/git/horey/human_api/horey/human_api/go/daily_report_sample.json" --dst "/Users/alexey.beley/git/horey/human_api/horey/human_api/go/daily_report_sample.hapi"
 */
 package main
 
@@ -10,6 +10,8 @@ import (
 	"flag"
 	"io/ioutil"
 	"log"
+	"os"
+	"fmt"
 )
 
 type WorkerWobjReport struct {
@@ -65,5 +67,37 @@ func ConvertDailyJsonToHR(src_file_path, dst_file_path string) (reports []Worker
 		return nil, err
 	}
 
+	WriteDailyToHRFile(reports, dst_file_path)
+
 	return reports, nil
+}
+
+func WriteDailyToHRFile(reports []WorkerDailyReport, dst_file_path string ) (bool, error){
+   	log.Printf("Writing reports to '%s'", dst_file_path)
+   	file, err:= os.OpenFile(dst_file_path, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
+	if err!= nil {
+		return false, err
+	}
+	defer file.Close() // Ensure the file is closed when the function exits
+
+   	for _, report := range reports {
+   	    if !CheckWorkerManaged(report.WorkerID) {
+   	        continue
+   	    }
+
+        line:= fmt.Sprintf("report.WorkerID: %s", report.WorkerID)
+        fmt.Println("Writing worker report: '%v'", report.WorkerID)
+        if _, err:= file.WriteString(line); err!= nil {
+            return false, err
+	    }
+
+    }
+    return true, nil
+}
+
+func CheckWorkerManaged(worker_id string) bool{
+    if (worker_id != ""){
+    return true
+    }
+    return false
 }
