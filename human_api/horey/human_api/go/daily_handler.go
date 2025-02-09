@@ -12,11 +12,15 @@ import (
 	"log"
 	"os"
 	"fmt"
+	"strconv"
 )
 
 type WorkerWobjReport struct {
 	Parent []string `json:"parent"`
 	Child  []string `json:"child"`
+	Comment string `json:"comment"`
+	InvestedTime int `json:"invested_time"`
+	LeftTime int `json:"left_time"`
 }
 
 type WorkerDailyReport struct {
@@ -73,6 +77,7 @@ func ConvertDailyJsonToHR(src_file_path, dst_file_path string) (reports []Worker
 }
 
 func WriteDailyToHRFile(reports []WorkerDailyReport, dst_file_path string ) (bool, error){
+    delim := "!!=!!"
    	log.Printf("Writing reports to '%s'", dst_file_path)
    	file, err:= os.OpenFile(dst_file_path, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
 	if err!= nil {
@@ -85,15 +90,68 @@ func WriteDailyToHRFile(reports []WorkerDailyReport, dst_file_path string ) (boo
    	        continue
    	    }
 
-        line:= fmt.Sprintf("report.WorkerID: %s", report.WorkerID)
-        fmt.Println("Writing worker report: '%v'", report.WorkerID)
+        fmt.Printf("Writing worker report: '%v'\n", report.WorkerID)
+
+        line:= fmt.Sprintf("%sH_ReportWorkerID%s %s\n", delim, delim, report.WorkerID)
         if _, err:= file.WriteString(line); err!= nil {
             return false, err
 	    }
 
+        WriteWorkerWobjStatusDailyToHRFile(file, delim, "NEW",  report.New)
+        WriteWorkerWobjStatusDailyToHRFile(file, delim, "ACTIVE",  report.Active)
+        WriteWorkerWobjStatusDailyToHRFile(file, delim, "BLOCKED",  report.Blocked)
+        WriteWorkerWobjStatusDailyToHRFile(file, delim, "CLOSED",  report.Closed)
+
     }
     return true, nil
 }
+
+func WriteWorkerWobjStatusDailyToHRFile(file *os.File, delim, wobj_status string, wobj_reports []WorkerWobjReport) (bool, error){
+        line := fmt.Sprintf(">%s:\n", wobj_status)
+        if _, err:= file.WriteString(line); err!= nil {
+            return false, err
+	    }
+	    for _, wobj := range wobj_reports {
+	        line = fmt.Sprintf("[%s %s #%s] %s -> ", wobj.Parent[0], wobj.Parent[1], wobj.Parent[2], delim)
+	        if _, err:= file.WriteString(line); err!= nil {
+                return false, err
+	        }
+
+	        line = fmt.Sprintf("%s %s #%s %s" , wobj.Child[0], wobj.Child[1], wobj.Child[2], delim)
+	        if _, err:= file.WriteString(line); err!= nil {
+                return false, err
+	        }
+
+            actions_line := ""
+            if wobj.LeftTime != 0 {
+              actions_line = actions_line + strconv.Itoa(wobj.LeftTime)
+            }
+
+            if wobj.InvestedTime != 0 {
+                if actions_line != "" {
+                    actions_line = actions_line + ", +"+ strconv.Itoa(wobj.InvestedTime)
+                } else {
+                    actions_line = strconv.Itoa(wobj.InvestedTime)
+                }
+            }
+
+            if wobj.Comment != "" {
+                if actions_line != ""{
+                    actions_line = actions_line + ", " + wobj.Comment
+                } else {
+                    actions_line = wobj.Comment
+                }
+            }
+
+            actions_line = " Actions: " + actions_line + "\n"
+	        if _, err:= file.WriteString(actions_line); err!= nil {
+                return false, err
+	        }
+
+	    }
+	    return true, nil
+}
+
 
 func CheckWorkerManaged(worker_id string) bool{
     if (worker_id != ""){
