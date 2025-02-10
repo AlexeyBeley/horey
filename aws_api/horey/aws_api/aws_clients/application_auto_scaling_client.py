@@ -79,7 +79,7 @@ class ApplicationAutoScalingClient(Boto3Client):
 
         return list(self.yield_policies(region=region))
 
-    def get_region_policies(self, region, custom_filter=None):
+    def get_region_policies(self, region):
         """
         Standard.
         if custom_filter is not None and "ServiceNamespace" in custom_filter:
@@ -231,7 +231,12 @@ class ApplicationAutoScalingClient(Boto3Client):
         :return:
         """
 
-        self.provision_scalable_target_raw(autoscaling_scalable_target.region,
+        region_autoscaling_scalable_target = ApplicationAutoScalingScalableTarget({})
+        region_autoscaling_scalable_target.resource_id = autoscaling_scalable_target.resource_id
+        region_autoscaling_scalable_target.region = autoscaling_scalable_target.region
+        region_autoscaling_scalable_target.service_namespace = autoscaling_scalable_target.service_namespace
+        if not self.update_scalable_target_information(region_autoscaling_scalable_target):
+            self.provision_scalable_target_raw(autoscaling_scalable_target.region,
                                            autoscaling_scalable_target.generate_create_request()
                                            )
 
@@ -253,7 +258,7 @@ class ApplicationAutoScalingClient(Boto3Client):
         ):
             return response
 
-    def update_scalable_target_information(self, scalable_target):
+    def update_scalable_target_information(self, scalable_target:ApplicationAutoScalingScalableTarget):
         """
         Standard.
 
@@ -263,8 +268,9 @@ class ApplicationAutoScalingClient(Boto3Client):
         try:
             dict_src = self.execute_with_single_reply(
                 self.get_session_client(region=scalable_target.region).describe_scalable_targets,
-                "ScalingPolicies",
-                filters_req={"PolicyNames": [scalable_target.name]},
+                "ScalableTargets",
+                filters_req={"ResourceIds": [scalable_target.resource_id],
+                             "ServiceNamespace": scalable_target.service_namespace},
             )
         except self.ZeroValuesException:
             return False

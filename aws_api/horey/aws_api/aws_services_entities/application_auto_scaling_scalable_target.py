@@ -25,20 +25,7 @@ class ApplicationAutoScalingScalableTarget(AwsObject):
             self._init_object_from_cache(dict_src)
             return
 
-        init_options = {
-            "MinCapacity": self.init_default_attr,
-            "ScalableTargetARN": lambda x, y: self.init_default_attr(
-                x, y, formatted_name="arn"),
-            "MaxCapacity": self.init_default_attr,
-            "RoleARN": self.init_default_attr,
-            "SuspendedState": self.init_default_attr,
-            "ServiceNamespace": self.init_default_attr,
-            "ResourceId": self.init_default_attr,
-            "ScalableDimension": self.init_default_attr,
-            "CreationTime": self.init_default_attr,
-        }
-
-        self.init_attrs(dict_src, init_options)
+        self.update_from_raw_response(dict_src)
 
     def _init_object_from_cache(self, dict_src):
         """
@@ -55,7 +42,20 @@ class ApplicationAutoScalingScalableTarget(AwsObject):
         :param dict_src:
         :return:
         """
-        init_options = {}
+
+        init_options = {
+            "MinCapacity": self.init_default_attr,
+            "ScalableTargetARN": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"),
+            "MaxCapacity": self.init_default_attr,
+            "RoleARN": self.init_default_attr,
+            "SuspendedState": self.init_default_attr,
+            "ServiceNamespace": self.init_default_attr,
+            "ResourceId": self.init_default_attr,
+            "ScalableDimension": self.init_default_attr,
+            "CreationTime": self.init_default_attr,
+        }
+
         self.init_attrs(dict_src, init_options)
 
     def generate_create_request(self):

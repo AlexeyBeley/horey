@@ -2,7 +2,6 @@
 Standard ECS maintainer.
 
 """
-import copy
 import json
 import os
 from datetime import datetime
@@ -42,7 +41,6 @@ class ECSAPI:
         self.loadbalancer_api = None
         self.dns_api = None
         self.loadbalancer_dns_api_pairs =None
-        self.auto_scaling_resource_id = f"service/{self.configuration.cluster_name}/{self.configuration.service_name}"
 
     @property
     def ecr_repository(self):
@@ -83,10 +81,11 @@ class ECSAPI:
         :param dns_api:
         :return:
         """
+
         if loadbalancer_dns_api_pairs:
             if loadbalancer_api or dns_api:
-                raise NotImplementedError(f"You can not both declare loadbalancer_dns_apis_pairs and either lb_api or dns_api")
-            for loadbalancer_api, dns_api in loadbalancer_dns_api_pairs:
+                raise NotImplementedError("You can not both declare loadbalancer_dns_apis_pairs and either lb_api or dns_api")
+            for loadbalancer_api, _ in loadbalancer_dns_api_pairs:
                 assert self.loadbalancer_api.configuration.load_balancer_name
                 assert self.loadbalancer_api.configuration.target_group_name
 
@@ -177,7 +176,7 @@ class ECSAPI:
         target = ApplicationAutoScalingScalableTarget({})
         target.service_namespace = "ecs"
         target.region = self.environment_api.region
-        target.resource_id = self.auto_scaling_resource_id
+        target.resource_id = self.configuration.auto_scaling_resource_id
         target.scalable_dimension = "ecs:service:DesiredCount"
         target.min_capacity = self.configuration.autoscaling_min_capacity
         target.max_capacity = self.configuration.autoscaling_max_capacity
@@ -220,7 +219,7 @@ class ECSAPI:
         policy.region = self.environment_api.region
         policy.service_namespace = "ecs"
         policy.name = policy_name
-        policy.resource_id = self.auto_scaling_resource_id
+        policy.resource_id = self.configuration.auto_scaling_resource_id
         policy.scalable_dimension = "ecs:service:DesiredCount"
         policy.policy_type = "TargetTrackingScaling"
 

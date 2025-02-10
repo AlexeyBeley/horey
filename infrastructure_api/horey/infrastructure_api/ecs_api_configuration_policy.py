@@ -116,16 +116,6 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
         self._autoscaling_cpu_policy_name = value
 
     @property
-    def service_load_balancers(self):
-        if self._service_load_balancers is None:
-            raise self.UndefinedValueError("service_load_balancers")
-        return self._service_load_balancers
-
-    @service_load_balancers.setter
-    def service_load_balancers(self, value):
-        self._service_load_balancers = value
-
-    @property
     def slug(self):
         if self._slug is None:
             self._slug = f"{self.cluster_name.replace('cluster_', '')}-{self.service_name.replace('service_', '')}"
@@ -413,3 +403,7 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
     @load_balancer_target_group_arn.setter
     def load_balancer_target_group_arn(self, value):
         self._load_balancer_target_group_arn = value
+
+    @property
+    def auto_scaling_resource_id(self):
+        return f"service/{self.cluster_name}/{self.service_name}"
