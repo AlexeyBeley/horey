@@ -2,6 +2,8 @@
 go build -gcflags="all=-N -l" daily_handler.go
 dlv exec daily_handler -- --action daily_json_to_hr --src "/Users/alexey.beley/git/horey/human_api/horey/human_api/go/daily_report_sample.json" --dst "dst_file_path"
 go run . --action daily_json_to_hr --src "/Users/alexey.beley/git/horey/human_api/horey/human_api/go/daily_report_sample.json" --dst "/Users/alexey.beley/git/horey/human_api/horey/human_api/go/daily_report_sample.hapi"
+
+go run . --action hr_to_daily_json --src "daily_report_sample.hapi" --dst "daily_report_sample_tmp.json"
 */
 package main
 
@@ -13,6 +15,7 @@ import (
 	"os"
 	"fmt"
 	"strconv"
+	"errors"
 )
 
 type WorkerWobjReport struct {
@@ -38,10 +41,13 @@ type WorkerDailyReport struct {
 	Closed   []WorkerWobjReport `json:"closed"`
 }
 
+var delim string
+
 func main() {
 	/*
 	   daily_handler --action daily_json_to_hr --src --dst
 	*/
+    delim = "!!=!!"
 	action := flag.String("action", "none", "The action to take")
 	src := flag.String("src", "none", "Source file")
 	dst := flag.String("dst", "none", "Destination file")
@@ -49,11 +55,18 @@ func main() {
 	flag.Parse()
 
 	if *action == "daily_json_to_hr" {
-		flag.Parse()
 		workers_daily, err := ConvertDailyJsonToHR(*src, *dst)
 		if err != nil || len(workers_daily) == 0 {
 			log.Fatal(err, workers_daily)
 		}
+	} else if *action == "hr_to_daily_json" {
+	    log.Fatalf("Handling action '%v'", *action)
+	    workers_daily, err := ConvertHRToDailyJson(*src, *dst)
+		if err != nil || len(workers_daily) == 0 {
+			log.Fatal(err, workers_daily)
+		}
+	} else {
+	    log.Fatalf("Unknown action '%v'", *action)
 	}
 
 }
@@ -158,4 +171,28 @@ func CheckWorkerManaged(worker_id string) bool{
     return true
     }
     return false
+}
+
+func ConvertHRToDailyJson(src_file_path, dst_file_path string) (reports []WorkerDailyReport, err error) {
+	log.Printf("Called with src '%s' and dst '%s'", src_file_path, dst_file_path)
+
+	reports, err = ReadDailyFromHRFile(src_file_path)
+	if err != nil {
+		return nil, err
+	}
+
+	jsonData, err := json.MarshalIndent(reports, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+
+    err = ioutil.WriteFile(dst_file_path, jsonData, 0644)
+
+	return reports, nil
+}
+
+func ReadDailyFromHRFile(src_file_path string) (reports []WorkerDailyReport, err error){
+   	log.Printf("Reading reports from '%s'", src_file_path)
+
+    return nil, errors.New("Not implemented")
 }
