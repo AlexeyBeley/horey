@@ -150,7 +150,8 @@ class ECSAPI:
                 dns_api.configuration.dns_target = loadbalancer_api.get_loadbalancer().dns_name
                 dns_api.provision()
 
-        self.provision_autoscaling()
+        if provision_service:
+            self.provision_autoscaling()
         return True
 
     def provision_autoscaling(self):

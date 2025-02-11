@@ -18,6 +18,8 @@ import (
 	"errors"
 )
 
+const delim = "!!=!!"
+
 type WorkerWobjReport struct {
 	Parent []string `json:"parent"`
 	Child  []string `json:"child"`
@@ -41,13 +43,11 @@ type WorkerDailyReport struct {
 	Closed   []WorkerWobjReport `json:"closed"`
 }
 
-var delim string
 
 func main() {
 	/*
 	   daily_handler --action daily_json_to_hr --src --dst
 	*/
-    delim = "!!=!!"
 	action := flag.String("action", "none", "The action to take")
 	src := flag.String("src", "none", "Source file")
 	dst := flag.String("dst", "none", "Destination file")
@@ -89,10 +89,10 @@ func ConvertDailyJsonToHR(src_file_path, dst_file_path string) (reports []Worker
 	return reports, nil
 }
 
+
 func WriteDailyToHRFile(reports []WorkerDailyReport, dst_file_path string ) (bool, error){
-    delim := "!!=!!"
    	log.Printf("Writing reports to '%s'", dst_file_path)
-   	file, err:= os.OpenFile(dst_file_path, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
+   	file, err := os.OpenFile(dst_file_path, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
 	if err!= nil {
 		return false, err
 	}
@@ -110,16 +110,16 @@ func WriteDailyToHRFile(reports []WorkerDailyReport, dst_file_path string ) (boo
             return false, err
 	    }
 
-        WriteWorkerWobjStatusDailyToHRFile(file, delim, "NEW",  report.New)
-        WriteWorkerWobjStatusDailyToHRFile(file, delim, "ACTIVE",  report.Active)
-        WriteWorkerWobjStatusDailyToHRFile(file, delim, "BLOCKED",  report.Blocked)
-        WriteWorkerWobjStatusDailyToHRFile(file, delim, "CLOSED",  report.Closed)
+        WriteWorkerWobjStatusDailyToHRFile(file, "NEW",  report.New)
+        WriteWorkerWobjStatusDailyToHRFile(file, "ACTIVE",  report.Active)
+        WriteWorkerWobjStatusDailyToHRFile(file, "BLOCKED",  report.Blocked)
+        WriteWorkerWobjStatusDailyToHRFile(file, "CLOSED",  report.Closed)
 
     }
     return true, nil
 }
 
-func WriteWorkerWobjStatusDailyToHRFile(file *os.File, delim, wobj_status string, wobj_reports []WorkerWobjReport) (bool, error){
+func WriteWorkerWobjStatusDailyToHRFile(file *os.File, wobj_status string, wobj_reports []WorkerWobjReport) (bool, error){
         line := fmt.Sprintf(">%s:\n", wobj_status)
         if _, err:= file.WriteString(line); err!= nil {
             return false, err

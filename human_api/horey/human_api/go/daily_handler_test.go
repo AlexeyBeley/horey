@@ -128,6 +128,21 @@ func DeepCompare(file1, file2 string) bool {
     }
 }
 
+func GetTestHapiFilePath() (string, error){
+   cwd_path, err:= os.Getwd()
+   if err != nil {
+       return "", err
+   }
+   abs_path, err := filepath.Abs(cwd_path)
+   if err != nil {
+       return "", err
+   }
+   dst_file_path := filepath.Join(abs_path, "test.hapi")
+   log.Printf("Generated test destination HAPI file path: %s", dst_file_path)
+   return dst_file_path, nil
+
+}
+
 func TestConvertDailyJsonToHR(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -168,19 +183,13 @@ func TestConvertDailyJsonToHR(t *testing.T) {
 
 func TestWriteDailyToHRFile(t *testing.T){
    t.Run("Valid file", func (t *testing.T){
-   cwd_path, err:= os.Getwd()
-   if err != nil {
-       t.Errorf("Error getting cwd path: %s", err)
+   dst_file_path, err := GetTestHapiFilePath()
+      if err != nil {
+       t.Errorf("Error getting hapi file pathpath: %s", err)
        return
    }
-   abs_path, err := filepath.Abs(cwd_path)
-   if err != nil {
-       t.Errorf("Error getting cwd abs path: %s", err)
-       return
-   }
-   dst_file_path := filepath.Join(abs_path, "test.hapi")
-   log.Printf("Generated test destination HAPI file path: %s", dst_file_path)
-   want_file_path := filepath.Join(abs_path, "test_want.hapi")
+
+   want_file_path := filepath.Join(filepath.Dir(dst_file_path), "test_want.hapi")
 
    _, err = WriteDailyToHRFile(test_WorkerDailyReports, dst_file_path)
    if err != nil {
@@ -193,3 +202,43 @@ func TestWriteDailyToHRFile(t *testing.T){
    }
    })
 }
+
+func TestWriteWorkerWobjStatusDailyToHRFile(t *testing.T){
+    t.Run("Valid wobject", func(t *testing.T){
+      dst_file_path, err := GetTestHapiFilePath()
+      if err != nil {
+       t.Errorf("Error getting hapi file path: %s", err)
+       return
+      }
+      	file, err := os.OpenFile(dst_file_path, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
+	    if err!= nil {
+	        t.Errorf("Error opening hapi file path: %s", err)
+	    }
+
+	  defer file.Close() // Ensure the file is closed when the function exits
+
+      wobj_reports := []WorkerWobjReport{
+			{
+				Parent: []string{"UserStory", "1", "test User story"},
+				Child:  []string{"Task", "11", "test Task"},
+				Comment: "Standard Comment",
+				InvestedTime: 1,
+				LeftTime: 1,
+			},
+			{
+				Parent: []string{"UserStory", "1", "test User story"},
+				Child:  []string{"Task", "12", "test Task 2"},
+				Comment: "start_comment Standard, Comment end_comment",
+				InvestedTime: 0,
+				LeftTime: 1,
+			},
+		}
+
+      ok, err := WriteWorkerWobjStatusDailyToHRFile(file, "NEW", wobj_reports)
+      if err != nil || !ok {
+	        t.Errorf("Test failed: %s, %t", err, ok)
+	    }
+    })
+
+}
+

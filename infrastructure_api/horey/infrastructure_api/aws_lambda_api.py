@@ -39,6 +39,7 @@ class AWSLambdaAPI:
         self._aws_iam_api = None
         self._environment_variables_callback = None
         self._alerts_api = None
+        self.loadbalancer_api = None
 
     @property
     def alerts_api(self):
