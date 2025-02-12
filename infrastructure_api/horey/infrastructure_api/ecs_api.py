@@ -77,6 +77,9 @@ class ECSAPI:
         """
         Standard.
 
+        :param loadbalancer_dns_api_pairs: Load balancer, with DNS_API pair - the DNS Api used for specific LB.
+        Useful when you have 2 addresses for the service - internal and external.
+
         :param loadbalancer_api:
         :param dns_api:
         :return:

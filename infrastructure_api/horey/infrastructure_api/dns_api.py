@@ -45,7 +45,15 @@ class DNSAPI:
                      }
             }
         else:
-            raise RuntimeError(self.configuration.dns_target)
+            dict_record = {
+                "Name": self.configuration.dns_address,
+                "Type": "CNAME",
+                "TTL": 300,
+                "ResourceRecords": [
+                    {
+                        "Value": self.configuration.dns_target
+                    }
+                ]}
 
         record = HostedZone.Record(dict_record)
         hosted_zone.records.append(record)

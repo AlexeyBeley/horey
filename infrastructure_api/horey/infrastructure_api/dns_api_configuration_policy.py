@@ -19,6 +19,20 @@ class DNSAPIConfigurationPolicy(ConfigurationPolicy):
         self._hosted_zone_name = None
         self._dns_address = None
         self._dns_target = None
+        self._lowest_domain_label = None
+
+    @property
+    def lowest_domain_label(self):
+        if self._lowest_domain_label is None:
+            if self._dns_address is None:
+                raise self.UndefinedValueError("lowest_domain_label")
+            self._lowest_domain_label = self._dns_address.split(".")[0]
+
+        return self._lowest_domain_label
+
+    @lowest_domain_label.setter
+    def lowest_domain_label(self, value):
+        self._lowest_domain_label = value
 
     @property
     def dns_target(self):
@@ -33,7 +47,9 @@ class DNSAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def dns_address(self):
         if self._dns_address is None:
-            raise self.UndefinedValueError("dns_address")
+            if self._lowest_domain_label is None or self._hosted_zone_name is None:
+                raise self.UndefinedValueError("dns_address")
+            self._dns_address = f"{self._dns_address}.{self.hosted_zone_name}"
         return self._dns_address
 
     @dns_address.setter

@@ -128,7 +128,7 @@ func DeepCompare(file1, file2 string) bool {
     }
 }
 
-func GetTestHapiFilePath() (string, error){
+func GetTestHapiFilePath(basename string) (string, error){
    cwd_path, err:= os.Getwd()
    if err != nil {
        return "", err
@@ -137,7 +137,10 @@ func GetTestHapiFilePath() (string, error){
    if err != nil {
        return "", err
    }
-   dst_file_path := filepath.Join(abs_path, "test.hapi")
+   if base == "" {
+   basename = "test.hapi"
+   }
+   dst_file_path := filepath.Join(abs_path, basename)
    log.Printf("Generated test destination HAPI file path: %s", dst_file_path)
    return dst_file_path, nil
 
@@ -183,7 +186,7 @@ func TestConvertDailyJsonToHR(t *testing.T) {
 
 func TestWriteDailyToHRFile(t *testing.T){
    t.Run("Valid file", func (t *testing.T){
-   dst_file_path, err := GetTestHapiFilePath()
+   dst_file_path, err := GetTestHapiFilePath("")
       if err != nil {
        t.Errorf("Error getting hapi file pathpath: %s", err)
        return
@@ -205,7 +208,7 @@ func TestWriteDailyToHRFile(t *testing.T){
 
 func TestWriteWorkerWobjStatusDailyToHRFile(t *testing.T){
     t.Run("Valid wobject", func(t *testing.T){
-      dst_file_path, err := GetTestHapiFilePath()
+      dst_file_path, err := GetTestHapiFilePath("")
       if err != nil {
        t.Errorf("Error getting hapi file path: %s", err)
        return
@@ -242,3 +245,6 @@ func TestWriteWorkerWobjStatusDailyToHRFile(t *testing.T){
 
 }
 
+//ConvertHRToDailyJson
+ReadDailyFromHRFile
+GetTestHapiFilePath("daily_report_sample_input.hapi")

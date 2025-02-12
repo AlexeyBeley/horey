@@ -106,6 +106,22 @@ class RDSClient(Boto3Client):
                                                             regions=[region] if region else None,
                                                             filters_req=filters_req)
 
+    def update_cluster_information(self, cluster: RDSDBCluster):
+        """
+        Standard.
+
+        :param cluster:
+        :return:
+        """
+
+        region_clusters = list(self.yield_db_clusters(region=cluster.region, filters_req={"DBClusterIdentifier": cluster.id}))
+        if len(region_clusters) > 1:
+            raise RuntimeError(f"Found more then 1 cluster with id: {cluster.id}")
+
+        for region_cluster in region_clusters:
+            return cluster.update_from_attrs(region_cluster)
+        return False
+
     def yield_db_clusters_raw(self, region, filters_req=None):
         """
         Yield dictionaries.
@@ -1189,15 +1205,22 @@ class RDSClient(Boto3Client):
         :param engine_type:
         :return:
         """
-
         lst_all = self.describe_db_engine_versions_raw(region, {"Engine": engine_type, "DefaultOnly": False})
         all_floats = {}
         errors = []
+
         for eng_version in lst_all:
             try:
                 if ignore_limitless and "limitless" in eng_version["EngineVersion"]:
                     continue
-                all_floats[float(eng_version["EngineVersion"])] = eng_version
+                eng_version_text = eng_version["EngineVersion"]
+                if engine_type == "aurora-mysql":
+                    eng_version_text = eng_version_text[eng_version_text.find("mysql_aurora.") + len("mysql_aurora."):]
+                    if eng_version_text.count(".") != 2:
+                        raise NotImplementedError(f"Expected format x.y.z, received: {eng_version_text}")
+                    major, minor = eng_version_text.rsplit(".", maxsplit=1)
+                    eng_version_text = f'{major.replace(".", "")}.{minor}'
+                all_floats[float(eng_version_text)] = eng_version
             except ValueError:
                 errors.append(eng_version["EngineVersion"])
 
