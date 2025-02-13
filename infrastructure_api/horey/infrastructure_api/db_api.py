@@ -4,7 +4,6 @@ Standard Load balancing maintainer.
 """
 
 from horey.h_logger import get_logger
-from horey.aws_api.aws_services_entities.route53_hosted_zone import HostedZone
 from horey.aws_api.aws_services_entities.rds_db_cluster import RDSDBCluster
 from horey.aws_api.aws_services_entities.rds_db_instance import RDSDBInstance
 from horey.aws_api.aws_services_entities.rds_db_cluster_parameter_group import RDSDBClusterParameterGroup
@@ -32,6 +31,9 @@ class DBAPI:
 
         :return:
         """
+
+        # todo: cleanup report delete unused parameter groups.
+
         self.environment_api.aws_api.rds_client.clear_cache(None, all_cache=True)
         self.provision_serverless_cluster_parameter_group()
         self.provision_db_instance_parameter_group()

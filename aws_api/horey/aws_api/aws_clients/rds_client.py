@@ -3,6 +3,7 @@ AWS rds client to handle rds service API requests.
 """
 # pylint: disable= too-many-lines
 import datetime
+import json
 import time
 from collections import defaultdict
 
@@ -1235,3 +1236,42 @@ class RDSClient(Boto3Client):
         if not raw:
             return max_versions[0]
         return all_floats[max_versions[0]]
+
+    def download_db_log_file_portion(self, region, instance_id, file_name):
+        """
+        Standard.
+        ret = list(self.execute(self.get_session_client(region=region).describe_db_log_files, "DescribeDBLogFiles", filters_req={"DBInstanceIdentifier": instance_id}))
+
+        :param region:
+        :param instance_id:
+        :param file_name:
+        :return:
+        """
+        filters_req = {
+            "DBInstanceIdentifier": instance_id,
+            "LogFileName": file_name
+            }
+        for response in self.execute(
+            self.get_session_client(region=region).download_db_log_file_portion, None, raw_data=True, filters_req=filters_req
+        ):
+            if response["AdditionalDataPending"]:
+                raise NotImplementedError(response)
+            return json.loads(response["LogFileData"].strip("\n"))
+
+    def get_upgrade_prechecks_errors(self, region, instance_id):
+        """
+        Extract errors from log file
+
+        :param region:
+        :param instance_id:
+        :return:
+        """
+        lst_ret = []
+        ret = self.download_db_log_file_portion(region, instance_id, "upgrade-prechecks.log")
+        for check in ret["checksPerformed"]:
+            if check.get("status") != "OK":
+                lst_ret.append(check)
+            if check.get("detectedProblems"):
+                lst_ret.append(check)
+        return lst_ret
+

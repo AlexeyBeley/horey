@@ -246,5 +246,17 @@ func TestWriteWorkerWobjStatusDailyToHRFile(t *testing.T){
 }
 
 //ConvertHRToDailyJson
-ReadDailyFromHRFile
-GetTestHapiFilePath("daily_report_sample_input.hapi")
+func TestReadDailyFromHRFile(t *testing.T){
+    t.Run("Valid input", func(t *testing.T) {
+       hapi_path, err := GetTestHapiFilePath("daily_report_sample_input.hapi")
+       if err {
+           t.Errorf("Test failed: %s", err)
+       }
+       reports = ReadDailyFromHRFile(hapi_path)
+       if !reflect.DeepEqual(reports, test_WorkerDailyReports){
+            t.Errorf("ReadDailyFromHRFile() = %v, want %v", test_WorkerDailyReports, reports)
+       }
+
+
+    })
+}

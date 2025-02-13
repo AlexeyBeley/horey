@@ -19,6 +19,7 @@ import (
 )
 
 const delim = "!!=!!"
+const worker_delim = "%sH_ReportWorkerID%s", delim, delim)
 
 type WorkerWobjReport struct {
 	Parent []string `json:"parent"`
@@ -105,7 +106,7 @@ func WriteDailyToHRFile(reports []WorkerDailyReport, dst_file_path string ) (boo
 
         fmt.Printf("Writing worker report: '%v'\n", report.WorkerID)
 
-        line:= fmt.Sprintf("%sH_ReportWorkerID%s %s\n", delim, delim, report.WorkerID)
+        line := fmt.Sprintf("%s %s\n", worker_delim, report.WorkerID)
         if _, err:= file.WriteString(line); err!= nil {
             return false, err
 	    }
@@ -193,6 +194,16 @@ func ConvertHRToDailyJson(src_file_path, dst_file_path string) (reports []Worker
 
 func ReadDailyFromHRFile(src_file_path string) (reports []WorkerDailyReport, err error){
    	log.Printf("Reading reports from '%s'", src_file_path)
+	data, err := ioutil.ReadFile(src_file_path)
+	if err != nil {
+		return nil, err
+	}
 
+	report_lines := strings.Split(data, "\n")
+	//H_ReportWorkerID
+	var worker_chunks []string
+	for line := range report_lines {
+	if worker_delim in line
+	}
     return nil, errors.New("Not implemented")
 }
