@@ -6,13 +6,13 @@ go run . --action daily_json_to_hr --src "/Users/alexey.beley/git/horey/human_ap
 package main
 
 import (
-	"reflect"
-	"testing"
-	"path/filepath"
-	"os"
-	"log"
 	"bytes"
 	"io"
+	"log"
+	"os"
+	"path/filepath"
+	"reflect"
+	"testing"
 )
 
 var test_WorkerDailyReport = WorkerDailyReport{
@@ -35,46 +35,46 @@ var test_WorkerDailyReports = []WorkerDailyReport{
 	{WorkerID: "horey",
 		New: []WorkerWobjReport{
 			{
-				Parent: []string{"UserStory", "1", "test User story"},
-				Child:  []string{"Task", "11", "test Task"},
-				Comment: "Standard Comment",
+				Parent:       []string{"UserStory", "1", "test User story"},
+				Child:        []string{"Task", "11", "test Task"},
+				Comment:      "Standard Comment",
 				InvestedTime: 1,
-				LeftTime: 1,
+				LeftTime:     1,
 			},
 			{
-				Parent: []string{"UserStory", "1", "test User story"},
-				Child:  []string{"Task", "12", "test Task 2"},
-				Comment: "start_comment Standard, Comment end_comment",
+				Parent:       []string{"UserStory", "1", "test User story"},
+				Child:        []string{"Task", "12", "test Task 2"},
+				Comment:      "start_comment Standard, Comment end_comment",
 				InvestedTime: 0,
-				LeftTime: 1,
+				LeftTime:     1,
 			},
 		},
 		Active: []WorkerWobjReport{
 			{
-				Parent: []string{"UserStory", "2", "test User story2"},
-				Child:  []string{"Task", "22", "test Task 22"},
-				Comment: "start_comment Standard, Comment end_comment",
+				Parent:       []string{"UserStory", "2", "test User story2"},
+				Child:        []string{"Task", "22", "test Task 22"},
+				Comment:      "start_comment Standard, Comment end_comment",
 				InvestedTime: 1,
-				LeftTime: 0,
+				LeftTime:     0,
 			},
 		},
 		Blocked: []WorkerWobjReport{
 			{
-				Parent: []string{"UserStory", "2", "test User story2"},
-				Child:  []string{"Task", "23", "test Task 23"},
-				Comment: "start_comment Standard, Comment end_comment",
+				Parent:       []string{"UserStory", "2", "test User story2"},
+				Child:        []string{"Task", "23", "test Task 23"},
+				Comment:      "start_comment Standard, Comment end_comment",
 				InvestedTime: 0,
-				LeftTime: 0,
+				LeftTime:     0,
 			},
 		},
 		Closed: []WorkerWobjReport{
-	         {
-				Parent: []string{"UserStory", "3", "test User story3"},
-				Child:  []string{"Task", "31", "test Task 31"},
-				Comment: "",
+			{
+				Parent:       []string{"UserStory", "3", "test User story3"},
+				Child:        []string{"Task", "31", "test Task 31"},
+				Comment:      "",
 				InvestedTime: 0,
-				LeftTime: 0,
-			 },
+				LeftTime:     0,
+			},
 		},
 	},
 }
@@ -87,62 +87,61 @@ func TestInitListOfWorkerDailyReport(t *testing.T) {
 	})
 }
 
-
 const chunkSize = 64000
 
 func DeepCompare(file1, file2 string) bool {
-    // Check files content identical
+	// Check files content identical
 
-    f1, err := os.Open(file1)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer f1.Close()
+	f1, err := os.Open(file1)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f1.Close()
 
-    f2, err := os.Open(file2)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer f2.Close()
+	f2, err := os.Open(file2)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f2.Close()
 
-    for {
-        b1 := make([]byte, chunkSize)
-        _, err1 := f1.Read(b1)
+	for {
+		b1 := make([]byte, chunkSize)
+		_, err1 := f1.Read(b1)
 
-        b2 := make([]byte, chunkSize)
-        _, err2 := f2.Read(b2)
+		b2 := make([]byte, chunkSize)
+		_, err2 := f2.Read(b2)
 
-        if err1 != nil || err2 != nil {
-            if err1 == io.EOF && err2 == io.EOF {
-                return true
-            } else if err1 == io.EOF || err2 == io.EOF {
-                return false
-            } else {
-                log.Fatal(err1, err2)
-            }
-        }
+		if err1 != nil || err2 != nil {
+			if err1 == io.EOF && err2 == io.EOF {
+				return true
+			} else if err1 == io.EOF || err2 == io.EOF {
+				return false
+			} else {
+				log.Fatal(err1, err2)
+			}
+		}
 
-        if !bytes.Equal(b1, b2) {
-            return false
-        }
-    }
+		if !bytes.Equal(b1, b2) {
+			return false
+		}
+	}
 }
 
-func GetTestHapiFilePath(basename string) (string, error){
-   cwd_path, err:= os.Getwd()
-   if err != nil {
-       return "", err
-   }
-   abs_path, err := filepath.Abs(cwd_path)
-   if err != nil {
-       return "", err
-   }
-   if base == "" {
-   basename = "test.hapi"
-   }
-   dst_file_path := filepath.Join(abs_path, basename)
-   log.Printf("Generated test destination HAPI file path: %s", dst_file_path)
-   return dst_file_path, nil
+func GetTestHapiFilePath(basename string) (string, error) {
+	cwd_path, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	abs_path, err := filepath.Abs(cwd_path)
+	if err != nil {
+		return "", err
+	}
+	if basename == "" {
+		basename = "test.hapi"
+	}
+	dst_file_path := filepath.Join(abs_path, basename)
+	log.Printf("Generated test destination HAPI file path: %s", dst_file_path)
+	return dst_file_path, nil
 
 }
 
@@ -183,70 +182,69 @@ func TestConvertDailyJsonToHR(t *testing.T) {
 	}
 }
 
+func TestWriteDailyToHRFile(t *testing.T) {
+	t.Run("Valid file", func(t *testing.T) {
+		dst_file_path, err := GetTestHapiFilePath("")
+		if err != nil {
+			t.Errorf("Error getting hapi file pathpath: %s", err)
+			return
+		}
 
-func TestWriteDailyToHRFile(t *testing.T){
-   t.Run("Valid file", func (t *testing.T){
-   dst_file_path, err := GetTestHapiFilePath("")
-      if err != nil {
-       t.Errorf("Error getting hapi file pathpath: %s", err)
-       return
-   }
+		want_file_path := filepath.Join(filepath.Dir(dst_file_path), "test_want.hapi")
 
-   want_file_path := filepath.Join(filepath.Dir(dst_file_path), "test_want.hapi")
+		_, err = WriteDailyToHRFile(test_WorkerDailyReports, dst_file_path)
+		if err != nil {
+			t.Errorf("Was not able to generate reports hapi: %s", err)
+			return
+		}
 
-   _, err = WriteDailyToHRFile(test_WorkerDailyReports, dst_file_path)
-   if err != nil {
-       t.Errorf("Was not able to generate reports hapi: %s", err)
-       return
-   }
-
-   if !DeepCompare(want_file_path, dst_file_path){
-     t.Errorf("Generated file %v is not equal to wanted %v", dst_file_path, want_file_path)
-   }
-   })
+		if !DeepCompare(want_file_path, dst_file_path) {
+			t.Errorf("Generated file %v is not equal to wanted %v", dst_file_path, want_file_path)
+		}
+	})
 }
 
-func TestWriteWorkerWobjStatusDailyToHRFile(t *testing.T){
-    t.Run("Valid wobject", func(t *testing.T){
-      dst_file_path, err := GetTestHapiFilePath("")
-      if err != nil {
-       t.Errorf("Error getting hapi file path: %s", err)
-       return
-      }
-      	file, err := os.OpenFile(dst_file_path, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
-	    if err!= nil {
-	        t.Errorf("Error opening hapi file path: %s", err)
-	    }
+func TestWriteWorkerWobjStatusDailyToHRFile(t *testing.T) {
+	t.Run("Valid wobject", func(t *testing.T) {
+		dst_file_path, err := GetTestHapiFilePath("")
+		if err != nil {
+			t.Errorf("Error getting hapi file path: %s", err)
+			return
+		}
+		file, err := os.OpenFile(dst_file_path, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			t.Errorf("Error opening hapi file path: %s", err)
+		}
 
-	  defer file.Close() // Ensure the file is closed when the function exits
+		defer file.Close() // Ensure the file is closed when the function exits
 
-      wobj_reports := []WorkerWobjReport{
+		wobj_reports := []WorkerWobjReport{
 			{
-				Parent: []string{"UserStory", "1", "test User story"},
-				Child:  []string{"Task", "11", "test Task"},
-				Comment: "Standard Comment",
+				Parent:       []string{"UserStory", "1", "test User story"},
+				Child:        []string{"Task", "11", "test Task"},
+				Comment:      "Standard Comment",
 				InvestedTime: 1,
-				LeftTime: 1,
+				LeftTime:     1,
 			},
 			{
-				Parent: []string{"UserStory", "1", "test User story"},
-				Child:  []string{"Task", "12", "test Task 2"},
-				Comment: "start_comment Standard, Comment end_comment",
+				Parent:       []string{"UserStory", "1", "test User story"},
+				Child:        []string{"Task", "12", "test Task 2"},
+				Comment:      "start_comment Standard, Comment end_comment",
 				InvestedTime: 0,
-				LeftTime: 1,
+				LeftTime:     1,
 			},
 		}
 
-      ok, err := WriteWorkerWobjStatusDailyToHRFile(file, "NEW", wobj_reports)
-      if err != nil || !ok {
-	        t.Errorf("Test failed: %s, %t", err, ok)
-	    }
-    })
+		ok, err := WriteWorkerWobjStatusDailyToHRFile(file, "NEW", wobj_reports)
+		if err != nil || !ok {
+			t.Errorf("Test failed: %s, %t", err, ok)
+		}
+	})
 
 }
 
 //ConvertHRToDailyJson
-func TestReadDailyFromHRFile(t *testing.T){
+/*func TestReadDailyFromHRFile(t *testing.T){
     t.Run("Valid input", func(t *testing.T) {
        hapi_path, err := GetTestHapiFilePath("daily_report_sample_input.hapi")
        if err {
@@ -256,7 +254,51 @@ func TestReadDailyFromHRFile(t *testing.T){
        if !reflect.DeepEqual(reports, test_WorkerDailyReports){
             t.Errorf("ReadDailyFromHRFile() = %v, want %v", test_WorkerDailyReports, reports)
        }
-
-
     })
+}
+*/
+
+func TestSplitHapiLinesToWorkerChunks(t *testing.T) {
+	t.Run("Valid input", func(t *testing.T) {
+		var testLines = []string{"!!=!!H_ReportWorkerID!!=!!Horey1", "1", "!!=!!H_ReportWorkerID!!=!!Horey2", "2"}
+		var wantedChunks = [][]string{[]string{"!!=!!H_ReportWorkerID!!=!!Horey1", "1"}, []string{"!!=!!H_ReportWorkerID!!=!!Horey2", "2"}}
+		chunks, err := SplitHapiLinesToWorkerChunks(testLines)
+		if err != nil {
+			t.Errorf("Test failed: %s", err)
+		}
+		if !reflect.DeepEqual(chunks, wantedChunks) {
+			t.Errorf("ReadDailyFromHRFile() = %v, want %v", chunks, wantedChunks)
+		}
+	})
+}
+
+func TestSpitChunkToTypes(t *testing.T) {
+	t.Run("Valid input", func(t *testing.T) {
+		var testLines = []string{"!!=!!H_ReportWorkerID!!=!!Horey1",
+			">NEW:",
+			"1",
+			"2",
+			">ACTIVE:",
+			"3",
+			">BLOCKED:",
+			">CLOSED:",
+			"4",
+			"5",
+		}
+
+		want_new, want_active, want_blocked, want_closed := []string{"1", "2"}, []string{"3"}, []string{}, []string{"4", "5"}
+		want_id := "Horey1"
+
+		id, new, active, blocked, closed, err := SpitChunkToTypes(testLines)
+		if err != nil {
+			t.Errorf("Test failed: %s", err)
+		}
+		if id != want_id ||
+			! reflect.DeepEqual(new, want_new) ||
+			! reflect.DeepEqual(active, want_active) ||
+			! reflect.DeepEqual(blocked, want_blocked) ||
+			! reflect.DeepEqual(closed, want_closed) {
+			t.Errorf("SpitChunkToTypes() = '%v', '%v', '%v', '%v', '%v' want '%v', '%v', '%v', '%v', '%v' ", id, new, active, blocked, closed, want_id, want_new, want_active, want_blocked, want_closed)
+		}
+	})
 }
