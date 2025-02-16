@@ -243,21 +243,6 @@ func TestWriteWorkerWobjStatusDailyToHRFile(t *testing.T) {
 
 }
 
-//ConvertHRToDailyJson
-/*func TestReadDailyFromHRFile(t *testing.T){
-    t.Run("Valid input", func(t *testing.T) {
-       hapi_path, err := GetTestHapiFilePath("daily_report_sample_input.hapi")
-       if err {
-           t.Errorf("Test failed: %s", err)
-       }
-       reports = ReadDailyFromHRFile(hapi_path)
-       if !reflect.DeepEqual(reports, test_WorkerDailyReports){
-            t.Errorf("ReadDailyFromHRFile() = %v, want %v", test_WorkerDailyReports, reports)
-       }
-    })
-}
-*/
-
 func TestSplitHapiLinesToWorkerChunks(t *testing.T) {
 	t.Run("Valid input", func(t *testing.T) {
 		var testLines = []string{"!!=!!H_ReportWorkerID!!=!!Horey1", "1", "!!=!!H_ReportWorkerID!!=!!Horey2", "2"}
@@ -272,7 +257,7 @@ func TestSplitHapiLinesToWorkerChunks(t *testing.T) {
 	})
 }
 
-func TestSpitChunkToTypes(t *testing.T) {
+func TestSpitChunkByTypes(t *testing.T) {
 	t.Run("Valid input", func(t *testing.T) {
 		var testLines = []string{"!!=!!H_ReportWorkerID!!=!!Horey1",
 			">NEW:",
@@ -289,16 +274,47 @@ func TestSpitChunkToTypes(t *testing.T) {
 		want_new, want_active, want_blocked, want_closed := []string{"1", "2"}, []string{"3"}, []string{}, []string{"4", "5"}
 		want_id := "Horey1"
 
-		id, new, active, blocked, closed, err := SpitChunkToTypes(testLines)
+		id, new, active, blocked, closed, err := SpitChunkByTypes(testLines)
 		if err != nil {
 			t.Errorf("Test failed: %s", err)
 		}
 		if id != want_id ||
-			! reflect.DeepEqual(new, want_new) ||
-			! reflect.DeepEqual(active, want_active) ||
-			! reflect.DeepEqual(blocked, want_blocked) ||
-			! reflect.DeepEqual(closed, want_closed) {
-			t.Errorf("SpitChunkToTypes() = '%v', '%v', '%v', '%v', '%v' want '%v', '%v', '%v', '%v', '%v' ", id, new, active, blocked, closed, want_id, want_new, want_active, want_blocked, want_closed)
+			!reflect.DeepEqual(new, want_new) ||
+			!reflect.DeepEqual(active, want_active) ||
+			!reflect.DeepEqual(blocked, want_blocked) ||
+			!reflect.DeepEqual(closed, want_closed) {
+			t.Errorf("SpitChunkByTypes() = '%v', '%v', '%v', '%v', '%v' want '%v', '%v', '%v', '%v', '%v' ", id, new, active, blocked, closed, want_id, want_new, want_active, want_blocked, want_closed)
+		}
+	})
+}
+
+func TestGenerateWobjectFromHapiLine(t *testing.T) {
+	t.Run("Valid input", func(t *testing.T) {
+
+		testCases := []struct {
+			inputLine string
+			want      WorkerWobjReport
+			wantErr   bool
+		}{
+			{
+				inputLine: "[UserStory 1 #test User story] !!=!! -> Task 11 #test Task !!=!! Actions: 1, +1, Standard Comment",
+				want: WorkerWobjReport{
+					Parent:       []string{"UserStory", "1", "test User story"},
+					Child:        []string{"Task", "11", "test Task"},
+					Comment:      "Standard Comment",
+					InvestedTime: 1,
+					LeftTime:     1,
+				},
+				wantErr: false,
+			},
+		}
+
+		for _, testCase := range testCases {
+			got := GenerateWobjectFromHapiLine(testCase.inputLine)
+			if !reflect.DeepEqual(got, testCase.want) && !testCase.wantErr {
+				t.Errorf("GenerateWobjectFromHapiLine() = %v, want %v", got, testCase.want)
+			}
+
 		}
 	})
 }

@@ -257,7 +257,7 @@ func ConvertWorkerChunkToWorkerDailyReport(chunk []string) (report WorkerDailyRe
 		Closed   []WorkerWobjReport `json:"closed"`
 	*/
 
-	id, new, active, blocked, closed, err := SpitChunkToTypes(chunk)
+	id, new, active, blocked, closed, err := SpitChunkByTypes(chunk)
 	fmt.Printf("%v, %v, %v, %v, %v", id, new, active, blocked, closed)
 	if err != nil {
 		return report, err
@@ -265,16 +265,16 @@ func ConvertWorkerChunkToWorkerDailyReport(chunk []string) (report WorkerDailyRe
 	return report, nil
 }
 
-func SpitChunkToTypes(lines []string) (id string, new, active, blocked, closed []string, err error) {
+func SpitChunkByTypes(lines []string) (id string, new, active, blocked, closed []string, err error) {
 	new, active, blocked, closed = []string{}, []string{}, []string{}, []string{}
 	worker_delim := fmt.Sprintf("%sH_ReportWorkerID%s", delim, delim)
 
-    var aggregator string
+	var aggregator string
 
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if strings.HasSuffix(line, "\n") {
-		    line = line[:len(line)-2]
+			line = line[:len(line)-2]
 		}
 
 		if strings.Contains(line, worker_delim) {
@@ -283,23 +283,40 @@ func SpitChunkToTypes(lines []string) (id string, new, active, blocked, closed [
 		}
 
 		if line == ">NEW:" || line == ">ACTIVE:" || line == ">BLOCKED:" || line == ">CLOSED:" {
-		    aggregator = line
-		    continue
+			aggregator = line
+			continue
 		} else {
-	      if aggregator == ">NEW:"{
-	         new = append(new, line)
-	      } else if  aggregator == ">ACTIVE:"{
-             active = append(active, line)
-	      } else if aggregator == ">BLOCKED:"{
-             blocked = append(blocked, line)
-	      } else if  aggregator == ">CLOSED:" {
-             closed = append(closed, line)
-	      } else {
-	        return id, new, active, blocked, closed, errors.New("Unknown state" + aggregator)
-	      }
+			if aggregator == ">NEW:" {
+				new = append(new, line)
+			} else if aggregator == ">ACTIVE:" {
+				active = append(active, line)
+			} else if aggregator == ">BLOCKED:" {
+				blocked = append(blocked, line)
+			} else if aggregator == ">CLOSED:" {
+				closed = append(closed, line)
+			} else {
+				return id, new, active, blocked, closed, errors.New("Unknown state" + aggregator)
+			}
 
 		}
 	}
 
 	return id, new, active, blocked, closed, nil
+}
+
+func GenerateWobjectFromHapiLine(line string) WorkerWobjReport {
+
+	parent := []string{}
+	child := []string{}
+	comment := ""
+	invested_time := 0
+	lef_time := 0
+	wobj := WorkerWobjReport{
+		Parent:       parent,
+		Child:        child,
+		Comment:      comment,
+		InvestedTime: invested_time,
+		LeftTime:     lef_time,
+	}
+	return wobj
 }
