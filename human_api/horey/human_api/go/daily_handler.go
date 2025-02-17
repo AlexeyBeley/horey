@@ -304,19 +304,118 @@ func SpitChunkByTypes(lines []string) (id string, new, active, blocked, closed [
 	return id, new, active, blocked, closed, nil
 }
 
-func GenerateWobjectFromHapiLine(line string) WorkerWobjReport {
-
-	parent := []string{}
-	child := []string{}
-	comment := ""
-	invested_time := 0
-	lef_time := 0
-	wobj := WorkerWobjReport{
-		Parent:       parent,
-		Child:        child,
-		Comment:      comment,
-		InvestedTime: invested_time,
-		LeftTime:     lef_time,
+func GenerateWobjectReportFromHapiLine(line string) (WorkerWobjReport, error) {
+	// "[UserStory 1 #test User story] !!=!! -> Task 11 #test Task !!=!! Actions: 1, +1, Standard Comment",
+    log.Printf("GenerateWobjectReportFromHapiLine called with %s", line)
+	delim_count := strings.Count(line, delim)
+	if delim_count != 2 {
+		return WorkerWobjReport{}, fmt.Errorf("Delimiters count expected 2, got %v", delim_count)
 	}
-	return wobj
+
+	line_parts := strings.Split(line, delim)
+
+    parent_substring := line_parts[0]
+    parent_substring = strings.TrimPrefix(parent_substring, " ")
+    parent_substring = strings.TrimSuffix(parent_substring, " ")
+    if !strings.HasPrefix(parent_substring, "[") || !strings.HasSuffix(parent_substring, "]"){
+     return WorkerWobjReport{}, fmt.Errorf("Parent format is wrong: '%v'", parent_substring)
+    }
+    parent_substring = parent_substring[1:len(parent_substring)-1]
+
+	parent, err := GenerateWobjectFromHapiSubLine(parent_substring)
+	if err != nil {
+		return WorkerWobjReport{}, err
+	}
+    child_substring := line_parts[1]
+    child_substring = strings.TrimPrefix(child_substring, " ")
+    child_substring = strings.TrimSuffix(child_substring, " ")
+    if !strings.HasPrefix(child_substring, "->") {
+     return WorkerWobjReport{}, fmt.Errorf("Child format is wrong: '%v'", child_substring)
+    }
+    child_substring = child_substring[2:]
+	child, err := GenerateWobjectFromHapiSubLine(child_substring)
+	if err != nil {
+		return WorkerWobjReport{}, err
+	}
+
+	actions := line_parts[2]
+	actions = strings.TrimPrefix(actions, " ")
+    actions = strings.TrimSuffix(actions, " ")
+
+	comment, invested_time, lef_time, err := GenerateWobjectActionsFromHapiSubLine(actions)
+	if err != nil {
+		return WorkerWobjReport{}, err
+	}
+
+    int_invested_time, err := strconv.Atoi(invested_time)
+    int_lef_time, err := strconv.Atoi(lef_time)
+
+	wobj := WorkerWobjReport{
+		Parent:       parent[:],
+		Child:        child[:],
+		Comment:      comment,
+		InvestedTime: int_invested_time,
+		LeftTime:    int_lef_time,
+	}
+	return wobj, nil
+}
+
+func GenerateWobjectFromHapiSubLine(line string) ([3]string, error) {
+	//"UserStory 1 #test User story
+	// Task 11 #test Task
+	// Task #test Task
+	// UserStory #title
+	// UserStory -1 #title
+	//log.Printf("GenerateWobjectFromHapiSubLine Called with '%s'", line)
+	line = strings.TrimPrefix(line, " ")
+	chunks := strings.Split(line, " ")
+	wobj_type := chunks[0]
+	if wobj_type != "UserStory" && wobj_type != "Task" {
+		return [3]string{"", "", ""}, fmt.Errorf("Unsupported type: '%s'", wobj_type)
+	}
+
+	wobj_id := ""
+	title := chunks[1][1:]
+	var title_left []string
+
+	if strings.HasPrefix(chunks[1], "#") {
+		wobj_id = ""
+		title = chunks[1][1:]
+		title_left = chunks[2:]
+	} else {
+		wobj_id = chunks[1]
+		if !strings.HasPrefix(chunks[2], "#") {
+		}
+		title = chunks[2][1:]
+		title_left = chunks[3:]
+	}
+	if len(title_left) > 0{
+	    title += " " + strings.Join(title_left, " ")
+	}
+    //todo:
+	if wobj_type != "UserStory" && wobj_type != "Task" {
+		return [3]string{"", "", ""}, fmt.Errorf("Unsupported type: '%s'", wobj_type)
+	}
+
+  return [3]string{wobj_type, wobj_id, title}, nil
+}
+
+func GenerateWobjectActionsFromHapiSubLine(line string)(comment, invested_time, lef_time string, err error){
+/*
+1, +1, Standard Comment
+1, start_comment Standard, Comment end_comment
+1, start_comment Standard, Comment end_comment
+start_comment Standard, Comment end_comment
+1, +1, Standard Comment
+1, start_comment Standard, Comment end_comment
+1, start_comment Standard, Comment end_comment
+start_comment Standard, Comment end_comment
+*/
+
+lst_parts := strings.Split(line, " ")
+for i, part := range lst_parts{
+fmt.Printf("%v, %v", i, part)
+
+}
+return "", "", "", nil
 }
