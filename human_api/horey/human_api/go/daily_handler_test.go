@@ -13,7 +13,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
-	"fmt"
 )
 
 var test_WorkerDailyReport = WorkerDailyReport{
@@ -376,56 +375,31 @@ func TestGenerateWobjectFromHapiSubLine(t *testing.T) {
 	})
 }
 
-/*
+
 func TestGenerateWobjectActionsFromHapiSubLine(t *testing.T) {
 	t.Run("Valid input", func(t *testing.T) {
 		testCases := []struct {
 			inputLine string
-			want      [3]string
+			want      []string
 			wantErr   bool
 		}{
 			{
-				inputLine: "UserStory 1 #test User story",
-				want: [3]string{"UserStory", "1", "test User story"},
+				inputLine: "1, +1, Standard Comment",
+				want: []string{"1", "1", "Standard Comment"},
 				wantErr: false,
 			},
 		}
 
 		for _, testCase := range testCases {
-			got, err := GenerateWobjectActionsFromHapiSubLine(testCase.inputLine)
+			lef_time, invested_time, comment, err := GenerateWobjectActionsFromHapiSubLine(testCase.inputLine)
+			got := []string{lef_time, invested_time, comment}
 			if err != nil && !testCase.wantErr {
-				t.Errorf("GenerateWobjectFromHapiSubLine() error= %v", err)
+				t.Errorf("GenerateWobjectActionsFromHapiSubLine() error= %v", err)
 			}
 			if !reflect.DeepEqual(got, testCase.want) && !testCase.wantErr {
-				t.Errorf("GenerateWobjectFromHapiSubLine() = %v, want %v", got, testCase.want)
+				t.Errorf("GenerateWobjectActionsFromHapiSubLine() = %v, want %v", got, testCase.want)
 			}
 
 		}
 	})
-}
-*/
-
-type TestCase interface {
- GetTestedName() string
- GetTested()
- GetWant()
- GetErrorWanted()
-}
-
-/*
-func CommonUnitTester(testParams TestCase, t *testing.T){
-    t.Run(testParams.GetTestedName()(), func(t *testing.T) {
-        got, err := testParams.GetTested()()
-
-	    if !reflect.DeepEqual(got, testParams.GetWant()()) && !testParams.GetErrorWanted()() {
-		    t.Errorf("%v() = %v, want %v", testParams.GetTestedName()(), got, testParams.GetWant()())
-	    }
-	})
-}
-
-*/
-
-func CommonUnitTester(testParams TestCase){
-    ret := testParams.GetTestedName()
-    fmt.Println(ret)
 }

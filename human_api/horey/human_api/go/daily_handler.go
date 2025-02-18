@@ -342,7 +342,7 @@ func GenerateWobjectReportFromHapiLine(line string) (WorkerWobjReport, error) {
 	actions = strings.TrimPrefix(actions, " ")
     actions = strings.TrimSuffix(actions, " ")
 
-	comment, invested_time, lef_time, err := GenerateWobjectActionsFromHapiSubLine(actions)
+	lef_time, invested_time, comment, err := GenerateWobjectActionsFromHapiSubLine(actions)
 	if err != nil {
 		return WorkerWobjReport{}, err
 	}
@@ -400,7 +400,7 @@ func GenerateWobjectFromHapiSubLine(line string) ([3]string, error) {
   return [3]string{wobj_type, wobj_id, title}, nil
 }
 
-func GenerateWobjectActionsFromHapiSubLine(line string)(comment, invested_time, lef_time string, err error){
+func GenerateWobjectActionsFromHapiSubLine(line string)(lef_time, invested_time, comment string, err error){
 /*
 1, +1, Standard Comment
 1, start_comment Standard, Comment end_comment
@@ -412,10 +412,49 @@ start_comment Standard, Comment end_comment
 start_comment Standard, Comment end_comment
 */
 
-lst_parts := strings.Split(line, " ")
-for i, part := range lst_parts{
-fmt.Printf("%v, %v", i, part)
-
+lst_parts := strings.Split(line, ",")
+if len(lst_parts) == 0 {
+    return lef_time, invested_time, comment, nil
 }
-return "", "", "", nil
+
+first_char := lst_parts[0][0]
+
+_ , err = strconv.Atoi(string(first_char))
+
+if err == nil {
+    firstPart := strings.TrimPrefix(lst_parts[0], " ")
+    firstPart = strings.TrimSuffix(firstPart, " ")
+    number, errConvert := strconv.Atoi(firstPart)
+    if errConvert != nil {
+        return lef_time, invested_time, comment, errConvert
+    }
+    lef_time = strconv.Itoa(number)
+    lst_parts = lst_parts[1:]
+}
+
+if len(lst_parts) == 0 {
+    return lef_time, invested_time, comment, nil
+}
+
+
+firstPart := strings.TrimPrefix(lst_parts[0], " ")
+firstPart = strings.TrimSuffix(firstPart, " ")
+first_char = firstPart[0]
+if first_char == '+' {
+    firstPart = firstPart[1:]
+    number, errConvert := strconv.Atoi(firstPart)
+    if errConvert != nil {
+        return lef_time, invested_time, comment, errConvert
+    }
+    invested_time = strconv.Itoa(number)
+    lst_parts = lst_parts[1:]
+}
+
+if len(lst_parts) == 0 {
+    return lef_time, invested_time, comment, nil
+}
+comment = strings.Join(lst_parts, ",")
+comment = strings.TrimSuffix(strings.TrimPrefix(comment, " "), " ")
+
+return lef_time, invested_time, comment, nil
 }
