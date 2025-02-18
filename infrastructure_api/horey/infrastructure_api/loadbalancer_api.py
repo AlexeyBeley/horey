@@ -87,7 +87,7 @@ class LoadbalancerAPI:
         target_group.healthy_threshold_count = 2
         target_group.unhealthy_threshold_count = 2
 
-        target_group.health_check_path = "/health-check"
+        target_group.health_check_path = self.configuration.health_check_path
 
         if self.configuration.target_group_targets:
             target_group.targets = self.configuration.target_group_targets

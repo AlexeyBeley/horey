@@ -24,17 +24,37 @@ class LoadbalancerAPIConfigurationPolicy(ConfigurationPolicy):
         self._unmanaged_public_domain_names = []
         self._rule_priority = None
         self._rule_conditions = None
-        self._target_types = None
+        self._target_type = None
+        self._health_check_path = None
+        self._target_group_targets = None
 
     @property
-    def target_types(self):
-        if self._target_types is None:
-            self._target_types = "ip"
-        return self._target_types
+    def target_group_targets(self):
+        return self._target_group_targets
 
-    @target_types.setter
-    def target_types(self, value):
-        self._target_types = value
+    @target_group_targets.setter
+    def target_group_targets(self, value):
+        self._target_group_targets = value
+
+    @property
+    def health_check_path(self):
+        if self._health_check_path is None:
+            self._health_check_path = "/health-check"
+        return self._health_check_path
+
+    @health_check_path.setter
+    def health_check_path(self, value):
+        self._health_check_path = value
+
+    @property
+    def target_type(self):
+        if self._target_type is None:
+            self._target_type = "ip"
+        return self._target_type
+
+    @target_type.setter
+    def target_type(self, value):
+        self._target_type = value
 
     @property
     def rule_conditions(self):
