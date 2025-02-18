@@ -246,7 +246,7 @@ func TestWriteWorkerWobjStatusDailyToHRFile(t *testing.T) {
 func TestSplitHapiLinesToWorkerChunks(t *testing.T) {
 	t.Run("Valid input", func(t *testing.T) {
 		var testLines = []string{"!!=!!H_ReportWorkerID!!=!!Horey1", "1", "!!=!!H_ReportWorkerID!!=!!Horey2", "2"}
-		var wantedChunks = [][]string{[]string{"!!=!!H_ReportWorkerID!!=!!Horey1", "1"}, []string{"!!=!!H_ReportWorkerID!!=!!Horey2", "2"}}
+		var wantedChunks = [][]string{{"!!=!!H_ReportWorkerID!!=!!Horey1", "1"}, {"!!=!!H_ReportWorkerID!!=!!Horey2", "2"}}
 		chunks, err := SplitHapiLinesToWorkerChunks(testLines)
 		if err != nil {
 			t.Errorf("Test failed: %s", err)
@@ -315,7 +315,7 @@ func TestGenerateWobjectReportFromHapiLine(t *testing.T) {
 				t.Errorf("GenerateWobjectReportFromHapiLine() error= %v", err)
 			}
 			if !reflect.DeepEqual(got, testCase.want) && !testCase.wantErr {
-				t.Errorf("GenerateWobjectReportFromHapiLine() = %v, want %v", got, testCase.want)
+				t.Errorf("GenerateWobjectReportFromHapiLine() = '%v', want %v", got.Comment, testCase.want)
 			}
 
 		}
