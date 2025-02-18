@@ -306,7 +306,7 @@ func SpitChunkByTypes(lines []string) (id string, new, active, blocked, closed [
 
 func GenerateWobjectReportFromHapiLine(line string) (WorkerWobjReport, error) {
 	// "[UserStory 1 #test User story] !!=!! -> Task 11 #test Task !!=!! Actions: 1, +1, Standard Comment",
-    log.Printf("GenerateWobjectReportFromHapiLine called with %s", line)
+	log.Printf("GenerateWobjectReportFromHapiLine called with %s", line)
 	delim_count := strings.Count(line, delim)
 	if delim_count != 2 {
 		return WorkerWobjReport{}, fmt.Errorf("Delimiters count expected 2, got %v", delim_count)
@@ -314,25 +314,25 @@ func GenerateWobjectReportFromHapiLine(line string) (WorkerWobjReport, error) {
 
 	line_parts := strings.Split(line, delim)
 
-    parent_substring := line_parts[0]
-    parent_substring = strings.TrimPrefix(parent_substring, " ")
-    parent_substring = strings.TrimSuffix(parent_substring, " ")
-    if !strings.HasPrefix(parent_substring, "[") || !strings.HasSuffix(parent_substring, "]"){
-     return WorkerWobjReport{}, fmt.Errorf("Parent format is wrong: '%v'", parent_substring)
-    }
-    parent_substring = parent_substring[1:len(parent_substring)-1]
+	parent_substring := line_parts[0]
+	parent_substring = strings.TrimPrefix(parent_substring, " ")
+	parent_substring = strings.TrimSuffix(parent_substring, " ")
+	if !strings.HasPrefix(parent_substring, "[") || !strings.HasSuffix(parent_substring, "]") {
+		return WorkerWobjReport{}, fmt.Errorf("Parent format is wrong: '%v'", parent_substring)
+	}
+	parent_substring = parent_substring[1 : len(parent_substring)-1]
 
 	parent, err := GenerateWobjectFromHapiSubLine(parent_substring)
 	if err != nil {
 		return WorkerWobjReport{}, err
 	}
-    child_substring := line_parts[1]
-    child_substring = strings.TrimPrefix(child_substring, " ")
-    child_substring = strings.TrimSuffix(child_substring, " ")
-    if !strings.HasPrefix(child_substring, "->") {
-     return WorkerWobjReport{}, fmt.Errorf("Child format is wrong: '%v'", child_substring)
-    }
-    child_substring = child_substring[2:]
+	child_substring := line_parts[1]
+	child_substring = strings.TrimPrefix(child_substring, " ")
+	child_substring = strings.TrimSuffix(child_substring, " ")
+	if !strings.HasPrefix(child_substring, "->") {
+		return WorkerWobjReport{}, fmt.Errorf("Child format is wrong: '%v'", child_substring)
+	}
+	child_substring = child_substring[2:]
 	child, err := GenerateWobjectFromHapiSubLine(child_substring)
 	if err != nil {
 		return WorkerWobjReport{}, err
@@ -340,22 +340,22 @@ func GenerateWobjectReportFromHapiLine(line string) (WorkerWobjReport, error) {
 
 	actions := line_parts[2]
 	actions = strings.TrimPrefix(actions, " ")
-    actions = strings.TrimSuffix(actions, " ")
+	actions = strings.TrimSuffix(actions, " ")
 
 	lef_time, invested_time, comment, err := GenerateWobjectActionsFromHapiSubLine(actions)
 	if err != nil {
 		return WorkerWobjReport{}, err
 	}
 
-    int_invested_time, err := strconv.Atoi(invested_time)
-    int_lef_time, err := strconv.Atoi(lef_time)
+	int_invested_time, err := strconv.Atoi(invested_time)
+	int_lef_time, err := strconv.Atoi(lef_time)
 
 	wobj := WorkerWobjReport{
 		Parent:       parent[:],
 		Child:        child[:],
 		Comment:      comment,
 		InvestedTime: int_invested_time,
-		LeftTime:    int_lef_time,
+		LeftTime:     int_lef_time,
 	}
 	return wobj, nil
 }
@@ -389,72 +389,71 @@ func GenerateWobjectFromHapiSubLine(line string) ([3]string, error) {
 		title = chunks[2][1:]
 		title_left = chunks[3:]
 	}
-	if len(title_left) > 0{
-	    title += " " + strings.Join(title_left, " ")
+	if len(title_left) > 0 {
+		title += " " + strings.Join(title_left, " ")
 	}
-    //todo:
+	//todo:
 	if wobj_type != "UserStory" && wobj_type != "Task" {
 		return [3]string{"", "", ""}, fmt.Errorf("Unsupported type: '%s'", wobj_type)
 	}
 
-  return [3]string{wobj_type, wobj_id, title}, nil
+	return [3]string{wobj_type, wobj_id, title}, nil
 }
 
-func GenerateWobjectActionsFromHapiSubLine(line string)(lef_time, invested_time, comment string, err error){
-/*
-1, +1, Standard Comment
-1, start_comment Standard, Comment end_comment
-1, start_comment Standard, Comment end_comment
-start_comment Standard, Comment end_comment
-1, +1, Standard Comment
-1, start_comment Standard, Comment end_comment
-1, start_comment Standard, Comment end_comment
-start_comment Standard, Comment end_comment
-*/
+func GenerateWobjectActionsFromHapiSubLine(line string) (lef_time, invested_time, comment string, err error) {
+	/*
+	   1, +1, Standard Comment
+	   1, start_comment Standard, Comment end_comment
+	   1, start_comment Standard, Comment end_comment
+	   start_comment Standard, Comment end_comment
+	   1, +1, Standard Comment
+	   1, start_comment Standard, Comment end_comment
+	   1, start_comment Standard, Comment end_comment
+	   start_comment Standard, Comment end_comment
+	*/
 
-lst_parts := strings.Split(line, ",")
-if len(lst_parts) == 0 {
-    return lef_time, invested_time, comment, nil
-}
+	lst_parts := strings.Split(line, ",")
+	if len(lst_parts) == 0 {
+		return lef_time, invested_time, comment, nil
+	}
 
-first_char := lst_parts[0][0]
+	first_char := lst_parts[0][0]
 
-_ , err = strconv.Atoi(string(first_char))
+	_, err = strconv.Atoi(string(first_char))
 
-if err == nil {
-    firstPart := strings.TrimPrefix(lst_parts[0], " ")
-    firstPart = strings.TrimSuffix(firstPart, " ")
-    number, errConvert := strconv.Atoi(firstPart)
-    if errConvert != nil {
-        return lef_time, invested_time, comment, errConvert
-    }
-    lef_time = strconv.Itoa(number)
-    lst_parts = lst_parts[1:]
-}
+	if err == nil {
+		firstPart := strings.TrimPrefix(lst_parts[0], " ")
+		firstPart = strings.TrimSuffix(firstPart, " ")
+		number, errConvert := strconv.Atoi(firstPart)
+		if errConvert != nil {
+			return lef_time, invested_time, comment, errConvert
+		}
+		lef_time = strconv.Itoa(number)
+		lst_parts = lst_parts[1:]
+	}
 
-if len(lst_parts) == 0 {
-    return lef_time, invested_time, comment, nil
-}
+	if len(lst_parts) == 0 {
+		return lef_time, invested_time, comment, nil
+	}
 
+	firstPart := strings.TrimPrefix(lst_parts[0], " ")
+	firstPart = strings.TrimSuffix(firstPart, " ")
+	first_char = firstPart[0]
+	if first_char == '+' {
+		firstPart = firstPart[1:]
+		number, errConvert := strconv.Atoi(firstPart)
+		if errConvert != nil {
+			return lef_time, invested_time, comment, errConvert
+		}
+		invested_time = strconv.Itoa(number)
+		lst_parts = lst_parts[1:]
+	}
 
-firstPart := strings.TrimPrefix(lst_parts[0], " ")
-firstPart = strings.TrimSuffix(firstPart, " ")
-first_char = firstPart[0]
-if first_char == '+' {
-    firstPart = firstPart[1:]
-    number, errConvert := strconv.Atoi(firstPart)
-    if errConvert != nil {
-        return lef_time, invested_time, comment, errConvert
-    }
-    invested_time = strconv.Itoa(number)
-    lst_parts = lst_parts[1:]
-}
+	if len(lst_parts) == 0 {
+		return lef_time, invested_time, comment, nil
+	}
+	comment = strings.Join(lst_parts, ",")
+	comment = strings.TrimSuffix(strings.TrimPrefix(comment, " "), " ")
 
-if len(lst_parts) == 0 {
-    return lef_time, invested_time, comment, nil
-}
-comment = strings.Join(lst_parts, ",")
-comment = strings.TrimSuffix(strings.TrimPrefix(comment, " "), " ")
-
-return lef_time, invested_time, comment, nil
+	return lef_time, invested_time, comment, nil
 }

@@ -331,35 +331,34 @@ func TestGenerateWobjectFromHapiSubLine(t *testing.T) {
 		}{
 			{
 				inputLine: "UserStory 1 #test User story",
-				want: [3]string{"UserStory", "1", "test User story"},
-				wantErr: false,
+				want:      [3]string{"UserStory", "1", "test User story"},
+				wantErr:   false,
 			},
-		{
+			{
 				inputLine: "Task 11 #test task",
-				want: [3]string{"Task", "11", "test task"},
-				wantErr: false,
+				want:      [3]string{"Task", "11", "test task"},
+				wantErr:   false,
 			},
 			{
 				inputLine: "Task #test task",
-				want: [3]string{"Task", "", "test task"},
-				wantErr: false,
+				want:      [3]string{"Task", "", "test task"},
+				wantErr:   false,
 			},
-						{
+			{
 				inputLine: "UserStory #title",
-				want: [3]string{"UserStory", "", "title"},
-				wantErr: false,
+				want:      [3]string{"UserStory", "", "title"},
+				wantErr:   false,
 			},
 			{
 				inputLine: "UserStory -1 #title",
-				want: [3]string{"UserStory", "-1", "title"},
-				wantErr: false,
+				want:      [3]string{"UserStory", "-1", "title"},
+				wantErr:   false,
 			},
 			{
 				inputLine: "Feature #title",
-				want: [3]string{"UserStory", "-1", "title"},
-				wantErr: true,
+				want:      [3]string{"UserStory", "-1", "title"},
+				wantErr:   true,
 			},
-
 		}
 
 		for _, testCase := range testCases {
@@ -375,7 +374,6 @@ func TestGenerateWobjectFromHapiSubLine(t *testing.T) {
 	})
 }
 
-
 func TestGenerateWobjectActionsFromHapiSubLine(t *testing.T) {
 	t.Run("Valid input", func(t *testing.T) {
 		testCases := []struct {
@@ -385,8 +383,8 @@ func TestGenerateWobjectActionsFromHapiSubLine(t *testing.T) {
 		}{
 			{
 				inputLine: "1, +1, Standard Comment",
-				want: []string{"1", "1", "Standard Comment"},
-				wantErr: false,
+				want:      []string{"1", "1", "Standard Comment"},
+				wantErr:   false,
 			},
 		}
 
