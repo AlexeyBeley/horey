@@ -306,6 +306,7 @@ func SpitChunkByTypes(lines []string) (id string, new, active, blocked, closed [
 
 func GenerateWobjectReportFromHapiLine(line string) (WorkerWobjReport, error) {
 	// "[UserStory 1 #test User story] !!=!! -> Task 11 #test Task !!=!! Actions: 1, +1, Standard Comment",
+
 	log.Printf("GenerateWobjectReportFromHapiLine called with %s", line)
 	delim_count := strings.Count(line, delim)
 	if delim_count != 2 {
@@ -313,7 +314,7 @@ func GenerateWobjectReportFromHapiLine(line string) (WorkerWobjReport, error) {
 	}
 
 	line_parts := strings.Split(line, delim)
-
+	fmt.Printf("line_parts before parent: '%v'", line_parts)
 	parent_substring := line_parts[0]
 	parent_substring = strings.TrimPrefix(parent_substring, " ")
 	parent_substring = strings.TrimSuffix(parent_substring, " ")
@@ -326,6 +327,7 @@ func GenerateWobjectReportFromHapiLine(line string) (WorkerWobjReport, error) {
 	if err != nil {
 		return WorkerWobjReport{}, err
 	}
+	fmt.Printf("line_parts after parent: '%v'", line_parts)
 	child_substring := line_parts[1]
 	child_substring = strings.TrimPrefix(child_substring, " ")
 	child_substring = strings.TrimSuffix(child_substring, " ")
@@ -338,13 +340,17 @@ func GenerateWobjectReportFromHapiLine(line string) (WorkerWobjReport, error) {
 		return WorkerWobjReport{}, err
 	}
 
-	actions := line_parts[2]
+	actions := strings.TrimPrefix(line_parts[2], " ")
+	if !strings.HasPrefix(actions, "Actions:") {
+		return WorkerWobjReport{}, fmt.Errorf("Wrong format, missing 'Actions:' in suffix: '%v'", actions)
+	}
+	actions = actions[len("Actions:"):]
 	actions = strings.TrimPrefix(actions, " ")
 	actions = strings.TrimSuffix(actions, " ")
 
-	lef_time, invested_time, comment, err := GenerateWobjectActionsFromHapiSubLine(actions)
-	if err != nil {
-		return WorkerWobjReport{}, err
+	lef_time, invested_time, comment, err1 := GenerateWobjectActionsFromHapiSubLine(actions)
+	if err1 != nil {
+		return WorkerWobjReport{}, err1
 	}
 
 	int_invested_time, err := strconv.Atoi(invested_time)
