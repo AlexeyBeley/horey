@@ -32,6 +32,15 @@ class AWSLambdaAPIConfigurationPolicy(ConfigurationPolicy):
         self._lambda_memory_size = None
         self._lambda_timeout = None
         self._managed_policies_arns = []
+        self._reserved_concurrent_executions = None
+
+    @property
+    def reserved_concurrent_executions(self):
+        return self._reserved_concurrent_executions
+
+    @reserved_concurrent_executions.setter
+    def reserved_concurrent_executions(self, value):
+        self._reserved_concurrent_executions = value
 
     @property
     def managed_policies_arns(self):

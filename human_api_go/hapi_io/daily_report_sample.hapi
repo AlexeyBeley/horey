@@ -1,0 +1,10 @@
+!!=!!H_ReportWorkerID!!=!! horey
+>NEW:
+[UserStory 1 #test User story] !!=!! -> Task 11 #test Task !!=!! Actions: 1, +1, Standard Comment
+[UserStory 1 #test User story] !!=!! -> Task 12 #test Task 2 !!=!! Actions: 1, start_comment Standard, Comment end_comment
+>ACTIVE:
+[UserStory 2 #test User story2] !!=!! -> Task 22 #test Task 22 !!=!! Actions: 1, start_comment Standard, Comment end_comment
+>BLOCKED:
+[UserStory 2 #test User story2] !!=!! -> Task 23 #test Task 23 !!=!! Actions: start_comment Standard, Comment end_comment
+>CLOSED:
+[UserStory 3 #test User story3] !!=!! -> Task 31 #test Task 31 !!=!! Actions: 

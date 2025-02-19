@@ -439,7 +439,8 @@ class AWSLambdaAPI:
         }
         aws_lambda.timeout = self.configuration.lambda_timeout
         aws_lambda.memory_size = self.configuration.lambda_memory_size
-        aws_lambda.reserved_concurrent_executions = 1
+        if self.configuration.reserved_concurrent_executions:
+            aws_lambda.reserved_concurrent_executions = self.configuration.reserved_concurrent_executions
 
         aws_lambda.environment = self.environment_variables_callback()
 
@@ -466,7 +467,7 @@ class AWSLambdaAPI:
                 "Condition": {"ArnLike": {"AWS:SourceArn": sns_topic.arn}},
             }
             aws_lambda.policy["Statement"].append(statement)
-        
+
         if self.loadbalancer_api:
             try:
                 statement = self.generate_target_group_statement()
@@ -482,7 +483,7 @@ class AWSLambdaAPI:
                 aws_lambda.policy["Statement"].append(statement)
                 if "Was not able to find target group" not in repr(inst_error):
                     raise
-            
+
         aws_lambda.code = {"ImageUri": image_tag}
         self.environment_api.aws_api.provision_aws_lambda(aws_lambda, force=True)
         return aws_lambda
