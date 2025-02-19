@@ -259,8 +259,8 @@ class LambdaClient(Boto3Client):
             remove_permission_requests,
         ) = current_lambda.generate_modify_permissions_requests(desired_aws_lambda)
 
-        for update_permission_request in add_permission_requests:
-            self.add_permission_raw(desired_aws_lambda.region, update_permission_request)
+        for update_permission_request in remove_permission_requests:
+            self.remove_permission_raw(desired_aws_lambda.region, update_permission_request)
             self.wait_for_status(
                 current_lambda,
                 self.update_lambda_information,
@@ -269,8 +269,8 @@ class LambdaClient(Boto3Client):
                 [current_lambda.Status.FAILED],
             )
 
-        for update_permission_request in remove_permission_requests:
-            self.remove_permission_raw(desired_aws_lambda.region, update_permission_request)
+        for update_permission_request in add_permission_requests:
+            self.add_permission_raw(desired_aws_lambda.region, update_permission_request)
             self.wait_for_status(
                 current_lambda,
                 self.update_lambda_information,

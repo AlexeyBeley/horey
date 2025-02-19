@@ -338,6 +338,7 @@ class AWSLambda(AwsObject):
 
         raise RuntimeError(self.name)
 
+    # pylint: disable = too-many-branches
     def generate_modify_permissions_requests(self, desired_aws_lambda):
         """
         response = client.add_permission(
@@ -350,6 +351,7 @@ class AWSLambda(AwsObject):
         )
         @return:
         """
+
         if desired_aws_lambda.policy is None:
             return [], []
 
@@ -394,6 +396,11 @@ class AWSLambda(AwsObject):
                             "SourceArn": desired_statement["Condition"]["ArnLike"]["AWS:SourceArn"],
                         }
                         add_permissions.append(request)
+                        request = {
+                            "FunctionName": self.name,
+                            "StatementId": self_statement["Sid"],
+                        }
+                        remove_permissions.append(request)
                     break
             else:
                 request = {
