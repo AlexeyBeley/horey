@@ -407,21 +407,13 @@ func GenerateWobjectFromHapiSubLine(line string) ([3]string, error) {
 }
 
 func GenerateWobjectActionsFromHapiSubLine(line string) (lef_time, invested_time, comment string, err error) {
-	/*
-	   1, +1, Standard Comment
-	   1, start_comment Standard, Comment end_comment
-	   1, start_comment Standard, Comment end_comment
-	   start_comment Standard, Comment end_comment
-	   1, +1, Standard Comment
-	   1, start_comment Standard, Comment end_comment
-	   1, start_comment Standard, Comment end_comment
-	   start_comment Standard, Comment end_comment
-	*/
-
-	lst_parts := strings.Split(line, ",")
-	if len(lst_parts) == 0 {
+	line = strings.TrimPrefix(line, " ")
+	line = strings.TrimSuffix(line, " ")
+	if len(line) == 0 {
 		return lef_time, invested_time, comment, nil
 	}
+
+	lst_parts := strings.Split(line, ",")
 
 	first_char := lst_parts[0][0]
 

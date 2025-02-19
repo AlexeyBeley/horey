@@ -386,6 +386,31 @@ func TestGenerateWobjectActionsFromHapiSubLine(t *testing.T) {
 				want:      []string{"1", "1", "Standard Comment"},
 				wantErr:   false,
 			},
+	        {
+				inputLine: "1, +2, Standard Comment",
+				want:      []string{"1", "2", "Standard Comment"},
+				wantErr:   false,
+			},
+			{
+				inputLine: "1, start_comment Standard, Comment end_comment",
+				want:      []string{"1", "", "start_comment Standard, Comment end_comment"},
+				wantErr:   false,
+			},
+			{
+				inputLine: "start_comment Standard, Comment end_comment",
+				want:      []string{"", "", "start_comment Standard, Comment end_comment"},
+				wantErr:   false,
+			},
+			{
+				inputLine: "+3, start_comment Standard, Comment end_comment",
+				want:      []string{"", "3", "start_comment Standard, Comment end_comment"},
+				wantErr:   false,
+			},
+			{
+				inputLine: "",
+				want:      []string{"", "", ""},
+				wantErr:   false,
+			},
 		}
 
 		for _, testCase := range testCases {
