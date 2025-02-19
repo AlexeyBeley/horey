@@ -392,9 +392,11 @@ class AWSLambda(AwsObject):
                             "FunctionName": self.name,
                             "StatementId": desired_statement["Sid"],
                             "Action": desired_statement["Action"],
-                            "Principal": desired_statement["Principal"]["Service"],
-                            "SourceArn": desired_statement["Condition"]["ArnLike"]["AWS:SourceArn"],
+                            "Principal": desired_statement["Principal"]["Service"]
                         }
+                        if "Condition" in desired_statement:
+                            request["SourceArn"] = desired_statement["Condition"]["ArnLike"]["AWS:SourceArn"]
+
                         add_permissions.append(request)
                         request = {
                             "FunctionName": self.name,
@@ -413,24 +415,19 @@ class AWSLambda(AwsObject):
                 if desired_statement["Sid"] == self_statement["Sid"]:
                     break
             else:
-                if "ArnLike" in desired_statement["Condition"]:
-                    request = {
+                request = {
                     "FunctionName": self.name,
                     "StatementId": desired_statement["Sid"],
                     "Action": desired_statement["Action"],
-                    "Principal": desired_statement["Principal"]["Service"],
-                    "SourceArn": desired_statement["Condition"]["ArnLike"]["AWS:SourceArn"]
-                    }
-                elif "StringEquals" in desired_statement["Condition"]:
-                    request = {
-                        "FunctionName": self.name,
-                        "StatementId": desired_statement["Sid"],
-                        "Action": desired_statement["Action"],
-                        "Principal": desired_statement["Principal"]["Service"],
-                        "SourceAccount": desired_statement["Condition"]["StringEquals"]["AWS:SourceAccount"]
-                    }
-                else:
-                    raise NotImplementedError(desired_statement["Condition"])
+                    "Principal": desired_statement["Principal"]["Service"]
+                }
+                if "Condition" in desired_statement:
+                    if "ArnLike" in desired_statement["Condition"]:
+                        request["SourceArn"] =  desired_statement["Condition"]["ArnLike"]["AWS:SourceArn"]
+                    elif "StringEquals" in desired_statement["Condition"]:
+                        request["SourceAccount"] = desired_statement["Condition"]["StringEquals"]["AWS:SourceAccount"]
+                    else:
+                        raise NotImplementedError(desired_statement["Condition"])
 
                 add_permissions.append(request)
         return add_permissions, remove_permissions
