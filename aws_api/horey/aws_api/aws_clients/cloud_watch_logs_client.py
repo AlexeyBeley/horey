@@ -251,7 +251,7 @@ class CloudWatchLogsClient(Boto3Client):
             token = new_token
         return
 
-    def update_log_group_information(self, log_group, update_info=False):
+    def update_log_group_information(self, log_group: CloudWatchLogGroup, update_info=False):
         """
         Standard.
 
@@ -266,8 +266,10 @@ class CloudWatchLogsClient(Boto3Client):
                 full_info_log_groups = list(
                     self.yield_log_groups(region=log_group.region, update_info=True, filters_req=filters_req,
                                           get_tags=True))
+                full_info_log_groups = [full_info_log_group for full_info_log_group in full_info_log_groups if full_info_log_group.name == log_group.name]
                 if len(full_info_log_groups) == 0:
                     return False
+
                 if len(full_info_log_groups) > 1:
                     raise RuntimeError(f"Found {[x.name for x in full_info_log_groups]} log groups with params: {filters_req}")
                 log_group.update_from_raw_response(full_info_log_groups[0].dict_src)
