@@ -27,6 +27,24 @@ class LoadbalancerAPIConfigurationPolicy(ConfigurationPolicy):
         self._target_type = None
         self._health_check_path = None
         self._target_group_targets = None
+        self._target_group_port = 443
+        self._listener_port = 443
+
+    @property
+    def listener_port(self):
+        return self._listener_port
+
+    @listener_port.setter
+    def listener_port(self, value):
+        self._listener_port = value
+
+    @property
+    def target_group_port(self):
+        return self._target_group_port
+
+    @target_group_port.setter
+    def target_group_port(self, value):
+        self._target_group_port = value
 
     @property
     def target_group_targets(self):
@@ -124,7 +142,7 @@ class LoadbalancerAPIConfigurationPolicy(ConfigurationPolicy):
 
     @scheme.setter
     def scheme(self, value):
-        assert value in ["internet-facing"]
+        assert value in ["internet-facing", "internal"]
         self._scheme = value
 
     @property

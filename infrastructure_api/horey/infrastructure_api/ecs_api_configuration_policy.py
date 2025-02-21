@@ -54,6 +54,17 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
         self._autoscaling_ram_target_value = None
         self._autoscaling_min_capacity = None
         self._autoscaling_max_capacity = None
+        self._lb_facing_security_group_name = None
+
+    @property
+    def lb_facing_security_group_name(self):
+        if self._lb_facing_security_group_name is None:
+            self._lb_facing_security_group_name = f"sg_{self.cluster_name}_{self.service_name}"
+        return self._lb_facing_security_group_name
+
+    @lb_facing_security_group_name.setter
+    def lb_facing_security_group_name(self, value):
+        self._lb_facing_security_group_name = value
 
     @property
     def autoscaling_max_capacity(self):

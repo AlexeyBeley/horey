@@ -78,13 +78,12 @@ class AlertsAPI:
 
         :return:
         """
-
         self.environment_api.clear_cache()
         self.provision_sns_topic()
         self.provision_dynamodb()
         self.provision_event_bridge_rule()
         self.provision_lambda_role()
-        aws_lambda = self.provision_lambda()
+        aws_lambda = self.update()
         self.provision_event_bridge_rule(aws_lambda=aws_lambda)
         self.provision_sns_subscription()
         self.provision_log_group()
@@ -144,11 +143,13 @@ class AlertsAPI:
         :return:
         """
 
-        self.provision_lambda()
+        assert self.alert_system.pip_api
+
+        aws_lambda = self.provision_lambda()
 
         if resource_alarms:
             self.provision_resource_alarms(resource_alarms)
-        return True
+        return aws_lambda
 
     def dispose_alarms(self, alarms):
         """
@@ -674,15 +675,20 @@ class AlertsAPI:
         :return:
         """
 
-        zip_file_path = self.alert_system.build_and_validate(self.configuration.files, event)
-        breakpoint()
+        return self.alert_system.build_and_validate(self.configuration.files, event)
 
     def get_all_metrics(self, namespace):
-        breakpoint()
-        ret = list(self.environment_api.aws_api.cloud_watch_client.yield_client_metrics(self.environment_api.region,
+        """
+        Return all metrics for the namespace
+
+        :param namespace:
+        :return:
+        """
+        return list(self.environment_api.aws_api.cloud_watch_client.yield_client_metrics(self.environment_api.region,
                                                                                         {"Namespace": namespace}))
 
-    def generate_raw_message_dict(self, notification_type):
+    @staticmethod
+    def generate_raw_message_dict(notification_type):
         """
         Generate dictionary which can be used to trigger raw message lambda
 

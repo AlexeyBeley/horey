@@ -67,18 +67,25 @@ class AlertSystem:
         except configuration.UndefinedValueError:
             pass
 
-        pip_api_configuration = PipAPIConfigurationPolicy()
-        try:
-            pip_api_configuration.multi_package_repositories = {"horey.": configuration.horey_repo_path}
-            pip_api_configuration.horey_parent_dir_path = os.path.dirname(configuration.horey_repo_path)
-        except configuration.UndefinedValueError:
-            pass
-        pip_api_configuration.venv_dir_path = configuration.deployment_venv_path
-        pip_api_configuration.system_site_packages = False
+        self._pip_api = None
+
         self._lambda_arn = None
-        self.pip_api = PipAPI(configuration=pip_api_configuration)
         if self.configuration.routing_tags is None:
             self.configuration.routing_tags = [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG]
+
+    @property
+    def pip_api(self):
+        if self._pip_api is None:
+            pip_api_configuration = PipAPIConfigurationPolicy()
+            try:
+                pip_api_configuration.multi_package_repositories = {"horey.": self.configuration.horey_repo_path}
+                pip_api_configuration.horey_parent_dir_path = os.path.dirname(self.configuration.horey_repo_path)
+            except self.configuration.UndefinedValueError:
+                pass
+            pip_api_configuration.venv_dir_path = self.configuration.deployment_venv_path
+            pip_api_configuration.system_site_packages = False
+            self._pip_api = PipAPI(configuration=pip_api_configuration)
+        return self._pip_api
 
     @property
     def lambda_arn(self):

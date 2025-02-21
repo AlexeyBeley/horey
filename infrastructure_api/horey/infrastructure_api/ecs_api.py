@@ -84,8 +84,14 @@ class ECSAPI:
         :param dns_api:
         :return:
         """
-
         if loadbalancer_dns_api_pairs:
+            if len(self.configuration.container_definition_port_mappings) != 1:
+                raise NotImplementedError("Need to implement dynamic test that loadbalancer_api configuration has the"
+                                          " port set explicitly")
+            if self.configuration.container_definition_port_mappings[0]["containerPort"] != "443":
+                raise NotImplementedError("Need to implement dynamic test that loadbalancer_api configuration has the"
+                                          " port set explicitly")
+
             if loadbalancer_api or dns_api:
                 raise NotImplementedError("You can not both declare loadbalancer_dns_apis_pairs and either lb_api or dns_api")
             for loadbalancer_api, _ in loadbalancer_dns_api_pairs:
@@ -107,6 +113,11 @@ class ECSAPI:
             except self.loadbalancer_api.configuration.UndefinedValueError:
                 self.loadbalancer_api.configuration.load_balancer_name = f"lb-{self.configuration.cluster_name.replace('cluster_', '')}".replace(
                     "_", "-")
+
+            if len(self.configuration.container_definition_port_mappings) != 1:
+                raise NotImplementedError("Need to implement dynamic test that loadbalancer_api configuration has the"
+                                          " port set explicitly")
+            self.loadbalancer_api.configuration.target_group_port = self.configuration.container_definition_port_mappings[0]["containerPort"]
 
         if dns_api:
             self.dns_api = dns_api
@@ -141,6 +152,7 @@ class ECSAPI:
 
         if self.loadbalancer_api:
             self.loadbalancer_api.provision()
+            self.provision_lb_facing_security_group()
 
         if provision_service:
             self.update()
@@ -156,6 +168,32 @@ class ECSAPI:
         if provision_service:
             self.provision_autoscaling()
         return True
+
+    def provision_lb_facing_security_group(self):
+        """
+        Provision LB security group.
+
+        :return:
+        """
+
+        if not self.loadbalancer_api:
+            raise NotImplementedError("No lb api set")
+        lb_groups = self.environment_api.get_security_groups(self.loadbalancer_api.configuration.security_groups)
+        ip_permissions = [
+            {
+                "IpProtocol": "tcp",
+                "FromPort": self.loadbalancer_api.configuration.target_group_port,
+                "ToPort": self.loadbalancer_api.configuration.target_group_port,
+                "UserIdGroupPairs": [
+                    {
+                        "GroupId": lb_group.id,
+                        "UserId": self.environment_api.aws_api.ec2_client.account_id,
+                        "Description": f"From {lb_group.name}"
+                    } for lb_group in lb_groups
+                ]
+            }
+        ]
+        return self.environment_api.provision_security_group(self.configuration.lb_facing_security_group_name, ip_permissions)
 
     def provision_autoscaling(self):
         """
@@ -316,9 +354,9 @@ class ECSAPI:
 
         :return:
         """
-
         security_groups = self.environment_api.get_security_groups(self.configuration.security_groups)
         if self.loadbalancer_api:
+            security_groups += self.environment_api.get_security_groups([self.configuration.lb_facing_security_group_name])
             target_groups = [self.loadbalancer_api.get_targetgroup()]
         elif self.loadbalancer_dns_api_pairs:
             target_groups = [loadbalancer_api.get_targetgroup() for loadbalancer_api in self.loadbalancer_dns_api_pairs]

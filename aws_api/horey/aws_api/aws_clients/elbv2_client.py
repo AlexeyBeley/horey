@@ -618,7 +618,7 @@ class ELBV2Client(Boto3Client):
         )
 
         for region_rule in region_rules:
-            if region_rule.get_tagname() == rule.get_tagname():
+            if region_rule.get_tagname(ignore_missing_tag=True) == rule.get_tagname():
                 rule.update_from_raw_response(region_rule.dict_src)
                 return True
 

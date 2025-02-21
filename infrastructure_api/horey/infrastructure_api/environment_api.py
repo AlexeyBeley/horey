@@ -1753,10 +1753,11 @@ class EnvironmentAPI:
         print("Brutally killing old tasks!")
         self.aws_api.ecs_client.dispose_tasks(tasks, cluster_name)
 
-    def get_security_groups(self, security_group_names):
+    def get_security_groups(self, security_group_names, single=False):
         """
         Get security groups by names.
 
+        :param single:
         :param security_group_names:
         :return:
         """
@@ -1764,6 +1765,12 @@ class EnvironmentAPI:
         lst_ret = []
         for security_group_name in security_group_names:
             lst_ret.append(self.aws_api.get_security_group_by_vpc_and_name(self.vpc, security_group_name))
+
+        if single:
+            if len(lst_ret) > 1:
+                raise RuntimeError(f"Expected single security group, found: {len(lst_ret)}")
+            return lst_ret[0] if lst_ret else None
+
         return lst_ret
 
     def provision_sns_topic(self, sns_topic_name=None):

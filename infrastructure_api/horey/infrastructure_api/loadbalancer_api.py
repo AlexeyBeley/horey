@@ -46,6 +46,8 @@ class LoadbalancerAPI:
         load_balancer.scheme = self.configuration.scheme
         if load_balancer.scheme == "internet-facing":
             load_balancer.subnets = [subnet.id for subnet in self.environment_api.public_subnets]
+        elif load_balancer.scheme == "internal":
+            load_balancer.subnets = [subnet.id for subnet in self.environment_api.private_subnets]
         else:
             raise NotImplementedError(self.configuration.scheme)
         load_balancer.region = self.environment_api.region
@@ -75,7 +77,7 @@ class LoadbalancerAPI:
         target_group.name = self.configuration.target_group_name
         target_group.target_type = self.configuration.target_type
         if target_group.target_type != "lambda":
-            target_group.port = 443
+            target_group.port = self.configuration.target_group_port
             target_group.protocol = "HTTPS"
             target_group.vpc_id = self.environment_api.vpc.id
             target_group.health_check_port = "traffic-port"
@@ -154,7 +156,7 @@ class LoadbalancerAPI:
         ]
         listener.certificates[0]["IsDefault"] = True
 
-        listener.port = 443
+        listener.port = self.configuration.listener_port
         listener.default_actions = [{"Type": "fixed-response",
                                      "FixedResponseConfig": {
                                          "StatusCode": "200",
