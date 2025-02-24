@@ -78,6 +78,9 @@ class AlertsAPI:
 
         :return:
         """
+
+        # todo: Add tag to resource to indicate which Lambda owns them: metrics, alarms etc.
+
         self.environment_api.clear_cache()
         self.provision_sns_topic()
         self.provision_dynamodb()
