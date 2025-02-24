@@ -84,6 +84,7 @@ class ECSAPI:
         :param dns_api:
         :return:
         """
+
         if loadbalancer_dns_api_pairs:
             if len(self.configuration.container_definition_port_mappings) != 1:
                 raise NotImplementedError("Need to implement dynamic test that loadbalancer_api configuration has the"
@@ -118,9 +119,18 @@ class ECSAPI:
                 raise NotImplementedError("Need to implement dynamic test that loadbalancer_api configuration has the"
                                           " port set explicitly")
             self.loadbalancer_api.configuration.target_group_port = self.configuration.container_definition_port_mappings[0]["containerPort"]
+            if self.dns_api:
+                raise NotImplementedError("todo: Validate the DNS addresses in DNS are the same as in load balancer.")
 
         if dns_api:
             self.dns_api = dns_api
+            if self.loadbalancer_api:
+                try:
+                    self.loadbalancer_api.configuration.public_domain_names
+                except self.cloudwatch_api.configuration.UndefinedValueError:
+                    self.loadbalancer_api.configuration.public_domain_names = [self.dns_api.configuration.dns_address]
+                if self.dns_api.configuration.dns_address not in self.loadbalancer_api.configuration.public_domain_names:
+                    raise NotImplementedError(f"Check why service DNS {self.dns_api.configuration.dns_address} is not among load balancer DNS addresses: {self.loadbalancer_api.configuration.public_domain_names:}")
 
         if cloudwatch_api:
             if not cloudwatch_api.configuration.log_group_name:
@@ -550,17 +560,12 @@ class ECSAPI:
         """
 
         self.alerts_api.provision()
-        self.alerts_api.provision_cloudwatch_logs_alarm(self.cloudwatch_api.configuration.log_group_name, '"[ERROR]"',
+        breakpoint()
+        self.alerts_api.provision_cloudwatch_logs_alarm(self.cloudwatch_api.configuration.log_group_name,
+                                                        self.configuration.alerts_api_error_filter_text,
                                                         "error", None, dimensions=None,
                                                         alarm_description=None)
-        self.alerts_api.provision_cloudwatch_logs_alarm(self.cloudwatch_api.configuration.log_group_name,
-                                                        '"Runtime exited with error"', "runtime_exited", None,
-                                                        dimensions=None,
-                                                        alarm_description=None)
-        self.alerts_api.provision_cloudwatch_logs_alarm(self.cloudwatch_api.configuration.log_group_name,
-                                                        f'"{self.alerts_api.alert_system.configuration.ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN}"',
-                                                        "timeout", None, dimensions=None,
-                                                        alarm_description=None)
+
         return True
 
     def provision_task_role(self):

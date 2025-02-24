@@ -55,6 +55,17 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
         self._autoscaling_min_capacity = None
         self._autoscaling_max_capacity = None
         self._lb_facing_security_group_name = None
+        self._alerts_api_error_filter_text = None
+
+    @property
+    def alerts_api_error_filter_text(self):
+        if self._alerts_api_error_filter_text is None:
+            self._alerts_api_error_filter_text = '"[ERROR]"'
+        return self._alerts_api_error_filter_text
+
+    @alerts_api_error_filter_text.setter
+    def alerts_api_error_filter_text(self, value):
+        self._alerts_api_error_filter_text = value
 
     @property
     def lb_facing_security_group_name(self):
