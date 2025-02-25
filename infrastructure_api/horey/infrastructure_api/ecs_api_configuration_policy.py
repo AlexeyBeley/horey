@@ -56,6 +56,15 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
         self._autoscaling_max_capacity = None
         self._lb_facing_security_group_name = None
         self._alerts_api_error_filter_text = None
+        self._service_registries_arn = None
+
+    @property
+    def service_registries_arn(self):
+        return self._service_registries_arn
+
+    @service_registries_arn.setter
+    def service_registries_arn(self, value):
+        self._service_registries_arn = value
 
     @property
     def alerts_api_error_filter_text(self):

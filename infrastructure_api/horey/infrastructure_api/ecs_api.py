@@ -397,7 +397,8 @@ class ECSAPI:
                                                           service_name=self.configuration.service_name,
                                                           container_name=self.configuration.container_name,
                                                           kill_old_containers=self.configuration.kill_old_containers,
-                                                          load_blanacer_dicts=load_blanacer_dicts
+                                                          load_blanacer_dicts=load_blanacer_dicts,
+                                                          service_registries_arn=self.configuration.service_registries_arn
                                                           )
 
     def provision_ecr_repository(self):
