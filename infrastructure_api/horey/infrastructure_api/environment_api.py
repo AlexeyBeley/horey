@@ -1612,8 +1612,7 @@ class EnvironmentAPI:
         return ecs_task_role
 
     # pylint: disable=too-many-locals
-    def provision_ecs_service(self, cluster_name, ecs_task_definition, service_registries_arn=None,
-                              service_registries_container_port=None,
+    def provision_ecs_service(self, cluster_name, ecs_task_definition, service_registry_dicts=None,
                               service_target_group_arn=None,
                               load_balancer_container_port=None,
                               role_arn=None, td_desired_count=1,
@@ -1628,10 +1627,9 @@ class EnvironmentAPI:
         """
         Provision component's ECS service.
 
-        :param service_registries_container_port:
         :param load_balancer_container_port:
         :param ecs_task_definition:
-        :param service_registries_arn:
+        :param service_registry_dicts:
         :param service_target_group_arn:
         :param role_arn:
         :param td_desired_count:
@@ -1667,15 +1665,8 @@ class EnvironmentAPI:
                 "containerPort": load_balancer_container_port
             }]
 
-        if service_registries_arn is not None:
-            if service_registries_container_port is None:
-                raise ValueError("service_registries_container_port was not set while using service_registries_arn")
-
-            ecs_service.service_registries = [{
-                "registryArn": service_registries_arn,
-                "containerName": container_name,
-                "containerPort": service_registries_container_port
-            }]
+        if service_registry_dicts is not None:
+            ecs_service.service_registries = service_registry_dicts
 
         ecs_service.desired_count = td_desired_count
 

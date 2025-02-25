@@ -144,6 +144,9 @@ class ECSAPI:
         :return:
         """
 
+        # todo: cleanup ecs service Deployment circuit breaker
+        # todo: cleanup ecs service: CloudWatch alarms for deployment
+
         self.environment_api.aws_api.lambda_client.clear_cache(None, all_cache=True)
         self.provision_ecr_repository()
 
@@ -380,6 +383,15 @@ class ECSAPI:
         } for target_group in target_groups
         ]
 
+        if self.configuration.service_registry_arn:
+            service_registry_dicts = [{
+            "registryArn": self.configuration.service_registry_arn,
+            "containerName": self.configuration.container_name,
+            "containerPort": self.configuration.container_definition_port_mappings[0]["containerPort"]
+            }]
+        else:
+            service_registry_dicts = None
+
         return self.environment_api.provision_ecs_service(self.configuration.cluster_name,
                                                           ecs_task_definition,
                                                           td_desired_count=self.configuration.task_definition_desired_count,
@@ -398,7 +410,8 @@ class ECSAPI:
                                                           container_name=self.configuration.container_name,
                                                           kill_old_containers=self.configuration.kill_old_containers,
                                                           load_blanacer_dicts=load_blanacer_dicts,
-                                                          service_registries_arn=self.configuration.service_registries_arn
+                                                          service_registry_arn=self.configuration.service_registries_arn,
+                                                          service_registry_dicts=service_registry_dicts
                                                           )
 
     def provision_ecr_repository(self):
