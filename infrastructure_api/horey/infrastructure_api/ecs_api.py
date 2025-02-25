@@ -89,15 +89,19 @@ class ECSAPI:
             if len(self.configuration.container_definition_port_mappings) != 1:
                 raise NotImplementedError("Need to implement dynamic test that loadbalancer_api configuration has the"
                                           " port set explicitly")
-            if self.configuration.container_definition_port_mappings[0]["containerPort"] != "443":
-                raise NotImplementedError("Need to implement dynamic test that loadbalancer_api configuration has the"
-                                          " port set explicitly")
+
+            container_port = self.configuration.container_definition_port_mappings[0]["containerPort"]
+            for lb_api, _ in loadbalancer_dns_api_pairs:
+                if lb_api.configuration.target_group_port != self.configuration.container_definition_port_mappings[0]["containerPort"]:
+                    raise NotImplementedError(f"loadbalancer_api for LB: '{lb_api.configuration.load_balancer_name}'"
+                                                  f" configuration has no {container_port} port set for 'target_group_port'")
 
             if loadbalancer_api or dns_api:
                 raise NotImplementedError("You can not both declare loadbalancer_dns_apis_pairs and either lb_api or dns_api")
+
             for loadbalancer_api, _ in loadbalancer_dns_api_pairs:
-                assert self.loadbalancer_api.configuration.load_balancer_name
-                assert self.loadbalancer_api.configuration.target_group_name
+                assert loadbalancer_api.configuration.load_balancer_name
+                assert loadbalancer_api.configuration.target_group_name
 
             self.loadbalancer_dns_api_pairs = loadbalancer_dns_api_pairs
 
