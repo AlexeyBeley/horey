@@ -414,7 +414,6 @@ class ECSAPI:
                                                           container_name=self.configuration.container_name,
                                                           kill_old_containers=self.configuration.kill_old_containers,
                                                           load_blanacer_dicts=load_blanacer_dicts,
-                                                          service_registry_arn=self.configuration.service_registries_arn,
                                                           service_registry_dicts=service_registry_dicts
                                                           )
 
