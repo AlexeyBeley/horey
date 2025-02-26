@@ -56,7 +56,28 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
         self._autoscaling_max_capacity = None
         self._lb_facing_security_group_name = None
         self._alerts_api_error_filter_text = None
+        self._event_bridge_rule_name = None
         self._service_registry_arn = None
+        self._schedule_expression = None
+        self._cron_name = None
+
+    @property
+    def cron_name(self):
+        if self._cron_name is None:
+            raise self.UndefinedValueError("cron_name")
+        return self._cron_name
+
+    @cron_name.setter
+    def cron_name(self, value):
+        self._cron_name = value
+
+    @property
+    def schedule_expression(self):
+        return self._schedule_expression
+
+    @schedule_expression.setter
+    def schedule_expression(self, value):
+        self._schedule_expression = value
 
     @property
     def service_registry_arn(self):
@@ -67,9 +88,31 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
         self._service_registry_arn = value
 
     @property
+    def event_bridge_rule_name(self):
+        if self._event_bridge_rule_name is None:
+            if self.schedule_expression is None:
+                raise NotImplementedError(f"Can not create event_bridge_rule_name slug from {self.schedule_expression}")
+
+            if "rate" in self.schedule_expression:
+                schedule_slug = self.schedule_expression.replace("(", "_").replace(")", "_").replace(" ", "_").strip("_").replace("minutes", "min")
+            elif "cron" in self.schedule_expression:
+                schedule_slug = self.schedule_expression.replace("(", "_").replace(")", "_").replace(" ", "").strip(
+                    "_").replace("*", "s").replace("?", "q")
+            else:
+                raise ValueError(self.schedule_expression)
+            breakpoint()
+            return f"rule_{self.slug}_{schedule_slug}"
+
+        return self._event_bridge_rule_name
+
+    @event_bridge_rule_name.setter
+    def event_bridge_rule_name(self, value):
+        self._event_bridge_rule_name = value
+
+    @property
     def alerts_api_error_filter_text(self):
         if self._alerts_api_error_filter_text is None:
-            self._alerts_api_error_filter_text = '"[ERROR]"'
+            return '"[ERROR]"'
         return self._alerts_api_error_filter_text
 
     @alerts_api_error_filter_text.setter
@@ -79,7 +122,7 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def lb_facing_security_group_name(self):
         if self._lb_facing_security_group_name is None:
-            self._lb_facing_security_group_name = f"sg_{self.cluster_name}_{self.service_name}"
+            return f"sg_{self.cluster_name}_{self.service_name}"
         return self._lb_facing_security_group_name
 
     @lb_facing_security_group_name.setter
@@ -109,7 +152,7 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def autoscaling_ram_target_value(self):
         if self._autoscaling_ram_target_value is None:
-            self._autoscaling_ram_target_value = 80.0
+            return 80.0
         return self._autoscaling_ram_target_value
 
     @autoscaling_ram_target_value.setter
@@ -119,7 +162,7 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def autoscaling_ram_policy_name(self):
         if self._autoscaling_ram_policy_name is None:
-            self._autoscaling_ram_policy_name = f"aap-ram-{self.cluster_name}-{self.service_name}"
+            return f"aap-ram-{self.cluster_name}-{self.service_name}"
         return self._autoscaling_ram_policy_name
 
     @autoscaling_ram_policy_name.setter
@@ -129,7 +172,7 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def autoscaling_cpu_target_value(self):
         if self._autoscaling_cpu_target_value is None:
-            self._autoscaling_cpu_target_value = 80.0
+            return 80.0
         return self._autoscaling_cpu_target_value
 
     @autoscaling_cpu_target_value.setter
@@ -139,7 +182,7 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def autoscaling_cpu_policy_name(self):
         if self._autoscaling_cpu_policy_name is None:
-            self._autoscaling_cpu_policy_name = f"aap-cpu-{self.cluster_name}-{self.service_name}"
+            return f"aap-cpu-{self.cluster_name}-{self.service_name}"
         return self._autoscaling_cpu_policy_name
 
     @autoscaling_cpu_policy_name.setter
@@ -149,7 +192,13 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def slug(self):
         if self._slug is None:
-            self._slug = f"{self.cluster_name.replace('cluster_', '')}-{self.service_name.replace('service_', '')}"
+            if self.provision_service:
+                return f"{self.cluster_name.replace('cluster_', '')}-{self.service_name.replace('service_', '')}"
+            elif self.provision_cron:
+                return f"{self.cluster_name.replace('cluster_', '')}-{self.cron_name.replace('crone_', '')}"
+            else:
+                raise ValueError("Not a service or a cron")
+
         return self._slug
 
     @property
@@ -185,7 +234,7 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def launch_type(self):
         if self._launch_type is None:
-            self._launch_type = "FARGATE"
+            return "FARGATE"
         return self._launch_type
 
     @launch_type.setter
@@ -290,7 +339,7 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
     def requires_compatibilities(self):
         if self._requires_compatibilities is None:
             if self.launch_type == "FARGATE":
-                self._requires_compatibilities = ["FARGATE"]
+                return ["FARGATE"]
             else:
                 raise self.UndefinedValueError("requires_compatibilities")
 
@@ -303,7 +352,13 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def cloudwatch_log_group_name(self):
         if self._cloudwatch_log_group_name is None:
-            self._cloudwatch_log_group_name = f"/ecs/{self.cluster_name}/{self.service_name}"
+            if self.provision_service:
+                return f"/ecs/{self.cluster_name}/{self.service_name}"
+            elif self.provision_cron:
+                return f"/ecs/{self.cluster_name}/{self.cron_name}"
+            else:
+                raise ValueError("Not a service or cron")
+
         return self._cloudwatch_log_group_name
 
     @cloudwatch_log_group_name.setter
@@ -331,7 +386,7 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def container_name(self):
         if self._container_name is None:
-            self._container_name = self.service_name
+            return self.slug
         return self._container_name
 
     @container_name.setter
@@ -341,7 +396,7 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def family(self):
         if self._family is None:
-            self._family = f"td_{self.cluster_name}_{self.service_name}"
+            return f"td_{self.slug}"
         return self._family
 
     @family.setter
@@ -388,7 +443,7 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def infrastructure_update_time_tag(self):
         if self._infrastructure_update_time_tag is None:
-            self._infrastructure_update_time_tag = "update_time"
+            return "update_time"
         return self._infrastructure_update_time_tag
 
     @infrastructure_update_time_tag.setter
@@ -408,7 +463,7 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def ecr_repository_name(self):
         if self._ecr_repository_name is None:
-            self._ecr_repository_name = f"repo_{self.cluster_name}_{self.service_name}"
+            return f"repo_{self.slug}"
         return self._ecr_repository_name
 
     @ecr_repository_name.setter
@@ -438,3 +493,22 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def auto_scaling_resource_id(self):
         return f"service/{self.cluster_name}/{self.service_name}"
+
+    @property
+    def provision_service(self):
+        try:
+            return self.service_name is not None
+        except self.UndefinedValueError as error_inst:
+            if "service_name" not in repr(error_inst):
+                raise
+        return False
+
+    @property
+    def provision_cron(self):
+        try:
+            return self.cron_name is not None
+        except self.UndefinedValueError as error_inst:
+            if "cron_name" not in repr(error_inst):
+                raise
+
+        return False

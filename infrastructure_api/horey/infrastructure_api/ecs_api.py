@@ -20,6 +20,8 @@ from horey.infrastructure_api.cloudwatch_api import CloudwatchAPI
 from horey.aws_api.aws_services_entities.application_auto_scaling_scalable_target import \
     ApplicationAutoScalingScalableTarget
 from horey.aws_api.aws_services_entities.application_auto_scaling_policy import ApplicationAutoScalingPolicy
+from horey.aws_api.aws_services_entities.event_bridge_rule import EventBridgeRule
+from horey.aws_api.aws_services_entities.event_bridge_target import EventBridgeTarget
 
 logger = get_logger()
 
@@ -141,49 +143,72 @@ class ECSAPI:
                 raise ValueError("Log group name not set")
             self.cloudwatch_api = cloudwatch_api
 
+    def validate_input(self):
+        """
+        Check service or scheduled tasks were defined correctly
+        :return:
+        """
+
+        if self.configuration.schedule_expression:
+            if self.configuration.provision_service:
+                raise ValueError("Can not accept both scheduled expression and service_name")
+
+            if not self.configuration.provision_cron:
+                raise ValueError("If scheduled expression provided cron_name must be provided")
+
+            if self.dns_api or self.loadbalancer_dns_api_pairs or self.loadbalancer_api:
+                raise ValueError("Cron can not have DNS or LoadBalancer")
+
+        if (self.configuration.provision_service or self.configuration.provision_cron) and self.configuration.cluster_name is None:
+            raise ValueError("If scheduled expression provided cluster name must be provided")
+
     def provision(self):
         """
         Provision ECS infrastructure.
 
         :return:
         """
-
         # todo: cleanup ecs service Deployment circuit breaker
         # todo: cleanup ecs service: CloudWatch alarms for deployment
+        # todo: cleanup ecs scheduled task reduce ecsEventsRole permissions to only allow passing TaskRole and Execution role
+        self.validate_input()
 
-        self.environment_api.aws_api.lambda_client.clear_cache(None, all_cache=True)
+        self.environment_api.aws_api.ecr_client.clear_cache(None, all_cache=True)
         self.provision_ecr_repository()
 
-        try:
-            provision_service = self.configuration.service_name is not None
-        except self.configuration.UndefinedValueError as error_inst:
-            if "service_name" not in repr(error_inst):
-                raise
-            provision_service = False
+        if not self.configuration.provision_service and not self.configuration.provision_cron:
+            return True
 
-        if provision_service:
-            self.cloudwatch_api.provision()
-            self.provision_monitoring()
-            self.provision_task_role()
-            self.provision_execution_role()
+        self.cloudwatch_api.provision()
+        self.provision_monitoring()
+        self.provision_task_role()
+        self.provision_execution_role()
 
         if self.loadbalancer_api:
             self.loadbalancer_api.provision()
             self.provision_lb_facing_security_group()
 
-        if provision_service:
+        if self.configuration.provision_service:
             self.update()
+        elif self.configuration.provision_cron:
+            task_definition = self.update()
+            events_rule = self.provision_events_rule()
+            self.provision_events_rule_target(events_rule, task_definition)
+        else:
+            raise ValueError("Unknown state")
 
         if self.dns_api:
             self.dns_api.configuration.dns_target = self.loadbalancer_api.get_loadbalancer().dns_name
             self.dns_api.provision()
+
         elif self.loadbalancer_dns_api_pairs:
             for loadbalancer_api, dns_api in self.loadbalancer_dns_api_pairs:
                 dns_api.configuration.dns_target = loadbalancer_api.get_loadbalancer().dns_name
                 dns_api.provision()
 
-        if provision_service:
+        if self.configuration.provision_service:
             self.provision_autoscaling()
+
         return True
 
     def provision_lb_facing_security_group(self):
@@ -204,7 +229,7 @@ class ECSAPI:
                 "UserIdGroupPairs": [
                     {
                         "GroupId": lb_group.id,
-                        "UserId": self.environment_api.aws_api.ec2_client.account_id,
+                        "UserId": self.environment_api.aws_api.ecr_client.account_id,
                         "Description": f"From {lb_group.name}"
                     } for lb_group in lb_groups
                 ]
@@ -333,8 +358,16 @@ class ECSAPI:
         :return:
         """
 
+        self.validate_input()
+
         self.configuration.ecr_image_id = self.get_ecr_image()
         ecs_task_definition = self.provision_ecs_task_definition()
+
+        if self.configuration.provision_cron:
+            return ecs_task_definition
+
+        if not self.configuration.provision_service:
+            raise ValueError("Unknown status")
 
         return self.provision_ecs_service(ecs_task_definition)
 
@@ -591,7 +624,7 @@ class ECSAPI:
         :return:
         """
 
-        if not self.configuration.service_name:
+        if not self.configuration.provision_service and not self.configuration.provision_cron:
             return True
 
         policies = self.role_inline_policies_callback()
@@ -618,7 +651,7 @@ class ECSAPI:
         :return:
         """
 
-        if not self.configuration.service_name:
+        if not self.configuration.provision_service and not self.configuration.provision_cron:
             return True
 
         assume_role_policy_document = json.dumps({
@@ -647,3 +680,67 @@ class ECSAPI:
                                                role_name=self.configuration.ecs_task_execution_role_name,
                                                assume_role_policy=assume_role_policy_document,
                                                description="ECS task role used to control containers lifecycle")
+
+    def provision_events_rule(self):
+        """
+        Event bridge rule - the trigger used to trigger the lambda each minute.
+
+        :return:
+        """
+
+        rule = EventBridgeRule({})
+        rule.name = self.configuration.event_bridge_rule_name
+        rule.description = f"{self.configuration.cron_name} triggering rule"
+        rule.region = self.environment_api.region
+        rule.schedule_expression = self.configuration.schedule_expression
+        rule.event_bus_name = "default"
+        rule.state = "ENABLED"
+        rule.tags = self.environment_api.configuration.tags
+        rule.tags.append({
+            "Key": "Name",
+            "Value": rule.name
+        })
+
+        self.environment_api.aws_api.provision_events_rule(rule)
+        return rule
+
+    def provision_events_rule_target(self, events_rule, task_definition):
+        """
+        Provision target to be triggered.
+
+        :param events_rule:
+        :param task_definition:
+        :return:
+        """
+
+        security_groups = self.environment_api.get_security_groups(self.configuration.security_groups)
+
+        target = EventBridgeTarget({})
+        target.id = f"target-{self.configuration.cron_name}"
+        target.arn = self.get_cluster().arn
+        target.role_arn = f"arn:aws:iam::{self.environment_api.aws_api.ecr_client.account_id}:role/ecsEventsRole"
+        target.ecs_parameters = {
+            "TaskDefinitionArn": task_definition.arn,
+            "TaskCount": 1,
+            "LaunchType": "FARGATE",
+            "NetworkConfiguration": {
+                "awsvpcConfiguration": {
+                    "Subnets": [subnet.id for subnet in self.environment_api.private_subnets],
+                    "SecurityGroups": [security_group.id for security_group in security_groups],
+                    "AssignPublicIp": "DISABLED"
+                }
+            },
+            "PlatformVersion": "LATEST"
+        }
+
+        events_rule.targets = [target]
+        self.environment_api.aws_api.provision_events_rule(events_rule)
+
+    def get_cluster(self):
+        """
+        Standard.
+
+        :return:
+        """
+
+        return self.environment_api.find_ecs_cluster(self.configuration.cluster_name)
