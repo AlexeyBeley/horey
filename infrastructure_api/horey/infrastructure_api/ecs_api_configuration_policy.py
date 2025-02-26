@@ -100,7 +100,6 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
                     "_").replace("*", "s").replace("?", "q")
             else:
                 raise ValueError(self.schedule_expression)
-            breakpoint()
             return f"rule_{self.slug}_{schedule_slug}"
 
         return self._event_bridge_rule_name
