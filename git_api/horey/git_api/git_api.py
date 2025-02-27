@@ -132,6 +132,8 @@ class GitAPI:
                 continue
 
             if address != git_remote_url:
+                logger.info(f"Bla1 '{address}'")
+                logger.info(f"Bla2 '{git_remote_url}'")
                 logger.info(f"Checking fetch address: {type(address)} {type(git_remote_url)}")
                 logger.info(f"Checking fetch address: {len(address)} {len(git_remote_url)}")
                 index = next((i for i, (char1, char2) in enumerate(zip(address, git_remote_url)) if char1 != char2), None)
