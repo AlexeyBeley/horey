@@ -142,17 +142,20 @@ class LoadbalancerAPI:
         self.environment_api.aws_api.elbv2_client.provision_load_balancer_listener(listener_80)
 
         # listener 443
-        certificates = [self.environment_api.aws_api.acm_client.get_certificate_by_domain_name(self.environment_api.region, dns) for dns in self.configuration.public_domain_names + self.configuration.unmanaged_public_domain_names]
+        certificates = [self.environment_api.aws_api.acm_client.get_certificate_by_domain_name(self.environment_api.region, dns) for dns in self.configuration.certificates_domain_names + self.configuration.certificates_unmanaged_domain_names]
         listener = LoadBalancer.Listener({})
         listener.protocol = "HTTPS"
         listener.ssl_policy = "ELBSecurityPolicy-TLS13-1-2-2021-06"
         listener.mutual_authentication = {"Mode": "off"}
 
+        # unique certificates only
+        certificate_arns = {cert.arn for cert in certificates}
+
         listener.certificates = [
             {
-                "CertificateArn": cert.arn,
+                "CertificateArn": cert_arn,
                 "IsDefault": False
-            } for cert in certificates
+            } for cert_arn in certificate_arns
         ]
         listener.certificates[0]["IsDefault"] = True
 
@@ -214,14 +217,7 @@ class LoadbalancerAPI:
         })
 
         rule.priority = self.configuration.rule_priority or rule.priority
-        rule.conditions = self.configuration.rule_conditions or [
-            {
-                "Field": "host-header",
-                "HostHeaderConfig": {
-                    "Values": self.configuration.public_domain_names + self.configuration.unmanaged_public_domain_names
-                }
-            }
-        ]
+        rule.conditions = self.configuration.rule_conditions
 
         rule.actions = [
             {

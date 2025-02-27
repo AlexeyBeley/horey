@@ -20,8 +20,8 @@ class LoadbalancerAPIConfigurationPolicy(ConfigurationPolicy):
         self._scheme = None
         self._security_groups = None
         self._target_group_name = None
-        self._public_domain_names = None
-        self._unmanaged_public_domain_names = []
+        self._certificates_domain_names = None
+        self._certificates_unmanaged_domain_names = []
         self._rule_priority = None
         self._rule_conditions = None
         self._target_type = None
@@ -76,6 +76,8 @@ class LoadbalancerAPIConfigurationPolicy(ConfigurationPolicy):
 
     @property
     def rule_conditions(self):
+        if self._rule_conditions is None:
+            raise self.UndefinedValueError("rule_conditions")
         return self._rule_conditions
 
     @rule_conditions.setter
@@ -91,28 +93,28 @@ class LoadbalancerAPIConfigurationPolicy(ConfigurationPolicy):
         self._rule_priority = value
 
     @property
-    def unmanaged_public_domain_names(self):
-        return self._unmanaged_public_domain_names
+    def certificates_unmanaged_domain_names(self):
+        return self._certificates_unmanaged_domain_names
 
-    @unmanaged_public_domain_names.setter
-    def unmanaged_public_domain_names(self, value):
+    @certificates_unmanaged_domain_names.setter
+    def certificates_unmanaged_domain_names(self, value):
         if not isinstance(value, list):
             raise ValueError(value)
 
-        self._unmanaged_public_domain_names = value
+        self._certificates_unmanaged_domain_names = value
 
     @property
-    def public_domain_names(self):
-        if self._public_domain_names is None:
-            raise self.UndefinedValueError("public_domain_names")
-        return self._public_domain_names
+    def certificates_domain_names(self):
+        if self._certificates_domain_names is None:
+            raise self.UndefinedValueError("certificates_domain_names")
+        return self._certificates_domain_names
 
-    @public_domain_names.setter
-    def public_domain_names(self, value):
+    @certificates_domain_names.setter
+    def certificates_domain_names(self, value):
         if not isinstance(value, list):
             raise ValueError(value)
 
-        self._public_domain_names = value
+        self._certificates_domain_names = value
 
     @property
     def target_group_name(self):

@@ -88,6 +88,8 @@ class ECSAPI:
         """
 
         if loadbalancer_dns_api_pairs:
+            # todo: fix DNS rules validation.
+            breakpoint()
             if len(self.configuration.container_definition_port_mappings) != 1:
                 raise NotImplementedError("Need to implement dynamic test that loadbalancer_api configuration has the"
                                           " port set explicitly")
@@ -132,11 +134,20 @@ class ECSAPI:
             self.dns_api = dns_api
             if self.loadbalancer_api:
                 try:
-                    self.loadbalancer_api.configuration.public_domain_names
+                    self.loadbalancer_api.configuration.rule_conditions
                 except self.cloudwatch_api.configuration.UndefinedValueError:
-                    self.loadbalancer_api.configuration.public_domain_names = [self.dns_api.configuration.dns_address]
-                if self.dns_api.configuration.dns_address not in self.loadbalancer_api.configuration.public_domain_names:
-                    raise NotImplementedError(f"Check why service DNS {self.dns_api.configuration.dns_address} is not among load balancer DNS addresses: {self.loadbalancer_api.configuration.public_domain_names:}")
+                    self.loadbalancer_api.configuration.rule_conditions = [
+                        {
+                            "Field": "host-header",
+                            "HostHeaderConfig": {
+                                "Values": [self.dns_api.configuration.dns_address]
+                            }
+                        }
+                    ]
+                if self.dns_api.configuration.dns_address not in self.loadbalancer_api.configuration.certificates_domain_names and \
+                    "*."+self.dns_api.configuration.dns_address.split(".", maxsplit=1)[1] not in \
+                        self.loadbalancer_api.configuration.certificates_domain_names:
+                    raise NotImplementedError(f"Check why service DNS {self.dns_api.configuration.dns_address} is not among load balancer DNS addresses: {self.loadbalancer_api.configuration.certificates_domain_names:}")
 
         if cloudwatch_api:
             if not cloudwatch_api.configuration.log_group_name:
