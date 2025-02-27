@@ -132,7 +132,8 @@ class GitAPI:
                 continue
 
             if address != git_remote_url:
-                logger.info(f"Checking address: '{address=}' '{git_remote_url=}'")
+                logger.info(f"Checking fetch address: {type(address)} {type(git_remote_url)}")
+                logger.info(f"Checking fetcha ddress: {len(address)} {len(git_remote_url)}")
                 continue
 
             break
