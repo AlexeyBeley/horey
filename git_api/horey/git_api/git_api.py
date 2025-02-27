@@ -125,6 +125,7 @@ class GitAPI:
         for line in lines:
             line = line.replace("\t", " ")
             remote_name, address, direction = line.split(" ")
+            logger.info(f"Checking remote: {remote_name=}, {address=}, {direction=}")
 
             if direction != "(fetch)":
                 continue
@@ -134,7 +135,7 @@ class GitAPI:
 
             break
         else:
-            raise RuntimeError(f"Was not able to find remote with address {git_remote_url}")
+            raise RuntimeError(f"Was not able to find remote with address {git_remote_url} and direction=(fetch)")
 
         command = f"{ssh_base_command} git fetch {remote_name} {branch_name}"
         ret = self.bash_executor.run_bash(command)
