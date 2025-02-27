@@ -128,9 +128,11 @@ class GitAPI:
             logger.info(f"Checking remote: {remote_name=}, {address=}, {direction=}")
 
             if direction != "(fetch)":
+                logger.info(f"Checking '{direction=}'")
                 continue
 
             if address != git_remote_url:
+                logger.info(f"Checking '{address=}' '{git_remote_url=}'")
                 continue
 
             break
