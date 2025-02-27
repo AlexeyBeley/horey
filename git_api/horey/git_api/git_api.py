@@ -125,14 +125,14 @@ class GitAPI:
         for line in lines:
             line = line.replace("\t", " ")
             remote_name, address, direction = line.split(" ")
-            logger.info(f"Checking remote: {remote_name=}, {address=}, {direction=}")
+            logger.info(f"Checking triplet: {remote_name=}, {address=}, {direction=}")
 
             if direction != "(fetch)":
-                logger.info(f"Checking '{direction=}'")
+                logger.info(f"Checking direction: '{direction=}'")
                 continue
 
             if address != git_remote_url:
-                logger.info(f"Checking '{address=}' '{git_remote_url=}'")
+                logger.info(f"Checking address: '{address=}' '{git_remote_url=}'")
                 continue
 
             break
