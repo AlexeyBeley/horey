@@ -299,7 +299,7 @@ class WorkItem(AzureDevopsObject):
                "created_date": CommonUtils.convert_to_dict(self.strptime(self.fields["System.CreatedDate"])),
                "child_ids": [],
                "parent_ids": [],
-               "sprint_name": self.fields.get("System.IterationLevel2") or self.fields["System.IterationLevel1"],
+               "sprint_name": self.fields.get("System.IterationPath").split("\\")[-1],
                "estimated_time": self.original_estimate,
                "completed_time": self.completed_work_hours
                }
@@ -355,7 +355,9 @@ class WorkItem(AzureDevopsObject):
         if value in ["New", "Active"]:
             return value.upper()
 
-        if value in ["On Hold", "Pending Deployment", "PM Review", "Merge Request", "In Testing", "Ready for PI", "Ready", "Selected to Next PI", "Pending Release", "Elaboration", "Pending QA", "Not a Bug", "Waiting PR", "Design", "Ready for Release"]:
+        if value in ["On Hold", "Pending Deployment", "PM Review", "Merge Request", "In Testing", "Ready for PI",
+                     "Ready", "Selected to Next PI", "Pending Release", "Elaboration", "Pending QA", "Not a Bug",
+                     "Waiting PR", "Design", "Ready for Release", "Ready to Deploy", "Analysis"]:
             return "BLOCKED"
 
         if value in ["Resolved", "Closed", "Removed"]:

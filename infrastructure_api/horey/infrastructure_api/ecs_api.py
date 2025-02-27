@@ -508,30 +508,47 @@ class ECSAPI:
         :param nocache:
         :return:
         """
+
         ecr_image = self.get_latest_build()
         build_number = ecr_image.build_number if ecr_image is not None else -1
         repo_uri = f"{self.environment_api.aws_api.ecs_client.account_id}.dkr.ecr.{self.configuration.ecr_repository_region}.amazonaws.com/{self.configuration.ecr_repository_name}"
-        if self.environment_api.git_api.configuration.branch_name is not None:
-            if not self.environment_api.git_api.checkout_remote_branch():
-                raise RuntimeError(
-                    f"Was not able to checkout branch: {self.environment_api.git_api.configuration.branch_name}")
 
-            commit_id = self.environment_api.git_api.get_commit_id()
+        if image_tag := self.build_ecr_image_from_source_code(repo_uri, build_number, nocache):
+            return image_tag
 
-            tags = [f"{repo_uri}:build_{build_number + 1}-commit_{commit_id}"]
-            image = self.environment_api.build_and_upload_ecr_image(
-                self.prepare_container_build_directory_callback(
-                    self.environment_api.git_api.configuration.directory_path), tags, nocache,
-                buildargs=self.configuration.buildargs)
-            assert tags[0] in image.tags
-            image_tag = tags[0]
-        elif ecr_image is None:
+        if ecr_image is None:
             raise RuntimeError(f"Images store '{repo_uri}' is empty yet, use branch_name to build an image")
-        else:
-            image_tag_raw = ecr_image.image_tags[-1]
-            image_tag = f"{repo_uri}:{image_tag_raw}"
+
+        image_tag_raw = ecr_image.image_tags[-1]
+        image_tag = f"{repo_uri}:{image_tag_raw}"
 
         return image_tag
+
+    def build_ecr_image_from_source_code(self, repo_uri, build_number, nocache):
+        """
+        Build from repo.
+
+        :param repo_uri:
+        :param build_number:
+        :param nocache:
+        :return:
+        """
+
+        if self.environment_api.git_api.configuration.branch_name is None:
+            return None
+        if not self.environment_api.git_api.checkout_remote_branch():
+            raise RuntimeError(
+                    f"Was not able to checkout branch: {self.environment_api.git_api.configuration.branch_name}")
+
+        commit_id = self.environment_api.git_api.get_commit_id()
+
+        tags = [f"{repo_uri}:build_{build_number + 1}-commit_{commit_id}"]
+        image = self.environment_api.build_and_upload_ecr_image(
+            self.prepare_container_build_directory_callback(
+                self.environment_api.git_api.configuration.directory_path), tags, nocache,
+            buildargs=self.configuration.buildargs)
+        assert tags[0] in image.tags
+        return tags[0]
 
     def get_latest_build(self):
         """

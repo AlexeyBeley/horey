@@ -78,10 +78,10 @@ class LoadbalancerAPI:
         target_group.target_type = self.configuration.target_type
         if target_group.target_type != "lambda":
             target_group.port = self.configuration.target_group_port
-            target_group.protocol = "HTTPS"
+            target_group.protocol = self.configuration.target_group_protocol
             target_group.vpc_id = self.environment_api.vpc.id
             target_group.health_check_port = "traffic-port"
-            target_group.health_check_protocol = "HTTPS"
+            target_group.health_check_protocol = target_group.protocol
         target_group.health_check_enabled = True
 
         target_group.health_check_interval_seconds = 30
@@ -155,7 +155,7 @@ class LoadbalancerAPI:
             {
                 "CertificateArn": cert_arn,
                 "IsDefault": False
-            } for cert_arn in certificate_arns
+            } for cert_arn in sorted(certificate_arns)
         ]
         listener.certificates[0]["IsDefault"] = True
 

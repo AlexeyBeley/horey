@@ -6,6 +6,7 @@ import copy
 import json
 import logging
 import datetime
+import time
 from collections import defaultdict
 
 import os
@@ -1725,7 +1726,9 @@ class HumanAPI:
         :return:
         """
 
+        start_perf_counter = time.perf_counter()
         sprints = self.get_sprints(sprint_names=[self.configuration.sprint_name])
+        breakpoint()
         self.init_tasks_map(sprints=sprints)
         lst_all = [wobj.convert_to_dict() for wobj in [*self.tasks.values(),
                                                        *self.bugs.values(),
@@ -1735,6 +1738,7 @@ class HumanAPI:
 
         with open(file_path, "w", encoding="utf-8") as file_handler:
             json.dump(lst_all, file_handler)
+        logger.info(f"Downloading and saving Sprint Work Status took: {time.perf_counter() - start_perf_counter}")
 
     def save_sprint_work_status_old(self, file_path):
         """

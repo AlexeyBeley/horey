@@ -27,11 +27,14 @@ class LoadbalancerAPIConfigurationPolicy(ConfigurationPolicy):
         self._target_type = None
         self._health_check_path = None
         self._target_group_targets = None
-        self._target_group_port = 443
-        self._listener_port = 443
+        self._target_group_port = None
+        self._target_group_protocol = None
+        self._listener_port = None
 
     @property
     def listener_port(self):
+        if self._listener_port is None:
+            return 443
         return self._listener_port
 
     @listener_port.setter
@@ -40,11 +43,25 @@ class LoadbalancerAPIConfigurationPolicy(ConfigurationPolicy):
 
     @property
     def target_group_port(self):
+        if self._target_group_port is None:
+            return 443
         return self._target_group_port
 
     @target_group_port.setter
     def target_group_port(self, value):
         self._target_group_port = value
+
+    @property
+    def target_group_protocol(self):
+        if self._target_group_protocol is None:
+            return "HTTPS"
+        return self._target_group_protocol
+
+    @target_group_protocol.setter
+    def target_group_protocol(self, value):
+        if value not in ["HTTP", "HTTPS"]:
+            raise ValueError(value)
+        self._target_group_protocol = value
 
     @property
     def target_group_targets(self):
@@ -57,7 +74,7 @@ class LoadbalancerAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def health_check_path(self):
         if self._health_check_path is None:
-            self._health_check_path = "/health-check"
+            return "/health-check"
         return self._health_check_path
 
     @health_check_path.setter
@@ -67,7 +84,7 @@ class LoadbalancerAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def target_type(self):
         if self._target_type is None:
-            self._target_type = "ip"
+            return "ip"
         return self._target_type
 
     @target_type.setter
@@ -139,7 +156,7 @@ class LoadbalancerAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def scheme(self):
         if self._scheme is None:
-            self._scheme = 30
+            raise self.UndefinedValueError("scheme")
         return self._scheme
 
     @scheme.setter
