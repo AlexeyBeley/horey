@@ -32,7 +32,8 @@ class AzureDevopsObject:
         self._start_date = None
         self._finish_date = None
         self._created_date = None
-        self.known_types = ["Task", "Bug", "UserStory", "Feature", "Epic", "Issue", "DevOpsSupport", "Initiative", "EscapedBug", "DevOPSTicket", "CustomerSupport", "TestCase"]
+        self.known_types = ["Task", "Bug", "UserStory", "Feature", "Epic", "Issue", "DevOpsSupport", "Initiative",
+                            "EscapedBug", "DevOPSTicket", "CustomerSupport", "TestCase", "TestPlan", "TestSuite"]
 
     @classmethod
     def get_cache_file_name(cls):
@@ -292,7 +293,7 @@ class WorkItem(AzureDevopsObject):
 
         try:
             ret = {
-               "id": str(self.fields["System.Id"]),
+               "id": str(self.fields["System.Id"] if "System.Id" in self.fields else self.id),
                "title": self.fields["System.Title"],
                "created_by": self.fields["System.CreatedBy"]["displayName"],
                "status": self.convert_to_dict_status(),
@@ -357,7 +358,8 @@ class WorkItem(AzureDevopsObject):
 
         if value in ["On Hold", "Pending Deployment", "PM Review", "Merge Request", "In Testing", "Ready for PI",
                      "Ready", "Selected to Next PI", "Pending Release", "Elaboration", "Pending QA", "Not a Bug",
-                     "Waiting PR", "Design", "Ready for Release", "Ready to Deploy", "Analysis"]:
+                     "Waiting PR", "Design", "Ready for Release", "Ready to Deploy", "Analysis", "Qualification",
+                     "In Progress", "Completed", "Deployed"]:
             return "BLOCKED"
 
         if value in ["Resolved", "Closed", "Removed"]:
@@ -749,6 +751,8 @@ class AzureDevopsAPI:
         new_items = [None]
         while new_items:
             lst_all_ids = [work_item.id for work_item in lst_ret]
+            if "238378" in lst_all_ids:
+                breakpoint()
             new_items = []
             for work_item in lst_ret:
                 for relation in work_item.relations:

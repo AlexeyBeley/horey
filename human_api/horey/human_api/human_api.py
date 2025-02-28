@@ -6,10 +6,13 @@ import copy
 import json
 import logging
 import datetime
+import shutil
 import time
 from collections import defaultdict
 
 import os
+from pathlib import Path
+
 from horey.h_logger import get_logger
 from horey.h_logger.formatter import formatter
 from horey.human_api.human_api_configuration_policy import (
@@ -25,7 +28,7 @@ from horey.human_api.issue import Issue
 from horey.human_api.sprint import Sprint
 from horey.human_api.generic import Generic
 
-from horey.azure_devops_api.azure_devops_api import AzureDevopsAPI
+from horey.azure_devops_api.azure_devops_api import AzureDevopsAPI, WorkItem
 from horey.azure_devops_api.azure_devops_api_configuration_policy import AzureDevopsAPIConfigurationPolicy
 from horey.common_utils.common_utils import CommonUtils
 from horey.common_utils.bash_executor import BashExecutor
@@ -332,7 +335,7 @@ class HumanAPI:
                 task.init_from_dict(work_item)
                 lst_ret.append(task)
             elif work_item["type"] in ["DevOpsSupport", "Initiative", "EscapedBug", "DevOPSTicket", "CustomerSupport",
-                                       "TestCase"]:
+                                       "TestCase", "TestPlan", "TestSuite"]:
                 gpow = Generic()
                 gpow.init_from_dict(work_item)
                 lst_ret.append(gpow)
@@ -1541,6 +1544,8 @@ class HumanAPI:
         for worker, worker_work_objects in work_objects_map.items():
             lst_ret_tmp, function_name = self.generate_sprint_retro_worker_function(worker, worker_work_objects, seeds)
             lst_ret += [""] + lst_ret_tmp
+            if function_name in function_names:
+                raise NotImplementedError(function_name)
             function_names.append(function_name)
 
         lst_ret += ["", "def main():"]
@@ -1638,7 +1643,7 @@ class HumanAPI:
         """
 
         str_indent = " " * indent
-        function_name = CommonUtils.camel_case_to_snake_case(worker.replace(" ", "_"))
+        function_name = CommonUtils.camel_case_to_snake_case(worker.replace(" ", "_").replace("-", "_")).replace("__", "_")
         lst_ret = [str_indent + line for line in [f"def {function_name}():",
                                                   '    """',
                                                   "    Auto generated report",
@@ -1727,8 +1732,26 @@ class HumanAPI:
         """
 
         start_perf_counter = time.perf_counter()
+        tmp_file_path = "/tmp/wit.json"
+
+        if os.path.exists(tmp_file_path):
+            os.remove(tmp_file_path)
+        cfg_file_path = Path(self.configuration.azure_devops_api_configuration_file_path).parent / "human_api_go" / "azure_devops_api_configuration_values.json"
+        hapi_args = f'--action download_all --cfg "{cfg_file_path}"'
+        ret = BashExecutor.run_bash(str(Path(__file__).parent / "bin" / "hapi.exe ") + hapi_args)
+        if "IterationWorkItems" not in ret["stdout"]:
+            raise RuntimeError(ret["stdout"])
+        with open(tmp_file_path) as fh:
+            azure_devops_wobjects = json.load(fh)
+        lst_all = [WorkItem(azure_devops_wobject).convert_to_dict() for azure_devops_wobject in azure_devops_wobjects]
+        with open(file_path, "w", encoding="utf-8") as file_handler:
+            json.dump(lst_all, file_handler)
+        logger.info(f"Downloading and saving Sprint Work Status took: {time.perf_counter() - start_perf_counter}")
+        return
+
+        #self.init_work_objects_from_dicts(CommonUtils.convert_to_dict(work_objects))
+
         sprints = self.get_sprints(sprint_names=[self.configuration.sprint_name])
-        breakpoint()
         self.init_tasks_map(sprints=sprints)
         lst_all = [wobj.convert_to_dict() for wobj in [*self.tasks.values(),
                                                        *self.bugs.values(),
