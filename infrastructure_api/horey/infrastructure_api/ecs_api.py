@@ -534,7 +534,7 @@ class ECSAPI:
         :return:
         """
 
-        ecr_image = self.get_latest_build()
+        ecr_image = self.fetch_latest_artifact_metadata()
         build_number = ecr_image.build_number if ecr_image is not None else -1
         repo_uri = f"{self.environment_api.aws_api.ecs_client.account_id}.dkr.ecr.{self.configuration.ecr_repository_region}.amazonaws.com/{self.configuration.ecr_repository_name}"
 
@@ -586,9 +586,9 @@ class ECSAPI:
 
         return f"{self.environment_api.aws_api.ecs_client.account_id}.dkr.ecr.{self.configuration.ecr_repository_region}.amazonaws.com/{self.configuration.ecr_repository_name}"
 
-    def get_build_artifact(self):
+    def fetch_latest_artifact_metadata(self):
         """
-        Latest build image.
+        From ECR
 
         :return:
         """
@@ -598,7 +598,22 @@ class ECSAPI:
                              str_image_tag.split("-") if build_subtag.startswith("build_")]
             ecr_image.build_number = max(build_numbers)
 
-        max_build_ecr_image = max(self.ecr_images, key=lambda _image: _image.build_number)
+        try:
+            return max(self.ecr_images, key=lambda _image: _image.build_number)
+        except ValueError as inst_error:
+            if "iterable argument is empty" not in repr(inst_error) and "arg is an empty sequence" not in repr(
+                              inst_error):
+                raise
+        return None
+
+    def get_build_artifact(self):
+        """
+        Latest build image.
+
+        :return:
+        """
+
+        max_build_ecr_image = self.fetch_latest_artifact_metadata()
 
         return self.environment_api.download_ecr_image(f"{self.ecr_repo_uri}:{max_build_ecr_image.image_tags[0]}")
 
