@@ -132,6 +132,7 @@ class GitAPI:
                 continue
 
             if address.lower() != git_remote_url.lower():
+                logger.info(f"Checking address: '{address.lower()}', '{git_remote_url.lower()}'")
                 continue
 
             break
