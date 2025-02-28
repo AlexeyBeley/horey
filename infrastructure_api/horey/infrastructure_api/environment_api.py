@@ -2335,11 +2335,12 @@ class EnvironmentAPI:
                 return self.docker_api.build(dir_path, tags, nocache=nocache, buildargs=buildargs)
             except Exception as error_inst:
                 repr_error_inst = repr(error_inst)
-                if "authorization token has expired" in repr_error_inst:
-                    ecr_repository_region = tags[0].split(".")[3]
-                    _, _, _ = self.login_to_ecr_repository(region=Region.get_region(ecr_repository_region), logout=True)
-                    return self.docker_api.build(dir_path, tags, nocache=nocache, buildargs=buildargs)
-                raise
+                if "authorization token has expired" not in repr_error_inst:
+                    raise
+
+                ecr_repository_region = tags[0].split(".")[3]
+                _, _, _ = self.login_to_ecr_repository(region=Region.get_region(ecr_repository_region), logout=True)
+                return self.docker_api.build(dir_path, tags, nocache=nocache, buildargs=buildargs)
 
         raise TimeoutError("Was not able to build and image")
 
@@ -2363,3 +2364,28 @@ class EnvironmentAPI:
             self.docker_api.logout(registry)
         self.docker_api.login(registry, username, password)
         return registry, username, password
+
+    def download_ecr_image(self, tag, copy_all_tags=False):
+        """
+        Build and upload.
+
+        :param tag:
+        :return:
+        """
+
+        try:
+            images = self.docker_api.pull_images(tag, all_tags=copy_all_tags)
+        except Exception as error_inst:
+            repr_error_inst = repr(error_inst)
+            if "authorization token has expired" not in repr_error_inst and \
+                    "no basic auth credentials" not in str(error_inst):
+                raise
+            ecr_repository_region = tag.split(".")[3]
+            _, _, _ = self.login_to_ecr_repository(region=Region.get_region(ecr_repository_region), logout=True)
+            images = self.docker_api.pull_images(tag, all_tags=copy_all_tags)
+
+        if len(images) != 1:
+            raise RuntimeError(
+                f"Expected single docker image with tag: {tag}, found: {len(images)}"
+            )
+        return images[0]

@@ -396,7 +396,7 @@ class ECSAPI:
 
         self.validate_input()
 
-        ecr_image_tag = self.get_ecr_image()
+        ecr_image_tag = self.get_build_tag()
         ecs_task_definition = self.provision_ecs_task_definition(ecr_image_tag)
 
         if self.configuration.provision_cron:
@@ -524,7 +524,7 @@ class ECSAPI:
         with open(os.path.join(container_build_dir_path, "Dockerfile"), "w", encoding="utf-8") as fh:
             fh.writelines(["FROM k8s.gcr.io/pause\n"])
 
-    def get_ecr_image(self, nocache=False):
+    def get_build_tag(self, nocache=False):
         """
         Build if needed.
         Upload if needed.
@@ -576,26 +576,31 @@ class ECSAPI:
         assert tags[0] in image.tags
         return tags[0]
 
-    def get_latest_build(self):
+    @property
+    def ecr_repo_uri(self):
         """
-        Latest build number from ecr repo
+        Generate repo URI.
 
         :return:
         """
 
-        for image in self.ecr_images:
-            build_numbers = [int(build_subtag.split("_")[1]) for str_image_tag in image.image_tags for build_subtag in
+        return f"{self.environment_api.aws_api.ecs_client.account_id}.dkr.ecr.{self.configuration.ecr_repository_region}.amazonaws.com/{self.configuration.ecr_repository_name}"
+
+    def get_build_artifact(self):
+        """
+        Latest build image.
+
+        :return:
+        """
+
+        for ecr_image in self.ecr_images:
+            build_numbers = [int(build_subtag.split("_")[1]) for str_image_tag in ecr_image.image_tags for build_subtag in
                              str_image_tag.split("-") if build_subtag.startswith("build_")]
-            image.build_number = max(build_numbers)
+            ecr_image.build_number = max(build_numbers)
 
-        try:
-            return max(self.ecr_images, key=lambda _image: _image.build_number)
-        except ValueError as inst_error:
-            if "iterable argument is empty" not in repr(inst_error) and "arg is an empty sequence" not in repr(
-                    inst_error):
-                raise
+        max_build_ecr_image = max(self.ecr_images, key=lambda _image: _image.build_number)
 
-        return None
+        return self.environment_api.download_ecr_image(f"{self.ecr_repo_uri}:{max_build_ecr_image.image_tags[0]}")
 
     @property
     def alerts_api(self):

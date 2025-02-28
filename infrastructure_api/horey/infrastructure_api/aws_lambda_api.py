@@ -379,7 +379,7 @@ class AWSLambdaAPI:
         :return:
         """
 
-        image_tag = self.ecs_api.get_ecr_image()
+        image_tag = self.ecs_api.get_build_tag()
         return self.deploy_lambda(image_tag, events_rule=events_rule, sns_topic=sns_topic)
 
     def get_latest_build(self):
