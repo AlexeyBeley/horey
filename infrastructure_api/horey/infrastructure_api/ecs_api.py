@@ -4,7 +4,10 @@ Standard ECS maintainer.
 """
 import json
 import os
+import shutil
+import uuid
 from datetime import datetime
+from pathlib import Path
 
 from horey.h_logger import get_logger
 
@@ -353,15 +356,37 @@ class ECSAPI:
 
         return []
 
-    def prepare_container_build_directory_callback(self, source_code_dir):
+    def prepare_container_build_directory(self, source_code_dir, commit_id, build_number):
         """
-        Echo.
+        Copy source code to tmp dir.
 
+        :param build_number:
+        :param commit_id:
         :param source_code_dir:
         :return:
         """
 
-        return source_code_dir
+        source_code_dir_tmp = Path("/tmp/ecs_api_build_temp_dirs") / str(uuid.uuid4())
+        source_code_dir_tmp.parent.mkdir(exist_ok=True)
+
+        def ignore_git(_, file_names):
+            return [".git", ".gitmodules", ".idea"] if ".git" in file_names else []
+
+        shutil.copytree(source_code_dir, source_code_dir_tmp, ignore=ignore_git)
+
+        with open(source_code_dir_tmp / "commit_and_build.json", "w", encoding="utf-8") as file_handler:
+            json.dump({"commit": commit_id, "build": str(build_number)}, file_handler)
+        return self.prepare_container_build_directory_callback(source_code_dir_tmp)
+
+    def prepare_container_build_directory_callback(self, dir_apath):
+        """
+        Echo.
+
+        :param dir_apath:
+        :return:
+        """
+
+        return dir_apath
 
     def update(self):
         """
@@ -371,8 +396,8 @@ class ECSAPI:
 
         self.validate_input()
 
-        self.configuration.ecr_image_id = self.get_ecr_image()
-        ecs_task_definition = self.provision_ecs_task_definition()
+        ecr_image_tag = self.get_ecr_image()
+        ecs_task_definition = self.provision_ecs_task_definition(ecr_image_tag)
 
         if self.configuration.provision_cron:
             return ecs_task_definition
@@ -382,7 +407,7 @@ class ECSAPI:
 
         return self.provision_ecs_service(ecs_task_definition)
 
-    def provision_ecs_task_definition(self):
+    def provision_ecs_task_definition(self, ecr_image_tag):
         """
         Provision task definition.
 
@@ -392,7 +417,7 @@ class ECSAPI:
         task_definition = self.environment_api.provision_ecs_fargate_task_definition(
             task_definition_family=self.configuration.family,
             contaner_name=self.configuration.container_name,
-            ecr_image_id=self.configuration.ecr_image_id,
+            ecr_image_id=ecr_image_tag,
             port_mappings=self.configuration.container_definition_port_mappings,
             cloudwatch_log_group_name=self.configuration.cloudwatch_log_group_name,
             entry_point=self.configuration.task_definition_entry_point,
@@ -543,10 +568,11 @@ class ECSAPI:
         commit_id = self.environment_api.git_api.get_commit_id()
 
         tags = [f"{repo_uri}:build_{build_number + 1}-commit_{commit_id}"]
-        image = self.environment_api.build_and_upload_ecr_image(
-            self.prepare_container_build_directory_callback(
-                self.environment_api.git_api.configuration.directory_path), tags, nocache,
-            buildargs=self.configuration.buildargs)
+
+        build_dir_path = str(self.prepare_container_build_directory(
+                self.environment_api.git_api.configuration.directory_path, commit_id, build_number))
+
+        image = self.environment_api.build_and_upload_ecr_image(build_dir_path, tags, nocache, buildargs=self.configuration.buildargs)
         assert tags[0] in image.tags
         return tags[0]
 

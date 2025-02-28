@@ -149,7 +149,7 @@ def test_sub_cleanup_report_ebs_volumes_types(configuration):
     assert ret is not None
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_cleanup_report_sns(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.cleanup_report_sns()
@@ -159,7 +159,7 @@ def test_cleanup_report_sns(configuration):
     assert os.path.exists(configuration.sns_report_file_path)
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_sub_cleanup_report_lambdas_monitoring(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.sub_cleanup_report_lambdas_monitoring()
@@ -169,7 +169,7 @@ def test_sub_cleanup_report_lambdas_monitoring(configuration):
     assert ret is not None
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_cleanup_report_load_balancers(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.cleanup_report_load_balancers()

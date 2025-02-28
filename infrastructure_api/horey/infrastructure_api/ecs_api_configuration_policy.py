@@ -27,7 +27,6 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
         self._buildargs = None
         self._family = None
         self._container_name = None
-        self._ecr_image_id = None
         self._container_definition_port_mappings = None
         self._cloudwatch_log_group_name = None
         self._requires_compatibilities = None
@@ -371,16 +370,6 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
     @container_definition_port_mappings.setter
     def container_definition_port_mappings(self, value):
         self._container_definition_port_mappings = value
-
-    @property
-    def ecr_image_id(self):
-        if self._ecr_image_id is None:
-            raise self.UndefinedValueError("ecr_image_id")
-        return self._ecr_image_id
-
-    @ecr_image_id.setter
-    def ecr_image_id(self, value):
-        self._ecr_image_id = value
 
     @property
     def container_name(self):
