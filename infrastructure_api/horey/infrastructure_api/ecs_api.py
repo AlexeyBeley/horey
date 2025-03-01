@@ -597,7 +597,6 @@ class ECSAPI:
             build_numbers = [int(build_subtag.split("_")[1]) for str_image_tag in ecr_image.image_tags for build_subtag in
                              str_image_tag.split("-") if build_subtag.startswith("build_")]
             ecr_image.build_number = max(build_numbers)
-
         try:
             return max(self.ecr_images, key=lambda _image: _image.build_number)
         except ValueError as inst_error:
@@ -615,7 +614,7 @@ class ECSAPI:
 
         max_build_ecr_image = self.fetch_latest_artifact_metadata()
 
-        return self.environment_api.download_ecr_image(f"{self.ecr_repo_uri}:{max_build_ecr_image.image_tags[0]}")
+        return self.environment_api.download_ecr_image(self.ecr_repo_uri, max_build_ecr_image.image_tags)
 
     @property
     def alerts_api(self):

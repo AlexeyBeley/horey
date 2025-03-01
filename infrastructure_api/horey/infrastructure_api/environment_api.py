@@ -2308,6 +2308,17 @@ class EnvironmentAPI:
         """
 
         image = self.build_ecr_image(dir_path, tags, nocache, buildargs=buildargs)
+        self.upload_ecr_image(tags)
+        return image
+
+    def upload_ecr_image(self, tags):
+        """
+        Standard.
+
+        :param tags:
+        :return:
+        """
+
         try:
             self.docker_api.upload_images(tags)
         except Exception as inst_error:
@@ -2317,7 +2328,6 @@ class EnvironmentAPI:
                 self.docker_api.upload_images(tags)
             else:
                 raise
-        return image
 
     def build_ecr_image(self, dir_path, tags, nocache, buildargs=None):
         """
@@ -2365,27 +2375,35 @@ class EnvironmentAPI:
         self.docker_api.login(registry, username, password)
         return registry, username, password
 
-    def download_ecr_image(self, tag, copy_all_tags=False):
+    def download_ecr_image(self, repo, tags, copy_all_tags=False):
         """
         Build and upload.
 
-        :param tag:
+        :param repo:
+        :param tags:
         :return:
         """
 
+        tag = tags[0]
         try:
-            images = self.docker_api.pull_images(tag, all_tags=copy_all_tags)
+            images = self.docker_api.pull_images(repo, tag=tag, all_tags=copy_all_tags)
         except Exception as error_inst:
             repr_error_inst = repr(error_inst)
             if "authorization token has expired" not in repr_error_inst and \
                     "no basic auth credentials" not in str(error_inst):
                 raise
-            ecr_repository_region = tag.split(".")[3]
+            ecr_repository_region = repo.split(".")[3]
             _, _, _ = self.login_to_ecr_repository(region=Region.get_region(ecr_repository_region), logout=True)
-            images = self.docker_api.pull_images(tag, all_tags=copy_all_tags)
+            images = self.docker_api.pull_images(repo, tag=tag, all_tags=copy_all_tags)
 
-        if len(images) != 1:
+        try:
+            image = images[0]
+        except IndexError:
+            return None
+
+        if len(images) > 1:
             raise RuntimeError(
-                f"Expected single docker image with tag: {tag}, found: {len(images)}"
+                f"Expected <= 1 docker image-tags by tag: {tag}, found: {len(images)}"
             )
-        return images[0]
+
+        return image
