@@ -1,5 +1,0 @@
-
-
-
-format:
-	gofmt -w *.go

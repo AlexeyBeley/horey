@@ -52,6 +52,7 @@ class GrafanaAPI:
             raise RuntimeError(
                 f"Request to grafana api returned an error {response.status_code}, the response is:\n{response.text}"
             )
+        logger.info(f"Response.Raw: '{response.raw}'")
         return response.json()
 
     def post(self, request_path, data):

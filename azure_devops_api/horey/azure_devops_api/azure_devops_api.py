@@ -734,7 +734,7 @@ class AzureDevopsAPI:
                     dict_src = response.json()
                     lst_all.append(WorkItem(dict_src))
                     lst_all_ids.append(int_id)
-
+            breakpoint()
             logger.info(f"Totally initialized {len(lst_all_ids)} until iteration: {iteration_id}")
 
         return self.recursive_init_work_items(lst_all)
@@ -751,8 +751,6 @@ class AzureDevopsAPI:
         new_items = [None]
         while new_items:
             lst_all_ids = [work_item.id for work_item in lst_ret]
-            if "238378" in lst_all_ids:
-                breakpoint()
             new_items = []
             for work_item in lst_ret:
                 for relation in work_item.relations:

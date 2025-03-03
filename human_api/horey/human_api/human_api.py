@@ -1723,7 +1723,7 @@ class HumanAPI:
 
         return lst_ret, function_name
 
-    def save_sprint_work_status(self, file_path):
+    def save_sprint_work_status_new(self, file_path):
         """
         Save current status to a file.
 
@@ -1763,7 +1763,7 @@ class HumanAPI:
             json.dump(lst_all, file_handler)
         logger.info(f"Downloading and saving Sprint Work Status took: {time.perf_counter() - start_perf_counter}")
 
-    def save_sprint_work_status_old(self, file_path):
+    def save_sprint_work_status(self, file_path):
         """
         Save current status to a file.
 
@@ -1809,7 +1809,6 @@ class HumanAPI:
 
         :return:
         """
-
         if not os.path.exists(self.configuration.sprint_finish_status_file_path):
             self.save_sprint_work_status(self.configuration.sprint_finish_status_file_path)
 
