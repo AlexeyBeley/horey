@@ -41,7 +41,7 @@ def fixture_grafana_api():
     yield _grafana_api
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_init_grafana_api():
     """
     Test Grafana API initiation
@@ -236,7 +236,7 @@ def test_create_dashboard_generated_raw(grafana_api):
     grafana_api.create_dashboard_raw(request)
 
 
-@pytest.mark.skip(reason="Can not test")
+@pytest.mark.done
 def test_init_folders_and_dashboards(grafana_api):
     """
     Test folders and dashboards initiation

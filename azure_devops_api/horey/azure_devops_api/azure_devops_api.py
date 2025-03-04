@@ -734,6 +734,7 @@ class AzureDevopsAPI:
                     dict_src = response.json()
                     lst_all.append(WorkItem(dict_src))
                     lst_all_ids.append(int_id)
+            self.add_hours_to_work_item("236277", 0)
             breakpoint()
             logger.info(f"Totally initialized {len(lst_all_ids)} until iteration: {iteration_id}")
 
@@ -1053,6 +1054,7 @@ class AzureDevopsAPI:
                 "path": "/fields/Microsoft.VSTS.Scheduling.CompletedWork",
                 "value": str(completed_work_hours + float_hours)
             }]
+        # todo: Fix the user story hours. Use this line to remove excessive hours
         # request_data = [{"op": "add", "path": "/fields/Microsoft.VSTS.Scheduling.RemainingWork", "value": "0" }]
 
         url = f"https://dev.azure.com/{self.org_name}/_apis/wit/workitems/{wit_id}?api-version=7.0"

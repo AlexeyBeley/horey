@@ -817,3 +817,23 @@ class ECSAPI:
         """
 
         return self.environment_api.find_ecs_cluster(self.configuration.cluster_name)
+
+    def tag_image(self, image, image_tags):
+        """
+        Tag local image.
+
+        :param image:
+        :param image_tags:
+        :return:
+        """
+
+        self.environment_api.docker_api.tag_image(image, image_tags)
+
+    def upload_ecr_image(self, image_tags):
+        """
+        Upload image tags.
+
+        :return:
+        """
+
+        self.environment_api.upload_ecr_image(image_tags)
