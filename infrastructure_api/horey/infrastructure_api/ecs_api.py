@@ -539,6 +539,10 @@ class ECSAPI:
         repo_uri = f"{self.environment_api.aws_api.ecs_client.account_id}.dkr.ecr.{self.configuration.ecr_repository_region}.amazonaws.com/{self.configuration.ecr_repository_name}"
 
         if image_tag := self.build_ecr_image_from_source_code(repo_uri, build_number, nocache):
+            self._ecr_images = None
+            max_build_ecr_image = self.fetch_latest_artifact_metadata()
+            if image_tag not in max_build_ecr_image.image_tags:
+                raise RuntimeError(f"Uploaded image {image_tag} is not viewable locally. Max version locally: {max_build_ecr_image}")
             return image_tag
 
         if ecr_image is None:
