@@ -541,7 +541,7 @@ class ECSAPI:
         if image_tag := self.build_ecr_image_from_source_code(repo_uri, build_number, nocache):
             self._ecr_images = None
             max_build_ecr_image = self.fetch_latest_artifact_metadata()
-            if image_tag not in max_build_ecr_image.image_tags:
+            if image_tag[len(repo_uri+"1"):] not in max_build_ecr_image.image_tags:
                 raise RuntimeError(f"Uploaded image {image_tag} is not viewable locally. Max version locally: {max_build_ecr_image.image_tags}")
             return image_tag
 
