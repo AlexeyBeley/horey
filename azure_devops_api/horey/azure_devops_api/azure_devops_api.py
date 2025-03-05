@@ -329,7 +329,7 @@ class WorkItem(AzureDevopsObject):
                 ret["child_ids"].append(str(int(relation["url"].split("/")[-1])))
             elif relation["attributes"]["name"] == "Parent":
                 ret["parent_ids"].append(str(int(relation["url"].split("/")[-1])))
-            elif relation["attributes"]["name"] in ["Related", "Duplicate Of", "Duplicate", "Successor", "Predecessor", "Tested By"]:
+            elif relation["attributes"]["name"] in ["Related", "Duplicate Of", "Duplicate", "Successor", "Predecessor", "Tested By", "Tests"]:
                 related.append(relation)
             else:
                 print(f"Unknown relation name in: '{relation}': '{relation['attributes']['name']}'")
