@@ -77,6 +77,6 @@ class CICDAPI:
 
         overrides = {"containerOverrides": [{"name": "mgmt-tools-development-hagent",
                                              "environment": [{"name": key, "value": value} for key, value in
-                                                             self.configuration.build_environment_variable]}]}
+                                                             self.configuration.build_environment_variable.items()]}]}
         breakpoint()
         self.ecs_api.start_task(overrides=overrides)
