@@ -28,31 +28,8 @@ class ECSTaskDefinition(AwsObject):
         if from_cache:
             self._init_object_from_cache(dict_src)
             return
-        init_options = {
-            "taskDefinitionArn": lambda x, y: self.init_default_attr(
-                x, y, formatted_name="arn"
-            ),
-            "containerDefinitions": self.init_default_attr,
-            "family": self.init_default_attr,
-            "taskRoleArn": self.init_default_attr,
-            "executionRoleArn": self.init_default_attr,
-            "revision": self.init_default_attr,
-            "volumes": self.init_default_attr,
-            "requiresAttributes": self.init_default_attr,
-            "placementConstraints": self.init_default_attr,
-            "compatibilities": self.init_default_attr,
-            "requiresCompatibilities": self.init_default_attr,
-            "cpu": self.init_default_attr,
-            "memory": self.init_default_attr,
-            "registeredAt": self.init_default_attr,
-            "registeredBy": self.init_default_attr,
-            "status": self.init_default_attr,
-            "networkMode": self.init_default_attr,
-            "runtimePlatform": self.init_default_attr,
-            "enableFaultInjection": self.init_default_attr,
-        }
 
-        self.init_attrs(dict_src, init_options)
+        self.update_from_raw_response(dict_src)
 
     def _init_object_from_cache(self, dict_src):
         """
@@ -93,8 +70,10 @@ class ECSTaskDefinition(AwsObject):
             "registeredBy": self.init_default_attr,
             "status": self.init_default_attr,
             "networkMode": self.init_default_attr,
+            "runtimePlatform": self.init_default_attr,
+            "enableFaultInjection": self.init_default_attr,
         }
-        self.init_attrs(dict_src, init_options)
+        return self.init_attrs(dict_src, init_options)
 
     def generate_create_request(self):
         """

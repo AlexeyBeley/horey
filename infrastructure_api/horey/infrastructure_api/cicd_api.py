@@ -68,7 +68,7 @@ class CICDAPI:
         :return:
         """
 
-        ecs_task_definition = self.ecs_api.provision_ecs_task_definition(self.ecs_api.ecr_repo_uri + ":latest")
+        self.ecs_api.provision_ecs_task_definition(self.ecs_api.ecr_repo_uri + ":latest")
         self.cloudwatch_api.provision()
 
     def update(self):
@@ -76,7 +76,6 @@ class CICDAPI:
 
         :return:
         """
-        breakpoint()
         perf_counter_start = time.perf_counter()
         overrides = {"containerOverrides": [{"name": self.ecs_api.configuration.container_name,
                                              "environment": [{"name": key, "value": value} for key, value in
