@@ -55,6 +55,7 @@ class ECSTask(AwsObject):
             "stoppedAt": self.init_default_attr,
             "stopCode": self.init_default_attr,
             "executionStoppedAt": self.init_default_attr,
+            "fargateEphemeralStorage": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -74,7 +75,6 @@ class ECSTask(AwsObject):
 
         """
 
-        # mapping = {key: value for key, value in self.State.__members__.items()}
         mapping = dict(self.State.__members__)
         return mapping[self.last_status]
 
