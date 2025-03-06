@@ -159,7 +159,6 @@ class AWSLambdaAPI:
                 self._cloudwatch_api.configuration.log_group_name
             except self._cloudwatch_api.configuration.UndefinedValueError:
                 self._cloudwatch_api.configuration.log_group_name = self.configuration.lambda_log_group
-            self.ecs_api.set_api(cloudwatch_api=self._cloudwatch_api)
 
         if ecs_api:
             self.ecs_api = ecs_api

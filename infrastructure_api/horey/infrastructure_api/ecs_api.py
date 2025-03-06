@@ -45,7 +45,7 @@ class ECSAPI:
         self._aws_iam_api = None
         self.loadbalancer_api = None
         self.dns_api = None
-        self.loadbalancer_dns_api_pairs =None
+        self.loadbalancer_dns_api_pairs = None
 
     @property
     def ecr_repository(self):
@@ -99,12 +99,14 @@ class ECSAPI:
 
             container_port = self.configuration.container_definition_port_mappings[0]["containerPort"]
             for lb_api, _ in loadbalancer_dns_api_pairs:
-                if lb_api.configuration.target_group_port != self.configuration.container_definition_port_mappings[0]["containerPort"]:
+                if lb_api.configuration.target_group_port != self.configuration.container_definition_port_mappings[0][
+                    "containerPort"]:
                     raise NotImplementedError(f"loadbalancer_api for LB: '{lb_api.configuration.load_balancer_name}'"
-                                                  f" configuration has no {container_port} port set for 'target_group_port'")
+                                              f" configuration has no {container_port} port set for 'target_group_port'")
 
             if loadbalancer_api or dns_api:
-                raise NotImplementedError("You can not both declare loadbalancer_dns_apis_pairs and either lb_api or dns_api")
+                raise NotImplementedError(
+                    "You can not both declare loadbalancer_dns_apis_pairs and either lb_api or dns_api")
 
             for loadbalancer_api, _ in loadbalancer_dns_api_pairs:
                 assert loadbalancer_api.configuration.load_balancer_name
@@ -129,7 +131,8 @@ class ECSAPI:
             if len(self.configuration.container_definition_port_mappings) != 1:
                 raise NotImplementedError("Need to implement dynamic test that loadbalancer_api configuration has the"
                                           " port set explicitly")
-            self.loadbalancer_api.configuration.target_group_port = self.configuration.container_definition_port_mappings[0]["containerPort"]
+            self.loadbalancer_api.configuration.target_group_port = \
+            self.configuration.container_definition_port_mappings[0]["containerPort"]
             if self.dns_api:
                 raise NotImplementedError("todo: Validate the DNS addresses in DNS are the same as in load balancer.")
 
@@ -138,7 +141,7 @@ class ECSAPI:
             if self.loadbalancer_api:
                 try:
                     self.loadbalancer_api.configuration.rule_conditions
-                except self.cloudwatch_api.configuration.UndefinedValueError:
+                except self.loadbalancer_api.configuration.UndefinedValueError:
                     self.loadbalancer_api.configuration.rule_conditions = [
                         {
                             "Field": "host-header",
@@ -148,9 +151,10 @@ class ECSAPI:
                         }
                     ]
                 if self.dns_api.configuration.dns_address not in self.loadbalancer_api.configuration.certificates_domain_names and \
-                    "*."+self.dns_api.configuration.dns_address.split(".", maxsplit=1)[1] not in \
+                        "*." + self.dns_api.configuration.dns_address.split(".", maxsplit=1)[1] not in \
                         self.loadbalancer_api.configuration.certificates_domain_names:
-                    raise NotImplementedError(f"Check why service DNS {self.dns_api.configuration.dns_address} is not among load balancer DNS addresses: {self.loadbalancer_api.configuration.certificates_domain_names:}")
+                    raise NotImplementedError(
+                        f"Check why service DNS {self.dns_api.configuration.dns_address} is not among load balancer DNS addresses: {self.loadbalancer_api.configuration.certificates_domain_names:}")
 
         if cloudwatch_api:
             if not cloudwatch_api.configuration.log_group_name:
@@ -173,7 +177,8 @@ class ECSAPI:
             if self.dns_api or self.loadbalancer_dns_api_pairs or self.loadbalancer_api:
                 raise ValueError("Cron can not have DNS or LoadBalancer")
 
-        if (self.configuration.provision_service or self.configuration.provision_cron) and self.configuration.cluster_name is None:
+        if (
+                self.configuration.provision_service or self.configuration.provision_cron or self.configuration.provision_adhoc_task) and self.configuration.cluster_name is None:
             raise ValueError("If scheduled expression provided cluster name must be provided")
 
     def provision(self):
@@ -249,7 +254,8 @@ class ECSAPI:
                 ]
             }
         ]
-        return self.environment_api.provision_security_group(self.configuration.lb_facing_security_group_name, ip_permissions)
+        return self.environment_api.provision_security_group(self.configuration.lb_facing_security_group_name,
+                                                             ip_permissions)
 
     def provision_autoscaling(self):
         """
@@ -285,7 +291,7 @@ class ECSAPI:
             "ScheduledScalingSuspended": False
         }
         target.tags = {tag["Key"]: tag["Value"] for tag in self.environment_api.configuration.tags}
-        target.tags["Name"] = f"{target.resource_id}/{target.scalable_dimension}" 
+        target.tags["Name"] = f"{target.resource_id}/{target.scalable_dimension}"
         self.environment_api.aws_api.provision_application_auto_scaling_scalable_target(target)
 
     def provision_application_autoscaling_policies(self):
@@ -302,11 +308,12 @@ class ECSAPI:
                                                       self.configuration.autoscaling_ram_target_value,
                                                       predefind_metric_type="ECSServiceAverageMemoryUtilization")
         self.provision_application_autoscaling_policy(self.configuration.autoscaling_cpu_policy_name,
-                                                         self.configuration.autoscaling_cpu_target_value,
+                                                      self.configuration.autoscaling_cpu_target_value,
                                                       predefind_metric_type="ECSServiceAverageCPUUtilization"
-                                                          )
+                                                      )
 
-    def provision_application_autoscaling_policy(self, policy_name, target_value, predefind_metric_type=None, customized_metric_specificationis=None):
+    def provision_application_autoscaling_policy(self, policy_name, target_value, predefind_metric_type=None,
+                                                 customized_metric_specificationis=None):
         """
         Scales ecs-service's count based ram monitoring
 
@@ -333,8 +340,8 @@ class ECSAPI:
                 "PredefinedMetricType": predefind_metric_type
             }
         elif customized_metric_specificationis is not None:
-             policy.target_tracking_scaling_policy_configuration["CustomizedMetricSpecification"] = \
-                 customized_metric_specificationis
+            policy.target_tracking_scaling_policy_configuration["CustomizedMetricSpecification"] = \
+                customized_metric_specificationis
 
         self.environment_api.aws_api.provision_application_auto_scaling_policy(policy)
 
@@ -442,7 +449,8 @@ class ECSAPI:
         """
         security_groups = self.environment_api.get_security_groups(self.configuration.security_groups)
         if self.loadbalancer_api:
-            security_groups += self.environment_api.get_security_groups([self.configuration.lb_facing_security_group_name])
+            security_groups += self.environment_api.get_security_groups(
+                [self.configuration.lb_facing_security_group_name])
             target_groups = [self.loadbalancer_api.get_targetgroup()]
         elif self.loadbalancer_dns_api_pairs:
             target_groups = [loadbalancer_api.get_targetgroup() for loadbalancer_api in self.loadbalancer_dns_api_pairs]
@@ -458,9 +466,9 @@ class ECSAPI:
 
         if self.configuration.service_registry_arn:
             service_registry_dicts = [{
-            "registryArn": self.configuration.service_registry_arn,
-            "containerName": self.configuration.container_name,
-            "containerPort": self.configuration.container_definition_port_mappings[0]["containerPort"]
+                "registryArn": self.configuration.service_registry_arn,
+                "containerName": self.configuration.container_name,
+                "containerPort": self.configuration.container_definition_port_mappings[0]["containerPort"]
             }]
         else:
             service_registry_dicts = None
@@ -541,8 +549,9 @@ class ECSAPI:
         if image_tag := self.build_ecr_image_from_source_code(repo_uri, build_number, nocache):
             self._ecr_images = None
             max_build_ecr_image = self.fetch_latest_artifact_metadata()
-            if image_tag[len(repo_uri+"1"):] not in max_build_ecr_image.image_tags:
-                raise RuntimeError(f"Uploaded image {image_tag} is not viewable locally. Max version locally: {max_build_ecr_image.image_tags}")
+            if image_tag[len(repo_uri + "1"):] not in max_build_ecr_image.image_tags:
+                raise RuntimeError(
+                    f"Uploaded image {image_tag} is not viewable locally. Max version locally: {max_build_ecr_image.image_tags}")
             return image_tag
 
         if ecr_image is None:
@@ -567,16 +576,17 @@ class ECSAPI:
             return None
         if not self.environment_api.git_api.checkout_remote_branch():
             raise RuntimeError(
-                    f"Was not able to checkout branch: {self.environment_api.git_api.configuration.branch_name}")
+                f"Was not able to checkout branch: {self.environment_api.git_api.configuration.branch_name}")
 
         commit_id = self.environment_api.git_api.get_commit_id()
 
         tags = [f"{repo_uri}:build_{build_number + 1}-commit_{commit_id}"]
 
         build_dir_path = str(self.prepare_container_build_directory(
-                self.environment_api.git_api.configuration.directory_path, commit_id, build_number))
+            self.environment_api.git_api.configuration.directory_path, commit_id, build_number))
 
-        image = self.environment_api.build_and_upload_ecr_image(build_dir_path, tags, nocache, buildargs=self.configuration.buildargs)
+        image = self.environment_api.build_and_upload_ecr_image(build_dir_path, tags, nocache,
+                                                                buildargs=self.configuration.buildargs)
         assert tags[0] in image.tags
         return tags[0]
 
@@ -598,14 +608,15 @@ class ECSAPI:
         """
 
         for ecr_image in self.ecr_images:
-            build_numbers = [int(build_subtag.split("_")[1]) for str_image_tag in ecr_image.image_tags for build_subtag in
+            build_numbers = [int(build_subtag.split("_")[1]) for str_image_tag in ecr_image.image_tags for build_subtag
+                             in
                              str_image_tag.split("-") if build_subtag.startswith("build_")]
             ecr_image.build_number = max(build_numbers)
         try:
             return max(self.ecr_images, key=lambda _image: _image.build_number)
         except ValueError as inst_error:
             if "iterable argument is empty" not in repr(inst_error) and "arg is an empty sequence" not in repr(
-                              inst_error):
+                    inst_error):
                 raise
         return None
 
@@ -841,3 +852,43 @@ class ECSAPI:
         """
 
         self.environment_api.upload_ecr_image(image_tags)
+
+    def get_task_definition(self):
+        """
+        Geta latest task definition
+
+        :return:
+        """
+        filters_req = {"familyPrefix": self.configuration.family, "status": "ACTIVE", "sort": "DESC"}
+        for task_definition in self.environment_api.aws_api.ecs_client.yield_task_definitions(
+                region=self.environment_api.region, filters_req=filters_req):
+            breakpoint()
+            return task_definition
+        raise RuntimeError(f"Empty Family: {self.configuration.family}")
+
+    def start_task(self, overrides=None):
+        """
+        Start latest TD of the task.
+
+        :return:
+        """
+
+        self.validate_input()
+        # task_definition = self.ecs_api.get_task_definition()
+
+        dict_run_task_request = {
+            "cluster": self.configuration.cluster_name,
+            "taskDefinition": self.configuration.family,
+            "launchType": "FARGATE",
+            "networkConfiguration": {
+                "awsvpcConfiguration": {
+                    "subnets": [subnet.id for subnet in
+                                self.environment_api.private_subnets],
+                    "securityGroups": [sec_group.id for sec_group in self.environment_api.get_security_groups(self.configuration.security_groups)],
+                    "assignPublicIp": "ENABLED",
+                }
+            },
+        }
+        if overrides:
+            dict_run_task_request["overrides"] = overrides
+        return self.environment_api.aws_api.ecs_client.run_task(self.environment_api.region, dict_run_task_request)

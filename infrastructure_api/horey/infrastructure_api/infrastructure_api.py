@@ -195,3 +195,20 @@ class InfrastructureAPI:
             raise ValueError(f"{environment_api} not instance of EnvironmentAPI")
 
         return DBAPI(configuration, environment_api)
+
+    @staticmethod
+    def get_cicd_api(configuration, environment_api):
+        """
+        Get Cloudwatch API
+
+        :param configuration:
+        :param environment_api:
+        :return:
+        """
+
+        from horey.infrastructure_api.cicd_api import CICDAPI
+        from horey.infrastructure_api.environment_api import EnvironmentAPI
+        if not isinstance(environment_api, EnvironmentAPI):
+            raise ValueError(f"{environment_api} not instance of EnvironmentAPI")
+
+        return CICDAPI(configuration, environment_api)

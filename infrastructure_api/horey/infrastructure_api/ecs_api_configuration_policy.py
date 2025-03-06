@@ -59,6 +59,17 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
         self._service_registry_arn = None
         self._schedule_expression = None
         self._cron_name = None
+        self._adhoc_task_name = None
+
+    @property
+    def adhoc_task_name(self):
+        if self._adhoc_task_name is None:
+            raise self.UndefinedValueError("adhoc_task_name")
+        return self._adhoc_task_name
+
+    @adhoc_task_name.setter
+    def adhoc_task_name(self, value):
+        self._adhoc_task_name = value
 
     @property
     def cron_name(self):
@@ -194,6 +205,8 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
                 return f"{self.cluster_name.replace('cluster_', '')}-{self.service_name.replace('service_', '')}"
             elif self.provision_cron:
                 return f"{self.cluster_name.replace('cluster_', '')}-{self.cron_name.replace('crone_', '')}"
+            elif self.provision_adhoc_task:
+                return f"{self.cluster_name.replace('cluster_', '')}-{self.adhoc_task_name.replace('adhoc_task_', '')}"
             else:
                 raise ValueError("Not a service or a cron")
 
@@ -354,6 +367,8 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
                 return f"/ecs/{self.cluster_name}/{self.service_name}"
             elif self.provision_cron:
                 return f"/ecs/{self.cluster_name}/{self.cron_name}"
+            elif self.provision_adhoc_task:
+                return f"/ecs/{self.cluster_name}/{self.adhoc_task_name}"
             else:
                 raise ValueError("Not a service or cron")
 
@@ -497,6 +512,16 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
             return self.cron_name is not None
         except self.UndefinedValueError as error_inst:
             if "cron_name" not in repr(error_inst):
+                raise
+
+        return False
+
+    @property
+    def provision_adhoc_task(self):
+        try:
+            return self.adhoc_task_name is not None
+        except self.UndefinedValueError as error_inst:
+            if "adhoc_task_name" not in repr(error_inst):
                 raise
 
         return False

@@ -592,10 +592,7 @@ class SystemFunctionCommon:
 
         logger.info(f"Installing apt packages: {package_names}")
 
-        if self.upgrade:
-            command = f"sudo NEEDRESTART_MODE={needrestart_mode} apt --upgrade install -y {' '.join(package_names)}"
-        else:
-            command = f"sudo NEEDRESTART_MODE={needrestart_mode} apt install -y {' '.join(package_names)}"
+        command = f"sudo NEEDRESTART_MODE={needrestart_mode} apt{' --upgrade ' if self.upgrade else ' '}install -y {' '.join(package_names)}"
 
         def raise_on_error_callback(response):
             return (
