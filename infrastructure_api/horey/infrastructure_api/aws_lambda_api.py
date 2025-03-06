@@ -162,9 +162,7 @@ class AWSLambdaAPI:
 
         if ecs_api:
             self.ecs_api = ecs_api
-            try:
-                self.ecs_api.configuration.ecr_repository_name
-            except self.ecs_api.configuration.UndefinedValueError:
+            if self.ecs_api.configuration._ecr_repository_name is None:
                 self.ecs_api.configuration.ecr_repository_name = f"repo_{self.configuration.lambda_name}"
 
             try:
