@@ -79,4 +79,4 @@ class CICDAPI:
                                              "environment": [{"name": key, "value": value} for key, value in
                                                              self.configuration.build_environment_variable.items()]}]}
         breakpoint()
-        self.ecs_api.start_task(overrides=overrides)
+        ret = self.ecs_api.start_task(overrides=overrides)
