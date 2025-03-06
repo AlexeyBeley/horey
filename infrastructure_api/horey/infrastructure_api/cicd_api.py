@@ -2,6 +2,8 @@
 Standard Load balancing maintainer.
 
 """
+import time
+
 from horey.infrastructure_api.cloudwatch_api_configuration_policy import CloudwatchAPIConfigurationPolicy
 from horey.infrastructure_api.cloudwatch_api import CloudwatchAPI
 
@@ -74,9 +76,13 @@ class CICDAPI:
 
         :return:
         """
-
-        overrides = {"containerOverrides": [{"name": "mgmt-tools-development-hagent",
+        breakpoint()
+        perf_counter_start = time.perf_counter()
+        overrides = {"containerOverrides": [{"name": self.ecs_api.configuration.container_name,
                                              "environment": [{"name": key, "value": value} for key, value in
                                                              self.configuration.build_environment_variable.items()]}]}
-        breakpoint()
-        ret = self.ecs_api.start_task(overrides=overrides)
+
+        task = self.ecs_api.start_task(overrides=overrides)
+        response = self.ecs_api.wait_for_task_to_finish(task)
+        logger.info(f"Time took from triggering task to its completion: {time.perf_counter()-perf_counter_start}")
+        return response

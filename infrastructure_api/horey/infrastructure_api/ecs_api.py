@@ -13,6 +13,7 @@ from horey.h_logger import get_logger
 
 from horey.aws_api.aws_services_entities.ecr_image import ECRImage
 from horey.aws_api.aws_services_entities.ecr_repository import ECRRepository
+from horey.aws_api.aws_services_entities.ecs_task import ECSTask
 from horey.aws_api.base_entities.region import Region
 from horey.infrastructure_api.alerts_api import AlertsAPI
 from horey.infrastructure_api.alerts_api_configuration_policy import AlertsAPIConfigurationPolicy
@@ -891,4 +892,44 @@ class ECSAPI:
         }
         if overrides:
             dict_run_task_request["overrides"] = overrides
-        return self.environment_api.aws_api.ecs_client.run_task(self.environment_api.region, dict_run_task_request)
+        response = self.environment_api.aws_api.ecs_client.run_task(self.environment_api.region, dict_run_task_request)
+        return ECSTask(response)
+
+    def wait_for_task_to_finish(self, task):
+        """
+        Wait for the task to start and finish.
+
+        :param task:
+        :return:
+        """
+        #if not self.environment_api.aws_api.ecs_client.update_task_information(task):
+        #    breakpoint()
+        #    raise RuntimeError("Task was not found")
+        task.id = self.configuration.adhoc_task_name
+        self.environment_api.aws_api.ecs_client.wait_for_status(
+            task,
+            self.environment_api.aws_api.ecs_client.update_task_information,
+            [task.State.RUNNING],
+            [task.State.PROVISIONING,
+             task.State.PENDING,
+             task.State.ACTIVATING],
+            [
+                task.State.FAILED,
+                task.State.DEACTIVATING, task.State.STOPPING, task.State.DEPROVISIONING, task.State.STOPPED
+            ],
+            timeout=120,
+        )
+
+        logger.info("Task is running")
+
+        self.environment_api.aws_api.ecs_client.wait_for_status(
+            task,
+            self.environment_api.aws_api.ecs_client.update_task_information,
+            [task.State.DEACTIVATING, task.State.STOPPING, task.State.DEPROVISIONING, task.State.STOPPED],
+            [task.State.RUNNING],
+            [
+                task.State.FAILED,
+            ],
+            timeout=60*60,
+        )
+        return True

@@ -438,6 +438,28 @@ class ECSClient(Boto3Client):
 
         raise ValueError(filters_req)
 
+    def update_task_information(self, task:ECSTask):
+        """
+        Standard.
+
+        :param task:
+        :return:
+        """
+
+        final_result = []
+        filters_req = {"cluster": task.cluster_arn, "tasks": [task.arn], "include": ["TAGS"]}
+
+        for dict_src in self.execute(
+                    self.get_session_client(region=task.region).describe_tasks, "tasks", filters_req=filters_req
+            ):
+            final_result.append(ECSTask(dict_src))
+
+        if len(final_result) != 1:
+            return False
+
+        task.update_from_attrs(final_result[0])
+        return True
+
     def yield_tasks(self, region=None, update_info=False, filters_req=None):
         """
         Yield over all tasks.

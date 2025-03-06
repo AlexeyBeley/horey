@@ -148,24 +148,9 @@ class SessionsManager:
             )
         elif connection_step.type == connection_step.Type.ASSUME_ROLE:
             logger.info("Connecting session using assumed role")
-            try:
-                session = SessionsManager.start_assuming_role(
+            session = SessionsManager.start_assuming_role(
                     connection_step.role_arn, session, extra_args=extra_args
                 )
-            except Exception as inst:
-                logger.exception(inst)
-                logger.info("Connecting session using assumed role failed")
-                repr_inst = repr(inst)
-                sts_assume = connection_step.role_arn.replace(":iam:", ":sts:").replace(":role/", ":assumed-role/")
-                logger.info(f"{repr_inst=}, {sts_assume=}")
-                if sts_assume not in repr_inst or "is not authorized to perform" not in repr_inst:
-                    raise
-                logger.info("Connecting session using current role because assumed role is already in place. "
-                            "Possible reason: you might be using the role directly on the resource running this code")
-                session = boto3.session.Session(
-                    region_name=region_name
-                )
-
         elif connection_step.type == connection_step.Type.CURRENT_ROLE:
             logger.info("Connecting session using current role")
             session = boto3.session.Session(
