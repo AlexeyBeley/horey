@@ -5,10 +5,11 @@ Standard environment maintainer.
 """
 import json
 import os
-
+from pathlib import Path
 # pylint: disable= no-name-in-module
 from horey.infrastructure_api.environment_api_configuration_policy import EnvironmentAPIConfigurationPolicy
 from horey.aws_api.aws_api import AWSAPI
+from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.aws_api.base_entities.region import Region
 from horey.aws_api.aws_services_entities.vpc import VPC
 from horey.aws_api.aws_services_entities.subnet import Subnet
@@ -65,10 +66,23 @@ class EnvironmentAPI:
 
     def __init__(self, configuration: EnvironmentAPIConfigurationPolicy, aws_api: AWSAPI, git_api=None):
         self.configuration = configuration
+        if AWSAccount.get_aws_account() is None:
+            default_account = AWSAccount()
+            default_account.name = default_account.id ="environment_api_default"
+            default_account.connection_steps = [AWSAccount.ConnectionStep({"role": "current",
+                                                                       "region_mark": self.configuration.region})]
+            AWSAccount.set_aws_account(default_account)
+            AWSAccount.set_aws_default_region(self.region)
+
         self.aws_api = aws_api
         self.git_api = git_api
         self._docker_api = None
-        self.aws_api.sts_client.main_cache_dir_path = os.path.join(self.configuration.data_directory_path, "cache")
+
+        cache_dir = Path(self.configuration.data_directory_path, "cache")
+        if not cache_dir.exists():
+            os.makedirs(cache_dir)
+
+        self.aws_api.sts_client.main_cache_dir_path = str(cache_dir)
         if self.aws_api.configuration:
             self.aws_api.configuration.aws_api_cache_dir = self.aws_api.sts_client.main_cache_dir_path
         self.aws_api.init_configuration()
@@ -2276,8 +2290,11 @@ class EnvironmentAPI:
         config.cache_dir = os.path.join(self.configuration.data_directory_path, "cache")
         config.reports_dir = os.path.join(self.configuration.data_directory_path, "reports")
         aws_cleaner = AWSCleaner(config, aws_api=self.aws_api)
-        aws_cleaner.cleanup_report_elasticache()
 
+        # todo: aws_cleaner.cleanup_report_elasticache()
+        self.perform_cleanup(aws_cleaner)
+        breakpoint()
+        aws_cleaner.cleanup_report_ecr_images()
         aws_cleaner.cleanup_report_lambdas()
         aws_cleaner.cleanup_report_sns()
         aws_cleaner.cleanup_report_ec2_pricing([self.region])
@@ -2289,12 +2306,74 @@ class EnvironmentAPI:
         aws_cleaner.cleanup_report_rds()
         aws_cleaner.cleanup_report_dynamodb()
         aws_cleaner.cleanup_report_ec2_instances()
-        aws_cleaner.cleanup_report_ecr_images()
         aws_cleaner.cleanup_report_network_interfaces()
         aws_cleaner.cleanup_report_acm_certificate()
         aws_cleaner.cleanup_report_route_53_service()
         aws_cleaner.cleanup_report_ebs_volumes()
         return aws_cleaner.cleanup_report_cloudwatch()
+
+    def perform_cleanup(self, aws_cleaner):
+        """
+        Do the cleanup.
+
+        :param aws_cleaner:
+        :return:
+        """
+
+        report = aws_cleaner.cleanup_report_cloudwatch()
+        for sub_report in report.sub_reports:
+            if sub_report.service == "logs":
+                self.perform_logs_cleanup(sub_report)
+            else:
+                raise NotImplementedError(sub_report.service)
+
+    def perform_logs_cleanup(self, report):
+        """
+        Log groups removal.
+
+        :param report:
+        :return:
+        """
+
+        delete_log_groups = []
+        for action in report.actions:
+            log_group = CloudWatchLogGroup({})
+            log_group.region = Region.get_region(action.path["region"])
+            log_group.name = action.path["name"]
+            if action.idle:
+                logger.info(f"Deleting log group: {action.path}, {action.reason}")
+                delete_log_groups.append(log_group)
+                continue
+
+            if action.no_retention:
+                log_group.retention_in_days = 30
+
+            if action.size:
+                log_group.retention_in_days = 7
+
+            if action.redundant_metric_filters:
+                for key, values in action.redundant_metric_filters.items():
+                    has2_values = list(filter(lambda x: "has2" in x, values))
+                    if len(has2_values) > 1:
+                        breakpoint()
+                    elif len(has2_values) == 1:
+                        self.dispose_cloudwatch_metric_filters(log_group, list(filter(lambda x: "has2" not in x, values)))
+                    else:
+                        breakpoint()
+                        logger.info(f"Choose manually: {values}")
+
+        breakpoint()
+        for log_group in delete_log_groups:
+            self.aws_api.cloud_watch_logs_client.dispose_log_group(log_group)
+        logger.info(f"Deleted {len(delete_log_groups)} old log groups")
+
+    def dispose_cloudwatch_metric_filters(self, log_group, filter_names):
+        for name in filter_names:
+            metric_filter = CloudWatchLogGroupMetricFilter({})
+            metric_filter.log_group_name = log_group.name
+            metric_filter.name = name
+            metric_filter.region = log_group.region
+            self.aws_api.cloud_watch_logs_client.dispose_metric_filter(metric_filter)
 
     def build_and_upload_ecr_image(self, dir_path, tags, nocache, buildargs=None):
         """

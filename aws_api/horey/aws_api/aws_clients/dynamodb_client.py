@@ -47,16 +47,23 @@ class DynamoDBClient(Boto3Client):
 
         :return:
         """
-
+        self.NEXT_PAGE_RESPONSE_KEY = "LastEvaluatedTableName"
+        self.NEXT_PAGE_REQUEST_KEY = "ExclusiveStartTableName"
         for str_name in self.execute(
                 self.get_session_client(region=region).list_tables, "TableNames",
                 filters_req=filters_req,
                 exception_ignore_callback=lambda error: "RepositoryNotFoundException"
                                                         in repr(error)
         ):
-            yield from self.execute(self.get_session_client(region=region).describe_table, "Table",
+
+            for response in self.execute(self.get_session_client(region=region).describe_table, "Table",
                                     filters_req={"TableName": str_name},
-                                    exception_ignore_callback=lambda x: "ResourceNotFoundException" in repr(x))
+                                    exception_ignore_callback=lambda x: "ResourceNotFoundException" in repr(x)):
+                self.NEXT_PAGE_RESPONSE_KEY = "NextToken"
+                self.NEXT_PAGE_REQUEST_KEY = "NextToken"
+                yield response
+                self.NEXT_PAGE_REQUEST_KEY = "ExclusiveStartTableName"
+                self.NEXT_PAGE_RESPONSE_KEY = "LastEvaluatedTableName"
 
     def get_all_tables(self, region=None, full_information=False):
         """

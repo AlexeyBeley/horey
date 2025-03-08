@@ -20,24 +20,42 @@ class EventsClient(Boto3Client):
         client_name = "events"
         super().__init__(client_name)
 
+    def yield_rules(self, region=None, update_info=False, filters_req=None, get_tags=True, full_information=True):
+        """
+        Yield tables
+
+        :return:
+        """
+
+        regional_fetcher_generator = self.yield_rules_raw
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                            EventBridgeRule,
+                                                            update_info=update_info,
+                                                            get_tags_callback=self.update_rule_tags if get_tags else None,
+                                                            full_information_callback=self.update_rule_targets if full_information else None,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req)
+
+    def yield_rules_raw(self, region, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        yield from self.execute(
+            self.get_session_client(region=region).list_rules, "Rules", filters_req=filters_req
+        )
+
     def get_all_rules(self, region=None, full_information=True):
         """
         Get all rules in all regions.
         :return:
         """
 
-        if region is not None:
-            return self.get_region_rules(region, full_information=full_information)
+        return list(self.yield_rules(region=region, full_information=full_information))
 
-        final_result = []
-        for _region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_rules(
-                _region, full_information=full_information
-            )
-
-        return final_result
-
-    def get_region_rules(self, region, full_information=True, custom_filter=None):
+    def get_region_rules(self, region, full_information=True, filters_req=None):
         """
         Standard
 
@@ -47,17 +65,7 @@ class EventsClient(Boto3Client):
         :return:
         """
 
-        final_result = []
-        for dict_src in self.execute(
-                self.get_session_client(region=region).list_rules, "Rules", filters_req=custom_filter
-        ):
-            obj = EventBridgeRule(dict_src)
-            final_result.append(obj)
-            if full_information:
-                self.update_rule_targets(obj)
-                self.update_rule_tags(obj)
-
-        return final_result
+        return list(self.yield_rules(region=region, full_information=full_information, filters_req=filters_req))
 
     def update_rule_targets(self, rule):
         """

@@ -603,9 +603,7 @@ class AWSAPI:
         @return:
         """
 
-        objects = self.ecs_client.get_all_capacity_providers(region=region)
-
-        self.ecs_capacity_providers = objects
+        self.ecs_capacity_providers = self.ecs_client.get_all_capacity_providers(region=region)
 
     def init_ecs_services(self, region=None):
         """
@@ -1207,7 +1205,6 @@ class AWSAPI:
         @param full_information:
         @return:
         """
-
         objects = self.events_client.get_all_rules(
                 full_information=full_information
             )

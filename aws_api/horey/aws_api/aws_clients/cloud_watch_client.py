@@ -109,6 +109,7 @@ class CloudWatchClient(Boto3Client):
         ):
             if response["HTTPStatusCode"] != 200:
                 raise RuntimeError(f"{response}")
+            self.clear_cache(CloudWatchAlarm)
 
         alarms_by_name = list(self.regional_fetcher_generator_alarms(alarm.region, filters_req={"AlarmNames": [alarm.name]}))
         if len(alarms_by_name) != 1:
@@ -193,6 +194,7 @@ class CloudWatchClient(Boto3Client):
                 filters_req=request_dict,
                 instant_raise=True
         ):
+            self.clear_cache(CloudWatchAlarm)
             return response
 
     def set_alarm_ok(self, alarm):
@@ -252,4 +254,5 @@ class CloudWatchClient(Boto3Client):
             ):
                 pass
             alarms_offset += 100
+        self.clear_cache(CloudWatchAlarm)
         return True

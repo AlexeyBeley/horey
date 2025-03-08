@@ -79,20 +79,39 @@ class ECSClient(Boto3Client):
 
         return list(self.yield_clusters(region=region))
 
+    def yield_capacity_providers(self, region=None, update_info=False, filters_req=None):
+        """
+        Yield tables
+
+        :return:
+        """
+
+        regional_fetcher_generator = self.yield_capacity_providers_raw
+
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                            ECSCapacityProvider,
+                                                            update_info=update_info,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req)
+
+    def yield_capacity_providers_raw(self, region, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        yield from self.execute(
+            self.get_session_client(region=region).describe_capacity_providers, "capacityProviders", filters_req=filters_req
+        )
+
     def get_all_capacity_providers(self, region=None):
         """
         Get all capacity_providers in all regions.
         :return:
         """
 
-        if region is not None:
-            return self.get_region_capacity_providers(region)
-
-        final_result = []
-        for _region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_capacity_providers(_region)
-
-        return final_result
+        return list(self.yield_capacity_providers(region=region))
 
     def get_region_capacity_providers(self, region):
         """
@@ -102,14 +121,7 @@ class ECSClient(Boto3Client):
         :return:
         """
 
-        final_result = []
-        for dict_src in self.execute(
-                self.get_session_client(region=region).describe_capacity_providers, "capacityProviders"
-        ):
-            obj = ECSCapacityProvider(dict_src)
-            final_result.append(obj)
-
-        return final_result
+        return list(self.yield_capacity_providers(region=region))
 
     def yield_clusters(self, region=None, update_info=False, filters_req=None):
         """

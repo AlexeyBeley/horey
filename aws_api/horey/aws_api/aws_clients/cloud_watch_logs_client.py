@@ -126,17 +126,22 @@ class CloudWatchLogsClient(Boto3Client):
 
         return list(self.yield_log_group_metric_filters(region=region))
 
-    def yield_log_group_streams(self, log_group):
+    def yield_log_group_streams(self, log_group, filters_req=None):
         """
         Yields streams - made to handle large log groups, in order to prevent the OOM collapse.
+        :param filters_req:
         :param log_group:
         :return:
         """
 
+        if filters_req is None:
+            filters_req = {}
+        filters_req["logGroupName"] = log_group.name
+
         for response in self.execute(
                 self.get_session_client(region=log_group.region).describe_log_streams,
                 "logStreams",
-                filters_req={"logGroupName": log_group.name},
+                filters_req=filters_req,
         ):
             yield CloudWatchLogStream(response)
 

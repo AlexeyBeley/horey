@@ -7,6 +7,8 @@ import json
 import datetime
 # pylint: disable=no-name-in-module, too-many-lines
 from collections import defaultdict
+from enum import Enum
+
 import requests
 from time import perf_counter
 
@@ -22,6 +24,178 @@ from horey.network.service import ServiceTCP, Service
 from horey.network.ip import IP
 
 logger = get_logger()
+
+
+class Report:
+    def __init__(self, aws_service):
+        self.service = aws_service
+        self.actions = []
+        self.sub_reports = []
+
+    def __add__(self, action_or_subreport):
+        if isinstance(action_or_subreport, ReportAction):
+            new_item = action_or_subreport.__class__(action_or_subreport.path)
+            if new_item != action_or_subreport:
+                self.actions.append(action_or_subreport)
+        elif isinstance(action_or_subreport, Report):
+            self.sub_reports.append(action_or_subreport)
+        elif isinstance(action_or_subreport, list):
+            for _action_or_subreport in action_or_subreport:
+                self.__add__(_action_or_subreport)
+        elif action_or_subreport is None:
+            pass
+        else:
+            raise ValueError(f"Unsupported type: {type(action_or_subreport)}")
+        return self
+
+    def generate_text_block(self):
+        """
+        Generate readable format
+        :return:
+        """
+
+        h_tb_ret = TextBlock(f"Report for service: {self.service}")
+        h_tb_ret.lines = [line for action in self.actions for line in action.generate_lines()]
+        h_tb_ret.blocks = [sub_report.generate_text_block() for sub_report in self.sub_reports]
+        return h_tb_ret
+
+    def write_to_file(self, file_path):
+        """
+        Write output in a readable format
+
+        :return:
+        """
+
+        text_block = self.generate_text_block()
+        text_block.write_to_file(file_path)
+        logger.info(f"Output in: {file_path}")
+
+
+class ReportAction:
+    def __init__(self, path, reason=None):
+        self.path = path
+        self.reason = reason
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
+    def generate_lines(self):
+        """
+        Standard.
+
+        :return:
+        """
+        raise NotImplementedError()
+
+
+class ReportActionCloudwatchAlarm(ReportAction):
+    def __init__(self, path, reason=None):
+        super().__init__(path, reason=reason)
+        self.dimension_balckholes = []
+        self.action_blackholes = []
+
+    def generate_lines(self):
+        """
+        Standard.
+
+        :return:
+        """
+        lst_ret = []
+        base_str_ret = f"Alarm: '{self.path['arn']}'."
+
+        if self.dimension_balckholes:
+            lst_ret.append("Important: " + base_str_ret + "Metric with these dimensions does not exist")
+
+        for action_arn in self.action_blackholes:
+            lst_ret.append("Important: " + base_str_ret + f"Action destination does not exist: {action_arn}.")
+
+        return lst_ret
+
+
+class ReportActionCloudwatchLogGroupMetric(ReportAction):
+    def __init__(self, path, reason=None):
+        super().__init__(path, reason=reason)
+        self.disabled_actions_alarms = []
+        self.no_alarms = False
+
+    def generate_lines(self):
+        """
+        Standard.
+
+        :return:
+        """
+
+        base_str_ret = f"Region: {self.path['region']}. LogGroup Filter Metric: '{self.path['name']}.'"
+
+        if self.disabled_actions_alarms:
+            if self.no_alarms:
+                return ["Important: " + base_str_ret + "All Alarms are disabled!"]
+
+            return ["Important: " + base_str_ret + f"Disabled Alarms: {self.disabled_actions_alarms}"]
+
+        if self.no_alarms:
+            return["Important: " + base_str_ret + " No alarms set"]
+
+        return []
+
+
+class ReportActionCloudwatchLogGroup(ReportAction):
+    def __init__(self, path, reason=None):
+        super().__init__(path, reason=reason)
+        self.no_retention = False
+        self.no_metric_filter = False
+        self._redundant_metric_filters = None
+        self.size = None
+        self.idle = False
+
+    @property
+    def redundant_metric_filters(self):
+        """
+        Standard.
+
+        :return:
+        """
+        return self._redundant_metric_filters
+
+    @redundant_metric_filters.setter
+    def redundant_metric_filters(self, value):
+        """
+        Standard.
+
+        :return:
+        """
+        if not value:
+            return
+        self._redundant_metric_filters = value
+
+    def generate_lines(self):
+        """
+        Standard.
+
+        :return:
+        """
+
+        lst_ret = []
+        base_str_ret = f"Region: {self.path['region']}. LogGroup: '{self.path['name']}.'"
+
+        if self.no_retention:
+            lst_ret.append("Important: " + base_str_ret + " No retention")
+
+        if self.no_metric_filter:
+            lst_ret.append("Suggestion: " + base_str_ret + " No metric filter configured.")
+
+        if self.redundant_metric_filters:
+            for key, value in self.redundant_metric_filters.items():
+                lst_ret.append("Important: " + base_str_ret + f" Filter by: {key}. Delete one of {value}")
+
+        if self.size:
+            lst_ret.append("Suggestion: " + base_str_ret + f" {self.size['order']}-th largest in size: {CommonUtils.bytes_to_str(self.size['stored_bytes'])}")
+
+        if self.idle:
+            lst_ret.append(
+                "Important: " + base_str_ret + f" Is idle > month.")
+
+        return lst_ret
 
 
 class AWSCleaner:
@@ -53,6 +227,12 @@ class AWSCleaner:
         """
 
         tb_ret = TextBlock("In the plans")
+
+        tb_ret_tmp = TextBlock("Event Bridge - event rules")
+        tb_ret_tmp.lines.append("Check event bridge rule has valid destination")
+        tb_ret_tmp.lines.append("Check the destination has resource policy permitting event bridge to trigger it")
+        tb_ret.blocks.append(tb_ret_tmp)
+
 
         tb_ret_tmp = TextBlock("Cloudwatch")
         tb_ret_tmp.lines.append("Cloudwatch alarms can have issues. They can fault to be triggered.")
@@ -254,6 +434,23 @@ class AWSCleaner:
             "Sid": "cloudwatchMetrics",
             "Effect": "Allow",
             "Action": "cloudwatch:ListMetrics",
+            "Resource": "*"
+        }
+        ]
+
+    def init_event_bridge_rules(self, permissions_only=False):
+        """
+        Init SNS topics
+
+        :return:
+        """
+        if not permissions_only and (not self.aws_api.event_bridge_rules):
+            self.aws_api.init_event_bridge_rules()
+
+        return [{
+            "Sid": "ListEventBridgeRules",
+            "Effect": "Allow",
+            "Action": "events:ListRules",
             "Resource": "*"
         }
         ]
@@ -1313,6 +1510,7 @@ class AWSCleaner:
             runtime_to_deprecation_date = {"nodejs18.x": None,
                                            "nodejs16.x": datetime.datetime(2024, 3, 11, 0, 0),
                                            "nodejs14.x": datetime.datetime(2023, 11, 27, 0, 0),
+                                           "python3.12": None,
                                            "python3.11": None,
                                            "python3.10": None,
                                            "python3.9": None,
@@ -1447,7 +1645,7 @@ class AWSCleaner:
 
             if CommonUtils.timestamp_to_datetime(
                     log_group.creation_time / 1000
-            ) > datetime.datetime.now() - datetime.timedelta(days=31):
+            ) > datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(days=31):
                 continue
 
             if os.path.exists(self.configuration.cloudwatch_log_groups_streams_cache_dir):
@@ -1490,13 +1688,13 @@ class AWSCleaner:
             last_stream = json.load(file_handler)[-1]
         if CommonUtils.timestamp_to_datetime(
                 last_stream["lastIngestionTime"] / 1000
-        ) < datetime.datetime.now() - datetime.timedelta(days=365):
+        ) < datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(days=365):
             lines.append(
                 f"Cloudwatch log group '{log_group.name}' last event was more then year ago: {CommonUtils.timestamp_to_datetime(last_stream['lastIngestionTime'] / 1000)}"
             )
         elif CommonUtils.timestamp_to_datetime(
                 last_stream["lastIngestionTime"] / 1000
-        ) < datetime.datetime.now() - datetime.timedelta(days=62):
+        ) < datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(days=62):
             lines.append(
                 f"Cloudwatch log group '{log_group.name}' last event was more then 2 months ago: {CommonUtils.timestamp_to_datetime(last_stream['lastIngestionTime'] / 1000)}"
             )
@@ -1613,7 +1811,7 @@ class AWSCleaner:
             last_image = sorted(images, key=lambda _image: _image.image_pushed_at)[-1]
             if last_image.image_pushed_at < half_year_date:
                 tb_ret.lines.append(
-                    f"Repository '{repo_name}' last image pushed at: {last_image.image_pushed_at.strftime('%Y-%m-%d %H:%M')} ")
+                        f"Repository '{repo_name}' last image pushed at: {last_image.image_pushed_at.strftime('%Y-%m-%d %H:%M')} ")
 
         with open(self.configuration.ecr_report_file_path, "w+", encoding="utf-8") as file_handler:
             file_handler.write(tb_ret.format_pprint())
@@ -1634,7 +1832,11 @@ class AWSCleaner:
             return permissions
 
         tb_ret = TextBlock("EC2 half a year and older AMIs.")
+
+        # amis don't have TZ
+        # half_year_date = datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(days=6 * 30)
         half_year_date = datetime.datetime.now() - datetime.timedelta(days=6 * 30)
+
         for inst in self.aws_api.ec2_instances:
             name = inst.name or inst.id
             amis = CommonUtils.find_objects_by_values(self.aws_api.amis, {"id": inst.image_id}, max_count=1)
@@ -2011,54 +2213,86 @@ class AWSCleaner:
         if permissions_only:
             return permissions
 
-        tb_ret = TextBlock("Cloudwatch cleanup.")
-        no_retention = []
-        no_metrics = []
+        global_report = Report("Global")
+
+        report = Report(self.aws_api.cloud_watch_logs_client.client_name)
         all_metric_filters = []
         for group in self.aws_api.cloud_watch_log_groups:
+            action = ReportActionCloudwatchLogGroup({"region": group.region.region_mark, "name":group.name})
             if group.retention_in_days is None:
-                no_retention.append(f"{group.name}: No retention")
+                action.no_retention = True
 
             metric_filters = CommonUtils.find_objects_by_values(self.aws_api.cloud_watch_log_groups_metric_filters,
                                                                 {"log_group_name": group.name})
             all_metric_filters += metric_filters
             if not metric_filters:
-                no_metrics.append(f"{group.name}: No metric filters")
+                action.no_metric_filter = True
 
             # metrics
-            tb_ret_tmp = self.sub_cleanup_report_cloudwatch_logs_metrics(metric_filters)
-            tb_ret_tmp.header = f"Group: {group.name}. {tb_ret_tmp.header}"
             metric_filters_patterns = defaultdict(list)
             for metric_filter in metric_filters:
                 if metric_filter.filter_pattern:
                     metric_filters_patterns[metric_filter.filter_pattern].append(metric_filter)
-            tb_ret_tmp.lines = [
-                                   f"Same filter pattern '{filter_pattern}' appears in multiple metric filters: {[metric.name for metric in _metric_filters]}"
-                                   for filter_pattern, _metric_filters in metric_filters_patterns.items() if
-                                   len(_metric_filters) > 1] + tb_ret_tmp.lines
 
-            if tb_ret_tmp.lines or tb_ret_tmp.blocks:
-                tb_ret.blocks.append(tb_ret_tmp)
+            action.redundant_metric_filters = {filter_pattern: [_metric_filter.name for _metric_filter in _metric_filters] for filter_pattern, _metric_filters in metric_filters_patterns.items() if
+                                   len(_metric_filters) > 1}
 
-        tb_ret.lines = no_retention + no_metrics
-        largest_log_groups = [f"Group {group.name} size: {CommonUtils.bytes_to_str(group.stored_bytes)}" for group in
-                              sorted(self.aws_api.cloud_watch_log_groups, key=lambda _group: _group.stored_bytes,
-                                     reverse=True)[:20]]
-        if largest_log_groups:
-            tb_ret.lines += ["Largest 20 Log groups"] + largest_log_groups
+            last_ingestion_time = self.check_log_group_last_ingestion_exceeded_month(group)
+            if last_ingestion_time:
+                action.idle = True
+                action.reason = f"Last ingestion was {last_ingestion_time.days} days ago"
+
+            report += action
+
+        for i, group in enumerate(sorted(self.aws_api.cloud_watch_log_groups, key=lambda _group: _group.stored_bytes,
+                                     reverse=True)[:20]):
+            action = ReportActionCloudwatchLogGroup({"region": group.region.region_mark, "name":group.name})
+            action.size = {"order": i, "stored_bytes": group.stored_bytes}
+            report += action
 
         if len(all_metric_filters) != len(self.aws_api.cloud_watch_log_groups_metric_filters):
-            tb_ret.lines.append(
-                f"Something went wrong Checked metric filters count {len(all_metric_filters)} != fetched via AWS API {len(self.aws_api.cloud_watch_log_groups_metric_filters)}")
+            global_report += self.generate_cleaner_error_report(f"Something went wrong Checked metric filters count "
+                                                         f"{len(all_metric_filters)} != fetched via AWS API "
+                                                         f"{len(self.aws_api.cloud_watch_log_groups_metric_filters)}")
 
-        tb_ret_tmp = self.sub_cleanup_report_cloudwatch_alarms(permissions_only=permissions_only)
-        tb_ret.blocks.append(tb_ret_tmp)
-        with open(self.configuration.cloud_watch_report_file_path, "w+",
-                  encoding="utf-8") as file_handler:
-            file_handler.write(tb_ret.format_pprint())
+        global_report += report
+        global_report += self.cleanup_report_cloudwatch_logs_metrics(all_metric_filters)
+        global_report += self.sub_cleanup_report_cloudwatch_alarms(permissions_only=permissions_only)
+        global_report.write_to_file(self.configuration.cloud_watch_report_file_path)
 
-        logger.info(f"Output in: {self.configuration.cloud_watch_report_file_path}")
-        return tb_ret
+        return global_report
+
+    def check_log_group_last_ingestion_exceeded_month(self, log_group):
+        """
+        Check if it is idle.
+
+        :param log_group:
+        :return:
+        """
+
+        now = datetime.datetime.now(tz=datetime.timezone.utc)
+        limit = now - datetime.timedelta(days=31)
+        if CommonUtils.timestamp_to_datetime(log_group.creation_time/1000) > limit:
+            return False
+
+        filters_req = {"orderBy":"LastEventTime", "descending":True}
+        for response in self.aws_api.cloud_watch_logs_client.yield_log_group_streams(log_group, filters_req=filters_req):
+            break
+        else:
+            return now - CommonUtils.timestamp_to_datetime(log_group.creation_time/1000)
+
+        last_ingestion_time = CommonUtils.timestamp_to_datetime(
+            response.last_ingestion_time / 1000
+        )
+
+        if last_ingestion_time > limit:
+            return False
+
+        return now - last_ingestion_time
+
+    def generate_cleaner_error_report(self, str_error):
+        breakpoint()
+        return
 
     def sub_cleanup_report_cloudwatch_alarms(self, permissions_only=False):
         """
@@ -2079,19 +2313,17 @@ class AWSCleaner:
         permissions += self.init_dynamodb_tables(permissions_only=permissions_only)
         permissions += self.init_sqs_queues(permissions_only=permissions_only)
         permissions += self.init_rds(permissions_only=permissions_only)
+        permissions += self.init_event_bridge_rules(permissions_only=permissions_only)
 
         if permissions_only:
             return permissions
-        warnings, errors = [], []
-        htb_ret = TextBlock("Cloudwatch Alarms report")
-        for alarm in self.aws_api.cloud_watch_alarms:
-            warnings_tmp, errors_tmp = self.sub_cleanup_report_cloudwatch_alarm(alarm)
-            warnings += warnings_tmp
-            errors += errors_tmp
 
-        htb_ret.lines += [f"WARNING: {line}" for line in warnings]
-        htb_ret.lines += [f"ERROR: {line}" for line in errors]
-        return htb_ret
+        report = Report(self.aws_api.cloud_watch_client.client_name)
+
+        for alarm in self.aws_api.cloud_watch_alarms:
+            report += self.sub_cleanup_report_cloudwatch_alarm(alarm)
+
+        return report
 
     def sub_cleanup_report_cloudwatch_alarm(self, alarm):
         """
@@ -2101,51 +2333,35 @@ class AWSCleaner:
         :return:
         """
 
-        warnings, errors = [], []
-        for action in alarm.alarm_actions + alarm.ok_actions:
-            if "arn:aws:autoscaling" in action:
+        lst_ret = []
+        for alarm_action_arn in alarm.alarm_actions + alarm.ok_actions:
+            if "arn:aws:autoscaling" in alarm_action_arn:
                 found_policies = CommonUtils.find_objects_by_values(self.aws_api.application_auto_scaling_policies,
-                                                                    {"arn": action})
+                                                                    {"arn": alarm_action_arn})
                 if not found_policies:
-                    errors.append(
-                        f"Alarm's action application-autoscaling target does not exist: '{alarm.name=}' '{action=}'")
-                continue
-
-            if "arn:aws:sns" in action:
-                found_topics = CommonUtils.find_objects_by_values(self.aws_api.sns_topics, {"arn": action})
+                    report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                                reason="Autoscaling policy does not exist")
+                    report_action.action_blackholes.append(alarm_action_arn)
+                    lst_ret.append(report_action)
+            elif "arn:aws:sns" in alarm_action_arn:
+                found_topics = CommonUtils.find_objects_by_values(self.aws_api.sns_topics, {"arn": alarm_action_arn})
                 if not found_topics:
-                    errors.append(f"Alarm's '{alarm.name}' action sns-topic target does not exist: {action}")
-                    continue
-
-                subscriptions = CommonUtils.find_objects_by_values(self.aws_api.sns_subscriptions,
-                                                                   {"topic_arn": found_topics[0].arn})
-                if not subscriptions:
-                    errors.append(f"Alarm's '{alarm.name}' action sns-topic has no subscriptions: {action}")
-                    continue
-
-                for subscription in subscriptions:
-                    if subscription.protocol == "lambda":
-                        lambdas = CommonUtils.find_objects_by_values(self.aws_api.lambdas,
-                                                                     {"arn": subscription.endpoint})
-                        if not lambdas:
-                            errors.append(
-                                f"Alarm's '{alarm.name}' action sns-topic lambda does not exist: {action}, {subscription.endpoint}")
-                            continue
-                    else:
-                        raise NotImplementedError("Todo")
-                continue
-
-            if "arn:aws:lambda" in action:
-                lambdas = CommonUtils.find_objects_by_values(self.aws_api.lambdas, {"arn": action})
+                    report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                                reason="SNS topic does not exist")
+                    report_action.action_blackholes.append(alarm_action_arn)
+                    lst_ret.append(report_action)
+            elif "arn:aws:lambda" in alarm_action_arn:
+                lambdas = CommonUtils.find_objects_by_values(self.aws_api.lambdas, {"arn": alarm_action_arn})
                 if not lambdas:
-                    errors.append(f"Alarm's '{alarm.name}' action lambda does not exist: {action}")
-                continue
+                    report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                                reason="Lambda does not exist")
+                    report_action.action_blackholes.append(alarm_action_arn)
+                    lst_ret.append(report_action)
+            else:
+                self.generate_cleaner_error_report(f"{alarm.arn} unknown action: {alarm_action_arn}")
 
-            warnings.append(f"AWS Cleaner: Alarm {alarm.name} unknown action: {action}")
-
-        warnings_tmp, errors_tmp = self.sub_cleanup_report_cloudwatch_alarm_dimensions(alarm)
-        warnings += warnings_tmp
-        errors += errors_tmp
+        missing_alarm_dimension_actions = self.sub_cleanup_actions_cloudwatch_alarm_dimensions(alarm)
+        lst_ret += missing_alarm_dimension_actions
 
         for metric in self.aws_api.cloud_watch_metrics:
             if metric.namespace != alarm.namespace:
@@ -2158,12 +2374,14 @@ class AWSCleaner:
                 continue
             break
         else:
-            warnings.append(
-                f"Alarm {alarm.name} Metrics with same name {alarm.metric_name} and dimensions {alarm.dimensions} do not exist")
+            report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                        reason="Metric does not exist")
+            report_action.dimension_balckholes.append(alarm.dimensions)
+            lst_ret.append(report_action)
 
-        return warnings, errors
+        return lst_ret
 
-    def sub_cleanup_report_cloudwatch_alarm_dimensions(self, alarm):
+    def sub_cleanup_actions_cloudwatch_alarm_dimensions(self, alarm):
         """
         Generate alarm dimensions report
 
@@ -2171,74 +2389,164 @@ class AWSCleaner:
         :return:
         """
 
-        warnings, errors = [], []
-
+        lst_ret = []
         for dimension in alarm.dimensions:
             match dimension["Name"]:
                 case "ClusterName":
                     if not CommonUtils.find_objects_by_values(self.aws_api.ecs_clusters, {"name": dimension["Value"]}):
-                        errors.append(
-                            f"Alarm '{alarm.name}' dimension '{dimension['Value']}' does not exist")
+                        report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                                    reason="Resource does not exist")
+                        report_action.dimension_balckholes.append(dimension)
+                        lst_ret.append(report_action)
+                        break
                 case "CapacityProviderName":
                     if not CommonUtils.find_objects_by_values(self.aws_api.ecs_capacity_providers,
                                                               {"name": dimension["Value"]}):
-                        errors.append(
-                            f"Alarm '{alarm.name}' dimension '{dimension['Value']}' does not exist")
+                        report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                                    reason="Resource does not exist")
+                        report_action.dimension_balckholes.append(dimension)
+                        lst_ret.append(report_action)
+                        break
                 case "ServiceName":
                     if not CommonUtils.find_objects_by_values(self.aws_api.ecs_services,
                                                               {"name": dimension["Value"]}):
-                        errors.append(
-                            f"Alarm '{alarm.name}' dimension '{dimension['Value']}' does not exist")
+                        report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                                    reason="Resource does not exist")
+                        report_action.dimension_balckholes.append(dimension)
+                        lst_ret.append(report_action)
+                        break
                 case "TableName":
                     if alarm.namespace != "AWS/DynamoDB":
-                        raise NotImplementedError(
-                            f"Alarm dimensions in namespace {alarm.namespace} not yet implemented ")
+                        lst_ret.append(self.generate_cleaner_error_report(f"Alarm {alarm.arn} dimensions in namespace {alarm.namespace} not yet implemented"))
+                        continue
                     if not CommonUtils.find_objects_by_values(self.aws_api.dynamodb_tables,
                                                               {"name": dimension["Value"]}):
-                        errors.append(
-                            f"Alarm '{alarm.name}' dimension '{dimension['Value']}' does not exist")
+                        report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                                    reason="Resource does not exist")
+                        report_action.dimension_balckholes.append(dimension)
+                        lst_ret.append(report_action)
+                        break
                 case "FunctionName":
                     if alarm.namespace != "AWS/Lambda":
-                        raise NotImplementedError(
-                            f"Alarm dimensions in namespace {alarm.namespace} not yet implemented ")
+                        lst_ret.append(self.generate_cleaner_error_report(
+                            f"Alarm {alarm.arn} dimensions in namespace {alarm.namespace} not yet implemented"))
+                        continue
                     if not CommonUtils.find_objects_by_values(self.aws_api.lambdas,
                                                               {"name": dimension["Value"]}):
-                        errors.append(
-                            f"Alarm '{alarm.name}' dimension '{dimension['Value']}' does not exist")
+                        report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                                    reason="Resource does not exist")
+                        report_action.dimension_balckholes.append(dimension)
+                        lst_ret.append(report_action)
+                        break
                 case "QueueName":
                     if alarm.namespace != "AWS/SQS":
-                        raise NotImplementedError(
-                            f"Alarm dimensions in namespace {alarm.namespace} not yet implemented ")
+                        lst_ret.append(self.generate_cleaner_error_report(
+                            f"Alarm {alarm.arn} dimensions in namespace {alarm.namespace} not yet implemented"))
+                        continue
                     if not CommonUtils.find_objects_by_values(self.aws_api.sqs_queues,
                                                               {"name": dimension["Value"]}):
-                        errors.append(
-                            f"Alarm '{alarm.name}' dimension '{dimension['Value']}' does not exist")
+                        report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                                    reason="Resource does not exist")
+                        report_action.dimension_balckholes.append(dimension)
+                        lst_ret.append(report_action)
+                        break
                 case "DBClusterIdentifier":
                     if alarm.namespace != "AWS/RDS":
-                        raise NotImplementedError(
-                            f"Alarm dimensions in namespace {alarm.namespace} not yet implemented ")
+                        lst_ret.append(self.generate_cleaner_error_report(
+                            f"Alarm {alarm.arn} dimensions in namespace {alarm.namespace} not yet implemented"))
+                        continue
                     if not CommonUtils.find_objects_by_values(self.aws_api.rds_db_clusters,
                                                               {"id": dimension["Value"]}):
-                        errors.append(
-                            f"Alarm '{alarm.name}' dimension '{dimension['Value']}' does not exist")
+                        report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                                    reason="Resource does not exist")
+                        report_action.dimension_balckholes.append(dimension)
+                        lst_ret.append(report_action)
+                        break
                 case "Role":
                     if alarm.namespace != "AWS/RDS":
-                        raise NotImplementedError(
-                            f"Alarm dimensions in namespace {alarm.namespace} not yet implemented ")
+                        lst_ret.append(self.generate_cleaner_error_report(
+                            f"Alarm {alarm.arn} dimensions in namespace {alarm.namespace} not yet implemented"))
                 case "DBInstanceIdentifier":
                     if alarm.namespace != "AWS/RDS":
-                        raise NotImplementedError(
-                            f"Alarm dimensions in namespace {alarm.namespace} not yet implemented ")
+                        lst_ret.append(self.generate_cleaner_error_report(
+                            f"Alarm {alarm.arn} dimensions in namespace {alarm.namespace} not yet implemented"))
+                        continue
                     if not CommonUtils.find_objects_by_values(self.aws_api.rds_db_instances,
                                                               {"id": dimension["Value"]}):
-                        errors.append(
-                            f"Alarm '{alarm.name}' dimension '{dimension['Value']}' does not exist")
+                        report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                                    reason="Resource does not exist")
+                        report_action.dimension_balckholes.append(dimension)
+                        lst_ret.append(report_action)
+                        break
+                case "RuleName":
+                    if alarm.namespace != "AWS/Events":
+                        lst_ret.append(self.generate_cleaner_error_report(
+                            f"Alarm {alarm.arn} dimensions in namespace {alarm.namespace} not yet implemented"))
+                        continue
+                    if not CommonUtils.find_objects_by_values(self.aws_api.event_bridge_rules,
+                                                              {"_name": dimension["Value"]}):
+                        report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                                    reason="Resource does not exist")
+                        report_action.dimension_balckholes.append(dimension)
+                        lst_ret.append(report_action)
+                        break
+                case "LoadBalancer":
+                    if alarm.namespace == "AWS/RDS":
+                        self.aws_api.cloud_watch_client.dispose_alarms([alarm])
+                        continue
+                    breakpoint()
+                    if alarm.namespace != "AWS/ALB":
+                        lst_ret.append(self.generate_cleaner_error_report(
+                            f"Alarm {alarm.arn} dimensions in namespace {alarm.namespace} not yet implemented"))
+                        continue
+                    if not CommonUtils.find_objects_by_values(self.aws_api.event_bridge_rules,
+                                                              {"_name": dimension["Value"]}):
+                        report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                                    reason="Resource does not exist")
+                        report_action.dimension_balckholes.append(dimension)
+                        lst_ret.append(report_action)
+                        break
+                case "TargetGroup":
+                    if alarm.namespace == "AWS/RDS":
+                        self.aws_api.cloud_watch_client.dispose_alarms([alarm])
+                        continue
+                    breakpoint()
+                    if alarm.namespace != "AWS/ALB":
+                        lst_ret.append(self.generate_cleaner_error_report(
+                            f"Alarm {alarm.arn} dimensions in namespace {alarm.namespace} not yet implemented"))
+                        continue
+                    if not CommonUtils.find_objects_by_values(self.aws_api.event_bridge_rules,
+                                                              {"_name": dimension["Value"]}):
+                        report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                                    reason="Resource does not exist")
+                        report_action.dimension_balckholes.append(dimension)
+                        lst_ret.append(report_action)
+                        break
+                case "AvailabilityZone":
+                    if alarm.namespace == "AWS/RDS" and ("TargetGroup" in str(alarm.dimensions) or "LoadBalancer" in str(alarm.dimensions)):
+                        self.aws_api.cloud_watch_client.dispose_alarms([alarm])
+                        continue
+                    breakpoint()
+
+                    if alarm.namespace != "AWS/ALB":
+                        lst_ret.append(self.generate_cleaner_error_report(
+                            f"Alarm {alarm.arn} dimensions in namespace {alarm.namespace} not yet implemented"))
+                        continue
+                    if not CommonUtils.find_objects_by_values(self.aws_api.event_bridge_rules,
+                                                              {"_name": dimension["Value"]}):
+                        report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                                    reason="Resource does not exist")
+                        report_action.dimension_balckholes.append(dimension)
+                        lst_ret.append(report_action)
+                        break
                 case _:
-                    warnings.append(f"Unknown dimension: {dimension['Name']}")
+                    breakpoint()
+                    lst_ret.append(self.generate_cleaner_error_report(
+                        f"Alarm {alarm.arn} Unsupported dimensions: {alarm.dimensions}, Namespace: {alarm.namespace}"))
 
-        return warnings, errors
+        return lst_ret
 
-    def sub_cleanup_report_cloudwatch_logs_metrics(self, metrics):
+    def cleanup_report_cloudwatch_logs_metrics(self, metrics):
         """
         Generate report for cloudwatch_metrics
 
@@ -2246,11 +2554,10 @@ class AWSCleaner:
         :return:
         """
 
-        tb_ret = TextBlock("Cloudwatch metrics report")
+        report = Report(self.aws_api.cloud_watch_client.client_name)
         for metric in metrics:
-            lines = self.sub_cleanup_lines_cloudwatch_log_metric(metric)
-            tb_ret.lines += lines
-        return tb_ret
+            report += self.sub_cleanup_lines_cloudwatch_log_metric(metric)
+        return report
 
     def sub_cleanup_lines_cloudwatch_log_metric(self, metric):
         """
@@ -2260,7 +2567,8 @@ class AWSCleaner:
         :return:
         """
 
-        lines = []
+        action = ReportActionCloudwatchLogGroupMetric({"region": metric.region.region_mark, "name": metric.name})
+
         if not metric.metric_transformations or len(metric.metric_transformations) > 1:
             raise NotImplementedError("Can not check the metric filter")
 
@@ -2270,12 +2578,12 @@ class AWSCleaner:
                                                      "metric_name":
                                                          metric.metric_transformations[
                                                              0]["metricName"]})
-        if not alarms:
-            lines.append(f"Metric '{metric.name}' has no alarms")
         for alarm in alarms:
             if not alarm.actions_enabled:
-                lines.append(f"Metric: '{metric.name}' Disabled Alarm")
-        return lines
+                action.disabled_actions_alarms.append(alarm.name)
+        if len(alarms) == len(action.disabled_actions_alarms):
+            action.no_alarms = True
+        return action
 
     def cleanup_report_sqs(self, permissions_only=False):
         """
@@ -2924,6 +3232,28 @@ class AWSCleaner:
         tb_ret_tmp = self.sub_cleanup_report_sns_subscriptions_recommended_configs()
         if tb_ret_tmp:
             tb_ret.blocks.append(tb_ret_tmp)
+
+
+        # todo: copied from alarm:
+        breakpoint()
+        # subscriptions = CommonUtils.find_objects_by_values(self.aws_api.sns_subscriptions,
+        if not subscriptions:
+            subreport_json["sns_action_blackhole"].append(action)
+            errors.append(f"Alarm's '{alarm.name}' action sns-topic has no subscriptions: {action}")
+
+        for subscription in subscriptions:
+            if subscription.protocol == "lambda":
+                lambdas = CommonUtils.find_objects_by_values(self.aws_api.lambdas,
+                                                         {"arn": subscription.endpoint})
+                if not lambdas:
+                    subreport_json["sns_action_blackhole"].append(action)
+                    errors.append(
+                        f"Alarm's '{alarm.name}' action sns-topic lambda does not exist: {action}, {subscription.endpoint}")
+                    continue
+            else:
+                raise NotImplementedError("Todo")
+        # todo: end copy
+
 
         tb_ret_tmp = self.sub_cleanup_report_sns_monitoring()
         if tb_ret_tmp:
