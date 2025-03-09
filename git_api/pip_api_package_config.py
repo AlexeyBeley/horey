@@ -3,4 +3,4 @@ Per package configs
 
 """
 
-force = Truaw
+force = True
