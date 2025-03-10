@@ -245,6 +245,9 @@ class CloudWatchClient(Boto3Client):
         while alarms_offset < len(alarms):
             alarms_to_del = alarms[alarms_offset: alarms_offset + 100]
             dict_request = {"AlarmNames": [alarm.name for alarm in alarms_to_del]}
+            logger.info(
+                f"Disposing cloudwatch alarms in region '{alarms_to_del[0].region}': {dict_request}"
+            )
 
             for _ in self.execute(
                 self.get_session_client(region=alarms[0].region).delete_alarms,

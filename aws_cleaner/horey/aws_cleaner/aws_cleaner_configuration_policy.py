@@ -336,6 +336,10 @@ class AWSCleanerConfigurationPolicy(ConfigurationPolicy):
         return os.path.join(self.ecr_reports_dir, "ecr_images.txt")
 
     @property
+    def ecs_report_file_path(self):
+        return os.path.join(self.ecr_reports_dir, "ecs_images.txt")
+
+    @property
     def dynamodb_reports_dir(self):
         ret = os.path.join(self.reports_dir, "dynamodb")
         if not os.path.exists(ret):

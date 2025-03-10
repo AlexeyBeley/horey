@@ -46,7 +46,7 @@ from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlar
 from horey.aws_api.aws_services_entities.event_bridge_rule import EventBridgeRule
 from horey.aws_api.aws_services_entities.event_bridge_target import EventBridgeTarget
 from horey.aws_api.aws_services_entities.ses_identity import SESIdentity
-from horey.aws_cleaner.aws_cleaner import AWSCleaner
+from horey.aws_cleaner.aws_cleaner import AWSCleaner, ReportActionCloudwatchAlarm, ReportActionCloudwatchLogGroupMetric
 from horey.aws_cleaner.aws_cleaner_configuration_policy import AWSCleanerConfigurationPolicy
 from horey.aws_api.aws_services_entities.elbv2_load_balancer import LoadBalancer
 from horey.aws_api.aws_services_entities.sesv2_configuration_set import SESV2ConfigurationSet
@@ -2293,6 +2293,7 @@ class EnvironmentAPI:
 
         # todo: aws_cleaner.cleanup_report_elasticache()
         self.perform_cleanup(aws_cleaner)
+        aws_cleaner.cleanup_report_ecs()
         breakpoint()
         aws_cleaner.cleanup_report_ecr_images()
         aws_cleaner.cleanup_report_lambdas()
@@ -2324,8 +2325,41 @@ class EnvironmentAPI:
         for sub_report in report.sub_reports:
             if sub_report.service == "logs":
                 self.perform_logs_cleanup(sub_report)
+            elif sub_report.service == "cloudwatch":
+                self.perform_cloudwatch_cleanup(sub_report)
             else:
                 raise NotImplementedError(sub_report.service)
+
+    def perform_cloudwatch_cleanup(self, report):
+        """
+        Log groups removal.
+
+        :param report:
+        :return:
+        """
+        delete_alarms = []
+
+        if report.sub_reports:
+            raise NotImplementedError(report.sub_reports)
+
+        for action in report.actions:
+            if isinstance(action, ReportActionCloudwatchLogGroupMetric):
+                if action.no_log_group:
+                    breakpoint()
+                if action.disabled_actions_alarms:
+                    breakpoint()
+            elif isinstance(action, ReportActionCloudwatchAlarm):
+                alarm = CloudWatchAlarm({})
+                alarm.region = Region.get_region(action.path["arn"].split(":")[3])
+                alarm.name = action.path["arn"].split(":")[-1]
+                if action.no_active_actions:
+                    self.aws_api.cloud_watch_client.dispose_alarms([alarm])
+                if action.dimension_balckholes:
+                    self.aws_api.cloud_watch_client.dispose_alarms([alarm])
+            else:
+                raise NotImplementedError(action.__class__.__name__)
+
+        logger.info(f"Deleted {len(delete_alarms)} cloudwatch alarms")
 
     def perform_logs_cleanup(self, report):
         """
@@ -2345,24 +2379,27 @@ class EnvironmentAPI:
                 delete_log_groups.append(log_group)
                 continue
 
-            if action.no_retention:
-                log_group.retention_in_days = 30
-
             if action.size:
                 log_group.retention_in_days = 7
+                self.aws_api.cloud_watch_logs_client.provision_log_group(log_group)
+
+            if action.no_retention:
+                log_group.retention_in_days = 30
+                self.aws_api.cloud_watch_logs_client.provision_log_group(log_group)
 
             if action.redundant_metric_filters:
                 for key, values in action.redundant_metric_filters.items():
                     has2_values = list(filter(lambda x: "has2" in x, values))
                     if len(has2_values) > 1:
-                        breakpoint()
+                        for value in has2_values:
+                            if "errors" in value:
+                                self.dispose_cloudwatch_metric_filters(log_group, [value])
                     elif len(has2_values) == 1:
                         self.dispose_cloudwatch_metric_filters(log_group, list(filter(lambda x: "has2" not in x, values)))
                     else:
                         breakpoint()
                         logger.info(f"Choose manually: {values}")
 
-        breakpoint()
         for log_group in delete_log_groups:
             self.aws_api.cloud_watch_logs_client.dispose_log_group(log_group)
         logger.info(f"Deleted {len(delete_log_groups)} old log groups")

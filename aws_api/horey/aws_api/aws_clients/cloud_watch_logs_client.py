@@ -296,15 +296,18 @@ class CloudWatchLogsClient(Boto3Client):
                 raise RuntimeError(f"Can not be both: {delete_request=}, {put_request=}")
 
             if delete_request:
+                logger.info(f"Disposing cloudwatch log group retention policy: {put_request}")
                 for _ in self.execute(self.get_session_client(region=log_group.region).delete_retention_policy, None,
                                       raw_data=True, filters_req=delete_request):
                     self.clear_cache(CloudWatchLogGroup)
 
             if put_request:
+                logger.info(f"Putting cloudwatch log group retention policy: {put_request}")
                 for _ in self.execute(self.get_session_client(region=log_group.region).put_retention_policy, None,
                                       raw_data=True, filters_req=put_request):
                     self.clear_cache(CloudWatchLogGroup)
         else:
+            breakpoint()
             self.provision_log_group_raw(log_group.region, log_group.generate_create_request())
 
         for i in range(60):

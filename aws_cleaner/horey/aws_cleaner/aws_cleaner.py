@@ -93,6 +93,7 @@ class ReportActionCloudwatchAlarm(ReportAction):
         super().__init__(path, reason=reason)
         self.dimension_balckholes = []
         self.action_blackholes = []
+        self.no_active_actions = False
 
     def generate_lines(self):
         """
@@ -117,6 +118,7 @@ class ReportActionCloudwatchLogGroupMetric(ReportAction):
         super().__init__(path, reason=reason)
         self.disabled_actions_alarms = []
         self.no_alarms = False
+        self.no_log_group = False
 
     def generate_lines(self):
         """
@@ -135,7 +137,9 @@ class ReportActionCloudwatchLogGroupMetric(ReportAction):
 
         if self.no_alarms:
             return["Important: " + base_str_ret + " No alarms set"]
-
+        
+        if self.no_log_group:
+            return ["Important: " + base_str_ret + " No such log group"]
         return []
 
 
@@ -194,6 +198,30 @@ class ReportActionCloudwatchLogGroup(ReportAction):
         if self.idle:
             lst_ret.append(
                 "Important: " + base_str_ret + f" Is idle > month.")
+
+        return lst_ret
+
+
+class ReportActionECSCapacityProvider(ReportAction):
+    def __init__(self, path, reason=None):
+        super().__init__(path, reason=reason)
+        self.unused_instances = []
+
+    def generate_lines(self):
+        """
+        Standard.
+
+        :return:
+        """
+        breakpoint()
+        lst_ret = []
+        base_str_ret = f"Alarm: '{self.path['arn']}'."
+
+        if self.dimension_balckholes:
+            lst_ret.append("Important: " + base_str_ret + "Metric with these dimensions does not exist")
+
+        for action_arn in self.action_blackholes:
+            lst_ret.append("Important: " + base_str_ret + f"Action destination does not exist: {action_arn}.")
 
         return lst_ret
 
@@ -463,17 +491,27 @@ class AWSCleaner:
         """
 
         if not permissions_only and (
-                not self.aws_api.application_auto_scaling_policies or not self.aws_api.application_auto_scaling_scalable_targets):
+                not self.aws_api.application_auto_scaling_policies or not self.aws_api.application_auto_scaling_scalable_targets or not self.aws_api.auto_scaling_groups):
             self.aws_api.init_application_auto_scaling_policies()
             self.aws_api.init_application_auto_scaling_scalable_targets()
+            self.aws_api.init_auto_scaling_groups()
 
         return [{
             "Sid": "ApplicationAutoscaling",
             "Effect": "Allow",
             "Action": ["application-autoscaling:DescribeScalingPolicies",
-                       "application-autoscaling:DescribeScalableTargets"],
+                       "application-autoscaling:DescribeScalableTargets",],
             "Resource": "*"
-        }
+        },
+            {
+                "Sid": "Autoscaling",
+                "Effect": "Allow",
+                "Action": [
+                "autoscaling:DescribeAutoScalingGroups",
+                "autoscaling:DescribePolicies"
+                ],
+                "Resource": "*"
+            }
         ]
 
     def init_cloudwatch_alarms(self, permissions_only=False):
@@ -2314,6 +2352,7 @@ class AWSCleaner:
         permissions += self.init_sqs_queues(permissions_only=permissions_only)
         permissions += self.init_rds(permissions_only=permissions_only)
         permissions += self.init_event_bridge_rules(permissions_only=permissions_only)
+        permissions += self.init_ec2_instances(permissions_only=permissions_only)
 
         if permissions_only:
             return permissions
@@ -2334,7 +2373,19 @@ class AWSCleaner:
         """
 
         lst_ret = []
-        for alarm_action_arn in alarm.alarm_actions + alarm.ok_actions:
+        all_actions = alarm.alarm_actions + alarm.ok_actions
+        if not all_actions:
+            report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                        reason="No actions configured")
+            report_action.no_active_actions = True
+            lst_ret.append(report_action)
+        elif not alarm.actions_enabled:
+            report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                        reason="All actions disabled")
+            report_action.no_active_actions = True
+            lst_ret.append(report_action)
+
+        for alarm_action_arn in all_actions:
             if "arn:aws:autoscaling" in alarm_action_arn:
                 found_policies = CommonUtils.find_objects_by_values(self.aws_api.application_auto_scaling_policies,
                                                                     {"arn": alarm_action_arn})
@@ -2361,23 +2412,33 @@ class AWSCleaner:
                 self.generate_cleaner_error_report(f"{alarm.arn} unknown action: {alarm_action_arn}")
 
         missing_alarm_dimension_actions = self.sub_cleanup_actions_cloudwatch_alarm_dimensions(alarm)
+
         lst_ret += missing_alarm_dimension_actions
 
-        for metric in self.aws_api.cloud_watch_metrics:
-            if metric.namespace != alarm.namespace:
-                continue
-            if metric.name != alarm.metric_name:
-                continue
-            metric_dimensions_dict = {dim["Name"]: dim["Value"] for dim in metric.dimensions}
-            alarm_dimensions_dict = {dim["Name"]: dim["Value"] for dim in alarm.dimensions}
-            if alarm_dimensions_dict != metric_dimensions_dict:
-                continue
-            break
-        else:
-            report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+        if alarm.dimensions:
+            for metric in self.aws_api.cloud_watch_metrics:
+                if metric.namespace != alarm.namespace:
+                    continue
+                if metric.name != alarm.metric_name:
+                    continue
+                metric_dimensions_dict = {dim["Name"]: dim["Value"] for dim in metric.dimensions}
+                alarm_dimensions_dict = {dim["Name"]: dim["Value"] for dim in alarm.dimensions}
+                if alarm_dimensions_dict != metric_dimensions_dict:
+                    continue
+                break
+            else:
+                report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
                                                         reason="Metric does not exist")
-            report_action.dimension_balckholes.append(alarm.dimensions)
-            lst_ret.append(report_action)
+                report_action.dimension_balckholes.append(alarm.dimensions)
+                lst_ret.append(report_action)
+        else:
+            metric_filters = CommonUtils.find_objects_by_values(self.aws_api.cloud_watch_log_groups_metric_filters,
+                                                                {"name": alarm.metric_name})
+            if not metric_filters:
+                report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                            reason="Metric filter does not exist")
+                report_action.dimension_balckholes.append(alarm.dimensions)
+                lst_ret.append(report_action)
 
         return lst_ret
 
@@ -2539,6 +2600,30 @@ class AWSCleaner:
                         report_action.dimension_balckholes.append(dimension)
                         lst_ret.append(report_action)
                         break
+                case "AutoScalingGroupName":
+                    if alarm.namespace != "AWS/EC2":
+                        lst_ret.append(self.generate_cleaner_error_report(
+                            f"Alarm {alarm.arn} dimensions in namespace {alarm.namespace} not yet implemented"))
+                        continue
+                    if not CommonUtils.find_objects_by_values(self.aws_api.auto_scaling_groups,
+                                                              {"name": dimension["Value"]}):
+                        report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                                    reason="Resource does not exist")
+                        report_action.dimension_balckholes.append(dimension)
+                        lst_ret.append(report_action)
+                        break
+                case "InstanceId":
+                    if alarm.namespace != "AWS/EC2":
+                        lst_ret.append(self.generate_cleaner_error_report(
+                            f"Alarm {alarm.arn} dimensions in namespace {alarm.namespace} not yet implemented"))
+                        continue
+                    if not CommonUtils.find_objects_by_values(self.aws_api.ec2_instances,
+                                                              {"id": dimension["Value"]}):
+                        report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                                    reason="Resource does not exist")
+                        report_action.dimension_balckholes.append(dimension)
+                        lst_ret.append(report_action)
+                        break
                 case _:
                     breakpoint()
                     lst_ret.append(self.generate_cleaner_error_report(
@@ -2583,6 +2668,13 @@ class AWSCleaner:
                 action.disabled_actions_alarms.append(alarm.name)
         if len(alarms) == len(action.disabled_actions_alarms):
             action.no_alarms = True
+
+        log_groups = CommonUtils.find_objects_by_values(self.aws_api.cloud_watch_log_groups,
+                                                    {"name": metric.log_group_name,
+                                                     "region": metric.region})
+        if not log_groups:
+            action.no_log_group = True
+            breakpoint()
         return action
 
     def cleanup_report_sqs(self, permissions_only=False):
@@ -3664,30 +3756,69 @@ class AWSCleaner:
         No value set for range decision
         """
 
-    def cleanup_report_ecs_usage(self, regions):
+    def cleanup_report_iam(self, permissions_only=False):
         """
-        Generate cleanup for regions
+        Generating ses cleanup reports.
 
-        :param regions:
+        @param permissions_only:
+        @return:
+        """
+
+        if permissions_only:
+            permissions = self.sub_cleanup_report_iam_policies(permissions_only=permissions_only)
+            return permissions
+
+        tb_ret = TextBlock("IAM cleanup")
+
+        tb_ret_tmp = self.sub_cleanup_report_iam_policies()
+        if tb_ret_tmp:
+            tb_ret.blocks.append(tb_ret_tmp)
+
+        tb_ret.write_to_file(self.configuration.iam_report_file_path)
+        return tb_ret
+
+    def sub_cleanup_report_iam_policies(self, permissions_only=False):
+        """
+        Generate cleanup report for policies.
+
+        :param permissions_only:
         :return:
         """
 
-        htb_ret = TextBlock("ECS container instances cleanup")
-        for region in regions:
-            htb_ret.blocks.append(self.cleanup_report_ecs_usage_region(region))
-        return htb_ret
+        permissions = self.init_iam_policies(permissions_only=permissions_only)
+        if permissions_only:
+            return permissions
 
-    def cleanup_report_ecs_usage_region(self, region):
+    def cleanup_report_ecs(self, permissions_only=False):
+        """
+        Checks the ECS best practices.:
+
+        :param permissions_only:
+        :return:
+        """
+
+        permissions = self.init_ecs_services(permissions_only=permissions_only)
+        permissions += self.init_ecs_clusters(permissions_only=permissions_only)
+        if permissions_only:
+            return permissions
+
+        global_report = Report("Global")
+
+        global_report += self.cleanup_report_ecs_container_instance_usage()
+        global_report.write_to_file(self.configuration.ecs_report_file_path)
+
+        return global_report
+
+    def cleanup_report_ecs_container_instance_usage(self):
         """
         Generate ecs capacity providers report per region
 
         :return:
         """
-
-        tb_ret = TextBlock(str(region))
+        breakpoint()
         blocks_by_cluster_size = defaultdict(list)
-        for cluster in self.ecs_client.get_region_clusters(region):
-            current_container_instances = self.ecs_client.get_region_container_instances(region,
+        for cluster in self.aws_api.ecs_clusters:
+            current_container_instances = self.aws_api.ecs_client.get_region_container_instances(cluster.region,
                                                                                          cluster_identifier=cluster.arn)
             cpu_reserved = 0
             cpu_free = 0
@@ -3730,6 +3861,7 @@ class AWSCleaner:
             else:
                 tb_ret_tmp.lines.append("No Memory Registered")
             blocks_by_cluster_size[cpu_reserved + memory_reserved].append(tb_ret_tmp)
+        action = ReportActionECSCapacityProvider()
 
         tb_ret.blocks = [block for key in sorted(blocks_by_cluster_size, reverse=True) for block in
                          blocks_by_cluster_size[key]]
@@ -3740,36 +3872,3 @@ class AWSCleaner:
         tb_ret.write_to_file(output_file_path)
         logger.info(f"Wrote ecs cleanup to file: {output_file_path}")
         return tb_ret
-
-    def cleanup_report_iam(self, permissions_only=False):
-        """
-        Generating ses cleanup reports.
-
-        @param permissions_only:
-        @return:
-        """
-
-        if permissions_only:
-            permissions = self.sub_cleanup_report_iam_policies(permissions_only=permissions_only)
-            return permissions
-
-        tb_ret = TextBlock("IAM cleanup")
-
-        tb_ret_tmp = self.sub_cleanup_report_iam_policies()
-        if tb_ret_tmp:
-            tb_ret.blocks.append(tb_ret_tmp)
-
-        tb_ret.write_to_file(self.configuration.iam_report_file_path)
-        return tb_ret
-
-    def sub_cleanup_report_iam_policies(self, permissions_only=False):
-        """
-        Generate cleanup report for policies.
-
-        :param permissions_only:
-        :return:
-        """
-
-        permissions = self.init_iam_policies(permissions_only=permissions_only)
-        if permissions_only:
-            return permissions
