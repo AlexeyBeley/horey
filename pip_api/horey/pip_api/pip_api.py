@@ -56,6 +56,26 @@ class PipAPI:
 
         :return:
         """
+        if not os.path.exists(
+                os.path.join(self.configuration.venv_dir_path, "bin", "activate")
+            ):
+            options = ""
+            if self.configuration.system_site_packages:
+                options += " --system-site-packages"
+
+            self.run_bash(
+                f"{sys.executable} -m venv {self.configuration.venv_dir_path}{options}"
+            )
+
+            self.execute("python -m pip install --upgrade pip", ignore_on_error_callback=lambda dict_ret: "Requirement already satisfied" in dict_ret["stdout"])
+            self.execute("python -m pip install --upgrade setuptools>=45")
+
+    def install_venv_old(self):
+        """
+        Install venv if does not exist
+
+        :return:
+        """
         logger.info(f"Installing Venv if needed: {self.configuration.venv_dir_path}")
         if not os.path.exists(
                 os.path.join(self.configuration.venv_dir_path, "bin", "activate")
