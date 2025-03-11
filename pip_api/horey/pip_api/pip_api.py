@@ -67,8 +67,10 @@ class PipAPI:
                 f"{sys.executable} -m venv {self.configuration.venv_dir_path}{options}"
             )
 
-            self.execute("python -m pip install --upgrade pip", ignore_on_error_callback=lambda dict_ret: "Requirement already satisfied" in dict_ret["stdout"])
+            self.execute("python -m pip install --upgrade pip")
             self.execute("python -m pip install --upgrade setuptools>=45")
+            self.execute("python -m pip install -U packaging>=24.2")
+            self.execute("python -m pip install wheel")
 
     def install_venv_old(self):
         """
