@@ -56,6 +56,7 @@ class PipAPI:
 
         :return:
         """
+        logger.info("Installing Venv if needed")
         if not os.path.exists(
                 os.path.join(self.configuration.venv_dir_path, "bin", "activate")
         ):
@@ -65,6 +66,8 @@ class PipAPI:
 
             self.execute("python -m pip install --upgrade pip")
             self.execute("python -m pip install --upgrade setuptools>=45")
+        else:
+            logger.info("Installing Venv ignore. Venv already exists.")
 
     def init_multi_package_repository(self, repo_path):
         """
