@@ -280,7 +280,7 @@ class PipAPI:
         lines = ret.split("\n")
 
         index = -2 if "Leaving directory" in lines[-1] else -1
-        if lines[index] != f"done installing {package_dirname}":
+        if lines[index] != f"done installing {package_dirname}" and "Successfully installed" not in lines[index]:
             raise RuntimeError(
                 f"Could not install {package_dirname} from source code:\n {ret}"
             )
