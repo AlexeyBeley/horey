@@ -56,9 +56,11 @@ class PipAPI:
 
         :return:
         """
+        logger.info(f"Installing Venv if needed: {self.configuration.venv_dir_path}")
         if not os.path.exists(
                 os.path.join(self.configuration.venv_dir_path, "bin", "activate")
             ):
+            logger.info(f"Installing new Venv: {self.configuration.venv_dir_path}")
             options = ""
             if self.configuration.system_site_packages:
                 options += " --system-site-packages"
@@ -67,10 +69,10 @@ class PipAPI:
                 f"{sys.executable} -m venv {self.configuration.venv_dir_path}{options}"
             )
 
-        self.execute("python -m pip install --upgrade pip")
-        self.execute("python -m pip install --upgrade setuptools>=45")
-        self.execute("python -m pip install -U packaging>=24.2")
-        self.execute("python -m pip install wheel")
+            self.execute("python -m pip install --upgrade pip")
+            self.execute("python -m pip install --upgrade setuptools>=45")
+            self.execute("python -m pip install -U packaging>=24.2")
+            self.execute("python -m pip install wheel")
 
     def install_venv_old(self):
         """
