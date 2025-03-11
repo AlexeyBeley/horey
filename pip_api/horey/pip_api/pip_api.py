@@ -59,9 +59,8 @@ class PipAPI:
         if not os.path.exists(
                 os.path.join(self.configuration.venv_dir_path, "bin", "activate")
         ):
-            self.execute(
+            self.run_bash(
                 f"{sys.executable} -m venv {self.configuration.venv_dir_path} --system-site-packages",
-                ignore_venv=True,
             )
 
             self.execute("python -m pip install --upgrade pip")
