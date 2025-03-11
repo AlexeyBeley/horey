@@ -517,7 +517,7 @@ class RemoteDeployer:
             step.status_code = step.StatusCode.ERROR
             step.output = repr(exception_instance)
 
-    def deploy_target_step_thread_helper(self, deployment_target, step):
+    def deploy_target_step_thread_helper(self, deployment_target, step:DeploymentStep):
         """
         Unprotected code, should be enclosed in try except.
 
@@ -532,8 +532,8 @@ class RemoteDeployer:
                 transport = client.get_transport()
                 sftp_client = HoreySFTPClient.from_transport(transport)
 
-                retry_attempts = 40
-                sleep_time = 60
+                retry_attempts = step.configuration.retry_attempts
+                sleep_time = step.configuration.sleep_time
                 for retry_counter in range(retry_attempts):
                     try:
                         sftp_client.get(
@@ -967,6 +967,9 @@ class RemoteDeployer:
         :param total_time:
         :return:
         """
+
+        total_time = max(total_time, max(step.configuration.sleep_time*step.configuration.retry_attempts for target in targets for step in target.steps))
+        logger.info(f"New time to finish calculated from steps and default: {total_time} seconds")
 
         start_time = datetime.datetime.now()
         end_time = start_time + datetime.timedelta(seconds=total_time)

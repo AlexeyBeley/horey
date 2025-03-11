@@ -25,6 +25,28 @@ class DeploymentStepConfigurationPolicy(ConfigurationPolicy):
         self._uuid = None
         self._step_data_dir_name = None
         self._remote_script_file_path = None
+        self._retry_attempts = None
+        self._sleep_time = None
+
+    @property
+    def sleep_time(self):
+        if self._sleep_time is None:
+            self._sleep_time = 60
+        return self._sleep_time
+
+    @sleep_time.setter
+    def sleep_time(self, value):
+        self._sleep_time = value
+
+    @property
+    def retry_attempts(self):
+        if self._retry_attempts is None:
+            self._retry_attempts = 40
+        return self._retry_attempts
+
+    @retry_attempts.setter
+    def retry_attempts(self, value):
+        self._retry_attempts = value
 
     @property
     def name(self):

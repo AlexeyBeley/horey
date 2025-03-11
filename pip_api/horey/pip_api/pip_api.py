@@ -49,20 +49,28 @@ class PipAPI:
                 self.init_multi_package_repository(repo_path)
 
         if self.configuration.venv_dir_path is not None:
-            if not os.path.exists(
+            self.install_venv()
+
+    def install_venv(self):
+        """
+        Install venv if does not exist
+
+        :return:
+        """
+        if not os.path.exists(
                 os.path.join(self.configuration.venv_dir_path, "bin", "activate")
             ):
-                options = ""
-                if self.configuration.system_site_packages:
-                    options += " --system-site-packages"
+            options = ""
+            if self.configuration.system_site_packages:
+                options += " --system-site-packages"
 
-                self.execute(
-                    f"{sys.executable} -m venv {self.configuration.venv_dir_path}{options}",
-                    ignore_venv=True,
-                )
+            self.execute(
+                f"{sys.executable} -m venv {self.configuration.venv_dir_path}{options}",
+                ignore_venv=True,
+            )
 
-                self.execute("python -m pip install --upgrade pip", ignore_on_error_callback=lambda dict_ret: "Requirement already satisfied" in dict_ret["stdout"])
-                self.execute("python -m pip install --upgrade setuptools>=45")
+            self.execute("python -m pip install --upgrade pip", ignore_on_error_callback=lambda dict_ret: "Requirement already satisfied" in dict_ret["stdout"])
+            self.execute("python -m pip install --upgrade setuptools>=45")
 
     def init_multi_package_repository(self, repo_path):
         """
@@ -141,6 +149,7 @@ class PipAPI:
             and self.configuration is not None
             and self.configuration.venv_dir_path is not None
         ):
+            self.install_venv()
             command = f"source {os.path.join(self.configuration.venv_dir_path, 'bin/activate')} && {command}"
         ret = self.run_bash(command, ignore_on_error_callback=ignore_on_error_callback)
 
