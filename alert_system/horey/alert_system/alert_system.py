@@ -224,8 +224,6 @@ class AlertSystem:
 
         :return:
         """
-        current_dir = os.getcwd()
-        os.chdir(self.configuration.deployment_directory_path)
         self.packer.install_horey_requirements(
             os.path.join(
                 os.path.dirname(os.path.abspath(__file__)),
@@ -235,6 +233,8 @@ class AlertSystem:
             self.configuration.deployment_venv_path,
             self.configuration.horey_repo_path,
         )
+        current_dir = os.getcwd()
+        os.chdir(self.configuration.deployment_directory_path)
 
         self.packer.zip_venv_site_packages(
             self.configuration.lambda_zip_file_name,
