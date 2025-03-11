@@ -972,6 +972,24 @@ class AWSCleaner:
         }
         ]
 
+    def init_ecs_container_instances(self, permissions_only=False):
+        """
+        Init cloudwatch metrics.
+
+        :return:
+        """
+
+        if not permissions_only and not self.aws_api.ecs_container_instances:
+            self.aws_api.init_ecs_container_instances()
+
+        return [{
+            "Sid": "ecsContainerInstances",
+            "Effect": "Allow",
+            "Action": ["ecs:ListContainerInstances", "ecs:DescribeContainerInstances"],
+            "Resource": [f"arn:aws:ecs:{region.region_mark}:{self.aws_api.acm_client.account_id}:cluster/*" for region in AWSAccount.get_aws_account().regions.values()]
+        }
+        ]
+
     def init_ecs_task_definitions(self, permissions_only=False):
         """
         Init cloudwatch metrics.
@@ -3799,6 +3817,8 @@ class AWSCleaner:
 
         permissions = self.init_ecs_services(permissions_only=permissions_only)
         permissions += self.init_ecs_clusters(permissions_only=permissions_only)
+        permissions += self.init_ecs_container_instances(permissions_only=permissions_only)
+
         if permissions_only:
             return permissions
 
@@ -3815,60 +3835,65 @@ class AWSCleaner:
 
         :return:
         """
-        breakpoint()
-        blocks_by_cluster_size = defaultdict(list)
+        lst_ret = []
         for cluster in self.aws_api.ecs_clusters:
-            current_container_instances = self.aws_api.ecs_client.get_region_container_instances(cluster.region,
-                                                                                         cluster_identifier=cluster.arn)
-            cpu_reserved = 0
-            cpu_free = 0
-            memory_reserved = 0
-            memory_free = 0
-            for container_instance in current_container_instances:
-                for resource in container_instance.remaining_resources:
-                    if resource["name"] == "CPU":
-                        cpu_free += resource["integerValue"] / 1024
-                    elif resource["name"] == "MEMORY":
-                        memory_free += resource["integerValue"] / 1024
+            lst_ret += self.cleanup_report_ecs_container_instance_usage_per_cluster(cluster)
+        return lst_ret
 
-                for resource in container_instance.registered_resources:
-                    if resource["name"] == "CPU":
-                        cpu_reserved += resource["integerValue"] / 1024
-                    elif resource["name"] == "MEMORY":
-                        memory_reserved += resource["integerValue"] / 1024
+    def cleanup_report_ecs_container_instance_usage_per_cluster(self, cluster):
+        """
+        Generate actions per container instance per cluster
 
-            memory_gb_used = round(memory_reserved - memory_free, 2)
-            cpu_count_used = cpu_reserved - cpu_free
-            memory_reserved = round(memory_reserved, 2)
-            memory_free = round(memory_free, 2)
+        :param cluster:
+        :return:
+        """
 
-            tb_ret_tmp = TextBlock(f"Cluster: '{cluster.name}'. Size: CPUs {cpu_reserved}, Memory {memory_reserved}GB")
+        lst_ret = []
+        blocks_by_cluster_size = defaultdict(list)
+        breakpoint()
+        container_instances = CommonUtils.find_objects_by_values(self.aws_api.container_instances, {})
+        #=cluster.arn)
+        cpu_reserved = 0
+        cpu_free = 0
+        memory_reserved = 0
+        memory_free = 0
+        for container_instance in container_instances:
+            for resource in container_instance.remaining_resources:
+                if resource["name"] == "CPU":
+                    cpu_free += resource["integerValue"] / 1024
+                elif resource["name"] == "MEMORY":
+                    memory_free += resource["integerValue"] / 1024
 
-            if cpu_reserved > 0:
-                tb_ret_tmp.lines.append(f"CPUs: In use {cpu_count_used} Free {cpu_free}")
+            for resource in container_instance.registered_resources:
+                if resource["name"] == "CPU":
+                    cpu_reserved += resource["integerValue"] / 1024
+                elif resource["name"] == "MEMORY":
+                    memory_reserved += resource["integerValue"] / 1024
+
+        memory_gb_used = round(memory_reserved - memory_free, 2)
+        cpu_count_used = cpu_reserved - cpu_free
+        memory_reserved = round(memory_reserved, 2)
+        memory_free = round(memory_free, 2)
+
+        if cpu_reserved > 0:
+            tb_ret_tmp.lines.append(f"CPUs: In use {cpu_count_used} Free {cpu_free}")
+        else:
+            tb_ret_tmp.lines.append("No CPU Registered")
+
+        if memory_reserved > 0:
+            tb_ret_tmp.lines.append(f"MEMORY: In use {memory_gb_used}GB Free {memory_free}GB")
+            cpu_usage = f"CPU: {round((cpu_count_used / cpu_reserved) * 100, 2)}%"
+            memory_usage = f"Memory: {round((memory_gb_used / memory_reserved) * 100, 2)}%"
+            if memory_reserved - memory_free > 0:
+                str_ratio = str(round((cpu_count_used / memory_gb_used), 1))
             else:
-                tb_ret_tmp.lines.append("No CPU Registered")
+                str_ratio = f"{cpu_count_used} / {memory_gb_used}"
+            tb_ret_tmp.lines.append(f"Usage: {cpu_usage}, {memory_usage}, ratio: {str_ratio}")
+        else:
+            tb_ret_tmp.lines.append("No Memory Registered")
 
-            if memory_reserved > 0:
-                tb_ret_tmp.lines.append(f"MEMORY: In use {memory_gb_used}GB Free {memory_free}GB")
-                cpu_usage = f"CPU: {round((cpu_count_used / cpu_reserved) * 100, 2)}%"
-                memory_usage = f"Memory: {round((memory_gb_used / memory_reserved) * 100, 2)}%"
-                if memory_reserved - memory_free > 0:
-                    str_ratio = str(round((cpu_count_used / memory_gb_used), 1))
-                else:
-                    str_ratio = f"{cpu_count_used} / {memory_gb_used}"
-                tb_ret_tmp.lines.append(f"Usage: {cpu_usage}, {memory_usage}, ratio: {str_ratio}")
-            else:
-                tb_ret_tmp.lines.append("No Memory Registered")
-            blocks_by_cluster_size[cpu_reserved + memory_reserved].append(tb_ret_tmp)
-        action = ReportActionECSCapacityProvider()
+        blocks_by_cluster_size[cpu_reserved + memory_reserved].append(tb_ret_tmp)
+        action = ReportActionECSCapacityProvider({"cluster": cluster.arn})
+        lst_ret.append(action)
 
-        tb_ret.blocks = [block for key in sorted(blocks_by_cluster_size, reverse=True) for block in
-                         blocks_by_cluster_size[key]]
-
-        output_file_path = self.configuration.aws_api_cleanups_ecs_report_file_template.format(
-            region_mark=region.region_mark)
-
-        tb_ret.write_to_file(output_file_path)
-        logger.info(f"Wrote ecs cleanup to file: {output_file_path}")
-        return tb_ret
+        return lst_ret

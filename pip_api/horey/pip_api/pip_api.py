@@ -64,9 +64,8 @@ class PipAPI:
             if self.configuration.system_site_packages:
                 options += " --system-site-packages"
 
-            self.execute(
-                f"{sys.executable} -m venv {self.configuration.venv_dir_path}{options}",
-                ignore_venv=True,
+            self.run_bash(
+                f"{sys.executable} -m venv {self.configuration.venv_dir_path}{options}"
             )
 
             self.execute("python -m pip install --upgrade pip", ignore_on_error_callback=lambda dict_ret: "Requirement already satisfied" in dict_ret["stdout"])

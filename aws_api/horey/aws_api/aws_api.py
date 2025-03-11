@@ -307,6 +307,8 @@ class AWSAPI:
             self.init_iam_users()
         return self._users
 
+    def init_ecs_container_instances(self):
+        self.ecs_container_instances
     def init_managed_prefix_lists(
             self, region=None, full_information=True
     ):
