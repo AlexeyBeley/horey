@@ -79,6 +79,7 @@ class Packer:
         @param clean_install:
         @return:
         """
+        raise DeprecationWarning("Use pip api")
         if clean_install:
             if os.path.exists(venv_path):
                 logger.info(f"Removing directory {venv_path}")

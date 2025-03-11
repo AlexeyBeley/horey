@@ -224,7 +224,6 @@ class AlertSystem:
 
         :return:
         """
-        self.packer.create_venv(self.configuration.deployment_venv_path)
         current_dir = os.getcwd()
         os.chdir(self.configuration.deployment_directory_path)
         self.packer.install_horey_requirements(
