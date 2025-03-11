@@ -66,6 +66,7 @@ class PipAPI:
 
             self.execute("python -m pip install --upgrade pip")
             self.execute("python -m pip install --upgrade setuptools>=45")
+            self.execute("python -m pip install -U packaging>=24.2")
         else:
             logger.info(f"Installing Venv ignore. Venv already exists: {self.configuration.venv_dir_path}")
 
