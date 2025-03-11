@@ -1161,6 +1161,8 @@ class EC2Client(Boto3Client):
         :param region:
         """
 
+        logger.info(f"Provisioning subnet: {request}")
+
         for response in self.execute(
                 self.get_session_client(region=region).create_subnet, "Subnet", filters_req=request
         ):
