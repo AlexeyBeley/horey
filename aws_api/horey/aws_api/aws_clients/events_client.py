@@ -5,7 +5,6 @@ from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.event_bridge_rule import EventBridgeRule
 from horey.aws_api.aws_services_entities.event_bridge_target import EventBridgeTarget
 
-from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.h_logger import get_logger
 
 logger = get_logger()
@@ -20,6 +19,7 @@ class EventsClient(Boto3Client):
         client_name = "events"
         super().__init__(client_name)
 
+    # pylint: disable = too-many-arguments
     def yield_rules(self, region=None, update_info=False, filters_req=None, get_tags=True, full_information=True):
         """
         Yield tables
@@ -61,7 +61,7 @@ class EventsClient(Boto3Client):
 
         :param region:
         :param full_information:
-        :param custom_filter:
+        :param filters_req:
         :return:
         """
 
@@ -105,7 +105,7 @@ class EventsClient(Boto3Client):
         """
 
         region_rules = self.get_region_rules(
-            rule.region, custom_filter={"NamePrefix": rule.name}
+            rule.region, filters_req={"NamePrefix": rule.name}
         )
 
         if len(region_rules) == 1:
