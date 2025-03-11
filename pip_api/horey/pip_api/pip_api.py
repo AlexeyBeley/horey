@@ -246,9 +246,10 @@ class PipAPI:
         :param requirement:
         :return:
         """
+
         package_dirname = requirement.name.split(".")[-1]
         ret = self.execute(
-            f"cd {requirement.multi_package_repo_path} && make install_wheel-{package_dirname}"
+            f"cd {requirement.multi_package_repo_path} && make raw_install_wheel-{package_dirname}"
         )
         lines = ret.split("\n")
 
