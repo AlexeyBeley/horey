@@ -48,16 +48,24 @@ class PipAPI:
                 self.init_multi_package_repository(repo_path)
 
         if self.configuration.venv_dir_path is not None:
-            if not os.path.exists(
-                os.path.join(self.configuration.venv_dir_path, "bin", "activate")
-            ):
-                self.execute(
-                    f"{sys.executable} -m venv {self.configuration.venv_dir_path} --system-site-packages",
-                    ignore_venv=True,
-                )
+            self.install_venv()
 
-                self.execute("python -m pip install --upgrade pip")
-                self.execute("python -m pip install --upgrade setuptools>=45")
+    def install_venv(self):
+        """
+        Install venv if does not exist
+
+        :return:
+        """
+        if not os.path.exists(
+                os.path.join(self.configuration.venv_dir_path, "bin", "activate")
+        ):
+            self.execute(
+                f"{sys.executable} -m venv {self.configuration.venv_dir_path} --system-site-packages",
+                ignore_venv=True,
+            )
+
+            self.execute("python -m pip install --upgrade pip")
+            self.execute("python -m pip install --upgrade setuptools>=45")
 
     def init_multi_package_repository(self, repo_path):
         """
@@ -135,7 +143,9 @@ class PipAPI:
             and self.configuration is not None
             and self.configuration.venv_dir_path is not None
         ):
-            command = f"source {os.path.join(self.configuration.venv_dir_path, 'bin/activate')} && {command}"
+            self.install_venv()
+            venv_bin_dir = os.path.join(self.configuration.venv_dir_path, 'bin')
+            command = f"source {os.path.join(venv_bin_dir, 'activate')} && {command}"
         ret = self.run_bash(command)
 
         return ret["stdout"]
