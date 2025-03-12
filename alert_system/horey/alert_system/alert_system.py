@@ -350,12 +350,9 @@ class AlertSystem:
             if "requirements.txt" in file:
                 raise NotImplementedError("Need to implement requirements overwrite in venv using serverless")
 
-        current_dir = os.getcwd()
-        lambda_package_dir = os.path.join(self.configuration.deployment_directory_path,
-                "lambda_package")
-        if not os.path.exists(lambda_package_dir):
-            os.makedirs(lambda_package_dir, exist_ok=True)
-        os.chdir(self.configuration.deployment_directory_path)
+        lambda_package_dir = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "lambda_package")
 
         self.pip_api.install_requirements_from_file(
             os.path.join(
@@ -364,6 +361,8 @@ class AlertSystem:
             ),
             force_reinstall=True
         )
+        current_dir = os.getcwd()
+        os.chdir(self.configuration.deployment_directory_path)
 
         self.packer.zip_venv_site_packages(
             self.configuration.lambda_zip_file_name,
