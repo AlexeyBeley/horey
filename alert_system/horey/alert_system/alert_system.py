@@ -102,7 +102,7 @@ class AlertSystem:
             self._lambda_arn = aws_lambda.arn
         return self._lambda_arn
 
-    def provision(self, lambda_files):
+    def provision(self, tags, lambda_files):
         """
         Full provision of the AlertSystem receiving side components.
         i.e. parts that receive the Alarms and sends the notifications to the User Facing Channels.
@@ -115,7 +115,9 @@ class AlertSystem:
 
         @param lambda_files: Files needed by AlertSystemLambda - new dispatcher or SlackAPI configuration.
         @return:
+        :param tags:
         """
+        self.tags = tags
         self.validate_input(lambda_files)
         self.provision_sns_topic()
         self.provision_dynamodb()
