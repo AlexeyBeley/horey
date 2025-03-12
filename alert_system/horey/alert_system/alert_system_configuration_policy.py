@@ -206,6 +206,8 @@ class AlertSystemConfigurationPolicy(ConfigurationPolicy):
     @property
     def dynamodb_table_name(self):
         if self._dynamodb_table_name is None:
+            return f"has2-{self.lambda_name.replace('has2-', '').replace('has2_', '')}"
+            # todo: Migrate this logic to infrastructure_api
             raise self.UndefinedValueError("dynamodb_table_name")
         return self._dynamodb_table_name
 
