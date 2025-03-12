@@ -351,12 +351,11 @@ class AlertSystem:
                 raise NotImplementedError("Need to implement requirements overwrite in venv using serverless")
 
         current_dir = os.getcwd()
-        os.chdir(self.configuration.deployment_directory_path)
-        lambda_package_dir = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)),
+        lambda_package_dir = os.path.join(self.configuration.deployment_directory_path,
                 "lambda_package")
         if not os.path.exists(lambda_package_dir):
-            raise RuntimeError(f"Missing lambda package dir: {lambda_package_dir}")
+            os.makedirs(lambda_package_dir, exist_ok=True)
+        os.chdir(self.configuration.deployment_directory_path)
 
         self.pip_api.install_requirements_from_file(
             os.path.join(
