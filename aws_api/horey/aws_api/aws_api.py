@@ -2895,9 +2895,9 @@ class AWSAPI:
         # todo: Migrate this logic to infrastructure_api
         load_balancer = LoadBalancer({})
         load_balancer.region = listener.region
-        load_balancer.name = listener.loadbalancer_arn.split("/")[-2]
+        load_balancer.name = listener.load_balancer_arn.split("/")[-2]
         if not self.elbv2_client.update_load_balancer_information(load_balancer):
-            raise RuntimeError(f"{load_balancer.arn=}, {load_balancer.name=}")
+            raise RuntimeError(f"{listener.load_balancer_arn=}, {load_balancer.name=}")
         listener.tags = load_balancer.tags
         listener.tags.append({
             "Key": "Name",
