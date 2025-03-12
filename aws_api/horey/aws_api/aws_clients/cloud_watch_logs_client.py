@@ -307,7 +307,6 @@ class CloudWatchLogsClient(Boto3Client):
                                       raw_data=True, filters_req=put_request):
                     self.clear_cache(CloudWatchLogGroup)
         else:
-            breakpoint()
             self.provision_log_group_raw(log_group.region, log_group.generate_create_request())
 
         for i in range(60):
