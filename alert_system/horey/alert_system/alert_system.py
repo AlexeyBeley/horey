@@ -797,7 +797,8 @@ class AlertSystem:
         :param message_dict: extensive data to be stored in alert description
         :param log_group_name:
         """
-
+        # todo: Migrate this logic to infrastructure_api
+        return True
         if not alarm_description:
             alarm_description = {}
         alarm_description["log_group_name"] = log_group_name

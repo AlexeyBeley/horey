@@ -11,6 +11,7 @@ class SESV2EmailIdentity(AwsObject):
     AWS SESIdentity class
     """
 
+    # todo: Migrate this logic to infrastructure_api
     def __init__(self, dict_src, from_cache=False):
         self.dkim_enabled = None
         self.dkim_verification_status = None
