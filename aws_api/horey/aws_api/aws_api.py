@@ -18,8 +18,7 @@ from horey.aws_api.aws_clients.ec2_client import EC2Client
 from horey.aws_api.aws_services_entities.ec2_instance import EC2Instance
 from horey.aws_api.aws_clients.glue_client import GlueClient
 
-from horey.aws_api.aws_clients.efs_client import EFSClient
-
+from horey.aws_api.aws_services_entities.elbv2_load_balancer import LoadBalancer
 from horey.aws_api.aws_clients.ecs_client import ECSClient
 from horey.aws_api.aws_clients.pricing_client import PricingClient
 from horey.aws_api.aws_clients.auto_scaling_client import AutoScalingClient
@@ -94,7 +93,6 @@ from horey.common_utils.text_block import TextBlock
 
 from horey.network.dns_map import DNSMap
 from horey.aws_api.base_entities.aws_account import AWSAccount
-from horey.aws_api.aws_services_entities.ses_identity import SESIdentity
 from horey.aws_api.aws_services_entities.ses_identity import SESIdentity
 
 from horey.aws_api.aws_clients.ssm_client import SSMClient
@@ -2894,7 +2892,17 @@ class AWSAPI:
         @param listener:
         @return:
         """
-
+        # todo: Migrate this logic to infrastructure_api
+        load_balancer = LoadBalancer({})
+        load_balancer.region = listener.region
+        load_balancer.name = listener.loadbalancer_arn.split("/")[-2]
+        if not self.elbv2_client.update_load_balancer_information(load_balancer):
+            raise RuntimeError(f"{load_balancer.arn=}, {load_balancer.name=}")
+        listener.tags = load_balancer.tags
+        listener.tags.append({
+            "Key": "Name",
+            "Value": f"{load_balancer.name}_{listener.port}"
+        })
         self.elbv2_client.provision_load_balancer_listener(listener)
 
     def provision_load_balancer_rule(self, rule):
