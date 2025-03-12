@@ -117,6 +117,7 @@ class AlertSystem:
         @return:
         :param tags:
         """
+        # todo: Migrate this logic to infrastructure_api
         self.tags = tags
         self.validate_input(lambda_files)
         self.provision_sns_topic()
