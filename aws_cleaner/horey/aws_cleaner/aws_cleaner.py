@@ -256,6 +256,16 @@ class AWSCleaner:
 
         tb_ret = TextBlock("In the plans")
 
+        tb_ret_tmp = TextBlock("Lamda versions delete")
+        tb_ret_tmp.lines.append("Delete old versions")
+        tb_ret.blocks.append(tb_ret_tmp)
+
+        tb_ret_tmp = TextBlock("ECR TD and Images")
+        tb_ret_tmp.lines.append("Delete old Task definitions")
+        tb_ret_tmp.lines.append("Delete ECR repos that are not used in Lambda and Task definition / last pulled.")
+        tb_ret.blocks.append(tb_ret_tmp)
+
+
         tb_ret_tmp = TextBlock("Event Bridge - event rules")
         tb_ret_tmp.lines.append("Check event bridge rule has valid destination")
         tb_ret_tmp.lines.append("Check the destination has resource policy permitting event bridge to trigger it")
