@@ -46,10 +46,12 @@ from horey.aws_api.aws_services_entities.cloud_watch_alarm import CloudWatchAlar
 from horey.aws_api.aws_services_entities.event_bridge_rule import EventBridgeRule
 from horey.aws_api.aws_services_entities.event_bridge_target import EventBridgeTarget
 from horey.aws_api.aws_services_entities.ses_identity import SESIdentity
-from horey.aws_cleaner.aws_cleaner import AWSCleaner, ReportActionCloudwatchAlarm, ReportActionCloudwatchLogGroupMetric
+from horey.aws_cleaner.aws_cleaner import AWSCleaner, ReportActionCloudwatchAlarm, ReportActionCloudwatchLogGroupMetric, \
+    ReportActionECSCapacityProvider
 from horey.aws_cleaner.aws_cleaner_configuration_policy import AWSCleanerConfigurationPolicy
 from horey.aws_api.aws_services_entities.elbv2_load_balancer import LoadBalancer
 from horey.aws_api.aws_services_entities.sesv2_configuration_set import SESV2ConfigurationSet
+from horey.aws_api.aws_services_entities.ecs_capacity_provider import ECSCapacityProvider
 from horey.docker_api.docker_api import DockerAPI
 
 from horey.network.ip import IP
@@ -68,9 +70,9 @@ class EnvironmentAPI:
         self.configuration = configuration
         if AWSAccount.get_aws_account() is None:
             default_account = AWSAccount()
-            default_account.name = default_account.id ="environment_api_default"
+            default_account.name = default_account.id = "environment_api_default"
             default_account.connection_steps = [AWSAccount.ConnectionStep({"role": "current",
-                                                                       "region_mark": self.configuration.region})]
+                                                                           "region_mark": self.configuration.region})]
             AWSAccount.set_aws_account(default_account)
             AWSAccount.set_aws_default_region(self.region)
 
@@ -2291,9 +2293,9 @@ class EnvironmentAPI:
         config.reports_dir = os.path.join(self.configuration.data_directory_path, "reports")
         aws_cleaner = AWSCleaner(config, aws_api=self.aws_api)
 
-        # self.perform_cleanup(aws_cleaner)
-        aws_cleaner.cleanup_report_ecs()
+        self.perform_ecs_cleanup(aws_cleaner)
         breakpoint()
+        aws_cleaner.cleanup_report_ecs()
         # todo: aws_cleaner.cleanup_report_elasticache()
         aws_cleaner.cleanup_report_ecr_images()
         aws_cleaner.cleanup_report_lambdas()
@@ -2312,6 +2314,45 @@ class EnvironmentAPI:
         aws_cleaner.cleanup_report_route_53_service()
         aws_cleaner.cleanup_report_ebs_volumes()
         return aws_cleaner.cleanup_report_cloudwatch()
+
+    def perform_ecs_cleanup(self, aws_cleaner):
+        """
+        Do the cleanup.
+
+        :param aws_cleaner:
+        :return:
+        """
+
+        report = aws_cleaner.cleanup_report_ecs()
+
+        if report.sub_reports:
+            raise NotImplementedError(report.sub_reports)
+
+        delete_capacity_providers = []
+        for action in report.actions:
+            if isinstance(action, ReportActionECSCapacityProvider):
+                cap_provider = self.get_ecs_capacity_provider(action.path["name"])
+                arn = cap_provider.auto_scaling_group_provider["autoScalingGroupArn"]
+                auto_scaling_group = self.get_auto_scaling_group(arn=arn)
+
+                if action.unused_capacity_provider:
+                    breakpoint()
+                    self.aws_api.ecs_client.dispose_capacity_provider(cap_provider)
+                    self.aws_api.autoscaling_client.dispose_auto_scaling_group(auto_scaling_group)
+                    delete_capacity_providers.append(cap_provider)
+                    continue
+                if action.unused_container_instances:
+                    breakpoint()
+                    if len(auto_scaling_group.instances) - len(action.unused_container_instances) < auto_scaling_group.min_size:
+                        auto_scaling_group.min_size = len(auto_scaling_group.instances) - len(action.unused_container_instances)
+                        self.aws_api.autoscaling_client.provision_auto_scaling_group(auto_scaling_group)
+                    self.aws_api.autoscaling_client.detach_instances(auto_scaling_group,
+                                                                     action.unused_container_instances,
+                                                                     decrement=True)
+            else:
+                raise NotImplementedError(action.__class__.__name__)
+
+        logger.info(f"Deleted {len(delete_capacity_providers)} capacity providers")
 
     def perform_cleanup(self, aws_cleaner):
         """
@@ -2395,7 +2436,8 @@ class EnvironmentAPI:
                             if "errors" in value:
                                 self.dispose_cloudwatch_metric_filters(log_group, [value])
                     elif len(has2_values) == 1:
-                        self.dispose_cloudwatch_metric_filters(log_group, list(filter(lambda x: "has2" not in x, values)))
+                        self.dispose_cloudwatch_metric_filters(log_group,
+                                                               list(filter(lambda x: "has2" not in x, values)))
                     else:
                         breakpoint()
                         logger.info(f"Choose manually: {values}")
@@ -2523,3 +2565,33 @@ class EnvironmentAPI:
             )
 
         return image
+
+    def get_ecs_capacity_provider(self, name):
+        """
+        Standard.
+
+        :param name:
+        :return:
+        """
+
+        cap_provider = ECSCapacityProvider({})
+        cap_provider.region = self.region
+        cap_provider.name = name
+        if not self.aws_api.ecs_client.update_capacity_provider_information(cap_provider):
+            raise ValueError(
+                f"Was not able to find capacity provider {cap_provider.name} in region {self.configuration.region}")
+        return cap_provider
+
+    def get_auto_scaling_group(self, arn=None):
+        """
+        Standard.
+
+        :return:
+        """
+
+        auto_scaling_group = AutoScalingGroup({})
+        auto_scaling_group.region = self.region
+        auto_scaling_group.arn = arn
+        if not self.aws_api.autoscaling_client.update_auto_scaling_group_information(auto_scaling_group):
+            raise ValueError(f"Was not able to find Autoscaling group {auto_scaling_group.arn}")
+        return auto_scaling_group

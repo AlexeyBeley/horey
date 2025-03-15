@@ -123,11 +123,13 @@ class AutoScalingClient(Boto3Client):
                     region_objects = self.get_region_auto_scaling_groups(
                         autoscaling_group.region, names=[autoscaling_group.name]
                     )
-                    if region_objects[0].max_size == autoscaling_group.max_size:
+                    if region_objects[0].max_size == autoscaling_group.max_size and \
+                            region_objects[0].min_size == autoscaling_group.min_size:
                         break
                     logger.info(
-                        f"Waiting for auto scaling group max_size change from "
-                        f"{region_objects[0].max_size} to {autoscaling_group.max_size}"
+                        f"Waiting for auto scaling group max_size/min_size change from "
+                        f"{region_objects[0].max_size}/{region_objects[0].min_size} to"
+                        f" {autoscaling_group.max_size}/{autoscaling_group.min_size}"
                     )
                     time.sleep(sleep_time)
                 else:
@@ -260,6 +262,7 @@ class AutoScalingClient(Boto3Client):
         """
         Standard.
 
+        :param region:
         :param request_dict:
         :return:
         """
@@ -271,6 +274,7 @@ class AutoScalingClient(Boto3Client):
                 raw_data=True,
                 filters_req=request_dict,
         ):
+            self.clear_cache(AutoScalingGroup)
             return response
 
     def get_all_policies(self, region=None):
@@ -408,6 +412,7 @@ class AutoScalingClient(Boto3Client):
         """
         Standard.
 
+        :param region:
         :param request_dict:
         :return:
         """
@@ -418,6 +423,7 @@ class AutoScalingClient(Boto3Client):
                 "Activities",
                 filters_req=request_dict,
         ):
+            self.clear_cache(AutoScalingGroup)
             return response
 
     def update_auto_scaling_group_information(self, auto_scaling_group: AutoScalingGroup):

@@ -184,6 +184,7 @@ class AWSAPI:
         self.servicediscovery_namespaces = []
         self.elasticsearch_domains = []
         self.managed_prefix_lists = []
+        self.ecs_container_instances = []
         self.vpcs = []
         self._subnets = []
         self.availability_zones = []
@@ -306,7 +307,14 @@ class AWSAPI:
         return self._users
 
     def init_ecs_container_instances(self):
-        self.ecs_container_instances
+        """
+        Standard.
+
+        :return:
+        """
+
+        self.ecs_container_instances = list(self.ecs_client.yield_container_instances())
+
     def init_managed_prefix_lists(
             self, region=None, full_information=True
     ):

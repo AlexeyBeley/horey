@@ -908,8 +908,7 @@ class ECSClient(Boto3Client):
             for container_instance_arn in self.execute(
                     self.get_session_client(region=region).list_container_instances,
                     "containerInstanceArns",
-                    filters_req=filter_req,
-                    exception_ignore_callback=lambda error: "ClusterNotFoundException" in repr(error)
+                    filters_req=filter_req
             ):
                 cluster_container_instances_arns.append(container_instance_arn)
 
@@ -931,6 +930,63 @@ class ECSClient(Boto3Client):
                 final_result.append(obj)
 
         return final_result
+
+    def yield_container_instances(self, region=None, update_info=False, filters_req=None):
+        """
+        Yield tables
+
+        :return:
+        """
+
+        regional_fetcher_generator = self.yield_container_instances_raw
+
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                            ECSContainerInstance,
+                                                            update_info=update_info,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req)
+
+    def yield_container_instances_raw(self, region, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        if filters_req is None:
+            filters_req = {}
+
+        if "cluster" not in filters_req:
+            cluster_identifiers = list(self.execute(self.get_session_client(region=region).list_clusters, "clusterArns"))
+        else:
+            cluster_identifiers = [filters_req["cluster"]]
+
+        for _cluster_identifier in cluster_identifiers:
+            filters_req.update({"cluster": _cluster_identifier, "maxResults": 100})
+
+            cluster_container_instances_arns = list(self.execute(
+                    self.get_session_client(region=region).list_container_instances,
+                    "containerInstanceArns",
+                    filters_req=filters_req
+            ))
+
+            if len(cluster_container_instances_arns) == 0:
+                continue
+
+            if len(cluster_container_instances_arns) == 100:
+                raise NotImplementedError("Pagination over list_container_instances")
+
+            filter_req = {
+                "cluster": _cluster_identifier,
+                "containerInstances": cluster_container_instances_arns,
+                "include": ["TAGS", "CONTAINER_INSTANCE_HEALTH"],
+            }
+
+            yield from self.execute(
+                    self.get_session_client(region=region).describe_container_instances,
+                    "containerInstances",
+                    filters_req=filter_req,
+            )
 
     def dispose_cluster(self, cluster: ECSCluster):
         """
@@ -1073,7 +1129,7 @@ class ECSClient(Boto3Client):
         """
 
         for region_container_instance in self.get_region_container_instances(container_instance.region,
-                                                                             cluster_identifier=container_instance.get_cluster_name()):
+                                                                             cluster_identifier=container_instance.cluster_name):
             if region_container_instance.arn == container_instance.arn:
                 container_instance.update_from_raw_response(region_container_instance.dict_src)
                 return True
@@ -1096,7 +1152,7 @@ class ECSClient(Boto3Client):
             if container_instance.status != status:
                 raise ValueError(container_instance.status)
 
-        filters_req = {"cluster": container_instances[0].get_cluster_name(),
+        filters_req = {"cluster": container_instances[0].cluster_name,
                        "status": status
                        }
 

@@ -205,7 +205,8 @@ class ReportActionCloudwatchLogGroup(ReportAction):
 class ReportActionECSCapacityProvider(ReportAction):
     def __init__(self, path, reason=None):
         super().__init__(path, reason=reason)
-        self.unused_instances = []
+        self.unused_capacity_provider = False
+        self.unused_container_instances = None
 
     def generate_lines(self):
         """
@@ -213,15 +214,16 @@ class ReportActionECSCapacityProvider(ReportAction):
 
         :return:
         """
-        breakpoint()
         lst_ret = []
-        base_str_ret = f"Alarm: '{self.path['arn']}'."
+        base_str_ret = f"ECS Capacity Provider: '{self.path['region']}' '{self.path['name']}'."
 
-        if self.dimension_balckholes:
-            lst_ret.append("Important: " + base_str_ret + "Metric with these dimensions does not exist")
+        if self.unused_capacity_provider:
+            reason = self.reason or " Unused Capacity Provider"
+            lst_ret.append(f"Important: {base_str_ret} {reason}")
 
-        for action_arn in self.action_blackholes:
-            lst_ret.append("Important: " + base_str_ret + f"Action destination does not exist: {action_arn}.")
+        if self.unused_container_instances:
+            reason = self.reason or f" Unused Container instances : {self.unused_container_instances}."
+            lst_ret.append(f"Important: {base_str_ret} {reason}")
 
         return lst_ret
 
@@ -3859,51 +3861,59 @@ class AWSCleaner:
         """
 
         lst_ret = []
-        blocks_by_cluster_size = defaultdict(list)
-        breakpoint()
-        container_instances = CommonUtils.find_objects_by_values(self.aws_api.container_instances, {})
-        #=cluster.arn)
-        cpu_reserved = 0
-        cpu_free = 0
-        memory_reserved = 0
-        memory_free = 0
-        for container_instance in container_instances:
-            for resource in container_instance.remaining_resources:
-                if resource["name"] == "CPU":
-                    cpu_free += resource["integerValue"] / 1024
-                elif resource["name"] == "MEMORY":
-                    memory_free += resource["integerValue"] / 1024
+        cluster_container_instances = CommonUtils.find_objects_by_values(self.aws_api.ecs_container_instances, {"cluster_name": cluster.name})
+        if not cluster_container_instances:
+            return []
 
-            for resource in container_instance.registered_resources:
-                if resource["name"] == "CPU":
-                    cpu_reserved += resource["integerValue"] / 1024
-                elif resource["name"] == "MEMORY":
-                    memory_reserved += resource["integerValue"] / 1024
+        container_instances_per_cap_provider = defaultdict(list)
+        for container_instance in cluster_container_instances:
+            container_instances_per_cap_provider[container_instance.capacity_provider_name].append(container_instance)
 
-        memory_gb_used = round(memory_reserved - memory_free, 2)
-        cpu_count_used = cpu_reserved - cpu_free
-        memory_reserved = round(memory_reserved, 2)
-        memory_free = round(memory_free, 2)
+        for cap_provider_name, container_instances in container_instances_per_cap_provider.items():
+            cpu_reserved = 0
+            cpu_free = 0
+            memory_reserved = 0
+            memory_free = 0
 
-        if cpu_reserved > 0:
-            tb_ret_tmp.lines.append(f"CPUs: In use {cpu_count_used} Free {cpu_free}")
-        else:
-            tb_ret_tmp.lines.append("No CPU Registered")
+            unused_container_instances = []
+            for container_instance in container_instances:
+                container_instance_remaining_cpu = None
+                container_instance_registered_cpu = None
+                for resource in container_instance.remaining_resources:
+                    if resource["name"] == "CPU":
+                        container_instance_remaining_cpu = resource["integerValue"]
+                        cpu_free += resource["integerValue"]
+                    elif resource["name"] == "MEMORY":
+                        memory_free += resource["integerValue"]
 
-        if memory_reserved > 0:
-            tb_ret_tmp.lines.append(f"MEMORY: In use {memory_gb_used}GB Free {memory_free}GB")
-            cpu_usage = f"CPU: {round((cpu_count_used / cpu_reserved) * 100, 2)}%"
-            memory_usage = f"Memory: {round((memory_gb_used / memory_reserved) * 100, 2)}%"
-            if memory_reserved - memory_free > 0:
-                str_ratio = str(round((cpu_count_used / memory_gb_used), 1))
-            else:
-                str_ratio = f"{cpu_count_used} / {memory_gb_used}"
-            tb_ret_tmp.lines.append(f"Usage: {cpu_usage}, {memory_usage}, ratio: {str_ratio}")
-        else:
-            tb_ret_tmp.lines.append("No Memory Registered")
+                for resource in container_instance.registered_resources:
+                    if resource["name"] == "CPU":
+                        container_instance_registered_cpu = resource["integerValue"]
+                        cpu_reserved += resource["integerValue"]
+                    elif resource["name"] == "MEMORY":
+                        memory_reserved += resource["integerValue"]
 
-        blocks_by_cluster_size[cpu_reserved + memory_reserved].append(tb_ret_tmp)
-        action = ReportActionECSCapacityProvider({"cluster": cluster.arn})
-        lst_ret.append(action)
+                if container_instance_remaining_cpu is None and container_instance_registered_cpu is None:
+                    raise NotImplementedError("container_instance_registered_cpu or container_instance_remaining_cpu is None")
+                if container_instance_remaining_cpu == container_instance_registered_cpu:
+                    unused_container_instances.append(container_instance)
+
+            if memory_free == memory_reserved and cpu_free == cpu_reserved:
+                action = ReportActionECSCapacityProvider({"region": cluster.region.region_mark, "name": cap_provider_name},
+                                                         reason=f"Capacity provider has no running tasks. "
+                                                                f"Can delete {len(container_instances)} instances."
+                                                                "Make sure there are no scheduled tasks configured to run on EC2!")
+                action.unused_capacity_provider = True
+                lst_ret.append(action)
+                continue
+
+            free_cpu_percent = int((cpu_free / cpu_reserved) * 100)
+            if free_cpu_percent > 20:
+                instance_ids = [unused_container_instance.ec2_instance_id for unused_container_instance in unused_container_instances]
+                action = ReportActionECSCapacityProvider({"region": cluster.region.region_mark, "name": cap_provider_name},
+                                                 reason=f"Capacity provider usage = {100-free_cpu_percent}% < 80%. "
+                                                        f"Delete unused container instances: {instance_ids}")
+                action.unused_container_instances = instance_ids
+                lst_ret.append(action)
 
         return lst_ret

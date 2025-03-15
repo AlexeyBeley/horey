@@ -29,7 +29,7 @@ def cleanup_parser():
 def cleanup(arguments) -> None:
     config = EnvironmentAPIConfigurationPolicy()
     config.data_directory_path = "/tmp/horey_data"
-    config.region = "us-east-1"
+    config.region = "us-west-2"
     aws_api = AWSAPI()
     api = EnvironmentAPI(config, aws_api)
     api.generate_cleanup_report()
