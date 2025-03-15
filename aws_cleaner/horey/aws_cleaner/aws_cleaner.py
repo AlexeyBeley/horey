@@ -3917,3 +3917,9 @@ class AWSCleaner:
                 lst_ret.append(action)
 
         return lst_ret
+
+    def init_and_cache_all_s3_bucket_objects(self):
+        cache_dir = os.path.join(self.configuration.ec2_reports_dir, "s3")
+        os.makedirs(cache_dir, exist_ok=True)
+        self.aws_api.init_s3_buckets(full_information=False)
+        self.aws_api.init_and_cache_all_s3_bucket_objects(cache_dir)

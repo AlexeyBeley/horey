@@ -2293,7 +2293,8 @@ class EnvironmentAPI:
         config.reports_dir = os.path.join(self.configuration.data_directory_path, "reports")
         aws_cleaner = AWSCleaner(config, aws_api=self.aws_api)
 
-        self.perform_ecs_cleanup(aws_cleaner)
+        aws_cleaner.init_and_cache_all_s3_bucket_objects()
+        #self.perform_ecs_cleanup(aws_cleaner)
         breakpoint()
         aws_cleaner.cleanup_report_ecs()
         # todo: aws_cleaner.cleanup_report_elasticache()
