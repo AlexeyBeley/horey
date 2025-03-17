@@ -218,14 +218,70 @@ class ReportActionECSCapacityProvider(ReportAction):
         base_str_ret = f"ECS Capacity Provider: '{self.path['region']}' '{self.path['name']}'."
 
         if self.unused_capacity_provider:
-            reason = self.reason or " Unused Capacity Provider"
+            reason = self.reason or "Unused Capacity Provider"
             lst_ret.append(f"Important: {base_str_ret} {reason}")
 
         if self.unused_container_instances:
-            reason = self.reason or f" Unused Container instances : {self.unused_container_instances}."
+            reason = self.reason or f"Unused Container instances : {self.unused_container_instances}."
             lst_ret.append(f"Important: {base_str_ret} {reason}")
 
         return lst_ret
+
+
+class ReportActionECR(ReportAction):
+    def __init__(self, path, reason=None):
+        super().__init__(path, reason=reason)
+        self.expired_images = None
+        self.unused_repo = False
+        self.untagged_images = None
+
+    def generate_lines(self):
+        """
+        Standard.
+
+        :return:
+        """
+        lst_ret = []
+        base_str_ret = f"ECR: '{self.path['region']}' '{self.path['repo']}'."
+
+        if self.unused_repo:
+            reason = self.reason or "Unused repository"
+            lst_ret.append(f"Important: {base_str_ret} {reason}")
+            return lst_ret
+
+        if self.expired_images:
+            reason = self.reason or f"Expired images {self.expired_images}"
+            lst_ret.append(f"Important: {base_str_ret} {reason}")
+
+        if self.untagged_images:
+            reason = self.reason or f"Untagged images: {self.untagged_images}"
+            lst_ret.append(f"Important: {base_str_ret} {reason}")
+
+        return lst_ret
+
+
+class ReportActionECS(ReportAction):
+    def __init__(self, path, reason=None):
+        super().__init__(path, reason=reason)
+        self.unused_task_definition = False
+
+    def generate_lines(self):
+        """
+        Standard.
+
+        :return:
+        """
+        lst_ret = []
+        base_str_ret = f"ECS Task definition: '{self.path['region']}' '{self.path['name']}'."
+
+        if self.unused_task_definition:
+            reason = self.reason or "Unused"
+            lst_ret.append(f"Important: {base_str_ret} {reason}")
+
+
+        breakpoint()
+        return lst_ret
+
 
 
 class AWSCleaner:
@@ -257,6 +313,12 @@ class AWSCleaner:
         """
 
         tb_ret = TextBlock("In the plans")
+
+        tb_ret_tmp = TextBlock("Event rule without targets")
+        tb_ret.blocks.append(tb_ret_tmp)
+
+        tb_ret_tmp = TextBlock("Lamdas without trigger")
+        tb_ret.blocks.append(tb_ret_tmp)
 
         tb_ret_tmp = TextBlock("Lamda versions delete")
         tb_ret_tmp.lines.append("Delete old versions")
@@ -545,14 +607,16 @@ class AWSCleaner:
                          for region in AWSAccount.get_aws_account().regions.values()]
         }]
 
-    def init_ecr_images(self, permissions_only=False):
+    def init_ecr(self, permissions_only=False):
         """
         Init ECR images
 
         :return:
         """
-        if not permissions_only and not self.aws_api.ecr_images:
+        if not permissions_only and not self.aws_api.ecr_images or not self.aws_api.ecr_repositories:
             self.aws_api.init_ecr_images()
+            self.aws_api.init_ecr_repositories()
+
         return [
             {
                 "Sid": "ECRTags",
@@ -1853,39 +1917,57 @@ class AWSCleaner:
 
         return tb_ret if tb_ret.lines or tb_ret.blocks else None
 
-    def cleanup_report_ecr_images(self, permissions_only=False):
+    def cleanup_report_ecr_images(self, permissions_only=False, months=6):
         """
-        Images compiled 6 months ago and later.
+        Images compiled X months ago and later.
 
         :return:
         """
 
-        permissions = self.init_ecr_images(permissions_only=permissions_only)
+        permissions = self.init_ecr(permissions_only=permissions_only)
         if permissions_only:
             return permissions
 
-        tb_ret = TextBlock("ECR Images half year and older")
+        global_report = Report("Global")
+
         images_by_ecr_repo = defaultdict(list)
         for image in self.aws_api.ecr_images:
             images_by_ecr_repo[image.repository_name].append(image)
 
-        half_year_date = None
+        for ecr_repo in self.aws_api.ecr_repositories:
+            if ecr_repo.name not in images_by_ecr_repo:
+                action = ReportActionECR({"region": ecr_repo.region.region_mark, "repo": ecr_repo.name}, reason="Empty repository")
+                action.unused_repo = True
+                global_report += action
+                break
+
+        age_limit_date = None
         for images in images_by_ecr_repo.values():
-            half_year_date = datetime.datetime.now(tz=images[0].image_pushed_at.tzinfo) - datetime.timedelta(
-                days=6 * 30)
+            age_limit_date = datetime.datetime.now(tz=images[0].image_pushed_at.tzinfo) - datetime.timedelta(
+                days=months * 30)
             break
 
         for repo_name, images in images_by_ecr_repo.items():
-            last_image = sorted(images, key=lambda _image: _image.image_pushed_at)[-1]
-            if last_image.image_pushed_at < half_year_date:
-                tb_ret.lines.append(
-                        f"Repository '{repo_name}' last image pushed at: {last_image.image_pushed_at.strftime('%Y-%m-%d %H:%M')} ")
+            action = ReportActionECR({"region": images[0].region, "repo": repo_name})
+            action.expired_images = [_image.image_tags for _image in images if _image.image_tags and
+                                     max(_image.image_pushed_at, (_image.last_recorded_pull_time or _image.image_pushed_at)) < age_limit_date]
+            action.untagged_images = [_image.image_digest for _image in images if not _image.image_tags]
 
-        with open(self.configuration.ecr_report_file_path, "w+", encoding="utf-8") as file_handler:
-            file_handler.write(tb_ret.format_pprint())
+            if not action.expired_images and not action.untagged_images:
+                continue
 
+            global_report += action
+
+            if len(action.expired_images) + len(action.untagged_images) == len(images):
+                action.unused_repo = True
+                action.reason = f"All repository images have no tags or older than > {months} months"
+                continue
+
+            action.reason = f"Images have no tags or older than > {months} months: {action.expired_images}, {action.untagged_images}"
+
+        global_report.write_to_file(self.configuration.ecr_report_file_path)
         logger.info(f"Output in: {self.configuration.ecr_report_file_path}")
-        return tb_ret
+        return global_report
 
     def cleanup_report_ec2_instances(self, permissions_only=False):
         """
@@ -1919,6 +2001,32 @@ class AWSCleaner:
 
         logger.info(f"Output in: {self.configuration.ec2_instances_report_file_path}")
         return tb_ret
+
+    def cleanup_report_ec2_amis(self, permissions_only=False, months=6):
+        """
+        Detect old AMIs. It's important to renew AMIs on a regular basics.
+
+        :return:
+        """
+
+        permissions = self.init_ec2_amis(permissions_only=permissions_only)
+        permissions += self.init_ec2_instances(permissions_only=permissions_only)
+        if permissions_only:
+            return permissions
+
+        global_report = Report("Global")
+        my_amis = [ami for ami in self.aws_api.amis if ami.owner_id == self.aws_api.ec2_client.account_id]
+
+        # amis don't have TZ
+        # half_year_date = datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(days=6 * 30)
+        age_limit_date = datetime.datetime.now() - datetime.timedelta(days=months * 30)
+        expired_amis = [ami for ami in my_amis if ami.creation_date < age_limit_date]
+
+
+        breakpoint()
+        global_report.write_to_file(self.configuration.ec2_amis_report_file_path)
+        logger.info(f"Output in: {self.configuration.ec2_instances_report_file_path}")
+        return global_report
 
     def cleanup_report_dynamodb(self, permissions_only=False):
         """

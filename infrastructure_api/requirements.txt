@@ -3,3 +3,4 @@ horey.aws_api>=1.0.0
 horey.deployer>=1.0.0
 horey.alert_system>=1.0.0
 horey.aws_cleaner>=1.0.0
+horey.docker_api>=1.0.0

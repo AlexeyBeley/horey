@@ -265,6 +265,10 @@ class AWSCleanerConfigurationPolicy(ConfigurationPolicy):
         return os.path.join(self.ec2_reports_dir, "instances.txt")
 
     @property
+    def ec2_amis_report_file_path(self):
+        return os.path.join(self.ec2_reports_dir, "amis.txt")
+
+    @property
     def ec2_interfaces_report_file_path(self):
         return os.path.join(self.ec2_reports_dir, "enis.txt")
 
