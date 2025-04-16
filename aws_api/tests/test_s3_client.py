@@ -395,25 +395,3 @@ def test_download_file():
     s3_client = S3Client()
     s3_client.download_file(None, None, None)
 
-
-
-if __name__ == "__main__":
-    # test_init_s3_client()
-    # test_provision_s3_bucket()
-    # test_upload_file_thread_without_validation()
-    # test_upload_file_thread_with_validation()
-
-    # test_upload_small_file_to_s3()
-    # test_upload_small_file_with_extra_args_to_s3()
-    # test_upload_large_file_with_extra_args_to_s3()
-    # test_upload_large_file_to_s3()
-    # test_upload_large_files_directory_to_s3()
-    # test_upload_small_files_directory_to_s3()
-
-    # test_upload_large_file_to_s3_with_md5_validation()
-    # test_upload_large_files_directory_to_s3_with_md5_validation()
-    # test_upload_small_files_directory_to_s3_with_md5_validation()
-    # test_delete_bucket_objects()
-    # test_get_bucket_keys_extensions()
-    # test_upload_with_metadata_callback()
-    test_download_file()

@@ -27,8 +27,8 @@ accounts_file_full_path = os.path.abspath(
 )
 
 accounts = CommonUtils.load_object_from_module(accounts_file_full_path, "main")
-AWSAccount.set_aws_account(accounts["1111"])
-AWSAccount.set_aws_region(accounts["1111"].regions["us-west-2"])
+#AWSAccount.set_aws_account(accounts["1111"])
+#AWSAccount.set_aws_region(accounts["1111"].regions["us-west-2"])
 
 mock_values_file_path = os.path.abspath(
     os.path.join(
@@ -176,11 +176,3 @@ def test_dispose_fargate_profile():
     eks_fargate_profile.name = "alb-sample-app"
     eks_fargate_profile.cluster_name = "test-aws-example"
     _k8s.aws_api.eks_client.dispose_fargate_profile(eks_fargate_profile)
-
-
-if __name__ == "__main__":
-    # test_get_cluster_login_credentials()
-    # test_provision_eks_pod_execution_policy()
-    # test_provision_eks_pod_execution_role()
-    test_provision_fargate_profile()
-    # test_dispose_fargate_profile()

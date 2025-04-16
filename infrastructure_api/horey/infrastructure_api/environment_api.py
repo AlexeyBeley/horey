@@ -257,11 +257,8 @@ class EnvironmentAPI:
         self.vpc.region = self.region
         self.vpc.cidr_block = self.configuration.vpc_primary_subnet
 
-        self.vpc.tags = self.configuration.tags
-        self.vpc.tags.append({
-            "Key": "Name",
-            "Value": self.configuration.vpc_name
-        })
+        self.vpc.tags = self.get_tags_with_name(self.configuration.vpc_name)
+
         self.aws_api.provision_vpc(self.vpc)
         return self.vpc
 
@@ -300,12 +297,8 @@ class EnvironmentAPI:
             private_subnet_az.availability_zone_id = availability_zone.id
             private_subnet_az.region = Region.get_region(self.configuration.region)
 
-            private_subnet_az.tags = self.configuration.tags
-            private_subnet_az.tags.append({
-                "Key": "Name",
-                "Value": self.configuration.subnet_name_template.format(type="private",
-                                                                        id=private_subnet_az.availability_zone_id)
-            })
+            private_subnet_az.tags = self.get_tags_with_name(self.configuration.subnet_name_template.format(type="private",
+                                                                        id=private_subnet_az.availability_zone_id))
             subnets.append(private_subnet_az)
 
             # public
@@ -315,12 +308,8 @@ class EnvironmentAPI:
             public_subnet_az.availability_zone_id = availability_zone.id
             public_subnet_az.region = Region.get_region(self.configuration.region)
 
-            public_subnet_az.tags = self.configuration.tags
-            public_subnet_az.tags.append({
-                "Key": "Name",
-                "Value": self.configuration.subnet_name_template.format(type="public",
-                                                                        id=public_subnet_az.availability_zone_id)
-            })
+            public_subnet_az.tags = self.get_tags_with_name(self.configuration.subnet_name_template.format(type="public",
+                                                                        id=public_subnet_az.availability_zone_id))
             subnets.append(public_subnet_az)
 
         self.aws_api.provision_subnets(subnets)
@@ -358,11 +347,7 @@ class EnvironmentAPI:
         inet_gateway = InternetGateway({})
         inet_gateway.attachments = [{"VpcId": self.vpc.id}]
         inet_gateway.region = self.region
-        inet_gateway.tags = self.configuration.tags
-        inet_gateway.tags.append({
-            "Key": "Name",
-            "Value": self.configuration.internet_gateway_name
-        })
+        inet_gateway.tags = self.get_tags_with_name(self.configuration.internet_gateway_name)
 
         self.aws_api.provision_internet_gateway(inet_gateway)
 
@@ -390,11 +375,7 @@ class EnvironmentAPI:
                 "GatewayId": internet_gateway.id
             }]
 
-            route_table.tags = self.configuration.tags
-            route_table.tags.append({
-                "Key": "Name",
-                "Value": self.configuration.route_table_name_template.format(subnet=public_subnet.get_tagname())
-            })
+            route_table.tags = self.get_tags_with_name(self.configuration.route_table_name_template.format(subnet=public_subnet.get_tagname()))
 
             self.aws_api.provision_route_table(route_table)
             route_tables.append(route_table)
@@ -412,11 +393,7 @@ class EnvironmentAPI:
         for counter in range(self.configuration.nat_gateways_count):
             elastic_address = ElasticAddress({})
             elastic_address.region = self.region
-            elastic_address.tags = self.configuration.tags
-            elastic_address.tags.append({
-                "Key": "Name",
-                "Value": self.configuration.nat_gateway_elastic_address_name_template.format(id=counter)
-            })
+            elastic_address.tags = self.get_tags_with_name(self.configuration.nat_gateway_elastic_address_name_template.format(id=counter))
 
             elastic_addresses.append(elastic_address)
 
@@ -446,11 +423,7 @@ class EnvironmentAPI:
             nat_gateway.region = self.region
             nat_gateway.connectivity_type = "public"
             nat_gateway.allocation_id = nat_elastic_addresses[counter].id
-            nat_gateway.tags = self.configuration.tags
-            nat_gateway.tags.append({
-                "Key": "Name",
-                "Value": self.configuration.nat_gateway_name_template.format(subnet=subnet.get_tagname())
-            })
+            nat_gateway.tags = self.get_tags_with_name(self.configuration.nat_gateway_name_template.format(subnet=subnet.get_tagname()))
             nat_gateways.append(nat_gateway)
 
         self.aws_api.provision_nat_gateways(nat_gateways)
@@ -478,11 +451,7 @@ class EnvironmentAPI:
                 "NatGatewayId": nat_gateways[i // nat_gateways_count].id
             }]
 
-            route_table.tags = self.configuration.tags
-            route_table.tags.append({
-                "Key": "Name",
-                "Value": self.configuration.route_table_name_template.format(subnet=private_subnet.get_tagname())
-            })
+            route_table.tags = self.get_tags_with_name(self.configuration.route_table_name_template.format(subnet=private_subnet.get_tagname()))
 
             self.aws_api.provision_route_table(route_table)
         return True
@@ -649,11 +618,7 @@ class EnvironmentAPI:
         security_group.name = name
         security_group.description = name
         security_group.region = self.region
-        security_group.tags = self.configuration.tags
-        security_group.tags.append({
-            "Key": "Name",
-            "Value": security_group.name
-        })
+        security_group.tags = self.get_tags_with_name(security_group.name)
 
         if ip_permissions is not None:
             security_group.ip_permissions = ip_permissions
@@ -682,11 +647,7 @@ class EnvironmentAPI:
         key_pair.name = name
         key_pair.key_type = "ed25519"
         key_pair.region = self.region
-        key_pair.tags = self.configuration.tags
-        key_pair.tags.append({
-            "Key": "Name",
-            "Value": key_pair.name
-        })
+        key_pair.tags = self.get_tags_with_name(key_pair.name)
 
         self.aws_api.provision_key_pair(key_pair, save_to_secrets_manager=True,
                                         secrets_manager_region=Region.get_region(
@@ -718,11 +679,8 @@ class EnvironmentAPI:
         launch_template = EC2LaunchTemplate({})
         launch_template.name = self.configuration.container_instance_launch_template_name
         launch_template.region = self.region
-        launch_template.tags = self.configuration.tags
-        launch_template.tags.append({
-            "Key": "Name",
-            "Value": launch_template.name
-        })
+        launch_template.tags = self.get_tags_with_name(launch_template.name)
+
         launch_template.launch_template_data = {"EbsOptimized": False,
                                                 "IamInstanceProfile": {
                                                     "Arn": self.provision_container_instance_iam_profile().arn
@@ -806,10 +764,7 @@ class EnvironmentAPI:
         iam_role.assume_role_policy_document = assume_role_policy
         iam_role.description = iam_role.name
         iam_role.max_session_duration = 3600
-        iam_role.tags = [{
-            "Key": "Name",
-            "Value": iam_role.name
-        }]
+        iam_role.tags = self.get_tags_with_name(iam_role.name)
 
         iam_role.path = self.configuration.iam_path
         iam_role.managed_policies_arns = ["arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"]
@@ -818,10 +773,7 @@ class EnvironmentAPI:
         iam_instance_profile = IamInstanceProfile({})
         iam_instance_profile.name = profile_name
         iam_instance_profile.path = self.configuration.iam_path
-        iam_instance_profile.tags = [{
-            "Key": "Name",
-            "Value": iam_instance_profile.name
-        }]
+        iam_instance_profile.tags = self.get_tags_with_name(iam_instance_profile.name)
         iam_instance_profile.roles = [{"RoleName": iam_role.name}]
         self.aws_api.iam_client.provision_instance_profile(iam_instance_profile)
         return iam_instance_profile
@@ -842,11 +794,7 @@ class EnvironmentAPI:
         ]
         cluster.name = self.configuration.ecs_cluster_name
         cluster.region = self.region
-        cluster.tags = [{key.lower(): value for key, value in dict_tag.items()} for dict_tag in self.configuration.tags]
-        cluster.tags.append({
-            "key": "Name",
-            "value": cluster.name
-        })
+        cluster.tags = [{key.lower(): value for key, value in dict_tag.items()} for dict_tag in self.get_tags_with_name(cluster.name)]
         cluster.configuration = {}
 
         self.aws_api.provision_ecs_cluster(cluster)
@@ -877,11 +825,7 @@ class EnvironmentAPI:
             as_group.min_size = self.configuration.container_instance_auto_scaling_group_min_size
             as_group.desired_capacity = self.configuration.container_instance_auto_scaling_group_min_size
 
-        as_group.tags = self.configuration.tags
-        as_group.tags.append({
-            "Key": "Name",
-            "Value": as_group.name
-        })
+        as_group.tags = self.get_tags_with_name(as_group.name)
         as_group.launch_template = {
             "LaunchTemplateId": launch_template.id,
             "Version": "$Default"
@@ -910,12 +854,8 @@ class EnvironmentAPI:
         capacity_provider = ECSCapacityProvider({})
         capacity_provider.name = self.configuration.container_instance_capacity_provider_name
         capacity_provider.tags = [{key.lower(): value for key, value in dict_tag.items()} for dict_tag in
-                                  self.configuration.tags]
+                                  self.get_tags_with_name(capacity_provider.name)]
         capacity_provider.region = self.region
-        capacity_provider.tags.append({
-            "key": "Name",
-            "value": capacity_provider.name
-        })
 
         capacity_provider.auto_scaling_group_provider = {
             "autoScalingGroupArn": auto_scaling_group.arn,
@@ -1135,11 +1075,7 @@ class EnvironmentAPI:
         cert.region = self.region
         cert.domain_name = f"*.{self.configuration.public_hosted_zone_domain_name}"
         cert.validation_method = "DNS"
-        cert.tags = self.configuration.tags
-        cert.tags.append({
-            "Key": "name",
-            "Value": cert.domain_name.replace("*", "star")
-        })
+        cert.tags = self.get_tags_with_name(cert.domain_name.replace("*", "star"))
 
         hosted_zone_name = self.configuration.public_hosted_zone_domain_name
         self.aws_api.provision_acm_certificate(cert, hosted_zone_name)
@@ -1219,11 +1155,8 @@ class EnvironmentAPI:
         comment = name
         cloudfront_distribution = CloudfrontDistribution({})
         cloudfront_distribution.comment = comment
-        cloudfront_distribution.tags = self.configuration.tags
-        cloudfront_distribution.tags.append({
-            "Key": "Name",
-            "Value": name
-        })
+        cloudfront_distribution.tags = self.get_tags_with_name(name)
+
         s3_bucket_origin_id = f"s3-bucket-{s3_bucket.name}"
         cloudfront_distribution.distribution_config = {
             "Aliases": {
@@ -1393,8 +1326,7 @@ class EnvironmentAPI:
                              "IPAddressVersion": "IPV4",
                              "Addresses": permitted_addresses})
         ip_set.region = self.region
-        ip_set.tags = self.configuration.tags
-        ip_set.tags.append({"Key": "Name", "Value": ip_set.name})
+        ip_set.tags = self.get_tags_with_name(ip_set.name)
         self.aws_api.wafv2_client.provision_ip_set(ip_set)
 
         web_acl = WAFV2WebACL({"Name": web_acl_name,
@@ -1412,8 +1344,7 @@ class EnvironmentAPI:
                                                     'MetricName': web_acl_name},
                                })
         web_acl.region = self.region
-        web_acl.tags = self.configuration.tags
-        web_acl.tags.append({"Key": "Name", "Value": web_acl.name})
+        web_acl.tags = self.get_tags_with_name(web_acl.name)
         self.aws_api.wafv2_client.provision_web_acl(web_acl)
         return web_acl
 
@@ -1501,10 +1432,7 @@ class EnvironmentAPI:
         distribution = CloudfrontDistribution({})
         distribution.comment = distribution_name
         distribution.region = self.region
-        distribution.tags = [{
-            "Key": "Name",
-            "Value": distribution_name
-        }]
+        distribution.tags = self.get_tags_with_name(distribution_name)
 
         if not self.aws_api.cloudfront_client.update_distribution_information(distribution):
             raise ValueError(f"Was not able to find distribution by comment: {distribution_name}")
@@ -1541,6 +1469,18 @@ class EnvironmentAPI:
         """
         Provision task definition.
 
+        Example 1:
+        An error occurred (ClientException) when calling the RegisterTaskDefinition operation: Actual length: '514430'. Max allowed length is '65536' bytes.
+        len(str(request)) = 535118
+        535118 - 514430 = 20688
+
+        Example 2 (different env vars)
+        len(str(request)) = 635118
+        Actual length: '614430'
+        635118 - 614430 = 20688
+
+        Need to check if other params considered in the difference and the 20688 is constant for all requests.
+
         :return:
         """
 
@@ -1553,11 +1493,7 @@ class EnvironmentAPI:
 
         # Why? Because AWS! `Unknown parameter in tags[0]: "Key", must be one of: key, value`
         ecs_task_definition.tags = [{key.lower(): value for key, value in dict_tag.items()} for dict_tag in
-                                    self.configuration.tags]
-        ecs_task_definition.tags.append({
-            "key": "Name",
-            "value": ecs_task_definition.family
-        })
+                                    self.get_tags_with_name(ecs_task_definition.family)]
 
         ecs_task_definition.container_definitions = [{
             "name": contaner_name,
@@ -1607,6 +1543,10 @@ class EnvironmentAPI:
             "cpuArchitecture": task_definition_cpu_architecture,
             "operatingSystemFamily": "LINUX"
         }
+
+        request = ecs_task_definition.generate_create_request()
+        if len(str(request)) > 65536:
+            raise ValueError(f"Task definition request length {len(str(request))} while expected less then 65536")
 
         self.aws_api.provision_ecs_task_definition(ecs_task_definition)
 
@@ -1662,11 +1602,7 @@ class EnvironmentAPI:
         ecs_service.network_configuration = network_configuration
 
         ecs_service.tags = [{key.lower(): value for key, value in dict_tag.items()} for dict_tag in
-                            self.configuration.tags]
-        ecs_service.tags.append({
-            "key": "Name",
-            "value": ecs_service.name
-        })
+                            self.get_tags_with_name(ecs_service.name)]
 
         ecs_service.cluster_arn = ecs_cluster.arn
         ecs_service.task_definition = ecs_task_definition.arn
@@ -1791,8 +1727,7 @@ class EnvironmentAPI:
         topic.region = self.region
         topic.name = sns_topic_name
         topic.attributes = {"DisplayName": topic.name}
-        topic.tags = self.configuration.tags
-        topic.tags.append({"Key": "Name", "Value": topic.name})
+        topic.tags = self.get_tags_with_name(topic.name)
 
         self.aws_api.provision_sns_topic(topic)
 
@@ -1809,11 +1744,7 @@ class EnvironmentAPI:
 
         table.key_schema = key_schema
 
-        table.tags = self.configuration.tags
-        table.tags.append({
-            "Key": "Name",
-            "Value": table.name
-        })
+        table.tags = self.get_tags_with_name(table.name)
         self.aws_api.dynamodb_client.provision_table(table)
 
     def provision_sns_subscription(self, sns_topic_name=None, subscription_name=None, lambda_name=None):
@@ -1860,11 +1791,7 @@ class EnvironmentAPI:
         rule.schedule_expression = "rate(1 minute)"
         rule.event_bus_name = "default"
         rule.state = "ENABLED"
-        rule.tags = self.configuration.tags
-        rule.tags.append({
-            "Key": "name",
-            "Value": rule.name
-        })
+        rule.tags = self.get_tags_with_name(rule.name)
 
         if aws_lambda is not None:
             target = EventBridgeTarget({})
@@ -1885,8 +1812,7 @@ class EnvironmentAPI:
         log_group = CloudWatchLogGroup({})
         log_group.region = self.region
         log_group.name = log_group_name
-        log_group.tags = {tag["Key"]: tag["Value"] for tag in self.configuration.tags}
-        log_group.tags["name"] = log_group.name
+        log_group.tags = {tag["Key"]: tag["Value"] for tag in self.get_tags_with_name(log_group.name)}
         self.aws_api.provision_cloudwatch_log_group(log_group)
 
     def deploy_lambda(self, lambda_name=None, handler=None, timeout=None, memory_size=None, policy=None, role_name=None,
@@ -1908,8 +1834,7 @@ class EnvironmentAPI:
         aws_lambda.role = role.arn
         aws_lambda.timeout = timeout
         aws_lambda.memory_size = memory_size
-        aws_lambda.tags = {tag["Key"]: tag["Value"] for tag in self.configuration.tags}
-        aws_lambda.tags["Name"] = aws_lambda.name
+        aws_lambda.tags = {tag["Key"]: tag["Value"] for tag in self.get_tags_with_name(aws_lambda.name)}
 
         aws_lambda.policy = policy
 
@@ -2000,9 +1925,7 @@ class EnvironmentAPI:
             iam_role.managed_policies_arns = managed_policies_arns
         if inline_policies:
             iam_role.inline_policies = inline_policies
-        tags = self.configuration.tags
-        tags.append({"Key": "name", "Value": iam_role.name})
-        iam_role.tags = tags
+        iam_role.tags = self.get_tags_with_name(iam_role.name)
         self.aws_api.provision_iam_role(iam_role)
         return iam_role
 
@@ -2095,11 +2018,7 @@ class EnvironmentAPI:
         }
         policy.name = name
         policy.description = description
-        policy.tags = self.configuration.tags
-        policy.tags.append({
-            "Key": "Name",
-            "Value": policy.name
-        })
+        policy.tags = self.get_tags_with_name(policy.name)
         return policy
 
     # pylint: disable = too-many-arguments
@@ -2257,11 +2176,7 @@ class EnvironmentAPI:
         email_identity.name = name
         email_identity.region = self.region
         email_identity.configuration_set_name = configuration_set_name
-        email_identity.tags = self.configuration.tags
-        email_identity.tags.append({
-            "Key": "Name",
-            "Value": email_identity.name
-        })
+        email_identity.tags = self.get_tags_with_name(email_identity.name)
         configuration_set = self.get_ses_configuration_set(configuration_set_name)
 
         if len(configuration_set.event_destinations) > 1:
@@ -2294,7 +2209,8 @@ class EnvironmentAPI:
         aws_cleaner = AWSCleaner(config, aws_api=self.aws_api)
 
         # aws_cleaner.init_and_cache_all_s3_bucket_objects()
-        aws_cleaner.cleanup_report_ec2_amis()
+        # todo: danger! self.perform_backups_cleanup()
+        aws_cleaner.cleanup_report_iam_users()
         breakpoint()
         aws_cleaner.cleanup_report_ecr_images()
 
@@ -2316,6 +2232,19 @@ class EnvironmentAPI:
         aws_cleaner.cleanup_report_route_53_service()
         aws_cleaner.cleanup_report_ebs_volumes()
         return aws_cleaner.cleanup_report_cloudwatch()
+
+    def perform_backups_cleanup(self):
+        """
+        Delete  backups
+
+        :return:
+        """
+        # todo: restrict by time.
+        ret = list(self.aws_api.backup_client.yield_recovery_points_raw(self.region, filters_req={"BackupVaultName": "Default"}))
+        breakpoint()
+        for rec_point in ret:
+            self.aws_api.backup_client.delete_recovery_point_raw(self.region, {"BackupVaultName": rec_point["BackupVaultName"],
+                                                                                                  "RecoveryPointArn": rec_point["RecoveryPointArn"]})
 
     def perform_ecs_cleanup(self, aws_cleaner):
         """
@@ -2597,3 +2526,45 @@ class EnvironmentAPI:
         if not self.aws_api.autoscaling_client.update_auto_scaling_group_information(auto_scaling_group):
             raise ValueError(f"Was not able to find Autoscaling group {auto_scaling_group.arn}")
         return auto_scaling_group
+
+    def get_instance_profile(self, profile_name):
+        """
+        Standard.
+
+        :param profile_name:
+        :return:
+        """
+
+        iam_instance_profile = IamInstanceProfile({})
+        iam_instance_profile.name = profile_name
+        iam_instance_profile.path = self.configuration.iam_path
+        if not self.aws_api.iam_client.update_instance_profile_information(iam_instance_profile):
+            raise ValueError(
+                f"Was not able to find instance profile {profile_name} in region {self.configuration.region}")
+        return iam_instance_profile
+
+    def get_tags_with_name(self, name):
+        """
+        Generate a copy of tags with tag Name created. Raise Exception if exists.
+
+        :param name:
+        :return:
+        """
+
+        tags = self.configuration.tags
+
+        for tag in tags:
+            if tag["Key"] != "Name":
+                continue
+
+            if tag["Value"] == name:
+                return tags
+
+            raise ValueError(f"Setting Tag:Name to {name} failed bacuse Tag:Name exists with value: {tag['Value']}")
+
+        tags.append({
+            "Key": "Name",
+            "Value": name
+        })
+
+        return tags

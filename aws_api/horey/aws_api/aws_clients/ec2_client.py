@@ -3058,3 +3058,20 @@ class EC2Client(Boto3Client):
         yield from self.execute(
             self.get_session_client(region=region).describe_regions, "Regions", filters_req=filters_req
         )
+
+    def dispose_amis(self, amis):
+        """
+        Standard
+
+        :param amis:
+        :return:
+        """
+        breakpoint()
+        for ami in amis:
+            request = {"ImageId": ami.id, "DryRun": False}
+            logger.info(f"Deleting EC2 AMI Image: {request}")
+            for response in self.execute(
+                    self.get_session_client(region=ami.region).deregister_image, None, raw_data=True, filters_req=request
+            ):
+                pass
+            self.clear_cache(AMI)

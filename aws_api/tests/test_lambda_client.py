@@ -21,18 +21,18 @@ LambdaClient().main_cache_dir_path = os.path.abspath(
 
 # pylint: disable= missing-function-docstring
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_init_lambda_client():
     assert isinstance(LambdaClient(), LambdaClient)
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_get_region_lambdas():
     lambda_client = LambdaClient()
     lambdas = lambda_client.get_region_lambdas(Region.get_region("us-west-2"))
     assert isinstance(lambdas, list)
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_yield_lambdas():
     client = LambdaClient()
     obj = None
@@ -40,7 +40,7 @@ def test_yield_lambdas():
         break
     assert obj.arn is not None
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_get_all_lambdas_full_information_false():
     client = LambdaClient()
     file_path = client.generate_cache_file_path(AWSLambda, "us-west-2", full_information=False, get_tags=False)
@@ -48,14 +48,14 @@ def test_get_all_lambdas_full_information_false():
     assert os.path.exists(file_path)
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_get_region_lambdas_region_full_information_true():
     client = LambdaClient()
     file_path = client.generate_cache_file_path(AWSLambda, "us-west-2", full_information=True, get_tags=False)
     assert client.get_region_lambdas(Region.get_region("us-west-2"), full_information=True)
     assert os.path.exists(file_path)
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_get_region_lambdas_region_full_information_false():
     client = LambdaClient()
     file_path = client.generate_cache_file_path(AWSLambda, "us-west-2", full_information=False, get_tags=False)

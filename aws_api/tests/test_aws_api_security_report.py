@@ -41,6 +41,3 @@ def test_report():
     tb_ret = aws_api.generate_security_reports(report_file_path)
     assert tb_ret is not None
 
-
-if __name__ == "__main__":
-    test_report()

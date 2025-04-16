@@ -24,8 +24,8 @@ accounts_file_full_path = os.path.abspath(
 )
 
 accounts = CommonUtils.load_object_from_module(accounts_file_full_path, "main")
-AWSAccount.set_aws_account(accounts["1111"])
-AWSAccount.set_aws_region(accounts["1111"].regions["us-west-2"])
+#AWSAccount.set_aws_account(accounts["1111"])
+#AWSAccount.set_aws_region(accounts["1111"].regions["us-west-2"])
 
 mock_values_file_path = os.path.abspath(
     os.path.join(
@@ -88,9 +88,3 @@ def test_provision_state_machine():
     client.provision_state_machine(state_machine)
     assert state_machine.arn is not None
 
-
-if __name__ == "__main__":
-    # test_init_client()
-    # test_get_all_state_machines()
-    # test_get_region_state_machines()
-    test_provision_state_machine()

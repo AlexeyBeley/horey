@@ -27,7 +27,6 @@ configuration_values_file_full_path = os.path.join(
 )
 
 logger = get_logger(
-    configuration_file_full_path=configuration_values_file_full_path
 )
 
 configuration = AWSAPIConfigurationPolicy()
@@ -46,7 +45,7 @@ configuration.configuration_file_full_path = os.path.abspath(
 
 configuration.init_from_file()
 
-aws_api = AWSAPI(configuration=configuration)
+aws_api = AWSAPI()
 
 mock_values_file_path = os.path.abspath(
     os.path.join(
@@ -206,7 +205,7 @@ def test_find_route_table_by_subnet():
     assert ret is not None
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_detach_and_delete_ecs_container_instances():
     current_ec2_instance_ids = []
     region = Region.get_region("us-east-1")

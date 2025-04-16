@@ -52,7 +52,7 @@ class ConfigurationPolicy:
         if not os.path.exists(value):
             raise ValueError(f"File does not exist: {value}")
 
-        self._configuration_file_full_path.append(value)
+        self._configuration_file_full_path.append(str(value))
 
     @property
     def configuration_files_history(self):

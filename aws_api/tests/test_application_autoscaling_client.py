@@ -19,12 +19,12 @@ ApplicationAutoScalingClient().main_cache_dir_path = os.path.abspath(
 
 # pylint: disable= missing-function-docstring
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_init_client():
     assert isinstance(ApplicationAutoScalingClient(), ApplicationAutoScalingClient)
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_yield_policies():
     client = ApplicationAutoScalingClient()
     for x in client.yield_policies():

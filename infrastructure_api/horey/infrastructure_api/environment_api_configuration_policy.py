@@ -51,6 +51,39 @@ class EnvironmentAPIConfigurationPolicy(ConfigurationPolicy):
         self._public_subnets = []
         self._availability_zones = None
         self._environment_level = None
+        self._environment_name = None
+        self._project_name_abbr = None
+        self._environment_name_abbr = None
+
+    @property
+    def environment_name_abbr(self):
+        if self._environment_name_abbr is None:
+            raise self.UndefinedValueError("environment_name_abbr")
+        return self._environment_name_abbr
+
+    @environment_name_abbr.setter
+    def environment_name_abbr(self, value):
+        self._environment_name_abbr = value
+
+    @property
+    def project_name_abbr(self):
+        if self._project_name_abbr is None:
+            raise self.UndefinedValueError("project_name_abbr")
+        return self._project_name_abbr
+
+    @project_name_abbr.setter
+    def project_name_abbr(self, value):
+        self._project_name_abbr = value
+
+    @property
+    def environment_name(self):
+        if self._environment_name is None:
+            raise self.UndefinedValueError("environment_name")
+        return self._environment_name
+
+    @environment_name.setter
+    def environment_name(self, value):
+        self._environment_name = value
 
     @property
     def environment_level(self):
@@ -223,7 +256,7 @@ class EnvironmentAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def iam_path(self):
         if self._iam_path is None:
-            raise self.UndefinedValueError("iam_path")
+            return f"/{self.environment_level}/"
         return self._iam_path
 
     @iam_path.setter
@@ -263,7 +296,7 @@ class EnvironmentAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def secrets_manager_region(self):
         if self._secrets_manager_region is None:
-            raise self.UndefinedValueError("secrets_manager_region")
+            return self.region
         return self._secrets_manager_region
 
     @secrets_manager_region.setter
@@ -313,7 +346,7 @@ class EnvironmentAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def subnet_name_template(self):
         if self._subnet_name_template is None:
-            raise self.UndefinedValueError("subnet_name_template")
+            return f"subnet_{self.project_name_abbr}_{self.environment_name}_" + "{type}_{id}"
         return self._subnet_name_template
 
     @subnet_name_template.setter
@@ -333,7 +366,7 @@ class EnvironmentAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def availability_zones_count(self):
         if self._availability_zones_count is None:
-            raise self.UndefinedValueError("availability_zones_count")
+            return 3
         return self._availability_zones_count
 
     @availability_zones_count.setter

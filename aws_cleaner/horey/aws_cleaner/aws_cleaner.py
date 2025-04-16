@@ -22,6 +22,7 @@ from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.common_utils.common_utils import CommonUtils
 from horey.network.service import ServiceTCP, Service
 from horey.network.ip import IP
+from horey.aws_api.base_entities.region import Region
 
 logger = get_logger()
 
@@ -517,6 +518,24 @@ class AWSCleaner:
             "Sid": "IamPolicies",
             "Effect": "Allow",
             "Action": "cloudwatch:ListMetrics",
+            "Resource": "*"
+        }
+        ]
+
+    def init_iam_users(self, permissions_only=False):
+        """
+        Init iam policies.
+
+        :return:
+        """
+
+        if not permissions_only and not self.aws_api.users:
+            self.aws_api.init_iam_users()
+
+        return [{
+            "Sid": "IamUsers",
+            "Effect": "Allow",
+            "Action": "iam:ListUsers",
             "Resource": "*"
         }
         ]
@@ -2021,9 +2040,9 @@ class AWSCleaner:
         # half_year_date = datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(days=6 * 30)
         age_limit_date = datetime.datetime.now() - datetime.timedelta(days=months * 30)
         expired_amis = [ami for ami in my_amis if ami.creation_date < age_limit_date]
-
-
         breakpoint()
+        #self.aws_api.ec2_client.dispose_amis(expired_amis)
+
         global_report.write_to_file(self.configuration.ec2_amis_report_file_path)
         logger.info(f"Output in: {self.configuration.ec2_instances_report_file_path}")
         return global_report
@@ -2351,7 +2370,6 @@ class AWSCleaner:
                 'string',
             ],
         """
-        from horey.aws_api.base_entities.region import Region
         filters_req = {"ReplicationGroupIds": ["demo-us-redis-shared"], "ServiceUpdateName":'elasticache-20241111-arm'}
         ret = list(self.aws_api.elasticache_client.execute(self.aws_api.elasticache_client.get_session_client(Region.get_region("us-west-2")).batch_apply_update_action, None, raw_data=True, filters_req=filters_req))
         ret = list(self.aws_api.elasticache_client.execute(self.aws_api.elasticache_client.get_session_client(Region.get_region("us-west-2")).describe_service_updates, None, raw_data=True))
@@ -3914,6 +3932,18 @@ class AWSCleaner:
 
         tb_ret.write_to_file(self.configuration.iam_report_file_path)
         return tb_ret
+
+    def cleanup_report_iam_users(self, permissions_only=False):
+        """
+        Iam users
+        :return:
+        """
+
+        permissions = self.init_iam_users(permissions_only=permissions_only)
+        if permissions_only:
+            return permissions
+
+        breakpoint()
 
     def sub_cleanup_report_iam_policies(self, permissions_only=False):
         """

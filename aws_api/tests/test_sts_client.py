@@ -21,11 +21,11 @@ STSClient().main_cache_dir_path = os.path.abspath(
     )
 
 client = STSClient()
-@pytest.mark.wip
+@pytest.mark.todo
 def test_init_ses_client():
     assert isinstance(STSClient(), STSClient)
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_decode_authorization_message():
     src_line = ""
     ret = client.decode_authorization_message(src_line)

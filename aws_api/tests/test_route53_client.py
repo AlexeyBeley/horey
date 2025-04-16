@@ -19,11 +19,11 @@ Route53Client().main_cache_dir_path = os.path.abspath(
         )
     )
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_init_route53_client():
     assert isinstance(Route53Client(), Route53Client)
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_yield_hosted_zones():
     client = Route53Client()
     obj = None
@@ -32,14 +32,14 @@ def test_yield_hosted_zones():
     assert obj.id is not None
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_get_all_hosted_zones_full_info_true():
     client = Route53Client()
     ret = client.get_all_hosted_zones(full_information=True)
     assert len(ret) > 0
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_get_all_hosted_zones_full_info_false():
     client = Route53Client()
     ret = client.get_all_hosted_zones(full_information=False)

@@ -31,7 +31,7 @@ mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 
 # pylint: disable = missing-function-docstring
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_init_client():
     assert isinstance(SQSClient(), SQSClient)
 
@@ -88,7 +88,7 @@ def test_provision_queue_update():
     client.provision_queue(sqs_queue)
     assert sqs_queue.queue_url is not None
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_yield_queues_get_tags_true():
     client = SQSClient()
     obj = None
@@ -98,7 +98,7 @@ def test_yield_queues_get_tags_true():
     assert obj.tags is not None
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_yield_queues_get_tags_false():
     client = SQSClient()
     obj = None
@@ -108,7 +108,7 @@ def test_yield_queues_get_tags_false():
     assert obj.tags is None
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_yield_queues_raw():
     client = SQSClient()
     dict_src = None
@@ -118,7 +118,7 @@ def test_yield_queues_raw():
     assert dict_src.get("QueueUrl") is not None
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_get_region_queues():
     client = SQSClient()
     ret = client.get_region_queues(Region.get_region("us-west-2"))

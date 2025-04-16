@@ -291,8 +291,7 @@ class ECSAPI:
             "DynamicScalingOutSuspended": False,
             "ScheduledScalingSuspended": False
         }
-        target.tags = {tag["Key"]: tag["Value"] for tag in self.environment_api.configuration.tags}
-        target.tags["Name"] = f"{target.resource_id}/{target.scalable_dimension}"
+        target.tags = {tag["Key"]: tag["Value"] for tag in self.environment_api.get_tags_with_name(f"{target.resource_id}/{target.scalable_dimension}")}
         self.environment_api.aws_api.provision_application_auto_scaling_scalable_target(target)
 
     def provision_application_autoscaling_policies(self):
@@ -508,11 +507,7 @@ class ECSAPI:
         if self.configuration.ecr_repository_policy_text:
             # todo: generate policy to permit only access from relevant services: AWS Lambda / ECS / EKS etc
             repo.policy_text = self.configuration.ecr_repository_policy_text
-        repo.tags = self.environment_api.configuration.tags
-        repo.tags.append({
-            "Key": "Name",
-            "Value": repo.name
-        })
+        repo.tags = self.environment_api.get_tags_with_name(repo.name)
 
         repo.tags.append({
             "Key": self.configuration.infrastructure_update_time_tag,
@@ -573,8 +568,12 @@ class ECSAPI:
         :return:
         """
 
+        if self.environment_api.git_api is None:
+            return None
+
         if self.environment_api.git_api.configuration.branch_name is None:
             return None
+
         if not self.environment_api.git_api.checkout_remote_branch():
             raise RuntimeError(
                 f"Was not able to checkout branch: {self.environment_api.git_api.configuration.branch_name}")
@@ -784,11 +783,7 @@ class ECSAPI:
         rule.schedule_expression = self.configuration.schedule_expression
         rule.event_bus_name = "default"
         rule.state = "ENABLED"
-        rule.tags = self.environment_api.configuration.tags
-        rule.tags.append({
-            "Key": "Name",
-            "Value": rule.name
-        })
+        rule.tags = self.environment_api.get_tags_with_name(rule.name)
 
         self.environment_api.aws_api.provision_events_rule(rule)
         return rule

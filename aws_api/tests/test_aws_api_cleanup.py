@@ -242,13 +242,3 @@ def test_cleanup_report_lambda_pricing():
     aws_api.cleanup_report_lambda_pricing(regions)
 
 
-if __name__ == "__main__":
-    # test_init_from_cache_and_cleanup_s3_buckets()
-    # test_init_from_cache_and_cleanup_report_iam_policies()
-    # test_init_from_cache_and_cleanup_report_iam_roles()
-    # test_init_from_cache_and_cleanup_report_ec2_instances()
-    # test_init_from_cache_and_cleanup_report_ebs_volumes()
-    # test_init_from_api_and_cleanup_report_ebs_volumes()
-    test_cleanup_report_ecs_usage()
-    # test_cleanup_report_ec2_pricing()
-    # test_cleanup_report_lambda_pricing()

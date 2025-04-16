@@ -388,7 +388,7 @@ class InfluxDBAPI:
             lst_data.append(str_data)
 
         ret = self.post(f"write?db={db_name}", "\n".join(lst_data))
-        logger.info(f"Total wrote count: {len(lst_data)}")
+        logger.info(f"Batch wrote count: {len(lst_data)}")
         return ret
 
     @staticmethod
@@ -416,6 +416,7 @@ class InfluxDBAPI:
         :param measurement:
         :return:
         """
+
         for measurement_series in self.yield_series(src_db_name, measurement):
             logger.info(f"Fetched data from '{measurement}'")
             start = datetime.datetime.now()

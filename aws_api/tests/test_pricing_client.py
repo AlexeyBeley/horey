@@ -29,11 +29,11 @@ PricingClient().main_cache_dir_path = os.path.abspath(
 
 # pylint: disable= missing-function-docstring
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_init_pricing_client():
     assert isinstance(PricingClient(), PricingClient)
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_yield_price_lists():
     client = PricingClient()
     price_list = None

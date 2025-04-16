@@ -43,12 +43,12 @@ RDSClient().main_cache_dir_path = os.path.abspath(
 
 # pylint: disable= missing-function-docstring
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_init_rds_client():
     assert isinstance(RDSClient(), RDSClient)
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_clear_cache():
     client = RDSClient()
     client.clear_cache(RDSDBCluster)
@@ -234,14 +234,14 @@ def test_copy_db_cluster_snapshot():
     client.copy_db_cluster_snapshot(snapshot_src, snapshot_dst)
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_get_default_engine_version():
     client = RDSClient()
     assert client.get_default_engine_version(Region.get_region("us-west-2"), "aurora-mysql") is not None
     # from_cache
     assert client.get_default_engine_version(Region.get_region("us-west-2"), "aurora-mysql") is not None
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_yield_db_clusters():
     client = RDSClient()
     cluster = None
@@ -249,7 +249,7 @@ def test_yield_db_clusters():
         break
     assert cluster.arn is not None
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_get_all_db_clusters_no_region_no_full_information_tags_false():
     client = RDSClient()
     file_path = client.generate_cache_file_path(RDSDBCluster, "us-west-2", full_information=False, get_tags=False)
@@ -257,7 +257,7 @@ def test_get_all_db_clusters_no_region_no_full_information_tags_false():
     assert os.path.exists(file_path)
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_get_all_db_clusters_region_full_information_tags_true():
     client = RDSClient()
     file_path = client.generate_cache_file_path(RDSDBCluster, "us-west-2", full_information=True, get_tags=True)
@@ -265,19 +265,19 @@ def test_get_all_db_clusters_region_full_information_tags_true():
     assert os.path.exists(file_path)
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_get_region_db_clusters():
     client = RDSClient()
     assert client.get_region_db_clusters(Region.get_region("us-west-2"))
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_get_region_db_subnet_groups():
     client = RDSClient()
     ret = client.get_region_db_subnet_groups(Region.get_region("us-west-2"))
     assert len(ret) > 0
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_yield_db_subnet_groups():
     client = RDSClient()
     obj = None
@@ -285,20 +285,20 @@ def test_yield_db_subnet_groups():
         break
     assert obj.arn is not None
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_get_region_db_cluster_parameter_groups():
     client = RDSClient()
     ret = client.get_region_db_cluster_parameter_groups(Region.get_region("us-west-2"))
     assert len(ret) > 0
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_get_region_db_cluster_parameter_groups_full_info_false():
     client = RDSClient()
     ret = client.get_region_db_cluster_parameter_groups(Region.get_region("us-west-2"), full_information=False)
     assert len(ret) > 0
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_yield_db_cluster_parameter_groups():
     client = RDSClient()
     obj = None
@@ -306,20 +306,20 @@ def test_yield_db_cluster_parameter_groups():
         break
     assert obj.arn is not None
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_get_region_db_instances_update_tags_true():
     client = RDSClient()
     ret = client.get_region_db_instances(Region.get_region("us-west-2"), update_tags=True)
     assert len(ret) > 0
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_get_region_db_instances_update_tags_false():
     client = RDSClient()
     ret = client.get_region_db_instances(Region.get_region("us-west-2"), update_tags=False)
     assert len(ret) > 0
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_yield_db_instances():
     client = RDSClient()
     obj = None
@@ -327,7 +327,7 @@ def test_yield_db_instances():
         break
     assert obj.arn is not None
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_yield_db_cluster_snapshots():
     client = RDSClient()
     obj = None

@@ -18,7 +18,7 @@ aws_api = AWSAPI()
 
 
 # pylint: disable= missing-function-docstring
-configs_dir = Path(".").resolve().parent.parent.parent / "ignore"
+configs_dir = Path(".").resolve().parent.parent.parent / "ignore" / "infrastructure_api"
 real_life_env_configuration = str(configs_dir / "env_api_configs.json")
 real_life_alerts_configuration = str(configs_dir / "alerts_api_configs.json")
 assert os.path.exists(real_life_env_configuration)

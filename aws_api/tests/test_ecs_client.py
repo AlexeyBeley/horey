@@ -141,7 +141,7 @@ def test_register_task_definition():
     return td
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_run_task():
     """
     aws ecs run-task \

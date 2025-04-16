@@ -433,7 +433,7 @@ class SESV2Client(Boto3Client):
         current_template = SESV2EmailTemplate({"TemplateName": email_template.name})
         current_template.region = email_template.region
         if self.update_email_template_information(current_template):
-            update_request = current_template.generate_update_request(current_template)
+            update_request = current_template.generate_update_request(email_template)
             if update_request:
                 self.update_email_template_raw(current_template.region, update_request)
         else:

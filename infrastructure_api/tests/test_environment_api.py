@@ -280,7 +280,7 @@ def test_dispose_container_instance_ssh_key(configuration):
     assert env.dispose_container_instance_ssh_key()
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_generate_cleanup_report(configuration):
     env = EnvironmentAPI(configuration, aws_api)
     assert env.generate_cleanup_report()

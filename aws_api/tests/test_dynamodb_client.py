@@ -123,19 +123,19 @@ def test_convert_from_dynamodbish():
 def test_clear_cache():
     client.clear_cache(DynamoDBTable)
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_yield_tables():
     ret = None
     for ret in client.yield_tables(region=Region.get_region("us-west-2")):
         break
     assert ret.arn is not None
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_get_all_tables():
     ret = client.get_all_tables()
     assert len(ret) > 0
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_get_region_tables():
     ret = client.get_region_tables(Region.get_region("us-west-2"))
     assert len(ret) > 0

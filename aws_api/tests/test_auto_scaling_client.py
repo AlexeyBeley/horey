@@ -25,7 +25,7 @@ client = AutoScalingClient()
 
 # pylint: disable= missing-function-docstring
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_init_client():
     assert isinstance(AutoScalingClient(), AutoScalingClient)
 

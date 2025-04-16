@@ -97,6 +97,7 @@ from horey.aws_api.aws_services_entities.ses_identity import SESIdentity
 
 from horey.aws_api.aws_clients.ssm_client import SSMClient
 from horey.aws_api.aws_clients.wafv2_client import WAFV2Client
+from horey.aws_api.aws_clients.backup_client import BackupClient
 
 logger = get_logger()
 
@@ -145,6 +146,7 @@ class AWSAPI:
         self.sts_client = STSClient()
         self.efs_client = EFSClient()
         self.wafv2_client = WAFV2Client()
+        self.backup_client = BackupClient()
 
         self.network_interfaces = []
         self.iam_policies = []
@@ -156,7 +158,7 @@ class AWSAPI:
         self.load_balancers = []
         self.classic_load_balancers = []
         self.hosted_zones = []
-        self._users = []
+        self.users = []
         self.rds_db_instances = []
         self.rds_db_subnet_groups = []
         self.rds_db_cluster_parameter_groups = []
@@ -293,18 +295,6 @@ class AWSAPI:
         """
         account = AWSAccount.get_aws_account()
         return account.get_regions()
-
-    @property
-    def users(self):
-        """
-        IAM users.
-
-        :return:
-        """
-
-        if not self._users:
-            self.init_iam_users()
-        return self._users
 
     def init_ecs_container_instances(self):
         """
@@ -896,15 +886,15 @@ class AWSAPI:
         @return:
         """
 
-        self._users = []
+        self.users = []
         if self.configuration:
             for aws_api_account_name in self.configuration.aws_api_accounts:
                 AWSAccount.set_aws_account(
                     self.aws_accounts[aws_api_account_name]
                 )
-                self._users += self.iam_client.get_all_users()
+                self.users += self.iam_client.get_all_users()
         else:
-            self._users = self.iam_client.get_all_users()
+            self.users = self.iam_client.get_all_users()
 
     def init_iam_roles(self):
         """

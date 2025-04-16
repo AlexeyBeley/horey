@@ -49,7 +49,7 @@ def test_provision_email_identity():
     client.provision_email_identity(email_identity)
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_provision_email_template():
     client = SESV2Client()
     email_template = SESV2EmailTemplate({})
@@ -59,7 +59,7 @@ def test_provision_email_template():
     client.provision_email_template(email_template)
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_provision_email_template_update():
     client = SESV2Client()
     email_template = SESV2EmailTemplate({})
@@ -242,7 +242,7 @@ def test_get_all_email_identities_full_information_false():
     assert len(ret) > 0
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_yield_accounts():
     client = SESV2Client()
     obj = None

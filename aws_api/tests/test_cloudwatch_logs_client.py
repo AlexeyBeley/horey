@@ -35,7 +35,7 @@ CloudWatchLogsClient().main_cache_dir_path = os.path.abspath(
 
 # pylint: disable= missing-function-docstring
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_init_client():
     assert isinstance(CloudWatchLogsClient(), CloudWatchLogsClient)
 
@@ -126,7 +126,7 @@ log_group_name = "test-log-group"
 log_stream_name = "test-stream-name"
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_provision_log_group():
     log_group = CloudWatchLogGroup({})
     log_group.name = log_group_name
@@ -135,13 +135,13 @@ def test_provision_log_group():
 
     client = CloudWatchLogsClient()
     client.provision_log_group(log_group)
-@pytest.mark.wip
+@pytest.mark.todo
 def test_create_log_stream_raw():
     client = CloudWatchLogsClient()
     client.create_log_stream_raw({"logGroupName": log_group_name,
 
                                   "logStreamName": log_stream_name})
-@pytest.mark.wip
+@pytest.mark.todo
 def test_put_log_lines():
     client = CloudWatchLogsClient()
     log_group = CloudWatchLogGroup({})
@@ -150,7 +150,7 @@ def test_put_log_lines():
     client.put_log_lines(log_group, ["test log line"])
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_yield_log_groups():
     client = CloudWatchLogsClient()
     cluster = None
@@ -159,7 +159,7 @@ def test_yield_log_groups():
     assert cluster.arn is not None
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_get_cloud_watch_log_groups_region_false():
     client = CloudWatchLogsClient()
     file_path = client.generate_cache_file_path(CloudWatchLogGroup, "us-west-2", full_information=False, get_tags=False)
@@ -167,7 +167,7 @@ def test_get_cloud_watch_log_groups_region_false():
     assert os.path.exists(file_path)
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_get_region_cloud_watch_log_groups_region_tags_true():
     client = CloudWatchLogsClient()
     file_path = client.generate_cache_file_path(CloudWatchLogGroup, "us-west-2", full_information=False, get_tags=True)
@@ -175,7 +175,7 @@ def test_get_region_cloud_watch_log_groups_region_tags_true():
     assert os.path.exists(file_path)
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_get_region_cloud_watch_log_groups_region_tags_false():
     client = CloudWatchLogsClient()
     file_path = client.generate_cache_file_path(CloudWatchLogGroup, "us-west-2", full_information=False, get_tags=False)
@@ -183,7 +183,7 @@ def test_get_region_cloud_watch_log_groups_region_tags_false():
     assert os.path.exists(file_path)
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_yield_log_group_metric_filters():
     client = CloudWatchLogsClient()
     obj = None
@@ -191,14 +191,14 @@ def test_yield_log_group_metric_filters():
         break
     assert obj.log_group_name is not None
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_get_cloud_watch_log_group_metric_filters_region_full_information_false():
     client = CloudWatchLogsClient()
     file_path = client.generate_cache_file_path(CloudWatchLogGroup, "us-west-2", full_information=False, get_tags=False)
     assert client.get_log_group_metric_filters()
     assert os.path.exists(file_path)
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_get_region_cloud_watch_log_group_metric_filters():
     client = CloudWatchLogsClient()
     file_path = client.generate_cache_file_path(CloudWatchLogGroup, "us-west-2", full_information=False, get_tags=False)

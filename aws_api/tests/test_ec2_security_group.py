@@ -231,9 +231,3 @@ def test_split_permissions():
     assert len(permissions) == 1
 
 
-if __name__ == "__main__":
-    test_check_permissions_equal()
-    test_generate_modify_ip_permissions_requests()
-    test_generate_modify_ip_permissions_requests_2()
-    test_generate_modify_ip_permissions_requests_no_ip_ranges()
-    test_split_permissions()
