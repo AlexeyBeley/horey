@@ -50,13 +50,6 @@ accounts_file_full_path = os.path.abspath(
 accounts = CommonUtils.load_object_from_module(accounts_file_full_path, "main")
 AWSAccount.set_aws_account(accounts["dev"])
 
-mock_values_file_path = os.path.abspath(
-    os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "..", "ignore", "mock_values.py"
-    )
-)
-mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
-
 # pylint: disable= missing-function-docstring
 
 region = Region.get_region("us-west-2")
@@ -100,14 +93,14 @@ def test_init_ecs_client():
 
 
 CONTAINER_NAME = "test-container-name"
-IMAGE_URL = mock_values["image_ecr_url"]
 CPU_SIZE = 512
 MEMORY_SIZE = 1024
 CONTAINER_PORT = 8080
 HOST_PORT = 8080
 TASK_DEFINITION_FAMILY = "task-definition-family"
+EXECUTION_ROLE_ARN = ""
+IMAGE_URL = ""
 
-EXECUTION_ROLE_ARN = mock_values["ecs_task_execution_role_arn"]
 dict_register_td_request = {
     "family": TASK_DEFINITION_FAMILY,
     "executionRoleArn": EXECUTION_ROLE_ARN,

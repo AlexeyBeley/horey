@@ -17,12 +17,6 @@ from horey.aws_api.base_entities.region import Region
 from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.common_utils.common_utils import CommonUtils
 
-mock_values_file_path = os.path.abspath(
-    os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "..", "ignore", "mock_values.py"
-    )
-)
-mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 
 CloudWatchLogsClient().main_cache_dir_path = os.path.abspath(
         os.path.join(

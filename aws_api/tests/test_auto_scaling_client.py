@@ -13,12 +13,6 @@ from horey.aws_api.aws_clients.ecs_client import ECSClient
 from horey.aws_api.aws_services_entities.ec2_instance import EC2Instance
 from horey.aws_api.aws_services_entities.auto_scaling_group import AutoScalingGroup
 
-mock_values_file_path = os.path.abspath(
-    os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "..", "ignore", "mock_values.py"
-    )
-)
-mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
 
 client = AutoScalingClient()
 

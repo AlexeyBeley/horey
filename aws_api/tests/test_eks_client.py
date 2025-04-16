@@ -15,14 +15,6 @@ from horey.common_utils.common_utils import CommonUtils
 
 logger = get_logger()
 
-mock_values_file_path = os.path.abspath(
-    os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "..", "ignore", "mock_values.py"
-    )
-)
-
-mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
-
 
 # pylint: disable= missing-function-docstring
 
@@ -37,7 +29,7 @@ def test_init_client():
     assert isinstance(EKSClient(), EKSClient)
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_get_all_clusters():
     client = EKSClient()
     for str_region in ["us-east-1", "us-east-2", "us-west-1", "us-west-2", "af-south-1", "ap-east-1", "ap-southeast-3",
@@ -52,7 +44,6 @@ def test_get_all_clusters():
                 assert objs is not None
         except Exception:
             logger.warning(f"Failed in region: {str_region}")
-
 
 
 @pytest.mark.todo
