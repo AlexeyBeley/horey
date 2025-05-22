@@ -23,6 +23,7 @@ dst_aws_region = "us-west-2"
 
 # pylint: disable= missing-function-docstring
 
+IMAGE_TAG = "horey-test:latest"
 
 @pytest.mark.done
 def test_init_docker_api():
@@ -87,7 +88,7 @@ def test_build():
 
     docker_api = DockerAPI()
     image = docker_api.build(
-        os.path.dirname(os.path.abspath(__file__)), ["horey-test:latest"]
+        os.path.dirname(os.path.abspath(__file__)), [IMAGE_TAG]
     )
     assert image is not None
 
@@ -102,7 +103,7 @@ def test_build_with_args():
 
     docker_api = DockerAPI()
     image = docker_api.build(
-        os.path.dirname(os.path.abspath(__file__)), ["horey-test:latest"], buildargs={"test_arg_name":"test_arg_value"}
+        os.path.dirname(os.path.abspath(__file__)), [IMAGE_TAG], buildargs={"test_arg_name":"test_arg_value"}
     )
     assert image is not None
 
@@ -246,3 +247,15 @@ def test_build_rm_false():
         os.path.dirname(os.path.abspath(__file__)), ["horey-test:latest"],
     remove_intermediate_containers=False)
     assert image is not None
+
+
+@pytest.mark.unit
+def test_run():
+    """
+    Test building image.
+
+    @return:
+    """
+
+    docker_api = DockerAPI()
+    assert docker_api.run(IMAGE_TAG, command_args=["sleep", "2"])

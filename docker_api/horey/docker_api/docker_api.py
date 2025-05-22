@@ -111,6 +111,59 @@ class DockerAPI:
         self.tag_image(docker_image, tags[1:])
         return docker_image
 
+    def run(self, image_name, container_name=None, environment_variables=None, command_args=None, detach=True, remove=True):
+        """
+        Run the image.
+
+        :param image_name:
+        :param container_name:
+        :param environment_variables:
+        :param command_args:
+        :param detach:
+        :param remove:
+        :return:
+        """
+
+        environment_variables = environment_variables or {}
+        command_args = command_args or []
+
+        try:
+            logger.info(f"Attempting to run container '{container_name}' from image '{image_name}'...")
+            container = self.client.containers.run(
+                image_name,
+                name=container_name,
+                environment=environment_variables,
+                command=command_args,
+                detach=detach,  # Run in the background
+                remove=remove  # Automatically remove container when it exits
+            )
+
+            logger.info(f"Container '{container.name}' started with ID: {container.id}")
+            logger.info("Fetching logs...")
+
+            # Stream logs from the container
+            for line in container.logs(stream=True):
+                logger.info(line.decode('utf-8').strip())
+
+            # Wait for the container to finish and get its exit status
+            result = container.wait()
+            logger.info(f"Container '{container.name}' exited with status code: {result['StatusCode']}")
+            if result["StatusCode"] != 0:
+                return False
+
+        except docker.errors.ImageNotFound:
+            logger.exception(
+                f"Error: Image '{image_name}' not found locally. Please build it first using 'docker build -t {image_name} .' in the directory with your Dockerfile and entrypoint.sh.")
+            raise
+        except docker.errors.ContainerError as e:
+            logger.exception(f"Container '{container_name}' exited with an error: {e} "
+                             f"Stderr: {e.stderr.decode('utf-8')}")
+            raise
+        except Exception as e:
+            logger.exception(f"An unexpected error occurred: {e}")
+            raise
+        return True
+
     def print_log(self, log_iterator):
         """
         Print log from iterable.
