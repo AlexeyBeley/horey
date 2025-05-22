@@ -120,7 +120,7 @@ def send_telegram_message(message):
     Returns:
         bool: True if the message was sent successfully, False otherwise.
     """
-    chat_id = "020"
+    chat_id = ""
     bot_token = ""
     api_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     params = {
