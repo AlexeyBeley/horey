@@ -1,16 +1,18 @@
-import pdb
 import os
 import time
 
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+
 
 class SeleniumAPI:
     def __init__(self):
         self.driver = None
-        self.path_to_driver = "./chromedriver"
 
     def wait_for_page_load(self, timeout=10):
         """Waits for the page to be fully loaded based on document.readyState.
@@ -30,8 +32,13 @@ class SeleniumAPI:
             return False
 
     def connect(self):
-        cService = webdriver.ChromeService(executable_path=self.path_to_driver)
-        self.driver = webdriver.Chrome(service=cService)
+        cService = Service(ChromeDriverManager().install())
+        chrome_options = Options()
+        chrome_flags = os.getenv("CHROME_OPTIONS", "--no-sandbox --headless --disable-gpu --disable-dev-shm-usage")
+        for flag in chrome_flags.split():
+            pass
+            chrome_options.add_argument(flag)
+        self.driver = webdriver.Chrome(service=cService, options=chrome_options)
         # self.driver.maximize_window()
         self.driver.set_window_size(1440, 900)
         self.driver.set_window_position(0, 0)
