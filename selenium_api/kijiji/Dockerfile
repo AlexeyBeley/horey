@@ -34,6 +34,7 @@ RUN apt-get update && \
     libxkbcommon0 \
     libxshmfence-dev \
     xdg-utils \
+    git-all \
     --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
 
