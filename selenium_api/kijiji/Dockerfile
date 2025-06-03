@@ -35,6 +35,7 @@ RUN apt-get update && \
     libxshmfence-dev \
     xdg-utils \
     git-all \
+    make \
     --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
 
