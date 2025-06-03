@@ -5,6 +5,7 @@ import sys
 import requests
 from horey.h_logger import get_logger
 from pathlib import Path
+import selenium
 
 logger = get_logger()
 
@@ -28,7 +29,14 @@ def main():
         try:
             check_free(selenium_api, max_page, known)
         except Exception as err_instance:
-            if "Too Many Requests" in selenium_api.driver.page_source:
+            try:
+                page_source = selenium_api.driver.page_source
+            except selenium.common.exceptions.InvalidSessionIdException:
+                selenium_api = get_selenium_api()
+            except Exception as internal_error:
+                logger.exception(internal_error)
+                page_source = ""
+            if "Too Many Requests" in page_source:
                 message = f"(ERROR!)\n [Too Many Requests {retries}]"
                 logger.info(message)
                 send_telegram_message(message)
@@ -73,6 +81,7 @@ def check_single_page(page_id, selenium_api, known):
             if item.text not in known:
                 known[item.text] = {}
             continue
+        listing_link = item_title[0].get_property("href")
         item_title = item_title[0].text
 
         item_price = selenium_api.get_sub_elements_by_css_selector(item, "data-testid", "listing-price")
@@ -90,13 +99,13 @@ def check_single_page(page_id, selenium_api, known):
 
         item_description = selenium_api.get_sub_elements_by_css_selector(item, "data-testid", "listing-description")
         if len(item_description) != 1:
-            breakpoint()
+            raise RuntimeError(f"Item description element is not single: {len(item_description)}")
         item_description = item_description[0].text
-
         if item_title in known:
             continue
         known[item_title] = {"price": item_price, "item_title": item_title, "item_description": item_description}
-        message = f"({item_price})\n [{item_title}]:\n {item_description}"
+
+        message = f"({item_price})\n [{item_title}] {listing_link}\n:\n {item_description}"
         logger.info(message)
 
         send_telegram_message(message)
@@ -107,6 +116,7 @@ def bell(time_sleep, range):
         sys.stdout.write('\a')
         sys.stdout.flush()
         time.sleep(time_sleep)
+
 
 def send_telegram_message(message):
     """
@@ -120,8 +130,12 @@ def send_telegram_message(message):
     Returns:
         bool: True if the message was sent successfully, False otherwise.
     """
-    chat_id = ""
-    bot_token = ""
+
+    with open("/opt/kijiji.json") as fh:
+        dict_config = json.load(fh)
+
+    bot_token = dict_config["token"]
+    chat_id = dict_config["chat_id"]
     api_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     params = {
         'chat_id': chat_id,
