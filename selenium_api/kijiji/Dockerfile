@@ -36,6 +36,7 @@ RUN apt-get update && \
     xdg-utils \
     git-all \
     make \
+    libvulkan1 \
     --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
 
