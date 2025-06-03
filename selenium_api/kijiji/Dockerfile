@@ -70,8 +70,7 @@ ENV PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/goog
 # Command to run your Selenium script when the container starts
 
 RUN git clone https://github.com/AlexeyBeley/horey.git
-RUN cd horey
-RUN make recursive_install_from_source-h_logger
+RUN cd horey && make recursive_install_from_source-h_logger
 RUN cd ..
 
 
