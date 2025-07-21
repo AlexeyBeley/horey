@@ -1,9 +1,9 @@
-import pdb
-import os
 import time
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 
 
 class SeleniumAPI:
@@ -12,7 +12,7 @@ class SeleniumAPI:
         self.path_to_driver = "./chromedriver"
 
     def connect(self):
-        cService = webdriver.ChromeService(executable_path=self.path_to_driver)
+        cService = Service(ChromeDriverManager().install())
         self.driver = webdriver.Chrome(service=cService)
         # self.driver.maximize_window()
         self.driver.set_window_size(1440, 900)

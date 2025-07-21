@@ -43,6 +43,9 @@ def main():
                 time.sleep(30)
                 continue
 
+            if "Read timed out" in repr(err_instance):
+                selenium_api = get_selenium_api()
+
             logger.exception(err_instance)
             #selenium_api = get_selenium_api()
             retries -= 1

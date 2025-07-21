@@ -18,13 +18,13 @@ def click_on_driver(selenium_api):
 def enter_credentials(selenium_api):
     ret = selenium_api.get_by_id("DocumentNumber")
     #ret.send_keys("325905479")
-    ret.send_keys("325898485")
+    ret.send_keys("11111")
 
     ret = selenium_api.get_by_id("Code")
-    ret.send_keys("R3P1G7")
+    ret.send_keys("R3P2V1")
 
     ret = selenium_api.get_by_id("DateOfBirth")
-    ret.send_keys("05/12/1986")
+    ret.send_keys("25/12/1987")
 
     ret = selenium_api.get_by_class_name("iCheck-helper")
     if len(ret) != 1:
@@ -36,9 +36,12 @@ def enter_credentials(selenium_api):
 
 
 def choose_road_test(selenium_api):
-
-    ret = selenium_api.get_by_id("link-container")
-    elements = ret.find_elements(By.CLASS_NAME, "redirect-to-test-flow-container")
+    #breakpoint()
+    #ret = selenium_api.get_by_id("link-container")
+    ret = selenium_api.driver.find_element(By.CLASS_NAME,"service-description-field")
+    ret.click()
+    return
+    elements = ret.find_elements(By.CLASS_NAME, "service-description-field")
     for element in elements:
         if "Road Test" in element.text:
             hreflink = element.find_element(By.CLASS_NAME, "redirect-test-flow-href")
@@ -84,7 +87,8 @@ def choose_place_and_date(selenium_api):
     ret = selenium_api.get_by_class_name(class_name)
     for x in ret:
         #if "King Edward" in x.text:
-        if "Main Street" in x.text:
+        # if "Main Street" in x.text:
+        if "Bison" in x.text:
             x.click()
             break
 
