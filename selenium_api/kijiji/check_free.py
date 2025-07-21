@@ -19,6 +19,7 @@ def get_selenium_api():
 def main():
     max_page = 3
     base_retries = 10
+    silent = False
 
     selenium_api = get_selenium_api()
     file_path = Path(__file__).parent / "known_free.json"
@@ -45,13 +46,16 @@ def main():
 
             if "Read timed out" in repr(err_instance):
                 selenium_api = get_selenium_api()
+                silent = True
 
             logger.exception(err_instance)
             #selenium_api = get_selenium_api()
             retries -= 1
             message = f"(ERROR!)\n [Left retries {retries}]"
             logger.info(message)
-            send_telegram_message(message)
+            if not silent:
+                send_telegram_message(message)
+            silent = False
             time.sleep(5)
             continue
 
