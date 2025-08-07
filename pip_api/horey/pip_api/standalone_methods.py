@@ -501,7 +501,7 @@ class StandaloneMethods:
             requirement_string = requirement_string.replace("<", r"\<")
 
         ret = self.execute(
-            f"{self.python_interpreter_command} -m pip install --force-reinstall {requirement_string}")
+            f"{self.python_interpreter_command} -m pip install --force-reinstall --break-system-packages {requirement_string}")
 
         last_line = ret.get("stdout").strip("\r\n").split("\n")[-1]
         if ret.get("stdout") and ("Successfully installed" not in last_line or requirement.name not in last_line):
