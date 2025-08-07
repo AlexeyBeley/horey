@@ -32,6 +32,7 @@ class Monitor(OpensearchObject):
         self.shards = None
         self.is_distributed = None
         self.delete_query_index_in_every_run = None
+        self.should_create_single_alert_for_findings = None
 
         super().__init__(dict_src)
 

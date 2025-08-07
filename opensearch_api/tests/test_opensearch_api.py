@@ -57,7 +57,7 @@ def test_init_monitors():
     assert len(ret) > 0
 
 
-@pytest.mark.done
+@pytest.mark.wip
 def test_provision_monitor():
     monitor_current = opensearch_api.monitors[0]
     monitor = monitor_current.copy()

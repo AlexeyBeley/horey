@@ -91,13 +91,13 @@ def test_save_stream_events():
         with open(file_path, "a", encoding="utf-8") as fh:
             fh.write(json.dumps(event)+"\n")
 
+
 @pytest.mark.skip
 def test_get_region_cloud_watch_log_groups():
     client = CloudWatchLogsClient()
-    ret = client.get_region_cloud_watch_log_groups("us-west-2")
-    ret = client.get_region_cloud_watch_log_groups("us-east-1")
-    ret = client.get_region_cloud_watch_log_groups("us-east-1")
+    ret = client.get_region_cloud_watch_log_groups(Region.get_region("us-east-1"))
     assert isinstance(ret, list)
+
 
 @pytest.mark.skip
 def test_put_log_events_raw():
