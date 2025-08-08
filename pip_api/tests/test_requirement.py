@@ -4,9 +4,6 @@ Test Requirement
 """
 
 from horey.pip_api.requirement import Requirement
-from horey.h_logger import get_logger
-
-logger = get_logger()
 
 # pylint: disable=missing-function-docstring
 
@@ -69,7 +66,7 @@ def test_generate_install_string():
         "test>=1.0.0",
         "test==1.0.0",
     ]:
-        logger.info(f"test_string: '{test_string}'")
+        print(f"test_string: '{test_string}'")
         requirement = Requirement(test_string)
         assert requirement.generate_install_string() == test_string
 

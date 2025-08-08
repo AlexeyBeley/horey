@@ -1,5 +1,3 @@
-import pdb
-
 import pytest
 import os
 
@@ -10,9 +8,7 @@ from horey.zabbix_api.zabbix_api_configuration_policy import (
 from horey.h_logger import get_logger
 
 configuration_values_file_full_path = None
-logger = get_logger(
-    configuration_values_file_full_path=configuration_values_file_full_path
-)
+logger = get_logger()
 
 configuration = ZabbixAPIConfigurationPolicy()
 configuration.configuration_file_full_path = os.path.abspath(
@@ -31,7 +27,7 @@ zabbix_api = ZabbixAPI(configuration=configuration)
 
 
 # region done
-@pytest.mark.skip(reason="IAM policies will be inited explicitly")
+@pytest.mark.unit
 def test_init_hosts():
     zabbix_api.init_hosts()
     logger.info(f"len(hosts) = {len(zabbix_api.hosts)}")
@@ -61,8 +57,10 @@ def test_provision_host():
     assert isinstance(zabbix_api.hosts, list)
 
 
-# endregion
-
-
-if __name__ == "__main__":
-    test_provision_host()
+@pytest.mark.unit
+def test_delte_hosts():
+    zabbix_api.init_hosts()
+    logger.info(f"len(hosts) = {len(zabbix_api.hosts)}")
+    for zabbix_host in zabbix_api.hosts:
+        if "horey" in zabbix_host.host:
+            assert zabbix_api.delete_host(zabbix_host)

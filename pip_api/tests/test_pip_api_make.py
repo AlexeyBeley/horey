@@ -260,6 +260,14 @@ def test_default_configs_install_pip_global(default_configs):
     assert pip_api_make.install_pip(default_configs)
 
 
+@pytest.mark.wip
+def test_default_configs_install_pip_global_update(default_configs):
+    pip_api_make.provision_venv(default_configs)
+    stnd_ln = pip_api_make.get_standalone_methods(default_configs)
+    stnd_ln.execute(f"{sys.executable} -m pip install --force-reinstall pip==22.0.2")
+    assert pip_api_make.install_pip(default_configs)
+
+
 @pytest.mark.done
 def test_default_configs_provision_venv(default_configs):
     assert pip_api_make.provision_venv(default_configs)

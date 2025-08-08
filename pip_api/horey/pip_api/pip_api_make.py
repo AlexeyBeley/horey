@@ -24,6 +24,7 @@ logger = logging.getLogger("pip_api_make")
 logger.setLevel("INFO")
 logger.addHandler(handler)
 
+PIP_MINIMUM_VERSION = "25.1.1"
 
 class Standalone:
     """
@@ -228,7 +229,17 @@ def install_pip(configs):
         raise RuntimeError(ret)
 
     if "pip" not in ret.get("stdout") or "from" not in ret.get("stdout"):
-        raise RuntimeError(ret)
+        raise RuntimeError(f"Malformed output, 'pip' missing in {ret}")
+
+    pip_current = ret.get("stdout").split(" ")[1]
+    pip_major = int(pip_current.split(".")[0])
+    if pip_major < int(PIP_MINIMUM_VERSION.split(".")[0]):
+        logger.info(f"Upgrading pip from {pip_current} to =>{PIP_MINIMUM_VERSION}")
+        command = f"{sys.executable} -m pip install pip>={PIP_MINIMUM_VERSION}"
+        ret = StandaloneMethods.execute(command)
+        stderr = ret.get("stderr")
+        breakpoint()
+
     return True
 
 
