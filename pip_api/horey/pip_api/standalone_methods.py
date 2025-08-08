@@ -549,7 +549,7 @@ class StandaloneMethods:
             if wheel_file_name.endswith(".whl"):
                 break
 
-        command = f"{self.python_interpreter_command} -m pip install --force-reinstall {os.path.join(dist_dir_path, wheel_file_name)}"
+        command = f"{self.python_interpreter_command} -m pip install --force-reinstall --break-system-packages {os.path.join(dist_dir_path, wheel_file_name)}"
         response = self.execute(command)
 
         lines = response["stdout"].split("\n")
