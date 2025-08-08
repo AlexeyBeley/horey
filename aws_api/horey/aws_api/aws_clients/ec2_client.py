@@ -394,7 +394,7 @@ class EC2Client(Boto3Client):
             self.revoke_security_group_ingress_raw(revoke_request)
 
         if update_rules_description:
-            self.update_security_group_rule_descriptions_ingress_raw(update_rules_description)
+            self.update_security_group_rule_descriptions_ingress_raw(desired_security_group.region, update_rules_description)
 
         self.update_security_group_information(desired_security_group)
 
@@ -502,13 +502,13 @@ class EC2Client(Boto3Client):
 
             return response
 
-    def update_security_group_rule_descriptions_ingress_raw(self, request_dict, region=None):
+    def update_security_group_rule_descriptions_ingress_raw(self, region, request_dict):
         """
-        Update description.
+        Update the rules descriptions
 
-        @param request_dict:
-        @return:
         :param region:
+        :param request_dict:
+        :return:
         """
 
         logger.info(f"Updating security group description ingress: {request_dict}")
