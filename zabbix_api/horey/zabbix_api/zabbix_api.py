@@ -1,6 +1,8 @@
 """
 Shamelessly stolen from:
 https://github.com/lukecyca/pyzabbix
+https://www.zabbix.com/documentation/current/en/manual/api/reference/host
+
 """
 
 import requests
@@ -33,10 +35,13 @@ class ZabbixAPIException(Exception):
         self.error = kwargs.get("error", None)
 
 
-class ZabbixAPI(object):
+class ZabbixAPI:
     """
     Main class
+    todo: history.get
+
     """
+
     def __init__(self, configuration: ZabbixAPIConfigurationPolicy = None):
         if configuration.session is not None:
             self.session = configuration.session
@@ -207,9 +212,9 @@ class ZabbixAPI(object):
         """
 
         self.login()
-        host_dicts = self.host.get(
-            selectGroups="extend",
-            selectInterfaces=[
+
+        # todo: refactor to standard get
+        ret = self.do_request("host.get", params={"selectGroups":"extend", "selectInterfaces": [
                 "interfaceid",
                 "ip",
                 "type",
@@ -217,9 +222,9 @@ class ZabbixAPI(object):
                 "useip",
                 "dns",
                 "port",
-            ],
-            selectParentTemplates=["templateid", "name"],
-        )
+            ], "selectParentTemplates": ["templateid", "name"]})
+
+        host_dicts = ret["result"]
 
         self.hosts = [Host(host_dict) for host_dict in host_dicts]
 
@@ -230,7 +235,6 @@ class ZabbixAPI(object):
         """
         self.login()
         return self.template.get()
-
 
     def raw_create_host(self, dict_request):
         """
@@ -324,6 +328,23 @@ class ZabbixAPI(object):
             # response = self.raw_create_host(host.generate_create_request())
 
         return response
+
+    def init_graphs(self):
+        """
+        Fetch hosts.
+
+        :return:
+        """
+
+        self.login()
+
+        # todo: refactor to standard get
+        ret = self.do_request("graph.get", params= {
+        "output": "extend",
+        "sortfield": "name"
+        })
+
+        return ret["result"]
 
 
 class ZabbixAPIObjectClass(object):
