@@ -17,6 +17,7 @@ class Panel(GrafanaObject):
         """
 
         super().__init__()
+        self.id = None
         self.grid_pos = {}
         self._width = None
         self._height = None

@@ -12,7 +12,6 @@ from horey.grafana_api.grafana_api_configuration_policy import (
 from horey.grafana_api.dashboard import Dashboard
 from horey.grafana_api.panel import Panel
 
-
 ignore_dir_path = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore"
 )
@@ -66,15 +65,15 @@ def generate_line_panel(file_name):
     panel = Panel({
         "collapsed": False,
         "gridPos": {
-          "h": 1,
-          "w": 24,
-          "x": None,
-          "y": None
+            "h": 1,
+            "w": 24,
+            "x": None,
+            "y": None
         },
         "id": None,
         "title": f"{file_name} monitoring graphs",
         "type": "row"
-      })
+    })
     return panel
 
 
@@ -84,7 +83,7 @@ self_path = os.path.dirname(os.path.abspath(__file__))
 def generate_influx_monitoring_panel(measurement_name, panel_name):
     with open(os.path.join(self_path, "test_panel", "panel_1.json"), encoding="utf-8") as fh:
         dict_src = json.load(fh)
-    #with open(os.path.join(self_path, "test_panel", "panel_count_interval.json")) as fh:
+    # with open(os.path.join(self_path, "test_panel", "panel_count_interval.json")) as fh:
     #    dict_src = json.load(fh)
 
     panel = Panel(dict_src)
@@ -113,7 +112,8 @@ def test_create_influxdb_monitor_dashboard(grafana_api):
         lines = [line.strip() for line in fh.readlines()]
         lines = lines[3:]
     for measurement in lines:
-        print(f"influx -database telegraf -execute 'show field keys from {measurement}' >> ./telegraf_structure/{measurement}")
+        print(
+            f"influx -database telegraf -execute 'show field keys from {measurement}' >> ./telegraf_structure/{measurement}")
 
     for file_name in os.listdir("./telegraf_structure"):
         if file_name == "measurements":
@@ -131,15 +131,13 @@ def test_create_influxdb_monitor_dashboard(grafana_api):
     grafana_api.provision_dashboard(dashboard)
 
 
-@pytest.mark.skip(reason="Can not test")
+@pytest.mark.unit
 def test_create_dashboard_raw(grafana_api):
     """
     Test dashboard creation from raw dict
     @return:
     """
-    with open(dashboards_cache_file, encoding="UTF-8") as file_handler:
-        dashboards = json.load(file_handler)
-    dashboard = dashboards[0]
+
     request = {
         "dashboard": {
             "id": None,
@@ -150,7 +148,20 @@ def test_create_dashboard_raw(grafana_api):
             "schemaVersion": 16,
             "version": 0,
             "refresh": "25s",
-            "panels": dashboard["panels"],
+            "panels": [
+                {
+                    "title": "Random Walk Data",
+                    "type": "graph",
+                    "gridPos": {"x": 0, "y": 0, "w": 12, "h": 9},
+                    "targets": [
+                        {
+                            "datasource": {"type": "testdata"},
+                            "scenarioId": "random_walk"
+                        }
+                    ],
+                    "options": {}
+                }
+            ],
         },
         "folderId": None,
         "folderUid": None,
@@ -163,7 +174,7 @@ def test_create_dashboard_raw(grafana_api):
 @pytest.mark.skip(reason="Can not test")
 def test_create_rule_raw(grafana_api):
     request = {}
-    #with open(os.path.join(cache_dir, "dashboards.json"), encoding="utf-8") as file_handler:
+    # with open(os.path.join(cache_dir, "dashboards.json"), encoding="utf-8") as file_handler:
     #    pass
 
     namespace = "critical_alerts"
@@ -200,7 +211,7 @@ def test_create_dashboard_generated_raw(grafana_api):
     request["dashboard"]["panels"][0]["id"] = 100
     for counter, id_string in enumerate(["-20", "-22"]):
         with open(
-            os.path.join(cache_dir, "panel_sample_1.json"), encoding="UTF-8"
+                os.path.join(cache_dir, "panel_sample_1.json"), encoding="UTF-8"
         ) as file_handler:
             str_panel = file_handler.read()
             str_panel = grafana_api.replacement_engine.perform_raw_string_replacements(
@@ -218,7 +229,7 @@ def test_create_dashboard_generated_raw(grafana_api):
         request["dashboard"]["panels"].append(dict_panel1)
 
         with open(
-            os.path.join(cache_dir, "panel_sample_2.json"), encoding="UTF-8"
+                os.path.join(cache_dir, "panel_sample_2.json"), encoding="UTF-8"
         ) as file_handler:
             str_panel2 = file_handler.read()
             str_panel2 = grafana_api.replacement_engine.perform_raw_string_replacements(
@@ -301,3 +312,207 @@ def test_generate_token(grafana_api):
     @return:
     """
     pass
+
+
+@pytest.mark.unit
+def test_provision_dashboard(grafana_api):
+    """
+    Test dashboard creation from raw dict
+    @return:
+    """
+
+    dict_src = {
+  "metadata": {
+    "name": "gdxccn",
+    "annotations": {
+      "grafana.app/folder": "bev54vrop8dmob"
+    },
+  },
+  "spec": {
+    "annotations": {
+    "list": [
+      {
+        "datasource": {
+          "type": "datasource",
+          "uid": "grafana"
+        },
+        "enable": True,
+        "hide": False,
+        "iconColor": "red",
+        "name": "Example annotation",
+        "target": {
+          "limit": 100,
+          "matchAny": False,
+          "tags": [],
+          "type": "dashboard"
+        }
+      }]
+    },
+    "editable": True,
+    "fiscalYearStartMonth": 0,
+    "graphTooltip": 0,
+    "links": [
+      {
+        "asDropdown": False,
+        "icon": "external link",
+        "includeVars": False,
+        "keepTime": False,
+        "tags": [],
+        "targetBlank": False,
+        "title": "Example Link",
+        "tooltip": "",
+        "type": "dashboards",
+        "url": ""
+      }
+    ],
+    "panels": [
+      {
+        "datasource": {
+          "type": "datasource",
+          "uid": "grafana"
+        },
+        "description": "With a description",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisBorderShow": False,
+              "axisCenteredZero": False,
+              "axisColorMode": "text",
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "barWidthFactor": 0.6,
+              "drawStyle": "line",
+              "fillOpacity": 0,
+              "gradientMode": "none",
+              "hideFrom": {
+                "legend": False,
+                "tooltip": False,
+                "viz": False
+              },
+              "insertNulls": False,
+              "lineInterpolation": "linear",
+              "lineWidth": 1,
+              "pointSize": 5,
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "showPoints": "auto",
+              "spanNulls": False,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              },
+              "thresholdsStyle": {
+                "mode": "off"
+              }
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        },
+        "id": 1,
+        "options": {
+          "legend": {
+            "calcs": [],
+            "displayMode": "list",
+            "placement": "bottom",
+            "showLegend": True
+          },
+          "tooltip": {
+            "hideZeros": False,
+            "mode": "single",
+            "sort": "none"
+          }
+        },
+        "pluginVersion": "12.0.0",
+        "targets": [
+          {
+            "datasource": {
+              "type": "datasource",
+              "uid": "grafana"
+            },
+            "refId": "A"
+          }
+        ],
+        "title": "Example panel",
+        "type": "timeseries"
+      }
+    ],
+    "preload": False,
+    "schemaVersion": 41,
+    "tags": ["example"],
+    "templating": {
+      "list": [
+        {
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "definition": "",
+          "description": "example description",
+          "label": "ExampleLabel",
+          "name": "ExampleVariable",
+          "options": [],
+          "query": "",
+          "refresh": 1,
+          "regex": "cluster",
+          "type": "query"
+        }
+      ]
+    },
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    },
+    "timepicker": {},
+    "timezone": "browser",
+    "title": "Example Dashboard",
+    "version": 0
+  }
+}
+    dashboard = Dashboard(dict_src)
+    grafana_api.provision_dashboard(dashboard)
+
+
+@pytest.mark.unit
+def test_init_dashboards(grafana_api):
+    """
+    Dashboard folders initiation
+
+    @return:
+    """
+
+    assert grafana_api.init_dashboards()
+
+
+@pytest.mark.unit
+def test_init_folders(grafana_api):
+    """
+    Dashboard folders initiation
+
+    @return:
+    """
+
+    assert grafana_api.init_folders()

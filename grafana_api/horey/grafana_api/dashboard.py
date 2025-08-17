@@ -1,7 +1,9 @@
 """
 Grafana dashboard projection object
 """
+from horey.common_utils.common_utils import CommonUtils
 from horey.grafana_api.grafana_object import GrafanaObject
+from horey.grafana_api.panel import Panel
 
 
 class Dashboard(GrafanaObject):
@@ -10,69 +12,23 @@ class Dashboard(GrafanaObject):
     """
 
     def __init__(self, dict_src):
-        self.rows = None
-        self.panels = []
-        self.id = None
-        self.uid = None
-        self.title = None
-        self.tags = []
-
         super().__init__()
-        options = {
-            "id": self.init_default,
-            "uid": self.init_default,
-            "title": self.init_default,
-            "uri": self.init_default,
-            "url": self.init_default,
-            "slug": self.init_default,
-            "type": self.init_default,
-            "tags": self.init_default,
-            "isStarred": self.init_default,
-            "folderId": self.init_default,
-            "folderUid": self.init_default,
-            "folderTitle": self.init_default,
-            "folderUrl": self.init_default,
-            "sortMeta": self.init_default,
-            "description": self.init_default,
-            "gnetId": self.init_default,
-        }
+        self.metadata = None
+        self.spec = None
+        self.status = None
+        self.api_version = None
+        self.kind = None
+        self.update_from_raw_response(dict_src)
 
-        self.init_values(dict_src, options)
+    def update_from_raw_response(self, dict_src):
+        """
+        Update from server response.
 
-    def update_full_info(self, dict_src):
+        :param dict_src:
+        :return:
         """
-        Update full information from raw server response
-        @param dict_src:
-        @return:
-        """
-        options = {
-            "meta": self.init_default,
-            "annotations": self.init_default,
-            "editable": self.init_default,
-            "fiscalYearStartMonth": self.init_default,
-            "graphTooltip": self.init_default,
-            "hideControls": self.init_default,
-            "id": self.init_default,
-            "links": self.init_default,
-            "liveNow": self.init_default,
-            "panels": self.init_default,
-            "schemaVersion": self.init_default,
-            "style": self.init_default,
-            "tags": self.init_default,
-            "templating": self.init_default,
-            "time": self.init_default,
-            "timepicker": self.init_default,
-            "timezone": self.init_default,
-            "title": self.init_default,
-            "uid": self.init_default,
-            "version": self.init_default,
-            "weekStart": self.init_default,
-            "rows": self.init_default,
-            "refresh": self.init_default,
-            "description": self.init_default,
-            "gnetId": self.init_default,
-        }
-        self.init_values(dict_src, options)
+
+        CommonUtils.init_from_api_dict(self, dict_src)
 
     def generate_create_request(self):
         """
@@ -80,51 +36,70 @@ class Dashboard(GrafanaObject):
         @return:
         """
 
-        self.generate_panels_positions()
+        panels = self.generate_panels_with_positions(self.spec["panels"])
 
         ret = {
-            "dashboard": {
-                "id": self.id,
-                "title": self.title,
-                "tags": self.tags,
-                "timezone": "browser",
-                "panels": [panel.generate_create_request() for panel in self.panels],
-                "schemaVersion": 6,
-                "version": 0,
-            },
-            "overwrite": True,
+            "metadata": self.metadata,
+            "spec": self.spec,
+            "panels": [panel.generate_create_request() for panel in panels]
         }
+
+        if not ret["metadata"].get("name"):
+            ret["metadata"]["name"] = "metadata.generateName"
+
+        if not ret["metadata"].get("uid"):
+            try:
+                del ret["metadata"]["uid"]
+            except KeyError:
+                pass
 
         return ret
 
-    def add_panel(self, panel):
+    def init_panels(self, key, list_src):
         """
-        Add another panel to dashbaord.
+        From dict
+
+        :param key:
+        :param dict_src:
+        :return:
+        """
+
+        for dict_src in list_src:
+            self.add_panel(Panel(dict_src))
+
+    def add_panel(self, panel: Panel):
+        """
+        Add another panel to dashboard.
 
         :param panel:
         :return:
         """
 
         try:
+            if panel.id is not None:
+                raise NotImplementedError("Check panel id")
             panel.id = self.panels[-1].id+1
         except IndexError:
             panel.id = 1
 
         self.panels.append(panel)
 
-    def generate_panels_positions(self):
+    def generate_panels_with_positions(self, lst_panels_dicts):
         """
         Generate x,y according to panels' sizes.
 
         :return:
         """
 
+        panels = [Panel(panel_dict) for panel_dict in lst_panels_dicts]
+        if not panels:
+            return panels
         y = 0
         x = 0
         last_panel_height = 0
         last_panel_width = 0
 
-        for panel in self.panels:
+        for panel in panels:
             if panel.width == 24:
                 x = 0
                 y = y + last_panel_height
@@ -137,3 +112,4 @@ class Dashboard(GrafanaObject):
             panel.generate_position(x, y)
             last_panel_height = panel.height
             last_panel_width = panel.width
+        return panels

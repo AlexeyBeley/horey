@@ -140,7 +140,7 @@ def test_backup_jobs():
     jenkins_api.backup_jobs("./backups")
 
 
-@pytest.mark.skip
+@pytest.mark.wip
 def test_get_all_jobs():
     ret = jenkins_api.get_all_jobs()
     assert isinstance(ret, list)
@@ -172,12 +172,6 @@ def test_yield_build_logs():
 @pytest.mark.done
 def test_get_running_builds():
     assert isinstance(jenkins_api.get_running_builds(), list)
-
-
-@pytest.mark.wip
-def test_provision_vpc():
-    vpc = jenkins_api.provision_vpc()
-    assert vpc.id
 
 
 @pytest.mark.done
