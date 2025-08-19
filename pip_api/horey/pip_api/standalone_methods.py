@@ -500,8 +500,9 @@ class StandaloneMethods:
         if "<" in requirement_string:
             requirement_string = requirement_string.replace("<", r"\<")
 
+        break_system = self.init_break_system_flag()
         ret = self.execute(
-            f"{self.python_interpreter_command} -m pip install --force-reinstall --break-system-packages {requirement_string}")
+            f"{self.python_interpreter_command} -m pip install --force-reinstall {break_system}{requirement_string}")
 
         last_line = ret.get("stdout").strip("\r\n").split("\n")[-1]
         if ret.get("stdout") and ("Successfully installed" not in last_line or requirement.name not in last_line):
@@ -549,7 +550,8 @@ class StandaloneMethods:
             if wheel_file_name.endswith(".whl"):
                 break
 
-        command = f"{self.python_interpreter_command} -m pip install --force-reinstall --break-system-packages {os.path.join(dist_dir_path, wheel_file_name)}"
+        break_system = self.init_break_system_flag()
+        command = f"{self.python_interpreter_command} -m pip install --force-reinstall {break_system}{os.path.join(dist_dir_path, wheel_file_name)}"
         response = self.execute(command)
 
         lines = response["stdout"].split("\n")
@@ -560,6 +562,23 @@ class StandaloneMethods:
             )
         self.INSTALLED_PACKAGES = None
         return True
+
+    def init_break_system_flag(self):
+        """
+        If needed
+
+        :return:
+        """
+
+        response = self.execute(
+            f"{self.python_interpreter_command} -m pip -V")
+
+        pip_version = response.get("stdout").strip("\r\n").split(" ")[1]
+
+        if int(pip_version.split(".")[0]) >= 25:
+            return "--break-system-packages "
+
+        return ""
 
     def requirement_satisfied(self, requirement: Requirement):
         """
@@ -645,8 +664,7 @@ class StandaloneMethods:
         return self.run_bash(command, ignore_on_error_callback=ignore_on_error_callback, timeout=timeout,
                              debug=debug)
 
-    # pylint: disable= too-many-arguments
-
+    # pylint: disable= too-many-arguments,too-many-positional-arguments
     def run_raw(self, command, file_name, ignore_on_error_callback=None, timeout=60 * 10, debug=True):
         """
         Run bash command, return stdout, stderr and return code.
