@@ -24,6 +24,32 @@ class AutoScalingClient(Boto3Client):
     def __init__(self):
         client_name = "autoscaling"
         super().__init__(client_name)
+    
+    def yield_auto_scaling_groups(self, region=None, update_info=False, filters_req=None):
+        """
+        Yield tables
+
+        :return:
+        """
+
+        regional_fetcher_generator = self.yield_auto_scaling_groups_raw
+
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                            AutoScalingGroup,
+                                                            update_info=update_info,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req)
+
+    def yield_auto_scaling_groups_raw(self, region, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        yield from self.execute(
+            self.get_session_client(region=region).describe_auto_scaling_groups, "AutoScalingGroups", filters_req=filters_req
+        )
 
     def get_all_auto_scaling_groups(self, region=None):
         """
@@ -31,14 +57,7 @@ class AutoScalingClient(Boto3Client):
         :return:
         """
 
-        if region is not None:
-            return self.get_region_auto_scaling_groups(region)
-
-        final_result = []
-        for _region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_auto_scaling_groups(_region)
-
-        return final_result
+        return list(self.yield_auto_scaling_groups(region=region))
 
     def get_region_auto_scaling_groups(self, region, names=None):
         """
@@ -49,19 +68,9 @@ class AutoScalingClient(Boto3Client):
         :return:
         """
 
-        final_result = []
-        filters_req = {}
-        if names is not None:
-            filters_req["AutoScalingGroupNames"] = names
-        for dict_src in self.execute(
-                self.get_session_client(region=region).describe_auto_scaling_groups,
-                "AutoScalingGroups",
-                filters_req=filters_req,
-        ):
-            obj = AutoScalingGroup(dict_src)
-            final_result.append(obj)
+        filters_req = {"AutoScalingGroupNames": names}
 
-        return final_result
+        return list(self.yield_auto_scaling_groups(region=region, filters_req=filters_req))
 
     # pylint: disable = too-many-branches
     def provision_auto_scaling_group(self, autoscaling_group: AutoScalingGroup):
@@ -114,11 +123,13 @@ class AutoScalingClient(Boto3Client):
                     region_objects = self.get_region_auto_scaling_groups(
                         autoscaling_group.region, names=[autoscaling_group.name]
                     )
-                    if region_objects[0].max_size == autoscaling_group.max_size:
+                    if region_objects[0].max_size == autoscaling_group.max_size and \
+                            region_objects[0].min_size == autoscaling_group.min_size:
                         break
                     logger.info(
-                        f"Waiting for auto scaling group max_size change from "
-                        f"{region_objects[0].max_size} to {autoscaling_group.max_size}"
+                        f"Waiting for auto scaling group max_size/min_size change from "
+                        f"{region_objects[0].max_size}/{region_objects[0].min_size} to"
+                        f" {autoscaling_group.max_size}/{autoscaling_group.min_size}"
                     )
                     time.sleep(sleep_time)
                 else:
@@ -251,6 +262,7 @@ class AutoScalingClient(Boto3Client):
         """
         Standard.
 
+        :param region:
         :param request_dict:
         :return:
         """
@@ -262,6 +274,7 @@ class AutoScalingClient(Boto3Client):
                 raw_data=True,
                 filters_req=request_dict,
         ):
+            self.clear_cache(AutoScalingGroup)
             return response
 
     def get_all_policies(self, region=None):
@@ -399,6 +412,7 @@ class AutoScalingClient(Boto3Client):
         """
         Standard.
 
+        :param region:
         :param request_dict:
         :return:
         """
@@ -409,6 +423,7 @@ class AutoScalingClient(Boto3Client):
                 "Activities",
                 filters_req=request_dict,
         ):
+            self.clear_cache(AutoScalingGroup)
             return response
 
     def update_auto_scaling_group_information(self, auto_scaling_group: AutoScalingGroup):

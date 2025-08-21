@@ -1,0 +1,22 @@
+{
+    "Records": [
+        {
+            "EventSource": "aws:sns",
+            "EventVersion": "1.0",
+            "EventSubscriptionArn": "arn:aws:sns:us-west-2:1234567891012:topic-has2-raw:e84d6fde-6e94-47fb",
+            "Sns": {
+                "Type": "Notification",
+                "MessageId": "aa2285a8-1c51-5b67-985450a",
+                "TopicArn": "arn:aws:sns:us-west-2:1234567891012:topic-has2-raw",
+                "Subject": "*#development#*: no logs for '5' min at host-azure-x",
+                "Message": "{\"ALERT_SYSTEM_RAW_MESSAGE_KEY\": \"\", \"type\": \"WARNING\", \"region\": \"us-west-1\", \"link\": \"https://google.com\", \"header\": \"test header\", \"text\": \"text notification\", \"link_href\": \"google\", \"routing_tags\": [\"horey\"]}",
+                "Timestamp": "2024-12-30T18:07:46.499Z",
+                "SignatureVersion": "1",
+                "Signature": "AWF8ETOXe+EpZr3L7eCiYtGt9Juz27MHrAeSwXiXXwscVYyOQLfDimgUREz4Gh7kTammGEsLNdTknxFjuqS+C1zfibpHyTK3JWbxfcCOrJBT6EyipyzYGAJlgN2uOIKEUHpZnx+0mAIfPemdw+JQkYYY8rHkfiX9ec22Ayon7ZxIN+DVBgoCM541H4xYp7cCeogkiACJABDweDlbQAS0wW3cJELrycx3FI0t7/BAMGnri9g73f0puCkeezZZhqH9iD7gojN9pEjpzsw==",
+                "SigningCertUrl": "https://sns.us-west-2.amazonaws.com/SimpleNotificationService-9c6465fa7f48f5cacd23014631ec1136.pem",
+                "UnsubscribeUrl": "https://sns.us-west-2.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:us-west-2:1234567891012:topic-has2-raw:e84d6fde-6e94-47fb-a0b3",
+                "MessageAttributes": {}
+            }
+        }
+    ]
+}

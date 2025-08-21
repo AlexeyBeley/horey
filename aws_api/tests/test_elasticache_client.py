@@ -27,16 +27,9 @@ ElasticacheClient().main_cache_dir_path = os.path.abspath(
         )
     )
 
-mock_values_file_path = os.path.abspath(
-    os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "..", "ignore", "mock_values.py"
-    )
-)
-mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
-
 # pylint: disable= missing-function-docstring
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_init_client():
     assert isinstance(ElasticacheClient(), ElasticacheClient)
 
@@ -91,13 +84,13 @@ def test_provision_subnet_group():
     assert subnet_group.arn is not None
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_get_all_clusters():
     client = ElasticacheClient()
     ret = client.get_all_clusters()
     assert len(ret) > 0
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_yield_clusters():
     client = ElasticacheClient()
     obj = None

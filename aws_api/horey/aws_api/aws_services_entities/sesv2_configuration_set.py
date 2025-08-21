@@ -72,27 +72,45 @@ class SESV2ConfigurationSet(AwsObject):
         :return:
         """
 
-        request = {"ConfigurationSetName": self.name, "Tags": self.tags, "TrackingOptions": self.tracking_options,
+        request = {"ConfigurationSetName": self.name, "Tags": self.tags,
                    "ReputationOptions": self.reputation_options, "SendingOptions": self.sending_options}
+
+        self.extend_request_with_optional_parameters(request, ["TrackingOptions"])
         return request
 
-    def generate_create_requests_event_destinations(self):
+    def generate_event_destinations_requests(self, desired_configuration_set):
         """
         Generate requests to add event_destinations.
 
         :return:
         """
+        create_requests, update_requests, delete_requests = [], [], []
+        current_event_destinations_to_names = {event_destination["Name"]: event_destination for event_destination in self.event_destinations}
+        desired_event_destinations_to_names = {event_destination["Name"]: event_destination for event_destination in desired_configuration_set.event_destinations}
+        for desired_event_destination_name, desired_event_destination in desired_event_destinations_to_names.items():
+            if desired_event_destination_name not in current_event_destinations_to_names:
+                event_destination = copy.deepcopy(desired_event_destination)
+                del event_destination["Name"]
+                dict_request = {"ConfigurationSetName": self.name,
+                                "EventDestinationName": desired_event_destination_name,
+                                "EventDestination": event_destination}
+                create_requests.append(dict_request)
+            elif desired_event_destination != current_event_destinations_to_names[desired_event_destination_name]:
+                event_destination = copy.deepcopy(desired_event_destination)
+                del event_destination["Name"]
+                dict_request = {"ConfigurationSetName": self.name,
+                                "EventDestinationName": desired_event_destination_name,
+                                "EventDestination": event_destination}
+                update_requests.append(dict_request)
 
-        lst_ret = []
-        for event_destination_tmp in self.event_destinations:
-            event_destination = copy.deepcopy(event_destination_tmp)
-            del event_destination["Name"]
-            dict_request = {"ConfigurationSetName": self.name,
-                            "EventDestinationName": event_destination_tmp["Name"],
-                            "EventDestination": event_destination}
-            lst_ret.append(dict_request)
+        for current_event_destination_name in current_event_destinations_to_names:
+            if current_event_destination_name not in current_event_destinations_to_names:
+                dict_request = {"ConfigurationSetName": self.name,
+                                "EventDestinationName": current_event_destination_name,
+                              }
+                delete_requests.append(dict_request)
 
-        return lst_ret
+        return create_requests, update_requests, delete_requests
 
     @property
     def region(self):
@@ -107,3 +125,12 @@ class SESV2ConfigurationSet(AwsObject):
             raise ValueError(value)
 
         self._region = value
+
+    @property
+    def arn(self):
+        """
+        Standard.
+
+        :return:
+        """
+        return f"arn:aws:ses:{self.region.region_mark}:{self.account_id}:configuration-set/{self.name}"

@@ -21,24 +21,24 @@ CloudWatchClient().main_cache_dir_path = os.path.abspath(
 
 # pylint: disable= missing-function-docstring
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_clear_cache():
     CloudWatchClient().clear_cache(CloudWatchAlarm)
     CloudWatchClient().clear_cache(CloudWatchMetric)
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_init_client():
     assert isinstance(CloudWatchClient(), CloudWatchClient)
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_get_region_metrics():
     client = CloudWatchClient()
     ret = client.get_all_metrics()
     assert isinstance(ret, list)
     assert len(ret) > 0
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_get_region_alarms():
     client = CloudWatchClient()
     ret = client.get_all_alarms()

@@ -51,6 +51,7 @@ class RDSDBSubnetGroup(AwsObject):
             "VpcId": self.init_default_attr,
             "SubnetGroupStatus": self.init_default_attr,
             "Subnets": self.init_default_attr,
+            "SupportedNetworkTypes": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)

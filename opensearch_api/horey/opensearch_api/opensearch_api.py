@@ -270,3 +270,17 @@ class OpensearchAPI:
         """
 
         return self.get("_index_patterns")
+
+    def get_notification_channels_slugs(self):
+        ret = self.get(f"_plugins/_notifications/channels")
+
+    def get_index_templates_raw(self):
+        ret = self.get(f"_index_template")
+
+    def get_notification_channels(self):
+        not_configs = self.get("_plugins/_notifications/configs")
+        return not_configs["config_list"]
+
+    def provision_notification_channel(self, data):
+        return self.post("/_plugins/_notifications/configs/", data=data)
+

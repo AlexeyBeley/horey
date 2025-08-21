@@ -149,8 +149,8 @@ class SessionsManager:
         elif connection_step.type == connection_step.Type.ASSUME_ROLE:
             logger.info("Connecting session using assumed role")
             session = SessionsManager.start_assuming_role(
-                connection_step.role_arn, session, extra_args=extra_args
-            )
+                    connection_step.role_arn, session, extra_args=extra_args
+                )
         elif connection_step.type == connection_step.Type.CURRENT_ROLE:
             logger.info("Connecting session using current role")
             session = boto3.session.Session(

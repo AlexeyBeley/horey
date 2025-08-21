@@ -301,6 +301,7 @@ class LoadBalancer(AwsObject):
                     request["Certificates"] = [certificate_request]
 
             request["Protocol"] = self.protocol
+            request["Tags"] = self.tags
             request["Port"] = self.port
             request["LoadBalancerArn"] = self.load_balancer_arn
             request["DefaultActions"] = self.default_actions

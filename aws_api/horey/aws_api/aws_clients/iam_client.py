@@ -540,7 +540,8 @@ class IamClient(Boto3Client):
         @param iam_role:
         @return:
         """
-
+        if len(iam_role.name) > 64:
+            raise ValueError(f"Role name length must be <= 64. '{iam_role.name}' len = {len(iam_role.name)}")
         region_role = IamRole({})
         region_role.name = iam_role.name
         region_role.path = iam_role.path
@@ -620,7 +621,6 @@ class IamClient(Boto3Client):
         """
 
         logger.warning(f"Creating iam role: {request_dict}")
-
         for response in self.execute(
                 self.get_session_client().create_role, "Role", filters_req=request_dict
         ):

@@ -18,6 +18,7 @@ from horey.aws_api.aws_clients.ec2_client import EC2Client
 from horey.aws_api.aws_services_entities.ec2_instance import EC2Instance
 from horey.aws_api.aws_clients.glue_client import GlueClient
 
+from horey.aws_api.aws_services_entities.elbv2_load_balancer import LoadBalancer
 from horey.aws_api.aws_clients.ecs_client import ECSClient
 from horey.aws_api.aws_clients.pricing_client import PricingClient
 from horey.aws_api.aws_clients.auto_scaling_client import AutoScalingClient
@@ -92,8 +93,11 @@ from horey.common_utils.text_block import TextBlock
 
 from horey.network.dns_map import DNSMap
 from horey.aws_api.base_entities.aws_account import AWSAccount
+from horey.aws_api.aws_services_entities.ses_identity import SESIdentity
+
 from horey.aws_api.aws_clients.ssm_client import SSMClient
 from horey.aws_api.aws_clients.wafv2_client import WAFV2Client
+from horey.aws_api.aws_clients.backup_client import BackupClient
 
 logger = get_logger()
 
@@ -105,7 +109,8 @@ class AWSAPI:
     """
 
     # pylint: disable= too-many-statements
-    def __init__(self, configuration=None):
+    def __init__(self, configuration=None, init_configuration=True):
+        self.efs_client = EFSClient()
         self.ssm_client = SSMClient()
         self.glue_client = GlueClient()
         self.ec2_client = EC2Client()
@@ -141,6 +146,7 @@ class AWSAPI:
         self.sts_client = STSClient()
         self.efs_client = EFSClient()
         self.wafv2_client = WAFV2Client()
+        self.backup_client = BackupClient()
 
         self.network_interfaces = []
         self.iam_policies = []
@@ -152,7 +158,7 @@ class AWSAPI:
         self.load_balancers = []
         self.classic_load_balancers = []
         self.hosted_zones = []
-        self._users = []
+        self.users = []
         self.rds_db_instances = []
         self.rds_db_subnet_groups = []
         self.rds_db_cluster_parameter_groups = []
@@ -180,6 +186,7 @@ class AWSAPI:
         self.servicediscovery_namespaces = []
         self.elasticsearch_domains = []
         self.managed_prefix_lists = []
+        self.ecs_container_instances = []
         self.vpcs = []
         self._subnets = []
         self.availability_zones = []
@@ -224,7 +231,8 @@ class AWSAPI:
 
         self.configuration = configuration
         self.aws_accounts = None
-        self.init_configuration()
+        if init_configuration:
+            self.init_configuration()
 
     def init_configuration(self):
         """
@@ -288,17 +296,14 @@ class AWSAPI:
         account = AWSAccount.get_aws_account()
         return account.get_regions()
 
-    @property
-    def users(self):
+    def init_ecs_container_instances(self):
         """
-        IAM users.
+        Standard.
 
         :return:
         """
 
-        if not self._users:
-            self.init_iam_users()
-        return self._users
+        self.ecs_container_instances = list(self.ecs_client.yield_container_instances())
 
     def init_managed_prefix_lists(
             self, region=None, full_information=True
@@ -596,9 +601,7 @@ class AWSAPI:
         @return:
         """
 
-        objects = self.ecs_client.get_all_capacity_providers(region=region)
-
-        self.ecs_capacity_providers = objects
+        self.ecs_capacity_providers = self.ecs_client.get_all_capacity_providers(region=region)
 
     def init_ecs_services(self, region=None):
         """
@@ -883,15 +886,15 @@ class AWSAPI:
         @return:
         """
 
-        self._users = []
+        self.users = []
         if self.configuration:
             for aws_api_account_name in self.configuration.aws_api_accounts:
                 AWSAccount.set_aws_account(
                     self.aws_accounts[aws_api_account_name]
                 )
-                self._users += self.iam_client.get_all_users()
+                self.users += self.iam_client.get_all_users()
         else:
-            self._users = self.iam_client.get_all_users()
+            self.users = self.iam_client.get_all_users()
 
     def init_iam_roles(self):
         """
@@ -1007,7 +1010,7 @@ class AWSAPI:
             os.makedirs(sub_dir, exist_ok=True)
             logger.info(f"Begin collecting from stream: {sub_dir}")
 
-            stream_generator = self.cloud_watch_logs_client.yield_log_group_streams_raw(
+            stream_generator = self.cloud_watch_logs_client.yield_log_group_streams(
                 log_group
             )
             self.cache_objects_from_generator(stream_generator, sub_dir)
@@ -1200,7 +1203,6 @@ class AWSAPI:
         @param full_information:
         @return:
         """
-
         objects = self.events_client.get_all_rules(
                 full_information=full_information
             )
@@ -2566,7 +2568,7 @@ class AWSAPI:
 
     def provision_security_group(self, security_group, provision_rules=True, force=False, declarative=False):
         """
-        Self explanatory
+        Standard
 
         @param security_group:
         @param provision_rules:
@@ -2888,7 +2890,17 @@ class AWSAPI:
         @param listener:
         @return:
         """
-
+        # todo: Migrate this logic to infrastructure_api
+        load_balancer = LoadBalancer({})
+        load_balancer.region = listener.region
+        load_balancer.name = listener.load_balancer_arn.split("/")[-2]
+        if not self.elbv2_client.update_load_balancer_information(load_balancer):
+            raise RuntimeError(f"{listener.load_balancer_arn=}, {load_balancer.name=}")
+        listener.tags = load_balancer.tags
+        listener.tags.append({
+            "Key": "Name",
+            "Value": f"{load_balancer.name}_{listener.port}"
+        })
         self.elbv2_client.provision_load_balancer_listener(listener)
 
     def provision_load_balancer_rule(self, rule):
@@ -3183,22 +3195,28 @@ class AWSAPI:
 
         self.sns_client.provision_subscription(subscription)
 
-    # region sesv2_domain_email_identity
-    def provision_sesv2_domain_email_identity(
-            self, email_identity, wait_for_validation=True, hosted_zone_name=None
+    # region ses_domain_email_identity
+    def provision_ses_domain_email_identity(
+            self, desired_email_identity, wait_for_validation=True, hosted_zone_name=None
     ):
         """
-        Standard
+        Standard.
 
-        @param email_identity:
+        @param desired_email_identity:
         @param wait_for_validation:
         @return:
         :param hosted_zone_name:
         """
+        email_identity_current = SESIdentity({})
+        email_identity_current.region = desired_email_identity.region
+        email_identity_current.name = desired_email_identity.name
 
-        self.sesv2_client.provision_email_identity(email_identity)
+        self.sesv2_client.provision_identity(email_identity_current, desired_email_identity)
+        self.ses_client.provision_identity(email_identity_current, desired_email_identity)
+        self.sesv2_client.update_email_identity_information(desired_email_identity)
+        self.ses_client.update_identity_full_information(desired_email_identity)
 
-        if email_identity.dkim_attributes["Status"] == "SUCCESS":
+        if desired_email_identity.dkim_attributes["Status"] == "SUCCESS":
             return
 
         max_time = 5 * 60
@@ -3207,25 +3225,25 @@ class AWSAPI:
         end_time = start_time + datetime.timedelta(seconds=max_time)
         while datetime.datetime.now() < end_time:
             logger.info(
-                f"Waiting for sesv2 domain validation request. Going to sleep for {sleep_time} seconds: {email_identity.name}"
+                f"Waiting for sesv2 domain validation request. Going to sleep for {sleep_time} seconds: {desired_email_identity.name}"
             )
             time.sleep(sleep_time)
-            self.sesv2_client.update_email_identity_information(email_identity)
+            self.sesv2_client.update_email_identity_information(desired_email_identity)
 
-            if email_identity.dkim_attributes["Status"] != "NOT_STARTED":
+            if desired_email_identity.dkim_attributes["Status"] != "NOT_STARTED":
                 break
         else:
-            raise TimeoutError(f"Reached timeout for {email_identity.name}")
+            raise TimeoutError(f"Reached timeout for {desired_email_identity.name}")
 
-        if email_identity.dkim_attributes["Status"] != "PENDING":
+        if desired_email_identity.dkim_attributes["Status"] != "PENDING":
             raise ValueError(
-                f"Unknown status {email_identity.dkim_attributes['Status']}"
+                f"Unknown status {desired_email_identity.dkim_attributes['Status']}"
             )
 
-        self.validate_sesv2_domain_email_identity(email_identity, hosted_zone_name=hosted_zone_name)
+        self.validate_sesv2_domain_email_identity(desired_email_identity, hosted_zone_name=hosted_zone_name)
 
         if wait_for_validation:
-            self.wait_for_sesv2_domain_email_identity_validation(email_identity)
+            self.wait_for_sesv2_domain_email_identity_validation(desired_email_identity)
 
     def validate_sesv2_domain_email_identity(self, email_identity, hosted_zone_name=None):
         """
@@ -4166,7 +4184,11 @@ class AWSAPI:
                              "EffectiveDate": datetime.datetime.now(),
                              "RegionCode": region.region_mark,
                              "CurrencyCode": "USD"}
-        price_lists = list(self.pricing_client.yield_price_lists(region=region, filters_req=filters_req))
+        if region.region_mark == "us-west-2":
+            connect_region = Region.get_region("us-east-1")
+        else:
+            connect_region = region
+        price_lists = list(self.pricing_client.yield_price_lists(region=connect_region, filters_req=filters_req))
         return price_lists[0]
 
     def find_user_by_name(self, user_name):

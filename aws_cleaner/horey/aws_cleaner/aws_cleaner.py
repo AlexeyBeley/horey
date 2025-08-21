@@ -7,7 +7,10 @@ import json
 import datetime
 # pylint: disable=no-name-in-module, too-many-lines
 from collections import defaultdict
+from enum import Enum
+
 import requests
+from time import perf_counter
 
 from horey.h_logger import get_logger
 from horey.aws_api.aws_api import AWSAPI
@@ -19,8 +22,267 @@ from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.common_utils.common_utils import CommonUtils
 from horey.network.service import ServiceTCP, Service
 from horey.network.ip import IP
+from horey.aws_api.base_entities.region import Region
 
 logger = get_logger()
+
+
+class Report:
+    def __init__(self, aws_service):
+        self.service = aws_service
+        self.actions = []
+        self.sub_reports = []
+
+    def __add__(self, action_or_subreport):
+        if isinstance(action_or_subreport, ReportAction):
+            new_item = action_or_subreport.__class__(action_or_subreport.path)
+            if new_item != action_or_subreport:
+                self.actions.append(action_or_subreport)
+        elif isinstance(action_or_subreport, Report):
+            self.sub_reports.append(action_or_subreport)
+        elif isinstance(action_or_subreport, list):
+            for _action_or_subreport in action_or_subreport:
+                self.__add__(_action_or_subreport)
+        elif action_or_subreport is None:
+            pass
+        else:
+            raise ValueError(f"Unsupported type: {type(action_or_subreport)}")
+        return self
+
+    def generate_text_block(self):
+        """
+        Generate readable format
+        :return:
+        """
+
+        h_tb_ret = TextBlock(f"Report for service: {self.service}")
+        h_tb_ret.lines = [line for action in self.actions for line in action.generate_lines()]
+        h_tb_ret.blocks = [sub_report.generate_text_block() for sub_report in self.sub_reports]
+        return h_tb_ret
+
+    def write_to_file(self, file_path):
+        """
+        Write output in a readable format
+
+        :return:
+        """
+
+        text_block = self.generate_text_block()
+        text_block.write_to_file(file_path)
+        logger.info(f"Output in: {file_path}")
+
+
+class ReportAction:
+    def __init__(self, path, reason=None):
+        self.path = path
+        self.reason = reason
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
+    def generate_lines(self):
+        """
+        Standard.
+
+        :return:
+        """
+        raise NotImplementedError()
+
+
+class ReportActionCloudwatchAlarm(ReportAction):
+    def __init__(self, path, reason=None):
+        super().__init__(path, reason=reason)
+        self.dimension_balckholes = []
+        self.action_blackholes = []
+        self.no_active_actions = False
+
+    def generate_lines(self):
+        """
+        Standard.
+
+        :return:
+        """
+        lst_ret = []
+        base_str_ret = f"Alarm: '{self.path['arn']}'."
+
+        if self.dimension_balckholes:
+            lst_ret.append("Important: " + base_str_ret + "Metric with these dimensions does not exist")
+
+        for action_arn in self.action_blackholes:
+            lst_ret.append("Important: " + base_str_ret + f"Action destination does not exist: {action_arn}.")
+
+        return lst_ret
+
+
+class ReportActionCloudwatchLogGroupMetric(ReportAction):
+    def __init__(self, path, reason=None):
+        super().__init__(path, reason=reason)
+        self.disabled_actions_alarms = []
+        self.no_alarms = False
+        self.no_log_group = False
+
+    def generate_lines(self):
+        """
+        Standard.
+
+        :return:
+        """
+
+        base_str_ret = f"Region: {self.path['region']}. LogGroup Filter Metric: '{self.path['name']}.'"
+
+        if self.disabled_actions_alarms:
+            if self.no_alarms:
+                return ["Important: " + base_str_ret + "All Alarms are disabled!"]
+
+            return ["Important: " + base_str_ret + f"Disabled Alarms: {self.disabled_actions_alarms}"]
+
+        if self.no_alarms:
+            return["Important: " + base_str_ret + " No alarms set"]
+        
+        if self.no_log_group:
+            return ["Important: " + base_str_ret + " No such log group"]
+        return []
+
+
+class ReportActionCloudwatchLogGroup(ReportAction):
+    def __init__(self, path, reason=None):
+        super().__init__(path, reason=reason)
+        self.no_retention = False
+        self.no_metric_filter = False
+        self._redundant_metric_filters = None
+        self.size = None
+        self.idle = False
+
+    @property
+    def redundant_metric_filters(self):
+        """
+        Standard.
+
+        :return:
+        """
+        return self._redundant_metric_filters
+
+    @redundant_metric_filters.setter
+    def redundant_metric_filters(self, value):
+        """
+        Standard.
+
+        :return:
+        """
+        if not value:
+            return
+        self._redundant_metric_filters = value
+
+    def generate_lines(self):
+        """
+        Standard.
+
+        :return:
+        """
+
+        lst_ret = []
+        base_str_ret = f"Region: {self.path['region']}. LogGroup: '{self.path['name']}.'"
+
+        if self.no_retention:
+            lst_ret.append("Important: " + base_str_ret + " No retention")
+
+        if self.no_metric_filter:
+            lst_ret.append("Suggestion: " + base_str_ret + " No metric filter configured.")
+
+        if self.redundant_metric_filters:
+            for key, value in self.redundant_metric_filters.items():
+                lst_ret.append("Important: " + base_str_ret + f" Filter by: {key}. Delete one of {value}")
+
+        if self.size:
+            lst_ret.append("Suggestion: " + base_str_ret + f" {self.size['order']}-th largest in size: {CommonUtils.bytes_to_str(self.size['stored_bytes'])}")
+
+        if self.idle:
+            lst_ret.append(
+                "Important: " + base_str_ret + f" Is idle > month.")
+
+        return lst_ret
+
+
+class ReportActionECSCapacityProvider(ReportAction):
+    def __init__(self, path, reason=None):
+        super().__init__(path, reason=reason)
+        self.unused_capacity_provider = False
+        self.unused_container_instances = None
+
+    def generate_lines(self):
+        """
+        Standard.
+
+        :return:
+        """
+        lst_ret = []
+        base_str_ret = f"ECS Capacity Provider: '{self.path['region']}' '{self.path['name']}'."
+
+        if self.unused_capacity_provider:
+            reason = self.reason or "Unused Capacity Provider"
+            lst_ret.append(f"Important: {base_str_ret} {reason}")
+
+        if self.unused_container_instances:
+            reason = self.reason or f"Unused Container instances : {self.unused_container_instances}."
+            lst_ret.append(f"Important: {base_str_ret} {reason}")
+
+        return lst_ret
+
+
+class ReportActionECR(ReportAction):
+    def __init__(self, path, reason=None):
+        super().__init__(path, reason=reason)
+        self.expired_images = None
+        self.unused_repo = False
+        self.untagged_images = None
+
+    def generate_lines(self):
+        """
+        Standard.
+
+        :return:
+        """
+        lst_ret = []
+        base_str_ret = f"ECR: '{self.path['region']}' '{self.path['repo']}'."
+
+        if self.unused_repo:
+            reason = self.reason or "Unused repository"
+            lst_ret.append(f"Important: {base_str_ret} {reason}")
+            return lst_ret
+
+        if self.expired_images:
+            reason = self.reason or f"Expired images {self.expired_images}"
+            lst_ret.append(f"Important: {base_str_ret} {reason}")
+
+        if self.untagged_images:
+            reason = self.reason or f"Untagged images: {self.untagged_images}"
+            lst_ret.append(f"Important: {base_str_ret} {reason}")
+
+        return lst_ret
+
+
+class ReportActionECS(ReportAction):
+    def __init__(self, path, reason=None):
+        super().__init__(path, reason=reason)
+        self.unused_task_definition = False
+
+    def generate_lines(self):
+        """
+        Standard.
+
+        :return:
+        """
+        lst_ret = []
+        base_str_ret = f"ECS Task definition: '{self.path['region']}' '{self.path['name']}'."
+
+        if self.unused_task_definition:
+            reason = self.reason or "Unused"
+            lst_ret.append(f"Important: {base_str_ret} {reason}")
+
+
+        breakpoint()
+        return lst_ret
+
 
 
 class AWSCleaner:
@@ -29,14 +291,16 @@ class AWSCleaner:
 
     """
 
-    def __init__(self, configuration: AWSCleanerConfigurationPolicy):
+    def __init__(self, configuration: AWSCleanerConfigurationPolicy, aws_api=None):
         self.configuration = configuration
 
-        aws_api_configuration = AWSAPIConfigurationPolicy()
-        aws_api_configuration.accounts_file = self.configuration.managed_accounts_file_path
-        aws_api_configuration.aws_api_account = self.configuration.aws_api_account_name
-        aws_api_configuration.aws_api_cache_dir = configuration.cache_dir
-        self.aws_api = AWSAPI(aws_api_configuration)
+        if aws_api is None:
+            aws_api_configuration = AWSAPIConfigurationPolicy()
+            aws_api_configuration.accounts_file = self.configuration.managed_accounts_file_path
+            aws_api_configuration.aws_api_account = self.configuration.aws_api_account_name
+            aws_api_configuration.aws_api_cache_dir = configuration.cache_dir
+            aws_api = AWSAPI(aws_api_configuration)
+        self.aws_api = aws_api
 
     # pylint: disable= too-many-statements
     def cleanup_report_todo(self):
@@ -50,6 +314,28 @@ class AWSCleaner:
         """
 
         tb_ret = TextBlock("In the plans")
+
+        tb_ret_tmp = TextBlock("Event rule without targets")
+        tb_ret.blocks.append(tb_ret_tmp)
+
+        tb_ret_tmp = TextBlock("Lamdas without trigger")
+        tb_ret.blocks.append(tb_ret_tmp)
+
+        tb_ret_tmp = TextBlock("Lamda versions delete")
+        tb_ret_tmp.lines.append("Delete old versions")
+        tb_ret.blocks.append(tb_ret_tmp)
+
+        tb_ret_tmp = TextBlock("ECR TD and Images")
+        tb_ret_tmp.lines.append("Delete old Task definitions")
+        tb_ret_tmp.lines.append("Delete ECR repos that are not used in Lambda and Task definition / last pulled.")
+        tb_ret.blocks.append(tb_ret_tmp)
+
+
+        tb_ret_tmp = TextBlock("Event Bridge - event rules")
+        tb_ret_tmp.lines.append("Check event bridge rule has valid destination")
+        tb_ret_tmp.lines.append("Check the destination has resource policy permitting event bridge to trigger it")
+        tb_ret.blocks.append(tb_ret_tmp)
+
 
         tb_ret_tmp = TextBlock("Cloudwatch")
         tb_ret_tmp.lines.append("Cloudwatch alarms can have issues. They can fault to be triggered.")
@@ -114,7 +400,8 @@ class AWSCleaner:
         tb_ret.blocks.append(tb_ret_tmp)
 
         tb_ret_tmp = TextBlock("IAM")
-        tb_ret_tmp.lines.append("Mention of deleted user/role in policies ARNs- for example explicit mention of a specific user.")
+        tb_ret_tmp.lines.append(
+            "Mention of deleted user/role in policies ARNs- for example explicit mention of a specific user.")
         tb_ret_tmp.lines.append(
             "Action per service: for example * action on  ECR:* and S3:* - bad idea, you must manage at least per service")
         tb_ret_tmp.lines.append(
@@ -235,6 +522,24 @@ class AWSCleaner:
         }
         ]
 
+    def init_iam_users(self, permissions_only=False):
+        """
+        Init iam policies.
+
+        :return:
+        """
+
+        if not permissions_only and not self.aws_api.users:
+            self.aws_api.init_iam_users()
+
+        return [{
+            "Sid": "IamUsers",
+            "Effect": "Allow",
+            "Action": "iam:ListUsers",
+            "Resource": "*"
+        }
+        ]
+
     def init_sns(self, permissions_only=False):
         """
         Init SNS topics
@@ -252,6 +557,54 @@ class AWSCleaner:
             "Action": "cloudwatch:ListMetrics",
             "Resource": "*"
         }
+        ]
+
+    def init_event_bridge_rules(self, permissions_only=False):
+        """
+        Init SNS topics
+
+        :return:
+        """
+        if not permissions_only and (not self.aws_api.event_bridge_rules):
+            self.aws_api.init_event_bridge_rules()
+
+        return [{
+            "Sid": "ListEventBridgeRules",
+            "Effect": "Allow",
+            "Action": "events:ListRules",
+            "Resource": "*"
+        }
+        ]
+
+    def init_autoscaling(self, permissions_only=False):
+        """
+        Init autoscaling policies
+
+        :return:
+        """
+
+        if not permissions_only and (
+                not self.aws_api.application_auto_scaling_policies or not self.aws_api.application_auto_scaling_scalable_targets or not self.aws_api.auto_scaling_groups):
+            self.aws_api.init_application_auto_scaling_policies()
+            self.aws_api.init_application_auto_scaling_scalable_targets()
+            self.aws_api.init_auto_scaling_groups()
+
+        return [{
+            "Sid": "ApplicationAutoscaling",
+            "Effect": "Allow",
+            "Action": ["application-autoscaling:DescribeScalingPolicies",
+                       "application-autoscaling:DescribeScalableTargets",],
+            "Resource": "*"
+        },
+            {
+                "Sid": "Autoscaling",
+                "Effect": "Allow",
+                "Action": [
+                "autoscaling:DescribeAutoScalingGroups",
+                "autoscaling:DescribePolicies"
+                ],
+                "Resource": "*"
+            }
         ]
 
     def init_cloudwatch_alarms(self, permissions_only=False):
@@ -273,14 +626,16 @@ class AWSCleaner:
                          for region in AWSAccount.get_aws_account().regions.values()]
         }]
 
-    def init_ecr_images(self, permissions_only=False):
+    def init_ecr(self, permissions_only=False):
         """
         Init ECR images
 
         :return:
         """
-        if not permissions_only and not self.aws_api.ecr_images:
+        if not permissions_only and not self.aws_api.ecr_images or not self.aws_api.ecr_repositories:
             self.aws_api.init_ecr_images()
+            self.aws_api.init_ecr_repositories()
+
         return [
             {
                 "Sid": "ECRTags",
@@ -694,6 +1049,96 @@ class AWSCleaner:
                 "Resource": f"arn:aws:sqs:{region.region_mark}:{self.aws_api.acm_client.account_id}:*"
             } for region in AWSAccount.get_aws_account().regions.values()]]
 
+    def init_ecs_clusters(self, permissions_only=False):
+        """
+        Init cloudwatch metrics.
+
+        :return:
+        """
+
+        if not permissions_only and not self.aws_api.ecs_clusters:
+            self.aws_api.init_ecs_clusters()
+
+        return [{
+            "Sid": "ecsClusters",
+            "Effect": "Allow",
+            "Action": ["ecs:ListClusters", "ecs:DescribeClusters"],
+            "Resource": "*"
+        }
+        ]
+
+    def init_ecs_container_instances(self, permissions_only=False):
+        """
+        Init cloudwatch metrics.
+
+        :return:
+        """
+
+        if not permissions_only and not self.aws_api.ecs_container_instances:
+            self.aws_api.init_ecs_container_instances()
+
+        return [{
+            "Sid": "ecsContainerInstances",
+            "Effect": "Allow",
+            "Action": ["ecs:ListContainerInstances", "ecs:DescribeContainerInstances"],
+            "Resource": [f"arn:aws:ecs:{region.region_mark}:{self.aws_api.acm_client.account_id}:cluster/*" for region in AWSAccount.get_aws_account().regions.values()]
+        }
+        ]
+
+    def init_ecs_task_definitions(self, permissions_only=False):
+        """
+        Init cloudwatch metrics.
+
+        :return:
+        """
+
+        if not permissions_only and not self.aws_api.ecs_task_definitions:
+            self.aws_api.init_ecs_task_definitions()
+
+        return [{
+            "Sid": "ecsTaskDefinitions",
+            "Effect": "Allow",
+            "Action": ["ecs:ListTaskDefinitions", "ecs:DescribeTaskDefinition"],
+            "Resource": "*"
+        }
+        ]
+
+    def init_ecs_capacity_providers(self, permissions_only=False):
+        """
+        Init cloudwatch metrics.
+
+        :return:
+        """
+
+        if not permissions_only and not self.aws_api.ecs_capacity_providers:
+            self.aws_api.init_ecs_capacity_providers()
+
+        return [{
+            "Sid": "ecsListDescribeCapacityProviders",
+            "Effect": "Allow",
+            "Action": "ecs:DescribeCapacityProviders",
+            "Resource": "*"
+        }
+        ]
+
+    def init_ecs_services(self, permissions_only=False):
+        """
+        Init cloudwatch metrics.
+
+        :return:
+        """
+
+        if not permissions_only and not self.aws_api.ecs_services:
+            self.aws_api.init_ecs_services()
+
+        return [{
+            "Sid": "ecsServices",
+            "Effect": "Allow",
+            "Action": ["ecs:ListServices", "ecs:DescribeServices"],
+            "Resource": "*"
+        }
+        ]
+
     def get_active_cleanups(self):
         """
         Return All active clean up functions.
@@ -931,11 +1376,15 @@ class AWSCleaner:
 
         if permissions_only:
             permissions = self.sub_cleanup_report_acm_unused(permissions_only=permissions_only)
+            permissions += self.sub_cleanup_report_acm_failed(permissions_only=permissions_only)
             permissions += self.sub_cleanup_report_acm_ineligible(permissions_only=permissions_only)
             permissions += self.sub_cleanup_report_acm_expiration(permissions_only=permissions_only)
             return permissions
 
         tb_ret = TextBlock("ACM Report")
+
+        tb_ret_tmp = self.sub_cleanup_report_acm_failed()
+        tb_ret.blocks.append(tb_ret_tmp)
 
         tb_ret_tmp = self.sub_cleanup_report_acm_unused()
         tb_ret.blocks.append(tb_ret_tmp)
@@ -967,6 +1416,30 @@ class AWSCleaner:
         unused = [certificate for certificate in self.aws_api.acm_certificates if not certificate.in_use_by]
         for certificate in unused:
             tb_ret.lines.append(f"[{certificate.domain_name}] {certificate.arn}")
+        return tb_ret
+
+    def sub_cleanup_report_acm_failed(self, permissions_only=False):
+        """
+        ACM ineligible renewal Certificates
+
+        :return:
+        """
+
+        permissions = self.init_acm_certificates(permissions_only=permissions_only)
+        if permissions_only:
+            return permissions
+
+        tb_ret = TextBlock("Failed to validate certificates")
+
+        for certificate in self.aws_api.acm_certificates:
+            if certificate.status == "FAILED":
+                tb_ret.lines.append(
+                    f"[{certificate.domain_name}] {certificate.arn}, Reason: {certificate.failure_reason}")
+            for domain_validation_option in certificate.domain_validation_options:
+                if domain_validation_option.get("ValidationStatus") == "FAILED":
+                    tb_ret.lines.append(
+                        f"Validation Domain: '{domain_validation_option.get('ValidationDomain')}' certificate domain: '{certificate.domain_name}' ARN: '{certificate.arn}'")
+
         return tb_ret
 
     def sub_cleanup_report_acm_ineligible(self, permissions_only=False):
@@ -1003,6 +1476,8 @@ class AWSCleaner:
 
         tb_ret = TextBlock("Expired/Expiring Certificates")
         for certificate in self.aws_api.acm_certificates:
+            if certificate.not_after is None:
+                continue
             now = datetime.datetime.now(tz=certificate.not_after.tzinfo)
             if certificate.not_after < now:
                 tb_ret.lines.append(f"Expired: [{certificate.domain_name}] {certificate.arn}")
@@ -1186,6 +1661,7 @@ class AWSCleaner:
             runtime_to_deprecation_date = {"nodejs18.x": None,
                                            "nodejs16.x": datetime.datetime(2024, 3, 11, 0, 0),
                                            "nodejs14.x": datetime.datetime(2023, 11, 27, 0, 0),
+                                           "python3.12": None,
                                            "python3.11": None,
                                            "python3.10": None,
                                            "python3.9": None,
@@ -1241,7 +1717,7 @@ class AWSCleaner:
         dict_ret = {}
         tables = self.extract_text_chunks(response_text, "<table", "</table")
         for table in tables:
-            if "Supported Runtimes" in table:
+            if "Block function create" in table and "Python 3.13" in table:
                 break
         else:
             raise RuntimeError("Can not find Supported Runtimes table")
@@ -1320,7 +1796,7 @@ class AWSCleaner:
 
             if CommonUtils.timestamp_to_datetime(
                     log_group.creation_time / 1000
-            ) > datetime.datetime.now() - datetime.timedelta(days=31):
+            ) > datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(days=31):
                 continue
 
             if os.path.exists(self.configuration.cloudwatch_log_groups_streams_cache_dir):
@@ -1363,13 +1839,13 @@ class AWSCleaner:
             last_stream = json.load(file_handler)[-1]
         if CommonUtils.timestamp_to_datetime(
                 last_stream["lastIngestionTime"] / 1000
-        ) < datetime.datetime.now() - datetime.timedelta(days=365):
+        ) < datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(days=365):
             lines.append(
                 f"Cloudwatch log group '{log_group.name}' last event was more then year ago: {CommonUtils.timestamp_to_datetime(last_stream['lastIngestionTime'] / 1000)}"
             )
         elif CommonUtils.timestamp_to_datetime(
                 last_stream["lastIngestionTime"] / 1000
-        ) < datetime.datetime.now() - datetime.timedelta(days=62):
+        ) < datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(days=62):
             lines.append(
                 f"Cloudwatch log group '{log_group.name}' last event was more then 2 months ago: {CommonUtils.timestamp_to_datetime(last_stream['lastIngestionTime'] / 1000)}"
             )
@@ -1460,39 +1936,57 @@ class AWSCleaner:
 
         return tb_ret if tb_ret.lines or tb_ret.blocks else None
 
-    def cleanup_report_ecr_images(self, permissions_only=False):
+    def cleanup_report_ecr_images(self, permissions_only=False, months=6):
         """
-        Images compiled 6 months ago and later.
+        Images compiled X months ago and later.
 
         :return:
         """
 
-        permissions = self.init_ecr_images(permissions_only=permissions_only)
+        permissions = self.init_ecr(permissions_only=permissions_only)
         if permissions_only:
             return permissions
 
-        tb_ret = TextBlock("ECR Images half year and older")
+        global_report = Report("Global")
+
         images_by_ecr_repo = defaultdict(list)
         for image in self.aws_api.ecr_images:
             images_by_ecr_repo[image.repository_name].append(image)
 
-        half_year_date = None
+        for ecr_repo in self.aws_api.ecr_repositories:
+            if ecr_repo.name not in images_by_ecr_repo:
+                action = ReportActionECR({"region": ecr_repo.region.region_mark, "repo": ecr_repo.name}, reason="Empty repository")
+                action.unused_repo = True
+                global_report += action
+                break
+
+        age_limit_date = None
         for images in images_by_ecr_repo.values():
-            half_year_date = datetime.datetime.now(tz=images[0].image_pushed_at.tzinfo) - datetime.timedelta(
-                days=6 * 30)
+            age_limit_date = datetime.datetime.now(tz=images[0].image_pushed_at.tzinfo) - datetime.timedelta(
+                days=months * 30)
             break
 
         for repo_name, images in images_by_ecr_repo.items():
-            last_image = sorted(images, key=lambda _image: _image.image_pushed_at)[-1]
-            if last_image.image_pushed_at < half_year_date:
-                tb_ret.lines.append(
-                    f"Repository '{repo_name}' last image pushed at: {last_image.image_pushed_at.strftime('%Y-%m-%d %H:%M')} ")
+            action = ReportActionECR({"region": images[0].region, "repo": repo_name})
+            action.expired_images = [_image.image_tags for _image in images if _image.image_tags and
+                                     max(_image.image_pushed_at, (_image.last_recorded_pull_time or _image.image_pushed_at)) < age_limit_date]
+            action.untagged_images = [_image.image_digest for _image in images if not _image.image_tags]
 
-        with open(self.configuration.ecr_report_file_path, "w+", encoding="utf-8") as file_handler:
-            file_handler.write(tb_ret.format_pprint())
+            if not action.expired_images and not action.untagged_images:
+                continue
 
+            global_report += action
+
+            if len(action.expired_images) + len(action.untagged_images) == len(images):
+                action.unused_repo = True
+                action.reason = f"All repository images have no tags or older than > {months} months"
+                continue
+
+            action.reason = f"Images have no tags or older than > {months} months: {action.expired_images}, {action.untagged_images}"
+
+        global_report.write_to_file(self.configuration.ecr_report_file_path)
         logger.info(f"Output in: {self.configuration.ecr_report_file_path}")
-        return tb_ret
+        return global_report
 
     def cleanup_report_ec2_instances(self, permissions_only=False):
         """
@@ -1507,20 +2001,51 @@ class AWSCleaner:
             return permissions
 
         tb_ret = TextBlock("EC2 half a year and older AMIs.")
+
+        # amis don't have TZ
+        # half_year_date = datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(days=6 * 30)
         half_year_date = datetime.datetime.now() - datetime.timedelta(days=6 * 30)
+
         for inst in self.aws_api.ec2_instances:
+            name = inst.name or inst.id
             amis = CommonUtils.find_objects_by_values(self.aws_api.amis, {"id": inst.image_id}, max_count=1)
             if not amis:
-                tb_ret.lines.append(f"{inst.name} Can not find AMI, looks like it was either deleted or made private.")
+                tb_ret.lines.append(f"{name} Can not find AMI, looks like it was either deleted or made private.")
                 continue
             ami = amis[0]
             if ami.creation_date < half_year_date:
-                tb_ret.lines.append(f"{inst.name} AMI created at: {ami.creation_date}")
+                tb_ret.lines.append(f"{name} AMI created at: {ami.creation_date}")
         with open(self.configuration.ec2_instances_report_file_path, "w+", encoding="utf-8") as file_handler:
             file_handler.write(tb_ret.format_pprint())
 
         logger.info(f"Output in: {self.configuration.ec2_instances_report_file_path}")
         return tb_ret
+
+    def cleanup_report_ec2_amis(self, permissions_only=False, months=6):
+        """
+        Detect old AMIs. It's important to renew AMIs on a regular basics.
+
+        :return:
+        """
+
+        permissions = self.init_ec2_amis(permissions_only=permissions_only)
+        permissions += self.init_ec2_instances(permissions_only=permissions_only)
+        if permissions_only:
+            return permissions
+
+        global_report = Report("Global")
+        my_amis = [ami for ami in self.aws_api.amis if ami.owner_id == self.aws_api.ec2_client.account_id]
+
+        # amis don't have TZ
+        # half_year_date = datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(days=6 * 30)
+        age_limit_date = datetime.datetime.now() - datetime.timedelta(days=months * 30)
+        expired_amis = [ami for ami in my_amis if ami.creation_date < age_limit_date]
+        breakpoint()
+        #self.aws_api.ec2_client.dispose_amis(expired_amis)
+
+        global_report.write_to_file(self.configuration.ec2_amis_report_file_path)
+        logger.info(f"Output in: {self.configuration.ec2_instances_report_file_path}")
+        return global_report
 
     def cleanup_report_dynamodb(self, permissions_only=False):
         """
@@ -1829,13 +2354,34 @@ class AWSCleaner:
         :return:
         """
 
+        tb_ret = TextBlock("Elasticache cleanup")
         permissions = self.init_elasticache_clusters(permissions_only=permissions_only)
+
+        for group in self.aws_api.elasticache_replication_groups:
+            if not group.log_delivery_configurations:
+                tb_ret.lines.append(f"{group.name} log_delivery_configuration not set")
+                breakpoint()
+            if group.multi_az == "disabled":
+                tb_ret.lines.append(f"{group.name} multi_az disabled")
+                breakpoint()
+        """
+        
+            "CacheClusterIds":[
+                'string',
+            ],
+        """
+        filters_req = {"ReplicationGroupIds": ["demo-us-redis-shared"], "ServiceUpdateName":'elasticache-20241111-arm'}
+        ret = list(self.aws_api.elasticache_client.execute(self.aws_api.elasticache_client.get_session_client(Region.get_region("us-west-2")).batch_apply_update_action, None, raw_data=True, filters_req=filters_req))
+        ret = list(self.aws_api.elasticache_client.execute(self.aws_api.elasticache_client.get_session_client(Region.get_region("us-west-2")).describe_service_updates, None, raw_data=True))
+        ret = list(self.aws_api.elasticache_client.execute(self.aws_api.elasticache_client.get_session_client(Region.get_region("us-west-2")).describe_update_actions, None, raw_data=True))
+
 
         if permissions_only:
             return permissions
 
-        tb_ret = TextBlock("EC2 half a year and older AMIs.")
-        for table in self.aws_api.elasticache_clusters:
+        self.aws_api.elasticache_replication_groups
+        for cluster in self.aws_api.elasticache_clusters:
+            breakpoint()
             tb_ret.lines.append(f"{table.name} ike it was either deleted or made private.")
 
         with open(self.configuration.elasticache_report_file_path, "w+", encoding="utf-8") as file_handler:
@@ -1861,52 +2407,387 @@ class AWSCleaner:
         if permissions_only:
             return permissions
 
-        tb_ret = TextBlock("Cloudwatch cleanup.")
-        no_retention = []
-        no_metrics = []
+        global_report = Report("Global")
+
+        report = Report(self.aws_api.cloud_watch_logs_client.client_name)
         all_metric_filters = []
         for group in self.aws_api.cloud_watch_log_groups:
+            action = ReportActionCloudwatchLogGroup({"region": group.region.region_mark, "name":group.name})
             if group.retention_in_days is None:
-                no_retention.append(f"{group.name}: No retention")
+                action.no_retention = True
 
             metric_filters = CommonUtils.find_objects_by_values(self.aws_api.cloud_watch_log_groups_metric_filters,
                                                                 {"log_group_name": group.name})
             all_metric_filters += metric_filters
             if not metric_filters:
-                no_metrics.append(f"{group.name}: No metric filters")
+                action.no_metric_filter = True
 
-            tb_ret_tmp = self.sub_cleanup_report_cloudwatch_logs_metrics(metric_filters)
-            tb_ret_tmp.header = f"Group: {group.name}. {tb_ret_tmp.header}"
+            # metrics
             metric_filters_patterns = defaultdict(list)
             for metric_filter in metric_filters:
                 if metric_filter.filter_pattern:
                     metric_filters_patterns[metric_filter.filter_pattern].append(metric_filter)
-            tb_ret_tmp.lines = [
-                                   f"Same filter pattern '{filter_pattern}' appears in multiple metric filters: {[metric.name for metric in _metric_filters]}"
-                                   for filter_pattern, _metric_filters in metric_filters_patterns.items() if
-                                   len(_metric_filters) > 1] + tb_ret_tmp.lines
 
-            if tb_ret_tmp.lines or tb_ret_tmp.blocks:
-                tb_ret.blocks.append(tb_ret_tmp)
+            action.redundant_metric_filters = {filter_pattern: [_metric_filter.name for _metric_filter in _metric_filters] for filter_pattern, _metric_filters in metric_filters_patterns.items() if
+                                   len(_metric_filters) > 1}
 
-        tb_ret.lines = no_retention + no_metrics
-        largest_log_groups = [f"Group {group.name} size: {CommonUtils.bytes_to_str(group.stored_bytes)}" for group in
-                              sorted(self.aws_api.cloud_watch_log_groups, key=lambda _group: _group.stored_bytes, reverse=True)[:20]]
-        if largest_log_groups:
-            tb_ret.lines += ["Largest 20 Log groups"] + largest_log_groups
+            last_ingestion_time = self.check_log_group_last_ingestion_exceeded_month(group)
+            if last_ingestion_time:
+                action.idle = True
+                action.reason = f"Last ingestion was {last_ingestion_time.days} days ago"
+
+            report += action
+
+        for i, group in enumerate(sorted(self.aws_api.cloud_watch_log_groups, key=lambda _group: _group.stored_bytes,
+                                     reverse=True)[:20]):
+            action = ReportActionCloudwatchLogGroup({"region": group.region.region_mark, "name":group.name})
+            action.size = {"order": i, "stored_bytes": group.stored_bytes}
+            report += action
 
         if len(all_metric_filters) != len(self.aws_api.cloud_watch_log_groups_metric_filters):
-            tb_ret.lines.append(
-                f"Something went wrong Checked metric filters count {len(all_metric_filters)} != fetched via AWS API {len(self.aws_api.cloud_watch_log_groups_metric_filters)}")
+            global_report += self.generate_cleaner_error_report(f"Something went wrong Checked metric filters count "
+                                                         f"{len(all_metric_filters)} != fetched via AWS API "
+                                                         f"{len(self.aws_api.cloud_watch_log_groups_metric_filters)}")
 
-        with open(self.configuration.cloud_watch_report_file_path, "w+",
-                  encoding="utf-8") as file_handler:
-            file_handler.write(tb_ret.format_pprint())
+        global_report += report
+        global_report += self.cleanup_report_cloudwatch_logs_metrics(all_metric_filters)
+        global_report += self.sub_cleanup_report_cloudwatch_alarms(permissions_only=permissions_only)
+        global_report.write_to_file(self.configuration.cloud_watch_report_file_path)
 
-        logger.info(f"Output in: {self.configuration.cloud_watch_report_file_path}")
-        return tb_ret
+        return global_report
 
-    def sub_cleanup_report_cloudwatch_logs_metrics(self, metrics):
+    def check_log_group_last_ingestion_exceeded_month(self, log_group):
+        """
+        Check if it is idle.
+
+        :param log_group:
+        :return:
+        """
+
+        now = datetime.datetime.now(tz=datetime.timezone.utc)
+        limit = now - datetime.timedelta(days=31)
+        if CommonUtils.timestamp_to_datetime(log_group.creation_time/1000) > limit:
+            return False
+
+        filters_req = {"orderBy":"LastEventTime", "descending":True}
+        for response in self.aws_api.cloud_watch_logs_client.yield_log_group_streams(log_group, filters_req=filters_req):
+            break
+        else:
+            return now - CommonUtils.timestamp_to_datetime(log_group.creation_time/1000)
+
+        last_ingestion_time = CommonUtils.timestamp_to_datetime(
+            response.last_ingestion_time / 1000
+        )
+
+        if last_ingestion_time > limit:
+            return False
+
+        return now - last_ingestion_time
+
+    def generate_cleaner_error_report(self, str_error):
+        breakpoint()
+        return
+
+    def sub_cleanup_report_cloudwatch_alarms(self, permissions_only=False):
+        """
+
+
+        :param permissions_only:
+        :return:
+        """
+
+        permissions = self.init_cloud_watch_log_groups(permissions_only=permissions_only)
+        permissions += self.init_sns(permissions_only=permissions_only)
+        permissions += self.init_autoscaling(permissions_only=permissions_only)
+        permissions += self.init_lambdas(permissions_only=permissions_only)
+        permissions += self.init_cloudwatch_metrics(permissions_only=permissions_only)
+        permissions += self.init_ecs_clusters(permissions_only=permissions_only)
+        permissions += self.init_ecs_capacity_providers(permissions_only=permissions_only)
+        permissions += self.init_ecs_services(permissions_only=permissions_only)
+        permissions += self.init_dynamodb_tables(permissions_only=permissions_only)
+        permissions += self.init_sqs_queues(permissions_only=permissions_only)
+        permissions += self.init_rds(permissions_only=permissions_only)
+        permissions += self.init_event_bridge_rules(permissions_only=permissions_only)
+        permissions += self.init_ec2_instances(permissions_only=permissions_only)
+
+        if permissions_only:
+            return permissions
+
+        report = Report(self.aws_api.cloud_watch_client.client_name)
+
+        for alarm in self.aws_api.cloud_watch_alarms:
+            report += self.sub_cleanup_report_cloudwatch_alarm(alarm)
+
+        return report
+
+    def sub_cleanup_report_cloudwatch_alarm(self, alarm):
+        """
+        Single alarm actions analysis.
+
+        :param alarm:
+        :return:
+        """
+
+        lst_ret = []
+        all_actions = alarm.alarm_actions + alarm.ok_actions
+        if not all_actions:
+            report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                        reason="No actions configured")
+            report_action.no_active_actions = True
+            lst_ret.append(report_action)
+        elif not alarm.actions_enabled:
+            report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                        reason="All actions disabled")
+            report_action.no_active_actions = True
+            lst_ret.append(report_action)
+
+        for alarm_action_arn in all_actions:
+            if "arn:aws:autoscaling" in alarm_action_arn:
+                found_policies = CommonUtils.find_objects_by_values(self.aws_api.application_auto_scaling_policies,
+                                                                    {"arn": alarm_action_arn})
+                if not found_policies:
+                    report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                                reason="Autoscaling policy does not exist")
+                    report_action.action_blackholes.append(alarm_action_arn)
+                    lst_ret.append(report_action)
+            elif "arn:aws:sns" in alarm_action_arn:
+                found_topics = CommonUtils.find_objects_by_values(self.aws_api.sns_topics, {"arn": alarm_action_arn})
+                if not found_topics:
+                    report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                                reason="SNS topic does not exist")
+                    report_action.action_blackholes.append(alarm_action_arn)
+                    lst_ret.append(report_action)
+            elif "arn:aws:lambda" in alarm_action_arn:
+                lambdas = CommonUtils.find_objects_by_values(self.aws_api.lambdas, {"arn": alarm_action_arn})
+                if not lambdas:
+                    report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                                reason="Lambda does not exist")
+                    report_action.action_blackholes.append(alarm_action_arn)
+                    lst_ret.append(report_action)
+            else:
+                self.generate_cleaner_error_report(f"{alarm.arn} unknown action: {alarm_action_arn}")
+
+        missing_alarm_dimension_actions = self.sub_cleanup_actions_cloudwatch_alarm_dimensions(alarm)
+
+        lst_ret += missing_alarm_dimension_actions
+
+        if alarm.dimensions:
+            for metric in self.aws_api.cloud_watch_metrics:
+                if metric.namespace != alarm.namespace:
+                    continue
+                if metric.name != alarm.metric_name:
+                    continue
+                metric_dimensions_dict = {dim["Name"]: dim["Value"] for dim in metric.dimensions}
+                alarm_dimensions_dict = {dim["Name"]: dim["Value"] for dim in alarm.dimensions}
+                if alarm_dimensions_dict != metric_dimensions_dict:
+                    continue
+                break
+            else:
+                report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                        reason="Metric does not exist")
+                report_action.dimension_balckholes.append(alarm.dimensions)
+                lst_ret.append(report_action)
+        else:
+            metric_filters = CommonUtils.find_objects_by_values(self.aws_api.cloud_watch_log_groups_metric_filters,
+                                                                {"name": alarm.metric_name})
+            if not metric_filters:
+                report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                            reason="Metric filter does not exist")
+                report_action.dimension_balckholes.append(alarm.dimensions)
+                lst_ret.append(report_action)
+
+        return lst_ret
+
+    def sub_cleanup_actions_cloudwatch_alarm_dimensions(self, alarm):
+        """
+        Generate alarm dimensions report
+
+        :param alarm:
+        :return:
+        """
+
+        lst_ret = []
+        for dimension in alarm.dimensions:
+            match dimension["Name"]:
+                case "ClusterName":
+                    if not CommonUtils.find_objects_by_values(self.aws_api.ecs_clusters, {"name": dimension["Value"]}):
+                        report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                                    reason="Resource does not exist")
+                        report_action.dimension_balckholes.append(dimension)
+                        lst_ret.append(report_action)
+                        break
+                case "CapacityProviderName":
+                    if not CommonUtils.find_objects_by_values(self.aws_api.ecs_capacity_providers,
+                                                              {"name": dimension["Value"]}):
+                        report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                                    reason="Resource does not exist")
+                        report_action.dimension_balckholes.append(dimension)
+                        lst_ret.append(report_action)
+                        break
+                case "ServiceName":
+                    if not CommonUtils.find_objects_by_values(self.aws_api.ecs_services,
+                                                              {"name": dimension["Value"]}):
+                        report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                                    reason="Resource does not exist")
+                        report_action.dimension_balckholes.append(dimension)
+                        lst_ret.append(report_action)
+                        break
+                case "TableName":
+                    if alarm.namespace != "AWS/DynamoDB":
+                        lst_ret.append(self.generate_cleaner_error_report(f"Alarm {alarm.arn} dimensions in namespace {alarm.namespace} not yet implemented"))
+                        continue
+                    if not CommonUtils.find_objects_by_values(self.aws_api.dynamodb_tables,
+                                                              {"name": dimension["Value"]}):
+                        report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                                    reason="Resource does not exist")
+                        report_action.dimension_balckholes.append(dimension)
+                        lst_ret.append(report_action)
+                        break
+                case "FunctionName":
+                    if alarm.namespace != "AWS/Lambda":
+                        lst_ret.append(self.generate_cleaner_error_report(
+                            f"Alarm {alarm.arn} dimensions in namespace {alarm.namespace} not yet implemented"))
+                        continue
+                    if not CommonUtils.find_objects_by_values(self.aws_api.lambdas,
+                                                              {"name": dimension["Value"]}):
+                        report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                                    reason="Resource does not exist")
+                        report_action.dimension_balckholes.append(dimension)
+                        lst_ret.append(report_action)
+                        break
+                case "QueueName":
+                    if alarm.namespace != "AWS/SQS":
+                        lst_ret.append(self.generate_cleaner_error_report(
+                            f"Alarm {alarm.arn} dimensions in namespace {alarm.namespace} not yet implemented"))
+                        continue
+                    if not CommonUtils.find_objects_by_values(self.aws_api.sqs_queues,
+                                                              {"name": dimension["Value"]}):
+                        report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                                    reason="Resource does not exist")
+                        report_action.dimension_balckholes.append(dimension)
+                        lst_ret.append(report_action)
+                        break
+                case "DBClusterIdentifier":
+                    if alarm.namespace != "AWS/RDS":
+                        lst_ret.append(self.generate_cleaner_error_report(
+                            f"Alarm {alarm.arn} dimensions in namespace {alarm.namespace} not yet implemented"))
+                        continue
+                    if not CommonUtils.find_objects_by_values(self.aws_api.rds_db_clusters,
+                                                              {"id": dimension["Value"]}):
+                        report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                                    reason="Resource does not exist")
+                        report_action.dimension_balckholes.append(dimension)
+                        lst_ret.append(report_action)
+                        break
+                case "Role":
+                    if alarm.namespace != "AWS/RDS":
+                        lst_ret.append(self.generate_cleaner_error_report(
+                            f"Alarm {alarm.arn} dimensions in namespace {alarm.namespace} not yet implemented"))
+                case "DBInstanceIdentifier":
+                    if alarm.namespace != "AWS/RDS":
+                        lst_ret.append(self.generate_cleaner_error_report(
+                            f"Alarm {alarm.arn} dimensions in namespace {alarm.namespace} not yet implemented"))
+                        continue
+                    if not CommonUtils.find_objects_by_values(self.aws_api.rds_db_instances,
+                                                              {"id": dimension["Value"]}):
+                        report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                                    reason="Resource does not exist")
+                        report_action.dimension_balckholes.append(dimension)
+                        lst_ret.append(report_action)
+                        break
+                case "RuleName":
+                    if alarm.namespace != "AWS/Events":
+                        lst_ret.append(self.generate_cleaner_error_report(
+                            f"Alarm {alarm.arn} dimensions in namespace {alarm.namespace} not yet implemented"))
+                        continue
+                    if not CommonUtils.find_objects_by_values(self.aws_api.event_bridge_rules,
+                                                              {"_name": dimension["Value"]}):
+                        report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                                    reason="Resource does not exist")
+                        report_action.dimension_balckholes.append(dimension)
+                        lst_ret.append(report_action)
+                        break
+                case "LoadBalancer":
+                    if alarm.namespace == "AWS/RDS":
+                        self.aws_api.cloud_watch_client.dispose_alarms([alarm])
+                        continue
+                    breakpoint()
+                    if alarm.namespace != "AWS/ALB":
+                        lst_ret.append(self.generate_cleaner_error_report(
+                            f"Alarm {alarm.arn} dimensions in namespace {alarm.namespace} not yet implemented"))
+                        continue
+                    if not CommonUtils.find_objects_by_values(self.aws_api.event_bridge_rules,
+                                                              {"_name": dimension["Value"]}):
+                        report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                                    reason="Resource does not exist")
+                        report_action.dimension_balckholes.append(dimension)
+                        lst_ret.append(report_action)
+                        break
+                case "TargetGroup":
+                    if alarm.namespace == "AWS/RDS":
+                        self.aws_api.cloud_watch_client.dispose_alarms([alarm])
+                        continue
+                    breakpoint()
+                    if alarm.namespace != "AWS/ALB":
+                        lst_ret.append(self.generate_cleaner_error_report(
+                            f"Alarm {alarm.arn} dimensions in namespace {alarm.namespace} not yet implemented"))
+                        continue
+                    if not CommonUtils.find_objects_by_values(self.aws_api.event_bridge_rules,
+                                                              {"_name": dimension["Value"]}):
+                        report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                                    reason="Resource does not exist")
+                        report_action.dimension_balckholes.append(dimension)
+                        lst_ret.append(report_action)
+                        break
+                case "AvailabilityZone":
+                    if alarm.namespace == "AWS/RDS" and ("TargetGroup" in str(alarm.dimensions) or "LoadBalancer" in str(alarm.dimensions)):
+                        self.aws_api.cloud_watch_client.dispose_alarms([alarm])
+                        continue
+                    breakpoint()
+
+                    if alarm.namespace != "AWS/ALB":
+                        lst_ret.append(self.generate_cleaner_error_report(
+                            f"Alarm {alarm.arn} dimensions in namespace {alarm.namespace} not yet implemented"))
+                        continue
+                    if not CommonUtils.find_objects_by_values(self.aws_api.event_bridge_rules,
+                                                              {"_name": dimension["Value"]}):
+                        report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                                    reason="Resource does not exist")
+                        report_action.dimension_balckholes.append(dimension)
+                        lst_ret.append(report_action)
+                        break
+                case "AutoScalingGroupName":
+                    if alarm.namespace != "AWS/EC2":
+                        lst_ret.append(self.generate_cleaner_error_report(
+                            f"Alarm {alarm.arn} dimensions in namespace {alarm.namespace} not yet implemented"))
+                        continue
+                    if not CommonUtils.find_objects_by_values(self.aws_api.auto_scaling_groups,
+                                                              {"name": dimension["Value"]}):
+                        report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                                    reason="Resource does not exist")
+                        report_action.dimension_balckholes.append(dimension)
+                        lst_ret.append(report_action)
+                        break
+                case "InstanceId":
+                    if alarm.namespace != "AWS/EC2":
+                        lst_ret.append(self.generate_cleaner_error_report(
+                            f"Alarm {alarm.arn} dimensions in namespace {alarm.namespace} not yet implemented"))
+                        continue
+                    if not CommonUtils.find_objects_by_values(self.aws_api.ec2_instances,
+                                                              {"id": dimension["Value"]}):
+                        report_action = ReportActionCloudwatchAlarm({"arn": alarm.arn},
+                                                                    reason="Resource does not exist")
+                        report_action.dimension_balckholes.append(dimension)
+                        lst_ret.append(report_action)
+                        break
+                case _:
+                    breakpoint()
+                    lst_ret.append(self.generate_cleaner_error_report(
+                        f"Alarm {alarm.arn} Unsupported dimensions: {alarm.dimensions}, Namespace: {alarm.namespace}"))
+
+        return lst_ret
+
+    def cleanup_report_cloudwatch_logs_metrics(self, metrics):
         """
         Generate report for cloudwatch_metrics
 
@@ -1914,11 +2795,10 @@ class AWSCleaner:
         :return:
         """
 
-        tb_ret = TextBlock("Cloudwatch metrics report")
+        report = Report(self.aws_api.cloud_watch_client.client_name)
         for metric in metrics:
-            lines = self.sub_cleanup_lines_cloudwatch_log_metric(metric)
-            tb_ret.lines += lines
-        return tb_ret
+            report += self.sub_cleanup_lines_cloudwatch_log_metric(metric)
+        return report
 
     def sub_cleanup_lines_cloudwatch_log_metric(self, metric):
         """
@@ -1928,7 +2808,8 @@ class AWSCleaner:
         :return:
         """
 
-        lines = []
+        action = ReportActionCloudwatchLogGroupMetric({"region": metric.region.region_mark, "name": metric.name})
+
         if not metric.metric_transformations or len(metric.metric_transformations) > 1:
             raise NotImplementedError("Can not check the metric filter")
 
@@ -1938,12 +2819,19 @@ class AWSCleaner:
                                                      "metric_name":
                                                          metric.metric_transformations[
                                                              0]["metricName"]})
-        if not alarms:
-            lines.append(f"Metric '{metric.name}' has no alarms")
         for alarm in alarms:
             if not alarm.actions_enabled:
-                lines.append(f"Metric: '{metric.name}' Disabled Alarm")
-        return lines
+                action.disabled_actions_alarms.append(alarm.name)
+        if len(alarms) == len(action.disabled_actions_alarms):
+            action.no_alarms = True
+
+        log_groups = CommonUtils.find_objects_by_values(self.aws_api.cloud_watch_log_groups,
+                                                    {"name": metric.log_group_name,
+                                                     "region": metric.region})
+        if not log_groups:
+            action.no_log_group = True
+            breakpoint()
+        return action
 
     def cleanup_report_sqs(self, permissions_only=False):
         """
@@ -2580,6 +3468,11 @@ class AWSCleaner:
             return permissions
 
         tb_ret = TextBlock("SNS Cleanup")
+
+        tb_ret_tmp = self.sub_cleanup_report_sns_topics_without_subscriptions()
+        if tb_ret_tmp:
+            tb_ret.blocks.append(tb_ret_tmp)
+
         tb_ret_tmp = self.sub_cleanup_report_sns_topics_recommended_configs()
         if tb_ret_tmp:
             tb_ret.blocks.append(tb_ret_tmp)
@@ -2587,6 +3480,28 @@ class AWSCleaner:
         tb_ret_tmp = self.sub_cleanup_report_sns_subscriptions_recommended_configs()
         if tb_ret_tmp:
             tb_ret.blocks.append(tb_ret_tmp)
+
+
+        # todo: copied from alarm:
+        breakpoint()
+        # subscriptions = CommonUtils.find_objects_by_values(self.aws_api.sns_subscriptions,
+        if not subscriptions:
+            subreport_json["sns_action_blackhole"].append(action)
+            errors.append(f"Alarm's '{alarm.name}' action sns-topic has no subscriptions: {action}")
+
+        for subscription in subscriptions:
+            if subscription.protocol == "lambda":
+                lambdas = CommonUtils.find_objects_by_values(self.aws_api.lambdas,
+                                                         {"arn": subscription.endpoint})
+                if not lambdas:
+                    subreport_json["sns_action_blackhole"].append(action)
+                    errors.append(
+                        f"Alarm's '{alarm.name}' action sns-topic lambda does not exist: {action}, {subscription.endpoint}")
+                    continue
+            else:
+                raise NotImplementedError("Todo")
+        # todo: end copy
+
 
         tb_ret_tmp = self.sub_cleanup_report_sns_monitoring()
         if tb_ret_tmp:
@@ -2597,6 +3512,22 @@ class AWSCleaner:
         logger.info(f"Output in: {self.configuration.sns_report_file_path}")
 
         return tb_ret
+
+    def sub_cleanup_report_sns_topics_without_subscriptions(self):
+        """
+        Topic with no subscriptions
+
+        :return:
+        """
+
+        all_subsriptions_topic_arns = [subscription.topic_arn for subscription in self.aws_api.sns_subscriptions]
+
+        tb_ret = TextBlock("SNS topics without subscriptions")
+        for topic in self.aws_api.sns_topics:
+            if topic.arn not in all_subsriptions_topic_arns:
+                tb_ret.lines.append(
+                    f"Topic: {topic.arn} has no subscriptions")
+        return tb_ret if tb_ret.lines or tb_ret.blocks else None
 
     def sub_cleanup_report_sns_topics_recommended_configs(self):
         """
@@ -2750,7 +3681,7 @@ class AWSCleaner:
                 "Effect": "Allow",
                 "Action": "ec2:DescribeInstanceTypes",
                 "Resource": "*"
-                },
+            },
                 {
                     "Sid": "Pricing",
                     "Effect": "Allow",
@@ -2875,7 +3806,8 @@ class AWSCleaner:
         :return:
         """
         seen_types = {}
-        tb_ret = TextBlock(f"Instance types sorted by single core price [not gravitron, {tenancy=}, {capacitystatus=}, {min_cores=}, {max_cores=}]")
+        tb_ret = TextBlock(
+            f"Instance types sorted by single core price [not gravitron, {tenancy=}, {capacitystatus=}, {min_cores=}, {max_cores=}]")
         products_by_cpu_cost = defaultdict(list)
         for product in region_products:
             if product.cpu > max_cores or product.cpu < min_cores:
@@ -2894,7 +3826,7 @@ class AWSCleaner:
             if price == 0:
                 continue
 
-            products_by_cpu_cost[price/product.cpu].append(product)
+            products_by_cpu_cost[price / product.cpu].append(product)
 
         for price in sorted(products_by_cpu_cost):
             price_products = products_by_cpu_cost[price]
@@ -2903,7 +3835,7 @@ class AWSCleaner:
                     report_line = f"{price}$: {product.instance_type} [{product.cpu} Cores/ {product.ram} RAM]"
                     for attr_name, attr_value in product.attributes.items():
                         if seen_types[product.instance_type].attributes[attr_name] != attr_value:
-                            report_line += " {"+f"{attr_name}: '{seen_types[product.instance_type].attributes[attr_name]}'/'{attr_value}'" +"}"
+                            report_line += " {" + f"{attr_name}: '{seen_types[product.instance_type].attributes[attr_name]}'/'{attr_value}'" + "}"
                 else:
                     seen_types[product.instance_type] = product
                     report_line = f"{price}$: {product.instance_type} [{product.cpu} Cores/ {product.ram} RAM]"
@@ -2966,7 +3898,8 @@ class AWSCleaner:
                     return float(price_dimension["pricePerUnit"]["USD"])
 
             if range_point is None:
-                raise self.ServiceUsageRangePointMissingError(f"Range point should be set if there are multiple ranges: {sku_value['priceDimensions']}")
+                raise self.ServiceUsageRangePointMissingError(
+                    f"Range point should be set if there are multiple ranges: {sku_value['priceDimensions']}")
 
             for price_dimension in sku_value["priceDimensions"].values():
                 if float(price_dimension["beginRange"]) <= range_point <= float(price_dimension["endRange"]):
@@ -2978,81 +3911,6 @@ class AWSCleaner:
         """
         No value set for range decision
         """
-
-    def cleanup_report_ecs_usage(self, regions):
-        """
-        Generate cleanup for regions
-
-        :param regions:
-        :return:
-        """
-
-        htb_ret = TextBlock("ECS container instances cleanup")
-        for region in regions:
-            htb_ret.blocks.append(self.cleanup_report_ecs_usage_region(region))
-        return htb_ret
-
-    def cleanup_report_ecs_usage_region(self, region):
-        """
-        Generate ecs capacity providers report per region
-
-        :return:
-        """
-
-        tb_ret = TextBlock(str(region))
-        blocks_by_cluster_size = defaultdict(list)
-        for cluster in self.ecs_client.get_region_clusters(region):
-            current_container_instances = self.ecs_client.get_region_container_instances(region, cluster_identifier=cluster.arn)
-            cpu_reserved = 0
-            cpu_free = 0
-            memory_reserved = 0
-            memory_free = 0
-            for container_instance in current_container_instances:
-                for resource in container_instance.remaining_resources:
-                    if resource["name"] == "CPU":
-                        cpu_free += resource["integerValue"]/1024
-                    elif resource["name"] == "MEMORY":
-                        memory_free += resource["integerValue"]/1024
-
-                for resource in container_instance.registered_resources:
-                    if resource["name"] == "CPU":
-                        cpu_reserved += resource["integerValue"]/1024
-                    elif resource["name"] == "MEMORY":
-                        memory_reserved += resource["integerValue"]/1024
-
-            memory_gb_used = round(memory_reserved-memory_free, 2)
-            cpu_count_used = cpu_reserved-cpu_free
-            memory_reserved = round(memory_reserved, 2)
-            memory_free = round(memory_free, 2)
-
-            tb_ret_tmp = TextBlock(f"Cluster: '{cluster.name}'. Size: CPUs {cpu_reserved}, Memory {memory_reserved}GB")
-
-            if cpu_reserved > 0:
-                tb_ret_tmp.lines.append(f"CPUs: In use {cpu_count_used} Free {cpu_free}")
-            else:
-                tb_ret_tmp.lines.append("No CPU Registered")
-
-            if memory_reserved > 0:
-                tb_ret_tmp.lines.append(f"MEMORY: In use {memory_gb_used}GB Free {memory_free}GB")
-                cpu_usage = f"CPU: {round((cpu_count_used/cpu_reserved) * 100, 2)}%"
-                memory_usage = f"Memory: {round((memory_gb_used/memory_reserved) * 100, 2)}%"
-                if memory_reserved - memory_free > 0:
-                    str_ratio = str(round((cpu_count_used/memory_gb_used), 1))
-                else:
-                    str_ratio = f"{cpu_count_used} / {memory_gb_used}"
-                tb_ret_tmp.lines.append(f"Usage: {cpu_usage}, {memory_usage}, ratio: {str_ratio}")
-            else:
-                tb_ret_tmp.lines.append("No Memory Registered")
-            blocks_by_cluster_size[cpu_reserved+memory_reserved].append(tb_ret_tmp)
-
-        tb_ret.blocks = [block for key in sorted(blocks_by_cluster_size, reverse=True) for block in blocks_by_cluster_size[key]]
-
-        output_file_path = self.configuration.aws_api_cleanups_ecs_report_file_template.format(
-            region_mark=region.region_mark)
-
-        tb_ret.write_to_file(output_file_path)
-        logger.info(f"Wrote ecs cleanup to file: {output_file_path}")
-        return tb_ret
 
     def cleanup_report_iam(self, permissions_only=False):
         """
@@ -3075,6 +3933,18 @@ class AWSCleaner:
         tb_ret.write_to_file(self.configuration.iam_report_file_path)
         return tb_ret
 
+    def cleanup_report_iam_users(self, permissions_only=False):
+        """
+        Iam users
+        :return:
+        """
+
+        permissions = self.init_iam_users(permissions_only=permissions_only)
+        if permissions_only:
+            return permissions
+
+        breakpoint()
+
     def sub_cleanup_report_iam_policies(self, permissions_only=False):
         """
         Generate cleanup report for policies.
@@ -3086,3 +3956,108 @@ class AWSCleaner:
         permissions = self.init_iam_policies(permissions_only=permissions_only)
         if permissions_only:
             return permissions
+
+    def cleanup_report_ecs(self, permissions_only=False):
+        """
+        Checks the ECS best practices.:
+
+        :param permissions_only:
+        :return:
+        """
+
+        permissions = self.init_ecs_services(permissions_only=permissions_only)
+        permissions += self.init_ecs_clusters(permissions_only=permissions_only)
+        permissions += self.init_ecs_container_instances(permissions_only=permissions_only)
+
+        if permissions_only:
+            return permissions
+
+        global_report = Report("Global")
+
+        global_report += self.cleanup_report_ecs_container_instance_usage()
+        global_report.write_to_file(self.configuration.ecs_report_file_path)
+
+        return global_report
+
+    def cleanup_report_ecs_container_instance_usage(self):
+        """
+        Generate ecs capacity providers report per region
+
+        :return:
+        """
+        lst_ret = []
+        for cluster in self.aws_api.ecs_clusters:
+            lst_ret += self.cleanup_report_ecs_container_instance_usage_per_cluster(cluster)
+        return lst_ret
+
+    def cleanup_report_ecs_container_instance_usage_per_cluster(self, cluster):
+        """
+        Generate actions per container instance per cluster
+
+        :param cluster:
+        :return:
+        """
+
+        lst_ret = []
+        cluster_container_instances = CommonUtils.find_objects_by_values(self.aws_api.ecs_container_instances, {"cluster_name": cluster.name})
+        if not cluster_container_instances:
+            return []
+
+        container_instances_per_cap_provider = defaultdict(list)
+        for container_instance in cluster_container_instances:
+            container_instances_per_cap_provider[container_instance.capacity_provider_name].append(container_instance)
+
+        for cap_provider_name, container_instances in container_instances_per_cap_provider.items():
+            cpu_reserved = 0
+            cpu_free = 0
+            memory_reserved = 0
+            memory_free = 0
+
+            unused_container_instances = []
+            for container_instance in container_instances:
+                container_instance_remaining_cpu = None
+                container_instance_registered_cpu = None
+                for resource in container_instance.remaining_resources:
+                    if resource["name"] == "CPU":
+                        container_instance_remaining_cpu = resource["integerValue"]
+                        cpu_free += resource["integerValue"]
+                    elif resource["name"] == "MEMORY":
+                        memory_free += resource["integerValue"]
+
+                for resource in container_instance.registered_resources:
+                    if resource["name"] == "CPU":
+                        container_instance_registered_cpu = resource["integerValue"]
+                        cpu_reserved += resource["integerValue"]
+                    elif resource["name"] == "MEMORY":
+                        memory_reserved += resource["integerValue"]
+
+                if container_instance_remaining_cpu is None and container_instance_registered_cpu is None:
+                    raise NotImplementedError("container_instance_registered_cpu or container_instance_remaining_cpu is None")
+                if container_instance_remaining_cpu == container_instance_registered_cpu:
+                    unused_container_instances.append(container_instance)
+
+            if memory_free == memory_reserved and cpu_free == cpu_reserved:
+                action = ReportActionECSCapacityProvider({"region": cluster.region.region_mark, "name": cap_provider_name},
+                                                         reason=f"Capacity provider has no running tasks. "
+                                                                f"Can delete {len(container_instances)} instances."
+                                                                "Make sure there are no scheduled tasks configured to run on EC2!")
+                action.unused_capacity_provider = True
+                lst_ret.append(action)
+                continue
+
+            free_cpu_percent = int((cpu_free / cpu_reserved) * 100)
+            if free_cpu_percent > 20:
+                instance_ids = [unused_container_instance.ec2_instance_id for unused_container_instance in unused_container_instances]
+                action = ReportActionECSCapacityProvider({"region": cluster.region.region_mark, "name": cap_provider_name},
+                                                 reason=f"Capacity provider usage = {100-free_cpu_percent}% < 80%. "
+                                                        f"Delete unused container instances: {instance_ids}")
+                action.unused_container_instances = instance_ids
+                lst_ret.append(action)
+
+        return lst_ret
+
+    def init_and_cache_all_s3_bucket_objects(self):
+        cache_dir = os.path.join(self.configuration.ec2_reports_dir, "s3")
+        os.makedirs(cache_dir, exist_ok=True)
+        self.aws_api.init_s3_buckets(full_information=False)
+        self.aws_api.init_and_cache_all_s3_bucket_objects(cache_dir)

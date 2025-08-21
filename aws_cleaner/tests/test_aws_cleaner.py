@@ -11,6 +11,7 @@ from horey.aws_cleaner.aws_cleaner_configuration_policy import (
     AWSCleanerConfigurationPolicy,
 )
 from horey.aws_api.base_entities.region import Region
+from horey.aws_api.aws_services_entities.cloud_watch_log_group import CloudWatchLogGroup
 
 
 @pytest.fixture(name="configuration")
@@ -148,7 +149,7 @@ def test_sub_cleanup_report_ebs_volumes_types(configuration):
     assert ret is not None
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_cleanup_report_sns(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.cleanup_report_sns()
@@ -158,7 +159,7 @@ def test_cleanup_report_sns(configuration):
     assert os.path.exists(configuration.sns_report_file_path)
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_sub_cleanup_report_lambdas_monitoring(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.sub_cleanup_report_lambdas_monitoring()
@@ -168,7 +169,7 @@ def test_sub_cleanup_report_lambdas_monitoring(configuration):
     assert ret is not None
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_cleanup_report_load_balancers(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.cleanup_report_load_balancers()
@@ -687,7 +688,7 @@ def test_cleanup_report_elasticache(configuration):
     assert os.path.exists(cleaner.configuration.elasticache_report_file_path)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_cleanup_report_cloudwatch(configuration):
     cleaner = AWSCleaner(configuration)
     ret = cleaner.cleanup_report_cloudwatch()

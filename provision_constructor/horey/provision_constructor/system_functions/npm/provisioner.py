@@ -11,7 +11,7 @@ from horey.provision_constructor.system_functions.system_function_common import 
 from horey.h_logger import get_logger
 
 logger = get_logger()
-
+BashExecutor.set_logger(logger, override=False)
 
 @SystemFunctionFactory.register
 class Provisioner(SystemFunctionCommon):
@@ -44,7 +44,8 @@ class Provisioner(SystemFunctionCommon):
         @return:
         """
 
-        self.run_bash("curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash")
+        self.run_bash("curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh >> npm_installer.sh")
+        self.run_bash("bash npm_installer.sh")
 
         command = f'export NVM_DIR="$HOME/.nvm" && source "$NVM_DIR/nvm.sh" && nvm install v{self.nodejs_version}'
         self.run_bash(command)

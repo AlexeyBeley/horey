@@ -1,0 +1,22 @@
+{
+    "Records": [
+        {
+            "EventSource": "aws:sns",
+            "EventVersion": "1.0",
+            "EventSubscriptionArn": "arn:aws:sns:us-west-2:123456789100:topic_test_alert_system:e7b",
+            "Sns": {
+                "Type": "Notification",
+                "MessageId": "test_message_3",
+                "TopicArn": "arn:aws:sns:us-west-2:123456789100:topic_test_alert_system",
+                "Subject": "OK: \"alarm-/aws/lambda/alert_system_test_deploy_lambda-alert_system_test_dep...\" in US West (Oregon)",
+                "Message": "{\"AlarmName\":\"alarm-/aws/lambda/alert_system_test_deploy_lambda-alert_system_test_deploy_lambda-log-error\",\"AlarmDescription\":\"{\\\"routing_tags\\\": [\\\"ALERT_SYSTEM_MONITORING\\\"], \\\"log_group_name\\\": \\\"/aws/lambda/alert_system_test_deploy_lambda\\\", \\\"log_group_filter_pattern\\\": \\\"\\\\\\\"[ERROR]\\\\\\\"\\\", \\\"ALERT_SYSTEM_SELF_MONITORING\\\": \\\"ALERT_SYSTEM_SELF_MONITORING\\\"}\",\"AWSAccountId\":\"123456789100\",\"AlarmConfigurationUpdatedTimestamp\":\"2024-05-31T18:58:20.317+0000\",\"NewStateValue\":\"OK\",\"NewStateReason\":\"Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].\",\"StateChangeTime\":\"2024-06-01T00:25:42.680+0000\",\"Region\":\"US West (Oregon)\",\"AlarmArn\":\"arn:aws:cloudwatch:us-west-2:123456789100:alarm:alarm-/aws/lambda/alert_system_test_deploy_lambda-alert_system_test_deploy_lambda-log-error\",\"OldStateValue\":\"ALARM\",\"OKActions\":[\"arn:aws:sns:us-west-2:123456789100:topic_test_alert_system\"],\"AlarmActions\":[\"arn:aws:sns:us-west-2:123456789100:topic_test_alert_system\"],\"InsufficientDataActions\":[],\"Trigger\":{\"MetricName\":\"metric-alert_system_test_deploy_lambda-log-error\",\"Namespace\":\"/aws/lambda/alert_system_test_deploy_lambda\",\"StatisticType\":\"Statistic\",\"Statistic\":\"SUM\",\"Unit\":null,\"Dimensions\":[],\"Period\":300,\"EvaluationPeriods\":1,\"DatapointsToAlarm\":1,\"ComparisonOperator\":\"GreaterThanThreshold\",\"Threshold\":0.0,\"TreatMissingData\":\"notBreaching\",\"EvaluateLowSampleCountPercentile\":\"\"}}",
+                "Timestamp": "2024-06-01T00:25:42.730Z",
+                "SignatureVersion": "1",
+                "Signature": "HQ==",
+                "SigningCertUrl": "https://sns.us-west-2.amazonaws.com/SimpleNotificationService-76ef735.pem",
+                "UnsubscribeUrl": "https://sns.us-west-2.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:us-west-2:123456789100:topic_test_alert_system:7b",
+                "MessageAttributes": {}
+            }
+        }
+    ]
+}

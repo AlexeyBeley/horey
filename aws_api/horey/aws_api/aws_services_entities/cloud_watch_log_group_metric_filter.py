@@ -76,3 +76,16 @@ class CloudWatchLogGroupMetricFilter(AwsObject):
             "metricTransformations": self.metric_transformations,
         }
         return request_dict
+
+    def generate_dispose_request(self):
+        """
+        Standard.
+
+        :return:
+        """
+
+        request_dict = {
+            "logGroupName": self.log_group_name,
+            "filterName": self.name
+        }
+        return request_dict

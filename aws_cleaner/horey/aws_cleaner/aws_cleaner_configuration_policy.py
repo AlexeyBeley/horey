@@ -265,6 +265,10 @@ class AWSCleanerConfigurationPolicy(ConfigurationPolicy):
         return os.path.join(self.ec2_reports_dir, "instances.txt")
 
     @property
+    def ec2_amis_report_file_path(self):
+        return os.path.join(self.ec2_reports_dir, "amis.txt")
+
+    @property
     def ec2_interfaces_report_file_path(self):
         return os.path.join(self.ec2_reports_dir, "enis.txt")
 
@@ -334,6 +338,10 @@ class AWSCleanerConfigurationPolicy(ConfigurationPolicy):
     @property
     def ecr_report_file_path(self):
         return os.path.join(self.ecr_reports_dir, "ecr_images.txt")
+
+    @property
+    def ecs_report_file_path(self):
+        return os.path.join(self.ecr_reports_dir, "ecs_images.txt")
 
     @property
     def dynamodb_reports_dir(self):

@@ -108,36 +108,6 @@ class LambdaClient(Boto3Client):
         ):
             obj.reserved_concurrent_executions = response.get("ReservedConcurrentExecutions")
 
-    def get_all_event_source_mappings(self, region=None):
-        """
-        Get all event_source_mapping in all regions
-        :return:
-        """
-
-        if region is not None:
-            return self.get_region_event_source_mappings(region)
-
-        final_result = []
-        for _region in AWSAccount.get_aws_account().regions.values():
-            final_result += self.get_region_event_source_mappings(_region)
-
-        return final_result
-
-    def get_region_event_source_mappings(self, region):
-        """
-        Standard
-
-        @param region:
-        @return:
-        """
-        final_result = []
-        for response in self.execute(
-                self.get_session_client(region=region).list_event_source_mappings, "EventSourceMappings"
-        ):
-            obj = LambdaEventSourceMapping(response)
-            final_result.append(obj)
-        return final_result
-
     def update_lambda_information(self, aws_lambda, full_information=True):
         """
         Update lambda info if exists.
@@ -185,17 +155,7 @@ class LambdaClient(Boto3Client):
         if current_lambda.arn is None:
             self.provision_lambda_raw(desired_aws_lambda.region, desired_aws_lambda.generate_create_request())
             if desired_aws_lambda.policy is not None:
-                for (
-                        add_permission_request
-                ) in desired_aws_lambda.generate_add_permissions_requests():
-                    self.add_permission_raw(desired_aws_lambda.region, add_permission_request)
-                    self.wait_for_status(
-                        current_lambda,
-                        self.update_lambda_information,
-                        [current_lambda.Status.SUCCESSFUL],
-                        [current_lambda.Status.INPROGRESS],
-                        [current_lambda.Status.FAILED],
-                    )
+                self.provision_lambda_permissions(current_lambda, desired_aws_lambda)
 
         update_function_configuration_request = (
             current_lambda.generate_update_function_configuration_request(
@@ -265,31 +225,7 @@ class LambdaClient(Boto3Client):
                 [current_lambda.Status.FAILED],
             )
 
-        # permissions:
-        (
-            add_permission_requests,
-            remove_permission_requests,
-        ) = current_lambda.generate_modify_permissions_requests(desired_aws_lambda)
-
-        for update_permission_request in add_permission_requests:
-            self.add_permission_raw(desired_aws_lambda.region, update_permission_request)
-            self.wait_for_status(
-                current_lambda,
-                self.update_lambda_information,
-                [current_lambda.Status.SUCCESSFUL],
-                [current_lambda.Status.INPROGRESS],
-                [current_lambda.Status.FAILED],
-            )
-
-        for update_permission_request in remove_permission_requests:
-            self.remove_permission_raw(desired_aws_lambda.region, update_permission_request)
-            self.wait_for_status(
-                current_lambda,
-                self.update_lambda_information,
-                [current_lambda.Status.SUCCESSFUL],
-                [current_lambda.Status.INPROGRESS],
-                [current_lambda.Status.FAILED],
-            )
+        self.provision_lambda_permissions(current_lambda, desired_aws_lambda)
 
         if not update_code:
             self.update_lambda_information(desired_aws_lambda, full_information=False)
@@ -302,6 +238,46 @@ class LambdaClient(Boto3Client):
             self.update_function_code_raw(desired_aws_lambda.region, update_code_request)
 
         self.update_lambda_information(desired_aws_lambda, full_information=True)
+
+    def provision_lambda_permissions(self, current_lambda, desired_aws_lambda):
+        """
+        Provision permissions.
+
+        :param current_lambda:
+        :param desired_aws_lambda:
+        :return:
+        """
+
+        if current_lambda is None:
+            current_lambda = AWSLambda({})
+            current_lambda.name = desired_aws_lambda.name
+            current_lambda.region = desired_aws_lambda.region
+            self.update_lambda_information(current_lambda, full_information=True)
+
+        (
+            add_permission_requests,
+            remove_permission_requests,
+        ) = current_lambda.generate_modify_permissions_requests(desired_aws_lambda)
+
+        for update_permission_request in remove_permission_requests:
+            self.remove_permission_raw(desired_aws_lambda.region, update_permission_request)
+            self.wait_for_status(
+                current_lambda,
+                self.update_lambda_information,
+                [current_lambda.Status.SUCCESSFUL],
+                [current_lambda.Status.INPROGRESS],
+                [current_lambda.Status.FAILED],
+            )
+
+        for update_permission_request in add_permission_requests:
+            self.add_permission_raw(desired_aws_lambda.region, update_permission_request)
+            self.wait_for_status(
+                current_lambda,
+                self.update_lambda_information,
+                [current_lambda.Status.SUCCESSFUL],
+                [current_lambda.Status.INPROGRESS],
+                [current_lambda.Status.FAILED],
+            )
 
     def put_function_concurrency_raw(self, region, request_dict):
         """
@@ -411,6 +387,49 @@ class LambdaClient(Boto3Client):
         ):
             return response
 
+    def invoke_raw(self, region, request_dict):
+        """
+        Standard
+        request = {"FunctionName": lambda_name, "InvocationType": "DryRun"}
+
+        @param request_dict:
+        @return:
+        :param region:
+        """
+
+        logger.info(f"Invoking lambda: {request_dict}")
+
+        for response in self.execute(
+                self.get_session_client(region=region).invoke, None, raw_data=True, filters_req=request_dict
+        ):
+            return response
+
+    # pylint: disable= too-many-arguments
+    def yield_event_source_mappings(self, region=None, update_info=False, filters_req=None):
+        """
+        Yield event_source_mappings
+
+        :return:
+        """
+
+        regional_fetcher_generator = self.yield_event_source_mappings_raw
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                            LambdaEventSourceMapping,
+                                                            update_info=update_info,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req)
+
+    def yield_event_source_mappings_raw(self, region, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        yield from self.execute(
+                self.get_session_client(region=region).list_event_source_mappings, "EventSourceMappings", filters_req=filters_req
+        )
+
     def provision_event_source_mapping(
             self, event_source_mapping: LambdaEventSourceMapping
     ):
@@ -420,13 +439,47 @@ class LambdaClient(Boto3Client):
         @param event_source_mapping:
         @return:
         """
-        region_event_source_mappings = self.get_all_event_source_mappings(
-            region=event_source_mapping.region
-        )
-        for region_event_source_mapping in region_event_source_mappings:
-            if not region_event_source_mapping.function_arn.endswith(
-                    event_source_mapping.function_identification
-            ):
+
+        if not event_source_mapping.tags:
+            raise ValueError("Provisioning event source without tags is not permitted. "
+                             f"Put valuable information here and thank me later. {event_source_mapping.function_arn}")
+
+        region_event_source_mapping = LambdaEventSourceMapping({})
+        region_event_source_mapping.region = event_source_mapping.region
+        region_event_source_mapping.function_arn = event_source_mapping.function_arn
+        region_event_source_mapping.event_source_arn = event_source_mapping.event_source_arn
+        region_event_source_mapping.tags = {}
+
+        if not self.update_event_source_mapping_information(region_event_source_mapping, get_tags=True):
+            response = self.provision_event_source_mapping_raw(event_source_mapping.region,
+                                                               event_source_mapping.generate_create_request()
+                                                               )
+            del response["ResponseMetadata"]
+            event_source_mapping.update_from_raw_response(response)
+            event_source_mapping.account_id = self.account_id
+            region_event_source_mapping.account_id = self.account_id
+            region_event_source_mapping.uuid = event_source_mapping.uuid
+
+        tag_resource_request, untag_resource_request = region_event_source_mapping.generate_modify_tags_requests(event_source_mapping)
+        if tag_resource_request:
+            self.tag_resource_raw(event_source_mapping.region, tag_resource_request)
+        if untag_resource_request:
+            self.clear_cache(LambdaEventSourceMapping)
+            self.untag_resource_raw(event_source_mapping.region, untag_resource_request)
+
+        return True
+
+    def update_event_source_mapping_information(self, event_source_mapping: LambdaEventSourceMapping, get_tags=True):
+        """
+        Standard.
+
+        :param get_tags:
+        :param event_source_mapping:
+        :return:
+        """
+
+        for region_event_source_mapping in self.yield_event_source_mappings(region=event_source_mapping.region):
+            if region_event_source_mapping.function_arn != event_source_mapping.function_arn:
                 continue
             if (
                     region_event_source_mapping.event_source_arn
@@ -434,24 +487,27 @@ class LambdaClient(Boto3Client):
             ):
                 continue
 
-            event_source_mapping.update_from_raw_response(
-                region_event_source_mapping.dict_src
-            )
-            return
+            event_source_mapping.update_from_attrs(region_event_source_mapping)
 
-        response = self.provision_event_source_mapping_raw(event_source_mapping.region,
-                                                           event_source_mapping.generate_create_request()
-                                                           )
-        del response["ResponseMetadata"]
-        event_source_mapping.update_from_raw_response(response)
+            if get_tags:
+                for response in self.execute(
+                        self.get_session_client(region=event_source_mapping.region).list_tags,
+                        "Tags",
+                        filters_req={"Resource": event_source_mapping.arn},
+                ):
+                    event_source_mapping.tags = response
+            return True
+        return False
 
     def provision_event_source_mapping_raw(self, region, request_dict):
         """
-        Standard
+        Standard.
 
-        @param request_dict:
-        @return:
+        :param region:
+        :param request_dict:
+        :return:
         """
+
         logger.info(f"Creating lambda event_source_mapping: {request_dict}")
         for response in self.execute(
                 self.get_session_client(region=region).create_event_source_mapping,
@@ -459,20 +515,77 @@ class LambdaClient(Boto3Client):
                 raw_data=True,
                 filters_req=request_dict,
         ):
+            self.clear_cache(LambdaEventSourceMapping)
             return response
 
-    def invoke_raw(self, region, request_dict):
+    def get_all_event_source_mappings(self, region=None):
+        """
+        Get all event_source_mapping in all regions
+        :return:
+        """
+
+        if region is not None:
+            return self.get_region_event_source_mappings(region)
+
+        final_result = []
+        for _region in AWSAccount.get_aws_account().regions.values():
+            final_result += self.get_region_event_source_mappings(_region)
+
+        return final_result
+
+    def get_region_event_source_mappings(self, region):
         """
         Standard
-        request = {"FunctionName": lambda_name, "InvocationType": "DryRun"}
 
-        @param request_dict:
+        @param region:
         @return:
         """
+        final_result = []
+        for response in self.execute(
+                self.get_session_client(region=region).list_event_source_mappings, "EventSourceMappings"
+        ):
+            obj = LambdaEventSourceMapping(response)
+            final_result.append(obj)
+        return final_result
 
-        logger.info(f"Invoking lambda: {request_dict}")
+    def untag_resource_raw(self, region, request_dict):
+        """
+        Standard.
+
+        :param region:
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Untagging resource: {request_dict}")
 
         for response in self.execute(
-                self.get_session_client(region=region).invoke, None, raw_data=True, filters_req=request_dict
+                self.get_session_client(region=region).untag_resource,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
         ):
+            self.clear_cache(AWSLambda)
+            self.clear_cache(LambdaEventSourceMapping)
+            return response
+
+    def tag_resource_raw(self, region, request_dict):
+        """
+        Standard.
+
+        :param region:
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Tagging resource: {request_dict}")
+
+        for response in self.execute(
+                self.get_session_client(region=region).tag_resource,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
+        ):
+            self.clear_cache(AWSLambda)
+            self.clear_cache(LambdaEventSourceMapping)
             return response

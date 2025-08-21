@@ -19,7 +19,7 @@ AccountClient().main_cache_dir_path = os.path.abspath(
 
 # pylint: disable= missing-function-docstring
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_init_client():
     """
     Base init check.
@@ -29,7 +29,7 @@ def test_init_client():
 
     assert isinstance(AccountClient(), AccountClient)
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_get_all_regions():
     client = AccountClient()
     regions = client.get_all_regions(update_info=True)

@@ -9,7 +9,7 @@ from horey.h_logger import get_logger
 from horey.aws_api.aws_api_configuration_policy import AWSAPIConfigurationPolicy
 from horey.aws_api.base_entities.region import Region
 from horey.aws_api.aws_services_entities.acm_certificate import ACMCertificate
-from horey.aws_api.aws_services_entities.sesv2_email_identity import SESV2EmailIdentity
+from horey.aws_api.aws_services_entities.ses_identity import SESIdentity
 from horey.aws_api.aws_services_entities.aws_lambda import AWSLambda
 from horey.aws_api.aws_services_entities.key_pair import KeyPair
 from horey.aws_api.aws_services_entities.vpc import VPC
@@ -27,7 +27,6 @@ configuration_values_file_full_path = os.path.join(
 )
 
 logger = get_logger(
-    configuration_file_full_path=configuration_values_file_full_path
 )
 
 configuration = AWSAPIConfigurationPolicy()
@@ -46,14 +45,7 @@ configuration.configuration_file_full_path = os.path.abspath(
 
 configuration.init_from_file()
 
-aws_api = AWSAPI(configuration=configuration)
-
-mock_values_file_path = os.path.abspath(
-    os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "..", "ignore", "mock_values.py"
-    )
-)
-mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
+aws_api = AWSAPI()
 
 # pylint: disable = missing-function-docstring
 
@@ -81,7 +73,7 @@ def test_provision_certificate():
 
 @pytest.mark.todo
 def test_provision_sesv2_domain_email_identity():
-    email_identity = SESV2EmailIdentity({})
+    email_identity = SESIdentity({})
     email_identity.name = mock_values["email_identity.name"]
     email_identity.region = Region.get_region("us-west-2")
     email_identity.tags = [{"Key": "name", "Value": "value"}]
@@ -206,7 +198,7 @@ def test_find_route_table_by_subnet():
     assert ret is not None
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_detach_and_delete_ecs_container_instances():
     current_ec2_instance_ids = []
     region = Region.get_region("us-east-1")

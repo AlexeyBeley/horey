@@ -3,6 +3,7 @@ AWS rds client to handle rds service API requests.
 """
 # pylint: disable= too-many-lines
 import datetime
+import json
 import time
 from collections import defaultdict
 
@@ -105,6 +106,22 @@ class RDSClient(Boto3Client):
                                                             get_tags_callback=self.get_tags if get_tags else None,
                                                             regions=[region] if region else None,
                                                             filters_req=filters_req)
+
+    def update_cluster_information(self, cluster: RDSDBCluster):
+        """
+        Standard.
+
+        :param cluster:
+        :return:
+        """
+
+        region_clusters = list(self.yield_db_clusters(region=cluster.region, filters_req={"DBClusterIdentifier": cluster.id}))
+        if len(region_clusters) > 1:
+            raise RuntimeError(f"Found more then 1 cluster with id: {cluster.id}")
+
+        for region_cluster in region_clusters:
+            return cluster.update_from_attrs(region_cluster)
+        return False
 
     def yield_db_clusters_raw(self, region, filters_req=None):
         """
@@ -990,6 +1007,7 @@ class RDSClient(Boto3Client):
             raise RuntimeError(region_db_clusters)
 
         db_cluster.update_from_raw_response(region_db_clusters[0].dict_src)
+        return True
 
     def update_db_instance_information(self, db_instance):
         """
@@ -1188,15 +1206,22 @@ class RDSClient(Boto3Client):
         :param engine_type:
         :return:
         """
-
         lst_all = self.describe_db_engine_versions_raw(region, {"Engine": engine_type, "DefaultOnly": False})
         all_floats = {}
         errors = []
+
         for eng_version in lst_all:
             try:
                 if ignore_limitless and "limitless" in eng_version["EngineVersion"]:
                     continue
-                all_floats[float(eng_version["EngineVersion"])] = eng_version
+                eng_version_text = eng_version["EngineVersion"]
+                if engine_type == "aurora-mysql":
+                    eng_version_text = eng_version_text[eng_version_text.find("mysql_aurora.") + len("mysql_aurora."):]
+                    if eng_version_text.count(".") != 2:
+                        raise NotImplementedError(f"Expected format x.y.z, received: {eng_version_text}")
+                    major, minor = eng_version_text.rsplit(".", maxsplit=1)
+                    eng_version_text = f'{major.replace(".", "")}.{minor}'
+                all_floats[float(eng_version_text)] = eng_version
             except ValueError:
                 errors.append(eng_version["EngineVersion"])
 
@@ -1211,3 +1236,42 @@ class RDSClient(Boto3Client):
         if not raw:
             return max_versions[0]
         return all_floats[max_versions[0]]
+
+    def download_db_log_file_portion(self, region, instance_id, file_name):
+        """
+        Standard.
+        ret = list(self.execute(self.get_session_client(region=region).describe_db_log_files, "DescribeDBLogFiles", filters_req={"DBInstanceIdentifier": instance_id}))
+
+        :param region:
+        :param instance_id:
+        :param file_name:
+        :return:
+        """
+        filters_req = {
+            "DBInstanceIdentifier": instance_id,
+            "LogFileName": file_name
+            }
+        for response in self.execute(
+            self.get_session_client(region=region).download_db_log_file_portion, None, raw_data=True, filters_req=filters_req
+        ):
+            if response["AdditionalDataPending"]:
+                raise NotImplementedError(response)
+            return json.loads(response["LogFileData"].strip("\n"))
+
+    def get_upgrade_prechecks_errors(self, region, instance_id):
+        """
+        Extract errors from log file
+
+        :param region:
+        :param instance_id:
+        :return:
+        """
+        lst_ret = []
+        ret = self.download_db_log_file_portion(region, instance_id, "upgrade-prechecks.log")
+        for check in ret["checksPerformed"]:
+            if check.get("status") != "OK":
+                lst_ret.append(check)
+            if check.get("detectedProblems"):
+                lst_ret.append(check)
+        return lst_ret
+

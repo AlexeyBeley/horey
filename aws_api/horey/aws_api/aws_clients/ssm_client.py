@@ -39,3 +39,26 @@ class SSMClient(Boto3Client):
             raise RuntimeError(f"Expected single response for param '{name}', received {len(raw_data)} items")
 
         return SSMParameter(raw_data[0])
+
+    def describe_parameters_raw(self, region, filters_req=None):
+        """
+        Get ssm parameter
+        filters_req = {"ParameterFilters": [{
+            'Key': 'Name',
+            'Option': 'BeginsWith',
+            'Values': [
+                '/aws/service/canonical/ubuntu/server',
+            ]
+        }]}
+        all_params = self.environment_api.aws_api.ssm_client.describe_parameters_raw(region=self.environment_api.region, filters_req=filters_req)
+
+        :param filters_req:
+        :param region:
+        :return:
+        """
+
+        return list(
+            self.execute(
+                self.get_session_client(region=region).describe_parameters, "Parameters", filters_req=filters_req
+            )
+        )

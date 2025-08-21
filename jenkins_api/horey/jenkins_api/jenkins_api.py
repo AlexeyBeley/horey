@@ -1,7 +1,6 @@
 """
 Module to handle jenkins server.
 """
-import copy
 import json
 import os
 import datetime
@@ -14,17 +13,7 @@ from horey.jenkins_api.node import Node
 from horey.jenkins_api.jenkins_job import JenkinsJob
 from horey.jenkins_api.build import Build
 from horey.h_logger import get_logger
-from horey.aws_api.base_entities.region import Region
 from horey.aws_api.base_entities.aws_account import AWSAccount
-from horey.aws_api.aws_services_entities.vpc import VPC
-from horey.aws_api.aws_services_entities.ec2_security_group import EC2SecurityGroup
-from horey.aws_api.aws_services_entities.ec2_launch_template import EC2LaunchTemplate
-from horey.aws_api.aws_services_entities.auto_scaling_group import AutoScalingGroup
-from horey.aws_api.aws_services_entities.ecs_capacity_provider import ECSCapacityProvider
-from horey.aws_api.aws_services_entities.iam_instance_profile import IamInstanceProfile
-from horey.aws_api.aws_services_entities.iam_role import IamRole
-from horey.aws_api.aws_services_entities.key_pair import KeyPair
-from horey.aws_api.aws_services_entities.ecs_cluster import ECSCluster
 
 logger = get_logger()
 
@@ -530,6 +519,7 @@ class JenkinsAPI:
         :return:
         """
         job_dicts = self.server.get_all_jobs()
+        breakpoint()
         return job_dicts
 
     def backup_jobs(self, backups_dir, jobs_names=None):

@@ -27,6 +27,9 @@ class SlackAPIConfigurationPolicy(ConfigurationPolicy):
 
     @webhook_url.setter
     def webhook_url(self, value):
+        if value is None:
+            return
+
         if not isinstance(value, str):
             raise ValueError(
                 f"webhook_url must be string received {value} of type: {type(value)}"

@@ -6,9 +6,13 @@ import copy
 import json
 import logging
 import datetime
+import shutil
+import time
 from collections import defaultdict
 
 import os
+from pathlib import Path
+
 from horey.h_logger import get_logger
 from horey.h_logger.formatter import formatter
 from horey.human_api.human_api_configuration_policy import (
@@ -22,10 +26,12 @@ from horey.human_api.feature import Feature
 from horey.human_api.user_story import UserStory
 from horey.human_api.issue import Issue
 from horey.human_api.sprint import Sprint
+from horey.human_api.generic import Generic
 
-from horey.azure_devops_api.azure_devops_api import AzureDevopsAPI
+from horey.azure_devops_api.azure_devops_api import AzureDevopsAPI, WorkItem
 from horey.azure_devops_api.azure_devops_api_configuration_policy import AzureDevopsAPIConfigurationPolicy
 from horey.common_utils.common_utils import CommonUtils
+from horey.common_utils.bash_executor import BashExecutor
 from horey.common_utils.text_block import TextBlock
 
 logger = get_logger()
@@ -222,6 +228,7 @@ class HumanAPI:
         self.bugs = {}
         self.tasks = {}
         self.issues = {}
+        self.generics = {}
         self.provisioned_new_parents_map = {}
         self.configuration = configuration
         if configuration is not None:
@@ -288,7 +295,9 @@ class HumanAPI:
                     raise ValueError(f"Task id {obj.id} is already in use")
                 self.tasks[obj.id] = obj
             else:
-                raise ValueError(f"Unknown work object type: {obj.type}")
+                if obj.id in self.generics:
+                    raise ValueError(f"Generic Wobject id {obj.id} is already in use")
+                self.generics[obj.id] = obj
 
     @staticmethod
     def generate_work_objects_from_dicts(work_objects_dicts):
@@ -325,8 +334,13 @@ class HumanAPI:
                 task = Task()
                 task.init_from_dict(work_item)
                 lst_ret.append(task)
+            elif work_item["type"] in ["DevOpsSupport", "Initiative", "EscapedBug", "DevOPSTicket", "CustomerSupport",
+                                       "TestCase", "TestPlan", "TestSuite"]:
+                gpow = Generic()
+                gpow.init_from_dict(work_item)
+                lst_ret.append(gpow)
             else:
-                raise ValueError(f"Unknown work item type: {work_item.work_item_type}")
+                raise ValueError(f"Unknown work item type: {work_item['type']}")
 
         return lst_ret
 
@@ -406,7 +420,7 @@ class HumanAPI:
             ret[str(work_item.assigned_to)].append(work_item)
         return ret
 
-    def daily_report(self):
+    def daily_report_old(self):
         """
         Init daily meeting area.
 
@@ -456,6 +470,67 @@ class HumanAPI:
             str_ret += self.generate_worker_daily(tmp_dict, worker_id, new, active, blocked, closed) + "\n"
 
         str_ret = str_ret.strip("\n\n") + "\n"
+        with open(self.configuration.daily_hapi_file_path, "w", encoding="utf-8") as file_handler:
+            file_handler.write(str_ret)
+
+        if not os.path.exists(self.configuration.protected_input_file_path):
+            with open(self.configuration.protected_input_file_path, "w", encoding="utf-8") as file_handler:
+                file_handler.write(str_ret)
+
+    def daily_report(self):
+        """
+        Init daily meeting area.
+
+        :return:
+        """
+        sprints = self.get_sprints(sprint_names=[self.configuration.sprint_name])
+
+        self.init_tasks_map(sprints=sprints)
+        tmp_dict = {}
+        tmp_dict.update(self.features)
+        tmp_dict.update(self.epics)
+        tmp_dict.update(self.user_stories)
+        tmp_dict.update(self.tasks)
+        tmp_dict.update(self.bugs)
+        tmp_dict[-1] = UserStory()
+        tmp_dict[-1].title = "Orphan"
+        tmp_dict[-1].id = -1
+
+        sprint_work_items = self.get_sprint_tasks_and_bugs(sprints)
+        work_items_map = self.split_by_worker(sprint_work_items)
+        workers_daily = []
+        for worker_id, work_items in work_items_map.items():
+            blocked = defaultdict(list)
+            active = defaultdict(list)
+            new = defaultdict(list)
+            closed = defaultdict(list)
+            for work_item in work_items:
+                if len(work_item.parent_ids) > 1:
+                    raise ValueError(f"len(work_item.parent_ids) == {len(work_item.parent_ids)} != 1 ")
+
+                if len(work_item.parent_ids) == 0:
+                    parent_id = -1
+                else:
+                    parent_id = work_item.parent_ids[0]
+
+                if work_item.status == work_item.Status.ACTIVE:
+                    active[parent_id].append(work_item)
+                elif work_item.status == work_item.Status.BLOCKED:
+                    blocked[parent_id].append(work_item)
+                elif work_item.status == work_item.Status.NEW:
+                    new[parent_id].append(work_item)
+                elif work_item.status == work_item.Status.CLOSED:
+                    if work_item.closed_date >= datetime.datetime.now() - datetime.timedelta(days=3):
+                        closed[parent_id].append(work_item)
+                else:
+                    raise ValueError(f"Unknown status: {work_item.status}")
+            workers_daily.append(self.generate_worker_daily_dict(tmp_dict, worker_id, new, active, blocked, closed))
+
+        breakpoint()
+        json_file_path = self.configuration.daily_hapi_file_path.replace(".", "_")+".json"
+        with open(json_file_path, "w", encoding="utf-8") as file_handler:
+            json.dump(workers_daily, file_handler)
+        ret = BashExecutor.run_bash(f"daily_handler --action daily_json_to_hr --src {json_file_path} --dst {self.configuration.daily_hapi_file_path}")
         with open(self.configuration.daily_hapi_file_path, "w", encoding="utf-8") as file_handler:
             file_handler.write(str_ret)
 
@@ -804,6 +879,58 @@ class HumanAPI:
 
         return str_report
 
+    @staticmethod
+    def generate_worker_daily_dict(tmp_dict, worker_id, new, active, blocked, closed):
+        """
+        Generate daily report.
+
+        :param tmp_dict:
+        :param worker_id:
+        :param new:
+        :param active:
+        :param blocked:
+        :param closed:
+        :return:
+        """
+
+        dict_ret = {"worker_id": worker_id}
+
+        key = "new"
+        dict_ret[key] = []
+        for parent_id, items in new.items():
+            parent_tuple = (
+                tmp_dict.get(parent_id).__class__.__name__, tmp_dict.get(parent_id).id, tmp_dict.get(parent_id).title)
+            for item in items:
+                item_tuple = (item.__class__.__name__, item.id, item.title)
+                dict_ret[key].append({"parent": parent_tuple, "child": item_tuple})
+
+        key = "active"
+        for parent_id, items in active.items():
+            parent_tuple = (
+                tmp_dict.get(parent_id).__class__.__name__, tmp_dict.get(parent_id).id, tmp_dict.get(parent_id).title)
+
+            for item in items:
+                item_tuple = (item.__class__.__name__, item.id, item.title)
+                dict_ret[key].append({"parent": parent_tuple, "child": item_tuple})
+
+        key = "blocked"
+        for parent_id, items in blocked.items():
+            parent_tuple = (
+                tmp_dict.get(parent_id).__class__.__name__, tmp_dict.get(parent_id).id, tmp_dict.get(parent_id).title)
+            for item in items:
+                item_tuple = (item.__class__.__name__, item.id, item.title)
+                dict_ret[key].append({"parent": parent_tuple, "child": item_tuple})
+
+        key = "closed"
+        for parent_id, items in closed.items():
+            parent_tuple = (
+                tmp_dict.get(parent_id).__class__.__name__, tmp_dict.get(parent_id).id, tmp_dict.get(parent_id).title)
+            for item in items:
+                item_tuple = (item.__class__.__name__, item.id, item.title)
+                dict_ret[key].append({"parent": parent_tuple, "child": item_tuple})
+
+        return dict_ret
+
     def daily_routine(self):
         """
         Make it the best way
@@ -837,35 +964,41 @@ class HumanAPI:
         with open(self.configuration.work_status_file_path, encoding="utf-8") as file_handler:
             dict_wobjects = json.load(file_handler)
             current_wobjects = self.generate_work_objects_from_dicts(dict_wobjects)
-        current_tasks_and_bugs = [wobj for wobj in current_wobjects if wobj.type in ["Task", "Bug"] and wobj.sprint_name == self.configuration.sprint_name]
+        current_tasks_and_bugs = [wobj for wobj in current_wobjects if
+                                  wobj.type in ["Task", "Bug"] and wobj.sprint_name == self.configuration.sprint_name]
         current_tasks_bugs_map = self.split_by_worker(current_tasks_and_bugs)
 
         this_day_dir_name = os.path.basename(os.path.dirname(self.configuration.work_status_file_path))
         str_year = this_day_dir_name[:4]
-        digit_names = [name for name in os.listdir(os.path.dirname(os.path.dirname(self.configuration.work_status_file_path)))
+        digit_names = [name for name in
+                       os.listdir(os.path.dirname(os.path.dirname(self.configuration.work_status_file_path)))
                        if name.startswith(str_year) and name != this_day_dir_name]
         if not digit_names:
             return True
 
-        previous_report_file_path = os.path.join(self.configuration.sprint_dir_path, sorted(digit_names)[-1], self.configuration.work_status_file_name)
+        previous_report_file_path = os.path.join(self.configuration.sprint_dir_path, sorted(digit_names)[-1],
+                                                 self.configuration.work_status_file_name)
         if not os.path.exists(previous_report_file_path):
             return True
         with open(previous_report_file_path, encoding="utf-8") as file_handler:
             dict_wobjects = json.load(file_handler)
             previous_wobjects = self.generate_work_objects_from_dicts(dict_wobjects)
 
-        previous_wobjects = [wobj for wobj in previous_wobjects if wobj.type in ["Task", "Bug"] and wobj.sprint_name == self.configuration.sprint_name]
+        previous_wobjects = [wobj for wobj in previous_wobjects if
+                             wobj.type in ["Task", "Bug"] and wobj.sprint_name == self.configuration.sprint_name]
         previous_wobjects_map = self.split_by_worker(previous_wobjects)
         htb_ret = TextBlock("The Big Brother has you")
         for worker in current_tasks_bugs_map:
-            htb_ret_tmp = self.genereate_worker_big_brother_report(worker, current_tasks_bugs_map, previous_wobjects_map, {wobj.id: wobj for wobj in current_wobjects})
+            htb_ret_tmp = self.genereate_worker_big_brother_report(worker, current_tasks_bugs_map,
+                                                                   previous_wobjects_map,
+                                                                   {wobj.id: wobj for wobj in current_wobjects})
             if htb_ret_tmp:
                 htb_ret.blocks.append(htb_ret_tmp)
         htb_ret.write_to_file(self.configuration.big_brother_file_path)
         return True
 
-
-    def genereate_worker_big_brother_report(self, worker, current_tasks_bugs_map, previous_wobjects_map, current_wobjects):
+    def genereate_worker_big_brother_report(self, worker, current_tasks_bugs_map, previous_wobjects_map,
+                                            current_wobjects):
         """
         Generate status per worker based on current vs previous comparison.
 
@@ -884,7 +1017,8 @@ class HumanAPI:
         for current_wobj in current_tasks_bugs_map[worker]:
             for parent_id in current_wobj.parent_ids:
                 if current_wobjects[parent_id].sprint_name != current_wobj.sprint_name:
-                    lst_tmp.append(f"{parent_id}->{current_wobjects[parent_id].type}-{current_wobj.id}-[{current_wobjects[parent_id].sprint_name}]")
+                    lst_tmp.append(
+                        f"{parent_id}->{current_wobjects[parent_id].type}-{current_wobj.id}-[{current_wobjects[parent_id].sprint_name}]")
         if lst_tmp:
             htb_ret_tmp = TextBlock("Wrong parent sprint association")
             htb_ret_tmp.lines = lst_tmp
@@ -912,12 +1046,14 @@ class HumanAPI:
 
             if current_wobj.id not in previous_workers_wobjects_by_id:
                 if current_wobj.completed_time:
-                    lst_tmp.append(f"{current_wobj.id}-[{current_wobj.title}] Completed time: +{current_wobj.completed_time}")
+                    lst_tmp.append(
+                        f"{current_wobj.id}-[{current_wobj.title}] Completed time: +{current_wobj.completed_time}")
                     last_day_reported += current_wobj.completed_time
                 continue
 
             if current_wobj.completed_time != previous_workers_wobjects_by_id[current_wobj.id].completed_time:
-                reported_time = current_wobj.completed_time - (previous_workers_wobjects_by_id[current_wobj.id].completed_time or 0)
+                reported_time = current_wobj.completed_time - (
+                            previous_workers_wobjects_by_id[current_wobj.id].completed_time or 0)
                 last_day_reported += reported_time
                 lst_tmp.append(
                     f"{current_wobj.id}-[{current_wobj.title}] Completed time: +{reported_time}")
@@ -931,7 +1067,7 @@ class HumanAPI:
             total_time_left += max(0, left_time)
 
         htb_ret_tmp = TextBlock(f"Work time. Last day: reported +{last_day_reported}. "
-                                f"Sprint reported +{total_time_reported}. Sprint remaining +{total_time_left} / {6*5*2}")
+                                f"Sprint reported +{total_time_reported}. Sprint remaining +{total_time_left} / {6 * 5 * 2}")
         htb_ret_tmp.lines = lst_tmp
         htb_ret.blocks.append(htb_ret_tmp)
 
@@ -1105,7 +1241,7 @@ class HumanAPI:
         for item in items:
             if item.sprint_name not in [self.configuration.backlog_sprint_name, self.configuration.sprint_name]:
                 errors.append(f"'{item.title}': Sprint name in the work plan is not the same as in the configuration: "
-                                   f"{item.sprint_name=} / {self.configuration.sprint_name=}")
+                              f"{item.sprint_name=} / {self.configuration.sprint_name=}")
         if errors:
             raise ValueError("\n##############################\n".join(errors))
 
@@ -1138,7 +1274,8 @@ class HumanAPI:
                 summary = ("\n" + "-" * 40 + "\n").join(
                     summaries_map[item.hapi_uid].format_pprint(shift=4) for item in sprint_items if
                     item.hapi_uid in summaries_map)
-                total_time = sum(sprint_item.estimated_time for sprint_item in sprint_items if not sprint_item.child_ids and not sprint_item.child_hapi_uids and sprint_item.estimated_time)
+                total_time = sum(sprint_item.estimated_time for sprint_item in sprint_items if
+                                 not sprint_item.child_ids and not sprint_item.child_hapi_uids and sprint_item.estimated_time)
                 summary += f"\nTotal time: {total_time}"
                 file_handler.write(summary)
 
@@ -1338,7 +1475,8 @@ class HumanAPI:
         for work_object_dict in ret:
             tmp_dict = copy.deepcopy(work_object_dict)
             if tmp_dict.get("id"):
-                tmp_dict = {key: value for key, value in tmp_dict.items() if key in ["id", "estimated_time", "completed_time", "sprint_name"]}
+                tmp_dict = {key: value for key, value in tmp_dict.items() if
+                            key in ["id", "estimated_time", "completed_time", "sprint_name"]}
             else:
                 try:
                     del tmp_dict["id"]
@@ -1361,6 +1499,7 @@ class HumanAPI:
 
         for work_object_dict in hapi_uids_map.values():
             status_comment = "human_api_json_encoded_current_status:\n" + json.dumps(work_object_dict, indent=4)
+            status_comment = f"<pre><code><div>{status_comment}</div></code></pre>"
             self.azure_devops_api.add_wit_comment(work_object_dict["id"], status_comment)
             children_hapi_uids = work_object_dict.get("child_hapi_uids")
             if children_hapi_uids:
@@ -1386,6 +1525,7 @@ class HumanAPI:
 
         all_wobjects = self.generate_work_objects_from_dicts(sprint_finished_items_dicts)
         leaf_work_objects = self.extract_leaf_tasks_and_bugs(all_wobjects)
+        breakpoint()
 
         seeds = self.find_seed_wobjects(all_wobjects)
 
@@ -1398,17 +1538,20 @@ class HumanAPI:
                    "from horey.human_api.issue import Issue",
                    "from horey.human_api.epic import Epic",
                    "",
-                  f'SPRINT_NAME = "{self.configuration.sprint_name}"']
+                   f'SPRINT_NAME = "{self.configuration.sprint_name}"']
 
         function_names = []
 
         for worker, worker_work_objects in work_objects_map.items():
             lst_ret_tmp, function_name = self.generate_sprint_retro_worker_function(worker, worker_work_objects, seeds)
-            lst_ret += [""]+ lst_ret_tmp
+            lst_ret += [""] + lst_ret_tmp
+            if function_name in function_names:
+                raise NotImplementedError(function_name)
             function_names.append(function_name)
 
         lst_ret += ["", "def main():"]
-        lst_ret += ["    " + line + " +\\" for line in ("return " + "+    ".join(f"{function_name}()" for function_name in function_names)).split("+")]
+        lst_ret += ["    " + line + " +\\" for line in
+                    ("return " + "+    ".join(f"{function_name}()" for function_name in function_names)).split("+")]
         lst_ret[-1] = lst_ret[-1][:-3]
 
         with open(self.configuration.sprint_plan_retro, "w", encoding="utf-8") as file_handler:
@@ -1455,7 +1598,7 @@ class HumanAPI:
             new_wobjects = []
             for wobj in alive_wobjects:
                 for parent_id in wobj.parent_ids:
-                    if parent_id not in [candidate.id for candidate in new_wobjects+alive_wobjects]:
+                    if parent_id not in [candidate.id for candidate in new_wobjects + alive_wobjects]:
                         new_wobjects.append(wobjects_by_id[parent_id])
                         updated = True
             alive_wobjects += new_wobjects
@@ -1480,7 +1623,7 @@ class HumanAPI:
 
             current_parent = wobject
             while current_parent.parent_ids:
-                if len(current_parent.parent_ids) !=1:
+                if len(current_parent.parent_ids) != 1:
                     raise ValueError(f"{len(current_parent.parent_ids)=}")
                 current_parent = dict_wobjects[current_parent.parent_ids[0]]
                 if current_parent.assigned_to != wobject.assigned_to:
@@ -1501,17 +1644,16 @@ class HumanAPI:
         """
 
         str_indent = " " * indent
-        function_name = CommonUtils.camel_case_to_snake_case(worker.replace(" ", "_"))
+        function_name = CommonUtils.camel_case_to_snake_case(worker.replace(" ", "_").replace("-", "_")).replace("__", "_")
         lst_ret = [str_indent + line for line in [f"def {function_name}():",
-                                                 '    """',
-                                                 "    Auto generated report",
-                                                 '    """',
+                                                  '    """',
+                                                  "    Auto generated report",
+                                                  '    """',
                                                   "",
                                                   "    lst_ret = []"
                                                   ]]
 
-        wobjects_map = {seed.id:seed for wobj in worker_wobjects for seed in seeds[wobj.id]}
-
+        wobjects_map = {seed.id: seed for wobj in worker_wobjects for seed in seeds[wobj.id]}
 
         for wobj in worker_wobjects:
             wobjects_map[wobj.id] = wobj
@@ -1521,7 +1663,7 @@ class HumanAPI:
         waiting_wobject_ids = list(wobjects_map.keys())
 
         for wobj in worker_wobjects:
-            param_name, lst_ret_tmp = wobj.convert_to_python(indent=indent + 4, suppress={"completed_time":0})
+            param_name, lst_ret_tmp = wobj.convert_to_python(indent=indent + 4, suppress={"completed_time": 0})
             lst_ret += [""] + lst_ret_tmp
             provisioned_wobject_ids.append(wobj.id)
             waiting_wobject_ids.remove(wobj.id)
@@ -1550,10 +1692,13 @@ class HumanAPI:
                 if all_provisioned_children is None:
                     continue
 
-                param_name, lst_ret_tmp = wobjects_map[waiting_wobject_id].convert_to_python(indent=indent + 4, suppress={"completed_time": 0})
+                param_name, lst_ret_tmp = wobjects_map[waiting_wobject_id].convert_to_python(indent=indent + 4,
+                                                                                             suppress={
+                                                                                                 "completed_time": 0})
                 lst_ret += [""] + lst_ret_tmp
                 for owner_assigned_child in all_provisioned_children:
-                    lst_ret += [" "*(indent + 4) + f"{param_name}.children.append({owner_assigned_child.generate_python_self_param_name()})"]
+                    lst_ret += [" " * (
+                                indent + 4) + f"{param_name}.children.append({owner_assigned_child.generate_python_self_param_name()})"]
                 waiting_wobject_ids.remove(waiting_wobject_id)
                 provisioned_wobject_ids.append(waiting_wobject_id)
                 changed = True
@@ -1587,16 +1732,37 @@ class HumanAPI:
         :return:
         """
 
+        start_perf_counter = time.perf_counter()
+        tmp_file_path = "/tmp/wit.json"
+
+        if os.path.exists(tmp_file_path):
+            os.remove(tmp_file_path)
+        cfg_file_path = Path(self.configuration.azure_devops_api_configuration_file_path).parent / "human_api_go" / "azure_devops_api_configuration_values.json"
+        hapi_args = f'--action download_all --cfg "{cfg_file_path}"'
+        ret = BashExecutor.run_bash(str(Path(__file__).parent / "bin" / "hapi.exe ") + hapi_args)
+        if "IterationWorkItems" not in ret["stdout"]:
+            raise RuntimeError(ret["stdout"])
+        with open(tmp_file_path) as fh:
+            azure_devops_wobjects = json.load(fh)
+        lst_all = [WorkItem(azure_devops_wobject).convert_to_dict() for azure_devops_wobject in azure_devops_wobjects]
+        with open(file_path, "w", encoding="utf-8") as file_handler:
+            json.dump(lst_all, file_handler)
+        logger.info(f"Downloading and saving Sprint Work Status took: {time.perf_counter() - start_perf_counter}")
+        return
+
+        #self.init_work_objects_from_dicts(CommonUtils.convert_to_dict(work_objects))
+
         sprints = self.get_sprints(sprint_names=[self.configuration.sprint_name])
         self.init_tasks_map(sprints=sprints)
         lst_all = [wobj.convert_to_dict() for wobj in [*self.tasks.values(),
-                   *self.bugs.values(),
-                   *self.user_stories.values(),
-                   *self.features.values(),
-                   *self.epics.values()]]
+                                                       *self.bugs.values(),
+                                                       *self.user_stories.values(),
+                                                       *self.features.values(),
+                                                       *self.epics.values()]]
 
         with open(file_path, "w", encoding="utf-8") as file_handler:
             json.dump(lst_all, file_handler)
+        logger.info(f"Downloading and saving Sprint Work Status took: {time.perf_counter() - start_perf_counter}")
 
     def save_sprint_work_status_old(self, file_path):
         """
@@ -1644,7 +1810,6 @@ class HumanAPI:
 
         :return:
         """
-
         if not os.path.exists(self.configuration.sprint_finish_status_file_path):
             self.save_sprint_work_status(self.configuration.sprint_finish_status_file_path)
 

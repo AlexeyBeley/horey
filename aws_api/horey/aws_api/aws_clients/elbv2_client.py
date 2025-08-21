@@ -376,6 +376,22 @@ class ELBV2Client(Boto3Client):
         ):
             return response
 
+    def update_target_group_information(self, target_group, full_information=True, update_info=False):
+        """
+        Standard.
+
+        :return:
+        """
+
+        for region_target_group in list(self.yield_target_groups(region=target_group.region, update_info=update_info, full_information=False)):
+            if region_target_group.name == target_group.name:
+                if not target_group.update_from_attrs(region_target_group):
+                    raise RuntimeError(region_target_group.dict_src)
+                if full_information:
+                    self.get_target_group_full_information(target_group)
+                return True
+        return False
+
     def provision_load_balancer_target_group(self, target_group: ELBV2TargetGroup):
         """
         Standard
@@ -393,7 +409,7 @@ class ELBV2Client(Boto3Client):
                     == target_group.name
             ):
                 if target_group.protocol != region_target_group.protocol:
-                    raise ValueError(f"{target_group.protocol=} {region_target_group.protocol=}")
+                    raise ValueError(f"{target_group.name=} {target_group.protocol=} {region_target_group.protocol=}")
                 target_group.arn = region_target_group.arn
                 request = region_target_group.generate_modify_request(target_group)
                 if request:
@@ -469,6 +485,8 @@ class ELBV2Client(Boto3Client):
         @return:
         """
 
+        if not listener.tags:
+            raise ValueError("Can not provision lb listener without tags")
         region_listener = LoadBalancer.Listener({})
         region_listener.region = listener.region
         region_listener.load_balancer_arn = listener.load_balancer_arn
@@ -486,10 +504,22 @@ class ELBV2Client(Boto3Client):
                 self.remove_listener_certificates_raw(listener.region, remove_request)
             return True
 
-        self.provision_load_balancer_listener_raw(listener.region,
+        response = self.provision_load_balancer_listener_raw(listener.region,
                                                              listener.generate_create_request()
                                                              )
-        return self.update_listener_information(listener)
+        listener.update_from_raw_response(response)
+        rules = self.get_region_rules(listener.region, listener_arn=listener.arn)
+        if len(rules) != 1:
+            raise RuntimeError(f"Expected to find only default rule, but found {rules}")
+
+        request_dict = {"ResourceArns": [rules[0].arn], "Tags": listener.tags}
+
+        for _ in self.execute(
+                self.get_session_client(region=listener.region).add_tags, None, raw_data=True, filters_req=request_dict
+        ):
+            break
+
+        return True
 
     def provision_load_balancer_listener_raw(self, region, request_dict):
         """
@@ -574,20 +604,21 @@ class ELBV2Client(Boto3Client):
             self.clear_cache(LoadBalancer.Listener)
             return response
 
-    def update_rule_information(self, rule: LoadBalancer.Rule):
+    def update_rule_information(self, rule: LoadBalancer.Rule, region_rules=None):
         """
         Standard.
 
+        :param region_rules:
         :param rule:
         :return:
         """
 
-        region_rules = self.get_region_rules(
+        region_rules = region_rules or self.get_region_rules(
             rule.region, full_information=False, listener_arn=rule.listener_arn
         )
 
         for region_rule in region_rules:
-            if region_rule.get_tagname() == rule.get_tagname():
+            if region_rule.get_tagname(ignore_missing_tag=True) == rule.get_tagname():
                 rule.update_from_raw_response(region_rule.dict_src)
                 return True
 

@@ -36,47 +36,14 @@ class AWSLambda(AwsObject):
         self.state = None
         self.reserved_concurrent_executions = None
         self.package_type = None
+        self.file_system_configs = None
+        self.request_key_to_attribute_mapping = {"FunctionArn": "arn", "FunctionName": "name"}
 
         if from_cache:
             self._init_object_from_cache(dict_src)
             return
 
-        init_options = {
-            "FunctionName": lambda x, y: self.init_default_attr(
-                x, y, formatted_name="name"
-            ),
-            "FunctionArn": lambda x, y: self.init_default_attr(
-                x, y, formatted_name="arn"
-            ),
-            "Runtime": self.init_default_attr,
-            "Role": self.init_default_attr,
-            "Handler": self.init_default_attr,
-            "CodeSize": self.init_default_attr,
-            "Description": self.init_default_attr,
-            "Timeout": self.init_default_attr,
-            "MemorySize": self.init_default_attr,
-            "LastModified": lambda attr_name, value: self.init_date_attr_from_formatted_string(
-                attr_name, self.format_last_modified_time(value)
-            ),
-            "CodeSha256": self.init_default_attr,
-            "Version": self.init_default_attr,
-            "VpcConfig": self.init_default_attr,
-            "Environment": self.init_default_attr,
-            "TracingConfig": self.init_default_attr,
-            "RevisionId": self.init_default_attr,
-            "Layers": self.init_default_attr,
-            "DeadLetterConfig": self.init_default_attr,
-            "KMSKeyArn": self.init_default_attr,
-            "PackageType": self.init_default_attr,
-            "Architectures": self.init_default_attr,
-            "LastUpdateStatusReason": self.init_default_attr,
-            "LastUpdateStatusReasonCode": self.init_default_attr,
-            "EphemeralStorage": self.init_default_attr,
-            "SnapStart": self.init_default_attr,
-            "RuntimeVersionConfig": self.init_default_attr,
-        }
-
-        self.init_attrs(dict_src, init_options)
+        self.update_from_raw_response(dict_src)
 
     @property
     def arn(self):
@@ -214,6 +181,7 @@ class AWSLambda(AwsObject):
             "EphemeralStorage": self.init_default_attr,
             "SnapStart": self.init_default_attr,
             "RuntimeVersionConfig": self.init_default_attr,
+            "LoggingConfig": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -247,34 +215,20 @@ class AWSLambda(AwsObject):
         @return:
         """
 
-        request = {
-            "Code": self.code,
-            "FunctionName": self.name,
-            "Role": self.role,
-            "Tags": self.tags,
-        }
-
         if self.code.get("ImageUri") is None:
-            request["Runtime"] = self.runtime
-            request["Handler"] = self.handler
-        else:
+            if self.runtime is None or self.handler is None:
+                raise RuntimeError("Either image or zip should be used")
+        elif self.runtime is not None or self.handler is not None:
+            raise RuntimeError("Either image or zip should be used")
+
+        request = self.generate_request(["Code", "FunctionName", "Role", "Tags"],
+                                     optional=["Tags", "Runtime", "Handler", "PackageType", "Timeout",
+                                               "MemorySize", "EphemeralStorage", "VpcConfig", "Environment",
+                                               "FileSystemConfigs"],
+                                     request_key_to_attribute_mapping=self.request_key_to_attribute_mapping)
+
+        if self.code.get("ImageUri") is not None:
             request["PackageType"] = "Image"
-
-        if self.timeout is not None:
-            request["Timeout"] = self.timeout
-
-        if self.memory_size is not None:
-            request["MemorySize"] = self.memory_size
-
-        if self.ephemeral_storage is not None:
-            request["EphemeralStorage"] = self.ephemeral_storage
-
-        if self.vpc_config is not None:
-            request["VpcConfig"] = self.vpc_config
-
-        if self.environment is not None:
-            request["Environment"] = self.environment
-
         return request
 
     def generate_update_function_configuration_request(self, desired_lambda):
@@ -384,6 +338,7 @@ class AWSLambda(AwsObject):
 
         raise RuntimeError(self.name)
 
+    # pylint: disable = too-many-branches
     def generate_modify_permissions_requests(self, desired_aws_lambda):
         """
         response = client.add_permission(
@@ -396,13 +351,12 @@ class AWSLambda(AwsObject):
         )
         @return:
         """
+
         if desired_aws_lambda.policy is None:
             return [], []
 
-        if len(desired_aws_lambda.policy["Statement"]) != 1:
-            raise NotImplementedError(desired_aws_lambda.policy["Statement"])
-
-        desired_aws_lambda.policy["Statement"][0]["Resource"] = self.arn
+        for statement in desired_aws_lambda.policy["Statement"]:
+            statement["Resource"] = self.arn
 
         if self.policy is None:
             requests = []
@@ -415,7 +369,13 @@ class AWSLambda(AwsObject):
                 }
 
                 if "Condition" in desired_statement:
-                    request["SourceArn"] = desired_statement["Condition"]["ArnLike"]["AWS:SourceArn"]
+                    if "ArnLike" in desired_statement["Condition"]:
+                        request["SourceArn"] = desired_statement["Condition"]["ArnLike"]["AWS:SourceArn"]
+                    elif "StringEquals" in desired_statement["Condition"]:
+                        request["SourceAccount"] = desired_statement["Condition"]["StringEquals"][
+                            "AWS:SourceAccount"]
+                    else:
+                        raise NotImplementedError(desired_statement["Condition"])
 
                 requests.append(request)
             return requests, []
@@ -427,6 +387,22 @@ class AWSLambda(AwsObject):
         for self_statement in self_policy["Statement"]:
             for desired_statement in desired_aws_lambda.policy["Statement"]:
                 if desired_statement["Sid"] == self_statement["Sid"]:
+                    if desired_statement != self_statement:
+                        request = {
+                            "FunctionName": self.name,
+                            "StatementId": desired_statement["Sid"],
+                            "Action": desired_statement["Action"],
+                            "Principal": desired_statement["Principal"]["Service"]
+                        }
+                        if "Condition" in desired_statement:
+                            request["SourceArn"] = desired_statement["Condition"]["ArnLike"]["AWS:SourceArn"]
+
+                        add_permissions.append(request)
+                        request = {
+                            "FunctionName": self.name,
+                            "StatementId": self_statement["Sid"],
+                        }
+                        remove_permissions.append(request)
                     break
             else:
                 request = {
@@ -434,26 +410,26 @@ class AWSLambda(AwsObject):
                     "StatementId": self_statement["Sid"],
                 }
                 remove_permissions.append(request)
-                continue
-
-            for key, desired_value in desired_statement.items():
-                if desired_value != self_statement[key]:
-                    logger.info(
-                        f"Found difference in key: {key}, current value: {self_statement[key]}, desired: {desired_value}"
-                    )
+        for desired_statement in desired_aws_lambda.policy["Statement"]:
+            for self_statement in self_policy["Statement"]:
+                if desired_statement["Sid"] == self_statement["Sid"]:
                     break
             else:
-                continue
+                request = {
+                    "FunctionName": self.name,
+                    "StatementId": desired_statement["Sid"],
+                    "Action": desired_statement["Action"],
+                    "Principal": desired_statement["Principal"]["Service"]
+                }
+                if "Condition" in desired_statement:
+                    if "ArnLike" in desired_statement["Condition"]:
+                        request["SourceArn"] =  desired_statement["Condition"]["ArnLike"]["AWS:SourceArn"]
+                    elif "StringEquals" in desired_statement["Condition"]:
+                        request["SourceAccount"] = desired_statement["Condition"]["StringEquals"]["AWS:SourceAccount"]
+                    else:
+                        raise NotImplementedError(desired_statement["Condition"])
 
-            request = {
-                "FunctionName": self.name,
-                "StatementId": desired_statement["Sid"],
-                "Action": desired_statement["Action"],
-                "Principal": desired_statement["Principal"]["Service"],
-                "SourceArn": desired_statement["Condition"]["ArnLike"]["AWS:SourceArn"],
-            }
-
-            add_permissions.append(request)
+                add_permissions.append(request)
         return add_permissions, remove_permissions
 
     def generate_add_permissions_requests(self):
@@ -472,7 +448,12 @@ class AWSLambda(AwsObject):
                 "Principal": desired_statement["Principal"]["Service"]
             }
             if "Condition" in desired_statement:
-                request["SourceArn"] = desired_statement["Condition"]["ArnLike"]["AWS:SourceArn"]
+                if "ArnLike" in desired_statement["Condition"]:
+                    request["SourceArn"] = desired_statement["Condition"]["ArnLike"]["AWS:SourceArn"]
+                elif "StringEquals" in desired_statement["Condition"]:
+                    request["SourceAccount"] = desired_statement["Condition"]["StringEquals"]["AWS:SourceAccount"]
+                else:
+                    raise NotImplementedError(desired_statement["Condition"])
 
             ret.append(request)
         return ret

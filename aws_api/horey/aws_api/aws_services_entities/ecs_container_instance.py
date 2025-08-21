@@ -57,6 +57,7 @@ class ECSContainerInstance(AwsObject):
             "attachments": self.init_default_attr,
             "tags": self.init_default_attr,
             "agentUpdateStatus": self.init_default_attr,
+            "healthStatus": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -90,7 +91,8 @@ class ECSContainerInstance(AwsObject):
         request = {"cluster": cluster.name, "containerInstance": self.arn, "force": True}
         return request
 
-    def get_cluster_name(self):
+    @property
+    def cluster_name(self):
         """
         From ARN.
 

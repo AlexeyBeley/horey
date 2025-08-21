@@ -19,6 +19,7 @@ class ACMCertificate(AwsObject):
         self.validation_method = None
         self.domain_validation_options = None
         self.subject_alternative_names = None
+        self.not_after = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)

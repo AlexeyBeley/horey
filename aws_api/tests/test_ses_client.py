@@ -119,6 +119,6 @@ def test_provision_receipt_rule_set(base_rule_set):
     assert base_rule_set.created_timestamp is not None
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_get_active_rule_set_name(base_rule_set):
     assert client.get_active_rule_set_name(base_rule_set.region)

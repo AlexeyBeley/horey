@@ -1,0 +1,22 @@
+{
+    "Records": [
+        {
+            "EventSource": "aws:sns",
+            "EventVersion": "1.0",
+            "EventSubscriptionArn": "arn:aws:sns:us-east-1:012345678910:alert-system-configuration-set:46704549-21c1-4039-a6b4-0b86d40551d7",
+            "Sns": {
+                "Type": "Notification",
+                "MessageId": "35e404df-24c5-5009-b05d-5a6efc1132c8",
+                "TopicArn": "arn:aws:sns:us-east-1:012345678910:alert-system-configuration-set",
+                "Subject": "Amazon SES Email Event Notification",
+                "Message": "{\"eventType\":\"DeliveryDelay\",\"mail\":{\"timestamp\":\"2024-05-05T06:07:25.757Z\",\"source\":\"Source Address <source@address.com>\",\"sourceArn\":\"arn:aws:ses:us-east-1:012345678910:identity/horey.com\",\"sendingAccountId\":\"012345678910\",\"messageId\":\"0100018f475d443d-0e32c102-7dce-4b15-bdb4-17d5447a4432-000000\",\"destination\":[\"dst@address.com\"],\"headersTruncated\":false,\"headers\":[{\"name\":\"Date\",\"value\":\"Sun, 5 May 2024 06:07:25 +0000\"},{\"name\":\"From\",\"value\":\"Source Address <source@address.com>\"},{\"name\":\"To\",\"value\":\"dst@address.com\"},{\"name\":\"Subject\",\"value\":\"email title\"},{\"name\":\"MIME-Version\",\"value\":\"1.0\"},{\"name\":\"Content-Type\",\"value\":\"multipart/alternative;  boundary=\\\"----=_Part_5412333_1803806433.1714889245926\\\"\"}],\"commonHeaders\":{\"from\":[\"Source Address <source@address.com>\"],\"date\":\"Sun, 5 May 2024 06:07:25 +0000\",\"to\":[\"dst@address.com\"],\"messageId\":\"0100018f475d443d-0e32c102-7dce-4b15-bdb4-17d5447a4432-000000\",\"subject\":\"Subject title\"},\"tags\":{\"ses:source-tls-version\":[\"TLSv1.3\"],\"ses:operation\":[\"SendTemplatedEmail\"],\"ses:configuration-set\":[\"alert-system-configuration-set\"],\"ses:source-ip\":[\"8.8.8.8\"],\"ses:from-domain\":[\"horey.com\"],\"ses:caller-identity\":[\"caller-identity\"]}},\"deliveryDelay\":{\"timestamp\":\"2024-05-05T18:57:24.780Z\",\"delayType\":\"TransientCommunicationFailure\",\"expirationTime\":\"2024-05-05T20:07:26.155Z\",\"delayedRecipients\":[{\"emailAddress\":\"dst@address.com\",\"status\":\"4.4.1\",\"diagnosticCode\":\"smtp; 421 4.4.1 Unable to connect to remote host\"}]}}\n",
+                "Timestamp": "2024-05-05T18:57:24.833Z",
+                "SignatureVersion": "1",
+                "Signature": "Iqn0GnEvdnn89Lu1Npoxik+3L6iWoVdAgVTSuWoi5gNnMg8KgO18oYOJrOhghQPcO9t1YvLiq9oabHhFyYHbRdm3LFSXcb91Px4AmTzLd4NcKfM6YzCGxq8+LZ+8hZXHUf66/ktvtbZQ4i9xQcOpBhitiV3bfr5h3cGZFqBFCH0/YTieav+50ueJ14SCm4kyENXZLcnQdePbW3y2C+RmVXq+63c8P+uEVEHqHm5nKNdpRnTnhSjc2A+0nOI0/iRunhHOTRSBLhXGisMkF7bokn5KObks2B+GitLsuGpvCQf7vJ0m3RJdzYgOGYNLRazK7dVIeqNgLJfsHKDsyr2PNw==",
+                "SigningCertUrl": "https://sns.us-east-1.amazonaws.com/SimpleNotificationService-60eadc530605d63b8e62a523676ef735.pem",
+                "UnsubscribeUrl": "https://sns.us-east-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:us-east-1:012345678910:alert-system-configuration-set:46704549-21c1-4039-a6b4-0b86d40551d7",
+                "MessageAttributes": {}
+            }
+        }
+    ]
+}

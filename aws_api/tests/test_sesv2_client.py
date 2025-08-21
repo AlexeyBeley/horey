@@ -10,7 +10,7 @@ import pytest
 
 from horey.aws_api.aws_clients.sesv2_client import SESV2Client
 from horey.aws_api.aws_services_entities.sesv2_email_template import SESV2EmailTemplate
-from horey.aws_api.aws_services_entities.sesv2_email_identity import SESV2EmailIdentity
+from horey.aws_api.aws_services_entities.ses_identity import SESIdentity
 from horey.aws_api.aws_services_entities.sesv2_configuration_set import (
     SESV2ConfigurationSet,
 )
@@ -27,13 +27,6 @@ SESV2Client().main_cache_dir_path = os.path.abspath(
     )
 )
 
-mock_values_file_path = os.path.abspath(
-    os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "..", "ignore", "mock_values.py"
-    )
-)
-mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
-
 
 def test_init_sesv2_client():
     assert isinstance(SESV2Client(), SESV2Client)
@@ -42,14 +35,14 @@ def test_init_sesv2_client():
 @pytest.mark.todo
 def test_provision_email_identity():
     client = SESV2Client()
-    email_identity = SESV2EmailIdentity({})
+    email_identity = SESIdentity({})
     email_identity.name = mock_values["email_identity.name"]
     email_identity.region = Region.get_region("us-west-2")
     email_identity.tags = [{"Key": "name", "Value": "value"}]
     client.provision_email_identity(email_identity)
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_provision_email_template():
     client = SESV2Client()
     email_template = SESV2EmailTemplate({})
@@ -59,7 +52,7 @@ def test_provision_email_template():
     client.provision_email_template(email_template)
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_provision_email_template_update():
     client = SESV2Client()
     email_template = SESV2EmailTemplate({})
@@ -242,7 +235,7 @@ def test_get_all_email_identities_full_information_false():
     assert len(ret) > 0
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_yield_accounts():
     client = SESV2Client()
     obj = None

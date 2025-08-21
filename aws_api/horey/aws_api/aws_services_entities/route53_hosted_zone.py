@@ -205,7 +205,7 @@ class HostedZone(AwsObject):
 
         self.init_attrs(dict_src, init_options, raise_on_no_option=True)
 
-    def generate_change_resource_record_sets_request(self, desired_state):
+    def generate_upsert_resource_record_sets_request(self, desired_state):
         """
         Standard.
 

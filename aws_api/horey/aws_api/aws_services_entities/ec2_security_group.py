@@ -29,6 +29,9 @@ class EC2SecurityGroup(AwsObject):
             "GroupName": lambda x, y: self.init_default_attr(
                 x, y, formatted_name="name"
             ),
+            "SecurityGroupArn": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
+            ),
             "Description": self.init_default_attr,
             "IpPermissions": self.init_default_attr,
             "OwnerId": self.init_default_attr,

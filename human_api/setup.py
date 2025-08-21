@@ -23,5 +23,8 @@ setup(
         include=["horey.human_api", "horey.human_api.*"]
     ),
     include_package_data=True,
+    package_data={
+        "": ["bin/*.exe",]
+    },
     zip_safe=False,
 )

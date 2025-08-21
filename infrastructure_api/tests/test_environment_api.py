@@ -2,9 +2,11 @@
 Init and cache AWS objects.
 
 """
+from pathlib import Path
 
 import pytest
 from horey.aws_api.aws_api import AWSAPI
+from horey.aws_api.aws_api_configuration_policy import AWSAPIConfigurationPolicy
 from horey.h_logger import get_logger
 from horey.infrastructure_api.environment_api import EnvironmentAPI
 from horey.infrastructure_api.environment_api_configuration_policy import EnvironmentAPIConfigurationPolicy
@@ -12,7 +14,11 @@ from horey.infrastructure_api.environment_api_configuration_policy import Enviro
 # Uncomment next line to save error lines to /tmp/error.log
 logger = get_logger()
 
-aws_api = AWSAPI()
+
+configuration = AWSAPIConfigurationPolicy()
+configuration.accounts_file = Path(".").parent / "default.py"
+configuration.aws_api_account = "default"
+aws_api = AWSAPI(configuration=configuration, init_configuration=False)
 
 
 # pylint: disable= missing-function-docstring
@@ -49,6 +55,7 @@ def fixture_configuration():
     _configuration.nat_gateways_count = 1
     _configuration.nat_gateway_elastic_address_name_template = f"ea_nat_{_configuration.project_name}" + "_{id}"
     _configuration.nat_gateway_name_template = f"nat_gw_{_configuration.project_name}" + "_{subnet}"
+    _configuration.data_directory_path = "/tmp/environment_api_data"
 
     yield _configuration
 
@@ -271,3 +278,10 @@ def test_dispose_container_instance_ssh_key(configuration):
     env = EnvironmentAPI(configuration, aws_api)
     env.aws_api.ec2_client.clear_cache(None, all_cache=True)
     assert env.dispose_container_instance_ssh_key()
+
+
+@pytest.mark.done
+def test_generate_cleanup_report(configuration):
+    env = EnvironmentAPI(configuration, aws_api)
+    assert env.generate_cleanup_report()
+

@@ -10,7 +10,17 @@ VENV_BIN_DIR := $(realpath ${BUILD_TMP_DIR}/_venv/bin)
 echo:
 	echo ${VENV_BIN_DIR}/activate
 
-build:
+venv:
+	python -m venv ${BUILD_TMP_DIR}/_venv &&\
+	source ${VENV_BIN_DIR}/activate &&\
+	python -m pip install --upgrade pip &&\
+	python -m pip install -U setuptools\>=54.1.2 &&\
+	python -m pip install -U packaging\>=24.2 &&\
+	python -m pip install pytest &&\
+	cd ${HOREY_DIR_PATH} &&\
+	make recursive_install_from_source_local_venv-pip_api
+
+build: venv
 	source ${VENV_BIN_DIR}/activate &&\
 	cd ${HOREY_DIR_PATH} &&\
 	make raw_install_wheel-pip_api

@@ -394,7 +394,7 @@ class EC2Client(Boto3Client):
             self.revoke_security_group_ingress_raw(revoke_request)
 
         if update_rules_description:
-            self.update_security_group_rule_descriptions_ingress_raw(update_rules_description)
+            self.update_security_group_rule_descriptions_ingress_raw(desired_security_group.region, update_rules_description)
 
         self.update_security_group_information(desired_security_group)
 
@@ -502,13 +502,13 @@ class EC2Client(Boto3Client):
 
             return response
 
-    def update_security_group_rule_descriptions_ingress_raw(self, request_dict, region=None):
+    def update_security_group_rule_descriptions_ingress_raw(self, region, request_dict):
         """
-        Update description.
+        Update the rules descriptions
 
-        @param request_dict:
-        @return:
         :param region:
+        :param request_dict:
+        :return:
         """
 
         logger.info(f"Updating security group description ingress: {request_dict}")
@@ -3058,3 +3058,20 @@ class EC2Client(Boto3Client):
         yield from self.execute(
             self.get_session_client(region=region).describe_regions, "Regions", filters_req=filters_req
         )
+
+    def dispose_amis(self, amis):
+        """
+        Standard
+
+        :param amis:
+        :return:
+        """
+        breakpoint()
+        for ami in amis:
+            request = {"ImageId": ami.id, "DryRun": False}
+            logger.info(f"Deleting EC2 AMI Image: {request}")
+            for response in self.execute(
+                    self.get_session_client(region=ami.region).deregister_image, None, raw_data=True, filters_req=request
+            ):
+                pass
+            self.clear_cache(AMI)

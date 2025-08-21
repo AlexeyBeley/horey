@@ -90,6 +90,7 @@ class RDSDBInstance(AwsObject):
 
         )
         """
+
         request = {}
         request["DBInstanceIdentifier"] = self.id
         if self.db_cluster_identifier:
@@ -229,7 +230,8 @@ class RDSDBInstance(AwsObject):
             "CertificateDetails": self.init_default_attr,
             "NetworkType": self.init_default_attr,
             "MaxAllocatedStorage": self.init_default_attr,
-            "ActivityStreamStatus": self.init_default_attr
+            "ActivityStreamStatus": self.init_default_attr,
+            "DedicatedLogVolume": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)

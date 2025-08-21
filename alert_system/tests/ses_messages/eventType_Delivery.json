@@ -1,0 +1,22 @@
+{
+    "Records": [
+        {
+            "EventSource": "aws:sns",
+            "EventVersion": "1.0",
+            "EventSubscriptionArn": "arn:aws:sns:us-east-1:012345678910:alert-system-configuration-set:46704549-21c1-4039-a6b4-0b86d40551d7",
+            "Sns": {
+                "Type": "Notification",
+                "MessageId": "020f8acc-dea5-5153-bd99-d47d061c4a3d",
+                "TopicArn": "arn:aws:sns:us-east-1:012345678910:alert-system-configuration-set",
+                "Subject": "Amazon SES Email Event Notification",
+                "Message": "{\"eventType\":\"Delivery\",\"mail\":{\"timestamp\":\"2024-05-05T18:56:56.351Z\",\"source\":\"Source Address <source@address.com>\",\"sourceArn\":\"arn:aws:ses:us-east-1:012345678910:identity/horey.com\",\"sendingAccountId\":\"012345678910\",\"messageId\":\"0100018f4a1dc61f-b218d11c-7032-4fbe-88a5-cfa79824ebd1-000000\",\"destination\":[\"dst@address.com\",\"dst_backup@address.com\"],\"headersTruncated\":false,\"headers\":[{\"name\":\"Date\",\"value\":\"Sun, 5 May 2024 18:56:56 +0000\"},{\"name\":\"From\",\"value\":\"Source Address <source@address.com>\"},{\"name\":\"To\",\"value\":\"dst@address.com, dst_backup@address.com\"},{\"name\":\"Subject\",\"value\":\"Subject title\"},{\"name\":\"MIME-Version\",\"value\":\"1.0\"},{\"name\":\"Content-Type\",\"value\":\"multipart/alternative;  boundary=\\\"----=_Part_6984329_536657906.1714935416507\\\"\"}],\"commonHeaders\":{\"from\":[\"Source Address <source@address.com>\"],\"date\":\"Sun, 5 May 2024 18:56:56 +0000\",\"to\":[\"dst@address.com, dst_backup@address.com\"],\"messageId\":\"0100018f4a1dc61f-b218d11c-7032-4fbe-88a5-cfa79824ebd1-000000\",\"subject\":\"Subject title\"},\"tags\":{\"ses:source-tls-version\":[\"TLSv1.3\"],\"ses:operation\":[\"SendTemplatedEmail\"],\"ses:configuration-set\":[\"alert-system-configuration-set\"],\"ses:source-ip\":[\"8.8.8.8\"],\"ses:from-domain\":[\"horey.com\"],\"ses:caller-identity\":[\"caller-identity\"],\"ses:outgoing-ip\":[\"54.240.48.30\"]}},\"delivery\":{\"timestamp\":\"2024-05-05T18:56:57.375Z\",\"processingTimeMillis\":1023,\"recipients\":[\"dst@address.com\",\"dst_backup@address.com\"],\"smtpResponse\":\"250 ok:  Message 6222609 accepted\",\"reportingMTA\":\"a48-30.smtp-out.amazonses.com\"}}\n",
+                "Timestamp": "2024-05-05T18:56:57.488Z",
+                "SignatureVersion": "1",
+                "Signature": "iTMu82prV/9el3taksgoDcTKaovYQ/D1P3no8l5VbRsRKnumFQASPN/HNXgkNDaqQmV5V18GARRf+qfk2FiVnoYQMGJn1/bJARNuBmj3hiHbU6j8H8X0lUlCX/iLvT2qUWn5nkq1gYMMmL0hBihBwbPYtAjKoUk9YctY1wEFC8FhpHa/gyp98NWgZUDR/X+hO2erDy5ADrJ169iUG2/NnO8OqcR59H1RUA8s4JmLCzJAciwXsOSDPBnICKqzbBumXUTV9Ak+3Hg9oWsjw9kZcC/nfY7D1f9ny/ucVoySH6svKVVf93Xsf8qn5f7l7tY8nCVjRynujz48gT8E7ceHEw==",
+                "SigningCertUrl": "https://sns.us-east-1.amazonaws.com/SimpleNotificationService-60eadc530605d63b8e62a523676ef735.pem",
+                "UnsubscribeUrl": "https://sns.us-east-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:us-east-1:012345678910:alert-system-configuration-set:46704549-21c1-4039-a6b4-0b86d40551d7",
+                "MessageAttributes": {}
+            }
+        }
+    ]
+}

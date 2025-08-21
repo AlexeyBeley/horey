@@ -148,9 +148,9 @@ class Route53Client(Boto3Client):
         self.get_hosted_zone_full_information(hosted_zone)
         return hosted_zone
 
-    def change_resource_record_sets(self, desired_hosted_zone, current_hosted_zone=None):
+    def upsert_resource_record_sets(self, desired_hosted_zone, current_hosted_zone=None):
         """
-        Change only records.
+        Change only records. UPSERT only!
 
         :param desired_hosted_zone:
         :param current_hosted_zone:
@@ -165,7 +165,28 @@ class Route53Client(Boto3Client):
                 raise ValueError(f"Could not find the hosted zone {desired_hosted_zone.name}, use provision instead")
             desired_hosted_zone.id = current_hosted_zone.id
 
-        request = current_hosted_zone.generate_change_resource_record_sets_request(desired_hosted_zone)
+        request = current_hosted_zone.generate_upsert_resource_record_sets_request(desired_hosted_zone)
+        if request:
+            self.change_resource_record_sets_raw(request)
+
+    def change_resource_record_sets(self, desired_hosted_zone, current_hosted_zone=None):
+        """
+        Change only records. UPSERT only! Todo: make delete possible.
+
+        :param desired_hosted_zone:
+        :param current_hosted_zone:
+        :return:
+        """
+
+        if current_hosted_zone is None:
+            current_hosted_zone = HostedZone({})
+            current_hosted_zone.name = desired_hosted_zone.name
+            current_hosted_zone.id = desired_hosted_zone.id
+            if not self.update_hosted_zone_information(current_hosted_zone, full_information=True):
+                raise ValueError(f"Could not find the hosted zone {desired_hosted_zone.name}, use provision instead")
+            desired_hosted_zone.id = current_hosted_zone.id
+
+        request = current_hosted_zone.generate_upsert_resource_record_sets_request(desired_hosted_zone)
         if request:
             self.change_resource_record_sets_raw(request)
 

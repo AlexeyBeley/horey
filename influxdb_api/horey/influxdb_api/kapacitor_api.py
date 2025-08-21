@@ -30,13 +30,17 @@ class Task:
         :return:
         """
 
-        return {
+        request = {
             "id": self.id,
             "type": self.type,
             "dbrps": self.dbrps,
             "script": self.script,
             "status": self.status
         }
+
+        if "dbrp" in request["script"]:
+            del request["dbrps"]
+        return request
 
 
 class KapacitorAPI:
@@ -156,7 +160,7 @@ class KapacitorAPI:
             tasks_source = json.load(file_handler)
 
         for task_src in tasks_source:
-            task_src["status"] = "disabled"
+            # task_src["status"] = "disabled"
             self.provision_task(Task(task_src))
 
     def delete_task(self, task):
@@ -178,7 +182,15 @@ class KapacitorAPI:
 
         logger.info(f"Provisioning task: {task.id}")
 
-        return self.post("tasks", task.generate_provision_request())
+        request = task.generate_provision_request()
+        try:
+            return self.post("tasks", request)
+        except Exception as inst:
+            logger.info(f"Error: {inst}")
+            if "already exists" in repr(inst):
+                return
+            breakpoint()
+            logger.info(f"Error: {inst}")
 
     def disable_all_tasks(self):
         """
@@ -197,7 +209,7 @@ class KapacitorAPI:
 
         :return:
         """
-
+        breakpoint()
         for task in self.init_tasks():
             logger.info(f"Deleting task: {task.id}")
             self.delete_task(task)

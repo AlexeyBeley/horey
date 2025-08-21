@@ -1,6 +1,8 @@
 """
 AWS ECS Task representation
 """
+from enum import Enum
+
 from horey.aws_api.aws_services_entities.aws_object import AwsObject
 
 
@@ -11,6 +13,8 @@ class ECSTask(AwsObject):
 
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
+        self.cluster_arn = None
+        self.last_status = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -46,6 +50,12 @@ class ECSTask(AwsObject):
             "platformVersion": self.init_default_attr,
             "platformFamily": self.init_default_attr,
             "ephemeralStorage": self.init_default_attr,
+            "stoppingAt": self.init_default_attr,
+            "stoppedReason": self.init_default_attr,
+            "stoppedAt": self.init_default_attr,
+            "stopCode": self.init_default_attr,
+            "executionStoppedAt": self.init_default_attr,
+            "fargateEphemeralStorage": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -58,3 +68,28 @@ class ECSTask(AwsObject):
         """
         options = {}
         self._init_from_cache(dict_src, options)
+
+    def get_status(self):
+        """
+        Get state.
+
+        """
+
+        mapping = dict(self.State.__members__)
+        return mapping[self.last_status]
+
+    class State(Enum):
+        """
+        Volume state.
+
+        """
+
+        RUNNING = "RUNNING"
+        PROVISIONING = "PROVISIONING"
+        PENDING = "PENDING"
+        ACTIVATING = "ACTIVATING"
+        FAILED = "FAILED"
+        DEACTIVATING = "DEACTIVATING"
+        STOPPING = "STOPPING"
+        DEPROVISIONING = "DEPROVISIONING"
+        STOPPED = "STOPPED"

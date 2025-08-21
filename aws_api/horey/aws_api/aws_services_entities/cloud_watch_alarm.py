@@ -35,12 +35,25 @@ class CloudWatchAlarm(AwsObject):
         self.comparison_operator = None
         self.treat_missing_data = None
         self._dict_dimensions = None
+        self.state_value = None
+        self.state_updated_timestamp = None
+        self.state_transitioned_timestamp = None
 
         super().__init__(dict_src, from_cache=from_cache)
 
         if from_cache:
             self._init_cloud_watch_alarm_from_cache(dict_src)
             return
+
+        self.update_from_raw_response(dict_src)
+
+    def update_from_raw_response(self, dict_src):
+        """
+        Init from raw API response.
+
+        :param dict_src:
+        :return:
+        """
 
         init_options = {
             "AlarmName": lambda x, y: self.init_default_attr(

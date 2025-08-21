@@ -261,7 +261,7 @@ class CommonUtils:
             except TypeError:
                 timestamp = int(timestamp) / 1000
 
-        return datetime.datetime.fromtimestamp(timestamp)
+        return datetime.datetime.fromtimestamp(timestamp, datetime.UTC)
 
     @staticmethod
     def load_object_from_module(module_full_path, callback_function_name):

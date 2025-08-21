@@ -26,13 +26,6 @@ EC2Client().main_cache_dir_path = os.path.abspath(
         )
     )
 
-mock_values_file_path = os.path.abspath(
-    os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "..", "ignore", "mock_values.py"
-    )
-)
-mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
-
 # pylint: disable= missing-function-docstring
 
 
@@ -502,7 +495,7 @@ def test_get_region_amis():
     ret = ec2_client.get_region_amis(Region.get_region("us-west-2"))
     assert len(ret) > 0
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_yield_regions():
     ec2_client = EC2Client()
     ret = list(ec2_client.yield_regions())

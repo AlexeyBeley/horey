@@ -14,6 +14,7 @@ class SQSQueue(AwsObject):
 
     def __init__(self, dict_src, from_cache=False):
         super().__init__(dict_src)
+        self._name = None
         self.delay_seconds = None
         self.maximum_message_size = None
         self.message_retention_period = None
@@ -233,9 +234,9 @@ class SQSQueue(AwsObject):
         if not self._arn:
             if not self.account_id:
                 raise ValueError("In order to generate arn automatically the account_id must be set")
-            if not self.name:
+            if not self._name:
                 raise ValueError("In order to generate arn automatically the name must be set")
-            self._arn = f"arn:aws:sqs:{self.region.region_mark}:{self.account_id}:{self.name}"
+            self._arn = f"arn:aws:sqs:{self.region.region_mark}:{self.account_id}:{self._name}"
         return self._arn
 
     @arn.setter
@@ -251,3 +252,32 @@ class SQSQueue(AwsObject):
             raise ValueError(f"ARN must be string: {value}")
 
         self._arn = value
+
+    @property
+    def name(self):
+        """
+        Getter or generator
+
+        :return:
+        """
+        if not self._name:
+            if not self._arn:
+                raise ValueError("In order to generate name automatically the arn must be set")
+            self._name = self._arn.split(":")[-1]
+            if not self._name:
+                raise RuntimeError(f"Was not able to generate SQS queue name from provided arn: {self._arn}")
+        return self._name
+
+    @name.setter
+    def name(self, value):
+        """
+        Setter.
+
+        :param value:
+        :return:
+        """
+
+        if not isinstance(value, str) and value is not None:
+            raise ValueError(f"Name must be either None or string: {value}")
+
+        self._name = value

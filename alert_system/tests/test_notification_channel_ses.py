@@ -102,7 +102,7 @@ def test_notify(lambda_package_tmp_dir):
     notification_file_path = os.path.join(lambda_package_tmp_dir, "notification.py")
     notification_class = CommonUtils.load_object_from_module_raw(notification_file_path, "Notification")
     notification = notification_class()
-    notification.tags = ["frontend"]
+    notification.routing_tags = ["frontend"]
     notification.header = "Notification "
     notification.type = "PARTY"
     notification.text = "body Notification"

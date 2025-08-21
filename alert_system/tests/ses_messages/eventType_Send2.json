@@ -1,0 +1,22 @@
+{
+    "Records": [
+        {
+            "EventSource": "aws:sns",
+            "EventVersion": "1.0",
+            "EventSubscriptionArn": "arn:aws:sns:us-west-2:123456789100:topic_test_alert_system:868e24fc-54ba-4895-b0f4-aaaaaaaaaaa",
+            "Sns": {
+                "Type": "Notification",
+                "MessageId": "45815f1a-2401-5a6a-ad52-01a5e328988e",
+                "TopicArn": "arn:aws:sns:us-west-2:123456789100:topic_test_alert_system",
+                "Subject": "Amazon SES Email Event Notification",
+                "Message": "{\"eventType\":\"Send\",\"mail\":{\"timestamp\":\"2024-05-16T08:33:45.058Z\",\"source\":\"alert_system_test@test.domain.pro\",\"sourceArn\":\"arn:aws:ses:us-west-2:123456789100:identity/test.domain.pro\",\"sendingAccountId\":\"123456789100\",\"messageId\":\"0101018f80892e62-f530eead-6649-43cd-ace9-3909f28b0a74-000000\",\"destination\":[\"test.user@gmail.com\"],\"headersTruncated\":false,\"headers\":[{\"name\":\"From\",\"value\":\"alert_system_test@test.domain.pro\"},{\"name\":\"To\",\"value\":\"test.user@gmail.com\"},{\"name\":\"Subject\",\"value\":\"Test alert\"},{\"name\":\"MIME-Version\",\"value\":\"1.0\"},{\"name\":\"Content-Type\",\"value\":\"text/plain; charset=UTF-8\"},{\"name\":\"Content-Transfer-Encoding\",\"value\":\"7bit\"}],\"commonHeaders\":{\"from\":[\"alert_system_test@test.domain.pro\"],\"to\":[\"test.user@gmail.com\"],\"messageId\":\"0101018f80892e62-f530eead-6649-43cd-ace9-3909f28b0a74-000000\",\"subject\":\"Test alert\"},\"tags\":{\"ses:source-tls-version\":[\"TLSv1.3\"],\"ses:operation\":[\"SendEmail\"],\"ses:configuration-set\":[\"conf_set_alert_system_default\"],\"ses:source-ip\":[\"77.252.46.43\"],\"ses:from-domain\":[\"test.domain.pro\"],\"ses:caller-identity\":[\"test.user\"]}},\"send\":{}}\n",
+                "Timestamp": "2024-05-16T08:33:45.278Z",
+                "SignatureVersion": "1",
+                "Signature": "UxbB1JLe5NCOlrYRXQWiLwBeKgUOrUy+NlvmYOuuBtjf7KYh98tQg4MWA6iViFMfhbC/fFxqmdMt/oRTnc57+h+QGDNOBAiUdxlOj8u11poeMR6OQEDpHo+FECmBG9g9WTDDHWan4kRYLyc7LFvJT5w8bDqXgUg6m2rHr4uIlIvhx6S2Ivw1p55P6jZta88E+pex+aaaaaaaaaaaaaaaaa/aaaaaaaaaaaaaaaaaaaa==",
+                "SigningCertUrl": "https://sns.us-west-2.amazonaws.com/SimpleNotificationService-aaaaaaaaaaaaaaaaaaaa.pem",
+                "UnsubscribeUrl": "https://sns.us-west-2.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:us-west-2:123456789100:topic_test_alert_system:aaaaaaaaaaaaaaaaa-54ba-4895-b0f4-aaaaaaaaaaaaa",
+                "MessageAttributes": {}
+            }
+        }
+    ]
+}

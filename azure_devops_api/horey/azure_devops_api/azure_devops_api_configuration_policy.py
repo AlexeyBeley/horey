@@ -31,8 +31,18 @@ class AzureDevopsAPIConfigurationPolicy(ConfigurationPolicy):
         self._project_name = None
         self._team_name = None
         self._cache_dir_full_path = None
-
+        self._area_path = None
         super().__init__()
+
+    @property
+    def area_path(self):
+        if self._area_path is None:
+            raise self.UndefinedValueError("area_path")
+        return self._area_path
+
+    @area_path.setter
+    def area_path(self, value):
+        self._area_path = value
 
     @property
     def server_address(self):

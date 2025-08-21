@@ -126,30 +126,38 @@ class CloudWatchLogsClient(Boto3Client):
 
         return list(self.yield_log_group_metric_filters(region=region))
 
-    def yield_log_group_streams_raw(self, log_group):
+    def yield_log_group_streams(self, log_group, filters_req=None):
         """
         Yields streams - made to handle large log groups, in order to prevent the OOM collapse.
+        :param filters_req:
         :param log_group:
         :return:
         """
 
-        yield from self.execute(
-                self.get_session_client(region=log_group.region).describe_log_streams,
-                "logStreams",
-                filters_req={"logGroupName": log_group.name},
-        )
-
-    def yield_log_group_streams(self, log_group):
-        """
-        Yields streams - made to handle large log groups, in order to prevent the OOM collapse.
-        :param log_group:
-        :return:
-        """
+        if filters_req is None:
+            filters_req = {}
+        filters_req["logGroupName"] = log_group.name
 
         for response in self.execute(
                 self.get_session_client(region=log_group.region).describe_log_streams,
                 "logStreams",
-                filters_req={"logGroupName": log_group.name},
+                filters_req=filters_req,
+        ):
+            yield CloudWatchLogStream(response)
+
+    def yield_log_group_streams_raw(self, region, request_dict):
+        """
+        Yields streams - made to handle large log groups, in order to prevent the OOM collapse.
+
+        :param region:
+        :param request_dict:
+        :return:
+        """
+
+        for response in self.execute(
+                self.get_session_client(region=region).describe_log_streams,
+                "logStreams",
+                filters_req=request_dict,
         ):
             yield CloudWatchLogStream(response)
 
@@ -172,7 +180,25 @@ class CloudWatchLogsClient(Boto3Client):
             if response["HTTPStatusCode"] != 200:
                 raise RuntimeError(f"{response}")
 
-    def yield_log_events(self, log_group: CloudWatchLogGroup, stream):
+    def dispose_metric_filter(self, metric_filter: CloudWatchLogGroupMetricFilter):
+        """
+        Standard.
+
+        :param metric_filter:
+        :return:
+        """
+
+        request_dict = metric_filter.generate_dispose_request()
+        logger.info(
+            f"Disposing cloudwatch log group metric filter in region '{metric_filter.region}': {request_dict}"
+        )
+        for response in self.execute(
+                self.get_session_client(region=metric_filter.region).delete_metric_filter, None, raw_data=True,
+                filters_req=request_dict
+        ):
+            return response
+
+    def yield_log_events(self, log_group: CloudWatchLogGroup, stream, filters_req=None):
         """
 
         # todo: refactor
@@ -189,6 +215,8 @@ class CloudWatchLogsClient(Boto3Client):
             if token != response["nextForwardToken"]:
                 raise ValueError()
 
+        :param stream:
+        :param filters_req:
         :param log_group:
         :return:
         """
@@ -197,20 +225,25 @@ class CloudWatchLogsClient(Boto3Client):
         token = None
         new_token = None
         stop = False
+
+        filters_req_consolidated = {
+            "logGroupName": log_group.name,
+            "logStreamName": stream.name,
+            "startFromHead": True,
+        }
+
+        if filters_req:
+            filters_req_consolidated.update(filters_req)
+
         while not stop:
-            filters_req = {
-                "logGroupName": log_group.name,
-                "logStreamName": stream.name,
-                "startFromHead": True,
-            }
             if token is not None:
-                filters_req["nextToken"] = token
+                filters_req_consolidated["nextToken"] = token
 
             for response in self.execute(
                     self.get_session_client(region=log_group.region).get_log_events,
                     "events",
                     raw_data=True,
-                    filters_req=filters_req,
+                    filters_req=filters_req_consolidated,
             ):
                 new_token = response["nextForwardToken"]
                 logger.info(f"old token: {token} new token: {new_token}")
@@ -218,12 +251,12 @@ class CloudWatchLogsClient(Boto3Client):
                     return
                 logger.info(f"Extracted {len(response['events'])} events")
                 yield from response["events"]
-                time.sleep(10)
+                # todo: Understand why did I do this sleep before? time.sleep(10)
 
             token = new_token
         return
 
-    def update_log_group_information(self, log_group, update_info=False):
+    def update_log_group_information(self, log_group: CloudWatchLogGroup, update_info=False):
         """
         Standard.
 
@@ -238,8 +271,10 @@ class CloudWatchLogsClient(Boto3Client):
                 full_info_log_groups = list(
                     self.yield_log_groups(region=log_group.region, update_info=True, filters_req=filters_req,
                                           get_tags=True))
+                full_info_log_groups = [full_info_log_group for full_info_log_group in full_info_log_groups if full_info_log_group.name == log_group.name]
                 if len(full_info_log_groups) == 0:
                     return False
+
                 if len(full_info_log_groups) > 1:
                     raise RuntimeError(f"Found {[x.name for x in full_info_log_groups]} log groups with params: {filters_req}")
                 log_group.update_from_raw_response(full_info_log_groups[0].dict_src)
@@ -261,11 +296,13 @@ class CloudWatchLogsClient(Boto3Client):
                 raise RuntimeError(f"Can not be both: {delete_request=}, {put_request=}")
 
             if delete_request:
+                logger.info(f"Disposing cloudwatch log group retention policy: {put_request}")
                 for _ in self.execute(self.get_session_client(region=log_group.region).delete_retention_policy, None,
                                       raw_data=True, filters_req=delete_request):
                     self.clear_cache(CloudWatchLogGroup)
 
             if put_request:
+                logger.info(f"Putting cloudwatch log group retention policy: {put_request}")
                 for _ in self.execute(self.get_session_client(region=log_group.region).put_retention_policy, None,
                                       raw_data=True, filters_req=put_request):
                     self.clear_cache(CloudWatchLogGroup)

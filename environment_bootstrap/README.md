@@ -88,3 +88,12 @@ origin	git@github.com:AlexeyBeley/horey.git (fetch)
 origin	git@github.com:AlexeyBeley/horey.git (push)
 
 git remote set-url origin git@github:AlexeyBeley/horey.git
+
+
+
+/Users/<user>/homebrew/bin/brew
+/System/Volumes/Data/Users/<user>/homebrew/Cellar/azure-cli/2.75.0/bin/az
+/Users/<user>/homebrew/bin/kubelogin
+
+
+apk add --update curl

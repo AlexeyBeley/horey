@@ -102,6 +102,7 @@ class ECSService(AwsObject):
             "networkConfiguration": self.init_default_attr,
             "platformFamily": self.init_default_attr,
             "platformVersion": self.init_default_attr,
+            "availabilityZoneRebalancing": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)

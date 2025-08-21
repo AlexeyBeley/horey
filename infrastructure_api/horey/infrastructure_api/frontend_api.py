@@ -32,7 +32,8 @@ class FrontendAPI:
                                                    certificate,
                                                    s3_bucket, response_headers_policy, wafv2_web_acl)
 
-        return self.environment_api.provision_public_dns_address(self.configuration.dns_address, cloudfront_distribution.domain_name)
+        self.environment_api.provision_public_dns_address(self.configuration.dns_address, cloudfront_distribution.domain_name)
+        return self.update()
 
     def update(self):
         """

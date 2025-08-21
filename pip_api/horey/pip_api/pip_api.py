@@ -16,6 +16,7 @@ from horey.pip_api.standalone_methods import StandaloneMethods
 
 logger = get_logger()
 StandaloneMethods.logger = logger
+BashExecutor.set_logger(logger, override=False)
 
 
 class PipAPI:
@@ -56,11 +57,9 @@ class PipAPI:
 
         :return:
         """
-        logger.info(f"Installing Venv if needed: {self.configuration.venv_dir_path}")
         if not os.path.exists(
                 os.path.join(self.configuration.venv_dir_path, "bin", "activate")
             ):
-            logger.info(f"Installing new Venv: {self.configuration.venv_dir_path}")
             options = ""
             if self.configuration.system_site_packages:
                 options += " --system-site-packages"
@@ -69,31 +68,8 @@ class PipAPI:
                 f"{sys.executable} -m venv {self.configuration.venv_dir_path}{options}"
             )
 
-            self.execute("python -m pip install --upgrade pip")
+            self.execute("python -m pip install --upgrade pip", ignore_on_error_callback=lambda dict_ret: "Requirement already satisfied" in dict_ret["stdout"])
             self.execute("python -m pip install --upgrade setuptools>=45")
-            self.execute("python -m pip install -U packaging>=24.2")
-            self.execute("python -m pip install wheel")
-
-    def install_venv_old(self):
-        """
-        Install venv if does not exist
-
-        :return:
-        """
-        logger.info(f"Installing Venv if needed: {self.configuration.venv_dir_path}")
-        if not os.path.exists(
-                os.path.join(self.configuration.venv_dir_path, "bin", "activate")
-        ):
-            self.run_bash(
-                f"{sys.executable} -m venv {self.configuration.venv_dir_path} --system-site-packages",
-            )
-
-            self.execute("python -m pip install --upgrade pip")
-            self.execute("python -m pip install --upgrade setuptools>=45")
-            self.execute("python -m pip install -U packaging>=24.2")
-            self.execute("python -m pip install wheel")
-        else:
-            logger.info(f"Installing Venv ignore. Venv already exists: {self.configuration.venv_dir_path}")
 
     def init_multi_package_repository(self, repo_path):
         """
@@ -156,10 +132,11 @@ class PipAPI:
         return BashExecutor.run_bash(command, ignore_on_error_callback=ignore_on_error_callback, timeout=timeout, debug=debug,
                               logger=logger)
 
-    def execute(self, command, ignore_venv=False):
+    def execute(self, command, ignore_venv=False, ignore_on_error_callback=None):
         """
         Execute bash command.
 
+        :param ignore_on_error_callback:
         :param command:
         :param ignore_venv: do not run in venv
         :return:
@@ -172,9 +149,8 @@ class PipAPI:
             and self.configuration.venv_dir_path is not None
         ):
             self.install_venv()
-            venv_bin_dir = os.path.join(self.configuration.venv_dir_path, 'bin')
-            command = f"source {os.path.join(venv_bin_dir, 'activate')} && {command}"
-        ret = self.run_bash(command)
+            command = f"source {os.path.join(self.configuration.venv_dir_path, 'bin/activate')} && {command}"
+        ret = self.run_bash(command, ignore_on_error_callback=ignore_on_error_callback)
 
         return ret["stdout"]
 
@@ -272,15 +248,14 @@ class PipAPI:
         :param requirement:
         :return:
         """
-
         package_dirname = requirement.name.split(".")[-1]
         ret = self.execute(
-            f"cd {requirement.multi_package_repo_path} && make raw_install_wheel-{package_dirname}"
+            f"cd {requirement.multi_package_repo_path} && make install_wheel-{package_dirname}"
         )
         lines = ret.split("\n")
 
         index = -2 if "Leaving directory" in lines[-1] else -1
-        if lines[index] != f"done installing {package_dirname}" and "Successfully installed" not in lines[index]:
+        if lines[index] != f"done installing {package_dirname}":
             raise RuntimeError(
                 f"Could not install {package_dirname} from source code:\n {ret}"
             )

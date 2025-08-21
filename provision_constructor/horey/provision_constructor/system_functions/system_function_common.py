@@ -19,6 +19,7 @@ from horey.h_logger import get_logger
 from horey.common_utils.bash_executor import BashExecutor
 
 logger = get_logger()
+BashExecutor.set_logger(logger, override=False)
 
 
 class SystemFunctionCommon:
@@ -591,10 +592,7 @@ class SystemFunctionCommon:
 
         logger.info(f"Installing apt packages: {package_names}")
 
-        if self.upgrade:
-            command = f"sudo NEEDRESTART_MODE={needrestart_mode} apt --upgrade install -y {' '.join(package_names)}"
-        else:
-            command = f"sudo NEEDRESTART_MODE={needrestart_mode} apt install -y {' '.join(package_names)}"
+        command = f"sudo NEEDRESTART_MODE={needrestart_mode} apt{' --upgrade ' if self.upgrade else ' '}install -y {' '.join(package_names)}"
 
         def raise_on_error_callback(response):
             return (

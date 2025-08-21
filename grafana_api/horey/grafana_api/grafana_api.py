@@ -52,6 +52,7 @@ class GrafanaAPI:
             raise RuntimeError(
                 f"Request to grafana api returned an error {response.status_code}, the response is:\n{response.text}"
             )
+        logger.info(f"Response.Raw: '{response.raw}'")
         return response.json()
 
     def post(self, request_path, data):
@@ -166,7 +167,6 @@ class GrafanaAPI:
         token_name = "org_1"
         response = self.get("/auth/keys")
 
-        breakpoint()
         for key in response:
             if key["name"] == token_name:
                 self.delete(f"/auth/keys/{key['id']}")
@@ -184,22 +184,7 @@ class GrafanaAPI:
         if request.startswith("/"):
             request = request[1:]
 
-        return f"{self.base_address}/api/{request}"
-
-    def init_folders_and_dashboards(self):
-        """
-        Init folders and dashboards
-        @return:
-        """
-        for dash_data in self.get("search"):
-            if dash_data["type"] == "dash-folder":
-                folder = Folder(dash_data)
-                self.folders.append(folder)
-            elif dash_data["type"] == "dash-db":
-                dashboard = self.generate_dashboard(dash_data)
-                self.dashboards.append(dashboard)
-            else:
-                raise RuntimeError(dash_data)
+        return f"{self.base_address}/apis/{request}"
 
     def init_datasources(self):
         """
@@ -217,32 +202,20 @@ class GrafanaAPI:
         for name, dict_src in self.get("ruler/grafana/api/v1/rules").items():
             self.rule_namespaces[name] = dict_src
 
-    def init_folders(self):
-        """
-        Init dashboards' folders
-        @return:
-        """
-        for dict_src in self.get("folders"):
-            self.folders.append(Folder(dict_src))
-
-    def generate_dashboard(self, dict_src):
-        """
-        Init object from raw server response
-        @param dict_src:
-        @return:
-        """
-        dashboard = Dashboard(dict_src)
-        ret = self.get(f"/dashboards/uid/{dashboard.uid}")
-        dashboard.update_full_info({"meta": ret["meta"], **ret["dashboard"]})
-        return dashboard
-
-    def provision_dashboard(self, dashboard: Dashboard):
+    def provision_dashboard(self, desired: Dashboard):
         """
         Provision dashboard - create or update based on title.
-        @param dashboard:
+        @param desired:
         @return:
         """
-        self.create_dashboard_raw(dashboard.generate_create_request())
+        self.init_dashboards()
+        for current_dashboard in self.dashboards:
+            if current_dashboard.spec["title"] == desired.spec["title"]:
+                desired.metadata["name"] = current_dashboard.metadata["name"]
+                desired.metadata["uid"] = current_dashboard.metadata["uid"]
+                return self.update_dashboard_raw(desired.generate_create_request())
+
+        return self.create_dashboard_raw(desired.generate_create_request())
 
     def create_dashboard_raw(self, dict_dashboard):
         """
@@ -250,8 +223,20 @@ class GrafanaAPI:
         @param dict_dashboard:
         @return: None
         """
-        self.post("dashboards/db", dict_dashboard)
+
+        self.post("/dashboard.grafana.app/v1beta1/namespaces/default/dashboards", dict_dashboard)
         logger.info(f"Created Dashboard '{dict_dashboard['dashboard']['title']}'")
+
+    def update_dashboard_raw(self, dict_dashboard):
+        """
+        Create the dashboard from raw dict
+        @param dict_dashboard:
+        @return: None
+        """
+
+        self.put(f"/dashboard.grafana.app/v1beta1/namespaces/default/dashboards/{dict_dashboard['metadata']['name']}", dict_dashboard)
+        logger.info(f"Updated Dashboard '{dict_dashboard['spec']['title']}'")
+        return True
 
     def create_rule_raw(self, dict_request, namespace):
         """
@@ -292,3 +277,23 @@ class GrafanaAPI:
             raise NotImplementedError()
 
         return chr(ord(ref_id) + 1)
+
+    def init_dashboards(self):
+        """
+        Init dashboards
+        @return:
+        """
+
+        ret = self.get("dashboard.grafana.app/v1beta1/namespaces/default/dashboards")
+        self.dashboards = [Dashboard(dict_src) for dict_src in ret["items"]]
+        return self.dashboards
+
+    def init_folders(self):
+        """
+        Init dashboards
+        @return:
+        """
+
+        ret = self.get("folder.grafana.app/v1beta1/namespaces/default/folders")
+        self.folders = [Folder(dict_src) for dict_src in ret["items"]]
+        return self.folders

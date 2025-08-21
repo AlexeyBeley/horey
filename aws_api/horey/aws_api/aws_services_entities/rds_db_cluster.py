@@ -52,6 +52,8 @@ class RDSDBCluster(AwsObject):
         self.serverless_v2_scaling_configuration = None
         self.auto_minor_version_upgrade = None
         self.iops = None
+        self.endpoint = None
+        self.reader_endpoint = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)
@@ -134,6 +136,8 @@ class RDSDBCluster(AwsObject):
             "PerformanceInsightsKMSKeyId": self.init_default_attr,
             "PerformanceInsightsRetentionPeriod": self.init_default_attr,
             "ServerlessV2ScalingConfiguration": self.init_default_attr,
+            "LocalWriteForwardingStatus": self.init_default_attr,
+            "IOOptimizedNextAllowedModificationTime": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)

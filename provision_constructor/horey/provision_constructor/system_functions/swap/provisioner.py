@@ -68,3 +68,5 @@ class Provisioner(SystemFunctionCommon):
         self.run_bash("sudo mkswap /swapfile")
         self.run_bash("sudo swapon /swapfile")
         self.add_line_to_file_sudo(line="/swapfile none swap sw 0 0", file_path="/etc/fstab")
+        # sudo -s
+        # echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab

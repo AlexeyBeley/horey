@@ -1,10 +1,8 @@
-from horey.azure_api.base_entities.region import Region
 from horey.common_utils.common_re_utils import CommonREUtils
 import datetime
 from enum import Enum
 
 from horey.h_logger import get_logger
-from horey.network.ip import IP
 
 logger = get_logger()
 
@@ -63,18 +61,6 @@ class ZabbixObject:
             return {
                 ZabbixObject.SELF_CACHED_TYPE_KEY_NAME: "datetime",
                 "value": obj_src.strftime("%Y-%m-%d %H:%M:%S.%f%z"),
-            }
-
-        if isinstance(obj_src, Region):
-            return {
-                ZabbixObject.SELF_CACHED_TYPE_KEY_NAME: "region",
-                "value": obj_src.convert_to_dict(),
-            }
-
-        if isinstance(obj_src, IP):
-            return {
-                ZabbixObject.SELF_CACHED_TYPE_KEY_NAME: "ip",
-                "value": obj_src.convert_to_dict(),
             }
 
         if isinstance(obj_src, Enum):

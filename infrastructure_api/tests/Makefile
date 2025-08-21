@@ -11,7 +11,7 @@ echo:
 	echo ${VENV_BIN_DIR}/activate
 
 build_ng:
-	python ${HOREY_DIR_PATH}/pip_api/horey/pip_api/pip_api_make.py --install horey.environment_api --force_reinstall --pip_api_configuration ${HOREY_DIR_PATH}/pip_api_configuration.py
+	python ${HOREY_DIR_PATH}/pip_api/horey/pip_api/pip_api_make.py --install horey.infrastructure_api --force_reinstall --pip_api_configuration ${HOREY_DIR_PATH}/pip_api_configuration.py
 
 
 

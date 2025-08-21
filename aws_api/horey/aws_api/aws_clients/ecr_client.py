@@ -173,9 +173,12 @@ class ECRClient(Boto3Client):
         """
         Provision ECR repo from dict request.
 
-        @param request_dict:
-        @return:
+        :param region:
+        :param request_dict:
+        :return:
         """
+
+        logger.info(f"Creating ecr repository in region {region.region_mark}: {request_dict}")
 
         for response in self.execute(
                 self.get_session_client(region=region).create_repository, "repository", filters_req=request_dict

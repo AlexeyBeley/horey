@@ -14,6 +14,8 @@ class ECRImage(AwsObject):
         super().__init__(dict_src)
         self._region = None
         self.image_tags = None
+        self.last_recorded_pull_time = None
+        self.image_pushed_at = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)

@@ -23,7 +23,7 @@ IamClient().main_cache_dir_path = os.path.abspath(
     )
 # pylint: disable= missing-function-docstring
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_init_iam_client():
     assert isinstance(IamClient(), IamClient)
 
@@ -179,7 +179,7 @@ def test_get_all_roles_full_info_false():
 
 role_name = "role-test-provision"
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_provision_role_create():
     role = IamRole({})
     role.path = "/test/"
@@ -193,7 +193,7 @@ def test_provision_role_create():
     client = IamClient()
     client.provision_role(role)
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_provision_role_update():
     role = IamRole({})
     role.path = "/test/"
@@ -207,7 +207,7 @@ def test_provision_role_update():
     client = IamClient()
     client.provision_role(role)
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_provision_role_create_inline_policy():
     policy = IamPolicy({})
     policy.document = {
@@ -234,7 +234,7 @@ def test_provision_role_create_inline_policy():
     client.provision_role(role)
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_provision_role_update_inline_policy():
     policy = IamPolicy({})
     policy.document = {
@@ -261,7 +261,7 @@ def test_provision_role_update_inline_policy():
     client.provision_role(role)
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_provision_role_delete_inline_policy():
     client = IamClient()
     role = IamRole({})
@@ -271,7 +271,7 @@ def test_provision_role_delete_inline_policy():
     client.provision_role(role)
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_dispose_role():
     role = IamRole({})
     role.path = "/test/"

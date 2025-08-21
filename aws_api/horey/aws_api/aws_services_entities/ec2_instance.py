@@ -98,6 +98,8 @@ class EC2Instance(AwsObject):
             "PrivateDnsNameOptions": self.init_default_attr,
             "MaintenanceOptions": self.init_default_attr,
             "CurrentInstanceBootMode": self.init_default_attr,
+            "NetworkPerformanceOptions": self.init_default_attr,
+            "Operator": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -421,6 +423,10 @@ class EC2Instance(AwsObject):
             )
 
         request["TagSpecifications"] = [{"ResourceType": "instance", "Tags": tags}]
+        if self.network_interfaces:
+            request["TagSpecifications"] = request["TagSpecifications"].append({"ResourceType": "network-interface", "Tags": tags})
+        if self.block_device_mappings:
+            request["TagSpecifications"] = request["TagSpecifications"].append({"ResourceType": "volume", "Tags": tags})
 
         return request
 

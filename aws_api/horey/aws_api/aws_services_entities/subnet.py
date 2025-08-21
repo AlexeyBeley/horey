@@ -44,6 +44,7 @@ class Subnet(AwsObject):
             "PrivateDnsNameOptionsOnLaunch": self.init_default_attr,
             "EnableDns64": self.init_default_attr,
             "Ipv6Native": self.init_default_attr,
+            "BlockPublicAccessStates": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -104,6 +105,7 @@ class Subnet(AwsObject):
             "PrivateDnsNameOptionsOnLaunch": self.init_default_attr,
             "EnableDns64": self.init_default_attr,
             "Ipv6Native": self.init_default_attr,
+            "BlockPublicAccessStates": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)

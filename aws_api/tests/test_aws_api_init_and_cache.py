@@ -19,7 +19,6 @@ configuration_values_file_full_path = os.path.join(
 )
 
 logger = get_logger(
-    configuration_values_file_full_path=configuration_values_file_full_path
 )
 
 configuration = AWSAPIConfigurationPolicy()
@@ -811,11 +810,11 @@ def test_init_and_cache_kms_keys():
     assert isinstance(aws_api.kms_keys, list)
 
 
-@pytest.mark.wip
+@pytest.mark.todo
 def test_init_and_cache_all_s3_bucket_objects():
     aws_api.s3_client.clear_sessions()
     _aws_api = AWSAPI(configuration=configuration)
-    for x in _aws_api.s3_client.yield_bucket_objects(None, bucket_name="files.scoutbees.dev-dex.us-west-2"):
+    for x in _aws_api.s3_client.yield_bucket_objects(None, bucket_name=""):
         breakpoint()
 
     breakpoint()

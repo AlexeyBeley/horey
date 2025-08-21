@@ -98,6 +98,7 @@ class VPC(AwsObject):
             "IsDefault": self.init_default_attr,
             "Tags": self.init_default_attr,
             "Ipv6CidrBlockAssociationSet": self.init_default_attr,
+            "BlockPublicAccessStates": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)

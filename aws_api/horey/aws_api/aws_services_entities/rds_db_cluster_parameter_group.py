@@ -75,7 +75,7 @@ class RDSDBClusterParameterGroup(AwsObject):
 
         desired_params_by_name = {}
         for param in desired_param_group.parameters:
-            if param.get("Source") != "user":
+            if param.get("Source") is not None and param.get("Source") != "user":
                 raise ValueError(f"Only source = User supported: {param} in {self.name}")
             desired_params_by_name[param["ParameterName"]] = param
         if len(desired_params_by_name) != len(desired_param_group.parameters):
