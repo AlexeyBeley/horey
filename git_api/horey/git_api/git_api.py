@@ -26,43 +26,37 @@ class GitAPI:
         self.bash_executor = BashExecutor()
         self.bash_executor.set_logger(logger, override=False)
 
+        options = "-o User=git " if "github" in self.configuration.remote else ""
+        self.ssh_base_command = f'GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o IdentitiesOnly=yes {options}-i {self.configuration.ssh_key_file_path}"'
+
     def clone(self):
         """
         Clone from remote to local.
 
         :return:
         """
-        raise NotImplementedError(
-            """
-            
-        base = f'GIT_SSH_COMMAND="ssh -i {self.configuration.ssh_key_file_path} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"'
 
-        os.chdir(Path(self.configuration.directory_path).resolve().parent)
-        ret = self.bash_executor.run_bash(f"{base} git clone {self.configuration.remote}")
+        os.chdir(self.configuration.directory_path.parent)
+        ret = self.bash_executor.run_bash(f"{self.ssh_base_command} git clone {self.configuration.remote}")
+        expected_output = f"Cloning into '{os.path.basename(self.configuration.directory_path)}'"
+        if expected_output not in ret["stdout"] and expected_output not in ret["stderr"]:
+            raise ValueError(ret)
         return ret
-            """
-        )
 
-    def checkout_remote_branch(self, git_remote_url=None, branch_name=None):
+    def checkout_remote(self, dst_obj):
         """
         Pull latest changes.
 
-        :param git_remote_url:
-        :param branch_name:
+        :param dst_obj:
         :return:
         """
 
         start_time = perf_counter()
-        git_remote_url = git_remote_url or self.configuration.remote
-        branch_name = branch_name or self.configuration.branch_name
 
         if oct(os.stat(self.configuration.ssh_key_file_path).st_mode)[-3:] != "400":
             path_ssh_key_file = Path(self.configuration.ssh_key_file_path)
             path_ssh_key_file.chmod(0o400)
 
-        options = "-o User=git " if "github" in git_remote_url else ""
-
-        ssh_base_command = f'GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o IdentitiesOnly=yes {options}-i {self.configuration.ssh_key_file_path}"'
         int_agent_pid = None
         if os.environ.get("SSH_AUTH_SOCK") is None:
             command = "ssh-agent -s"
@@ -73,11 +67,11 @@ class GitAPI:
                     lst_line = line.split("=")
                     int_agent_pid = int((lst_line[lst_line.index("SSH_AGENT_PID") + 1]).split(";")[0])
                 if "SSH_AUTH_SOCK" in line:
-                    ssh_base_command = f"{line} {ssh_base_command}"
+                    self.ssh_base_command = f"{line} {self.ssh_base_command}"
 
             logger.info(f"Time to start SSH Agent: {perf_counter() - start_time}")
         try:
-            self.checkout_remote_branch_helper(git_remote_url, branch_name, ssh_base_command)
+            self.checkout_remote_helper(dst_obj)
         finally:
             if int_agent_pid:
                 command = f"kill {int_agent_pid}"
@@ -90,56 +84,25 @@ class GitAPI:
         return True
 
     # pylint: disable = too-many-locals, too-many-branches, too-many-statements
-    def checkout_remote_branch_helper(self, git_remote_url, branch_name, ssh_base_command):
+    def checkout_remote_helper(self, remote_object: str):
         """
         Run the git logic.
 
-        :param git_remote_url:
-        :param branch_name:
-        :param ssh_base_command:
+        :param remote_object:
         :return:
         """
 
-        current_working_directory = os.getcwd()
-        if current_working_directory != self.configuration.git_directory_path:
-            os.chdir(self.configuration.git_directory_path)
-        self.configuration.directory_path = str(
-            Path(self.configuration.git_directory_path) / git_remote_url.split("/")[-1])
-
-        if self.configuration.directory_path.endswith(".git"):
-            self.configuration.directory_path = self.configuration.directory_path[:-len(".git")]
-
-        if not os.path.exists(self.configuration.directory_path):
-            command = f"{ssh_base_command} git clone {git_remote_url}"
-            ret = self.bash_executor.run_bash(command)
-            expected_output = f"Cloning into '{os.path.basename(self.configuration.directory_path)}'"
-            if expected_output not in ret["stdout"] and expected_output not in ret["stderr"]:
-                raise ValueError(ret)
+        if not self.configuration.directory_path.exists():
+            self.clone()
 
         logger.info(f"Changing directory to source code directory: {self.configuration.directory_path}")
         os.chdir(self.configuration.directory_path)
 
-        command = "git remote -v"
-        ret = self.bash_executor.run_bash(command)
-        lines = ret["stdout"].split("\n")
-        for line in lines:
-            line = line.replace("\t", " ")
-            remote_name, address, direction = line.split(" ")
-            logger.info(f"Checking triplet: {remote_name=}, {address=}, {direction=}")
+        remote_name = self.get_remote_name()
+        if remote_object.startswith("refs/pull"):
+            return self.checkout_remote_pr_helper(remote_name, remote_object)
 
-            if direction != "(fetch)":
-                logger.info(f"Checking direction: '{direction=}'")
-                continue
-
-            if address.lower() != git_remote_url.lower():
-                logger.info(f"Checking address: '{address.lower()}', '{git_remote_url.lower()}'")
-                continue
-
-            break
-        else:
-            raise RuntimeError(f"Was not able to find remote with address {git_remote_url} and direction=(fetch)")
-
-        command = f"{ssh_base_command} git fetch {remote_name} {branch_name}"
+        command = f"{self.ssh_base_command} git fetch {remote_name} {remote_object}"
         ret = self.bash_executor.run_bash(command)
         stdout = ret.get("stdout")
         if stdout:
@@ -159,7 +122,7 @@ class GitAPI:
                 raise ValueError(f"Incorrect star in '{line}'")
             if line_static_branch != "branch":
                 raise ValueError(f"Incorrect branch in '{line}'")
-            if line_branch_name != branch_name:
+            if line_branch_name != remote_object:
                 raise ValueError(f"Incorrect branch_name in '{line}'")
             if line_arrow != "->":
                 raise ValueError(f"Incorrect line_arrow in '{line}'")
@@ -169,14 +132,41 @@ class GitAPI:
         else:
             raise RuntimeError("Was not able to find line corresponding to fetched branch")
 
-        self.checkout_fetched_remote(branch_name, remote_name)
-
-        self.update_submodules(ssh_base_command)
+        self.checkout_fetched_remote_branch(remote_object, remote_name)
+        self.update_submodules()
         return True
 
-    def checkout_fetched_remote(self, branch_name, remote_name):
+    def get_remote_name(self):
+        """
+        Fetch remote name from the local git.
+
+        :return:
+        """
+
+        command = "git remote -v"
+        ret = self.bash_executor.run_bash(command)
+        lines = ret["stdout"].split("\n")
+        for line in lines:
+            line = line.replace("\t", " ")
+            remote_name, address, direction = line.split(" ")
+            logger.info(f"Checking triplet: {remote_name=}, {address=}, {direction=}")
+
+            if direction != "(fetch)":
+                logger.info(f"Checking direction: '{direction=}'")
+                continue
+
+            if address.lower() != self.configuration.remote.lower():
+                logger.info(f"Checking address: '{address.lower()}', '{self.configuration.remote.lower()}'")
+                continue
+            break
+        else:
+            raise RuntimeError(f"Was not able to find remote with address {self.configuration.remote} and direction=(fetch)")
+        return remote_name
+
+    def checkout_fetched_remote_branch(self, branch_name, remote_name):
         """
         Checkout new or existing
+        :param remote_name:
         :param branch_name:
         :return:
         """
@@ -191,12 +181,7 @@ class GitAPI:
             if "HEAD is now at" not in stdout:
                 raise RuntimeError(stdout)
 
-            command = f"git checkout {branch_name}"
-            ret = self.bash_executor.run_bash(command)
-            if ret["stdout"] not in [f"Your branch is up to date with '{remote_name}/{branch_name}'.",
-                                     f"branch '{branch_name}' set up to track '{remote_name}/{branch_name}'."]:
-                if ret["stderr"] not in [f"Already on '{branch_name}'", f"Switched to branch '{branch_name}'"]:
-                    raise RuntimeError(ret)
+            self.checkout_local(branch_name, remote_name=remote_name)
 
             command = f"git reset --hard {remote_name}/{branch_name}"
             ret = self.bash_executor.run_bash(command)
@@ -209,7 +194,88 @@ class GitAPI:
             if ret["stderr"] not in [f"Switched to a new branch '{branch_name}'"]:
                 raise RuntimeError(ret)
 
-    def update_submodules(self, ssh_base_command):
+    def checkout_local(self, branch_name, remote_name=None):
+        """
+        Checkout to existing local branch
+
+        :param remote_name:
+        :param branch_name:
+        :return:
+        """
+
+        remote_name = remote_name or self.get_remote_name()
+        command = f"git checkout {branch_name}"
+        ret = self.bash_executor.run_bash(command)
+        if ret["stdout"] not in [f"Your branch is up to date with '{remote_name}/{branch_name}'.",
+                                 f"branch '{branch_name}' set up to track '{remote_name}/{branch_name}'."]:
+
+            if ret["stderr"] not in [f"Already on '{branch_name}'",
+                                     f"Switched to branch '{branch_name}'"]:
+
+                raise RuntimeError(ret)
+
+        return True
+
+    def checkout_remote_pr_helper(self, remote_name: str, remote_object: str):
+        """
+        Fetch and checkout remote PR
+
+        :return:
+        """
+
+        branch_name = f"pr/{remote_object.split('/')[2]}"
+        self.delete_local_branch(branch_name)
+
+        command = f"{self.ssh_base_command} git fetch {remote_name} {remote_object}:{branch_name}"
+        ret = self.bash_executor.run_bash(command)
+        stdout = ret.get("stdout")
+        if stdout:
+            raise RuntimeError(f"Unexpected stdout: {stdout}")
+        stderr = ret.get("stderr")
+        if not stderr:
+            raise RuntimeError(f"Unexpected stderr: {stderr}")
+        last_line = stderr.split("\n")[-1].strip()
+        # '* [new ref] refs/pull/1111/merge -> pr/1111'
+
+        while "  " in last_line:
+            last_line = last_line.replace("  ", " ")
+
+        if last_line != f"* [new ref] {remote_object} -> {branch_name}":
+            raise ValueError(f"Was not able to fetch {remote_name}:{remote_object}")
+        self.checkout_local(branch_name, remote_name=remote_name)
+        return True
+
+    def delete_local_branch(self, branch_name):
+        """
+        Delete if exists.
+
+        :param branch_name:
+        :return:
+        """
+
+        if not self.check_local_branch_exists(branch_name):
+            return True
+        self.checkout_local(self.configuration.main_branch)
+
+        ret = self.bash_executor.run_bash(f"git branch -D {branch_name}")
+        if not ret["stdout"].startswith(f"Deleted branch {branch_name} (was"):
+            raise RuntimeError(f"Was not able to delete branch {branch_name}")
+
+        return ret["code"] == 0
+
+    def check_local_branch_exists(self, branch_name: str):
+        """
+        Check branch exists locally
+
+        :return:
+        """
+
+        command = f"git rev-parse --verify {branch_name}"
+        ret = self.bash_executor.run_bash(command,
+                                          ignore_on_error_callback=lambda dict_response: "Needed a single revision" in dict_response.get("stderr"))
+        return ret["code"] == 0
+
+    def update_submodules(self):
         """
         Init and update.
 
@@ -226,7 +292,7 @@ class GitAPI:
         if ret["stderr"] and "registered for path" not in ret["stderr"]:
             raise ValueError(ret)
 
-        command = f"{ssh_base_command} git submodule update"
+        command = f"{self.ssh_base_command} git submodule update"
         ret = self.bash_executor.run_bash(command)
         if ret["stdout"] or ret["stderr"]:
             if "checked out" not in ret["stdout"] or "Cloning into" not in ret["stderr"]:

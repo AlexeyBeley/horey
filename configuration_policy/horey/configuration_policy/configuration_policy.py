@@ -2,10 +2,12 @@
 Base config policy
 
 """
+
 import os
 import json
 import argparse
-
+import inspect
+from pathlib import Path
 
 from horey.h_logger import get_logger
 from horey.common_utils.common_utils import CommonUtils
@@ -390,6 +392,54 @@ class ConfigurationPolicy:
             return property_getter_function(configuration_instance)
 
         return property_function
+
+    def check_defined(self):
+        """
+        Check the property defined.
+        e.g. self.check_defined(configuration_file_full_path)
+
+        :return:
+        """
+
+        frame = inspect.currentframe()
+        property_name = frame.f_back.f_code.co_name
+        if getattr(self, "_" + property_name) is None:
+            raise self.UndefinedValueError(f"Property '{property_name}' was not set")
+
+    @staticmethod
+    def directory_property(mkdir=True, exist_ok=False):
+        """
+        Init Directory Path property.
+        Create by default
+
+        :param exist_ok:
+        :param mkdir:
+        :return:
+        """
+
+        def func_receiver(func):
+            """
+            Function receiver will receive the property and return property wrapper
+            :param func:
+            :return:
+            """
+            def function_wrapper(*args, **kwargs):
+                """
+                This will replace the property setter- validate input of the function.
+
+                :param args:
+                :param kwargs:
+                :return:
+                """
+
+                path = Path(args[1])
+                args_new = [args[0]] + [path, *list(args[2:])]
+                func(*args_new, **kwargs)
+                if mkdir:
+                    os.makedirs(path, exist_ok=exist_ok)
+
+            return function_wrapper
+        return func_receiver
 
     class StaticValueError(RuntimeError):
         """

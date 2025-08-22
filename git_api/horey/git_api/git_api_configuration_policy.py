@@ -5,6 +5,7 @@ Git API config.
 
 from horey.configuration_policy.configuration_policy import ConfigurationPolicy
 
+
 # pylint: disable = missing-function-docstring
 class GitAPIConfigurationPolicy(ConfigurationPolicy):
     """
@@ -18,34 +19,44 @@ class GitAPIConfigurationPolicy(ConfigurationPolicy):
         self._ssh_key_file_path = None
         self._directory_path = None
         self._git_directory_path = None
-        self._branch_name = None
+        self._main_branch = None
 
     @property
-    def branch_name(self):
-        return self._branch_name
+    def main_branch(self):
+        return self._main_branch
 
-    @branch_name.setter
-    def branch_name(self, value):
-        self._branch_name = value
+    @main_branch.setter
+    def main_branch(self, value):
+        self._main_branch = value
 
     @property
     def git_directory_path(self):
+        self.check_defined()
         return self._git_directory_path
 
     @git_directory_path.setter
+    @ConfigurationPolicy.directory_property(mkdir=True)
     def git_directory_path(self, value):
         self._git_directory_path = value
 
     @property
     def directory_path(self):
+        if self._directory_path is None:
+            dir_name = self.remote.strip(".git").split("/")[-1]
+            if not dir_name or any(symbol in dir_name for symbol in [".", " "]):
+                raise RuntimeError(f"Invalid: '{dir_name=}' generated from remote: {self.remote}")
+            self._directory_path = self.git_directory_path / dir_name
+
         return self._directory_path
 
     @directory_path.setter
+    @ConfigurationPolicy.directory_property(mkdir=True, exist_ok=True)
     def directory_path(self, value):
         self._directory_path = value
 
     @property
     def remote(self):
+        self.check_defined()
         return self._remote
 
     @remote.setter
