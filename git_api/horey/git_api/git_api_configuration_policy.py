@@ -35,7 +35,7 @@ class GitAPIConfigurationPolicy(ConfigurationPolicy):
         return self._git_directory_path
 
     @git_directory_path.setter
-    @ConfigurationPolicy.directory_property(mkdir=True)
+    @ConfigurationPolicy.directory_property(mkdir=True, exist_ok=True)
     def git_directory_path(self, value):
         self._git_directory_path = value
 
