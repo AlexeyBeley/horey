@@ -2,7 +2,7 @@
 Pip API tests
 
 """
-
+import os
 import shutil
 from pathlib import Path
 
@@ -33,40 +33,55 @@ def git_api_fixtures(config_file_name):
 
 @pytest.mark.unit
 def test_init():
-    git_api = GitAPI(None)
+    before = os.getcwd()
+    configuration = GitAPIConfigurationPolicy()
+    configuration.configuration_file_full_path = horey_root_path.parent / "ignore" / "git_api" / config_file_name_horey
+    configuration.init_from_file()
+    git_api = GitAPI(configuration)
     assert isinstance(git_api, GitAPI)
+    assert before == os.getcwd()
 
 
 @pytest.mark.unit
 @pytest.mark.parametrize("config_file_name", [config_file_name_horey, config_file_name_test])
 def test_clone(git_api, config_file_name):
+    before = os.getcwd()
     assert git_api.clone()
     assert git_api.configuration.git_directory_path.exists()
+    assert before == os.getcwd()
 
 
 @pytest.mark.unit
 @pytest.mark.parametrize("config_file_name", [config_file_name_horey, config_file_name_test])
 def test_checkout_remote(git_api, config_file_name):
+    before = os.getcwd()
     git_api.checkout_remote(git_api.configuration.main_branch)
+    assert before == os.getcwd()
 
 
 @pytest.mark.unit
 @pytest.mark.parametrize("config_file_name", [config_file_name_horey, config_file_name_test])
 def test_checkout_remote_to_existing_branch(git_api, config_file_name):
+    before = os.getcwd()
     git_api.checkout_remote(git_api.configuration.main_branch)
     git_api.checkout_remote(git_api.configuration.main_branch)
+    assert before == os.getcwd()
 
 
 @pytest.mark.unit
 @pytest.mark.parametrize("config_file_name", [config_file_name_test_ref])
 def test_checkout_remote_ref_pull_request(git_api, config_file_name):
-    ref = ""
+    ref = "refs/pull/58338/merge"
+    before = os.getcwd()
     git_api.checkout_remote(ref)
+    assert before == os.getcwd()
 
 
 @pytest.mark.unit
 @pytest.mark.parametrize("config_file_name", [config_file_name_test_ref])
 def test_checkout_remote_ref_pull_request_to_existing(git_api, config_file_name):
-    ref = ""
+    ref = "refs/pull/58338/merge"
+    before = os.getcwd()
     git_api.checkout_remote(ref)
     git_api.checkout_remote(ref)
+    assert before == os.getcwd()

@@ -8,6 +8,7 @@ import importlib
 import os
 import sys
 import re
+import contextlib
 from enum import Enum
 from horey.common_utils.bash_executor import BashExecutor
 
@@ -326,3 +327,20 @@ class CommonUtils:
 
         command = f'ssh-keygen -t {key_type} -C "{owner_email}" -f {output_file_path} -q -N ""'
         BashExecutor.run_bash(command)
+
+    @staticmethod
+    @contextlib.contextmanager
+    def temporary_directory(path: str):
+        """
+        Context manager to temporarily change the current working directory.
+
+        :param path:
+        :return:
+        """
+
+        _old_cwd = os.getcwd()
+        os.chdir(os.path.abspath(path))
+        try:
+            yield
+        finally:
+            os.chdir(_old_cwd)

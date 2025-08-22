@@ -9,6 +9,7 @@ from time import perf_counter
 from horey.h_logger import get_logger
 from horey.git_api.git_api_configuration_policy import GitAPIConfigurationPolicy
 from horey.common_utils.bash_executor import BashExecutor
+from horey.common_utils.common_utils import CommonUtils
 
 logger = get_logger()
 
@@ -36,12 +37,12 @@ class GitAPI:
         :return:
         """
 
-        os.chdir(self.configuration.directory_path.parent)
-        ret = self.bash_executor.run_bash(f"{self.ssh_base_command} git clone {self.configuration.remote}")
-        expected_output = f"Cloning into '{os.path.basename(self.configuration.directory_path)}'"
-        if expected_output not in ret["stdout"] and expected_output not in ret["stderr"]:
-            raise ValueError(ret)
-        return ret
+        with CommonUtils.temporary_directory(self.configuration.directory_path.parent):
+            ret = self.bash_executor.run_bash(f"{self.ssh_base_command} git clone {self.configuration.remote}")
+            expected_output = f"Cloning into '{os.path.basename(self.configuration.directory_path)}'"
+            if expected_output not in ret["stdout"] and expected_output not in ret["stderr"]:
+                raise ValueError(ret)
+            return ret
 
     def checkout_remote(self, dst_obj):
         """
@@ -94,47 +95,45 @@ class GitAPI:
 
         if not self.configuration.directory_path.exists():
             self.clone()
+        with CommonUtils.temporary_directory(self.configuration.directory_path):
 
-        logger.info(f"Changing directory to source code directory: {self.configuration.directory_path}")
-        os.chdir(self.configuration.directory_path)
+            remote_name = self.get_remote_name()
+            if remote_object.startswith("refs/pull"):
+                return self.checkout_remote_pr_helper(remote_name, remote_object)
 
-        remote_name = self.get_remote_name()
-        if remote_object.startswith("refs/pull"):
-            return self.checkout_remote_pr_helper(remote_name, remote_object)
+            command = f"{self.ssh_base_command} git fetch {remote_name} {remote_object}"
+            ret = self.bash_executor.run_bash(command)
+            stdout = ret.get("stdout")
+            if stdout:
+                raise RuntimeError(f"Unexpected stdout: {stdout}")
+            stderr = ret.get("stderr")
+            if not stderr:
+                raise RuntimeError(f"Unexpected stderr: {stderr}")
 
-        command = f"{self.ssh_base_command} git fetch {remote_name} {remote_object}"
-        ret = self.bash_executor.run_bash(command)
-        stdout = ret.get("stdout")
-        if stdout:
-            raise RuntimeError(f"Unexpected stdout: {stdout}")
-        stderr = ret.get("stderr")
-        if not stderr:
-            raise RuntimeError(f"Unexpected stderr: {stderr}")
+            for line in stderr.split("\n"):
+                line = line.strip()
+                while "  " in line:
+                    line = line.replace("  ", " ")
+                if not line.startswith("*"):
+                    continue
+                line_static_star, line_static_branch, line_branch_name, line_arrow, line_static_fetch_head = line.split(" ")
+                if line_static_star != "*":
+                    raise ValueError(f"Incorrect star in '{line}'")
+                if line_static_branch != "branch":
+                    raise ValueError(f"Incorrect branch in '{line}'")
+                if line_branch_name != remote_object:
+                    raise ValueError(f"Incorrect branch_name in '{line}'")
+                if line_arrow != "->":
+                    raise ValueError(f"Incorrect line_arrow in '{line}'")
+                if line_static_fetch_head != "FETCH_HEAD":
+                    raise ValueError(f"Incorrect line_static_fetch_head in '{line}'")
+                break
+            else:
+                raise RuntimeError("Was not able to find line corresponding to fetched branch")
 
-        for line in stderr.split("\n"):
-            line = line.strip()
-            while "  " in line:
-                line = line.replace("  ", " ")
-            if not line.startswith("*"):
-                continue
-            line_static_star, line_static_branch, line_branch_name, line_arrow, line_static_fetch_head = line.split(" ")
-            if line_static_star != "*":
-                raise ValueError(f"Incorrect star in '{line}'")
-            if line_static_branch != "branch":
-                raise ValueError(f"Incorrect branch in '{line}'")
-            if line_branch_name != remote_object:
-                raise ValueError(f"Incorrect branch_name in '{line}'")
-            if line_arrow != "->":
-                raise ValueError(f"Incorrect line_arrow in '{line}'")
-            if line_static_fetch_head != "FETCH_HEAD":
-                raise ValueError(f"Incorrect line_static_fetch_head in '{line}'")
-            break
-        else:
-            raise RuntimeError("Was not able to find line corresponding to fetched branch")
-
-        self.checkout_fetched_remote_branch(remote_object, remote_name)
-        self.update_submodules()
-        return True
+            self.checkout_fetched_remote_branch(remote_object, remote_name)
+            self.update_submodules()
+            return True
 
     def get_remote_name(self):
         """
@@ -284,19 +283,20 @@ class GitAPI:
 
         if not os.path.exists(os.path.join(self.configuration.directory_path, ".gitmodules")):
             return True
-        os.chdir(self.configuration.directory_path)
-        command = "git submodule init"
-        ret = self.bash_executor.run_bash(command)
-        if ret["stdout"]:
-            raise ValueError(ret)
-        if ret["stderr"] and "registered for path" not in ret["stderr"]:
-            raise ValueError(ret)
 
-        command = f"{self.ssh_base_command} git submodule update"
-        ret = self.bash_executor.run_bash(command)
-        if ret["stdout"] or ret["stderr"]:
-            if "checked out" not in ret["stdout"] or "Cloning into" not in ret["stderr"]:
+        with CommonUtils.temporary_directory(self.configuration.directory_path):
+            command = "git submodule init"
+            ret = self.bash_executor.run_bash(command)
+            if ret["stdout"]:
                 raise ValueError(ret)
+            if ret["stderr"] and "registered for path" not in ret["stderr"]:
+                raise ValueError(ret)
+
+            command = f"{self.ssh_base_command} git submodule update"
+            ret = self.bash_executor.run_bash(command)
+            if ret["stdout"] or ret["stderr"]:
+                if "checked out" not in ret["stdout"] or "Cloning into" not in ret["stderr"]:
+                    raise ValueError(ret)
         return True
 
     def get_commit_id(self):
