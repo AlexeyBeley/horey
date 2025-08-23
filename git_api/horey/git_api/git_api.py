@@ -306,14 +306,18 @@ class GitAPI:
         :return:
         """
 
-        command = "git rev-parse --short HEAD"
-        ret = self.bash_executor.run_bash(command)
-        stdout = ret["stdout"]
+        with CommonUtils.temporary_directory(self.configuration.directory_path):
+            command = "git rev-parse --short HEAD"
+            ret = self.bash_executor.run_bash(command)
+            stdout = ret["stdout"]
 
-        if not stdout:
-            raise RuntimeError(stdout)
+            if not stdout:
+                raise RuntimeError(stdout)
 
-        if " " in stdout:
-            raise RuntimeError(stdout)
-
-        return stdout
+            if " " in stdout:
+                raise RuntimeError(stdout)
+            commit_id = stdout.strip()
+            if len(commit_id) > 8 or len(commit_id) < 6:
+                # pylint: disable= raise-missing-from
+                raise ValueError(f"Unexpected commit id '{commit_id}'")
+        return commit_id
