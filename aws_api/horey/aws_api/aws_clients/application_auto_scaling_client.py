@@ -223,7 +223,7 @@ class ApplicationAutoScalingClient(Boto3Client):
 
         return final_result
 
-    def provision_scalable_target(self, autoscaling_scalable_target):
+    def provision_scalable_target(self, autoscaling_scalable_target: ApplicationAutoScalingScalableTarget):
         """
         Standard.
 
@@ -244,6 +244,7 @@ class ApplicationAutoScalingClient(Boto3Client):
         """
         Standard.
 
+        :param region:
         :param request_dict:
         :return:
         """

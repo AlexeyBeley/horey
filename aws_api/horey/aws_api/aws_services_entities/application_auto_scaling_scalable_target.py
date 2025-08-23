@@ -80,7 +80,7 @@ class ApplicationAutoScalingScalableTarget(AwsObject):
             request["SuspendedState"] = self.suspended_state
 
         if self.tags is not None:
-            request["Tags"] = self.tags
+            request["Tags"] = {tag["Key"]: tag["Value"] for tag in self.tags} if isinstance(self.tags, list) else self.tags
 
         return request
 
