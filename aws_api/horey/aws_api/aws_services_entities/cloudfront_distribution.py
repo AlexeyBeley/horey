@@ -153,7 +153,8 @@ class CloudfrontDistribution(AwsObject):
             "DistributionConfig": self.init_default_attr,
             "CallerReference": self.init_default_attr,
             "Staging": self.init_default_attr,
-            "ETag": self.init_default_attr
+            "ETag": self.init_default_attr,
+            "ConnectionMode": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)

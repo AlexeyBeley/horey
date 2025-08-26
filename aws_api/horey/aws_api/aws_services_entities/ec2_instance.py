@@ -424,9 +424,9 @@ class EC2Instance(AwsObject):
 
         request["TagSpecifications"] = [{"ResourceType": "instance", "Tags": tags}]
         if self.network_interfaces:
-            request["TagSpecifications"] = request["TagSpecifications"].append({"ResourceType": "network-interface", "Tags": tags})
+            request["TagSpecifications"].append({"ResourceType": "network-interface", "Tags": tags})
         if self.block_device_mappings:
-            request["TagSpecifications"] = request["TagSpecifications"].append({"ResourceType": "volume", "Tags": tags})
+            request["TagSpecifications"].append({"ResourceType": "volume", "Tags": tags})
 
         return request
 

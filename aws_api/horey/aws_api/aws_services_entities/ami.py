@@ -70,6 +70,11 @@ class AMI(AwsObject):
             "DeprecationTime": self.init_default_attr,
             "TpmSupport": self.init_default_attr,
             "ImdsSupport": self.init_default_attr,
+            "SourceInstanceId": self.init_default_attr,
+            "DeregistrationProtection": self.init_default_attr,
+            "SourceImageId": self.init_default_attr,
+            "SourceImageRegion": self.init_default_attr,
+            "FreeTierEligible": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)

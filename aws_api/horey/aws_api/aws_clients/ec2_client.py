@@ -3066,11 +3066,10 @@ class EC2Client(Boto3Client):
         :param amis:
         :return:
         """
-        breakpoint()
         for ami in amis:
             request = {"ImageId": ami.id, "DryRun": False}
             logger.info(f"Deleting EC2 AMI Image: {request}")
-            for response in self.execute(
+            for _ in self.execute(
                     self.get_session_client(region=ami.region).deregister_image, None, raw_data=True, filters_req=request
             ):
                 pass

@@ -44,11 +44,10 @@ class S3ControlClient(Boto3Client):
         if "AccountId" not in filters_req:
             filters_req["AccountId"] = self.account_id
 
-        for response in self.execute(
+        yield from self.execute(
                 self.get_session_client(region=region).list_access_points, "AccessPointList",
                 filters_req=filters_req
-        ):
-            yield response
+        )
 
     def update_access_point_full_information(self, access_point: S3AccessPoint):
         """
@@ -60,7 +59,6 @@ class S3ControlClient(Boto3Client):
 
         filters_req = {"AccountId": access_point.bucket_account_id,
                        "Name": access_point.name}
-        breakpoint()
         for response in self.execute(
                 self.get_session_client(region=access_point.region).get_access_point, None, raw_data=True,
                 filters_req=filters_req
