@@ -41,7 +41,7 @@ class GitAPI:
             ret = self.bash_executor.run_bash(f"{self.ssh_base_command} git clone {self.configuration.remote}")
             expected_output = f"Cloning into '{os.path.basename(self.configuration.directory_path)}'"
             if expected_output not in ret["stdout"] and expected_output not in ret["stderr"]:
-                raise ValueError(ret)
+                raise ValueError(f"Expected to find '{expected_output}' either in stdout or stderr. Received: {ret}")
             return ret
 
     def checkout_remote(self, dst_obj):
