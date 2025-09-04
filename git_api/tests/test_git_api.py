@@ -71,7 +71,7 @@ def test_checkout_remote_to_existing_branch(git_api, config_file_name):
 @pytest.mark.unit
 @pytest.mark.parametrize("config_file_name", [config_file_name_test_ref])
 def test_checkout_remote_ref_pull_request(git_api, config_file_name):
-    ref = "refs/pull/58338/merge"
+    ref = "refs/pull/11111/merge"
     before = os.getcwd()
     git_api.checkout_remote(ref)
     assert before == os.getcwd()
@@ -80,7 +80,7 @@ def test_checkout_remote_ref_pull_request(git_api, config_file_name):
 @pytest.mark.unit
 @pytest.mark.parametrize("config_file_name", [config_file_name_test_ref])
 def test_checkout_remote_ref_pull_request_to_existing(git_api, config_file_name):
-    ref = "refs/pull/58338/merge"
+    ref = "refs/pull/11111/merge"
     before = os.getcwd()
     git_api.checkout_remote(ref)
     git_api.checkout_remote(ref)
@@ -99,8 +99,24 @@ def test_get_commit_id_branch(git_api, config_file_name):
 @pytest.mark.unit
 @pytest.mark.parametrize("config_file_name", [config_file_name_test_ref])
 def test_get_commit_id_ref(git_api, config_file_name):
-    ref = "refs/pull/58338/merge"
+    ref = "refs/pull/11111/merge"
     before = os.getcwd()
     git_api.checkout_remote(ref)
     assert git_api.get_commit_id()
     assert before == os.getcwd()
+    
+    
+@pytest.mark.unit
+def test_property_directory_path_with_dot_git():
+    policy = GitAPIConfigurationPolicy()
+    policy.remote = "something/git_path.git"
+    policy.git_directory_path = "/tmp"
+    assert policy.directory_path == Path("/tmp/git_path")
+
+
+@pytest.mark.unit
+def test_property_directory_path_without_dot_git():
+    policy = GitAPIConfigurationPolicy()
+    policy.remote = "something/git_path"
+    policy.git_directory_path = "/tmp"
+    assert policy.directory_path == Path("/tmp/git_path")

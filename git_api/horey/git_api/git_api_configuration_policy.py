@@ -42,7 +42,8 @@ class GitAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def directory_path(self):
         if self._directory_path is None:
-            dir_name = self.remote.strip(".git").split("/")[-1]
+            remote = self.remote[:-len(".git")] if self.remote.endswith(".git") else self.remote
+            dir_name = remote.split("/")[-1]
             if not dir_name or any(symbol in dir_name for symbol in [".", " "]):
                 raise RuntimeError(f"Invalid: '{dir_name=}' generated from remote: {self.remote}")
             self._directory_path = self.git_directory_path / dir_name
