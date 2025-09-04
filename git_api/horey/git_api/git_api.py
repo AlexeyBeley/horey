@@ -102,6 +102,7 @@ class GitAPI:
         """
 
         if not self.configuration.directory_path.exists():
+            logger.info(f"git repo directory {self.configuration.directory_path} does not exist. Calling 'clone'")
             self.clone()
         with CommonUtils.temporary_directory(self.configuration.directory_path):
 
