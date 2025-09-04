@@ -3,6 +3,7 @@ GIT API module.
 
 """
 import os
+import shutil
 from pathlib import Path
 from time import perf_counter
 
@@ -37,10 +38,17 @@ class GitAPI:
         :return:
         """
 
+        logger.info(f"Cloning from {self.configuration.remote} into {self.configuration.directory_path.parent}")
         with CommonUtils.temporary_directory(self.configuration.directory_path.parent):
             ret = self.bash_executor.run_bash(f"{self.ssh_base_command} git clone {self.configuration.remote}")
             expected_output = f"Cloning into '{os.path.basename(self.configuration.directory_path)}'"
             if expected_output not in ret["stdout"] and expected_output not in ret["stderr"]:
+                try:
+                    logger.info(
+                        f"Failed to clone. Removing directory: {self.configuration.directory_path}")
+                    shutil.rmtree(self.configuration.directory_path)
+                except Exception:
+                    pass
                 raise ValueError(f"Expected to find '{expected_output}' either in stdout or stderr. Received: {ret}")
             return ret
 
