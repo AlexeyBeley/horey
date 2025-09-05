@@ -13,7 +13,7 @@ import stat
 import traceback
 
 from contextlib import contextmanager
-from typing import List
+from pathlib import Path
 import paramiko
 from sshtunnel import open_tunnel
 
@@ -105,30 +105,11 @@ class RemoteDeployer:
     def __init__(self, configuration=None):
         self.configuration = configuration
         self.replacement_engine = ReplacementEngine()
+        self.clients_lock = threading.Lock()
+        self.ssh_clients = {}
+        self.sftp_clients = {}
 
-    def provision_target_remote_deployer_infrastructure(
-        self, deployment_target, asynchronous=False
-    ):
-        """
-        Provision the deployment dir and deployer remote executor.
-
-        :param deployment_target:
-        :param asynchronous:
-        :return:
-        """
-
-        if asynchronous:
-            thread = threading.Thread(
-                target=self.provision_target_remote_deployer_infrastructure_thread,
-                args=(deployment_target,),
-            )
-            thread.start()
-        else:
-            self.provision_target_remote_deployer_infrastructure_thread(
-                deployment_target
-            )
-
-    def provision_target_remote_deployer_infrastructure_thread(self, deployment_target):
+    def provision_target_remote_deployer_infrastructure_thread(self, deployment_target: DeploymentTarget):
         """
         Thread - can run async.
 
@@ -143,6 +124,9 @@ class RemoteDeployer:
                     self.provision_target_remote_deployer_infrastructure_raw(
                         deployment_target
                     )
+                    if not deployment_target.remote_deployer_infrastructure_provisioning_succeeded:
+                        raise ValueError(f"Expecting the provision infra to be success, but "
+                                         f"{deployment_target.remote_deployer_infrastructure_provisioning_succeeded=}")
                     break
                 except Exception as exception_instance:
                     traceback_str = "".join(
@@ -151,8 +135,9 @@ class RemoteDeployer:
                     repr_exception_instance = repr(exception_instance)
 
                     if i == retries - 1:
-                        logger.error(f"Reached maximum number of retries when provisioning remote deployer infrastructure: "
-                                     f"{retries}: {repr_exception_instance}: tb: {traceback_str}")
+                        logger.error(
+                            f"Reached maximum number of retries when provisioning remote deployer infrastructure: "
+                            f"{retries}: {repr_exception_instance}: tb: {traceback_str}")
                         raise
 
                     logger.warning(
@@ -160,14 +145,15 @@ class RemoteDeployer:
                     )
 
                     if (
-                        "Unable to connect to port 22" in repr_exception_instance
-                        or "No such file" in repr_exception_instance
-                        or "Could not establish session to SSH gateway"
-                        in repr_exception_instance
-                        or "Error reading SSH protocol banner"
-                        in repr_exception_instance
+                            "Unable to connect to port 22" in repr_exception_instance
+                            or "No such file" in repr_exception_instance
+                            or "Could not establish session to SSH gateway"
+                            in repr_exception_instance
+                            or "Error reading SSH protocol banner"
+                            in repr_exception_instance
                     ):
-                        logger.info("Valid exception going to sleep before retrying provision_target_remote_deployer_infrastructure_raw")
+                        logger.info(
+                            "Valid exception going to sleep before retrying provision_ target_remote_deployer_infrastructure_raw")
                         time.sleep(10)
                         continue
 
@@ -189,12 +175,12 @@ class RemoteDeployer:
             )
 
     @staticmethod
-    def generate_unzip_script_file_contents(remote_zip_path, deployment_target):
+    def generate_unzip_script_file_contents(remote_zip_path, remote_deployment_dir_path):
         """
         Generate the script to unzip remotely copied zipped deployment dir.
 
         :param remote_zip_path:
-        :param deployment_target:
+        :param remote_deployment_dir_path:
         :return:
         """
         command = (
@@ -204,7 +190,7 @@ class RemoteDeployer:
             "export unzip_installed=0\n"
             "unzip -v || export unzip_installed=1\n"
             f"if [[ $unzip_installed == '1' ]]; then sudo DEBIAN_FRONTEND=noninteractive apt update && sudo NEEDRESTART_MODE=a apt install -yqq unzip; fi\n"
-            f"unzip {remote_zip_path} -d {deployment_target.remote_deployment_dir_path}\n"
+            f"unzip {remote_zip_path} -d {remote_deployment_dir_path}\n"
             f"rm {remote_zip_path}\n"
         )
         logger.info(f"[REMOTE] {command}")
@@ -218,135 +204,163 @@ class RemoteDeployer:
         :param deployment_target:
         :return:
         """
-        # pylint: disable= too-many-locals
+
+        try:
+            self.upload_target_remote_deployer_infrastructure(deployment_target)
+            self.provision_target_remote_deployer_executor(deployment_target)
+        except Exception as error_instance:
+            traceback_str = "".join(
+                traceback.format_tb(error_instance.__traceback__)
+            )
+            ret = f"Failed provisioning deployer infrastructure at target {deployment_target.deployment_target_address}: {repr(error_instance)}: tb {traceback_str}"
+            deployment_target.remote_deployer_infrastructure_provisioning_succeeded = False
+            raise RemoteDeployer.DeployerError(ret) from error_instance
+        finally:
+            deployment_target.remote_deployer_infrastructure_provisioning_finished = True
+
+    # pylint: disable= too-many-locals
+    def upload_target_remote_deployer_infrastructure(self, target: DeploymentTarget) -> bool:
+        """
+        Zip
+        Upload
+        Unzip
+
+        """
+
+        ssh_client = self.get_deployment_target_ssh_client(target)
+        sftp_client = self.get_deployment_target_sftp_client(target)
+        local_zip_file_path = self.zip_target_remote_deployer_infrastructure(target)
+        command = f"sudo rm -rf {target.remote_deployment_dir_path}"
+        channel = ssh_client.invoke_shell()
+
+        stdin = channel.makefile('wb')
+        stdout = channel.makefile('r')
+        self.execute_remote_shell(stdin, stdout, command, target.deployment_target_address)
+
+        logger.info(
+            f"sftp: mkdir {target.remote_deployment_dir_path}"
+        )
+        sftp_client.mkdir(
+            target.remote_deployment_dir_path, ignore_existing=True
+        )
+
+        zip_file_name = local_zip_file_path.name
+        remote_zip_path = os.path.join(
+            target.remote_deployment_dir_path, zip_file_name
+        )
+
+        logger.info(
+            f"sftp: copying zip file from local {local_zip_file_path} to "
+            f"{target.deployment_target_address}:{remote_zip_path}"
+        )
+
+        sftp_client.put(str(local_zip_file_path), remote_zip_path)
+        local_unziper_file_path = os.path.join(
+            target.local_deployment_dir_path, "unzip_script.sh"
+        )
+        with open(local_unziper_file_path, "w", encoding="utf-8") as file_handler:
+            file_handler.write(
+                self.generate_unzip_script_file_contents(
+                    remote_zip_path, target.remote_deployment_dir_path
+                )
+            )
+
+        remote_unzip_file_path = os.path.join(
+            target.remote_deployment_dir_path, "unzip_script.sh"
+        )
+        sftp_client.put(local_unziper_file_path, remote_unzip_file_path)
+        os.remove(local_unziper_file_path)
+        command = f"/bin/bash {remote_unzip_file_path}"
+
+        try:
+            self.execute_remote_shell(stdin, stdout, command,
+                                                                 target.deployment_target_address)
+            logger.info(f"Successfully unzipped remote infrastructure {target.deployment_target_address}:{remote_zip_path}")
+        except RemoteDeployer.DeployerError as error_instance:
+            if "apt does not have a stable CLI interface" not in repr(error_instance):
+                raise
+
+        return True
+
+    @staticmethod
+    def zip_target_remote_deployer_infrastructure(target: DeploymentTarget) -> Path:
+        """
+        Zip the local dir contents
+
+        :param target:
+        :return:
+        """
+
+        path = Path(target.local_deployment_dir_path)
+        if not path.exists():
+            raise ValueError(f"Trying to ZIP none existing dir: {target.local_deployment_dir_path}")
+
+        if len(list(path.iterdir())) == 0:
+            raise ValueError(f"Trying to ZIP empty dir: {target.local_deployment_dir_path}")
 
         zip_file_name = (
-            os.path.basename(deployment_target.local_deployment_dir_path) + ".zip"
+                os.path.basename(target.local_deployment_dir_path) + ".zip"
         )
-        local_zip_file_path = os.path.join(
-            deployment_target.local_deployment_dir_path, "..", zip_file_name
-        )
+
+        local_zip_file_path = Path(target.local_deployment_dir_path).parent / zip_file_name
+
         ZipUtils.make_archive(
-            local_zip_file_path, deployment_target.local_deployment_dir_path
+            str(local_zip_file_path), target.local_deployment_dir_path
         )
 
         # Verify ZIP file was created
-        for _ in range(10):
-            if os.path.exists(local_zip_file_path):
-                time.sleep(5)
+        for _ in range(100):
+            if local_zip_file_path.exists():
                 break
-            logger.info(f"Waiting for '{local_zip_file_path}'")
-            time.sleep(5)
+            logger.info(f"Waiting for zip to be ready '{local_zip_file_path}'")
+            time.sleep(0.1)
         else:
             raise RemoteDeployer.DeployerError(f"Was not able to create '{local_zip_file_path}'")
 
-        with self.get_deployment_target_client_context(deployment_target) as client:
-            try:
-                command = f"sudo rm -rf {deployment_target.remote_deployment_dir_path}"
-                channel = client.invoke_shell()
+        return local_zip_file_path
 
-                stdin = channel.makefile('wb')
-                stdout = channel.makefile('r')
-                self.execute_remote_shell(stdin, stdout, command, deployment_target.deployment_target_address)
+    def provision_target_remote_deployer_executor(self, target: DeploymentTarget) -> bool:
+        """
+        Provision executor that will be used to execute steps.
 
-                transport = client.get_transport()
-                sftp_client = HoreySFTPClient.from_transport(transport)
-                logger.info(
-                    f"sftp: mkdir {deployment_target.remote_deployment_dir_path}"
-                )
-                sftp_client.mkdir(
-                    deployment_target.remote_deployment_dir_path, ignore_existing=True
-                )
+        :param target: Deployment target
+        :return:
+        """
 
-                remote_zip_path = os.path.join(
-                    deployment_target.remote_deployment_dir_path, zip_file_name
-                )
+        ssh_client = self.get_deployment_target_ssh_client(target)
+        channel = ssh_client.invoke_shell()
 
-                logger.info(
-                    f"sftp: copying zip file from local {local_zip_file_path} to "
-                    f"{deployment_target.deployment_target_address}:{remote_zip_path}"
-                )
+        remote_deployment_dir_path = Path(target.remote_deployment_dir_path)
+        remote_executor_path = str( remote_deployment_dir_path / "remote_step_executor.sh")
 
-                sftp_client.put(local_zip_file_path, remote_zip_path)
-                local_unziper_file_path = os.path.join(
-                    deployment_target.local_deployment_dir_path, "unzip_script.sh"
-                )
-                with open(local_unziper_file_path, "w", encoding="utf-8") as file_handler:
-                    file_handler.write(
-                        self.generate_unzip_script_file_contents(
-                            remote_zip_path, deployment_target
-                        )
-                    )
+        logger.info(
+            f"sftp: Uploading '{remote_deployment_dir_path / 'remote_step_executor.sh'}'"
+        )
 
-                remote_unzip_file_path = os.path.join(
-                    deployment_target.remote_deployment_dir_path, "unzip_script.sh"
-                )
-                sftp_client.put(local_unziper_file_path, remote_unzip_file_path)
-                os.remove(local_unziper_file_path)
-                command = f"/bin/bash {remote_unzip_file_path}"
+        sftp_client = self.get_deployment_target_sftp_client(target)
+        sftp_client.put(str(Path(__file__).parent / "data" / "remote_step_executor.sh"),
+                remote_executor_path
+        )
 
-                try:
-                    _, shout, _, exit_status = self.execute_remote_shell(stdin, stdout, command, deployment_target.deployment_target_address)
-                    logger.info(f"{deployment_target.deployment_target_address} Unzip result: shell_output: {str(shout)}, exit_status: {exit_status}")
-                except RemoteDeployer.DeployerError as error_instance:
-                    if "apt does not have a stable CLI interface" not in repr(error_instance):
-                        raise
+        command = f"sudo chmod +x {remote_executor_path}"
+        stdin = channel.makefile('wb')
+        stdout = channel.makefile('r')
 
-                sftp_client.put(
-                    os.path.join(
-                        os.path.dirname(os.path.abspath(__file__)),
-                        "data",
-                        "remote_step_executor.sh",
-                    ),
-                    os.path.join(
-                        deployment_target.remote_deployment_dir_path,
-                        "remote_step_executor.sh",
-                    ),
-                )
+        self.execute_remote_shell(stdin, stdout, command, target.deployment_target_address)
 
-                logger.info(
-                    f"sftp: Uploading '{os.path.join(deployment_target.remote_deployment_dir_path, 'remote_step_executor.sh')}'"
-                )
-                sftp_client.put(
-                    os.path.join(
-                        os.path.dirname(os.path.abspath(__file__)),
-                        "data",
-                        "remote_step_executor.sh",
-                    ),
-                    os.path.join(
-                        deployment_target.remote_deployment_dir_path,
-                        "remote_step_executor.sh",
-                    ),
-                )
-
-                command = f"sudo chmod +x {os.path.join(deployment_target.remote_deployment_dir_path, 'remote_step_executor.sh')}"
-                self.execute_remote_shell(stdin, stdout, command, deployment_target.deployment_target_address)
-
-                if deployment_target.linux_distro == "redhat":
-                    command = "sudo yum install screen -y"
-                    self.execute_remote_shell(stdin, stdout, command, deployment_target.deployment_target_address)
-                deployment_target.remote_deployer_infrastructure_provisioning_succeeded = (
-                    True
-                )
-                logger.info(
-                    f"Finished provisioning deployer infrastructure at target {deployment_target.deployment_target_address}"
-                )
-            except Exception as error_instance:
-                traceback_str = "".join(
-                    traceback.format_tb(error_instance.__traceback__)
-                )
-                logger.error(
-                    f"Failed provisioning deployer infrastructure at target {deployment_target.deployment_target_address}: {repr(error_instance)}: tb {traceback_str}"
-                )
-
-                deployment_target.remote_deployer_infrastructure_provisioning_succeeded = (
-                    False
-                )
-                raise RemoteDeployer.DeployerError from error_instance
+        if target.linux_distro == "redhat":
+            command = "sudo yum install screen -y"
+            self.execute_remote_shell(stdin, stdout, command, target.deployment_target_address)
+        target.remote_deployer_infrastructure_provisioning_succeeded = True
+        logger.info(
+            f"Finished provisioning deployer infrastructure at target {target.deployment_target_address}"
+        )
+        return True
 
     @staticmethod
     def execute_remote_shell(stdin, stdout, cmd, remote_address, timeout=60):
         """
+        Execute command using remote shell.
 
         :param remote_address:
         :param timeout: in minutes
@@ -517,7 +531,7 @@ class RemoteDeployer:
             step.status_code = step.StatusCode.ERROR
             step.output = repr(exception_instance)
 
-    def deploy_target_step_thread_helper(self, deployment_target, step:DeploymentStep):
+    def deploy_target_step_thread_helper(self, deployment_target, step: DeploymentStep):
         """
         Unprotected code, should be enclosed in try except.
 
@@ -599,7 +613,7 @@ class RemoteDeployer:
                 ) from error_instance
 
     def perform_recursive_replacements(
-        self, replacements_base_dir_path, string_replacements
+            self, replacements_base_dir_path, string_replacements
     ):
         """
         Old style replacement.
@@ -625,167 +639,48 @@ class RemoteDeployer:
             root, filename, string_replacements
         )
 
-    def begin_provisioning_deployment_code(
-        self, deployment_targets: List[DeploymentTarget]
-    ):
-        """
-        Old code. Should be deprecated
-
-        for deployment_target in deployment_targets:
-            with self.get_deployment_target_client_context(deployment_target) as client:
-                try:
-                    transport = client.get_transport()
-                    sftp_client = HoreySFTPClient.from_transport(transport)
-                    self.execute_step(client, deployment_target.application_infrastructure_provision_step)
-                    self.wait_for_step_to_finish(deployment_target.application_infrastructure_provision_step,
-                                                 deployment_target.local_deployment_data_dir_path, sftp_client)
-                except Exception as error_instance:
-                    raise RemoteDeployer.DeployerError(repr(error_instance)) from error_instance
-
-            deployment_target.deployment_code_provisioning_ended = True
-
-        :param deployment_targets:
-        :return:
-        """
-
-        raise DeprecationWarning("old code")
-
-    def wait_for_step_to_finish(
-        self, step, local_deployment_data_dir_path, sftp_client, deployment_target_address
-    ):
-        """
-        Wait for status file creation.
-
-        :param step:
-        :param local_deployment_data_dir_path:
-        :param sftp_client:
-        :return:
-        """
-
-        retry_attempts = 10
-        sleep_time = 60
-        for retry_counter in range(retry_attempts):
-            try:
-                sftp_client.get(
-                    step.configuration.finish_status_file_path,
-                    os.path.join(
-                        local_deployment_data_dir_path,
-                        step.configuration.finish_status_file_name,
-                    ),
-                )
-
-                sftp_client.get(
-                    step.configuration.output_file_path,
-                    os.path.join(
-                        local_deployment_data_dir_path,
-                        step.configuration.output_file_name,
-                    ),
-                )
-                break
-            except IOError as error_received:
-                if "No such file" not in repr(error_received):
-                    raise
-                logger.info(
-                    f"[LOCAL->{deployment_target_address}] Retrying to fetch remote script's status in {sleep_time} seconds ({retry_counter}/{retry_attempts})"
-                )
-            time.sleep(sleep_time)
-        else:
-            raise TimeoutError(f"[LOCAL->{deployment_target_address}] Failed to fetch remote script's status")
-
-        step.update_finish_status(local_deployment_data_dir_path)
-        step.update_output(local_deployment_data_dir_path)
-
-        if step.status_code != step.StatusCode.SUCCESS:
-            last_lines = "\n".join(step.output.split("\n")[-50:])
-            raise RuntimeError(
-                f"[REMOTE<-{deployment_target_address}] Step finished with status: {step.status}, error: \n{last_lines}"
-            )
-
-        logger.info(
-            f"[REMOTE<-{deployment_target_address}] Step finished successfully output in: '{step.configuration.output_file_name}'"
-        )
-
-    @staticmethod
-    def wait_for_deployment_code_provisioning_to_end(
-        blocks_to_deploy: List[DeploymentTarget],
-    ):
-        """
-        The build_dir and remote executor script provisioning.
-
-        :param blocks_to_deploy:
-        :return:
-        """
-
-        for block_to_deploy in blocks_to_deploy:
-            for _ in range(60):
-                if block_to_deploy.deployment_code_provisioning_ended:
-                    break
-                time.sleep(1)
-            else:
-                raise RuntimeError(
-                    "Deployment failed at wait_for_deployment_code_provisioning_to_end"
-                )
-        logger.info("Deployment provisioning finished successfully")
-
-    def begin_deployment(self, deployment_targets: List[DeploymentTarget]):
-        """
-        Old code
-        for deployment_target in deployment_targets:
-            with self.get_deployment_target_client_context(deployment_target) as client:
-                try:
-                    transport = client.get_transport()
-                    sftp_client = HoreySFTPClient.from_transport(transport)
-                    self.execute_step(client, deployment_target.application_deploy_step)
-                    self.wait_for_step_to_finish(deployment_target.application_deploy_step,
-                                             deployment_target.local_deployment_data_dir_path, sftp_client)
-                except Exception as error_instance:
-                    raise RemoteDeployer.DeployerError(repr(error_instance)) from error_instance
-
-            deployment_target.deployment_code_provisioning_ended = True
-        :param deployment_targets:
-        :return:
-        """
-        raise DeprecationWarning()
-
     @staticmethod
     @contextmanager
-    def get_deployment_target_client_context(block_to_deploy: DeploymentTarget):
+    def get_deployment_target_client_context(target: DeploymentTarget):
         """
         SSH client context. With or without bastion tunnel
 
-        :param block_to_deploy:
+        :param target:
         :return:
         """
 
-        logger.info(f"Loading target SSH Key of type '{block_to_deploy.deployment_target_ssh_key_type}' from '{block_to_deploy.deployment_target_ssh_key_path}'")
-        deployment_target_key = RemoteDeployer.load_ssh_key_from_file(block_to_deploy.deployment_target_ssh_key_path, block_to_deploy.deployment_target_ssh_key_type)
+        logger.info(
+            f"Loading target SSH Key of type '{target.deployment_target_ssh_key_type}' from '{target.deployment_target_ssh_key_path}'")
+        deployment_target_key = RemoteDeployer.load_ssh_key_from_file(target.deployment_target_ssh_key_path,
+                                                                      target.deployment_target_ssh_key_type)
 
-        if block_to_deploy.bastion_address is None:
+        if target.bastion_address is None:
             with paramiko.SSHClient() as client:
                 client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
                 logger.info(
-                    f"Connecting directly to {block_to_deploy.deployment_target_address}, "
-                    f"using key at {block_to_deploy.deployment_target_ssh_key_path}"
+                    f"Connecting directly to {target.deployment_target_address}, "
+                    f"using key at {target.deployment_target_ssh_key_path}"
                 )
                 client.connect(
-                    block_to_deploy.deployment_target_address,
+                    target.deployment_target_address,
                     port=22,
-                    username=block_to_deploy.deployment_target_user_name,
+                    username=target.deployment_target_user_name,
                     pkey=deployment_target_key,
                     compress=True,
                     banner_timeout=60,
                 )
                 yield client
             return
-        logger.info(f"Loading bastion SSH Key of type '{block_to_deploy.bastion_ssh_key_type}' from '{block_to_deploy.bastion_ssh_key_path}'")
-        bastion_key = RemoteDeployer.load_ssh_key_from_file(block_to_deploy.bastion_ssh_key_path, block_to_deploy.bastion_ssh_key_type)
+        logger.info(
+            f"Loading bastion SSH Key of type '{target.bastion_ssh_key_type}' from '{target.bastion_ssh_key_path}'")
+        bastion_key = RemoteDeployer.load_ssh_key_from_file(target.bastion_ssh_key_path, target.bastion_ssh_key_type)
         with RemoteDeployer.get_client_context_with_bastion(
-            block_to_deploy.bastion_address,
-            block_to_deploy.bastion_user_name,
-            bastion_key,
-            block_to_deploy.deployment_target_address,
-            block_to_deploy.deployment_target_user_name,
-            deployment_target_key,
+                target.bastion_address,
+                target.bastion_user_name,
+                bastion_key,
+                target.deployment_target_address,
+                target.deployment_target_user_name,
+                deployment_target_key,
         ) as client:
             yield client
 
@@ -810,14 +705,14 @@ class RemoteDeployer:
 
     @staticmethod
     @contextmanager
-    # pylint: disable= too-many-arguments
+    # pylint: disable= too-many-arguments, too-many-positional-arguments
     def get_client_context_with_bastion(
-        bastion_address,
-        bastion_user_name,
-        bastion_key,
-        deployment_target_address,
-        deployment_target_user_name,
-        deployment_target_key,
+            bastion_address,
+            bastion_user_name,
+            bastion_key,
+            deployment_target_address,
+            deployment_target_user_name,
+            deployment_target_key,
     ):
         """
         SSH client context via bastion tunnel
@@ -834,10 +729,10 @@ class RemoteDeployer:
         for i in range(10):
             try:
                 with open_tunnel(
-                    ssh_address_or_host=(bastion_address, 22),
-                    remote_bind_address=(deployment_target_address, 22),
-                    ssh_username=bastion_user_name,
-                    ssh_pkey=bastion_key,
+                        ssh_address_or_host=(bastion_address, 22),
+                        remote_bind_address=(deployment_target_address, 22),
+                        ssh_username=bastion_user_name,
+                        ssh_pkey=bastion_key,
                 ) as tunnel:
                     logger.info(
                         f"Opened SSH tunnel to {deployment_target_user_name}@{deployment_target_address} via {bastion_user_name}@{bastion_address}"
@@ -872,41 +767,6 @@ class RemoteDeployer:
             f"Timeout: Failed to open ssh tunnel to {deployment_target_user_name}@{deployment_target_address} via {bastion_user_name}@{bastion_address}"
         )
 
-    @staticmethod
-    def get_deployment_target_client(target: DeploymentTarget):
-        """
-        old code.
-
-        with open(target.bastion_ssh_key_path, 'r') as bastion_key_file_handler:
-            bastion_key = paramiko.RSAKey.from_private_key(StringIO(bastion_key_file_handler.read()))
-        with open(target.deployment_target_ssh_key_path, 'r') as bastion_key_file_handler:
-            deployment_target_key = paramiko.RSAKey.from_private_key(StringIO(bastion_key_file_handler.read()))
-
-        with open_tunnel(
-                ssh_address_or_host=(target.bastion_address, 22),
-                remote_bind_address=(target.deployment_target_address, 22),
-                ssh_username=target.bastion_user_name,
-                ssh_pkey=bastion_key) as tunnel:
-            logger.info(f"Opened SSH tunnel to {target.deployment_target_address} via {target.bastion_address} ")
-
-            with paramiko.SSHClient() as client:
-                client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                client.connect(
-                    'localhost',
-                    port=tunnel.local_bind_port,
-                    username=target.deployment_target_user_name,
-                    pkey=deployment_target_key,
-                    compress=True,
-                    banner_timeout=60)
-
-                yield client
-
-        :param target:
-        :return:
-        """
-
-        raise DeprecationWarning()
-
     def execute_step(self, client: paramiko.SSHClient, step, deployment_target_address):
         """
         Trigger one step execution.
@@ -932,30 +792,13 @@ class RemoteDeployer:
         stdout = stdout_transport.read()
         logger.info(f"[REMOTE<-{deployment_target_address}] {stdout}")
 
-    def wait_for_deployment_to_end(self, blocks_to_deploy):
-        """
-        old code
-        lst_errors = []
-        for block in blocks_to_deploy:
-            if block.application_deploy_step.status_code != DeploymentStep.StatusCode.SUCCESS:
-                lst_errors.append(block.application_infrastructure_provision_step.configuration.output_file_path)
-
-        if lst_errors:
-            raise RuntimeError(str(lst_errors))
-        logger.info("Deployment finished successfully output in")
-
-        :param blocks_to_deploy:
-        :return:
-        """
-        raise DeprecationWarning()
-
     @staticmethod
     def wait_to_finish(
-        targets,
-        check_finished_callback,
-        check_success_callback,
-        sleep_time=10,
-        total_time=2400,
+            targets,
+            check_finished_callback,
+            check_success_callback,
+            sleep_time=10,
+            total_time=2400,
     ):
         """
         Check for an object to finish- callbacks based.
@@ -968,7 +811,9 @@ class RemoteDeployer:
         :return:
         """
 
-        total_time = max(total_time, max(step.configuration.sleep_time*step.configuration.retry_attempts for target in targets for step in target.steps))
+        total_time = max(total_time, max(
+            step.configuration.sleep_time * step.configuration.retry_attempts for target in targets for step in
+            target.steps))
         logger.info(f"New time to finish calculated from steps and default: {total_time} seconds")
 
         start_time = datetime.datetime.now()
@@ -1021,7 +866,7 @@ class RemoteDeployer:
 
     @staticmethod
     def wait_to_finish_step(
-        target: DeploymentTarget, step: DeploymentStep, sleep_time=10, total_time=2400
+            target: DeploymentTarget, step: DeploymentStep, sleep_time=10, total_time=2400
     ):
         """
         Wait for a single step to finish
@@ -1062,30 +907,6 @@ class RemoteDeployer:
 
         logger.info(
             f"[REMOTE<-{target.deployment_target_address}] Finished step: {step.configuration.name}"
-        )
-
-    def deploy_targets_steps(self, targets, step_callback, asynchronous=True, async_wait_interval=10):
-        """
-        Deploy multiple targets' steps returned by a callback.
-
-        :param async_wait_interval: Wait interval between the deployments. In seconds.
-        :param targets:
-        :param step_callback:
-        :param asynchronous:
-        :return:
-        """
-
-        steps = []
-        for target in targets:
-            step = step_callback(target)
-            steps.append(step)
-            self.deploy_target_step(target, step, asynchronous=asynchronous)
-            time.sleep(async_wait_interval)
-        self.wait_to_finish(
-            targets,
-            lambda _target: step_callback(_target).status_code is not None,
-            lambda _target: step_callback(_target).status_code
-            == step.StatusCode.SUCCESS,
         )
 
     def deploy_target(self, target: DeploymentTarget, asynchronous=False):
@@ -1143,9 +964,11 @@ class RemoteDeployer:
         errors = []
         for target in targets:
             if target.bastion_ssh_key_path is not None and not os.path.exists(target.bastion_ssh_key_path):
-                errors.append(f"Target {target.hostname} bastion SSH key file is missing at {target.bastion_ssh_key_path}")
+                errors.append(
+                    f"Target {target.hostname} bastion SSH key file is missing at {target.bastion_ssh_key_path}")
             if not os.path.exists(target.deployment_target_ssh_key_path):
-                errors.append(f"Target {target.hostname} SSH key file is missing at {target.deployment_target_ssh_key_path}")
+                errors.append(
+                    f"Target {target.hostname} SSH key file is missing at {target.deployment_target_ssh_key_path}")
         if errors:
             raise ValueError("\n".join(errors))
 
@@ -1163,3 +986,121 @@ class RemoteDeployer:
         """
         Error occurred while deploying.
         """
+
+    @staticmethod
+    def connect_to_target(target_host: str, target_user: str, target_key_path: str,
+                          proxy_jump_client: paramiko.SSHClient = None) -> paramiko.SSHClient:
+        """
+        Connects to the target host using the bastion client's transport.
+
+        :param proxy_jump_client:
+        :param target_host:
+        :param target_user:
+        :param target_key_path:
+        :return:
+        """
+
+        target_channel = None
+        if proxy_jump_client:
+            # Get the transport from the active bastion connection
+            proxy_jump_transport = proxy_jump_client.get_transport()
+
+            # Open a new channel over the bastion connection to the target host
+            # The channel acts as our 'tunnel'
+            target_channel = proxy_jump_transport.open_channel(
+                "direct-tcpip",
+                (target_host, 22),  # The final destination host and port
+                ("127.0.0.1", 0)  # The local source (can be anything, as it's a proxy)
+            )
+
+        # Create a new SSH client and connect it using the new channel
+        target_client = paramiko.SSHClient()
+        target_client.load_system_host_keys()
+        target_client.set_missing_host_key_policy(paramiko.WarningPolicy())
+        target_client.connect(
+            hostname=target_host,
+            username=target_user,
+            key_filename=target_key_path,
+            sock=target_channel
+        )
+        logger.info(f"Connection to target {target_host} successful.")
+        return target_client
+
+    # pylint: disable = too-many-arguments, too-many-positional-arguments
+    def get_ssh_client(self, target_host: str, target_user: str, target_key_path: str,
+                       proxy_jump_addr: str = None,
+                       proxy_jump_client: paramiko.SSHClient = None
+                       ) -> paramiko.SSHClient:
+        """
+        Connect to bastion if not yet connected.
+
+        :param proxy_jump_client:
+        :param proxy_jump_addr:
+        :param target_host:
+        :param target_user:
+        :param target_key_path:
+        :return:
+        """
+
+        key = f"{proxy_jump_addr}->{target_host}" if proxy_jump_addr is not None else target_host
+        with self.clients_lock:
+            try:
+                client = self.ssh_clients[key]
+                logger.info(f"Reusing existing ssh client for: {key}")
+            except KeyError:
+                client = RemoteDeployer.connect_to_target(target_host,
+                                                          target_user,
+                                                          target_key_path,
+                                                          proxy_jump_client=proxy_jump_client)
+                self.ssh_clients[key] = client
+
+        return client
+
+    def get_deployment_target_ssh_client(self, target: DeploymentTarget
+                                         ) -> paramiko.SSHClient:
+        """
+        Connect to deployment target if not yet connected.
+
+        :param target:
+        :return:
+        """
+
+        if target.bastion_address is None:
+            return self.get_ssh_client(target.deployment_target_address,
+                                       target.deployment_target_user_name,
+                                       target.deployment_target_ssh_key_path)
+
+        proxy_jump_client = self.get_ssh_client(target.bastion_address,
+                                                target.bastion_user_name,
+                                                target.bastion_ssh_key_path)
+
+        return self.get_ssh_client(target.deployment_target_address,
+                                   target.deployment_target_user_name,
+                                   target.deployment_target_ssh_key_path,
+                                   proxy_jump_client=proxy_jump_client,
+                                   proxy_jump_addr=target.bastion_address)
+
+    def get_deployment_target_sftp_client(self, target: DeploymentTarget
+                                         ) -> HoreySFTPClient:
+        """
+        Get SFTP Client towards deployment target
+
+        :param target:
+        :return:
+        """
+
+        client = self.get_deployment_target_ssh_client(target)
+        keys_values = list(filter(lambda k: k[1] == client, self.ssh_clients.items()))
+        if len(keys_values) != 1:
+            raise RuntimeError(f"Expected single client: {keys_values=}")
+        key = keys_values[0][0]
+
+        with self.clients_lock:
+            try:
+                client = self.sftp_clients[key]
+                logger.info(f"Reusing existing sftp client for: {key}")
+            except KeyError:
+                transport = client.get_transport()
+                client = HoreySFTPClient.from_transport(transport)
+                self.sftp_clients[key] = client
+        return client
