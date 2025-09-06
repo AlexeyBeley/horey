@@ -355,7 +355,7 @@ def test_deploy_target_step_direct(target):
     assert target.remote_deployer_infrastructure_provisioning_finished
 
 
-@pytest.mark.todo
+@pytest.mark.unit
 def test_deploy_target_step_with_proxy(target):
     target.bastion_address = mock_values["target_bastion_address"]
     target.bastion_ssh_key_path = mock_values["target_bastion_ssh_key"]
@@ -368,24 +368,26 @@ def test_deploy_target_step_with_proxy(target):
     config.script_name = "test_script_1.sh"
     config.sleep_time = 5
     step = DeploymentStep(config)
+    deployer.provision_target_remote_deployer_infrastructure_raw(target)
     deployer.deploy_target_step(target, step)
     assert target.remote_deployer_infrastructure_provisioning_finished
 
 
-@pytest.mark.todo
+@pytest.mark.done
 def test_wait_to_finish_step_direct(target):
     target.deployment_target_address = mock_values["target_bastion_address"]
     target.deployment_target_ssh_key_path = mock_values["target_bastion_ssh_key"]
     target.deployment_target_user_name = mock_values["target_username"]
     config = DeploymentStepConfigurationPolicy("test-step")
-    config.deployment_dir_path = Path(__file__).parent / "deployment_scripts" / "test_script_1.sh"
     config.script_name = "test_script_1.sh"
     step = DeploymentStep(config)
+    deployer.provision_target_remote_deployer_infrastructure_raw(target)
+    deployer.deploy_target_step(target, step, asynchronous=True)
     deployer.wait_to_finish_step(target, step)
-    assert target.wait_to_finish_step
+    assert step.status_code == step.StatusCode.SUCCESS
 
 
-@pytest.mark.todo
+@pytest.mark.done
 def test_wait_to_finish_step_with_proxy(target):
     target.bastion_address = mock_values["target_bastion_address"]
     target.bastion_ssh_key_path = mock_values["target_bastion_ssh_key"]
@@ -398,5 +400,7 @@ def test_wait_to_finish_step_with_proxy(target):
     config.script_name = "test_script_1.sh"
     config.sleep_time = 5
     step = DeploymentStep(config)
+    deployer.provision_target_remote_deployer_infrastructure_raw(target)
+    deployer.deploy_target_step(target, step, asynchronous=True)
     deployer.wait_to_finish_step(target, step)
-    assert target.wait_to_finish_step
+    assert step.status_code == step.StatusCode.SUCCESS
