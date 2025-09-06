@@ -11,7 +11,11 @@ import pytest
 
 from horey.deployer.remote_deployer import RemoteDeployer
 from horey.deployer.deployment_target import DeploymentTarget
+from horey.deployer.deployment_step import DeploymentStep
 from horey.common_utils.common_utils import CommonUtils
+from horey.deployer.deployment_step_configuration_policy import (
+    DeploymentStepConfigurationPolicy,
+)
 
 mock_values_file_path = Path(__file__).parent.parent.parent.parent / "ignore" / "horey" / "test_deployer" / "mock_values.py"
 
@@ -29,8 +33,9 @@ def target_fixture():
     path = Path(target.local_deployment_dir_path)
     if path.exists():
         shutil.rmtree(path)
-    os.makedirs(path)
-    (path / "test.file").touch()
+
+    shutil.copytree(Path(__file__).parent / "deployment_scripts", path)
+
     yield target
     shutil.rmtree(path)
 
@@ -333,3 +338,65 @@ def test_zip_target_remote_deployer_infrastructure(target):
 
     ret = deployer.zip_target_remote_deployer_infrastructure(target)
     assert ret.exists()
+
+
+@pytest.mark.unit
+def test_deploy_target_step_direct(target):
+    target.deployment_target_address = mock_values["target_bastion_address"]
+    target.deployment_target_ssh_key_path = mock_values["target_bastion_ssh_key"]
+    target.deployment_target_user_name = mock_values["target_username"]
+
+    config = DeploymentStepConfigurationPolicy("test-step")
+    config.script_name = "test_script_1.sh"
+    config.sleep_time = 5
+    step = DeploymentStep(config)
+    deployer.provision_target_remote_deployer_infrastructure_raw(target)
+    deployer.deploy_target_step(target, step)
+    assert target.remote_deployer_infrastructure_provisioning_finished
+
+
+@pytest.mark.todo
+def test_deploy_target_step_with_proxy(target):
+    target.bastion_address = mock_values["target_bastion_address"]
+    target.bastion_ssh_key_path = mock_values["target_bastion_ssh_key"]
+    target.bastion_user_name = mock_values["target_username"]
+
+    target.deployment_target_address = mock_values["target_address_with_rsa_key"]
+    target.deployment_target_user_name = mock_values["target_username"]
+    target.deployment_target_ssh_key_path = mock_values["target_ssh_key_file_rsa_key"]
+    config = DeploymentStepConfigurationPolicy("test-step")
+    config.script_name = "test_script_1.sh"
+    config.sleep_time = 5
+    step = DeploymentStep(config)
+    deployer.deploy_target_step(target, step)
+    assert target.remote_deployer_infrastructure_provisioning_finished
+
+
+@pytest.mark.todo
+def test_wait_to_finish_step_direct(target):
+    target.deployment_target_address = mock_values["target_bastion_address"]
+    target.deployment_target_ssh_key_path = mock_values["target_bastion_ssh_key"]
+    target.deployment_target_user_name = mock_values["target_username"]
+    config = DeploymentStepConfigurationPolicy("test-step")
+    config.deployment_dir_path = Path(__file__).parent / "deployment_scripts" / "test_script_1.sh"
+    config.script_name = "test_script_1.sh"
+    step = DeploymentStep(config)
+    deployer.wait_to_finish_step(target, step)
+    assert target.wait_to_finish_step
+
+
+@pytest.mark.todo
+def test_wait_to_finish_step_with_proxy(target):
+    target.bastion_address = mock_values["target_bastion_address"]
+    target.bastion_ssh_key_path = mock_values["target_bastion_ssh_key"]
+    target.bastion_user_name = mock_values["target_username"]
+
+    target.deployment_target_address = mock_values["target_address_with_rsa_key"]
+    target.deployment_target_user_name = mock_values["target_username"]
+    target.deployment_target_ssh_key_path = mock_values["target_ssh_key_file_rsa_key"]
+    config = DeploymentStepConfigurationPolicy("test-step")
+    config.script_name = "test_script_1.sh"
+    config.sleep_time = 5
+    step = DeploymentStep(config)
+    deployer.wait_to_finish_step(target, step)
+    assert target.wait_to_finish_step

@@ -221,9 +221,9 @@ class RemoteDeployer:
     # pylint: disable= too-many-locals
     def upload_target_remote_deployer_infrastructure(self, target: DeploymentTarget) -> bool:
         """
-        Zip
-        Upload
-        Unzip
+        Zip deployment dir
+        Upload to remote destination
+        Unzip remotely
 
         """
 
@@ -274,8 +274,9 @@ class RemoteDeployer:
 
         try:
             self.execute_remote_shell(stdin, stdout, command,
-                                                                 target.deployment_target_address)
-            logger.info(f"Successfully unzipped remote infrastructure {target.deployment_target_address}:{remote_zip_path}")
+                                      target.deployment_target_address)
+            logger.info(
+                f"Successfully unzipped remote infrastructure {target.deployment_target_address}:{remote_zip_path}")
         except RemoteDeployer.DeployerError as error_instance:
             if "apt does not have a stable CLI interface" not in repr(error_instance):
                 raise
@@ -331,7 +332,7 @@ class RemoteDeployer:
         channel = ssh_client.invoke_shell()
 
         remote_deployment_dir_path = Path(target.remote_deployment_dir_path)
-        remote_executor_path = str( remote_deployment_dir_path / "remote_step_executor.sh")
+        remote_executor_path = str(remote_deployment_dir_path / "remote_step_executor.sh")
 
         logger.info(
             f"sftp: Uploading '{remote_deployment_dir_path / 'remote_step_executor.sh'}'"
@@ -339,8 +340,8 @@ class RemoteDeployer:
 
         sftp_client = self.get_deployment_target_sftp_client(target)
         sftp_client.put(str(Path(__file__).parent / "data" / "remote_step_executor.sh"),
-                remote_executor_path
-        )
+                        remote_executor_path
+                        )
 
         command = f"sudo chmod +x {remote_executor_path}"
         stdin = channel.makefile('wb')
@@ -531,7 +532,7 @@ class RemoteDeployer:
             step.status_code = step.StatusCode.ERROR
             step.output = repr(exception_instance)
 
-    def deploy_target_step_thread_helper(self, deployment_target, step: DeploymentStep):
+    def deploy_target_step_thread_helper(self, deployment_target: DeploymentTarget, step: DeploymentStep):
         """
         Unprotected code, should be enclosed in try except.
 
@@ -539,78 +540,75 @@ class RemoteDeployer:
         :param step:
         :return:
         """
+        ssh_client = self.get_deployment_target_ssh_client(deployment_target)
+        try:
+            self.execute_step(ssh_client, step, deployment_target.deployment_target_address)
+            sftp_client = self.get_deployment_target_sftp_client(deployment_target)
 
-        with self.get_deployment_target_client_context(deployment_target) as client:
-            try:
-                self.execute_step(client, step, deployment_target.deployment_target_address)
-                transport = client.get_transport()
-                sftp_client = HoreySFTPClient.from_transport(transport)
-
-                retry_attempts = step.configuration.retry_attempts
-                sleep_time = step.configuration.sleep_time
-                for retry_counter in range(retry_attempts):
-                    try:
-                        sftp_client.get(
-                            step.configuration.finish_status_file_path,
-                            os.path.join(
-                                deployment_target.local_deployment_data_dir_path,
-                                step.configuration.finish_status_file_name,
-                            ),
-                        )
-
-                        sftp_client.get(
-                            step.configuration.output_file_path,
-                            os.path.join(
-                                deployment_target.local_deployment_data_dir_path,
-                                step.configuration.output_file_name,
-                            ),
-                        )
-                        break
-                    except IOError as error_received:
-                        repr_error_received = repr(error_received)
-                        if "No such file" not in repr_error_received:
-                            raise
-                        logger.info(
-                            f"[LOCAL->{deployment_target.deployment_target_address}] Retrying to fetch remote script's status in {sleep_time} seconds ({retry_counter}/{retry_attempts})"
-                        )
-                    except Exception as error_received:
-                        logger.error(
-                            f"[LOCAL->{deployment_target.deployment_target_address}] Unhandled exception in helper thread {repr(error_received)})"
-                        )
-
-                    time.sleep(sleep_time)
-                else:
-                    step.status_code = step.StatusCode.ERROR
-                    deployment_target.status_code = deployment_target.StatusCode.FAILURE
-                    deployment_target.status = f"Failed to fetch step's status and output files: {step.configuration.name}"
-                    raise TimeoutError(
-                        f"[LOCAL->{deployment_target.deployment_target_address}] Failed to fetch remote script's status target: {deployment_target.deployment_target_address}"
+            for retry_counter in range(step.configuration.retry_attempts):
+                try:
+                    sftp_client.get(
+                        step.configuration.finish_status_file_path,
+                        os.path.join(
+                            deployment_target.local_deployment_data_dir_path,
+                            step.configuration.finish_status_file_name,
+                        ),
                     )
 
-                step.update_finish_status(
-                    deployment_target.local_deployment_data_dir_path
-                )
-                step.update_output(deployment_target.local_deployment_data_dir_path)
-
-                if step.status_code != step.StatusCode.SUCCESS:
-                    last_lines = "\n".join(step.output.split("\n")[-50:])
-                    deployment_target.status_code = deployment_target.StatusCode.FAILURE
-                    deployment_target.status = f"Step returned status different from success: {step.configuration.name}"
-                    raise RuntimeError(
-                        f"[REMOTE<-{deployment_target.deployment_target_address}] Step finished with status: {step.status}, error: \n{last_lines}"
+                    sftp_client.get(
+                        step.configuration.output_file_path,
+                        os.path.join(
+                            deployment_target.local_deployment_data_dir_path,
+                            step.configuration.output_file_name,
+                        ),
+                    )
+                    break
+                except IOError as error_received:
+                    repr_error_received = repr(error_received)
+                    if "No such file" not in repr_error_received:
+                        raise
+                    logger.info(
+                        f"[LOCAL->{deployment_target.deployment_target_address}] Retrying to fetch remote script's status"
+                        f" in {step.configuration.sleep_time} seconds ({retry_counter}/{step.configuration.retry_attempts})"
+                    )
+                except Exception as error_received:
+                    logger.error(
+                        f"[LOCAL->{deployment_target.deployment_target_address}] Unhandled exception in helper thread {repr(error_received)})"
                     )
 
-                logger.info(
-                    f"[REMOTE<-{deployment_target.deployment_target_address}] Step finished successfully output in: '{step.configuration.output_file_name}'"
-                )
-            except Exception as error_instance:
+                time.sleep(step.configuration.sleep_time)
+            else:
                 step.status_code = step.StatusCode.ERROR
                 deployment_target.status_code = deployment_target.StatusCode.FAILURE
-                deployment_target.status = f"Unknown exception happened when deploying the step {step.configuration.name}. " \
-                                           f"Error: {repr(error_instance)}"
-                raise RemoteDeployer.DeployerError(
-                    repr(error_instance)
-                ) from error_instance
+                deployment_target.status = f"Failed to fetch step's status and output files: {step.configuration.name}"
+                raise TimeoutError(
+                    f"[LOCAL->{deployment_target.deployment_target_address}] Failed to fetch remote script's status target: {deployment_target.deployment_target_address}"
+                )
+
+            step.update_finish_status(
+                deployment_target.local_deployment_data_dir_path
+            )
+            step.update_output(deployment_target.local_deployment_data_dir_path)
+
+            if step.status_code != step.StatusCode.SUCCESS:
+                last_lines = "\n".join(step.output.split("\n")[-50:])
+                deployment_target.status_code = deployment_target.StatusCode.FAILURE
+                deployment_target.status = f"Step returned status different from success: {step.configuration.name}"
+                raise RuntimeError(
+                    f"[REMOTE<-{deployment_target.deployment_target_address}] Step finished with status: {step.status}, error: \n{last_lines}"
+                )
+
+            logger.info(
+                f"[REMOTE<-{deployment_target.deployment_target_address}] Step finished successfully output in: '{step.configuration.output_file_name}'"
+            )
+        except Exception as error_instance:
+            step.status_code = step.StatusCode.ERROR
+            deployment_target.status_code = deployment_target.StatusCode.FAILURE
+            deployment_target.status = f"Unknown exception happened when deploying the step {step.configuration.name}. " \
+                                       f"Error: {repr(error_instance)}"
+            raise RemoteDeployer.DeployerError(
+                repr(error_instance)
+            ) from error_instance
 
     def perform_recursive_replacements(
             self, replacements_base_dir_path, string_replacements
@@ -1081,7 +1079,7 @@ class RemoteDeployer:
                                    proxy_jump_addr=target.bastion_address)
 
     def get_deployment_target_sftp_client(self, target: DeploymentTarget
-                                         ) -> HoreySFTPClient:
+                                          ) -> HoreySFTPClient:
         """
         Get SFTP Client towards deployment target
 
