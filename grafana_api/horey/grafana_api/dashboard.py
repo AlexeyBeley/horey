@@ -1,6 +1,8 @@
 """
 Grafana dashboard projection object
 """
+import copy
+
 from horey.common_utils.common_utils import CommonUtils
 from horey.grafana_api.grafana_object import GrafanaObject
 from horey.grafana_api.panel import Panel
@@ -13,9 +15,9 @@ class Dashboard(GrafanaObject):
 
     def __init__(self, dict_src):
         super().__init__()
-        self.metadata = None
-        self.spec = None
-        self.status = None
+        self.metadata = {}
+        self.spec = {}
+        self.status = {}
         self.api_version = None
         self.kind = None
         self.update_from_raw_response(dict_src)
@@ -39,50 +41,18 @@ class Dashboard(GrafanaObject):
         panels = self.generate_panels_with_positions(self.spec["panels"])
 
         ret = {
-            "metadata": self.metadata,
-            "spec": self.spec,
+            "metadata": copy.deepcopy(self.metadata),
+            "spec": copy.deepcopy(self.spec),
             "panels": [panel.generate_create_request() for panel in panels]
         }
 
+        slug = self.spec["title"].replace(" ", "-")
         if not ret["metadata"].get("name"):
-            ret["metadata"]["name"] = "metadata.generateName"
+            ret["metadata"]["name"] = slug
 
         if not ret["metadata"].get("uid"):
-            try:
-                del ret["metadata"]["uid"]
-            except KeyError:
-                pass
-
+            ret["metadata"]["uid"] = slug
         return ret
-
-    def init_panels(self, key, list_src):
-        """
-        From dict
-
-        :param key:
-        :param dict_src:
-        :return:
-        """
-
-        for dict_src in list_src:
-            self.add_panel(Panel(dict_src))
-
-    def add_panel(self, panel: Panel):
-        """
-        Add another panel to dashboard.
-
-        :param panel:
-        :return:
-        """
-
-        try:
-            if panel.id is not None:
-                raise NotImplementedError("Check panel id")
-            panel.id = self.panels[-1].id+1
-        except IndexError:
-            panel.id = 1
-
-        self.panels.append(panel)
 
     def generate_panels_with_positions(self, lst_panels_dicts):
         """

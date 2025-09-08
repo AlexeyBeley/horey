@@ -1,7 +1,7 @@
 """
-Shamelessly stolen from:
-https://github.com/lukecyca/pyslack
+Grafana api
 """
+
 import json
 
 import requests
@@ -35,20 +35,20 @@ class GrafanaAPI:
             self.generate_token(configuration)
         self.replacement_engine = ReplacementEngine()
 
-    def get(self, request_path):
+    def get(self, request_path, old_style=False):
         """
         Execute get call
         @param request_path:
         @return:
         """
-        request = self.create_request(request_path)
+        request = self.create_request(request_path, old_style=old_style)
         headers = {"Content-Type": "application/json"}
 
         if self.token is not None:
             headers["Authorization"] = f"Bearer {self.token}"
 
         response = requests.get(request, headers=headers, timeout=60)
-        if response.status_code != 200:
+        if response.status_code not in [200, 201]:
             raise RuntimeError(
                 f"Request to grafana api returned an error {response.status_code}, the response is:\n{response.text}"
             )
@@ -69,7 +69,7 @@ class GrafanaAPI:
 
         response = requests.post(request, data=json.dumps(data), headers=headers, timeout=60)
 
-        if response.status_code != 200:
+        if response.status_code not in [200, 201]:
             raise RuntimeError(
                 f"Request to grafana api returned an error {response.status_code}, the response is:\n{response.text}"
             )
@@ -89,7 +89,7 @@ class GrafanaAPI:
 
         response = requests.put(request, data=json.dumps(data), headers=headers, timeout=60)
 
-        if response.status_code != 200:
+        if response.status_code not in [200, 201]:
             raise RuntimeError(
                 f"Request to grafana api returned an error {response.status_code}, the response is:\n{response.text}"
             )
@@ -108,7 +108,7 @@ class GrafanaAPI:
             headers["Authorization"] = f"Bearer {self.token}"
 
         response = requests.delete(request, headers=headers, timeout=60)
-        if response.status_code != 200:
+        if response.status_code not in [200, 201]:
             raise RuntimeError(
                 f"Request to grafana api returned an error {response.status_code}, the response is:\n{response.text}"
             )
@@ -153,14 +153,6 @@ class GrafanaAPI:
     def generate_token(self, configuration):
         """
         Generate connection token and print it
-
-        @param configuration:
-        @return:
-        """
-        self.base_address = self.base_address.replace(
-            "//", f"//{configuration.user}:{configuration.password}@"
-        )
-        return
         org_id = "1"
         response = self.post(f"/user/using/{org_id}", {})
         logger.info(response)
@@ -175,7 +167,16 @@ class GrafanaAPI:
         response = self.post("/auth/keys", {"name": token_name, "role": "Admin"})
         logger.info(response)
 
-    def create_request(self, request: str):
+
+        @param configuration:
+        @return:
+        """
+        self.base_address = self.base_address.replace(
+            "//", f"//{configuration.user}:{configuration.password}@"
+        )
+        raise NotImplementedError("Todo: fix the code in docstring")
+
+    def create_request(self, request: str, old_style:bool=False):
         """
         Create full request based on relative request
         @param request:
@@ -184,6 +185,9 @@ class GrafanaAPI:
         if request.startswith("/"):
             request = request[1:]
 
+        if old_style:
+            return f"{self.base_address}/api/{request}"
+
         return f"{self.base_address}/apis/{request}"
 
     def init_datasources(self):
@@ -191,8 +195,10 @@ class GrafanaAPI:
         Init Data sources.
         @return:
         """
-        for dict_src in self.get("datasources"):
-            self.datasources.append(DataSource(dict_src))
+
+        ret = self.get("datasources", old_style=True)
+        self.datasources = [DataSource(dict_src) for dict_src in ret]
+        return self.datasources
 
     def init_rule_namespaces(self):
         """
@@ -208,6 +214,11 @@ class GrafanaAPI:
         @param desired:
         @return:
         """
+
+        folder_uid = self.provision_dashboard_folder(desired)
+        if folder_uid is not None:
+            desired.metadata["annotations"]["grafana.app/folder"] = folder_uid
+
         self.init_dashboards()
         for current_dashboard in self.dashboards:
             if current_dashboard.spec["title"] == desired.spec["title"]:
@@ -217,6 +228,23 @@ class GrafanaAPI:
 
         return self.create_dashboard_raw(desired.generate_create_request())
 
+    def provision_dashboard_folder(self, desired_dashboard) -> str:
+        """
+        Provsision folder by title if does not exist.
+
+        :param desired_dashboard:
+        :return:
+        """
+
+        if desired_dashboard.metadata["annotations"].get("grafana.app/folder") is None:
+            return None
+
+        folders = self.init_folders()
+        for folder in folders:
+            if folder.spec["title"] == desired_dashboard.metadata["annotations"]["grafana.app/folder"]:
+                return folder.metadata["name"]
+        raise NotImplementedError("New folder creation")
+
     def create_dashboard_raw(self, dict_dashboard):
         """
         Create the dashboard from raw dict
@@ -225,7 +253,7 @@ class GrafanaAPI:
         """
 
         self.post("/dashboard.grafana.app/v1beta1/namespaces/default/dashboards", dict_dashboard)
-        logger.info(f"Created Dashboard '{dict_dashboard['dashboard']['title']}'")
+        logger.info(f"Created Dashboard '{dict_dashboard['spec']['title']}'")
 
     def update_dashboard_raw(self, dict_dashboard):
         """
@@ -288,7 +316,7 @@ class GrafanaAPI:
         self.dashboards = [Dashboard(dict_src) for dict_src in ret["items"]]
         return self.dashboards
 
-    def init_folders(self):
+    def init_folders(self) -> list[Folder]:
         """
         Init dashboards
         @return:

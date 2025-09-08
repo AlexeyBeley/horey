@@ -50,17 +50,6 @@ def test_init_grafana_api():
     assert isinstance(_grafana_api, GrafanaAPI)
 
 
-@pytest.mark.skip(reason="Can not test")
-def test_provision_dashboard(grafana_api):
-    """
-    Test dashboard object provisioning
-    @return:
-    """
-    dashboard = Dashboard({})
-    dashboard.title = "test dashboard1"
-    grafana_api.provision_dashboard(dashboard)
-
-
 def generate_line_panel(file_name):
     panel = Panel({
         "collapsed": False,
@@ -247,33 +236,6 @@ def test_create_dashboard_generated_raw(grafana_api):
     grafana_api.create_dashboard_raw(request)
 
 
-@pytest.mark.done
-def test_init_folders_and_dashboards(grafana_api):
-    """
-    Test folders and dashboards initiation
-    @return:
-    """
-    grafana_api.init_folders_and_dashboards()
-    assert isinstance(grafana_api.dashboards, list)
-    dashboards = [dashboard.dict_src for dashboard in grafana_api.dashboards]
-    with open(dashboards_cache_file, "w", encoding="UTF-8") as file_handler:
-        json.dump(dashboards, file_handler, indent=4)
-
-
-@pytest.mark.skip(reason="Can not test")
-def test_init_datasources(grafana_api):
-    """
-    Datasource initiation.
-    @return:
-    """
-    grafana_api.init_datasources()
-    assert isinstance(grafana_api.datasources, list)
-    with open(dashboards_datasource_file, "w", encoding="UTF-8") as file_handler:
-        json.dump(
-            [obj.dict_src for obj in grafana_api.datasources], file_handler, indent=4
-        )
-
-
 @pytest.mark.skip(reason="Can not test")
 def test_provision_datasource(grafana_api):
     """
@@ -296,24 +258,6 @@ def test_init_rule_namespaces(grafana_api):
         json.dump(grafana_api.rule_namespaces, file_handler, indent=4)
 
 
-@pytest.mark.skip(reason="Can not test")
-def test_init_folders(grafana_api):
-    """
-    Dashboard folders initiation
-    @return:
-    """
-    grafana_api.init_folders()
-
-
-@pytest.mark.skip(reason="Can not test")
-def test_generate_token(grafana_api):
-    """
-    Dashboard folders initiation
-    @return:
-    """
-    pass
-
-
 @pytest.mark.unit
 def test_provision_dashboard(grafana_api):
     """
@@ -322,176 +266,175 @@ def test_provision_dashboard(grafana_api):
     """
 
     dict_src = {
-  "metadata": {
-    "name": "gdxccn",
-    "annotations": {
-      "grafana.app/folder": "bev54vrop8dmob"
-    },
-  },
-  "spec": {
-    "annotations": {
-    "list": [
-      {
-        "datasource": {
-          "type": "datasource",
-          "uid": "grafana"
-        },
-        "enable": True,
-        "hide": False,
-        "iconColor": "red",
-        "name": "Example annotation",
-        "target": {
-          "limit": 100,
-          "matchAny": False,
-          "tags": [],
-          "type": "dashboard"
-        }
-      }]
-    },
-    "editable": True,
-    "fiscalYearStartMonth": 0,
-    "graphTooltip": 0,
-    "links": [
-      {
-        "asDropdown": False,
-        "icon": "external link",
-        "includeVars": False,
-        "keepTime": False,
-        "tags": [],
-        "targetBlank": False,
-        "title": "Example Link",
-        "tooltip": "",
-        "type": "dashboards",
-        "url": ""
-      }
-    ],
-    "panels": [
-      {
-        "datasource": {
-          "type": "datasource",
-          "uid": "grafana"
-        },
-        "description": "With a description",
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "palette-classic"
+        "metadata": {
+            "annotations": {
+                "grafana.app/folder": "test"
             },
-            "custom": {
-              "axisBorderShow": False,
-              "axisCenteredZero": False,
-              "axisColorMode": "text",
-              "axisLabel": "",
-              "axisPlacement": "auto",
-              "barAlignment": 0,
-              "barWidthFactor": 0.6,
-              "drawStyle": "line",
-              "fillOpacity": 0,
-              "gradientMode": "none",
-              "hideFrom": {
-                "legend": False,
-                "tooltip": False,
-                "viz": False
-              },
-              "insertNulls": False,
-              "lineInterpolation": "linear",
-              "lineWidth": 1,
-              "pointSize": 5,
-              "scaleDistribution": {
-                "type": "linear"
-              },
-              "showPoints": "auto",
-              "spanNulls": False,
-              "stacking": {
-                "group": "A",
-                "mode": "none"
-              },
-              "thresholdsStyle": {
-                "mode": "off"
-              }
+        },
+        "spec": {
+            "annotations": {
+                "list": [
+                    {
+                        "datasource": {
+                            "type": "datasource",
+                            "uid": "grafana"
+                        },
+                        "enable": True,
+                        "hide": False,
+                        "iconColor": "red",
+                        "name": "Example annotation",
+                        "target": {
+                            "limit": 100,
+                            "matchAny": False,
+                            "tags": [],
+                            "type": "dashboard"
+                        }
+                    }]
             },
-            "mappings": [],
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
+            "editable": True,
+            "fiscalYearStartMonth": 0,
+            "graphTooltip": 0,
+            "links": [
                 {
-                  "color": "green"
-                },
-                {
-                  "color": "red",
-                  "value": 80
+                    "asDropdown": False,
+                    "icon": "external link",
+                    "includeVars": False,
+                    "keepTime": False,
+                    "tags": [],
+                    "targetBlank": False,
+                    "title": "Example Link",
+                    "tooltip": "",
+                    "type": "dashboards",
+                    "url": ""
                 }
-              ]
-            }
-          },
-          "overrides": []
-        },
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 0,
-          "y": 0
-        },
-        "id": 1,
-        "options": {
-          "legend": {
-            "calcs": [],
-            "displayMode": "list",
-            "placement": "bottom",
-            "showLegend": True
-          },
-          "tooltip": {
-            "hideZeros": False,
-            "mode": "single",
-            "sort": "none"
-          }
-        },
-        "pluginVersion": "12.0.0",
-        "targets": [
-          {
-            "datasource": {
-              "type": "datasource",
-              "uid": "grafana"
+            ],
+            "panels": [
+                {
+                    "datasource": {
+                        "type": "datasource",
+                        "uid": "grafana"
+                    },
+                    "description": "With a description",
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {
+                                "mode": "palette-classic"
+                            },
+                            "custom": {
+                                "axisBorderShow": False,
+                                "axisCenteredZero": False,
+                                "axisColorMode": "text",
+                                "axisLabel": "",
+                                "axisPlacement": "auto",
+                                "barAlignment": 0,
+                                "barWidthFactor": 0.6,
+                                "drawStyle": "line",
+                                "fillOpacity": 0,
+                                "gradientMode": "none",
+                                "hideFrom": {
+                                    "legend": False,
+                                    "tooltip": False,
+                                    "viz": False
+                                },
+                                "insertNulls": False,
+                                "lineInterpolation": "linear",
+                                "lineWidth": 1,
+                                "pointSize": 5,
+                                "scaleDistribution": {
+                                    "type": "linear"
+                                },
+                                "showPoints": "auto",
+                                "spanNulls": False,
+                                "stacking": {
+                                    "group": "A",
+                                    "mode": "none"
+                                },
+                                "thresholdsStyle": {
+                                    "mode": "off"
+                                }
+                            },
+                            "mappings": [],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {
+                                        "color": "green"
+                                    },
+                                    {
+                                        "color": "red",
+                                        "value": 80
+                                    }
+                                ]
+                            }
+                        },
+                        "overrides": []
+                    },
+                    "gridPos": {
+                        "h": 8,
+                        "w": 12,
+                        "x": 0,
+                        "y": 0
+                    },
+                    "id": 1,
+                    "options": {
+                        "legend": {
+                            "calcs": [],
+                            "displayMode": "list",
+                            "placement": "bottom",
+                            "showLegend": True
+                        },
+                        "tooltip": {
+                            "hideZeros": False,
+                            "mode": "single",
+                            "sort": "none"
+                        }
+                    },
+                    "pluginVersion": "12.0.0",
+                    "targets": [
+                        {
+                            "datasource": {
+                                "type": "datasource",
+                                "uid": "grafana"
+                            },
+                            "refId": "A"
+                        }
+                    ],
+                    "title": "Example panel",
+                    "type": "timeseries"
+                }
+            ],
+            "preload": False,
+            "schemaVersion": 41,
+            "tags": ["example"],
+            "templating": {
+                "list": [
+                    {
+                        "current": {
+                            "text": "",
+                            "value": ""
+                        },
+                        "definition": "",
+                        "description": "example description",
+                        "label": "ExampleLabel",
+                        "name": "ExampleVariable",
+                        "options": [],
+                        "query": "",
+                        "refresh": 1,
+                        "regex": "cluster",
+                        "type": "query"
+                    }
+                ]
             },
-            "refId": "A"
-          }
-        ],
-        "title": "Example panel",
-        "type": "timeseries"
-      }
-    ],
-    "preload": False,
-    "schemaVersion": 41,
-    "tags": ["example"],
-    "templating": {
-      "list": [
-        {
-          "current": {
-            "text": "",
-            "value": ""
-          },
-          "definition": "",
-          "description": "example description",
-          "label": "ExampleLabel",
-          "name": "ExampleVariable",
-          "options": [],
-          "query": "",
-          "refresh": 1,
-          "regex": "cluster",
-          "type": "query"
+            "time": {
+                "from": "now-6h",
+                "to": "now"
+            },
+            "timepicker": {},
+            "timezone": "browser",
+            "title": "Example Dashboard",
+            "version": 0
         }
-      ]
-    },
-    "time": {
-      "from": "now-6h",
-      "to": "now"
-    },
-    "timepicker": {},
-    "timezone": "browser",
-    "title": "Example Dashboard",
-    "version": 0
-  }
-}
+    }
     dashboard = Dashboard(dict_src)
     grafana_api.provision_dashboard(dashboard)
 
@@ -516,3 +459,16 @@ def test_init_folders(grafana_api):
     """
 
     assert grafana_api.init_folders()
+    assert isinstance(grafana_api.dashboards, list)
+
+
+@pytest.mark.unit
+def test_init_datasources(grafana_api):
+    """
+    Dashboard folders initiation
+
+    @return:
+    """
+
+    assert grafana_api.init_datasources()
+    assert isinstance(grafana_api.datasources, list)
