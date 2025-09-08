@@ -31,8 +31,14 @@ class GrafanaAPI:
 
         self.base_address = configuration.server_address
         self.token = configuration.token
+
         if configuration.token is None:
-            self.generate_token(configuration)
+            # todo: generate token
+            # self.generate_token(configuration)
+            self.base_address = self.base_address.replace(
+                "//", f"//{configuration.user}:{configuration.password}@"
+            )
+
         self.replacement_engine = ReplacementEngine()
 
     def get(self, request_path, old_style=False):
@@ -150,7 +156,8 @@ class GrafanaAPI:
         )
         logger.info(f"Added user {user} to organisation: {response}")
 
-    def generate_token(self, configuration):
+    @staticmethod
+    def generate_token():
         """
         Generate connection token and print it
         org_id = "1"
@@ -171,9 +178,7 @@ class GrafanaAPI:
         @param configuration:
         @return:
         """
-        self.base_address = self.base_address.replace(
-            "//", f"//{configuration.user}:{configuration.password}@"
-        )
+
         raise NotImplementedError("Todo: fix the code in docstring")
 
     def create_request(self, request: str, old_style:bool=False):
