@@ -1,0 +1,14 @@
+name: diskio
+fieldKey         fieldType
+--------         ---------
+io_time          integer
+iops_in_progress integer
+merged_reads     integer
+merged_writes    integer
+read_bytes       integer
+read_time        integer
+reads            integer
+weighted_io_time integer
+write_bytes      integer
+write_time       integer
+writes           integer

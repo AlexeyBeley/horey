@@ -1,0 +1,6 @@
+name: influxdb_subscriber
+fieldKey       fieldType
+--------       ---------
+createFailures float
+pointsWritten  float
+writeFailures  float

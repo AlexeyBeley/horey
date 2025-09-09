@@ -1,0 +1,12 @@
+name: influxdb_write
+fieldKey      fieldType
+--------      ---------
+pointReq      float
+pointReqLocal float
+req           float
+subWriteDrop  float
+subWriteOk    float
+writeDrop     float
+writeError    float
+writeOk       float
+writeTimeout  float

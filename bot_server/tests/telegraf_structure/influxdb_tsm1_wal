@@ -1,0 +1,7 @@
+name: influxdb_tsm1_wal
+fieldKey                fieldType
+--------                ---------
+currentSegmentDiskBytes float
+oldSegmentsDiskBytes    float
+writeErr                float
+writeOk                 float

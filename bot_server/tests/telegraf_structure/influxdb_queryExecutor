@@ -1,0 +1,8 @@
+name: influxdb_queryExecutor
+fieldKey        fieldType
+--------        ---------
+queriesActive   float
+queriesExecuted float
+queriesFinished float
+queryDurationNs float
+recoveredPanics float

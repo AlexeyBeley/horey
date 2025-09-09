@@ -1,0 +1,6 @@
+name: influxdb_system
+fieldKey     fieldType
+--------     ---------
+current_time string
+started      string
+uptime       integer
