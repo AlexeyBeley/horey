@@ -1,9 +1,0 @@
-name: swap
-fieldKey     fieldType
---------     ---------
-free         integer
-in           integer
-out          integer
-total        integer
-used         integer
-used_percent float

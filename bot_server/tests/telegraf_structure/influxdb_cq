@@ -1,5 +1,0 @@
-name: influxdb_cq
-fieldKey  fieldType
---------  ---------
-queryFail float
-queryOk   float

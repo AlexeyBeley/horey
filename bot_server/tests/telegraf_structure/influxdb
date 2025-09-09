@@ -1,4 +1,0 @@
-name: influxdb
-fieldKey fieldType
--------- ---------
-n_shards integer

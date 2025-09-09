@@ -1,5 +1,0 @@
-name: influxdb_database
-fieldKey        fieldType
---------        ---------
-numMeasurements float
-numSeries       float

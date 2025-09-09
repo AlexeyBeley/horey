@@ -1,8 +1,0 @@
-name: kernel
-fieldKey         fieldType
---------         ---------
-boot_time        integer
-context_switches integer
-entropy_avail    integer
-interrupts       integer
-processes_forked integer
