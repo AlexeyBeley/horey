@@ -132,6 +132,11 @@ class RouteTable(AwsObject):
         for self_route in self.routes:
             if self_route.get("GatewayId") == "local":
                 continue
+
+            if self_route.get("DestinationPrefixListId") is not None:
+                # todo: implement prefix list routing
+                continue
+
             if self_route["State"] != "active":
                 inactive_routes_errors.append(self_route)
 
