@@ -138,6 +138,9 @@ class RDSDBCluster(AwsObject):
             "ServerlessV2ScalingConfiguration": self.init_default_attr,
             "LocalWriteForwardingStatus": self.init_default_attr,
             "IOOptimizedNextAllowedModificationTime": self.init_default_attr,
+            "DatabaseInsightsMode": self.init_default_attr,
+            "ServerlessV2PlatformVersion": self.init_default_attr,
+            "EngineLifecycleSupport": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)

@@ -134,6 +134,10 @@ class RouteTable(AwsObject):
                 continue
             if self_route["State"] != "active":
                 inactive_routes_errors.append(self_route)
+
+            if self_route.get("DestinationCidrBlock") is None:
+                raise NotImplementedError(f"Can not check CIDR Block: {self_route}")
+
             if self_route["DestinationCidrBlock"] not in desired_routes_by_destination:
                 request = {"RouteTableId": self.id}
                 for destination in ["DestinationCidrBlock", "DestinationIpv6CidrBlock", "DestinationPrefixListId"]:
