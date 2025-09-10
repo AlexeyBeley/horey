@@ -50,6 +50,7 @@ class NetworkInterface(AwsObject):
             "RequesterManaged": self.init_default_attr,
             "TagSet": self.init_default_attr,
             "DenyAllIgwTraffic": self.init_default_attr,
+            "Operator": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)

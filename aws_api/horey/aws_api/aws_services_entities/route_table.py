@@ -133,17 +133,14 @@ class RouteTable(AwsObject):
             if self_route.get("GatewayId") == "local":
                 continue
 
-            if self_route.get("DestinationPrefixListId") is not None:
-                # todo: implement prefix list routing
-                continue
-
             if self_route["State"] != "active":
                 inactive_routes_errors.append(self_route)
 
-            if self_route.get("DestinationCidrBlock") is None:
-                raise NotImplementedError(f"Can not check CIDR Block: {self_route}")
+            # todo: handles prefix list routing need to be implemented
+            if self_route.get("DestinationPrefixListId") is not None:
+                continue
 
-            if self_route["DestinationCidrBlock"] not in desired_routes_by_destination:
+            if self_route.get("DestinationCidrBlock") not in desired_routes_by_destination:
                 request = {"RouteTableId": self.id}
                 for destination in ["DestinationCidrBlock", "DestinationIpv6CidrBlock", "DestinationPrefixListId"]:
                     try:
@@ -158,6 +155,10 @@ class RouteTable(AwsObject):
 
         self_routes_by_destination = {}
         for route in self.routes:
+            # todo: handles prefix list routing need to be implemented
+            if route.get("DestinationPrefixListId") is not None:
+                continue
+
             if "DestinationCidrBlock" in route:
                 self_routes_by_destination[route["DestinationCidrBlock"]] = route
             elif "DestinationIpv6CidrBlock" in route:
