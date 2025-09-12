@@ -7,6 +7,8 @@ import datetime
 import getpass
 import os.path
 import platform
+import time
+from random import random
 from time import perf_counter
 
 import docker
@@ -111,6 +113,7 @@ class DockerAPI:
         self.tag_image(docker_image, tags[1:])
         return docker_image
 
+    # pylint: disable = too-many-arguments, too-many-positional-arguments
     def run(self, image_name, container_name=None, environment_variables=None, command_args=None, detach=True, remove=True):
         """
         Run the image.
@@ -225,10 +228,31 @@ class DockerAPI:
 
     def upload_images(self, repo_tags):
         """
-        Upload images based on the tags.
+        Upload images based on the tags. Retry if concurrent uploads failed by server
 
         @param repo_tags:
         @return:
+        """
+
+        retries_limit = 60
+        for retry_counter in range(retries_limit):
+            try:
+                return self.raw_upload_images(repo_tags)
+            except Exception as error_inst:
+                if "IncompleteRead" not in repr(error_inst):
+                    raise
+                time_to_sleep = random() * 20 + 10
+                logger.info(f"Received IncompleteRead, it means server closed connection. Going to sleep ({retry_counter}/{retries_limit}) for {time_to_sleep}")
+                time.sleep(time_to_sleep)
+
+        raise TimeoutError(f"Image tags {repo_tags} uploading failed for {retries_limit} times")
+
+    def raw_upload_images(self, repo_tags):
+        """
+        Try uploading
+
+        :param repo_tags:
+        :return:
         """
 
         errors_detected = []
