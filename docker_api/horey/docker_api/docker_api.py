@@ -226,12 +226,13 @@ class DockerAPI:
         image.tag(tags[0])
         return self.tag_image(image, tags[1:])
 
-    def upload_images(self, repo_tags):
+    def upload_images(self, repo_tags, retry=True):
         """
         Upload images based on the tags. Retry if concurrent uploads failed by server
 
-        @param repo_tags:
-        @return:
+        :param repo_tags:
+        :param retry:
+        :return:
         """
 
         retries_limit = 60
@@ -240,6 +241,8 @@ class DockerAPI:
                 return self.raw_upload_images(repo_tags)
             except Exception as error_inst:
                 if "IncompleteRead" not in repr(error_inst):
+                    raise
+                if not retry:
                     raise
                 time_to_sleep = random() * 20 + 10
                 logger.info(f"Received IncompleteRead, it means server closed connection. Going to sleep ({retry_counter}/{retries_limit}) for {time_to_sleep}")
