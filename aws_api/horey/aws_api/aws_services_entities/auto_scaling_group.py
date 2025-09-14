@@ -86,6 +86,8 @@ class AutoScalingGroup(AwsObject):
             "Status": self.init_default_attr,
             "CapacityRebalance": self.init_default_attr,
             "TrafficSources": self.init_default_attr,
+            "AvailabilityZoneDistribution": self.init_default_attr,
+            "CapacityReservationSpecification": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)

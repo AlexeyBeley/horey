@@ -2608,15 +2608,66 @@ class AWSAPI:
 
         self.ec2_client.provision_launch_template(launch_template)
 
-    def provision_auto_scaling_group(self, autoscaling_group):
+    def provision_auto_scaling_group(self, autoscaling_group: AutoScalingGroup):
         """
-        Self explanatory
+        Standard
 
         @param autoscaling_group:
         @return:
         """
 
-        self.autoscaling_client.provision_auto_scaling_group(autoscaling_group)
+        if autoscaling_group.launch_template["Version"] != "$Default":
+            raise NotImplementedError("Only default version supported")
+
+        current_launch_template = self.ec2_client.find_launch_template(autoscaling_group.region,
+                                                                       launch_template_id=autoscaling_group.launch_template["LaunchTemplateId"])
+
+        existed_asg = AutoScalingGroup({"AutoScalingGroupName": autoscaling_group.name})
+        existed_asg.region = autoscaling_group.region
+        existed = self.autoscaling_client.update_auto_scaling_group_information(existed_asg)
+
+        provision_response = self.autoscaling_client.provision_auto_scaling_group(autoscaling_group)
+        self.wait_for_auto_scaling_group_full_scale_up(autoscaling_group)
+        if not existed:
+            return provision_response
+
+        if not len(existed_asg.instances):
+            return True
+        detached = []
+        for dict_inst in existed_asg.instances:
+            if dict_inst["LaunchTemplate"]["Version"] != str(current_launch_template.default_version_number):
+                instance_id = dict_inst["InstanceId"]
+                self.autoscaling_client.detach_instances(autoscaling_group, [instance_id])
+                detached.append(instance_id)
+                self.wait_for_auto_scaling_group_full_scale_up(autoscaling_group)
+
+        for detached_instance_id in detached:
+            ec2_instance = EC2Instance({})
+            ec2_instance.region = autoscaling_group.region
+            ec2_instance.id = detached_instance_id
+            self.ec2_client.dispose_instance(ec2_instance)
+
+    def wait_for_auto_scaling_group_full_scale_up(self, autoscaling_group: AutoScalingGroup):
+        """
+        loop over it.
+
+        :param autoscaling_group:
+        :return:
+        """
+
+        retry_counter = 300
+        counter = 0
+        while counter < retry_counter:
+            if not self.autoscaling_client.update_auto_scaling_group_information(autoscaling_group):
+                raise RuntimeError("ASG was not found")
+
+            if autoscaling_group.desired_capacity == len(autoscaling_group.instances):
+                return True
+            logger.info(f"ASG {autoscaling_group.name} Desired: {autoscaling_group.desired_capacity}, Current: {len(autoscaling_group.instances)}."
+                        f" Going to sleep ({counter}/{retry_counter}): 1 sec")
+            time.sleep(1)
+        raise TimeoutError("Scaling did not happen")
+
 
     def provision_auto_scaling_policy(self, autoscaling_policy):
         """

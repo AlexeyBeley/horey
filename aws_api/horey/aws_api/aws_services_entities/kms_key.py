@@ -18,6 +18,7 @@ class KMSKey(AwsObject):
         self.key_usage = None
         self.description = None
         self.enabled = None
+        self.key_manager = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)

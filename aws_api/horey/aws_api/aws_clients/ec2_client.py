@@ -671,6 +671,18 @@ class EC2Client(Boto3Client):
             final_result.append(obj)
         return final_result
 
+    def update_launch_template_information(self, launch_template: EC2LaunchTemplate):
+        """
+        Standard.
+
+        :return:
+        """
+
+        ret = self.get_region_launch_templates(launch_template.region, custom_filters={"LaunchTemplateNames": [launch_template.name]})
+        if len(ret) == 0:
+            return False
+        return launch_template.update_from_attrs(ret[0])
+
     def get_all_launch_template_versions(self, region=None):
         """
         Get all launch_template_versions in all regions.
@@ -1900,16 +1912,26 @@ class EC2Client(Boto3Client):
         ):
             return response
 
-    def find_launch_template(self, launch_template):
+    def find_launch_template(self, region, launch_template_name=None, launch_template_id=None):
         """
-        By name.
+        By name for now.
 
-        @param launch_template:
-        @return:
+        :param region:
+        :param launch_template_name:
+        :param launch_template_id:
+        :return:
         """
+
+        if launch_template_id is not None:
+            custom_filters = {"LaunchTemplateIds": [launch_template_id]}
+        elif launch_template_name is not None:
+            custom_filters = {"LaunchTemplateNames": [launch_template_name]}
+        else:
+            raise RuntimeError("One must exist: name or id")
+
         region_objects = self.get_region_launch_templates(
-            launch_template.region,
-            custom_filters={"LaunchTemplateNames": [launch_template.name]},
+            region,
+            custom_filters=custom_filters,
         )
 
         if len(region_objects) > 1:
@@ -1963,7 +1985,7 @@ class EC2Client(Boto3Client):
                 response = self.modify_launch_template_raw(request)
                 launch_template.update_from_raw_response(response)
             else:
-                region_object = self.find_launch_template(launch_template)
+                region_object = self.find_launch_template(launch_template.region, launch_template_name=launch_template.name)
                 launch_template.update_from_raw_response(region_object.dict_src)
             return
 

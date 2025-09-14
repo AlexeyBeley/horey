@@ -5,15 +5,20 @@ Docker API - used to communicate with docker service.
 
 import datetime
 import getpass
+import itertools
+import json
 import os.path
 import platform
+import re
+import threading
 import time
 from random import random
 from time import perf_counter
 
 import docker
 from docker.errors import BuildError
-from horey.h_logger import get_logger
+from docker.utils.json_stream import json_stream
+from horey.h_logger import get_logger, get_raw_logger
 from horey.common_utils.bash_executor import BashExecutor
 
 logger = get_logger()
@@ -71,47 +76,128 @@ class DockerAPI:
         docker_image = self.client.images.get(name)
         return docker_image
 
-    def build(self, dockerfile_directory_path, tags, nocache=True, remove_intermediate_containers=True, **kwargs):
+    def build_standard(self, **kwargs):
         """
         Build image.
-        current kwargs:
-        path=None, tag=None, quiet=False, fileobj=None,
-        nocache=False, rm=False, timeout=None,
-        custom_context=False, encoding=None, pull=False,
-        forcerm=False, dockerfile=None, container_limits=None,
-        decode=False, buildargs=None, gzip=False, shmsize=None,
-        labels=None, cache_from=None, target=None, network_mode=None,
-        squash=None, extra_hosts=None, platform=None, isolation=None,
-        use_config_proxy=True
-
-        @param dockerfile_directory_path:
-        @param tags:
-        @param nocache:
+        
         @return:
-        :param remove_intermediate_containers: CLI default value is True. Python docker client default is False.
+        :param 
         """
 
-        if not isinstance(tags, list):
-            raise ValueError(
-                f"'tags' must be of a type 'list' received {tags}: type: {type(tags)}"
-            )
+        logger.info(f"Starting building image path={kwargs.get('path')}, tag={kwargs.get('tag')}")
 
-        tag = tags[0] if len(tags) > 0 else "latest"
-        logger.info(f"Starting building image {dockerfile_directory_path}, {tags}")
+
         try:
             build_start = perf_counter()
             docker_image, build_log = self.client.images.build(
-                path=dockerfile_directory_path, tag=tag, nocache=nocache, rm=remove_intermediate_containers, forcerm=remove_intermediate_containers,
+                 
             **kwargs)
             build_end = perf_counter()
         except BuildError as exception_instance:
             self.print_log(exception_instance.build_log)
             raise
 
-        self.print_log(build_log)
         logger.info(f"Finished building image in {build_end - build_start} seconds")
-        self.tag_image(docker_image, tags[1:])
+
         return docker_image
+
+    def build(self, dockerfile_directory_path, tags, stream=True, remove_intermediate_containers=True, **kwargs):
+        """
+        Entrypoint.
+
+        :param dockerfile_directory_path: 
+        :param tags: 
+        :param args: 
+        :param stream: 
+        :param remove_intermediate_containers: CLI default value is True. Python docker client default is False. 
+        :param kwargs: 
+        :return: 
+        """
+
+        if not isinstance(tags, list):
+            raise ValueError(
+                f"'tags' must be of a type 'list' received {tags}: type: {type(tags)}"
+            )
+        
+        tag = tags[0] if len(tags) > 0 else "latest"
+        
+        if stream:
+            docker_image = self.build_streaming(path=dockerfile_directory_path, tag=tag, rm=remove_intermediate_containers, forcerm=remove_intermediate_containers, **kwargs)
+        else: 
+            docker_image =self.build_standard(path=dockerfile_directory_path, tag=tag, rm=remove_intermediate_containers, forcerm=remove_intermediate_containers, **kwargs)
+
+        self.tag_image(docker_image, tags[1:])
+
+        return docker_image
+
+    def build_streaming(self, **kwargs):
+        """
+        Taken from Docker package.
+
+        :param kwargs: 
+        :return: 
+        """
+
+        raw_logger = get_raw_logger("docker_raw")
+        
+        resp = self.client.api.build(**kwargs)
+        if isinstance(resp, str):
+            return self.client.images.get(resp)
+        last_event = None
+        image_id = None
+        result_stream, internal_stream = itertools.tee(json_stream(resp))
+        for chunk in internal_stream:
+            if "error" in chunk:
+                raise BuildError(chunk["error"], result_stream)
+            if "stream" in chunk:
+                match = re.search(
+                    r'(^Successfully built |sha256:)([0-9a-f]+)$',
+                    chunk["stream"]
+                )
+                if match:
+                    image_id = match.group(2)
+                raw_logger.info(chunk["stream"])
+            else:
+                logger.warning(f"Unknown docker output: {chunk}")
+            last_event = chunk
+        breakpoint()
+        if image_id:
+            return self.client.images.get(image_id)
+        raise BuildError(last_event or 'Unknown', result_stream)
+
+    def get_image_by_tag(self, tag):
+        """
+        Find image object by image tag.
+
+        :param tag:
+        :return:
+        """
+
+        breakpoint()
+        for image in self.get_all_images():
+            if tag in image.tags:
+                return image
+        return None
+
+    def print_live_log(self, log_generator):
+        """
+        Separate thread.
+
+        :param log_generator:
+        :return:
+        """
+
+        logger.info("Live logs printing")
+
+        def helper():
+            for log_line in log_generator:
+                self.print_log_line(log_line, raise_on_error=False)
+
+        thread = threading.Thread(
+            target=helper
+        )
+
+        thread.start()
 
     # pylint: disable = too-many-arguments, too-many-positional-arguments
     def run(self, image_name, container_name=None, environment_variables=None, command_args=None, detach=True, remove=True):
@@ -179,12 +265,13 @@ class DockerAPI:
             self.print_log_line(log_line)
 
     @staticmethod
-    def print_log_line(log_line):
+    def print_log_line(log_line, raise_on_error=True):
         """
         Pretty print of a log line.
 
         @param log_line:
         @return:
+        :param raise_on_error:
         """
 
         key = "status"
@@ -204,8 +291,12 @@ class DockerAPI:
 
         key = "error"
         if key in log_line:
-            logger.exception(log_line)
-            raise DockerAPI.OutputError(log_line)
+            if raise_on_error:
+                logger.exception(log_line)
+                raise DockerAPI.OutputError(log_line)
+            else:
+                logger.error(log_line[key])
+                return True
 
         logger.error(f"Unknown keys in: {log_line}")
         return True

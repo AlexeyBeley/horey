@@ -437,14 +437,14 @@ class AutoScalingClient(Boto3Client):
         if auto_scaling_group.name is None:
             auto_scaling_group.name = auto_scaling_group.arn.split("/")[-1]
         filters_req = {"AutoScalingGroupNames": [auto_scaling_group.name]}
-
-        ret = list(self.execute(
-            self.get_session_client(region=auto_scaling_group.region).describe_auto_scaling_groups,
-            "AutoScalingGroups",
-            filters_req=filters_req,
-        ))
-        if len(ret) != 1:
+        self.yield_auto_scaling_groups()
+        ret = list(self.yield_auto_scaling_groups(region=auto_scaling_group.region, filters_req=filters_req))
+        if not ret:
             return False
 
-        auto_scaling_group.update_from_raw_response(ret[0])
+        if len(ret) != 1:
+            raise RuntimeError(f"Can not find single auto scaling group by name: {auto_scaling_group.name}"
+                               f" in region {auto_scaling_group.region.region_mark}")
+
+        auto_scaling_group.update_from_attrs(ret[0])
         return True

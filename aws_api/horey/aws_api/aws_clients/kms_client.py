@@ -62,7 +62,14 @@ class KMSClient(Boto3Client):
                         lambda error: "NotFoundException" in repr(error)
                 ):
                     obj.update_from_raw_response(dict_response)
+                if obj.key_manager == "AWS":
+                    continue
 
+                if obj.key_manager != "CUSTOMER":
+                    logger.warning(f"Not supported KMS key manager: {obj.key_manager}")
+                    breakpoint()
+
+                # todo: remove the exception because aws managed keys are ignored
                 tags = list(
                     self.execute(
                         self.get_session_client(region=region).list_resource_tags,
