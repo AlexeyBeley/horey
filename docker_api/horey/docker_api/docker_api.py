@@ -6,7 +6,6 @@ Docker API - used to communicate with docker service.
 import datetime
 import getpass
 import itertools
-import json
 import os.path
 import platform
 import re
@@ -79,20 +78,20 @@ class DockerAPI:
     def build_standard(self, **kwargs):
         """
         Build image.
-        
+
         @return:
-        :param 
+        :param
         """
 
         logger.info(f"Starting building image path={kwargs.get('path')}, tag={kwargs.get('tag')}")
 
-
         try:
             build_start = perf_counter()
             docker_image, build_log = self.client.images.build(
-                 
+
             **kwargs)
             build_end = perf_counter()
+            self.print_log(build_log)
         except BuildError as exception_instance:
             self.print_log(exception_instance.build_log)
             raise
@@ -105,25 +104,25 @@ class DockerAPI:
         """
         Entrypoint.
 
-        :param dockerfile_directory_path: 
-        :param tags: 
-        :param args: 
-        :param stream: 
-        :param remove_intermediate_containers: CLI default value is True. Python docker client default is False. 
-        :param kwargs: 
-        :return: 
+        :param dockerfile_directory_path:
+        :param tags:
+        :param args:
+        :param stream:
+        :param remove_intermediate_containers: CLI default value is True. Python docker client default is False.
+        :param kwargs:
+        :return:
         """
 
         if not isinstance(tags, list):
             raise ValueError(
                 f"'tags' must be of a type 'list' received {tags}: type: {type(tags)}"
             )
-        
+
         tag = tags[0] if len(tags) > 0 else "latest"
-        
+
         if stream:
             docker_image = self.build_streaming(path=dockerfile_directory_path, tag=tag, rm=remove_intermediate_containers, forcerm=remove_intermediate_containers, **kwargs)
-        else: 
+        else:
             docker_image =self.build_standard(path=dockerfile_directory_path, tag=tag, rm=remove_intermediate_containers, forcerm=remove_intermediate_containers, **kwargs)
 
         self.tag_image(docker_image, tags[1:])
@@ -134,12 +133,12 @@ class DockerAPI:
         """
         Taken from Docker package.
 
-        :param kwargs: 
-        :return: 
+        :param kwargs:
+        :return:
         """
 
         raw_logger = get_raw_logger("docker_raw")
-        
+
         resp = self.client.api.build(**kwargs)
         if isinstance(resp, str):
             return self.client.images.get(resp)
@@ -160,7 +159,6 @@ class DockerAPI:
             else:
                 logger.warning(f"Unknown docker output: {chunk}")
             last_event = chunk
-        breakpoint()
         if image_id:
             return self.client.images.get(image_id)
         raise BuildError(last_event or 'Unknown', result_stream)
@@ -173,7 +171,6 @@ class DockerAPI:
         :return:
         """
 
-        breakpoint()
         for image in self.get_all_images():
             if tag in image.tags:
                 return image
@@ -294,9 +291,9 @@ class DockerAPI:
             if raise_on_error:
                 logger.exception(log_line)
                 raise DockerAPI.OutputError(log_line)
-            else:
-                logger.error(log_line[key])
-                return True
+
+            logger.error(log_line[key])
+            return True
 
         logger.error(f"Unknown keys in: {log_line}")
         return True
