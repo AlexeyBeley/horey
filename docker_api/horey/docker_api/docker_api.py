@@ -137,7 +137,7 @@ class DockerAPI:
         :return:
         """
 
-        raw_logger = get_raw_logger("docker_raw")
+        raw_logger = get_raw_logger("docker_raw", format_string="docker-daemon: %(message)s")
 
         resp = self.client.api.build(**kwargs)
         if isinstance(resp, str):

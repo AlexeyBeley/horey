@@ -80,7 +80,7 @@ def get_logger(configuration_file_full_path=None, name="horey"):
     return StaticData.logger
 
 
-def get_raw_logger(name):
+def get_raw_logger(name, format_string="%(message)s"):
     """
     Reuse logger
     :return:
@@ -91,7 +91,7 @@ def get_raw_logger(name):
     except KeyError:
         handler_tmp = logging.StreamHandler()
         formatter_tmp = logging.Formatter(
-            "%(message)s"
+            format_string
         )
         handler_tmp.setFormatter(formatter_tmp)
         logger_tmp = logging.getLogger(name)
