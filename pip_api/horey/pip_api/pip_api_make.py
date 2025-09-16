@@ -411,6 +411,8 @@ def bootstrap(configs):
     :return:
     """
 
+    logger.info("Starting bootstrap")
+
     install_pip(configs)
     provision_venv(configs)
     install_requests(configs)
