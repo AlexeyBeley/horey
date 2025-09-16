@@ -233,13 +233,12 @@ def install_pip(configs):
 
     pip_current = ret.get("stdout").split(" ")[1]
     pip_major = int(pip_current.split(".")[0])
-    if pip_major < int(PIP_MINIMUM_VERSION.split(".")[0]):
+    if pip_major < int(PIP_MINIMUM_VERSION.split('.', maxsplit=1)[0]):
         logger.info(f"Upgrading pip from {pip_current} to =>{PIP_MINIMUM_VERSION}")
-        command = f"{sys.executable} -m pip install --upgrade pip>={PIP_MINIMUM_VERSION}"
+        command = f"{sys.executable} -m pip install --break-system-packages --upgrade pip>={PIP_MINIMUM_VERSION}"
         ret = StandaloneMethods.execute(command)
         stderr = ret.get("stderr")
         if stderr:
-            breakpoint()
             raise RuntimeError(ret)
 
     return True
@@ -344,7 +343,7 @@ def install_venv(configs):
     ret = StandaloneMethods.execute(command, ignore_on_error_callback=lambda error: "No module named virtualenv" in repr(error))
     stderr = ret.get("stderr")
     if "No module named virtualenv" in stderr:
-        command = f"{sys.executable} -m pip install virtualenv"
+        command = f"{sys.executable} -m pip install --break-system-packages virtualenv"
         ret = StandaloneMethods.execute(command)
         if "Successfully installed" not in ret.get("stdout").strip("\r\n").split("\n")[-1]:
             raise ValueError(ret)
@@ -368,10 +367,8 @@ def provision_venv(configs):
 
     if configs.get("venv_dir_path") is None:
         return True
-    try:
-        install_venv(configs)
-    except Exception as inst_error:
-        logger.error(inst_error)
+
+    install_venv(configs)
 
     StandaloneMethods = get_standalone_methods(configs)
     venv_path = os.path.abspath(configs.get("venv_dir_path"))

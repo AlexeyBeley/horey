@@ -59,9 +59,7 @@ class ElasticacheClient(Boto3Client):
 
         yield from self.execute(
                 self.get_session_client(region=region).describe_cache_clusters, "CacheClusters",
-                filters_req=filters_req,
-                exception_ignore_callback=lambda error: "RepositoryNotFoundException"
-                                                        in repr(error)
+                filters_req=filters_req
         )
 
     def get_all_clusters(self, region=None):
@@ -274,53 +272,123 @@ class ElasticacheClient(Boto3Client):
             self.clear_cache(ElasticacheCluster)
             return response
 
-    def provision_replication_group(self, replication_group: ElasticacheReplicationGroup):
+    def yield_replication_groups(self, region=None, update_info=False, filters_req=None):
+        """
+        Yield clusters
+
+        :return:
+        """
+
+        regional_fetcher_generator = self.yield_replication_groups_raw
+        yield from self.regional_service_entities_generator(regional_fetcher_generator,
+                                                            ElasticacheReplicationGroup,
+                                                            update_info=update_info,
+                                                            regions=[region] if region else None,
+                                                            filters_req=filters_req)
+
+    def yield_replication_groups_raw(self, region, filters_req=None):
+        """
+        Yield dictionaries.
+
+        :return:
+        """
+
+        yield from self.execute(
+                self.get_session_client(region=region).describe_replication_groups, "ReplicationGroups",
+                filters_req=filters_req
+        )
+
+    def provision_replication_group(self, desired_replication_group: ElasticacheReplicationGroup):
         """
         Standard.
 
-        :param replication_group:
+        :param desired_replication_group:
         :return:
         """
 
-        if self.update_replication_group_information(replication_group):
-            return True
-
-        response = self.provision_replication_group_raw(replication_group.region,
-                                                        replication_group.generate_create_request()
+        existing_replication_group = ElasticacheReplicationGroup({})
+        existing_replication_group.region = desired_replication_group.region
+        existing_replication_group.id = desired_replication_group.id
+        if not self.update_replication_group_information(existing_replication_group):
+            self.provision_replication_group_raw(desired_replication_group.region,
+                                                        desired_replication_group.generate_create_request()
                                                         )
+        else:
+            request = existing_replication_group.generate_modify_request(desired_replication_group)
+            if request is None:
+                return desired_replication_group.update_from_attrs(existing_replication_group)
+
+            breakpoint()
+            self.modify_replication_group_raw(desired_replication_group.region, request)
+
         self.wait_for_status(
-            replication_group,
-            self.update_replication_group_information,
-            [replication_group.Status.AVAILABLE],
-            [replication_group.Status.CREATING,
-             replication_group.Status.MODIFYING,
-             replication_group.Status.SNAPSHOTTING],
+            desired_replication_group,
+            lambda replication_group:  self.update_replication_group_information(replication_group, full_information=False),
+            [desired_replication_group.Status.AVAILABLE],
+            [desired_replication_group.Status.CREATING,
+             desired_replication_group.Status.MODIFYING,
+             desired_replication_group.Status.SNAPSHOTTING],
             [
-                replication_group.Status.DELETING,
-                replication_group.Status.CREATE_FAILED,
+                desired_replication_group.Status.DELETING,
+                desired_replication_group.Status.CREATE_FAILED,
             ], timeout=30*60
         )
-        return replication_group.update_from_raw_response(response)
+        return True
 
-    def update_replication_group_information(self, replication_group):
+    def update_replication_group_information(self, replication_group, full_information=True):
         """
         Standard
 
+        :param full_information:
         :param replication_group:
         :return:
         """
 
-        region_replication_groups = self.get_region_replication_groups(
-            replication_group.region
-        )
+        replication_groups = list(self.yield_replication_groups(region=replication_group.region,
+                                                                filters_req={"ReplicationGroupId":replication_group.id}))
+        if len(replication_groups) == 0:
+            return False
 
-        for region_replication_group in region_replication_groups:
-            if replication_group.id == region_replication_group.id:
-                replication_group.update_from_raw_response(
-                    region_replication_group.dict_src
-                )
-                return True
-        return False
+        if len(replication_groups) != 1:
+            raise ValueError(f"Found more than 1: {replication_groups} replication groups by id {replication_group.id}"
+                             f" in region {replication_group.region.region_mark}")
+
+        if not replication_group.update_from_attrs(replication_groups[0]):
+            raise RuntimeError("Was not able to update")
+
+        if not full_information:
+            return True
+
+        replication_group.security_group_ids = []
+        for member_cluster_id in replication_group.member_clusters:
+            clusters = list(self.yield_clusters(replication_group.region, update_info=True, filters_req={"CacheClusterId": member_cluster_id}))
+            if len(clusters) != 1:
+                raise RuntimeError(f"Expected single elasticache cluster, found {len(clusters)=}")
+            cluster = clusters[0]
+            for sg in cluster.security_groups:
+                if sg["Status"] != "active":
+                    continue
+                if sg["SecurityGroupId"] in replication_group.security_group_ids:
+                    continue
+                replication_group.security_group_ids.append(sg["SecurityGroupId"])
+
+            if replication_group.engine_version is not None and replication_group.engine_version != cluster.engine_version:
+                raise ValueError(f"{cluster.id=}, {replication_group.engine_version=}, {cluster.engine_version=}")
+            replication_group.engine_version = cluster.engine_version
+
+            if replication_group.preferred_maintenance_window is not None and replication_group.preferred_maintenance_window != cluster.preferred_maintenance_window:
+                raise ValueError(f"{cluster.id=}, {replication_group.preferred_maintenance_window=}, {cluster.preferred_maintenance_window=}")
+            replication_group.preferred_maintenance_window = cluster.preferred_maintenance_window
+
+            if (cluster.cache_parameter_group["ParameterApplyStatus"] != "in-sync") or \
+                    len(cluster.cache_parameter_group["CacheNodeIdsToReboot"]) > 0:
+                raise RuntimeError(f"{cluster.dict_src}")
+
+            if replication_group.cache_parameter_group_name is not None and replication_group.cache_parameter_group_name != cluster.cache_parameter_group["CacheParameterGroupName"]:
+                raise ValueError(f"{cluster.id=}, {replication_group.cache_parameter_group_name=}, {cluster.cache_parameter_group=}")
+            replication_group.cache_parameter_group_name = cluster.cache_parameter_group["CacheParameterGroupName"]
+
+        return True
 
     def provision_replication_group_raw(self, region, request_dict):
         """
@@ -329,6 +397,21 @@ class ElasticacheClient(Boto3Client):
         logger.info(f"Creating redis_replication_group: {request_dict}")
         for response in self.execute(
                 self.get_session_client(region=region).create_replication_group,
+                "ReplicationGroup",
+                filters_req=request_dict,
+        ):
+            self.clear_cache(ElasticacheReplicationGroup)
+            return response
+
+    def modify_replication_group_raw(self, region, request_dict):
+        """
+        Returns ARN
+
+        """
+
+        logger.info(f"Modifying redis_replication_group: {request_dict}")
+        for response in self.execute(
+                self.get_session_client(region=region).modify_replication_group,
                 "ReplicationGroup",
                 filters_req=request_dict,
         ):

@@ -29,9 +29,21 @@ class ElasticacheCluster(AwsObject):
         self.snapshot_retention_limit = None
         self.snapshot_window = None
 
+        self.request_key_to_attribute_mapping = {"ARN": "arn", "CacheClusterId": "id"}
+
         if from_cache:
             self._init_object_from_cache(dict_src)
             return
+
+        self.update_from_raw_response(dict_src)
+
+    def update_from_raw_response(self, dict_src):
+        """
+        From AWS response.
+        :param dict_src:
+        :return:
+        """
+
         init_options = {
             "ARN": lambda x, y: self.init_default_attr(x, y, formatted_name="arn"),
             "CacheClusterId": lambda x, y: self.init_default_attr(
@@ -60,6 +72,8 @@ class ElasticacheCluster(AwsObject):
             "AtRestEncryptionEnabled": self.init_default_attr,
             "ReplicationGroupLogDeliveryEnabled": self.init_default_attr,
             "LogDeliveryConfigurations": self.init_default_attr,
+            "IpDiscovery": self.init_default_attr,
+            "NetworkType": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
@@ -73,11 +87,22 @@ class ElasticacheCluster(AwsObject):
         options = {}
         self._init_from_cache(dict_src, options)
 
+    def generate_modify_request(self, desired_state):
+        """
+        Standard.
+
+        :param desired_state:
+        :return:
+        """
+
+        raise NotImplementedError("Do the same as in elasticache replication group")
+
     def generate_create_request(self):
         """
         Standard
         :return:
         """
+
         request = {"CacheClusterId": self.id,
                    "ReplicationGroupId": self.replication_group_id,
                    "AZMode": self.az_mode,
