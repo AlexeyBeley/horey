@@ -25,23 +25,7 @@ class EC2SecurityGroup(AwsObject):
             self._init_object_from_cache(dict_src)
             return
 
-        init_options = {
-            "GroupName": lambda x, y: self.init_default_attr(
-                x, y, formatted_name="name"
-            ),
-            "SecurityGroupArn": lambda x, y: self.init_default_attr(
-                x, y, formatted_name="arn"
-            ),
-            "Description": self.init_default_attr,
-            "IpPermissions": self.init_default_attr,
-            "OwnerId": self.init_default_attr,
-            "GroupId": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
-            "IpPermissionsEgress": self.init_default_attr,
-            "Tags": self.init_default_attr,
-            "VpcId": self.init_default_attr,
-        }
-
-        self.init_attrs(dict_src, init_options)
+        self.update_from_raw_response(dict_src)
 
     def _init_object_from_cache(self, dict_src):
         """
@@ -350,6 +334,9 @@ class EC2SecurityGroup(AwsObject):
         init_options = {
             "GroupName": lambda x, y: self.init_default_attr(
                 x, y, formatted_name="name"
+            ),
+            "SecurityGroupArn": lambda x, y: self.init_default_attr(
+                x, y, formatted_name="arn"
             ),
             "Description": self.init_default_attr,
             "IpPermissions": self.init_default_attr,
