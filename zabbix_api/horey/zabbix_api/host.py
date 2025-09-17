@@ -16,90 +16,54 @@ class Host(ZabbixObject):
         self.interfaces = []
         self.parent_templates = []
         self.status = None
+        self.hostid = None
+        self.proxyid = None
+        self.ipmi_authtype = None
+        self.ipmi_privilege = None
+        self.ipmi_username = None
+        self.ipmi_password = None
+        self.maintenanceid = None
+        self.maintenance_status = None
+        self.maintenance_type = None
+        self.maintenance_from = None
+        self.flags = None
+        self.templateid = None
+        self.description = None
+        self.tls_connect = None
+        self.tls_accept = None
+        self.tls_issuer = None
+        self.tls_subject = None
+        self.custom_interfaces = None
+        self.uuid = None
+        self.vendor_name = None
+        self.vendor_version = None
+        self.proxy_groupid = None
+        self.monitored_by = None
+        self.wizard_ready = None
+        self.readme = None
+        self.inventory_mode = None
+        self.active_available = None
+        self.assigned_proxyid = None
+        self.hostgroups = None
 
         super().__init__(dict_src, from_cache=from_cache)
 
-        init_options = {
-            "hostid": lambda x, y: self.init_default_attr(x, y, formatted_name="id"),
-            "proxy_hostid": self.init_default_attr,
-            "host": self.init_default_attr,
-            "status": self.init_default_attr,
-            "lastaccess": self.init_default_attr,
-            "ipmi_authtype": self.init_default_attr,
-            "ipmi_privilege": self.init_default_attr,
-            "ipmi_username": self.init_default_attr,
-            "ipmi_password": self.init_default_attr,
-            "maintenanceid": self.init_default_attr,
-            "maintenance_status": self.init_default_attr,
-            "maintenance_type": self.init_default_attr,
-            "maintenance_from": self.init_default_attr,
-            "name": self.init_default_attr,
-            "flags": self.init_default_attr,
-            "templateid": self.init_default_attr,
-            "description": self.init_default_attr,
-            "tls_connect": self.init_default_attr,
-            "tls_accept": self.init_default_attr,
-            "tls_issuer": self.init_default_attr,
-            "tls_subject": self.init_default_attr,
-            "proxy_address": self.init_default_attr,
-            "auto_compress": self.init_default_attr,
-            "discover": self.init_default_attr,
-            "custom_interfaces": self.init_default_attr,
-            "uuid": self.init_default_attr,
-            "groups": self.init_default_attr,
-            "interfaces": self.init_default_attr,
-            "parentTemplates": self.init_default_attr,
-            "vendor_name": self.init_default_attr,
-            "vendor_version": self.init_default_attr,
-            "inventory_mode": self.init_default_attr,
-            "active_available": self.init_default_attr,
-        }
-
-        self.init_attrs(dict_src, init_options)
+        self.init_attrs(dict_src)
 
     def generate_create_request(self, validate=True):
         """
-        {
-            "jsonrpc": "2.0",
-            "method": "host.create",
-            "params": {
-                "host": "Example host",
-                "interfaces": [
-                    {
-                        "type": 1,
-                        "main": 1,
-                        "useip": 1,
-                        "ip": "192.168.3.1",
-                        "dns": "",
-                        "port": "10050"
-                    }
-                ],
-                "groups": [
-                    {
-                        "groupid": "50"
-                    }
-                ],
-                "templates": [
-                    {
-                        "templateid": "10338"
-                    }
-                ],
-                "inventory_mode": 0,
-                "inventory": {
-                    "macaddress_a": "01234",
-                    "macaddress_b": "56768"
-                }
-            },
-            "auth": "038e1d7b1735c6a5436ee9eae095879e",
-            "id": 1
-        }
+        Host request
+
+        :param validate:
+        :return:
         """
+
         if validate:
             if self.host != self.name:
                 raise ValueError(f"self.host= {self.host} != self.name = {self.name}")
 
         request = {"host": self.host, "status": self.status,
-                   "groups": [{"groupid": group["groupid"]} for group in self.groups], "interfaces": [
+                   "groups": [{"groupid": group["groupid"]} for group in self.hostgroups], "interfaces": [
                 {
                     "ip": interface["ip"],
                     "type": interface["type"],
@@ -121,9 +85,11 @@ class Host(ZabbixObject):
 
         :return:
         """
+
         request = self.generate_create_request()
-        request["hostid"] = self.id
+        request["hostid"] = self.hostid
         del request["interfaces"]
+        del request["host"] # is not working in new API
         return request
 
     def generate_delete_request(self):
@@ -138,5 +104,5 @@ class Host(ZabbixObject):
         "auth": "038e1d7b1735c6a5436ee9eae095879e",
         "id": 1
         }"""
-        request = [self.id]
+        request = [self.hostid]
         return request

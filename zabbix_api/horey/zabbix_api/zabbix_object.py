@@ -1,4 +1,5 @@
 from horey.common_utils.common_re_utils import CommonREUtils
+from horey.common_utils.common_utils import CommonUtils
 import datetime
 from enum import Enum
 
@@ -16,7 +17,6 @@ class ZabbixObject:
         else:
             self.dict_src = dict_src
         self.name = None
-        self.id = None
         self.common_re_utils = CommonREUtils()
 
     def convert_to_dict(self):
@@ -35,6 +35,7 @@ class ZabbixObject:
         :param custom_types: list of dicts: {type:converter_function}
         :return:
         """
+
         if type(obj_src) in [str, int, bool, type(None)]:
             return obj_src
 
@@ -99,7 +100,7 @@ class ZabbixObject:
 
         setattr(self, formatted_name, value)
 
-    def init_attrs(self, dict_src, dict_options, raise_on_no_option=True):
+    def init_attrs(self, dict_src, raise_on_no_option=True):
         """
         Init the object attributes according to given "recipe"
         :param dict_src:
@@ -107,25 +108,8 @@ class ZabbixObject:
         @param raise_on_no_option: If key not set explicitly raise exception.
         :return:
         """
-        composed_errors = []
-        for key_src, value in dict_src.items():
-            try:
-                dict_options[key_src](key_src, value)
-            except KeyError as caught_exception:
-                for key_src_ in dict_src:
-                    if key_src_ not in dict_options:
-                        line_to_add = '"{}":  self.init_default_attr,'.format(key_src_)
-                        composed_errors.append(line_to_add)
-                        logger.error(line_to_add)
 
-                if not raise_on_no_option:
-                    self.init_default_attr(key_src, value)
-                    continue
-
-                print("\n".join(composed_errors))
-                raise self.UnknownKeyError(
-                    "\n".join(composed_errors)
-                ) from caught_exception
+        return CommonUtils.init_from_api_dict(self, dict_src, validate_attributes=raise_on_no_option)
 
     def _init_from_cache(self, dict_src, dict_options):
         """

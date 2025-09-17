@@ -373,7 +373,22 @@ def provision_venv(configs):
     StandaloneMethods = get_standalone_methods(configs)
     venv_path = os.path.abspath(configs.get("venv_dir_path"))
     logger.info(f"Creating new venv in: '{venv_path}'")
-    ret = StandaloneMethods.execute(f"{sys.executable} -m venv {venv_path}")
+    try:
+        ret = StandaloneMethods.execute(f"{sys.executable} -m venv {venv_path}")
+    except RuntimeError as inst_err:
+        ensurepip_line = "The virtual environment was not created successfully because ensurepip is not"
+        if ensurepip_line not in repr(inst_err):
+            raise
+        ret_tmp = StandaloneMethods.execute(f"{sys.executable} -m venv {venv_path}", ignore_on_error_callback=lambda err: ensurepip_line in repr(err))
+        for line in ret_tmp["stdout"].split("\n"):
+            line = line.strip()
+            if line.startswith("apt install"):
+                StandaloneMethods.execute("sudo " + line)
+                ret = StandaloneMethods.execute(f"{sys.executable} -m venv {venv_path}")
+                break
+        else:
+            raise RuntimeError(f"Was not able to find `apt install` in {ret_tmp}")
+
     logger.info(ret)
     return True
 

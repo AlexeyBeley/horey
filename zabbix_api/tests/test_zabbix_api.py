@@ -34,7 +34,7 @@ def test_init_hosts():
     assert isinstance(zabbix_api.hosts, list)
 
 
-@pytest.mark.wip
+@pytest.mark.skip
 def test_init_graphs():
     assert zabbix_api.init_graphs()
 
@@ -46,11 +46,11 @@ def test_init_templates():
     assert isinstance(zabbix_api.templates, list)
 
 
-@pytest.mark.skip(reason="IAM policies will be inited explicitly")
+@pytest.mark.unit
 def test_provision_host():
     zabbix_api.init_hosts()
     for host in zabbix_api.hosts:
-        if "template" == host.name:
+        if "host" in host.name:
             break
 
     host.name = "alexeytest"

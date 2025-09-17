@@ -86,6 +86,10 @@ class ZabbixAPIConfigurationPolicy(ConfigurationPolicy):
     def password(self):
         return self._password
 
+    @password.setter
+    def password(self, value):
+        self._password = value
+
     @property
     def timeout(self):
         return self._timeout

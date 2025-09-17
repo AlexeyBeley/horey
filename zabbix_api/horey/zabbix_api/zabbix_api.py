@@ -38,7 +38,6 @@ class ZabbixAPIException(Exception):
 class ZabbixAPI:
     """
     Main class
-    todo: history.get
 
     """
 
@@ -52,8 +51,7 @@ class ZabbixAPI:
         self.session.headers.update(
             {
                 "Content-Type": "application/json-rpc",
-                "User-Agent": "python/pyzabbix",
-                "Cache-Control": "no-cache",
+                "User-Agent": "python/pyzabbix"
             }
         )
 
@@ -75,24 +73,6 @@ class ZabbixAPI:
             if self.is_authenticated:
                 self.user.logout()
             return True
-
-    def login(self):
-        """Convenience method for calling user.authenticate and storing the resulting auth token
-        for further commands.
-        If use_authenticate is set, it uses the older (Zabbix 1.8) authentication command
-        :param password: Password used to login into Zabbix
-        :param user: Username used to login into Zabbix
-        """
-
-        # If we have an invalid auth token, we are not allowed to send a login
-        # request. Clear it before trying.
-        self.auth = ""
-        if self.configuration.user_authenticate:
-            raise NotImplementedError()
-            # self.auth = self.user.authenticate(user=user, password=password)
-            # self.auth = self.user.login(user=user, password=password)
-        elif self.configuration.token_authenticate:
-            self.auth = self.configuration.auth_token
 
     def check_authentication(self):
         """Convenience method for calling user.checkAuthentication of the current session"""
@@ -134,6 +114,53 @@ class ZabbixAPI:
 
         return self.apiinfo.version()
 
+    def login(self):
+        """
+        Get tmp auth
+        :return:
+        """
+
+        try:
+            return self.lgged_in
+        except AttributeError:
+            pass
+
+        ret = self.post("user.login", params={"username": "Admin", "password": self.configuration.password})
+        self.session.headers.update(
+            {
+                "Content-Type": "application/json-rpc",
+                "User-Agent": "python/pyzabbix",
+                "Authorization": f"Bearer {ret}"
+            }
+        )
+
+        setattr(self, "lgged_in", True)
+
+    def post(self, method, params=None):
+        """
+        Standard get.
+        :param params:
+        :return:
+        """
+        self.id += 1
+
+        request_json = {
+            "jsonrpc": "2.0",
+            "method": method,
+            "params": params or {},
+            "id": self.id,
+        }
+        response = self.session.post(
+            self.url, data=json.dumps(request_json), timeout=self.timeout
+        )
+        response.raise_for_status()
+        dict_response = json.loads(response.text)
+
+        if "error" in dict_response:
+            raise RuntimeError(f"Request {method=} returned {dict_response.get('error')}")
+
+        return dict_response["result"]
+
     def do_request(self, method, params=None):
         """
         Perform post request.
@@ -152,9 +179,9 @@ class ZabbixAPI:
 
         # We don't have to pass the auth token if asking for the apiinfo.version or user.checkAuthentication
         if (
-            self.auth
-            and method != "apiinfo.version"
-            and method != "user.checkAuthentication"
+                self.auth
+                and method != "apiinfo.version"
+                and method != "user.checkAuthentication"
         ):
             request_json["auth"] = self.auth
 
@@ -186,7 +213,7 @@ class ZabbixAPI:
 
         if "error" in response_json:  # some exception
             if (
-                "data" not in response_json["error"]
+                    "data" not in response_json["error"]
             ):  # some errors don't contain 'data': workaround for ZBX-9340
                 response_json["error"]["data"] = "No data"
             msg = "Error {code}: {message}, {data}".format(
@@ -200,10 +227,6 @@ class ZabbixAPI:
 
         return response_json
 
-    def __getattr__(self, attr):
-        """Dynamically create an object class (ie: host)"""
-        return ZabbixAPIObjectClass(attr, self)
-
     def init_hosts(self):
         """
         Fetch hosts.
@@ -213,18 +236,15 @@ class ZabbixAPI:
 
         self.login()
 
-        # todo: refactor to standard get
-        ret = self.do_request("host.get", params={"selectGroups":"extend", "selectInterfaces": [
-                "interfaceid",
-                "ip",
-                "type",
-                "main",
-                "useip",
-                "dns",
-                "port",
-            ], "selectParentTemplates": ["templateid", "name"]})
-
-        host_dicts = ret["result"]
+        host_dicts = self.post("host.get", params={"selectHostGroups": "extend", "selectInterfaces": [
+            "interfaceid",
+            "ip",
+            "type",
+            "main",
+            "useip",
+            "dns",
+            "port",
+        ], "selectParentTemplates": ["templateid", "name"]})
 
         self.hosts = [Host(host_dict) for host_dict in host_dicts]
 
@@ -233,6 +253,7 @@ class ZabbixAPI:
         Fetch templates
         :return:
         """
+
         self.login()
         return self.template.get()
 
@@ -245,7 +266,7 @@ class ZabbixAPI:
         """
 
         logger.info(f"Raw create Zabbix host: {dict_request['host']}")
-        response = self.host.create(**dict_request)
+        response = self.post("host.create", params=dict_request)
         logger.info(response)
         return response
 
@@ -257,8 +278,8 @@ class ZabbixAPI:
         :return:
         """
 
-        logger.info(f"Raw update Zabbix host: {dict_request['host']}")
-        response = self.host.update(**dict_request)
+        logger.info(f"Raw update Zabbix host: {dict_request['hostid']}")
+        response = self.post("host.update", params=dict_request)
         logger.info(response)
         return response
 
@@ -304,28 +325,21 @@ class ZabbixAPI:
         logger.info(response)
         return response
 
-    def provision_host(self, host):
+    def provision_host(self, desired_host: Host):
         """
         Create or update a host.
 
-        :param host:
+        :param desired_host:
         :return:
         """
-        logger.info(f"Provisioning Zabbix host: {host.name}")
-        try:
-            response = self.raw_create_host(host.generate_create_request())
-        except ZabbixAPIException as exception_instance:
-            repr_exception = repr(exception_instance)
-            if (
-                f'Host with the same name "{host.host}" already exists'
-                not in repr_exception
-            ):
-                raise
-            logger.warning(repr_exception)
-            host.id = self.get_host_id(host)
-            response = self.raw_update_host(host.generate_update_request())
-            # self.delete_host(host)
-            # response = self.raw_create_host(host.generate_create_request())
+        logger.info(f"Provisioning Zabbix host: {desired_host.name}")
+        self.init_hosts()
+        for existing_host in self.hosts:
+            if existing_host.name == desired_host.name:
+                response = self.raw_update_host(desired_host.generate_update_request())
+                break
+        else:
+            response = self.raw_create_host(desired_host.generate_create_request())
 
         return response
 
@@ -339,9 +353,9 @@ class ZabbixAPI:
         self.login()
 
         # todo: refactor to standard get
-        ret = self.do_request("graph.get", params= {
-        "output": "extend",
-        "sortfield": "name"
+        ret = self.do_request("graph.get", params={
+            "output": "extend",
+            "sortfield": "name"
         })
 
         return ret["result"]
@@ -351,6 +365,7 @@ class ZabbixAPIObjectClass(object):
     """
     Base object class
     """
+
     def __init__(self, name, parent):
         self.name = name
         self.parent = parent
