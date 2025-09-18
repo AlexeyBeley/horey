@@ -22,6 +22,7 @@ class AsyncOrchestrator:
 
     def __init__(self):
         self.tasks = {}
+        self.alive = True
 
     def start_task(self, task):
         """
@@ -98,7 +99,7 @@ class AsyncOrchestrator:
             time.sleep(sleep_time)
         raise TimeoutError(f"Finished wait_for_tasks at {time.strftime('%X')}")
 
-    # pylint: disable= too-many-arguments
+    # pylint: disable= too-many-arguments, too-many-positional-arguments
     def get_task_result(self, task_id, sleep_time=1, timeout=20*60, start_timeout=60, silent_exit=False):
         """
         Wait for all tasks to finish.
