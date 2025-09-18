@@ -50,6 +50,10 @@ class Disk(AzureObject):
             "tier": self.init_default_attr,
             "os_type": self.init_default_attr,
             "hyper_v_generation": self.init_default_attr,
+            "supported_capabilities": self.init_default_attr,
+            "supports_hibernation": self.init_default_attr,
+            "public_network_access": self.init_default_attr,
+            "last_ownership_update_time": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
