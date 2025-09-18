@@ -32,6 +32,9 @@ class AsyncOrchestrator:
         :return:
         """
 
+        if not self.alive:
+            return False
+
         logger.info(f"Starting task '{task.id}' at {time.strftime('%X')}")
         if task.id in self.tasks:
             logger.error(f"Task with id {task.id} already in tasks: current traceback:")
@@ -48,9 +51,9 @@ class AsyncOrchestrator:
         thread = threading.Thread(target=self.task_runner_thread, args=(task,))
         thread.start()
         logger.info(f"Started thread for '{task.id}' in start_task at {time.strftime('%X')}")
+        return True
 
-    @staticmethod
-    def task_runner_thread(task):
+    def task_runner_thread(self, task):
         """
         Task running thread
 
@@ -60,6 +63,9 @@ class AsyncOrchestrator:
         logger.info(f"started task_runner_thread at {time.strftime('%X')}")
 
         try:
+            if not self.alive:
+                raise RuntimeError("Can not start task. Async orchestrator is not alive.")
+
             task.started = True
             logger.info(f"Setting task {task.id} as started")
             task.exit_code = 1
