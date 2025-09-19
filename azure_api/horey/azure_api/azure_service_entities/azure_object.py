@@ -28,6 +28,36 @@ class AzureObject:
             self.dict_src = dict_src
         self.name = None
         self.id = None
+        self._resource_group_name = None
+
+    @property
+    def resource_group_name(self):
+        """
+        Generate or use one explicitly set.
+
+        :return:
+        """
+
+        if self._resource_group_name is None:
+            if self.id is None:
+                raise ValueError("Neither _resource_group_name nor id were set")
+            lst_id = self.id.split("/")
+            if lst_id[3] != "resourceGroups":
+                raise RuntimeError(f"Can not parse ID: {lst_id}")
+            self._resource_group_name = lst_id[4]
+
+        return self._resource_group_name
+
+    @resource_group_name.setter
+    def resource_group_name(self, value):
+        """
+        Setter.
+
+        :param value:
+        :return:
+        """
+
+        self._resource_group_name = value
 
     def convert_to_dict(self):
         """

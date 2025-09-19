@@ -50,7 +50,8 @@ class NetworkInterface(AzureObject):
             "vnet_encryption_supported": self.init_default_attr,
             "auxiliary_mode": self.init_default_attr,
             "auxiliary_sku": self.init_default_attr,
-            "disable_tcp_state_tracking": self.init_default_attr
+            "disable_tcp_state_tracking": self.init_default_attr,
+            "default_outbound_connectivity_enabled": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)

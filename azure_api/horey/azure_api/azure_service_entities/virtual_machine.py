@@ -14,7 +14,6 @@ class VirtualMachine(AzureObject):
 
     def __init__(self, dict_src, from_cache=False):
         self.name = None
-        self._resource_group_name = None
         self.id = None
         self.location = None
         self.tags = {}
@@ -31,6 +30,23 @@ class VirtualMachine(AzureObject):
             return
 
         self.update_from_raw_response(dict_src)
+
+    @property
+    def resource_group_name(self):
+        """
+        Generate or use one explicitly set.
+
+        :return:
+        """
+
+        if self._resource_group_name is None:
+            if self.network_profile:
+                lst_id = self.network_profile["network_interfaces"][0]["id"].split("/")
+                if lst_id[3] != "resourceGroups":
+                    raise RuntimeError(f"Can not parse ID: {lst_id}")
+                self._resource_group_name = lst_id[4]
+
+        return self._resource_group_name
 
     def update_from_raw_response(self, dict_src):
         """
@@ -59,34 +75,6 @@ class VirtualMachine(AzureObject):
         }
 
         self.init_attrs(dict_src, init_options)
-
-    @property
-    def resource_group_name(self):
-        """
-        Generate or use one explicitly set.
-
-        :return:
-        """
-
-        if self._resource_group_name is None:
-            if self.network_profile:
-                lst_id = self.network_profile["network_interfaces"][0]["id"].split("/")
-                if lst_id[3] != "resourceGroups":
-                    raise RuntimeError(f"Can not parse ID: {lst_id}")
-                self._resource_group_name = lst_id[4]
-
-        return self._resource_group_name
-
-    @resource_group_name.setter
-    def resource_group_name(self, value):
-        """
-        Setter.
-
-        :param value:
-        :return:
-        """
-
-        self._resource_group_name = value
 
     def init_virtual_machine_from_cache(self, dict_src):
         """

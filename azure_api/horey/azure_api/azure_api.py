@@ -6,6 +6,7 @@ Azure API
 import json
 from horey.azure_api.azure_clients.compute_client import ComputeClient
 from horey.azure_api.azure_clients.resource_client import ResourceClient
+from horey.azure_api.azure_clients.resource_management_lock_client import ResourceManagementLockClient
 from horey.azure_api.azure_clients.network_client import NetworkClient
 
 from horey.common_utils.common_utils import CommonUtils
@@ -34,6 +35,7 @@ class AzureAPI:
         self.compute_client = ComputeClient()
         self.resource_client = ResourceClient()
         self.network_client = NetworkClient()
+        self.resource_management_lock_client = ResourceManagementLockClient()
 
         self.resource_groups = []
         self.virtual_machines = []
@@ -490,8 +492,6 @@ class AzureAPI:
             self.delete_resource_group(building_block)
         elif isinstance(building_block, Disk):
             self.delete_disk(building_block)
-        elif isinstance(building_block, VirtualMachine):
-            self.delete_virtual_machine(building_block)
         elif isinstance(building_block, LoadBalancer):
             self.delete_load_balancer(building_block)
         elif isinstance(building_block, NetworkInterface):
@@ -532,3 +532,34 @@ class AzureAPI:
 
         for disk in self.compute_client.get_all_disks(resource_group):
             print(f"{disk.name} - {disk.disk_size_gb} GB")
+
+    def get_vm_attached_public_address(self, vm:VirtualMachine, public_ip_addresses=None):
+        """
+        Find public address attached to the VM.
+
+        :param public_ip_addresses:
+        :param vm:
+        :return:
+        """
+
+        public_ip_addresses = public_ip_addresses or self.network_client.get_all_public_ip_addresses(None, resource_group_name=vm.resource_group_name)
+        network_interface_id = vm.network_profile["network_interfaces"][0]["id"]
+        public_ips = [ip.ip_address for ip in public_ip_addresses if
+                       ip.ip_configuration and network_interface_id in ip.ip_configuration["id"]]
+        if not public_ips:
+            return None
+
+        if len(public_ips) > 1:
+            raise RuntimeError(f"Expected exactly 1 IP address for '{vm.name}', but found {len(public_ips)}.")
+
+        return public_ips[0]
+
+    def get_public_ip_resource_locks(self, public_ip):
+        """
+        Return locks.
+
+        :param public_ip:
+        :return:
+        """
+
+        return self.resource_management_lock_client.get_public_ip_resource_locks(public_ip.resource_group_name, public_ip.name)
