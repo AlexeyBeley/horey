@@ -48,6 +48,17 @@ class VirtualMachine(AzureObject):
 
         return self._resource_group_name
 
+    @resource_group_name.setter
+    def resource_group_name(self, value):
+        """
+        Setter.
+
+        :param value:
+        :return:
+        """
+
+        self._resource_group_name = value
+
     def update_from_raw_response(self, dict_src):
         """
         Update attributes from API response source data
