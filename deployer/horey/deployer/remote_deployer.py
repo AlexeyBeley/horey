@@ -1002,14 +1002,22 @@ class RemoteDeployer:
         if proxy_jump_client:
             # Get the transport from the active bastion connection
             proxy_jump_transport = proxy_jump_client.get_transport()
-
-            # Open a new channel over the bastion connection to the target host
-            # The channel acts as our 'tunnel'
-            target_channel = proxy_jump_transport.open_channel(
-                "direct-tcpip",
-                (target_host, 22),  # The final destination host and port
-                ("127.0.0.1", 0)  # The local source (can be anything, as it's a proxy)
-            )
+            retries = 12
+            for counter in range(retries):
+                try:
+                    # Open a new channel over the bastion connection to the target host
+                    # The channel acts as our 'tunnel'
+                    target_channel = proxy_jump_transport.open_channel(
+                    "direct-tcpip",
+                    (target_host, 22),  # The final destination host and port
+                    ("127.0.0.1", 0)  # The local source (can be anything, as it's a proxy)
+                    )
+                    break
+                except Exception:
+                    logger.info(f"Connecting to Proxy Jump Server: {target_host} failed. Going to sleep {counter}/{retries}")
+                    time.sleep(5)
+            else:
+                raise TimeoutError(f"Reached timeout retrying to connect the Proxy Jump Server: {target_host}")
 
         # Create a new SSH client and connect it using the new channel
         target_client = paramiko.SSHClient()

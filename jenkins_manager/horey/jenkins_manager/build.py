@@ -76,7 +76,7 @@ class Build:
                 raise ValueError(f"'{hash_number}' was not found in {self.display_name=}")
             self._name = self.display_name[:self.display_name.find(hash_number)].strip()
             if f"/{self._name}/" not in self.url:
-                raise ValueError(f"Can not find {self._name} in {self.url=}")
+                raise ValueError(f"Can not find '{self._name}' in {self.url=}")
 
         return self._name
 
