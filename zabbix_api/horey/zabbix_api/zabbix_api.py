@@ -247,6 +247,7 @@ class ZabbixAPI:
         ], "selectParentTemplates": ["templateid", "name"]})
 
         self.hosts = [Host(host_dict) for host_dict in host_dicts]
+        return self.hosts
 
     def init_templates(self):
         """

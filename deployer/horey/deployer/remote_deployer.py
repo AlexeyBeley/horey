@@ -1014,10 +1014,10 @@ class RemoteDeployer:
                     )
                     break
                 except Exception:
-                    logger.info(f"Connecting to Proxy Jump Server: {target_host} failed. Going to sleep {counter}/{retries}")
+                    logger.info(f"Connecting to {target_host} via Proxy Jump Server: failed. Going to sleep {counter}/{retries}")
                     time.sleep(5)
             else:
-                raise TimeoutError(f"Reached timeout retrying to connect the Proxy Jump Server: {target_host}")
+                raise TimeoutError(f"Reached timeout retrying to connect {target_host} via the Proxy Jump Server")
 
         # Create a new SSH client and connect it using the new channel
         target_client = paramiko.SSHClient()
