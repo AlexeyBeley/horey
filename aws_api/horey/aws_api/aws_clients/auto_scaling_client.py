@@ -24,7 +24,7 @@ class AutoScalingClient(Boto3Client):
     def __init__(self):
         client_name = "autoscaling"
         super().__init__(client_name)
-    
+
     def yield_auto_scaling_groups(self, region=None, update_info=False, filters_req=None):
         """
         Yield tables
@@ -163,8 +163,7 @@ class AutoScalingClient(Boto3Client):
                         f"desired capacity to {autoscaling_group.desired_capacity}"
                     )
 
-            autoscaling_group.update_from_raw_response(region_objects[0].dict_src)
-            return
+            return autoscaling_group.update_from_raw_response(region_objects[0].dict_src)
 
         # creation
         self.provision_auto_scaling_group_raw(autoscaling_group.region,
@@ -193,7 +192,7 @@ class AutoScalingClient(Boto3Client):
                 autoscaling_group.region, names=[autoscaling_group.name]
             )
 
-        autoscaling_group.update_from_raw_response(region_objects[0].dict_src)
+        return autoscaling_group.update_from_raw_response(region_objects[0].dict_src)
 
     def set_desired_capacity_raw(self, region, request_dict):
         """

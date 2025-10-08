@@ -2252,7 +2252,7 @@ class AWSAPI:
             contents = file_handler.read()
         self.put_secret_value(region, secret_name, contents)
 
-    # pylint: disable= too-many-arguments
+    # pylint: disable= too-many-arguments, too-many-positional-arguments
     def get_secret_file(self, secret_name, dir_path: str, region=None, file_name=None, ignore_missing=False):
         """
         Get secrets manager value and save it to file.
@@ -2448,6 +2448,15 @@ class AWSAPI:
         @return:
         """
 
+        self.elasticsearch_client.wait_for_status(elasticsearch_domain, self.elasticsearch_client.update_domain_information, [elasticsearch_domain.State.ACTIVE],
+                             [elasticsearch_domain.State.CREATING,
+                              elasticsearch_domain.State.UPDATING_ENGINE_VERSION,
+                              elasticsearch_domain.State.UPDATING_SERVICE_SOFTWARE,
+                              elasticsearch_domain.State.MODIFYING],
+                             [elasticsearch_domain.State.DELETING,
+                              elasticsearch_domain.State.ISOLATED
+                              ], timeout=60 * 60)
+
         access_policies = json.loads(elasticsearch_domain.access_policies)
         new_statements = []
         for raw_statement in raw_statements:
@@ -2481,6 +2490,15 @@ class AWSAPI:
         self.elasticsearch_client.raw_update_elasticsearch_domain_config(
             request, region=elasticsearch_domain.region
         )
+
+        self.elasticsearch_client.wait_for_status(elasticsearch_domain, self.elasticsearch_client.update_domain_information, [elasticsearch_domain.State.ACTIVE],
+                             [elasticsearch_domain.State.CREATING,
+                              elasticsearch_domain.State.UPDATING_ENGINE_VERSION,
+                              elasticsearch_domain.State.UPDATING_SERVICE_SOFTWARE,
+                              elasticsearch_domain.State.MODIFYING],
+                             [elasticsearch_domain.State.DELETING,
+                              elasticsearch_domain.State.ISOLATED
+                              ], timeout=60 * 60)
 
     def modify_elasticsearch_access_policy_raw_statements(
             self, elasticsearch_domain, statements_to_add, statements_to_remove
@@ -2631,9 +2649,11 @@ class AWSAPI:
         if not existed:
             return provision_response
 
-        if not len(existed_asg.instances):
+        if existed_asg.instances is not None and not existed_asg.instances:
             return True
         detached = []
+
+        # pylint: disable= not-an-iterable
         for dict_inst in existed_asg.instances:
             if dict_inst["LaunchTemplate"]["Version"] != str(current_launch_template.default_version_number):
                 instance_id = dict_inst["InstanceId"]
@@ -2646,6 +2666,7 @@ class AWSAPI:
             ec2_instance.region = autoscaling_group.region
             ec2_instance.id = detached_instance_id
             self.ec2_client.dispose_instance(ec2_instance)
+        return True
 
     def wait_for_auto_scaling_group_full_scale_up(self, autoscaling_group: AutoScalingGroup):
         """
@@ -3248,7 +3269,7 @@ class AWSAPI:
 
     # region ses_domain_email_identity
     def provision_ses_domain_email_identity(
-            self, desired_email_identity, wait_for_validation=True, hosted_zone_name=None
+            self, desired_email_identity:SESIdentity, wait_for_validation=True, hosted_zone_name=None
     ):
         """
         Standard.
@@ -3264,7 +3285,7 @@ class AWSAPI:
 
         self.sesv2_client.provision_identity(email_identity_current, desired_email_identity)
         self.ses_client.provision_identity(email_identity_current, desired_email_identity)
-        self.sesv2_client.update_email_identity_information(desired_email_identity)
+        self.sesv2_client.update_identity_information(desired_email_identity)
         self.ses_client.update_identity_full_information(desired_email_identity)
 
         if desired_email_identity.dkim_attributes["Status"] == "SUCCESS":
@@ -3279,7 +3300,7 @@ class AWSAPI:
                 f"Waiting for sesv2 domain validation request. Going to sleep for {sleep_time} seconds: {desired_email_identity.name}"
             )
             time.sleep(sleep_time)
-            self.sesv2_client.update_email_identity_information(desired_email_identity)
+            self.sesv2_client.update_identity_information(desired_email_identity)
 
             if desired_email_identity.dkim_attributes["Status"] != "NOT_STARTED":
                 break
@@ -3332,7 +3353,7 @@ class AWSAPI:
 
         self.route53_client.change_resource_record_sets(hosted_zone)
 
-    def wait_for_sesv2_domain_email_identity_validation(self, email_identity):
+    def wait_for_sesv2_domain_email_identity_validation(self, email_identity: SESIdentity):
         """
         Wait for DNS records to catch after provisioning SESv2 email_identity
 
@@ -3345,7 +3366,7 @@ class AWSAPI:
         start_time = datetime.datetime.now()
         end_time = start_time + datetime.timedelta(seconds=max_time)
         while datetime.datetime.now() < end_time:
-            self.sesv2_client.update_email_identity_information(email_identity)
+            self.sesv2_client.update_identity_information(email_identity)
             if email_identity.dkim_attributes["Status"] == "SUCCESS":
                 logger.info(
                     f"Finished validating in {datetime.datetime.now() - start_time}"
@@ -3919,6 +3940,7 @@ class AWSAPI:
 
         return instances[0]
 
+    # pylint: disable= too-many-positional-arguments
     def get_ec2_instances_by_name(self, region, name, alive=True, include_terminated=True, update_info=False):
         """
         Find running ec2 instances by "name" tag
@@ -3933,6 +3955,7 @@ class AWSAPI:
 
         return self.get_ec2_instances_by_tags(region, {"Name": [name]}, alive=alive, include_terminated=include_terminated, update_info=update_info)
 
+    # pylint: disable= too-many-positional-arguments
     def get_ec2_instances_by_tags(self, region, tags_values_by_name, alive=True, include_terminated=True, update_info=False):
         """
         Find running ec2 instances by "name" tag

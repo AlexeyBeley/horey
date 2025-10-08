@@ -81,6 +81,11 @@ class GitAPI:
             logger.info(f"Time to start SSH Agent: {perf_counter() - start_time}")
         try:
             self.checkout_remote_helper(dst_obj)
+        except self.bash_executor.BashError as inst_err:
+            if "The following untracked working tree files would be overwritten by" not in repr(inst_err):
+                raise
+            shutil.rmtree(self.configuration.directory_path)
+            self.checkout_remote_helper(dst_obj)
         finally:
             if int_agent_pid:
                 command = f"kill {int_agent_pid}"

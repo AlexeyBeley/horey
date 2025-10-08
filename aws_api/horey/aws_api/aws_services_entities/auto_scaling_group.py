@@ -90,7 +90,7 @@ class AutoScalingGroup(AwsObject):
             "CapacityReservationSpecification": self.init_default_attr,
         }
 
-        self.init_attrs(dict_src, init_options)
+        return self.init_attrs(dict_src, init_options)
 
     def generate_create_request(self):
         """
