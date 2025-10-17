@@ -122,8 +122,7 @@ class LoadbalancerAPIConfigurationPolicy(ConfigurationPolicy):
 
     @property
     def certificates_domain_names(self):
-        if self._certificates_domain_names is None:
-            raise self.UndefinedValueError("certificates_domain_names")
+        self.check_defined()
         return self._certificates_domain_names
 
     @certificates_domain_names.setter
@@ -135,8 +134,7 @@ class LoadbalancerAPIConfigurationPolicy(ConfigurationPolicy):
 
     @property
     def target_group_name(self):
-        if self._target_group_name is None:
-            raise self.UndefinedValueError("target_group_name")
+        self.check_defined()
         return self._target_group_name
 
     @target_group_name.setter
@@ -145,8 +143,7 @@ class LoadbalancerAPIConfigurationPolicy(ConfigurationPolicy):
 
     @property
     def security_groups(self):
-        if self._security_groups is None:
-            raise self.UndefinedValueError("security_groups")
+        self.check_defined()
         return self._security_groups
 
     @security_groups.setter
@@ -155,8 +152,7 @@ class LoadbalancerAPIConfigurationPolicy(ConfigurationPolicy):
 
     @property
     def scheme(self):
-        if self._scheme is None:
-            raise self.UndefinedValueError("scheme")
+        self.check_defined()
         return self._scheme
 
     @scheme.setter

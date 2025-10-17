@@ -5,7 +5,7 @@ Standard Load balancing maintainer.
 
 from horey.h_logger import get_logger
 from horey.aws_api.aws_services_entities.route53_hosted_zone import HostedZone
-
+from horey.infrastructure_api.dns_api_configuration_policy import DNSAPIConfigurationPolicy
 
 logger = get_logger()
 
@@ -16,7 +16,7 @@ class DNSAPI:
 
     """
 
-    def __init__(self, configuration, environment_api):
+    def __init__(self, configuration:DNSAPIConfigurationPolicy, environment_api):
         self.configuration = configuration
         self.environment_api = environment_api
 
@@ -60,6 +60,16 @@ class DNSAPI:
         self.environment_api.aws_api.route53_client.upsert_resource_record_sets(hosted_zone)
 
         return True
+
+    @property
+    def hosted_zone(self):
+        """
+        Configured hosted zone.
+
+        :return:
+        """
+
+        return self.get_hosted_zone(self.configuration.hosted_zone_name)
 
     def get_hosted_zone(self, hz_name):
         """

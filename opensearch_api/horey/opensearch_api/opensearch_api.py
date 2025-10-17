@@ -4,6 +4,8 @@ https://opensearch.org/docs/2.12/api-reference/
 
 """
 import json
+import os
+import pathlib
 
 import requests
 from horey.h_logger import get_logger
@@ -149,6 +151,7 @@ class OpensearchAPI:
 
         @return:
         """
+
         search = {
             "query": {
                 "exists": {
@@ -284,3 +287,42 @@ class OpensearchAPI:
     def provision_notification_channel(self, data):
         return self.post("/_plugins/_notifications/configs/", data=data)
 
+    def init_notification_channels(self):
+        """
+        List channels
+
+        @return:
+        """
+
+        ret = self.get("/_plugins/_notifications/channels")
+
+        return ret["channel_list"]
+
+    def init_notification_configs(self):
+        """
+        Fetch configs
+
+        @return:
+        """
+
+        ret = self.get("_plugins/_notifications/configs")
+        return ret["config_list"]
+
+    def backup(self, dst_dir: pathlib.Path):
+        """
+        Backup config.
+
+        :param dst_dir:
+        :return:
+        """
+
+        os.makedirs(dst_dir, exist_ok=True)
+
+        self.init_monitors()
+        monitor_sources = [mon.dict_src for mon in self.monitors]
+        with open(dst_dir / "monitors.json", "w", encoding="UTF-8") as fh:
+            json.dump(monitor_sources, fh)
+
+        configs = self.init_notification_configs()
+        with open(dst_dir / "notification_configs.json", "w", encoding="UTF-8") as fh:
+            json.dump(configs, fh)

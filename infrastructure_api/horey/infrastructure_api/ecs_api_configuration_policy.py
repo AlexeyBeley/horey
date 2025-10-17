@@ -17,7 +17,6 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
     def __init__(self):
         super().__init__()
         self._load_balancer_target_group_arn = None
-        self._container_ports = None
         self._ecr_repository_name = None
         self._ecr_repository_region = None
         self._infrastructure_update_time_tag = None
@@ -131,7 +130,7 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def lb_facing_security_group_name(self):
         if self._lb_facing_security_group_name is None:
-            return f"sg_{self.cluster_name}_{self.service_name}"
+            return f"sg_{self.slug}"
         return self._lb_facing_security_group_name
 
     @lb_facing_security_group_name.setter
@@ -201,12 +200,13 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def slug(self):
         if self._slug is None:
+            cluster_slug = self.cluster_name.replace('cluster_', '').replace('cluster-', '')
             if self.provision_service:
-                return f"{self.cluster_name.replace('cluster_', '')}-{self.service_name.replace('service_', '')}"
+                return f"{cluster_slug}-{self.service_name.replace('service_', '')}"
             elif self.provision_cron:
-                return f"{self.cluster_name.replace('cluster_', '')}-{self.cron_name.replace('crone_', '')}"
+                return f"{cluster_slug}-{self.cron_name.replace('cron_', '')}"
             elif self.provision_adhoc_task:
-                return f"{self.cluster_name.replace('cluster_', '')}-{self.adhoc_task_name.replace('adhoc_task_', '')}"
+                return f"{cluster_slug}-{self.adhoc_task_name.replace('adhoc_task_', '')}"
             else:
                 raise ValueError("Not a service or a cron")
 
@@ -289,7 +289,7 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def task_definition_cpu_architecture(self):
         if self._task_definition_cpu_architecture is None:
-            raise self.UndefinedValueError("task_definition_cpu_architecture")
+            return "X86_64"
         return self._task_definition_cpu_architecture
 
     @task_definition_cpu_architecture.setter
@@ -455,8 +455,7 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
 
     @property
     def ecr_repository_region(self):
-        if self._ecr_repository_region is None:
-            raise self.UndefinedValueError("ecr_repository_region")
+        self.check_defined()
         return self._ecr_repository_region
 
     @ecr_repository_region.setter
@@ -472,16 +471,6 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
     @ecr_repository_name.setter
     def ecr_repository_name(self, value):
         self._ecr_repository_name = value
-
-    @property
-    def container_ports(self):
-        if self._container_ports is None:
-            raise self.UndefinedValueError("container_ports")
-        return self._container_ports
-
-    @container_ports.setter
-    def container_ports(self, value):
-        self._container_ports = value
 
     @property
     def load_balancer_target_group_arn(self):

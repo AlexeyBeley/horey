@@ -6,6 +6,7 @@ Standard Load balancing maintainer.
 from horey.h_logger import get_logger
 from horey.aws_api.aws_services_entities.elbv2_load_balancer import LoadBalancer
 from horey.aws_api.aws_services_entities.elbv2_target_group import ELBV2TargetGroup
+from horey.infrastructure_api.loadbalancer_api_configuration_policy import LoadbalancerAPIConfigurationPolicy
 
 
 logger = get_logger()
@@ -17,7 +18,7 @@ class LoadbalancerAPI:
 
     """
 
-    def __init__(self, configuration, environment_api):
+    def __init__(self, configuration: LoadbalancerAPIConfigurationPolicy, environment_api):
         self.configuration = configuration
         self.environment_api = environment_api
 

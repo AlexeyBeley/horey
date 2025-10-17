@@ -20,6 +20,8 @@ from horey.infrastructure_api.alerts_api_configuration_policy import AlertsAPICo
 from horey.infrastructure_api.cloudwatch_api_configuration_policy import CloudwatchAPIConfigurationPolicy
 from horey.infrastructure_api.aws_iam_api_configuration_policy import AWSIAMAPIConfigurationPolicy
 from horey.infrastructure_api.aws_iam_api import AWSIAMAPI
+from horey.infrastructure_api.ecs_api_configuration_policy import ECSAPIConfigurationPolicy
+from horey.infrastructure_api.environment_api import EnvironmentAPI
 from horey.infrastructure_api.cloudwatch_api import CloudwatchAPI
 from horey.aws_api.aws_services_entities.application_auto_scaling_scalable_target import \
     ApplicationAutoScalingScalableTarget
@@ -36,7 +38,7 @@ class ECSAPI:
 
     """
 
-    def __init__(self, configuration, environment_api):
+    def __init__(self, configuration: ECSAPIConfigurationPolicy, environment_api: EnvironmentAPI):
         self.configuration = configuration
         self.environment_api = environment_api
         self._ecr_repository = None
@@ -47,6 +49,28 @@ class ECSAPI:
         self.loadbalancer_api = None
         self.dns_api = None
         self.loadbalancer_dns_api_pairs = None
+
+        try:
+            assert self.configuration.cluster_name
+        except self.configuration.UndefinedValueError:
+            self.configuration.cluster_name = f"cluster-{self.environment_api.configuration.project_name_abbr}-{self.environment_api.configuration.environment_level}-{self.environment_api.configuration.environment_name}"
+
+        try:
+            assert self.configuration.ecr_repository_region
+        except self.configuration.UndefinedValueError:
+            self.configuration.ecr_repository_region = self.environment_api.configuration.region
+
+        try:
+            assert self.configuration.ecs_task_role_name
+        except self.configuration.UndefinedValueError:
+            self.configuration.ecs_task_role_name = f"role_{self.environment_api.configuration.environment_level}_" \
+                                                    f"{self.environment_api.configuration.project_name_abbr}_{self.configuration.service_name}_task"
+
+        try:
+            assert self.configuration.ecs_task_execution_role_name
+        except self.configuration.UndefinedValueError:
+            self.configuration.ecs_task_execution_role_name = f"role_{self.environment_api.configuration.environment_level}_" \
+                                                    f"{self.environment_api.configuration.project_name_abbr}_{self.configuration.service_name}_exec"
 
     @property
     def ecr_repository(self):
@@ -120,14 +144,16 @@ class ECSAPI:
             try:
                 self.loadbalancer_api.configuration.target_group_name
             except self.loadbalancer_api.configuration.UndefinedValueError:
-                self.loadbalancer_api.configuration.target_group_name = f"tg-{self.configuration.cluster_name.replace('cluster_', '')}-{self.configuration.service_name}".replace(
-                    "_", "-")
+                self.loadbalancer_api.configuration.target_group_name = f"tg-cluster-{self.environment_api.configuration.project_name_abbr}" \
+                                                                        f"-{self.environment_api.configuration.environment_level_abbr}"\
+                                                                        f"-{self.environment_api.configuration.environment_name_abbr}"
 
             try:
                 self.loadbalancer_api.configuration.load_balancer_name
             except self.loadbalancer_api.configuration.UndefinedValueError:
-                self.loadbalancer_api.configuration.load_balancer_name = f"lb-{self.configuration.cluster_name.replace('cluster_', '')}".replace(
-                    "_", "-")
+                self.loadbalancer_api.configuration.load_balancer_name = f"lb-cluster-{self.environment_api.configuration.project_name_abbr}" \
+                                                                        f"-{self.environment_api.configuration.environment_level_abbr}" \
+                                                                        f"-{self.environment_api.configuration.environment_name_abbr}"
 
             if len(self.configuration.container_definition_port_mappings) != 1:
                 raise NotImplementedError("Need to implement dynamic test that loadbalancer_api configuration has the"
@@ -139,6 +165,8 @@ class ECSAPI:
 
         if dns_api:
             self.dns_api = dns_api
+            if self.dns_api.configuration._lowest_domain_label is None:
+                self.dns_api.configuration.lowest_domain_label = self.configuration.service_name
             if self.loadbalancer_api:
                 try:
                     self.loadbalancer_api.configuration.rule_conditions
@@ -151,6 +179,13 @@ class ECSAPI:
                             }
                         }
                     ]
+
+                try:
+                    self.loadbalancer_api.configuration.certificates_domain_names
+                except self.loadbalancer_api.configuration.UndefinedValueError:
+                    self.loadbalancer_api.configuration.certificates_domain_names = \
+                        ["*." + self.dns_api.configuration.dns_address.split(".", maxsplit=1)[1]]
+
                 if self.dns_api.configuration.dns_address not in self.loadbalancer_api.configuration.certificates_domain_names and \
                         "*." + self.dns_api.configuration.dns_address.split(".", maxsplit=1)[1] not in \
                         self.loadbalancer_api.configuration.certificates_domain_names:
@@ -161,6 +196,24 @@ class ECSAPI:
             if not cloudwatch_api.configuration.log_group_name:
                 raise ValueError("Log group name not set")
             self.cloudwatch_api = cloudwatch_api
+
+        if self.dns_api and self.loadbalancer_api:
+
+            try:
+                self.loadbalancer_api.configuration.scheme
+            except self.loadbalancer_api.configuration.UndefinedValueError:
+                if self.dns_api.hosted_zone.config["PrivateZone"]:
+                    self.loadbalancer_api.configuration.scheme = "internal"
+                else:
+                    self.loadbalancer_api.configuration.scheme = "internet-facing"
+
+            try:
+                self.loadbalancer_api.configuration.security_groups
+            except self.loadbalancer_api.configuration.UndefinedValueError:
+                if self.loadbalancer_api.configuration.scheme == "internet-facing":
+                    self.loadbalancer_api.configuration.security_groups = [f"sg_lb-public-{self.configuration.slug.replace('_', '-')}"]
+                else:
+                    self.loadbalancer_api.configuration.security_groups = [f"sg_lb-{self.configuration.slug.replace('_', '-')}"]
 
     def validate_input(self):
         """
@@ -200,11 +253,13 @@ class ECSAPI:
             return True
 
         self.cloudwatch_api.provision()
-        self.provision_monitoring()
+        # todo: move to environment_api
+        # self.provision_monitoring()
         self.provision_task_role()
         self.provision_execution_role()
 
         if self.loadbalancer_api:
+            self.provision_lb_security_groups()
             self.loadbalancer_api.provision()
             self.provision_lb_facing_security_group()
 
@@ -218,10 +273,12 @@ class ECSAPI:
             raise ValueError("Unknown state")
 
         if self.dns_api:
+            breakpoint()
             self.dns_api.configuration.dns_target = self.loadbalancer_api.get_loadbalancer().dns_name
             self.dns_api.provision()
 
         elif self.loadbalancer_dns_api_pairs:
+            breakpoint()
             for loadbalancer_api, dns_api in self.loadbalancer_dns_api_pairs:
                 dns_api.configuration.dns_target = loadbalancer_api.get_loadbalancer().dns_name
                 dns_api.provision()
@@ -230,6 +287,16 @@ class ECSAPI:
             self.provision_autoscaling()
 
         return True
+
+    def provision_lb_security_groups(self):
+        """
+        Provision LB security group.
+
+        :return:
+        """
+
+        for sg_name in self.loadbalancer_api.configuration.security_groups:
+            self.environment_api.provision_security_group(sg_name)
 
     def provision_lb_facing_security_group(self):
         """
@@ -264,6 +331,10 @@ class ECSAPI:
 
         :return:
         """
+        breakpoint()
+
+        if self.configuration.autoscaling_max_capacity == 1:
+            return True
 
         self.provision_application_autoscaling_scalable_target()
         self.provision_application_autoscaling_policies()
@@ -402,7 +473,7 @@ class ECSAPI:
         """
 
         self.validate_input()
-
+        breakpoint()
         ecr_image_tag = self.get_build_tag()
         ecs_task_definition = self.provision_ecs_task_definition(ecr_image_tag)
 
@@ -641,6 +712,7 @@ class ECSAPI:
 
         if self._alerts_api is None:
             alerts_api_configuration = AlertsAPIConfigurationPolicy()
+            breakpoint()
             if "ecs_task" in self.configuration.ecs_task_role_name or "ecs-task" in self.configuration.ecs_task_role_name:
                 alerts_api_configuration.lambda_role_name = self.configuration.ecs_task_role_name. \
                     replace("ecs_task", "has2"). \
@@ -898,7 +970,6 @@ class ECSAPI:
         :return:
         """
         #if not self.environment_api.aws_api.ecs_client.update_task_information(task):
-        #    breakpoint()
         #    raise RuntimeError("Task was not found")
         task.id = self.configuration.adhoc_task_name
         self.environment_api.aws_api.ecs_client.wait_for_status(

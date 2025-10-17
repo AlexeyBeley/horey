@@ -361,6 +361,19 @@ class ConfigurationPolicy:
         return function_receiver
 
     @staticmethod
+    def check_value_is_valid(value, possible_values):
+        """
+        Check if the value is one of the list
+
+        :param value:
+        :param possible_values:
+        :return:
+        """
+
+        if value not in possible_values:
+            raise ValueError(f"Value '{value}' is not one of the possible values '{possible_values}'")
+
+    @staticmethod
     def validate_value_is_not_none_decorator(property_getter_function):
         """
         Is being called when @property is called.

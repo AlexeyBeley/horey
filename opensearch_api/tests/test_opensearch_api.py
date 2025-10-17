@@ -3,6 +3,8 @@ Testing opensearch API
 """
 import json
 import os
+from pathlib import Path
+
 import pytest
 
 from horey.opensearch_api.opensearch_api import OpensearchAPI
@@ -51,13 +53,13 @@ def test_provision_notification_channel():
     assert opensearch_api.provision_notification_channel(data)
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_init_monitors():
     ret = opensearch_api.init_monitors()
     assert len(ret) > 0
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_provision_monitor():
     monitor_current = opensearch_api.monitors[0]
     monitor = monitor_current.copy()
@@ -97,7 +99,7 @@ def test_post_document():
     assert response.get("_id") is not None
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_init_index_patterns():
     """
     Test dashboard object provisioning
@@ -114,7 +116,7 @@ def test_put_index_pattern():
     assert response.get("acknowledged")
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_get_index_template_raw():
     """
     Test dashboard object provisioning
@@ -125,3 +127,13 @@ def test_get_index_template_raw():
     with open("index_templates_raw.json", "w+") as file_handler:
         json.dump(ret, file_handler)
     assert len(ret) > 0
+
+
+@pytest.mark.wip
+def test_backup():
+    """
+    Test dashboard object provisioning
+    @return:
+    """
+
+    ret = opensearch_api.backup(Path("/opt/backup_opensearch"))

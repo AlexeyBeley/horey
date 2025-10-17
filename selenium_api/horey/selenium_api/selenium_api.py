@@ -1,6 +1,5 @@
 import os
 import time
-
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.chrome.options import Options
@@ -31,10 +30,17 @@ class SeleniumAPI:
         except:
             return False
 
-    def connect(self):
+    def connect(self, options="--no-sandbox --headless --disable-gpu --disable-dev-shm-usage"):
+        """
+        Connect to the chrome driver.
+
+        :param options:
+        :return:
+        """
+
         cService = Service(ChromeDriverManager().install())
         chrome_options = Options()
-        chrome_flags = os.getenv("CHROME_OPTIONS", "--no-sandbox --headless --disable-gpu --disable-dev-shm-usage")
+        chrome_flags = os.getenv("CHROME_OPTIONS", options)
         for flag in chrome_flags.split():
             pass
             chrome_options.add_argument(flag)
@@ -49,8 +55,28 @@ class SeleniumAPI:
     def get_by_id(self, str_id):
         return self.driver.find_element(By.ID, str_id)
 
+    def get_elements_by_css_selector(self, type_value):
+        breakpoint()
+        return self.driver.find_element(By.CSS_SELECTOR, f'div[type="{type_value}"]')
+        return element.find_elements(By.CSS_SELECTOR,  f'[{selector}="{value}"]')
+
+    def get_element_by_name(self, name):
+        return self.driver.find_element(By.NAME, name)
+
+    def get_element_by_xpath(self, path):
+        return self.driver.find_element(By.XPATH, path)
+
+    def get_elements_by_partial_link_text(self, link_text):
+        return self.driver.find_elements(By.PARTIAL_LINK_TEXT, link_text)
+
     def get_by_css_selector(self, selector, value):
         return self.driver.find_element(By.CSS_SELECTOR,  f'[{selector}="{value}"]')
+
+    def get_div_by_css_selector(self, selector, value):
+        return self.driver.find_element(By.ID,  f'[{selector}="{value}"]')
+
+    def get_elements_by_tagname(self, tagname):
+        return self.driver.find_elements(By.TAG_NAME, tagname)
 
     def get_lis_from_ul(self, ul_element):
         return ul_element.find_elements(By.TAG_NAME, "li")

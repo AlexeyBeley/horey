@@ -2,7 +2,10 @@
 AWS EnvironmentAPI config
 
 """
+
+from enum import Enum
 from copy import deepcopy
+from pathlib import Path
 
 from horey.configuration_policy.configuration_policy import ConfigurationPolicy
 
@@ -87,21 +90,31 @@ class EnvironmentAPIConfigurationPolicy(ConfigurationPolicy):
 
     @property
     def environment_level(self):
-        if self._environment_level is None:
-            raise self.UndefinedValueError("environment_level")
+        self.check_defined()
         return self._environment_level
 
     @environment_level.setter
     def environment_level(self, value):
+        ConfigurationPolicy.check_value_is_valid(value, [member.value for member in self.EnvironmentLevel.__members__.values()])
         self._environment_level = value
 
     @property
+    def environment_level_abbr(self):
+        if self.environment_level == self.EnvironmentLevel.DEVELOPMENT.value:
+            return "dev"
+        if self.environment_level == self.EnvironmentLevel.STAGING.value:
+            return "stg"
+        if self.environment_level == self.EnvironmentLevel.PRODUCTION.value:
+            return "prd"
+        raise ValueError(f"Unknown env level: {self.environment_level}")
+
+    @property
     def availability_zones(self):
-        if self._availability_zones is None:
-            raise self.UndefinedValueError("availability_zones")
+        self.check_defined()
         return self._availability_zones
 
     @availability_zones.setter
+    @ConfigurationPolicy.validate_type_decorator(int)
     def availability_zones(self, value):
         self._availability_zones = value
 
@@ -196,7 +209,7 @@ class EnvironmentAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def data_directory_path(self):
         if self._data_directory_path is None:
-            raise self.UndefinedValueError("data_directory_path")
+            return Path("/opt") / self.project_name
         return self._data_directory_path
 
     @data_directory_path.setter
@@ -386,7 +399,25 @@ class EnvironmentAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def tags(self):
         if self._tags is None:
-            raise self.UndefinedValueError("tags")
+            return [
+                {
+                    "Key": "env_level",
+                    "Value": self.environment_level
+                },
+                {
+                    "Key": "env_name",
+                    "Value": self.environment_name
+                },
+                {
+                    "Key": "region",
+                    "Value": self.region
+                },
+                {
+                    "Key": "project_name",
+                    "Value": self.project_name
+                }
+            ]
+
         return deepcopy(self._tags)
 
     @tags.setter
@@ -396,7 +427,11 @@ class EnvironmentAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def vpc_name(self):
         if self._vpc_name is None:
-            raise self.UndefinedValueError("vpc_name")
+            if self.environment_name == self.environment_level:
+                return f"vpc-{self.project_name}-{self.environment_name}"
+
+            return f"vpc-{self.project_name}-{self.environment_level}-{self.environment_name}"
+
         return self._vpc_name
 
     @vpc_name.setter
@@ -405,8 +440,7 @@ class EnvironmentAPIConfigurationPolicy(ConfigurationPolicy):
 
     @property
     def region(self):
-        if self._region is None:
-            raise self.UndefinedValueError("region")
+        self.check_defined()
         return self._region
 
     @region.setter
@@ -415,10 +449,18 @@ class EnvironmentAPIConfigurationPolicy(ConfigurationPolicy):
 
     @property
     def project_name(self):
-        if self._project_name is None:
-            raise self.UndefinedValueError("project_name")
+        self.check_defined()
         return self._project_name
 
     @project_name.setter
     def project_name(self, value):
         self._project_name = value
+
+    class EnvironmentLevel(Enum):
+        """
+        Only these levels allowed.
+        """
+
+        PRODUCTION = "production"
+        STAGING = "staging"
+        DEVELOPMENT = "development"

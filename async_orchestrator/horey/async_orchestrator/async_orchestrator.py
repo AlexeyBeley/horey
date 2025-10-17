@@ -112,7 +112,7 @@ class AsyncOrchestrator:
 
         :return:
         """
-        logger.info(f"started wait_for_tasks at {time.strftime('%X')}")
+        logger.info(f"started get_task_result at {time.strftime('%X')}")
         now = datetime.datetime.now()
         end_time = now + datetime.timedelta(seconds=timeout)
         end_time_for_task_to_start = now + datetime.timedelta(seconds=start_timeout)

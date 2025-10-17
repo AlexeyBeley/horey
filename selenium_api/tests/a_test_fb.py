@@ -1,9 +1,10 @@
 """
 Testing selenium api
 """
-
+breakpoint()
 import pytest
-from horey.selenium_api.selenium_api import SeleniumAPI
+
+from horey.selenium_api import SeleniumAPI
 
 
 api = SeleniumAPI()
@@ -12,6 +13,6 @@ api = SeleniumAPI()
 # pylint: disable= missing-function-docstring
 
 
-@pytest.mark.unit
+@pytest.mark.wip
 def test_connect():
     assert api.connect()

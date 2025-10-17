@@ -394,7 +394,8 @@ class EC2Client(Boto3Client):
             self.revoke_security_group_ingress_raw(revoke_request)
 
         if update_rules_description:
-            self.update_security_group_rule_descriptions_ingress_raw(desired_security_group.region, update_rules_description)
+            self.update_security_group_rule_descriptions_ingress_raw(desired_security_group.region,
+                                                                     update_rules_description)
 
         self.update_security_group_information(desired_security_group)
 
@@ -678,7 +679,8 @@ class EC2Client(Boto3Client):
         :return:
         """
 
-        ret = self.get_region_launch_templates(launch_template.region, custom_filters={"LaunchTemplateNames": [launch_template.name]})
+        ret = self.get_region_launch_templates(launch_template.region,
+                                               custom_filters={"LaunchTemplateNames": [launch_template.name]})
         if len(ret) == 0:
             return False
         return launch_template.update_from_attrs(ret[0])
@@ -748,24 +750,20 @@ class EC2Client(Boto3Client):
         @param request:
         @return:
         :param region:
+        :param region:
         """
 
         logger.info(f"Modifying prefix list with request: {request}")
-        try:
-            for response in self.execute(
-                    self.get_session_client(region=region).modify_managed_prefix_list,
-                    "PrefixList",
-                    filters_req=request,
-            ):
-                self.clear_cache(ManagedPrefixList)
-                return response
-        except Exception as exception_instance:
-            if "already exists" not in repr(exception_instance):
-                raise
+        for response in self.execute(
+                self.get_session_client(region=region).modify_managed_prefix_list,
+                "PrefixList",
+                filters_req=request,
+                exception_ignore_callback=lambda err_inst: "already exists" in repr(err_inst)
+        ):
+            self.clear_cache(ManagedPrefixList)
+            return response
 
-            logger.info(repr(exception_instance))
-
-        return None
+        return {}
 
     def raw_describe_managed_prefix_list(
             self, region, pl_id=None, prefix_list_name=None
@@ -1985,7 +1983,8 @@ class EC2Client(Boto3Client):
                 response = self.modify_launch_template_raw(request)
                 launch_template.update_from_raw_response(response)
             else:
-                region_object = self.find_launch_template(launch_template.region, launch_template_name=launch_template.name)
+                region_object = self.find_launch_template(launch_template.region,
+                                                          launch_template_name=launch_template.name)
                 launch_template.update_from_raw_response(region_object.dict_src)
             return
 
@@ -2081,8 +2080,8 @@ class EC2Client(Boto3Client):
 
         try:
             response = self.provision_nat_gateway_raw(nat_gateway.region,
-                nat_gateway.generate_create_request()
-            )
+                                                      nat_gateway.generate_create_request()
+                                                      )
             nat_gateway.update_from_raw_response(response)
         except Exception as exception_inst:
             logger.warning(repr(exception_inst))
@@ -2165,8 +2164,8 @@ class EC2Client(Boto3Client):
         current_route_table.tags = route_table.tags
         if not self.update_route_table_information(current_route_table):
             response = self.provision_route_table_raw(route_table.region,
-                route_table.generate_create_request()
-            )
+                                                      route_table.generate_create_request()
+                                                      )
             current_route_table.update_from_raw_response(response)
         create_tags_request, delete_tags_request = self.generate_tags_requests(current_route_table, route_table)
         if create_tags_request:
@@ -3092,7 +3091,8 @@ class EC2Client(Boto3Client):
             request = {"ImageId": ami.id, "DryRun": False}
             logger.info(f"Deleting EC2 AMI Image: {request}")
             for _ in self.execute(
-                    self.get_session_client(region=ami.region).deregister_image, None, raw_data=True, filters_req=request
+                    self.get_session_client(region=ami.region).deregister_image, None, raw_data=True,
+                    filters_req=request
             ):
                 pass
             self.clear_cache(AMI)

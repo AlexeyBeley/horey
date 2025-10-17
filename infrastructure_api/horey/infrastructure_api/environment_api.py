@@ -91,6 +91,8 @@ class EnvironmentAPI:
         self._vpc = None
         self._subnets = None
         self.jenkins_api = None
+        self._public_subnets = None
+        self._private_subnets = None
 
     @property
     def docker_api(self):
@@ -180,16 +182,14 @@ class EnvironmentAPI:
 
         self._subnets = value
 
-    @property
-    def public_subnets(self):
+    def get_all_public_subnets(self):
         """
-        Get the public subnets.
+        Get all
 
         :return:
         """
 
         subnets = []
-
         for subnet in self.subnets:
             if self.configuration.public_subnets:
                 if subnet.id in self.configuration.public_subnets:
@@ -202,22 +202,15 @@ class EnvironmentAPI:
                     raise ValueError(
                         f"Subnet {subnet.id} tag Name expected: {generated_name}, configured {subnet.get_tagname('Name')}")
                 subnets.append(subnet)
-        if len(subnets) != self.configuration.availability_zones_count:
-            raise RuntimeError(
-                f"Expected to find {self.configuration.availability_zones_count=} subnets, found: {len(subnets)}")
-
         return subnets
 
-    @property
-    def private_subnets(self):
+    def get_all_private_subnets(self):
         """
-        Get the public subnets.
+        Get all
 
         :return:
         """
-
         subnets = []
-
         for subnet in self.subnets:
             if self.configuration.private_subnets:
                 if subnet.id in self.configuration.private_subnets:
@@ -231,11 +224,54 @@ class EnvironmentAPI:
                     raise ValueError(
                         f"Subnet {subnet.id} tag Name expected: {generated_name}, configured {subnet.get_tagname('Name')}")
                 subnets.append(subnet)
-        if len(subnets) != self.configuration.availability_zones_count:
-            raise RuntimeError(
-                f"Expected to find {self.configuration.availability_zones_count=} subnets, found: {len(subnets)}")
-
         return subnets
+
+    def init_private_and_public_subnets(self):
+        """
+        Find matching.
+
+        :return:
+        """
+
+        all_public_subnets = self.get_all_public_subnets()
+        all_private_subnets = self.get_all_private_subnets()
+        public_subnets = {subnet.availability_zone_id: subnet for subnet in all_public_subnets}
+        private_subnets = {subnet.availability_zone_id: subnet for subnet in all_private_subnets}
+        intersection_set = set(public_subnets).intersection(set(private_subnets))
+        if len(intersection_set) < self.configuration.availability_zones_count:
+            raise RuntimeError(f"Subnet intersection. Private {[sub.id for sub in all_private_subnets]}, Public {[sub.id for sub in all_public_subnets]}, {intersection_set=}")
+
+        az_ids = list(intersection_set)[:self.configuration.availability_zones_count:]
+        self._private_subnets = [private_subnets[az_id] for az_id in az_ids]
+        self._public_subnets = [public_subnets[az_id] for az_id in az_ids]
+
+    @property
+    def public_subnets(self):
+        """
+        Get the public subnets.
+
+        :return:
+        """
+
+        if self._public_subnets is None:
+            if self._private_subnets is not None:
+                raise NotImplementedError("_public_subnets and _private_subnets should be initialized together")
+
+            self.init_private_and_public_subnets()
+        return self._public_subnets
+
+    @property
+    def private_subnets(self):
+        """
+        Get the public subnets.
+
+        :return:
+        """
+        if self._private_subnets is None:
+            if self._public_subnets is not None:
+                raise NotImplementedError("_public_subnets and _private_subnets should be initialized together")
+            self.init_private_and_public_subnets()
+        return self._private_subnets
 
     def provision(self):
         """

@@ -49,7 +49,7 @@ class DNSAPIConfigurationPolicy(ConfigurationPolicy):
         if self._dns_address is None:
             if self._lowest_domain_label is None or self._hosted_zone_name is None:
                 raise self.UndefinedValueError("dns_address")
-            self._dns_address = f"{self._dns_address}.{self.hosted_zone_name}"
+            self._dns_address = f"{self._lowest_domain_label}.{self.hosted_zone_name}"
         return self._dns_address
 
     @dns_address.setter
