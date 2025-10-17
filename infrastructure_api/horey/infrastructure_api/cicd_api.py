@@ -2,7 +2,9 @@
 Standard Load balancing maintainer.
 
 """
+import pathlib
 import time
+import getpass
 
 from horey.infrastructure_api.cloudwatch_api_configuration_policy import CloudwatchAPIConfigurationPolicy
 from horey.infrastructure_api.cloudwatch_api import CloudwatchAPI
@@ -12,6 +14,7 @@ from horey.infrastructure_api.environment_api import EnvironmentAPI
 from horey.infrastructure_api.infrastructure_api import InfrastructureAPI
 from horey.infrastructure_api.loadbalancer_api import LoadbalancerAPIConfigurationPolicy
 from horey.infrastructure_api.dns_api import DNSAPIConfigurationPolicy
+from horey.git_api.git_api import GitAPI, GitAPIConfigurationPolicy
 
 
 from horey.h_logger import get_logger
@@ -174,9 +177,24 @@ class CICDAPI:
         ecs_api_configuration.launch_type = "FARGATE"
         ecs_api_configuration.kill_old_containers = False
 
-        # todo:
-        # ecs_api.environment_variables_callback = lambda: self.environment_api.async_orchestrator.get_task_result(
-        #    self.async_task_id_generator(self.sync_generate_environment_variables), timeout = 2 * 60)
         ecs_api.set_api(loadbalancer_api=self.loadbalancer_api)
         ecs_api.set_api(dns_api=self.dns_api)
+        if self.environment_api.git_api is None:
+            configuration = GitAPIConfigurationPolicy()
+            configuration.remote = "git@github.com:AlexeyBeley/horey.git"
+            configuration.ssh_key_file_path = f"/Users/{getpass.getuser()}/.ssh/github_key"
+            configuration.git_directory_path = "/opt/git/"
+            configuration.branch_name = "main"
+            self.environment_api.git_api = GitAPI(configuration)
+
+        ecs_api.prepare_container_build_directory_callback = self.prepare_container_build_directory_callback
         return ecs_api
+
+    def prepare_container_build_directory_callback(self, dir_path: pathlib.Path):
+        """
+
+        :param dir_path:
+        :return:
+        """
+
+        return dir_path / "jenkins_api" / "horey" / "jenkins_api" / "master"

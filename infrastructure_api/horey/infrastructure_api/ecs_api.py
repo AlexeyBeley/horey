@@ -4,6 +4,7 @@ Standard ECS maintainer.
 """
 import json
 import os
+import pathlib
 import shutil
 import uuid
 from datetime import datetime
@@ -443,7 +444,6 @@ class ECSAPI:
         :param source_code_dir:
         :return:
         """
-
         source_code_dir_tmp = Path("/tmp/ecs_api_build_temp_dirs") / str(uuid.uuid4())
         source_code_dir_tmp.parent.mkdir(exist_ok=True)
 
@@ -454,17 +454,18 @@ class ECSAPI:
 
         with open(source_code_dir_tmp / "commit_and_build.json", "w", encoding="utf-8") as file_handler:
             json.dump({"commit": commit_id, "build": str(build_number)}, file_handler)
+        breakpoint()
         return self.prepare_container_build_directory_callback(source_code_dir_tmp)
 
-    def prepare_container_build_directory_callback(self, dir_apath):
+    def prepare_container_build_directory_callback(self, dir_path: pathlib.Path):
         """
         Echo.
 
-        :param dir_apath:
+        :param dir_path:
         :return:
         """
 
-        return dir_apath
+        return dir_path
 
     def update(self):
         """
@@ -473,7 +474,6 @@ class ECSAPI:
         """
 
         self.validate_input()
-        breakpoint()
         ecr_image_tag = self.get_build_tag()
         ecs_task_definition = self.provision_ecs_task_definition(ecr_image_tag)
 
@@ -645,7 +645,7 @@ class ECSAPI:
         if self.environment_api.git_api.configuration.branch_name is None:
             return None
 
-        if not self.environment_api.git_api.checkout_remote_branch():
+        if not self.environment_api.git_api.checkout_remote():
             raise RuntimeError(
                 f"Was not able to checkout branch: {self.environment_api.git_api.configuration.branch_name}")
 
@@ -653,8 +653,8 @@ class ECSAPI:
 
         tags = [f"{repo_uri}:build_{build_number + 1}-commit_{commit_id}"]
 
-        build_dir_path = str(self.prepare_container_build_directory(
-            self.environment_api.git_api.configuration.directory_path, commit_id, build_number))
+        build_dir_path = self.prepare_container_build_directory(
+            self.environment_api.git_api.configuration.directory_path, commit_id, build_number)
 
         image = self.environment_api.build_and_upload_ecr_image(build_dir_path, tags, nocache,
                                                                 buildargs=self.configuration.buildargs)

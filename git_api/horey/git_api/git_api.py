@@ -52,13 +52,15 @@ class GitAPI:
                 raise ValueError(f"Expected to find '{expected_output}' either in stdout or stderr. Received: {ret}")
             return ret
 
-    def checkout_remote(self, dst_obj):
+    def checkout_remote(self, dst_obj=None):
         """
         Pull latest changes.
 
         :param dst_obj:
         :return:
         """
+
+        dst_obj = dst_obj or self.configuration.branch_name
 
         start_time = perf_counter()
 
