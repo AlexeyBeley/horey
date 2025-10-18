@@ -27,8 +27,8 @@ class Provisioner(SystemFunctionCommon):
         :return:
         """
         self.init_apt_packages()
-        return self.apt_check_installed("openjdk-11-jdk") and \
-               self.apt_check_installed("openjdk-11-jre")
+        return self.apt_check_installed("openjdk-17-jdk") and \
+               self.apt_check_installed("openjdk-17-jre")
 
     def _provision(self):
         """
@@ -42,5 +42,5 @@ class Provisioner(SystemFunctionCommon):
         """
 
         self.update_packages()
-        self.apt_install("default-jre")
-        self.apt_install("default-jdk")
+        self.apt_install("openjdk-17-jdk")
+        self.apt_install("openjdk-17-jdk")

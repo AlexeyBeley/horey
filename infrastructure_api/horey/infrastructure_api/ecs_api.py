@@ -29,6 +29,7 @@ from horey.aws_api.aws_services_entities.application_auto_scaling_scalable_targe
 from horey.aws_api.aws_services_entities.application_auto_scaling_policy import ApplicationAutoScalingPolicy
 from horey.aws_api.aws_services_entities.event_bridge_rule import EventBridgeRule
 from horey.aws_api.aws_services_entities.event_bridge_target import EventBridgeTarget
+from horey.aws_api.aws_services_entities.ecs_cluster import ECSCluster
 
 logger = get_logger()
 
@@ -145,9 +146,10 @@ class ECSAPI:
             try:
                 self.loadbalancer_api.configuration.target_group_name
             except self.loadbalancer_api.configuration.UndefinedValueError:
-                self.loadbalancer_api.configuration.target_group_name = f"tg-cluster-{self.environment_api.configuration.project_name_abbr}" \
+                self.loadbalancer_api.configuration.target_group_name = f"tg-cluster-{self.environment_api.configuration.project_name_abbr}"\
                                                                         f"-{self.environment_api.configuration.environment_level_abbr}"\
-                                                                        f"-{self.environment_api.configuration.environment_name_abbr}"
+                                                                        f"-{self.environment_api.configuration.environment_name_abbr}"\
+                                                                        f"-{self.configuration.service_name}"
 
             try:
                 self.loadbalancer_api.configuration.load_balancer_name
@@ -253,6 +255,8 @@ class ECSAPI:
         if not self.configuration.provision_service and not self.configuration.provision_cron:
             return True
 
+        self.provision_cluster()
+
         self.cloudwatch_api.provision()
         # todo: move to environment_api
         # self.provision_monitoring()
@@ -288,6 +292,29 @@ class ECSAPI:
             self.provision_autoscaling()
 
         return True
+
+    def provision_cluster(self):
+        """
+        Provision the ECS cluster for this env.
+
+        :return:
+        """
+
+        cluster = ECSCluster({})
+        cluster.settings = [
+            {
+                "name": "containerInsights",
+                "value": "disabled"
+            }
+        ]
+
+        cluster.name = self.configuration.cluster_name
+        cluster.region = self.environment_api.region
+        cluster.tags = [{key.lower(): value for key, value in dict_tag.items()} for dict_tag in self.environment_api.get_tags_with_name(cluster.name)]
+        cluster.configuration = {}
+
+        self.environment_api.aws_api.provision_ecs_cluster(cluster)
+        return cluster
 
     def provision_lb_security_groups(self):
         """
@@ -454,7 +481,6 @@ class ECSAPI:
 
         with open(source_code_dir_tmp / "commit_and_build.json", "w", encoding="utf-8") as file_handler:
             json.dump({"commit": commit_id, "build": str(build_number)}, file_handler)
-        breakpoint()
         return self.prepare_container_build_directory_callback(source_code_dir_tmp)
 
     def prepare_container_build_directory_callback(self, dir_path: pathlib.Path):
@@ -518,15 +544,21 @@ class ECSAPI:
 
         :return:
         """
-        security_groups = self.environment_api.get_security_groups(self.configuration.security_groups)
+
+        try:
+            security_groups = self.configuration.security_groups
+        except self.configuration.UndefinedValueError:
+            security_groups = []
+
         if self.loadbalancer_api:
-            security_groups += self.environment_api.get_security_groups(
-                [self.configuration.lb_facing_security_group_name])
+            security_groups.append(self.configuration.lb_facing_security_group_name)
             target_groups = [self.loadbalancer_api.get_targetgroup()]
         elif self.loadbalancer_dns_api_pairs:
             target_groups = [loadbalancer_api.get_targetgroup() for loadbalancer_api in self.loadbalancer_dns_api_pairs]
         else:
             target_groups = []
+
+        security_groups = self.environment_api.get_security_groups(security_groups)
 
         load_blanacer_dicts = [{
             "targetGroupArn": target_group.arn,

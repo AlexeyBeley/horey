@@ -640,10 +640,11 @@ class EnvironmentAPI:
 
         return self.provision_security_group(self.configuration.container_instance_security_group_name)
 
-    def provision_security_group(self, name, ip_permissions=None):
+    def provision_security_group(self, name, ip_permissions=None, description=None):
         """
         Provision security group.
 
+        :param description:
         :param ip_permissions:
         :param name:
         :return:
@@ -652,7 +653,7 @@ class EnvironmentAPI:
         security_group = EC2SecurityGroup({})
         security_group.vpc_id = self.vpc.id
         security_group.name = name
-        security_group.description = name
+        security_group.description = description or name
         security_group.region = self.region
         security_group.tags = self.get_tags_with_name(security_group.name)
 
@@ -2447,8 +2448,12 @@ class EnvironmentAPI:
         try:
             self.docker_api.upload_images(tags)
         except Exception as inst_error:
-            if "no basic auth credentials" in repr(inst_error):
+            repr_inst_err = repr(inst_error)
+            if "no basic auth credentials" in repr_inst_err or \
+                    "Your authorization token has expired. Reauthenticate and try again" in repr_inst_err:
                 ecr_repository_region = tags[0].split(".")[3]
+                registry, _, _ = self.login_to_ecr_repository(Region.get_region(ecr_repository_region))
+                self.docker_api.logout(registry)
                 self.login_to_ecr_repository(Region.get_region(ecr_repository_region))
                 self.docker_api.upload_images(tags)
             else:
@@ -2467,7 +2472,7 @@ class EnvironmentAPI:
 
         for _ in range(120):
             try:
-                return self.docker_api.build(dir_path, tags, nocache=nocache, buildargs=buildargs)
+                return self.docker_api.build(str(dir_path), tags, nocache=nocache, buildargs=buildargs, platform="linux/amd64")
             except Exception as error_inst:
                 repr_error_inst = repr(error_inst)
                 if "authorization token has expired" not in repr_error_inst:
@@ -2475,7 +2480,7 @@ class EnvironmentAPI:
 
                 ecr_repository_region = tags[0].split(".")[3]
                 _, _, _ = self.login_to_ecr_repository(region=Region.get_region(ecr_repository_region), logout=True)
-                return self.docker_api.build(dir_path, tags, nocache=nocache, buildargs=buildargs)
+                return self.docker_api.build(str(dir_path), tags, nocache=nocache, buildargs=buildargs, platform="linux/amd64")
 
         raise TimeoutError("Was not able to build and image")
 
