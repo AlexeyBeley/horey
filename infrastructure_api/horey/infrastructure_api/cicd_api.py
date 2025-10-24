@@ -119,7 +119,7 @@ class CICDAPI:
 
     def update(self):
         """
-        aws ecs execute-command --region us-east-1 --cluster cluster-sb-production-management --task 97e87487c0a74421ab53c2fed0a726cc  --container  sb-production-management-jenkins --command "/bin/sh" --interactive
+        aws ecs execute-command --region us-east-1 --cluster cluster-name --task 97e87487c0a74421ab53c2fed0a726cc  --container container-name --command "/bin/sh" --interactive
         :return:
         """
         perf_counter_start = time.perf_counter()

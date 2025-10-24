@@ -52,6 +52,12 @@ class SeleniumAPI:
     def disconnect(self):
         self.driver.quit()
 
+    def get_element(self, by, value):
+        return self.driver.find_element(by, value)
+
+    def get_elements(self, by, value):
+        return self.driver.find_elements(by, value)
+
     def get_by_id(self, str_id):
         return self.driver.find_element(By.ID, str_id)
 
@@ -68,6 +74,9 @@ class SeleniumAPI:
 
     def get_elements_by_partial_link_text(self, link_text):
         return self.driver.find_elements(By.PARTIAL_LINK_TEXT, link_text)
+
+    def get_elements_by_class(self, name):
+        return self.driver.find_elements(By.CLASS_NAME, name)
 
     def get_by_css_selector(self, selector, value):
         return self.driver.find_element(By.CSS_SELECTOR,  f'[{selector}="{value}"]')

@@ -8,7 +8,6 @@ import pytest
 from horey.aws_api.aws_api import AWSAPI
 from horey.h_logger import get_logger
 from horey.infrastructure_api.infrastructure_api import InfrastructureAPI
-from horey.infrastructure_api.environment_api import EnvironmentAPI
 from horey.infrastructure_api.environment_api_configuration_policy import EnvironmentAPIConfigurationPolicy
 from horey.infrastructure_api.email_api_configuration_policy import EmailAPIConfigurationPolicy
 from pathlib import Path
@@ -20,7 +19,7 @@ aws_api = AWSAPI()
 
 # pylint: disable= missing-function-docstring
 configs_dir = Path(".").resolve().parent.parent.parent / "ignore" / "infrastructure_api"
-real_life_env_configuration = str(configs_dir / "env_api_configs.json")
+real_life_env_configuration = str(configs_dir / "0_env_api_configs.json")
 real_life_email_configuration = str(configs_dir / "email_api_configs.json")
 assert os.path.exists(real_life_env_configuration)
 assert os.path.exists(real_life_email_configuration)
@@ -43,4 +42,19 @@ def fixture_email_api():
 @pytest.mark.done
 def test_init_environment(email_api):
     ret = email_api.send_email("test.horey@horey.com")
+    assert ret
+
+
+@pytest.mark.done
+def test_get_suppressed_emails(email_api):
+    ret = email_api.get_suppressed_emails()
+    for x in ret:
+        print(x)
+    assert ret
+
+
+@pytest.mark.wip
+def test_unsupress_email(email_api):
+    email_addr = "roman.kirsanov@Scoutbees.onmicrosoft.com"
+    ret = email_api.unsupress_email(email_addr)
     assert ret

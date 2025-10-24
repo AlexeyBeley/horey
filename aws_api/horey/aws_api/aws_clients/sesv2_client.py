@@ -617,3 +617,21 @@ class SESV2Client(Boto3Client):
 
             logger.info(log_message)
             return response
+
+    def delete_suppressed_destination_raw(self, region, request_dict):
+        """
+        Standard.
+        request_dict = {"EmailAddress": "string"}
+
+        :param region:
+        :param request_dict:
+        :return:
+        """
+
+        for response in self.execute(
+                self.get_session_client(region=region).delete_suppressed_destination,
+                None,
+                raw_data=True,
+                filters_req=request_dict, exception_ignore_callback=lambda err: "NotFoundException" in repr(err)
+        ):
+            return response

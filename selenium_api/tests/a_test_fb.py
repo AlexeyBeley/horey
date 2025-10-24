@@ -13,6 +13,6 @@ api = SeleniumAPI()
 # pylint: disable= missing-function-docstring
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_connect():
     assert api.connect()

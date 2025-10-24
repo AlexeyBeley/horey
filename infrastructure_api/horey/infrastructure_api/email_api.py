@@ -149,3 +149,22 @@ class EmailAPI:
                 return region_config_set
 
         return None
+
+    def get_suppressed_emails(self):
+        """
+        Get suppressed destinations.
+
+        :return:
+        """
+
+        return self.environment_api.aws_api.sesv2_client.get_region_suppressed_destinations(self.environment_api.region)
+
+    def unsupress_email(self, src_email):
+        """
+        Delete the email from suppression list.
+
+        :param src_email:
+        :return:
+        """
+
+        return self.environment_api.aws_api.sesv2_client.delete_suppressed_destination_raw(self.environment_api.region, {"EmailAddress": src_email})
