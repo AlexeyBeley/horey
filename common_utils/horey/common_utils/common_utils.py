@@ -5,11 +5,14 @@ Some reusable stuff.
 
 import datetime
 import importlib
+import json
 import os
 import sys
 import re
 import contextlib
 from enum import Enum
+from pathlib import Path
+
 from horey.common_utils.bash_executor import BashExecutor
 
 
@@ -95,6 +98,24 @@ class CommonUtils:
                 setattr(obj_dst, key_src, value)
 
     @staticmethod
+    def init_from_api_cache(class_dst, file_src: Path, custom_types=None, validate_attributes=True):
+        """
+        Init from file
+
+        :param class_dst:
+        :param file_src:
+        :param custom_types:
+        :param validate_attributes:
+        :return:
+        """
+
+        with open(file_src, "r", encoding="utf-8") as file_handler:
+            lst_dict_src = json.load(file_handler)
+
+        return [CommonUtils.init_from_api_dict(class_dst(), dict_src, custom_types=custom_types, validate_attributes=validate_attributes)
+            for dict_src in lst_dict_src]
+
+    @staticmethod
     def init_from_api_dict(obj_dst, dict_src, custom_types=None, validate_attributes=True):
         """
         Init object from dict
@@ -129,6 +150,8 @@ class CommonUtils:
             print("\n".join(composed_errors))
             if validate_attributes:
                 raise ValueError(unknown_attributes)
+
+        return obj_dst
 
     @staticmethod
     def init_horey_cached_type(value):

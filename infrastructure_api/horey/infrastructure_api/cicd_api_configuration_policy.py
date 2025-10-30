@@ -2,6 +2,7 @@
 AWS Lambda config
 
 """
+from pathlib import Path
 
 from horey.configuration_policy.configuration_policy import ConfigurationPolicy
 
@@ -46,3 +47,6 @@ class CICDAPIConfigurationPolicy(ConfigurationPolicy):
     def build_environment_variable(self, value):
         self._build_environment_variable = value
 
+    @property
+    def deployment_directory(self):
+        return Path("/tmp/deployment")

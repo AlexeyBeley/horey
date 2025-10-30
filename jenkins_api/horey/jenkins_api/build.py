@@ -61,6 +61,10 @@ class Build:
         return self.result is not None
 
     @property
+    def succeeded(self):
+        return self.result == "SUCCESS"
+
+    @property
     def name(self):
         """
         Build name

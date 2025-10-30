@@ -3,7 +3,7 @@ Testing selenium api
 """
 
 import pytest
-from horey.selenium_api.mcsherryauction import Mcsherryauction
+from horey.selenium_api.maauction import MAauction
 
 
 # pylint: disable= missing-function-docstring
@@ -11,19 +11,19 @@ from horey.selenium_api.mcsherryauction import Mcsherryauction
 
 @pytest.mark.unit
 def test_load_page():
-    auction = Mcsherryauction()
+    auction = MAauction()
     assert auction.load_page_items(1)
 
 
 @pytest.mark.unit
 def test_get_page_count():
-    auction = Mcsherryauction()
+    auction = MAauction()
     assert auction.get_page_count()
 
 
 @pytest.mark.unit
 def test_init_all_items():
-    auction = Mcsherryauction()
+    auction = MAauction()
     ret = auction.init_all_items()
 
     ret = sorted(ret, key=lambda x: x.high_bid)

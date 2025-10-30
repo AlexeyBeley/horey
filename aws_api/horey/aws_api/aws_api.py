@@ -3904,7 +3904,8 @@ class AWSAPI:
         @param events_rule:
         @return:
         """
-        self.events_client.provision_rule(events_rule)
+
+        return self.events_client.provision_rule(events_rule)
 
     def get_vpcs_by_tags(self, key_values_map, region=None):
         """

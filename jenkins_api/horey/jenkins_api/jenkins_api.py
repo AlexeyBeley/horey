@@ -14,6 +14,8 @@ from horey.jenkins_api.jenkins_job import JenkinsJob
 from horey.jenkins_api.build import Build
 from horey.h_logger import get_logger
 from horey.aws_api.base_entities.aws_account import AWSAccount
+from horey.jenkins_api.jenkins_api_configuration_policy import JenkinsAPIConfigurationPolicy
+from horey.common_utils.common_utils import CommonUtils
 
 logger = get_logger()
 
@@ -71,7 +73,7 @@ class JenkinsAPI:
     SLEEP_TIME = 5
     BUILDS_PER_JOB = defaultdict(lambda: defaultdict(lambda: None))
 
-    def __init__(self, configuration, aws_api=None):
+    def __init__(self, configuration: JenkinsAPIConfigurationPolicy, aws_api=None):
         self.configuration = configuration
 
         self.server = jenkins.Jenkins(
@@ -519,7 +521,6 @@ class JenkinsAPI:
         :return:
         """
         job_dicts = self.server.get_all_jobs()
-        breakpoint()
         return job_dicts
 
     def backup_jobs(self, backups_dir, jobs_names=None):
@@ -588,7 +589,7 @@ class JenkinsAPI:
         ]
         self.delete_jobs(jobs)
 
-    def find_build(self, jobs_names, search_string):
+    def find_build(self, jobs_names, search_string=None):
         """
         Find builds including a search string in their configuration.
 
@@ -611,7 +612,7 @@ class JenkinsAPI:
                         f"Found in Job: '{job_name}' Build: '{build['number']}'"
                     )
 
-    def get_build_console_output(self, job, start_offset=0):
+    def get_build_console_output(self, build: Build, start_offset=0):
         """
         Many thanks to:
         https://github.com/arangamani/jenkins_api_client
@@ -623,12 +624,13 @@ class JenkinsAPI:
         url =  self.server._build_url(request_sub_url)
         response = self.server.jenkins_open(requests.Request("GET", url))
 
-        :param job:
+        :param start_offset:
+        :param build:
         :return:
         """
 
-        logger.info(f"Fetching console output for {job.name=}, {job.build_id=}")
-        request_sub_url = f"job/{job.name}/{job.build_id}/logText/progressiveText?start={start_offset}"
+        logger.info(f"Fetching console output for {build.name=}, {build.number=}")
+        request_sub_url = f"job/{build.name}/{build.number}/logText/progressiveText?start={start_offset}"
         return self.get(request_sub_url)
 
     @retry_on_errors((requests.exceptions.ConnectionError, jenkins.TimeoutException), count=12, timeout=5)
@@ -648,7 +650,7 @@ class JenkinsAPI:
         return response
 
     @retry_on_errors((requests.exceptions.ConnectionError, jenkins.TimeoutException), count=12, timeout=5)
-    def update_build_info(self, build):
+    def update_build_info(self, build: Build):
         """
         Update_build info.
 
@@ -657,6 +659,7 @@ class JenkinsAPI:
         """
 
         try:
+            logger.info(f"Updating build {build.name}:{build.number} information")
             build_info = self.server.get_build_info(build.name, build.number)
         except jenkins.JenkinsException as exception_received:
             if "does not exist" not in repr(
@@ -668,7 +671,7 @@ class JenkinsAPI:
         build.update_from_raw_response(build_info)
         return True
 
-    def yield_build_logs(self, build, timeout=5):
+    def yield_build_logs(self, build: Build, timeout=5):
         """
         Yield log chunks received from running build
 
@@ -769,3 +772,49 @@ class JenkinsAPI:
                 lst_ret.append(executor)
 
         return lst_ret
+
+    def get_builds(self, job_name, min_timestamp: int = None):
+        """
+        Get builds.
+
+        :param min_timestamp: in Milliseconds.
+        :param job_name:
+        :return:
+        """
+
+        ret = []
+        job_info = self.get_job_info(job_name)
+        build_number = job_info["lastSuccessfulBuild"]["number"]
+        while build_number > 0:
+            build = Build({"name": job_name, "number": build_number})
+            build_number -= 1
+            if not self.update_build_info(build):
+                raise RuntimeError(f"Was not able to update build info for {job_name}:{build_number}")
+            if not build.succeeded:
+                continue
+            if min_timestamp is not None and build.timestamp < min_timestamp:
+                break
+
+            ret.append(build)
+
+        return ret
+
+    def filter_builds(self, builds, parameters_dict):
+        """
+        Filter builds to find only relevant builds.
+
+        :param builds:
+        :param parameters_dict:
+        :return:
+        """
+
+        ret = []
+        for build in builds:
+            for desired_key, desired_value in parameters_dict.items():
+                if build.parameters_dict.get(desired_key) != desired_value:
+                    break
+            else:
+                ret.append(build)
+
+        return ret
+

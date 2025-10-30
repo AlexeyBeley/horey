@@ -986,7 +986,7 @@ class RemoteDeployer:
         """
 
     @staticmethod
-    def connect_to_target(target_host: str, target_user: str, target_key_path: str,
+    def connect_to_target(target_host: str, target_user: str, target_key_path,
                           proxy_jump_client: paramiko.SSHClient = None) -> paramiko.SSHClient:
         """
         Connects to the target host using the bastion client's transport.
@@ -994,7 +994,7 @@ class RemoteDeployer:
         :param proxy_jump_client:
         :param target_host:
         :param target_user:
-        :param target_key_path:
+        :param target_key_path: Path /str
         :return:
         """
 
@@ -1026,7 +1026,7 @@ class RemoteDeployer:
         target_client.connect(
             hostname=target_host,
             username=target_user,
-            key_filename=target_key_path,
+            key_filename=str(target_key_path),
             sock=target_channel
         )
         logger.info(f"Connection to target {target_host} successful.")

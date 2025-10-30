@@ -2609,3 +2609,28 @@ class EnvironmentAPI:
         })
 
         return tags
+
+    def get_ec2_instance(self, update_info=True, tags_dict=None):
+        """
+        Find and return the EC2 instance.
+
+        :param tags_dict:
+        :param update_info:
+        :return:
+        """
+
+        if tags_dict is None:
+            raise ValueError("tags_dict is None")
+
+        for tag_name, tag_value in tags_dict.items():
+            if not isinstance(tag_value, list):
+                raise ValueError(f"Tag '{tag_name}' value is not list: '{tag_value}'")
+
+        filters = {"Filters": [{"Name": f"tag:{name}", "Values": values} for name, values in tags_dict.items()] +
+                              [{"Name": "vpc-id", "Values": [self.vpc.id]}]
+                   }
+        ec2_instances = self.aws_api.ec2_client.get_region_instances(self.region, filters=filters, update_info=update_info)
+        if len(ec2_instances) != 1:
+            raise RuntimeError(f"Expected to find single instance, found: {len(ec2_instances)}")
+        return ec2_instances[0]
+

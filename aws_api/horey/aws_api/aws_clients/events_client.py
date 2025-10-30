@@ -134,6 +134,7 @@ class EventsClient(Boto3Client):
         put_targets_request = rule.generate_put_targets_request()
         if put_targets_request is not None:
             self.put_targets_raw(rule.region, put_targets_request)
+        return True
 
     def provision_rule_raw(self, region, request_dict):
         """

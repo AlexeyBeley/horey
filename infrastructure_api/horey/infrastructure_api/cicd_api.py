@@ -16,7 +16,7 @@ from horey.infrastructure_api.loadbalancer_api import LoadbalancerAPIConfigurati
 from horey.infrastructure_api.dns_api import DNSAPIConfigurationPolicy
 from horey.git_api.git_api import GitAPI, GitAPIConfigurationPolicy
 from horey.aws_api.aws_clients.efs_client import EFSFileSystem, EFSAccessPoint, EFSMountTarget
-
+from horey.deployer.remote_deployer import DeploymentTarget
 
 from horey.h_logger import get_logger
 
@@ -348,3 +348,24 @@ class CICDAPI:
         """
 
         return dir_path / "jenkins_api" / "horey" / "jenkins_api" / "master"
+
+    def generate_deployment_target(self, name=None):
+        """
+        Generate target
+
+        :param name:
+        :return:
+        """
+
+        if name is None:
+            raise ValueError("name is None")
+
+        ec2_instance = self.environment_api.get_ec2_instance(tags_dict={"Name": [name]})
+        self.environment_api.aws_api.get_secret_file(ec2_instance.key_name, str(self.configuration.deployment_directory), region=self.environment_api.region)
+        # key_pairs = self.environment_api.aws_api.ec2_client.get_region_key_pairs(self.environment_api.region)
+
+        target = DeploymentTarget()
+        target.deployment_target_address = ec2_instance.public_ip_address
+        # target.deployment_target_ssh_key_type
+        target.deployment_target_ssh_key_path = self.configuration.deployment_directory / ec2_instance.key_name
+        return target
