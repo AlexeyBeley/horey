@@ -621,3 +621,33 @@ class DockerAPI:
         """
         Error caught in a log line.
         """
+
+    @staticmethod
+    def get_childless_images(all_images):
+        """
+        Get images
+
+        :param all_images:
+        :return:
+        """
+
+        parent_ids = [image.attrs["Parent"] for image in all_images if image.attrs["Parent"]]
+        return [image for image in all_images if image.attrs["Id"] not in parent_ids]
+
+    def clear_all_images(self):
+        """
+        Delete all images and their children
+
+        :return:
+        """
+
+        all_images = self.get_all_images()
+        while all_images:
+            print(f"All images: {len(all_images)}")
+
+            childless_images = self.get_childless_images(all_images)
+            print(f"Childless images: {len(childless_images)}")
+            for image in childless_images:
+                self.remove_image(image.attrs["Id"], force=True, childless=True)
+
+            all_images = self.get_all_images()

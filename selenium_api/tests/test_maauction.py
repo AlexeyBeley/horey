@@ -30,5 +30,17 @@ def test_init_all_items():
     for x in ret: print(f"{x.high_bid} : {x.name}")
 
 
+@pytest.mark.unit
+def test_init_auction_events():
+    auction = MAauction()
+    ret = auction.init_auction_events()
+    assert ret
 
 
+@pytest.mark.unit
+def test_init_auction_lots():
+    auction = MAauction()
+    ret = auction.init_auction_events()
+    for auction_event in ret:
+        lots = auction.init_auction_event_lots(auction_event)
+        assert isinstance(lots, list)

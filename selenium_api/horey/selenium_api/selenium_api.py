@@ -6,6 +6,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.remote.webelement import WebElement
 from webdriver_manager.chrome import ChromeDriverManager
 
 
@@ -52,7 +53,7 @@ class SeleniumAPI:
     def disconnect(self):
         self.driver.quit()
 
-    def get_element(self, by, value):
+    def get_element(self, by, value) -> WebElement:
         return self.driver.find_element(by, value)
 
     def get_elements(self, by, value):
