@@ -24,7 +24,7 @@ setup(
     ),
     include_package_data=True,
     package_data={
-        "": ["bin/*.exe",]
+        "": ["*.html", "html/*.html"]
     },
     zip_safe=False,
 )

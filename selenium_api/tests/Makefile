@@ -6,14 +6,6 @@ BUILD_DIR := ${HOREY_DIR_PATH}/build
 BUILD_TMP_DIR := ${BUILD_DIR}/_build
 VENV_DIR := $(realpath ${BUILD_TMP_DIR}/_venv)
 
-plan: build
-	source ${VENV_DIR}/bin/activate &&\
-	python work_plan.py
-
-test_%: FORCE build
-	source ${VENV_DIR}/bin/activate &&\
-	python ${TESTS_DIR}/${@}
-
 FORCE: ;
 
 build_ng:
@@ -22,6 +14,8 @@ build_ng:
 
 wip: FORCE build_ng
 	source ${VENV_DIR}/bin/activate &&\
-	python3 -m pytest -m wip ${CURRENT_DIR}/ -v -s
+	python -m pytest -m wip ${CURRENT_DIR}/ -v -s
 
+test:
+	echo ${CURRENT_DIR}
 

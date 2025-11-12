@@ -31,7 +31,12 @@ class Package:
         :param requirement:
         :return:
         """
-        self_int_version_lst = [int(sub_ver) for sub_ver in self.version.split(".")]
+
+        if "pos" in self.version.split(".")[-1]:
+            version = self.version[:self.version.rfind(".")]
+        else:
+            version = self.version
+        self_int_version_lst = [int(sub_ver) for sub_ver in version.split(".")]
 
         return self.check_version_min_requirement(
             requirement, self_int_version_lst

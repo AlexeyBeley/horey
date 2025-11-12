@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toggle Tables Example</title>
+    <!-- 1. Include Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        /* A simple style for the table content divs */
+        .table-content {
+            display: none; /* Hide all tables by default */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans p-8">
+
+    <div class="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-lg">
+        <h1 class="text-2xl font-bold mb-4">Table Viewer</h1>
+        <p class="mb-4">Use the buttons below to switch between the two tables.</p>
+
+        <!-- 2. The buttons to control visibility -->
+        <div class="flex space-x-2 mb-6">
+            STRING_REPLACEMENT_BUTTONS
+        </div>
+
+        STRING_REPLACEMENT_TABLES
+
+
+
+    <!-- 5. The JavaScript to switch tables -->
+    <script>
+        function showTable(tableId) {
+            // First, hide all elements with the 'table-content' class
+            var allTables = document.querySelectorAll('.table-content');
+            allTables.forEach(function(table) {
+                table.style.display = 'none';
+            });
+
+            // Then, show only the table with the matching ID
+            var tableToShow = document.getElementById(tableId);
+            if (tableToShow) {
+                tableToShow.style.display = 'block';
+            }
+        }
+
+        // --- On Page Load ---
+        // By default, show 'table1' when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            showTable('table1');
+        });
+    </script>
+
+</body>
+</html>

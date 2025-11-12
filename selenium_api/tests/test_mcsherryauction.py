@@ -9,19 +9,19 @@ from horey.selenium_api.mcsherryauction import Mcsherryauction
 # pylint: disable= missing-function-docstring
 
 
-@pytest.mark.unit
+@pytest.mark.done
 def test_load_page():
     auction = Mcsherryauction()
     assert auction.load_page_items(1)
 
 
-@pytest.mark.unit
+@pytest.mark.done
 def test_get_page_count():
     auction = Mcsherryauction()
     assert auction.get_page_count()
 
 
-@pytest.mark.unit
+@pytest.mark.done
 def test_init_all_items():
     auction = Mcsherryauction()
     ret = auction.init_all_items()

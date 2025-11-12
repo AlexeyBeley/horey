@@ -169,7 +169,8 @@ class ECSAPI:
         if dns_api:
             self.dns_api = dns_api
             if self.dns_api.configuration._lowest_domain_label is None:
-                self.dns_api.configuration.lowest_domain_label = self.configuration.service_name
+                # todo: remove ng
+                self.dns_api.configuration.lowest_domain_label = self.configuration.service_name + "-ng"
             if self.loadbalancer_api:
                 try:
                     self.loadbalancer_api.configuration.rule_conditions
@@ -359,7 +360,6 @@ class ECSAPI:
 
         :return:
         """
-        breakpoint()
 
         if self.configuration.autoscaling_max_capacity == 1:
             return True
@@ -453,7 +453,7 @@ class ECSAPI:
 
         return []
 
-    def role_inline_policies_callback(self):
+    def task_role_inline_policies_callback(self):
         """
         Made for async generation.
 
@@ -819,7 +819,7 @@ class ECSAPI:
         if not self.configuration.provision_service and not self.configuration.provision_cron:
             return True
 
-        policies = self.role_inline_policies_callback()
+        policies = self.task_role_inline_policies_callback()
         assume_role_policy_document = json.dumps({
             "Version": "2012-10-17",
             "Statement": [

@@ -1,4 +1,3 @@
-from pathlib import Path
 from horey.selenium_api.selenium_api import SeleniumAPI
 
 
@@ -8,11 +7,7 @@ class Provider:
     def __init__(self):
         self.name = None
         self.id = None
-        self._cache_dir_path = None
-
-    @property
-    def cache_dir_path(self):
-        return Path(f"/opt/{self.name}")
+        self.auction_events = []
 
     @classmethod
     def connect(cls):

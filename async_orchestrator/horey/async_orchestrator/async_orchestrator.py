@@ -70,7 +70,8 @@ class AsyncOrchestrator:
             logger.info(f"Setting task {task.id} as started")
             task.exit_code = 1
             logger.info(f"Task '{task.id}' Set exit code = {task.exit_code}")
-            task.result = task.function()
+            task.result = task.function(*task.args, **task.kwargs)
+
             task.exit_code = 0
             logger.info(f"Task '{task.id}' Set exit code = {task.exit_code}")
         except Exception as error_inst:
@@ -151,6 +152,20 @@ class AsyncOrchestrator:
             time.sleep(sleep_time)
         raise TimeoutError(f"Task did not finish during {timeout} seconds. {time.strftime('%X')}")
 
+    def start_task_from_function(self, function, *args, **kwargs):
+        """
+        Create and run task
+
+        :param function:
+        :return:
+        """
+
+        task = AsyncOrchestrator.Task(function.__name__, function)
+        task.args = args
+        task.kwargs = kwargs
+        self.start_task(task)
+        return task
+
     class Task:
         """
         Task to be run
@@ -163,3 +178,6 @@ class AsyncOrchestrator:
             self.finished = False
             self.exception = None
             self.exit_code = None
+            self.traceback = None
+            self.args = []
+            self.kwargs = {}

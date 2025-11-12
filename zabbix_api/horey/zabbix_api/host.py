@@ -45,6 +45,9 @@ class Host(ZabbixObject):
         self.active_available = None
         self.assigned_proxyid = None
         self.hostgroups = None
+        self.proxy_hostid = None
+        self.proxy_address = None
+        self.auto_compress = None
 
         super().__init__(dict_src, from_cache=from_cache)
 

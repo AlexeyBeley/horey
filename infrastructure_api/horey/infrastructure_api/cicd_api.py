@@ -17,6 +17,7 @@ from horey.infrastructure_api.dns_api import DNSAPIConfigurationPolicy
 from horey.git_api.git_api import GitAPI, GitAPIConfigurationPolicy
 from horey.aws_api.aws_clients.efs_client import EFSFileSystem, EFSAccessPoint, EFSMountTarget
 from horey.deployer.remote_deployer import DeploymentTarget
+from horey.aws_api.aws_services_entities.iam_policy import IamPolicy
 
 from horey.h_logger import get_logger
 
@@ -43,9 +44,11 @@ class CICDAPI:
 
         :return:
         """
+
         if self._cloudwatch_api is None:
             config = CloudwatchAPIConfigurationPolicy()
             self._cloudwatch_api = CloudwatchAPI(configuration=config, environment_api=self.environment_api)
+            self.init_clouwatch_api_defaults()
         return self._cloudwatch_api
 
     def set_api(self, ecs_api=None, cloudwatch_api=None, dns_api=None):
@@ -67,16 +70,23 @@ class CICDAPI:
 
         if cloudwatch_api:
             self._cloudwatch_api = cloudwatch_api
-
-            try:
-                self.cloudwatch_api.configuration.log_group_name
-            except self._cloudwatch_api.configuration.UndefinedValueError:
-                self.cloudwatch_api.configuration.log_group_name = ecs_api.configuration.cloudwatch_log_group_name
-
             self.ecs_api.set_api(cloudwatch_api=self.cloudwatch_api)
+            self.init_clouwatch_api_defaults()
 
         if dns_api:
             self._dns_api = dns_api
+
+    def init_clouwatch_api_defaults(self):
+        """
+        Init default configs
+
+        :return:
+        """
+
+        try:
+            self.cloudwatch_api.configuration.log_group_name
+        except self._cloudwatch_api.configuration.UndefinedValueError:
+            self.cloudwatch_api.configuration.log_group_name = self.ecs_api.configuration.cloudwatch_log_group_name
 
     def provision(self):
         """
@@ -86,7 +96,6 @@ class CICDAPI:
         """
 
         self.provision_master_infrastructure()
-        breakpoint()
         self.ecs_api.provision_ecs_task_definition(self.ecs_api.ecr_repo_uri + ":latest")
         self.cloudwatch_api.provision()
 
@@ -110,12 +119,179 @@ class CICDAPI:
                                                              f"-jenkins"
 
         self.ecs_api = self.generate_ecs_api()
-        self.provision_efs()
-        # todo: remove:
-        self.ecs_api.update()
-        breakpoint()
 
+        # provision_lb_security_groups used for lb_facing_security_group creation.
+        self.ecs_api.provision_lb_security_groups()
+        # provision_lb_facing_security_group used for efs SG creation.
+        self.ecs_api.provision_lb_facing_security_group()
+        self.provision_efs()
+
+        self.ecs_api.task_role_inline_policies_callback = self.task_role_inline_policies_callback
         self.ecs_api.provision()
+
+    def task_role_inline_policies_callback(self):
+        """
+        Generate inline policies.
+
+        :return:
+        """
+
+        return [self.generate_ssm_task_role_inline_policy(), self.generate_ec2_task_role_inline_policy()]
+
+    def generate_ssm_task_role_inline_policy(self):
+        """
+        Trivial
+
+        :return:
+        """
+
+        policy_ssm = IamPolicy({})
+        policy_ssm.document = {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Action": [
+                        "ssmmessages:CreateControlChannel",
+                        "ssmmessages:CreateDataChannel",
+                        "ssmmessages:OpenControlChannel",
+                        "ssmmessages:OpenDataChannel"
+                    ],
+                    "Resource": "*",
+                    "Condition": {
+                        "StringEquals": {
+                            "aws:ResourceTag/env_level": self.environment_api.configuration.environment_level,
+                            "aws:PrincipalTag/env_level": self.environment_api.configuration.environment_level,
+                            "aws:ResourceTag/env_name": self.environment_api.configuration.environment_name,
+                            "aws:PrincipalTag/env_name": self.environment_api.configuration.environment_name,
+                            "aws:ResourceTag/project_name": self.environment_api.configuration.project_name,
+                            "aws:PrincipalTag/project_name": self.environment_api.configuration.project_name,
+                        }
+                    }
+                }
+            ]
+        }
+        policy_ssm.name = "inline_ssm_messages"
+        policy_ssm.description = "Allow task to access SSM service for remote connections"
+        policy_ssm.tags = self.environment_api.configuration.tags
+        policy_ssm.tags.append({
+            "Key": "Name",
+            "Value": policy_ssm.name
+        })
+        return policy_ssm
+
+    def generate_ec2_task_role_inline_policy(self):
+        """
+        Trivial
+
+        :return:
+        """
+
+        policy_ec2 = IamPolicy({})
+        policy_ec2.document = {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Action": [
+                        "ec2:DescribeSpotFleetInstances",
+                        "ec2:ModifySpotFleetRequest",
+                        "ec2:CreateTags",
+                        "ec2:DescribeRegions",
+                        "ec2:DescribeInstances",
+                        "ec2:TerminateInstances",
+                        "ec2:DescribeInstanceStatus",
+                        "ec2:DescribeSpotFleetRequests",
+                        "ec2:DescribeFleets",
+                        "ec2:DescribeFleetInstances",
+                        "ec2:ModifyFleet",
+                        "ec2:DescribeInstanceTypes"
+                    ],
+                    "Resource": "*",
+                    "Condition": {
+                        "StringEquals": {
+                            "aws:ResourceTag/env_level": self.environment_api.configuration.environment_level,
+                            "aws:PrincipalTag/env_level": self.environment_api.configuration.environment_level,
+                            "aws:ResourceTag/env_name": self.environment_api.configuration.environment_name,
+                            "aws:PrincipalTag/env_name": self.environment_api.configuration.environment_name,
+                            "aws:ResourceTag/project_name": self.environment_api.configuration.project_name,
+                            "aws:PrincipalTag/project_name": self.environment_api.configuration.project_name,
+                        }
+                    }
+                },
+                {
+                    "Effect": "Allow",
+                    "Action": [
+                        "autoscaling:DescribeAutoScalingGroups",
+                        "autoscaling:TerminateInstanceInAutoScalingGroup",
+                        "autoscaling:UpdateAutoScalingGroup"
+                    ],
+                    "Resource": "*",
+                    "Condition": {
+                        "StringEquals": {
+                            "aws:ResourceTag/env_level": self.environment_api.configuration.environment_level,
+                            "aws:PrincipalTag/env_level": self.environment_api.configuration.environment_level,
+                            "aws:ResourceTag/env_name": self.environment_api.configuration.environment_name,
+                            "aws:PrincipalTag/env_name": self.environment_api.configuration.environment_name,
+                            "aws:ResourceTag/project_name": self.environment_api.configuration.project_name,
+                            "aws:PrincipalTag/project_name": self.environment_api.configuration.project_name,
+                        }
+                    }
+                },
+                {
+                    "Effect": "Allow",
+                    "Action": [
+                        "iam:ListInstanceProfiles",
+                        "iam:ListRoles"
+                    ],
+                    "Resource": [
+                        "*"
+                    ],
+                    "Condition": {
+                        "StringEquals": {
+                            "aws:ResourceTag/env_level": self.environment_api.configuration.environment_level,
+                            "aws:PrincipalTag/env_level": self.environment_api.configuration.environment_level,
+                            "aws:ResourceTag/env_name": self.environment_api.configuration.environment_name,
+                            "aws:PrincipalTag/env_name": self.environment_api.configuration.environment_name,
+                            "aws:ResourceTag/project_name": self.environment_api.configuration.project_name,
+                            "aws:PrincipalTag/project_name": self.environment_api.configuration.project_name,
+                        }
+                    }
+                },
+                {
+                    "Effect": "Allow",
+                    "Action": [
+                        "iam:PassRole"
+                    ],
+                    "Resource": [
+                        "*"
+                    ],
+                    "Condition": {
+                        "StringEquals": {
+                            "iam:PassedToService": [
+                                "ec2.amazonaws.com",
+                                "ec2.amazonaws.com.cn"
+                            ],
+                            "aws:ResourceTag/env_level": self.environment_api.configuration.environment_level,
+                            "aws:PrincipalTag/env_level": self.environment_api.configuration.environment_level,
+                            "aws:ResourceTag/env_name": self.environment_api.configuration.environment_name,
+                            "aws:PrincipalTag/env_name": self.environment_api.configuration.environment_name,
+                            "aws:ResourceTag/project_name": self.environment_api.configuration.project_name,
+                            "aws:PrincipalTag/project_name": self.environment_api.configuration.project_name,
+                        }
+                    }
+                }
+            ]
+        }
+        policy_ec2.name = "inline_ec2"
+        policy_ec2.description = "Allow Jenkins master to control EC2 autoscaling"
+        policy_ec2.tags = self.environment_api.configuration.tags
+        policy_ec2.tags.append({
+            "Key": "Name",
+            "Value": policy_ec2.name
+        })
+
+        return policy_ec2
 
     def update(self):
         """
@@ -361,6 +537,9 @@ class CICDAPI:
             raise ValueError("name is None")
 
         ec2_instance = self.environment_api.get_ec2_instance(tags_dict={"Name": [name]})
+        if ec2_instance.get_status() == ec2_instance.State.STOPPED:
+            self.environment_api.aws_api.ec2_client.start_instances([ec2_instance])
+
         self.environment_api.aws_api.get_secret_file(ec2_instance.key_name, str(self.configuration.deployment_directory), region=self.environment_api.region)
         # key_pairs = self.environment_api.aws_api.ec2_client.get_region_key_pairs(self.environment_api.region)
 

@@ -16,6 +16,6 @@ fb = FB(config)
 # pylint: disable= missing-function-docstring
 
 
-@pytest.mark.unit
+@pytest.mark.done
 def test_load_free():
     assert fb.load_free()

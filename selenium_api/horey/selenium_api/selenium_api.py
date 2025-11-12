@@ -43,7 +43,6 @@ class SeleniumAPI:
         chrome_options = Options()
         chrome_flags = os.getenv("CHROME_OPTIONS", options)
         for flag in chrome_flags.split():
-            pass
             chrome_options.add_argument(flag)
         self.driver = webdriver.Chrome(service=cService, options=chrome_options)
         # self.driver.maximize_window()

@@ -3011,7 +3011,35 @@ class EC2Client(Boto3Client):
             self.clear_cache(EC2Instance)
             return response
 
-    def start_instances_raw(self, request, region=None):
+    def start_instances(self, instances):
+        """
+        Start instances and wait.
+
+        :param instances:
+        :return:
+        """
+
+        instance_by_region = {}
+        for ec2_instance in instances:
+            try:
+                instance_by_region[ec2_instance.region].append(ec2_instance)
+            except KeyError:
+                instance_by_region[ec2_instance.region] = [ec2_instance]
+
+        for region, ec2_instances in instance_by_region.items():
+            self.start_instances_raw(region, request={"InstanceIds": [ec2_instance.id for ec2_instance in ec2_instances]})
+
+        for ec2_instance in instances:
+            self.wait_for_status(
+                ec2_instance,
+                self.update_instance_information,
+                [ec2_instance.State.RUNNING, ec2_instance.State.STOPPED],
+                [ec2_instance.State.PENDING],
+                [ec2_instance.State.SHUTTING_DOWN, ec2_instance.State.TERMINATED, ec2_instance.State.STOPPING],
+            )
+        time.sleep(60)
+
+    def start_instances_raw(self, region, request):
         """
         modify_instance_attribute request.
 

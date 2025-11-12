@@ -1,4 +1,5 @@
 import json
+import datetime
 from pathlib import Path
 
 from horey.selenium_api.selenium_api import SeleniumAPI
@@ -7,7 +8,8 @@ from horey.h_logger import get_logger
 from horey.common_utils.common_utils import CommonUtils
 from horey.selenium_api.lot import Lot
 from horey.selenium_api.provider import Provider
-
+from horey.selenium_api.auction_event import AuctionEvent
+from selenium.common.exceptions import NoSuchElementException
 logger = get_logger()
 
 
@@ -15,63 +17,88 @@ class Mcsherryauction(Provider):
     def __init__(self):
         super().__init__()
         self.name = "mcsherryauction"
-        initial_page = "https://bid.mcsherryauction.com/Man-Cave-Vintage-Service-Station-General-Store-Items-Oct28th-41_as109978"
-        # initial_page = "https://bid.mcsherryauction.com/Consignment-Auction-Equip-Building-Supplies-Tractors-Vehicles-Oct29th-42_as111330"
-        # initial_page = "https://bid.mcsherryauction.com/Estate-Moving-44-Nov-5th_as111253"
-        self.initial_page = "https://bid.mcsherryauction.com/Consignment-Auction-Equip-Building-Supplies-Tractors-Vehicles-Oct29th-42_as111330"
         self.main_page = "https://bid.mcsherryauction.com"
 
-    def load_page_items(self, page_id):
+    def load_page_lots(self, page_url, auction_event: AuctionEvent=None):
         """
         Load free items.
 
         :return:
         """
 
-        logger.info(f"Loading page {page_id} items")
+        lots_elements = self.load_page_lot_elements(page_url)
+        lots = []
+        for lot_element in lots_elements:
+            lot = Lot()
+            link_element = lot_element.find_element(By.TAG_NAME, "a")
 
-        items = []
-
-        self.selenium_api.get(self.initial_page+f"_p{page_id}?ps=100")
-        self.selenium_api.wait_for_page_load()
-        item_elements = self.selenium_api.get_elements_by_class("gridItem")
-        for item_element in item_elements:
-            item = Lot()
-            link_element = item_element.find_element(By.TAG_NAME, "a")
-
-            if "No Bids Yet" in item_element.text:
-                item.high_bid = 0
+            if "No Bids Yet" in lot_element.text:
+                lot.current_max= 0
             else:
                 try:
-                    highbid_element = item_element.find_element(By.CLASS_NAME, "gridView_highbid")
+                    highbid_element = lot_element.find_element(By.CLASS_NAME, "gridView_highbid")
                 except Exception as inst:
-                    print(item_element.text)
+                    print(lot_element.text)
                     break
                 if "Current Bid: " not in highbid_element.text:
                     breakpoint()
                     raise ValueError("Current Bid does not present")
-                item.high_bid = float(highbid_element.text.split(" ")[-1].replace(",", ""))
+                lot.current_max = float(highbid_element.text.split(" ")[-1].replace(",", ""))
 
-            item.url = link_element.get_attribute('href')
-            item_image_element = item_element.find_element(By.TAG_NAME, "img")
-            item.image_url = item_image_element.get_attribute('src')
-            element_title = item_element.find_element(By.CLASS_NAME, "gridView_title")
-            item.name = element_title.text
-            items.append(item)
+            lot.url = link_element.get_attribute('href')
+            item_image_element = lot_element.find_element(By.TAG_NAME, "img")
+            lot.image_url = item_image_element.get_attribute('src')
+            element_title = lot_element.find_element(By.CLASS_NAME, "gridView_title")
+            lot.name = element_title.text
+            lot.address = auction_event.address
+            lot.province = auction_event.provinces
+            lots.append(lot)
 
-        return items
+        return lots
 
-    def get_page_count(self):
+    def load_page_lot_elements(self, page_url):
+        """
+        Raw elements
+
+        :return:
+        """
+
+        logger.info(f"Loading page {page_url} items")
+        for retry_counter in range(6):
+            self.selenium_api.get(page_url)
+            self.selenium_api.wait_for_page_load()
+            try:
+                item_elements = self.selenium_api.get_elements_by_class("gridItem")
+                break
+            except NoSuchElementException as error_inst:
+                logger.exception("Fetch gridItem failed: %s: %s", page_url, error_inst)
+
+                h1_elements = self.selenium_api.get_elements(By.TAG_NAME, "h1")
+                for h1_element in h1_elements:
+                    if h1_element.text == "500":
+                        datetime.time.sleep(10)
+                        break
+        else:
+            breakpoint()
+            return []
+        return item_elements
+
+    def get_page_count(self, initial_page):
         """
         Get number of pages to fetch
 
         :return:
         """
 
-        self.selenium_api.get(self.initial_page+f"_p{1}?ps=100")
+        self.selenium_api.get(initial_page+f"_p{1}?ps=100")
         self.selenium_api.wait_for_page_load()
         pagingbar_pages = self.selenium_api.get_elements_by_class("pagingbar_pages")
+        if not pagingbar_pages:
+            return 1
         a_elements = pagingbar_pages[-1].find_elements(By.TAG_NAME, "a")
+        if not a_elements:
+            return 1
+
         max_page = 0
         for link in a_elements:
             try:
@@ -83,34 +110,78 @@ class Mcsherryauction(Provider):
         logger.info(f"Found max page: {max_page}")
         return max_page
 
-    def init_all_items(self, update_info=True):
+    def init_auction_events(self):
         """
-        Load all items.
+        Load free items.
 
         :return:
         """
 
-        initial_page = self.initial_page
+        self.connect()
 
-        if not initial_page.startswith("https://bid.mcsherryauction.com/"):
-            raise NotImplementedError("https://bid.mcsherryauction.com/")
+        logger.info(f"Loading provider {self.name} auctions")
 
-        file_name = initial_page[len("https://bid.mcsherryauction.com/"):] + ".json"
-        file_path = self.cache_dir_path / file_name
+        self.selenium_api.get(self.main_page)
+        self.selenium_api.wait_for_page_load()
+        auction_list_element = self.selenium_api.get_element(By.CLASS_NAME, "auctionslisting")
+        auctions_elements = auction_list_element.find_elements(By.CLASS_NAME, "row")
+        auction_events = []
 
-        if not update_info and file_path.exists():
-            ret = CommonUtils.init_from_api_cache(Lot, file_path)
-            return ret
+        time_format_string = "%Y %b %d @ %H:%M"  # '2025 Nov 04 @ 17:00'
 
-        items = []
-        for page_counter in range(1,self.get_page_count()+1):
-            items += self.load_page_items(page_counter)
-            #self.selenium_api.get(item.url)
-            #element_item_description = self.selenium_api.get_element(By.ID, "cphBody_cbItemDescription")
-            #item.description = element_item_description.text
+        for auctions_element in auctions_elements:
+            auction_event = AuctionEvent()
+            url_element = auctions_element.find_element(By.TAG_NAME, "a")
+            auction_event.url = url_element.get_attribute('href')
+            title_element = auctions_element.find_element(By.CLASS_NAME, "row_thumbnail")
+            auction_event.name = title_element.get_attribute("title")
 
-        ret = [CommonUtils.convert_to_dict(item.__dict__) for item in items]
-        with open(file_path, "w", encoding="utf-8") as file_handler:
-            json.dump(ret, file_handler)
+            end_time = auctions_element.find_element(By.CLASS_NAME, "datetime")
 
-        return items
+            time_text_index = end_time.text.find("Auction Local Time")
+            if time_text_index < 0:
+                raise NotImplementedError("Can not find 'Auction Local Time'")
+            if end_time.text.find("Auction Local Time (UTC-06:00") < 0 and end_time.text.find("Auction Local Time (UTC-05:00") < 0:
+                raise NotImplementedError("Auction Local Time (UTC-06:00")
+            str_end_time = end_time.text[:time_text_index]
+            end_time = datetime.datetime.strptime(str_end_time, time_format_string)
+            auction_event.end_time = end_time.astimezone(datetime.timezone.utc)
+
+            auction_event.description = auctions_element.text
+            auction_events.append(auction_event)
+            location_element = auctions_element.find_element(By.CLASS_NAME, "location")
+            auction_event.address = location_element.text
+
+        return auction_events
+
+    def init_auction_event_lots(self, auction_event: AuctionEvent):
+        """
+        Init from Web.
+
+        :param auction_event:
+        :return:
+        """
+        map_old_lots = {lot.url: lot for lot in auction_event.lots}
+        auction_event.lots = []
+
+        for page_counter in range(1, self.get_page_count(auction_event.url)+1):
+            auction_event.lots += self.load_page_lots(auction_event.url + f"_p{page_counter}?ps=100",
+                                                      auction_event=auction_event)
+        auction_event.init_lots_default_information()
+        for i, lot in enumerate(auction_event.lots):
+            lot.auction_event_id = auction_event.id
+            old_lot = map_old_lots.get(lot.url)
+            if old_lot is not None:
+                lot.id = old_lot.id
+
+            if lot.current_max is None:
+                breakpoint()
+
+            """if lot.current_max == 0:
+                if old_lot is not None:
+                    lot.current_max = old_lot.current_max
+                else:
+                    lot.current_max = self.find_lot_starting_bid(lot)
+                    logger.info(f"Finished {i}/{len(auction_event.lots)} auction event lots")
+            """
+        return auction_event.lots
