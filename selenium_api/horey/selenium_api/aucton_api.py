@@ -1,4 +1,7 @@
 import datetime
+import time
+from typing import Any
+
 from horey.async_orchestrator.async_orchestrator import AsyncOrchestrator
 from horey.selenium_api.maauction import MAauction
 from horey.selenium_api.mcsherryauction import Mcsherryauction
@@ -6,7 +9,6 @@ from horey.selenium_api.auction_event import AuctionEvent
 from horey.selenium_api.lot import Lot
 import sqlite3
 from horey.h_logger import get_logger
-
 
 logger = get_logger()
 
@@ -36,10 +38,6 @@ class AuctionAPI:
                     if provider.name == name:
                         provider.id = auc_id
                         map_providers[provider.id] = provider
-
-        auction_events = self.init_auction_events_from_db()
-        for auction_event in auction_events:
-            map_providers[auction_event.provider_id].auction_events.append(auction_event)
 
         return self.providers
 
@@ -121,6 +119,12 @@ class AuctionAPI:
         raise DeprecationWarning()
 
     def provision_db_lots_table(self):
+        """
+        DB lots_table
+
+        :return:
+        """
+
         with sqlite3.connect(self.db_file_path) as conn:
             # Database operations can be performed here
             # For example, creating a table:
@@ -132,6 +136,7 @@ class AuctionAPI:
                     name TEXT NOT NULL,
                     description TEXT NOT NULL,
                     interested BOOL,
+                    starting_bid REAL NOT NULL,
                     current_max REAL,
                     my_max REAL,
                     admin_fee STRING,
@@ -151,6 +156,7 @@ class AuctionAPI:
 
         :return:
         """
+
         self.auction_events = []
         with sqlite3.connect(self.db_file_path) as conn:
             cursor = conn.cursor()
@@ -196,15 +202,18 @@ class AuctionAPI:
         self.provision_db_auction_events_table()
         self.provision_db_lots_table()
 
-    def update_auction_event(self, auction_event_id, end_time=None, last_update_time=None):
+    def update_auction_event(self, auction_event_id, end_time=None, last_update_time=None, url=None):
         """
         '{"horey_cached_type": "datetime", "value": "2025-10-28 15:00:00.000000"}'
 
+        :param url:
         :param auction_event_id:
         :param end_time:
         :param last_update_time:
         :return:
         """
+
+        logger.info(f"Updating auction event: {auction_event_id}")
 
         with sqlite3.connect(self.db_file_path) as conn:
             cursor = conn.cursor()
@@ -227,30 +236,14 @@ class AuctionAPI:
                 new_time = '{"horey_cached_type": "datetime", "value": "' + last_update_time + '"}'
                 cursor.execute(sql_update_last_update_time, (new_time, auction_event_id))
 
-    def update_info(self):
-        """
-        Magic
+            if url:
+                sql_update_url = """
+                 UPDATE auction_events
+                 SET url = ?
+                 WHERE id = ?
+                 """
 
-        :return:
-        """
-
-        for provider in self.init_providers_from_db():
-            provider.connect()
-            for auction_event in provider.auction_events:
-                if auction_event.end_time is None:
-                    print("Manually check and set the ending time using url")
-                    format_string = "%Y-%m-%d %H:%M:%S.%f"
-                    breakpoint()
-                    #auction_event.end_time = datetime.datetime(2025, month=11, day=29, hour=9, minute=0, second=0)
-                    #self.update_auction_event_end_time(auction_event.id, auction_event.end_time.strftime(format_string))
-
-                    #sample: self.update_auction_event_end_time(auction_event.id, "2025-11-29 15:00:00.000000")
-                if auction_event.finished:
-                    continue
-
-                provider.init_auction_event_lots(auction_event)
-
-                self.update_db_auction_event(auction_event)
+                cursor.execute(sql_update_url, (url, auction_event_id))
 
     def update_db_auction_event(self, auction_event: AuctionEvent):
         """
@@ -264,10 +257,11 @@ class AuctionAPI:
             self.upsert_db_lot(lot)
 
     def upsert_db_lot(self, lot: Lot):
+        logger.info(f"Upserting Lot to DB: {lot.name}")
         insert_sql = """
                     INSERT INTO lots 
-                    (auction_event_id, name, description, interested, current_max, my_max, admin_fee, raw_text, url, image_url, address, province)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (auction_event_id, name, description, interested, starting_bid, current_max, my_max, admin_fee, raw_text, url, image_url, address, province)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """
 
         update_sql = """
@@ -277,6 +271,7 @@ class AuctionAPI:
                 name = ?,
                 description = ?,
                 interested = ?,
+                starting_bid = ?,
                 current_max = ?,
                 my_max = ?,
                 admin_fee = ?,
@@ -301,37 +296,13 @@ class AuctionAPI:
 
             conn.commit()
 
-    def print_coming_auction(self):
-        """
-        Magic
-
-        :return:
-        """
-
-        events = self.init_auction_events_from_db()
-        by_date = {}
-        for event in events:
-            if event.finished:
-                continue
-
-            by_date[event.end_time] = event
-
-        for auction_event_date in sorted(by_date):
-            if not by_date[auction_event_date].provinces:
-                breakpoint()
-                logger.error("something went wrong")
-
-            if "manitoba" not in by_date[auction_event_date].provinces:
-                continue
-            by_date[auction_event_date].print_interesting_information()
-            breakpoint()
-
     def generate_auction_event_reports(self):
         """
         Magic
 
         :return:
         """
+
         reports = []
         events = self.init_auction_events_from_db()
         providers_by_id = {provider.id: provider for provider in self.init_providers_from_db()}
@@ -352,71 +323,255 @@ class AuctionAPI:
 
     def update_info_provider_auction_events(self, provider_id, asynchronous=False):
         if asynchronous:
-            return self.async_orchestrator.start_task_from_function(self.update_info_provider_auction_events_asynchronous, provider_id)
+            try:
+                return self.async_orchestrator.start_task_from_function(
+                    self.update_info_provider_auction_events_asynchronous, provider_id)
+            except self.async_orchestrator.ExistingTaskID:
+                breakpoint()
+                return "Error"
 
         self.update_info_provider_auction_events_asynchronous(provider_id)
 
-    def update_info_provider_auction_events_asynchronous(self, provider_id):
-        breakpoint()
+    def init_provider_from_db(self, provider_id):
+        provider_id = int(provider_id)
         self.init_providers_from_db()
-        known_auction_events = self.init_auction_events_from_db()
-        known_auction_event_urls = [known_auction_event.url for known_auction_event in known_auction_events if provider_id == known_auction_event.provider_id]
+        for provider in self.providers:
+            if provider.id == provider_id:
+                break
+        else:
+            raise ValueError(f"Was not able to find provider {provider_id=}")
+
+        self.init_auction_events_from_db()
+        provider.auction_events = [self.init_auction_event_from_db(auction_event.id) for auction_event in
+                                   self.auction_events if auction_event.provider_id == provider_id]
+        return provider
+
+    def update_info_provider_auction_events_asynchronous(self, provider_id):
+        provider = self.init_provider_from_db(provider_id)
+        # self.update_auction_event(24, end_time="2025-12-02 13:00:00.000000")
+        known_auction_event_urls = [auction_event.url for auction_event in provider.auction_events]
         sql = """
             INSERT INTO auction_events 
             (provider_id, name, description, url, start_time, end_time, address, provinces, last_update_time)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """
 
+        # url = 'https://www.jardineauctioneers.com/auctions/24895-45th-annual-fredericton-sports-investment-auction'
+        # self.update_auction_event(23, url=url)
+
+        new_auction_events = provider.init_auction_events()
+        to_create = [new_auction_event for new_auction_event in new_auction_events
+                     if new_auction_event.url not in known_auction_event_urls]
+
         with sqlite3.connect(self.db_file_path) as conn:
             cursor = conn.cursor()
             cursor.execute("PRAGMA foreign_keys = ON;")
-
-            for provider in self.providers:
-                if provider.id != provider_id:
-                    continue
-                auction_events = provider.init_auction_events()
-                for auction_event in auction_events:
-                    if auction_event.url in known_auction_event_urls:
-                        continue
-
-                    base_tuple = auction_event.generate_db_tuple()
-                    data_tuple = (provider.id,) + base_tuple
+            for new_auction_event in to_create:
+                breakpoint()
+                base_tuple = new_auction_event.generate_db_tuple()
+                data_tuple = (provider.id,) + base_tuple
+                try:
                     cursor.execute(sql, data_tuple)
                     conn.commit()
+                except Exception as inst_err:
+                    logger.exception(inst_err)
+                    breakpoint()
+                    # for x in known_auction_events: print(x.id, x.name, x.url)
+                    # url = 'https://www.jardineauctioneers.com/auctions/24895-45th-annual-fredericton-sports-investment-auction?filter=(auction_ring_id:1200)'
+                    # self.update_auction_event(23, url=url)
+                    raise
 
     def update_info_auction_event(self, auction_event_id, asynchronous=False):
         if asynchronous:
-            return self.async_orchestrator.start_task_from_function(self.update_info_auction_event_async, auction_event_id)
+            seconds_wait = 60
+            task_name = f"update_info_auction_event->{auction_event_id}"
+            try:
+                task = self.async_orchestrator.start_task_from_function(self.update_info_auction_event_async,
+                                                                        auction_event_id, task_name=task_name)
+
+                logger.info(f"Started update_info_auction_event->{auction_event_id}")
+            except self.async_orchestrator.ExistingTaskID:
+                if self.async_orchestrator.tasks[task_name].finished:
+                    del self.async_orchestrator.tasks[task_name]
+                    task = self.async_orchestrator.start_task_from_function(self.update_info_auction_event_async,
+                                                                            auction_event_id, task_name=task_name)
+                    logger.info(f"Started update_info_auction_event->{auction_event_id}")
+                else:
+                    logger.info(f"Updating already in progress: auction_event {auction_event_id}")
+                    task = self.async_orchestrator.tasks[task_name]
+
+            logger.info(f"Starting waiting loop in update_info_auction_event->{auction_event_id}")
+            for i in range(seconds_wait):
+                if not task.finished:
+                    logger.info(f"Update not yet finished, going to sleep {i}/{seconds_wait}")
+                    time.sleep(1)
+                    continue
+
+                logger.info(f"Update finished, checking status")
+
+                if task.exception:
+                    return f"Update failed with exception {repr(task.exception)}"
+
+                if task.exit_code != 0:
+                    return f"Update failed with exit code {repr(task.exit_code)}"
+
+                return f"Successfully updated update_info_auction_event->{auction_event_id}"
+
+            return f"Started updating auction_event info and after {seconds_wait} seconds still running: {auction_event_id=}"
 
         self.update_info_auction_event_async(auction_event_id)
 
     def update_info_auction_event_async(self, auction_event_id):
-        logger.info(f"Started auction_event_id with {auction_event_id}")
+        logger.info(f"Started update info for auction_event_id {auction_event_id}")
 
+        auction_event = self.init_auction_event_from_db(auction_event_id)
         self.init_providers_from_db()
+
+        for provider in self.providers:
+            if auction_event.provider_id == provider.id:
+                break
+        else:
+            raise RuntimeError(f"Was not able to find {auction_event.provider_id=} in the DB")
+
+        logger.info(f"Updating {auction_event_id=} {auction_event.provider_id=}")
+        for lot in provider.init_auction_event_lots(auction_event):
+            self.upsert_db_lot(lot)
+
+        format_string = "%Y-%m-%d %H:%M:%S.%f"
+        now = datetime.datetime.now(tz=datetime.timezone.utc)
+        self.update_auction_event(auction_event.id, last_update_time=now.strftime(format_string))
+
+    def delete_auction_event_with_lots(self, auction_event_id):
+        auction_event = self.init_auction_event_from_db(auction_event_id)
+        for lot in auction_event.lots:
+            self.delete_db_lot(lot)
+        self.delete_db_auction_event(auction_event)
+
+    def delete_db_lot(self, lot: Lot):
+
+        table_name = 'lots'
+        delete_query = f"DELETE FROM {table_name} WHERE id = ?"
+        breakpoint()
+        with sqlite3.connect(self.db_file_path) as conn:
+            cursor = conn.cursor()
+            try:
+                cursor.execute(delete_query, (lot.id,))
+                conn.commit()
+            except Exception as inst_err:
+                logger.exception(inst_err)
+                breakpoint()
+                raise
+
+    def delete_db_auction_event(self, auction_event: AuctionEvent):
+        table_name = 'auction_events'
+        delete_query = f"DELETE FROM {table_name} WHERE id = ?"
+        with sqlite3.connect(self.db_file_path) as conn:
+            cursor = conn.cursor()
+            try:
+                cursor.execute(delete_query, (auction_event.id,))
+                conn.commit()
+            except Exception as inst_err:
+                logger.exception(inst_err)
+                breakpoint()
+                raise
+
+    def init_auction_event_from_db(self, auction_event_id) -> AuctionEvent:
+        auction_event_id = int(auction_event_id)
         self.init_auction_events_from_db()
 
-        known_lots = [lot for lot in self.init_lots_from_db() if lot.auction_event_id == auction_event_id]
-        known_lot_urls = [known_lot.url for known_lot in known_lots]
-        known_lot_auction_events = set([known_lot.auction_event_id for known_lot in known_lots])
-        for provider in self.providers:
-            for auction_event in self.auction_events:
-                if auction_event.id != auction_event_id:
-                    continue
+        for auction_event in self.auction_events:
+            if auction_event.id == auction_event_id:
+                self.init_lots_from_db()
+                auction_event.lots = [lot for lot in self.lots if lot.auction_event_id == auction_event_id]
+                return auction_event
+        raise ValueError(f"Was not able to find {auction_event_id=}")
 
-                if auction_event.id in known_lot_auction_events:
-                    continue
+    def auction_event_manual_update(self):
+        self.init_auction_events_from_db()
+        for auction_event in self.auction_events:
+            print(f"{auction_event.id} - {auction_event.name}")
+        breakpoint()
+        auction_event_id = -1
+        self.update_auction_event(auction_event_id, end_time="2025-12-04 15:00:00.000000")
 
-                for lot in provider.init_auction_event_lots(auction_event):
-                    if lot.url in known_lot_urls:
-                        continue
-                    self.upsert_db_lot(lot)
+    def add_column_after_column(self):
+        """
+            id INTEGER PRIMARY KEY,
+            auction_event_id INTEGER REFERENCES auction_events(id) NOT NULL,
+            name TEXT NOT NULL,
+            description TEXT NOT NULL,
+            interested BOOL,
+            starting_bid REAL NOT NULL,
+            current_max REAL,
+            my_max REAL,
+            admin_fee STRING,
+            raw_text STRING,
+            url TEXT NOT NULL UNIQUE,
+            image_url TEXT,
+            address TEXT,
+            province TEXT
 
-                format_string = "%Y-%m-%d %H:%M:%S.%f"
+        :return:
+        """
+        breakpoint()
+        self.raw_sqlite_command("ALTER TABLE lots RENAME TO _lots_old;")
+
+        self.provision_db_lots_table()
+        query = """
+        INSERT INTO lots (
+        id,
+        auction_event_id,
+        name,
+        description,
+        interested,
+        starting_bid,
+        current_max,
+        my_max,
+        admin_fee,
+        raw_text,
+        url,
+        image_url,
+        address,
+        province
+        )
+        SELECT
+        id,
+        auction_event_id,
+        name,
+        description,
+        interested,
+        1 AS starting_bid,
+        current_max,
+        my_max,
+        admin_fee,
+        raw_text,
+        url,
+        image_url,
+        address,
+        province
+        FROM
+        _lots_old;
+        """
+
+        self.raw_sqlite_command(query)
+
+        self.raw_sqlite_command("DROP TABLE _lots_old;")
+
+    def raw_sqlite_command(self, query):
+        """
+        Command
+        :return:
+        """
+
+        with sqlite3.connect(self.db_file_path) as conn:
+            cursor = conn.cursor()
+            try:
+                cursor.execute(query)
+                conn.commit()
+            except Exception as inst_err:
+                logger.exception(inst_err)
                 breakpoint()
-                now = datetime.datetime.now(tz=datetime.timezone.utc)
-                self.update_auction_event(auction_event.id, last_update_time=now.strftime(format_string))
-                break
+                raise
 
 
 class AuctionEventReport:
@@ -425,8 +580,8 @@ class AuctionEventReport:
         self.auction_event = None
 
     @property
-    def fetch_data_button_text(self):
-        return f"{self.provider.name} {self.auction_event.end_time.strftime('%d/%m')}"
+    def load_data_button_text(self):
+        return f"[{self.auction_event.id}] {self.provider.name} {self.auction_event.end_time.strftime('%d/%m')}"
 
     @property
     def timestamp_text(self):

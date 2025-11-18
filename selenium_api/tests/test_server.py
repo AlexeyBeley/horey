@@ -38,7 +38,7 @@ def test_load_reports():
 
 
 @pytest.mark.wip
-def test_load_report_mock():
+def test_run_server():
     """
 
     Server.self.html_dir_path = Path(__file__).parent / "html"

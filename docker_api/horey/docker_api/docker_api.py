@@ -546,7 +546,7 @@ class DockerAPI:
         if len(candidates) != 1:
             raise RuntimeError(f"Found {len(candidates)=} with {image_id=}")
         for image in all_images:
-            if image.attrs["Parent"] == image_id:
+            if image.attrs.get("Parent") == image_id:
                 child_ids.append(image.id)
 
         logger.info(f"{image_id=} {child_ids=}")

@@ -319,6 +319,7 @@ class OpensearchAPI:
         os.makedirs(dst_dir, exist_ok=True)
 
         self.init_monitors()
+
         monitor_sources = [mon.dict_src for mon in self.monitors]
         with open(dst_dir / "monitors.json", "w", encoding="UTF-8") as fh:
             json.dump(monitor_sources, fh)
@@ -326,3 +327,18 @@ class OpensearchAPI:
         configs = self.init_notification_configs()
         with open(dst_dir / "notification_configs.json", "w", encoding="UTF-8") as fh:
             json.dump(configs, fh)
+
+    def restore(self, dst_dir: pathlib.Path):
+        configs = self.init_notification_configs()
+        if len(configs) != 1:
+            raise NotImplementedError("""with open(dst_dir / "notification_configs.json", "w", encoding="UTF-8") as fh: json.dump(configs, fh) """)
+
+        with open(dst_dir / "monitors.json", "r", encoding="UTF-8") as fh:
+            lst_src = json.load(fh)
+        monitors = [Monitor(dict_src) for dict_src in lst_src]
+        for monitor in monitors:
+            monitor.triggers[0]["query_level_trigger"]["actions"][0]["destination_id"] = configs[0]["config"]["name"]
+            self.provision_monitor(monitor)
+        breakpoint()
+
+

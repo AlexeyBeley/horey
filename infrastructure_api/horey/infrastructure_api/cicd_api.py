@@ -525,7 +525,7 @@ class CICDAPI:
 
         return dir_path / "jenkins_api" / "horey" / "jenkins_api" / "master"
 
-    def generate_deployment_target(self, name=None):
+    def generate_deployment_target(self, name=None, target_ssh_key_secret_name=None):
         """
         Generate target
 
@@ -539,12 +539,12 @@ class CICDAPI:
         ec2_instance = self.environment_api.get_ec2_instance(tags_dict={"Name": [name]})
         if ec2_instance.get_status() == ec2_instance.State.STOPPED:
             self.environment_api.aws_api.ec2_client.start_instances([ec2_instance])
-
-        self.environment_api.aws_api.get_secret_file(ec2_instance.key_name, str(self.configuration.deployment_directory), region=self.environment_api.region)
+        target_ssh_key_secret_name = target_ssh_key_secret_name or ec2_instance.key_name
+        self.environment_api.aws_api.get_secret_file(target_ssh_key_secret_name, str(self.configuration.deployment_directory), region=self.environment_api.region)
         # key_pairs = self.environment_api.aws_api.ec2_client.get_region_key_pairs(self.environment_api.region)
 
         target = DeploymentTarget()
         target.deployment_target_address = ec2_instance.public_ip_address
         # target.deployment_target_ssh_key_type
-        target.deployment_target_ssh_key_path = self.configuration.deployment_directory / ec2_instance.key_name
+        target.deployment_target_ssh_key_path = self.configuration.deployment_directory / target_ssh_key_secret_name
         return target

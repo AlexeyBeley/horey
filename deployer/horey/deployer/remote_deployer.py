@@ -40,6 +40,9 @@ class HoreySFTPClient(paramiko.SFTPClient):
         target directory needs to exists. All subdirectories in source are
         created under target.
         """
+
+        self.mkdir(target, ignore_existing=True)
+
         for item in os.listdir(source):
             if os.path.isfile(os.path.join(source, item)):
                 self.put(
@@ -445,6 +448,23 @@ class RemoteDeployer:
             sftp_client.put(local_file_path, remote_file_path)
         return True
 
+    def put_dir(self, deployment_target, local_path, remote_path):
+        """
+        Copy file from local to remote.
+
+        :param deployment_target:
+        :param local_path:
+        :param remote_path:
+        :return:
+        """
+
+        with self.get_deployment_target_client_context(deployment_target) as client:
+            transport = client.get_transport()
+            sftp_client = HoreySFTPClient.from_transport(transport)
+            breakpoint()
+            sftp_client.put_dir(local_path, remote_path)
+        return True
+
     def get_file_windows(self, deployment_target, local_file_path, remote_file_path):
         """
         Copy file from local to remote.
@@ -633,6 +653,7 @@ class RemoteDeployer:
         :param string_replacements:
         :return:
         """
+
         self.replacement_engine.perform_file_string_replacements(
             root, filename, string_replacements
         )
@@ -672,6 +693,7 @@ class RemoteDeployer:
         logger.info(
             f"Loading bastion SSH Key of type '{target.bastion_ssh_key_type}' from '{target.bastion_ssh_key_path}'")
         bastion_key = RemoteDeployer.load_ssh_key_from_file(target.bastion_ssh_key_path, target.bastion_ssh_key_type)
+
         with RemoteDeployer.get_client_context_with_bastion(
                 target.bastion_address,
                 target.bastion_user_name,

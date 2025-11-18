@@ -4,6 +4,7 @@ Async orchestrator
 """
 
 import datetime
+import json
 import sys
 import time
 import threading
@@ -44,7 +45,7 @@ class AsyncOrchestrator:
             logger.error(f"Task with id {task.id} already in task: existing task traceback:")
             for line in self.tasks[task.id].traceback:
                 logger.error(line)
-            raise RuntimeError(f"Task with id {task.id} already in tasks: {self.tasks}")
+            raise self.ExistingTaskID(f"Task with id {task.id} already in tasks: {self.tasks}")
         self.tasks[task.id] = task
         task.traceback = traceback.extract_stack()
 
@@ -60,6 +61,7 @@ class AsyncOrchestrator:
         :param task:
         :return:
         """
+
         logger.info(f"started task_runner_thread at {time.strftime('%X')}")
 
         try:
@@ -78,6 +80,12 @@ class AsyncOrchestrator:
             task.exception = error_inst
             logger.error(f"Exception output start {task.id}")
             logger.exception(error_inst)
+            exc_info = traceback.format_exc()
+            lines = f"Explicit traceback:\n{exc_info}"
+            for line in lines.split("\n"):
+                logger.error(line)
+            logger.error(f"Exception output end {task.id}")
+
         finally:
             logger.info(f"Setting task {task.id} as finished")
             task.finished = True
@@ -152,7 +160,7 @@ class AsyncOrchestrator:
             time.sleep(sleep_time)
         raise TimeoutError(f"Task did not finish during {timeout} seconds. {time.strftime('%X')}")
 
-    def start_task_from_function(self, function, *args, **kwargs):
+    def start_task_from_function(self, function, *args, task_name=None, **kwargs):
         """
         Create and run task
 
@@ -160,7 +168,8 @@ class AsyncOrchestrator:
         :return:
         """
 
-        task = AsyncOrchestrator.Task(function.__name__, function)
+        task_name = task_name or function.__name__
+        task = AsyncOrchestrator.Task(task_name, function)
         task.args = args
         task.kwargs = kwargs
         self.start_task(task)
@@ -181,3 +190,6 @@ class AsyncOrchestrator:
             self.traceback = None
             self.args = []
             self.kwargs = {}
+
+    class ExistingTaskID(RuntimeError):
+        pass

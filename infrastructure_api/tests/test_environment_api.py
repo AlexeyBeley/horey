@@ -10,15 +10,17 @@ from horey.aws_api.aws_api_configuration_policy import AWSAPIConfigurationPolicy
 from horey.h_logger import get_logger
 from horey.infrastructure_api.environment_api import EnvironmentAPI
 from horey.infrastructure_api.environment_api_configuration_policy import EnvironmentAPIConfigurationPolicy
+from horey.aws_api.base_entities.aws_account import AWSAccount
+from horey.aws_api.base_entities.region import Region
 
 # Uncomment next line to save error lines to /tmp/error.log
 logger = get_logger()
 
 
-configuration = AWSAPIConfigurationPolicy()
-configuration.accounts_file = Path(".").parent / "default.py"
-configuration.aws_api_account = "default"
-aws_api = AWSAPI(configuration=configuration, init_configuration=False)
+aws_api_configuration = AWSAPIConfigurationPolicy()
+aws_api_configuration.accounts_file = Path(".").parent / "default.py"
+aws_api_configuration.aws_api_account = "default"
+aws_api = AWSAPI(configuration=aws_api_configuration, init_configuration=False)
 
 
 # pylint: disable= missing-function-docstring
@@ -285,3 +287,9 @@ def test_generate_cleanup_report(configuration):
     env = EnvironmentAPI(configuration, aws_api)
     assert env.generate_cleanup_report()
 
+
+@pytest.mark.done
+def test_generate_cleanup_report_us(configuration):
+    env = EnvironmentAPI(configuration, aws_api)
+    AWSAccount.get_aws_account().regions = {"us-east-1": Region.get_region("us-east-1")}
+    assert env.generate_cleanup_report()

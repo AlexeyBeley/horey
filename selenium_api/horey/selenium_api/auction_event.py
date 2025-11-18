@@ -20,10 +20,11 @@ class AuctionEvent:
         self.description = None
         self.lots = []
         self.last_update_time = None
+        self.lst_src = None
 
     @property
     def finished(self):
-        return self.end_time < datetime.datetime.now(tz=datetime.timezone.utc)
+        return self.end_time + datetime.timedelta(days=2) < datetime.datetime.now(tz=datetime.timezone.utc)
 
     def generate_db_tuple(self):
         """
@@ -43,9 +44,6 @@ class AuctionEvent:
                 print(self.url)
 
         ret = CommonUtils.convert_to_dict(self.__dict__)
-
-        for attr in ["lots", "id", "provider_id"]:
-            del ret[attr]
 
         for field in ["start_time", "end_time", "last_update_time"]:
             ret[field] = json.dumps(ret[field])
@@ -84,6 +82,7 @@ class AuctionEvent:
         :return:
         """
 
+        self.lst_src = line
         self.id = line[0]
         self.provider_id = line[1]
         self.name = line[2]

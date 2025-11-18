@@ -1655,17 +1655,21 @@ class AWSCleaner:
         try:
             response = requests.get("https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html", timeout=32)
             response_text = response.text
+            breakpoint()
             runtime_to_deprecation_date = self.get_supported_runtimes(response_text)
         except Exception as error_instance:
             logger.exception(repr(error_instance))
-            runtime_to_deprecation_date = {"nodejs18.x": None,
+            runtime_to_deprecation_date = {"nodejs22.x": datetime.datetime(2027, 4, 30, 0, 0),
+                                            "nodejs20.x": datetime.datetime(2026, 4, 30, 0, 0),
+                                            "nodejs18.x": None,
                                            "nodejs16.x": datetime.datetime(2024, 3, 11, 0, 0),
                                            "nodejs14.x": datetime.datetime(2023, 11, 27, 0, 0),
-                                           "python3.12": None,
-                                           "python3.11": None,
-                                           "python3.10": None,
-                                           "python3.9": None,
-                                           "python3.8": None,
+                                           "python3.13": datetime.datetime(2029, 10, 31, 0, 0),
+                                           "python3.12": datetime.datetime(2028, 10, 31, 0, 0),
+                                           "python3.11": datetime.datetime(2026, 6, 30, 0, 0),
+                                           "python3.10": datetime.datetime(2026, 6, 30, 0, 0),
+                                           "python3.9": datetime.datetime(2025, 11, 12, 0, 0),
+                                           "python3.8": datetime.datetime(2024, 11, 12, 0, 0),
                                            "python3.7": datetime.datetime(2023, 11, 27, 0, 0),
                                            "java17": None,
                                            "java11": None,

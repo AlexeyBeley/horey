@@ -15,16 +15,30 @@ from horey.opensearch_api.opensearch_api_configuration_policy import (
 ignore_dir_path = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore"
 )
-configuration = OpensearchAPIConfigurationPolicy()
-configuration.configuration_file_full_path = os.path.abspath(
-    os.path.join(ignore_dir_path, "opensearch", "opensearch_api_configuration_values.py")
-)
-configuration.init_from_file()
-
-opensearch_api = OpensearchAPI(configuration=configuration)
-
 
 # pylint: disable= missing-function-docstring
+
+
+@pytest.fixture(name="opensearch_api")
+def fixture_opensearch_api():
+    configuration = OpensearchAPIConfigurationPolicy()
+    configuration.configuration_file_full_path = os.path.abspath(
+        os.path.join(ignore_dir_path, "opensearch", "opensearch_api_configuration_values_eu.py")
+    )
+    configuration.init_from_file()
+
+    yield OpensearchAPI(configuration=configuration)
+
+
+@pytest.fixture(name="opensearch_api_ng")
+def fixture_opensearch_api_ng():
+    configuration = OpensearchAPIConfigurationPolicy()
+    configuration.configuration_file_full_path = os.path.abspath(
+        os.path.join(ignore_dir_path, "opensearch", "opensearch_api_configuration_values_ng.py")
+    )
+    configuration.init_from_file()
+
+    yield OpensearchAPI(configuration=configuration)
 
 
 @pytest.mark.done
@@ -33,12 +47,16 @@ def test_init_opensearch_api():
     Test Opensearch API initiation
     @return:
     """
+    configuration = OpensearchAPIConfigurationPolicy()
+    configuration.configuration_file_full_path = os.path.abspath(
+        os.path.join(ignore_dir_path, "opensearch", "opensearch_api_configuration_values_eu.py")
+    )
     _opensearch_api = OpensearchAPI(configuration=configuration)
     assert isinstance(_opensearch_api, OpensearchAPI)
 
 
 @pytest.mark.done
-def test_provision_notification_channel():
+def test_provision_notification_channel(opensearch_api):
     data = {
         "config_id": "sample-id",
         "name": "sample-name",
@@ -54,13 +72,13 @@ def test_provision_notification_channel():
 
 
 @pytest.mark.unit
-def test_init_monitors():
+def test_init_monitors(opensearch_api):
     ret = opensearch_api.init_monitors()
     assert len(ret) > 0
 
 
 @pytest.mark.unit
-def test_provision_monitor():
+def test_provision_monitor(opensearch_api):
     monitor_current = opensearch_api.monitors[0]
     monitor = monitor_current.copy()
     monitor.name = "test"
@@ -69,7 +87,7 @@ def test_provision_monitor():
 
 
 @pytest.mark.done
-def test_provision_monitor_disable():
+def test_provision_monitor_disable(opensearch_api):
     monitor_current = opensearch_api.monitors[0]
     monitor = monitor_current.copy()
     monitor.enabled = False
@@ -80,7 +98,7 @@ def test_provision_monitor_disable():
 
 
 @pytest.mark.done
-def test_dispose_monitor():
+def test_dispose_monitor(opensearch_api):
     monitor_current = opensearch_api.monitors[0]
     monitor = monitor_current.copy()
     monitor.name = "test"
@@ -89,7 +107,7 @@ def test_dispose_monitor():
 
 
 @pytest.mark.skip
-def test_post_document():
+def test_post_document(opensearch_api):
     response = opensearch_api.post_document("veggies",
                                             {
                                                 "name": "beet",
@@ -100,7 +118,7 @@ def test_post_document():
 
 
 @pytest.mark.unit
-def test_init_index_patterns():
+def test_init_index_patterns(opensearch_api):
     """
     Test dashboard object provisioning
     @return:
@@ -111,13 +129,13 @@ def test_init_index_patterns():
 
 
 @pytest.mark.done
-def test_put_index_pattern():
+def test_put_index_pattern(opensearch_api):
     response = opensearch_api.put_index_pattern("test-template", ["veggies"])
     assert response.get("acknowledged")
 
 
 @pytest.mark.unit
-def test_get_index_template_raw():
+def test_get_index_template_raw(opensearch_api):
     """
     Test dashboard object provisioning
     @return:
@@ -129,11 +147,23 @@ def test_get_index_template_raw():
     assert len(ret) > 0
 
 
-@pytest.mark.wip
-def test_backup():
+@pytest.mark.unit
+def test_backup(opensearch_api):
     """
     Test dashboard object provisioning
+
     @return:
     """
 
     ret = opensearch_api.backup(Path("/opt/backup_opensearch"))
+
+
+@pytest.mark.wip
+def test_restore(opensearch_api_ng):
+    """
+    Test dashboard object provisioning
+
+    @return:
+    """
+
+    ret = opensearch_api_ng.restore(Path("/opt/backup_opensearch"))

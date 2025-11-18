@@ -14,4 +14,4 @@ build_ng:
 start_server: build_ng
 	source ${VENV_DIR}/bin/activate &&\
 	cd ${HOREY_DIR_PATH}/selenium_api/horey/selenium_api &&\
-	python server.py 
+	python server_actor.py --action start

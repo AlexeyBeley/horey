@@ -773,10 +773,11 @@ class JenkinsAPI:
 
         return lst_ret
 
-    def get_builds(self, job_name, min_timestamp: int = None):
+    def get_builds(self, job_name, min_timestamp: int = None, ignore_missing=False):
         """
         Get builds.
 
+        :param ignore_missing: Do not raise exception
         :param min_timestamp: in Milliseconds.
         :param job_name:
         :return:
@@ -789,7 +790,11 @@ class JenkinsAPI:
             build = Build({"name": job_name, "number": build_number})
             build_number -= 1
             if not self.update_build_info(build):
-                raise RuntimeError(f"Was not able to update build info for {job_name}:{build_number}")
+                if not ignore_missing:
+                    raise RuntimeError(f"Was not able to update build info for {job_name}:{build.number}")
+                logger.info(f"Was not able to update build info for {job_name}:{build.number}")
+                continue
+
             if not build.succeeded:
                 continue
             if min_timestamp is not None and build.timestamp < min_timestamp:

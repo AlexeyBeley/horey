@@ -30,10 +30,15 @@ class Mcsherryauction(Provider):
         lots = []
         for lot_element in lots_elements:
             lot = Lot()
+            lot.starting_bid = 1
             link_element = lot_element.find_element(By.TAG_NAME, "a")
 
             if "No Bids Yet" in lot_element.text:
-                lot.current_max= 0
+                lot.current_max = 0
+                if "Start Price" in lot_element.text:
+                    for line in lot_element.text.split("\n"):
+                        if "Start Price" in line:
+                            lot.starting_bid = float(line.split(":")[1].strip())
             else:
                 try:
                     highbid_element = lot_element.find_element(By.CLASS_NAME, "gridView_highbid")
@@ -89,6 +94,8 @@ class Mcsherryauction(Provider):
 
         :return:
         """
+
+        logger.info(f"Getting page count from {initial_page}")
 
         self.selenium_api.get(initial_page+f"_p{1}?ps=100")
         self.selenium_api.wait_for_page_load()
@@ -161,6 +168,8 @@ class Mcsherryauction(Provider):
         :param auction_event:
         :return:
         """
+
+        logger.info(f"Starting initializing auction event {auction_event.id} lots")
         map_old_lots = {lot.url: lot for lot in auction_event.lots}
         auction_event.lots = []
 

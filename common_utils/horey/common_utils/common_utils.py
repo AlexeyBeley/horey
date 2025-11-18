@@ -164,7 +164,9 @@ class CommonUtils:
 
         if value.get(CommonUtils.SELF_CACHED_TYPE_KEY_NAME) == "datetime":
             # Example: datetime.datetime.strptime('2017-07-26 15:54:10.000000+0000', '%Y-%m-%d %H:%M:%S.%f%z')
-            value_formatted = value["value"] if "+" in value["value"] else value["value"] + "+0000"
+            value_formatted = value["value"] if ("+" in value["value"] or value["value"][-5] == "-") else \
+                value["value"] + "+0000"
+
             return datetime.datetime.strptime(
                 value_formatted, "%Y-%m-%d %H:%M:%S.%f%z"
             )

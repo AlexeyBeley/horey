@@ -9,6 +9,7 @@ class Lot:
         self.description = None
         self.interested = None
         self.current_max = None
+        self.starting_bid = None
         self.my_max = None
         self.admin_fee = None
         self.raw_text = None
@@ -58,6 +59,7 @@ class Lot:
             ret["name"],
             ret["description"],
             ret["interested"],
+            ret["starting_bid"],
             ret["current_max"],
             ret["my_max"],
             ret["admin_fee"],
@@ -81,14 +83,15 @@ class Lot:
         self.name = line[2]
         self.description = line[3]
         self.interested = line[4] != 0
-        self.current_max = line[5]
-        self.my_max = line[6]
-        self.admin_fee = line[7]
-        self.raw_text = line[8]
-        self.url = line[9]
-        self.image_url = line[10]
-        self.address = line[11]
-        self.province = line[12]
+        self.starting_bid = line[5]
+        self.current_max = line[6]
+        self.my_max = line[7]
+        self.admin_fee = line[8]
+        self.raw_text = line[9]
+        self.url = line[10]
+        self.image_url = line[11]
+        self.address = line[12]
+        self.province = line[13]
 
     def init_province_description_and_interested(self, str_auction_event_provinces):
         """
@@ -137,7 +140,7 @@ class Lot:
         ret = []
         known_locations = {"winnipeg": "manitoba",
                            "brunswick": "new brunswick",
-                           "fredericton nb": "new brunswick",
+                           "fredericton": "new brunswick",
                            "calgary": "alberta",
                            "edmonton": "alberta",
                            **{province: province for province in

@@ -36,7 +36,6 @@ class MAauction(Provider):
             lot = Lot()
             lot.raw_text = lot_element.text
             url_element = lot_element.find_element(By.TAG_NAME, "a")
-
             try:
                 highbid_element = lot_element.find_element(By.CLASS_NAME, "tile-two-winning-bid")
             except Exception as error_inst:
@@ -65,6 +64,7 @@ class MAauction(Provider):
             elif auction_event_address:
                 lot.address = auction_event_address
             else:
+                logger.warning(f"Was not able to find auction_event_address: {page_url}")
                 breakpoint()
 
             lots.append(lot)
@@ -186,6 +186,7 @@ class MAauction(Provider):
         for url in urls:
             auction_events += self.init_auction_events_from_internal_url(url)
 
+        self.selenium_api.disconnect()
         return auction_events
 
     def init_auction_events_from_internal_url(self, url):
@@ -213,12 +214,14 @@ class MAauction(Provider):
             return auction_events
 
         auction_event = AuctionEvent()
-        auction_event.url = url
+        auction_event.url = url if "?filter=" not in url else url[:url.find("?filter=")]
         title_element = self.selenium_api.get_element(By.CLASS_NAME, "infoBoxAuctionTitle")
         auction_event.name = title_element.text
         auction_description = self.selenium_api.get_element(By.CLASS_NAME, "auctionDescription")
         auction_event.description = auction_description.text
         auction_event.init_provinces()
+        if not auction_event.provinces:
+            breakpoint()
         self.init_auction_event_start_time(auction_event, auction_description)
         self.init_auction_event_end_time(auction_event, auction_description)
 
@@ -284,7 +287,6 @@ class MAauction(Provider):
         provinces = auction_event.provinces.split(",")
         provinces = list(set(provinces) - {"offsite"})
         if len(provinces) > 1:
-            breakpoint()
             return None
         return MAauction.get_province_tz(provinces[0])
 
@@ -324,7 +326,7 @@ class MAauction(Provider):
             breakpoint()
             raise RuntimeError()
         line_lower = line.lower()
-        for str_month, month in {"october": 10, "november": 11, " nov ": 11}.items():
+        for str_month, month in {"october": 10, "november": 11, " nov ": 11, "december": 12}.items():
             if str_month in line_lower:
                 day_index = line_lower.index(str_month)+len(str_month)
                 day = ""
@@ -422,13 +424,11 @@ class MAauction(Provider):
             if lot.current_max is None:
                 breakpoint()
 
-            if lot.current_max == 0:
-                if old_lot is not None:
-                    lot.current_max = old_lot.current_max
-                else:
-                    lot.current_max = self.find_lot_starting_bid(lot)
-                    logger.info(f"Finished {i}/{len(auction_event.lots)} auction event lots")
+            lot.starting_bid = self.find_lot_starting_bid(lot) if lot.current_max == 0 else lot.current_max
 
+            logger.info(f"Finished {i}/{len(auction_event.lots)} auction event lots")
+
+        self.selenium_api.disconnect()
         return auction_event.lots
 
     def find_lot_starting_bid(self, lot: Lot):

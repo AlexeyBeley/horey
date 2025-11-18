@@ -48,8 +48,12 @@ def auction_event_report():
 @app.route('/update_info')
 def update_info():
     app.logger.info("Serving /update_info")
-    return Server.self.update_info(auction_event_id=request.args.get("auction_event_id"),
+    response = Server.self.update_info(auction_event_id=request.args.get("auction_event_id"),
                                    provider_id=request.args.get("provider_id"))
+
+    app.logger.info(f"/update_info {response=}")
+
+    return jsonify(response=response)
 
 
 class Server:
@@ -77,8 +81,10 @@ class Server:
                 continue
 
             lots = sorted(lots, key=lambda lot: lot.current_max)
+
             for i, lot in enumerate(lots):
-                data.append({"id": i, "item_name": lot.name, "current_bid": lot.current_max,
+                bid_status = f"{lot.current_max}$" if lot.current_max != 0 else f"{lot.current_max} (starting {lot.starting_bid})$"
+                data.append({"id": i, "item_name": lot.name, "current_bid": bid_status,
                              "link": f'<a href="{lot.url}">link</a>'})
             break
 
@@ -90,8 +96,8 @@ class Server:
             return "Started update_info_provider_auction_events"
 
         if auction_event_id is not None:
-            auction_api.update_info_auction_event(auction_event_id, asynchronous=True)
-            return "Started update_info_auction_event"
+            str_response = auction_api.update_info_auction_event(auction_event_id, asynchronous=True)
+            return str_response
 
         raise RuntimeError("No update info destination provided")
 
@@ -110,12 +116,12 @@ class Server:
         """
         provider_navigation_template = """
          <p style="padding: 15px; color: #777;">STRING_REPLACEMENT_PROVIDER_NAME</p>
-         <button onclick="updateProvider('http://127.0.0.1:8000/update_info?provider_id=STRING_REPLACEMENT_PROVIDER_ID')">Update Info</button>
+         <button onclick="updateInfo('http://127.0.0.1:8000/update_info?provider_id=STRING_REPLACEMENT_PROVIDER_ID')">Update Info</button>
          <hr>
         """
 
         report_navigation_template = """
-        <p style="padding: 15px; color: #777;">STRING_REPLACEMENT_FETCH_DATA_BTN_TXT</p>
+        <p style="padding: 15px; color: #777;">STRING_REPLACEMENT_LOAD_DATA_BTN_TXT</p>
         <button onclick="fetchDataAndPopulateElement('http://127.0.0.1:8000/auction_event_report?id=STRING_REPLACEMENT_AUCTION_EVENT_ID', 'table-container', buildAuctionEventReport)">Load</button>
         <button onclick="updateInfo('http://127.0.0.1:8000/update_info?auction_event_id=STRING_REPLACEMENT_AUCTION_EVENT_ID')">Update Info</button>
         <hr>
@@ -127,13 +133,9 @@ class Server:
         auction_event_reports = auction_api.generate_auction_event_reports()
         auction_id_btn_text_pairs = []
         for auction_event_report in auction_event_reports:
-            for lot in auction_event_report.auction_event.lots:
-                if lot.interested:
-                    break
-            else:
-                # no interesting lots
+            if "manitoba" not in auction_event_report.auction_event.provinces:
                 continue
-            auction_id_btn_text_pairs.append((auction_event_report.str_auction_event_id, auction_event_report.fetch_data_button_text))
+            auction_id_btn_text_pairs.append((auction_event_report.str_auction_event_id, auction_event_report.load_data_button_text))
 
             if auction_event_report.str_provider_id not in known_providers:
                 known_providers.append(auction_event_report.str_provider_id)
@@ -158,7 +160,7 @@ class Server:
                 str_row += "<td>\n"
                 str_row += report_navigation_template.replace("STRING_REPLACEMENT_AUCTION_EVENT_ID",
                                                                      auction_event_id). \
-                                      replace("STRING_REPLACEMENT_FETCH_DATA_BTN_TXT",
+                                      replace("STRING_REPLACEMENT_LOAD_DATA_BTN_TXT",
                                               btn_text) + "\n"
                 str_row += "</td>\n"
             str_row += "</tr>\n"
