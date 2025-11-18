@@ -546,7 +546,7 @@ class DockerAPI:
         if len(candidates) != 1:
             raise RuntimeError(f"Found {len(candidates)=} with {image_id=}")
         for image in all_images:
-            if image.attrs.get("Parent") == image_id:
+            if image.attrs.get("Parent", None) == image_id:
                 child_ids.append(image.id)
 
         logger.info(f"{image_id=} {child_ids=}")
@@ -608,14 +608,14 @@ class DockerAPI:
 
         if all_images is None:
             all_images = {image.id: image for image in self.get_all_images()}
-            if not all_images[image_id].attrs["Parent"]:
+            if not all_images[image_id].attrs.get("Parent"):
                 return []
-            return self.get_all_ancestors(all_images[image_id].attrs["Parent"], all_images=all_images)
+            return self.get_all_ancestors(all_images[image_id].attrs.get("Parent"), all_images=all_images)
 
-        if not all_images[image_id].attrs["Parent"]:
+        if not all_images[image_id].attrs("Parent"):
             return [image_id]
 
-        return [image_id] + self.get_all_ancestors(all_images[image_id].attrs["Parent"], all_images=all_images)
+        return [image_id] + self.get_all_ancestors(all_images[image_id].attrs("Parent"), all_images=all_images)
 
     class OutputError(RuntimeError):
         """
@@ -631,7 +631,7 @@ class DockerAPI:
         :return:
         """
 
-        parent_ids = [image.attrs["Parent"] for image in all_images if image.attrs["Parent"]]
+        parent_ids = [image.attrs.get("Parent") for image in all_images if image.attrs("Parent")]
         return [image for image in all_images if image.attrs["Id"] not in parent_ids]
 
     def clear_all_images(self):
