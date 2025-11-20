@@ -186,7 +186,7 @@ class MAauction(Provider):
         for url in urls:
             auction_events += self.init_auction_events_from_internal_url(url)
 
-        self.selenium_api.disconnect()
+        self.disconnect()
         return auction_events
 
     def init_auction_events_from_internal_url(self, url):
@@ -428,8 +428,36 @@ class MAauction(Provider):
 
             logger.info(f"Finished {i}/{len(auction_event.lots)} auction event lots")
 
-        self.selenium_api.disconnect()
+        # when auction ends - it does not have the lots listed on the page,
+        # I have to go one by one to fetch the data.
+        new_urls = [lot.url for lot in auction_event.lots]
+        for known_lot_url, known_lot in map_old_lots.items():
+            if known_lot_url not in new_urls:
+                logger.info("Fetching known lot information missing in the auction event page")
+                new_lot = Lot()
+                for key, val in known_lot.__dict__.items():
+                    setattr(new_lot, key, val)
+                new_lot.current_max = self.init_lot_current_bid_from_url(known_lot_url)
+
+                if new_lot.current_max is None:
+                    breakpoint()
+
+                new_lot.starting_bid = self.find_lot_starting_bid(new_lot) if new_lot.current_max == 0 else new_lot.current_max
+                auction_event.lots.append(new_lot)
+
+        self.disconnect()
         return auction_event.lots
+
+    def init_lot_current_bid_from_url(self, lot_url):
+        self.selenium_api.get(lot_url)
+        self.selenium_api.wait_for_page_load()
+        element = self.selenium_api.get_element(By.CLASS_NAME, "currentBid")
+        element_text = element.text
+        if "Current Bid:" not in element_text:
+            breakpoint()
+
+        element_text = element_text.replace("Current Bid:", "").replace("$", "").replace("CAD", "").replace(",", "")
+        return float(element_text)
 
     def find_lot_starting_bid(self, lot: Lot):
         """

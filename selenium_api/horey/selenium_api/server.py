@@ -2,16 +2,12 @@ import datetime
 from pathlib import Path
 
 from flask import Flask, render_template_string, jsonify, request
-import logging
 from horey.selenium_api.aucton_api import AuctionAPI
 
 auction_api = AuctionAPI()
 
 # Initialize the Flask app
 app = Flask(__name__)
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
 
 
 @app.route('/')

@@ -328,6 +328,7 @@ class JenkinsAPI:
         :param job_name:
         :return:
         """
+
         job_info = self.server.get_job_info(job_name)
 
         return job_info

@@ -170,7 +170,7 @@ class ECSAPI:
             self.dns_api = dns_api
             if self.dns_api.configuration._lowest_domain_label is None:
                 # todo: remove ng
-                self.dns_api.configuration.lowest_domain_label = self.configuration.service_name + "-ng"
+                self.dns_api.configuration.lowest_domain_label = self.configuration.service_name
             if self.loadbalancer_api:
                 try:
                     self.loadbalancer_api.configuration.rule_conditions
@@ -279,7 +279,6 @@ class ECSAPI:
             raise ValueError("Unknown state")
 
         if self.dns_api:
-            breakpoint()
             self.dns_api.configuration.dns_target = self.loadbalancer_api.get_loadbalancer().dns_name
             self.dns_api.provision()
 

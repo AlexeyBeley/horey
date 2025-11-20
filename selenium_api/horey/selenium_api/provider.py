@@ -1,4 +1,8 @@
 from horey.selenium_api.selenium_api import SeleniumAPI
+from horey.h_logger import get_logger
+
+
+logger = get_logger()
 
 
 class Provider:
@@ -15,16 +19,18 @@ class Provider:
             Provider.connect()
         return Provider._selenium_api
 
-    @classmethod
-    def connect(cls):
-        if cls._selenium_api is None:
-            cls._selenium_api = SeleniumAPI()
-            cls._selenium_api.connect(options="--no-sandbox --disable-gpu --disable-dev-shm-usage")
+    @staticmethod
+    def connect():
+        if Provider._selenium_api is None:
+            logger.info("Connecting Selenium in Provider")
+            Provider._selenium_api = SeleniumAPI()
+            Provider._selenium_api.connect(options="--no-sandbox --disable-gpu --disable-dev-shm-usage")
 
-    @classmethod
-    def disconnect(cls):
-        if cls._selenium_api is None:
+    @staticmethod
+    def disconnect():
+        logger.info("Disconnecting Provider")
+        if Provider._selenium_api is None:
             return
-        cls._selenium_api.disconnect()
-        cls._selenium_api = None
+        Provider._selenium_api.disconnect()
+        Provider._selenium_api = None
 

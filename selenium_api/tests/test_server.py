@@ -37,7 +37,7 @@ def test_load_reports():
     assert ret
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_run_server():
     """
 

@@ -183,6 +183,16 @@ class CICDAPI:
     def generate_ec2_task_role_inline_policy(self):
         """
         Trivial
+                    "Condition": {
+                        "StringEquals": {
+                            "aws:ResourceTag/env_level": self.environment_api.configuration.environment_level,
+                            "aws:PrincipalTag/env_level": self.environment_api.configuration.environment_level,
+                            "aws:ResourceTag/env_name": self.environment_api.configuration.environment_name,
+                            "aws:PrincipalTag/env_name": self.environment_api.configuration.environment_name,
+                            "aws:ResourceTag/project_name": self.environment_api.configuration.project_name,
+                            "aws:PrincipalTag/project_name": self.environment_api.configuration.project_name,
+                        }
+                    }
 
         :return:
         """
@@ -207,17 +217,7 @@ class CICDAPI:
                         "ec2:ModifyFleet",
                         "ec2:DescribeInstanceTypes"
                     ],
-                    "Resource": "*",
-                    "Condition": {
-                        "StringEquals": {
-                            "aws:ResourceTag/env_level": self.environment_api.configuration.environment_level,
-                            "aws:PrincipalTag/env_level": self.environment_api.configuration.environment_level,
-                            "aws:ResourceTag/env_name": self.environment_api.configuration.environment_name,
-                            "aws:PrincipalTag/env_name": self.environment_api.configuration.environment_name,
-                            "aws:ResourceTag/project_name": self.environment_api.configuration.project_name,
-                            "aws:PrincipalTag/project_name": self.environment_api.configuration.project_name,
-                        }
-                    }
+                    "Resource": "*"
                 },
                 {
                     "Effect": "Allow",
@@ -226,17 +226,7 @@ class CICDAPI:
                         "autoscaling:TerminateInstanceInAutoScalingGroup",
                         "autoscaling:UpdateAutoScalingGroup"
                     ],
-                    "Resource": "*",
-                    "Condition": {
-                        "StringEquals": {
-                            "aws:ResourceTag/env_level": self.environment_api.configuration.environment_level,
-                            "aws:PrincipalTag/env_level": self.environment_api.configuration.environment_level,
-                            "aws:ResourceTag/env_name": self.environment_api.configuration.environment_name,
-                            "aws:PrincipalTag/env_name": self.environment_api.configuration.environment_name,
-                            "aws:ResourceTag/project_name": self.environment_api.configuration.project_name,
-                            "aws:PrincipalTag/project_name": self.environment_api.configuration.project_name,
-                        }
-                    }
+                    "Resource": "*"
                 },
                 {
                     "Effect": "Allow",
@@ -244,42 +234,14 @@ class CICDAPI:
                         "iam:ListInstanceProfiles",
                         "iam:ListRoles"
                     ],
-                    "Resource": [
-                        "*"
-                    ],
-                    "Condition": {
-                        "StringEquals": {
-                            "aws:ResourceTag/env_level": self.environment_api.configuration.environment_level,
-                            "aws:PrincipalTag/env_level": self.environment_api.configuration.environment_level,
-                            "aws:ResourceTag/env_name": self.environment_api.configuration.environment_name,
-                            "aws:PrincipalTag/env_name": self.environment_api.configuration.environment_name,
-                            "aws:ResourceTag/project_name": self.environment_api.configuration.project_name,
-                            "aws:PrincipalTag/project_name": self.environment_api.configuration.project_name,
-                        }
-                    }
+                    "Resource":"*"
                 },
                 {
                     "Effect": "Allow",
                     "Action": [
                         "iam:PassRole"
                     ],
-                    "Resource": [
-                        "*"
-                    ],
-                    "Condition": {
-                        "StringEquals": {
-                            "iam:PassedToService": [
-                                "ec2.amazonaws.com",
-                                "ec2.amazonaws.com.cn"
-                            ],
-                            "aws:ResourceTag/env_level": self.environment_api.configuration.environment_level,
-                            "aws:PrincipalTag/env_level": self.environment_api.configuration.environment_level,
-                            "aws:ResourceTag/env_name": self.environment_api.configuration.environment_name,
-                            "aws:PrincipalTag/env_name": self.environment_api.configuration.environment_name,
-                            "aws:ResourceTag/project_name": self.environment_api.configuration.project_name,
-                            "aws:PrincipalTag/project_name": self.environment_api.configuration.project_name,
-                        }
-                    }
+                    "Resource": "*"
                 }
             ]
         }

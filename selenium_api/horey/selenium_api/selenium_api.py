@@ -9,10 +9,13 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.remote.webelement import WebElement
 from webdriver_manager.chrome import ChromeDriverManager
 
+from horey.h_logger import get_logger
+
+logger = get_logger()
+
 
 class SeleniumAPI:
-    def __init__(self):
-        self.driver = None
+    driver = None
 
     def wait_for_page_load(self, timeout=10):
         """Waits for the page to be fully loaded based on document.readyState.
@@ -38,19 +41,24 @@ class SeleniumAPI:
         :param options:
         :return:
         """
-
+        if SeleniumAPI.driver is not None:
+            return SeleniumAPI.driver
+        logger.info("Connecting diver in SeleniumAPI")
         cService = Service(ChromeDriverManager().install())
         chrome_options = Options()
         chrome_flags = os.getenv("CHROME_OPTIONS", options)
         for flag in chrome_flags.split():
             chrome_options.add_argument(flag)
-        self.driver = webdriver.Chrome(service=cService, options=chrome_options)
+        SeleniumAPI.driver = webdriver.Chrome(service=cService, options=chrome_options)
         # self.driver.maximize_window()
-        self.driver.set_window_size(1440, 900)
-        self.driver.set_window_position(0, 0)
+        SeleniumAPI.driver.set_window_size(1440, 900)
+        SeleniumAPI.driver.set_window_position(0, 0)
 
-    def disconnect(self):
-        self.driver.quit()
+    @staticmethod
+    def disconnect():
+        SeleniumAPI.driver.quit()
+        logger.info("Disconnecting diver in SeleniumAPI")
+        SeleniumAPI.driver = None
 
     def get_element(self, by, value) -> WebElement:
         return self.driver.find_element(by, value)
@@ -94,7 +102,8 @@ class SeleniumAPI:
         return element.find_elements(By.CSS_SELECTOR,  f'[{selector}="{value}"]')
 
     def get(self, url):
-        self.driver.get(url)
+        self.connect()
+        SeleniumAPI.driver.get(url)
 
     def fill_input(self, str_id, input_data):
         search_box = self.get_by_id(str_id)

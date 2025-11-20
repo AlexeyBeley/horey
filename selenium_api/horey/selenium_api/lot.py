@@ -135,6 +135,7 @@ class Lot:
         :param str_src:
         :return:
         """
+
         str_src = str_src.lower()
 
         ret = []
@@ -143,6 +144,10 @@ class Lot:
                            "fredericton": "new brunswick",
                            "calgary": "alberta",
                            "edmonton": "alberta",
+                           "steinbach": "manitoba",
+                           "stanley": "manitoba",
+                           "winkler": "manitoba",
+                           "morden": "manitoba",
                            **{province: province for province in
                               ["offsite", "manitoba", "alberta", "new brunswick"]}}
 

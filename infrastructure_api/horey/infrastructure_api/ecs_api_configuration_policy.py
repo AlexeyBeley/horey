@@ -389,7 +389,7 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def container_name(self):
         if self._container_name is None:
-            return self.slug
+            return self.service_name
         return self._container_name
 
     @container_name.setter

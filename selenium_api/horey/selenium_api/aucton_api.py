@@ -323,9 +323,10 @@ class AuctionAPI:
 
     def update_info_provider_auction_events(self, provider_id, asynchronous=False):
         if asynchronous:
+            task_name = f"update_info_provider_auction_events_asynchronous->{provider_id}"
             try:
                 return self.async_orchestrator.start_task_from_function(
-                    self.update_info_provider_auction_events_asynchronous, provider_id)
+                    self.update_info_provider_auction_events_asynchronous, provider_id, task_name=task_name)
             except self.async_orchestrator.ExistingTaskID:
                 breakpoint()
                 return "Error"
@@ -360,6 +361,8 @@ class AuctionAPI:
         # self.update_auction_event(23, url=url)
 
         new_auction_events = provider.init_auction_events()
+        if new_auction_events is None:
+            return None
         to_create = [new_auction_event for new_auction_event in new_auction_events
                      if new_auction_event.url not in known_auction_event_urls]
 
@@ -367,7 +370,6 @@ class AuctionAPI:
             cursor = conn.cursor()
             cursor.execute("PRAGMA foreign_keys = ON;")
             for new_auction_event in to_create:
-                breakpoint()
                 base_tuple = new_auction_event.generate_db_tuple()
                 data_tuple = (provider.id,) + base_tuple
                 try:
@@ -375,6 +377,10 @@ class AuctionAPI:
                     conn.commit()
                 except Exception as inst_err:
                     logger.exception(inst_err)
+                    if "UNIQUE constraint" in repr(inst_err):
+                        logger.error(f"Data is not unique: {data_tuple}")
+                    else:
+                        logger.error(f"Unknown error with data: {data_tuple}")
                     breakpoint()
                     # for x in known_auction_events: print(x.id, x.name, x.url)
                     # url = 'https://www.jardineauctioneers.com/auctions/24895-45th-annual-fredericton-sports-investment-auction?filter=(auction_ring_id:1200)'

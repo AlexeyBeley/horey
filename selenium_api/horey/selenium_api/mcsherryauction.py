@@ -1,5 +1,6 @@
 import json
 import datetime
+import time
 from pathlib import Path
 
 from horey.selenium_api.selenium_api import SeleniumAPI
@@ -19,14 +20,17 @@ class Mcsherryauction(Provider):
         self.name = "mcsherryauction"
         self.main_page = "https://bid.mcsherryauction.com"
 
-    def load_page_lots(self, page_url, auction_event: AuctionEvent=None):
+    def load_page_lots(self, page_url, auction_event: AuctionEvent):
         """
         Load free items.
 
         :return:
         """
 
+        logger.info(f"Loading {auction_event.id=} page {page_url} elements")
         lots_elements = self.load_page_lot_elements(page_url)
+        logger.info(f"Loaded {auction_event.id=} page {page_url} {len(lots_elements)} elements")
+
         lots = []
         for lot_element in lots_elements:
             lot = Lot()
@@ -81,7 +85,7 @@ class Mcsherryauction(Provider):
                 h1_elements = self.selenium_api.get_elements(By.TAG_NAME, "h1")
                 for h1_element in h1_elements:
                     if h1_element.text == "500":
-                        datetime.time.sleep(10)
+                        time.sleep(10)
                         break
         else:
             breakpoint()
@@ -130,7 +134,13 @@ class Mcsherryauction(Provider):
 
         self.selenium_api.get(self.main_page)
         self.selenium_api.wait_for_page_load()
-        auction_list_element = self.selenium_api.get_element(By.CLASS_NAME, "auctionslisting")
+        try:
+            auction_list_element = self.selenium_api.get_element(By.CLASS_NAME, "auctionslisting")
+        except NoSuchElementException as error_inst:
+            logger.exception("Fetch auctionslisting failed: %s: %s", self.main_page, error_inst)
+            self.disconnect()
+            return None
+
         auctions_elements = auction_list_element.find_elements(By.CLASS_NAME, "row")
         auction_events = []
 
@@ -158,7 +168,7 @@ class Mcsherryauction(Provider):
             auction_events.append(auction_event)
             location_element = auctions_element.find_element(By.CLASS_NAME, "location")
             auction_event.address = location_element.text
-
+        self.disconnect()
         return auction_events
 
     def init_auction_event_lots(self, auction_event: AuctionEvent):
@@ -169,13 +179,13 @@ class Mcsherryauction(Provider):
         :return:
         """
 
-        logger.info(f"Starting initializing auction event {auction_event.id} lots")
+        logger.info(f"Starting initializing '{auction_event.id}' auction event lots")
         map_old_lots = {lot.url: lot for lot in auction_event.lots}
         auction_event.lots = []
 
         for page_counter in range(1, self.get_page_count(auction_event.url)+1):
             auction_event.lots += self.load_page_lots(auction_event.url + f"_p{page_counter}?ps=100",
-                                                      auction_event=auction_event)
+                                                      auction_event)
         auction_event.init_lots_default_information()
         for i, lot in enumerate(auction_event.lots):
             lot.auction_event_id = auction_event.id
@@ -193,4 +203,5 @@ class Mcsherryauction(Provider):
                     lot.current_max = self.find_lot_starting_bid(lot)
                     logger.info(f"Finished {i}/{len(auction_event.lots)} auction event lots")
             """
+        self.disconnect()
         return auction_event.lots
