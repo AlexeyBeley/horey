@@ -432,8 +432,9 @@ def bootstrap(configs):
 
     logger.info("Starting bootstrap")
 
-    install_pip(configs)
+    install_pip({key: value for key, value in configs.items if key != "venv_dir_path"})
     provision_venv(configs)
+    install_pip(configs)
     install_requests(configs)
     install_setuptools(configs)
     install_wheel(configs)
