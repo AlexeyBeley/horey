@@ -205,6 +205,8 @@ def install_pip(configs):
     """
     Install pip in global python.
 
+    configs: "horey_ parent_dir_path", "venv_dir_path"
+
     :param configs:
     :return:
     """
@@ -213,18 +215,20 @@ def install_pip(configs):
     horey_parent_dir_path = configs.get("horey_parent_dir_path") or get_default_dir()
     StandaloneMethods = get_standalone_methods(configs)
 
-    command = f"{sys.executable} -m pip -V"
-    ret = StandaloneMethods.execute(command, ignore_on_error_callback=lambda error: "No module named pip" in repr(error))
+    interpreter_command = StandaloneMethods.generate_python_interpreter_command()
+    pip_version_command = f"{interpreter_command} -m pip -V"
+    ret = StandaloneMethods.execute(pip_version_command, ignore_on_error_callback=lambda error: "No module named pip" in repr(error))
     stderr = ret.get("stderr")
+    breakpoint()
     if "No module named pip" in stderr:
-        pip_installer = os.path.join(horey_parent_dir_path, "get-pip.py")
-        download_https_file_urllib(pip_installer, "https://bootstrap.pypa.io/get-pip.py")
-        command = f"{sys.executable} {pip_installer}"
+        pip_installer_file_path = os.path.join(horey_parent_dir_path, "get-pip.py")
+        download_https_file_urllib(pip_installer_file_path, "https://bootstrap.pypa.io/get-pip.py")
+        command = f"{interpreter_command} {pip_installer_file_path}"
         ret = StandaloneMethods.execute(command)
         if "Successfully installed pip" not in ret.get("stdout").strip("\r\n").split("\n")[-1]:
             raise ValueError(ret)
-        command = f"{sys.executable} -m pip -V"
-        ret = StandaloneMethods.execute(command)
+
+        ret = StandaloneMethods.execute(pip_version_command)
     elif stderr:
         raise RuntimeError(ret)
 
@@ -235,7 +239,7 @@ def install_pip(configs):
     pip_major = int(pip_current.split(".")[0])
     if pip_major < int(PIP_MINIMUM_VERSION.split('.', maxsplit=1)[0]):
         logger.info(f"Upgrading pip from {pip_current} to =>{PIP_MINIMUM_VERSION}")
-        command = f"{sys.executable} -m pip install --break-system-packages --upgrade pip>={PIP_MINIMUM_VERSION}"
+        command = f"{interpreter_command} -m pip install --break-system-packages --upgrade pip>={PIP_MINIMUM_VERSION}"
         ret = StandaloneMethods.execute(command)
         stderr = ret.get("stderr")
         if stderr:
@@ -268,7 +272,7 @@ def install_requests(configs):
     logger.info("Installing requests")
 
     StandaloneMethods = get_standalone_methods(configs)
-    return StandaloneMethods.install_requirement_from_string(os.path.abspath(__file__), "requests==2.31.0")
+    return StandaloneMethods.install_requirement_from_string(os.path.abspath(__file__), "requests>=2.32.4")
 
 
 def install_requests_old(configs):
@@ -387,7 +391,7 @@ def provision_venv(configs):
                 ret = StandaloneMethods.execute(f"{sys.executable} -m venv {venv_path}")
                 break
         else:
-            raise RuntimeError(f"Was not able to find `apt install` in {ret_tmp}")
+            raise RuntimeError(f"Was not able to find `apt install` in {ret_tmp}") from inst_err
 
     logger.info(ret)
     return True
@@ -428,8 +432,8 @@ def bootstrap(configs):
 
     logger.info("Starting bootstrap")
 
-    install_pip(configs)
     provision_venv(configs)
+    install_pip(configs)
     install_requests(configs)
     install_setuptools(configs)
     install_wheel(configs)

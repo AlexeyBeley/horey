@@ -151,13 +151,15 @@ def test_get_standalone_methods():
 
 
 @pytest.mark.done
-def test_install_pip_global():
-    assert pip_api_make.install_pip({"horey_parent_dir_path": os.path.dirname(horey_sub_path)})
-
-
-@pytest.mark.done
 def test_provision_venv(tmp_dir_path):
     assert pip_api_make.provision_venv({"venv_dir_path": tmp_dir_path})
+
+
+@pytest.mark.wip
+def test_install_pip_global(tmp_dir_path):
+    pip_api_make.provision_venv({"venv_dir_path": tmp_dir_path})
+    assert pip_api_make.install_pip({"horey_parent_dir_path": os.path.dirname(horey_sub_path),
+                                     "venv_dir_path": tmp_dir_path})
 
 
 @pytest.mark.done
@@ -260,7 +262,7 @@ def test_default_configs_install_pip_global(default_configs):
     assert pip_api_make.install_pip(default_configs)
 
 
-@pytest.mark.wip
+@pytest.mark.done
 def test_default_configs_install_pip_global_update(default_configs):
     pip_api_make.provision_venv(default_configs)
     stnd_ln = pip_api_make.get_standalone_methods(default_configs)
