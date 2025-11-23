@@ -432,8 +432,8 @@ def bootstrap(configs):
 
     logger.info("Starting bootstrap")
 
-    provision_venv(configs)
     install_pip(configs)
+    provision_venv(configs)
     install_requests(configs)
     install_setuptools(configs)
     install_wheel(configs)

@@ -12,4 +12,4 @@ sudo NEEDRESTART_MODE=a apt install "python${MAJOR_MINOR_VERSION}-venv" -yqq
 
 git clone --branch "cicd_api" https://github.com/AlexeyBeley/horey.git
 cd horey
-python3 pip_api/horey/pip_api/pip_api_make.py --install horey.provision_constructor --pip_api_configuration pip_api_configuration.py
+${PYTHON} pip_api/horey/pip_api/pip_api_make.py --install horey.provision_constructor --pip_api_configuration pip_api_configuration.py
