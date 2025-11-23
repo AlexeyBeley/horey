@@ -1,4 +1,5 @@
 SHELL := /bin/bash
+PYTHON := $(shell which python >> /dev/null && echo "python" || echo "python3")
 
 ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 BUILD_DIR= ${ROOT_DIR}/build
@@ -35,14 +36,11 @@ init_venv_dir: create_build_env
 	python -m pip install -U setuptools\>=54.1.2 &&\
 	python -m pip install -U packaging\>=24.2
 
-prepare_package_wheel-%: init_venv_dir
-	${BUILD_DIR}/create_wheel.sh $(subst prepare_package_wheel-,,$@)
-
 install_wheel-%: init_venv_dir raw_install_wheel-%
 	echo "done installing $(subst install_wheel-,,$@)"
 
 raw_install_wheel-%: package_source-%
-	python -m pip install --force-reinstall ${BUILD_TMP_DIR}/$(subst raw_install_wheel-,,$@)/dist/*.whl
+	${PYTHON} -m pip install --force-reinstall ${BUILD_TMP_DIR}/$(subst raw_install_wheel-,,$@)/dist/*.whl
 
 recursive_install_from_source_local_venv-%: init_venv_dir
 	source ${VENV_DIR}/bin/activate &&\
@@ -76,7 +74,6 @@ install_test_deps-%: init_venv_dir
 	source ${VENV_DIR}/bin/activate &&\
 	python -m pip install -r ${ROOT_DIR}/$(subst install_test_deps-,,$@)/tests/requirements.txt
 
-test-configuration_policy: recursive_install_from_source_local_venv-configuration_policy install_test_deps-configuration_policy raw_test-configuration_policy
 
 test-%: recursive_install_from_source_local_venv-% install_test_deps-% raw_test-%
 raw_test-%:
@@ -86,32 +83,6 @@ raw_test-%:
 clean:
 	rm -rf ${BUILD_TMP_DIR}/*
 
-#test_azure_api: recursive_install_from_source_local_venv-azure_api
-test_azure_api: install_from_source-azure_api
-	source ${VENV_DIR}/bin/activate &&\
-	cd ${ROOT_DIR}/azure_api/tests &&\
-	python test_azure_api_init_and_cache.py
-
-test_aws_api: recursive_install_from_source_local_venv-aws_api
-	source ${VENV_DIR}/bin/activate &&\
-	cd ${ROOT_DIR}/aws_api/tests &&\
-	python test_aws_api_init_and_cache.py
-
-install_azure_api_prerequisites:
-	source ${VENV_DIR}/bin/activate &&\
-	python -m pip install --upgrade pip
-
-test_zabbix_api: install_from_source-zabbix_api
-	source ${VENV_DIR}/bin/activate &&\
-	cd ${ROOT_DIR}/zabbix_api/tests &&\
-	python test_zabbix_api.py
-
-zip_env:
-	cd "/Users/alexey.beley/private/horey/provision_constructor/tests/provision_constructor_deployment" &&\
-	zip -r ${ROOT_DIR}/myfiles.zip "provision_constructor_deployment_dir"
-
-unzip_env:
-	unzip myfiles.zip -d /tmp/
 
 deploy_client_hooks:
 	cp ${BUILD_DIR}/pre-commit ${ROOT_DIR}/.git/hooks/pre-commit
