@@ -23,7 +23,7 @@ def main():
     provision_constructor.provision_system_function("apt_package_generic", package_names=["all"], force=True,
                                                     upgrade=True)
 
-    horey_repo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "horey")
+    horey_repo_path = "/opt/horey"
 
     # Enable provisioners
     provision_constructor.provision_system_function("ntp", upgrade=True)
@@ -32,8 +32,6 @@ def main():
                                                     package_names=["jenkins_api"],
                                                     horey_repo_path=horey_repo_path, force=True)
 
-    provision_constructor.provision_system_function("apt_package_generic", package_names=["python3-venv",
-                                                                                          "python3-pip"], upgrade=True)
     provision_constructor.provision_system_function("copy_generic", src=Path(__file__).parent/"jenkins_api_configuration.json",
                                                     dst="/opt/scm_agent/jenkins_api_configuration.json", sudo=True)
 
