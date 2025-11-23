@@ -346,6 +346,10 @@ def install_venv(configs):
     command = f"{sys.executable} -m venv"
     ret = StandaloneMethods.execute(command, ignore_on_error_callback=lambda error: "No module named venv" in repr(error))
     stderr = ret.get("stderr")
+
+    if "usage: venv" in stderr:
+        return True
+
     if "No module named venv" in stderr:
         command = "sudo apt install python3-venv"
         ret = StandaloneMethods.execute(command)
@@ -358,8 +362,10 @@ def install_venv(configs):
     elif stderr:
         raise RuntimeError(ret)
 
-    if "usage: venv" not in ret.get("stdout"):
+    if "usage: venv" not in ret.get("stderr"):
         raise RuntimeError(ret)
+
+    return True
 
 
 def provision_venv(configs):
