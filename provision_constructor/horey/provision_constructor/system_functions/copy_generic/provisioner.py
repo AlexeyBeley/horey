@@ -22,7 +22,7 @@ class Provisioner(SystemFunctionCommon):
     """
 
     # pylint: disable= too-many-arguments
-    def __init__(self, deployment_dir, force, upgrade, src=None, dst=None, sudo=False):
+    def __init__(self, deployment_dir, force, upgrade, src=None, dst=None, sudo=False, owner=None):
         super().__init__(os.path.dirname(os.path.abspath(__file__)), force, upgrade)
         self.deployment_dir = deployment_dir
         if os.path.isfile(src):
@@ -34,6 +34,7 @@ class Provisioner(SystemFunctionCommon):
         self.src = src
         self.dst = dst
         self.sudo = sudo
+        self.owner = owner
 
     def test_provisioned(self):
         """
@@ -51,4 +52,4 @@ class Provisioner(SystemFunctionCommon):
         @return:
         """
 
-        self.provision_file(self.src, self.dst, sudo=self.sudo)
+        self.provision_file(self.src, self.dst, sudo=self.sudo, owner=self.owner)

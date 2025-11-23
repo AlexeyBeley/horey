@@ -4,7 +4,6 @@ Agent system functions provisioning script.
 """
 
 # pylint: disable=no-name-in-module
-import os
 from pathlib import Path
 from horey.provision_constructor.provision_constructor import ProvisionConstructor
 from horey.h_logger import get_logger
@@ -23,7 +22,8 @@ def main():
     provision_constructor.provision_system_function("apt_package_generic", package_names=["all"], force=True,
                                                     upgrade=True)
 
-    horey_repo_path = "/opt/horey"
+    horey_repo_path = "/opt/git/horey"
+    scm_agent_dir_path = Path("/opt/scm_agent/")
 
     # Enable provisioners
     provision_constructor.provision_system_function("ntp", upgrade=True)
@@ -33,9 +33,11 @@ def main():
                                                     horey_repo_path=horey_repo_path, force=True)
 
     provision_constructor.provision_system_function("copy_generic", src=Path(__file__).parent/"jenkins_api_configuration.json",
-                                                    dst="/opt/scm_agent/jenkins_api_configuration.json", sudo=True)
+                                                    dst=scm_agent_dir_path/"jenkins_api_configuration.json",
+                                                    sudo=True,
+                                                    owner="ubuntu:ubuntu")
 
-    provision_constructor.provision_system_function("swap", swap_size_in_gb=32)
+    provision_constructor.provision_system_function("swap")
 
 
 if __name__ == "__main__":

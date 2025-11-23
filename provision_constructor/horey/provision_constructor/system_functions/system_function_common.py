@@ -10,6 +10,7 @@ import os
 import argparse
 import subprocess
 import time
+from pathlib import Path
 
 from horey.common_utils.actions_manager import ActionsManager
 from horey.replacement_engine.replacement_engine import ReplacementEngine
@@ -310,14 +311,15 @@ class SystemFunctionCommon:
         os.makedirs(os.path.dirname(dst_file_path), exist_ok=True)
         shutil.copyfile(src_file_path, dst_file_path)
 
-    def provision_file(self, src_file_path, dst_file_path, sudo=False):
+    def provision_file(self, src_file_path, dst_file_path, sudo=False, owner=None):
         """
-        Self explanatory.
+        Place the file in a proper location.
 
-        @param sudo:
-        @param src_file_path:
-        @param dst_file_path:
-        @return:
+        :param src_file_path:
+        :param dst_file_path:
+        :param sudo: location is under sudo
+        :param owner: change the owner
+        :return:
         """
 
         if src_file_path.startswith("./"):
@@ -325,12 +327,16 @@ class SystemFunctionCommon:
                 self.system_function_provisioner_dir_path, src_file_path
             )
 
+        parent_dir = Path(dst_file_path).parent
         prefix = "sudo " if sudo else ""
+
         SystemFunctionCommon.run_bash(
-            f"{prefix}mkdir -p {os.path.dirname(dst_file_path)}"
+            f"{prefix}mkdir -p {parent_dir}"
         )
         SystemFunctionCommon.run_bash(f"{prefix}rm -rf {dst_file_path}")
         SystemFunctionCommon.run_bash(f"{prefix}cp {src_file_path} {dst_file_path}")
+        if owner is not None:
+            SystemFunctionCommon.run_bash(f"{prefix}chown {owner} {dst_file_path}")
 
     # region compare_files
     @staticmethod
