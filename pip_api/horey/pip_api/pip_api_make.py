@@ -352,7 +352,8 @@ def install_venv(configs):
         ret = StandaloneMethods.execute(command)
         # if "Successfully installed" not in ret.get("stdout").strip("\r\n").split("\n")[-1]:
         #     raise ValueError(ret)
-        if "Setting up python3-venv" not in ret.get("stdout").strip("\r\n").split("\n")[-1]:
+        if "Setting up python3-venv" not in ret.get("stdout").strip("\r\n").split("\n")[-1] \
+                and "python3-venv is already" not in ret.get("stdout"):
             raise ValueError(ret)
 
         command = f"{sys.executable} -m virtualenv --version"
