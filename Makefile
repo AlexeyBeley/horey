@@ -72,16 +72,6 @@ pylint_raw:
 	source ${VENV_DIR}/bin/activate &&\
 	pylint --rcfile=${BUILD_DIR}/.pylintrc ${PYLINT_TARGET}
 
-install_test_deps-%: init_venv_dir
-	source ${VENV_DIR}/bin/activate &&\
-	python -m pip install -r ${ROOT_DIR}/$(subst install_test_deps-,,$@)/tests/requirements.txt
-
-
-test-%: recursive_install_from_source_local_venv-% install_test_deps-% raw_test-%
-raw_test-%:
-	source ${VENV_DIR}/bin/activate &&\
-	pytest ${ROOT_DIR}/$(subst raw_test-,,$@)/tests/*.py -s
-
 clean:
 	rm -rf ${BUILD_TMP_DIR}/*
 
@@ -97,3 +87,16 @@ black: install_black black_raw
 black_raw:
 	source ${VENV_DIR}/bin/activate &&\
 	black ${ROOT_DIR}
+
+install_test_deps-%:
+	source ${VENV_DIR}/bin/activate &&\
+	python -m pip install -r ${ROOT_DIR}/$(subst install_test_deps-,,$@)/tests/requirements.txt
+
+test-%: recursive_install_from_source_local_venv-% install_test_deps-% raw_test-%
+raw_test-%:
+	source ${VENV_DIR}/bin/activate &&\
+	pytest ${ROOT_DIR}/$(subst raw_test-,,$@)/tests/*.py -s
+
+test_wip-%: recursive_install_from_source_local_venv-% install_test_deps-%
+	source ${VENV_DIR}/bin/activate &&\
+	python -m pytest -m wip --full-trace ${ROOT_DIR}/$(subst test_wip-,,$@)/tests/ -v -s

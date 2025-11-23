@@ -9,15 +9,10 @@ VENV_BIN_DIR := $(realpath ${BUILD_TMP_DIR}/_venv/bin)
 # PYTHON_EXECUTABLE := $(which python >> /dev/null && echo "python" || echo "python3")
 PYTHON := $(shell which python >> /dev/null && echo "python" || echo "python3")
 
-test:
-	${PYTHON}
 
-build:
+wip: FORCE
 	cd ${HOREY_DIR_PATH} &&\
-	make recursive_install_from_source_local_venv-pip_api
-
-wip: FORCE build
-	source ${VENV_BIN_DIR}/activate &&\
-	${PYTHON} -m pytest -m wip --full-trace ${CURRENT_DIR}/ -v -s
+	make test_wip-pip_api
+	# ${PYTHON} -m pytest -m wip --full-trace ${CURRENT_DIR}/ -v -s
 
 FORCE: ;
