@@ -213,14 +213,13 @@ def install_pip(configs):
 
     logger.info("Installing pip")
     horey_parent_dir_path = configs.get("horey_parent_dir_path") or get_default_dir()
-    breakpoint()
+
     StandaloneMethods = get_standalone_methods(configs)
 
     interpreter_command = StandaloneMethods.generate_python_interpreter_command()
     pip_version_command = f"{interpreter_command} -m pip -V"
     ret = StandaloneMethods.execute(pip_version_command, ignore_on_error_callback=lambda error: "No module named pip" in repr(error))
     stderr = ret.get("stderr")
-    breakpoint()
     if "No module named pip" in stderr:
         pip_installer_file_path = os.path.join(horey_parent_dir_path, "get-pip.py")
         download_https_file_urllib(pip_installer_file_path, "https://bootstrap.pypa.io/get-pip.py")
