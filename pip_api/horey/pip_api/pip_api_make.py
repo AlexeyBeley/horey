@@ -347,7 +347,8 @@ def install_venv(configs):
     ret = StandaloneMethods.execute(command, ignore_on_error_callback=lambda error: "No module named virtualenv" in repr(error))
     stderr = ret.get("stderr")
     if "No module named virtualenv" in stderr:
-        command = f"{sys.executable} -m pip install --break-system-packages virtualenv"
+        command = "sudo apt install python3-venv"
+        # working in windows: command = f"{sys.executable} -m pip install --break-system-packages virtualenv"
         ret = StandaloneMethods.execute(command)
         if "Successfully installed" not in ret.get("stdout").strip("\r\n").split("\n")[-1]:
             raise ValueError(ret)
