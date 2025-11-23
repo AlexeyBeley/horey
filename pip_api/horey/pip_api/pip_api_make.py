@@ -350,8 +350,11 @@ def install_venv(configs):
         command = "sudo apt install python3-venv"
         # working in windows: command = f"{sys.executable} -m pip install --break-system-packages virtualenv"
         ret = StandaloneMethods.execute(command)
-        if "Successfully installed" not in ret.get("stdout").strip("\r\n").split("\n")[-1]:
+        # if "Successfully installed" not in ret.get("stdout").strip("\r\n").split("\n")[-1]:
+        #     raise ValueError(ret)
+        if "Setting up python3-venv" not in ret.get("stdout").strip("\r\n").split("\n")[-1]:
             raise ValueError(ret)
+
         command = f"{sys.executable} -m virtualenv --version"
         ret = StandaloneMethods.execute(command)
     elif stderr:
