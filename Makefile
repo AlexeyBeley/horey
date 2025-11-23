@@ -30,7 +30,7 @@ create_build_env:
 	python -m pip install -U packaging\>=24.2
 
 init_venv_dir: create_build_env
-	python -m venv ${VENV_DIR} &&\
+	${PYTHON} -m venv ${VENV_DIR} &&\
 	source ${VENV_DIR}/bin/activate &&\
 	python -m pip install --upgrade pip &&\
 	python -m pip install -U setuptools\>=54.1.2 &&\
