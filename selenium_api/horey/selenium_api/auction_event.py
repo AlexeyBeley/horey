@@ -104,7 +104,7 @@ class AuctionEvent:
         """
 
         for lot in self.lots:
-            lot.init_province_description_and_interested(self.provinces)
+            lot.init_province_and_interested(self.provinces)
             if not lot.province:
                 raise RuntimeError("Was not able to init")
             if lot.current_max is None:

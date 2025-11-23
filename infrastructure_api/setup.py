@@ -24,7 +24,7 @@ setup(
     license="DWTFYWTPL",
     packages=find_namespace_packages(include=["horey.infrastructure_api", "horey.infrastructure_api.*"]),
     package_data={
-        "": ["environment_api/**/*.sh"],
+        "": ["infrastructure_api/**/*.sh"],
     },
     include_package_data=True,
     zip_safe=False,

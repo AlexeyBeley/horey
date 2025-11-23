@@ -8,6 +8,9 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.remote.webelement import WebElement
 from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.action_chains import ActionChains
+
 
 from horey.h_logger import get_logger
 
@@ -64,15 +67,24 @@ class SeleniumAPI:
         return self.driver.find_element(by, value)
 
     def get_elements(self, by, value):
+        """
+        Reliably get list of elements
+
+        :param by:
+        :param value:
+        :return:
+        """
+
+        if by == By.CSS_SELECTOR:
+            # Use WebDriverWait to ensure the elements are present before attempting to find them.
+            WebDriverWait(self.driver, 10).until(
+                EC.presence_of_all_elements_located((By.CSS_SELECTOR, value))
+            )
+
         return self.driver.find_elements(by, value)
 
     def get_by_id(self, str_id):
         return self.driver.find_element(By.ID, str_id)
-
-    def get_elements_by_css_selector(self, type_value):
-        breakpoint()
-        return self.driver.find_element(By.CSS_SELECTOR, f'div[type="{type_value}"]')
-        return element.find_elements(By.CSS_SELECTOR,  f'[{selector}="{value}"]')
 
     def get_element_by_name(self, name):
         return self.driver.find_element(By.NAME, name)
@@ -205,3 +217,17 @@ class SeleniumAPI:
             return element
         except:
             return None
+
+    def scroll_to_bottom(self):
+        """
+        Execute javascript to scroll.
+
+        :return:
+        """
+        logger.info("Scrolling to bottom")
+        self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        #logger.info("Sleeping 2 sec after scrolling")
+        #time.sleep(2)
+        logger.info("Sending command+r after reloading")
+        ActionChains(self.driver).key_down(Keys.COMMAND).send_keys("r").key_up(Keys.COMMAND).perform()
+        self.wait_for_page_load()

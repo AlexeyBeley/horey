@@ -38,4 +38,3 @@ class EC2APIConfigurationPolicy(ConfigurationPolicy):
     @name.setter
     def name(self, value):
         self._name = value
-

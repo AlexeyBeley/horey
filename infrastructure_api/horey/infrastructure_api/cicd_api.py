@@ -3,6 +3,7 @@ Standard Load balancing maintainer.
 
 """
 import pathlib
+import shutil
 import time
 import getpass
 
@@ -14,10 +15,14 @@ from horey.infrastructure_api.environment_api import EnvironmentAPI
 from horey.infrastructure_api.infrastructure_api import InfrastructureAPI
 from horey.infrastructure_api.loadbalancer_api import LoadbalancerAPIConfigurationPolicy
 from horey.infrastructure_api.dns_api import DNSAPIConfigurationPolicy
+from horey.infrastructure_api.ec2_api import EC2API, EC2APIConfigurationPolicy
+from horey.infrastructure_api.access_manager_api import AccessManagerAPI, AccessManagerAPIConfigurationPolicy
 from horey.git_api.git_api import GitAPI, GitAPIConfigurationPolicy
 from horey.aws_api.aws_clients.efs_client import EFSFileSystem, EFSAccessPoint, EFSMountTarget
 from horey.deployer.remote_deployer import DeploymentTarget
+from horey.deployer.deployment_step import DeploymentStep, DeploymentStepConfigurationPolicy
 from horey.aws_api.aws_services_entities.iam_policy import IamPolicy
+from horey.provision_constructor.provision_constructor import ProvisionConstructor
 
 from horey.h_logger import get_logger
 
@@ -36,6 +41,8 @@ class CICDAPI:
         self._cloudwatch_api = None
         self.ecs_api = None
         self._dns_api = None
+        self._ec2_api = None
+        self._access_manager_api = None
 
     @property
     def cloudwatch_api(self):
@@ -487,21 +494,26 @@ class CICDAPI:
 
         return dir_path / "jenkins_api" / "horey" / "jenkins_api" / "master"
 
-    def generate_deployment_target(self, name=None, target_ssh_key_secret_name=None):
+    def generate_deployment_target(self, name=None, target_ssh_key_secret_name=None, ec2_instance=None, bastion_instance=None):
         """
         Generate target
 
+        :param bastion_instance:
+        :param target_ssh_key_secret_name:
+        :param ec2_instance:
         :param name:
         :return:
         """
 
-        if name is None:
-            raise ValueError("name is None")
+        if name is None and ec2_instance is None:
+            raise ValueError("name and ec2_instance both are None")
 
-        ec2_instance = self.environment_api.get_ec2_instance(tags_dict={"Name": [name]})
+        if ec2_instance is None:
+            ec2_instance = self.environment_api.get_ec2_instance(tags_dict={"Name": [name]})
+
         if ec2_instance.get_status() == ec2_instance.State.STOPPED:
             self.environment_api.aws_api.ec2_client.start_instances([ec2_instance])
-        target_ssh_key_secret_name = target_ssh_key_secret_name or ec2_instance.key_name
+        target_ssh_key_secret_name = target_ssh_key_secret_name or f"{ec2_instance.key_name}.key"
         self.environment_api.aws_api.get_secret_file(target_ssh_key_secret_name, str(self.configuration.deployment_directory), region=self.environment_api.region)
         # key_pairs = self.environment_api.aws_api.ec2_client.get_region_key_pairs(self.environment_api.region)
 
@@ -509,4 +521,120 @@ class CICDAPI:
         target.deployment_target_address = ec2_instance.public_ip_address
         # target.deployment_target_ssh_key_type
         target.deployment_target_ssh_key_path = self.configuration.deployment_directory / target_ssh_key_secret_name
+
+        if bastion_instance:
+            target.bastion_address = bastion_instance.get_public_addresses()[0]
+            target.bastion_user_name = "ubuntu"
+            bastion_secret_key_name = f"{bastion_instance.key_name}.key"
+            self.environment_api.aws_api.get_secret_file(bastion_secret_key_name,
+                                                         str(self.configuration.deployment_directory),
+                                                         region=self.environment_api.region)
+
+            target.bastion_ssh_key_path = self.configuration.deployment_directory / bastion_secret_key_name
         return target
+
+    @property
+    def ec2_api(self):
+        """
+        Standard.
+
+        :return:
+        """
+
+        if self._ec2_api is None:
+            config = EC2APIConfigurationPolicy()
+            self._ec2_api = EC2API(config, self.environment_api)
+        return self._ec2_api
+
+    @property
+    def access_manager_api(self):
+        """
+        Standard.
+
+        :return:
+        """
+
+        if self._access_manager_api is None:
+            config = AccessManagerAPIConfigurationPolicy()
+            self._access_manager_api = AccessManagerAPI(config, self.environment_api)
+        return self._access_manager_api
+
+    def provision_scm_agent(self):
+        """
+        Agent
+
+        :return:
+        """
+
+        bastion_instance = self.ec2_api.provision_bastion()
+
+        role_name = f"role_{self.environment_api.configuration.environment_level}_scm_agent"
+        role = self.access_manager_api.provision_role(role_name, assume_role_policy=self.access_manager_api.get_service_assume_role_policy("ec2"))
+
+        instance_profile_name = f"inst_profile_{self.environment_api.configuration.environment_level}_scm_agent"
+        profile = self.access_manager_api.provision_instance_profile(instance_profile_name, role)
+
+        ip_permissions = [
+            {
+                "IpProtocol": "tcp",
+                "FromPort": 22,
+                "ToPort": 22,
+                "IpRanges": [],
+                "Ipv6Ranges": [],
+                "PrefixListIds": [],
+                "UserIdGroupPairs": [
+                    {
+                        "GroupId": bastion_instance.network_interfaces[0].groups[0]["GroupId"],
+                        "UserId": self.environment_api.aws_api.ec2_client.account_id,
+                        "Description": "SSH from bastion"
+                    },
+                ]
+            }
+        ]
+        sec_group = self.ec2_api.provision_security_group(f"sg_scm_agent_{self.environment_api.configuration.environment_level}", ip_permissions=ip_permissions)
+
+        machine_name = f"scm_agent_{self.environment_api.configuration.environment_level}"
+        ec2_instance = self.ec2_api.provision_ec2_instance(machine_name,
+                                                        sec_group, profile)
+        self.provision_scm_agent_app_infrastructure(ec2_instance, bastion_instance)
+
+    def provision_scm_agent_app_infrastructure(self, ec2_instance, bastion_instance):
+        """
+        Application infrastructure.
+
+        :param ec2_instance:
+        :param bastion_instance:
+        :return:
+        """
+
+        target = self.generate_deployment_target(ec2_instance=ec2_instance, bastion_instance=bastion_instance)
+        target.add_step(self.generate_provision_constructor_bootstrap_step(target.local_deployment_dir_path))
+
+        breakpoint()
+        config = DeploymentStepConfigurationPolicy("remote_step_provision_scm_agent.sh")
+        step = DeploymentStep(config)
+        step.configuration.script_name = "remote_step_provision_scm_agent.sh"
+        target.add_step(step)
+        deployment_dir_path = pathlib.Path(target.local_deployment_dir_path)
+        if deployment_dir_path.exists():
+            shutil.rmtree(deployment_dir_path)
+
+        shutil.copytree(pathlib.Path(__file__).parent.parent / "deployment", deployment_dir_path)
+
+    def generate_provision_constructor_bootstrap_step(self, remote_deployment_dir_path):
+        """
+        Generate the deployment step used to bootstrap provision_constractor.
+
+        :return:
+        """
+
+        step_configuration = DeploymentStepConfigurationPolicy("ProvisionConstructorBootstrap")
+        step_configuration.script_name = "provision_constructor_bootstrap.sh"
+        step_configuration.remote_script_file_path = remote_deployment_dir_path/step_configuration.script_name
+        # step_configuration.step_data_dir_name = self.deployment_data_dir_name
+        step = DeploymentStep(step_configuration)
+        step_configuration.generate_configuration_file(self.configuration.deployment_directory / step_configuration.step_data_dir_name /step_configuration.script_configuration_file_name)
+        ProvisionConstructor.generate_provision_constructor_bootstrap_script(self.configuration.deployment_directory,
+                                                                             "provision_constructor_bootstrap.sh")
+        breakpoint()
+        return step

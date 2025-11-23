@@ -2,9 +2,9 @@
 Testing selenium api
 """
 
-import sys, os
 import pytest
 from horey.selenium_api.aucton_api import AuctionAPI
+from horey.selenium_api.kayesauction import Kayesauction
 
 auction_api = AuctionAPI()
 
@@ -34,9 +34,10 @@ def test_write_lots_to_db():
     auction_api.write_lots_to_db()
 
 
-@pytest.mark.done
-def test_update_info():
-    auction_api.update_info()
+@pytest.mark.unit
+def test_add_provider():
+    provider = Kayesauction()
+    auction_api.add_provider(provider)
 
 
 @pytest.mark.done
@@ -73,3 +74,9 @@ def test_auction_event_manual_update():
 @pytest.mark.unit
 def test_add_column_after_column():
     auction_api.add_column_after_column()
+
+
+@pytest.mark.skip
+def test_delete_providers_auction_events():
+    provider = Kayesauction()
+    auction_api.delete_providers_auction_events(provider)

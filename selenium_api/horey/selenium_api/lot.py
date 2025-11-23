@@ -93,7 +93,7 @@ class Lot:
         self.address = line[12]
         self.province = line[13]
 
-    def init_province_description_and_interested(self, str_auction_event_provinces):
+    def init_province_and_interested(self, str_auction_event_provinces):
         """
         Based address
 
@@ -124,9 +124,6 @@ class Lot:
         if self.interested is None:
             self.interested = self.province == "manitoba"
 
-        if self.description is None:
-            self.description = self.raw_text or self.name
-
     @staticmethod
     def guess_provinces(str_src):
         """
@@ -148,8 +145,30 @@ class Lot:
                            "stanley": "manitoba",
                            "winkler": "manitoba",
                            "morden": "manitoba",
+                           "brandon": "manitoba",
+                           "headingley": "manitoba",
+                           "grahamdale": "manitoba",
+                           "regina": "saskatchewan",
+                           "saskatoon": "saskatchewan",
+                           "rosetown": "saskatchewan",
+                           "redvers": "saskatchewan",
+                           "emerald park": "saskatchewan",
+                           "griffin": "saskatchewan",
+                           "spiritwood": "saskatchewan",
+                           "prince albert": "saskatchewan",
+                           "ituna": "saskatchewan",
+                           "glentworth": "saskatchewan",
+                           "langenburg": "saskatchewan",
+                           "stoughton": "saskatchewan",
+                           "nisku": "alberta",
+                           "mountain view county": "alberta",
+                           "mississauga": "ontario",
+                           "brampton": "ontario",
+                           "alvarado": "texas",
+                           "ragueneau": "quebec",
+                           "saint-jean-sur-richelieu": "quebec",
                            **{province: province for province in
-                              ["offsite", "manitoba", "alberta", "new brunswick"]}}
+                              ["offsite", "manitoba", "alberta", "new brunswick", "quebec", "ontario"]}}
 
         for location, province in known_locations.items():
             if location not in str_src:

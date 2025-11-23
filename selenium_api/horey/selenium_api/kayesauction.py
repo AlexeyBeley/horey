@@ -8,14 +8,16 @@ from horey.selenium_api.provider import Provider
 from horey.selenium_api.auction_event import AuctionEvent
 from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException
 from selenium.webdriver.remote.webelement import WebElement
+
+
 logger = get_logger()
 
 
-class Pennerauction(Provider):
+class Kayesauction(Provider):
     def __init__(self):
         super().__init__()
-        self.name = "pennerauction"
-        self.main_page = "https://pennerauctions.ca"
+        self.name = "kayesauctions"
+        self.main_page = "https://kayesauctions.ca"
 
     def load_page_lots(self, page_url, auction_event: AuctionEvent):
         """
@@ -36,6 +38,8 @@ class Pennerauction(Provider):
 
                 for lot_element in lots_elements:
                     lot = self.init_lot_from_lot_element(lot_element)
+                    if not auction_event.address:
+                        breakpoint()
                     lot.address = auction_event.address
                     lot.province = auction_event.provinces
                     lots.append(lot)
@@ -50,6 +54,13 @@ class Pennerauction(Provider):
 
     @staticmethod
     def init_lot_from_lot_element(lot_element: WebElement):
+        """
+        Init from web element.
+
+        :param lot_element:
+        :return:
+        """
+
         lot = Lot()
         for _ in range(50):
             try:
@@ -84,7 +95,7 @@ class Pennerauction(Provider):
         try:
             line = line.split(":")[-1].replace(",", "").replace("CAD", "").lower()
             # ' 0.00  x 3'
-            lot.current_max = float(line)
+            lot.current_max = float(line.strip())
         except ValueError:
             if " x " not in line:
                 breakpoint()
@@ -144,7 +155,6 @@ class Pennerauction(Provider):
         self.selenium_api.wait_for_page_load()
 
         self.press_cookies_agree()
-
         for _ in range(50):
             try:
                 pagingbar = self.selenium_api.get_element(By.CLASS_NAME, "pagination")
@@ -161,11 +171,9 @@ class Pennerauction(Provider):
 
         max_page = 0
         for link in a_elements:
-            try:
-                max_page = max(max_page, int(link.text))
-            except ValueError as inst_error:
-                if "…" not in repr(inst_error):
-                    break
+            if "Next" in link.text:
+                break
+            max_page = max(max_page, int(link.text))
 
         if max_page == 0:
             raise ValueError("Was not able to find max page")
@@ -183,95 +191,97 @@ class Pennerauction(Provider):
 
         logger.info(f"Loading provider {self.name} auctions")
 
-        self.selenium_api.get(self.main_page)
+        self.selenium_api.get(self.main_page + "/current-auctions")
         self.selenium_api.wait_for_page_load()
-        try:
-            auction_list_element = self.selenium_api.get_element(By.CLASS_NAME, "penner-auctions")
-        except NoSuchElementException as error_inst:
-            logger.exception("Fetch penner-auctions failed: %s: %s", self.main_page, error_inst)
-            self.disconnect()
-            return None
 
-        auctions_elements = auction_list_element.find_elements(By.CLASS_NAME, "auction-card")
+        auctions_elements_lists = self.selenium_api.get_elements(By.CSS_SELECTOR, "div.hRdzm4[role='list']")
+        auctions_elements_list = auctions_elements_lists[1]
+        auctions_elements = auctions_elements_list.find_elements(By.CSS_SELECTOR, "div.T7n0L6[role='listitem']")
+        if not auctions_elements:
+            breakpoint()
+            raise NotImplementedError("Can not find listings")
+
         auction_events = []
-
         for auctions_element in auctions_elements:
             auction_event = AuctionEvent()
-            btn = auctions_element.find_element(By.CLASS_NAME, "auction-button")
+            try:
+                btn = auctions_element.find_element(By.CSS_SELECTOR, "[data-testid='linkElement']")
+            except NoSuchElementException:
+                continue
+
             auction_event.url = btn.get_attribute("href")
+            auctions_element_text = auctions_element.text
+            for line in auctions_element_text.split("\n"):
+
+                if "Bidding Starts" in line:
+                    auction_event.start_time = self.extract_time_from_line(line)
+
+                if "Bidding open from" in line:
+                    auction_event.start_time = datetime.datetime.now()
+
+                if "Location:" in line:
+                    auction_event.address = line.replace("Location:", "")
+
+                if "Closes:" in line:
+                    auction_event.end_time = self.extract_time_from_line(line)
             auction_events.append(auction_event)
-            continue
 
         for auction_event in auction_events:
-            self.init_auction_event(auction_event)
+            logger.info(f"Loading {auction_event.url}")
+            self.selenium_api.get(auction_event.url)
+            self.selenium_api.wait_for_page_load()
+            self.press_cookies_agree()
+            for _ in range(500):
+                auction_event.name = self.selenium_api.get_element(By.CLASS_NAME, "auction-title").text
+                if auction_event.name:
+                    break
+                time.sleep(0.1)
+            else:
+                raise ValueError("Name")
+
+            for _ in range(50):
+                try:
+                    logger.info(f"Looking for {auction_event.url} 'Auction Details' btn")
+                    btn_details = self.selenium_api.get_element(By.CSS_SELECTOR, "[title='Auction Details']")
+                    btn_details.click()
+                    self.selenium_api.wait_for_page_load()
+                except Exception as inst_error:
+                    logger.error(f"Auction description Auction Details btn not found: {repr(inst_error)}")
+
+                try:
+                    auction_event.description = self.selenium_api.get_element(By.ID, "panel-auction-detail-auction-information").text
+                    break
+                except Exception as inst_error:
+                    logger.error(f"Auction description auction-information not found: {repr(inst_error)} retrying")
+                    time.sleep(0.1)
+            else:
+                raise TimeoutError("Was not able to fetch auction description")
+
+            if not auction_event.address:
+                auction_event.address = self.selenium_api.get_element(By.TAG_NAME, "app-city-state-zip-link").text
+                auction_event.address = auction_event.address.replace("\n", " ")
+
+        if not auction_events:
+            breakpoint()
+            raise RuntimeError("No auction events found")
 
         self.disconnect()
         return auction_events
 
-    def init_auction_event(self, auction_event: AuctionEvent):
-        self.connect()
+    def extract_time_from_line(self, line):
+        line = line.lower()
+        month_name, month_index = self.find_month_index(line)
+        month = self.MONTH_BY_NAME[month_name]
 
-        logger.info(f"Loading provider {self.name} auction event {auction_event.url}")
-
-        self.selenium_api.get(auction_event.url)
-        self.selenium_api.wait_for_page_load()
-
-        self.press_cookies_agree()
-
-        time_format_string = "%m/%d/%Y"  # "11/5/2025"
-
-        try:
-            title_element = self.selenium_api.get_element(By.CLASS_NAME, "auction-title")
-        except Exception:
-            try:
-                title_element = self.selenium_api.get_element(By.CLASS_NAME, "auction-event-name")
-            except Exception:
-                breakpoint()
-                raise NotImplementedError()
-
-        auction_event.name = title_element.text
-        for _ in range(10):
-            try:
-                col_element = self.selenium_api.get_element(By.CLASS_NAME, "col")
-                break
-            except Exception:
-                time.sleep(1)
-        else:
-            raise TimeoutError("col")
-
-        # todo: fix
-        if "Automatically Remove Closed Lots" in col_element.text:
-            auction_event.start_time = datetime.datetime.now(tz=datetime.timezone.utc)
-            auction_event.end_time = datetime.datetime.now(tz=datetime.timezone.utc)
-            auction_event.address = "manitoba"
-            auction_event.provinces = "manitoba"
-            auction_event.description = "manual not null"
-            breakpoint()
-            return auction_event
-
-        for line in col_element.text.split("\n"):
-            if "Date" in line:
-                break
-        else:
-            breakpoint()
-            raise ValueError(f"Can not find date in {col_element.text}")
-        line = line.replace("Date(s)", "").strip()
-        str_start_date, str_end_date = line.split("-")
-        str_start_date = str_start_date.strip()
-        start_time = datetime.datetime.strptime(str_start_date, time_format_string)
-        auction_event.start_time = start_time.astimezone(datetime.timezone.utc)
-
-        str_end_date = str_end_date.strip()
-        end_time = datetime.datetime.strptime(str_end_date, time_format_string)
-        auction_event.end_time = end_time.astimezone(datetime.timezone.utc)
-
-        auction_event.address = self.selenium_api.get_element(By.CLASS_NAME, "company-address").text
-        auction_event.description = self.selenium_api.get_element(By.CLASS_NAME, "auction-description-container").text
-
-        auction_event.init_provinces()
-        if not auction_event.provinces:
-            breakpoint()
-            raise ValueError("Was not able to find provinces")
+        line_date = line[month_index + len(month_name):]
+        day, line_date = line_date.split(",")
+        day = int(day.strip())
+        year, line_date = line_date.strip().split("at")
+        year = int(year.strip())
+        parts = line_date.strip().split(" ", 2)
+        hour_minute, meridiem = parts[0], parts[1]
+        hour, minute = self.extract_time_meridiem(hour_minute, meridiem)
+        return datetime.datetime(year=year, month=month, day=day, hour=hour, minute=minute)
 
     def init_auction_event_lots(self, auction_event: AuctionEvent):
         """
@@ -292,6 +302,7 @@ class Pennerauction(Provider):
                                                       auction_event)
             if not auction_event.lots:
                 breakpoint()
+
         auction_event.init_lots_default_information()
         for i, lot in enumerate(auction_event.lots):
             lot.auction_event_id = auction_event.id

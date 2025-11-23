@@ -52,11 +52,11 @@ def test_load_page_lots():
     assert ret
 
 
-@pytest.mark.unit
+@pytest.mark.done
 def test_init_lot_from_url():
     provider = MAauction()
     provider.connect()
-    ret = provider.init_lot_current_bid_from_url("https://www.maauctions.com/auctions/24871/lot/153194-2007-saturn-vue")
+    ret = provider.init_lot_current_bid_from_url("https://www.maauctions.com/auctions/24872/lot/153327-2010-hyundai-santa-fe")
     assert ret
 
 

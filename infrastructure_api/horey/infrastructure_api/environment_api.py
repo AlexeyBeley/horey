@@ -351,13 +351,6 @@ class EnvironmentAPI:
         self.aws_api.provision_subnets(subnets)
         return subnets
 
-    def provision_bastion(self):
-        """
-        Create/update bastion server.
-
-        :return:
-        """
-
     def provision_routing(self):
         """
         Provision routing tables and gateways.
@@ -2635,4 +2628,3 @@ class EnvironmentAPI:
         if len(ec2_instances) != 1:
             raise RuntimeError(f"Expected to find single instance, found: {len(ec2_instances)}")
         return ec2_instances[0]
-

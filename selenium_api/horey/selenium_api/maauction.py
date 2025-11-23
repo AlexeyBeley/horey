@@ -32,9 +32,10 @@ class MAauction(Provider):
 
         lots = []
 
-        for lot_element in lots_elements:
+        for i, lot_element in enumerate(lots_elements):
             lot = Lot()
             lot.raw_text = lot_element.text
+            lot.description = lot.raw_text
             url_element = lot_element.find_element(By.TAG_NAME, "a")
             try:
                 highbid_element = lot_element.find_element(By.CLASS_NAME, "tile-two-winning-bid")
@@ -64,10 +65,12 @@ class MAauction(Provider):
             elif auction_event_address:
                 lot.address = auction_event_address
             else:
-                logger.warning(f"Was not able to find auction_event_address: {page_url}")
-                breakpoint()
+                logger.warning(f"Was not able to find lot address: {page_url}")
+                lot.address = "none"
+                lot.province = "none"
 
             lots.append(lot)
+            logger.info(f"Finished lot elements: {i}/{len(lots_elements)}")
 
         return lots
 
@@ -326,7 +329,7 @@ class MAauction(Provider):
             breakpoint()
             raise RuntimeError()
         line_lower = line.lower()
-        for str_month, month in {"october": 10, "november": 11, " nov ": 11, "december": 12}.items():
+        for str_month, month in Provider.MONTH_BY_NAME.items():
             if str_month in line_lower:
                 day_index = line_lower.index(str_month)+len(str_month)
                 day = ""
@@ -395,7 +398,7 @@ class MAauction(Provider):
             button.click()
             return self.selenium_api.driver.current_url
 
-    def init_auction_event_lots(self, auction_event: AuctionEvent):
+    def load_auction_event_lots(self, auction_event: AuctionEvent):
         """
         Init from the web.
 
@@ -403,7 +406,6 @@ class MAauction(Provider):
         :return:
         """
 
-        map_old_lots = {lot.url: lot for lot in auction_event.lots}
         auction_event.lots = []
 
         auction_event_address = auction_event.provinces \
@@ -414,36 +416,14 @@ class MAauction(Provider):
             auction_event.lots += self.load_page_lots(auction_event.url + f"?page={page_counter}&pageSize=125",
                                                       auction_event_address=auction_event_address)
 
-        auction_event.init_lots_default_information()
         for i, lot in enumerate(auction_event.lots):
-            lot.auction_event_id = auction_event.id
-            old_lot = map_old_lots.get(lot.url)
-            if old_lot is not None:
-                lot.id = old_lot.id
-
-            if lot.current_max is None:
+            logger.info(f"Updating lot current max and starting bid: {i}/{len(auction_event.lots)}")
+            try:
+                lot.current_max = self.init_lot_current_bid_from_url(lot.url)
+                lot.starting_bid = self.find_lot_starting_bid(lot) if lot.current_max == 0 else lot.current_max
+            except Exception as inst_error:
+                logger.info(f"Error: {repr(inst_error)}")
                 breakpoint()
-
-            lot.starting_bid = self.find_lot_starting_bid(lot) if lot.current_max == 0 else lot.current_max
-
-            logger.info(f"Finished {i}/{len(auction_event.lots)} auction event lots")
-
-        # when auction ends - it does not have the lots listed on the page,
-        # I have to go one by one to fetch the data.
-        new_urls = [lot.url for lot in auction_event.lots]
-        for known_lot_url, known_lot in map_old_lots.items():
-            if known_lot_url not in new_urls:
-                logger.info("Fetching known lot information missing in the auction event page")
-                new_lot = Lot()
-                for key, val in known_lot.__dict__.items():
-                    setattr(new_lot, key, val)
-                new_lot.current_max = self.init_lot_current_bid_from_url(known_lot_url)
-
-                if new_lot.current_max is None:
-                    breakpoint()
-
-                new_lot.starting_bid = self.find_lot_starting_bid(new_lot) if new_lot.current_max == 0 else new_lot.current_max
-                auction_event.lots.append(new_lot)
 
         self.disconnect()
         return auction_event.lots
@@ -451,7 +431,21 @@ class MAauction(Provider):
     def init_lot_current_bid_from_url(self, lot_url):
         self.selenium_api.get(lot_url)
         self.selenium_api.wait_for_page_load()
-        element = self.selenium_api.get_element(By.CLASS_NAME, "currentBid")
+        try:
+            element = self.selenium_api.get_element(By.CLASS_NAME, "currentBid")
+        except NoSuchElementException:
+            element = self.selenium_api.get_element(By.ID, "app-body")
+            element_text = element.text
+            if "Loading" in element_text:
+                time.sleep(2)
+                element = self.selenium_api.get_element(By.ID, "app-body")
+                element_text = element.text
+
+            if "Lot not found" not in element_text:
+                logger.error(f"'Lot not found' not in {element_text}")
+                raise
+            return -1
+
         element_text = element.text
         if "Current Bid:" not in element_text:
             breakpoint()
