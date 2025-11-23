@@ -49,6 +49,8 @@ class Package:
         if first is None:
             return second
 
+        print(f"First: {first}, Second: {second}")
+
         first_lower_limit = "0.0.0" if first.lower_limit is None else first.lower_limit
         second_lower_limit = "0.0.0" if second.lower_limit is None else second.lower_limit
         first_upper_limit = "100000.0.0" if first.lower_limit is None else first.lower_limit
@@ -106,11 +108,14 @@ class Package:
             if line == "":
                 continue
             dependency_name, dependency_restriction, version = self.split_dependency_line(line)
-            version_restriction = Package.VersionRestriction()
-            try:
-                version_restriction.add_restriction(dependency_restriction, version)
-            except Exception as exception_inst:
-                raise RuntimeError(f"In file {requirements_file_path}") from exception_inst
+            if version:
+                version_restriction = Package.VersionRestriction()
+                try:
+                    version_restriction.add_restriction(dependency_restriction, version)
+                except Exception as exception_inst:
+                    raise RuntimeError(f"In file {requirements_file_path}") from exception_inst
+            else:
+                version_restriction = None
 
             dependency_package = Package(self.root_dir, dependency_name, version_restriction=version_restriction)
             self.dependencies.append(dependency_package)
