@@ -40,7 +40,7 @@ def fixture_cicd_api():
     yield cicd_api
 
 
-@pytest.mark.wip
-def test_provision_ecs_task_definition(cicd_api):
+@pytest.mark.unit
+def test_generate_provision_constructor_bootstrap_step(cicd_api):
     # use existing image
     step = cicd_api.generate_provision_constructor_bootstrap_step(Path("remote_deployment_dir_path"))

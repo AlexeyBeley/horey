@@ -213,6 +213,7 @@ def install_pip(configs):
 
     logger.info("Installing pip")
     horey_parent_dir_path = configs.get("horey_parent_dir_path") or get_default_dir()
+    breakpoint()
     StandaloneMethods = get_standalone_methods(configs)
 
     interpreter_command = StandaloneMethods.generate_python_interpreter_command()
