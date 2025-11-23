@@ -34,7 +34,8 @@ init_venv_dir: create_build_env
 	source ${VENV_DIR}/bin/activate &&\
 	python -m pip install --upgrade pip &&\
 	python -m pip install -U setuptools\>=54.1.2 &&\
-	python -m pip install -U packaging\>=24.2
+	python -m pip install -U packaging\>=24.2 &&\
+	python -m pip install -U wheel
 
 install_wheel-%: init_venv_dir raw_install_wheel-%
 	echo "done installing $(subst install_wheel-,,$@)"
@@ -47,7 +48,8 @@ recursive_install_from_source_local_venv-%: init_venv_dir
 	${BUILD_DIR}/recursive_install_from_source.sh --root_dir ${ROOT_DIR} --package_name horey.$(subst recursive_install_from_source_local_venv-,,$@)
 
 
-package_source-%:
+package_source-%: init_venv_dir
+	source ${VENV_DIR}/bin/activate &&\
 	${BUILD_DIR}/create_wheel.sh $(subst package_source-,,$@)
 
 

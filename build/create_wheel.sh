@@ -1,8 +1,6 @@
 #!/bin/bash
 set -xe
 
-export PYTHON=$(which python >> /dev/null && echo "python" || echo "python3")
-
 PACKAGE_NAME=$1
 CURRENT_SCRIPT_FULL_PATH="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 BUILD_TMP_DIR="${CURRENT_SCRIPT_FULL_PATH}/_build"
@@ -32,4 +30,4 @@ then
  rm -rf ${PACKAGE_TMP_DIR_FULL_PATH}/build/*
 fi
 
-${PYTHON} setup.py sdist bdist_wheel
+python setup.py sdist bdist_wheel
