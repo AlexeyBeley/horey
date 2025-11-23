@@ -6,11 +6,10 @@ BUILD_DIR := ${HOREY_DIR_PATH}/build
 BUILD_TMP_DIR := ${BUILD_DIR}/_build
 VENV_BIN_DIR := $(realpath ${BUILD_TMP_DIR}/_venv/bin)
 
-PYTHON_COMMAND := $(which python)
-python_executor=$(which python >> /dev/null && echo python || echo "python3")
+PYTHON_EXECUTABLE := $(which python >> /dev/null && echo python || echo "python3")
 
 test:
-	echo ${python_executor}
+	echo ${PYTHON_EXECUTABLE}
 
 build:
 	source ${VENV_BIN_DIR}/activate &&\
