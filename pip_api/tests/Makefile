@@ -14,7 +14,6 @@ test:
 
 build:
 	cd ${HOREY_DIR_PATH} &&\
-	make raw_install_wheel-pip_api &&\
 	make recursive_install_from_source_local_venv-pip_api
 
 wip: FORCE build
