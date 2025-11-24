@@ -37,7 +37,7 @@ def main():
                                                     sudo=True,
                                                     owner="ubuntu:ubuntu")
 
-    provision_constructor.provision_system_function("swap")
+    provision_constructor.provision_system_function("swap", swap_size_in_gb=4)
 
 
 if __name__ == "__main__":

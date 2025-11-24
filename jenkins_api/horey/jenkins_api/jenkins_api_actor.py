@@ -24,21 +24,29 @@ def run_job_parser():
     description = "Run single job"
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument(
-        "--build_info_file", required=True, type=str, help="build_info_file"
+        "--job_name", required=True, type=str, help="job name"
+    )
+    parser.add_argument(
+        "--parameters", required=True, type=str, help="parameters"
+    )
+    parser.add_argument(
+        "--jenkins_api_configuration_file", required=True, type=str, help="jenkins_api_configuration_file"
     )
 
     return parser
 
 
-def run_job(arguments, configs_dict) -> None:
+def run_job(arguments, _) -> None:
+    """
+    python jenkins_api_actor.py --action run_job --job_name <pipeline-name> --parameters
+    '{"env_name": "mgmt", "env_level": "dev"}' --jenkins_api_configuration_file /opt/scm_agent/jenkins_api_config.py
+    """
     configuration = JenkinsAPIConfigurationPolicy()
-    configuration.init_from_dictionary(configs_dict)
+    configuration.configuration_file_full_path = arguments.jenkins_api_configuration_file
     configuration.init_from_file()
 
     manager = JenkinsAPI(configuration)
-    with open(arguments.build_info_file, encoding="utf-8") as file_handler:
-        build_info = json.load(file_handler)
-    job = JenkinsJob(build_info["job_name"], build_info.get("parameters"))
+    job = JenkinsJob(arguments.job_name, json.loads(arguments.parameters))
     manager.execute_jobs([job])
 
 

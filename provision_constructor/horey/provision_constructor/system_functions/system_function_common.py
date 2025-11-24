@@ -322,6 +322,8 @@ class SystemFunctionCommon:
         :return:
         """
 
+        src_file_path = str(src_file_path)
+
         if src_file_path.startswith("./"):
             src_file_path = os.path.join(
                 self.system_function_provisioner_dir_path, src_file_path
@@ -1020,6 +1022,8 @@ class SystemFunctionCommon:
         @param dst_file_path:
         @return:
         """
+
+        src_file_path = str(src_file_path)
 
         if not os.path.isfile(dst_file_path):
             return False
