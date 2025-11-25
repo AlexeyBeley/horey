@@ -48,10 +48,12 @@ class EC2API:
 
         return security_group
 
-    def provision_ec2_instance(self, name, security_group, profile, public=False):
+    def provision_ec2_instance(self, name, security_group, profile, public=False, subnet=None):
         """
         Provision instance.
 
+        :param public:
+        :param subnet:
         :param name:
         :param security_group:
         :param profile:
@@ -79,10 +81,25 @@ class EC2API:
         ec2_instance.ebs_optimized = True
         ec2_instance.instance_initiated_shutdown_behavior = "terminate"
 
-        if public:
-            subnet_id = self.environment_api.get_all_public_subnets()[0].id
+        if subnet is None:
+            if public:
+                subnet_id = self.environment_api.get_all_public_subnets()[0].id
+            else:
+                subnet_id = self.environment_api.get_all_private_subnets()[0].id
         else:
-            subnet_id = self.environment_api.get_all_private_subnets()[0].id
+            subnet_id = subnet.id
+            route_table = self.environment_api.aws_api.find_route_table_by_subnet(subnet)
+            if not route_table:
+                raise ValueError(f"Was not able to find subnet's route table: {subnet_id}")
+
+            gateway_type = "GatewayId" if public else "NatGatewayId"
+
+            for route in route_table.routes:
+                if route.get("DestinationCidrBlock") == "0.0.0.0/0" and route.get(gateway_type) is not None:
+                    break
+            else:
+                raise RuntimeError(f"Subnet {subnet_id=} type deterimned by route table is not matching"
+                                   f" the explicitly set type {public=}")
 
         ec2_instance.network_interfaces = [
             {

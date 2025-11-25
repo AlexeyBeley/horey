@@ -594,8 +594,14 @@ class CICDAPI:
         sec_group = self.ec2_api.provision_security_group(f"sg_scm_agent_{self.environment_api.configuration.environment_level}", ip_permissions=ip_permissions)
 
         machine_name = f"scm_agent_{self.environment_api.configuration.environment_level}"
+        for subnet in self.environment_api.get_all_private_subnets():
+            if "-1a" in subnet.availability_zone:
+                break
+        else:
+            raise ValueError()
+
         ec2_instance = self.ec2_api.provision_ec2_instance(machine_name,
-                                                        sec_group, profile)
+                                                        sec_group, profile, subnet=subnet)
         self.provision_scm_agent_app_infrastructure(ec2_instance, bastion_instance)
 
     def provision_scm_agent_app_infrastructure(self, ec2_instance, bastion_instance):

@@ -1,0 +1,4 @@
+FROM kapacitor:latest
+EXPOSE 8086
+
+# docker build -f DockerfileKap .
