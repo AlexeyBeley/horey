@@ -25,6 +25,7 @@ dst_aws_region = "us-west-2"
 
 IMAGE_TAG = "horey-test:latest"
 
+
 @pytest.mark.done
 def test_init_docker_api():
     """

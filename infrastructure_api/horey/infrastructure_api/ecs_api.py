@@ -24,9 +24,6 @@ from horey.infrastructure_api.aws_iam_api import AWSIAMAPI
 from horey.infrastructure_api.ecs_api_configuration_policy import ECSAPIConfigurationPolicy
 from horey.infrastructure_api.environment_api import EnvironmentAPI
 from horey.infrastructure_api.cloudwatch_api import CloudwatchAPI
-from horey.aws_api.aws_services_entities.application_auto_scaling_scalable_target import \
-    ApplicationAutoScalingScalableTarget
-from horey.aws_api.aws_services_entities.application_auto_scaling_policy import ApplicationAutoScalingPolicy
 from horey.aws_api.aws_services_entities.event_bridge_rule import EventBridgeRule
 from horey.aws_api.aws_services_entities.event_bridge_target import EventBridgeTarget
 from horey.aws_api.aws_services_entities.ecs_cluster import ECSCluster
@@ -365,32 +362,16 @@ class ECSAPI:
 
         self.provision_application_autoscaling_scalable_target()
         self.provision_application_autoscaling_policies()
+
         return True
 
-    def provision_application_autoscaling_scalable_target(self):
+    def provision_sqs_queue_autoscaling(self, queue):
         """
-        Target is the application-autoscaling element representing ecs service to be monitored.
+        Custom defined.
 
         :return:
         """
 
-        # todo: cleanup report dead deregister dead scalable targets.
-
-        target = ApplicationAutoScalingScalableTarget({})
-        target.service_namespace = "ecs"
-        target.region = self.environment_api.region
-        target.resource_id = self.configuration.auto_scaling_resource_id
-        target.scalable_dimension = "ecs:service:DesiredCount"
-        target.min_capacity = self.configuration.autoscaling_min_capacity
-        target.max_capacity = self.configuration.autoscaling_max_capacity
-        target.role_arn = f"arn:aws:iam::{self.environment_api.aws_api.ecs_client.account_id}:role/aws-service-role/ecs.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_ECSService"
-        target.suspended_state = {
-            "DynamicScalingInSuspended": False,
-            "DynamicScalingOutSuspended": False,
-            "ScheduledScalingSuspended": False
-        }
-        target.tags = {tag["Key"]: tag["Value"] for tag in self.environment_api.get_tags_with_name(f"{target.resource_id}/{target.scalable_dimension}")}
-        self.environment_api.aws_api.provision_application_auto_scaling_scalable_target(target)
 
     def provision_application_autoscaling_policies(self):
         """
@@ -402,46 +383,13 @@ class ECSAPI:
         """
         # todo: cleanup report dead deregister dead scalable targets policies
 
-        self.provision_application_autoscaling_policy(self.configuration.autoscaling_ram_policy_name,
+        self.autoscaling_api.provision_application_autoscaling_policy(self.configuration.autoscaling_ram_policy_name,
                                                       self.configuration.autoscaling_ram_target_value,
                                                       predefind_metric_type="ECSServiceAverageMemoryUtilization")
-        self.provision_application_autoscaling_policy(self.configuration.autoscaling_cpu_policy_name,
+        self.autoscaling_api.provision_application_autoscaling_policy(self.configuration.autoscaling_cpu_policy_name,
                                                       self.configuration.autoscaling_cpu_target_value,
                                                       predefind_metric_type="ECSServiceAverageCPUUtilization"
                                                       )
-
-    def provision_application_autoscaling_policy(self, policy_name, target_value, predefind_metric_type=None,
-                                                 customized_metric_specificationis=None):
-        """
-        Scales ecs-service's count based ram monitoring
-
-        :return:
-        """
-
-        policy = ApplicationAutoScalingPolicy({})
-        policy.region = self.environment_api.region
-        policy.service_namespace = "ecs"
-        policy.name = policy_name
-        policy.resource_id = self.configuration.auto_scaling_resource_id
-        policy.scalable_dimension = "ecs:service:DesiredCount"
-        policy.policy_type = "TargetTrackingScaling"
-
-        policy.target_tracking_scaling_policy_configuration = {
-            "TargetValue": target_value,
-            "ScaleOutCooldown": 60,
-            "ScaleInCooldown": 300,
-            "DisableScaleIn": False
-        }
-
-        if predefind_metric_type is not None:
-            policy.target_tracking_scaling_policy_configuration["PredefinedMetricSpecification"] = {
-                "PredefinedMetricType": predefind_metric_type
-            }
-        elif customized_metric_specificationis is not None:
-            policy.target_tracking_scaling_policy_configuration["CustomizedMetricSpecification"] = \
-                customized_metric_specificationis
-
-        self.environment_api.aws_api.provision_application_auto_scaling_policy(policy)
 
     def environment_variables_callback(self):
         """
@@ -629,36 +577,6 @@ class ECSAPI:
         os.makedirs(container_build_dir_path, exist_ok=True)
         with open(os.path.join(container_build_dir_path, "Dockerfile"), "w", encoding="utf-8") as fh:
             fh.writelines(["FROM k8s.gcr.io/pause\n"])
-
-    def get_build_tag(self, nocache=False):
-        """
-        Build if needed.
-        Upload if needed.
-        Download if needed.
-
-        :param nocache:
-        :return:
-        """
-
-        ecr_image = self.fetch_latest_artifact_metadata()
-        build_number = ecr_image.build_number if ecr_image is not None else -1
-        repo_uri = f"{self.environment_api.aws_api.ecs_client.account_id}.dkr.ecr.{self.configuration.ecr_repository_region}.amazonaws.com/{self.configuration.ecr_repository_name}"
-
-        if image_tag := self.build_ecr_image_from_source_code(repo_uri, build_number, nocache):
-            self._ecr_images = None
-            max_build_ecr_image = self.fetch_latest_artifact_metadata()
-            if image_tag[len(repo_uri + "1"):] not in max_build_ecr_image.image_tags:
-                raise RuntimeError(
-                    f"Uploaded image {image_tag} is not viewable locally. Max version locally: {max_build_ecr_image.image_tags}")
-            return image_tag
-
-        if ecr_image is None:
-            raise RuntimeError(f"Images store '{repo_uri}' is empty yet, use branch_name to build an image")
-
-        image_tag_raw = ecr_image.image_tags[-1]
-        image_tag = f"{repo_uri}:{image_tag_raw}"
-
-        return image_tag
 
     def build_ecr_image_from_source_code(self, repo_uri, build_number, nocache):
         """
@@ -950,11 +868,44 @@ class ECSAPI:
         :return:
         """
 
-        self.environment_api.upload_ecr_image(image_tags)
+        try:
+            self.environment_api.docker_api.upload_images(image_tags)
+        except Exception as inst_error:
+            repr_inst_err = repr(inst_error)
+            if "no basic auth credentials" in repr_inst_err or \
+                    "Your authorization token has expired. Reauthenticate and try again" in repr_inst_err:
+                ecr_repository_region = image_tags[0].split(".")[3]
+                registry, _, _ = self.login_to_ecr_repository(Region.get_region(ecr_repository_region))
+                self.environment_api.docker_api.logout(registry)
+                self.login_to_ecr_repository(Region.get_region(ecr_repository_region))
+                self.environment_api.docker_api.upload_images(image_tags)
+            else:
+                raise
+
+    def login_to_ecr_repository(self, region, logout=False):
+        """
+        Login or relogin
+
+        :param region:
+        :return:
+        """
+
+        logger.info(f"Login to AWS Docker Repo (ECR) in region: {region.region_mark}")
+        credentials = self.environment_api.aws_api.get_ecr_authorization_info(region=region)
+
+        if len(credentials) != 1:
+            raise ValueError("len(credentials) != 1")
+        credentials = credentials[0]
+
+        registry, username, password = credentials["proxy_host"], credentials["user_name"], credentials["decoded_token"]
+        if logout:
+            self.environment_api.docker_api.logout(registry)
+        self.environment_api.docker_api.login(registry, username, password)
+        return registry, username, password
 
     def get_task_definition(self):
         """
-        Geta latest task definition
+        Get a latest task definition
 
         :return:
         """
@@ -1030,3 +981,109 @@ class ECSAPI:
             timeout=60*60,
         )
         return True
+
+    def update_service(self):
+        """
+        Update ECS service.
+
+        :return:
+        """
+
+        self.validate_input()
+        ecr_image_tag = self.build_and_upload_image()
+        ecs_task_definition = self.provision_ecs_task_definition(ecr_image_tag)
+
+        return self.provision_ecs_service(ecs_task_definition)
+
+    def build_and_upload_image(self, nocache=False):
+        latest_image = self.fetch_latest_artifact_metadata()
+        build_number = latest_image.build_number if latest_image is not None else 0
+
+        source_code_directory, commit_id = self.prepare_source_code()
+
+        build_directory = self.prepare_build_directory(source_code_directory, build_number=build_number, commit_id=commit_id)
+
+        tag = self.generate_image_tag(build_number=build_number, commit_id=commit_id)
+
+        image = self.build_image(build_directory, tag, nocache)
+
+        self.upload_ecr_image(image)
+
+        return tag
+
+    def prepare_source_code(self):
+        if self.environment_api.git_api is None:
+            raise RuntimeError("Git API was not set")
+
+        if self.environment_api.git_api.configuration.branch_name is not None:
+            if not self.environment_api.git_api.checkout_remote():
+                raise RuntimeError(
+                f"Was not able to checkout branch: {self.environment_api.git_api.configuration.branch_name}")
+
+        commit_id = self.environment_api.git_api.get_commit_id() if self.environment_api.git_api else None
+        return self.environment_api.git_api.configuration.directory_path, commit_id
+
+    def generate_image_tag(self, build_number, commit_id=None):
+        repo_uri = f"{self.environment_api.aws_api.ecs_client.account_id}.dkr.ecr.{self.configuration.ecr_repository_region}.amazonaws.com/{self.configuration.ecr_repository_name}"
+
+        tag = f"{repo_uri}:build_{build_number + 1}"
+        if commit_id is not None:
+            tag += f"-commit_{commit_id}"
+        return tag
+
+    def build_image(self, build_directory, tag, nocache, buildargs=None, platform="linux/amd64"):
+        for _ in range(120):
+            try:
+                return self.environment_api.docker_api.build(str(build_directory), [tag], nocache=nocache, buildargs=buildargs, platform=platform)
+            except Exception as error_inst:
+                repr_error_inst = repr(error_inst)
+                if "authorization token has expired" not in repr_error_inst:
+                    raise
+
+                ecr_repository_region = tag.split(".")[3]
+                _, _, _ = self.login_to_ecr_repository(region=Region.get_region(ecr_repository_region), logout=True)
+                return self.environment_api.docker_api.build(str(build_directory), [tag], nocache=nocache, buildargs=buildargs, platform=platform)
+
+    def prepare_build_directory(self, source_code_directory, commit_id=None, build_number=None):
+
+        build_dir_tmp = Path("/tmp/ecs_api_build_temp_dirs") / str(uuid.uuid4())
+        build_dir_tmp.parent.mkdir(exist_ok=True)
+
+        def ignore_git(_, file_names):
+            return [".git", ".gitmodules", ".idea"] if ".git" in file_names else []
+
+        shutil.copytree(source_code_directory, build_dir_tmp, ignore=ignore_git)
+
+        with open(build_dir_tmp / "commit_and_build.json", "w", encoding="utf-8") as file_handler:
+            json.dump({"commit": commit_id, "build": str(build_number)}, file_handler)
+        return self.prepare_container_build_directory_callback(build_dir_tmp)
+
+    def get_build_tag(self, nocache=False):
+        """
+        Build if needed.
+        Upload if needed.
+        Download if needed.
+
+        :param nocache:
+        :return:
+        """
+
+        ecr_image = self.fetch_latest_artifact_metadata()
+        build_number = ecr_image.build_number if ecr_image is not None else -1
+        repo_uri = f"{self.environment_api.aws_api.ecs_client.account_id}.dkr.ecr.{self.configuration.ecr_repository_region}.amazonaws.com/{self.configuration.ecr_repository_name}"
+
+        if image_tag := self.build_ecr_image_from_source_code(repo_uri, build_number, nocache):
+            self._ecr_images = None
+            max_build_ecr_image = self.fetch_latest_artifact_metadata()
+            if image_tag[len(repo_uri + "1"):] not in max_build_ecr_image.image_tags:
+                raise RuntimeError(
+                    f"Uploaded image {image_tag} is not viewable locally. Max version locally: {max_build_ecr_image.image_tags}")
+            return image_tag
+
+        if ecr_image is None:
+            raise RuntimeError(f"Images store '{repo_uri}' is empty yet, use branch_name to build an image")
+
+        image_tag_raw = ecr_image.image_tags[-1]
+        image_tag = f"{repo_uri}:{image_tag_raw}"
+
+        return image_tag

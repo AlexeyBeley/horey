@@ -425,6 +425,8 @@ class MAauction(Provider):
                 logger.info(f"Error: {repr(inst_error)}")
                 breakpoint()
 
+            if lot.starting_bid is None:
+                breakpoint()
         self.disconnect()
         return auction_event.lots
 

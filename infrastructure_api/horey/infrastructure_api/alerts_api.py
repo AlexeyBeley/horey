@@ -16,6 +16,7 @@ from horey.alert_system.lambda_package.message_ses_default import MessageSESDefa
 from horey.alert_system.postgres.postgres_alert_builder import \
     PostgresAlertBuilder
 from horey.alert_system.elb_alert_builder import ELBAlertBuilder
+from horey.infrastructure_api.alerts_api_configuration_policy import AlertsAPIConfigurationPolicy
 
 
 class AlertsAPI:
@@ -24,7 +25,7 @@ class AlertsAPI:
 
     """
 
-    def __init__(self, configuration, environment_api):
+    def __init__(self, configuration:AlertsAPIConfigurationPolicy, environment_api):
         self.configuration = configuration
         self.environment_api = environment_api
 

@@ -100,6 +100,7 @@ class Provider:
 
             if lot.current_max is None:
                 breakpoint()
+
             logger.info(f"Finished {i}/{len(auction_event.lots)} auction event lots")
 
         self.validate_lots(auction_event.lots)
