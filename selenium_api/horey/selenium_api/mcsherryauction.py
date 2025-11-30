@@ -35,6 +35,7 @@ class Mcsherryauction(Provider):
         for lot_element in lots_elements:
             lot = Lot()
             lot.starting_bid = 1
+            lot.description = lot_element.text
             link_element = lot_element.find_element(By.TAG_NAME, "a")
 
             if "No Bids Yet" in lot_element.text:
@@ -171,7 +172,7 @@ class Mcsherryauction(Provider):
         self.disconnect()
         return auction_events
 
-    def init_auction_event_lots(self, auction_event: AuctionEvent):
+    def load_auction_event_lots(self, auction_event: AuctionEvent):
         """
         Init from Web.
 
@@ -180,21 +181,11 @@ class Mcsherryauction(Provider):
         """
 
         logger.info(f"Starting initializing '{auction_event.id}' auction event lots")
-        map_old_lots = {lot.url: lot for lot in auction_event.lots}
-        auction_event.lots = []
+        lots = []
 
         for page_counter in range(1, self.get_page_count(auction_event.url)+1):
-            auction_event.lots += self.load_page_lots(auction_event.url + f"_p{page_counter}?ps=100",
+            lots += self.load_page_lots(auction_event.url + f"_p{page_counter}?ps=100",
                                                       auction_event)
-        auction_event.init_lots_default_information()
-        for i, lot in enumerate(auction_event.lots):
-            lot.auction_event_id = auction_event.id
-            old_lot = map_old_lots.get(lot.url)
-            if old_lot is not None:
-                lot.id = old_lot.id
-
-            if lot.current_max is None:
-                breakpoint()
 
             """if lot.current_max == 0:
                 if old_lot is not None:
@@ -204,4 +195,4 @@ class Mcsherryauction(Provider):
                     logger.info(f"Finished {i}/{len(auction_event.lots)} auction event lots")
             """
         self.disconnect()
-        return auction_event.lots
+        return lots

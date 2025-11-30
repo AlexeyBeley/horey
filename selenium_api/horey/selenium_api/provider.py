@@ -85,7 +85,6 @@ class Provider:
 
         logger.info(f"Starting initializing '{auction_event.id}' auction event lots")
         map_old_lots = {lot.url: lot for lot in auction_event.lots}
-        auction_event.lots = []
 
         auction_event.lots = self.load_auction_event_lots(auction_event)
 
@@ -101,7 +100,7 @@ class Provider:
             if lot.current_max is None:
                 breakpoint()
 
-            logger.info(f"Finished {i}/{len(auction_event.lots)} auction event lots")
+            logger.info(f"Finished {i}/{len(auction_event.lots)} auction event lots, {lot.current_max=}")
 
         self.validate_lots(auction_event.lots)
         return auction_event.lots

@@ -483,8 +483,15 @@ class AuctionAPI:
             raise RuntimeError(f"Was not able to find {auction_event.provider_id=} in the DB")
 
         logger.info(f"Updating {auction_event_id=} {auction_event.provider_id=}")
-        for lot in provider.init_auction_event_lots(auction_event):
+
+        old_lots_by_url = {lot.url: lot for lot in auction_event.lots}
+        new_lots_by_url = {lot.url: lot for lot in provider.init_auction_event_lots(auction_event)}
+        for lot in new_lots_by_url.values():
             self.upsert_db_lot(lot)
+
+        for lot_url, lot in old_lots_by_url.items():
+            if lot_url not in new_lots_by_url:
+                self.delete_db_lot(lot)
 
         format_string = "%Y-%m-%d %H:%M:%S.%f"
         now = datetime.datetime.now(tz=datetime.timezone.utc)
@@ -500,7 +507,6 @@ class AuctionAPI:
 
         table_name = 'lots'
         delete_query = f"DELETE FROM {table_name} WHERE id = ?"
-        breakpoint()
         with sqlite3.connect(self.db_file_path) as conn:
             cursor = conn.cursor()
             try:
