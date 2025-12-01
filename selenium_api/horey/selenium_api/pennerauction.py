@@ -51,6 +51,7 @@ class Pennerauction(Provider):
     @staticmethod
     def init_lot_from_lot_element(lot_element: WebElement):
         lot = Lot()
+        lot.description = lot_element.text
         for _ in range(50):
             try:
                 element_title = lot_element.find_element(By.CLASS_NAME, "lot-title")
@@ -273,7 +274,7 @@ class Pennerauction(Provider):
             breakpoint()
             raise ValueError("Was not able to find provinces")
 
-    def init_auction_event_lots(self, auction_event: AuctionEvent):
+    def load_auction_event_lots(self, auction_event: AuctionEvent):
         """
         Init from Web.
 
@@ -284,23 +285,12 @@ class Pennerauction(Provider):
         self.connect()
 
         logger.info(f"Starting initializing '{auction_event.id}' auction event lots")
-        map_old_lots = {lot.url: lot for lot in auction_event.lots}
-        auction_event.lots = []
-
+        lots = []
         for page_counter in range(1, self.get_page_count(auction_event.url)+1):
-            auction_event.lots += self.load_page_lots(auction_event.url + f"?ipp=100&apage={page_counter}",
+            lots += self.load_page_lots(auction_event.url + f"?ipp=100&apage={page_counter}",
                                                       auction_event)
-            if not auction_event.lots:
-                breakpoint()
-        auction_event.init_lots_default_information()
-        for i, lot in enumerate(auction_event.lots):
-            lot.auction_event_id = auction_event.id
-            old_lot = map_old_lots.get(lot.url)
-            if old_lot is not None:
-                lot.id = old_lot.id
-
-            if lot.current_max is None:
+            if not lots:
                 breakpoint()
 
         self.disconnect()
-        return auction_event.lots
+        return lots
