@@ -33,6 +33,7 @@ class ECRImage(AwsObject):
             "imageManifestMediaType": self.init_default_attr,
             "artifactMediaType": self.init_default_attr,
             "lastRecordedPullTime": self.init_default_attr,
+            "imageStatus": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)

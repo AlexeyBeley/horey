@@ -66,7 +66,8 @@ class KMSKey(AwsObject):
             "CustomerMasterKeySpec": self.init_default_attr,
             "EncryptionAlgorithms": self.init_default_attr,
             "MultiRegion": self.init_default_attr,
-            "KeySpec": self.init_default_attr
+            "KeySpec": self.init_default_attr,
+            "CurrentKeyMaterialId": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
