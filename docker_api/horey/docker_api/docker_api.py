@@ -113,6 +113,8 @@ class DockerAPI:
         :return:
         """
 
+        logger.info(f"Building image from: {dockerfile_directory_path}")
+
         if not isinstance(tags, list):
             raise ValueError(
                 f"'tags' must be of a type 'list' received {tags}: type: {type(tags)}"

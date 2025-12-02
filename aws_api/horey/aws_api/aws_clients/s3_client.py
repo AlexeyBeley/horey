@@ -1265,3 +1265,21 @@ class S3Client(Boto3Client):
                 self.get_session_client(region=region).copy_object, "CopyObjectResult", filters_req=request_dict
         ):
             return response
+
+    def get_object_tagging_raw(self, region, request_dict):
+        """
+        Bucket='string',
+        Key='string',
+        VersionId='string',
+        ExpectedBucketOwner='string',
+        RequestPayer='requester'
+
+        :param request_dict:
+        :param region:
+        :return:
+        """
+
+        logger.info(f"Getting object tagging{request_dict}")
+        return list(self.execute(
+                self.get_session_client(region=region).get_object_tagging, "TagSet", filters_req=request_dict
+        ))
