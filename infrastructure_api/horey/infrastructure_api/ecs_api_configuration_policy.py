@@ -18,6 +18,7 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
         super().__init__()
         self._load_balancer_target_group_arn = None
         self._ecr_repository_name = None
+        self._ecr_repository_name_slug = None
         self._ecr_repository_region = None
         self._infrastructure_update_time_tag = None
         self._ecr_repository_policy_text = None
@@ -467,6 +468,14 @@ class ECSAPIConfigurationPolicy(ConfigurationPolicy):
         if self._ecr_repository_name is None:
             return f"repo_{self.slug}"
         return self._ecr_repository_name
+
+    @property
+    def ecr_repository_name_slug(self):
+        return self._ecr_repository_name_slug
+
+    @ecr_repository_name_slug.setter
+    def ecr_repository_name_slug(self, value):
+        self._ecr_repository_name_slug = value
 
     @ecr_repository_name.setter
     def ecr_repository_name(self, value):

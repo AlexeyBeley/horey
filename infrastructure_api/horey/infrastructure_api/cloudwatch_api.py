@@ -25,13 +25,12 @@ class CloudwatchAPI:
         :return:
         """
 
-        self.provision_cloudwatch_log_group()
+        self.provision_log_group()
 
-    def provision_cloudwatch_log_group(self):
+    def provision_log_group(self):
         """
         Provision log group.
 
-        :param name:
         :return:
         """
 

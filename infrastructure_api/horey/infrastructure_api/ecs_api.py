@@ -51,28 +51,27 @@ class ECSAPI:
         self.loadbalancer_api = None
         self.dns_api = None
         self.loadbalancer_dns_api_pairs = None
-
-        try:
-            assert self.configuration.cluster_name
-        except self.configuration.UndefinedValueError:
-            self.configuration.cluster_name = f"cluster-{self.environment_api.configuration.project_name_abbr}-{self.environment_api.configuration.environment_level}-{self.environment_api.configuration.environment_name}"
+        self.init_ecr_repository_name()
 
         try:
             assert self.configuration.ecr_repository_region
         except self.configuration.UndefinedValueError:
             self.configuration.ecr_repository_region = self.environment_api.configuration.region
 
-        try:
-            assert self.configuration.ecs_task_role_name
-        except self.configuration.UndefinedValueError:
-            self.configuration.ecs_task_role_name = f"role_{self.environment_api.configuration.environment_level}_" \
-                                                    f"{self.environment_api.configuration.project_name_abbr}_{self.configuration.service_name}_task"
+    def init_ecr_repository_name(self):
+        """
+        If ecr repo name slug set - init the ecr repo name based on it
 
-        try:
-            assert self.configuration.ecs_task_execution_role_name
-        except self.configuration.UndefinedValueError:
-            self.configuration.ecs_task_execution_role_name = f"role_{self.environment_api.configuration.environment_level}_" \
-                                                    f"{self.environment_api.configuration.project_name_abbr}_{self.configuration.service_name}_exec"
+        :return:
+        """
+
+        if self.configuration._ecr_repository_name is not None:
+            return
+
+        if self.configuration.ecr_repository_name_slug is None:
+            return
+
+        self.configuration.ecr_repository_name = f"repo-{self.environment_api.configuration.project_name_abbr}-{self.environment_api.configuration.environment_name}-{self.configuration.ecr_repository_name_slug}"
 
     @property
     def ecr_repository(self):
@@ -596,7 +595,7 @@ class ECSAPI:
                                                           service_registry_dicts=service_registry_dicts
                                                           )
 
-    def provision_ecr_repository(self):
+    def provision_ecr_repository(self, repository_policy=None):
         """
         Create or update the ECR repo
 
@@ -606,9 +605,8 @@ class ECSAPI:
         repo = ECRRepository({})
         repo.region = Region.get_region(self.configuration.ecr_repository_region)
         repo.name = self.configuration.ecr_repository_name
-        if self.configuration.ecr_repository_policy_text:
-            # todo: generate policy to permit only access from relevant services: AWS Lambda / ECS / EKS etc
-            repo.policy_text = self.configuration.ecr_repository_policy_text
+        # todo: generate policy to permit only access from relevant services: AWS Lambda / ECS / EKS etc
+        repo.policy_text = repository_policy or self.configuration.ecr_repository_policy_text
         repo.tags = self.environment_api.get_tags_with_name(repo.name)
 
         repo.tags.append({

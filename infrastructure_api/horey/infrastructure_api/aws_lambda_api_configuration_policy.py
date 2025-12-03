@@ -27,12 +27,33 @@ class AWSLambdaAPIConfigurationPolicy(ConfigurationPolicy):
         self._sns_topic_name = None
         self._event_source_mapping_dynamodb_name = None
         self._event_bridge_rule_name = None
-        self._lambda_log_group = None
         self._policy = None
         self._lambda_memory_size = None
         self._lambda_timeout = None
         self._managed_policies_arns = []
         self._reserved_concurrent_executions = None
+        self._lambda_name_slug = None
+        self._build_image = None
+
+    @property
+    def build_image(self):
+        if self._build_image is None:
+            return True
+
+        return self._build_image
+
+    @build_image.setter
+    def build_image(self, value):
+        self._build_image = value
+
+    @property
+    def lambda_name_slug(self):
+        self.check_defined()
+        return self._lambda_name_slug
+
+    @lambda_name_slug.setter
+    def lambda_name_slug(self, value):
+        self._lambda_name_slug = value
 
     @property
     def reserved_concurrent_executions(self):
@@ -192,13 +213,3 @@ class AWSLambdaAPIConfigurationPolicy(ConfigurationPolicy):
     @lambda_name.setter
     def lambda_name(self, value):
         self._lambda_name = value
-
-    @property
-    def lambda_log_group(self):
-        if self._lambda_log_group is None:
-            self._lambda_log_group = f"/aws/lambda/{self.lambda_name}"
-        return self._lambda_log_group
-
-    @lambda_log_group.setter
-    def lambda_log_group(self, value):
-        self._lambda_log_group = value

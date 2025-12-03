@@ -13,14 +13,13 @@ from horey.aws_api.aws_services_entities.event_bridge_target import EventBridgeT
 from horey.aws_api.aws_services_entities.sns_topic import SNSTopic
 from horey.aws_api.aws_services_entities.sns_subscription import SNSSubscription
 from horey.aws_api.aws_services_entities.lambda_event_source_mapping import LambdaEventSourceMapping
-from horey.infrastructure_api.ecs_api_configuration_policy import ECSAPIConfigurationPolicy
-from horey.infrastructure_api.ecs_api import ECSAPI
+from horey.infrastructure_api.ecs_api import ECSAPI, ECSAPIConfigurationPolicy
+from horey.infrastructure_api.build_api import BuildAPI, BuildAPIConfigurationPolicy
 from horey.infrastructure_api.aws_iam_api_configuration_policy import AWSIAMAPIConfigurationPolicy
 from horey.infrastructure_api.aws_iam_api import AWSIAMAPI
 from horey.infrastructure_api.cloudwatch_api_configuration_policy import CloudwatchAPIConfigurationPolicy
 from horey.infrastructure_api.cloudwatch_api import CloudwatchAPI
-from horey.infrastructure_api.alerts_api import AlertsAPI
-from horey.infrastructure_api.alerts_api_configuration_policy import AlertsAPIConfigurationPolicy
+from horey.infrastructure_api.aws_lambda_api_configuration_policy import AWSLambdaAPIConfigurationPolicy
 
 logger = get_logger()
 
@@ -31,7 +30,7 @@ class AWSLambdaAPI:
 
     """
 
-    def __init__(self, configuration, environment_api):
+    def __init__(self, configuration: AWSLambdaAPIConfigurationPolicy, environment_api):
         self.configuration = configuration
         self.environment_api = environment_api
         self._cloudwatch_api = None
@@ -40,37 +39,20 @@ class AWSLambdaAPI:
         self._environment_variables_callback = None
         self._alerts_api = None
         self.loadbalancer_api = None
+        self.init_lambda_name_slug()
+        self._build_api = None
 
-    @property
-    def alerts_api(self):
+    def init_lambda_name_slug(self):
         """
-        Alerts api
+        Remove all env data.
 
         :return:
         """
-        if self._alerts_api is None:
-            alerts_api_configuration = AlertsAPIConfigurationPolicy()
-            alerts_api_configuration.sns_topic_name = f"topic-has2-{self.configuration.lambda_name}"
-            alerts_api_configuration.dynamodb_table_name = f"has2-{self.configuration.lambda_name}"
-            alerts_api_configuration.event_bridge_rule_name = f"rule-has2-{self.configuration.lambda_name}"
-            alerts_api_configuration.lambda_role_name = f"role_{self.environment_api.configuration.environment_level}-has2-{self.configuration.lambda_name}"
-            alerts_api_configuration.lambda_name = f"has2-{self.configuration.lambda_name}"
-            alerts_api_configuration.horey_repo_path = os.path.join(
-                self.environment_api.git_api.configuration.git_directory_path, "horey")
 
-            alerts_api_configuration.sns_subscription_name = f"has2-{self.configuration.lambda_name}"
-            alerts_api_configuration.log_group_name = f"has2-{self.configuration.lambda_name}"
-            self._alerts_api = AlertsAPI(alerts_api_configuration, self.environment_api)
-        return self._alerts_api
+        self.configuration.lambda_name_slug = self.configuration.lambda_name.replace("_", "-")
 
-    @alerts_api.setter
-    def alerts_api(self, value):
-        """
-        Alerts api
-
-        :return:
-        """
-        self._alerts_api = value
+        for to_clean in ["lambda", self.environment_api.configuration.environment_name, self.environment_api.configuration.environment_level]:
+            self.configuration.lambda_name_slug = self.configuration.lambda_name_slug.replace(f"-{to_clean}", "").replace(f"{to_clean}-", "")
 
     @property
     def cloudwatch_api(self):
@@ -81,6 +63,7 @@ class AWSLambdaAPI:
         """
         if self._cloudwatch_api is None:
             config = CloudwatchAPIConfigurationPolicy()
+            config.log_group_name = f"/aws/lambda/{self.configuration.lambda_name}"
             cloudwatch_api = CloudwatchAPI(configuration=config, environment_api=self.environment_api)
             self.set_api(cloudwatch_api=cloudwatch_api)
         return self._cloudwatch_api
@@ -135,13 +118,32 @@ class AWSLambdaAPI:
 
         if self._ecs_api is None:
             config = ECSAPIConfigurationPolicy()
+            config.ecr_repository_name_slug = self.configuration.lambda_name_slug
             ecs_api = ECSAPI(configuration=config, environment_api=self.environment_api)
-            self.set_api(ecs_api=ecs_api)
+            self._ecs_api = ecs_api
         return self._ecs_api
 
     @ecs_api.setter
     def ecs_api(self, value):
         self._ecs_api = value
+
+    @property
+    def build_api(self):
+        """
+        Standard
+
+        :return:
+        """
+
+        if self._build_api is None:
+            config = BuildAPIConfigurationPolicy()
+            build_api = BuildAPI(configuration=config, environment_api=self.environment_api)
+            self._build_api = build_api
+        return self._build_api
+
+    @build_api.setter
+    def build_api(self, value):
+        self._build_api = value
 
     def set_api(self, ecs_api=None, cloudwatch_api=None, aws_iam_api=None, loadbalancer_api=None):
         """
@@ -155,16 +157,10 @@ class AWSLambdaAPI:
 
         if cloudwatch_api:
             self._cloudwatch_api = cloudwatch_api
-            try:
-                self._cloudwatch_api.configuration.log_group_name
-            except self._cloudwatch_api.configuration.UndefinedValueError:
-                self._cloudwatch_api.configuration.log_group_name = self.configuration.lambda_log_group
 
         if ecs_api:
             self.ecs_api = ecs_api
-            if self.ecs_api.configuration._ecr_repository_name is None:
-                self.ecs_api.configuration.ecr_repository_name = f"repo_{self.configuration.lambda_name}"
-
+            raise NotImplementedError()
             try:
                 if self.ecs_api.configuration.ecr_repository_region != self.environment_api.configuration.region:
                     raise RuntimeError(
@@ -175,18 +171,7 @@ class AWSLambdaAPI:
             if self.ecs_api.configuration.ecr_repository_policy_text:
                 raise NotImplementedError(
                     f"Update policy document: {self.ecs_api.configuration.ecr_repository_policy_text}")
-            dict_policy = {"Version": "2008-10-17",
-                           "Statement": [
-                               {"Sid": "LambdaECRImageRetrievalPolicy",
-                                "Effect": "Allow",
-                                "Principal": {"Service": "lambda.amazonaws.com"},
-                                "Action": ["ecr:BatchGetImage",
-                                           "ecr:GetDownloadUrlForLayer",
-                                           "ecr:GetRepositoryPolicy"],
-                                "Condition": {"StringLike": {
-                                    "aws:sourceArn": f"arn:aws:lambda:{self.environment_api.configuration.region}:{self.environment_api.aws_api.ecs_client.account_id}:function:{self.configuration.lambda_name}"}}}]}
 
-            self.ecs_api.configuration.ecr_repository_policy_text = json.dumps(dict_policy)
             self.ecs_api.set_api(cloudwatch_api=self.cloudwatch_api)
 
         if aws_iam_api:
@@ -221,67 +206,47 @@ class AWSLambdaAPI:
             self.loadbalancer_api = loadbalancer_api
             self.loadbalancer_api.configuration.target_type = "lambda"
 
-    def provision(self):
+    def provision_docker_lambda(self):
         """
         Provision ECS infrastructure.
 
         :return:
         """
-
         self.environment_api.aws_api.lambda_client.clear_cache(None, all_cache=True)
-        self.cloudwatch_api.provision()
+        self.cloudwatch_api.provision_log_group()
+        dict_policy = {"Version": "2008-10-17",
+                       "Statement": [
+                           {"Sid": "LambdaECRImageRetrievalPolicy",
+                            "Effect": "Allow",
+                            "Principal": {"Service": "lambda.amazonaws.com"},
+                            "Action": ["ecr:BatchGetImage",
+                                       "ecr:GetDownloadUrlForLayer",
+                                       "ecr:GetRepositoryPolicy"],
+                            "Condition": {"StringLike": {
+                                "aws:sourceArn": f"arn:aws:lambda:{self.environment_api.configuration.region}:{self.environment_api.aws_api.ecs_client.account_id}:function:{self.configuration.lambda_name}"}}}]}
 
-        self.ecs_api.provision()
-        if self.configuration.security_groups:
-            managed_policies_arns = ["arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"]
-        else:
-            managed_policies_arns = []
+        self.ecs_api.provision_ecr_repository(repository_policy=json.dumps(dict_policy))
 
-        assume_role_policy = {
-            "Version": "2012-10-17",
-            "Statement": [
-                {
-                    "Effect": "Allow",
-                    "Principal": {
-                        "Service": "lambda.amazonaws.com"
-                    },
-                    "Action": "sts:AssumeRole"
-                }
-            ]
-        }
+        self.provision_lambda_role()
 
-        inline_policies = self.role_inline_policies_callback()
-        if self.configuration.event_source_mapping_dynamodb_name:
-            # todo: generate cleanup report to find lambdas with no permissions
-            name = f"inline_event_source_{self.configuration.event_source_mapping_dynamodb_name}"
-            table = self.environment_api.get_dynamodb(self.configuration.event_source_mapping_dynamodb_name)
+        events_rule = self.provision_events_rule()
 
-            policy = self.aws_iam_api.generate_inline_policy(name, [
-                table.latest_stream_arn
-            ], [
-                                                                 "dynamodb:GetRecords",
-                                                                 "dynamodb:GetShardIterator",
-                                                                 "dynamodb:DescribeStream",
-                                                                 "dynamodb:ListStreams"
-                                                             ])
-            inline_policies.append(policy)
-
-        self.aws_iam_api.provision_role(assume_role_policy=json.dumps(assume_role_policy),
-                                        managed_policies_arns=managed_policies_arns, policies=inline_policies)
-
-        events_rule = self.provision_events_rule() if self.configuration.schedule_expression is not None else None
-
-        sns_topic = self.provision_sns_topic() if self.configuration.provision_sns_topic else None
+        sns_topic = self.provision_sns_topic()
 
         aws_lambda = self.update(events_rule=events_rule, sns_topic=sns_topic)
+
+        breakpoint()
         if events_rule is not None:
             self.provision_events_rule_targets(events_rule, aws_lambda)
+
         if sns_topic:
             self.provision_sns_subscription(sns_topic, aws_lambda)
 
         if self.configuration.event_source_mapping_dynamodb_name:
             self.provision_event_source_mapping_dynamodb(aws_lambda)
+
         if self.loadbalancer_api:
+            raise NotImplementedError()
             self.loadbalancer_api.configuration.target_group_targets = [{"Id": aws_lambda.arn}]
             self.loadbalancer_api.provision()
             statement = self.generate_target_group_statement()
@@ -296,6 +261,35 @@ class AWSLambdaAPI:
 
         self.provision_monitoring()
         return True
+
+    def provision_lambda_role(self):
+        """
+        Provision role.
+
+        :return:
+        """
+
+        if self.configuration.security_groups:
+            managed_policies_arns = ["arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"]
+        else:
+            managed_policies_arns = []
+        assume_role_policy = {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {
+                        "Service": "lambda.amazonaws.com"
+                    },
+                    "Action": "sts:AssumeRole"
+                }
+            ]
+        }
+
+        inline_policies = self.role_inline_policies_callback()
+        breakpoint()
+        self.aws_iam_api.provision_role(assume_role_policy=json.dumps(assume_role_policy),
+                                        managed_policies_arns=managed_policies_arns, policies=inline_policies)
 
     def provision_monitoring(self):
         """
@@ -344,6 +338,9 @@ class AWSLambdaAPI:
         :return:
         """
 
+        if not self.configuration.provision_sns_topic:
+            return None
+
         topic = SNSTopic({})
         topic.region = self.environment_api.region
         topic.name = self.configuration.sns_topic_name
@@ -376,10 +373,15 @@ class AWSLambdaAPI:
         :return:
         """
 
-        image_tag = self.ecs_api.get_build_tag()
+        if self.configuration.build_image:
+            image = self.build_api.run_build_image_routine()
+            image_tag = image.tags[0]
+        else:
+            image_tag = self.get_latest_build()
+
         return self.deploy_lambda(image_tag, events_rule=events_rule, sns_topic=sns_topic)
 
-    def get_latest_build(self):
+    def get_latest_build_number(self):
         """
         Latest build number from ecr repo
 
@@ -510,6 +512,9 @@ class AWSLambdaAPI:
         :return:
         """
 
+        if not self.configuration.schedule_expression:
+            return
+
         rule = EventBridgeRule({})
         rule.name = self.configuration.event_bridge_rule_name
         rule.description = f"{self.configuration.lambda_name} triggering rule"
@@ -517,11 +522,7 @@ class AWSLambdaAPI:
         rule.schedule_expression = self.configuration.schedule_expression
         rule.event_bus_name = "default"
         rule.state = "ENABLED"
-        rule.tags = self.environment_api.configuration.tags
-        rule.tags.append({
-            "Key": "Name",
-            "Value": rule.name
-        })
+        rule.tags = self.environment_api.get_tags_with_name(rule.name)
 
         self.environment_api.aws_api.provision_events_rule(rule)
         return rule
@@ -563,4 +564,20 @@ class AWSLambdaAPI:
         :return:
         """
 
-        return []
+        inline_policies = []
+        if self.configuration.event_source_mapping_dynamodb_name:
+            # todo: generate cleanup report to find lambdas with no permissions
+            name = f"inline_event_source_{self.configuration.event_source_mapping_dynamodb_name}"
+            table = self.environment_api.get_dynamodb(self.configuration.event_source_mapping_dynamodb_name)
+
+            policy = self.aws_iam_api.generate_inline_policy(name, [
+                table.latest_stream_arn
+            ], [
+                                                                 "dynamodb:GetRecords",
+                                                                 "dynamodb:GetShardIterator",
+                                                                 "dynamodb:DescribeStream",
+                                                                 "dynamodb:ListStreams"
+                                                             ])
+            inline_policies.append(policy)
+
+        return inline_policies
