@@ -423,7 +423,7 @@ class AWSLambda(AwsObject):
                 }
                 if "Condition" in desired_statement:
                     if "ArnLike" in desired_statement["Condition"]:
-                        request["SourceArn"] =  desired_statement["Condition"]["ArnLike"]["AWS:SourceArn"]
+                        request["SourceArn"] = desired_statement["Condition"]["ArnLike"]["AWS:SourceArn"]
                     elif "StringEquals" in desired_statement["Condition"]:
                         request["SourceAccount"] = desired_statement["Condition"]["StringEquals"]["AWS:SourceAccount"]
                     else:

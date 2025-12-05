@@ -155,7 +155,7 @@ class LambdaClient(Boto3Client):
         if current_lambda.arn is None:
             self.provision_lambda_raw(desired_aws_lambda.region, desired_aws_lambda.generate_create_request())
             if desired_aws_lambda.policy is not None:
-                self.provision_lambda_permissions(current_lambda, desired_aws_lambda)
+                self.provision_lambda_permissions(desired_aws_lambda, current_lambda=current_lambda)
 
         update_function_configuration_request = (
             current_lambda.generate_update_function_configuration_request(
@@ -225,7 +225,7 @@ class LambdaClient(Boto3Client):
                 [current_lambda.Status.FAILED],
             )
 
-        self.provision_lambda_permissions(current_lambda, desired_aws_lambda)
+        self.provision_lambda_permissions(desired_aws_lambda, current_lambda=current_lambda)
 
         if not update_code:
             self.update_lambda_information(desired_aws_lambda, full_information=False)
@@ -239,7 +239,7 @@ class LambdaClient(Boto3Client):
 
         self.update_lambda_information(desired_aws_lambda, full_information=True)
 
-    def provision_lambda_permissions(self, current_lambda, desired_aws_lambda):
+    def provision_lambda_permissions(self, desired_aws_lambda, current_lambda=None):
         """
         Provision permissions.
 

@@ -1028,3 +1028,13 @@ class ECSAPI:
             timeout=60*60,
         )
         return True
+
+    def get_next_build_number(self):
+        """
+        Find the recent if exists.
+
+        :return:
+        """
+
+        ecr_image = self.fetch_latest_artifact_metadata()
+        return ecr_image.build_number + 1 if ecr_image is not None else 0

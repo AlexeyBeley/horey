@@ -11,6 +11,7 @@ from horey.infrastructure_api.infrastructure_api import InfrastructureAPI
 from horey.infrastructure_api.environment_api_configuration_policy import EnvironmentAPIConfigurationPolicy
 from horey.infrastructure_api.alerts_api_configuration_policy import AlertsAPIConfigurationPolicy
 from pathlib import Path
+from horey.infrastructure_api.aws_lambda_api import AWSLambdaAPI, AWSLambdaAPIConfigurationPolicy
 # Uncomment next line to save error lines to /tmp/error.log
 logger = get_logger()
 
@@ -36,10 +37,22 @@ def fixture_alerts_api():
     alerts_api_configuration.configuration_file_full_path = real_life_alerts_configuration
     alerts_api_configuration.init_from_file()
     alerts_api = infrastructure_api.get_alerts_api(alerts_api_configuration, environment_api)
+
     yield alerts_api
 
 
-@pytest.mark.done
-def test_build_and_validate(alerts_api):
-    ret = alerts_api.build_and_validate(None)
+@pytest.mark.wip
+def test_provision_alert_system(alerts_api):
+    config = AWSLambdaAPIConfigurationPolicy()
+    config.lambda_name = self.configuration.lambda_name
+    config.lambda_timeout = 300
+    config.lambda_memory_size = 1024
+    config.schedule_expression = "rate(1 minute)"
+    git_api = GitAPI(configuration=GitAPIConfigurationPolicy())
+    environment_api = EnvironmentAPI(EnvironmentAPIConfigurationPolicy(), self.environment_api.aws_api, git_api=git_api)
+    aws_lambda_api = AWSLambdaAPI(config, environment_api)
+    aws_lambda_api.environment_variables_callback = self.generate_environment_variables
+
+    ret = alerts_api.provision_alert_system(aws_lambda_api)
+
     assert ret

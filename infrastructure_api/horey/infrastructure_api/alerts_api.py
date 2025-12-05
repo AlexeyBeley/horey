@@ -17,6 +17,9 @@ from horey.alert_system.postgres.postgres_alert_builder import \
     PostgresAlertBuilder
 from horey.alert_system.elb_alert_builder import ELBAlertBuilder
 
+from horey.infrastructure_api.environment_api import EnvironmentAPI, EnvironmentAPIConfigurationPolicy
+from horey.git_api.git_api import GitAPI, GitAPIConfigurationPolicy
+
 
 class AlertsAPI:
     """
@@ -38,6 +41,7 @@ class AlertsAPI:
         has2_config.tags = self.environment_api.configuration.tags
         self.alert_system = AlertSystem(has2_config)
         # self.generate_notification_channels_configuration()
+
 
     def generate_lambda_package_configuration_files(self):
         """
@@ -72,7 +76,7 @@ class AlertsAPI:
         self.configuration.files = [slack_channel_configuration_file_path, alert_system_configuration_file_path]
         return self.configuration.files
 
-    def provision(self):
+    def provision_alert_system(self):
         """
         Provision frontend.
 
@@ -80,8 +84,10 @@ class AlertsAPI:
         """
 
         # todo: Add tag to resource to indicate which Lambda owns them: metrics, alarms etc.
+        # check if needed or delete using cleanup
 
         self.environment_api.clear_cache()
+        breakpoint()
         self.provision_sns_topic()
         self.provision_dynamodb()
         self.provision_event_bridge_rule()

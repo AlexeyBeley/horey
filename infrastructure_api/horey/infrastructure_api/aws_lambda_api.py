@@ -51,8 +51,11 @@ class AWSLambdaAPI:
 
         self.configuration.lambda_name_slug = self.configuration.lambda_name.replace("_", "-")
 
-        for to_clean in ["lambda", self.environment_api.configuration.environment_name, self.environment_api.configuration.environment_level]:
-            self.configuration.lambda_name_slug = self.configuration.lambda_name_slug.replace(f"-{to_clean}", "").replace(f"{to_clean}-", "")
+        for to_clean in ["lambda", self.environment_api.configuration.environment_name,
+                         self.environment_api.configuration.environment_level]:
+            self.configuration.lambda_name_slug = self.configuration.lambda_name_slug.replace(f"-{to_clean}",
+                                                                                              "").replace(
+                f"{to_clean}-", "")
 
     @property
     def cloudwatch_api(self):
@@ -68,7 +71,6 @@ class AWSLambdaAPI:
             self.set_api(cloudwatch_api=cloudwatch_api)
         return self._cloudwatch_api
 
-    @property
     def environment_variables_callback(self):
         """
         Standard
@@ -76,13 +78,7 @@ class AWSLambdaAPI:
         :return:
         """
 
-        if self._environment_variables_callback is None:
-            self._environment_variables_callback = lambda: self.configuration.environment_variables
-        return self._environment_variables_callback
-
-    @environment_variables_callback.setter
-    def environment_variables_callback(self, value):
-        self._environment_variables_callback = value
+        return {}
 
     @property
     def aws_iam_api(self):
@@ -94,8 +90,8 @@ class AWSLambdaAPI:
 
         if self._aws_iam_api is None:
             config = AWSIAMAPIConfigurationPolicy()
-            aws_iam_api = AWSIAMAPI(configuration=config, environment_api=self.environment_api)
-            self.set_api(aws_iam_api=aws_iam_api)
+            self._aws_iam_api = AWSIAMAPI(configuration=config, environment_api=self.environment_api)
+            self.init_default_aws_iam_api()
         return self._aws_iam_api
 
     @aws_iam_api.setter
@@ -107,6 +103,39 @@ class AWSLambdaAPI:
         """
 
         self._aws_iam_api = value
+
+    def init_default_aws_iam_api(self):
+        """
+        init default values
+
+        :return:
+        """
+
+        try:
+            self.aws_iam_api.configuration.role_name
+        except self.aws_iam_api.configuration.UndefinedValueError:
+            try:
+                lambda_role_name = self.configuration.lambda_role_name
+            except self.aws_iam_api.configuration.UndefinedValueError:
+                lambda_role_name = f"role_{self.environment_api.configuration.environment_level}-{self.configuration.lambda_name}"
+            self.aws_iam_api.configuration.role_name = lambda_role_name
+
+        try:
+            self.aws_iam_api.configuration.assume_role_policy_document
+        except self.aws_iam_api.configuration.UndefinedValueError:
+            self.aws_iam_api.configuration.assume_role_policy_document = json.dumps(
+                {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "lambda.amazonaws.com"
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                })
 
     @property
     def ecs_api(self):
@@ -137,6 +166,7 @@ class AWSLambdaAPI:
 
         if self._build_api is None:
             config = BuildAPIConfigurationPolicy()
+            config.docker_repository_uri = self.ecs_api.ecr_repo_uri
             build_api = BuildAPI(configuration=config, environment_api=self.environment_api)
             self._build_api = build_api
         return self._build_api
@@ -174,39 +204,11 @@ class AWSLambdaAPI:
 
             self.ecs_api.set_api(cloudwatch_api=self.cloudwatch_api)
 
-        if aws_iam_api:
-            self.aws_iam_api = aws_iam_api
-            try:
-                self.aws_iam_api.configuration.role_name
-            except self.aws_iam_api.configuration.UndefinedValueError:
-                try:
-                    lambda_role_name = self.configuration.lambda_role_name
-                except self.aws_iam_api.configuration.UndefinedValueError:
-                    lambda_role_name = f"role_{self.environment_api.configuration.environment_level}-{self.configuration.lambda_name}"
-                self.aws_iam_api.configuration.role_name = lambda_role_name
-
-            try:
-                self.aws_iam_api.configuration.assume_role_policy_document
-            except self.aws_iam_api.configuration.UndefinedValueError:
-                self.aws_iam_api.configuration.assume_role_policy_document = json.dumps(
-                    {
-                        "Version": "2012-10-17",
-                        "Statement": [
-                            {
-                                "Effect": "Allow",
-                                "Principal": {
-                                    "Service": "lambda.amazonaws.com"
-                                },
-                                "Action": "sts:AssumeRole"
-                            }
-                        ]
-                    })
-
         if loadbalancer_api:
             self.loadbalancer_api = loadbalancer_api
             self.loadbalancer_api.configuration.target_type = "lambda"
 
-    def provision_docker_lambda(self):
+    def provision_docker_lambda(self, branch_name=None):
         """
         Provision ECS infrastructure.
 
@@ -231,11 +233,34 @@ class AWSLambdaAPI:
 
         events_rule = self.provision_events_rule()
 
+        if events_rule:
+            statement = {"Sid": f"trigger_{self.configuration.event_bridge_rule_name}",
+                         "Effect": "Allow",
+                         "Principal": {"Service": "events.amazonaws.com"},
+                         "Action": "lambda:InvokeFunction",
+                         "Resource": None,
+                         "Condition": {"ArnLike": {
+                             "AWS:SourceArn": events_rule.arn}}}
+
+            self.configuration.policy["Statement"].append(statement)
+
         sns_topic = self.provision_sns_topic()
+        if sns_topic:
+            statement = {
+            "Sid": f"trigger_from_topic_{sns_topic.name}",
+            "Effect": "Allow",
+            "Principal": {"Service": "sns.amazonaws.com"},
+            "Action": "lambda:InvokeFunction",
+            "Resource": None,
+            "Condition": {"ArnLike": {"AWS:SourceArn": sns_topic.arn}},
+        }
+            self.configuration.policy["Statement"].append(statement)
 
-        aws_lambda = self.update(events_rule=events_rule, sns_topic=sns_topic)
+        aws_lambda = self.update(branch_name=branch_name)
 
-        breakpoint()
+        aws_lambda.policy = self.configuration.policy
+        self.environment_api.aws_api.lambda_client.provision_lambda_permissions(aws_lambda)
+
         if events_rule is not None:
             self.provision_events_rule_targets(events_rule, aws_lambda)
 
@@ -287,7 +312,7 @@ class AWSLambdaAPI:
         }
 
         inline_policies = self.role_inline_policies_callback()
-        breakpoint()
+
         self.aws_iam_api.provision_role(assume_role_policy=json.dumps(assume_role_policy),
                                         managed_policies_arns=managed_policies_arns, policies=inline_policies)
 
@@ -297,7 +322,7 @@ class AWSLambdaAPI:
 
         :return:
         """
-
+        breakpoint()
         self.alerts_api.provision()
         self.alerts_api.provision_cloudwatch_logs_alarm(self.cloudwatch_api.configuration.log_group_name, '"[ERROR]"',
                                                         "error", None, dimensions=None,
@@ -367,19 +392,20 @@ class AWSLambdaAPI:
         self.environment_api.aws_api.provision_sns_subscription(subscription)
         return subscription
 
-    def update(self, events_rule=None, sns_topic=None):
+    def update(self, branch_name=None):
         """
 
         :return:
         """
 
         if self.configuration.build_image:
-            image = self.build_api.run_build_image_routine()
+            build_number = self.ecs_api.get_next_build_number()
+            image = self.build_api.run_build_image_routine(branch_name, build_number)
             image_tag = image.tags[0]
         else:
             image_tag = self.get_latest_build()
 
-        return self.deploy_lambda(image_tag, events_rule=events_rule, sns_topic=sns_topic)
+        return self.deploy_lambda(image_tag)
 
     def get_latest_build_number(self):
         """
@@ -402,34 +428,24 @@ class AWSLambdaAPI:
 
         return None
 
-    def deploy_lambda(self, image_tag, events_rule=None, sns_topic=None):
+    def deploy_lambda(self, image_tag):
         """
         Deploy the code.
 
         :return:
         """
-        iam_role = self.aws_iam_api.get_role()
-
-        if self.configuration.schedule_expression and events_rule is None:
-            events_rule = EventBridgeRule({})
-            events_rule.name = self.configuration.event_bridge_rule_name
-            events_rule.region = self.environment_api.region
-            if not self.environment_api.aws_api.events_client.update_rule_information(events_rule):
-                raise RuntimeError(f"Was not able to find event rule {self.configuration.event_bridge_rule_name}")
-
-        if self.configuration.provision_sns_topic and sns_topic is None:
-            sns_topic = self.environment_api.get_sns_topic(self.configuration.sns_topic_name)
-
-        security_groups = self.environment_api.get_security_groups(self.configuration.security_groups)
 
         aws_lambda = AWSLambda({})
         aws_lambda.region = self.environment_api.region
         aws_lambda.name = self.configuration.lambda_name
+
+        iam_role = self.aws_iam_api.get_role()
         aws_lambda.role = iam_role.arn
 
         aws_lambda.tags = {tag["Key"]: tag["Value"] for tag in self.environment_api.configuration.tags}
         aws_lambda.tags["Name"] = aws_lambda.name
 
+        security_groups = self.environment_api.get_security_groups(self.configuration.security_groups)
         aws_lambda.vpc_config = {
             "SubnetIds": [subnet.id for subnet in self.environment_api.private_subnets],
             "SecurityGroupIds": [
@@ -443,42 +459,18 @@ class AWSLambdaAPI:
 
         aws_lambda.environment = self.environment_variables_callback()
 
-        aws_lambda.policy = self.configuration.policy
-
-        if self.configuration.schedule_expression:
-            statement = {"Sid": f"trigger_{self.configuration.event_bridge_rule_name}",
-                         "Effect": "Allow",
-                         "Principal": {"Service": "events.amazonaws.com"},
-                         "Action": "lambda:InvokeFunction",
-                         "Resource": None,
-                         "Condition": {"ArnLike": {
-                             "AWS:SourceArn": events_rule.arn}}}
-
-            aws_lambda.policy["Statement"].append(statement)
-
-        if sns_topic:
-            statement = {
-                "Sid": f"trigger_from_topic_{sns_topic.name}",
-                "Effect": "Allow",
-                "Principal": {"Service": "sns.amazonaws.com"},
-                "Action": "lambda:InvokeFunction",
-                "Resource": None,
-                "Condition": {"ArnLike": {"AWS:SourceArn": sns_topic.arn}},
-            }
-            aws_lambda.policy["Statement"].append(statement)
-
         if self.loadbalancer_api:
             try:
                 statement = self.generate_target_group_statement()
                 aws_lambda.policy["Statement"].append(statement)
             except RuntimeError as inst_error:
                 statement = {
-            "Sid": "tmp",
-            "Effect": "Allow",
-            "Principal": {"Service": "elasticloadbalancing.amazonaws.com"},
-            "Action": "lambda:InvokeFunction",
-            "Resource": None
-            }
+                    "Sid": "tmp",
+                    "Effect": "Allow",
+                    "Principal": {"Service": "elasticloadbalancing.amazonaws.com"},
+                    "Action": "lambda:InvokeFunction",
+                    "Resource": None
+                }
                 aws_lambda.policy["Statement"].append(statement)
                 if "Was not able to find target group" not in repr(inst_error):
                     raise
@@ -522,6 +514,7 @@ class AWSLambdaAPI:
         rule.schedule_expression = self.configuration.schedule_expression
         rule.event_bus_name = "default"
         rule.state = "ENABLED"
+        # rule.state = "DISABLED"
         rule.tags = self.environment_api.get_tags_with_name(rule.name)
 
         self.environment_api.aws_api.provision_events_rule(rule)

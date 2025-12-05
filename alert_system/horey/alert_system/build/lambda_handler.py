@@ -13,7 +13,7 @@ from horey.h_logger import get_logger
 logger = get_logger()
 
 
-def lambda_handler(event, _):
+def handler(event, _):
     """
     Entry point for this lambda
 
