@@ -11,9 +11,12 @@ import threading
 import time
 from enum import Enum
 from concurrent.futures import ThreadPoolExecutor
+import boto3
+from botocore.exceptions import ClientError
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.s3_bucket import S3Bucket
 from horey.h_logger import get_logger
+from horey.aws_api.base_entities.region import Region
 
 logger = get_logger()
 
@@ -460,14 +463,14 @@ class S3Client(Boto3Client):
         """
 
         current_bucket_information = list(
-                self.execute(
-                    self.get_session_client().head_bucket,
-                    None,
-                    raw_data=True,
-                    filters_req={"Bucket": bucket.name},
-                    exception_ignore_callback=lambda x: ": Not Found" in repr(x)
-                )
+            self.execute(
+                self.get_session_client().head_bucket,
+                None,
+                raw_data=True,
+                filters_req={"Bucket": bucket.name},
+                exception_ignore_callback=lambda x: ": Not Found" in repr(x)
             )
+        )
         if not current_bucket_information:
             return False
         if len(current_bucket_information) > 1:
@@ -853,7 +856,7 @@ class S3Client(Boto3Client):
         try:
             for response in self.execute(
                     self.get_session_client().put_object, None, filters_req=filters_req, raw_data=True,
-                exception_ignore_callback=lambda error_inst: "NoSuchBucket" in repr(error_inst)
+                    exception_ignore_callback=lambda error_inst: "NoSuchBucket" in repr(error_inst)
             ):
                 task.raw_response = response
                 task.succeed = True
@@ -1281,5 +1284,32 @@ class S3Client(Boto3Client):
 
         logger.info(f"Getting object tagging{request_dict}")
         return list(self.execute(
-                self.get_session_client(region=region).get_object_tagging, "TagSet", filters_req=request_dict
+            self.get_session_client(region=region).get_object_tagging, "TagSet", filters_req=request_dict
         ))
+
+    def create_presigned_url(self, bucket_name, object_key, expiration_seconds=3600):
+        """
+        Generates a presigned URL to securely download an S3 object.
+
+        Args:
+            bucket_name (str): The name of the S3 bucket.
+            object_key (str): The object's key (path/filename).
+            expiration_seconds (int): Time in seconds the URL is valid for (default 1 hour).
+
+        Returns:
+            str: The presigned URL, or None if an error occurred.
+        """
+
+        # 1. Create a Boto3 client
+        # The client uses the IAM user/role credentials configured in the environment.
+        s3_client = boto3.client('s3')
+
+
+        # 2. Generate the presigned URL
+        # The Client method 'get_object' is used to generate the download link.
+        url = self.get_session_client(region=Region.get_region("us-east-1")).generate_presigned_url(
+            'get_object',
+            Params={'Bucket': bucket_name, 'Key': object_key},
+            ExpiresIn=expiration_seconds
+        )
+        return url
