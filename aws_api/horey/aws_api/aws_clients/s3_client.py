@@ -11,8 +11,6 @@ import threading
 import time
 from enum import Enum
 from concurrent.futures import ThreadPoolExecutor
-import boto3
-from botocore.exceptions import ClientError
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.s3_bucket import S3Bucket
 from horey.h_logger import get_logger
@@ -1300,13 +1298,6 @@ class S3Client(Boto3Client):
             str: The presigned URL, or None if an error occurred.
         """
 
-        # 1. Create a Boto3 client
-        # The client uses the IAM user/role credentials configured in the environment.
-        s3_client = boto3.client('s3')
-
-
-        # 2. Generate the presigned URL
-        # The Client method 'get_object' is used to generate the download link.
         url = self.get_session_client(region=Region.get_region("us-east-1")).generate_presigned_url(
             'get_object',
             Params={'Bucket': bucket_name, 'Key': object_key},
