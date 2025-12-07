@@ -55,9 +55,9 @@ def test_update_info_auction_event_async():
     auction_api.update_info_auction_event_async(26)
 
 
-@pytest.mark.skip("Use with caution!")
+@pytest.mark.skip
 def test_delete_auction_event_with_lots():
-    auction_api.delete_auction_event_with_lots(25)
+    auction_api.delete_auction_event_with_lots(7)
 
 
 @pytest.mark.unit
@@ -76,7 +76,12 @@ def test_add_column_after_column():
     auction_api.add_column_after_column()
 
 
-@pytest.mark.skip
+@pytest.mark.unit
 def test_delete_providers_auction_events():
     provider = Kayesauction()
     auction_api.delete_providers_auction_events(provider)
+
+
+@pytest.mark.unit
+def test_generate_auction_event_reports():
+    auction_api.generate_auction_event_reports()

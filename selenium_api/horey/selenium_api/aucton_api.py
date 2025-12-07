@@ -335,6 +335,7 @@ class AuctionAPI:
         providers_by_id = {provider.id: provider for provider in self.init_providers_from_db()}
         by_date = {}
         for event in events:
+            logger.info(f"Checking event: {event.id}")
             if event.finished:
                 continue
 
@@ -406,6 +407,7 @@ class AuctionAPI:
         new_auction_events = provider.init_auction_events()
         if new_auction_events is None:
             return None
+        breakpoint()
         to_create = [new_auction_event for new_auction_event in new_auction_events
                      if new_auction_event.url not in known_auction_event_urls]
 
@@ -637,6 +639,7 @@ class AuctionAPI:
         """
 
         breakpoint()
+        return 0
 
         provider = self.init_provider_from_db(provider_name=provider.name)
         for auction_event in provider.auction_events:

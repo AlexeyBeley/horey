@@ -224,6 +224,13 @@ class Kayesauction(Provider):
 
                 if "Closes:" in line:
                     auction_event.end_time = self.extract_time_from_line(line)
+
+                if "closing" in line.lower():
+                    auction_event.end_time = self.extract_time_from_line(line)
+
+            if not auction_event.end_time:
+                breakpoint()
+                raise ValueError("Needed for checking if the event finished")
             auction_events.append(auction_event)
 
         for auction_event in auction_events:

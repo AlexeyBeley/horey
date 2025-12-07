@@ -6,6 +6,7 @@ import datetime
 import json
 import time
 from zoneinfo import ZoneInfo
+from urllib.parse import urlencode, urlparse, urlunparse
 
 from selenium.webdriver.common.by import By
 from horey.h_logger import get_logger
@@ -93,7 +94,20 @@ class MAauction(Provider):
                 lot_list_element = self.selenium_api.get_element(By.CLASS_NAME, "lotList")
                 break
             except NoSuchElementException as error_inst:
-                logger.exception("Fetch lotList failed: %s: %s", page_url, error_inst)
+                logger.exception(f"Fetch lotList failed: {page_url}: {error_inst}")
+                try:
+                    lot_list_contianer_element = None
+                    for _ in range(100):
+                        lot_list_contianer_element = self.selenium_api.get_element(By.CLASS_NAME, "lotListContainer")
+                        if "Loading..." not in lot_list_contianer_element.text:
+                           break
+                        time.sleep(0.1)
+                    if "No Lots Found" in lot_list_contianer_element.text:
+                        return []
+                except Exception as inst_err:
+                    logger.exception(f"Fetch lotListContainer failed: {page_url}: {inst_err}")
+                    breakpoint()
+                    pass
 
                 h1_elements = self.selenium_api.get_elements(By.TAG_NAME, "h1")
                 for h1_element in h1_elements:
@@ -186,7 +200,7 @@ class MAauction(Provider):
         urls = []
         for auctions_element in auctions_elements:
             url_element = auctions_element.find_element(By.TAG_NAME, "a")
-            url = url_element.get_attribute('href')
+            url = url_element.get_attribute("href")
             urls.append(url)
 
         auction_events = []
@@ -221,54 +235,106 @@ class MAauction(Provider):
             return auction_events
 
         auction_event = AuctionEvent()
-        auction_event.url = url if "?filter=" not in url else url[:url.find("?filter=")]
+        auction_event.url = url
         title_element = self.selenium_api.get_element(By.CLASS_NAME, "infoBoxAuctionTitle")
-        auction_event.name = title_element.text
+
+        self.init_auction_event_name(auction_event, title_element)
+
         auction_description = self.selenium_api.get_element(By.CLASS_NAME, "auctionDescription")
         auction_event.description = auction_description.text
+        auction_location = self.selenium_api.get_element(By.CLASS_NAME, "auctionLocation")
+        auction_event.address = auction_location.text
         auction_event.init_provinces()
         if not auction_event.provinces:
             breakpoint()
-        self.init_auction_event_start_time(auction_event, auction_description)
-        self.init_auction_event_end_time(auction_event, auction_description)
 
-        if auction_event.start_time is None:
-            auction_event_address = auction_event.provinces \
-                if auction_event.provinces and "," not in auction_event.provinces \
-                else None
-            lots = self.load_page_lots(auction_event.url + f"?page=1&pageSize=125", auction_event_address=auction_event_address)
-            self.selenium_api.get(lots[0].url)
-            self.selenium_api.wait_for_page_load()
-            start_time_element = self.selenium_api.get_element(By.CLASS_NAME, "startTime")
-            # '12/3/2025 10:00:00 PM'
-            parse_format = '%m/%d/%Y %I:%M:%S %p'
-            start_time_string = start_time_element.text.replace("Start Time:", "")
-            naive_dt = datetime.datetime.strptime(start_time_string, parse_format)
-            tz = MAauction.get_auction_event_tz(auction_event)
-            if tz is None:
-                provinces = lots[0].guess_provinces(lots[0].raw_text)
-                if len(provinces) != 1:
-                    breakpoint()
-                    raise RuntimeError(f"Expected 1 province: {provinces}")
-                tz = self.get_province_tz(provinces[0])
-                if tz is None:
-                    breakpoint()
-            auction_event.end_time = naive_dt.astimezone(tz)
+        self.init_auction_event_times(auction_event)
         return [auction_event]
 
+    def init_auction_event_times(self, auction_event):
+        """
+        Start end end time
+
+        :param auction_event:
+        :return:
+        """
+
+        self.init_auction_event_start_time(auction_event)
+        self.init_auction_event_end_time(auction_event)
+
+        if auction_event.start_time and auction_event.end_time:
+            return True
+
+        auction_event_address = auction_event.provinces \
+            if auction_event.provinces and "," not in auction_event.provinces \
+            else None
+        lots = self.load_page_lots(self.add_query_params(auction_event.url, {"page": 1, "pageSize": 125}),
+                                   auction_event_address=auction_event_address)
+        if not lots:
+            return False
+
+        self.init_auction_event_start_time_from_lot(auction_event, lots[0])
+        breakpoint()
+        auction_event.end_time = datetime.datetime.now().astimezone(self.get_province_tz("manitoba"))
+
+    def init_auction_event_start_time_from_lot(self, auction_event: AuctionEvent, lot: Lot):
+        """
+        From lot.
+
+        :param auction_event:
+        :param lot:
+        :return:
+        """
+
+        breakpoint()
+        self.selenium_api.get(lot.url)
+        self.selenium_api.wait_for_page_load()
+        start_time_element = self.selenium_api.get_element(By.CLASS_NAME, "startTime")
+        # '12/3/2025 10:00:00 PM'
+        parse_format = '%m/%d/%Y %I:%M:%S %p'
+        start_time_string = start_time_element.text.replace("Start Time:", "")
+        naive_dt = datetime.datetime.strptime(start_time_string, parse_format)
+        tz = MAauction.get_auction_event_tz(auction_event)
+        if tz is None:
+            provinces = lots[0].guess_provinces(lots[0].raw_text)
+            if len(provinces) == 0:
+                breakpoint()
+                raise RuntimeError(f"Expected 1 province: {provinces}")
+            if len(provinces) > 1:
+                logger.error(f"More than 1 province: {provinces}")
+            tz = self.get_province_tz(provinces[0])
+            if tz is None:
+                breakpoint()
+        auction_event.start_time = naive_dt.astimezone(tz)
+
     @staticmethod
-    def init_auction_event_start_time(auction_event, auction_description):
+    def init_auction_event_name(auction_event, title_element):
+        """
+
+        :param auction_event:
+        :param title_element:
+        :return:
+        """
+
+        parsed_url = urlparse(auction_event.url)
+        query_params = str(parsed_url.query)
+        auction_event.name = title_element.text
+        if "filter" in query_params:
+            auction_event.name += "-" + query_params.split("=")[1].strip("()").split(":")[1]
+
+    @staticmethod
+    def init_auction_event_start_time(auction_event):
         """
         Bidding Opens: - 9:00 AM Wednesday November 5, 2025
 
         :return:
         """
 
-        if "Bidding Now Open!" in auction_description.text:
+        if "Bidding Now Open!" in auction_event.description:
             return datetime.datetime.now(tz=datetime.timezone.utc)
 
-        if "Bidding Opens:" in auction_description.text:
-            for line in auction_description.text.split("\n"):
+        if "Bidding Opens:" in auction_event.description:
+            for line in auction_event.description.split("\n"):
                 closing_text_index = line.find("Bidding Opens:")
                 if closing_text_index > -1:
                     line = line.strip("- ")
@@ -279,7 +345,7 @@ class MAauction(Provider):
 
             auction_event.start_time = MAauction.extract_time(auction_event, line)
         else:
-            logger.error(f"Was not able to find start time in description: {auction_description.text}")
+            logger.error(f"Was not able to find start time in description: {auction_event.description}")
             return
 
     @staticmethod
@@ -292,6 +358,8 @@ class MAauction(Provider):
         """
 
         provinces = auction_event.provinces.split(",")
+        if not provinces:
+            breakpoint()
         provinces = list(set(provinces) - {"offsite"})
         if len(provinces) > 1:
             return None
@@ -310,7 +378,7 @@ class MAauction(Provider):
             tz = ZoneInfo("America/Edmonton")
         elif province == "manitoba":
             tz = ZoneInfo("America/Winnipeg")
-        elif province == "new brunswick":
+        elif province.lower() == "new brunswick":
             tz = ZoneInfo("America/Halifax")
         else:
             breakpoint()
@@ -329,6 +397,8 @@ class MAauction(Provider):
 
         if "2025" in line:
             year = 2025
+        elif "2026" in line:
+            year = 2026
         else:
             breakpoint()
             raise RuntimeError()
@@ -350,7 +420,7 @@ class MAauction(Provider):
         dt_aware = datetime.datetime(year, month, day, 9, 0, 0, tzinfo=MAauction.get_auction_event_tz(auction_event))
         return dt_aware.astimezone(datetime.timezone.utc)
 
-    def init_auction_event_end_time(self, auction_event: AuctionEvent, auction_description):
+    def init_auction_event_end_time(self, auction_event: AuctionEvent):
         """
         Human readable to utc
 
@@ -359,8 +429,8 @@ class MAauction(Provider):
         :param auction_description:
         :return:
         """
-        if "Auction closing: " in auction_description.text:
-            for line in auction_description.text.split("\n"):
+        if "Auction closing: " in auction_event.description:
+            for line in auction_event.description.split("\n"):
                 closing_text_index = line.find("Auction closing: ")
                 if closing_text_index > -1:
                     break
@@ -368,8 +438,8 @@ class MAauction(Provider):
                 breakpoint()
                 raise ValueError("Was not able to find end time data")
             line = line[closing_text_index + len("Lots Start Closing:"):].strip()
-        elif "Lots Start Closing:" in auction_description.text:
-            for line in auction_description.text.split("\n"):
+        elif "Lots Start Closing:" in auction_event.description:
+            for line in auction_event.description.split("\n"):
                 closing_text_index = line.find("Lots Start Closing:")
                 if closing_text_index > -1:
                     break
@@ -379,7 +449,7 @@ class MAauction(Provider):
 
             line = line[closing_text_index + len("Lots Start Closing:"):].strip()
         else:
-            logger.error(f"Was not able to find end time in description: {auction_description.text}")
+            logger.error(f"Was not able to find end time in description: {auction_event.description}")
             return
 
         auction_event.end_time = self.extract_time(auction_event, line)
@@ -416,8 +486,8 @@ class MAauction(Provider):
             if auction_event.provinces and "," not in auction_event.provinces \
             else None
 
-        for page_counter in range(1, self.get_page_count(auction_event.url+"?page=1&pageSize=125")+1):
-            lots += self.load_page_lots(auction_event.url + f"?page={page_counter}&pageSize=125",
+        for page_counter in range(1, self.get_page_count(self.add_query_params(auction_event.url, {"page": 1, "pageSize": 125}))+1):
+            lots += self.load_page_lots(self.add_query_params(auction_event.url, {"page": page_counter, "pageSize": 125}),
                                                       auction_event_address=auction_event_address)
 
         for i, lot in enumerate(lots):
@@ -522,3 +592,25 @@ class MAauction(Provider):
             return float(bid_price.replace(",", ""))
         except Exception as inst_error:
             raise ValueError(f"Was not able to find minimal bid for: {lot.url}") from inst_error
+
+    @staticmethod
+    def add_query_params(url, params):
+        """
+        Adds or updates query parameters in a given URL.
+
+        Args:
+            url (str): The original URL.
+            params (dict): A dictionary of key-value pairs to add or update.
+
+        Returns:
+            str: The URL with the added/updated query parameters.
+        """
+
+        parsed_url = urlparse(url)
+        query_params = {key_val.split("=")[0]: key_val.split("=")[1] for key_val in parsed_url.query.split('&')} if parsed_url.query else {}
+        query_params.update(params)
+        new_query_string = urlencode(query_params)
+
+        # Reconstruct the URL with the new query string
+        new_url = urlunparse(parsed_url._replace(query=new_query_string))
+        return new_url
