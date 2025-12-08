@@ -11,6 +11,7 @@ import platform
 import re
 import threading
 import time
+from pathlib import Path
 from random import random
 from time import perf_counter
 
@@ -112,6 +113,9 @@ class DockerAPI:
         :param kwargs:
         :return:
         """
+
+        if isinstance(dockerfile_directory_path, Path):
+            dockerfile_directory_path = str(dockerfile_directory_path)
 
         logger.info(f"Building image from: {dockerfile_directory_path}")
 
