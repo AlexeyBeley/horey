@@ -681,7 +681,7 @@ class DockerAPI:
                 for container_directory_name in container_directory_names:
                     if container_id in container_directory_name:
                         breakpoint()
-                        BashExecutor.run_bash(f"sudo rm -rf {str(containers_dir /container_directory_name)}*")
+                        BashExecutor.run_bash(f"sudo rm -rf {str(containers_dir /container_directory_name)}")
                         break
             except Exception:
                 breakpoint()
