@@ -667,8 +667,8 @@ class DockerAPI:
         """
 
         return_dict = BashExecutor.run_bash("docker ps --all -q -f status=dead")
-        container_ids = return_dict["stdout"].split("\n")
-        for container_id in container_ids:
+        dead_container_ids = return_dict["stdout"].split("\n")
+        for container_id in dead_container_ids:
             try:
                 BashExecutor.run_bash(f"docker container rm -f {container_id}")
             except Exception:
@@ -685,6 +685,7 @@ class DockerAPI:
             except Exception:
                 pass
 
+        if dead_container_ids:
             try:
                 BashExecutor.run_bash("sudo service docker restart")
             except Exception:
