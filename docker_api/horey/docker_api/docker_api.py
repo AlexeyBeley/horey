@@ -668,7 +668,6 @@ class DockerAPI:
 
         return_dict = BashExecutor.run_bash("docker ps --all -q -f status=dead")
         dead_container_ids = return_dict["stdout"].split("\n")
-        breakpoint()
         for container_id in dead_container_ids:
             try:
                 BashExecutor.run_bash(f"docker container rm -f {container_id}")
@@ -681,9 +680,11 @@ class DockerAPI:
                 container_directory_names = stdout.split("\n")
                 for container_directory_name in container_directory_names:
                     if container_id in container_directory_name:
+                        breakpoint()
                         BashExecutor.run_bash(f"sudo rm -rf {str(containers_dir /container_directory_name)}*")
                         break
             except Exception:
+                breakpoint()
                 pass
 
         if dead_container_ids:
