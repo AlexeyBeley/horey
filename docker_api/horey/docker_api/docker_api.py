@@ -657,3 +657,37 @@ class DockerAPI:
                 self.remove_image(image.attrs["Id"], force=True, childless=True)
 
             all_images = self.get_all_images()
+
+    @staticmethod
+    def prune_dead_containers():
+        """
+        Find dead
+
+        :return:
+        """
+
+        return_dict = BashExecutor.run_bash("docker ps --all -q -f status=dead")
+        container_ids = return_dict["stdout"].split("\n")
+        for container_id in container_ids:
+            try:
+                BashExecutor.run_bash(f"docker container rm -f {container_id}")
+            except Exception:
+                pass
+
+            try:
+                containers_dir = Path("/var") / "lib" / "docker" / "containers"
+                stdout = BashExecutor.run_bash(f"sudo ls {str(containers_dir)}")["stdout"]
+                container_directory_names = stdout.split("\n")
+                for container_directory_name in container_directory_names:
+                    if container_id in container_directory_name:
+                        BashExecutor.run_bash(f"sudo rm -rf {str(containers_dir /container_directory_name)}*")
+                        break
+            except Exception:
+                pass
+
+            try:
+                BashExecutor.run_bash("sudo service docker restart")
+            except Exception:
+                pass
+
+        return return_dict
