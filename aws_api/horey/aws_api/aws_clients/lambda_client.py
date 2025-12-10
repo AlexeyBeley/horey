@@ -5,7 +5,6 @@ Runtime example:
 https://docs.aws.amazon.com/lambda/latest/dg/runtimes-walkthrough.html
 
 """
-import time
 
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.aws_lambda import AWSLambda
@@ -154,21 +153,7 @@ class LambdaClient(Boto3Client):
         self.update_lambda_information(current_lambda, full_information=True)
 
         if current_lambda.arn is None:
-
-            # too fast builds + deploys make it unserrtain the AWS Lambda service can see the image. Doing retries
-            # to let the propagation finish
-            for i in range(10):
-                try:
-                    self.provision_lambda_raw(desired_aws_lambda.region, desired_aws_lambda.generate_create_request())
-                    break
-                except Exception as inst_err:
-                    if "Provide a valid source image" not in repr(inst_err):
-                        raise
-                    logger.error(f"Lambda creation failed, retrying to let the ECR propagation to reach Lambda service {i}/10")
-                    time.sleep(1)
-            else:
-                raise TimeoutError("Was not able to create lambda")
-
+            self.provision_lambda_raw(desired_aws_lambda.region, desired_aws_lambda.generate_create_request())
             if desired_aws_lambda.policy is not None:
                 self.provision_lambda_permissions(current_lambda, desired_aws_lambda)
 
