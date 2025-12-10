@@ -266,7 +266,7 @@ def test_run():
     assert docker_api.run(IMAGE_TAG, command_args=["sleep", "2"])
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_prune_dead_containers():
     """
     Test building image.
@@ -275,3 +275,14 @@ def test_prune_dead_containers():
     """
 
     assert DockerAPI.prune_dead_containers()
+
+
+@pytest.mark.wip
+def test_log_to_container_file():
+    """
+    Test building image.
+
+    @return:
+    """
+
+    assert DockerAPI.log_to_container_file("test", "Pruning error: blabla")

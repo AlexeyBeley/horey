@@ -671,8 +671,8 @@ class DockerAPI:
         for container_id in dead_container_ids:
             try:
                 BashExecutor.run_bash(f"docker container rm -f {container_id}")
-            except Exception:
-                pass
+            except Exception as inst_error:
+                logger.exception(inst_error)
 
             try:
                 containers_dir = Path("/var") / "lib" / "docker" / "containers"
@@ -683,14 +683,79 @@ class DockerAPI:
                         breakpoint()
                         BashExecutor.run_bash(f"sudo rm -rf {str(containers_dir /container_directory_name)}")
                         break
-            except Exception:
-                breakpoint()
-                pass
+            except Exception as inst_error:
+                logger.exception(inst_error)
 
         if dead_container_ids:
             try:
                 BashExecutor.run_bash("sudo service docker restart")
-            except Exception:
-                pass
+            except Exception as inst_error:
+                logger.exception(inst_error)
 
         return return_dict
+
+    def prune_stopped_containers(self, time_limit=60):
+        """
+        Deleted old containers
+
+        :param time_limit:
+        :return:
+        """
+
+        start = perf_counter()
+        try:
+            all_containers = self.client.containers.list(all=True)
+        except Exception as inst_error:
+            DockerAPI.log_to_container_file("", f"Pruning error: {repr(inst_error)}")
+            DockerAPI.prune_dead_containers()
+            logger.info("Going to sleep - allowing docker service to gracefully start")
+            time.sleep(5)
+            all_containers = self.client.containers.list(all=True)
+
+        to_delete_counter = 0
+        deleted_counter = 0
+
+        time_limit = datetime.datetime.now() - datetime.timedelta(minutes=time_limit)
+        for i, container in enumerate(all_containers):
+            logger.info(f"Checking {i}/{len(all_containers)} container: {container.id}")
+            # '2024-08-01T17:38:24.420772541Z'
+            try:
+                if container.attrs["State"]["Status"].lower() == "running":
+                    # running container has finished date '0001-01-01T00:00:00'
+                    continue
+                str_finished_date = container.attrs["State"]["FinishedAt"]
+                str_finished_date = str_finished_date[:str_finished_date.rfind(".")]
+                time_finished = datetime.datetime.strptime(str_finished_date, "%Y-%m-%dT%H:%M:%S")
+                if time_limit > time_finished:
+                    to_delete_counter += 1
+                    logger.info(f"Removing container: {container.id}")
+                    container.remove(force=True)
+                    deleted_counter += 1
+            except Exception as inst_error:
+                DockerAPI.log_to_container_file("", f"Pruning error deleting container {container.id}: {repr(inst_error)}")
+
+        logger.info(f"Finished deleting {deleted_counter=} {to_delete_counter=} containers after {perf_counter() - start}")
+
+    @staticmethod
+    def log_to_container_file(file_name, log_line):
+        """
+        Simulate docker container logger.
+        sudo echo '{"log":"['$(date "+%Y-%m-%d %H:%M:%S")'][INFO][docker_api.py:1]: Runner error","stream":"stdout","attrs":{"tag":"\"eu:STRING_REPLACEMENT_LOCATION:00001:00001-0000000001.0000001\""},"time":"'$(date -u "+%Y-%m-%dT%H:%M:%SZ")'"}' > /var/lib/docker/containers/aaaaaaaaaaa/aaaaaaaaaaa-json.log
+
+
+        :param file_name:
+        :param log_line:
+        :return:
+        """
+
+        command = f"sudo mkdir -p /var/lib/docker/containers/{file_name}"
+        BashExecutor.run_bash(command)
+
+        # working:
+        # command = "sudo echo '{\"log\":\"['$(date \"+%Y-%m-%d %H:%M:%S\")'][INFO][docker_api.py:1]: " + log_line+ "\",\"stream\":\"stdout\",\"attrs\":{\"tag\":\"\\\"eu:STRING_REPLACEMENT_LOCATION:00001:00001-0000000001.0000001\\\"\"},\"time\":\"'$(date -u \"+%Y-%m-%dT%H:%M:%SZ\")'\"}' >" + f"/var/lib/docker/containers/{file_name}/{file_name}-json.log"
+        line = {"log": "['$(date \"+%Y-%m-%d %H:%M:%S\")'][INFO][docker_api.py:1]: " + log_line,
+                "stream": "stdout" }
+        line = "'\"stream\":\"stdout\",\"attrs\":{\"tag\":\"\\\"eu:STRING_REPLACEMENT_LOCATION:00001:00001-0000000001.0000001\\\"\"},\"time\":\"'$(date -u \"+%Y-%m-%dT%H:%M:%SZ\")'\"}'"
+        command = f"sudo echo {line} >" + f"/var/lib/docker/containers/{file_name}/{file_name}-json.log"
+        ret_dict = BashExecutor.run_bash(command, sudo=True)
+        breakpoint()

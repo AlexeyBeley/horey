@@ -493,6 +493,50 @@ class RemoteDeployer:
         logger.error(f"Was not able to fetch remote path '{remote_file_path}' to local path '{local_file_path}'")
         return False
 
+    def get_file_linux(self, deployment_target, local_file_path, remote_file_path):
+        """
+        Copy file from local to remote.
+
+        :param deployment_target:
+        :param local_file_path:
+        :param remote_file_path:
+        :return:
+        """
+        sleep_time = 1
+        end_time = datetime.datetime.now() + datetime.timedelta(minutes=5)
+        while datetime.datetime.now() < end_time:
+            with self.get_deployment_target_client_context(deployment_target) as client:
+                transport = client.get_transport()
+                try:
+                    sftp_client = HoreySFTPClient.from_transport(transport)
+                    sftp_client.get(remote_file_path, local_file_path)
+                    return True
+                except Exception as inst_error:
+                    if "No such file" not in repr(inst_error):
+                        break
+                    logger.error(
+                        f"Was not able to fetch remote path '{remote_file_path}' to local path '{local_file_path}'")
+            logger.info(f"Going to sleep for {sleep_time}")
+            time.sleep(sleep_time)
+        logger.error(f"Was not able to fetch remote path '{remote_file_path}' to local path '{local_file_path}'")
+        return False
+
+    def run_command(self, target, command):
+        """
+        Run a command
+
+
+        :param target:
+        :param command:
+        :return: shin, shout, sherr, exit_status
+        """
+        ssh_client = self.get_deployment_target_ssh_client(target)
+        channel = ssh_client.invoke_shell()
+
+        stdin = channel.makefile('wb')
+        stdout = channel.makefile('r')
+        return self.execute_remote_shell(stdin, stdout, command, target.deployment_target_address)
+
     @staticmethod
     def execute_remote(client, command):
         """
