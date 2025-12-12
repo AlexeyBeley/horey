@@ -78,6 +78,8 @@ class NatGateway(AwsObject):
             "DeleteTime": self.init_default_attr,
             "FailureCode": self.init_default_attr,
             "FailureMessage": self.init_default_attr,
+            "AttachedAppliances": self.init_default_attr,
+            "AvailabilityMode": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)
