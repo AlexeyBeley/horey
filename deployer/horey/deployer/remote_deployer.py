@@ -461,7 +461,6 @@ class RemoteDeployer:
         with self.get_deployment_target_client_context(deployment_target) as client:
             transport = client.get_transport()
             sftp_client = HoreySFTPClient.from_transport(transport)
-            breakpoint()
             sftp_client.put_dir(local_path, remote_path)
         return True
 
@@ -493,7 +492,7 @@ class RemoteDeployer:
         logger.error(f"Was not able to fetch remote path '{remote_file_path}' to local path '{local_file_path}'")
         return False
 
-    def get_file_linux(self, deployment_target, local_file_path, remote_file_path):
+    def get_file_linux(self, deployment_target, remote_file_path, local_file_path):
         """
         Copy file from local to remote.
 

@@ -6,6 +6,7 @@ Docker API - used to communicate with docker service.
 import datetime
 import getpass
 import itertools
+import json
 import os.path
 import platform
 import re
@@ -35,7 +36,7 @@ class DockerAPI:
         if "macos" in platform.platform().lower():
             self.client = docker.DockerClient(base_url=f'unix:///Users/{getpass.getuser()}/.docker/run/docker.sock')
         else:
-            self.client = docker.from_env(timeout=60*10)
+            self.client = docker.from_env(timeout=60 * 10)
 
     def login(self, registry, username, password):
         """
@@ -90,7 +91,7 @@ class DockerAPI:
             build_start = perf_counter()
             docker_image, build_log = self.client.images.build(
 
-            **kwargs)
+                **kwargs)
             build_end = perf_counter()
             self.print_log(build_log)
         except BuildError as exception_instance:
@@ -127,9 +128,13 @@ class DockerAPI:
         tag = tags[0] if len(tags) > 0 else "latest"
 
         if stream:
-            docker_image = self.build_streaming(path=dockerfile_directory_path, tag=tag, rm=remove_intermediate_containers, forcerm=remove_intermediate_containers, **kwargs)
+            docker_image = self.build_streaming(path=dockerfile_directory_path, tag=tag,
+                                                rm=remove_intermediate_containers,
+                                                forcerm=remove_intermediate_containers, **kwargs)
         else:
-            docker_image =self.build_standard(path=dockerfile_directory_path, tag=tag, rm=remove_intermediate_containers, forcerm=remove_intermediate_containers, **kwargs)
+            docker_image = self.build_standard(path=dockerfile_directory_path, tag=tag,
+                                               rm=remove_intermediate_containers,
+                                               forcerm=remove_intermediate_containers, **kwargs)
 
         self.tag_image(docker_image, tags[1:])
 
@@ -203,7 +208,8 @@ class DockerAPI:
         thread.start()
 
     # pylint: disable = too-many-arguments, too-many-positional-arguments
-    def run(self, image_name, container_name=None, environment_variables=None, command_args=None, detach=True, remove=True):
+    def run(self, image_name, container_name=None, environment_variables=None, command_args=None, detach=True,
+            remove=True):
         """
         Run the image.
 
@@ -339,7 +345,8 @@ class DockerAPI:
                 if not retry:
                     raise
                 time_to_sleep = random() * 20 + 10
-                logger.info(f"Received IncompleteRead, it means server closed connection. Going to sleep ({retry_counter}/{retries_limit}) for {time_to_sleep}")
+                logger.info(
+                    f"Received IncompleteRead, it means server closed connection. Going to sleep ({retry_counter}/{retries_limit}) for {time_to_sleep}")
                 time.sleep(time_to_sleep)
 
         raise TimeoutError(f"Image tags {repo_tags} uploading failed for {retries_limit} times")
@@ -358,7 +365,7 @@ class DockerAPI:
             logger.info(f"Uploading {repository} to repository")
             time_start = datetime.datetime.now()
             for log_line in self.client.images.push(
-                repository=repository, stream=True, decode=True
+                    repository=repository, stream=True, decode=True
             ):
                 try:
                     self.print_log_line(log_line)
@@ -367,10 +374,11 @@ class DockerAPI:
 
             time_end = datetime.datetime.now()
             if errors_detected:
-                raise RuntimeError(f"Failed to upload {repository} took {time_end-time_start} time. {errors_detected}")
+                raise RuntimeError(
+                    f"Failed to upload {repository} took {time_end - time_start} time. {errors_detected}")
 
             logger.info(
-                f"Uploading repository {repository} took {time_end-time_start} time."
+                f"Uploading repository {repository} took {time_end - time_start} time."
             )
         return True
 
@@ -487,7 +495,7 @@ class DockerAPI:
         ]
         return ret
 
-    def remove_image(self, image_id, force=True, wait_to_finish=20*60, childless=False):
+    def remove_image(self, image_id, force=True, wait_to_finish=20 * 60, childless=False):
         """
         Remove image.
 
@@ -518,7 +526,8 @@ class DockerAPI:
                 self.kill_container(container, remove=True, wait_to_finish=wait_to_finish)
 
             if image_children and not main_image.tags:
-                logger.info(f"Untagged parent image automatically removed by docker after all children removed: {image_id}.")
+                logger.info(
+                    f"Untagged parent image automatically removed by docker after all children removed: {image_id}.")
                 lst_ret.append(image_id)
                 return lst_ret
 
@@ -680,8 +689,7 @@ class DockerAPI:
                 container_directory_names = stdout.split("\n")
                 for container_directory_name in container_directory_names:
                     if container_id in container_directory_name:
-                        breakpoint()
-                        BashExecutor.run_bash(f"sudo rm -rf {str(containers_dir /container_directory_name)}")
+                        BashExecutor.run_bash(f"sudo rm -rf {str(containers_dir / container_directory_name)}")
                         break
             except Exception as inst_error:
                 logger.exception(inst_error)
@@ -694,23 +702,34 @@ class DockerAPI:
 
         return return_dict
 
-    def prune_stopped_containers(self, time_limit=60):
+    def prune_stopped_containers(self, time_limit=60, container_log_attrs=None):
         """
         Deleted old containers
 
+        :param container_log_attrs:
         :param time_limit:
         :return:
         """
+
+        container_dir_name = "pruner"
+        try:
+            return BashExecutor.run_bash(f"docker container prune --force --filter \"until={time_limit}m\"")
+        except Exception as inst_error:
+            DockerAPI.log_to_container_file(container_dir_name,
+                                            f"Pruning error: 'docker container prune' failed with error {repr(inst_error)}", attrs=container_log_attrs)
 
         start = perf_counter()
         try:
             all_containers = self.client.containers.list(all=True)
         except Exception as inst_error:
-            DockerAPI.log_to_container_file("", f"Pruning error: {repr(inst_error)}")
             DockerAPI.prune_dead_containers()
             logger.info("Going to sleep - allowing docker service to gracefully start")
             time.sleep(5)
-            all_containers = self.client.containers.list(all=True)
+            try:
+                all_containers = self.client.containers.list(all=True)
+            except Exception:
+                DockerAPI.log_to_container_file(container_dir_name, f"Pruning error: {repr(inst_error)}", attrs=container_log_attrs)
+                raise
 
         to_delete_counter = 0
         deleted_counter = 0
@@ -718,10 +737,8 @@ class DockerAPI:
         time_limit = datetime.datetime.now() - datetime.timedelta(minutes=time_limit)
         for i, container in enumerate(all_containers):
             logger.info(f"Checking {i}/{len(all_containers)} container: {container.id}")
-            # '2024-08-01T17:38:24.420772541Z'
             try:
                 if container.attrs["State"]["Status"].lower() == "running":
-                    # running container has finished date '0001-01-01T00:00:00'
                     continue
                 str_finished_date = container.attrs["State"]["FinishedAt"]
                 str_finished_date = str_finished_date[:str_finished_date.rfind(".")]
@@ -732,30 +749,42 @@ class DockerAPI:
                     container.remove(force=True)
                     deleted_counter += 1
             except Exception as inst_error:
-                DockerAPI.log_to_container_file("", f"Pruning error deleting container {container.id}: {repr(inst_error)}")
+                DockerAPI.log_to_container_file(container_dir_name,
+                                                f"Pruning error deleting container {container.id}: {repr(inst_error)}", attrs=container_log_attrs)
 
-        logger.info(f"Finished deleting {deleted_counter=} {to_delete_counter=} containers after {perf_counter() - start}")
+        logger.info(
+            f"Finished deleting {deleted_counter=} {to_delete_counter=} containers after {perf_counter() - start}")
+
+        return True
 
     @staticmethod
-    def log_to_container_file(file_name, log_line):
+    def log_to_container_file(dir_name, log_line, attrs=None):
         """
         Simulate docker container logger.
-        sudo echo '{"log":"['$(date "+%Y-%m-%d %H:%M:%S")'][INFO][docker_api.py:1]: Runner error","stream":"stdout","attrs":{"tag":"\"eu:STRING_REPLACEMENT_LOCATION:00001:00001-0000000001.0000001\""},"time":"'$(date -u "+%Y-%m-%dT%H:%M:%SZ")'"}' > /var/lib/docker/containers/aaaaaaaaaaa/aaaaaaaaaaa-json.log
 
-
-        :param file_name:
+        :param attrs:
+        :param dir_name:
         :param log_line:
         :return:
         """
 
-        command = f"sudo mkdir -p /var/lib/docker/containers/{file_name}"
+        command = f"sudo mkdir -p /var/lib/docker/containers/{dir_name}"
         BashExecutor.run_bash(command)
 
-        # working:
-        # command = "sudo echo '{\"log\":\"['$(date \"+%Y-%m-%d %H:%M:%S\")'][INFO][docker_api.py:1]: " + log_line+ "\",\"stream\":\"stdout\",\"attrs\":{\"tag\":\"\\\"eu:STRING_REPLACEMENT_LOCATION:00001:00001-0000000001.0000001\\\"\"},\"time\":\"'$(date -u \"+%Y-%m-%dT%H:%M:%SZ\")'\"}' >" + f"/var/lib/docker/containers/{file_name}/{file_name}-json.log"
-        line = {"log": "['$(date \"+%Y-%m-%d %H:%M:%S\")'][INFO][docker_api.py:1]: " + log_line,
-                "stream": "stdout" }
-        line = "'\"stream\":\"stdout\",\"attrs\":{\"tag\":\"\\\"eu:STRING_REPLACEMENT_LOCATION:00001:00001-0000000001.0000001\\\"\"},\"time\":\"'$(date -u \"+%Y-%m-%dT%H:%M:%SZ\")'\"}'"
-        command = f"sudo echo {line} >" + f"/var/lib/docker/containers/{file_name}/{file_name}-json.log"
-        ret_dict = BashExecutor.run_bash(command, sudo=True)
-        breakpoint()
+        now_aware_utc = datetime.datetime.now(tz=datetime.timezone.utc)
+
+        formatted_time_base = now_aware_utc.strftime("%Y-%m-%d %H:%M:%S")
+        microseconds = now_aware_utc.strftime("%f")
+
+        milliseconds = microseconds[:3]
+
+        timestamp_with_comma_ms = f"{formatted_time_base},{milliseconds}"
+
+        dict_line = {"log": f"[{timestamp_with_comma_ms}][INFO][docker_api.py:1]: " + log_line,
+                     "stream": "stdout",
+                     "time": now_aware_utc.isoformat().replace("+00:00", "Z"),
+                     }
+        if attrs:
+            dict_line["attrs"] = attrs
+        command = f"sudo echo {json.dumps(json.dumps(dict_line))} >" + f"/var/lib/docker/containers/{dir_name}/{dir_name}-json.log"
+        return BashExecutor.run_bash(command, sudo=True)
