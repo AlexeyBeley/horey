@@ -786,5 +786,5 @@ class DockerAPI:
                      }
         if attrs:
             dict_line["attrs"] = attrs
-        command = f"sudo echo {json.dumps(json.dumps(dict_line))} >" + f"/var/lib/docker/containers/{dir_name}/{dir_name}-json.log"
+        command = f"sudo echo {json.dumps(json.dumps(dict_line))} >>" + f"/var/lib/docker/containers/{dir_name}/{dir_name}-json.log"
         return BashExecutor.run_bash(command, sudo=True)
