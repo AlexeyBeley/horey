@@ -590,6 +590,8 @@ class S3Client(Boto3Client):
         @param keep_src_object_name: If True: src_object base name preserved.
         @return: None
         """
+
+        dst_root_key = dst_root_key.lstrip("/").rstrip("/")
         start_time = datetime.datetime.now()
 
         self.finished_uploading_flow = False

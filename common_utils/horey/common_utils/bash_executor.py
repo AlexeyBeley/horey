@@ -50,7 +50,7 @@ class BashExecutor:
         return True
 
     @staticmethod
-    def run_bash(command, ignore_on_error_callback=None, timeout=60 * 10, debug=True, logger=None):
+    def run_bash(command, ignore_on_error_callback=None, timeout=60 * 10, debug=True, logger=None, sudo=False):
         """
         Run bash command, return stdout, stderr and return code.
         Timeout is used fot stuck commands - for example if the command expects for user input.
@@ -62,6 +62,7 @@ class BashExecutor:
         @param ignore_on_error_callback:
         @param logger:
         @return:
+        :param sudo:
         """
 
         if not logger:
@@ -75,6 +76,8 @@ class BashExecutor:
         with open(file_name, "w", encoding="utf-8") as file_handler:
             file_handler.write(command)
             command = f"/bin/bash {file_name}"
+            if sudo:
+                command = "sudo " + command
 
         try:
             ret = subprocess.run(
