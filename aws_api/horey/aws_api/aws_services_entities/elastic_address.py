@@ -59,6 +59,7 @@ class ElasticAddress(AwsObject):
             "Tags": self.init_default_attr,
             "PublicIpv4Pool": self.init_default_attr,
             "NetworkBorderGroup": self.init_default_attr,
+            "ServiceManaged": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)

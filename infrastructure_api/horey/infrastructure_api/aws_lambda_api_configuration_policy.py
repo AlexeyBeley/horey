@@ -156,8 +156,6 @@ class AWSLambdaAPIConfigurationPolicy(ConfigurationPolicy):
 
     @property
     def security_groups(self):
-        if self._security_groups is None:
-            raise self.UndefinedValueError("security_groups")
         return self._security_groups
 
     @security_groups.setter

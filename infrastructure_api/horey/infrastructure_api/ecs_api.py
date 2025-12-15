@@ -16,8 +16,6 @@ from horey.aws_api.aws_services_entities.ecr_image import ECRImage
 from horey.aws_api.aws_services_entities.ecr_repository import ECRRepository
 from horey.aws_api.aws_services_entities.ecs_task import ECSTask
 from horey.aws_api.base_entities.region import Region
-from horey.infrastructure_api.alerts_api import AlertsAPI
-from horey.infrastructure_api.alerts_api_configuration_policy import AlertsAPIConfigurationPolicy
 from horey.infrastructure_api.cloudwatch_api_configuration_policy import CloudwatchAPIConfigurationPolicy
 from horey.infrastructure_api.aws_iam_api_configuration_policy import AWSIAMAPIConfigurationPolicy
 from horey.infrastructure_api.aws_iam_api import AWSIAMAPI
@@ -45,7 +43,6 @@ class ECSAPI:
         self.environment_api = environment_api
         self._ecr_repository = None
         self._ecr_images = None
-        self._alerts_api = None
         self._cloudwatch_api = None
         self._aws_iam_api = None
         self.loadbalancer_api = None
@@ -732,33 +729,6 @@ class ECSAPI:
         return self.environment_api.download_ecr_image(self.ecr_repo_uri, max_build_ecr_image.image_tags)
 
     @property
-    def alerts_api(self):
-        """
-        Alerts api
-
-        :return:
-        """
-
-        if self._alerts_api is None:
-            alerts_api_configuration = AlertsAPIConfigurationPolicy()
-            breakpoint()
-            if "ecs_task" in self.configuration.ecs_task_role_name or "ecs-task" in self.configuration.ecs_task_role_name:
-                alerts_api_configuration.lambda_role_name = self.configuration.ecs_task_role_name. \
-                    replace("ecs_task", "has2"). \
-                    replace("ecs-task", "has2")
-                if alerts_api_configuration.lambda_role_name.count("has2") != 1:
-                    raise ValueError(f"Expected single 'has2' in '{alerts_api_configuration.lambda_role_name}'")
-            else:
-                alerts_api_configuration.lambda_role_name = self.configuration.ecs_task_role_name + "-has2"
-
-            alerts_api_configuration.lambda_name = f"has2-{self.configuration.slug}"
-            alerts_api_configuration.horey_repo_path = os.path.join(
-                self.environment_api.git_api.configuration.git_directory_path, "horey")
-
-            self._alerts_api = AlertsAPI(alerts_api_configuration, self.environment_api)
-        return self._alerts_api
-
-    @property
     def cloudwatch_api(self):
         """
         Standard.
@@ -791,15 +761,14 @@ class ECSAPI:
             self._aws_iam_api = AWSIAMAPI(configuration=config, environment_api=self.environment_api)
         return self._aws_iam_api
 
-    def provision_monitoring(self):
+    def provision_monitoring(self, alerts_api):
         """
         Provision alert system and alerts.
 
         :return:
         """
 
-        self.alerts_api.provision()
-        self.alerts_api.provision_cloudwatch_logs_alarm(self.cloudwatch_api.configuration.log_group_name,
+        alerts_api.provision_cloudwatch_logs_alarm(self.cloudwatch_api.configuration.log_group_name,
                                                         self.configuration.alerts_api_error_filter_text,
                                                         "error", None, dimensions=None,
                                                         alarm_description=None)

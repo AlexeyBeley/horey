@@ -21,7 +21,6 @@ class AlertsAPIConfigurationPolicy(ConfigurationPolicy):
         self._event_bridge_rule_name = None
         self._lambda_role_name = None
         self._lambda_name = None
-        self._horey_repo_path = None
         self._routing_tags_to_slack_channels_mapping = None
         self._self_monitoring_slack_channel = None
         self._bearer_token = None
@@ -36,7 +35,7 @@ class AlertsAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def sns_topic_name(self):
         if self._sns_topic_name is None:
-            self._sns_topic_name = f"topic-has2-{self.slug}"
+            self._sns_topic_name = f"topic-{self.slug}"
         return self._sns_topic_name
 
     @sns_topic_name.setter
@@ -46,7 +45,7 @@ class AlertsAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def sns_subscription_name(self):
         if self._sns_subscription_name is None:
-            self._sns_subscription_name = f"subscription-has2-{self.slug}"
+            self._sns_subscription_name = f"subscription-{self.slug}"
         return self._sns_subscription_name
 
     @sns_subscription_name.setter
@@ -118,21 +117,11 @@ class AlertsAPIConfigurationPolicy(ConfigurationPolicy):
         self._routing_tags_to_slack_channels_mapping = value
 
     @property
-    def horey_repo_path(self):
-        if self._horey_repo_path is None:
-            raise self.UndefinedValueError("horey_repo_path")
-        return self._horey_repo_path
-
-    @horey_repo_path.setter
-    def horey_repo_path(self, value):
-        self._horey_repo_path = value
-
-    @property
     def lambda_name(self):
         if self._lambda_name is None:
             if self._slug is None:
                 raise self.UndefinedValueError("lambda_name")
-            self._lambda_name = f"has2-{self.slug}"
+            self._lambda_name = self.slug
         return self._lambda_name
 
     @lambda_name.setter
@@ -142,7 +131,7 @@ class AlertsAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def lambda_role_name(self):
         if self._lambda_role_name is None:
-            raise self.UndefinedValueError("lambda_role_name")
+            breakpoint()
         return self._lambda_role_name
 
     @lambda_role_name.setter
@@ -152,7 +141,7 @@ class AlertsAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def event_bridge_rule_name(self):
         if self._event_bridge_rule_name is None:
-            self._event_bridge_rule_name = f"rule-has2-{self.slug}"
+            self._event_bridge_rule_name = f"rule-{self.slug}"
         return self._event_bridge_rule_name
 
     @event_bridge_rule_name.setter
@@ -162,7 +151,7 @@ class AlertsAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def dynamodb_table_name(self):
         if self._dynamodb_table_name is None:
-            self._dynamodb_table_name = f"has2-{self.slug}"
+            self._dynamodb_table_name = f"tbl-{self.slug}"
         return self._dynamodb_table_name
 
     @dynamodb_table_name.setter
@@ -180,5 +169,9 @@ class AlertsAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def slug(self):
         if self._slug is None:
-            self._slug = self.lambda_name.replace('has2-', '').replace('has2_', '')
+            self._slug = self.lambda_name
         return self._slug
+
+    @slug.setter
+    def slug(self, value):
+        self._slug = value

@@ -17,7 +17,7 @@ from horey.alert_system.postgres.postgres_alert_builder import \
     PostgresAlertBuilder
 from horey.alert_system.elb_alert_builder import ELBAlertBuilder
 
-from horey.infrastructure_api.environment_api import EnvironmentAPI, EnvironmentAPIConfigurationPolicy
+from horey.infrastructure_api.aws_lambda_api import AWSLambdaAPI, AWSLambdaAPIConfigurationPolicy
 from horey.git_api.git_api import GitAPI, GitAPIConfigurationPolicy
 
 
@@ -30,18 +30,70 @@ class AlertsAPI:
     def __init__(self, configuration, environment_api):
         self.configuration = configuration
         self.environment_api = environment_api
+        self._aws_lambda_api = None
+        self._alert_system = None
 
-        has2_config = AlertSystemConfigurationPolicy()
-        has2_config.horey_repo_path = self.configuration.horey_repo_path
-        has2_config.do_not_send_ses_suppressed_bounce_notifications = self.configuration.do_not_send_ses_suppressed_bounce_notifications
-        has2_config.sns_topic_name = self.configuration.sns_topic_name
-        has2_config.lambda_name = self.configuration.lambda_name
-        has2_config.dynamodb_table_name = self.configuration.dynamodb_table_name
-        has2_config.region = self.environment_api.configuration.region
-        has2_config.tags = self.environment_api.configuration.tags
-        self.alert_system = AlertSystem(has2_config)
-        # self.generate_notification_channels_configuration()
+    @property
+    def alert_system(self):
+        """
+        Standard.
 
+        :return:
+        """
+        if self._alert_system is None:
+            config = AlertSystemConfigurationPolicy()
+            config.horey_repo_path = self.aws_lambda_api.build_api.horey_git_api.configuration.directory_path
+            config.do_not_send_ses_suppressed_bounce_notifications = self.configuration.do_not_send_ses_suppressed_bounce_notifications
+            config.sns_topic_name = self.configuration.sns_topic_name
+            config.lambda_name = self.configuration.lambda_name
+            config.dynamodb_table_name = self.configuration.dynamodb_table_name
+            config.region = self.environment_api.configuration.region
+            config.tags = self.environment_api.configuration.tags
+            self._alert_system = AlertSystem(config)
+            # self.generate_notification_channels_configuration()
+
+        return self._alert_system
+
+    @property
+    def aws_lambda_api(self):
+        """
+        Standard.
+
+        :return:
+        """
+
+        if self._aws_lambda_api is None:
+            config = AWSLambdaAPIConfigurationPolicy()
+            config.lambda_name = "has3-test"
+            config.lambda_timeout = 300
+            config.lambda_memory_size = 1024
+            config.provision_sns_topic = True
+            config.schedule_expression = "rate(1 minute)"
+            lambda_api = AWSLambdaAPI(config, self.environment_api)
+
+            lambda_api.role_inline_policies_callback = lambda: [self.generate_inline_dynamodb_policy(),
+                                                                self.generate_inline_cloudwatch_policy()]
+            lambda_api.lambda_resource_policies_callback = lambda: [
+                {
+                    "Sid": "AlarmAction",
+                    "Effect": "Allow",
+                    "Principal": {
+                        "Service": "lambda.alarms.cloudwatch.amazonaws.com"
+                    },
+                    "Action": "lambda:InvokeFunction",
+                    "Resource": None,
+                    "Condition": {
+                        "StringEquals": {
+                            "AWS:SourceAccount": self.environment_api.aws_api.lambda_client.account_id
+                        }
+                    }
+                }
+            ]
+
+            lambda_api.build_api.git_api = lambda_api.build_api.horey_git_api
+            self._aws_lambda_api = lambda_api
+
+        return self._aws_lambda_api
 
     def generate_lambda_package_configuration_files(self):
         """
@@ -86,16 +138,8 @@ class AlertsAPI:
         # todo: Add tag to resource to indicate which Lambda owns them: metrics, alarms etc.
         # check if needed or delete using cleanup
 
-        self.environment_api.clear_cache()
-        breakpoint()
-        self.provision_sns_topic()
         self.provision_dynamodb()
-        self.provision_event_bridge_rule()
-        self.provision_lambda_role()
-        aws_lambda = self.update()
-        self.provision_event_bridge_rule(aws_lambda=aws_lambda)
-        self.provision_sns_subscription()
-        self.provision_log_group()
+        self.aws_lambda_api.provision_docker_lambda(None)
         self.provision_self_monitoring()
         return True
 
@@ -119,7 +163,7 @@ class AlertsAPI:
                                                           metric_name=metric_name)
 
     def generate_alb_alarms(self, alb_name, metric_data_start_time=None, metric_data_end_time=None,
-                                         metric_name=None):
+                            metric_name=None):
         """
         Generate alerts per resource: Elastic load balancer
 
@@ -152,8 +196,6 @@ class AlertsAPI:
         :return:
         """
 
-        assert self.alert_system.pip_api
-
         aws_lambda = self.provision_lambda()
 
         if resource_alarms:
@@ -181,14 +223,6 @@ class AlertsAPI:
         for alarm in resource_alarms:
             self.environment_api.provision_cloudwatch_alarm_object(alarm)
         return True
-
-    def provision_sns_topic(self):
-        """
-        Alert system sns topic
-
-        :return:
-        """
-        self.environment_api.provision_sns_topic(sns_topic_name=self.configuration.sns_topic_name)
 
     def provision_dynamodb(self):
         """
@@ -223,46 +257,12 @@ class AlertsAPI:
 
         :return:
         """
+        breakpoint()
 
         topic = self.environment_api.get_sns_topic(self.configuration.sns_topic_name)
         events_rule = self.environment_api.get_event_bridge_rule(self.configuration.event_bridge_rule_name)
 
         zip_file_path = self.alert_system.build_and_validate(self.generate_lambda_package_configuration_files())
-        policy = {
-            "Version": "2012-10-17",
-            "Id": "default",
-            "Statement": [
-                {
-                    "Sid": f"trigger_from_topic_{topic.name}",
-                    "Effect": "Allow",
-                    "Principal": {"Service": "sns.amazonaws.com"},
-                    "Action": "lambda:InvokeFunction",
-                    "Resource": None,
-                    "Condition": {"ArnLike": {"AWS:SourceArn": topic.arn}},
-                },
-                {"Sid": f"trigger_{self.configuration.lambda_name}",
-                 "Effect": "Allow",
-                 "Principal": {"Service": "events.amazonaws.com"},
-                 "Action": "lambda:InvokeFunction",
-                 "Resource": None,
-                 "Condition": {"ArnLike": {
-                     "AWS:SourceArn": events_rule.arn}}},
-                {
-                    "Sid": "AlarmAction",
-                    "Effect": "Allow",
-                    "Principal": {
-                        "Service": "lambda.alarms.cloudwatch.amazonaws.com"
-                    },
-                    "Action": "lambda:InvokeFunction",
-                    "Resource": None,
-                    "Condition": {
-                        "StringEquals": {
-                            "AWS:SourceAccount": self.environment_api.aws_api.cloud_watch_client.account_id
-                        }
-                    }
-                }
-            ]
-        }
 
         return self.environment_api.deploy_lambda(lambda_name=self.configuration.lambda_name,
                                                   handler="lambda_handler.lambda_handler",
@@ -272,67 +272,6 @@ class AlertsAPI:
                                                   role_name=self.configuration.lambda_role_name,
                                                   zip_file_path=zip_file_path
                                                   )
-
-    def provision_event_bridge_rule(self, aws_lambda=None):
-        """
-        Provision event bridge rule to trigger the lambda.
-
-        :return:
-        """
-
-        description = "Triggering rule for alert system lambda"
-        self.environment_api.provision_event_bridge_rule(aws_lambda=aws_lambda,
-                                                         event_bridge_rule_name=self.configuration.event_bridge_rule_name,
-                                                         description=description)
-
-    def provision_lambda_role(self):
-        """
-        Provision the alert_system receiving Lambda role.
-
-        :return:
-        """
-
-        assume_role_policy_document = json.dumps({
-            "Version": "2012-10-17",
-            "Statement": [
-                {
-                    "Effect": "Allow",
-                    "Principal": {
-                        "Service": "lambda.amazonaws.com"
-                    },
-                    "Action": "sts:AssumeRole"
-                }
-            ]
-        })
-
-        inline_policies = [self.generate_inline_dynamodb_policy(), self.generate_inline_cloudwatch_policy()]
-        return self.environment_api.provision_iam_role(name=self.configuration.lambda_role_name,
-                                                       description="HAS2 lambda",
-                                                       assume_role_policy_document=assume_role_policy_document,
-                                                       managed_policies_arns=[
-                                                           "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"],
-                                                       inline_policies=inline_policies)
-
-    def provision_sns_subscription(self):
-        """
-        Provision the lambda subscription in the SNS topic
-        :return:
-        """
-
-        self.environment_api.provision_sns_subscription(sns_topic_name=self.configuration.sns_topic_name,
-                                                        subscription_name=self.configuration.sns_subscription_name,
-                                                        lambda_name=self.configuration.lambda_name)
-
-    def provision_log_group(self):
-        """
-        Provision Lambda log group.
-        On a fresh provisioning self monitoring will have no log group to monitor.
-        Until first lambda invocation.
-
-        :return:
-        """
-
-        self.environment_api.provision_log_group(log_group_name=self.configuration.alert_system_lambda_log_group_name)
 
     def generate_inline_dynamodb_policy(self):
         """
@@ -398,7 +337,8 @@ class AlertsAPI:
         return self.environment_api.put_cloudwatch_log_lines(cloudwatch_log_group_name, [log_line])
 
     # pylint: disable = too-many-arguments
-    def provision_cloudwatch_logs_alarm(self, log_group_name, filter_text, metric_uid, routing_tags, metric_name=None, dimensions=None,
+    def provision_cloudwatch_logs_alarm(self, log_group_name, filter_text, metric_uid, routing_tags, metric_name=None,
+                                        dimensions=None,
                                         alarm_description=None
                                         ):
         """
@@ -694,7 +634,7 @@ class AlertsAPI:
         :return:
         """
         return list(self.environment_api.aws_api.cloud_watch_client.yield_client_metrics(self.environment_api.region,
-                                                                                        {"Namespace": namespace}))
+                                                                                         {"Namespace": namespace}))
 
     @staticmethod
     def generate_raw_message_dict(notification_type):

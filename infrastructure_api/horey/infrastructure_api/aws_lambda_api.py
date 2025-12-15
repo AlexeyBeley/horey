@@ -3,7 +3,6 @@ Standard ECS maintainer.
 
 """
 import json
-import os
 
 from horey.h_logger import get_logger
 
@@ -168,6 +167,7 @@ class AWSLambdaAPI:
             config = BuildAPIConfigurationPolicy()
             config.docker_repository_uri = self.ecs_api.ecr_repo_uri
             build_api = BuildAPI(configuration=config, environment_api=self.environment_api)
+            build_api.git_api = build_api.horey_git_api
             self._build_api = build_api
         return self._build_api
 
@@ -214,6 +214,9 @@ class AWSLambdaAPI:
 
         :return:
         """
+
+        self.configuration.policy["Statement"] += self.lambda_resource_policies_callback()
+
         self.environment_api.aws_api.lambda_client.clear_cache(None, all_cache=True)
         self.cloudwatch_api.provision_log_group()
         dict_policy = {"Version": "2008-10-17",
@@ -231,7 +234,7 @@ class AWSLambdaAPI:
 
         self.provision_lambda_role()
 
-        events_rule = self.provision_events_rule()
+        events_rule = self.provision_event_bridge_rule()
 
         if events_rule:
             statement = {"Sid": f"trigger_{self.configuration.event_bridge_rule_name}",
@@ -262,7 +265,7 @@ class AWSLambdaAPI:
         self.environment_api.aws_api.lambda_client.provision_lambda_permissions(aws_lambda)
 
         if events_rule is not None:
-            self.provision_events_rule_targets(events_rule, aws_lambda)
+            self.provision_event_bridge_rule_targets(events_rule, aws_lambda)
 
         if sns_topic:
             self.provision_sns_subscription(sns_topic, aws_lambda)
@@ -286,6 +289,15 @@ class AWSLambdaAPI:
 
         self.provision_monitoring()
         return True
+
+    def lambda_resource_policies_callback(self):
+        """
+        Standard.
+
+        :return:
+        """
+
+        return []
 
     def provision_lambda_role(self):
         """
@@ -311,28 +323,27 @@ class AWSLambdaAPI:
             ]
         }
 
-        inline_policies = self.role_inline_policies_callback()
+        inline_policies = self.role_inline_policies_callback() + [self.generate_inline_cloudwatch_policy()]
 
         self.aws_iam_api.provision_role(assume_role_policy=json.dumps(assume_role_policy),
                                         managed_policies_arns=managed_policies_arns, policies=inline_policies)
 
-    def provision_monitoring(self):
+    def provision_monitoring(self, alerts_api):
         """
         Provision alert system and alerts.
 
         :return:
         """
         breakpoint()
-        self.alerts_api.provision()
-        self.alerts_api.provision_cloudwatch_logs_alarm(self.cloudwatch_api.configuration.log_group_name, '"[ERROR]"',
+        alerts_api.provision_cloudwatch_logs_alarm(self.cloudwatch_api.configuration.log_group_name, '"[ERROR]"',
                                                         "error", None, dimensions=None,
                                                         alarm_description=None)
-        self.alerts_api.provision_cloudwatch_logs_alarm(self.cloudwatch_api.configuration.log_group_name,
+        alerts_api.provision_cloudwatch_logs_alarm(self.cloudwatch_api.configuration.log_group_name,
                                                         '"Runtime exited with error"', "runtime_exited", None,
                                                         dimensions=None,
                                                         alarm_description=None)
-        self.alerts_api.provision_cloudwatch_logs_alarm(self.cloudwatch_api.configuration.log_group_name,
-                                                        f'"{self.alerts_api.alert_system.configuration.ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN}"',
+        alerts_api.provision_cloudwatch_logs_alarm(self.cloudwatch_api.configuration.log_group_name,
+                                                        f'"{alerts_api.alert_system.configuration.ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN}"',
                                                         "timeout", None, dimensions=None,
                                                         alarm_description=None)
         return True
@@ -411,7 +422,7 @@ class AWSLambdaAPI:
         """
         Latest build number from ecr repo
 
-        :return: 
+        :return:
         """
 
         for image in self.ecs_api.ecr_images:
@@ -497,7 +508,7 @@ class AWSLambdaAPI:
             "Condition": {"ArnLike": {"AWS:SourceArn": target_group.arn}},
         }
 
-    def provision_events_rule(self):
+    def provision_event_bridge_rule(self):
         """
         Event bridge rule - the trigger used to trigger the lambda each minute.
 
@@ -520,7 +531,7 @@ class AWSLambdaAPI:
         self.environment_api.aws_api.provision_events_rule(rule)
         return rule
 
-    def provision_events_rule_targets(self, events_rule, aws_lambda):
+    def provision_event_bridge_rule_targets(self, events_rule, aws_lambda):
         """
         Event rule - triggering salesforce.
 
@@ -550,6 +561,29 @@ class AWSLambdaAPI:
             raise RuntimeError(f"Lambda '{aws_lambda.name}' not found in {self.environment_api.configuration.region}")
         return aws_lambda
 
+    def generate_inline_cloudwatch_policy(self):
+        """
+        Cloudwatch access
+
+        :return:
+        """
+        statements = [
+            {
+                "Action": [
+                    "cloudwatch:SetAlarmState",
+                    "cloudwatch:DescribeAlarms"
+                ],
+                "Resource": [
+                    f"arn:aws:cloudwatch:{self.environment_api.configuration.region}:{self.environment_api.aws_api.lambda_client.account_id}:alarm:*"
+                ],
+                "Effect": "Allow"
+            }
+        ]
+
+        return self.environment_api.generate_inline_policy(name="inline_cloudwatch",
+                                                           description="Cloudwatch access policy",
+                                                           statements=statements)
+
     def role_inline_policies_callback(self):
         """
         Made for async generation.
@@ -557,9 +591,10 @@ class AWSLambdaAPI:
         :return:
         """
 
+        # todo: generate cleanup report to find lambdas with no permissions
         inline_policies = []
         if self.configuration.event_source_mapping_dynamodb_name:
-            # todo: generate cleanup report to find lambdas with no permissions
+            
             name = f"inline_event_source_{self.configuration.event_source_mapping_dynamodb_name}"
             table = self.environment_api.get_dynamodb(self.configuration.event_source_mapping_dynamodb_name)
 

@@ -16,7 +16,6 @@ from horey.aws_api.aws_services_entities.subnet import Subnet
 from horey.aws_api.aws_services_entities.ec2_security_group import EC2SecurityGroup
 from horey.aws_api.aws_services_entities.ec2_launch_template import EC2LaunchTemplate
 from horey.aws_api.aws_services_entities.auto_scaling_group import AutoScalingGroup
-from horey.aws_api.aws_services_entities.ecs_capacity_provider import ECSCapacityProvider
 from horey.aws_api.aws_services_entities.iam_instance_profile import IamInstanceProfile
 from horey.aws_api.aws_services_entities.iam_policy import IamPolicy
 from horey.aws_api.aws_services_entities.iam_role import IamRole

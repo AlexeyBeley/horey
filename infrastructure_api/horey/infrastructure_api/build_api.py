@@ -11,6 +11,7 @@ from horey.h_logger import get_logger
 
 from horey.aws_api.base_entities.region import Region
 from horey.infrastructure_api.build_api_configuration_policy import BuildAPIConfigurationPolicy
+from horey.git_api.git_api import GitAPIConfigurationPolicy, GitAPI
 
 logger = get_logger()
 
@@ -25,6 +26,51 @@ class BuildAPI:
         self.configuration = configuration
         self.environment_api = environment_api
         self.commit_id = None
+        self._horey_git_api = None
+        self._git_api = None
+
+    @property
+    def horey_git_api(self):
+        """
+        Standard.
+
+        :return:
+        """
+        if self._horey_git_api is None:
+            self.init_horey_git_api()
+        return self._horey_git_api
+
+    @property
+    def git_api(self):
+        """
+        Standard.
+
+        :return:
+        """
+
+        return self._git_api
+
+    @git_api.setter
+    def git_api(self, value):
+        """
+        Standard.
+
+        :return:
+        """
+
+        self._git_api = value
+
+    def init_horey_git_api(self):
+        """
+        Init default.
+
+        :return:
+        """
+
+        configuration = GitAPIConfigurationPolicy()
+        configuration.git_directory_path = "/tmp/git"
+        configuration.remote = "https://github.com/AlexeyBeley/horey.git"
+        self._horey_git_api = GitAPI(configuration=configuration)
 
     def run_build_image_routine(self, branch_name, build_number):
         """

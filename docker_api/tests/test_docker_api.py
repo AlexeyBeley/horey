@@ -10,20 +10,25 @@ from horey.docker_api.docker_api import DockerAPI
 from horey.common_utils.common_utils import CommonUtils
 from horey.aws_api.aws_api import AWSAPI
 
-mock_values_file_path = os.path.abspath(
-    os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore", "docker_api_mock_values.py"
-    )
-)
-print(f"{mock_values_file_path=}")
-mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
-
 src_aws_region = "us-west-2"
 dst_aws_region = "us-west-2"
 
 # pylint: disable= missing-function-docstring
 
 IMAGE_TAG = "horey-test:latest"
+
+
+@pytest.fixture(name="mock_values")
+def mock_values_fixture():
+    mock_values_file_path = os.path.abspath(
+        os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "ignore", "docker_api_mock_values.py"
+        )
+    )
+    print(f"{mock_values_file_path=}")
+    mock_values = CommonUtils.load_object_from_module(mock_values_file_path, "main")
+    yield mock_values
+
 
 @pytest.mark.done
 def test_init_docker_api():
@@ -103,7 +108,7 @@ def test_build_with_args():
 
     docker_api = DockerAPI()
     image = docker_api.build(
-        os.path.dirname(os.path.abspath(__file__)), [IMAGE_TAG], buildargs={"test_arg_name":"test_arg_value"}
+        os.path.dirname(os.path.abspath(__file__)), [IMAGE_TAG], buildargs={"test_arg_name": "test_arg_value"}
     )
     assert image is not None
 
@@ -119,7 +124,8 @@ def test_build_with_wrong_kwarg():
     docker_api = DockerAPI()
     with pytest.raises(TypeError, match=r".*got an unexpected keyword argument.*"):
         docker_api.build(
-        os.path.dirname(os.path.abspath(__file__)), ["horey-test:latest"], buildargs_error_value={"test_arg_name":"test_arg_value"}
+            os.path.dirname(os.path.abspath(__file__)), ["horey-test:latest"],
+            buildargs_error_value={"test_arg_name": "test_arg_value"}
         )
 
 
@@ -183,7 +189,7 @@ def test_copy_image():
 
 
 @pytest.mark.skip
-def test_remove_image():
+def test_remove_image(mock_values):
     """
     Test removing image.
 
@@ -209,7 +215,7 @@ def test_get_all_images():
 
 
 @pytest.mark.skip
-def test_get_child_image_ids():
+def test_get_child_image_ids(mock_values):
     docker_api = DockerAPI()
     image_id = mock_values["image_with_children_id"]
     image_ids = docker_api.get_child_image_ids(image_id, None)
@@ -245,7 +251,7 @@ def test_build_rm_false():
     docker_api = DockerAPI()
     image = docker_api.build(
         os.path.dirname(os.path.abspath(__file__)), ["horey-test:latest"],
-    remove_intermediate_containers=False)
+        remove_intermediate_containers=False)
     assert image is not None
 
 
@@ -259,3 +265,35 @@ def test_run():
 
     docker_api = DockerAPI()
     assert docker_api.run(IMAGE_TAG, command_args=["sleep", "2"])
+
+
+@pytest.mark.unit
+def test_prune_dead_containers():
+    """
+    Test building image.
+
+    @return:
+    """
+
+    assert DockerAPI.prune_dead_containers()
+
+
+@pytest.mark.unit
+def test_log_to_container_file():
+    """
+    Test building image.
+
+    @return:
+    """
+    assert DockerAPI.log_to_container_file("test", "Pruning error: blabla")
+
+
+@pytest.mark.unit
+def test_log_to_container_file_with_attrs():
+    """
+    Test building image.
+
+    @return:
+    """
+
+    assert DockerAPI.log_to_container_file("test", "Pruning error: blabla", attrs={"tag": "test_tag"})
