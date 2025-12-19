@@ -56,14 +56,6 @@ class AWSIAMAPI:
         self.environment_api.aws_api.provision_iam_role(iam_role)
         return iam_role
 
-    def update(self):
-        """
-
-        :return:
-        """
-
-        breakpoint()
-
     def get_role(self):
         """
         Update role info.

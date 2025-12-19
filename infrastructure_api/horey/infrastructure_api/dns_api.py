@@ -103,11 +103,3 @@ class DNSAPI:
 
         logger.info(f"Found following hosted zones: {[_hz.name for _hz in lst_ret]}")
         return lst_ret[0]
-
-    def update(self):
-        """
-
-        :return:
-        """
-
-        breakpoint()

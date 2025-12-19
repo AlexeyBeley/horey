@@ -2244,12 +2244,10 @@ class EnvironmentAPI:
         config.reports_dir = os.path.join(self.configuration.data_directory_path, "reports")
         aws_cleaner = AWSCleaner(config, aws_api=self.aws_api)
         aws_cleaner.cleanup_report_lambdas()
-        breakpoint()
 
         # aws_cleaner.init_and_cache_all_s3_bucket_objects()
         # todo: danger! self.perform_backups_cleanup()
         aws_cleaner.cleanup_report_iam_users()
-        breakpoint()
         aws_cleaner.cleanup_report_ecr_images()
 
         aws_cleaner.cleanup_report_ecs()
@@ -2279,7 +2277,6 @@ class EnvironmentAPI:
         """
         # todo: restrict by time.
         ret = list(self.aws_api.backup_client.yield_recovery_points_raw(self.region, filters_req={"BackupVaultName": "Default"}))
-        breakpoint()
         for rec_point in ret:
             self.aws_api.backup_client.delete_recovery_point_raw(self.region, {"BackupVaultName": rec_point["BackupVaultName"],
                                                                                                   "RecoveryPointArn": rec_point["RecoveryPointArn"]})
@@ -2305,13 +2302,13 @@ class EnvironmentAPI:
                 auto_scaling_group = self.get_auto_scaling_group(arn=arn)
 
                 if action.unused_capacity_provider:
-                    breakpoint()
+                    raise NotImplementedError("self.loadbalancer_dns_api_pairs")
                     self.aws_api.ecs_client.dispose_capacity_provider(cap_provider)
                     self.aws_api.autoscaling_client.dispose_auto_scaling_group(auto_scaling_group)
                     delete_capacity_providers.append(cap_provider)
                     continue
                 if action.unused_container_instances:
-                    breakpoint()
+                    raise NotImplementedError("self.loadbalancer_dns_api_pairs")
                     if len(auto_scaling_group.instances) - len(action.unused_container_instances) < auto_scaling_group.min_size:
                         auto_scaling_group.min_size = len(auto_scaling_group.instances) - len(action.unused_container_instances)
                         self.aws_api.autoscaling_client.provision_auto_scaling_group(auto_scaling_group)
@@ -2355,9 +2352,9 @@ class EnvironmentAPI:
         for action in report.actions:
             if isinstance(action, ReportActionCloudwatchLogGroupMetric):
                 if action.no_log_group:
-                    breakpoint()
+                    raise NotImplementedError("self.loadbalancer_dns_api_pairs")
                 if action.disabled_actions_alarms:
-                    breakpoint()
+                    raise NotImplementedError("self.loadbalancer_dns_api_pairs")
             elif isinstance(action, ReportActionCloudwatchAlarm):
                 alarm = CloudWatchAlarm({})
                 alarm.region = Region.get_region(action.path["arn"].split(":")[3])

@@ -115,7 +115,7 @@ class ECSAPI:
 
         if loadbalancer_dns_api_pairs:
             # todo: fix DNS rules validation.
-            breakpoint()
+            raise NotImplementedError("loadbalancer_dns_api_pairs")
             if len(self.configuration.container_definition_port_mappings) != 1:
                 raise NotImplementedError("Need to implement dynamic test that loadbalancer_api configuration has the"
                                           " port set explicitly")
@@ -279,7 +279,7 @@ class ECSAPI:
             self.dns_api.provision()
 
         elif self.loadbalancer_dns_api_pairs:
-            breakpoint()
+            raise NotImplementedError("self.loadbalancer_dns_api_pairs")
             for loadbalancer_api, dns_api in self.loadbalancer_dns_api_pairs:
                 dns_api.configuration.dns_target = loadbalancer_api.get_loadbalancer().dns_name
                 dns_api.provision()
@@ -928,7 +928,6 @@ class ECSAPI:
         filters_req = {"familyPrefix": self.configuration.family, "status": "ACTIVE", "sort": "DESC"}
         for task_definition in self.environment_api.aws_api.ecs_client.yield_task_definitions(
                 region=self.environment_api.region, filters_req=filters_req):
-            breakpoint()
             return task_definition
         raise RuntimeError(f"Empty Family: {self.configuration.family}")
 

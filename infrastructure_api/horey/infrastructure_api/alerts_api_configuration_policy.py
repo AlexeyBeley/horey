@@ -130,8 +130,7 @@ class AlertsAPIConfigurationPolicy(ConfigurationPolicy):
 
     @property
     def lambda_role_name(self):
-        if self._lambda_role_name is None:
-            breakpoint()
+        self.check_defined()
         return self._lambda_role_name
 
     @lambda_role_name.setter

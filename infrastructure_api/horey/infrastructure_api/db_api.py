@@ -50,14 +50,6 @@ class DBAPI:
                 raise NotImplementedError("Must have hosted_zone_name set in the dns api")
             self.dns_api = dns_api
 
-    def update(self):
-        """
-
-        :return:
-        """
-
-        breakpoint()
-
     @property
     def max_version_raw(self):
         """

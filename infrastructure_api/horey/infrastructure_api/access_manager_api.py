@@ -28,14 +28,6 @@ class AccessManagerAPI:
 
         self.provision_s3_bucket()
 
-    def update(self):
-        """
-
-        :return:
-        """
-
-        breakpoint()
-
     def provision_s3_bucket(self):
         """
         Provision the bucket.
