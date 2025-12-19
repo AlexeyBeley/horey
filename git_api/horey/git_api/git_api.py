@@ -79,7 +79,7 @@ class GitAPI:
 
         # todo: remove
         logger.info("start git api config print")
-        self.configuration.print()
+        logger.info(self.configuration.__dict__)
 
         if oct(os.stat(self.configuration.ssh_key_file_path).st_mode)[-3:] != "400":
             path_ssh_key_file = Path(self.configuration.ssh_key_file_path)
