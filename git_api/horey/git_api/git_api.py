@@ -78,7 +78,7 @@ class GitAPI:
         start_time = perf_counter()
 
         # todo: remove
-        logger.print("start git api config print")
+        logger.info("start git api config print")
         self.configuration.print()
 
         if oct(os.stat(self.configuration.ssh_key_file_path).st_mode)[-3:] != "400":
