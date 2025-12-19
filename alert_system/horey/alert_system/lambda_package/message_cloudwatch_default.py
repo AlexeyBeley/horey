@@ -70,7 +70,15 @@ class MessageCloudwatchDefault(MessageBase):
         :return:
         """
 
-        return self.end_time - datetime.timedelta(seconds=self.trigger.get("Period", 600))
+        if self.trigger is not None:
+            period_seconds = self.trigger.get("Period", 600)
+        else:
+            metrics = self.message_dict["configuration"]["metrics"]
+            if len(metrics) != 1:
+                raise NotImplementedError(f"Count 'metrics' is not 1: {metrics}")
+            period_seconds = metrics[0]["metricStat"]["period"]
+
+        return self.end_time - datetime.timedelta(seconds=period_seconds)
 
     @property
     def message_dict(self):
@@ -94,6 +102,7 @@ class MessageCloudwatchDefault(MessageBase):
 
         if self._trigger is None:
             self._trigger = self.message_dict.get("Trigger")
+
         return self._trigger
 
     @property
@@ -264,7 +273,7 @@ class MessageCloudwatchDefault(MessageBase):
         reason = f"Lambda '{lambda_name}' duration > {threshold_sec} seconds"
 
         notification = Notification()
-        notification.type = Notification.Types.STABLE if self.message_dict["NewStateValue"] == "OK" else Notification.Types.CRITICAL
+        notification.type = Notification.Types.STABLE if self.new_state_value == "OK" else Notification.Types.CRITICAL
         notification.header = "Lambda duration error"
         notification.text = (
             f"Region: {self.configuration.region}\n"
@@ -340,7 +349,7 @@ class MessageCloudwatchDefault(MessageBase):
         reason = f"Pattern '{pattern}' found in log group: {log_group_name}"
 
         notification = Notification()
-        notification.type = Notification.Types.STABLE if self.message_dict["NewStateValue"] == "OK" else Notification.Types.CRITICAL
+        notification.type = Notification.Types.STABLE if self.new_state_value == "OK" else Notification.Types.CRITICAL
         notification.header = "Log text filter found"
 
         notification.text = f"Region: {self.configuration.region}\n" \
@@ -349,7 +358,7 @@ class MessageCloudwatchDefault(MessageBase):
 
         notification.link = self.generate_cloudwatch_log_search_link(log_group_name,
                                                                      pattern,
-                                                                     self.start_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                                                                     (self.start_time - datetime.timedelta(minutes=2)).strftime("%Y-%m-%dT%H:%M:%SZ"),
                                                                      self.end_time.strftime("%Y-%m-%dT%H:%M:%SZ")
                                                                      )
 

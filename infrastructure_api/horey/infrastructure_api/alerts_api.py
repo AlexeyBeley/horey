@@ -5,20 +5,25 @@ Alerts maintainer.
 
 import json
 import os.path
+import shutil
 import sys
+from pathlib import Path
 
 from horey.alert_system.alert_system import AlertSystem
 from horey.alert_system.alert_system_configuration_policy import AlertSystemConfigurationPolicy
-from horey.alert_system.lambda_package.notification_channels.notification_channel_slack import NotificationChannelSlack, \
+from horey.alert_system.notification_channels.notification_channel_slack import NotificationChannelSlack, \
     NotificationChannelSlackConfigurationPolicy
 from horey.alert_system.lambda_package.notification import Notification
-from horey.alert_system.lambda_package.message_ses_default import MessageSESDefault
 from horey.alert_system.postgres.postgres_alert_builder import \
     PostgresAlertBuilder
 from horey.alert_system.elb_alert_builder import ELBAlertBuilder
 
 from horey.infrastructure_api.aws_lambda_api import AWSLambdaAPI, AWSLambdaAPIConfigurationPolicy
-from horey.git_api.git_api import GitAPI, GitAPIConfigurationPolicy
+from horey.infrastructure_api.cloudwatch_api import CloudwatchAPI, CloudwatchAPIConfigurationPolicy
+from horey.h_logger import get_logger
+from horey.slack_api.slack_api import SlackAPI
+
+logger = get_logger()
 
 
 class AlertsAPI:
@@ -32,6 +37,7 @@ class AlertsAPI:
         self.environment_api = environment_api
         self._aws_lambda_api = None
         self._alert_system = None
+        self._cloudwatch_api = None
 
     @property
     def alert_system(self):
@@ -64,7 +70,7 @@ class AlertsAPI:
 
         if self._aws_lambda_api is None:
             config = AWSLambdaAPIConfigurationPolicy()
-            config.lambda_name = "has3-test"
+            config.lambda_name = self.configuration.lambda_name
             config.lambda_timeout = 300
             config.lambda_memory_size = 1024
             config.provision_sns_topic = True
@@ -89,13 +95,86 @@ class AlertsAPI:
                     }
                 }
             ]
-
             lambda_api.build_api.git_api = lambda_api.build_api.horey_git_api
+            lambda_api.build_api.prepare_docker_image_build_directory = self.prepare_docker_image_build_directory
             self._aws_lambda_api = lambda_api
 
         return self._aws_lambda_api
 
-    def generate_lambda_package_configuration_files(self):
+    @property
+    def cloudwatch_api(self):
+        """
+        Standard.
+
+        :return:
+        """
+        if self._cloudwatch_api is None:
+            config = CloudwatchAPIConfigurationPolicy()
+            self._cloudwatch_api = CloudwatchAPI(config, self.environment_api)
+
+        return self._cloudwatch_api
+
+    def prepare_docker_image_build_directory(self, source_code_directory_path: Path, build_number):
+        """
+        Prepare the dir
+
+        :param build_number:
+        :param source_code_directory_path:
+        :return:
+        """
+
+        logger.info(f"Start copying source code from '{source_code_directory_path}' to '{self.aws_lambda_api.build_api.docker_build_directory}'")
+
+        build_custom_files_dir = self.aws_lambda_api.build_api.docker_build_directory / "custom_files"
+        build_custom_files_dir.mkdir(parents=True, exist_ok=False)
+        self.build_custom_files_directory_callback(build_custom_files_dir)
+
+        build_horey_dir = self.aws_lambda_api.build_api.docker_build_directory / "horey"
+        build_horey_dir.mkdir(exist_ok=False)
+
+        def ignore_build(_, file_names):
+            return ["_build"] if "_build" in file_names else []
+
+        for obj_name in ["network", "pip_api", "build", "common_utils", "h_logger", "slack_api", "configuration_policy", "alert_system", "aws_api", "Makefile", "pip_api_docker_configuration.py", "pip_api_configuration.py"]:
+            obj_path = source_code_directory_path / obj_name
+            if obj_path.is_dir():
+                shutil.copytree(obj_path, build_horey_dir / obj_name, ignore=ignore_build)
+            else:
+                shutil.copy(obj_path, build_horey_dir / obj_name)
+        self.aws_lambda_api.build_api.add_build_metadata_file(self.aws_lambda_api.build_api.docker_build_directory, build_number)
+
+        build_dir_obj_names = [obj.name for obj in self.aws_lambda_api.build_api.docker_build_directory.iterdir()]
+
+        for obj_path in self.alert_system.build_dir_path.iterdir():
+            if obj_path.name.startswith("_"):
+                continue
+            if obj_path.name in build_dir_obj_names:
+                raise ValueError(f"Overwriting is not supported, delete the files manually: {self.aws_lambda_api.build_api.docker_build_directory / obj_path.name}")
+            if obj_path.is_dir():
+                shutil.copytree(obj_path, self.aws_lambda_api.build_api.docker_build_directory / obj_path.name)
+            else:
+                shutil.copy(obj_path, self.aws_lambda_api.build_api.docker_build_directory / obj_path.name)
+
+        alert_sys_config_path = self.aws_lambda_api.build_api.docker_build_directory / self.alert_system.configuration.ALERT_SYSTEM_CONFIGURATION_FILE_PATH
+        self.alert_system.configuration.generate_configuration_file_ng(alert_sys_config_path)
+
+        return self.aws_lambda_api.build_api.docker_build_directory
+
+    def build_custom_files_directory_callback(self, build_custom_files_dir):
+        """
+        Generate files.
+
+        :return:
+        """
+
+        logger.info(f"Build custom_files_directory_callback from {self}")
+
+        with open(build_custom_files_dir/"dummy_file_for_docker_build", "w") as file_handler:
+            file_handler.write("Hello from horey!")
+
+        return True
+
+    def add_slack_notification_channel(self, build_directory_path: Path, bearer_token, routing_tags_mapping, notification_type=None):
         """
         Generate slack api files.
 
@@ -103,30 +182,22 @@ class AlertsAPI:
         """
 
         configuration = NotificationChannelSlackConfigurationPolicy()
-        dict_mappings = self.configuration.routing_tags_to_slack_channels_mapping
-        dict_mappings.update(
-            {Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG: self.configuration.self_monitoring_slack_channel})
-        if self.configuration.ses_alert_slack_channel:
-            dict_mappings.update(
-                {
-                    MessageSESDefault.ROUTING_TAG: self.configuration.ses_alert_slack_channel})
+        if Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG not in routing_tags_mapping:
+            raise ValueError(f"Default slack channel not set. Use routing tag: '{Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG}'")
 
-        configuration.tag_to_channel_mapping = dict_mappings
-        configuration.bearer_token = self.configuration.bearer_token
+        configuration.tag_to_channel_mapping = routing_tags_mapping
+        configuration.bearer_token = bearer_token
+        if notification_type is not None:
+            configuration.notification_type = notification_type
 
-        self.alert_system.configuration.notification_channels = [
-            sys.modules[NotificationChannelSlack.__module__].__file__]
+        slack_notification_channel_file_path = Path(sys.modules[NotificationChannelSlack.__module__].__file__)
+        self.alert_system.configuration.notification_channels.append(slack_notification_channel_file_path.name)
+        shutil.copy2(slack_notification_channel_file_path, build_directory_path)
 
-        slack_channel_configuration_file_path = os.path.join(self.alert_system.configuration.deployment_directory_path,
-                                                             NotificationChannelSlack.CONFIGURATION_FILE_NAME)
+        slack_channel_configuration_file_path = os.path.join(build_directory_path, NotificationChannelSlack.CONFIGURATION_FILE_NAME)
         configuration.generate_configuration_file(slack_channel_configuration_file_path)
 
-        alert_system_configuration_file_path = os.path.join(self.alert_system.configuration.deployment_directory_path,
-                                                            AlertSystemConfigurationPolicy.ALERT_SYSTEM_CONFIGURATION_FILE_PATH)
-        self.alert_system.configuration.generate_configuration_file(alert_system_configuration_file_path)
-
-        self.configuration.files = [slack_channel_configuration_file_path, alert_system_configuration_file_path]
-        return self.configuration.files
+        return True
 
     def provision_alert_system(self):
         """
@@ -139,9 +210,18 @@ class AlertsAPI:
         # check if needed or delete using cleanup
 
         self.provision_dynamodb()
-        self.aws_lambda_api.provision_docker_lambda(None)
+        self.aws_lambda_api.provision_docker_lambda()
         self.provision_self_monitoring()
         return True
+
+    def update_alert_system(self):
+        """
+        Provision frontend.
+
+        :return:
+        """
+
+        return self.aws_lambda_api.update_docker_lambda()
 
     def generate_postgres_cluster_alarms(self, cluster_id, metric_data_start_time=None, metric_data_end_time=None,
                                          metric_name=None):
@@ -189,18 +269,6 @@ class AlertsAPI:
         ret = [x for x in ret if str_find in str(x)]
         dimensions = {dimension["Name"] for x in ret for dimension in x["Dimensions"]}
         return dimensions
-
-    def update(self, resource_alarms=None):
-        """
-
-        :return:
-        """
-
-        aws_lambda = self.provision_lambda()
-
-        if resource_alarms:
-            self.provision_resource_alarms(resource_alarms)
-        return aws_lambda
 
     def dispose_alarms(self, alarms):
         """
@@ -250,28 +318,6 @@ class AlertsAPI:
         self.environment_api.provision_dynamodb(dynamodb_table_name=self.configuration.dynamodb_table_name,
                                                 attribute_definitions=attribute_definitions,
                                                 key_schema=key_schema)
-
-    def provision_lambda(self):
-        """
-        Provision Alert System Lambda
-
-        :return:
-        """
-        breakpoint()
-
-        topic = self.environment_api.get_sns_topic(self.configuration.sns_topic_name)
-        events_rule = self.environment_api.get_event_bridge_rule(self.configuration.event_bridge_rule_name)
-
-        zip_file_path = self.alert_system.build_and_validate(self.generate_lambda_package_configuration_files())
-
-        return self.environment_api.deploy_lambda(lambda_name=self.configuration.lambda_name,
-                                                  handler="lambda_handler.lambda_handler",
-                                                  timeout=self.configuration.lambda_timeout,
-                                                  memory_size=512,
-                                                  policy=policy,
-                                                  role_name=self.configuration.lambda_role_name,
-                                                  zip_file_path=zip_file_path
-                                                  )
 
     def generate_inline_dynamodb_policy(self):
         """
@@ -337,7 +383,7 @@ class AlertsAPI:
         return self.environment_api.put_cloudwatch_log_lines(cloudwatch_log_group_name, [log_line])
 
     # pylint: disable = too-many-arguments
-    def provision_cloudwatch_logs_alarm(self, log_group_name, filter_text, metric_uid, routing_tags, metric_name=None,
+    def provision_cloudwatch_logs_alarm(self, log_group_name, filter_text, metric_slug, routing_tags, metric_name=None,
                                         dimensions=None,
                                         alarm_description=None
                                         ):
@@ -346,17 +392,17 @@ class AlertsAPI:
 
         @return:
         :param routing_tags:
-        :param metric_uid:
+        :param metric_slug:
         :param filter_text:
         :param message_dict: extensive data to be stored in alert description
         :param log_group_name:
         """
 
         if routing_tags is None:
-            routing_tags = self.configuration.routing_tags
+            routing_tags = [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG]
 
         if metric_name is None:
-            metric_name = f"has2-metric-filter-{log_group_name}-{metric_uid}"
+            metric_name = f"has3-metric-filter-{log_group_name}-{metric_slug}"
 
         if not alarm_description:
             alarm_description = {}
@@ -379,7 +425,7 @@ class AlertsAPI:
             raise NotImplementedError(
                 f"Unhandled situation when more then one metric transformation {metric_filter.metric_transformations}")
 
-        alarm = self.provision_cloudwatch_alarm(name=f"has2-alarm-{log_group_name}-{metric_uid}",
+        alarm = self.provision_cloudwatch_alarm(name=f"has3-alarm-{log_group_name}-{metric_slug}",
                                                 alarm_description=json.dumps(alarm_description),
                                                 metric_name=metric_filter.metric_transformations[0]["metricName"],
                                                 namespace=log_group_name,
@@ -425,7 +471,7 @@ class AlertsAPI:
         :return:
         """
 
-        topic = self.environment_api.get_sns_topic(self.configuration.sns_topic_name)
+        aws_lambda = self.aws_lambda_api.get_lambda()
 
         return self.environment_api.provision_cloudwatch_alarm(name=name,
                                                                alarm_description=alarm_description,
@@ -439,8 +485,8 @@ class AlertsAPI:
                                                                threshold=threshold,
                                                                comparison_operator=comparison_operator,
                                                                treat_missing_data=treat_missing_data,
-                                                               ok_actions=[topic.arn],
-                                                               alarm_actions=[topic.arn],
+                                                               ok_actions=[aws_lambda.arn],
+                                                               alarm_actions=[aws_lambda.arn],
                                                                insufficient_data_actions=[]
                                                                )
 
@@ -479,11 +525,10 @@ class AlertsAPI:
             "lambda_name": self.configuration.lambda_name,
             AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY: AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY}
 
-        return self.provision_cloudwatch_logs_alarm(self.configuration.alert_system_lambda_log_group_name,
+        return self.provision_cloudwatch_logs_alarm(self.aws_lambda_api.log_group_name,
                                                     filter_text,
                                                     "error",
                                                     [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG],
-                                                    metric_name=f"has2-metric-filter-lambda-{self.configuration.lambda_name}-error",
                                                     alarm_description=alarm_description,
                                                     )
 
@@ -498,7 +543,7 @@ class AlertsAPI:
         alarm_description = {"lambda_name": self.configuration.lambda_name,
                              AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY: AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_TYPE_KEY}
 
-        return self.provision_cloudwatch_logs_alarm(self.configuration.alert_system_lambda_log_group_name,
+        return self.provision_cloudwatch_logs_alarm(self.aws_lambda_api.log_group_name,
                                                     filter_text,
                                                     "timeout",
                                                     [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG],
@@ -603,7 +648,8 @@ class AlertsAPI:
 
         :return:
         """
-        return self.environment_api.put_cloudwatch_log_lines(self.configuration.alert_system_lambda_log_group_name, [
+
+        return self.cloudwatch_api.put_cloudwatch_log_lines(self.aws_lambda_api.log_group_name, [
             f"{AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_LOG_ERROR_FILTER_PATTERN}: Neo, the Horey has you!"])
 
     def trigger_self_monitoring_log_timeout_alarm(self):
@@ -613,7 +659,7 @@ class AlertsAPI:
         :return:
         """
 
-        return self.environment_api.put_cloudwatch_log_lines(self.configuration.alert_system_lambda_log_group_name, [
+        return self.environment_api.put_cloudwatch_log_lines(self.aws_lambda_api.log_group_name, [
             f"{AlertSystemConfigurationPolicy.ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN}: Neo, the Horey has you!"])
 
     def build_and_validate(self, event):

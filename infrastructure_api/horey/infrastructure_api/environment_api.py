@@ -1905,7 +1905,7 @@ class EnvironmentAPI:
         log_group.region = self.region
         log_group.name = log_group_name
         if not self.aws_api.cloud_watch_logs_client.update_log_group_information(log_group):
-            raise RuntimeError("Could not update log group information")
+            raise RuntimeError(f"Could not update log group information '{log_group_name}' in region '{self.configuration.region}'")
         return log_group
 
     def get_event_bridge_rule(self, name):

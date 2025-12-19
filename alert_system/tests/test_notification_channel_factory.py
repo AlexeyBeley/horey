@@ -7,9 +7,9 @@ import sys
 import pytest
 from horey.aws_api.aws_api import AWSAPI
 from horey.aws_api.base_entities.region import Region
-from horey.alert_system.lambda_package.notification_channels.notification_channel_factory import \
+from horey.alert_system.notification_channels.notification_channel_factory import \
     NotificationChannelFactory
-from horey.alert_system.lambda_package.notification_channels.notification_channel_echo import NotificationChannelEcho
+from horey.alert_system.notification_channels.notification_channel_echo import NotificationChannelEcho
 from horey.alert_system.alert_system_configuration_policy import AlertSystemConfigurationPolicy
 
 

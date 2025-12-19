@@ -14,7 +14,7 @@ from horey.common_utils.common_utils import CommonUtils
 from horey.alert_system.lambda_package.message_ses_default import MessageSESDefault
 from horey.alert_system.lambda_package.message_dispatcher import MessageDispatcher
 from horey.alert_system.alert_system_configuration_policy import AlertSystemConfigurationPolicy
-from horey.alert_system.lambda_package.notification_channels.notification_channel_echo import NotificationChannelEcho
+from horey.alert_system.notification_channels.notification_channel_echo import NotificationChannelEcho
 
 
 # pylint: disable= missing-function-docstring

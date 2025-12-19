@@ -34,7 +34,7 @@ class BuildAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def docker_build_arguments(self):
         if self._docker_build_arguments is None:
-            return {"nocache": False, "platform": "linux/amd64"}
+            return {"platform": "linux/amd64"}
 
         return self._docker_build_arguments
 

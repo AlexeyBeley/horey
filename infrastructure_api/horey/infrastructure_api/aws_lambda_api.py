@@ -65,7 +65,6 @@ class AWSLambdaAPI:
         """
         if self._cloudwatch_api is None:
             config = CloudwatchAPIConfigurationPolicy()
-            config.log_group_name = f"/aws/lambda/{self.configuration.lambda_name}"
             cloudwatch_api = CloudwatchAPI(configuration=config, environment_api=self.environment_api)
             self.set_api(cloudwatch_api=cloudwatch_api)
         return self._cloudwatch_api
@@ -208,7 +207,16 @@ class AWSLambdaAPI:
             self.loadbalancer_api = loadbalancer_api
             self.loadbalancer_api.configuration.target_type = "lambda"
 
-    def provision_docker_lambda(self, branch_name=None):
+    @property
+    def log_group_name(self):
+        """
+        Lambda log_group_name
+
+        :return:
+        """
+        return f"/aws/lambda/{self.configuration.lambda_name}"
+
+    def provision_docker_lambda(self, branch_name=None, alerts_api=None):
         """
         Provision ECS infrastructure.
 
@@ -216,9 +224,7 @@ class AWSLambdaAPI:
         """
 
         self.configuration.policy["Statement"] += self.lambda_resource_policies_callback()
-
-        self.environment_api.aws_api.lambda_client.clear_cache(None, all_cache=True)
-        self.cloudwatch_api.provision_log_group()
+        self.cloudwatch_api.provision_log_group(self.log_group_name)
         dict_policy = {"Version": "2008-10-17",
                        "Statement": [
                            {"Sid": "LambdaECRImageRetrievalPolicy",
@@ -250,16 +256,16 @@ class AWSLambdaAPI:
         sns_topic = self.provision_sns_topic()
         if sns_topic:
             statement = {
-            "Sid": f"trigger_from_topic_{sns_topic.name}",
-            "Effect": "Allow",
-            "Principal": {"Service": "sns.amazonaws.com"},
-            "Action": "lambda:InvokeFunction",
-            "Resource": None,
-            "Condition": {"ArnLike": {"AWS:SourceArn": sns_topic.arn}},
-        }
+                "Sid": f"trigger_from_topic_{sns_topic.name}",
+                "Effect": "Allow",
+                "Principal": {"Service": "sns.amazonaws.com"},
+                "Action": "lambda:InvokeFunction",
+                "Resource": None,
+                "Condition": {"ArnLike": {"AWS:SourceArn": sns_topic.arn}},
+            }
             self.configuration.policy["Statement"].append(statement)
 
-        aws_lambda = self.update(branch_name=branch_name)
+        aws_lambda = self.update_docker_lambda(branch_name=branch_name)
 
         aws_lambda.policy = self.configuration.policy
         self.environment_api.aws_api.lambda_client.provision_lambda_permissions(aws_lambda)
@@ -287,7 +293,7 @@ class AWSLambdaAPI:
                     raise RuntimeError("tmp policy expected to be in the lambda policy")
                 self.environment_api.aws_api.lambda_client.provision_lambda_permissions(None, aws_lambda)
 
-        self.provision_monitoring()
+        self.provision_monitoring(alerts_api)
         return True
 
     def lambda_resource_policies_callback(self):
@@ -334,18 +340,25 @@ class AWSLambdaAPI:
 
         :return:
         """
-        breakpoint()
-        alerts_api.provision_cloudwatch_logs_alarm(self.cloudwatch_api.configuration.log_group_name, '"[ERROR]"',
-                                                        "error", None, dimensions=None,
-                                                        alarm_description=None)
-        alerts_api.provision_cloudwatch_logs_alarm(self.cloudwatch_api.configuration.log_group_name,
-                                                        '"Runtime exited with error"', "runtime_exited", None,
-                                                        dimensions=None,
-                                                        alarm_description=None)
-        alerts_api.provision_cloudwatch_logs_alarm(self.cloudwatch_api.configuration.log_group_name,
-                                                        f'"{alerts_api.alert_system.configuration.ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN}"',
-                                                        "timeout", None, dimensions=None,
-                                                        alarm_description=None)
+
+        if alerts_api is None:
+            return
+
+        alerts_api.provision_cloudwatch_logs_alarm(self.log_group_name,
+                                                   '"[ERROR]"',
+                                                   "error",
+                                                   None
+                                                   )
+        alerts_api.provision_cloudwatch_logs_alarm(self.log_group_name,
+                                                   '"Runtime exited with error"',
+                                                   "runtime_exited",
+                                                   None
+                                                   )
+        alerts_api.provision_cloudwatch_logs_alarm(self.log_group_name,
+                                                   f'"{alerts_api.alert_system.configuration.ALERT_SYSTEM_SELF_MONITORING_LOG_TIMEOUT_FILTER_PATTERN}"',
+                                                   "timeout",
+                                                   None
+                                                   )
         return True
 
     def provision_event_source_mapping_dynamodb(self, aws_lambda):
@@ -403,7 +416,7 @@ class AWSLambdaAPI:
         self.environment_api.aws_api.provision_sns_subscription(subscription)
         return subscription
 
-    def update(self, branch_name=None):
+    def update_docker_lambda(self, branch_name=None):
         """
 
         :return:
@@ -411,7 +424,9 @@ class AWSLambdaAPI:
 
         if self.configuration.build_image:
             build_number = self.ecs_api.get_next_build_number()
+
             image = self.build_api.run_build_image_routine(branch_name, build_number)
+
             image_tag = image.tags[0]
         else:
             image_tag = self.get_latest_build()
@@ -456,13 +471,14 @@ class AWSLambdaAPI:
         aws_lambda.tags = {tag["Key"]: tag["Value"] for tag in self.environment_api.configuration.tags}
         aws_lambda.tags["Name"] = aws_lambda.name
 
-        security_groups = self.environment_api.get_security_groups(self.configuration.security_groups)
-        aws_lambda.vpc_config = {
-            "SubnetIds": [subnet.id for subnet in self.environment_api.private_subnets],
-            "SecurityGroupIds": [
-                security_group.id for security_group in security_groups
-            ]
-        }
+        if self.configuration.security_groups:
+            security_groups = self.environment_api.get_security_groups(self.configuration.security_groups)
+            aws_lambda.vpc_config = {
+                "SubnetIds": [subnet.id for subnet in self.environment_api.private_subnets],
+                "SecurityGroupIds": [
+                    security_group.id for security_group in security_groups
+                ]
+            }
         aws_lambda.timeout = self.configuration.lambda_timeout
         aws_lambda.memory_size = self.configuration.lambda_memory_size
         if self.configuration.reserved_concurrent_executions:
@@ -577,6 +593,18 @@ class AWSLambdaAPI:
                     f"arn:aws:cloudwatch:{self.environment_api.configuration.region}:{self.environment_api.aws_api.lambda_client.account_id}:alarm:*"
                 ],
                 "Effect": "Allow"
+            },
+            {
+                "Sid": "CloudwatchLogs",
+                "Effect": "Allow",
+                "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                ],
+                "Resource": [
+                    "*"
+                ]
             }
         ]
 
@@ -594,7 +622,6 @@ class AWSLambdaAPI:
         # todo: generate cleanup report to find lambdas with no permissions
         inline_policies = []
         if self.configuration.event_source_mapping_dynamodb_name:
-            
             name = f"inline_event_source_{self.configuration.event_source_mapping_dynamodb_name}"
             table = self.environment_api.get_dynamodb(self.configuration.event_source_mapping_dynamodb_name)
 

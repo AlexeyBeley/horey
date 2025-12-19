@@ -20,15 +20,17 @@ class GitAPIConfigurationPolicy(ConfigurationPolicy):
         self._directory_path = None
         self._git_directory_path = None
         self._main_branch = None
-        self._branch_name = None
+        self._main_branch_name = None
 
     @property
-    def branch_name(self):
-        return self._branch_name
+    def main_branch_name(self):
+        if self._main_branch_name is None:
+            return "main"
+        return self._main_branch_name
 
-    @branch_name.setter
-    def branch_name(self, value):
-        self._branch_name = value
+    @main_branch_name.setter
+    def main_branch_name(self, value):
+        self._main_branch_name = value
         
     @property
     def main_branch(self):

@@ -28,6 +28,7 @@ class BuildAPI:
         self.commit_id = None
         self._horey_git_api = None
         self._git_api = None
+        self._build_directory = None
 
     @property
     def horey_git_api(self):
@@ -72,7 +73,7 @@ class BuildAPI:
         configuration.remote = "https://github.com/AlexeyBeley/horey.git"
         self._horey_git_api = GitAPI(configuration=configuration)
 
-    def run_build_image_routine(self, branch_name, build_number):
+    def run_build_image_routine(self, branch_name, build_number, nocache=False):
         """
         Run the build and upload routine
 
@@ -82,7 +83,7 @@ class BuildAPI:
         source_code_directory_path = self.prepare_source_code_directory(branch_name)
         build_directory = self.prepare_docker_image_build_directory(source_code_directory_path, build_number)
         tags = self.generate_docker_image_tags(build_number)
-        image = self.build_docker_image(build_directory, tags)
+        image = self.build_docker_image(build_directory, tags, nocache=nocache)
         # todo: self.validate_docker_image()
         self.upload_docker_image_to_artifactory(tags)
         return image
@@ -93,9 +94,22 @@ class BuildAPI:
         :return:
         """
 
-        self.environment_api.git_api.checkout_remote(branch_name)
-        self.commit_id = self.environment_api.git_api.get_commit_id()
-        return self.environment_api.git_api.configuration.directory_path
+        self.git_api.update_local_source_code(branch_name)
+        self.commit_id = self.git_api.get_commit_id()
+        return self.git_api.configuration.directory_path
+
+    @property
+    def docker_build_directory(self):
+        """
+        Build dir
+
+        :return:
+        """
+        if self._build_directory is None:
+            build_dir_path = Path("/tmp/ecs_api_build_temp_dirs") / str(uuid.uuid4())
+            build_dir_path.parent.mkdir(exist_ok=True)
+            self._build_directory = build_dir_path
+        return self._build_directory
 
     def prepare_docker_image_build_directory(self, source_code_directory_path, build_number):
         """
@@ -106,20 +120,28 @@ class BuildAPI:
         :return:
         """
 
-        build_dir_path = Path("/tmp/ecs_api_build_temp_dirs") / str(uuid.uuid4())
-        build_dir_path.parent.mkdir(exist_ok=True)
+        logger.info(f"Start copying source code from '{source_code_directory_path}' to '{self.docker_build_directory}'")
 
-        def ignore_git(_, file_names):
-            return [".git", ".gitmodules", ".idea"] if ".git" in file_names else []
+        def ignore_git(x, file_names):
+            return ["_build"] + [".git", ".gitmodules", ".idea"] if ".git" in file_names else []
 
-        shutil.copytree(str(source_code_directory_path), str(build_dir_path), ignore=ignore_git)
+        shutil.copytree(str(source_code_directory_path), str(self.docker_build_directory), ignore=ignore_git)
 
-        build_dir_path = self.prepare_docker_image_build_directory_callback(build_dir_path)
+        build_dir_path = self.prepare_docker_image_build_directory_callback(self.docker_build_directory)
+
+        self.add_build_metadata_file(build_dir_path, build_number)
+
+        return build_dir_path
+
+    def add_build_metadata_file(self, build_dir_path, build_number):
+        """
+        Standard
+
+        :return:
+        """
 
         with open(build_dir_path / "build_metadata.json", "w", encoding="utf-8") as file_handler:
             json.dump({"commit": self.commit_id, "build": str(build_number)}, file_handler)
-
-        return build_dir_path
 
     def prepare_docker_image_build_directory_callback(self, build_dir_path: Path):
         """
@@ -144,7 +166,7 @@ class BuildAPI:
             tag += f"-commit_{self.commit_id}"
         return [tag]
 
-    def build_docker_image(self, dir_path, tags):
+    def build_docker_image(self, dir_path, tags, nocache=False):
         """
         Image building fails for different reasons, this function aggregates the reasons and handles them.
 
@@ -155,7 +177,8 @@ class BuildAPI:
 
         for _ in range(120):
             try:
-                return self.environment_api.docker_api.build(str(dir_path), tags, **self.configuration.docker_build_arguments)
+                logger.info(f"Building docker image with arguments: {self.configuration.docker_build_arguments}")
+                return self.environment_api.docker_api.build(str(dir_path), tags, nocache=nocache, **self.configuration.docker_build_arguments)
             except Exception as error_inst:
                 repr_error_inst = repr(error_inst)
                 if "authorization token has expired" not in repr_error_inst:

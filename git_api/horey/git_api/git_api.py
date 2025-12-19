@@ -52,6 +52,19 @@ class GitAPI:
                 raise ValueError(f"Expected to find '{expected_output}' either in stdout or stderr. Received: {ret}")
             return ret
 
+    def update_local_source_code(self, dst_obj_identifier):
+        """
+        Pull if needed
+
+        :param dst_obj_identifier:
+        :return:
+        """
+
+        # Destination folder is empty or branch was specified
+        if not self.configuration.directory_path.exists() or dst_obj_identifier is not None:
+            return self.checkout_remote(dst_obj=dst_obj_identifier)
+        return True
+
     def checkout_remote(self, dst_obj=None):
         """
         Pull latest changes.
@@ -60,7 +73,7 @@ class GitAPI:
         :return:
         """
 
-        dst_obj = dst_obj or self.configuration.branch_name
+        dst_obj = dst_obj or self.configuration.main_branch_name
 
         start_time = perf_counter()
 

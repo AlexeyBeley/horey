@@ -4,9 +4,9 @@ Notification Channel to send SES email.
 """
 import os.path
 
-from horey.alert_system.lambda_package.notification_channels.notification_channel_slack import NotificationChannelSlack
+from horey.alert_system.notification_channels.notification_channel_slack import NotificationChannelSlack
 
-from horey.alert_system.lambda_package.notification_channels.notification_channel_slack import NotificationChannelSlackConfigurationPolicy
+from horey.alert_system.notification_channels.notification_channel_slack import NotificationChannelSlackConfigurationPolicy
 from horey.alert_system.lambda_package.notification import Notification
 
 

@@ -74,6 +74,10 @@ class AlertSystem:
             self.configuration.routing_tags = [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG]
 
     @property
+    def build_dir_path(self):
+        return pathlib.Path(__file__).parent / "build"
+
+    @property
     def pip_api(self):
         if self._pip_api is None:
             pip_api_configuration = PipAPIConfigurationPolicy()

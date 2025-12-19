@@ -4,7 +4,7 @@ Ses channel tests
 import types
 
 import pytest
-from horey.alert_system.lambda_package.notification_channels.notification_channel_echo import NotificationChannelEcho, main
+from horey.alert_system.notification_channels.notification_channel_echo import NotificationChannelEcho, main
 from horey.alert_system.lambda_package.notification import Notification
 
 # pylint: disable= missing-function-docstring

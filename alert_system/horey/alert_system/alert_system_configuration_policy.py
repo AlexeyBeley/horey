@@ -31,7 +31,7 @@ class AlertSystemConfigurationPolicy(ConfigurationPolicy):
         self._lambda_name = None
         self._sns_topic_name = None
         self._region = None
-        self._notification_channels = None
+        self._notification_channels = []
         self._message_classes = None
         self._active_deployment_validation = False
         self._lambda_role_name = None

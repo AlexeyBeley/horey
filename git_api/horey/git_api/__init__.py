@@ -2,4 +2,4 @@
 Git handling package
 """
 
-__version__ = "1.0.19"
+__version__ = "1.0.20"

@@ -40,7 +40,7 @@ def fixture_alerts_api():
 @pytest.mark.wip
 def test_provision_alert_system(alerts_api):
     alerts_api.aws_lambda_api.build_api.horey_git_api.configuration.branch_name = None
-    alerts_api.aws_lambda_api.build_api.horey_git_api.configuration.git_directory_path = Path(__file__).parent.parent.parent
+    alerts_api.aws_lambda_api.build_api.horey_git_api.configuration.git_directory_path = Path(__file__).parent.parent.parent.parent
     ret = alerts_api.provision_alert_system()
 
     assert ret

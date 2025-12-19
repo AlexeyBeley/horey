@@ -8,7 +8,7 @@ import datetime
 import json
 import traceback
 
-from horey.alert_system.lambda_package.notification_channels.notification_channel_factory import \
+from horey.alert_system.notification_channels.notification_channel_factory import \
     NotificationChannelFactory
 from horey.alert_system.lambda_package.notification import Notification
 

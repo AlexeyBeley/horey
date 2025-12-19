@@ -17,13 +17,14 @@ setup(
     author_email="alexey.beley@gmail.com",
     license="DWTFYWTPL",
     include_package_data=True,
-    package_data={"": ["lambda_package/*.txt"]},
+    package_data={"": ["build/*.txt",
+                       "build/Dockerfile"]},
     packages=find_namespace_packages(
         include=["horey.alert_system",
                  "horey.alert_system.*",
-                 "horey.alert_system.lambda_package",
-                 "horey.alert_system.lambda_package.*",
-                 "horey.alert_system.lambda_package.**.*",
+                 "horey.alert_system.build",
+                 "horey.alert_system.build.*",
+                 "horey.alert_system.build.**.*",
                  ]
     ),
     zip_safe=False,

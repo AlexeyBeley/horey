@@ -127,7 +127,7 @@ class AWSLambdaAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def sns_topic_name(self):
         if self._sns_topic_name is None:
-            self._sns_topic_name = f"topic_{self.lambda_name}"
+            return f"topic_{self.lambda_name}"
 
         return self._sns_topic_name
 

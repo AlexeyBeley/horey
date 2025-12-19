@@ -7,6 +7,7 @@ import datetime
 import importlib
 import json
 import os
+import pathlib
 import sys
 import re
 import contextlib
@@ -58,6 +59,12 @@ class CommonUtils:
             return {
                 CommonUtils.SELF_CACHED_TYPE_KEY_NAME: "datetime",
                 "value": obj_src.strftime("%Y-%m-%d %H:%M:%S.%f%z"),
+            }
+
+        if isinstance(obj_src, pathlib.Path):
+            return {
+                CommonUtils.SELF_CACHED_TYPE_KEY_NAME: "pathlib.Path",
+                "value": str(obj_src),
             }
 
         if isinstance(obj_src, Enum):
@@ -170,6 +177,9 @@ class CommonUtils:
             return datetime.datetime.strptime(
                 value_formatted, "%Y-%m-%d %H:%M:%S.%f%z"
             )
+        if value.get(CommonUtils.SELF_CACHED_TYPE_KEY_NAME) == "pathlib.Path":
+            return pathlib.Path(value["value"])
+
         raise ValueError(f"Unknown horey type: {value}")
 
     @staticmethod

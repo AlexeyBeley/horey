@@ -14,6 +14,51 @@ from horey.slack_api.slack_api_configuration_policy import SlackAPIConfiguration
 
 logger = get_logger()
 
+# pylint: disable= missing-function-docstring
+class NotificationChannelSlackConfigurationPolicy(SlackAPIConfigurationPolicy):
+    """
+    Main class
+
+    """
+
+    def __init__(self):
+        super().__init__()
+        self._tag_to_channel_mapping = None
+        self._notification_type = None
+
+    @property
+    def notification_type(self):
+        return self._notification_type
+
+    @notification_type.setter
+    def notification_type(self, value):
+        if isinstance(value, Notification.Types):
+            value = value.value
+
+        values = [val.value for val in Notification.Types.__members__.values()]
+        if value not in values:
+            raise ValueError(f"message_type must be one of {values}, received: {value}")
+        self._notification_type = value
+
+    @property
+    def alert_system_monitoring_destination(self):
+        return self.tag_to_channel_mapping.get(Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG)
+
+    @property
+    def tag_to_channel_mapping(self):
+        return self._tag_to_channel_mapping
+
+    @tag_to_channel_mapping.setter
+    def tag_to_channel_mapping(self, value):
+        if not isinstance(value, dict):
+            raise ValueError(value)
+
+        if not isinstance(value.get(Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG), str):
+            raise ValueError(
+                f"Key {Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG} is incorrect in mappings: {value}"
+            )
+        self._tag_to_channel_mapping = value
+
 
 class NotificationChannelSlack:
     """
@@ -22,7 +67,7 @@ class NotificationChannelSlack:
     """
     CONFIGURATION_FILE_NAME = "notification_channel_slack_configs.json"
 
-    def __init__(self, configuration):
+    def __init__(self, configuration: NotificationChannelSlackConfigurationPolicy):
         config = SlackAPIConfigurationPolicy()
         config.init_from_policy(configuration, ignore_undefined=True)
         self.configuration = configuration
@@ -35,14 +80,18 @@ class NotificationChannelSlack:
         @param notification:
         @return:
         """
-        if notification.type not in Notification.Types:
+
+        notification_type_value = self.configuration.notification_type or notification.type.value
+
+        notification_type_possible_values = [val.value for val in Notification.Types.__members__.values()]
+        if notification_type_value not in notification_type_possible_values:
             notification.text = (
                 f"Error in notification type. Auto set to CRITICAL: "
-                f"received {str(notification.type)} must be one of {list(Notification.Types)}.\n"
+                f"received {str(notification_type_value)} must be one of {notification_type_possible_values}.\n"
                 f"Original message {notification.text}"
             )
-            notification.type = Notification.Types.CRITICAL
-        elif notification.type == Notification.Types.DEBUG:
+            notification_type_value = Notification.Types.CRITICAL.value
+        elif notification_type_value == Notification.Types.DEBUG.value:
             logger.info(f"Notification channel slack ignoring debug type notification: {notification.header}")
             return True
 
@@ -50,8 +99,8 @@ class NotificationChannelSlack:
         if not notification.routing_tags:
             notification.routing_tags = [Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG]
             notification.text = (
-                "Warning: Routing tags were not set. Using system monitoring.\n"
-                + base_text
+                    "Warning: Routing tags were not set. Using system monitoring.\n"
+                    + base_text
             )
 
         for routing_tag in notification.routing_tags:
@@ -62,13 +111,13 @@ class NotificationChannelSlack:
                     Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG
                 )
                 notification.text = (
-                    f"!!!WARNING!!!:\n Routing tag '{routing_tag}' has no mapping.\n"
-                    f" Using system monitoring routing tag.\n\n" + base_text
+                        f"!!!WARNING!!!:\n Routing tag '{routing_tag}' has no mapping.\n"
+                        f" Using system monitoring routing tag.\n\n" + base_text
                 )
 
             for dst_channel in dst_channels:
                 slack_message_type = getattr(
-                    SlackMessage.Types, notification.type.value
+                    SlackMessage.Types, notification_type_value
                 )
                 slack_message = self.generate_slack_message(
                     slack_message_type,
@@ -142,7 +191,7 @@ class NotificationChannelSlack:
     # pylint: disable=too-many-arguments
     @staticmethod
     def generate_slack_message(
-        slack_message_type, header, text, link, link_href, dst_channel
+            slack_message_type, header, text, link, link_href, dst_channel
     ):
         """
         Generate slack message to be sent.
@@ -180,38 +229,6 @@ class NotificationChannelSlack:
         Can not find the tag in the routes mapping.
 
         """
-
-
-# pylint: disable= missing-function-docstring
-class NotificationChannelSlackConfigurationPolicy(SlackAPIConfigurationPolicy):
-    """
-    Main class
-
-    """
-
-    def __init__(self):
-        super().__init__()
-        self._tag_to_channel_mapping = None
-
-    @property
-    def alert_system_monitoring_destination(self):
-        return self.tag_to_channel_mapping.get(Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG)
-
-    @property
-    def tag_to_channel_mapping(self):
-        return self._tag_to_channel_mapping
-
-    @tag_to_channel_mapping.setter
-    def tag_to_channel_mapping(self, value):
-        if not isinstance(value, dict):
-            raise ValueError(value)
-
-        if not isinstance(value.get(Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG), str):
-            raise ValueError(
-                f"Key {Notification.ALERT_SYSTEM_SELF_MONITORING_ROUTING_TAG} is incorrect in mappings: {value}"
-            )
-        self._tag_to_channel_mapping = value
-
 
 def main():
     """
