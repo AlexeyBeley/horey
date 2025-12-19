@@ -4,6 +4,7 @@ Build API.
 """
 import json
 import shutil
+import time
 import uuid
 from pathlib import Path
 
@@ -94,8 +95,13 @@ class BuildAPI:
         :return:
         """
 
+        logger.info(f"Preparing source code directory, {branch_name=}")
+        perf_counter_start = time.perf_counter()
+
         self.git_api.update_local_source_code(branch_name)
         self.commit_id = self.git_api.get_commit_id()
+
+        logger.info(f"Prepared source code directory commit: {self.commit_id}. Took {time.perf_counter() - perf_counter_start}")
         return self.git_api.configuration.directory_path
 
     @property
@@ -105,6 +111,7 @@ class BuildAPI:
 
         :return:
         """
+
         if self._build_directory is None:
             build_dir_path = Path("/tmp/ecs_api_build_temp_dirs") / str(uuid.uuid4())
             build_dir_path.parent.mkdir(exist_ok=True)
@@ -120,9 +127,10 @@ class BuildAPI:
         :return:
         """
 
-        logger.info(f"Start copying source code from '{source_code_directory_path}' to '{self.docker_build_directory}'")
+        logger.info(f"Preparing docker build directory' {source_code_directory_path}' to '{self.docker_build_directory}'")
+        perf_counter_start = time.perf_counter()
 
-        def ignore_git(x, file_names):
+        def ignore_git(_, file_names):
             return ["_build"] + [".git", ".gitmodules", ".idea"] if ".git" in file_names else []
 
         shutil.copytree(str(source_code_directory_path), str(self.docker_build_directory), ignore=ignore_git)
@@ -130,6 +138,8 @@ class BuildAPI:
         build_dir_path = self.prepare_docker_image_build_directory_callback(self.docker_build_directory)
 
         self.add_build_metadata_file(build_dir_path, build_number)
+
+        logger.info(f"Prepared docker build directory. Took {time.perf_counter() - perf_counter_start}")
 
         return build_dir_path
 
