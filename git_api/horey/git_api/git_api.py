@@ -350,7 +350,7 @@ class GitAPI:
             if " " in stdout:
                 raise RuntimeError(stdout)
             commit_id = stdout.strip()
-            if len(commit_id) > 8 or len(commit_id) < 6:
+            if len(commit_id) > 10 or len(commit_id) < 6:
                 # pylint: disable= raise-missing-from
                 raise ValueError(f"Unexpected commit id '{commit_id}'")
         return commit_id

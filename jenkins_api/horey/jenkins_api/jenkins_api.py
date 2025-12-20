@@ -13,9 +13,7 @@ from horey.jenkins_api.node import Node
 from horey.jenkins_api.jenkins_job import JenkinsJob
 from horey.jenkins_api.build import Build
 from horey.h_logger import get_logger
-from horey.aws_api.base_entities.aws_account import AWSAccount
 from horey.jenkins_api.jenkins_api_configuration_policy import JenkinsAPIConfigurationPolicy
-from horey.common_utils.common_utils import CommonUtils
 
 logger = get_logger()
 
@@ -73,7 +71,7 @@ class JenkinsAPI:
     SLEEP_TIME = 5
     BUILDS_PER_JOB = defaultdict(lambda: defaultdict(lambda: None))
 
-    def __init__(self, configuration: JenkinsAPIConfigurationPolicy, aws_api=None):
+    def __init__(self, configuration: JenkinsAPIConfigurationPolicy):
         self.configuration = configuration
 
         self.server = jenkins.Jenkins(
@@ -82,10 +80,8 @@ class JenkinsAPI:
             password=configuration.token,
             timeout=configuration.timeout,
         )
-        self.aws_api = aws_api
-        if self.aws_api:
-            AWSAccount.set_aws_default_region(self.region)
-        self._vpc = None
+
+        self._job_name_by_url = None
 
     @property
     def hostname(self):
@@ -650,6 +646,12 @@ class JenkinsAPI:
             raise ValueError(f"Was not able to extract data: '{response}'")
         return response
 
+    @property
+    def job_name_by_url(self):
+        if not self._job_name_by_url:
+            self._job_name_by_url = {job["url"].strip("/"):  job["name"] for job in self.get_all_jobs()}
+        return self._job_name_by_url
+
     @retry_on_errors((requests.exceptions.ConnectionError, jenkins.TimeoutException), count=12, timeout=5)
     def update_build_info(self, build: Build):
         """
@@ -662,14 +664,15 @@ class JenkinsAPI:
         try:
             logger.info(f"Updating build {build.name}:{build.number} information")
             build_info = self.server.get_build_info(build.name, build.number)
+            # This is needed because of a bug: the <name> is changed to "Part of <name>"
         except jenkins.JenkinsException as exception_received:
             if "does not exist" not in repr(
                     exception_received
             ):
                 raise
             return False
-
-        build.update_from_raw_response(build_info)
+        logger.info(f"Jenkins build fetched info {build_info=}")
+        build.update_from_raw_response(build_info, job_name_by_url=self.job_name_by_url)
         return True
 
     def yield_build_logs(self, build: Build, timeout=5):
@@ -709,7 +712,8 @@ class JenkinsAPI:
         """
 
         busy_executors = self.find_busy_executors()
-        return [Build(busy_executor["currentExecutable"]) for busy_executor in busy_executors]
+
+        return [Build(busy_executor["currentExecutable"], job_name_by_url=self.job_name_by_url) for busy_executor in busy_executors]
 
     def get_nodes(self, update_info=False, depth=1):
         """

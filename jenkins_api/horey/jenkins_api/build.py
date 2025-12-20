@@ -15,7 +15,7 @@ class Build:
 
     """
 
-    def __init__(self, dict_src):
+    def __init__(self, dict_src, job_name_by_url=None):
         self._name = None
         self._class = None
         self.id = None
@@ -39,9 +39,9 @@ class Build:
         self.next_build = None
         self.previous_build = None
         self.in_progress = None
-        self.update_from_raw_response(dict_src)
+        self.update_from_raw_response(dict_src, job_name_by_url=job_name_by_url)
 
-    def update_from_raw_response(self, dict_src):
+    def update_from_raw_response(self, dict_src, job_name_by_url=None):
         """
         Update from server response.
 
@@ -50,6 +50,9 @@ class Build:
         """
 
         CommonUtils.init_from_api_dict(self, dict_src)
+
+        if job_name_by_url:
+            self.name = job_name_by_url[self.url.strip("/").rsplit("/", 1)[0]]
 
     @property
     def finished(self):
@@ -62,6 +65,12 @@ class Build:
 
     @property
     def succeeded(self):
+        """
+        bool
+
+        :return:
+        """
+
         return self.result == "SUCCESS"
 
     @property
@@ -70,6 +79,7 @@ class Build:
         Build name
         :return:
         """
+
         if self._name is None:
             for attr in ["display_name", "number", "url"]:
                 if getattr(self, attr) is None:
@@ -79,8 +89,9 @@ class Build:
             if hash_number not in self.display_name:
                 raise ValueError(f"'{hash_number}' was not found in {self.display_name=}")
             self._name = self.display_name[:self.display_name.find(hash_number)].strip()
-            if f"/{self._name}/" not in self.url:
-                raise ValueError(f"Can not find {self._name} in {self.url=}")
+            name_part = f"/{self._name}/"
+            if name_part not in self.url:
+                raise ValueError(f"Can not find '{name_part}' in {self.url=}")
 
         return self._name
 
