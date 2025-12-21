@@ -30,6 +30,7 @@ class BuildAPI:
         self._horey_git_api = None
         self._git_api = None
         self._build_directory = None
+        self._docker_registries_credentials = {}
 
     @property
     def horey_git_api(self):
@@ -176,7 +177,7 @@ class BuildAPI:
             tag += f"-commit_{self.commit_id}"
         return [tag]
 
-    def build_docker_image(self, dir_path, tags, nocache=False):
+    def build_docker_image(self, dir_path: Path, tags, nocache=False):
         """
         Image building fails for different reasons, this function aggregates the reasons and handles them.
 
@@ -193,12 +194,31 @@ class BuildAPI:
                 repr_error_inst = repr(error_inst)
                 if "authorization token has expired" not in repr_error_inst:
                     raise
+                for registry, username, password in self.extract_registries_credentials_from_dockerfile(dir_path / "Dockerfile"):
+                    self.environment_api.docker_api.logout(registry)
+                    self.environment_api.docker_api.login(registry, username, password)
 
-                ecr_repository_region = tags[0].split(".")[3]
-                _, _, _ = self.login_to_ecr_registry(region=Region.get_region(ecr_repository_region), logout=True)
                 return self.environment_api.docker_api.build(str(dir_path), tags, **self.configuration.docker_build_arguments)
 
         raise TimeoutError("Was not able to build and image")
+
+    def extract_registries_credentials_from_dockerfile(self, dockerfile_path: Path):
+        """
+        Extract credentials.
+
+        :param dockerfile_path:
+        :return:
+        """
+
+        lst_ret = []
+
+        with open(dockerfile_path, encoding="utf-8") as file_handler:
+            for line in file_handler.readlines():
+                line = line.strip("\n").lower()
+                if line.startswith("from"):
+                    registry = line.split(" ")[1].split("/")[0]
+                    lst_ret.append((registry, *self._docker_registries_credentials[registry]))
+        return lst_ret
 
     def login_to_ecr_registry(self, region, logout=False):
         """
@@ -242,3 +262,42 @@ class BuildAPI:
                 self.environment_api.docker_api.upload_images(tags)
             else:
                 raise
+
+    def add_docker_registry_credentials(self, registry_url, user, password):
+        """
+        Add custom registry
+
+        :param registry_url:
+        :param user:
+        :param password:
+        :return:
+        """
+
+        self._docker_registries_credentials[registry_url] = (user, password)
+
+    def add_ecr_registry_credentials(self):
+        """
+        '<aws_account>.dkr.ecr.us-west-2.amazonaws.com/<repo>:<tag>'
+        :return:
+        """
+
+        self.add_docker_registry_credentials(*self.get_ecr_registry_credentials())
+
+    def get_ecr_registry_credentials(self):
+        """
+        Get credentials to a region.
+
+        :param region:
+        :return:
+        """
+
+        logger.info(f"Login to AWS Docker Repo (ECR) in region: {self.environment_api.configuration.region}")
+        credentials = self.environment_api.aws_api.get_ecr_authorization_info(region=self.environment_api.region)
+
+        if len(credentials) != 1:
+            raise ValueError("len(credentials) != 1")
+        credentials = credentials[0]
+
+        registry, username, password = credentials["proxy_host"], credentials["user_name"], credentials["decoded_token"]
+        self.environment_api.docker_api.login(registry, username, password)
+        return registry, username, password

@@ -825,7 +825,6 @@ class AWSAPI:
         else:
             self.ec2_instances = self.ec2_client.get_all_instances(region=region)
 
-
     def init_ec2_volumes(self, region=None):
         """
         Init ec2 volumes.
