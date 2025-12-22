@@ -216,15 +216,12 @@ class AWSLambdaAPI:
         """
         return f"/aws/lambda/{self.configuration.lambda_name}"
 
-    def provision_docker_lambda(self, branch_name=None, alerts_api=None):
+    def provision_ecr_repository(self):
         """
-        Provision ECS infrastructure.
+        Generate policies and provision.
 
         :return:
         """
-
-        self.configuration.policy["Statement"] += self.lambda_resource_policies_callback()
-        self.cloudwatch_api.provision_log_group(self.log_group_name)
         dict_policy = {"Version": "2008-10-17",
                        "Statement": [
                            {"Sid": "LambdaECRImageRetrievalPolicy",
@@ -238,6 +235,16 @@ class AWSLambdaAPI:
 
         self.ecs_api.provision_ecr_repository(repository_policy=json.dumps(dict_policy))
 
+    def provision_docker_lambda(self, branch_name=None, alerts_api=None, from_docker_repository=False):
+        """
+        Provision ECS infrastructure.
+
+        :return:
+        """
+
+        self.configuration.policy["Statement"] += self.lambda_resource_policies_callback()
+        self.cloudwatch_api.provision_log_group(self.log_group_name)
+        self.provision_ecr_repository()
         self.provision_lambda_role()
 
         events_rule = self.provision_event_bridge_rule()
@@ -265,7 +272,7 @@ class AWSLambdaAPI:
             }
             self.configuration.policy["Statement"].append(statement)
 
-        aws_lambda = self.update_docker_lambda(branch_name=branch_name)
+        aws_lambda = self.update_docker_lambda(branch_name=branch_name, from_docker_repository=from_docker_repository)
 
         aws_lambda.policy = self.configuration.policy
         self.environment_api.aws_api.lambda_client.provision_lambda_permissions(aws_lambda)
@@ -416,22 +423,26 @@ class AWSLambdaAPI:
         self.environment_api.aws_api.provision_sns_subscription(subscription)
         return subscription
 
-    def update_docker_lambda(self, branch_name=None):
+    def update_docker_lambda(self, branch_name=None, from_docker_repository=False):
         """
+        Update lambda code.
 
+        :param branch_name:
+        :param from_docker_repository:
         :return:
         """
 
-        if self.configuration.build_image:
+        if from_docker_repository:
+            image_tag_raw = self.ecs_api.fetch_latest_artifact_metadata().image_tags[0]
+            image_registry_reference = self.ecs_api.generate_image_registry_reference(image_tag_raw)
+        else:
             build_number = self.ecs_api.get_next_build_number()
 
             image = self.build_api.run_build_image_routine(branch_name, build_number)
 
-            image_tag = image.tags[0]
-        else:
-            image_tag = self.get_latest_build()
+            image_registry_reference = image.tags[0]
 
-        return self.deploy_lambda(image_tag)
+        return self.deploy_lambda(image_registry_reference)
 
     def get_latest_build_number(self):
         """
@@ -454,7 +465,7 @@ class AWSLambdaAPI:
 
         return None
 
-    def deploy_lambda(self, image_tag):
+    def deploy_lambda(self, image_registry_reference):
         """
         Deploy the code.
 
@@ -502,8 +513,8 @@ class AWSLambdaAPI:
                 if "Was not able to find target group" not in repr(inst_error):
                     raise
 
-        aws_lambda.code = {"ImageUri": image_tag}
-        self.environment_api.aws_api.provision_aws_lambda(aws_lambda, force=True)
+        aws_lambda.code = {"ImageUri": image_registry_reference}
+        self.environment_api.aws_api.provision_aws_lambda(aws_lambda, update_code=True)
         return aws_lambda
 
     def generate_target_group_statement(self):

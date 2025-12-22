@@ -307,3 +307,43 @@ class BuildAPI:
         registry, username, password = credentials["proxy_host"], credentials["user_name"], credentials["decoded_token"]
         self.environment_api.docker_api.login(registry, username, password)
         return registry, username, password
+
+    def copy_docker_image(self, src_ecs_api=None, dst_ecs_api=None):
+        """
+        Copy from source to dst.
+
+        :param src_ecs_api:
+        :param dst_ecs_api:
+        :return:
+        """
+
+        # todo: there is a problem with global AWS account, once set to src - it is not reset to DST and fails on permissions.
+        # it is exposed whtn calling to this function, src_ecs_api argument sets the AWs account
+
+        if src_ecs_api is None:
+            raise NotImplementedError("src_ecs_api is None")
+        if dst_ecs_api is None:
+            raise NotImplementedError("dst_ecs_api is None")
+
+        latest_source_build = src_ecs_api.fetch_latest_artifact_metadata()
+        latest_dst_build = dst_ecs_api.fetch_latest_artifact_metadata()
+        if latest_dst_build and latest_dst_build.image_tags == latest_source_build.image_tags:
+            return True
+
+        image_registry_reference = src_ecs_api.generate_image_registry_reference(latest_source_build.image_tags[0])
+
+        for _ in range(2):
+            try:
+                return self.environment_api.docker_api.copy_image(image_registry_reference, dst_ecs_api.ecr_repository.repository_uri, copy_all_tags=True)
+            except Exception as inst_error:
+                # Different ECR regions generate errors differently - part gooes to repr part to str.
+                if "no basic auth credentials" not in repr(inst_error) + str(inst_error):
+                    raise
+                if src_ecs_api.ecr_repository.repository_uri in repr(inst_error).replace("%2F", "/"):
+                    self.login_to_ecr_registry(src_ecs_api.environment_api.region)
+                elif dst_ecs_api.ecr_repository.repository_uri in repr(inst_error).replace("%2F", "/"):
+                    self.login_to_ecr_registry(dst_ecs_api.environment_api.region)
+                else:
+                    raise
+
+        return self.environment_api.docker_api.copy_image(image_registry_reference, dst_ecs_api.ecr_repository.repository_uri, copy_all_tags=True)

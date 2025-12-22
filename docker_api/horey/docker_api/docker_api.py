@@ -433,7 +433,7 @@ class DockerAPI:
             dst_tags = [f"{dst_repo_name}:{tag}"]
 
         self.tag_image(image, dst_tags)
-        self.upload_images(dst_tags)
+        return self.upload_images(dst_tags)
 
     @staticmethod
     def split_repo_with_tag(repo_with_tag):

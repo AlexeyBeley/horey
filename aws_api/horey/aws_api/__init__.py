@@ -3,4 +3,4 @@ Horey AWS API
 """
 
 
-__version__ = "1.0.138"
+__version__ = "1.0.139"

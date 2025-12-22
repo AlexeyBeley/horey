@@ -86,7 +86,7 @@ class EnvironmentAPI:
         self.aws_api.sts_client.main_cache_dir_path = str(cache_dir)
         if self.aws_api.configuration:
             self.aws_api.configuration.aws_api_cache_dir = self.aws_api.sts_client.main_cache_dir_path
-        self.aws_api.init_configuration()
+
         self._vpc = None
         self._subnets = None
         self.jenkins_api = None
@@ -2299,22 +2299,25 @@ class EnvironmentAPI:
             if isinstance(action, ReportActionECSCapacityProvider):
                 cap_provider = self.get_ecs_capacity_provider(action.path["name"])
                 arn = cap_provider.auto_scaling_group_provider["autoScalingGroupArn"]
-                auto_scaling_group = self.get_auto_scaling_group(arn=arn)
+                # auto_scaling_group = self.get_auto_scaling_group(arn=arn)
 
                 if action.unused_capacity_provider:
-                    raise NotImplementedError("self.loadbalancer_dns_api_pairs")
+                    raise NotImplementedError("""
                     self.aws_api.ecs_client.dispose_capacity_provider(cap_provider)
                     self.aws_api.autoscaling_client.dispose_auto_scaling_group(auto_scaling_group)
                     delete_capacity_providers.append(cap_provider)
                     continue
+                    """)
+
                 if action.unused_container_instances:
-                    raise NotImplementedError("self.loadbalancer_dns_api_pairs")
+                    raise NotImplementedError("""
                     if len(auto_scaling_group.instances) - len(action.unused_container_instances) < auto_scaling_group.min_size:
                         auto_scaling_group.min_size = len(auto_scaling_group.instances) - len(action.unused_container_instances)
                         self.aws_api.autoscaling_client.provision_auto_scaling_group(auto_scaling_group)
                     self.aws_api.autoscaling_client.detach_instances(auto_scaling_group,
                                                                      action.unused_container_instances,
                                                                      decrement=True)
+                    """)
             else:
                 raise NotImplementedError(action.__class__.__name__)
 
@@ -2395,7 +2398,7 @@ class EnvironmentAPI:
                 self.aws_api.cloud_watch_logs_client.provision_log_group(log_group)
 
             if action.redundant_metric_filters:
-                for key, values in action.redundant_metric_filters.items():
+                for values in action.redundant_metric_filters.values():
                     has2_values = list(filter(lambda x: "has2" in x, values))
                     if len(has2_values) > 1:
                         for value in has2_values:
@@ -2405,7 +2408,6 @@ class EnvironmentAPI:
                         self.dispose_cloudwatch_metric_filters(log_group,
                                                                list(filter(lambda x: "has2" not in x, values)))
                     else:
-                        breakpoint()
                         logger.info(f"Choose manually: {values}")
 
         for log_group in delete_log_groups:
@@ -2413,6 +2415,13 @@ class EnvironmentAPI:
         logger.info(f"Deleted {len(delete_log_groups)} old log groups")
 
     def dispose_cloudwatch_metric_filters(self, log_group, filter_names):
+        """
+        Delete filters.
+
+        :param log_group:
+        :param filter_names:
+        :return:
+        """
         for name in filter_names:
             metric_filter = CloudWatchLogGroupMetricFilter({})
             metric_filter.log_group_name = log_group.name
@@ -2632,3 +2641,8 @@ class EnvironmentAPI:
             raise RuntimeError(f"Expected to find single instance, found: {len(ec2_instances)}")
         return ec2_instances[0]
 
+    class ResourceNotFoundError(RuntimeError):
+        """
+        Raised by APIs.
+
+        """

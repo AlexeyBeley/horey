@@ -12,7 +12,7 @@ import time
 import zipfile
 from collections import defaultdict
 
-from horey.aws_api.aws_clients.ecr_client import ECRClient
+from horey.aws_api.aws_clients.ecr_client import Boto3Client, ECRClient
 
 from horey.aws_api.aws_clients.ec2_client import EC2Client
 from horey.aws_api.aws_services_entities.ec2_instance import EC2Instance
@@ -110,6 +110,8 @@ class AWSAPI:
 
     # pylint: disable= too-many-statements
     def __init__(self, configuration=None, init_configuration=True):
+
+        # todo: account = self.get_working_aws_account()
         self.efs_client = EFSClient()
         self.ssm_client = SSMClient()
         self.glue_client = GlueClient()
@@ -262,6 +264,23 @@ class AWSAPI:
         AWSAccount.set_aws_account(
             self.aws_accounts[self.configuration.aws_api_accounts[0]]
         )
+
+    def get_working_aws_account(self):
+        """
+        Get account to work with
+
+        :return:
+        """
+
+        Boto3Client(None).main_cache_dir_path = self.configuration.aws_api_cache_dir
+        self.aws_accounts = self.get_all_managed_accounts()
+        if not self.configuration.aws_api_account and not self.configuration.aws_api_accounts:
+            raise ValueError(f"{self.configuration.aws_api_accounts=} {self.configuration.aws_api_account=}")
+
+        if not self.configuration.aws_api_accounts:
+            self.configuration.aws_api_accounts = [self.configuration.aws_api_account]
+
+        return self.aws_accounts[self.configuration.aws_api_accounts[0]]
 
     def get_all_managed_accounts(self):
         """

@@ -85,7 +85,7 @@ class ECSAPI:
                 repository_names=[
                     self.configuration.ecr_repository_name])
             if len(src_ecr_repositories) != 1:
-                raise RuntimeError(f"Can not find repository {self.configuration.ecr_repository_name}")
+                raise self.environment_api.ResourceNotFoundError(f"Can not find repository {self.configuration.ecr_repository_name} in region {self.configuration.ecr_repository_region}")
             self._ecr_repository = src_ecr_repositories[0]
         return self._ecr_repository
 
@@ -1006,3 +1006,13 @@ class ECSAPI:
 
         ecr_image = self.fetch_latest_artifact_metadata()
         return ecr_image.build_number + 1 if ecr_image is not None else 0
+
+    def generate_image_registry_reference(self, tag):
+        """
+        Generate docker image reference with tag for pulling and pushing.
+
+        :param tag:
+        :return:
+        """
+
+        return f"{self.ecr_repository.repository_uri}:{tag}"
