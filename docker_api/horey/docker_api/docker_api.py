@@ -61,6 +61,7 @@ class DockerAPI:
         @return:
         """
 
+        logger.info(f"Logout from docker registry: {registry}")
         return_dict = BashExecutor.run_bash(f"docker logout {registry}")
         logger.info(return_dict)
         return return_dict
