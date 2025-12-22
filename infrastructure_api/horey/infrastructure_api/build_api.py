@@ -191,11 +191,17 @@ class BuildAPI:
                 logger.info(f"Building docker image with arguments: {self.configuration.docker_build_arguments}")
                 return self.environment_api.docker_api.build(str(dir_path), tags, nocache=nocache, **self.configuration.docker_build_arguments)
             except Exception as error_inst:
-                repr_error_inst = repr(error_inst)
-                if "authorization token has expired" not in repr_error_inst:
+                repr_error_inst = repr(error_inst).lower()
+                if "authorization token has expired" in repr_error_inst:
+                    logout = True
+                elif "authentication is required" in repr_error_inst:
+                    logout = False
+                else:
                     raise
+
                 for registry, username, password in self.extract_registries_credentials_from_dockerfile(dir_path / "Dockerfile"):
-                    self.environment_api.docker_api.logout(registry)
+                    if logout:
+                        self.environment_api.docker_api.logout(registry)
                     self.environment_api.docker_api.login(registry, username, password)
 
                 return self.environment_api.docker_api.build(str(dir_path), tags, **self.configuration.docker_build_arguments)
