@@ -46,7 +46,7 @@ class InfrastructureAPI:
     @staticmethod
     def get_ecs_api(configuration, environment_api):
         """
-        Get frontend API
+        Get API
 
         :param configuration:
         :param environment_api:
@@ -59,6 +59,23 @@ class InfrastructureAPI:
             raise ValueError(f"{environment_api} not instance of EnvironmentAPI")
 
         return ECSAPI(configuration, environment_api)
+
+    @staticmethod
+    def get_ec2_api(configuration, environment_api):
+        """
+        Get API
+
+        :param configuration:
+        :param environment_api:
+        :return:
+        """
+
+        from horey.infrastructure_api.ec2_api import EC2API
+        from horey.infrastructure_api.environment_api import EnvironmentAPI
+        if not isinstance(environment_api, EnvironmentAPI):
+            raise ValueError(f"{environment_api} not instance of EnvironmentAPI")
+
+        return EC2API(configuration, environment_api)
 
     @staticmethod
     def get_alerts_api(configuration, environment_api):
