@@ -929,18 +929,17 @@ class RemoteDeployer:
 
     @staticmethod
     def wait_to_finish_step(
-            target: DeploymentTarget, step: DeploymentStep, sleep_time=10, total_time=2400
+            target: DeploymentTarget, step: DeploymentStep
     ):
         """
         Wait for a single step to finish
 
         :param target:
         :param step:
-        :param sleep_time:
-        :param total_time:
         :return:
         """
 
+        total_time = step.configuration.retry_attempts * step.configuration.sleep_time
         start_time = datetime.datetime.now()
         end_time = start_time + datetime.timedelta(seconds=total_time)
 
@@ -950,10 +949,10 @@ class RemoteDeployer:
                 break
 
             logger.info(
-                f"[LOCAL->{target.deployment_target_address}] Waiting for step: {step.configuration.name} going to sleep for {sleep_time} seconds"
+                f"[LOCAL->{target.deployment_target_address}] Waiting for step: {step.configuration.name} going to sleep for {step.configuration.sleep_time} seconds"
             )
 
-            time.sleep(sleep_time)
+            time.sleep(step.configuration.sleep_time)
         else:
             step.status_code = step.StatusCode.ERROR
             if target.status_code is None:
