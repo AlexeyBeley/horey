@@ -4,6 +4,7 @@ Step configuration.
 """
 
 import os
+from pathlib import Path
 from uuid import uuid4
 from horey.configuration_policy.configuration_policy import ConfigurationPolicy
 
@@ -27,6 +28,7 @@ class DeploymentStepConfigurationPolicy(ConfigurationPolicy):
         self._remote_script_file_path = None
         self._retry_attempts = None
         self._sleep_time = None
+        self._remote_deployment_dir_path = None
 
     @property
     def sleep_time(self):
@@ -82,8 +84,7 @@ class DeploymentStepConfigurationPolicy(ConfigurationPolicy):
 
     @property
     def script_name(self):
-        if self._script_name is None:
-            raise ValueError("script_name not set")
+        self.check_defined()
         return self._script_name
 
     @script_name.setter
@@ -95,7 +96,7 @@ class DeploymentStepConfigurationPolicy(ConfigurationPolicy):
     @property
     def deployment_dir_path(self):
         if self._deployment_dir_path is None:
-            return "/tmp/remote_deployer"
+            return Path("/tmp/remote_deployer")
         return self._deployment_dir_path
 
     @deployment_dir_path.setter
@@ -157,7 +158,7 @@ class DeploymentStepConfigurationPolicy(ConfigurationPolicy):
         if self.deployment_dir_path is None or self.step_data_dir_name is None:
             raise ValueError()
 
-        return os.path.join(self.deployment_dir_path, self.step_data_dir_name)
+        return self.deployment_dir_path / self.step_data_dir_name
 
     @step_data_dir_path.setter
     def step_data_dir_path(self, _):
@@ -167,10 +168,7 @@ class DeploymentStepConfigurationPolicy(ConfigurationPolicy):
         """
         This is the base file path+name+uid use to generate output, status and configuration files
         """
-        return os.path.join(
-            self.step_data_dir_path,
-            self.get_script_file_name_without_extension_with_uuid(),
-        )
+        return self.step_data_dir_path / self.get_script_file_name_without_extension_with_uuid()
 
     def get_script_file_name_without_extension_with_uuid(self):
         file_name_without_extension = os.path.splitext(self.script_name)[0]
@@ -198,9 +196,7 @@ class DeploymentStepConfigurationPolicy(ConfigurationPolicy):
         if self.step_data_dir_path is None:
             raise ValueError()
 
-        return os.path.join(
-            self.step_data_dir_path, self.script_configuration_file_name
-        )
+        return self.step_data_dir_path / self.script_configuration_file_name
 
     @script_configuration_file_path.setter
     def script_configuration_file_path(self, _):
@@ -212,9 +208,19 @@ class DeploymentStepConfigurationPolicy(ConfigurationPolicy):
             return self._remote_script_file_path
 
         if self.script_name is None:
-            raise ValueError()
-        return os.path.join(self.deployment_dir_path, self.script_name)
+            raise self.UndefinedValueError("script_name")
+        return self.remote_deployment_dir_path / self.script_name
 
     @remote_script_file_path.setter
     def remote_script_file_path(self, value):
         self._remote_script_file_path = value
+
+    @property
+    def remote_deployment_dir_path(self):
+        if self._remote_deployment_dir_path is None:
+            return Path("/tmp/remote_deployer")
+        return self._remote_deployment_dir_path
+
+    @remote_deployment_dir_path.setter
+    def remote_deployment_dir_path(self, value):
+        self._remote_deployment_dir_path = value

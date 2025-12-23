@@ -487,7 +487,7 @@ class CICDAPI:
 
         return dir_path / "jenkins_api" / "horey" / "jenkins_api" / "master"
 
-    def generate_deployment_target(self, name=None, target_ssh_key_secret_name=None):
+    def generate_deployment_target(self, name=None, target_ssh_key_secret_name=None, bastion=None):
         """
         Generate target
 
@@ -507,6 +507,20 @@ class CICDAPI:
 
         target = DeploymentTarget()
         target.deployment_target_address = ec2_instance.public_ip_address
+        target.deployment_target_user_name = "ubuntu"
         # target.deployment_target_ssh_key_type
         target.deployment_target_ssh_key_path = self.configuration.deployment_directory / target_ssh_key_secret_name
+
+        if bastion:
+            target.bastion_address = bastion.public_ip_address
+            bastion_ssh_key_secret_name = bastion.key_name
+            self.environment_api.aws_api.get_secret_file(bastion_ssh_key_secret_name,
+                                                         str(self.configuration.deployment_directory),
+                                                         region=self.environment_api.region)
+
+            target.bastion_ssh_key_path = self.configuration.deployment_directory / bastion_ssh_key_secret_name
+            target.bastion_user_name = "ubuntu"
+
+            target.deployment_target_address = ec2_instance.private_ip_address
+
         return target

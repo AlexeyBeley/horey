@@ -5,6 +5,8 @@ Deployment target machine.
 
 import os.path
 from enum import Enum
+from pathlib import Path
+
 from horey.deployer.deployment_step import DeploymentStep
 from horey.deployer.deployment_step_configuration_policy import DeploymentStepConfigurationPolicy
 
@@ -18,7 +20,7 @@ class DeploymentTarget:
 
     def __init__(self):
         self.hostname = None
-        self.remote_deployment_dir_path = "/tmp/remote_deployer"
+        self.remote_deployment_dir_path = Path("/tmp/remote_deployer")
         self.deployment_data_dir_name = "deployment_data"
 
         self.bastion_address = None
@@ -36,7 +38,7 @@ class DeploymentTarget:
         self.deployment_code_provisioning_ended = False
         self.deployment_ended = False
 
-        self.local_deployment_dir_path = "/tmp/remote_deployer"
+        self.local_deployment_dir_path = Path("/tmp/remote_deployer")
 
         self.remote_deployer_infrastructure_provisioning_finished = False
         self.remote_deployer_infrastructure_provisioning_succeeded = None

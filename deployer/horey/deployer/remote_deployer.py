@@ -605,6 +605,8 @@ class RemoteDeployer:
         """
         ssh_client = self.get_deployment_target_ssh_client(deployment_target)
         try:
+            if deployment_target.remote_deployment_dir_path != step.configuration.remote_deployment_dir_path:
+                raise NotImplementedError(f"{deployment_target.remote_deployment_dir_path=} {step.configuration.remote_deployment_dir_path=}")
             self.execute_step(ssh_client, step, deployment_target.deployment_target_address)
             sftp_client = self.get_deployment_target_sftp_client(deployment_target)
 
@@ -841,7 +843,7 @@ class RemoteDeployer:
         """
 
         command = (
-            f"screen -S deployer -dm {step.configuration.deployment_dir_path}/remote_step_executor.sh "
+            f"screen -S deployer -dm {step.configuration.remote_deployment_dir_path}/remote_step_executor.sh "
             f"{step.configuration.remote_script_file_path} {step.configuration.script_configuration_file_path} "
             f"{step.configuration.finish_status_file_path} {step.configuration.output_file_path}"
         )

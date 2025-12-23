@@ -20,6 +20,32 @@ class EC2API:
         self.configuration = configuration
         self.environment_api = environment_api
 
+    def get_instance(self, name=None, update_info=True, tags_dict=None):
+        """
+        Get instnace.
+
+        :param name:
+        :return:
+        """
+
+        if tags_dict is None:
+            if name is None:
+                raise ValueError("tags_dict and name are None")
+            tags_dict = {"Name": [name]}
+
+        for tag_name, tag_value in tags_dict.items():
+            if not isinstance(tag_value, list):
+                raise ValueError(f"Tag '{tag_name}' value is not list: '{tag_value}'")
+
+        filters = {"Filters": [{"Name": f"tag:{name}", "Values": values} for name, values in tags_dict.items()] +
+                              [{"Name": "vpc-id", "Values": [self.environment_api.vpc.id]}]
+                   }
+        ec2_instances = self.environment_api.aws_api.ec2_client.get_region_instances(self.environment_api.region, filters=filters,
+                                                                     update_info=update_info)
+        if len(ec2_instances) != 1:
+            raise RuntimeError(f"Expected to find single instance, found: {len(ec2_instances)}")
+        return ec2_instances[0]
+
     def provision(self):
         """
         Provision ECS infrastructure.
@@ -70,7 +96,7 @@ class EC2API:
         if len(amis) != 1:
             raise RuntimeError(f"Can not find single AMI using filter: {filter_request['Filters']}")
         return amis[0]
-    
+
     def provision_ubuntu_24_04_instance(self, name: str, security_groups=None, volume_size=None, key_name=None):
         """
         Provision instance.
@@ -130,6 +156,5 @@ class EC2API:
             }
         ]
         ec2_instance.monitoring = {"Enabled": True}
-        breakpoint()
 
         self.environment_api.aws_api.provision_ec2_instance(ec2_instance)
