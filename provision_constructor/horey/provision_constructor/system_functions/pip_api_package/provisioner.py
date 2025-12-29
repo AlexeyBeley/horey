@@ -31,8 +31,9 @@ class Provisioner(SystemFunctionCommon):
         force, upgrade,
         requirements_file_path=None,
         pip_api_configuration_file=None,
+            **kwargs
     ):
-        super().__init__(os.path.dirname(os.path.abspath(__file__)), force, upgrade)
+        super().__init__(force, upgrade, **kwargs)
         self.deployment_dir = deployment_dir
         self.requirements_file_path = requirements_file_path
 

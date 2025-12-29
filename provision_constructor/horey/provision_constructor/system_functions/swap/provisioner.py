@@ -20,8 +20,9 @@ class Provisioner(SystemFunctionCommon):
         deployment_dir, force, upgrade,
         swap_size_in_gb=None,
         ram_size_in_gb=None,
+            **kwargs
     ):
-        super().__init__(os.path.dirname(os.path.abspath(__file__)), force, upgrade)
+        super().__init__(force, upgrade, **kwargs)
         self.deployment_dir = deployment_dir
 
         self.swap_size_in_gb = swap_size_in_gb

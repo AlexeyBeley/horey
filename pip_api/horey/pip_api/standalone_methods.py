@@ -297,7 +297,7 @@ class StandaloneMethods:
                 return this
         raise RuntimeError(f"This should be unreachable: this_min: {this.min_version}, other_min: {other.min_version}")
 
-    def install_source_code_requirement(self, requirement):
+    def install_source_code_requirement(self, requirement: Requirement):
         """
         Prepare list of requirements to be installed and install those missing.
 

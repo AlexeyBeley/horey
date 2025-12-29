@@ -22,8 +22,8 @@ class Provisioner(SystemFunctionCommon):
     """
 
     # pylint: disable= too-many-arguments
-    def __init__(self, deployment_dir, force, upgrade, package_name=None, package_names=None, needrestart_mode="a"):
-        super().__init__(os.path.dirname(os.path.abspath(__file__)), force, upgrade)
+    def __init__(self, deployment_dir, force, upgrade, package_name=None, package_names=None, needrestart_mode="a", **kwargs):
+        super().__init__(force, upgrade)
         self.deployment_dir = deployment_dir
 
         if package_name is not None:

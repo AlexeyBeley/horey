@@ -31,12 +31,14 @@ class SystemFunctionFactory:
         :return:
         """
 
-        name = system_function_class.__module__[
-            len("horey.provision_constructor.system_functions.") :
-        ]
-        package_name = name[: name.rfind(".")]
+        #name = system_function_class.__module__[
+        #    len("horey.provision_constructor.system_functions.") :
+        #]
+        #package_name = name[: name.rfind(".")]
+        package_name = system_function_class.get_system_function_name()
         logger.info(f"Registering system function {package_name}")
         SystemFunctionFactory.REGISTERED_FUNCTIONS[package_name] = system_function_class
+        return system_function_class
 
     # pylint: disable= too-many-arguments
     class SystemFunction:

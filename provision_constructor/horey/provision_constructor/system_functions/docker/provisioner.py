@@ -21,8 +21,8 @@ class Provisioner(SystemFunctionCommon):
 
     """
 
-    def __init__(self, deployment_dir, force, upgrade):
-        super().__init__(os.path.dirname(os.path.abspath(__file__)), force, upgrade)
+    def __init__(self, deployment_dir, force, upgrade, **kwargs):
+        super().__init__(force, upgrade, **kwargs)
         self.deployment_dir = deployment_dir
         self._release_codename = None
 

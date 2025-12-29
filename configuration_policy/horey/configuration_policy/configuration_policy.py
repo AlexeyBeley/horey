@@ -286,7 +286,7 @@ class ConfigurationPolicy:
         with open(output_file_name, "w+", encoding="utf-8") as file_handler:
             json.dump(dict_values, file_handler, indent=4)
 
-    def generate_configuration_file_ng(self, output_file_name):
+    def generate_configuration_file_ng(self, output_file_name: Path):
         """
         Generated JSON configuration file from self properties.
 
@@ -300,6 +300,8 @@ class ConfigurationPolicy:
             del dict_ret["configuration_file_full_path"]
 
         dict_values = CommonUtils.convert_to_dict(dict_ret)
+
+        output_file_name.parent.mkdir(exist_ok=True, parents=True)
 
         with open(output_file_name, "w+", encoding="utf-8") as file_handler:
             json.dump(dict_values, file_handler, indent=4)

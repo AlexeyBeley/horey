@@ -1,11 +1,12 @@
-import pdb
-import os
 from horey.provision_constructor.system_function_factory import SystemFunctionFactory
 from horey.replacement_engine.replacement_engine import ReplacementEngine
+from horey.provision_constructor.system_functions.system_function_common import (
+    SystemFunctionCommon,
+)
 
 
 @SystemFunctionFactory.register
-class Builder(SystemFunctionFactory.SystemFunction):
+class Builder(SystemFunctionCommon):
     def __init__(
         self,
         root_deployment_dir,

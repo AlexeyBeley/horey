@@ -34,12 +34,26 @@ class SystemFunctionCommon:
     APT_PACKAGES_UPDATED = False
     PIP_PACKAGES = []
 
-    def __init__(self, system_function_provisioner_dir_path, force, upgrade):
-        self.system_function_provisioner_dir_path = system_function_provisioner_dir_path
+    def __init__(self, deployment_dir, force, upgrade, **kwargs):
+        self.deployment_dir = deployment_dir
+        self.kwargs = kwargs
         self.validate_provisioned_ancestor = True
         self.venv_path = None
         self.force = force
         self.upgrade = upgrade
+
+    @classmethod
+    def get_system_function_name(cls):
+        """
+        Find the name.
+
+        :return:
+        """
+
+        name = cls.__module__[len("horey.provision_constructor.system_functions."):]
+
+        # example: name = 'logstash.provisioner'
+        return name[: name.rfind(".")]
 
     def provision(self):
         """
@@ -55,6 +69,31 @@ class SystemFunctionCommon:
         self._provision()
 
         self.test_provisioned()
+
+    def add_trigger(self, dst_file_path):
+        """
+        Check input and add the trigger to file
+
+        :param dst_file_path:
+        :return:
+        """
+
+        with open(dst_file_path, encoding="utf-8") as file_handler:
+            contents = file_handler.read()
+        if "provision_constructor=ProvisionConstructor()" not in contents.replace(" ", ""):
+            raise ValueError("Expecting 'provision_constructor=ProvisionConstructor()'")
+
+        str_kwargs = ""
+        for key, value in self.kwargs.items():
+            if isinstance(value, str):
+                str_kwargs += f', {key} = "{value}"'
+            elif isinstance(value, bool):
+                str_kwargs += f', {key} = {value}'
+            else:
+                breakpoint()
+        contents += f'\nprovision_constructor.provision_system_function("{self.get_system_function_name()}", upgrade = {bool(self.upgrade)}, force = {bool(self.force)}{str_kwargs})'
+        with open(dst_file_path, "w", encoding="utf-8") as file_handler:
+            file_handler.write(contents)
 
     def test_provisioned(self):
         """
@@ -321,9 +360,7 @@ class SystemFunctionCommon:
         """
 
         if src_file_path.startswith("./"):
-            src_file_path = os.path.join(
-                self.system_function_provisioner_dir_path, src_file_path
-            )
+            raise DeprecationWarning(f"Use absolute file path: {src_file_path}")
 
         prefix = "sudo " if sudo else ""
         SystemFunctionCommon.run_bash(
@@ -1019,9 +1056,7 @@ class SystemFunctionCommon:
             return False
 
         if src_file_path.startswith("./"):
-            src_file_path = os.path.join(
-                self.system_function_provisioner_dir_path, src_file_path
-            )
+            raise DeprecationWarning(f"Use absolute file path: {src_file_path}")
 
         replacement_engine = ReplacementEngine()
         with open(src_file_path, encoding="utf-8") as file_handler:

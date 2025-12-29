@@ -97,7 +97,7 @@ class EC2API:
             raise RuntimeError(f"Can not find single AMI using filter: {filter_request['Filters']}")
         return amis[0]
 
-    def provision_ubuntu_24_04_instance(self, name: str, security_groups=None, volume_size=None, key_name=None):
+    def provision_ubuntu_24_04_instance(self, name: str, security_groups=None, volume_size=None, key_name=None, instance_type="t3a.medium"):
         """
         Provision instance.
 
@@ -114,7 +114,7 @@ class EC2API:
         ec2_instance = EC2Instance({})
 
         ec2_instance.image_id = self.get_ubuntu24_04_image().id
-        ec2_instance.instance_type = "t3a.medium"
+        ec2_instance.instance_type = instance_type
 
         ec2_instance.key_name = key_name
         ec2_instance.region = self.environment_api.region
@@ -158,3 +158,4 @@ class EC2API:
         ec2_instance.monitoring = {"Enabled": True}
 
         self.environment_api.aws_api.provision_ec2_instance(ec2_instance)
+        return ec2_instance

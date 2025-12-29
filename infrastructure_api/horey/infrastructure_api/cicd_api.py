@@ -2,7 +2,8 @@
 Standard Load balancing maintainer.
 
 """
-import pathlib
+from pathlib import Path
+import shutil
 import time
 import getpass
 
@@ -16,10 +17,13 @@ from horey.infrastructure_api.loadbalancer_api import LoadbalancerAPIConfigurati
 from horey.infrastructure_api.dns_api import DNSAPIConfigurationPolicy
 from horey.git_api.git_api import GitAPI, GitAPIConfigurationPolicy
 from horey.aws_api.aws_clients.efs_client import EFSFileSystem, EFSAccessPoint, EFSMountTarget
-from horey.deployer.remote_deployer import DeploymentTarget
+from horey.deployer.remote_deployer import DeploymentTarget, RemoteDeployer
+from horey.pip_api.requirement import Requirement
+from horey.pip_api.standalone_methods import StandaloneMethods
 from horey.aws_api.aws_services_entities.iam_policy import IamPolicy
 
 from horey.h_logger import get_logger
+from horey.provision_constructor.provision_constructor import ProvisionConstructor
 
 logger = get_logger()
 
@@ -478,7 +482,7 @@ class CICDAPI:
         ecs_api.prepare_container_build_directory_callback = self.prepare_container_build_directory_callback
         return ecs_api
 
-    def prepare_container_build_directory_callback(self, dir_path: pathlib.Path):
+    def prepare_container_build_directory_callback(self, dir_path: Path):
         """
 
         :param dir_path:
@@ -524,3 +528,93 @@ class CICDAPI:
             target.deployment_target_address = ec2_instance.private_ip_address
 
         return target
+
+    def add_install_provision_constructor_step(self, target: DeploymentTarget, horey_repo_path=None):
+        """
+        Install the provision_constructor
+
+        :param horey_repo_path:
+        :param target:
+        :return:
+        """
+
+        ProvisionConstructor.generate_provision_constructor_bootstrap_script(target.local_deployment_dir_path,
+                                                                             "provision_constructor_install.sh")
+
+        step = target.generate_step("provision_constructor_install.sh")
+        (step.configuration.local_deployment_dir_path / step.configuration.data_dir_name).mkdir(exist_ok=True,
+                                                                                                parents=True)
+        step.configuration.generate_configuration_file_ng(step.configuration.local_deployment_dir_path /
+                                                          step.configuration.data_dir_name /
+                                                          step.configuration.script_configuration_file_name)
+        if horey_repo_path:
+            self.copy_horey_package_required_packages_to_build_dir("provision_constructor", step.configuration.local_deployment_dir_path, horey_repo_path)
+        target.add_step(step)
+
+    def copy_horey_package_required_packages_to_build_dir(self, package_raw_name: str, build_dir_path: Path, horey_repo_path: Path):
+        """
+        Copy all needed directories and files.
+
+        :param package_raw_name:
+        :param build_dir_path:
+        :return:
+        """
+
+        base_names = ["pip_api", "build", "Makefile", "pip_api_docker_configuration.py", "pip_api_configuration.py"]
+
+        build_horey_dir_path = build_dir_path / "horey"
+        build_horey_dir_path.mkdir()
+
+        requirement = Requirement(None, f"horey.{package_raw_name}")
+        venv_dir_path = build_horey_dir_path / "build" / "_build" / "_venv"
+        multi_package_repo_to_prefix_map = {"horey.": horey_repo_path}
+        requirements_aggregator = {}
+        StandaloneMethods(venv_dir_path, multi_package_repo_to_prefix_map).compose_requirements_recursive([requirement],
+                                                                                                          requirements_aggregator)
+        recursively_found_horey_directories = [requirement_name.split(".")[1] for requirement_name in requirements_aggregator if requirement_name.startswith("horey")]
+
+        def ignore_build(_, file_names):
+            return ["_build"] if "_build" in file_names else []
+
+        for obj_name in list(set(base_names + recursively_found_horey_directories)):
+            obj_path = horey_repo_path / obj_name
+            if obj_path.is_dir():
+                shutil.copytree(obj_path, build_horey_dir_path / obj_name, ignore=ignore_build)
+            else:
+                shutil.copy(obj_path, build_horey_dir_path / obj_name)
+
+    def add_provision_constructor_system_function(self, dst_file_path: Path, system_function_name: str, **kwargs):
+        """
+        Add function to the provisioner script.
+
+        :param dst_file_path:
+        :param system_function_name:
+        :param kwargs:
+        :return:
+        """
+
+        ProvisionConstructor().add_system_function_trigger_to_step_script(system_function_name, dst_file_path, **kwargs)
+
+    def add_step_provision_constructor_apply(self, target, provision_script_generator):
+        """
+        Generate and add the step.
+
+        :param target:
+        :param provision_script_generator:
+        :return:
+        """
+
+        entrypoint_script = ProvisionConstructor.generate_provision_constructor_apply_scripts(target.local_deployment_dir_path, provision_script_generator, target=target)
+
+        breakpoint()
+
+    def run_remote_provision_constructor(self, target, function_name, **kwargs):
+        """
+        Run the function remotely
+
+        :return:
+        """
+        remote_deployer = RemoteDeployer()
+        remoter = remote_deployer.get_remoter(target)
+
+        ProvisionConstructor().provision_system_function_remote(remoter, function_name, **kwargs)

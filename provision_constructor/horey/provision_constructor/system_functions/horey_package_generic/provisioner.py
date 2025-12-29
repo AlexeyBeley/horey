@@ -31,8 +31,9 @@ class Provisioner(SystemFunctionCommon):
         package_name=None,
         package_names=None,
         venv_path=None,
+        **kwargs
     ):
-        super().__init__(os.path.dirname(os.path.abspath(__file__)), force, upgrade)
+        super().__init__(force, upgrade, **kwargs)
         self.deployment_dir = deployment_dir
 
         if package_name is not None:

@@ -121,3 +121,19 @@ class DeploymentTarget:
 
         RSA = "rsa"
         ED25519 = "ed25519key"
+
+    def generate_step(self, step_script_path: str):
+        """
+        Generate step.
+
+        :param step_script_path:
+        :return:
+        """
+
+        if "/" in step_script_path:
+            raise NotImplementedError(f"remove / from {step_script_path}")
+        step_configuration = DeploymentStepConfigurationPolicy(step_script_path.replace(".sh", ""))
+        step_configuration.local_deployment_dir_path = self.local_deployment_dir_path
+        step_configuration.script_name = step_script_path
+
+        return DeploymentStep(step_configuration)

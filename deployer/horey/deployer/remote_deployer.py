@@ -3,7 +3,7 @@
 Remote targets deployer.
 
 """
-
+import pathlib
 import re
 import os
 import datetime
@@ -14,6 +14,8 @@ import traceback
 
 from contextlib import contextmanager
 from pathlib import Path
+from typing import List, Any
+
 import paramiko
 from sshtunnel import open_tunnel
 
@@ -21,10 +23,93 @@ from horey.deployer.deployment_target import DeploymentTarget
 from horey.deployer.deployment_step import DeploymentStep
 from horey.deployer.replacement_engine import ReplacementEngine
 from horey.common_utils.zip_utils import ZipUtils
+from horey.common_utils.remoter import Remoter
 
 from horey.h_logger import get_logger
 
 logger = get_logger()
+
+
+class SSHRemoter(Remoter):
+    """
+    Remote executor and file transfer
+
+    """
+
+    def __init__(self, connector):
+        self.connector = connector
+        self._executor = None
+        self._sftp_client = None
+
+    @property
+    def executor(self):
+        """
+        Function that executes remote scripts
+
+        :return:
+        """
+        if self._executor is None:
+            self._executor, self._sftp_client = self.connector()
+        return self._executor
+
+    @property
+    def sftp_client(self):
+        """
+        standard
+        :return:
+        """
+        if self._sftp_client is None:
+            self._executor, self._sftp_client = self.connector()
+        return self._sftp_client
+
+    def execute(self, command: str, *output_validators: List[Any]) -> (List[str], List[str], int):
+        """
+        Remote command.
+
+        :param command:
+        :param output_validators:
+        :return:
+        """
+
+        errors = []
+        chan, lst_stdout, lst_stderr, status_code = self.executor(command)
+        for output_validator in output_validators:
+            try:
+                if not output_validator(lst_stdout, lst_stderr, status_code):
+                    errors.append("Validation failed")
+            except Exception as inst_error:
+                errors.append(repr(inst_error))
+        if errors:
+            raise RuntimeError(", ".join(errors))
+        return lst_stdout, lst_stderr, status_code
+
+    def put_file(self, src: Path, dst: Path, sudo: bool = False):
+        """
+        Put local file to remote.
+
+        :param src:
+        :param dst:
+        :param sudo:
+        :return:
+        """
+
+        if sudo:
+            remote_tmp_file_path = Path('/tmp')/src.name
+            self.sftp_client.put(str(src), str(remote_tmp_file_path))
+            return self.execute(f"sudo mv {Path('/tmp')/src.name} {dst}")
+        self.sftp_client.put(str(src), str(dst))
+
+    def get_file(self, src: Path, dst: Path, sudo: bool = False):
+        """
+        Get remote file
+
+        :param src:
+        :param dst:
+        :param sudo:
+        :return:
+        """
+
+        self.sftp_client.get(str(src), str(dst))
 
 
 class HoreySFTPClient(paramiko.SFTPClient):
@@ -34,7 +119,7 @@ class HoreySFTPClient(paramiko.SFTPClient):
 
     """
 
-    def put_dir(self, source, target):
+    def put_dir(self, source: pathlib.Path, target: pathlib.Path):
         """
         Uploads the contents of the source directory to the target path. The
         target directory needs to exists. All subdirectories in source are
@@ -46,13 +131,13 @@ class HoreySFTPClient(paramiko.SFTPClient):
         for item in os.listdir(source):
             if os.path.isfile(os.path.join(source, item)):
                 self.put(
-                    os.path.join(source, item), os.path.join(target, item), confirm=True
+                    str(source / item), str(target / item), confirm=True
                 )
             else:
-                self.mkdir(os.path.join(target, item), ignore_existing=True)
-                self.put_dir(os.path.join(source, item), os.path.join(target, item))
+                self.mkdir(target / item, ignore_existing=True)
+                self.put_dir(source / item, target / item)
 
-    def mkdir(self, path, mode=511, ignore_existing=False):
+    def mkdir(self, path: pathlib.Path, mode=511, ignore_existing=False):
         """
         Augments mkdir by adding an option to not fail if the folder exists
 
@@ -61,14 +146,14 @@ class HoreySFTPClient(paramiko.SFTPClient):
         """
 
         try:
-            super().mkdir(path, mode)
+            super().mkdir(str(path), mode)
         except IOError:
             if ignore_existing:
                 pass
             else:
                 raise
 
-    def get_dir(self, remote_path, local_path):
+    def get_dir(self, remote_path: pathlib.Path, local_path: pathlib.Path):
         """
         Get remote dir
 
@@ -77,24 +162,24 @@ class HoreySFTPClient(paramiko.SFTPClient):
         :return:
         """
 
-        if os.path.isfile(local_path):
+        if local_path.is_file():
             raise RuntimeError(f"local_path must be a dir but {local_path} is a file")
-        remote_path_basename = os.path.basename(remote_path)
-        if not local_path.endswith(remote_path_basename):
-            local_path = os.path.join(local_path, remote_path_basename)
+
+        if not local_path.name != remote_path.name:
+            local_path = local_path / remote_path.name
 
         logger.info(f"Copying remote directory '{remote_path}' to local {local_path}")
 
         os.makedirs(local_path, exist_ok=True)
 
-        remote_files_and_dirs = self.listdir_attr(path=remote_path)
+        remote_files_and_dirs = self.listdir_attr(path=str(remote_path))
         for attribute in remote_files_and_dirs:
             if stat.S_ISDIR(attribute.st_mode):
-                self.get_dir(os.path.join(remote_path, attribute.filename), local_path)
+                self.get_dir(remote_path / attribute.filename, local_path)
                 continue
             self.get(
-                os.path.join(remote_path, attribute.filename),
-                os.path.join(local_path, attribute.filename),
+                str(remote_path/ attribute.filename),
+                str(local_path / attribute.filename),
             )
 
 
@@ -178,7 +263,7 @@ class RemoteDeployer:
             )
 
     @staticmethod
-    def generate_unzip_script_file_contents(remote_zip_path, remote_deployment_dir_path):
+    def generate_unzip_script_file_contents(remote_zip_path: pathlib.Path, remote_deployment_dir_path: pathlib.Path):
         """
         Generate the script to unzip remotely copied zipped deployment dir.
 
@@ -186,6 +271,7 @@ class RemoteDeployer:
         :param remote_deployment_dir_path:
         :return:
         """
+
         command = (
             "#!/bin/bash\n"
             "sudo sed -i 's/#$nrconf{kernelhints} = -1;/$nrconf{kernelhints} = 0;/' /etc/needrestart/needrestart.conf\n"
@@ -248,16 +334,14 @@ class RemoteDeployer:
         )
 
         zip_file_name = local_zip_file_path.name
-        remote_zip_path = os.path.join(
-            target.remote_deployment_dir_path, zip_file_name
-        )
+        remote_zip_path = target.remote_deployment_dir_path / zip_file_name
 
         logger.info(
             f"sftp: copying zip file from local {local_zip_file_path} to "
             f"{target.deployment_target_address}:{remote_zip_path}"
         )
 
-        sftp_client.put(str(local_zip_file_path), remote_zip_path)
+        sftp_client.put(str(local_zip_file_path), str(remote_zip_path))
         local_unziper_file_path = os.path.join(
             target.local_deployment_dir_path, "unzip_script.sh"
         )
@@ -268,10 +352,9 @@ class RemoteDeployer:
                 )
             )
 
-        remote_unzip_file_path = os.path.join(
-            target.remote_deployment_dir_path, "unzip_script.sh"
-        )
-        sftp_client.put(local_unziper_file_path, remote_unzip_file_path)
+        remote_unzip_file_path = target.remote_deployment_dir_path / "unzip_script.sh"
+
+        sftp_client.put(str(local_unziper_file_path), str(remote_unzip_file_path))
         os.remove(local_unziper_file_path)
         command = f"/bin/bash {remote_unzip_file_path}"
 
@@ -592,6 +675,11 @@ class RemoteDeployer:
             logger.error(
                 f"Unhandled exception in deploy_target_step_thread {repr(exception_instance)})"
             )
+            traceback_str = "".join(
+                traceback.format_tb(exception_instance.__traceback__)
+            )
+            logger.exception(traceback_str)
+
             step.status_code = step.StatusCode.ERROR
             step.output = repr(exception_instance)
 
@@ -603,6 +691,7 @@ class RemoteDeployer:
         :param step:
         :return:
         """
+
         ssh_client = self.get_deployment_target_ssh_client(deployment_target)
         try:
             if deployment_target.remote_deployment_dir_path != step.configuration.remote_deployment_dir_path:
@@ -613,17 +702,23 @@ class RemoteDeployer:
             for retry_counter in range(step.configuration.retry_attempts):
                 try:
                     sftp_client.get(
-                        step.configuration.finish_status_file_path,
-                        os.path.join(
-                            deployment_target.local_deployment_data_dir_path,
+                        str(step.configuration.remote_deployment_dir_path /
+                        step.configuration.data_dir_name /
+                            step.configuration.finish_status_file_name),
+                        str(
+                            step.configuration.local_deployment_dir_path /
+                            step.configuration.data_dir_name /
                             step.configuration.finish_status_file_name,
                         ),
                     )
 
                     sftp_client.get(
-                        step.configuration.output_file_path,
-                        os.path.join(
-                            deployment_target.local_deployment_data_dir_path,
+                        str(step.configuration.remote_deployment_dir_path /
+                        step.configuration.data_dir_name /
+                        step.configuration.output_file_name),
+                        str(
+                            step.configuration.local_deployment_dir_path /
+                            step.configuration.data_dir_name /
                             step.configuration.output_file_name,
                         ),
                     )
@@ -640,6 +735,10 @@ class RemoteDeployer:
                     logger.error(
                         f"[LOCAL->{deployment_target.deployment_target_address}] Unhandled exception in helper thread {repr(error_received)})"
                     )
+                    traceback_str = "".join(
+                        traceback.format_tb(error_received.__traceback__)
+                    )
+                    logger.exception(traceback_str)
 
                 time.sleep(step.configuration.sleep_time)
             else:
@@ -650,10 +749,8 @@ class RemoteDeployer:
                     f"[LOCAL->{deployment_target.deployment_target_address}] Failed to fetch remote script's status target: {deployment_target.deployment_target_address}"
                 )
 
-            step.update_finish_status(
-                deployment_target.local_deployment_data_dir_path
-            )
-            step.update_output(deployment_target.local_deployment_data_dir_path)
+            step.update_finish_status()
+            step.update_output()
 
             if step.status_code != step.StatusCode.SUCCESS:
                 last_lines = "\n".join(step.output.split("\n")[-50:])
@@ -671,6 +768,12 @@ class RemoteDeployer:
             deployment_target.status_code = deployment_target.StatusCode.FAILURE
             deployment_target.status = f"Unknown exception happened when deploying the step {step.configuration.name}. " \
                                        f"Error: {repr(error_instance)}"
+
+            traceback_str = "".join(
+                traceback.format_tb(error_instance.__traceback__)
+            )
+            logger.exception(traceback_str)
+
             raise RemoteDeployer.DeployerError(
                 repr(error_instance)
             ) from error_instance
@@ -842,10 +945,14 @@ class RemoteDeployer:
         :return:
         """
 
+        script_configuration_file_path = step.configuration.remote_deployment_dir_path / step.configuration.data_dir_name / step.configuration.script_configuration_file_name
+        finish_status_file_path = step.configuration.remote_deployment_dir_path / step.configuration.data_dir_name / step.configuration.finish_status_file_name
+        output_file_path = step.configuration.remote_deployment_dir_path / step.configuration.data_dir_name / step.configuration.output_file_name
+
         command = (
             f"screen -S deployer -dm {step.configuration.remote_deployment_dir_path}/remote_step_executor.sh "
-            f"{step.configuration.remote_script_file_path} {step.configuration.script_configuration_file_path} "
-            f"{step.configuration.finish_status_file_path} {step.configuration.output_file_path}"
+            f"{step.configuration.remote_script_file_path} {script_configuration_file_path} "
+            f"{finish_status_file_path} {output_file_path}"
         )
 
         logger.info(f"[REMOTE->{deployment_target_address}] {command}")
@@ -1176,3 +1283,40 @@ class RemoteDeployer:
                 client = HoreySFTPClient.from_transport(transport)
                 self.sftp_clients[key] = client
         return client
+
+    def get_remoter(self, target) -> SSHRemoter:
+        """
+        Create remoter.
+
+        :param target:
+        :return:
+        """
+
+        def connector():
+            """
+            Create SSH and SFTP connections.
+
+            :return:
+            """
+            ssh_client = self.get_deployment_target_ssh_client(target)
+            channel = ssh_client.invoke_shell()
+            stdin = channel.makefile('wb')
+            stdout = channel.makefile('r')
+            sftp_client = self.get_deployment_target_sftp_client(target)
+
+            def executor(command):
+                """
+                Execute remotely
+
+                :param command:
+                :return:
+                """
+                return self.execute_remote_shell(stdin, stdout, command, target.deployment_target_address)
+
+            return executor, sftp_client
+
+        ret = SSHRemoter(connector())
+        ret.connector = connector
+
+        return ret
+

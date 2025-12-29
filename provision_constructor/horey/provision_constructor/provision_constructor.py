@@ -3,10 +3,14 @@
 Provision constructor.
 """
 import os
+import shutil
+from pathlib import Path
 
+# Do not delete this. It is needed for proper working
 # pylint: disable= wildcard-import, unused-wildcard-import
 from horey.provision_constructor.system_functions import *
 from horey.provision_constructor.system_function_factory import SystemFunctionFactory
+from horey.common_utils.remoter import Remoter
 from horey.h_logger import get_logger
 
 logger = get_logger()
@@ -56,6 +60,33 @@ class ProvisionConstructor:
 
         system_function.provision()
         self.provisioned_system_functions.append(system_function_name)
+
+    def add_system_function_trigger_to_step_script(self, system_function_name, dst_file_path, **kwargs):
+        """
+        Init system_function and write the trigger to file
+
+        @param system_function_name:
+        @param kwargs:
+        @return:
+        :param dst_file_path:
+        """
+
+        force = False
+        if "force" in kwargs:
+            force = kwargs.get("force")
+            del kwargs["force"]
+
+        upgrade = False
+        if "upgrade" in kwargs:
+            force = kwargs.get("upgrade")
+            del kwargs["upgrade"]
+
+        logger.info(f"Initializing system_function '{system_function_name}' with args: {kwargs}")
+        system_function = SystemFunctionFactory.REGISTERED_FUNCTIONS[
+            system_function_name
+        ](self.deployment_dir, force, upgrade, **kwargs)
+
+        system_function.add_trigger(dst_file_path)
 
     def check_provisioned_ancestor(self, system_function_name):
         """
@@ -119,3 +150,53 @@ class ProvisionConstructor:
                 file_handler_w.write(file_handler_r.read())
 
         return True
+
+    @staticmethod
+    def generate_provision_constructor_apply_scripts(deployment_dir_path, provision_script_generator, **kwargs):
+        """
+        Generate the entrypoint.
+
+        :param deployment_dir_path:
+        :param provision_script_generator:
+        :return:
+        """
+
+        provisioner_python_file_path = deployment_dir_path / "step_provision_constructor_apply.py"
+        if provisioner_python_file_path.exists():
+            raise RuntimeError(f"Already exists: {provisioner_python_file_path}")
+
+        shutil.copy2(Path(__file__).parent / "step_provision_constructor_apply.py", deployment_dir_path)
+        shutil.copy2(Path(__file__).parent / "step_provision_constructor_apply.sh", deployment_dir_path)
+
+        provision_script_generator(provisioner_python_file_path, **kwargs)
+
+        return deployment_dir_path / "step_provision_constructor_apply.sh"
+
+    def provision_system_function_remote(self, remoter: Remoter, system_function_name, **kwargs):
+        """
+        Init and run system_function provision method.
+
+        :param remoter:
+        :param system_function_name:
+        :param kwargs:
+        :return:
+        """
+
+        force = False
+        if "force" in kwargs:
+            force = kwargs.get("force")
+            del kwargs["force"]
+
+        upgrade = False
+        if "upgrade" in kwargs:
+            force = kwargs.get("upgrade")
+            del kwargs["upgrade"]
+
+        logger.info(f"Initializing system_function '{system_function_name}' with args: {kwargs}")
+        system_function = SystemFunctionFactory.REGISTERED_FUNCTIONS[
+            system_function_name
+        ](self.deployment_dir, force, upgrade, **kwargs)
+        if system_function.validate_provisioned_ancestor:
+            self.check_provisioned_ancestor(system_function_name)
+
+        return system_function.provision_remote(remoter)

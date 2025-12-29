@@ -38,7 +38,7 @@ def test_provision_system_function_horey_package_generic_venv():
     )
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_provision_system_function_pip_api_package_venv():
     """
     python -m venv ./test_venv

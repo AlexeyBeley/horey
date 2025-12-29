@@ -27,8 +27,8 @@ class Provisioner(SystemFunctionCommon):
 
     """
 
-    def __init__(self, deployment_dir, force, upgrade):
-        super().__init__(os.path.dirname(os.path.abspath(__file__)), force, upgrade)
+    def __init__(self, deployment_dir, force, upgrade, **kwargs):
+        super().__init__(force, upgrade, **kwargs)
         self.deployment_dir = deployment_dir
 
     def test_provisioned(self):
@@ -51,9 +51,6 @@ class Provisioner(SystemFunctionCommon):
         @return:
         """
 
-        self.apt_purge("ntp*")
-        self.apt_purge("sntp*")
-        self.apt_purge("chrony*")
         release = platform.release()
         float_release = float(release[:release.find(".", release.find(".")+1)])
 

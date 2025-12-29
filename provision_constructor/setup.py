@@ -32,6 +32,7 @@ setup(
     package_data={
         "": [
             "bootstrap.sh",
+            "step_provision_constructor_apply.sh",
             "bash_tools/*.sh",
             "system_functions/**/*.sh",
             "system_functions/**/*.txt",

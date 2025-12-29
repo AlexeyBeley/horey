@@ -57,7 +57,7 @@ class Mocker:
         raise RuntimeError("authorization token has expired")
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_build_docker_image(build_api):
     build_api.docker_build_directory.mkdir(exist_ok=True)
     build_api.add_ecr_registry_credentials()

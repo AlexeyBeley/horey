@@ -22,8 +22,8 @@ class Provisioner(SystemFunctionCommon):
     """
 
     # pylint: disable=too-many-arguments
-    def __init__(self, deployment_dir, force, upgrade, name=None, unit_file_location=None):
-        super().__init__(os.path.dirname(os.path.abspath(__file__)), force, upgrade)
+    def __init__(self, deployment_dir, force, upgrade, name=None, unit_file_location=None, **kwargs):
+        super().__init__(force, upgrade, **kwargs)
         self.validate_provisioned_ancestor = False
         self.deployment_dir = deployment_dir
 

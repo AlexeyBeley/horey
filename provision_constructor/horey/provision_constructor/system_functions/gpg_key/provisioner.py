@@ -18,8 +18,8 @@ class Provisioner(SystemFunctionCommon):
     """
 
     # pylint: disable= too-many-arguments
-    def __init__(self, deployment_dir, force, upgrade, src_url=None, dst_file_path=None):
-        super().__init__(os.path.dirname(os.path.abspath(__file__)), force, upgrade)
+    def __init__(self, deployment_dir, force, upgrade, src_url=None, dst_file_path=None, **kwargs):
+        super().__init__(force, upgrade, **kwargs)
         self.deployment_dir = deployment_dir
         self.src_url = src_url
         self.dst_file_path = dst_file_path
