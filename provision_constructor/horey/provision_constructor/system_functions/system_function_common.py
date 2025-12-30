@@ -17,6 +17,7 @@ from horey.provision_constructor.system_functions.apt_package import APTPackage
 from horey.provision_constructor.system_functions.apt_repository import APTRepository
 from horey.h_logger import get_logger
 from horey.common_utils.bash_executor import BashExecutor
+from horey.common_utils.remoter import Remoter
 
 logger = get_logger()
 BashExecutor.set_logger(logger, override=False)
@@ -35,12 +36,14 @@ class SystemFunctionCommon:
     PIP_PACKAGES = []
 
     def __init__(self, deployment_dir, force, upgrade, **kwargs):
+        self.action = kwargs.get("action")
         self.deployment_dir = deployment_dir
         self.kwargs = kwargs
         self.validate_provisioned_ancestor = True
         self.venv_path = None
         self.force = force
         self.upgrade = upgrade
+        self.remoter: Remoter = None
 
     @classmethod
     def get_system_function_name(cls):
@@ -1212,6 +1215,98 @@ class SystemFunctionCommon:
         """
         System function test has failed.
         """
+
+    @staticmethod
+    def last_line_validator(string_to_look_for, convert_to_lower=True):
+        """
+        Check latest nonempty line contains the string.
+
+        :param convert_to_lower:
+        :param string_to_look_for:
+        :return:
+        """
+
+        if convert_to_lower:
+            string_to_look_for = string_to_look_for.lower()
+
+        def helper(lst_stdout, lst_stderr, error_code):
+            line = ""
+            for line in reversed(lst_stdout):
+                if not line or line == "\n":
+                    continue
+                if convert_to_lower:
+                    line = line.lower()
+                if string_to_look_for in line:
+                    return True
+
+            raise ValueError(f"Can not find '{convert_to_lower}' in the last line {line}")
+        return helper
+
+    @staticmethod
+    def grep_validator(strings_to_look_for, convert_to_lower=True):
+        """
+        Check latest nonempty line contains the string.
+
+        :param strings_to_look_for:
+        :param convert_to_lower:
+        :return:
+        """
+
+        if convert_to_lower:
+            strings_to_look_for = [string_to_look_for.lower() for string_to_look_for in strings_to_look_for]
+
+        def helper(lst_stdout, lst_stderr, error_code):
+            errors = []
+            output = "".join(lst_stdout)
+            if convert_to_lower:
+                output = output.lower()
+
+            for string_to_look_for in strings_to_look_for:
+                if string_to_look_for not in output:
+                    errors.append(f"No string '{string_to_look_for}' in output")
+
+            if errors:
+                raise RuntimeError("\n".join(errors))
+
+            return True
+
+        return helper
+
+    def check_systemd_service_status_remotely(self, service_name: str, min_uptime: int = 60):
+        """
+        Check the service uptime.
+
+        :param service_name:
+        :param min_uptime:
+        :return:
+        """
+
+        command = f'servicestartsec=$(date -d "$(systemctl show --property=ActiveEnterTimestamp {service_name} | cut -d= -f2)" +%s) && serviceelapsedsec=$(( $(date +%s) - servicestartsec )) && echo $serviceelapsedsec'
+        sleep_time = 10
+        retries = (min_uptime * 2 // sleep_time)
+        for i in range(retries):
+            lst_stdout, _, _ = self.remoter.execute(command)
+            str_seconds = lst_stdout[-1].strip("\n")
+            int_seconds = int(str_seconds)
+            if int_seconds >= min_uptime:
+                return True
+
+            logger.info(f"Service is up for {str_seconds} seconds {min_uptime=}. Going to sleep for {sleep_time} [{i}/{retries}]")
+
+            time.sleep(sleep_time)
+        raise TimeoutError(f"Waited for {min_uptime} seconds")
+
+    def systemctl_restart_service_and_wait_remotely(self, service_name: str):
+        """
+        Restart and wait for service to be up and healthy.
+
+        :param service_name:
+        :return:
+        """
+
+        self.remoter.execute(f"sudo systemctl restart {service_name}")
+
+        self.check_systemd_service_status_remotely(service_name)
 
 
 SystemFunctionCommon.ACTION_MANAGER.register_action(

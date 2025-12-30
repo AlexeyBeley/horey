@@ -93,7 +93,6 @@ class Provisioner(SystemFunctionCommon):
         self.generate_configuration_file(local_file_path)
         remoter.put_file(local_file_path, remote_file_path, sudo=True)
 
-        self.check_systemd_service_status_remotely(remoter, "zabbix-agent2")
         remoter.execute("sudo systemctl restart zabbix-agent2")
         remoter.execute("sudo systemctl enable zabbix-agent2", self.last_line_validator("Executing: /usr/lib/systemd/systemd-sysv-install enable zabbix-agent2"))
         self.check_systemd_service_status_remotely(remoter, "zabbix-agent2")
@@ -130,32 +129,6 @@ class Provisioner(SystemFunctionCommon):
         return True
 
     @staticmethod
-    def last_line_validator(string_to_look_for, convert_to_lower=True):
-        """
-        Check latest nonempty line contains the string.
-
-        :param convert_to_lower:
-        :param string_to_look_for:
-        :return:
-        """
-
-        if convert_to_lower:
-            string_to_look_for = string_to_look_for.lower()
-
-        def helper(lst_stdin, lst_stderr, error_code):
-            line = ""
-            for line in reversed(lst_stdin):
-                if not line or line == "\n":
-                    continue
-                if convert_to_lower:
-                    line = line.lower()
-                if string_to_look_for in line:
-                    return True
-
-            raise ValueError(f"Can not find '{convert_to_lower}' in the last line {line}")
-        return helper
-
-    @staticmethod
     def replace_regex_line(file_path:Path, regex_pattern: str, replacement_line: str):
         """
         Replace matching line
@@ -179,29 +152,3 @@ class Provisioner(SystemFunctionCommon):
 
         with open(file_path, "w", encoding="utf-8") as file_handler:
             file_handler.writelines(lines)
-
-    @staticmethod
-    def check_systemd_service_status_remotely(remoter: Remoter, service_name: str, min_uptime: int = 60):
-        """
-        Check the service uptime.
-
-        :param remoter:
-        :param service_name:
-        :param min_uptime:
-        :return:
-        """
-
-        command = f'servicestartsec=$(date -d "$(systemctl show --property=ActiveEnterTimestamp {service_name} | cut -d= -f2)" +%s) && serviceelapsedsec=$(( $(date +%s) - servicestartsec )) && echo $serviceelapsedsec'
-        sleep_time = 10
-        retries = (min_uptime * 2 // sleep_time)
-        for i in range(retries):
-            lst_stdout, _, _ = remoter.execute(command)
-            str_seconds = lst_stdout[-1].strip("\n")
-            int_seconds = int(str_seconds)
-            if int_seconds >= min_uptime:
-                return True
-
-            logger.info(f"Service is up for {str_seconds} seconds {min_uptime=}. Going to sleep for {sleep_time} [{i}/{retries}]")
-
-            time.sleep(sleep_time)
-        raise TimeoutError(f"Waited for {min_uptime} seconds")
