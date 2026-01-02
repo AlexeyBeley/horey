@@ -617,4 +617,4 @@ class CICDAPI:
         remote_deployer = RemoteDeployer()
         remoter = remote_deployer.get_remoter(target)
 
-        ProvisionConstructor().provision_system_function_remote(remoter, function_name, **kwargs)
+        return ProvisionConstructor().provision_system_function_remote(remoter, function_name, **kwargs)

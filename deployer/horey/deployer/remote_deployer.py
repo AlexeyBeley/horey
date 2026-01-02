@@ -73,6 +73,7 @@ class SSHRemoter(Remoter):
 
         errors = []
         chan, lst_stdout, lst_stderr, status_code = self.executor(command)
+
         for output_validator in output_validators:
             try:
                 if not output_validator(lst_stdout, lst_stderr, status_code):

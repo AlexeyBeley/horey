@@ -65,10 +65,16 @@ class Provisioner(SystemFunctionCommon):
         match self.action:
             case "provision_influxdb":
                 return self.provision_remote_provision_influxdb()
+            case "enable_auth":
+                return self.provision_remote_enable_auth()
+            case "kapacitor_enable_auth":
+                return self.provision_remote_kapacitor_enable_auth()
             case "create_databases":
                 return self.provision_remote_create_databases()
             case "provision_kapacitor":
                 return self.provision_remote_provision_kapacitor()
+            case "configure_kapacitor":
+                return self.provision_remote_configure_kapacitor()
             case "create_subscription":
                 return self.provision_remote_create_subscription()
             case "create_user":
@@ -82,9 +88,6 @@ class Provisioner(SystemFunctionCommon):
 
         :return:
         """
-
-        admin_username = self.kwargs["admin_username"]
-        admin_password = self.kwargs["admin_password"]
 
         version = "influxdb_1.12.2-1"
         self.remoter.execute(
@@ -102,17 +105,62 @@ class Provisioner(SystemFunctionCommon):
                                  "Executing: /usr/lib/systemd/systemd-sysv-install enable influxdb"])
         )
 
-        remote_file_path = Path("/etc/kapacitor/kapacitor_base.conf")
+        return True
+
+    def provision_remote_enable_auth(self):
+        """
+        Enable auth with admin user
+        :return:
+        """
+
+        admin_username = self.kwargs["admin_username"]
+        admin_password = self.kwargs["admin_password"]
+
+        self.remoter.execute(
+            f'curl -XPOST "http://localhost:8086/query" --data-urlencode "q=CREATE USER {admin_username} WITH PASSWORD \'{admin_password}\' WITH ALL PRIVILEGES"',\
+            self.last_line_validator("'{\"results\":[{\"statement_id\":0}]}'")
+        )
+        # '{"error":"unable to parse authentication credentials"}\n'
+
+        remote_file_path = Path("/etc/influxdb/influxdb.conf")
         local_file_path = Path("/tmp") / remote_file_path.name
 
         self.remoter.get_file(remote_file_path, local_file_path)
         self.generate_influx_configuration_file(local_file_path)
         self.remoter.put_file(local_file_path, remote_file_path, sudo=True)
-
-        ret = self.remoter.execute(
-            f'curl -XPOST "http://localhost:8086/query" --data-urlencode "q=CREATE USER {admin_username} WITH PASSWORD \'{admin_password}\' WITH ALL PRIVILEGES"')
-
         self.systemctl_restart_service_and_wait_remotely("influxdb")
+
+        return True
+
+    def provision_remote_kapacitor_enable_auth(self):
+        """
+        Enable auth with admin user
+
+        curl --request POST 'http://localhost:9092/kapacitor/v1/users' \
+        --data '{
+        "name": "exampleUsername",
+        "password": "examplePassword",
+        "type":"admin"
+        }'
+
+        :return:
+        """
+        """
+        """
+
+        kwargs = {}
+        kwargs["username"] = self.kwargs["admin_username"]
+        kwargs["password"] = self.kwargs["admin_password"]
+
+        remote_file_path = Path("/etc/kapacitor/kapacitor.conf")
+        local_file_path = Path("/tmp") / remote_file_path.name
+        self.generate_kapacitor_configuration_file(local_file_path, "[auth]", **kwargs)
+
+        self.remoter.get_file(remote_file_path, local_file_path)
+        self.generate_influx_configuration_file(local_file_path)
+        self.remoter.put_file(local_file_path, remote_file_path, sudo=True)
+        self.systemctl_restart_service_and_wait_remotely("influxdb")
+
         return True
 
     def generate_influx_configuration_file(self, local_file_path):
@@ -122,6 +170,21 @@ class Provisioner(SystemFunctionCommon):
         :return:
         """
 
+        with open(local_file_path, encoding="utf-8") as file_handler:
+            lines = file_handler.readlines()
+
+        # todo: old style shit, use kapacitor config consept instead
+        start_index, end_index = self.find_configuration_context(lines, "[http]")
+        for i in range(start_index, end_index):
+            if "auth-enabled" in lines[i]:
+                lines[i] = "  auth-enabled = true"
+                break
+        else:
+            raise ValueError("Was not able to find 'auth-enabled'")
+
+        with open(local_file_path, "w", encoding="utf-8") as file_handler:
+            file_handler.writelines(lines)
+
     def provision_remote_create_databases(self):
         """
         Create the DBs
@@ -130,9 +193,12 @@ class Provisioner(SystemFunctionCommon):
         """
 
         databases = self.kwargs.get("databases")
+        admin_username = self.kwargs["admin_username"]
+        admin_password = self.kwargs["admin_password"]
+
         for database in databases:
             self.remoter.execute(
-                f"influx -execute 'CREATE DATABASE {database}'"
+                f"influx -username {admin_username} -password {admin_password} -execute 'CREATE DATABASE {database}'"
             )
 
         return True
@@ -148,8 +214,7 @@ class Provisioner(SystemFunctionCommon):
 
         :return:
         """
-        influx_username, influx_password = self.kwargs["influx_username"], self.kwargs["influx_password"]
-        breakpoint()
+
         version = "kapacitor_1.8.2-1"
         self.remoter.execute(
             f"wget https://dl.influxdata.com/kapacitor/releases/{version}_amd64.deb",
@@ -163,97 +228,169 @@ class Provisioner(SystemFunctionCommon):
                                  "Setting up kapacitor"])
         )
         # todo: check: systemctl is-enabled kapacitor
+        return True
 
-        remote_file_path = Path("/etc/kapacitor/kapacitor_base.conf")
+    def provision_remote_configure_kapacitor(self):
+        """
+        Change configuration.
+
+        :return:
+        """
+
+        kwargs = {}
+        for key in ["username", "password", "urls"]:
+            try:
+                kwargs[key] = self.kwargs[key]
+            except KeyError:
+                pass
+
+        remote_file_path = Path("/etc/kapacitor/kapacitor.conf")
         local_file_path = Path("/tmp") / remote_file_path.name
 
         self.remoter.get_file(remote_file_path, local_file_path)
-        self.generate_kapacitor_configuration_file(local_file_path, influx_username, influx_password)
+        self.generate_kapacitor_configuration_file(local_file_path, "[[influxdb]]", **kwargs)
         self.remoter.put_file(local_file_path, remote_file_path, sudo=True)
 
         self.systemctl_restart_service_and_wait_remotely("kapacitor")
 
         return True
 
-    def generate_kapacitor_configuration_file(self, local_file_path, influx_username, influx_password):
+    def generate_kapacitor_configuration_file(self, local_file_path, context_header, **kwargs):
         """
         Generate
 
+        :param context_header:
         :param local_file_path:
         :return:
         """
 
+        for key in kwargs:
+            if key not in ["username", "password", "urls"]:
+                raise NotImplementedError(f"Kapacitor config {key}")
+
         with open(local_file_path, encoding="utf-8") as file_handler:
             lines = file_handler.readlines()
 
-        username_set = False
-        password_set = False
-        influxdb_context = False
-        for i, line in enumerate(lines):
-            line = line.strip()
-            if line.startswith("[["):
-                if influxdb_context:
-                    raise ValueError(f"Reached block {line}")
-                if line.strip() == "[[influxdb]]":
-                    influxdb_context = True
-                    continue
-                if not influxdb_context:
-                    continue
-                breakpoint()
-                if line.startswith("username"):
-                    lines[i] = f'  username = "{influx_username}"\n'
-                    username_set = True
-                elif line.startswith("password"):
-                    lines[i] = f'  password = "{influx_password}"\n'
-                    password_set = True
-                if username_set and password_set:
-                    break
-        else:
-            raise ValueError("Reached end of file without replacing the influx credentials")
+        start_index, end_index = self.find_configuration_context(lines, context_header)
+        updated_keys = []
+        for i in range(start_index, end_index):
+            line = lines[i].strip()
+
+            if line.startswith("#"):
+                continue
+            key = line.split("=", 1)[0].strip()
+            if key in kwargs:
+                lines[i] = f"  {key} = {self.conver_to_config_value(kwargs[key])}\n"
+                updated_keys.append(key)
+        for key in kwargs:
+            if key not in updated_keys:
+                lines.append(f"  {key} = {self.conver_to_config_value(kwargs[key])}\n")
 
         with open(local_file_path, "w", encoding="utf-8") as file_handler:
             file_handler.writelines(lines)
+        return True
 
-    def find_configuration_context(self, lines: List[str], context: str) -> (int, int):
+    def conver_to_config_value(self, obj):
+        """
+        Convert received value to string
+
+        :param obj:
+        :return:
+        """
+
+        if isinstance(obj, str):
+            return f'"{obj}"'
+
+        if isinstance(obj, list):
+            values = '", "'.join(obj)
+            return f'["{values}"]'
+
+        raise NotImplementedError(f"Can not convert kapacitor config to string value {obj}")
+
+    def find_configuration_context(self, lines: List[str], context_header: str) -> (int, int):
         """
         Find config context
 
         :param lines:
-        :param context:
+        :param context_header:
         :return:
         """
 
-        in_context = False
         start_index = None
-        context_header = f"[[{context}]]"
-        end_index = None
-        for end_index, line in enumerate(lines):
-            line = line.strip()
-            if line.startswith("[["):
-                if in_context:
-                    return start_index, end_index
-                if line.strip() == context_header:
-                    in_context = True
+        cur_index = None
+        for cur_index, line in enumerate(lines):
+            line_stripped = line.strip()
+            if line.startswith("["):
+                if start_index is not None:
+                    return start_index, cur_index-1
+                if line_stripped == context_header:
+                    start_index = cur_index
 
         if start_index is None:
             raise RuntimeError(f"Was not able to find context header {context_header}")
 
-        if end_index is None:
+        if cur_index is None:
             raise RuntimeError("Was not able to initialize the end index")
 
-        return start_index, end_index
+        return start_index, cur_index
 
     def provision_remote_create_user(self):
         """
         Create user
+        SET PASSWORD FOR "username" = 'newpassword'
+        GRANT READ ON "NOAA_water_database" TO "username"
+        GRANT WRITE ON "<database_name>" TO "<username>"
 
         :return:
         """
 
-        breakpoint()
-        for database in self.kwargs["databases"]:
+        admin_username = self.kwargs["admin_username"]
+        admin_password = self.kwargs["admin_password"]
+
+        user = self.kwargs["user"]
+        password = self.kwargs["password"]
+        admin = self.kwargs.get("admin", False)
+        if admin and admin is not True:
+            raise ValueError(f"Only possible value for 'admin' is boolean 'True', received: '{admin}'")
+
+        # Single quote only supported
+        self.remoter.execute(
+            f"influx -username {admin_username} -password {admin_password} -execute \"CREATE USER {user} WITH PASSWORD '{password}'\""
+        )
+
+        if admin:
             self.remoter.execute(
-                f"influx -execute 'CREATE USER {self.kwargs['user']} WITH PASSWORD {self.kwargs['password']}'",
-                self.last_line_validator(" saved "),
+                f"influx -username {admin_username} -password {admin_password} -execute 'GRANT ALL PRIVILEGES TO {user}'"
             )
+            return True
+
+        read_dbs = set(self.kwargs.get("read_databases", []))
+        write_dbs = set(self.kwargs.get("read_databases", []))
+        read_only = read_dbs - write_dbs
+        write_only = write_dbs - read_dbs
+        read_and_write_dbs = read_dbs.intersection(write_dbs)
+
+        for database in read_only:
+            self.remoter.execute(
+                f"influx -username {admin_username} -password {admin_password} -execute 'GRANT READ ON {database} TO {user}'"
+            )
+
+        for database in write_only:
+            self.remoter.execute(
+                f"influx -username {admin_username} -password {admin_password} -execute 'GRANT WRITE ON {database} TO {user}'"
+            )
+
+        for database in read_and_write_dbs:
+            self.remoter.execute(
+                f"influx -username {admin_username} -password {admin_password} -execute 'GRANT ALL ON {database} TO {user}'"
+            )
+
         return True
+
+    def provision_remote_crete_subscription(self):
+        """
+        kapacitor -url http://<username>:<password>@localhost:9092
+
+        :return:
+        """
+        breakpoint()

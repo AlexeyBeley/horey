@@ -61,13 +61,23 @@ def test_run_remote_provision_constructor_zabbix(cicd_api, ec2_api):
                                                     hostname=ignore.hostname)
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_run_remote_provision_constructor_influx_provision_influxdb(cicd_api, ec2_api):
     ec2_instance = ec2_api.get_instance(name=ignore.bastion_name)
     target = cicd_api.generate_deployment_target(ignore.hostname, bastion=ec2_instance)
     assert cicd_api.run_remote_provision_constructor(target,
                                                      "influxdb",
-                                                     action="provision_influxdb",
+                                                     action="provision_influxdb"
+                                                     )
+
+
+@pytest.mark.unit
+def test_run_remote_provision_constructor_influx_provision_influxdb(cicd_api, ec2_api):
+    ec2_instance = ec2_api.get_instance(name=ignore.bastion_name)
+    target = cicd_api.generate_deployment_target(ignore.hostname, bastion=ec2_instance)
+    assert cicd_api.run_remote_provision_constructor(target,
+                                                     "influxdb",
+                                                     action="enable_auth",
                                                      admin_username="horey_admin",
                                                      admin_password="horey_admin_password")
 
@@ -76,10 +86,15 @@ def test_run_remote_provision_constructor_influx_provision_influxdb(cicd_api, ec
 def test_run_remote_provision_constructor_influx_create_databases(cicd_api, ec2_api):
     ec2_instance = ec2_api.get_instance(name=ignore.bastion_name)
     target = cicd_api.generate_deployment_target(ignore.hostname, bastion=ec2_instance)
-    assert cicd_api.run_remote_provision_constructor(target, "influxdb", action="create_databases", databases=["db_horey", "db_horey_kapacitor_alerts"],)
+    assert cicd_api.run_remote_provision_constructor(target, "influxdb",
+                                                     action="create_databases",
+                                                     databases=["db_horey", "db_horey_kapacitor_alerts"],
+                                                     admin_username="horey_admin",
+                                                     admin_password="horey_admin_password"
+                                                     )
 
 
-@pytest.mark.todo
+@pytest.mark.unit
 def test_run_remote_provision_constructor_influx_create_user(cicd_api, ec2_api):
     """
 
@@ -87,20 +102,54 @@ def test_run_remote_provision_constructor_influx_create_user(cicd_api, ec2_api):
     :param ec2_api:
     :return:
     """
+
     ec2_instance = ec2_api.get_instance(name=ignore.bastion_name)
     target = cicd_api.generate_deployment_target(ignore.hostname, bastion=ec2_instance)
     assert cicd_api.run_remote_provision_constructor(target, "influxdb",
                                                      action="create_user",
-                                                     databases=["db_horey_kapacitor_alerts"],
+                                                     admin_username="horey_admin",
+                                                     admin_password="horey_admin_password",
+                                                     admin=True,
+                                                     read_databases=["db_horey_kapacitor_alerts"],
+                                                     write_databases=["db_horey_kapacitor_alerts"],
                                                      user="horey_kapacitor_user",
                                                      password="horey_kapacitor_password")
 
 
-@pytest.mark.todo
+@pytest.mark.unit
+def test_run_remote_provision_constructor_kapacitor_enable_auth(cicd_api, ec2_api):
+    """
+
+    :param cicd_api:
+    :param ec2_api:
+    :return:
+    """
+
+    ec2_instance = ec2_api.get_instance(name=ignore.bastion_name)
+    target = cicd_api.generate_deployment_target(ignore.hostname, bastion=ec2_instance)
+    assert cicd_api.run_remote_provision_constructor(target, "influxdb",
+                                                     action="kapacitor_enable_auth",
+                                                     admin_username="kapacitor_horey_admin",
+                                                     admin_password="kapacitor_horey_admin_password"
+                                                     )
+
+
+@pytest.mark.unit
 def test_run_remote_provision_constructor_influx_provision_kapacitor(cicd_api, ec2_api):
     ec2_instance = ec2_api.get_instance(name=ignore.bastion_name)
     target = cicd_api.generate_deployment_target(ignore.hostname, bastion=ec2_instance)
-    assert cicd_api.run_remote_provision_constructor(target, "influxdb", action="provision_kapacitor", influx_username="horey_kapacitor_user", influx_password="horey_kapacitor_password")
+    assert cicd_api.run_remote_provision_constructor(target, "influxdb",
+                                                     action="provision_kapacitor")
+
+
+@pytest.mark.unit
+def test_run_remote_provision_constructor_influx_configure_kapacitor(cicd_api, ec2_api):
+    ec2_instance = ec2_api.get_instance(name=ignore.bastion_name)
+    target = cicd_api.generate_deployment_target(ignore.hostname, bastion=ec2_instance)
+    assert cicd_api.run_remote_provision_constructor(target, "influxdb",
+                                                     action="configure_kapacitor",
+                                                     username="horey_kapacitor_user",
+                                                     password="horey_kapacitor_password")
 
 
 @pytest.mark.todo
@@ -109,4 +158,3 @@ def test_run_remote_provision_constructor_influx_create_subscription(cicd_api, e
     ec2_instance = ec2_api.get_instance(name=ignore.bastion_name)
     target = cicd_api.generate_deployment_target(ignore.hostname, bastion=ec2_instance)
     assert cicd_api.run_remote_provision_constructor(target, "influxdb", action="create_subscription", databases="db_horey", dst="http://127.0.0.1:9092")
-
