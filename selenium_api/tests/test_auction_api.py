@@ -50,9 +50,9 @@ def test_init_auction_events_from_db():
     auction_api.init_auction_events_from_db()
 
 
-@pytest.mark.unit
+@pytest.mark.wip
 def test_update_info_auction_event_async():
-    auction_api.update_info_auction_event_async(26)
+    auction_api.update_info_auction_event_async(107)
 
 
 @pytest.mark.skip

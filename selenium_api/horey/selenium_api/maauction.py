@@ -273,9 +273,12 @@ class MAauction(Provider):
         if not lots:
             return False
 
-        self.init_auction_event_start_time_from_lot(auction_event, lots[0])
-        breakpoint()
-        auction_event.end_time = datetime.datetime.now().astimezone(self.get_province_tz("manitoba"))
+        if auction_event.start_time is None:
+            self.init_auction_event_start_time_from_lot(auction_event, lots[0])
+
+        if auction_event.end_time is None:
+            self.init_auction_event_end_time_from_lot(auction_event, lots[0])
+        return True
 
     def init_auction_event_start_time_from_lot(self, auction_event: AuctionEvent, lot: Lot):
         """
@@ -286,7 +289,6 @@ class MAauction(Provider):
         :return:
         """
 
-        breakpoint()
         self.selenium_api.get(lot.url)
         self.selenium_api.wait_for_page_load()
         start_time_element = self.selenium_api.get_element(By.CLASS_NAME, "startTime")
@@ -295,8 +297,9 @@ class MAauction(Provider):
         start_time_string = start_time_element.text.replace("Start Time:", "")
         naive_dt = datetime.datetime.strptime(start_time_string, parse_format)
         tz = MAauction.get_auction_event_tz(auction_event)
+
         if tz is None:
-            provinces = lots[0].guess_provinces(lots[0].raw_text)
+            provinces = lot.guess_provinces(lot.raw_text)
             if len(provinces) == 0:
                 breakpoint()
                 raise RuntimeError(f"Expected 1 province: {provinces}")
@@ -306,6 +309,40 @@ class MAauction(Provider):
             if tz is None:
                 breakpoint()
         auction_event.start_time = naive_dt.astimezone(tz)
+
+    def init_auction_event_end_time_from_lot(self, auction_event: AuctionEvent, lot: Lot):
+        """
+        From lot.
+
+        :param auction_event:
+        :param lot:
+        :return:
+        """
+
+        self.selenium_api.get(lot.url)
+        self.selenium_api.wait_for_page_load()
+        try:
+            end_time_element = self.selenium_api.get_element(By.CLASS_NAME, "endTime")
+        except NoSuchElementException:
+            return None
+
+        # '12/3/2025 10:00:00 PM'
+        parse_format = '%m/%d/%Y %I:%M:%S %p'
+        end_time_string = end_time_element.text.replace("End Time:", "")
+        naive_dt = datetime.datetime.strptime(end_time_string, parse_format)
+        tz = MAauction.get_auction_event_tz(auction_event)
+
+        if tz is None:
+            provinces = lot.guess_provinces(lot.raw_text)
+            if len(provinces) == 0:
+                breakpoint()
+                raise RuntimeError(f"Expected 1 province: {provinces}")
+            if len(provinces) > 1:
+                logger.error(f"More than 1 province: {provinces}")
+            tz = self.get_province_tz(provinces[0])
+            if tz is None:
+                breakpoint()
+        auction_event.end_time = naive_dt.astimezone(tz)
 
     @staticmethod
     def init_auction_event_name(auction_event, title_element):
@@ -400,8 +437,22 @@ class MAauction(Provider):
         elif "2026" in line:
             year = 2026
         else:
+            # 'https://www.maauctions.com/auctions/24918-january-10th-2026-automotive-timed-vehicles-and-rvs-alberta'
+            new_line = auction_event.url.replace("th-", " ").replace("-", " ")
+            if line != new_line:
+                logger.info(f"Trying to extract date from URL: {auction_event.url}")
+                ret = MAauction.extract_time(auction_event, new_line)
+                if ret is not None:
+                    return ret
+                logger.info(f"Manual check the date for: {auction_event.url}")
+            else:
+                logger.info(f"Extracting date failed from URL: {auction_event.url}")
+                return None
+
+            raise_exception = True
             breakpoint()
-            raise RuntimeError()
+            if raise_exception:
+                raise RuntimeError(auction_event)
         line_lower = line.lower()
         for str_month, month in Provider.MONTH_BY_NAME.items():
             if str_month in line_lower:
@@ -411,11 +462,17 @@ class MAauction(Provider):
                     if not day_digit.isdigit():
                         break
                     day += day_digit
-                day = int(day)
+                try:
+                    day = int(day)
+                except ValueError:
+                    breakpoint()
+                    day = 1
                 break
         else:
+            raise_exception = True
             breakpoint()
-            raise RuntimeError(f"Was not able to find month in line '{line}'")
+            if raise_exception:
+                raise RuntimeError(f"Was not able to find month in line '{line}', {auction_event}")
 
         dt_aware = datetime.datetime(year, month, day, 9, 0, 0, tzinfo=MAauction.get_auction_event_tz(auction_event))
         return dt_aware.astimezone(datetime.timezone.utc)

@@ -24,6 +24,15 @@ class AuctionEvent:
 
     @property
     def finished(self):
+        """
+        Return if auction event is finished
+
+        :return:
+        """
+
+        if self.start_time and self.start_time > datetime.datetime.now(tz=datetime.timezone.utc):
+            return False
+
         return self.end_time + datetime.timedelta(days=2) < datetime.datetime.now(tz=datetime.timezone.utc)
 
     def generate_db_tuple(self):

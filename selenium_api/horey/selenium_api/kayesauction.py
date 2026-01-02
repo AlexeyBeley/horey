@@ -62,6 +62,8 @@ class Kayesauction(Provider):
         """
 
         lot = Lot()
+        lot.description = lot_element.get_attribute("innerHTML")
+
         for _ in range(50):
             try:
                 element_title = lot_element.find_element(By.CLASS_NAME, "lot-title")
@@ -222,7 +224,7 @@ class Kayesauction(Provider):
                 if "Location:" in line:
                     auction_event.address = line.replace("Location:", "")
 
-                if "Closes:" in line:
+                if "closes" in line.lower():
                     auction_event.end_time = self.extract_time_from_line(line)
 
                 if "closing" in line.lower():

@@ -225,10 +225,55 @@ class AuctionAPI:
         self.provision_db_auction_events_table()
         self.provision_db_lots_table()
 
-    def update_auction_event(self, auction_event_id, end_time=None, last_update_time=None, url=None):
+    def upsert_db_auction_event(self, auction_event: AuctionEvent):
         """
+        Update or insert auction event.
+
+        :param auction_event:
+        :return:
+        """
+
+        if auction_event.id is not None:
+            if auction_event.end_time is not None:
+                format_string = "%Y-%m-%d %H:%M:%S.%f"
+                return self.update_auction_event(auction_event.id, end_time=auction_event.end_time.strftime(format_string))
+            return True
+
+        sql = """
+            INSERT INTO auction_events 
+            (provider_id, name, description, url, start_time, end_time, address, provinces, last_update_time)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """
+
+        with sqlite3.connect(self.db_file_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("PRAGMA foreign_keys = ON;")
+
+            base_tuple = auction_event.generate_db_tuple()
+            data_tuple = (auction_event.provider_id,) + base_tuple
+            try:
+                cursor.execute(sql, data_tuple)
+                conn.commit()
+            except Exception as inst_err:
+                logger.exception(inst_err)
+                if "UNIQUE constraint" in repr(inst_err):
+                    logger.error(f"Data is not unique: {data_tuple}")
+                else:
+                    logger.error(f"Unknown error with data: {data_tuple}")
+                breakpoint()
+                # for x in known_auction_events: print(x.id, x.name, x.url)
+                # url = 'https://www.jardineauctioneers.com/auctions/24895-45th-annual-fredericton-sports-investment-auction?filter=(auction_ring_id:1200)'
+                # self.update_auction_event(23, url=url)
+                raise
+
+        return True
+
+    def update_auction_event(self, auction_event_id, end_time=None, start_time = None, last_update_time=None, url=None):
+        """
+        self.update_auction_event(139, start_time="2026-01-29 10:00:00.000000")
         '{"horey_cached_type": "datetime", "value": "2025-10-28 15:00:00.000000"}'
 
+        :param start_time:
         :param url:
         :param auction_event_id:
         :param end_time:
@@ -240,6 +285,15 @@ class AuctionAPI:
 
         with sqlite3.connect(self.db_file_path) as conn:
             cursor = conn.cursor()
+            if start_time:
+                sql_update_start_time = """
+                UPDATE auction_events
+                SET start_time = ?
+                WHERE id = ?
+                """
+                new_time = '{"horey_cached_type": "datetime", "value": "' + start_time + '"}'
+                cursor.execute(sql_update_start_time, (new_time, auction_event_id))
+
             if end_time:
                 sql_update_end_time = """
                 UPDATE auction_events
@@ -322,6 +376,7 @@ class AuctionAPI:
                     breakpoint()
 
             conn.commit()
+            # conn.close()
 
     def generate_auction_event_reports(self):
         """
@@ -334,12 +389,17 @@ class AuctionAPI:
         events = self.init_auction_events_from_db()
         providers_by_id = {provider.id: provider for provider in self.init_providers_from_db()}
         by_date = {}
+
         for event in events:
+            # self.update_auction_event(143, start_time="2026-01-29 10:00:00.000000")
             logger.info(f"Checking event: {event.id}")
             if event.finished:
                 continue
 
-            by_date[event.end_time] = event
+            if event.end_time:
+                by_date[event.end_time] = event
+            else:
+                by_date[event.start_time] = event
 
         for auction_event_date in sorted(by_date):
             report = AuctionEventReport()
@@ -393,44 +453,24 @@ class AuctionAPI:
 
     def update_info_provider_auction_events_asynchronous(self, provider_id):
         provider = self.init_provider_from_db(provider_id=provider_id)
-        # self.update_auction_event(24, end_time="2025-12-02 13:00:00.000000")
-        known_auction_event_urls = [auction_event.url for auction_event in provider.auction_events]
-        sql = """
-            INSERT INTO auction_events 
-            (provider_id, name, description, url, start_time, end_time, address, provinces, last_update_time)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """
 
-        # url = 'https://www.jardineauctioneers.com/auctions/24895-45th-annual-fredericton-sports-investment-auction'
-        # self.update_auction_event(23, url=url)
+        known_auction_events_by_url= {auction_event.url: auction_event  for auction_event in provider.auction_events}
 
         new_auction_events = provider.init_auction_events()
         if new_auction_events is None:
             return None
-        breakpoint()
-        to_create = [new_auction_event for new_auction_event in new_auction_events
-                     if new_auction_event.url not in known_auction_event_urls]
 
-        with sqlite3.connect(self.db_file_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute("PRAGMA foreign_keys = ON;")
-            for new_auction_event in to_create:
-                base_tuple = new_auction_event.generate_db_tuple()
-                data_tuple = (provider.id,) + base_tuple
-                try:
-                    cursor.execute(sql, data_tuple)
-                    conn.commit()
-                except Exception as inst_err:
-                    logger.exception(inst_err)
-                    if "UNIQUE constraint" in repr(inst_err):
-                        logger.error(f"Data is not unique: {data_tuple}")
-                    else:
-                        logger.error(f"Unknown error with data: {data_tuple}")
-                    breakpoint()
-                    # for x in known_auction_events: print(x.id, x.name, x.url)
-                    # url = 'https://www.jardineauctioneers.com/auctions/24895-45th-annual-fredericton-sports-investment-auction?filter=(auction_ring_id:1200)'
-                    # self.update_auction_event(23, url=url)
-                    raise
+        for auction_event in new_auction_events:
+            auction_event.provider_id = provider.id
+
+            try:
+                auction_event.id = known_auction_events_by_url[auction_event.url].id
+            except KeyError:
+                pass
+
+            self.upsert_db_auction_event(auction_event)
+
+        return None
 
     def update_info_auction_event(self, auction_event_id, asynchronous=False):
         if asynchronous:
@@ -497,6 +537,7 @@ class AuctionAPI:
 
         format_string = "%Y-%m-%d %H:%M:%S.%f"
         now = datetime.datetime.now(tz=datetime.timezone.utc)
+
         self.update_auction_event(auction_event.id, last_update_time=now.strftime(format_string))
 
     def delete_auction_event_with_lots(self, auction_event_id):
@@ -656,11 +697,16 @@ class AuctionEventReport:
 
     @property
     def load_data_button_text(self):
-        return f"[{self.auction_event.id}] {self.provider.name} {self.auction_event.end_time.strftime('%d/%m')}"
+        if self.auction_event.end_time:
+            return f"[{self.auction_event.id}] {self.provider.name} {self.auction_event.end_time.strftime('%d/%m')}"
+        return f"[{self.auction_event.id}] {self.provider.name} {self.auction_event.start_time.strftime('%d/%m')}"
+
 
     @property
     def timestamp_text(self):
-        return self.auction_event.end_time.strftime("%d/%m/%Y %H:%M")
+        if self.auction_event.end_time:
+            return self.auction_event.end_time.strftime("%d/%m/%Y %H:%M")
+        return self.auction_event.start_time.strftime("%d/%m/%Y %H:%M")
 
     @property
     def provider_name(self):

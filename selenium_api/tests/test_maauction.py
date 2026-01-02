@@ -30,7 +30,7 @@ def test_init_all_items():
     for x in ret: print(f"{x.high_bid} : {x.name}")
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_init_auction_events():
     auction = MAauction()
     ret = auction.init_auction_events()

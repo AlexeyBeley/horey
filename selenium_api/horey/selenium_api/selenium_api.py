@@ -114,8 +114,19 @@ class SeleniumAPI:
         return element.find_elements(By.CSS_SELECTOR,  f'[{selector}="{value}"]')
 
     def get(self, url):
+
         self.connect()
-        SeleniumAPI.driver.get(url)
+
+        try:
+            return SeleniumAPI.driver.get(url)
+        except Exception as inst_err:
+            logger.error(f"Exception occurred: {inst_err}")
+            if "invalid session id" not in str(inst_err):
+                raise
+
+        SeleniumAPI.disconnect()
+        self.connect()
+        return SeleniumAPI.driver.get(url)
 
     def fill_input(self, str_id, input_data):
         search_box = self.get_by_id(str_id)

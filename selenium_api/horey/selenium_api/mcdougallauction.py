@@ -249,10 +249,15 @@ class Mcdougallauction(Provider):
 
         match = re.search(r'GMT([+-]\d+)', gmt_string)
         if not match:
-            raise ValueError("Invalid GMT offset format. Must be like 'GMT+2'.")
-        offset_sign = match.group(1)
-        offset_hours = int(offset_sign)
-        tz_delta = datetime.timedelta(hours=offset_hours)
+            if gmt_string == "CST":
+                tz_delta = datetime.timedelta(hours=-6)
+            else:
+                raise ValueError(f"Invalid GMT offset format. Must be like 'GMT+2'., received: {gmt_string}")
+        else:
+            offset_sign = match.group(1)
+            offset_hours = int(offset_sign)
+            tz_delta = datetime.timedelta(hours=offset_hours)
+
         naive_dt = datetime.datetime(year=year, month=month, day=day, hour=hour, minute=minute)
         dt_aware = naive_dt.replace(tzinfo=datetime.timezone(tz_delta))
         return dt_aware.astimezone(datetime.timezone.utc)

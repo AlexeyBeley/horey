@@ -343,7 +343,7 @@ def install_venv(configs):
 
     StandaloneMethods = get_standalone_methods(configs)
 
-    command = f"{sys.executable} -m venv"
+    command = f"{sys.executable} -m venv {configs.get('venv_dir_path')}"
     ret = StandaloneMethods.execute(command, ignore_on_error_callback=lambda error: "No module named venv" in repr(error)
                                                                                     or "usage: venv" in repr(error))
     stderr = ret.get("stderr")
