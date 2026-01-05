@@ -65,26 +65,26 @@ def fixture_configuration():
     yield VirtualMachineAPI(api_configuration, environment_api)
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_get_ubuntu24_image(api):
     assert api.get_ubuntu24_image()
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_provision(api):
     assert api.provision_instance_profile()
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_provision_ssh_key_pair(api):
     assert api.provision_ssh_key_pair()
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_provision_security_group(api):
     assert api.provision_security_group()
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_provision_instance(api):
     assert api.provision_instance()

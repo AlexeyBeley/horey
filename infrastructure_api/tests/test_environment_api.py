@@ -62,18 +62,18 @@ def fixture_configuration():
     yield _configuration
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_init_environment(configuration):
     assert EnvironmentAPI(configuration, aws_api)
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_provision_vpc(configuration):
     env = EnvironmentAPI(configuration, aws_api)
     env.provision_vpc()
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_provision_subnets(configuration):
     env = EnvironmentAPI(configuration, aws_api)
     env.aws_api.ec2_client.clear_cache(None, all_cache=True)
@@ -87,7 +87,7 @@ def test_provision_bastion(configuration):
     env.provision_bastion()
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_provision_internet_gateway(configuration):
     env = EnvironmentAPI(configuration, aws_api)
     env.aws_api.ec2_client.clear_cache(None, all_cache=True)
@@ -95,7 +95,7 @@ def test_provision_internet_gateway(configuration):
     assert inet_gwy.id
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_provision_public_route_tables(configuration):
     env = EnvironmentAPI(configuration, aws_api)
     env.aws_api.ec2_client.clear_cache(None, all_cache=True)
@@ -104,7 +104,7 @@ def test_provision_public_route_tables(configuration):
     assert route_tables
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_provision_elastic_addresses(configuration):
     env = EnvironmentAPI(configuration, aws_api)
     env.aws_api.ec2_client.clear_cache(None, all_cache=True)
@@ -112,7 +112,7 @@ def test_provision_elastic_addresses(configuration):
     assert elastic_addresses
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_provision_nat_gateways(configuration):
     env = EnvironmentAPI(configuration, aws_api)
     env.aws_api.ec2_client.clear_cache(None, all_cache=True)
@@ -121,7 +121,7 @@ def test_provision_nat_gateways(configuration):
     assert nat_gateways
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_provision_private_route_tables(configuration):
     env = EnvironmentAPI(configuration, aws_api)
     env.aws_api.ec2_client.clear_cache(None, all_cache=True)
@@ -131,14 +131,14 @@ def test_provision_private_route_tables(configuration):
     assert route_tables
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_dispose_nat_gateways(configuration):
     env = EnvironmentAPI(configuration, aws_api)
     env.aws_api.ec2_client.clear_cache(None, all_cache=True)
     assert env.dispose_nat_gateways()
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_dispose_elastic_addresses(configuration):
     env = EnvironmentAPI(configuration, aws_api)
     env.aws_api.ec2_client.clear_cache(None, all_cache=True)
@@ -152,28 +152,28 @@ def test_dispose_bastion(configuration):
     env.dispose_bastion()
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_dispose_subnets(configuration):
     env = EnvironmentAPI(configuration, aws_api)
     env.aws_api.ec2_client.clear_cache(None, all_cache=True)
     env.dispose_subnets()
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_dispose_route_tables(configuration):
     env = EnvironmentAPI(configuration, aws_api)
     env.aws_api.ec2_client.clear_cache(None, all_cache=True)
     assert env.dispose_route_tables()
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_dispose_internet_gateway(configuration):
     env = EnvironmentAPI(configuration, aws_api)
     env.aws_api.ec2_client.clear_cache(None, all_cache=True)
     assert env.dispose_internet_gateway()
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_dispose_vpc(configuration):
     env = EnvironmentAPI(configuration, aws_api)
     env.aws_api.ec2_client.clear_cache(None, all_cache=True)
@@ -182,7 +182,7 @@ def test_dispose_vpc(configuration):
 
 # ECS
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_provision_container_instance_security_group(configuration):
     env = EnvironmentAPI(configuration, aws_api)
     env.aws_api.ec2_client.clear_cache(None, all_cache=True)
@@ -190,7 +190,7 @@ def test_provision_container_instance_security_group(configuration):
     assert sg.id
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_provision_container_instance_ssh_key(configuration):
     env = EnvironmentAPI(configuration, aws_api)
     env.aws_api.ec2_client.clear_cache(None, all_cache=True)
@@ -198,7 +198,7 @@ def test_provision_container_instance_ssh_key(configuration):
     assert key_pair.id
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_provision_container_instance_launch_template(configuration):
     env = EnvironmentAPI(configuration, aws_api)
     env.aws_api.ec2_client.clear_cache(None, all_cache=True)
@@ -206,7 +206,7 @@ def test_provision_container_instance_launch_template(configuration):
     assert lt.id
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_provision_ecs_cluster(configuration):
     env = EnvironmentAPI(configuration, aws_api)
     env.aws_api.ec2_client.clear_cache(None, all_cache=True)
@@ -214,7 +214,7 @@ def test_provision_ecs_cluster(configuration):
     assert ecs_cluster.arn
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_provision_container_instance_auto_scaling_group(configuration):
     env = EnvironmentAPI(configuration, aws_api)
     env.aws_api.ec2_client.clear_cache(None, all_cache=True)
@@ -223,7 +223,7 @@ def test_provision_container_instance_auto_scaling_group(configuration):
     assert asg.arn
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_provision_ecs_capacity_provider(configuration):
     env = EnvironmentAPI(configuration, aws_api)
     env.aws_api.ec2_client.clear_cache(None, all_cache=True)
@@ -233,7 +233,7 @@ def test_provision_ecs_capacity_provider(configuration):
     assert cap_provider.arn
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_attach_capacity_provider_to_ecs_cluster(configuration):
     env = EnvironmentAPI(configuration, aws_api)
     env.aws_api.ec2_client.clear_cache(None, all_cache=True)
@@ -241,35 +241,35 @@ def test_attach_capacity_provider_to_ecs_cluster(configuration):
     assert env.attach_capacity_provider_to_ecs_cluster(ecs_cluster)
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_dispose_ecs_cluster_capacity_provider(configuration):
     env = EnvironmentAPI(configuration, aws_api)
     env.aws_api.ec2_client.clear_cache(None, all_cache=True)
     assert env.dispose_ecs_cluster_capacity_provider()
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_dispose_container_instance_auto_scaling_group(configuration):
     env = EnvironmentAPI(configuration, aws_api)
     env.aws_api.ec2_client.clear_cache(None, all_cache=True)
     assert env.dispose_container_instance_auto_scaling_group()
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_dispose_ecs_cluster(configuration):
     env = EnvironmentAPI(configuration, aws_api)
     env.aws_api.ec2_client.clear_cache(None, all_cache=True)
     assert env.dispose_ecs_cluster()
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_dispose_container_instance_launch_template(configuration):
     env = EnvironmentAPI(configuration, aws_api)
     env.aws_api.ec2_client.clear_cache(None, all_cache=True)
     assert env.dispose_container_instance_launch_template()
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_dispose_container_instance_ssh_key(configuration):
     """
     Please read the docstring in the function!!!
@@ -282,13 +282,13 @@ def test_dispose_container_instance_ssh_key(configuration):
     assert env.dispose_container_instance_ssh_key()
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_generate_cleanup_report(configuration):
     env = EnvironmentAPI(configuration, aws_api)
     assert env.generate_cleanup_report()
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_generate_cleanup_report_us(configuration):
     env = EnvironmentAPI(configuration, aws_api)
     AWSAccount.get_aws_account().regions = {"us-east-1": Region.get_region("us-east-1")}

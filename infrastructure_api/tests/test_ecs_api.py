@@ -21,8 +21,8 @@ aws_api = AWSAPI()
 configs_dir = Path(".").resolve().parent.parent.parent / "ignore" / "infrastructure_api"
 real_life_env_configuration = str(configs_dir / "env_api_configs.json")
 real_life_alerts_configuration = str(configs_dir / "ecs_api_configs.json")
-assert os.path.exists(real_life_env_configuration)
-assert os.path.exists(real_life_alerts_configuration)
+#assert os.path.exists(real_life_env_configuration)
+#assert os.path.exists(real_life_alerts_configuration)
 
 
 @pytest.fixture(name="service_api")

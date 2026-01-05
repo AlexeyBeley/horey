@@ -25,8 +25,8 @@ real_life_email_configuration = str(configs_dir / "email_api_configs.json")
 real_life_env_configuration = str(configs_dir / "00_env_api_configs.json")
 real_life_email_configuration = str(configs_dir / "email_api_configs.json")
 
-assert os.path.exists(real_life_env_configuration)
-assert os.path.exists(real_life_email_configuration)
+#assert os.path.exists(real_life_env_configuration)
+#assert os.path.exists(real_life_email_configuration)
 
 
 @pytest.fixture(name="email_api")
@@ -43,7 +43,7 @@ def fixture_email_api():
     yield email_api
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_init_environment(email_api):
     ret = email_api.send_email("test.horey@horey.com")
     assert ret

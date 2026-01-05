@@ -6,7 +6,10 @@ from pathlib import Path
 import shutil
 import time
 import getpass
+from typing import List
 
+from horey.common_utils.storage_service import StorageService
+from horey.aws_api.aws_services_entities.s3_bucket import S3Bucket
 from horey.infrastructure_api.cloudwatch_api_configuration_policy import CloudwatchAPIConfigurationPolicy
 from horey.infrastructure_api.cloudwatch_api import CloudwatchAPI
 from horey.infrastructure_api.ecs_api import ECSAPI, ECSAPIConfigurationPolicy
@@ -614,7 +617,59 @@ class CICDAPI:
 
         :return:
         """
+
+        s3_deployment_uri = kwargs.pop("s3_deployment_uri", None)
+        storage_service = S3StorageService(self.environment_api.aws_api,  s3_deployment_uri) if s3_deployment_uri else None
+
         remote_deployer = RemoteDeployer()
         remoter = remote_deployer.get_remoter(target)
+        breakpoint()
+        return ProvisionConstructor().provision_system_function_remote(remoter, function_name, storage_service=storage_service, **kwargs)
 
-        return ProvisionConstructor().provision_system_function_remote(remoter, function_name, **kwargs)
+
+class S3StorageService(StorageService):
+    def __init__(self, aws_api, s3_deployment_uri: str):
+        """
+
+
+        :param aws_api:
+        :param s3_deployment_uri: s3://bucket_name/base_path
+        """
+
+        bucket_name, base_path = s3_deployment_uri.split("s3://")[1].split("/", 1)
+        bucket =  S3Bucket({"Name": bucket_name})
+        self.aws_api = aws_api
+        self.bucket = bucket
+        self.base_path = base_path
+
+    def upload(self, local_path: Path, remote_path: str):
+        """
+        Upload file to S3.
+
+        :param local_path:
+        :param remote_path:
+        :return:
+        """
+        breakpoint()
+        self.aws_api.upload_file(local_path, self.bucket.name, remote_path)
+
+
+    def list(self) -> List[str]:
+        """
+        List all files in the bucket.
+
+        :return:
+        """
+        breakpoint()
+        self.aws_api.s3_client.list_objects(self.bucket.name, self.base_path)
+
+    def download(self, remote_path: str, local_path: Path):
+        """
+        Download file from S3.
+
+        :param remote_path:
+        :param local_path:
+        :return:
+        """
+        breakpoint()
+        self.aws_api.download_file(remote_path, self.bucket.name, local_path)

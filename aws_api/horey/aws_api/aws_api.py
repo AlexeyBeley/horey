@@ -11,6 +11,7 @@ import datetime
 import time
 import zipfile
 from collections import defaultdict
+from pathlib import Path
 
 from horey.aws_api.aws_clients.ecr_client import Boto3Client, ECRClient
 
@@ -2271,7 +2272,7 @@ class AWSAPI:
         self.put_secret_value(region, secret_name, contents)
 
     # pylint: disable= too-many-arguments, too-many-positional-arguments
-    def get_secret_file(self, secret_name, dir_path: str, region=None, file_name=None, ignore_missing=False):
+    def get_secret_file(self, secret_name, dir_path: Path, region=None, file_name=None, ignore_missing=False):
         """
         Get secrets manager value and save it to file.
 
@@ -2284,10 +2285,12 @@ class AWSAPI:
         @return:
         """
 
-        if dir_path.endswith(secret_name):
-            dir_path = os.path.dirname(dir_path)
+        if dir_path.name == secret_name:
+            dir_path = dir_path.parent
 
-        os.makedirs(dir_path, exist_ok=True)
+        if not dir_path.exists():
+            os.makedirs(dir_path)
+
         contents = self.get_secret_value(secret_name, region=region, ignore_missing=ignore_missing)
 
         if contents is None:
@@ -2296,7 +2299,7 @@ class AWSAPI:
         if file_name is None:
             file_name = secret_name
 
-        dst_file_path = os.path.join(dir_path, file_name)
+        dst_file_path = dir_path / file_name
         with open(
                 dst_file_path, "w+", encoding="utf-8"
         ) as file_handler:

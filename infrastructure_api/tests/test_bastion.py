@@ -62,7 +62,7 @@ def fixture_bastion_name(configuration):
     yield name
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_provision_instance_profile(configuration, bastion_name):
     env = EnvironmentAPI(configuration, aws_api)
     env.aws_api.ec2_client.clear_cache(None, all_cache=True)
@@ -70,7 +70,7 @@ def test_provision_instance_profile(configuration, bastion_name):
     assert bastion.provision_instance_profile()
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_provision_ssh_key_pair(configuration, bastion_name):
     env = EnvironmentAPI(configuration, aws_api)
     env.aws_api.ec2_client.clear_cache(None, all_cache=True)
@@ -78,7 +78,7 @@ def test_provision_ssh_key_pair(configuration, bastion_name):
     assert bastion.provision_ssh_key_pair()
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_provision_security_group(configuration, bastion_name):
     env = EnvironmentAPI(configuration, aws_api)
     env.aws_api.ec2_client.clear_cache(None, all_cache=True)
@@ -86,7 +86,7 @@ def test_provision_security_group(configuration, bastion_name):
     assert bastion.provision_security_group()
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_provision_instance(configuration, bastion_name):
     env = EnvironmentAPI(configuration, aws_api)
     env.aws_api.ec2_client.clear_cache(None, all_cache=True)
@@ -96,7 +96,7 @@ def test_provision_instance(configuration, bastion_name):
     assert ec2_instance.arn
 
 
-@pytest.mark.done
+@pytest.mark.unit
 def test_provision_ssh_config(configuration, bastion_name):
     env = EnvironmentAPI(configuration, aws_api)
     env.aws_api.ec2_client.clear_cache(None, all_cache=True)
