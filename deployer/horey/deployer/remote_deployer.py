@@ -41,7 +41,6 @@ class SSHRemoter(Remoter):
         self.sftp_client = sftp_client
         self.remote_deployment_dir = remote_deployment_dir
 
-
     def execute(self, command: str, *output_validators: List[Any]) -> Tuple[List[str], List[str], int]:
         """
         Remote command.
