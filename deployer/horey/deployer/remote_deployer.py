@@ -685,6 +685,9 @@ class RemoteDeployer:
         try:
             if deployment_target.remote_deployment_dir_path != step.configuration.remote_deployment_dir_path:
                 raise NotImplementedError(f"{deployment_target.remote_deployment_dir_path=} {step.configuration.remote_deployment_dir_path=}")
+
+            os.makedirs(step.configuration.local_deployment_dir_path / step.configuration.data_dir_name, exist_ok=True)
+
             self.execute_step(ssh_client, step, deployment_target.deployment_target_address)
             sftp_client = self.get_deployment_target_sftp_client(deployment_target)
 
