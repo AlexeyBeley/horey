@@ -691,10 +691,15 @@ class RemoteDeployer:
 
             for retry_counter in range(step.configuration.retry_attempts):
                 try:
-                    sftp_client.get(
-                        str(step.configuration.remote_deployment_dir_path /
+                    remote_status_path = str(step.configuration.remote_deployment_dir_path /
                         step.configuration.data_dir_name /
-                            step.configuration.finish_status_file_name),
+                            step.configuration.finish_status_file_name)
+
+                    logger.info(
+                        f"[LOCAL->{deployment_target.deployment_target_address}] Trying to fetch remote script's status from {remote_status_path}"
+                    )
+                    sftp_client.get(
+                        remote_status_path,
                         str(
                             step.configuration.local_deployment_dir_path /
                             step.configuration.data_dir_name /
@@ -702,10 +707,15 @@ class RemoteDeployer:
                         ),
                     )
 
-                    sftp_client.get(
-                        str(step.configuration.remote_deployment_dir_path /
+                    remote_output_path = str(step.configuration.remote_deployment_dir_path /
                         step.configuration.data_dir_name /
-                        step.configuration.output_file_name),
+                            step.configuration.output_file_name)
+
+                    logger.info(
+                        f"[LOCAL->{deployment_target.deployment_target_address}] Trying to fetch remote script's output from {remote_output_path}"
+                    )
+                    sftp_client.get(
+                        remote_output_path,
                         str(
                             step.configuration.local_deployment_dir_path /
                             step.configuration.data_dir_name /
