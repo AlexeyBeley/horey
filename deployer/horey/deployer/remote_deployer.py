@@ -14,7 +14,7 @@ import traceback
 
 from contextlib import contextmanager
 from pathlib import Path
-from typing import List, Any
+from typing import List, Any, Tuple
 
 import paramiko
 from sshtunnel import open_tunnel
@@ -36,33 +36,13 @@ class SSHRemoter(Remoter):
 
     """
 
-    def __init__(self, connector):
-        self.connector = connector
-        self._executor = None
-        self._sftp_client = None
+    def __init__(self, executor, sftp_client, remote_deployment_dir: Path):
+        self.executor = executor
+        self.sftp_client = sftp_client
+        self.remote_deployment_dir = remote_deployment_dir
 
-    @property
-    def executor(self):
-        """
-        Function that executes remote scripts
 
-        :return:
-        """
-        if self._executor is None:
-            self._executor, self._sftp_client = self.connector()
-        return self._executor
-
-    @property
-    def sftp_client(self):
-        """
-        standard
-        :return:
-        """
-        if self._sftp_client is None:
-            self._executor, self._sftp_client = self.connector()
-        return self._sftp_client
-
-    def execute(self, command: str, *output_validators: List[Any]) -> (List[str], List[str], int):
+    def execute(self, command: str, *output_validators: List[Any]) -> Tuple[List[str], List[str], int]:
         """
         Remote command.
 
@@ -72,7 +52,7 @@ class SSHRemoter(Remoter):
         """
 
         errors = []
-        chan, lst_stdout, lst_stderr, status_code = self.executor(command)
+        _, lst_stdout, lst_stderr, status_code = self.executor(command)
 
         for output_validator in output_validators:
             try:
@@ -98,7 +78,16 @@ class SSHRemoter(Remoter):
             remote_tmp_file_path = Path('/tmp')/src.name
             self.sftp_client.put(str(src), str(remote_tmp_file_path))
             return self.execute(f"sudo mv {Path('/tmp')/src.name} {dst}")
-        self.sftp_client.put(str(src), str(dst))
+        return self.sftp_client.put(str(src), str(dst))
+
+    def get_deployment_dir(self) -> Path:
+        """
+        Remote deployment dir.
+
+        :return:
+        """
+
+        return self.remote_deployment_dir
 
     def get_file(self, src: Path, dst: Path, sudo: bool = False):
         """
@@ -1293,31 +1282,22 @@ class RemoteDeployer:
         :return:
         """
 
-        def connector():
-            """
-            Create SSH and SFTP connections.
+        ssh_client = self.get_deployment_target_ssh_client(target)
+        channel = ssh_client.invoke_shell()
+        stdin = channel.makefile("wb")
+        stdout = channel.makefile("r")
+        sftp_client = self.get_deployment_target_sftp_client(target)
 
+        def executor(command):
+            """
+            Execute remotely
+
+            :param command:
             :return:
             """
-            ssh_client = self.get_deployment_target_ssh_client(target)
-            channel = ssh_client.invoke_shell()
-            stdin = channel.makefile('wb')
-            stdout = channel.makefile('r')
-            sftp_client = self.get_deployment_target_sftp_client(target)
+            return self.execute_remote_shell(stdin, stdout, command, target.deployment_target_address)
 
-            def executor(command):
-                """
-                Execute remotely
 
-                :param command:
-                :return:
-                """
-                return self.execute_remote_shell(stdin, stdout, command, target.deployment_target_address)
-
-            return executor, sftp_client
-
-        ret = SSHRemoter(connector())
-        ret.connector = connector
+        ret = SSHRemoter(executor, sftp_client,  target.remote_deployment_dir_path)
 
         return ret
-

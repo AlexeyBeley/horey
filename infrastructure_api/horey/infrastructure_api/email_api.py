@@ -167,4 +167,23 @@ class EmailAPI:
         :return:
         """
 
-        return self.environment_api.aws_api.sesv2_client.delete_suppressed_destination_raw(self.environment_api.region, {"EmailAddress": src_email})
+        for destination in self.get_suppressed_emails():
+            if src_email.lower() == destination["EmailAddress"].lower():
+                logger.info(f"Unsupressing email {src_email}")
+                return self.environment_api.aws_api.sesv2_client.delete_suppressed_destination_raw(self.environment_api.region, {"EmailAddress": destination["EmailAddress"]})
+        return False
+
+    def grep_suppressed_emails(self, str_to_find):
+        """
+        Check if the email is in the suppression list.
+
+        :param str_to_find:
+        :return:
+        """
+
+        ret = []
+        for destination in self.get_suppressed_emails():
+            if str_to_find.lower() in destination["EmailAddress"]:
+                logger.info(f"Found suppressed email '{destination['EmailAddress']}'")
+                ret.append(destination["EmailAddress"])
+        return ret

@@ -156,11 +156,17 @@ class GlueClient(Boto3Client):
             if full_information:
                 pass
             if get_tags:
-                self.get_tags(obj)
+                try:
+                    self.get_tags(obj)
+                except Exception as e:
+                    if "not found" in str(e):
+                        logger.warning(f"Database {obj.name} not found when getting tags")
+                    else:
+                        raise
 
         return final_result
 
-    def update_database_information(self, database: GlueDatabase):
+    def update_database_information(self, database: GlueDatabase) -> bool:
         """
         Update database attributes from AWS API.
 
@@ -177,8 +183,9 @@ class GlueClient(Boto3Client):
         ):
             database.update_from_raw_response(dict_src)
             database.account_id = self.account_id
-
             self.get_tags(database)
+            return True
+        return False
 
     def provision_database(self, database: GlueDatabase):
         """
@@ -213,3 +220,62 @@ class GlueClient(Boto3Client):
             return response
 
     # endregion
+
+    def dispose_database(self, database: GlueDatabase):
+        """
+        Standard.
+
+        :param database:
+        :return:
+        """
+
+        if not self.update_database_information(database):
+            return True
+        return self.dispose_database_raw(database.region, {"CatalogId": database.catalog_id, "Name": database.name})
+
+    def dispose_database_raw(self, region, request_dict):
+        """
+        response = client.delete_database(
+        CatalogId='string',
+        Name='string' # required
+        )
+
+        :param region:
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Disposing database: {request_dict}")
+        for response in self.execute(
+                self.get_session_client(region=region).delete_database, None, raw_data=True, filters_req=request_dict
+        ):
+            return response
+
+    def dispose_table(self, table: GlueTable):
+        """
+        Standard.
+
+        :param table:
+        :return:
+        """
+
+        self.update_table_information(table)
+        if table.create_time is None:
+            return
+
+        self.dispose_table_raw(table.region, table.generate_create_request())
+        self.update_table_information(table)
+
+    def dispose_table_raw(self, region, request_dict):
+        """
+        Standard.
+
+        :param region:
+        :param request_dict:
+        :return:
+        """
+        logger.info(f"Disposing table: {request_dict}")
+        for response in self.execute(
+                self.get_session_client(region=region).delete_table, None, raw_data=True, filters_req=request_dict
+        ):
+            return response

@@ -40,6 +40,8 @@ class EC2Instance(AwsObject):
         self.ebs_optimized = None
         self.key_name = None
         self.monitoring = None
+        self.public_ip_address = None
+        self.private_ip_address = None
         self.placement = {}
 
         if from_cache:

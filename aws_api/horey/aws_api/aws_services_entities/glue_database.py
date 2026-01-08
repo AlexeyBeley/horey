@@ -15,6 +15,7 @@ class GlueDatabase(AwsObject):
         super().__init__(dict_src)
         self.create_time = None
         self.account_id = None
+        self.catalog_id = None
 
         if from_cache:
             self._init_object_from_cache(dict_src)

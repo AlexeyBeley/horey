@@ -3,7 +3,7 @@ SSH, SFTP etc.
 """
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import List, Any
+from typing import List, Any, Tuple
 
 
 class Remoter(ABC):
@@ -12,7 +12,15 @@ class Remoter(ABC):
     """
 
     @abstractmethod
-    def execute(self, command: str, *output_validators: List[Any]) -> (List[str], List[str], int):
+    def get_deployment_dir(self) -> Path:
+        """
+        Get deployment directory.
+
+        :return:
+        """
+
+    @abstractmethod
+    def execute(self, command: str, *output_validators: List[Any]) -> Tuple[List[str], List[str], int]:
         """
         Execute remote.
 

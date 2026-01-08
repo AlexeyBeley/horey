@@ -123,6 +123,7 @@ class Boto3Client:
         raise RuntimeError(f"Nobody can set a client explicitly in{self}")
 
     # pylint: disable= too-many-arguments, too-many-branches
+    # pylint: disable= too-many-positional-arguments
     def yield_with_paginator(
             self,
             func_command,
@@ -216,6 +217,7 @@ class Boto3Client:
             )
 
     # pylint: disable= too-many-arguments
+    # pylint: disable= too-many-positional-arguments
     def unpack_pagination_loop(
             self,
             starting_token,
@@ -287,7 +289,7 @@ class Boto3Client:
         return _page.get(self.NEXT_PAGE_RESPONSE_KEY)
 
     # pylint: disable= too-many-arguments
-
+    # pylint: disable= too-many-positional-arguments
     def execute(
             self,
             func_command,
@@ -331,6 +333,7 @@ class Boto3Client:
         yield from response
 
     # pylint: disable= too-many-branches
+    # pylint: disable= too-many-positional-arguments
     def execute_without_pagination(self, func_command, return_string, filters_req=None, raw_data=False,
                                    exception_ignore_callback=None, instant_raise=False):
         """
@@ -432,6 +435,7 @@ class Boto3Client:
         raise NotImplementedError(f"{ret_value} type:{type(ret_value)}")
 
     # pylint: disable= too-many-arguments
+    # pylint: disable= too-many-positional-arguments
     def execute_with_single_reply(
             self,
             func_command,
@@ -472,6 +476,7 @@ class Boto3Client:
         raise self.ToManyValuesException(str(ret))
 
     # pylint: disable= too-many-arguments
+    # pylint: disable= too-many-positional-arguments
     @staticmethod
     def wait_for_status(
             observed_object,
@@ -537,10 +542,12 @@ class Boto3Client:
             f"Finished waiting loop for {observed_object.id} to become one of {desired_statuses}. Took {end_time - start_time}"
         )
 
-    def get_tags(self, obj, function=None, arn_identifier="ResourceArn", tags_identifier="Tags", region=None):
+    # pylint: disable= too-many-positional-arguments
+    def get_tags(self, obj, function=None, arn_identifier="ResourceArn", tags_identifier="Tags", region=None, instant_raise=False):
         """
         Get tags for resource.
 
+        :param instant_raise:
         :param region:
         :param obj:
         :param function:
@@ -549,12 +556,16 @@ class Boto3Client:
         :return:
         """
 
+        if region is None:
+            if (region:=obj.region) is None:
+                raise ValueError("Either region or obj.region must be set")
+
         if function is None:
             function = self.get_session_client(region).get_tags
 
         logger.info(f"Getting resource tags: {obj.arn}")
         ret = list(
-            self.execute(function, tags_identifier, filters_req={arn_identifier: obj.arn})
+            self.execute(function, tags_identifier, filters_req={arn_identifier: obj.arn}, instant_raise=instant_raise)
         )
         obj.tags = ret
         return ret
@@ -697,6 +708,7 @@ class Boto3Client:
             with open(file_path, "w", encoding="utf-8") as file_handler:
                 json.dump(objects, file_handler, indent=4)
 
+    # pylint: disable= too-many-positional-arguments
     def generate_cache_file_path(self, class_type, region_dir_name, full_information, get_tags, cache_suffix=None):
         """
         Generate cache file path to write and read from.
@@ -752,6 +764,7 @@ class Boto3Client:
                 class_type(dict_src, from_cache=True) for dict_src in json.load(file_handler)
             ]
 
+    # pylint: disable= too-many-positional-arguments
     def regional_service_entities_generator(self, regional_fetcher_generator,
                                             entity_class,
                                             full_information_callback=None,
@@ -810,7 +823,7 @@ class Boto3Client:
                     cache_filter_callback=cache_filter_callback
             )
 
-    # pylint: disable= too-many-locals
+    # pylint: disable= too-many-locals, too-many-positional-arguments
     def region_service_entities_generator(self, region,
                                           regional_fetcher_generator,
                                           entity_class,

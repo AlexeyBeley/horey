@@ -13,6 +13,8 @@ import time
 
 from horey.common_utils.actions_manager import ActionsManager
 from horey.replacement_engine.replacement_engine import ReplacementEngine
+
+from horey.common_utils.storage_service import StorageService
 from horey.provision_constructor.system_functions.apt_package import APTPackage
 from horey.provision_constructor.system_functions.apt_repository import APTRepository
 from horey.h_logger import get_logger
@@ -37,6 +39,8 @@ class SystemFunctionCommon:
 
     def __init__(self, deployment_dir, force, upgrade, **kwargs):
         self.action = kwargs.get("action")
+        self.storage_service: StorageService = kwargs.pop("storage_service")
+
         self.deployment_dir = deployment_dir
         self.kwargs = kwargs
         self.validate_provisioned_ancestor = True
@@ -93,7 +97,7 @@ class SystemFunctionCommon:
             elif isinstance(value, bool):
                 str_kwargs += f', {key} = {value}'
             else:
-                breakpoint()
+                raise NotImplementedError(f"Unknown type {type(value)}")
         contents += f'\nprovision_constructor.provision_system_function("{self.get_system_function_name()}", upgrade = {bool(self.upgrade)}, force = {bool(self.force)}{str_kwargs})'
         with open(dst_file_path, "w", encoding="utf-8") as file_handler:
             file_handler.write(contents)
@@ -1230,6 +1234,17 @@ class SystemFunctionCommon:
             string_to_look_for = string_to_look_for.lower()
 
         def helper(lst_stdout, lst_stderr, error_code):
+            """
+            Helper function
+
+            :param lst_stdout:
+            :param lst_stderr:
+            :param error_code:
+            :return:
+            """
+
+            logger.info(f"Helper ignoring {lst_stderr=}, {error_code=}")
+
             line = ""
             for line in reversed(lst_stdout):
                 if not line or line == "\n":
@@ -1256,6 +1271,16 @@ class SystemFunctionCommon:
             strings_to_look_for = [string_to_look_for.lower() for string_to_look_for in strings_to_look_for]
 
         def helper(lst_stdout, lst_stderr, error_code):
+            """
+            Helper function
+
+            :param lst_stdout:
+            :param lst_stderr:
+            :param error_code:
+            :return:
+            """
+
+            logger.info(f"Helper ignoring {lst_stderr=}, {error_code=}")
             errors = []
             output = "".join(lst_stdout)
             if convert_to_lower:
@@ -1283,7 +1308,7 @@ class SystemFunctionCommon:
 
         command = f'servicestartsec=$(date -d "$(systemctl show --property=ActiveEnterTimestamp {service_name} | cut -d= -f2)" +%s) && serviceelapsedsec=$(( $(date +%s) - servicestartsec )) && echo $serviceelapsedsec'
         sleep_time = 10
-        retries = (min_uptime * 2 // sleep_time)
+        retries = min_uptime * 2 // sleep_time
         for i in range(retries):
             lst_stdout, _, _ = self.remoter.execute(command)
             str_seconds = lst_stdout[-1].strip("\n")

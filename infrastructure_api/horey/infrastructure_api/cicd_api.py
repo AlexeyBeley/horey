@@ -8,6 +8,7 @@ import time
 import getpass
 from typing import List
 
+from horey.aws_api.aws_services_entities.ec2_instance import EC2Instance
 from horey.common_utils.storage_service import StorageService
 from horey.aws_api.aws_services_entities.s3_bucket import S3Bucket
 from horey.infrastructure_api.cloudwatch_api_configuration_policy import CloudwatchAPIConfigurationPolicy
@@ -498,6 +499,8 @@ class CICDAPI:
         """
         Generate target
 
+        :param bastion:
+        :param target_ssh_key_secret_name:
         :param name:
         :return:
         """
@@ -506,10 +509,45 @@ class CICDAPI:
             raise ValueError("name is None")
 
         ec2_instance = self.environment_api.get_ec2_instance(tags_dict={"Name": [name]})
+        return self.init_deployment_target(ec2_instance, target_ssh_key_secret_name=target_ssh_key_secret_name,
+                                                   bastion=bastion)
+
+    def generate_deployment_targets(self, name=None, target_ssh_key_secret_name:str=None, bastion=None) -> List[DeploymentTarget]:
+        """
+        Generate targets
+
+        :param name:
+        :param target_ssh_key_secret_name:
+        :param bastion:
+        :return:
+        """
+
+        if name is None:
+            raise ValueError("name is None")
+
+        ec2_instances = self.environment_api.get_ec2_instances(tags_dict={"Name": [name]})
+        targets = []
+        for ec2_instance in ec2_instances:
+            targets.append(self.init_deployment_target(ec2_instance, target_ssh_key_secret_name=target_ssh_key_secret_name, bastion=bastion))
+        return targets
+
+    def init_deployment_target(self, ec2_instance: EC2Instance, target_ssh_key_secret_name:str=None, bastion: EC2Instance=None) -> DeploymentTarget:
+        """
+        Init single target from ec2 Instance
+
+        :param ec2_instance:
+        :param target_ssh_key_secret_name:
+        :param bastion:
+        :return:
+        """
+
         if ec2_instance.get_status() == ec2_instance.State.STOPPED:
             self.environment_api.aws_api.ec2_client.start_instances([ec2_instance])
         target_ssh_key_secret_name = target_ssh_key_secret_name or ec2_instance.key_name
-        self.environment_api.aws_api.get_secret_file(target_ssh_key_secret_name, str(self.configuration.deployment_directory), region=self.environment_api.region)
+        self.environment_api.aws_api.get_secret_file(target_ssh_key_secret_name,
+                                                     self.configuration.deployment_directory,
+                                                     region=self.environment_api.region)
+        # check the type to be set
         # key_pairs = self.environment_api.aws_api.ec2_client.get_region_key_pairs(self.environment_api.region)
 
         target = DeploymentTarget()
@@ -522,7 +560,7 @@ class CICDAPI:
             target.bastion_address = bastion.public_ip_address
             bastion_ssh_key_secret_name = bastion.key_name
             self.environment_api.aws_api.get_secret_file(bastion_ssh_key_secret_name,
-                                                         str(self.configuration.deployment_directory),
+                                                         self.configuration.deployment_directory,
                                                          region=self.environment_api.region)
 
             target.bastion_ssh_key_path = self.configuration.deployment_directory / bastion_ssh_key_secret_name
@@ -553,6 +591,8 @@ class CICDAPI:
         if horey_repo_path:
             self.copy_horey_package_required_packages_to_build_dir("provision_constructor", step.configuration.local_deployment_dir_path, horey_repo_path)
         target.add_step(step)
+        return True
+
 
     def copy_horey_package_required_packages_to_build_dir(self, package_raw_name: str, build_dir_path: Path, horey_repo_path: Path):
         """
@@ -607,9 +647,8 @@ class CICDAPI:
         :return:
         """
 
-        entrypoint_script = ProvisionConstructor.generate_provision_constructor_apply_scripts(target.local_deployment_dir_path, provision_script_generator, target=target)
-
-        breakpoint()
+        ProvisionConstructor.generate_provision_constructor_apply_scripts(target.local_deployment_dir_path, provision_script_generator, target=target)
+        raise NotImplementedError("Not implemented")
 
     def run_remote_provision_constructor(self, target, function_name, **kwargs):
         """
@@ -618,16 +657,20 @@ class CICDAPI:
         :return:
         """
 
-        s3_deployment_uri = kwargs.pop("s3_deployment_uri", None)
+        s3_deployment_uri = kwargs.pop("s3_deployment_uri")
         storage_service = S3StorageService(self.environment_api.aws_api,  s3_deployment_uri) if s3_deployment_uri else None
 
         remote_deployer = RemoteDeployer()
         remoter = remote_deployer.get_remoter(target)
-        breakpoint()
-        return ProvisionConstructor().provision_system_function_remote(remoter, function_name, storage_service=storage_service, **kwargs)
+        provision_constructor = ProvisionConstructor()
+        provision_constructor.deployment_dir = target.local_deployment_dir_path
+        return provision_constructor.provision_system_function_remote(remoter, function_name, storage_service=storage_service, **kwargs)
 
 
 class S3StorageService(StorageService):
+    """
+    Accessing S3 files
+    """
     def __init__(self, aws_api, s3_deployment_uri: str):
         """
 
@@ -650,8 +693,8 @@ class S3StorageService(StorageService):
         :param remote_path:
         :return:
         """
-        breakpoint()
-        self.aws_api.upload_file(local_path, self.bucket.name, remote_path)
+
+        raise NotImplementedError(f"{local_path=}, {remote_path=}")
 
 
     def list(self) -> List[str]:
@@ -660,8 +703,10 @@ class S3StorageService(StorageService):
 
         :return:
         """
-        breakpoint()
-        self.aws_api.s3_client.list_objects(self.bucket.name, self.base_path)
+
+        return [obj.key for obj in self.aws_api.s3_client.yield_bucket_objects(None,
+                                                                bucket_name=self.bucket.name,
+                                                                custom_filters={"Prefix": self.base_path})]
 
     def download(self, remote_path: str, local_path: Path):
         """
@@ -671,5 +716,5 @@ class S3StorageService(StorageService):
         :param local_path:
         :return:
         """
-        breakpoint()
-        self.aws_api.download_file(remote_path, self.bucket.name, local_path)
+
+        return self.aws_api.s3_client.get_bucket_object_file(self.bucket, S3Bucket.BucketObject({"Key": remote_path}), local_path)

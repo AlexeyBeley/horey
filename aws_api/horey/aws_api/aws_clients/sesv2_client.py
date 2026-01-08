@@ -491,7 +491,7 @@ class SESV2Client(Boto3Client):
         @return:
         """
 
-        self.update_email_identity_information(current_email_identity)
+        self.update_identity_information(current_email_identity)
 
         if current_email_identity.identity_type is None:
             response = self.create_email_identity_raw(current_email_identity.region,
@@ -618,6 +618,8 @@ class SESV2Client(Boto3Client):
             logger.info(log_message)
             return response
 
+        return False
+
     def delete_suppressed_destination_raw(self, region, request_dict):
         """
         Standard.
@@ -628,6 +630,8 @@ class SESV2Client(Boto3Client):
         :return:
         """
 
+        logger.info(f"Deleting suppressed SES destination {request_dict} in region {region.region_mark}")
+
         for response in self.execute(
                 self.get_session_client(region=region).delete_suppressed_destination,
                 None,
@@ -635,3 +639,5 @@ class SESV2Client(Boto3Client):
                 filters_req=request_dict, exception_ignore_callback=lambda err: "NotFoundException" in repr(err)
         ):
             return response
+
+        return False

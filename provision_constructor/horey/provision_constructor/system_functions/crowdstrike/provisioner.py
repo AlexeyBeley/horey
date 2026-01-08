@@ -2,6 +2,8 @@
 Provision ntp service.
 
 """
+import json
+from pathlib import Path
 
 from horey.provision_constructor.system_function_factory import SystemFunctionFactory
 
@@ -19,12 +21,16 @@ BashExecutor.set_logger(logger, override=False)
 @SystemFunctionFactory.register
 class Provisioner(SystemFunctionCommon):
     """
-
+    System function Provision manager
     """
 
-    def __init__(self, deployment_dir, force, upgrade, **kwargs):
-        super().__init__(force, upgrade, **kwargs)
-        self.deployment_dir = deployment_dir
+    def _provision(self):
+        """
+        Not implemented
+
+        :return:
+        """
+        raise NotImplementedError("Not implemented")
 
     def test_provisioned(self):
         self.init_apt_packages()
@@ -63,8 +69,60 @@ class Provisioner(SystemFunctionCommon):
         :return:
         """
 
-        directory = self.kwargs["s3_directory_uri"]
+        if self.storage_service is None:
+            raise RuntimeError("storage_service was not set")
+
+        if (falcon_sensor_cid:=self.kwargs.get("falcon_sensor_cid")) is None:
+            raise RuntimeError("falcon_sensor_cid was not set")
+
+        arch = self.init_cpu_data()
+        options = []
+        if arch == "x86_64":
+            for file_path in self.storage_service.list():
+                if "falcon-sensor" not in file_path:
+                    continue
+                if "amd64"  not in file_path:
+                    continue
+                if not file_path.endswith(".deb"):
+                    continue
+                options.append(file_path)
+        else:
+            raise NotImplementedError(f"CPU arch '{arch}' is not supported")
+
+        if len(options) != 1:
+            raise RuntimeError(f"Found {len(options)} options:\n{options}")
 
 
+        self.deployment_dir.mkdir(exist_ok=True)
+        local_file_path = Path(self.deployment_dir / options[0].split("/")[-1])
+        self.storage_service.download(options[0], local_file_path)
+
+        remote_path = self.remoter.get_deployment_dir() / local_file_path.name
+        self.remoter.execute(f"mkdir -p {self.remoter.get_deployment_dir()}")
+        self.remoter.put_file(local_file_path, remote_path)
+        self.remoter.execute(f"sudo dpkg -i {remote_path}",
+                                   self.grep_validator("Unpacking falcon-sensor"),
+                                   self.grep_validator("Setting up falcon-sensor"),
+                                   self.grep_validator("Created symlink"),
+                                   self.grep_validator("Processing triggers for libc-bin"))
+
+        self.remoter.execute(f"sudo /opt/CrowdStrike/falconctl -sf --cid='{falcon_sensor_cid}'")
+        self.remoter.execute("sudo systemctl start falcon-sensor")
+        self.remoter.execute("sudo systemctl enable falcon-sensor", self.grep_validator("Executing: /lib/systemd/systemd-sysv-install enable falcon-sensor"))
+        return True
 
 
+    def init_cpu_data(self)-> str:
+        """
+        Init cpu data
+
+        :return:
+        """
+
+        cpu_data = "".join(self.remoter.execute("lscpu --json")[0])
+        cpu_data = json.loads(cpu_data)
+        cpu_arch = cpu_data["lscpu"][0]["data"]
+        if cpu_arch !="x86_64":
+            raise NotImplementedError(f"CPU arch '{cpu_arch}' is not supported")
+
+        return cpu_arch

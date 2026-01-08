@@ -1168,6 +1168,7 @@ class EnvironmentAPI:
         return policy
 
     # pylint: disable = (too-many-arguments
+    # pylint: disable = too-many-positional-arguments
     def provision_cloudfront_distribution(self, name, aliases, cloudfront_origin_access_identity,
                                           cloudfront_certificate,
                                           s3_bucket, response_headers_policy, origin_path, web_acl=None):
@@ -1395,6 +1396,7 @@ class EnvironmentAPI:
         return self.aws_api.ec2_client.get_managed_prefix_list(self.region, name=pl_name)
 
     # pylint: disable = (too-many-arguments
+    # pylint: disable = too-many-positional-arguments
     def upload_to_s3(self, directory_path, bucket_name, key_path, tag_objects=True, keep_src_object_name=True):
         """
         Upload to S3.
@@ -1485,6 +1487,7 @@ class EnvironmentAPI:
         self.aws_api.ec2_client.clear_cache(None, all_cache=True)
 
     # pylint: disable=too-many-locals
+    # pylint: disable = too-many-positional-arguments
     def provision_ecs_fargate_task_definition(self, task_definition_family=None,
                                               contaner_name=None,
                                               ecr_image_id=None,
@@ -1604,6 +1607,7 @@ class EnvironmentAPI:
         return ecs_task_role
 
     # pylint: disable=too-many-locals
+    # pylint: disable = too-many-positional-arguments
     def provision_ecs_service(self, cluster_name, ecs_task_definition, service_registry_dicts=None,
                               service_target_group_arn=None,
                               load_balancer_container_port=None,
@@ -1851,6 +1855,7 @@ class EnvironmentAPI:
         log_group.tags = {tag["Key"]: tag["Value"] for tag in self.get_tags_with_name(log_group.name)}
         self.aws_api.provision_cloudwatch_log_group(log_group)
 
+    # pylint: disable = too-many-positional-arguments
     def deploy_lambda(self, lambda_name=None, handler=None, timeout=None, memory_size=None, policy=None, role_name=None,
                       zip_file_path=None):
         """
@@ -1940,6 +1945,7 @@ class EnvironmentAPI:
             raise RuntimeError(f"Could not update topic '{name}' information")
         return topic
 
+    # pylint: disable = too-many-positional-arguments
     def provision_iam_role(self, name=None,
                            description=None,
                            assume_role_policy_document=None,
@@ -2058,6 +2064,7 @@ class EnvironmentAPI:
         return policy
 
     # pylint: disable = too-many-arguments
+    # pylint: disable = too-many-positional-arguments
     def provision_cloudwatch_alarm(self, name=None,
                                    insufficient_data_actions=None,
                                    metric_name=None,
@@ -2297,8 +2304,8 @@ class EnvironmentAPI:
         delete_capacity_providers = []
         for action in report.actions:
             if isinstance(action, ReportActionECSCapacityProvider):
-                cap_provider = self.get_ecs_capacity_provider(action.path["name"])
-                arn = cap_provider.auto_scaling_group_provider["autoScalingGroupArn"]
+                # cap_provider = self.get_ecs_capacity_provider(action.path["name"])
+                # arn = cap_provider.auto_scaling_group_provider["autoScalingGroupArn"]
                 # auto_scaling_group = self.get_auto_scaling_group(arn=arn)
 
                 if action.unused_capacity_provider:
@@ -2371,6 +2378,7 @@ class EnvironmentAPI:
 
         logger.info(f"Deleted {len(delete_alarms)} cloudwatch alarms")
 
+    # pylint: disable = too-many-nested-blocks
     def perform_logs_cleanup(self, report):
         """
         Log groups removal.
@@ -2626,6 +2634,20 @@ class EnvironmentAPI:
         :return:
         """
 
+        ec2_instances = self.get_ec2_instances(update_info=update_info, tags_dict=tags_dict)
+        if len(ec2_instances) != 1:
+            raise RuntimeError(f"Expected to find single instance, found: {len(ec2_instances)}")
+        return ec2_instances[0]
+
+    def get_ec2_instances(self, update_info=True, tags_dict=None):
+        """
+        Find and return EC2 instances.
+
+        :param update_info:
+        :param tags_dict:
+        :return:
+        """
+
         if tags_dict is None:
             raise ValueError("tags_dict is None")
 
@@ -2637,9 +2659,8 @@ class EnvironmentAPI:
                               [{"Name": "vpc-id", "Values": [self.vpc.id]}]
                    }
         ec2_instances = self.aws_api.ec2_client.get_region_instances(self.region, filters=filters, update_info=update_info)
-        if len(ec2_instances) != 1:
-            raise RuntimeError(f"Expected to find single instance, found: {len(ec2_instances)}")
-        return ec2_instances[0]
+
+        return ec2_instances
 
     class ResourceNotFoundError(RuntimeError):
         """

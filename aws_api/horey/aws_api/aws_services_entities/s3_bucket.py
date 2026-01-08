@@ -348,6 +348,8 @@ class S3Bucket(AwsObject):
                 "ETag": self.init_default_attr,
                 "Size": self.init_default_attr,
                 "StorageClass": self.init_default_attr,
+                "ChecksumAlgorithm": self.init_default_attr,
+                "ChecksumType": self.init_default_attr,
             }
             self.init_attrs(src_data, init_options)
 

@@ -11,6 +11,8 @@ import threading
 import time
 from enum import Enum
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+
 from horey.aws_api.aws_clients.boto3_client import Boto3Client
 from horey.aws_api.aws_services_entities.s3_bucket import S3Bucket
 from horey.h_logger import get_logger
@@ -58,6 +60,7 @@ class UploadTask:
     """
 
     # pylint: disable= too-many-arguments
+    # pylint: disable= too-many-positional-arguments
     def __init__(
             self, task_id, task_type, file_path, bucket_name, key_name, extra_args=None
     ):
@@ -421,7 +424,7 @@ class S3Client(Boto3Client):
             else:
                 raise
 
-    def get_bucket_object(self, bucket, bucket_object):
+    def get_bucket_object(self, bucket: S3Bucket, bucket_object: S3Bucket.BucketObject):
         """
         Download bucket key data.
 
@@ -438,7 +441,9 @@ class S3Client(Boto3Client):
         ):
             return response["Body"].read()
 
-    def get_bucket_object_file(self, bucket, bucket_object, file_path):
+        raise ValueError(f"Object '{bucket_object.key}' does not exist in bucket '{bucket.name}'")
+
+    def get_bucket_object_file(self, bucket: S3Bucket, bucket_object: S3Bucket.BucketObject, file_path: Path):
         """
         Download bucket key data and write to file.
 
@@ -451,6 +456,7 @@ class S3Client(Boto3Client):
         data = self.get_bucket_object(bucket, bucket_object)
         with open(file_path, "wb") as file_handler:
             file_handler.write(data)
+        return True
 
     def update_bucket_information(self, bucket: S3Bucket):
         """
@@ -565,6 +571,7 @@ class S3Client(Boto3Client):
         return final_result
 
     # pylint: disable= too-many-arguments
+    # pylint: disable= too-many-positional-arguments
     def upload(
             self,
             bucket_name,
@@ -637,6 +644,7 @@ class S3Client(Boto3Client):
         )
 
     # pylint: disable= too-many-arguments
+    # pylint: disable= too-many-positional-arguments
     def start_uploading_object(
             self,
             bucket_name,
@@ -953,6 +961,7 @@ class S3Client(Boto3Client):
             f"Uploaded {len(byte_chunk)} bytes part {task.part_number}: took {end_time - start_time}"
         )
 
+    # pylint: disable= too-many-positional-arguments
     def start_uploading_file_task(
             self, bucket_name, file_path, key_name, extra_args=None, metadata_callback=None
     ):
@@ -995,6 +1004,7 @@ class S3Client(Boto3Client):
         return self.insert_task_into_tasks_queue(task)
 
     # pylint: disable= too-many-locals
+    # pylint: disable= too-many-positional-arguments
     def start_multipart_uploading_file_task(
             self, bucket_name, file_path, key_name, extra_args=None, metadata_callback=None
     ):
@@ -1109,6 +1119,7 @@ class S3Client(Boto3Client):
         raise TimeoutError("Timeout reached waiting to put a task into tasks queue")
 
     # pylint: disable= too-many-arguments
+    # pylint: disable= too-many-positional-arguments
     def upload_directory(
             self,
             bucket_name,

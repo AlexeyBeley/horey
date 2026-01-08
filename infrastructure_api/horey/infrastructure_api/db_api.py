@@ -2,7 +2,8 @@
 Standard Load balancing maintainer.
 
 """
-
+from horey.aws_api.aws_services_entities.glue_database import GlueDatabase
+from horey.aws_api.aws_services_entities.glue_table import GlueTable
 from horey.h_logger import get_logger
 from horey.aws_api.aws_services_entities.rds_db_cluster import RDSDBCluster
 from horey.aws_api.aws_services_entities.rds_db_instance import RDSDBInstance
@@ -45,6 +46,13 @@ class DBAPI:
         return True
 
     def set_api(self, dns_api=None):
+        """
+        Set APIs
+
+        :param dns_api:
+        :return:
+        """
+
         if dns_api:
             if not dns_api.configuration.hosted_zone_name:
                 raise NotImplementedError("Must have hosted_zone_name set in the dns api")
@@ -81,7 +89,7 @@ class DBAPI:
             "Key": "name",
             "Value": db_cluster_parameter_group.name
         })
-        db_cluster_parameter_group.parameters = [{"ParameterName": "binlog_format", 
+        db_cluster_parameter_group.parameters = [{"ParameterName": "binlog_format",
                                                   "ParameterValue": "ROW",
                                                   "Description": "Binary logging format for replication",
                                                   "Source": "user", 
@@ -172,7 +180,7 @@ class DBAPI:
         else:
             raise RuntimeError(f"Not implemented: {cluster.engine}")
 
-        cluster.master_username = self.configuration.master_username 
+        cluster.master_username = self.configuration.master_username
         cluster.manage_master_user_password = True
         # cluster.master_user_password = self.get_secret(
         #     self.configuration.password_secret_name)
@@ -287,4 +295,81 @@ class DBAPI:
 
         self.dns_api.configuration.dns_target = cluster.endpoint
         self.dns_api.configuration.dns_address = self.writer_dns_address
-        self.dns_api.provision()
+        return self.dns_api.provision()
+
+    def tags_dict(self):
+        """
+        Get tags dict.
+
+        :return:
+        """
+
+        return {tag["Key"]: tag["Value"] for tag in self.environment_api.configuration.tags}
+
+
+    def provision_glue_database(self, database_name: str) -> GlueDatabase:
+        """
+        Create glue database.
+        :return:
+        """
+
+        database = GlueDatabase({})
+        database.region = self.environment_api.region
+        database.name = database_name
+        database.tags = self.tags_dict()
+        database.tags["Name"] = database_name
+
+        self.environment_api.aws_api.glue_client.provision_database(database)
+        return database
+
+    def provision_glue_table(self, database_name:str, table_name: str, storage_descriptor, partition_keys)-> GlueTable:
+        """
+        Provision table
+
+        :return:
+        """
+
+        table = GlueTable({})
+        table.region = self.environment_api.region
+        table.database_name = database_name
+        table.name = table_name
+        table.description = database_name
+        table.retention = 0
+        table.tags = self.tags_dict()
+        table.tags["Name"] = table.name
+        table.storage_descriptor = storage_descriptor
+        table.parameters = {
+            "EXTERNAL": "TRUE",
+            "has_encrypted_data": "true",
+            "transient_lastDdlTime": "1633420967"
+        }
+        table.partition_keys = partition_keys
+        self.environment_api.aws_api.glue_client.provision_table(table)
+        return table
+
+    def dispose_glue_database(self, database_name: str) -> GlueDatabase:
+        """
+        Delete glue database if exists
+        :return:
+        """
+
+        database = GlueDatabase({})
+        database.region = self.environment_api.region
+        database.name = database_name
+
+        self.environment_api.aws_api.glue_client.dispose_database(database)
+        return database
+
+    def dispose_glue_table(self, database_name:str, table_name: str):
+        """
+        Provision table
+
+        :return:
+        """
+
+        table = GlueTable({})
+        table.region = self.environment_api.region
+        table.database_name = database_name
+        table.name = table_name
+        self.environment_api.aws_api.glue_client.dispose_glue_table(table)
+        return table
