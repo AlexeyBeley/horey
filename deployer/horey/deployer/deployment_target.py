@@ -70,9 +70,7 @@ class DeploymentTarget:
         if self.local_deployment_dir_path is None:
             raise ValueError("local_deployment_dir_path was not set")
 
-        dir_path = os.path.join(
-            self.local_deployment_dir_path, self.deployment_data_dir_name
-        )
+        dir_path = self.local_deployment_dir_path / self.deployment_data_dir_name
         os.makedirs(dir_path, exist_ok=True)
         return dir_path
 
