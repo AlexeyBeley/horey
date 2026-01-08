@@ -2304,6 +2304,9 @@ class AWSAPI:
                 dst_file_path, "w+", encoding="utf-8"
         ) as file_handler:
             file_handler.write(contents)
+
+        logger.info(f"Downloaded secret file '{secret_name}' to '{dst_file_path}'")
+
         return dst_file_path
 
     def copy_secrets_manager_secret_to_region(
