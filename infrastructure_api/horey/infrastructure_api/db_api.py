@@ -10,6 +10,7 @@ from horey.aws_api.aws_services_entities.rds_db_instance import RDSDBInstance
 from horey.aws_api.aws_services_entities.rds_db_cluster_parameter_group import RDSDBClusterParameterGroup
 from horey.aws_api.aws_services_entities.rds_db_parameter_group import RDSDBParameterGroup
 from horey.aws_api.aws_services_entities.rds_db_subnet_group import RDSDBSubnetGroup
+from horey.infrastructure_api.db_api_configuration_policy import DBAPIConfigurationPolicy
 
 logger = get_logger()
 
@@ -20,7 +21,7 @@ class DBAPI:
 
     """
 
-    def __init__(self, configuration, environment_api):
+    def __init__(self, configuration: DBAPIConfigurationPolicy, environment_api):
         self.configuration = configuration
         self.environment_api = environment_api
         self._max_version_raw = None
