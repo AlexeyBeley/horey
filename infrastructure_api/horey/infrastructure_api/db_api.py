@@ -323,6 +323,21 @@ class DBAPI:
         self.environment_api.aws_api.glue_client.provision_database(database)
         return database
 
+    def get_glue_table(self, database_name:str, table_name: str)-> GlueTable:
+        """
+        Provision table
+
+        :return:
+        """
+
+        table = GlueTable({})
+        table.region = self.environment_api.region
+        table.database_name = database_name
+        table.name = table_name
+        if not self.environment_api.aws_api.glue_client.update_table_information(table):
+            raise ValueError(f"Was not able to find table {table.name} in database {table.database_name}")
+        return table
+
     def provision_glue_table(self, database_name:str, table_name: str, storage_descriptor, partition_keys)-> GlueTable:
         """
         Provision table
