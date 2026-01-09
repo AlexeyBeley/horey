@@ -85,6 +85,8 @@ class GlueClient(Boto3Client):
             table.account_id = self.account_id
 
             self.get_tags(table)
+            return True
+        return False
 
     def provision_table(self, table: GlueTable):
         """

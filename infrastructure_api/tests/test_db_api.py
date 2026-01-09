@@ -43,6 +43,7 @@ class Configuration(ConfigurationPolicy):
         self._environment_api_configuration_file_secret_name = None
         self._glue_s3_bucket_name = None
         self._glue_s3_bucket_path = None
+        self._table_name = None
 
     @property
     def environment_api_configuration_file_secret_name(self):
@@ -59,6 +60,14 @@ class Configuration(ConfigurationPolicy):
     @db_name.setter
     def db_name(self, value: Path):
         self._db_name = value
+
+    @property
+    def table_name(self):
+        return self._table_name
+
+    @table_name.setter
+    def table_name(self, value: Path):
+        self._table_name = value
 
     @property
     def glue_s3_bucket_name(self):
@@ -167,4 +176,11 @@ def test_dispose_glue_table(db_api):
 @pytest.mark.unit
 def test_dispose_glue_database(db_api):
     ret = db_api.dispose_glue_database("test")
+    assert ret
+
+
+
+@pytest.mark.unit
+def test_get_glue_table(db_api):
+    ret = db_api.get_glue_table(Configuration.TEST_CONFIG.db_name, Configuration.TEST_CONFIG.table_name)
     assert ret
