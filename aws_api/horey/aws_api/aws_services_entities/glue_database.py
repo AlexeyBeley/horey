@@ -71,3 +71,37 @@ class GlueDatabase(AwsObject):
         request = {"DatabaseInput": {"Name": self.name}}
 
         return request
+
+    def generate_tagging_requests(self, desired_state: GlueDatabase):
+        """
+        Generate create tags and delete tags requests.
+
+        client.untag_resource(
+        ResourceArn='string',
+        TagsToRemove=[
+        'string',
+        ]
+        )
+
+        response = client.tag_resource(
+       ResourceArn='string',
+        TagsToAdd={
+        'string': 'string'
+        }
+        )
+
+        :param desired_state:
+        :return:
+        """
+
+        if self.tags == desired_state.tags:
+            return None, None
+
+        self_tags = self.tags or {}
+        desired_tags = desired_state.tags or {}
+        add_tags = {tag_key: tag_value for tag_key, tag_value in desired_tags.items() if self_tags.get(tag_key) != tag_value}
+        remove_tags = [tag_key for tag_key, tag_value in self_tags.items() if desired_tags.get(tag_key) != tag_value]
+
+        add_request = None if not add_tags else {"ResourceArn": self.arn, "TagsToAdd": add_tags}
+        remove_request = None if not remove_tags else {"ResourceArn": self.arn, "TagsToRemove": remove_tags}
+        return add_request, remove_request

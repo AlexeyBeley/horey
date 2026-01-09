@@ -24,6 +24,15 @@ class AuctionEvent:
 
     @property
     def finished(self):
+        """
+        Return if auction event is finished
+
+        :return:
+        """
+
+        if self.start_time and self.start_time > datetime.datetime.now(tz=datetime.timezone.utc):
+            return False
+
         return self.end_time + datetime.timedelta(days=2) < datetime.datetime.now(tz=datetime.timezone.utc)
 
     def generate_db_tuple(self):
@@ -104,7 +113,7 @@ class AuctionEvent:
         """
 
         for lot in self.lots:
-            lot.init_province_description_and_interested(self.provinces)
+            lot.init_province_and_interested(self.provinces)
             if not lot.province:
                 raise RuntimeError("Was not able to init")
             if lot.current_max is None:

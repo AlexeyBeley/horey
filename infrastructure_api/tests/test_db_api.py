@@ -98,14 +98,22 @@ def fixture_env_api_integration():
 def fixture_db_api(env_api_integration):
     infrastructure_api = InfrastructureAPI()
     db_api_configuration = DBAPIConfigurationPolicy()
-    db_api = infrastructure_api.get_db_api(db_api_configuration, env_api_integration)
-    yield db_api
-
+    yield infrastructure_api.get_db_api(db_api_configuration, env_api_integration)
 
 @pytest.mark.unit
 def test_provision_glue_database(db_api):
-    ret = db_api.provision_glue_database("test")
-    assert ret
+    db_test  = db_api.provision_glue_database("test")
+    assert db_test
+
+
+@pytest.mark.unit
+def test_provision_glue_database_tags(db_api):
+    db_test  = db_api.provision_glue_database("test")
+    db_test.tags = None
+    db_api.environment_api.aws_api.glue_client.provision_database(db_test)
+    assert db_test.tags == {}
+    db_test = db_api.provision_glue_database("test")
+    assert db_test.tags is not None
 
 
 @pytest.mark.unit

@@ -45,7 +45,7 @@ def auction_event_report():
 def update_info():
     app.logger.info("Serving /update_info")
     response = Server.self.update_info(auction_event_id=request.args.get("auction_event_id"),
-                                   provider_id=request.args.get("provider_id"))
+                                       provider_id=request.args.get("provider_id"))
 
     app.logger.info(f"/update_info {response=}")
 
@@ -129,9 +129,21 @@ class Server:
         auction_event_reports = auction_api.generate_auction_event_reports()
         auction_id_btn_text_pairs = []
         for auction_event_report in auction_event_reports:
+
+            if auction_event_report.auction_event is None and \
+                    auction_event_report.str_provider_id not in known_providers:
+                known_providers.append(auction_event_report.str_provider_id)
+                providers_navigation += provider_navigation_template.replace("STRING_REPLACEMENT_PROVIDER_NAME",
+                                                                             auction_event_report.provider_name). \
+                                            replace("STRING_REPLACEMENT_PROVIDER_ID",
+                                                    auction_event_report.str_provider_id) \
+                                        + "\n"
+                continue
+
             if "manitoba" not in auction_event_report.auction_event.provinces:
                 continue
-            auction_id_btn_text_pairs.append((auction_event_report.str_auction_event_id, auction_event_report.load_data_button_text))
+            auction_id_btn_text_pairs.append(
+                (auction_event_report.str_auction_event_id, auction_event_report.load_data_button_text))
 
             if auction_event_report.str_provider_id not in known_providers:
                 known_providers.append(auction_event_report.str_provider_id)
@@ -155,9 +167,9 @@ class Server:
             for auction_event_id, btn_text in row:
                 str_row += "<td>\n"
                 str_row += report_navigation_template.replace("STRING_REPLACEMENT_AUCTION_EVENT_ID",
-                                                                     auction_event_id). \
-                                      replace("STRING_REPLACEMENT_LOAD_DATA_BTN_TXT",
-                                              btn_text) + "\n"
+                                                              auction_event_id). \
+                               replace("STRING_REPLACEMENT_LOAD_DATA_BTN_TXT",
+                                       btn_text) + "\n"
                 str_row += "</td>\n"
             str_row += "</tr>\n"
             reports_navigation += str_row

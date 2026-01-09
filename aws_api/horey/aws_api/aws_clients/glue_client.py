@@ -195,15 +195,20 @@ class GlueClient(Boto3Client):
         :return:
         """
 
-        self.update_database_information(database)
-        if database.create_time is not None:
-            self.get_tags(database)
-            return
+        database_current = GlueDatabase({})
+        database_current.name = database.name
+        database_current.region = database.region
+        if not self.update_database_information(database_current):
+            self.provision_database_raw(database.region, database.generate_create_request())
 
-        self.provision_database_raw(database.region, database.generate_create_request())
-        database.account_id = self.account_id
-        self.tag_resource(database)
+        tag_request, untag_request = database_current.generate_tagging_requests(database)
+        if tag_request:
+            self.tag_resource_raw(database.region, tag_request)
+        if untag_request:
+            self.untag_resource_raw(database.region, untag_request)
+
         self.update_database_information(database)
+        return database
 
     def provision_database_raw(self, region, request_dict):
         """
@@ -218,6 +223,8 @@ class GlueClient(Boto3Client):
                 self.get_session_client(region=region).create_database, None, raw_data=True, filters_req=request_dict
         ):
             return response
+
+        return True
 
     # endregion
 
@@ -281,3 +288,70 @@ class GlueClient(Boto3Client):
             return response
 
         raise ValueError(f"Table not found: {request_dict}")
+
+    def tag_resource_raw(self, region, request_dict):
+        """
+        Standard.
+
+        :param region:
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Tagging resource: {request_dict}")
+
+        for response in self.execute(
+                self.get_session_client(region=region).tag_resource ,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
+        ):
+            self.clear_cache(GlueDatabase)
+            self.clear_cache(GlueTable)
+            return response
+
+
+        raise ValueError(f"Tag not found: {request_dict}")
+
+    def untag_resource_raw(self, region, request_dict):
+        """
+        Standard.
+
+        :param region:
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Untagging resource: {request_dict}")
+
+        for response in self.execute(
+                self.get_session_client(region=region).untag_resource,
+                None,
+                raw_data=True,
+                filters_req=request_dict,
+        ):
+            self.clear_cache(GlueDatabase)
+            self.clear_cache(GlueTable)
+            return response
+
+
+        raise ValueError(f"Tag not found: {request_dict}")
+
+    # pylint: disable = arguments-differ
+    def get_tags(self, obj, function=None, instant_raise=False):
+        """
+        Get tags for resource.
+
+        :param instant_raise:
+        :param obj:
+        :param function:
+        :return:
+        """
+
+        logger.info(f"Getting resource tags: {obj.arn}")
+        ret = list(
+            self.execute(self.get_session_client(obj.region).get_tags, "Tags", filters_req={"ResourceArn": obj.arn}, instant_raise=instant_raise)
+        )
+
+        obj.tags = ret[0] if ret else {}
+        return ret
