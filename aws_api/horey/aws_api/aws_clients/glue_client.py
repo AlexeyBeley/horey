@@ -78,7 +78,7 @@ class GlueClient(Boto3Client):
                 self.get_session_client(region=table.region).get_table,
                 "Table",
                 filters_req={"DatabaseName": table.database_name, "Name": table.name},
-                exception_ignore_callback=lambda x: f"Table {table.name} not found"
+                exception_ignore_callback=lambda x: "EntityNotFoundException"
                                                     in repr(x),
         ):
             table.update_from_raw_response(dict_src)
@@ -259,12 +259,10 @@ class GlueClient(Boto3Client):
         :return:
         """
 
-        self.update_table_information(table)
-        if table.create_time is None:
-            return
+        if not self.update_table_information(table):
+            return True
 
-        self.dispose_table_raw(table.region, table.generate_create_request())
-        self.update_table_information(table)
+        return self.dispose_table_raw(table.region, {"DatabaseName": table.database_name, "TablesToDelete": [table.name]})
 
     def dispose_table_raw(self, region, request_dict):
         """
@@ -274,8 +272,12 @@ class GlueClient(Boto3Client):
         :param request_dict:
         :return:
         """
+
         logger.info(f"Disposing table: {request_dict}")
+
         for response in self.execute(
                 self.get_session_client(region=region).delete_table, None, raw_data=True, filters_req=request_dict
         ):
             return response
+
+        raise ValueError(f"Table not found: {request_dict}")

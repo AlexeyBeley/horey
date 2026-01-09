@@ -372,5 +372,5 @@ class DBAPI:
         table.region = self.environment_api.region
         table.database_name = database_name
         table.name = table_name
-        self.environment_api.aws_api.glue_client.dispose_glue_table(table)
+        self.environment_api.aws_api.glue_client.dispose_table(table)
         return table

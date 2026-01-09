@@ -102,13 +102,13 @@ def fixture_db_api(env_api_integration):
     yield db_api
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_provision_glue_database(db_api):
     ret = db_api.provision_glue_database("test")
     assert ret
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_provision_glue_table(db_api):
     storage_descriptor = {
             "Columns": [
@@ -149,14 +149,14 @@ def test_provision_glue_table(db_api):
     assert ret
 
 
-@pytest.mark.wip
+@pytest.mark.unit
 def test_dispose_glue_table(db_api):
-    ret = db_api.dispose_glue_table("test")
+    ret = db_api.dispose_glue_table("test", "test")
     assert ret
 
 
 
-@pytest.mark.todo
+@pytest.mark.unit
 def test_dispose_glue_database(db_api):
     ret = db_api.dispose_glue_database("test")
     assert ret
