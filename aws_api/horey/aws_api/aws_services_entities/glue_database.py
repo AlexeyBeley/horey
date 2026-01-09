@@ -72,7 +72,7 @@ class GlueDatabase(AwsObject):
 
         return request
 
-    def generate_tagging_requests(self, desired_state: GlueDatabase):
+    def generate_tagging_requests(self, desired_state):
         """
         Generate create tags and delete tags requests.
 
