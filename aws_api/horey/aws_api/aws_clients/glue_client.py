@@ -84,7 +84,6 @@ class GlueClient(Boto3Client):
             table.update_from_raw_response(dict_src)
             table.account_id = self.account_id
 
-            self.get_tags(table)
             return True
         return False
 
@@ -97,18 +96,26 @@ class GlueClient(Boto3Client):
         :return:
         """
 
-        self.update_table_information(table)
-        if table.create_time is not None:
-            return
+        table_current = GlueTable({})
+        table_current.region = table.region
+        table_current.name = table.name
+        table_current.database_name = table.database_name
 
-        self.provision_table_raw(table.region, table.generate_create_request())
+        if not self.update_table_information(table_current):
+            self.provision_table_raw(table.region, table.generate_create_request())
+
+        request = table_current.generate_update_table_request(table)
+        if request is not None:
+            self.update_table_raw(table.region, request)
 
         self.update_table_information(table)
+        return table
 
     def provision_table_raw(self, region, request_dict):
         """
         Standard.
 
+        :param region:
         :param request_dict:
         :return:
         """
@@ -118,10 +125,24 @@ class GlueClient(Boto3Client):
                 self.get_session_client(region=region).create_table, None, raw_data=True, filters_req=request_dict
         ):
             return response
+        raise RuntimeError("No response")
 
-    # endregion
+    def update_table_raw(self, region, request_dict):
+        """
+        Standard.
 
-    # region database
+        :param region:
+        :param request_dict:
+        :return:
+        """
+
+        logger.info(f"Updating table: {request_dict}")
+        for response in self.execute(
+                self.get_session_client(region=region).update_table, None, raw_data=True, filters_req=request_dict
+        ):
+            return response
+        raise RuntimeError("No response")
+
     def get_all_databases(self, region=None, full_information=True):
         """
         Get all databases in all regions.

@@ -2,6 +2,7 @@
 Init and cache AWS objects.
 
 """
+import json
 import shutil
 import sys
 from pathlib import Path
@@ -43,6 +44,8 @@ class Configuration(ConfigurationPolicy):
         self._environment_api_configuration_file_secret_name = None
         self._glue_s3_bucket_name = None
         self._glue_s3_bucket_path = None
+        self._partition_keys_json = None
+        self._storage_descriptor_json = None
         self._table_name = None
 
     @property
@@ -84,6 +87,22 @@ class Configuration(ConfigurationPolicy):
     @glue_s3_bucket_path.setter
     def glue_s3_bucket_path(self, value):
         self._glue_s3_bucket_path = value
+
+    @property
+    def partition_keys_json(self):
+        return self._partition_keys_json
+
+    @partition_keys_json.setter
+    def partition_keys_json(self, value):
+        self._partition_keys_json = value
+
+    @property
+    def storage_descriptor_json(self):
+        return self._storage_descriptor_json
+
+    @storage_descriptor_json.setter
+    def storage_descriptor_json(self, value):
+        self._storage_descriptor_json = value
 
 
 
@@ -184,3 +203,14 @@ def test_dispose_glue_database(db_api):
 def test_get_glue_table(db_api):
     ret = db_api.get_glue_table(Configuration.TEST_CONFIG.db_name, Configuration.TEST_CONFIG.table_name)
     assert ret
+
+
+@pytest.mark.unit
+def test_provision_glue_table_from_secrets(db_api):
+    storage_descriptor = json.loads(Configuration.TEST_CONFIG.storage_descriptor_json)
+    partition_keys = json.loads(Configuration.TEST_CONFIG.partition_keys_json)
+    db_table = db_api.provision_glue_table(Configuration.TEST_CONFIG.db_name,
+                                           Configuration.TEST_CONFIG.table_name,
+                                           storage_descriptor,
+                                           partition_keys)
+    assert db_table

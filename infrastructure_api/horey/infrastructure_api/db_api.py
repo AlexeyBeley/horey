@@ -349,10 +349,8 @@ class DBAPI:
         table.region = self.environment_api.region
         table.database_name = database_name
         table.name = table_name
-        table.description = database_name
+        table.description = table_name
         table.retention = 0
-        table.tags = self.tags_dict()
-        table.tags["Name"] = table.name
         table.storage_descriptor = storage_descriptor
         table.parameters = {
             "EXTERNAL": "TRUE",
