@@ -58,6 +58,8 @@ class AWSLambdaAPI:
                                                                                               "").replace(
                 f"{to_clean}-", "")
 
+        return self.configuration.lambda_name_slug
+
     @property
     def cloudwatch_api(self):
         """
@@ -147,7 +149,7 @@ class AWSLambdaAPI:
 
         if self._ecs_api is None:
             config = ECSAPIConfigurationPolicy()
-            config.ecr_repository_name_slug = self.configuration.lambda_name_slug
+            config.ecr_repository_name_slug = self.init_lambda_name_slug()
             ecs_api = ECSAPI(configuration=config, environment_api=self.environment_api)
             self._ecs_api = ecs_api
         return self._ecs_api
@@ -654,7 +656,6 @@ class AWSLambdaAPI:
         :return:
         """
 
-        # todo: generate cleanup report to find lambdas with no permissions
         inline_policies = []
         if self.configuration.event_source_mapping_dynamodb_name:
             name = f"inline_event_source_{self.configuration.event_source_mapping_dynamodb_name}"

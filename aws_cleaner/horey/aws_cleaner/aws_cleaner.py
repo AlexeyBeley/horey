@@ -316,6 +316,9 @@ class AWSCleaner:
         tb_ret = TextBlock("In the plans")
 
 
+        tb_ret_tmp = TextBlock("infrastructure_api/horey/infrastructure_api/aws_lambda_api.py:659:9: W0511: todo: generate cleanup report to find lambdas with no permissions- if the role is empty the lambda does not need a role")
+        tb_ret.blocks.append(tb_ret_tmp)
+
         tb_ret_tmp = TextBlock("ECR repository Lifecycle policy rules")
         tb_ret.blocks.append(tb_ret_tmp)
 
