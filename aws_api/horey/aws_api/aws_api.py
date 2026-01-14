@@ -3576,7 +3576,7 @@ class AWSAPI:
 
         return self.elasticache_client.provision_replication_group(replication_group)
 
-    def provision_s3_bucket(self, s3_bucket):
+    def provision_s3_bucket(self, s3_bucket: S3Bucket):
         """
         Standard.
 
@@ -3813,7 +3813,7 @@ class AWSAPI:
             logger.warning("Deprecation: 'force' is going to be deprecated use update_code instead")
             update_code = force
 
-        self.lambda_client.provision_lambda(aws_lambda, update_code=update_code)
+        return self.lambda_client.provision_lambda(aws_lambda, update_code=update_code)
 
     def provision_lambda_event_source_mapping(self, event_mapping):
         """

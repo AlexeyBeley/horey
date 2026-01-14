@@ -1152,7 +1152,7 @@ class S3Client(Boto3Client):
                 metadata_callback=metadata_callback,
             )
 
-    def provision_bucket(self, bucket):
+    def provision_bucket(self, bucket:S3Bucket):
         """
         Provision a bucket into AWS
 
@@ -1317,3 +1317,48 @@ class S3Client(Boto3Client):
             ExpiresIn=expiration_seconds
         )
         return url
+
+    def get_bucket_notification_configuration(self, bucket: S3Bucket):
+        """
+        Download bucket key data.
+
+        @param bucket:
+        @param bucket_object:
+        @return:
+        """
+
+        try:
+            assert bucket.region
+        except RuntimeError:
+            self.update_bucket_information(bucket)
+
+        for response in self.execute(
+                self.get_session_client(region=bucket.region).get_bucket_notification_configuration,
+                None,
+                raw_data=True,
+                filters_req={"Bucket": bucket.name},
+        ):
+            return response
+
+        return None
+
+    def provision_bucket_notification_configuration(self, bucket, dict_configuration):
+        """
+        Set bucket notification configuration.
+
+        @param bucket:
+        @param dict_configuration:
+        @return:
+        """
+
+        assert bucket.region
+        for response in self.execute(
+                self.get_session_client(region=bucket.region).put_bucket_notification_configuration,
+                None,
+                raw_data=True,
+                filters_req={"Bucket": bucket.name, "NotificationConfiguration": dict_configuration},
+        ):
+            return response
+
+        raise RuntimeError(
+            f"Failed to put bucket notification configuration for bucket: {bucket.name}")

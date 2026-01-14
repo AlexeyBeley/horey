@@ -3,7 +3,9 @@ Standard ECS maintainer.
 
 """
 import json
+from pathlib import Path
 
+from horey.aws_api.aws_services_entities.s3_bucket import S3Bucket
 from horey.h_logger import get_logger
 
 from horey.aws_api.aws_services_entities.aws_lambda import AWSLambda
@@ -19,6 +21,7 @@ from horey.infrastructure_api.aws_iam_api import AWSIAMAPI
 from horey.infrastructure_api.cloudwatch_api_configuration_policy import CloudwatchAPIConfigurationPolicy
 from horey.infrastructure_api.cloudwatch_api import CloudwatchAPI
 from horey.infrastructure_api.aws_lambda_api_configuration_policy import AWSLambdaAPIConfigurationPolicy
+from horey.pip_api.pip_api import PipAPI
 
 logger = get_logger()
 
@@ -38,7 +41,6 @@ class AWSLambdaAPI:
         self._environment_variables_callback = None
         self._alerts_api = None
         self.loadbalancer_api = None
-        self.init_lambda_name_slug()
         self._build_api = None
 
     def init_lambda_name_slug(self):
@@ -174,11 +176,10 @@ class AWSLambdaAPI:
     def build_api(self, value):
         self._build_api = value
 
-    def set_api(self, ecs_api=None, cloudwatch_api=None, aws_iam_api=None, loadbalancer_api=None):
+    def set_api(self, ecs_api=None, cloudwatch_api=None, loadbalancer_api=None):
         """
         Set api to manage ecs tasks.
 
-        :param aws_iam_api:
         :param cloudwatch_api:
         :param ecs_api:
         :return:
@@ -189,8 +190,8 @@ class AWSLambdaAPI:
 
         if ecs_api:
             self.ecs_api = ecs_api
-            raise NotImplementedError()
-            try:
+            raise NotImplementedError("""
+                        try:
                 if self.ecs_api.configuration.ecr_repository_region != self.environment_api.configuration.region:
                     raise RuntimeError(
                         f"{self.ecs_api.configuration.ecr_repository_region} != {self.environment_api.configuration.region=}")
@@ -202,6 +203,9 @@ class AWSLambdaAPI:
                     f"Update policy document: {self.ecs_api.configuration.ecr_repository_policy_text}")
 
             self.ecs_api.set_api(cloudwatch_api=self.cloudwatch_api)
+
+
+            """)
 
         if loadbalancer_api:
             self.loadbalancer_api = loadbalancer_api
@@ -231,11 +235,29 @@ class AWSLambdaAPI:
                                        "ecr:GetDownloadUrlForLayer",
                                        "ecr:GetRepositoryPolicy"],
                             "Condition": {"StringLike": {
-                                "aws:sourceArn": f"arn:aws:lambda:{self.environment_api.configuration.region}:{self.environment_api.aws_api.ecs_client.account_id}:function:{self.configuration.lambda_name}"}}}]}
-
+                                "aws:sourceArn":
+                                    f"arn:aws:lambda:{self.environment_api.configuration.region}:{self.environment_api.aws_api.ecs_client.account_id}:function:{self.configuration.lambda_name}"}}
+                            },
+                           {
+                               "Sid": "Deployer",
+                               "Effect": "Allow",
+                               "Principal": "*",
+                               "Action": [
+                                   "ecr:CompleteLayerUpload",
+                                   "ecr:GetAuthorizationToken",
+                                   "ecr:UploadLayerPart",
+                                   "ecr:InitiateLayerUpload",
+                                   "ecr:BatchCheckLayerAvailability",
+                                   "ecr:PutImage",
+                                   "ecr:BatchGetImage",
+                                   "ecr:GetDownloadUrlForLayer",
+                                   "ecr:GetRepositoryPolicy"
+                               ]
+                           }
+                       ]}
         self.ecs_api.provision_ecr_repository(repository_policy=json.dumps(dict_policy))
 
-    def provision_docker_lambda(self, branch_name=None, alerts_api=None, from_docker_repository=False):
+    def provision_docker_lambda(self, branch_name=None, alerts_api=None, from_docker_repository=False) -> AWSLambda:
         """
         Provision ECS infrastructure.
 
@@ -287,8 +309,8 @@ class AWSLambdaAPI:
             self.provision_event_source_mapping_dynamodb(aws_lambda)
 
         if self.loadbalancer_api:
-            raise NotImplementedError()
-            self.loadbalancer_api.configuration.target_group_targets = [{"Id": aws_lambda.arn}]
+            raise NotImplementedError("""
+                        self.loadbalancer_api.configuration.target_group_targets = [{"Id": aws_lambda.arn}]
             self.loadbalancer_api.provision()
             statement = self.generate_target_group_statement()
             dict_policy = json.loads(aws_lambda.policy)
@@ -300,8 +322,10 @@ class AWSLambdaAPI:
                     raise RuntimeError("tmp policy expected to be in the lambda policy")
                 self.environment_api.aws_api.lambda_client.provision_lambda_permissions(None, aws_lambda)
 
+            """)
+
         self.provision_monitoring(alerts_api)
-        return True
+        return aws_lambda
 
     def lambda_resource_policies_callback(self):
         """
@@ -349,7 +373,7 @@ class AWSLambdaAPI:
         """
 
         if alerts_api is None:
-            return
+            return False
 
         alerts_api.provision_cloudwatch_logs_alarm(self.log_group_name,
                                                    '"[ERROR]"',
@@ -543,7 +567,7 @@ class AWSLambdaAPI:
         """
 
         if not self.configuration.schedule_expression:
-            return
+            return None
 
         rule = EventBridgeRule({})
         rule.name = self.configuration.event_bridge_rule_name
@@ -647,3 +671,107 @@ class AWSLambdaAPI:
             inline_policies.append(policy)
 
         return inline_policies
+
+    def provision_echo_lambda(self) -> AWSLambda:
+        """
+        Provision lambda to echo the event.
+
+        :return:
+        """
+
+        self.configuration.lambda_name = f"echo_{self.environment_api.configuration.region}"
+        self.configuration.lambda_timeout = 30
+        self.configuration.lambda_memory_size = 1024
+        self.init_lambda_name_slug()
+
+        self.build_api.prepare_source_code_directory = self.prepare_echo_lambda_source_code_directory
+
+        return self.provision_docker_lambda()
+
+    def prepare_echo_lambda_source_code_directory(self, branch_name):
+        """
+        Generate Dockerfile and horey repos.
+
+        :param branch_name:
+        :return:
+        """
+
+        if branch_name is not None:
+            raise RuntimeError("Not implemented")
+
+        path = self.build_api.init_temporary_source_code_directory()
+
+        self.build_api.git_api.update_local_source_code("main")
+
+        PipAPI.copy_horey_package_required_packages("h_logger", path,
+                                                    self.build_api.git_api.configuration.directory_path)
+
+        self.generate_lambda_dockerfile(path)
+        self.generate_echo_lambda_code(path)
+        return path
+
+    @staticmethod
+    def generate_lambda_dockerfile(dir_path: Path):
+        """
+        Generate Dockerfile.
+
+        :return:
+        """
+
+        dockerfile_path = dir_path / "Dockerfile"
+        with open(dockerfile_path, "w", encoding="utf-8") as file_handler:
+            file_handler.write(
+                "FROM public.ecr.aws/lambda/python:3.12\n"
+                "ARG HOREY_FOLDER_NAME=horey\n"
+                "COPY ${HOREY_FOLDER_NAME} ${LAMBDA_TASK_ROOT}/horey\n"
+                "COPY lambda_handler.py ${LAMBDA_TASK_ROOT}/\n"
+                "RUN dnf install -y git make wget which findutils\n"
+                "RUN wget https://bootstrap.pypa.io/get-pip.py\n"
+                "RUN python get-pip.py\n"
+                "RUN rm get-pip.py\n"
+                "RUN python ${LAMBDA_TASK_ROOT}/horey/pip_api/horey/pip_api/pip_api_make.py --install horey.h_logger --pip_api_configuration ${LAMBDA_TASK_ROOT}/horey/pip_api_docker_configuration.py\n"
+                "CMD [ \"lambda_handler.handler\" ]\n"
+            )
+        return dockerfile_path
+
+    @staticmethod
+    def generate_echo_lambda_code(dir_path: Path):
+        """
+        Generate lambda handler code.
+
+        :return:
+        """
+
+        lambda_handler_path = dir_path / "lambda_handler.py"
+        with open(lambda_handler_path, "w", encoding="utf-8") as file_handler:
+            file_handler.write(
+                "from horey.h_logger import get_logger\n\n"
+                "logger = get_logger()\n\n\n"
+                "def handler(event, context):\n"
+                "    logger.info(f\"Event: {event}\")\n"
+                "    logger.info(f\"Context: {context}\")\n"
+                "    return {\n"
+                "        'statusCode': 200,\n"
+                "        'body': 'Event logged successfully'\n"
+                "    }\n"
+            )
+        return lambda_handler_path
+
+    @staticmethod
+    def generate_s3_trigger_statement(bucket:S3Bucket):
+        """
+        Generate statement
+
+        :param bucket:
+        :return:
+        """
+
+        sid = f"trigger_s3_{bucket.name}"
+        sid = sid.replace(".", "_")
+        return {"Sid": sid,
+                     "Effect": "Allow",
+                     "Principal": {"Service": "s3.amazonaws.com"},
+                     "Action": "lambda:InvokeFunction",
+                     "Resource": None,
+                     "Condition": {"ArnLike": {
+                         "AWS:SourceArn": bucket.arn}}}

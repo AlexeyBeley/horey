@@ -96,6 +96,7 @@ class BuildAPI:
         :return:
         """
 
+
         logger.info(f"Preparing source code directory, {branch_name=}")
         perf_counter_start = time.perf_counter()
 
@@ -250,6 +251,12 @@ class BuildAPI:
     def upload_docker_image_to_artifactory(self, tags):
         """
         Standard.
+        "ecr:CompleteLayerUpload",
+        "ecr:GetAuthorizationToken",
+        "ecr:UploadLayerPart",
+        "ecr:InitiateLayerUpload",
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:PutImage"
 
         :param tags:
         :return:
@@ -347,3 +354,16 @@ class BuildAPI:
                     raise
 
         return self.environment_api.docker_api.copy_image(image_registry_reference, dst_ecs_api.ecr_repository.repository_uri, copy_all_tags=True)
+
+    def init_temporary_source_code_directory(self):
+        """
+        Create temporary source code directory.
+
+        :return:
+        """
+
+        tmp_dir = Path("/tmp") / str(uuid.uuid4())
+        tmp_dir.mkdir(parents=True)
+        self.configuration.tmp_source_code_dir_path = tmp_dir
+        return tmp_dir
+    

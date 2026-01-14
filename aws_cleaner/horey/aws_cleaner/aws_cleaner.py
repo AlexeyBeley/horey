@@ -315,6 +315,14 @@ class AWSCleaner:
 
         tb_ret = TextBlock("In the plans")
 
+
+        tb_ret_tmp = TextBlock("ECR repository Lifecycle policy rules")
+        tb_ret.blocks.append(tb_ret_tmp)
+
+        tb_ret_tmp = TextBlock("Cloudwatch log group deletionProtectionEnabled")
+        tb_ret.blocks.append(tb_ret_tmp)
+
+
         tb_ret_tmp = TextBlock("Event rule without targets")
         tb_ret.blocks.append(tb_ret_tmp)
 

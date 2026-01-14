@@ -237,6 +237,9 @@ class AwsObject:
             raise self.UnknownKeyError(
                     "\n".join(composed_errors))
 
+        if not self.dict_src:
+            self.dict_src = dict_src
+
         return not bool(composed_errors)
 
     @staticmethod

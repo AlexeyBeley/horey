@@ -89,6 +89,7 @@ class CloudWatchLogGroup(AwsObject):
             "retentionInDays": self.init_default_attr,
             "logGroupClass": self.init_default_attr,
             "logGroupArn": self.init_default_attr,
+            "deletionProtectionEnabled": self.init_default_attr,
         }
 
         self.init_attrs(dict_src, init_options)

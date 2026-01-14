@@ -387,3 +387,39 @@ class DBAPI:
         table.name = table_name
         self.environment_api.aws_api.glue_client.dispose_table(table)
         return table
+
+    def compare_objects(self, db_src_name: str, tbl_src_name: str, db_dst_name: str, tbl_dst_name: str):
+        """
+        Compare objects
+
+        :return:
+        """
+
+        tbl_src = self.get_glue_table(db_src_name, tbl_src_name)
+        tbl_dst = self.get_glue_table(db_dst_name, tbl_dst_name)
+        return self.find_diff(tbl_src.dict_src, tbl_dst.dict_src)
+
+    def find_diff(self, d1, d2, path=""):
+        """
+        Find Difference
+
+        :param d1:
+        :param d2:
+        :param path:
+        :return:
+        """
+
+        str_ret = ""
+        for k in d1:
+            if k not in d2:
+                str_ret += f"{path}{k}: removed from d2\n"
+            elif isinstance(d1[k], dict) and isinstance(d2[k], dict):
+                str_ret += self.find_diff(d1[k], d2[k], path + k + " -> ") + "\n"
+            elif d1[k] != d2[k]:
+                str_ret += f"{path}{k}: {d1[k]} -> {d2[k]}\n"
+
+        for k in d2:
+            if k not in d1:
+                str_ret += f"{path}{k}: added in d2\n"
+
+        return str_ret

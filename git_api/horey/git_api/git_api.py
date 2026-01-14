@@ -40,7 +40,12 @@ class GitAPI:
 
         logger.info(f"Cloning from {self.configuration.remote} into {self.configuration.directory_path.parent}")
         with CommonUtils.temporary_directory(self.configuration.directory_path.parent):
-            ret = self.bash_executor.run_bash(f"{self.ssh_base_command} git clone {self.configuration.remote}")
+            command = f"git clone {self.configuration.remote}"
+            if self.ssh_base_command:
+                command = self.ssh_base_command + " " + command
+
+            ret = self.bash_executor.run_bash(command)
+
             expected_output = f"Cloning into '{os.path.basename(self.configuration.directory_path)}'"
             if expected_output not in ret["stdout"] and expected_output not in ret["stderr"]:
                 try:
@@ -76,10 +81,10 @@ class GitAPI:
         dst_obj = dst_obj or self.configuration.main_branch_name
 
         start_time = perf_counter()
+        if not self.configuration.ssh_key_file_path:
+            self.ssh_base_command = None
+            return self.checkout_remote_helper(dst_obj)
 
-        # todo: remove
-        logger.info("start git api config print")
-        logger.info(self.configuration.__dict__)
 
         if oct(os.stat(self.configuration.ssh_key_file_path).st_mode)[-3:] != "400":
             path_ssh_key_file = Path(self.configuration.ssh_key_file_path)
@@ -134,7 +139,10 @@ class GitAPI:
             if remote_object.startswith("refs/pull"):
                 return self.checkout_remote_pr_helper(remote_name, remote_object)
 
-            command = f"{self.ssh_base_command} git fetch {remote_name} {remote_object}"
+            command = f"git fetch {remote_name} {remote_object}"
+            if self.ssh_base_command:
+                command = self.ssh_base_command + " " + command
+
             ret = self.bash_executor.run_bash(command)
             stdout = ret.get("stdout")
             if stdout:

@@ -41,12 +41,14 @@ class Configuration(ConfigurationPolicy):
     def __init__(self):
         super().__init__()
         self._db_name = None
-        self._environment_api_configuration_file_secret_name = None
+        self._table_name = None
         self._glue_s3_bucket_name = None
         self._glue_s3_bucket_path = None
+        self._table_name_compare_base = None
+        self._db_name_compare_base = None
         self._partition_keys_json = None
         self._storage_descriptor_json = None
-        self._table_name = None
+        self._environment_api_configuration_file_secret_name = None
 
     @property
     def environment_api_configuration_file_secret_name(self):
@@ -87,6 +89,22 @@ class Configuration(ConfigurationPolicy):
     @glue_s3_bucket_path.setter
     def glue_s3_bucket_path(self, value):
         self._glue_s3_bucket_path = value
+
+    @property
+    def table_name_compare_base(self):
+        return self._table_name_compare_base
+
+    @table_name_compare_base.setter
+    def table_name_compare_base(self, value):
+        self._table_name_compare_base = value
+
+    @property
+    def db_name_compare_base(self):
+        return self._db_name_compare_base
+
+    @db_name_compare_base.setter
+    def db_name_compare_base(self, value):
+        self._db_name_compare_base = value
 
     @property
     def partition_keys_json(self):
@@ -214,3 +232,13 @@ def test_provision_glue_table_from_secrets(db_api):
                                            storage_descriptor,
                                            partition_keys)
     assert db_table
+
+
+@pytest.mark.unit
+def test_compare_tables(db_api):
+    compare = db_api.compare_objects(Configuration.TEST_CONFIG.db_name_compare_base,
+                                           Configuration.TEST_CONFIG.table_name_compare_base,
+                                           Configuration.TEST_CONFIG.db_name,
+                                           Configuration.TEST_CONFIG.table_name
+                                           )
+    assert compare

@@ -143,6 +143,7 @@ class LambdaClient(Boto3Client):
         @param update_code: Update the lambda code or update the configuration only.
         @return:
         """
+
         if force is not None:
             logger.warning("Deprecation: 'force' is going to be deprecated use update_code instead")
             update_code = force
@@ -229,7 +230,7 @@ class LambdaClient(Boto3Client):
 
         if not update_code:
             self.update_lambda_information(desired_aws_lambda, full_information=False)
-            return
+            return True
 
         update_code_request = current_lambda.generate_update_function_code_request(
             desired_aws_lambda
@@ -237,7 +238,7 @@ class LambdaClient(Boto3Client):
         if update_code_request is not None:
             self.update_function_code_raw(desired_aws_lambda.region, update_code_request)
 
-        self.update_lambda_information(desired_aws_lambda, full_information=True)
+        return self.update_lambda_information(desired_aws_lambda, full_information=True)
 
     def provision_lambda_permissions(self, desired_aws_lambda, current_lambda=None):
         """

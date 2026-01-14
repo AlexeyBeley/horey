@@ -49,6 +49,12 @@ class S3Bucket(AwsObject):
 
         return self.init_attrs(dict_src, init_options)
 
+    @property
+    def arn(self):
+        if self._arn is None:
+            self._arn = f"arn:aws:s3:::{self.name}"
+        return self._arn
+
     def _init_bucket_from_cache(self, dict_src):
         """
         Init the object from saved cache dict

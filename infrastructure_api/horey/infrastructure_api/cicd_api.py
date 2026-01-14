@@ -593,7 +593,6 @@ class CICDAPI:
         target.add_step(step)
         return True
 
-
     def copy_horey_package_required_packages_to_build_dir(self, package_raw_name: str, build_dir_path: Path, horey_repo_path: Path):
         """
         Copy all needed directories and files.
