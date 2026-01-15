@@ -4,6 +4,7 @@ Standard ECS maintainer.
 """
 import json
 from pathlib import Path
+from typing import List
 
 from horey.aws_api.aws_services_entities.s3_bucket import S3Bucket
 from horey.h_logger import get_logger
@@ -38,7 +39,6 @@ class AWSLambdaAPI:
         self._cloudwatch_api = None
         self._ecs_api = None
         self._aws_iam_api = None
-        self._environment_variables_callback = None
         self._alerts_api = None
         self.loadbalancer_api = None
         self._build_api = None
@@ -76,6 +76,7 @@ class AWSLambdaAPI:
     def environment_variables_callback(self):
         """
         Standard
+        return {"Variables": {"NAME": "VALUE}}
 
         :return:
         """
@@ -697,27 +698,54 @@ class AWSLambdaAPI:
         :return:
         """
 
-        if branch_name is not None:
-            raise RuntimeError("Not implemented")
+        horey_dir_preparator =  self.prepare_horey_lambda_source_code_directory(["h_logger"], "lambda_handler.handler")
+        path = horey_dir_preparator(branch_name)
 
-        path = self.build_api.init_temporary_source_code_directory()
-
-        self.build_api.git_api.update_local_source_code(None)
-
-        PipAPI.copy_horey_package_required_packages("h_logger", path,
-                                                    self.build_api.git_api.configuration.directory_path)
-
-        self.generate_lambda_dockerfile(path)
         self.generate_echo_lambda_code(path)
         return path
 
+    def prepare_horey_lambda_source_code_directory(self, horey_package_raw_names: List[str], entrypoint):
+        """
+        Generate Dockerfile and horey repos.
+
+        :param entrypoint:
+        :param horey_package_raw_names:
+        :return:
+        """
+        def prepare_horey_lambda_source_code_directory(branch_name):
+            """
+            branch_name
+
+            :param branch_name:
+            :return:
+            """
+
+            if branch_name is not None:
+                raise RuntimeError("Not implemented")
+
+            path = self.build_api.init_temporary_source_code_directory()
+
+            self.build_api.git_api.update_local_source_code(None)
+            for horey_package_raw_name in horey_package_raw_names:
+                PipAPI.copy_horey_package_required_packages(horey_package_raw_name, path,
+                                                    self.build_api.git_api.configuration.directory_path)
+
+            self.generate_lambda_dockerfile(path, horey_package_raw_names, entrypoint)
+            self.generate_echo_lambda_code(path)
+            return path
+        return prepare_horey_lambda_source_code_directory
+
+
     @staticmethod
-    def generate_lambda_dockerfile(dir_path: Path):
+    def generate_lambda_dockerfile(dir_path: Path, horey_package_raw_names: List[str], entrypoint:str):
         """
         Generate Dockerfile.
 
         :return:
         """
+        install_horey_packages_block = ""
+        for horey_package_raw_name in horey_package_raw_names:
+            install_horey_packages_block += f"RUN python ${{LAMBDA_TASK_ROOT}}/horey/pip_api/horey/pip_api/pip_api_make.py --install horey.{horey_package_raw_name} --pip_api_configuration ${{LAMBDA_TASK_ROOT}}/horey/pip_api_docker_configuration.py\n"
 
         dockerfile_path = dir_path / "Dockerfile"
         with open(dockerfile_path, "w", encoding="utf-8") as file_handler:
@@ -729,9 +757,9 @@ class AWSLambdaAPI:
                 "RUN dnf install -y git make wget which findutils\n"
                 "RUN wget https://bootstrap.pypa.io/get-pip.py\n"
                 "RUN python get-pip.py\n"
-                "RUN rm get-pip.py\n"
-                "RUN python ${LAMBDA_TASK_ROOT}/horey/pip_api/horey/pip_api/pip_api_make.py --install horey.h_logger --pip_api_configuration ${LAMBDA_TASK_ROOT}/horey/pip_api_docker_configuration.py\n"
-                "CMD [ \"lambda_handler.handler\" ]\n"
+                "RUN rm get-pip.py\n" +
+                install_horey_packages_block +
+                f"CMD [ \"{entrypoint}\" ]\n"
             )
         return dockerfile_path
 

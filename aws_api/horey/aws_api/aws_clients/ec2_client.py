@@ -2632,12 +2632,14 @@ class EC2Client(Boto3Client):
         @param request_dict:
         @return:
         """
+
         for response in self.execute(
                 self.get_session_client(region=region).terminate_instances,
                 "TerminatingInstances",
                 filters_req=request_dict,
         ):
             return response
+        raise RuntimeError(f"Failed to terminate instance: {request_dict}")
 
     def stop_instance(self, ec2_instance):
         """
