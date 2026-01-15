@@ -270,7 +270,7 @@ class EC2Instance(AwsObject):
             "Operator": self.init_default_attr,
         }
 
-        self.init_attrs(dict_src, init_options)
+        return self.init_attrs(dict_src, init_options)
 
     def generate_create_snapshots_request(self):
         """

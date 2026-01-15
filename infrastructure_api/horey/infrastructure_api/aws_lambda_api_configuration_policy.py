@@ -106,10 +106,7 @@ class AWSLambdaAPIConfigurationPolicy(ConfigurationPolicy):
     @property
     def event_bridge_rule_name(self):
         if self._event_bridge_rule_name is None:
-            if self.schedule_expression is None or "rate" not in self.schedule_expression:
-                raise NotImplementedError(f"Can not create event_bridge_rule_name slug from {self.schedule_expression}")
-            slug = self.schedule_expression.replace("(", "_").replace(")", "_").replace(" ", "_").strip("_").replace("minutes", "min")
-            self._event_bridge_rule_name = f"event_{self.lambda_name}_{slug}"
+            self._event_bridge_rule_name = f"event_{self.lambda_name}"
         return self._event_bridge_rule_name
 
     @event_bridge_rule_name.setter

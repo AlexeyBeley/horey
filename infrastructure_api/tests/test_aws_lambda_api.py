@@ -17,6 +17,7 @@ from horey.h_logger import get_logger
 from horey.infrastructure_api.infrastructure_api import InfrastructureAPI
 from horey.infrastructure_api.environment_api_configuration_policy import EnvironmentAPIConfigurationPolicy
 from horey.infrastructure_api.aws_lambda_api_configuration_policy import AWSLambdaAPIConfigurationPolicy
+from horey.infrastructure_api.alerts_api_configuration_policy import AlertsAPIConfigurationPolicy
 
 
 # pylint: disable= missing-function-docstring
@@ -40,6 +41,7 @@ class Configuration(ConfigurationPolicy):
         super().__init__()
         self._environment_api_configuration_file_secret_name = None
         self._stop_instance_ids = None
+        self._alerts_api_configuration_file_secret_name = None
 
     @property
     def environment_api_configuration_file_secret_name(self):
@@ -57,6 +59,13 @@ class Configuration(ConfigurationPolicy):
     def stop_instance_ids(self, value: Path):
         self._stop_instance_ids = value
 
+    @property
+    def alerts_api_configuration_file_secret_name(self):
+        return self._alerts_api_configuration_file_secret_name
+
+    @alerts_api_configuration_file_secret_name.setter
+    def alerts_api_configuration_file_secret_name(self, value: Path):
+        self._alerts_api_configuration_file_secret_name = value
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_config():
@@ -81,12 +90,22 @@ def fixture_aws_lambda_api(env_api_integration):
     yield infrastructure_api.get_aws_lambda_api(aws_lambda_api_configuration, env_api_integration)
 
 
+@pytest.fixture(name="alerts_api")
+def fixture_alerts_api(env_api_integration):
+    infrastructure_api = InfrastructureAPI()
+    alerts_api_configuration = init_from_secrets_api(AlertsAPIConfigurationPolicy, Configuration.TEST_CONFIG.alerts_api_configuration_file_secret_name)
+    breakpoint()
+
+    yield infrastructure_api.get_alerts_api(alerts_api_configuration, env_api_integration)
+
+
 @pytest.mark.wip
-def test_provision_instance_stopper_lambda(aws_lambda_api):
+def test_provision_instance_stopper_lambda(aws_lambda_api, alerts_api):
     aws_lambda_api.configuration.lambda_name = f"instance_stopper_{aws_lambda_api.environment_api.configuration.region}"
     aws_lambda_api.configuration.lambda_timeout = 30
     aws_lambda_api.configuration.lambda_memory_size = 1024
     aws_lambda_api.configuration.schedule_expression = "rate(1 minute)"
+    "cron(0 22 * * ? *)"
     aws_lambda_api.build_api.horey_git_api.configuration.git_directory_path = Path(__file__).parent.parent.parent.parent
     aws_lambda_api.build_api.horey_git_api.configuration.remote = "git@github.com:AlexeyBeley/horey.git"
 
@@ -100,7 +119,8 @@ def test_provision_instance_stopper_lambda(aws_lambda_api):
         """
 
         policy = aws_lambda_api.aws_iam_api.generate_inline_policy("inline_ec2", "*", [
-                                                                 "ec2:Describe*"
+                                                                 "ec2:Describe*",
+                                                                 "ec2:StopInstances"
                                                              ])
         return [policy]
 
@@ -122,4 +142,5 @@ def test_provision_instance_stopper_lambda(aws_lambda_api):
 
     aws_lambda_api.build_api.prepare_source_code_directory = prepare_lambda_source_code_directory
 
-    assert aws_lambda_api.provision_docker_lambda()
+    assert aws_lambda_api.provision_docker_lambda(alerts_api=alerts_api)
+    # assert aws_lambda_api.update_docker_lambda()

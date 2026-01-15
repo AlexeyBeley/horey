@@ -614,6 +614,7 @@ class AWSLambdaAPI:
         events_rule.targets = [target]
         self.environment_api.aws_api.provision_events_rule(events_rule)
 
+
     def get_lambda(self):
         """
         Get lambda object.
@@ -744,6 +745,11 @@ class AWSLambdaAPI:
 
         :return:
         """
+        if entrypoint.count(".") != 1:
+            raise ValueError(entrypoint)
+
+        entrypoint_file = entrypoint.split(".")[0] + ".py"
+
         install_horey_packages_block = ""
         for horey_package_raw_name in horey_package_raw_names:
             install_horey_packages_block += f"RUN python ${{LAMBDA_TASK_ROOT}}/horey/pip_api/horey/pip_api/pip_api_make.py --install horey.{horey_package_raw_name} --pip_api_configuration ${{LAMBDA_TASK_ROOT}}/horey/pip_api_docker_configuration.py\n"
@@ -753,14 +759,14 @@ class AWSLambdaAPI:
             file_handler.write(
                 "FROM public.ecr.aws/lambda/python:3.12\n"
                 "ARG HOREY_FOLDER_NAME=horey\n"
-                "COPY ${HOREY_FOLDER_NAME} ${LAMBDA_TASK_ROOT}/horey\n"
-                "COPY lambda_handler.py ${LAMBDA_TASK_ROOT}/\n"
                 "RUN dnf install -y git make wget which findutils\n"
                 "RUN wget https://bootstrap.pypa.io/get-pip.py\n"
                 "RUN python get-pip.py\n"
-                "RUN rm get-pip.py\n" +
-                install_horey_packages_block +
+                "RUN rm get-pip.py\n"
                 f"CMD [ \"{entrypoint}\" ]\n"
+                f"COPY {entrypoint_file} ${{LAMBDA_TASK_ROOT}}/\n"
+                "COPY ${HOREY_FOLDER_NAME} ${LAMBDA_TASK_ROOT}/horey\n" +
+                install_horey_packages_block
             )
         return dockerfile_path
 

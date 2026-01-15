@@ -2475,9 +2475,10 @@ class EC2Client(Boto3Client):
         @param instance:
         @return:
         """
+
         filters = {"Filters": [{"Name": "instance-id", "Values": [instance.id]}]}
         instance_new = self.get_region_instances(instance.region, filters=filters)[0]
-        instance.update_from_raw_response(instance_new.dict_src)
+        return instance.update_from_raw_response(instance_new.dict_src)
 
     def update_image_information(self, ami: AMI):
         """

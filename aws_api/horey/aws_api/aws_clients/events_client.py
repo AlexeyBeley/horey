@@ -119,18 +119,22 @@ class EventsClient(Boto3Client):
 
     def provision_rule(self, rule: EventBridgeRule):
         """
-        Standard
+        Not standard.
+
+        put_rule:
+        Creates or updates the specified rule. Rules are enabled by default, or based on value of the state.
 
         :param rule:
         :return:
         """
 
-        self.update_rule_information(rule)
+        response = self.provision_rule_raw(rule.region, rule.generate_create_request())
+        del response["ResponseMetadata"]
+        if list(response.keys()) != ["RuleArn"]:
+            raise NotImplementedError(response)
 
-        if rule.arn is None:
-            response = self.provision_rule_raw(rule.region, rule.generate_create_request())
-            del response["ResponseMetadata"]
-            rule.update_from_raw_response(response)
+        rule.update_from_raw_response(response)
+
         put_targets_request = rule.generate_put_targets_request()
         if put_targets_request is not None:
             self.put_targets_raw(rule.region, put_targets_request)
