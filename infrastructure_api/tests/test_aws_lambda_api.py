@@ -93,6 +93,19 @@ def test_provision_instance_stopper_lambda(aws_lambda_api):
     aws_lambda_api.environment_variables_callback = lambda: {"Variables": {"INSTANCE_IDS": Configuration.TEST_CONFIG.stop_instance_ids,
                                                                            "REGION": aws_lambda_api.environment_api.configuration.region}}
 
+    def role_inline_policies_callback():
+        """
+        Ec2
+        :return:
+        """
+
+        policy = aws_lambda_api.aws_iam_api.generate_inline_policy("inline_ec2", "*", [
+                                                                 "ec2:Describe*"
+                                                             ])
+        return [policy]
+
+    aws_lambda_api.role_inline_policies_callback = role_inline_policies_callback
+
     def prepare_lambda_source_code_directory(branch_name):
         """
         Generate Dockerfile and horey repos.

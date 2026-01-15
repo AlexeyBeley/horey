@@ -364,6 +364,19 @@ class AWSLambdaAPI:
         }
 
         inline_policies = self.role_inline_policies_callback() + [self.generate_inline_cloudwatch_policy()]
+        if self.configuration.event_source_mapping_dynamodb_name:
+            name = f"inline_event_source_{self.configuration.event_source_mapping_dynamodb_name}"
+            table = self.environment_api.get_dynamodb(self.configuration.event_source_mapping_dynamodb_name)
+
+            policy = self.aws_iam_api.generate_inline_policy(name, [
+                table.latest_stream_arn
+            ], [
+                                                                 "dynamodb:GetRecords",
+                                                                 "dynamodb:GetShardIterator",
+                                                                 "dynamodb:DescribeStream",
+                                                                 "dynamodb:ListStreams"
+                                                             ])
+            inline_policies.append(policy)
 
         self.aws_iam_api.provision_role(assume_role_policy=json.dumps(assume_role_policy),
                                         managed_policies_arns=managed_policies_arns, policies=inline_policies)
@@ -658,19 +671,7 @@ class AWSLambdaAPI:
         """
 
         inline_policies = []
-        if self.configuration.event_source_mapping_dynamodb_name:
-            name = f"inline_event_source_{self.configuration.event_source_mapping_dynamodb_name}"
-            table = self.environment_api.get_dynamodb(self.configuration.event_source_mapping_dynamodb_name)
 
-            policy = self.aws_iam_api.generate_inline_policy(name, [
-                table.latest_stream_arn
-            ], [
-                                                                 "dynamodb:GetRecords",
-                                                                 "dynamodb:GetShardIterator",
-                                                                 "dynamodb:DescribeStream",
-                                                                 "dynamodb:ListStreams"
-                                                             ])
-            inline_policies.append(policy)
 
         return inline_policies
 
