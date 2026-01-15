@@ -117,7 +117,7 @@ def test_provision_instance_stopper_lambda(aws_lambda_api):
         horey_dir_preparator = aws_lambda_api.prepare_horey_lambda_source_code_directory(["aws_api"], "instance_stopper.handler")
         path = horey_dir_preparator(branch_name)
 
-        shutil.copyfile(Path(__file__).parent / "aws_lambda_api_instance_stopper" / "instance_stopper.py", path)
+        shutil.copyfile(Path(__file__).parent / "aws_lambda_api_instance_stopper" / "instance_stopper.py", path / "instance_stopper.py")
         return path
 
     aws_lambda_api.build_api.prepare_source_code_directory = prepare_lambda_source_code_directory

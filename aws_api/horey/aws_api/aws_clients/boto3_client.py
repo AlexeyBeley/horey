@@ -80,7 +80,12 @@ class Boto3Client:
         """
 
         if self._account_id is None:
-            sts_client = self.SESSIONS_MANAGER.get_client("sts", region=AWSAccount.get_default_region() or AWSAccount.get_account_default_region())
+            try:
+                region = AWSAccount.get_default_region() or AWSAccount.get_account_default_region()
+            except AttributeError:
+                region = Region.get_region("us-east-1")
+
+            sts_client = self.SESSIONS_MANAGER.get_client("sts", region=region)
             self._account_id = sts_client.get_caller_identity()["Account"]
         return self._account_id
 
